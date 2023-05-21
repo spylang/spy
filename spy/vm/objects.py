@@ -73,7 +73,9 @@ class W_TypeObject(W_Object):
 
     @property
     def w_base(self):
-        return self.__class__.__base__._w
+        if self is W_Object._w:
+            return None
+        return self.pyclass.__base__._w
 
     def __repr__(self):
         return f"<spy type '{self.name}'>"

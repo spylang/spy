@@ -21,3 +21,13 @@ class SPyVM:
         pyclass = type(w_obj)
         assert pyclass._w is not None
         return pyclass._w
+
+    def issubclass(self, w_sub, w_super):
+        assert isinstance(w_super, W_TypeObject)
+        assert isinstance(w_sub, W_TypeObject)
+        w_class = w_sub
+        while w_class is not None:
+            if w_class is w_super:
+                return True
+            w_class = w_class.w_base
+        return False

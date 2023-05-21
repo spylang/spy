@@ -41,3 +41,36 @@ class TestVM:
         assert isinstance(W_Foo._w, W_TypeObject)
         assert W_Foo._w.name == 'foo'
         assert W_Foo._w.pyclass is W_Foo
+
+    def test_w_base(self):
+        @spytype('A')
+        class W_A(W_Object):
+            pass
+        #
+        @spytype('B')
+        class W_B(W_A):
+            pass
+        #
+        assert W_Object._w.w_base is None
+        assert W_A._w.w_base is W_Object._w
+        assert W_B._w.w_base is W_A._w
+
+    def test_issubclass(self):
+        @spytype('A')
+        class W_A(W_Object):
+            pass
+        #
+        @spytype('B')
+        class W_B(W_A):
+            pass
+        #
+        vm = SPyVM()
+        w_a = W_A._w
+        w_b = W_B._w
+        #
+        assert vm.issubclass(w_a, vm.builtins.w_object)
+        assert vm.issubclass(w_b, vm.builtins.w_object)
+        assert vm.issubclass(w_a, w_a)
+        assert vm.issubclass(w_b, w_b)
+        assert vm.issubclass(w_b, w_a)
+        assert not vm.issubclass(w_a, w_b)
