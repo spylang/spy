@@ -27,3 +27,8 @@ class TestObjects:
         # <type> is a subclass of <object>
         assert type.__base__ is object
         assert B.w_type.w_base is B.w_object
+
+    def test_W_TypeObject_repr(self):
+        vm = SPyVM()
+        assert repr(vm.builtins.w_object) == "<spy type 'object'>"
+        assert repr(vm.builtins.w_type) == "<spy type 'type'>"
