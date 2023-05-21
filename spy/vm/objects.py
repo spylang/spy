@@ -80,3 +80,16 @@ class W_TypeObject(W_Object):
 
 W_Object._w = W_TypeObject('object', W_Object)
 W_TypeObject._w = W_TypeObject('type', W_TypeObject)
+
+
+def spytype(name, metaclass=W_TypeObject):
+    """
+    Class decorator to simplify the creation of SPy types.
+
+    Given a W_* class, it automatically creates the corresponding instance of
+    W_TypeObject and attaches it to the W_* class.
+    """
+    def decorator(pyclass):
+        pyclass._w = metaclass(name, pyclass)
+        return pyclass
+    return decorator
