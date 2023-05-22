@@ -1,3 +1,4 @@
 pytest==7.3.1
 astpretty==3.0.0
 wasmtime==8.0.1
+fixedint==0.2.0

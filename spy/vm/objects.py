@@ -44,6 +44,8 @@ SPy app-level types are instances of W_Type, which is basically a thin
 wrapper around the correspindig interp-level W_* class.
 """
 
+import fixedint
+
 # Basic setup of the object model: <object> and <type>
 # =====================================================
 
@@ -133,3 +135,18 @@ class W_NoneType(W_Object):
         return None
 
 W_NoneType._w_singleton = W_NoneType.__new__(W_NoneType)
+
+
+@spytype('i32')
+class W_i32(W_Object):
+
+    def __init__(self, value):
+        if type(value) not in (int, fixedint.Int32):
+            raise TypeError()
+        self.value = fixedint.Int32(value)
+
+    def __repr__(self):
+        return f'<spy {self.value}: i32>'
+
+    def __spy_unwrap__(self, vm):
+        return self.value

@@ -1,4 +1,5 @@
-from spy.vm.objects import W_Object, W_Type, W_NoneType
+import fixedint
+from spy.vm.objects import W_Object, W_Type, W_NoneType, W_i32
 
 class Builtins:
     pass
@@ -16,6 +17,7 @@ class SPyVM:
         self.builtins.w_object = W_Object._w
         self.builtins.w_type = W_Type._w
         self.builtins.w_None = W_NoneType._w_singleton
+        self.builtins.w_i32 = W_i32._w
 
     def w_dynamic_type(self, w_obj):
         assert isinstance(w_obj, W_Object)
@@ -40,6 +42,8 @@ class SPyVM:
         """
         if value is None:
             return self.builtins.w_None
+        elif type(value) in (int, fixedint.Int32):
+            return W_i32(value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
         raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")
