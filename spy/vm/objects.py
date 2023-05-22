@@ -89,6 +89,9 @@ class W_Type(W_Object):
     def __repr__(self):
         return f"<spy type '{self.name}'>"
 
+    def __spy_unwrap__(self, vm):
+        return self.pyclass
+
 W_Object._w = W_Type('object', W_Object)
 W_Type._w = W_Type('type', W_Type)
 
