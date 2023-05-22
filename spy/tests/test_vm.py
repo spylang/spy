@@ -52,7 +52,8 @@ class TestVM:
         class W_B(W_A):
             pass
         #
-        assert W_Object._w.w_base is None
+        w_None = W_NoneType._w_singleton
+        assert W_Object._w.w_base is w_None
         assert W_A._w.w_base is W_Object._w
         assert W_B._w.w_base is W_A._w
 

@@ -83,7 +83,7 @@ class W_Type(W_Object):
     @property
     def w_base(self):
         if self is W_Object._w:
-            return None
+            return W_NoneType._w_singleton
         return self.pyclass.__base__._w
 
     def __repr__(self):
@@ -120,16 +120,13 @@ class W_NoneType(W_Object):
 
     def __init__(self):
         # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_NoneType, but note that it's still
-        # very easy to do, by calling W_NoneType._new().
+        # create additional instances of W_NoneType.
         raise Exception("You cannot instantiate W_NoneType")
-
-    @classmethod
-    def _new(cls):
-        return cls.__new__(cls)
 
     def __repr__(self):
         return '<spy None>'
 
     def __spy_unwrap__(self, vm):
         return None
+
+W_NoneType._w_singleton = W_NoneType.__new__(W_NoneType)

@@ -15,7 +15,7 @@ class SPyVM:
         self.builtins = Builtins()
         self.builtins.w_object = W_Object._w
         self.builtins.w_type = W_Type._w
-        self.builtins.w_None = W_NoneType._new()
+        self.builtins.w_None = W_NoneType._w_singleton
 
     def w_dynamic_type(self, w_obj):
         assert isinstance(w_obj, W_Object)
@@ -27,7 +27,7 @@ class SPyVM:
         assert isinstance(w_super, W_Type)
         assert isinstance(w_sub, W_Type)
         w_class = w_sub
-        while w_class is not None:
+        while w_class is not self.builtins.w_None:
             if w_class is w_super:
                 return True
             w_class = w_class.w_base
