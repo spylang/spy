@@ -74,3 +74,8 @@ class TestVM:
         assert vm.issubclass(w_b, w_b)
         assert vm.issubclass(w_b, w_a)
         assert not vm.issubclass(w_a, w_b)
+
+    def test_wrap_unwrap(self):
+        vm = SPyVM()
+        assert vm.wrap(W_Object) is vm.builtins.w_object
+        assert vm.unwrap(vm.builtins.w_object) is W_Object

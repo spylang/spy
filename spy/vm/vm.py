@@ -31,3 +31,25 @@ class SPyVM:
                 return True
             w_class = w_class.w_base
         return False
+
+    def wrap(self, value):
+        """
+        Useful for tests: magic funtion which wraps the given inter-level object
+        into the most appropriate app-level W_* object.
+        """
+        if isinstance(value, type) and issubclass(value, W_Object):
+            return value._w
+        raise Exception(f"Cannot wrap inter-level objects of type {value.__class__.__name__}")
+
+    def unwrap(self, w_value):
+        """
+        Useful for tests: magic funtion which wraps the given app-level w_ object
+        into the most appropriate inter-level object. Opposite of wrap().
+        """
+        assert isinstance(w_value, W_Object)
+        if isinstance(w_value, W_Type):
+            return w_value.pyclass
+        #
+        spy_type = self.w_dynamic_type(w_value).name
+        py_type = w_value.__class__.__name__
+        raise Exception(f"Cannot unwrap app-level objects of type {spy_type} (inter-level type: {py_type})")
