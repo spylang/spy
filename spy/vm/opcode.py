@@ -4,6 +4,7 @@
 ALL_OPCODES = [
     'return',
     'i32_const',
+    'i32_add',
 ]
 
 class OpCode:

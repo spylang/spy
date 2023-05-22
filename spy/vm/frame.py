@@ -39,3 +39,13 @@ class Frame:
     def op_i32_const(self, w_const):
         assert isinstance(w_const, W_i32)
         self.push(w_const)
+
+    def op_i32_add(self):
+        w_b = self.pop()
+        w_a = self.pop()
+        assert isinstance(w_a, W_i32)
+        assert isinstance(w_b, W_i32)
+        a = self.vm.unwrap(w_a)
+        b = self.vm.unwrap(w_b)
+        w_c = self.vm.wrap(a + b)
+        self.push(w_c)
