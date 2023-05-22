@@ -1,5 +1,5 @@
 from spy.vm.vm import SPyVM
-from spy.vm.objects import W_Object, W_TypeObject, spytype
+from spy.vm.objects import W_Object, W_Type, spytype
 
 class TestVM:
 
@@ -28,7 +28,7 @@ class TestVM:
         assert type.__base__ is object
         assert B.w_type.w_base is B.w_object
 
-    def test_W_TypeObject_repr(self):
+    def test_W_Type_repr(self):
         vm = SPyVM()
         assert repr(vm.builtins.w_object) == "<spy type 'object'>"
         assert repr(vm.builtins.w_type) == "<spy type 'type'>"
@@ -38,7 +38,7 @@ class TestVM:
         class W_Foo(W_Object):
             pass
         #
-        assert isinstance(W_Foo._w, W_TypeObject)
+        assert isinstance(W_Foo._w, W_Type)
         assert W_Foo._w.name == 'foo'
         assert W_Foo._w.pyclass is W_Foo
 

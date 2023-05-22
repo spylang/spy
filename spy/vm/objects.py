@@ -40,7 +40,7 @@ W_Object.
 
 SPy app-level objects are interp-level instances of those classes.
 
-SPy app-level types are instances of W_TypeObject, which is basically a thin
+SPy app-level types are instances of W_Type, which is basically a thin
 wrapper around the correspindig interp-level W_* class.
 """
 
@@ -57,7 +57,7 @@ class W_Object:
         return f'<spy instance: type={typename}, id={addr}>'
 
 
-class W_TypeObject(W_Object):
+class W_Type(W_Object):
     """
     The default metaclass for SPy types.
 
@@ -80,16 +80,16 @@ class W_TypeObject(W_Object):
     def __repr__(self):
         return f"<spy type '{self.name}'>"
 
-W_Object._w = W_TypeObject('object', W_Object)
-W_TypeObject._w = W_TypeObject('type', W_TypeObject)
+W_Object._w = W_Type('object', W_Object)
+W_Type._w = W_Type('type', W_Type)
 
 
-def spytype(name, metaclass=W_TypeObject):
+def spytype(name, metaclass=W_Type):
     """
     Class decorator to simplify the creation of SPy types.
 
     Given a W_* class, it automatically creates the corresponding instance of
-    W_TypeObject and attaches it to the W_* class.
+    W_Type and attaches it to the W_* class.
     """
     def decorator(pyclass):
         pyclass._w = metaclass(name, pyclass)
