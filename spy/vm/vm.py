@@ -1,4 +1,4 @@
-from spy.vm.objects import W_Object, W_Type
+from spy.vm.objects import W_Object, W_Type, W_NoneType
 
 class Builtins:
     pass
@@ -15,6 +15,7 @@ class SPyVM:
         self.builtins = Builtins()
         self.builtins.w_object = W_Object._w
         self.builtins.w_type = W_Type._w
+        self.builtins.w_None = W_NoneType._new()
 
     def w_dynamic_type(self, w_obj):
         assert isinstance(w_obj, W_Object)
@@ -37,9 +38,11 @@ class SPyVM:
         Useful for tests: magic funtion which wraps the given inter-level object
         into the most appropriate app-level W_* object.
         """
-        if isinstance(value, type) and issubclass(value, W_Object):
+        if value is None:
+            return self.builtins.w_None
+        elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
-        raise Exception(f"Cannot wrap inter-level objects of type {value.__class__.__name__}")
+        raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")
 
     def unwrap(self, w_value):
         """
@@ -50,6 +53,3 @@ class SPyVM:
         if isinstance(w_value, W_Type):
             return w_value.pyclass
         #
-        spy_type = self.w_dynamic_type(w_value).name
-        py_type = w_value.__class__.__name__
-        raise Exception(f"Cannot unwrap app-level objects of type {spy_type} (inter-level type: {py_type})")

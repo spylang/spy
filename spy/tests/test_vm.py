@@ -1,5 +1,6 @@
+import pytest
 from spy.vm.vm import SPyVM
-from spy.vm.objects import W_Object, W_Type, spytype
+from spy.vm.objects import W_Object, W_Type, spytype, W_NoneType
 
 class TestVM:
 
@@ -75,7 +76,23 @@ class TestVM:
         assert vm.issubclass(w_b, w_a)
         assert not vm.issubclass(w_a, w_b)
 
-    def test_wrap_unwrap(self):
+    def test_wrap_unwrap_types(self):
         vm = SPyVM()
         assert vm.wrap(W_Object) is vm.builtins.w_object
         assert vm.unwrap(vm.builtins.w_object) is W_Object
+        #
+        # check that wrapping an unsupported type raises
+        class Foo:
+            pass
+        with pytest.raises(Exception,
+                           match="Cannot wrap interp-level objects of type Foo"):
+            vm.wrap(Foo())
+
+    def test_w_None(self):
+        vm = SPyVM()
+        w_None = vm.builtins.w_None
+        assert isinstance(w_None, W_NoneType)
+        assert vm.w_dynamic_type(w_None).name == 'NoneType'
+        assert repr(w_None) == '<spy None>'
+        #
+        assert vm.wrap(None) is w_None

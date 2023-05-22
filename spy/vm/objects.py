@@ -44,6 +44,9 @@ SPy app-level types are instances of W_Type, which is basically a thin
 wrapper around the correspindig interp-level W_* class.
 """
 
+# Basic setup of the object model: <object> and <type>
+# =====================================================
+
 class W_Object:
     """
     The root of SPy object hierarchy
@@ -55,6 +58,12 @@ class W_Object:
         typename = self._w.name
         addr = f'0x{id(self):x}'
         return f'<spy instance: type={typename}, id={addr}>'
+
+    def __spy_unwrap__(self, vm):
+        spy_type = vm.w_dynamic_type(self).name
+        py_type = self.__class__.__name__
+        raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
+                        f"(inter-level type: {py_type})")
 
 
 class W_Type(W_Object):
@@ -95,3 +104,32 @@ def spytype(name, metaclass=W_Type):
         pyclass._w = metaclass(name, pyclass)
         return pyclass
     return decorator
+
+
+# Other types
+# ============
+
+@spytype('NoneType')
+class W_NoneType(W_Object):
+    """
+    Equivalent of Python's NoneType.
+
+    This is a singleton: there should be only one instance of this calls,
+    which is w_None.
+    """
+
+    def __init__(self):
+        # this is just a sanity check: we don't want people to be able to
+        # create additional instances of W_NoneType, but note that it's still
+        # very easy to do, by calling W_NoneType._new().
+        raise Exception("You cannot instantiate W_NoneType")
+
+    @classmethod
+    def _new(cls):
+        return cls.__new__(cls)
+
+    def __repr__(self):
+        return '<spy None>'
+
+    def __spy_unwrap__(self, vm):
+        return None
