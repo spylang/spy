@@ -45,6 +45,7 @@ wrapper around the correspindig interp-level W_* class.
 """
 
 import fixedint
+from typing import ClassVar
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
@@ -54,7 +55,7 @@ class W_Object:
     The root of SPy object hierarchy
     """
 
-    _w = None # set later
+    _w: 'W_Type'  # set later
 
     def __repr__(self):
         typename = self._w.name
@@ -74,8 +75,6 @@ class W_Type(W_Object):
 
     This is basically a thin wrapper around W_* classes.
     """
-
-    _w = None # set later
 
     def __init__(self, name, pyclass):
         assert issubclass(pyclass, W_Object)
@@ -122,6 +121,8 @@ class W_NoneType(W_Object):
     This is a singleton: there should be only one instance of this calls,
     which is w_None.
     """
+
+    _w_singleton: ClassVar['W_NoneType']
 
     def __init__(self):
         # this is just a sanity check: we don't want people to be able to
