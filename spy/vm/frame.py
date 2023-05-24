@@ -1,20 +1,20 @@
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object, W_i32
-from spy.vm.codeobject import CodeObject
+from spy.vm.codeobject import W_CodeObject
 
 class BytecodeError(Exception):
     pass
 
 class Frame:
     vm: SPyVM
-    code: CodeObject
+    w_code: W_CodeObject
     pc: int
     stack: list[W_Object]
 
-    def __init__(self, vm, code) -> None:
-        assert isinstance(code, CodeObject)
+    def __init__(self, vm, w_code: W_Object) -> None:
+        assert isinstance(w_code, W_CodeObject)
         self.vm = vm
-        self.code = code
+        self.w_code = w_code
         self.pc = 0  # program counter
         self.stack = []
 
@@ -27,7 +27,7 @@ class Frame:
 
     def eval(self) -> W_Object:
         while True:
-            op = self.code.body[self.pc]
+            op = self.w_code.body[self.pc]
             # 'return' is special, handle it explicitly
             if op.name == 'return':
                 ## if len(self.stack) != 1:

@@ -1,3 +1,5 @@
+from spy.vm.object import W_Object, spytype
+
 # for now, each opcode is represented by its name. Very inefficient but we
 # don't care for now. Eventually, we could migrate to a more proper bytecode
 # or wordcode.
@@ -24,8 +26,8 @@ class OpCode:
             return f'<OpCode {self.name}>'
 
 
-
-class CodeObject:
+@spytype('CodeObject')
+class W_CodeObject(W_Object):
     name: str
     body: list[OpCode]
 
@@ -34,4 +36,4 @@ class CodeObject:
         self.body = body
 
     def __repr__(self):
-        return f'<CodeObject {self.name}>'
+        return f'<spy CodeObject {self.name}>'

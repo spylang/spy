@@ -1,6 +1,6 @@
 from spy.vm.vm import SPyVM
 from spy.vm.frame import Frame
-from spy.vm.codeobject import OpCode, CodeObject
+from spy.vm.codeobject import OpCode, W_CodeObject
 
 
 class TestFrame:
@@ -12,7 +12,7 @@ class TestFrame:
             OpCode('i32_const', w_42),
             OpCode('return'),
         ]
-        code = CodeObject('simple', body)
+        code = W_CodeObject('simple', body)
         frame = Frame(vm, code)
         w_result = frame.eval()
         assert w_result is w_42
@@ -27,7 +27,7 @@ class TestFrame:
             OpCode('i32_add'),
             OpCode('return'),
         ]
-        code = CodeObject('simple', body)
+        code = W_CodeObject('simple', body)
         frame = Frame(vm, code)
         w_result = frame.eval()
         result = vm.unwrap(w_result)
