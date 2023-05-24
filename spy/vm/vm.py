@@ -1,5 +1,5 @@
 import fixedint
-from spy.vm.objects import W_Object, W_Type, W_NoneType, W_i32
+from spy.vm.object import W_Object, W_Type, W_NoneType, W_i32
 
 class Builtins:
     w_object: W_Type

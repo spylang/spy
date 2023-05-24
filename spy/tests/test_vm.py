@@ -1,7 +1,7 @@
 import fixedint
 import pytest
 from spy.vm.vm import SPyVM
-from spy.vm.objects import W_Object, W_Type, spytype, W_NoneType, W_i32
+from spy.vm.object import W_Object, W_Type, spytype, W_NoneType, W_i32
 
 class TestVM:
 

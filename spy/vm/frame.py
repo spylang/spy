@@ -1,5 +1,5 @@
 from spy.vm.opcode import CodeObject
-from spy.vm.objects import W_Object, W_i32
+from spy.vm.object import W_Object, W_i32
 from spy.vm.vm import SPyVM
 
 class BytecodeError(Exception):
