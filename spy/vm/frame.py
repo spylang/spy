@@ -1,26 +1,31 @@
 from spy.vm.opcode import CodeObject
 from spy.vm.objects import W_Object, W_i32
+from spy.vm.vm import SPyVM
 
 class BytecodeError(Exception):
     pass
 
 class Frame:
+    vm: SPyVM
+    code: CodeObject
+    pc: int
+    stack: list[W_Object]
 
-    def __init__(self, vm, code):
+    def __init__(self, vm, code) -> None:
         assert isinstance(code, CodeObject)
         self.vm = vm
         self.code = code
         self.pc = 0  # program counter
         self.stack = []
 
-    def push(self, w_value):
+    def push(self, w_value: W_Object) -> None:
         assert isinstance(w_value, W_Object)
         self.stack.append(w_value)
 
-    def pop(self):
+    def pop(self) -> W_Object:
         return self.stack.pop()
 
-    def eval(self):
+    def eval(self) -> W_Object:
         while True:
             op = self.code.body[self.pc]
             # 'return' is special, handle it explicitly
@@ -36,7 +41,7 @@ class Frame:
                 meth(*op.args)
                 self.pc += 1
 
-    def op_i32_const(self, w_const):
+    def op_i32_const(self, w_const: W_Object):
         assert isinstance(w_const, W_i32)
         self.push(w_const)
 

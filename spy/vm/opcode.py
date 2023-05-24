@@ -8,8 +8,10 @@ ALL_OPCODES = [
 ]
 
 class OpCode:
+    name: str
+    args: tuple
 
-    def __init__(self, name, *args):
+    def __init__(self, name: str, *args) -> None:
         if name not in ALL_OPCODES:
             raise ValueError(f'Invalid opcode: {name}')
         self.name = name
@@ -24,8 +26,10 @@ class OpCode:
 
 
 class CodeObject:
+    name: str
+    body: list[OpCode]
 
-    def __init__(self, name, body):
+    def __init__(self, name: str, body: list[OpCode]):
         self.name = name
         self.body = body
 
