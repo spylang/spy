@@ -42,6 +42,14 @@ class Frame:
     def pop(self) -> W_Object:
         return self.stack.pop()
 
+    def init_arguments(self, args_w: list[W_Object]) -> None:
+        assert len(args_w) == len(self.w_code.params_w_types)
+        for i, (varname, w_type) in enumerate(self.w_code.params_w_types.items()):
+            w_arg = args_w[i]
+            pyclass = self.vm.unwrap(w_type)
+            assert isinstance(w_arg, pyclass)
+            self.locals_w[varname] = w_arg
+
     def init_locals(self) -> None:
         for varname, w_type in self.w_code.locals_w_types.items():
             # for now we know how to initialize only i32 local vars. We need
@@ -49,7 +57,8 @@ class Frame:
             assert w_type is self.vm.builtins.w_i32
             self.locals_w[varname] = W_i32(0)
 
-    def run(self) -> W_Object:
+    def run(self, args_w: list[W_Object]) -> W_Object:
+        self.init_arguments(args_w)
         self.init_locals()
         while True:
             op = self.w_code.body[self.pc]
@@ -77,6 +86,16 @@ class Frame:
         a = self.vm.unwrap(w_a)
         b = self.vm.unwrap(w_b)
         w_c = self.vm.wrap(a + b)
+        self.push(w_c)
+
+    def op_i32_sub(self) -> None:
+        w_b = self.pop()
+        w_a = self.pop()
+        assert isinstance(w_a, W_i32)
+        assert isinstance(w_b, W_i32)
+        a = self.vm.unwrap(w_a)
+        b = self.vm.unwrap(w_b)
+        w_c = self.vm.wrap(a - b)
         self.push(w_c)
 
     def op_local_get(self, varname: str) -> None:
