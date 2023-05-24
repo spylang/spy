@@ -11,7 +11,7 @@ class Frame:
     pc: int
     stack: list[W_Object]
 
-    def __init__(self, vm, w_code: W_Object) -> None:
+    def __init__(self, vm: SPyVM, w_code: W_Object) -> None:
         assert isinstance(w_code, W_CodeObject)
         self.vm = vm
         self.w_code = w_code
