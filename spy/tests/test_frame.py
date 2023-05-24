@@ -1,6 +1,7 @@
-from spy.vm.opcode import OpCode, CodeObject
-from spy.vm.frame import Frame
 from spy.vm.vm import SPyVM
+from spy.vm.frame import Frame
+from spy.vm.codeobject import OpCode, CodeObject
+
 
 class TestFrame:
 

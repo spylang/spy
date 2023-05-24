@@ -1,5 +1,5 @@
 import pytest
-from spy.vm.opcode import OpCode, CodeObject
+from spy.vm.codeobject import OpCode
 
 class TestOpCode:
 

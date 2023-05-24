@@ -1,6 +1,6 @@
-from spy.vm.opcode import CodeObject
-from spy.vm.object import W_Object, W_i32
 from spy.vm.vm import SPyVM
+from spy.vm.object import W_Object, W_i32
+from spy.vm.codeobject import CodeObject
 
 class BytecodeError(Exception):
     pass
