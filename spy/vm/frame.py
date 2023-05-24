@@ -8,15 +8,17 @@ class BytecodeError(Exception):
 class Frame:
     vm: SPyVM
     w_code: W_CodeObject
-    pc: int
+    pc: int  # program counter
     stack: list[W_Object]
+    locals_w: dict[str, W_Object]
 
     def __init__(self, vm: SPyVM, w_code: W_Object) -> None:
         assert isinstance(w_code, W_CodeObject)
         self.vm = vm
         self.w_code = w_code
-        self.pc = 0  # program counter
+        self.pc = 0
         self.stack = []
+        self.locals_w = {}
 
     def push(self, w_value: W_Object) -> None:
         assert isinstance(w_value, W_Object)
@@ -25,7 +27,15 @@ class Frame:
     def pop(self) -> W_Object:
         return self.stack.pop()
 
-    def eval(self) -> W_Object:
+    def init_locals(self) -> None:
+        for varname, w_type in self.w_code.locals_w_types.items():
+            # for now we know how to initialize only i32 local vars. We need
+            # to think of a more generic way
+            assert w_type is self.vm.builtins.w_i32
+            self.locals_w[varname] = W_i32(0)
+
+    def run(self) -> W_Object:
+        self.init_locals()
         while True:
             op = self.w_code.body[self.pc]
             # 'return' is special, handle it explicitly
@@ -54,3 +64,14 @@ class Frame:
         b = self.vm.unwrap(w_b)
         w_c = self.vm.wrap(a + b)
         self.push(w_c)
+
+    def op_local_get(self, varname: str) -> None:
+        w_value = self.locals_w[varname]
+        self.push(w_value)
+
+    def op_local_set(self, varname: str) -> None:
+        w_type = self.w_code.locals_w_types[varname]
+        pyclass = self.vm.unwrap(w_type)
+        w_value = self.pop()
+        assert isinstance(w_value, pyclass)
+        self.locals_w[varname] = w_value

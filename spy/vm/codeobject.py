@@ -1,5 +1,5 @@
 from typing import Any
-from spy.vm.object import W_Object, spytype
+from spy.vm.object import W_Object, W_Type, spytype
 
 # for now, each opcode is represented by its name. Very inefficient but we
 # don't care for now. Eventually, we could migrate to a more proper bytecode
@@ -8,6 +8,8 @@ ALL_OPCODES = [
     'return',
     'i32_const',
     'i32_add',
+    'local_set',
+    'local_get',
 ]
 
 class OpCode:
@@ -31,10 +33,12 @@ class OpCode:
 class W_CodeObject(W_Object):
     name: str
     body: list[OpCode]
+    locals_w_types: dict[str, W_Type]
 
-    def __init__(self, name: str, body: list[OpCode]) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.body = body
+        self.body = []
+        self.locals_w_types = {}
 
     def __repr__(self) -> str:
         return f'<spy CodeObject {self.name}>'
