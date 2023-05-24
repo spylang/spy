@@ -1,3 +1,4 @@
+from typing import Any
 import fixedint
 from spy.vm.object import W_Object, W_Type, W_NoneType, W_i32
 
@@ -14,7 +15,7 @@ class SPyVM:
 
     builtins: Builtins
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.init_builtins()
 
     def init_builtins(self) -> None:
@@ -40,7 +41,7 @@ class SPyVM:
             w_class = w_class.w_base  # type:ignore
         return False
 
-    def wrap(self, value) -> W_Object:
+    def wrap(self, value: Any) -> W_Object:
         """
         Useful for tests: magic funtion which wraps the given inter-level object
         into the most appropriate app-level W_* object.
@@ -53,7 +54,7 @@ class SPyVM:
             return value._w
         raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")
 
-    def unwrap(self, w_value: W_Object):
+    def unwrap(self, w_value: W_Object) -> Any:
         """
         Useful for tests: magic funtion which wraps the given app-level w_ object
         into the most appropriate inter-level object. Opposite of wrap().

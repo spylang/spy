@@ -41,11 +41,11 @@ class Frame:
                 meth(*op.args)
                 self.pc += 1
 
-    def op_i32_const(self, w_const: W_Object):
+    def op_i32_const(self, w_const: W_Object) -> None:
         assert isinstance(w_const, W_i32)
         self.push(w_const)
 
-    def op_i32_add(self):
+    def op_i32_add(self) -> None:
         w_b = self.pop()
         w_a = self.pop()
         assert isinstance(w_a, W_i32)

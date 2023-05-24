@@ -45,7 +45,7 @@ wrapper around the correspindig interp-level W_* class.
 """
 
 import fixedint
-from typing import TYPE_CHECKING, ClassVar, Type
+from typing import TYPE_CHECKING, ClassVar, Type, Any
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -59,12 +59,12 @@ class W_Object:
 
     _w: ClassVar['W_Type']  # set later
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         typename = self._w.name
         addr = f'0x{id(self):x}'
         return f'<spy instance: type={typename}, id={addr}>'
 
-    def __spy_unwrap__(self, vm: 'SPyVM'):
+    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
         spy_type = vm.w_dynamic_type(self).name
         py_type = self.__class__.__name__
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
@@ -94,17 +94,17 @@ class W_Type(W_Object):
         assert issubclass(basecls, W_Object)
         return basecls._w
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<spy type '{self.name}'>"
 
-    def __spy_unwrap__(self, vm: 'SPyVM'):
+    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
         return self.pyclass
 
 W_Object._w = W_Type('object', W_Object)
 W_Type._w = W_Type('type', W_Type)
 
 
-def spytype(name: str, metaclass: Type[W_Type] = W_Type):
+def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
 
@@ -131,15 +131,15 @@ class W_NoneType(W_Object):
 
     _w_singleton: ClassVar['W_NoneType']
 
-    def __init__(self):
+    def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
         # create additional instances of W_NoneType.
         raise Exception("You cannot instantiate W_NoneType")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<spy None>'
 
-    def __spy_unwrap__(self, vm: 'SPyVM'):
+    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
         return None
 
 W_NoneType._w_singleton = W_NoneType.__new__(W_NoneType)
@@ -149,13 +149,13 @@ W_NoneType._w_singleton = W_NoneType.__new__(W_NoneType)
 class W_i32(W_Object):
     value: fixedint.Int32
 
-    def __init__(self, value: int | fixedint.Int32):
+    def __init__(self, value: int | fixedint.Int32) -> None:
         if type(value) not in (int, fixedint.Int32):
             raise TypeError()
         self.value = fixedint.Int32(value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<spy {self.value}: i32>'
 
-    def __spy_unwrap__(self, vm):
+    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
         return self.value
