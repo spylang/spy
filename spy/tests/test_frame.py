@@ -1,7 +1,17 @@
+from typing import Optional
 from spy.vm.vm import SPyVM
+from spy.vm.object import W_Object
 from spy.vm.frame import Frame, VarStorage
 from spy.vm.codeobject import OpCode, W_CodeObject
 
+def make_Frame(vm: SPyVM, w_code: W_Object,
+               globals: Optional[VarStorage] = None) -> Frame:
+    """
+    Like Frame(), but allows to pass None for globals
+    """
+    if globals is None:
+        globals = VarStorage(vm, 'globals', {})
+    return Frame(vm, w_code, globals)
 
 class TestFrame:
 
@@ -13,7 +23,7 @@ class TestFrame:
             OpCode('i32_const', w_42),
             OpCode('return'),
         ]
-        frame = Frame(vm, code)
+        frame = make_Frame(vm, code)
         w_result = frame.run([])
         assert w_result is w_42
 
@@ -28,7 +38,7 @@ class TestFrame:
             OpCode('i32_add'),
             OpCode('return'),
         ]
-        frame = Frame(vm, code)
+        frame = make_Frame(vm, code)
         w_result = frame.run([])
         result = vm.unwrap(w_result)
         assert result == 101
@@ -44,7 +54,7 @@ class TestFrame:
             OpCode('i32_sub'),
             OpCode('return'),
         ]
-        frame = Frame(vm, code)
+        frame = make_Frame(vm, code)
         w_result = frame.run([])
         result = vm.unwrap(w_result)
         assert result == 42
@@ -59,7 +69,7 @@ class TestFrame:
             OpCode('local_get', 'a'),
             OpCode('return'),
         ]
-        frame = Frame(vm, code)
+        frame = make_Frame(vm, code)
         w_result = frame.run([])
         result = vm.unwrap(w_result)
         assert result == 0
@@ -77,7 +87,7 @@ class TestFrame:
             OpCode('local_get', 'a'),
             OpCode('return'),
         ]
-        frame = Frame(vm, code)
+        frame = make_Frame(vm, code)
         w_result = frame.run([])
         assert w_result is w_100
 
@@ -122,7 +132,7 @@ class TestFrame:
         #
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
-        frame = Frame(vm, code)
+        frame = make_Frame(vm, code)
         w_result = frame.run([w_50, w_8])
         result = vm.unwrap(w_result)
         assert result == 42

@@ -62,14 +62,11 @@ class Frame:
     stack: list[W_Object]
     locals: VarStorage
 
-    def __init__(self, vm: SPyVM, w_code: W_Object, globals: VarStorage = None) -> None:
+    def __init__(self, vm: SPyVM, w_code: W_Object, globals: VarStorage) -> None:
         assert isinstance(w_code, W_CodeObject)
         self.vm = vm
         self.w_code = w_code
-        if globals is None:
-            self.globals = VarStorage(vm, 'globals', {})
-        else:
-            self.globals = globals
+        self.globals = globals
         self.locals = VarStorage(vm, f"'{w_code.name} locals'", w_code.locals_w_types)
         self.pc = 0
         self.stack = []
