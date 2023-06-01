@@ -22,11 +22,13 @@ from spy.vm.codeobject import W_CodeObject
 
 class VarStorage:
     vm: SPyVM
+    name: str
     types_w: dict[str, W_Type]
     values_w: dict[str, W_Object]
 
-    def __init__(self, vm: SPyVM, types_w: dict[str, W_Type]) -> None:
+    def __init__(self, vm: SPyVM, name: str, types_w: dict[str, W_Type]) -> None:
         self.vm = vm
+        self.name = name
         self.types_w = types_w
         self.values_w = {}
         for varname, w_type in types_w.items():
@@ -34,6 +36,9 @@ class VarStorage:
             # to think of a more generic way
             assert w_type is vm.builtins.w_i32
             self.values_w[varname] = W_i32(0)
+
+    def __repr__(self) -> str:
+        return f'<VarStorage {self.name}>'
 
     def set(self, name: str, w_value: W_Object) -> None:
         # the invariant is that the produced bytecode should be type safe and
@@ -57,13 +62,17 @@ class Frame:
     stack: list[W_Object]
     locals: VarStorage
 
-    def __init__(self, vm: SPyVM, w_code: W_Object) -> None:
+    def __init__(self, vm: SPyVM, w_code: W_Object, globals: VarStorage = None) -> None:
         assert isinstance(w_code, W_CodeObject)
         self.vm = vm
         self.w_code = w_code
+        if globals is None:
+            self.globals = VarStorage(vm, 'globals', {})
+        else:
+            self.globals = globals
+        self.locals = VarStorage(vm, f"'{w_code.name} locals'", w_code.locals_w_types)
         self.pc = 0
         self.stack = []
-        self.locals = VarStorage(vm, w_code.locals_w_types)
 
     def push(self, w_value: W_Object) -> None:
         assert isinstance(w_value, W_Object)
@@ -124,3 +133,11 @@ class Frame:
     def op_local_set(self, varname: str) -> None:
         w_value = self.pop()
         self.locals.set(varname, w_value)
+
+    def op_global_get(self, varname: str) -> None:
+        w_value = self.globals.get(varname)
+        self.push(w_value)
+
+    def op_global_set(self, varname: str) -> None:
+        w_value = self.pop()
+        self.globals.set(varname, w_value)

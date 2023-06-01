@@ -1,5 +1,5 @@
 from spy.vm.vm import SPyVM
-from spy.vm.frame import Frame
+from spy.vm.frame import Frame, VarStorage
 from spy.vm.codeobject import OpCode, W_CodeObject
 
 
@@ -80,6 +80,30 @@ class TestFrame:
         frame = Frame(vm, code)
         w_result = frame.run([])
         assert w_result is w_100
+
+    def test_globals(self):
+        vm = SPyVM()
+        code = W_CodeObject('simple')
+        code.body = [
+            OpCode('global_get', 'a'),
+            OpCode('i32_const', vm.wrap(11)),
+            OpCode('i32_add'),
+            OpCode('global_set', 'b'),
+            OpCode('i32_const', vm.wrap(0)),
+            OpCode('return'),
+        ]
+
+        globals_w_types = {
+            'a': vm.builtins.w_i32,
+            'b': vm.builtins.w_i32,
+        }
+        myglobs = VarStorage(vm, 'globals', globals_w_types)
+        myglobs.set('a', vm.wrap(100))
+
+        frame = Frame(vm, code, myglobs)
+        w_result = frame.run([])
+        assert vm.unwrap(w_result) == 0
+        assert vm.unwrap(myglobs.get('b')) == 111
 
     def test_params(self):
         vm = SPyVM()

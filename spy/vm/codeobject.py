@@ -11,6 +11,8 @@ ALL_OPCODES = [
     'i32_sub',
     'local_set',
     'local_get',
+    'global_set',
+    'global_get',
 ]
 
 class OpCode:
@@ -36,7 +38,6 @@ class W_CodeObject(W_Object):
     body: list[OpCode]
     params: tuple[str, ...]
     locals_w_types: dict[str, W_Type]
-
 
     def __init__(self, name: str) -> None:
         self.name = name
