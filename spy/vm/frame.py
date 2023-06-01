@@ -17,15 +17,45 @@ codegen, so the point of the assert()s is mostly to catch bugs in it.
 """
 
 from spy.vm.vm import SPyVM
-from spy.vm.object import W_Object, W_i32
+from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.codeobject import W_CodeObject
+
+class VarStorage:
+    vm: SPyVM
+    types_w: dict[str, W_Type]
+    values_w: dict[str, W_Object]
+
+    def __init__(self, vm: SPyVM, types_w: dict[str, W_Type]) -> None:
+        self.vm = vm
+        self.types_w = types_w
+        self.values_w = {}
+        for varname, w_type in types_w.items():
+            # for now we know how to initialize only i32 local vars. We need
+            # to think of a more generic way
+            assert w_type is vm.builtins.w_i32
+            self.values_w[varname] = W_i32(0)
+
+    def set(self, name: str, w_value: W_Object) -> None:
+        # the invariant is that the produced bytecode should be type safe and
+        # never try to set/get a variable with the wrong type. That's why we
+        # have asserts instead of real exceptions.
+        w_type = self.types_w[name]
+        pyclass = self.vm.unwrap(w_type)
+        assert isinstance(w_value, pyclass)
+        self.values_w[name] = w_value
+
+    def get(self, name: str) -> W_Object:
+        assert name in self.types_w
+        assert name in self.values_w
+        return self.values_w[name]
+
 
 class Frame:
     vm: SPyVM
     w_code: W_CodeObject
     pc: int  # program counter
     stack: list[W_Object]
-    locals_w: dict[str, W_Object]
+    locals: VarStorage
 
     def __init__(self, vm: SPyVM, w_code: W_Object) -> None:
         assert isinstance(w_code, W_CodeObject)
@@ -33,7 +63,7 @@ class Frame:
         self.w_code = w_code
         self.pc = 0
         self.stack = []
-        self.locals_w = {}
+        self.locals = VarStorage(vm, w_code.locals_w_types)
 
     def push(self, w_value: W_Object) -> None:
         assert isinstance(w_value, W_Object)
@@ -43,23 +73,12 @@ class Frame:
         return self.stack.pop()
 
     def init_arguments(self, args_w: list[W_Object]) -> None:
-        assert len(args_w) == len(self.w_code.params_w_types)
-        for i, (varname, w_type) in enumerate(self.w_code.params_w_types.items()):
-            w_arg = args_w[i]
-            pyclass = self.vm.unwrap(w_type)
-            assert isinstance(w_arg, pyclass)
-            self.locals_w[varname] = w_arg
-
-    def init_locals(self) -> None:
-        for varname, w_type in self.w_code.locals_w_types.items():
-            # for now we know how to initialize only i32 local vars. We need
-            # to think of a more generic way
-            assert w_type is self.vm.builtins.w_i32
-            self.locals_w[varname] = W_i32(0)
+        assert len(args_w) == len(self.w_code.params)
+        for varname, w_arg in zip(self.w_code.params, args_w):
+            self.locals.set(varname, w_arg)
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
-        self.init_locals()
         while True:
             op = self.w_code.body[self.pc]
             # 'return' is special, handle it explicitly
@@ -99,12 +118,9 @@ class Frame:
         self.push(w_c)
 
     def op_local_get(self, varname: str) -> None:
-        w_value = self.locals_w[varname]
+        w_value = self.locals.get(varname)
         self.push(w_value)
 
     def op_local_set(self, varname: str) -> None:
-        w_type = self.w_code.locals_w_types[varname]
-        pyclass = self.vm.unwrap(w_type)
         w_value = self.pop()
-        assert isinstance(w_value, pyclass)
-        self.locals_w[varname] = w_value
+        self.locals.set(varname, w_value)

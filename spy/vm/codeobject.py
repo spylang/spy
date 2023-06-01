@@ -34,16 +34,14 @@ class OpCode:
 class W_CodeObject(W_Object):
     name: str
     body: list[OpCode]
-    # name and type of parameters. Note that params must be ordered: here we
-    # rely on the fact that in modern versions of Python, the order of keys
-    # inside a dict is guaranteed and preserved
-    params_w_types: dict[str, W_Type]
+    params: tuple[str, ...]
     locals_w_types: dict[str, W_Type]
+
 
     def __init__(self, name: str) -> None:
         self.name = name
         self.body = []
-        self.params_w_types = {}
+        self.params = ()
         self.locals_w_types = {}
 
     def __repr__(self) -> str:

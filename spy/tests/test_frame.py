@@ -84,7 +84,8 @@ class TestFrame:
     def test_params(self):
         vm = SPyVM()
         code = W_CodeObject('simple')
-        code.params_w_types = {
+        code.params = ('a', 'b')
+        code.locals_w_types = {
             'a': vm.builtins.w_i32,
             'b': vm.builtins.w_i32,
         }
