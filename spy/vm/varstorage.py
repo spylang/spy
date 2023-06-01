@@ -34,3 +34,11 @@ class VarStorage:
         assert name in self.types_w
         assert name in self.values_w
         return self.values_w[name]
+
+    def add(self, name: str, w_value: W_Object) -> None:
+        if name in self.values_w:
+            raise Exception(f'Attribute {name} already present in the module')
+        assert name not in self.types_w
+        w_type = self.vm.w_dynamic_type(w_value)
+        self.types_w[name] = w_type
+        self.values_w[name] = w_value
