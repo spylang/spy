@@ -1,8 +1,9 @@
 from typing import Optional
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object
-from spy.vm.frame import Frame, VarStorage
+from spy.vm.frame import Frame
 from spy.vm.codeobject import OpCode, W_CodeObject
+from spy.vm.varstorage import VarStorage
 
 def make_Frame(vm: SPyVM, w_code: W_Object,
                globals: Optional[VarStorage] = None) -> Frame:
