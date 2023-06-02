@@ -60,4 +60,4 @@ class SPyVM:
         into the most appropriate inter-level object. Opposite of wrap().
         """
         assert isinstance(w_value, W_Object)
-        return w_value.__spy_unwrap__(self)
+        return w_value.spy_unwrap(self)

@@ -64,7 +64,7 @@ class W_Object:
         addr = f'0x{id(self):x}'
         return f'<spy instance: type={typename}, id={addr}>'
 
-    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> Any:
         spy_type = vm.w_dynamic_type(self).name
         py_type = self.__class__.__name__
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
@@ -97,7 +97,7 @@ class W_Type(W_Object):
     def __repr__(self) -> str:
         return f"<spy type '{self.name}'>"
 
-    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> Any:
         return self.pyclass
 
 W_Object._w = W_Type('object', W_Object)
@@ -139,7 +139,7 @@ class W_NoneType(W_Object):
     def __repr__(self) -> str:
         return '<spy None>'
 
-    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> Any:
         return None
 
 W_NoneType._w_singleton = W_NoneType.__new__(W_NoneType)
@@ -157,5 +157,5 @@ class W_i32(W_Object):
     def __repr__(self) -> str:
         return f'<spy {self.value}: i32>'
 
-    def __spy_unwrap__(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> Any:
         return self.value
