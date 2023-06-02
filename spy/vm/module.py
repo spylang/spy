@@ -18,7 +18,7 @@ class W_Module(W_Object):
     def __repr__(self) -> str:
         return f'<spy module {self.name}>'
 
-    def freeze(self):
+    def freeze(self) -> None:
         self._frozen = True
 
     def add(self, name: str, w_value: W_Object) -> None:
