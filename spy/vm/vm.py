@@ -27,9 +27,7 @@ class SPyVM:
 
     def w_dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
-        pyclass = type(w_obj)
-        assert pyclass._w is not None
-        return pyclass._w
+        return w_obj.spy_get_w_type(self)
 
     def issubclass(self, w_sub: W_Type, w_super: W_Type) -> bool:
         assert isinstance(w_super, W_Type)

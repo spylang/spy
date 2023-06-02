@@ -40,8 +40,8 @@ W_Object.
 
 SPy app-level objects are interp-level instances of those classes.
 
-SPy app-level types are instances of W_Type, which is basically a thin
-wrapper around the correspindig interp-level W_* class.
+For simple cases, SPy app-level types are instances of W_Type, which is
+basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
 import fixedint
@@ -63,6 +63,11 @@ class W_Object:
         typename = self._w.name
         addr = f'0x{id(self):x}'
         return f'<spy instance: type={typename}, id={addr}>'
+
+    def spy_get_w_type(self, vm: 'SPyVM') -> 'W_Type':
+        pyclass = type(self)
+        assert pyclass._w is not None
+        return pyclass._w
 
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
         spy_type = vm.w_dynamic_type(self).name
