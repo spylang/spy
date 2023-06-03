@@ -94,7 +94,7 @@ class W_Type(W_Object):
     @property
     def w_base(self) -> W_Object:
         if self is W_Object._w:
-            return W_NoneType._w_singleton
+            return W_void._w_singleton
         basecls = self.pyclass.__base__
         assert issubclass(basecls, W_Object)
         return basecls._w
@@ -125,8 +125,8 @@ def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
 # Other types
 # ============
 
-@spytype('NoneType')
-class W_NoneType(W_Object):
+@spytype('void')
+class W_void(W_Object):
     """
     Equivalent of Python's NoneType.
 
@@ -134,12 +134,12 @@ class W_NoneType(W_Object):
     which is w_None.
     """
 
-    _w_singleton: ClassVar['W_NoneType']
+    _w_singleton: ClassVar['W_void']
 
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_NoneType.
-        raise Exception("You cannot instantiate W_NoneType")
+        # create additional instances of W_void
+        raise Exception("You cannot instantiate W_void")
 
     def __repr__(self) -> str:
         return '<spy None>'
@@ -147,7 +147,7 @@ class W_NoneType(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
         return None
 
-W_NoneType._w_singleton = W_NoneType.__new__(W_NoneType)
+W_void._w_singleton = W_void.__new__(W_void)
 
 
 @spytype('i32')

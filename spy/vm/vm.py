@@ -1,12 +1,13 @@
 from typing import Any
 import fixedint
-from spy.vm.object import W_Object, W_Type, W_NoneType, W_i32
+from spy.vm.object import W_Object, W_Type, W_void, W_i32
 
 class Builtins:
     w_object: W_Type
     w_type: W_Type
     w_i32: W_Type
-    w_None: W_NoneType
+    w_void: W_Type
+    w_None: W_void
 
 class SPyVM:
     """
@@ -23,7 +24,8 @@ class SPyVM:
         self.builtins.w_object = W_Object._w
         self.builtins.w_type = W_Type._w
         self.builtins.w_i32 = W_i32._w
-        self.builtins.w_None = W_NoneType._w_singleton
+        self.builtins.w_void = W_void._w
+        self.builtins.w_None = W_void._w_singleton
 
     def w_dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)

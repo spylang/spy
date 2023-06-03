@@ -1,7 +1,7 @@
 import fixedint
 import pytest
 from spy.vm.vm import SPyVM
-from spy.vm.object import W_Object, W_Type, spytype, W_NoneType, W_i32
+from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32
 
 class TestVM:
 
@@ -53,7 +53,7 @@ class TestVM:
         class W_B(W_A):
             pass
         #
-        w_None = W_NoneType._w_singleton
+        w_None = W_void._w_singleton
         assert W_Object._w.w_base is w_None
         assert W_A._w.w_base is W_Object._w
         assert W_B._w.w_base is W_A._w
@@ -93,8 +93,8 @@ class TestVM:
     def test_w_None(self):
         vm = SPyVM()
         w_None = vm.builtins.w_None
-        assert isinstance(w_None, W_NoneType)
-        assert vm.w_dynamic_type(w_None).name == 'NoneType'
+        assert isinstance(w_None, W_void)
+        assert vm.w_dynamic_type(w_None).name == 'void'
         assert repr(w_None) == '<spy None>'
         #
         assert vm.wrap(None) is w_None
