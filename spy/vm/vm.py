@@ -1,6 +1,10 @@
 from typing import Any
 import fixedint
 from spy.vm.object import W_Object, W_Type, W_void, W_i32
+from spy.vm.function import W_FunctionType, W_Function
+from spy.vm.module import W_Module
+from spy.vm.codeobject import W_CodeObject
+from spy.vm.frame import Frame
 
 class Builtins:
     w_object: W_Type
@@ -61,3 +65,26 @@ class SPyVM:
         """
         assert isinstance(w_value, W_Object)
         return w_value.spy_unwrap(self)
+
+    def make_function(self, w_functype: W_FunctionType, w_code: W_CodeObject,
+                      w_mod: W_Module) -> W_Function:
+        """
+        Create a function inside a module
+        """
+        w_func = W_Function(w_functype, w_code, w_mod.content)
+        w_mod.add(w_code.name, w_func)
+        return w_func
+
+    def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
+        # XXX: this check is wrong: we should define better what it means to
+        # be "compatible", but we don't have this notion yet
+        return self.dynamic_type(w_arg) is w_type
+
+    def call_function(self, w_func: W_Function, args_w: list[W_Object]) -> W_Object:
+        w_functype = w_func.w_functype
+        assert len(w_functype.argtypes_w) == len(args_w)
+        for w_type, w_arg in zip(w_functype.argtypes_w, args_w):
+            assert self.is_compatible_type(w_arg, w_type)
+        #
+        frame = Frame(self, w_func.w_code, w_func.globals)
+        return frame.run(args_w)

@@ -1,15 +1,17 @@
-from spy.vm.vm import SPyVM
+import typing
 from spy.vm.object import W_Object, spytype
 from spy.vm.varstorage import VarStorage
+if typing.TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 @spytype('module')
 class W_Module(W_Object):
-    vm: SPyVM
+    vm: 'SPyVM'
     name: str
     content: VarStorage
     _frozen: bool
 
-    def __init__(self, vm: SPyVM, name: str) -> None:
+    def __init__(self, vm: 'SPyVM', name: str) -> None:
         self.vm = vm
         self.name = name
         self.content = VarStorage(vm, f"'{name} globals'", types_w={})

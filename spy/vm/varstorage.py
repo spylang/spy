@@ -1,13 +1,15 @@
-from spy.vm.vm import SPyVM
+import typing
 from spy.vm.object import W_Object, W_Type, W_i32
+if typing.TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 class VarStorage:
-    vm: SPyVM
+    vm: 'SPyVM'
     name: str
     types_w: dict[str, W_Type]
     values_w: dict[str, W_Object]
 
-    def __init__(self, vm: SPyVM, name: str, types_w: dict[str, W_Type]) -> None:
+    def __init__(self, vm: 'SPyVM', name: str, types_w: dict[str, W_Type]) -> None:
         self.vm = vm
         self.name = name
         self.types_w = types_w
