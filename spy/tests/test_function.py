@@ -51,3 +51,26 @@ class TestFunction:
         #
         w_result = vm.call_function(w_fn, [])
         assert vm.unwrap(w_result) == 10
+
+    def test_call_function_with_arguments(self):
+        vm = SPyVM()
+        w_i32 = vm.builtins.w_i32
+        w_mod = W_Module(vm, 'mymod')
+        w_functype = W_FunctionType([w_i32, w_i32], w_i32)
+        w_code = W_CodeObject('fn')
+        w_code.params = ('a', 'b')
+        w_code.locals_w_types = {
+            'a': vm.builtins.w_i32,
+            'b': vm.builtins.w_i32,
+        }
+        w_code.body = [
+            OpCode('local_get', 'a'),
+            OpCode('local_get', 'b'),
+            OpCode('i32_sub'),
+            OpCode('return'),
+        ]
+        #
+        w_fn = vm.make_function(w_functype, w_code, w_mod)
+        #
+        w_result = vm.call_function(w_fn, [vm.wrap(100), vm.wrap(80)])
+        assert vm.unwrap(w_result) == 20
