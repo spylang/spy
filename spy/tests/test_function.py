@@ -26,5 +26,5 @@ class TestFunction:
         w_func = W_Function(w_functype, w_code)
         assert repr(w_func) == "<spy function 'simple'>"
         #
-        w_t = vm.w_dynamic_type(w_func)
+        w_t = vm.dynamic_type(w_func)
         assert w_t is w_functype

@@ -70,7 +70,7 @@ class W_Object:
         return pyclass._w
 
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
-        spy_type = vm.w_dynamic_type(self).name
+        spy_type = vm.dynamic_type(self).name
         py_type = self.__class__.__name__
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
                         f"(inter-level type: {py_type})")

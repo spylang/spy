@@ -27,7 +27,7 @@ class SPyVM:
         self.builtins.w_void = W_void._w
         self.builtins.w_None = W_void._w_singleton
 
-    def w_dynamic_type(self, w_obj: W_Object) -> W_Type:
+    def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
         return w_obj.spy_get_w_type(self)
 
