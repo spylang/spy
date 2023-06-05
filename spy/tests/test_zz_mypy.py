@@ -7,6 +7,7 @@ ROOT = pathlib.Path(__file__).parent.parent.parent
 def test_mypy():
     mypy_ini = ROOT.joinpath('mypy.ini')
     assert mypy_ini.exists()
+    os.chdir(ROOT)
     os.environ['MYPY_FORCE_COLOR'] = '1'
     print()
     ret = os.system('mypy')
