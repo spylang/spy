@@ -36,13 +36,6 @@ class TestParser:
         )
         assert mod == expected
 
-    def test_missing_return_type(self):
-        with pytest.raises(SPyParseError, match="Missing return type"):
-            mod = self.parse("""
-            def foo():
-                pass
-            """)
-
     def test_FuncDef_arguments(self):
         mod = self.parse("""
         def foo(a: i32, b: float) -> void:
@@ -60,3 +53,50 @@ class TestParser:
             return_type = ast.Name(loc=ANYLOC, id='void'),
         )
         assert funcdef == expected
+
+
+    def test_FuncDef_errors(self):
+        with pytest.raises(SPyParseError, match="missing return type"):
+            mod = self.parse("""
+            def foo():
+                pass
+            """)
+        #
+        with pytest.raises(SPyParseError, match=r"\*args is not supported yet"):
+            mod = self.parse("""
+            def foo(*args) -> void:
+                pass
+            """)
+        #
+        with pytest.raises(SPyParseError, match=r"\*\*kwargs is not supported yet"):
+            mod = self.parse("""
+            def foo(**kwargs) -> void:
+                pass
+            """)
+        #
+        with pytest.raises(SPyParseError,
+                           match="default arguments are not supported yet"):
+            mod = self.parse("""
+            def foo(a: i32 = 42) -> void:
+                pass
+            """)
+        #
+        with pytest.raises(SPyParseError,
+                           match="positional-only arguments are not supported yet"):
+            mod = self.parse("""
+            def foo(a: i32, /, b: i32) -> void:
+                pass
+            """)
+        #
+        with pytest.raises(SPyParseError,
+                           match="keyword-only arguments are not supported yet"):
+            mod = self.parse("""
+            def foo(a: i32, *, b: i32) -> void:
+                pass
+            """)
+        #
+        with pytest.raises(SPyParseError, match="missing type for argument 'a'"):
+            mod = self.parse("""
+            def foo(a, b) -> void:
+                pass
+            """)

@@ -92,7 +92,7 @@ class Parser:
                 line_end = loc.line_start,
                 col_end = len('def ') + len(name)
             )
-            self.error(func_loc, 'Missing return type')
+            self.error(func_loc, 'missing return type')
         #
         assert isinstance(py_returns, py_ast.Name)
         return_type = self.to_Name(py_returns)
@@ -122,15 +122,19 @@ class Parser:
             self.error(loc, 'default arguments are not supported yet')
         if py_args.posonlyargs:
             loc = get_loc(py_args.posonlyargs[0])
-            self.error(loc, 'Positional-only arguments are not supported yet')
+            self.error(loc, 'positional-only arguments are not supported yet')
         if py_args.kwonlyargs:
             loc = get_loc(py_args.kwonlyargs[0])
-            self.error(loc, 'keyword-only args are not supported yet')
+            self.error(loc, 'keyword-only arguments are not supported yet')
         assert not py_args.kw_defaults
         #
         return [self.to_FuncArg(py_arg) for py_arg in py_args.args]
 
     def to_FuncArg(self, py_arg: py_ast.arg) -> spy.ast.FuncArg:
+        if py_arg.annotation is None:
+            loc = get_loc(py_arg)
+            self.error(loc, f"missing type for argument '{py_arg.arg}'")
+        #
         assert isinstance(py_arg.annotation, py_ast.Name)
         spy_type = self.to_Name(py_arg.annotation)
         return spy.ast.FuncArg(
