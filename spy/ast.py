@@ -28,14 +28,14 @@ class Decl(Node):
 
 
 @dataclass
-class FuncArgs:
-    pass
-
+class FuncArg(Node):
+    name: str
+    type: 'Name'
 
 @dataclass
 class FuncDef(Decl):
     name: str
-    args: FuncArgs
+    args: list[FuncArg]
     return_type: 'Name'
 
 

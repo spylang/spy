@@ -94,11 +94,8 @@ class Parser:
             )
             self.error(func_loc, 'Missing return type')
         #
-        if not isinstance(py_returns, py_ast.Name):
-            # we want to handle more complex expressions
-            assert False, 'XXX'
-        return_type = spy.ast.Name(loc=get_loc(py_returns),
-                                   id=py_returns.id)
+        assert isinstance(py_returns, py_ast.Name)
+        return_type = self.to_Name(py_returns)
         #
         return spy.ast.FuncDef(
             loc = get_loc(py_funcdef),
@@ -107,9 +104,41 @@ class Parser:
             return_type = return_type
         )
 
-    def to_FuncArgs(self, py_args: py_ast.arguments) -> spy.ast.FuncArgs:
-        assert py_args.args == [], 'XXX'
-        return spy.ast.FuncArgs()
+    def to_Name(self, py_name: py_ast.Name) -> spy.ast.Name:
+        return spy.ast.Name(
+            loc = get_loc(py_name),
+            id = py_name.id
+        )
+
+    def to_FuncArgs(self, py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
+        if py_args.vararg:
+            loc = get_loc(py_args.vararg)
+            self.error(loc, '*args is not supported yet')
+        if py_args.kwarg:
+            loc = get_loc(py_args.kwarg)
+            self.error(loc, '**kwargs is not supported yet')
+        if py_args.defaults:
+            loc = get_loc(py_args.defaults[0])
+            self.error(loc, 'default arguments are not supported yet')
+        if py_args.posonlyargs:
+            loc = get_loc(py_args.posonlyargs[0])
+            self.error(loc, 'Positional-only arguments are not supported yet')
+        if py_args.kwonlyargs:
+            loc = get_loc(py_args.kwonlyargs[0])
+            self.error(loc, 'keyword-only args are not supported yet')
+        assert not py_args.kw_defaults
+        #
+        return [self.to_FuncArg(py_arg) for py_arg in py_args.args]
+
+    def to_FuncArg(self, py_arg: py_ast.arg) -> spy.ast.FuncArg:
+        assert isinstance(py_arg.annotation, py_ast.Name)
+        spy_type = self.to_Name(py_arg.annotation)
+        return spy.ast.FuncArg(
+            loc = get_loc(py_arg),
+            name = py_arg.arg,
+            type = spy_type,
+        )
+
 
 def main() -> None:
     import sys

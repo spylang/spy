@@ -29,7 +29,7 @@ class TestParser:
                 ast.FuncDef(
                     loc = ANYLOC,
                     name = 'foo',
-                    args = ast.FuncArgs(),
+                    args = [],
                     return_type = ast.Name(loc=ANYLOC, id='void'),
                 )
             ]
@@ -42,3 +42,21 @@ class TestParser:
             def foo():
                 pass
             """)
+
+    def test_FuncDef_arguments(self):
+        mod = self.parse("""
+        def foo(a: i32, b: float) -> void:
+            pass
+        """)
+        funcdef = mod.decls[0]
+        assert isinstance(funcdef, ast.FuncDef)
+        expected = ast.FuncDef(
+            loc = ANYLOC,
+            name = 'foo',
+            args = [
+                ast.FuncArg(ANYLOC, 'a', ast.Name(ANYLOC, 'i32')),
+                ast.FuncArg(ANYLOC, 'b', ast.Name(ANYLOC, 'float'))
+            ],
+            return_type = ast.Name(loc=ANYLOC, id='void'),
+        )
+        assert funcdef == expected
