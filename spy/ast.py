@@ -1,12 +1,13 @@
+from typing import Optional
 import ast as py_ast
 from dataclasses import dataclass
 
 @dataclass
 class Location:
-    line_start: int
-    line_end: int
-    col_start: int
-    col_end: int
+    line_start: Optional[int]
+    line_end: Optional[int]
+    col_start: Optional[int]
+    col_end: Optional[int]
 
 
 @dataclass

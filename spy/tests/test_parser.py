@@ -9,11 +9,11 @@ class AnyLocClass:
     def __eq__(self, other):
         return True
 
-ANYLOC = AnyLocClass()
+ANYLOC: ast.Location = AnyLocClass()  # type:ignore
 
 class TestParser:
 
-    def parse(self, src):
+    def parse(self, src) -> ast.Module:
         p = Parser.from_string(src, dedent=True)
         return p.parse()
 

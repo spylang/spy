@@ -1,10 +1,11 @@
+from typing import Optional
 import textwrap
 import ast as py_ast
 import astpretty
 import spy.ast
 
 # monkey-patch python's AST to add a pp() method
-py_ast.AST.pp = astpretty.pprint
+py_ast.AST.pp = astpretty.pprint  # type:ignore
 
 def get_loc(node: py_ast.AST) -> spy.ast.Location:
     if hasattr(node, 'lineno'):
@@ -15,7 +16,12 @@ def get_loc(node: py_ast.AST) -> spy.ast.Location:
             col_end=node.end_col_offset
         )
     else:
-        return None
+        return spy.ast.Location(
+            line_start=None,
+            line_end=None,
+            col_start=None,
+            col_end=None
+        )
 
 class Parser:
     """
@@ -42,7 +48,7 @@ class Parser:
     def from_string(cls, src: str, *, dedent: bool = False) -> 'Parser':
         if dedent:
             src = textwrap.dedent(src)
-        return Parser(src, filename=None)
+        return Parser(src, filename='<string>')
 
     @classmethod
     def from_filename(cls, filename: str) -> 'Parser':
