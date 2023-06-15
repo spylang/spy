@@ -1,4 +1,6 @@
+import pytest
 from spy.parser import Parser
+from spy.errors import SPyParseError
 from spy import ast
 
 class AnyLocClass:
@@ -23,7 +25,6 @@ class TestParser:
             pass
         """)
         expected = ast.Module(
-            loc = ANYLOC,
             decls = [
                 ast.FuncDef(
                     loc = ANYLOC,
@@ -34,3 +35,10 @@ class TestParser:
             ]
         )
         assert mod == expected
+
+    def test_missing_return_type(self):
+        with pytest.raises(SPyParseError, match="Missing return type"):
+            mod = self.parse("""
+            def foo():
+                pass
+            """)

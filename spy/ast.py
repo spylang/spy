@@ -1,13 +1,16 @@
-from typing import Optional
 import ast as py_ast
+import dataclasses
 from dataclasses import dataclass
 
 @dataclass
 class Location:
-    line_start: Optional[int]
-    line_end: Optional[int]
-    col_start: Optional[int]
-    col_end: Optional[int]
+    line_start: int
+    line_end: int
+    col_start: int
+    col_end: int
+
+    def replace(self, **kwargs: int) -> 'Location':
+        return dataclasses.replace(self, **kwargs)
 
 
 @dataclass
@@ -16,7 +19,7 @@ class Node:
 
 
 @dataclass
-class Module(Node):
+class Module:
     decls: list['Decl']
 
 
