@@ -18,6 +18,19 @@ def get_loc(node: py_ast.AST) -> spy.ast.Location:
         return None
 
 class Parser:
+    """
+    SPy parser: take source code as input, produce a SPy AST as output.
+
+    This is a bit different than a "proper" parser because for now it relies
+    on the Python's own parser: so the final result is produced by converting
+    Python's AST into SPy's AST.
+
+    The naming convention is the following:
+
+      - Python's own `ast` module is imported as `py_ast`
+      - Variables holding `py_ast` nodes are named `py_*`
+      - `spy.ast` is the module which implements the SPy AST.
+    """
     src: str
     filename: str
 

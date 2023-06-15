@@ -1,0 +1,9 @@
+import ast
+from typing import Any, Sequence
+
+AST: tuple[type[Any], ...]
+expr_context: tuple[type[Any], ...]
+
+def pformat(node: ast.AST | None | str, indent: str | int = ..., show_offsets: bool = ..., _indent: int = ...) -> str: ...
+def pprint(*args: Any, **kwargs: Any) -> None: ...
+def main(argv: Sequence[str] | None = ...) -> int: ...
