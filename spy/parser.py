@@ -15,11 +15,13 @@ def get_loc(py_node: py_ast.AST) -> spy.ast.Location:
     # all the other nodes should have a location. If they don't, we should
     # investigate and decide what to do
     assert hasattr(py_node, 'lineno')
+    assert py_node.end_lineno is not None
+    assert py_node.end_col_offset is not None
     return spy.ast.Location(
         line_start = py_node.lineno,
         line_end = py_node.end_lineno,
         col_start = py_node.col_offset,
-        col_end = py_node.end_col_offset
+        col_end = py_node.end_col_offset,
     )
 
 
