@@ -100,3 +100,10 @@ class TestParser:
             def foo(a, b) -> void:
                 pass
             """)
+        #
+        with pytest.raises(SPyParseError, match="decorators are not supported yet"):
+            mod = self.parse("""
+            @mydecorator
+            def foo() -> void:
+                pass
+            """)

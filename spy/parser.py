@@ -79,6 +79,10 @@ class Parser:
         return mod
 
     def to_FuncDef(self, py_funcdef: py_ast.FunctionDef) -> spy.ast.FuncDef:
+        if py_funcdef.decorator_list:
+            loc = get_loc(py_funcdef.decorator_list[0])
+            self.error(loc, 'decorators are not supported yet')
+        #
         loc = get_loc(py_funcdef)
         name = py_funcdef.name
         args = self.to_FuncArgs(py_funcdef.args)
