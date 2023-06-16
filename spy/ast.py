@@ -37,6 +37,7 @@ class FuncDef(Decl):
     name: str
     args: list[FuncArg]
     return_type: 'Name'
+    body: list[py_ast.stmt]
 
 
 @dataclass

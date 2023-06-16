@@ -1,4 +1,5 @@
 import pytest
+import ast as py_ast
 from spy.parser import Parser
 from spy.errors import SPyParseError
 from spy import ast
@@ -107,3 +108,14 @@ class TestParser:
             def foo() -> void:
                 pass
             """)
+
+
+    def test_FuncDef_body(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.decls[0]
+        assert len(funcdef.body) == 1
+        stmt = funcdef.body[0]
+        assert isinstance(stmt, py_ast.Return)

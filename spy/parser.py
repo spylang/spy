@@ -105,7 +105,8 @@ class Parser:
             loc = get_loc(py_funcdef),
             name = py_funcdef.name,
             args = args,
-            return_type = return_type
+            return_type = return_type,
+            body = py_funcdef.body,
         )
 
     def to_Name(self, py_name: py_ast.Name) -> spy.ast.Name:
