@@ -22,7 +22,7 @@ class Location:
 @dataclass
 class Node:
 
-    def pp(self):
+    def pp(self) -> None:
         pprint.pprint(self)
 
 

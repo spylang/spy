@@ -1,4 +1,5 @@
 #-*- encoding: utf-8 -*-
+import typing
 
 class MagicExtend:
     """
@@ -56,6 +57,7 @@ class MagicExtend:
         return cls
 
 
+@typing.no_type_check
 def print_class_hierarchy(cls):
     CROSS  = "├── "
     BAR    = "│   "

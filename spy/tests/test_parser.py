@@ -1,5 +1,6 @@
-import pytest
 import ast as py_ast
+from typing import Any
+import pytest
 from spy.parser import Parser
 from spy.errors import SPyParseError
 from spy import ast
@@ -12,7 +13,7 @@ class AnythingClass:
     def __eq__(self, other):
         return True
 
-ANYTHING: object = AnythingClass()  # type:ignore
+ANYTHING: Any = AnythingClass()  # type:ignore
 
 class TestParser:
 
@@ -118,6 +119,7 @@ class TestParser:
             return 42
         """)
         funcdef = mod.decls[0]
+        assert isinstance(funcdef, ast.FuncDef)
         assert len(funcdef.body) == 1
         stmt = funcdef.body[0]
         assert isinstance(stmt, py_ast.Return)
