@@ -4,9 +4,6 @@ import ast as py_ast
 import dataclasses
 from dataclasses import dataclass
 
-# monkey-patch python's AST to add a pp() method
-py_ast.AST.pp = astpretty.pprint  # type:ignore
-
 
 @dataclass
 class Location:
@@ -23,8 +20,8 @@ class Location:
 class Node:
 
     def pp(self) -> None:
-        from spy.ast_dump import dump
-        print(dump(self))
+        import spy.ast_dump
+        spy.ast_dump.pprint(self)
 
 
 @dataclass

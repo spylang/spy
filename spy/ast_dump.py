@@ -8,6 +8,13 @@ def dump(node: Any) -> str:
     dumper.dump_anything(node)
     return dumper.build()
 
+def pprint(node: Any) -> None:
+    print(dump(node))
+
+
+# monkey-patch python's AST to add a pp() method
+py_ast.AST.pp = pprint  # type:ignore
+
 
 class Dumper:
     level: int
