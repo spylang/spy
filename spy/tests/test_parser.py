@@ -4,15 +4,15 @@ from spy.parser import Parser
 from spy.errors import SPyParseError
 from spy import ast
 
-class AnyLocClass:
+class AnythingClass:
 
     def __repr__(self):
-        return '<ANYLOC>'
+        return '<ANYTHING>'
 
     def __eq__(self, other):
         return True
 
-ANYLOC: ast.Location = AnyLocClass()  # type:ignore
+ANYTHING: object = AnythingClass()  # type:ignore
 
 class TestParser:
 
@@ -28,10 +28,11 @@ class TestParser:
         expected = ast.Module(
             decls = [
                 ast.FuncDef(
-                    loc = ANYLOC,
+                    loc = ANYTHING,
                     name = 'foo',
                     args = [],
-                    return_type = ast.Name(loc=ANYLOC, id='void'),
+                    return_type = ast.Name(loc=ANYTHING, id='void'),
+                    body = ANYTHING,
                 )
             ]
         )
@@ -45,13 +46,14 @@ class TestParser:
         funcdef = mod.decls[0]
         assert isinstance(funcdef, ast.FuncDef)
         expected = ast.FuncDef(
-            loc = ANYLOC,
+            loc = ANYTHING,
             name = 'foo',
             args = [
-                ast.FuncArg(ANYLOC, 'a', ast.Name(ANYLOC, 'i32')),
-                ast.FuncArg(ANYLOC, 'b', ast.Name(ANYLOC, 'float'))
+                ast.FuncArg(ANYTHING, 'a', ast.Name(ANYTHING, 'i32')),
+                ast.FuncArg(ANYTHING, 'b', ast.Name(ANYTHING, 'float'))
             ],
-            return_type = ast.Name(loc=ANYLOC, id='void'),
+            return_type = ast.Name(loc=ANYTHING, id='void'),
+            body = ANYTHING,
         )
         assert funcdef == expected
 

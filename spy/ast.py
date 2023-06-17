@@ -1,6 +1,12 @@
+import astpretty
+import pprint
 import ast as py_ast
 import dataclasses
 from dataclasses import dataclass
+
+# monkey-patch python's AST to add a pp() method
+py_ast.AST.pp = astpretty.pprint  # type:ignore
+
 
 @dataclass
 class Location:
@@ -15,11 +21,13 @@ class Location:
 
 @dataclass
 class Node:
-    loc: Location
+
+    def pp(self):
+        pprint.pprint(self)
 
 
 @dataclass
-class Module:
+class Module(Node):
     decls: list['Decl']
 
 
@@ -29,11 +37,13 @@ class Decl(Node):
 
 @dataclass
 class FuncArg(Node):
+    loc: Location
     name: str
     type: 'Name'
 
 @dataclass
 class FuncDef(Decl):
+    loc: Location
     name: str
     args: list[FuncArg]
     return_type: 'Name'
@@ -42,9 +52,10 @@ class FuncDef(Decl):
 
 @dataclass
 class Expr(Node):
-    pass
+    loc: Location
 
 
 @dataclass
 class Name(Expr):
+    loc: Location
     id: str

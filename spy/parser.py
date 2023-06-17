@@ -5,8 +5,6 @@ import astpretty
 import spy.ast
 from spy.errors import SPyCompileError, SPyParseError
 
-# monkey-patch python's AST to add a pp() method
-py_ast.AST.pp = astpretty.pprint  # type:ignore
 
 def get_loc(py_node: py_ast.AST) -> spy.ast.Location:
     if isinstance(py_node, py_ast.Module):
@@ -23,7 +21,6 @@ def get_loc(py_node: py_ast.AST) -> spy.ast.Location:
         col_start = py_node.col_offset,
         col_end = py_node.end_col_offset,
     )
-
 
 
 class Parser:
