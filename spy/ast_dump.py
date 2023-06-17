@@ -64,27 +64,25 @@ class Dumper:
 
     def dump_spy_node(self, node: spy.ast.Node) -> None:
         name = node.__class__.__name__
-        self.write(name, color='blue')
-        self.writeline('(')
-        with self.indent():
-            for attr in node.__class__.__dataclass_fields__:
-                if attr in self.fields_to_ignore:
-                    continue
-                value = getattr(node, attr)
-                self.write(f'{attr}=')
-                self.dump_anything(value)
-                self.writeline(',')
-        self.write(')')
+        fields = list(node.__class__.__dataclass_fields__)
+        fields = [f for f in fields if f not in self.fields_to_ignore]
+        self._dump_node(node, name, fields, color='blue')
 
-    def dump_py_node(self, py_node: py_ast.AST) -> None:
-        name = py_node.__class__.__name__
-        self.write(f'py:{name}', color='turquoise')
+    def dump_py_node(self, node: py_ast.AST) -> None:
+        name = 'py:' + node.__class__.__name__
+        fields = list(node.__class__._fields)
+        fields = [f for f in fields if f not in self.fields_to_ignore]
+        self._dump_node(node, name, fields, color='turquoise')
+
+    def _dump_node(self, node: Any, name: str, fields: list[str], color: str) -> None:
+        self.write(name, color=color)
+        if not fields:
+            self.write('()')
+            return
         self.writeline('(')
         with self.indent():
-            for attr in py_node.__class__._fields:
-                if attr in self.fields_to_ignore:
-                    continue
-                value = getattr(py_node, attr)
+            for attr in fields:
+                value = getattr(node, attr)
                 self.write(f'{attr}=')
                 self.dump_anything(value)
                 self.writeline(',')
