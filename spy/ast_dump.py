@@ -1,4 +1,4 @@
-from typing import Any, Iterator
+from typing import Any, Iterator, Optional
 from contextlib import contextmanager
 import ast as py_ast
 import spy.ast
@@ -20,10 +20,12 @@ class Dumper:
     level: int
     lines: list[str]
     fields_to_ignore: tuple[str, ...]
+    use_colors: bool
 
-    def __init__(self) -> None:
+    def __init__(self, use_colors=True) -> None:
         self.level = 0
         self.lines = ['']
+        self.use_colors = use_colors
         self.fields_to_ignore = ('loc',)
 
     @contextmanager
@@ -32,15 +34,17 @@ class Dumper:
         yield
         self.level -= 1
 
-    def write(self, s: str) -> None:
+    def write(self, s: str, *, color: Optional[str]=None) -> None:
+        if color and self.use_colors:
+            s = Color.set(color, s)
         if self.lines[-1] == '':
             # add the indentation
             spaces = ' ' * (self.level * 4)
             self.lines[-1] = spaces
         self.lines[-1] += s
 
-    def writeline(self, s: str) -> None:
-        self.write(s)
+    def writeline(self, s: str, *, color: Optional[str]=None) -> None:
+        self.write(s, color=color)
         self.lines.append('')
 
     def build(self) -> str:
@@ -53,12 +57,15 @@ class Dumper:
             self.dump_py_node(obj)
         elif type(obj) is list:
             self.dump_list(obj)
+        elif type(obj) is str:
+            self.write(repr(obj), color='green')
         else:
             self.write(repr(obj))
 
     def dump_spy_node(self, node: spy.ast.Node) -> None:
         name = node.__class__.__name__
-        self.writeline(f'{name}(')
+        self.write(name, color='blue')
+        self.writeline('(')
         with self.indent():
             for attr in node.__class__.__dataclass_fields__:
                 if attr in self.fields_to_ignore:
@@ -71,7 +78,8 @@ class Dumper:
 
     def dump_py_node(self, py_node: py_ast.AST) -> None:
         name = py_node.__class__.__name__
-        self.writeline(f'py:{name}(')
+        self.write(f'py:{name}', color='turquoise')
+        self.writeline('(')
         with self.indent():
             for attr in py_node.__class__._fields:
                 if attr in self.fields_to_ignore:
@@ -92,3 +100,30 @@ class Dumper:
                 self.dump_anything(item)
                 self.writeline(',')
         self.write(']')
+
+
+class Color:
+    black = '30'
+    darkred = '31'
+    darkgreen = '32'
+    brown = '33'
+    darkblue = '34'
+    purple = '35'
+    teal = '36'
+    lightgray = '37'
+    darkgray = '30;01'
+    red = '31;01'
+    green = '32;01'
+    yellow = '33;01'
+    blue = '34;01'
+    fuchsia = '35;01'
+    turquoise = '36;01'
+    white = '37;01'
+
+    @classmethod
+    def set(cls, color, string):
+        try:
+            color = getattr(cls, color)
+        except AttributeError:
+            pass
+        return '\x1b[%sm%s\x1b[00m' % (color, string)

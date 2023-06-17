@@ -154,7 +154,7 @@ def main() -> None:
     except SPyCompileError as e:
         print(e)
     else:
-        print('Parsing OK')
+        mod.pp()
 
 if __name__ == '__main__':
     main()
