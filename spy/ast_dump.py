@@ -22,7 +22,7 @@ class Dumper:
     fields_to_ignore: tuple[str, ...]
     use_colors: bool
 
-    def __init__(self, use_colors=True) -> None:
+    def __init__(self, use_colors: bool = True) -> None:
         self.level = 0
         self.lines = ['']
         self.use_colors = use_colors
@@ -34,7 +34,7 @@ class Dumper:
         yield
         self.level -= 1
 
-    def write(self, s: str, *, color: Optional[str]=None) -> None:
+    def write(self, s: str, *, color: Optional[str] = None) -> None:
         if color and self.use_colors:
             s = Color.set(color, s)
         if self.lines[-1] == '':
@@ -43,7 +43,7 @@ class Dumper:
             self.lines[-1] = spaces
         self.lines[-1] += s
 
-    def writeline(self, s: str, *, color: Optional[str]=None) -> None:
+    def writeline(self, s: str, *, color: Optional[str] = None) -> None:
         self.write(s, color=color)
         self.lines.append('')
 
@@ -119,7 +119,7 @@ class Color:
     white = '37;01'
 
     @classmethod
-    def set(cls, color, string):
+    def set(cls, color: str, string: str) -> str:
         try:
             color = getattr(cls, color)
         except AttributeError:
