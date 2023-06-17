@@ -23,7 +23,8 @@ class Location:
 class Node:
 
     def pp(self) -> None:
-        pprint.pprint(self)
+        from spy.ast_dump import dump
+        print(dump(self))
 
 
 @dataclass
