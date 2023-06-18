@@ -1,9 +1,11 @@
+import ast as py_ast
 import spy.ast
 from spy.parser import Parser
 from spy.irgen.codegen import CodeGen
 from spy.vm.vm import SPyVM
 from spy.vm.varstorage import VarStorage
 from spy.vm.module import W_Module
+from spy.vm.object import W_Type
 from spy.vm.function import W_FunctionType, W_Function
 
 
@@ -30,6 +32,16 @@ class ModuleGen:
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Function:
         codegen = CodeGen(self.vm, funcdef)
         w_code = codegen.make_w_code()
-        w_functype = W_FunctionType([], self.vm.builtins.w_i32) # XXX hardcoded
+
+        argtypes_w = [self.resolve_type(arg.type) for arg in funcdef.args]
+        w_return_type = self.resolve_type(funcdef.return_type)
+        w_functype = W_FunctionType(argtypes_w, w_return_type)
+
         w_func = W_Function(w_functype, w_code, self.w_mod.content)
         return w_func
+
+    def resolve_type(self, expr: py_ast.expr) -> W_Type:
+        # XXX we need to proper lookup, hardcode it for now
+        assert isinstance(expr, py_ast.Name)
+        assert expr.id == 'i32'
+        return self.vm.builtins.w_i32
