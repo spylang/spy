@@ -1,63 +1,74 @@
 import ast as py_ast
 from typing import Any
+import textwrap
 import pytest
+import spy.ast
+from spy.ast_dump import dump
 from spy.parser import Parser
 from spy.errors import SPyParseError
-from spy import ast
 
-class AnythingClass:
-
-    def __repr__(self):
-        return '<ANYTHING>'
-
-    def __eq__(self, other):
-        return True
-
-ANYTHING: Any = AnythingClass()  # type:ignore
 
 class TestParser:
 
-    def parse(self, src) -> ast.Module:
+    def parse(self, src) -> spy.ast.Module:
         p = Parser.from_string(src, dedent=True)
         return p.parse()
+
+    def assert_dump(self, node: spy.ast.Node, expected: str):
+        dumped = dump(node, use_colors=False)
+        expected = textwrap.dedent(expected)
+        assert dumped.strip() == expected.strip()
 
     def test_Module(self):
         mod = self.parse("""
         def foo() -> void:
             pass
         """)
-        expected = ast.Module(
-            decls = [
-                ast.FuncDef(
-                    loc = ANYTHING,
-                    name = 'foo',
-                    args = [],
-                    return_type = ast.Name(loc=ANYTHING, id='void'),
-                    body = ANYTHING,
-                )
-            ]
+        expected = """
+        Module(
+            decls=[
+                FuncDef(
+                    name='foo',
+                    args=[],
+                    return_type=py:Name(id='void', ctx=py:Load()),
+                    body=[
+                        py:Pass(),
+                    ],
+                ),
+            ],
         )
-        assert mod == expected
+        """
+        self.assert_dump(mod, expected)
 
     def test_FuncDef_arguments(self):
         mod = self.parse("""
         def foo(a: i32, b: float) -> void:
             pass
         """)
-        funcdef = mod.decls[0]
-        assert isinstance(funcdef, ast.FuncDef)
-        expected = ast.FuncDef(
-            loc = ANYTHING,
-            name = 'foo',
-            args = [
-                ast.FuncArg(ANYTHING, 'a', ast.Name(ANYTHING, 'i32')),
-                ast.FuncArg(ANYTHING, 'b', ast.Name(ANYTHING, 'float'))
+        expected = """
+        Module(
+            decls=[
+                FuncDef(
+                    name='foo',
+                    args=[
+                        FuncArg(
+                            name='a',
+                            type=py:Name(id='i32', ctx=py:Load()),
+                        ),
+                        FuncArg(
+                            name='b',
+                            type=py:Name(id='float', ctx=py:Load()),
+                        ),
+                    ],
+                    return_type=py:Name(id='void', ctx=py:Load()),
+                    body=[
+                        py:Pass(),
+                    ],
+                ),
             ],
-            return_type = ast.Name(loc=ANYTHING, id='void'),
-            body = ANYTHING,
         )
-        assert funcdef == expected
-
+        """
+        self.assert_dump(mod, expected)
 
     def test_FuncDef_errors(self):
         with pytest.raises(SPyParseError, match="missing return type"):
@@ -119,7 +130,7 @@ class TestParser:
             return 42
         """)
         funcdef = mod.decls[0]
-        assert isinstance(funcdef, ast.FuncDef)
+        assert isinstance(funcdef, spy.ast.FuncDef)
         assert len(funcdef.body) == 1
         stmt = funcdef.body[0]
         assert isinstance(stmt, py_ast.Return)

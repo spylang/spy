@@ -37,23 +37,12 @@ class Decl(Node):
 class FuncArg(Node):
     loc: Location
     name: str
-    type: 'Name'
+    type: py_ast.expr
 
 @dataclass
 class FuncDef(Decl):
     loc: Location
     name: str
     args: list[FuncArg]
-    return_type: 'Name'
+    return_type: py_ast.expr
     body: list[py_ast.stmt]
-
-
-@dataclass
-class Expr(Node):
-    loc: Location
-
-
-@dataclass
-class Name(Expr):
-    loc: Location
-    id: str

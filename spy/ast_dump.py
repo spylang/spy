@@ -3,8 +3,8 @@ from contextlib import contextmanager
 import ast as py_ast
 import spy.ast
 
-def dump(node: Any) -> str:
-    dumper = Dumper()
+def dump(node: Any, *, use_colors: bool = True) -> str:
+    dumper = Dumper(use_colors=use_colors)
     dumper.dump_anything(node)
     return dumper.build()
 
@@ -22,7 +22,7 @@ class Dumper:
     fields_to_ignore: tuple[str, ...]
     use_colors: bool
 
-    def __init__(self, use_colors: bool = True) -> None:
+    def __init__(self, *, use_colors: bool) -> None:
         self.level = 0
         self.lines = ['']
         self.use_colors = use_colors
@@ -76,7 +76,8 @@ class Dumper:
 
     def _dump_node(self, node: Any, name: str, fields: list[str], color: str) -> None:
         def is_complex(obj: Any) -> bool:
-            return isinstance(obj, (spy.ast.Node, py_ast.AST, list))
+            return (isinstance(obj, (spy.ast.Node, py_ast.AST, list)) and
+                    not isinstance(obj, py_ast.expr_context))
         values = [getattr(node, field) for field in fields]
         is_complex_field = [is_complex(value) for value in values]
         multiline = any(is_complex_field)

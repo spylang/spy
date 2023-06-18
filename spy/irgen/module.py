@@ -8,6 +8,9 @@ from spy.vm.function import W_FunctionType, W_Function
 
 
 class ModuleGen:
+    """
+    Generate a W_Module, given a spy.ast.Module.
+    """
     vm: SPyVM
     mod: spy.ast.Module
 

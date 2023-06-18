@@ -95,21 +95,14 @@ class Parser:
             )
             self.error(func_loc, 'missing return type')
         #
-        assert isinstance(py_returns, py_ast.Name)
-        return_type = self.to_Name(py_returns)
-        #
+        # needed to convince mypy that it's not None :facepalm:
+        assert py_returns is not None
         return spy.ast.FuncDef(
             loc = get_loc(py_funcdef),
             name = py_funcdef.name,
             args = args,
-            return_type = return_type,
+            return_type = py_returns,
             body = py_funcdef.body,
-        )
-
-    def to_Name(self, py_name: py_ast.Name) -> spy.ast.Name:
-        return spy.ast.Name(
-            loc = get_loc(py_name),
-            id = py_name.id
         )
 
     def to_FuncArgs(self, py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
@@ -136,13 +129,12 @@ class Parser:
         if py_arg.annotation is None:
             loc = get_loc(py_arg)
             self.error(loc, f"missing type for argument '{py_arg.arg}'")
+        assert py_arg.annotation is not None # mypy :facepalmp:
         #
-        assert isinstance(py_arg.annotation, py_ast.Name)
-        spy_type = self.to_Name(py_arg.annotation)
         return spy.ast.FuncArg(
             loc = get_loc(py_arg),
             name = py_arg.arg,
-            type = spy_type,
+            type = py_arg.annotation,
         )
 
 
