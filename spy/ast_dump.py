@@ -75,17 +75,26 @@ class Dumper:
         self._dump_node(node, name, fields, color='turquoise')
 
     def _dump_node(self, node: Any, name: str, fields: list[str], color: str) -> None:
+        def is_complex(obj: Any) -> bool:
+            return isinstance(obj, (spy.ast.Node, py_ast.AST, list))
+        values = [getattr(node, field) for field in fields]
+        is_complex_field = [is_complex(value) for value in values]
+        multiline = any(is_complex_field)
+        #
         self.write(name, color=color)
-        if not fields:
-            self.write('()')
-            return
-        self.writeline('(')
+        self.write('(')
+        if multiline:
+            self.writeline('')
         with self.indent():
-            for attr in fields:
-                value = getattr(node, attr)
-                self.write(f'{attr}=')
+            for field, value in zip(fields, values):
+                is_last = (field is fields[-1])
+                self.write(f'{field}=')
                 self.dump_anything(value)
-                self.writeline(',')
+                if multiline:
+                    self.writeline(',')
+                elif not is_last:
+                    # single line
+                    self.write(', ')
         self.write(')')
 
     def dump_list(self, lst: list[Any]) -> None:
