@@ -2,6 +2,29 @@
 import typing
 
 @typing.no_type_check
+def magic_dispatch(self, prefix, obj, *args, **kwargs):
+    """
+    Dynamically dispatch the execution to a method whose name is computed from
+    `prefix` and the class name of `obj`.
+
+    Example:
+
+    class Foo:
+        def visit(self, obj):
+            return magic_dispatch(self, 'visit', obj)
+
+        def visit_int(self): ...
+        def visit_str(self): ...
+        def visit_float(self): ...
+    """
+    methname = f'{prefix}_{obj.__class__.__name__}'
+    meth = getattr(self, methname, None)
+    if meth is None:
+        raise NotImplementedError(methname)
+    return meth(obj, *args, **kwargs)
+
+
+@typing.no_type_check
 def print_class_hierarchy(cls):
     CROSS  = "├── "
     BAR    = "│   "

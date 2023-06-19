@@ -3,6 +3,7 @@ import spy.ast
 from spy.vm.vm import SPyVM
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FunctionType
+from spy.util import magic_dispatch
 
 class CodeGen:
     """
@@ -37,11 +38,7 @@ class CodeGen:
 
         Pop all the operands from the stack, don't push any result.
         """
-        methname = f'do_exec_{stmt.__class__.__name__}'
-        meth = getattr(self, methname, None)
-        if meth is None:
-            raise NotImplementedError(methname)
-        meth(stmt)
+        magic_dispatch(self, 'do_exec', stmt)
 
     def eval_expr(self, expr: py_ast.expr) -> None:
         """
@@ -49,11 +46,7 @@ class CodeGen:
 
         Pop all the operands from the stack, push the result on the stack.
         """
-        methname = f'do_eval_{expr.__class__.__name__}'
-        meth = getattr(self, methname, None)
-        if meth is None:
-            raise NotImplementedError(methname)
-        meth(expr)
+        magic_dispatch(self, 'do_eval', expr)
 
     def do_exec_Return(self, ret: py_ast.Return) -> None:
         assert ret.value is not None
