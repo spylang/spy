@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, NoReturn
 import textwrap
 import ast as py_ast
 import astpretty
@@ -47,7 +47,7 @@ class Parser:
         assert isinstance(py_mod, py_ast.Module)
         return self.to_Module(py_mod)
 
-    def error(self, loc: SomeLocation, message: str) -> None:
+    def error(self, loc: SomeLocation, message: str) -> NoReturn:
         raise SPyParseError(self.filename, loc, message)
 
     def to_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
@@ -81,8 +81,6 @@ class Parser:
             )
             self.error(func_loc, 'missing return type')
         #
-        # needed to convince mypy that it's not None :facepalm:
-        assert py_returns is not None
         return spy.ast.FuncDef(
             loc = get_loc(py_funcdef),
             name = py_funcdef.name,
@@ -112,7 +110,6 @@ class Parser:
     def to_FuncArg(self, py_arg: py_ast.arg) -> spy.ast.FuncArg:
         if py_arg.annotation is None:
             self.error(py_arg, f"missing type for argument '{py_arg.arg}'")
-        assert py_arg.annotation is not None # mypy :facepalmp:
         #
         return spy.ast.FuncArg(
             loc = get_loc(py_arg),
