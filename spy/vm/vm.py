@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import fixedint
 from spy.vm.object import W_Object, W_Type, W_void, W_i32
 from spy.vm.function import W_FunctionType, W_Function
@@ -12,6 +12,11 @@ class Builtins:
     w_i32: W_Type
     w_void: W_Type
     w_None: W_void
+
+    def lookup(self, name: str) -> Optional[W_Object]:
+        attr = 'w_' + name
+        return getattr(self, attr, None)
+
 
 class SPyVM:
     """

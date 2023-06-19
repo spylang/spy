@@ -41,7 +41,15 @@ class ModuleGen:
         return w_func
 
     def resolve_type(self, expr: py_ast.expr) -> W_Type:
-        # XXX we need to proper lookup, hardcode it for now
+        # OK, this is very wrong. We should have a proper table of types with
+        # the possibility of nested scopes and lookups. For now, we just to a
+        # hardcoded lookup in the VM builtins, which is good enough to resolve
+        # builtin types.
+        #
+        # Also, eventually we should support arbitrary expressions, but for
+        # now we just support simple Names.
         assert isinstance(expr, py_ast.Name)
-        assert expr.id == 'i32'
-        return self.vm.builtins.w_i32
+        w_type = self.vm.builtins.lookup(expr.id)
+        assert w_type is not None
+        assert isinstance(w_type, W_Type)
+        return w_type
