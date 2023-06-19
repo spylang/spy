@@ -26,6 +26,7 @@ class TestParser:
         """)
         expected = """
         Module(
+            filename='<string>',
             decls=[
                 FuncDef(
                     name='foo',
@@ -47,6 +48,7 @@ class TestParser:
         """)
         expected = """
         Module(
+            filename='<string>',
             decls=[
                 FuncDef(
                     name='foo',

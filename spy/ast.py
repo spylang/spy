@@ -4,6 +4,22 @@ import ast as py_ast
 import dataclasses
 from dataclasses import dataclass
 
+def get_loc(py_node: py_ast.AST) -> 'Location':
+    if isinstance(py_node, py_ast.Module):
+        raise TypeError('py_ast.Module does not have a location')
+    #
+    # all the other nodes should have a location. If they don't, we should
+    # investigate and decide what to do
+    assert hasattr(py_node, 'lineno')
+    assert py_node.end_lineno is not None
+    assert py_node.end_col_offset is not None
+    return Location(
+        line_start = py_node.lineno,
+        line_end = py_node.end_lineno,
+        col_start = py_node.col_offset,
+        col_end = py_node.end_col_offset,
+    )
+
 
 @dataclass
 class Location:
@@ -26,6 +42,7 @@ class Node:
 
 @dataclass
 class Module(Node):
+    filename: str
     decls: list['Decl']
 
 

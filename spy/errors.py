@@ -38,3 +38,6 @@ class SPyCompileError(Exception):
 
 class SPyParseError(SPyCompileError):
     pass
+
+class SPyTypeError(SPyCompileError):
+    pass

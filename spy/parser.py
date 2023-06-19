@@ -3,25 +3,8 @@ import textwrap
 import ast as py_ast
 import astpretty
 import spy.ast
+from spy.ast import get_loc
 from spy.errors import SPyCompileError, SPyParseError
-
-
-def get_loc(py_node: py_ast.AST) -> spy.ast.Location:
-    if isinstance(py_node, py_ast.Module):
-        raise TypeError('py_ast.Module does not have a location')
-    #
-    # all the other nodes should have a location. If they don't, we should
-    # investigate and decide what to do
-    assert hasattr(py_node, 'lineno')
-    assert py_node.end_lineno is not None
-    assert py_node.end_col_offset is not None
-    return spy.ast.Location(
-        line_start = py_node.lineno,
-        line_end = py_node.end_lineno,
-        col_start = py_node.col_offset,
-        col_end = py_node.end_col_offset,
-    )
-
 
 class Parser:
     """
@@ -65,7 +48,7 @@ class Parser:
         raise SPyParseError(self.filename, loc, message)
 
     def to_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
-        mod = spy.ast.Module(decls=[])
+        mod = spy.ast.Module(filename=self.filename, decls=[])
         for py_stmt in py_mod.body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.to_FuncDef(py_stmt)

@@ -1,7 +1,10 @@
+from typing import NoReturn
 import ast as py_ast
 import spy.ast
+from spy.ast import get_loc
 from spy.parser import Parser
 from spy.irgen.codegen import CodeGen
+from spy.errors import SPyTypeError
 from spy.vm.vm import SPyVM
 from spy.vm.varstorage import VarStorage
 from spy.vm.module import W_Module
@@ -19,6 +22,9 @@ class ModuleGen:
     def __init__(self, vm: SPyVM, mod: spy.ast.Module) -> None:
         self.vm = vm
         self.mod = mod
+
+    def error(self, loc: spy.ast.Location, message: str) -> NoReturn:
+        raise SPyTypeError(self.mod.filename, loc, message)
 
     def make_w_mod(self) -> W_Module:
         name = 'mymod' # XXX
@@ -48,8 +54,14 @@ class ModuleGen:
         #
         # Also, eventually we should support arbitrary expressions, but for
         # now we just support simple Names.
-        assert isinstance(expr, py_ast.Name)
+        loc = get_loc(expr)
+        if not isinstance(expr, py_ast.Name):
+            self.error(loc, f'Only simple types are supported for now')
+        #
         w_type = self.vm.builtins.lookup(expr.id)
-        assert w_type is not None
-        assert isinstance(w_type, W_Type)
+        if w_type is None:
+            self.error(loc, f'Unknown type: {expr.id}')
+        if not isinstance(w_type, W_Type):
+            self.error(loc, f'{expr.id} is not a type')
+        #
         return w_type

@@ -2,6 +2,7 @@ import pytest
 from spy.parser import Parser
 from spy.irgen.module import ModuleGen
 from spy.vm.vm import SPyVM
+from spy.errors import SPyTypeError
 
 @pytest.mark.usefixtures('init')
 class TestIRGen:
@@ -25,3 +26,23 @@ class TestIRGen:
         w_foo = w_mod.content.get('foo')
         w_result = vm.call_function(w_foo, [])
         assert vm.unwrap(w_result) == 42
+
+    def test_return_type_errors(self):
+        with pytest.raises(SPyTypeError,
+                           match='Only simple types are supported for now'):
+            self.compile("""
+            def foo() -> MyList[i32]:
+                return 42
+            """)
+        with pytest.raises(SPyTypeError, match='Unknown type: aaa'):
+            self.compile("""
+            def foo() -> aaa:
+                return 42
+            """)
+        #
+        self.vm.builtins.w_I_am_not_a_type = self.vm.wrap(42)  # type: ignore
+        with pytest.raises(SPyTypeError, match='I_am_not_a_type is not a type'):
+            self.compile("""
+            def foo() -> I_am_not_a_type:
+                return 42
+            """)

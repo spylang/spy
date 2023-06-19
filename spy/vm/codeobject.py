@@ -35,13 +35,15 @@ class OpCode:
 @spytype('CodeObject')
 class W_CodeObject(W_Object):
     name: str
+    filename: str
     body: list[OpCode]
     params: tuple[str, ...]
     locals_w_types: dict[str, W_Type]
     w_restype: W_Type
 
-    def __init__(self, name: str, *, w_restype: W_Type) -> None:
+    def __init__(self, name: str, *, w_restype: W_Type, filename: str = '') -> None:
         self.name = name
+        self.filename = filename
         self.body = []
         self.params = ()
         self.locals_w_types = {}
