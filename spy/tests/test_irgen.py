@@ -1,6 +1,6 @@
 import pytest
 from spy.parser import Parser
-from spy.irgen.module import ModuleGen
+from spy.irgen.modgen import ModuleGen
 from spy.vm.vm import SPyVM
 from spy.errors import SPyTypeError
 
