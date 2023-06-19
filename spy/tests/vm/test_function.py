@@ -20,7 +20,7 @@ class TestFunction:
         #
         w_code = W_CodeObject('simple')
         w_code.body = [
-            OpCode('i32_const', vm.wrap(42)),
+            OpCode('const_load', vm.wrap(42)),
             OpCode('return'),
         ]
         #

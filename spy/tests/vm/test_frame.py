@@ -21,7 +21,7 @@ class TestFrame:
         w_42 = vm.wrap(42)
         code = W_CodeObject('simple')
         code.body = [
-            OpCode('i32_const', w_42),
+            OpCode('const_load', w_42),
             OpCode('return'),
         ]
         frame = make_Frame(vm, code)
@@ -34,8 +34,8 @@ class TestFrame:
         w_1 = vm.wrap(1)
         code = W_CodeObject('simple')
         code.body = [
-            OpCode('i32_const', w_100),
-            OpCode('i32_const', w_1),
+            OpCode('const_load', w_100),
+            OpCode('const_load', w_1),
             OpCode('i32_add'),
             OpCode('return'),
         ]
@@ -50,8 +50,8 @@ class TestFrame:
         w_8 = vm.wrap(8)
         code = W_CodeObject('simple')
         code.body = [
-            OpCode('i32_const', w_50),
-            OpCode('i32_const', w_8),
+            OpCode('const_load', w_50),
+            OpCode('const_load', w_8),
             OpCode('i32_sub'),
             OpCode('return'),
         ]
@@ -83,7 +83,7 @@ class TestFrame:
             'a': vm.builtins.w_i32,
         }
         code.body = [
-            OpCode('i32_const', w_100),
+            OpCode('const_load', w_100),
             OpCode('local_set', 'a'),
             OpCode('local_get', 'a'),
             OpCode('return'),
@@ -97,10 +97,10 @@ class TestFrame:
         code = W_CodeObject('simple')
         code.body = [
             OpCode('global_get', 'a'),
-            OpCode('i32_const', vm.wrap(11)),
+            OpCode('const_load', vm.wrap(11)),
             OpCode('i32_add'),
             OpCode('global_set', 'b'),
-            OpCode('i32_const', vm.wrap(0)),
+            OpCode('const_load', vm.wrap(0)),
             OpCode('return'),
         ]
 

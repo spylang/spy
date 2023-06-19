@@ -61,4 +61,4 @@ class CodeGen:
     def do_eval_Constant(self, const: py_ast.Constant) -> None:
         # XXX we need a typechecking phase
         assert type(const.value) is int
-        self.emit('i32_const', self.vm.wrap(const.value))
+        self.emit('const_load', self.vm.wrap(const.value))

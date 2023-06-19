@@ -68,8 +68,7 @@ class Frame:
                 meth(*op.args)
                 self.pc += 1
 
-    def op_i32_const(self, w_const: W_Object) -> None:
-        assert isinstance(w_const, W_i32)
+    def op_const_load(self, w_const: W_Object) -> None:
         self.push(w_const)
 
     def op_i32_add(self) -> None:

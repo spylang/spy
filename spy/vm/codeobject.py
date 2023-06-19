@@ -6,7 +6,7 @@ from spy.vm.object import W_Object, W_Type, spytype
 # or wordcode.
 ALL_OPCODES = [
     'return',
-    'i32_const',
+    'const_load',
     'i32_add',
     'i32_sub',
     'local_set',
