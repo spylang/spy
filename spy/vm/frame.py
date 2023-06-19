@@ -59,7 +59,9 @@ class Frame:
             # 'return' is special, handle it explicitly
             if op.name == 'return':
                 assert len(self.stack) == 1
-                return self.pop()
+                w_result = self.pop()
+                assert self.vm.is_compatible_type(w_result, self.w_code.w_restype)
+                return w_result
             else:
                 meth_name = f'op_{op.name}'
                 meth = getattr(self, meth_name, None)

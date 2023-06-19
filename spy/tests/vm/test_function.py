@@ -18,7 +18,7 @@ class TestFunction:
         vm = SPyVM()
         w_functype = W_FunctionType([], vm.builtins.w_i32)
         #
-        w_code = W_CodeObject('simple')
+        w_code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         w_code.body = [
             OpCode('const_load', vm.wrap(42)),
             OpCode('return'),
@@ -38,7 +38,7 @@ class TestFunction:
         w_mod.add('a', w_a)
         #
         w_functype = W_FunctionType([], vm.builtins.w_i32)
-        w_code = W_CodeObject('fn')
+        w_code = W_CodeObject('fn', w_restype=vm.builtins.w_i32)
         w_code.body = [
             OpCode('global_get', 'a'),
             OpCode('return'),
@@ -57,7 +57,7 @@ class TestFunction:
         w_i32 = vm.builtins.w_i32
         w_mod = W_Module(vm, 'mymod')
         w_functype = W_FunctionType([w_i32, w_i32], w_i32)
-        w_code = W_CodeObject('fn')
+        w_code = W_CodeObject('fn', w_restype=vm.builtins.w_i32)
         w_code.params = ('a', 'b')
         w_code.locals_w_types = {
             'a': vm.builtins.w_i32,

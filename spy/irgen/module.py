@@ -30,12 +30,12 @@ class ModuleGen:
         return self.w_mod
 
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Function:
-        codegen = CodeGen(self.vm, funcdef)
-        w_code = codegen.make_w_code()
-
         argtypes_w = [self.resolve_type(arg.type) for arg in funcdef.args]
         w_return_type = self.resolve_type(funcdef.return_type)
         w_functype = W_FunctionType(argtypes_w, w_return_type)
+
+        codegen = CodeGen(self.vm, funcdef, w_functype)
+        w_code = codegen.make_w_code()
 
         w_func = W_Function(w_functype, w_code, self.w_mod.content)
         return w_func

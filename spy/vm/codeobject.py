@@ -38,12 +38,14 @@ class W_CodeObject(W_Object):
     body: list[OpCode]
     params: tuple[str, ...]
     locals_w_types: dict[str, W_Type]
+    w_restype: W_Type
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, *, w_restype: W_Type) -> None:
         self.name = name
         self.body = []
         self.params = ()
         self.locals_w_types = {}
+        self.w_restype = w_restype
 
     def __repr__(self) -> str:
         return f'<spy CodeObject {self.name}>'

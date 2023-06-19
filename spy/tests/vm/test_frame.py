@@ -19,7 +19,7 @@ class TestFrame:
     def test_simple_eval(self):
         vm = SPyVM()
         w_42 = vm.wrap(42)
-        code = W_CodeObject('simple')
+        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         code.body = [
             OpCode('const_load', w_42),
             OpCode('return'),
@@ -32,7 +32,7 @@ class TestFrame:
         vm = SPyVM()
         w_100 = vm.wrap(100)
         w_1 = vm.wrap(1)
-        code = W_CodeObject('simple')
+        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         code.body = [
             OpCode('const_load', w_100),
             OpCode('const_load', w_1),
@@ -48,7 +48,7 @@ class TestFrame:
         vm = SPyVM()
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
-        code = W_CodeObject('simple')
+        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         code.body = [
             OpCode('const_load', w_50),
             OpCode('const_load', w_8),
@@ -62,7 +62,7 @@ class TestFrame:
 
     def test_uninitialized_locals(self):
         vm = SPyVM()
-        code = W_CodeObject('simple')
+        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         code.locals_w_types = {
             'a': vm.builtins.w_i32,
         }
@@ -78,7 +78,7 @@ class TestFrame:
     def test_locals(self):
         vm = SPyVM()
         w_100 = vm.wrap(100)
-        code = W_CodeObject('simple')
+        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         code.locals_w_types = {
             'a': vm.builtins.w_i32,
         }
@@ -94,7 +94,7 @@ class TestFrame:
 
     def test_globals(self):
         vm = SPyVM()
-        code = W_CodeObject('simple')
+        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         code.body = [
             OpCode('global_get', 'a'),
             OpCode('const_load', vm.wrap(11)),
@@ -118,7 +118,7 @@ class TestFrame:
 
     def test_params(self):
         vm = SPyVM()
-        code = W_CodeObject('simple')
+        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
         code.params = ('a', 'b')
         code.locals_w_types = {
             'a': vm.builtins.w_i32,

@@ -2,7 +2,7 @@ import ast as py_ast
 import spy.ast
 from spy.vm.vm import SPyVM
 from spy.vm.codeobject import W_CodeObject, OpCode
-
+from spy.vm.function import W_FunctionType
 
 class CodeGen:
     """
@@ -12,10 +12,12 @@ class CodeGen:
     funcdef: spy.ast.FuncDef
     w_code: W_CodeObject
 
-    def __init__(self, vm: SPyVM, funcdef: spy.ast.FuncDef) -> None:
+    def __init__(self, vm: SPyVM, funcdef: spy.ast.FuncDef,
+                 w_functype: W_FunctionType) -> None:
         self.vm = vm
         self.funcdef = funcdef
-        self.w_code = W_CodeObject(self.funcdef.name)
+        self.w_code = W_CodeObject(self.funcdef.name,
+                                   w_restype=w_functype.w_restype)
 
     def make_w_code(self) -> W_CodeObject:
         for stmt in self.funcdef.body:
