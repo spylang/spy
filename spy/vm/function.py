@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import typing
 from spy.vm.object import W_Object, W_Type
 from spy.vm.module import W_Module
@@ -6,10 +7,10 @@ from spy.vm.varstorage import VarStorage
 if typing.TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-
+@dataclass(repr=False)
 class W_FunctionType(W_Type):
     argtypes_w: list[W_Type]
-    restype_w: W_Type
+    w_restype: W_Type
 
     def __init__(self, argtypes_w: list[W_Type], w_restype: W_Type):
         argnames = [w_t.name for w_t in argtypes_w]

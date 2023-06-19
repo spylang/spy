@@ -38,3 +38,9 @@ class SymTable:
             return self.parent.lookup(name)
         else:
             return None # not found
+
+    def lookup_type(self, name: str) -> Optional[W_Type]:
+        sym = self.lookup(name)
+        if sym:
+            return sym.w_type
+        return None

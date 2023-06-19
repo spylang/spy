@@ -57,10 +57,14 @@ class FuncArg(Node):
     name: str
     type: py_ast.expr
 
-@dataclass
+
+@dataclass(eq=False)
 class FuncDef(Decl):
     loc: Location
     name: str
     args: list[FuncArg]
     return_type: py_ast.expr
     body: list[py_ast.stmt]
+
+    def __hash__(self) -> int:
+        return id(self)

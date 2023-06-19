@@ -1,6 +1,7 @@
 import sys
 from spy.errors import SPyCompileError
 from spy.parser import Parser
+from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.vm.vm import SPyVM
 
@@ -9,7 +10,9 @@ def main() -> None:
     p = Parser.from_filename(sys.argv[1])
     try:
         mod = p.parse()
-        modgen = ModuleGen(vm, mod)
+        t = TypeChecker(vm, mod)
+        t.check_everything()
+        modgen = ModuleGen(vm, t, mod)
         w_mod = modgen.make_w_mod()
     except SPyCompileError as e:
         print(e)
