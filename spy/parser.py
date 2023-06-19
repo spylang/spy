@@ -3,8 +3,11 @@ import textwrap
 import ast as py_ast
 import astpretty
 import spy.ast
-from spy.ast import get_loc
-from spy.errors import SPyCompileError, SPyParseError
+from spy.errors import SPyCompileError, SPyParseError, SomeLocation
+
+def get_loc(py_node: py_ast.AST) -> spy.ast.Location:
+    return spy.ast.Location.from_py(py_node)
+
 
 class Parser:
     """
@@ -44,7 +47,7 @@ class Parser:
         assert isinstance(py_mod, py_ast.Module)
         return self.to_Module(py_mod)
 
-    def error(self, loc: spy.ast.Location, message: str) -> None:
+    def error(self, loc: SomeLocation, message: str) -> None:
         raise SPyParseError(self.filename, loc, message)
 
     def to_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
@@ -90,28 +93,25 @@ class Parser:
 
     def to_FuncArgs(self, py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
         if py_args.vararg:
-            loc = get_loc(py_args.vararg)
-            self.error(loc, '*args is not supported yet')
+            self.error(py_args.vararg, '*args is not supported yet')
         if py_args.kwarg:
-            loc = get_loc(py_args.kwarg)
-            self.error(loc, '**kwargs is not supported yet')
+            self.error(py_args.kwarg, '**kwargs is not supported yet')
         if py_args.defaults:
-            loc = get_loc(py_args.defaults[0])
-            self.error(loc, 'default arguments are not supported yet')
+            self.error(py_args.defaults[0],
+                       'default arguments are not supported yet')
         if py_args.posonlyargs:
-            loc = get_loc(py_args.posonlyargs[0])
-            self.error(loc, 'positional-only arguments are not supported yet')
+            self.error(py_args.posonlyargs[0],
+                       'positional-only arguments are not supported yet')
         if py_args.kwonlyargs:
-            loc = get_loc(py_args.kwonlyargs[0])
-            self.error(loc, 'keyword-only arguments are not supported yet')
+            self.error(py_args.kwonlyargs[0],
+                       'keyword-only arguments are not supported yet')
         assert not py_args.kw_defaults
         #
         return [self.to_FuncArg(py_arg) for py_arg in py_args.args]
 
     def to_FuncArg(self, py_arg: py_ast.arg) -> spy.ast.FuncArg:
         if py_arg.annotation is None:
-            loc = get_loc(py_arg)
-            self.error(loc, f"missing type for argument '{py_arg.arg}'")
+            self.error(py_arg, f"missing type for argument '{py_arg.arg}'")
         assert py_arg.annotation is not None # mypy :facepalmp:
         #
         return spy.ast.FuncArg(
