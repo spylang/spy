@@ -1,15 +1,12 @@
 from typing import NoReturn, Optional
 import ast as py_ast
 import spy.ast
-from spy.errors import SPyTypeError, SomeLocation
+from spy.errors import SPyTypeError
 from spy.irgen.symtable import SymTable
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type
 from spy.vm.function import W_FunctionType
 from spy.util import magic_dispatch
-
-# either a spy or a py Node
-SomeNode = spy.ast.Node | py_ast.AST
 
 def can_assign_to(w_type_from: W_Type, w_type_to: W_Type) -> bool:
     # XXX this is wrong, but better than nothing for now
@@ -62,8 +59,7 @@ class TypeChecker:
         assert expr not in self.expr_types
         self.expr_types[expr] = w_type
 
-
-    def error(self, loc: SomeLocation, message: str) -> NoReturn:
+    def error(self, loc: spy.ast.Location, message: str) -> NoReturn:
         raise SPyTypeError(self.mod.filename, loc, message)
 
     def resolve_type(self, expr: py_ast.expr) -> W_Type:
@@ -74,14 +70,15 @@ class TypeChecker:
         #
         # Also, eventually we should support arbitrary expressions, but for
         # now we just support simple Names.
+        loc = expr.get_loc()
         if not isinstance(expr, py_ast.Name):
-            self.error(expr, f'Only simple types are supported for now')
+            self.error(loc, f'Only simple types are supported for now')
         #
         w_type = self.vm.builtins.lookup(expr.id)
         if w_type is None:
-            self.error(expr, f'Unknown type: {expr.id}')
+            self.error(loc, f'Unknown type: {expr.id}')
         if not isinstance(w_type, W_Type):
-            self.error(expr, f'{expr.id} is not a type')
+            self.error(loc, f'{expr.id} is not a type')
         #
         return w_type
 
@@ -91,7 +88,7 @@ class TypeChecker:
     def check(self, decl: spy.ast.Decl, scope: SymTable) -> None:
         return magic_dispatch(self, 'check', decl, scope)
 
-    def check_stmt(self, node: SomeNode, scope: SymTable) -> None:
+    def check_stmt(self, node: spy.ast.AnyNode, scope: SymTable) -> None:
         return magic_dispatch(self, 'check_stmt', node, scope)
 
     def check_expr(self, expr: py_ast.expr, scope: SymTable) -> W_Type:
@@ -128,11 +125,11 @@ class TypeChecker:
         assert w_expected is not None
         w_type = self.check_expr(ret.value, scope)
         if not can_assign_to(w_type, w_expected):
-            self.error(ret, 'XXX')
+            self.error(ret.get_loc(), 'XXX')
 
     def check_expr_Constant(self, const: py_ast.Constant, scope: SymTable) -> W_Type:
         T = type(const.value)
         if T is int:
             return self.vm.builtins.w_i32
         else:
-            self.error(const, f'Unsupported literal: {const.value}')
+            self.error(const.get_loc(), f'Unsupported literal: {const.value}')

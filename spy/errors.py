@@ -2,13 +2,6 @@ import linecache
 import ast as py_ast
 import spy.ast
 
-SomeLocation = spy.ast.Location | py_ast.AST  # this is a typedef
-
-def magic_get_loc(loc: SomeLocation) -> spy.ast.Location:
-    if isinstance(loc, spy.ast.Location):
-        return loc
-    else:
-        return spy.ast.Location.from_py(loc)
 
 def make_carets(loc: spy.ast.Location) -> str:
     a = loc.col_start
@@ -37,11 +30,11 @@ class SPyCompileError(Exception):
     filename: str
     loc: spy.ast.Location
 
-    def __init__(self, filename: str, someloc: SomeLocation, msg: str) -> None:
+    def __init__(self, filename: str, loc: spy.ast.Location, msg: str) -> None:
         self.filename = filename
-        self.loc = magic_get_loc(someloc)
+        self.loc = loc
         self.msg = msg
-        fullmsg = format_full_error(filename, self.loc, msg)
+        fullmsg = format_full_error(filename, loc, msg)
         super().__init__(fullmsg)
 
 

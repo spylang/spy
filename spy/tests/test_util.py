@@ -1,6 +1,6 @@
 from typing import Any
 import pytest
-from spy.util import magic_dispatch
+from spy.util import magic_dispatch, extend
 
 def test_magic_dispatch():
     class Foo:
@@ -18,3 +18,27 @@ def test_magic_dispatch():
     assert f.visit('bar-', 3) == 'BAR-BAR-BAR-'
     with pytest.raises(NotImplementedError, match='visit_float'):
         f.visit(1.0, -1)
+
+def test_extend():
+    class Foo:
+        pass
+
+    @extend(Foo)
+    class Foo2:
+        X = 100
+
+        def meth(self):
+            return 42
+
+    assert Foo2 is Foo
+    assert Foo.X == 100        # type: ignore
+    assert Foo().meth() == 42  # type: ignore
+
+def test_extend_dont_overwrite():
+    class Foo:
+        X = 42
+
+    with pytest.raises(TypeError, match="class Foo has already a member 'X'"):
+        @extend(Foo)
+        class Foo2:
+            X = 100

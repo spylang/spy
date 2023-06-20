@@ -25,6 +25,24 @@ def magic_dispatch(self, prefix, obj, *args, **kwargs):
 
 
 @typing.no_type_check
+def extend(existing_cls):
+    """
+    Class decorator to extend an existing class with new attributes and
+    methods
+    """
+    def decorator(new_cls):
+        for key, value in new_cls.__dict__.items():
+            if key.startswith('__'):
+                continue
+            if hasattr(existing_cls, key):
+                clsname = existing_cls.__name__
+                raise TypeError(f"class {clsname} has already a member '{key}'")
+            setattr(existing_cls, key, value)
+        return existing_cls
+    return decorator
+
+
+@typing.no_type_check
 def print_class_hierarchy(cls):
     CROSS  = "├── "
     BAR    = "│   "

@@ -1,9 +1,12 @@
+import typing
 import astpretty
 import pprint
 import ast as py_ast
 import dataclasses
 from dataclasses import dataclass
+from spy.util import extend
 
+AnyNode = typing.Union[py_ast.AST, 'Node']
 
 @dataclass
 class Location:
@@ -15,26 +18,46 @@ class Location:
     def replace(self, **kwargs: int) -> 'Location':
         return dataclasses.replace(self, **kwargs)
 
-    @classmethod
-    def from_py(cls, py_node: py_ast.AST) -> 'Location':
-        if isinstance(py_node, py_ast.Module):
+
+@extend(py_ast.AST)
+class AST:
+    """
+    monkey patch py_ast.AST to add a get_loc method. See also the comments in
+    stubs/_ast.pyi
+    """
+
+    @typing.no_type_check
+    def get_loc(self) -> Location:
+        if isinstance(self, py_ast.Module):
             raise TypeError('py_ast.Module does not have a location')
         #
         # all the other nodes should have a location. If they don't, we should
         # investigate and decide what to do
-        assert hasattr(py_node, 'lineno')
-        assert py_node.end_lineno is not None
-        assert py_node.end_col_offset is not None
-        return cls(
-            line_start = py_node.lineno,
-            line_end = py_node.end_lineno,
-            col_start = py_node.col_offset,
-            col_end = py_node.end_col_offset,
+        assert hasattr(self, 'lineno')
+        assert self.end_lineno is not None
+        assert self.end_col_offset is not None
+        return Location(
+            line_start = self.lineno,
+            line_end = self.end_lineno,
+            col_start = self.col_offset,
+            col_end = self.end_col_offset,
         )
+
+    @typing.no_type_check
+    def pp(self) -> None:
+        import spy.ast_dump
+        spy.ast_dump.pprint(self)
+
+del AST
 
 
 @dataclass
 class Node:
+
+    def get_loc(self) -> Location:
+        if hasattr(self, 'loc'):
+            return self.loc
+        raise TypeError(f'{self.__class__.__name__} does not have a location')
 
     def pp(self) -> None:
         import spy.ast_dump

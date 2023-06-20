@@ -1,6 +1,14 @@
+# stubs for _ast.pyi, copied/pasted/modified for spy needs
+#
+# spy.ast adds a new method _ast.AST.get_loc() via monkey-patching. Modifying
+# this file was the only way which I could find in order to make mypy happy.
+# The added lines are marked with 'FOR SPy' comments
+
 import sys
 from typing import Any, ClassVar
 from typing_extensions import Literal, TypeAlias
+import spy.ast  # FOR SPy
+
 
 PyCF_ONLY_AST: Literal[1024]
 if sys.version_info >= (3, 8):
@@ -22,6 +30,8 @@ class AST:
         end_lineno: int | None
         end_col_offset: int | None
         type_comment: str | None
+
+    def get_loc(self) -> spy.ast.Location: ...  # FOR SPy
 
 class mod(AST): ...
 

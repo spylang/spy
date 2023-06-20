@@ -12,10 +12,6 @@ def pprint(node: Any) -> None:
     print(dump(node))
 
 
-# monkey-patch python's AST to add a pp() method
-py_ast.AST.pp = pprint  # type:ignore
-
-
 class Dumper:
     level: int
     lines: list[str]
