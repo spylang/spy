@@ -1,9 +1,10 @@
 import pytest
 import spy.ast
+from spy.location import Loc
 from spy.irgen.symtable import SymTable, SymbolAlreadyDeclaredError
 from spy.vm.vm import SPyVM
 
-LOC = spy.ast.Location(0, 0, 0, 0)
+LOC = Loc(0, 0, 0, 0)
 
 @pytest.mark.usefixtures('init')
 class TestSymtable:

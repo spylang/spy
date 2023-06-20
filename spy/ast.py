@@ -2,22 +2,11 @@ import typing
 import astpretty
 import pprint
 import ast as py_ast
-import dataclasses
 from dataclasses import dataclass
+from spy.location import Loc
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
-
-@dataclass
-class Location:
-    line_start: int
-    line_end: int
-    col_start: int
-    col_end: int
-
-    def replace(self, **kwargs: int) -> 'Location':
-        return dataclasses.replace(self, **kwargs)
-
 
 @extend(py_ast.AST)
 class AST:
@@ -27,7 +16,7 @@ class AST:
     """
 
     @typing.no_type_check
-    def get_loc(self) -> Location:
+    def get_loc(self) -> Loc:
         if isinstance(self, py_ast.Module):
             raise TypeError('py_ast.Module does not have a location')
         #
@@ -36,7 +25,7 @@ class AST:
         assert hasattr(self, 'lineno')
         assert self.end_lineno is not None
         assert self.end_col_offset is not None
-        return Location(
+        return Loc(
             line_start = self.lineno,
             line_end = self.end_lineno,
             col_start = self.col_offset,
@@ -54,7 +43,7 @@ del AST
 @dataclass
 class Node:
 
-    def get_loc(self) -> Location:
+    def get_loc(self) -> Loc:
         if hasattr(self, 'loc'):
             return self.loc
         raise TypeError(f'{self.__class__.__name__} does not have a location')
@@ -76,14 +65,14 @@ class Decl(Node):
 
 @dataclass
 class FuncArg(Node):
-    loc: Location
+    loc: Loc
     name: str
     type: py_ast.expr
 
 
 @dataclass(eq=False)
 class FuncDef(Decl):
-    loc: Location
+    loc: Loc
     name: str
     args: list[FuncArg]
     return_type: py_ast.expr

@@ -1,6 +1,7 @@
 from typing import Optional
 from dataclasses import dataclass
 import spy.ast
+from spy.location import Loc
 from spy.vm.object import W_Type, W_Object
 
 class SymbolAlreadyDeclaredError(Exception):
@@ -13,7 +14,7 @@ class SymbolAlreadyDeclaredError(Exception):
 class Symbol:
     name: str
     w_type: W_Type
-    loc: spy.ast.Location  # where the symbol was defined
+    loc: Loc  # where the symbol was defined
 
 class SymTable:
     name: str  # just for debugging
@@ -25,7 +26,7 @@ class SymTable:
         self.parent = parent
         self.symbols = {}
 
-    def declare(self, name: str, w_type: W_Type, loc: spy.ast.Location) -> Symbol:
+    def declare(self, name: str, w_type: W_Type, loc: Loc) -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
         self.symbols[name] = s = Symbol(name, w_type, loc)

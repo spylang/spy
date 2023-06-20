@@ -1,6 +1,7 @@
 from typing import NoReturn, Optional
 import ast as py_ast
 import spy.ast
+from spy.location import Loc
 from spy.errors import SPyTypeError
 from spy.irgen.symtable import SymTable
 from spy.vm.vm import SPyVM
@@ -59,7 +60,7 @@ class TypeChecker:
         assert expr not in self.expr_types
         self.expr_types[expr] = w_type
 
-    def error(self, loc: spy.ast.Location, message: str) -> NoReturn:
+    def error(self, loc: Loc, message: str) -> NoReturn:
         raise SPyTypeError(self.mod.filename, loc, message)
 
     def resolve_type(self, expr: py_ast.expr) -> W_Type:

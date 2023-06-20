@@ -3,6 +3,7 @@ import textwrap
 import ast as py_ast
 import astpretty
 import spy.ast
+from spy.location import Loc
 from spy.errors import SPyCompileError, SPyParseError
 
 class Parser:
@@ -43,7 +44,7 @@ class Parser:
         assert isinstance(py_mod, py_ast.Module)
         return self.to_Module(py_mod)
 
-    def error(self, loc: spy.ast.Location, message: str) -> NoReturn:
+    def error(self, loc: Loc, message: str) -> NoReturn:
         raise SPyParseError(self.filename, loc, message)
 
     def to_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:

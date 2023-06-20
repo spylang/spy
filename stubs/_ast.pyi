@@ -7,7 +7,7 @@
 import sys
 from typing import Any, ClassVar
 from typing_extensions import Literal, TypeAlias
-import spy.ast  # FOR SPy
+from spy.location import Loc  # FOR SPy
 
 
 PyCF_ONLY_AST: Literal[1024]
@@ -31,7 +31,7 @@ class AST:
         end_col_offset: int | None
         type_comment: str | None
 
-    def get_loc(self) -> spy.ast.Location: ...  # FOR SPy
+    def get_loc(self) -> Loc: ...  # FOR SPy
 
 class mod(AST): ...
 
