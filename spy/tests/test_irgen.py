@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 import spy.ast
 from spy.parser import Parser
@@ -8,6 +9,10 @@ from spy.irgen.modgen import ModuleGen
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FunctionType
 
+class AnyLocClass:
+    def __eq__(self, other):
+        return True
+ANYLOC: Any = AnyLocClass()
 
 @pytest.mark.usefixtures('init')
 class TestIRGen:
@@ -45,7 +50,7 @@ class TestIRGen:
         w_functype, scope = self.t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', w_i32),
+            '@return': Symbol('@return', w_i32, ANYLOC),
         }
         #
         # codegen tests
@@ -53,13 +58,14 @@ class TestIRGen:
         w_result = vm.call_function(w_foo, [])
         assert vm.unwrap(w_result) == 42
 
-    def test_return_type_errors(self):
+    def test_resolve_type_errors(self):
         with pytest.raises(SPyTypeError,
                            match='Only simple types are supported for now'):
             self.compile("""
             def foo() -> MyList[i32]:
                 return 42
             """)
+        #
         with pytest.raises(SPyTypeError, match='Unknown type: aaa'):
             self.compile("""
             def foo() -> aaa:
@@ -72,3 +78,11 @@ class TestIRGen:
             def foo() -> I_am_not_a_type:
                 return 42
             """)
+
+    ## def test_wrong_return_type(self):
+    ##     with pytest.raises(SPyTypeError,
+    ##                        match='Only simple types are supported for now'):
+    ##         self.compile("""
+    ##         def foo() -> MyList[i32]:
+    ##             return 42
+    ##         """)

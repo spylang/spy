@@ -108,23 +108,25 @@ class TypeChecker:
         argtypes_w = [self.resolve_type(arg.type) for arg in funcdef.args]
         w_return_type = self.resolve_type(funcdef.return_type)
         w_functype = W_FunctionType(argtypes_w, w_return_type)
-        scope.declare(funcdef.name, w_functype)
+        scope.declare(funcdef.name, w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
     def check_FuncDef(self, funcdef: spy.ast.FuncDef, outer_scope: SymTable) -> None:
         local_scope = SymTable(funcdef.name, parent=outer_scope)
         self.funcdef_scopes[funcdef] = local_scope
         w_functype = self.funcdef_types[funcdef]
-        local_scope.declare('@return', w_functype.w_restype)
+        local_scope.declare('@return', w_functype.w_restype, funcdef.return_type.get_loc())
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
 
     def check_stmt_Return(self, ret: py_ast.Return, scope: SymTable) -> None:
         assert ret.value is not None # XXX implement better error
-        w_expected = scope.lookup_type('@return')
-        assert w_expected is not None
+        return_sym = scope.lookup('@return')
+        assert return_sym is not None
+        #
         w_type = self.check_expr(ret.value, scope)
-        if not can_assign_to(w_type, w_expected):
+        if not can_assign_to(w_type, return_sym.w_type):
+            import pdb;pdb.set_trace()
             self.error(ret.get_loc(), 'XXX')
 
     def check_expr_Constant(self, const: py_ast.Constant, scope: SymTable) -> W_Type:

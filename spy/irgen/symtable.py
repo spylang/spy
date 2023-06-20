@@ -1,5 +1,6 @@
 from typing import Optional
 from dataclasses import dataclass
+import spy.ast
 from spy.vm.object import W_Type, W_Object
 
 class SymbolAlreadyDeclaredError(Exception):
@@ -7,12 +8,12 @@ class SymbolAlreadyDeclaredError(Exception):
     A symbol is being redeclared
     """
 
+
 @dataclass
 class Symbol:
     name: str
     w_type: W_Type
-    #w_constval: Optional[W_Object]
-
+    loc: spy.ast.Location  # where the symbol was defined
 
 class SymTable:
     name: str  # just for debugging
@@ -24,10 +25,10 @@ class SymTable:
         self.parent = parent
         self.symbols = {}
 
-    def declare(self, name: str, w_type: W_Type) -> Symbol:
+    def declare(self, name: str, w_type: W_Type, loc: spy.ast.Location) -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
-        self.symbols[name] = s = Symbol(name, w_type)
+        self.symbols[name] = s = Symbol(name, w_type, loc)
         return s
 
     def lookup(self, name: str) -> Optional[Symbol]:

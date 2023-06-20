@@ -1,6 +1,9 @@
 import pytest
+import spy.ast
 from spy.irgen.symtable import SymTable, SymbolAlreadyDeclaredError
 from spy.vm.vm import SPyVM
+
+LOC = spy.ast.Location(0, 0, 0, 0)
 
 @pytest.mark.usefixtures('init')
 class TestSymtable:
@@ -14,20 +17,20 @@ class TestSymtable:
 
     def test_basic(self):
         t = SymTable('<globals>', parent=None)
-        sym = t.declare('a', self.w_i32)
+        sym = t.declare('a', self.w_i32, LOC)
         assert sym.name == 'a'
         assert sym.w_type == self.w_i32
         assert t.lookup('a') is sym
         assert t.lookup('I-dont-exist') is None
         #
         with pytest.raises(SymbolAlreadyDeclaredError):
-            t.declare('a', self.w_i32)
+            t.declare('a', self.w_i32, LOC)
 
     def test_nested_scope_lookup(self):
         glob = SymTable('<globals>', parent=None)
         loc = SymTable('loc', parent=glob)
-        sym_a = glob.declare('a', self.w_i32)
-        sym_b = loc.declare('b', self.w_i32)
+        sym_a = glob.declare('a', self.w_i32, LOC)
+        sym_b = loc.declare('b', self.w_i32, LOC)
         #
         assert glob.lookup('a') is sym_a
         assert glob.lookup('b') is None
