@@ -42,11 +42,11 @@ class Parser:
     def parse(self) -> spy.ast.Module:
         py_mod = py_ast.parse(self.src)
         assert isinstance(py_mod, py_ast.Module)
-        py_mod.compute_all_locs()
+        py_mod.compute_all_locs(self.filename)
         return self.to_Module(py_mod)
 
     def error(self, loc: Loc, message: str) -> NoReturn:
-        raise SPyParseError(self.filename, loc, message)
+        raise SPyParseError(loc, message)
 
     def to_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
         mod = spy.ast.Module(filename=self.filename, decls=[])

@@ -23,7 +23,7 @@ class AST:
             return self._loc
         raise ValueError(f'{self.__class__.__name__} does not have a location')
 
-    def compute_all_locs(self) -> None:
+    def compute_all_locs(self, filename: str) -> None:
         """
         Compute .loc for itself and all its descendants.
         """
@@ -32,6 +32,7 @@ class AST:
                 assert py_node.end_lineno is not None
                 assert py_node.end_col_offset is not None
                 loc = Loc(
+                    filename = filename,
                     line_start = py_node.lineno,
                     line_end = py_node.end_lineno,
                     col_start = py_node.col_offset,

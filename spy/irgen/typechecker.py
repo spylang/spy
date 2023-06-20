@@ -61,7 +61,7 @@ class TypeChecker:
         self.expr_types[expr] = w_type
 
     def error(self, loc: Loc, message: str) -> NoReturn:
-        raise SPyTypeError(self.mod.filename, loc, message)
+        raise SPyTypeError(loc, message)
 
     def resolve_type(self, expr: py_ast.expr) -> W_Type:
         # OK, this is very wrong. We should have a proper table of types with

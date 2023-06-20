@@ -4,7 +4,7 @@ from spy.location import Loc
 from spy.irgen.symtable import SymTable, SymbolAlreadyDeclaredError
 from spy.vm.vm import SPyVM
 
-LOC = Loc(0, 0, 0, 0)
+LOC = Loc('<fake loc>', 0, 0, 0, 0)
 
 @pytest.mark.usefixtures('init')
 class TestSymtable:

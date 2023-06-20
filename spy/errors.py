@@ -10,11 +10,12 @@ def make_carets(loc: Loc) -> str:
     n = b-a
     return ' ' * a + '^' * n
 
-def format_full_error(filename: str, loc: Loc, msg: str) -> str:
+def format_full_error(loc: Loc, msg: str) -> str:
     """
     Format an error message to display to the user, including the source code,
     and visual hints to highlight which part of the line we are referring to.
     """
+    filename = loc.filename
     line = loc.line_start
     # Location has 0-based columns, but we want to display 1-based to the
     # user
@@ -31,11 +32,10 @@ class SPyCompileError(Exception):
     filename: str
     loc: Loc
 
-    def __init__(self, filename: str, loc: Loc, msg: str) -> None:
-        self.filename = filename
+    def __init__(self, loc: Loc, msg: str) -> None:
         self.loc = loc
         self.msg = msg
-        fullmsg = format_full_error(filename, loc, msg)
+        fullmsg = format_full_error(loc, msg)
         super().__init__(fullmsg)
 
 

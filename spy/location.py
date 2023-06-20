@@ -7,6 +7,7 @@ class Loc:
     """
     Represent a location inside the source code
     """
+    filename: str
     line_start: int
     line_end: int
     col_start: int
