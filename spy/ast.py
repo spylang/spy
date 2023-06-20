@@ -11,26 +11,33 @@ AnyNode = typing.Union[py_ast.AST, 'Node']
 @extend(py_ast.AST)
 class AST:
     """
-    monkey patch py_ast.AST to add a get_loc method. See also the comments in
+    monkey patch py_ast.AST to add a loc property. See also the comments in
     stubs/_ast.pyi
     """
 
-    @typing.no_type_check
-    def get_loc(self) -> Loc:
-        if isinstance(self, py_ast.Module):
-            raise TypeError('py_ast.Module does not have a location')
-        #
-        # all the other nodes should have a location. If they don't, we should
-        # investigate and decide what to do
-        assert hasattr(self, 'lineno')
-        assert self.end_lineno is not None
-        assert self.end_col_offset is not None
-        return Loc(
-            line_start = self.lineno,
-            line_end = self.end_lineno,
-            col_start = self.col_offset,
-            col_end = self.end_col_offset,
-        )
+    _loc = None
+
+    @property
+    def loc(self) -> Loc:
+        if self._loc is not None:
+            return self._loc
+        raise ValueError(f'{self.__class__.__name__} does not have a location')
+
+    def compute_all_locs(self) -> None:
+        """
+        Compute .loc for itself and all its descendants.
+        """
+        for py_node in py_ast.walk(self):  # type: ignore
+            if hasattr(py_node, 'lineno'):
+                assert py_node.end_lineno is not None
+                assert py_node.end_col_offset is not None
+                loc = Loc(
+                    line_start = py_node.lineno,
+                    line_end = py_node.end_lineno,
+                    col_start = py_node.col_offset,
+                    col_end = py_node.end_col_offset,
+                )
+                py_node._loc = loc
 
     @typing.no_type_check
     def pp(self) -> None:
@@ -42,11 +49,6 @@ del AST
 
 @dataclass
 class Node:
-
-    def get_loc(self) -> Loc:
-        if hasattr(self, 'loc'):
-            return self.loc
-        raise TypeError(f'{self.__class__.__name__} does not have a location')
 
     def pp(self) -> None:
         import spy.ast_dump

@@ -42,6 +42,7 @@ class Parser:
     def parse(self) -> spy.ast.Module:
         py_mod = py_ast.parse(self.src)
         assert isinstance(py_mod, py_ast.Module)
+        py_mod.compute_all_locs()
         return self.to_Module(py_mod)
 
     def error(self, loc: Loc, message: str) -> NoReturn:
@@ -60,10 +61,10 @@ class Parser:
 
     def to_FuncDef(self, py_funcdef: py_ast.FunctionDef) -> spy.ast.FuncDef:
         if py_funcdef.decorator_list:
-            loc = py_funcdef.decorator_list[0].get_loc()
+            loc = py_funcdef.decorator_list[0].loc
             self.error(loc, 'decorators are not supported yet')
         #
-        loc = py_funcdef.get_loc()
+        loc = py_funcdef.loc
         name = py_funcdef.name
         args = self.to_FuncArgs(py_funcdef.args)
         #
@@ -79,7 +80,7 @@ class Parser:
             self.error(func_loc, 'missing return type')
         #
         return spy.ast.FuncDef(
-            loc = py_funcdef.get_loc(),
+            loc = py_funcdef.loc,
             name = py_funcdef.name,
             args = args,
             return_type = py_returns,
@@ -88,24 +89,24 @@ class Parser:
 
     def to_FuncArgs(self, py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
         if py_args.vararg:
-            self.error(py_args.vararg.get_loc(), '*args is not supported yet')
+            self.error(py_args.vararg.loc, '*args is not supported yet')
         if py_args.kwarg:
-            self.error(py_args.kwarg.get_loc(), '**kwargs is not supported yet')
+            self.error(py_args.kwarg.loc, '**kwargs is not supported yet')
         if py_args.defaults:
-            self.error(py_args.defaults[0].get_loc(),
+            self.error(py_args.defaults[0].loc,
                        'default arguments are not supported yet')
         if py_args.posonlyargs:
-            self.error(py_args.posonlyargs[0].get_loc(),
+            self.error(py_args.posonlyargs[0].loc,
                        'positional-only arguments are not supported yet')
         if py_args.kwonlyargs:
-            self.error(py_args.kwonlyargs[0].get_loc(),
+            self.error(py_args.kwonlyargs[0].loc,
                        'keyword-only arguments are not supported yet')
         assert not py_args.kw_defaults
         #
         return [self.to_FuncArg(py_arg) for py_arg in py_args.args]
 
     def to_FuncArg(self, py_arg: py_ast.arg) -> spy.ast.FuncArg:
-        loc = py_arg.get_loc()
+        loc = py_arg.loc
         if py_arg.annotation is None:
             self.error(loc, f"missing type for argument '{py_arg.arg}'")
         #
@@ -114,6 +115,7 @@ class Parser:
             name = py_arg.arg,
             type = py_arg.annotation,
         )
+
 
 
 def main() -> None:

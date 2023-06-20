@@ -71,15 +71,14 @@ class TypeChecker:
         #
         # Also, eventually we should support arbitrary expressions, but for
         # now we just support simple Names.
-        loc = expr.get_loc()
         if not isinstance(expr, py_ast.Name):
-            self.error(loc, f'Only simple types are supported for now')
+            self.error(expr.loc, f'Only simple types are supported for now')
         #
         w_type = self.vm.builtins.lookup(expr.id)
         if w_type is None:
-            self.error(loc, f'Unknown type: {expr.id}')
+            self.error(expr.loc, f'Unknown type: {expr.id}')
         if not isinstance(w_type, W_Type):
-            self.error(loc, f'{expr.id} is not a type')
+            self.error(expr.loc, f'{expr.id} is not a type')
         #
         return w_type
 
@@ -116,7 +115,7 @@ class TypeChecker:
         local_scope = SymTable(funcdef.name, parent=outer_scope)
         self.funcdef_scopes[funcdef] = local_scope
         w_functype = self.funcdef_types[funcdef]
-        local_scope.declare('@return', w_functype.w_restype, funcdef.return_type.get_loc())
+        local_scope.declare('@return', w_functype.w_restype, funcdef.return_type.loc)
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
 
@@ -128,11 +127,11 @@ class TypeChecker:
         w_type = self.check_expr(ret.value, scope)
         if not can_assign_to(w_type, return_sym.w_type):
             import pdb;pdb.set_trace()
-            self.error(ret.get_loc(), 'XXX')
+            self.error(ret.loc, 'XXX')
 
     def check_expr_Constant(self, const: py_ast.Constant, scope: SymTable) -> W_Type:
         T = type(const.value)
         if T is int:
             return self.vm.builtins.w_i32
         else:
-            self.error(const.get_loc(), f'Unsupported literal: {const.value}')
+            self.error(const.loc, f'Unsupported literal: {const.value}')

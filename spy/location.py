@@ -1,5 +1,6 @@
 import dataclasses
 from dataclasses import dataclass
+import ast as py_ast
 
 @dataclass
 class Loc:
