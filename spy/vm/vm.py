@@ -1,6 +1,6 @@
 from typing import Any, Optional
 import fixedint
-from spy.vm.object import W_Object, W_Type, W_void, W_i32
+from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_str
 from spy.vm.function import W_FunctionType, W_Function
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
@@ -11,6 +11,7 @@ class Builtins:
     w_type: W_Type
     w_i32: W_Type
     w_void: W_Type
+    w_str: W_Type
     w_None: W_void
 
     def lookup(self, name: str) -> Optional[W_Object]:
@@ -34,6 +35,7 @@ class SPyVM:
         self.builtins.w_type = W_Type._w
         self.builtins.w_i32 = W_i32._w
         self.builtins.w_void = W_void._w
+        self.builtins.w_str = W_str._w
         self.builtins.w_None = W_void._w_singleton
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:

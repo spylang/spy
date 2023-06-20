@@ -164,3 +164,12 @@ class W_i32(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
         return self.value
+
+
+@spytype('str')
+class W_str(W_Object):
+    # Strings are not implemented yet, but I'm adding it anyway to have a
+    # non-int type to use in the tests
+
+    def __init__(self) -> None:
+        raise NotImplementedError
