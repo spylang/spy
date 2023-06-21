@@ -18,14 +18,15 @@ ANYLOC: Any = AnyLocClass()
 
 class TestIRGen(CompilerTest):
 
-    def compile(self, src: str):
+    def compile(self, src: str, *, only_typecheck: bool = False):
         srcfile = self.write_source('test.py', src)
         self.p = Parser.from_filename(str(srcfile))
         self.mod = self.p.parse()
         self.t = TypeChecker(self.vm, self.mod)
         self.t.check_everything()
-        self.modgen = ModuleGen(self.vm, self.t, self.mod)
-        return self.modgen.make_w_mod()
+        if not only_typecheck:
+            self.modgen = ModuleGen(self.vm, self.t, self.mod)
+            return self.modgen.make_w_mod()
 
     def get_funcdef(self, name: str) -> spy.ast.FuncDef:
         for decl in self.mod.decls:
@@ -83,3 +84,26 @@ class TestIRGen(CompilerTest):
             def foo() -> str:
                 return 42
             """)
+
+    def test_local_variables(self):
+        w_mod = self.compile(
+        """
+        def foo() -> i32:
+            x: i32 = 42
+            return x
+        """, only_typecheck=True)
+        vm = self.vm
+        w_i32 = vm.builtins.w_i32
+        #
+        # typechecker tests
+        funcdef = self.get_funcdef('foo')
+        w_functype, scope = self.t.get_funcdef_info(funcdef)
+        assert scope.symbols == {
+            '@return': Symbol('@return', w_i32, ANYLOC),
+            'x': Symbol('x', w_i32, ANYLOC),
+        }
+        #
+        # codegen tests
+        ## w_foo = w_mod.content.get('foo')
+        ## w_result = vm.call_function(w_foo, [])
+        ## assert vm.unwrap(w_result) == 42

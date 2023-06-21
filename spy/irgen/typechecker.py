@@ -71,20 +71,29 @@ class TypeChecker:
         #
         # Also, eventually we should support arbitrary expressions, but for
         # now we just support simple Names.
-        if not isinstance(expr, py_ast.Name):
+        typename = self.ensure_Name(expr)
+        if not typename:
             self.error('only simple types are supported for now',
                        'this expression is too complex', expr.loc)
 
-        w_type = self.vm.builtins.lookup(expr.id)
+        w_type = self.vm.builtins.lookup(typename)
         if w_type is None:
-            self.error(f'cannot find type `{expr.id}`',
+            self.error(f'cannot find type `{typename}`',
                        'not found in this scope', expr.loc)
         if not isinstance(w_type, W_Type):
             got = self.vm.dynamic_type(w_type).name
-            self.error(f'{expr.id} is not a type',
-                       f'this is a `{got}`', expr.loc,)
+            self.error(f'{typename} is not a type',
+                       f'this is a `{got}`', expr.loc)
         #
         return w_type
+
+    def ensure_Name(self, expr: py_ast.expr) -> Optional[str]:
+        """
+        Return the name as a string, or None if the expr is not a Name.
+        """
+        if isinstance(expr, py_ast.Name):
+            return expr.id
+        return None
 
     def declare(self, decl: spy.ast.Decl, scope: SymTable) -> None:
         return magic_dispatch(self, 'declare', decl, scope)
@@ -116,6 +125,8 @@ class TypeChecker:
                    'this is not yet supported by SPy', node.loc)
     check_expr_NotImplemented = check_stmt_NotImplemented
 
+    # =====
+
     def check_Module(self, mod: spy.ast.Module, scope: SymTable) -> None:
         for decl in mod.decls:
             self.declare(decl, scope)
@@ -137,6 +148,33 @@ class TypeChecker:
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
 
+    # ==== statements ====
+
+    def check_stmt_AnnAssign(self, assign: py_ast.AnnAssign,
+                             scope: SymTable) -> None:
+        """
+        This is our way of declaring variables (for now):
+            x: i32 = <expr>
+        """
+        # XXX: we probably want to have a declaration pass, to detect cases in
+        # which the variable is declared below but not yet (and report a
+        # meaningful error)
+        varname = self.ensure_Name(assign.target)
+        if varname is None:
+            assert False, 'XXX assignment target too complex'
+        #
+        existing_sym = scope.lookup(varname)
+        if existing_sym:
+            assert False, 'XXX variable already declared'
+        #
+        w_declared_type = self.resolve_type(assign.annotation)
+        scope.declare(varname, w_declared_type, assign.loc)
+        #
+        assert assign.value is not None
+        w_type = self.check_expr(assign.value, scope)
+        if not can_assign_to(w_type, w_declared_type):
+            assert False, 'XXX type mismatch'
+
     def check_stmt_Return(self, ret: py_ast.Return, scope: SymTable) -> None:
         assert ret.value is not None # XXX implement better error
         return_sym = scope.lookup('@return')
@@ -151,6 +189,8 @@ class TypeChecker:
             err.add('note', f'expected `{exp}` because of return type', loc=return_sym.loc)
             raise err
 
+    # ==== expressions ====
+
     def check_expr_Constant(self, const: py_ast.Constant, scope: SymTable) -> W_Type:
         T = type(const.value)
         if T is int:
@@ -158,3 +198,10 @@ class TypeChecker:
         else:
             self.error(f'unsupported literal: {const.value!r}',
                        f'this is not supported', const.loc)
+
+    def check_expr_Name(self, expr: py_ast.Name, scope: SymTable) -> W_Type:
+        varname = expr.id
+        sym = scope.lookup(varname)
+        if not sym:
+            assert False, 'XXX variable not in scope'
+        return sym.w_type
