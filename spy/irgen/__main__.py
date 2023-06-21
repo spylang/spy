@@ -15,7 +15,7 @@ def main() -> None:
         modgen = ModuleGen(vm, t, mod)
         w_mod = modgen.make_w_mod()
     except SPyCompileError as e:
-        print(e)
+        print(e.format(use_colors=True))
     else:
         print(f'Module {w_mod.name}:')
         for attr, w_obj in w_mod.content.values_w.items():

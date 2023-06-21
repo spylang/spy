@@ -60,13 +60,13 @@ class TestIRGen:
 
     def test_resolve_type_errors(self):
         with pytest.raises(SPyTypeError,
-                           match='Only simple types are supported for now'):
+                           match='only simple types are supported for now'):
             self.compile("""
             def foo() -> MyList[i32]:
                 return 42
             """)
         #
-        with pytest.raises(SPyTypeError, match='Unknown type: aaa'):
+        with pytest.raises(SPyTypeError, match='cannot find type `aaa`'):
             self.compile("""
             def foo() -> aaa:
                 return 42
@@ -79,10 +79,9 @@ class TestIRGen:
                 return 42
             """)
 
-    ## def test_wrong_return_type(self):
-    ##     with pytest.raises(SPyTypeError,
-    ##                        match='Only simple types are supported for now'):
-    ##         self.compile("""
-    ##         def foo() -> MyList[i32]:
-    ##             return 42
-    ##         """)
+    def test_wrong_return_type(self):
+        with pytest.raises(SPyTypeError, match='expected `str`, got `i32`'):
+            self.compile("""
+            def foo() -> str:
+                return 42
+            """)

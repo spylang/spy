@@ -1,6 +1,6 @@
 from typing import Any
 import pytest
-from spy.util import magic_dispatch, extend
+from spy.util import magic_dispatch, extend, ColorFormatter
 
 def test_magic_dispatch():
     class Foo:
@@ -42,3 +42,12 @@ def test_extend_dont_overwrite():
         @extend(Foo)
         class Foo2:
             X = 100
+
+
+def test_ColorFormatter():
+    fmt = ColorFormatter(use_colors=False)
+    assert fmt.set('red', 'hello') == 'hello'
+    #
+    fmt = ColorFormatter(use_colors=True)
+    assert fmt.set('red', 'hello') == '\x1b[31;01mhello\x1b[00m'
+    assert fmt.set(None, 'hello') == 'hello'

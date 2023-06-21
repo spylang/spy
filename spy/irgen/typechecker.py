@@ -60,8 +60,8 @@ class TypeChecker:
         assert expr not in self.expr_types
         self.expr_types[expr] = w_type
 
-    def error(self, loc: Loc, message: str) -> NoReturn:
-        raise SPyTypeError(loc, message)
+    def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
+        raise SPyTypeError.simple(primary, secondary, loc)
 
     def resolve_type(self, expr: py_ast.expr) -> W_Type:
         # OK, this is very wrong. We should have a proper table of types with
@@ -72,13 +72,17 @@ class TypeChecker:
         # Also, eventually we should support arbitrary expressions, but for
         # now we just support simple Names.
         if not isinstance(expr, py_ast.Name):
-            self.error(expr.loc, f'Only simple types are supported for now')
-        #
+            self.error('only simple types are supported for now',
+                       'this expression is too complex', expr.loc)
+
         w_type = self.vm.builtins.lookup(expr.id)
         if w_type is None:
-            self.error(expr.loc, f'Unknown type: {expr.id}')
+            self.error(f'cannot find type `{expr.id}`',
+                       'not found in this scope', expr.loc)
         if not isinstance(w_type, W_Type):
-            self.error(expr.loc, f'{expr.id} is not a type')
+            got = self.vm.dynamic_type(w_type).name
+            self.error(f'{expr.id} is not a type',
+                       f'this is a `{got}`', expr.loc,)
         #
         return w_type
 
@@ -126,12 +130,17 @@ class TypeChecker:
         #
         w_type = self.check_expr(ret.value, scope)
         if not can_assign_to(w_type, return_sym.w_type):
-            import pdb;pdb.set_trace()
-            self.error(ret.loc, 'XXX')
+            err = SPyTypeError('mismatched types')
+            got = w_type.name
+            exp = return_sym.w_type.name
+            err.add('error', f'expected `{exp}`, got `{got}`', loc=ret.value.loc)
+            err.add('note', f'expected `{exp}` because of return type', loc=return_sym.loc)
+            raise err
 
     def check_expr_Constant(self, const: py_ast.Constant, scope: SymTable) -> W_Type:
         T = type(const.value)
         if T is int:
             return self.vm.builtins.w_i32
         else:
-            self.error(const.loc, f'Unsupported literal: {const.value}')
+            self.error(f'unsupported literal: {const.value!r}',
+                       f'this is not supported', const.loc)
