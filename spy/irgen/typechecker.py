@@ -63,6 +63,16 @@ class TypeChecker:
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyTypeError.simple(primary, secondary, loc)
 
+    def raise_type_mismatch(self, w_exp_type: W_Type, exp_loc: Loc,
+                            w_got_type: W_Type, got_loc: Loc,
+                            because: str) -> NoReturn:
+        err = SPyTypeError('mismatched types')
+        got = w_got_type.name
+        exp = w_exp_type.name
+        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
+        err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
+        raise err
+
     def resolve_type(self, expr: py_ast.expr) -> W_Type:
         # OK, this is very wrong. We should have a proper table of types with
         # the possibility of nested scopes and lookups. For now, we just to a
@@ -161,11 +171,16 @@ class TypeChecker:
         # meaningful error)
         varname = self.ensure_Name(assign.target)
         if varname is None:
-            assert False, 'XXX assignment target too complex'
+            # I don't think it's possible to generate an AnnAssign node with a
+            # non-name target
+            assert False, 'WTF?'
         #
         existing_sym = scope.lookup(varname)
         if existing_sym:
-            assert False, 'XXX variable already declared'
+            err = SPyTypeError(f'variable `{varname}` already declared')
+            err.add('error', 'this is the new declaration', assign.loc)
+            err.add('note', 'this is the previous declaration', existing_sym.loc)
+            raise err
         #
         w_declared_type = self.resolve_type(assign.annotation)
         scope.declare(varname, w_declared_type, assign.loc)
@@ -173,7 +188,11 @@ class TypeChecker:
         assert assign.value is not None
         w_type = self.check_expr(assign.value, scope)
         if not can_assign_to(w_type, w_declared_type):
-            assert False, 'XXX type mismatch'
+            self.raise_type_mismatch(w_declared_type,
+                                     assign.loc,
+                                     w_type,
+                                     assign.value.loc,
+                                     'because of type declaration')
 
     def check_stmt_Return(self, ret: py_ast.Return, scope: SymTable) -> None:
         assert ret.value is not None # XXX implement better error
@@ -182,12 +201,11 @@ class TypeChecker:
         #
         w_type = self.check_expr(ret.value, scope)
         if not can_assign_to(w_type, return_sym.w_type):
-            err = SPyTypeError('mismatched types')
-            got = w_type.name
-            exp = return_sym.w_type.name
-            err.add('error', f'expected `{exp}`, got `{got}`', loc=ret.value.loc)
-            err.add('note', f'expected `{exp}` because of return type', loc=return_sym.loc)
-            raise err
+            self.raise_type_mismatch(return_sym.w_type,
+                                     return_sym.loc,
+                                     w_type,
+                                     ret.value.loc,
+                                     "because of return type")
 
     # ==== expressions ====
 
@@ -203,5 +221,7 @@ class TypeChecker:
         varname = expr.id
         sym = scope.lookup(varname)
         if not sym:
-            assert False, 'XXX variable not in scope'
+            err = SPyTypeError(f'cannot find variable `{varname}` in this scope')
+            err.add('error', 'not found in this scope', expr.loc)
+            raise err
         return sym.w_type

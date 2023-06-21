@@ -153,3 +153,37 @@ class TestIRGen(CompilerTest):
         ## w_foo = w_mod.content.get('foo')
         ## w_result = vm.call_function(w_foo, [])
         ## assert vm.unwrap(w_result) == 42
+
+    def test_declare_variable_errors(self):
+        self.expect_errors(
+            """
+            def foo() -> i32:
+                x: i32 = 1
+                x: i32 = 2
+            """,
+            errors = [
+                'variable `x` already declared',
+                'this is the new declaration',
+                'this is the previous declaration',
+            ])
+        #
+        self.expect_errors(
+            """
+            def foo() -> i32:
+                x: str = 1
+            """,
+            errors = [
+                'mismatched types',
+                'expected `str`, got `i32`',
+                'expected `str` because of type declaration',
+            ])
+        #
+        self.expect_errors(
+            """
+            def foo() -> i32:
+                return x
+            """,
+            errors = [
+                'cannot find variable `x` in this scope',
+                'not found in this scope',
+            ])
