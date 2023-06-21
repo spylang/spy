@@ -4,6 +4,7 @@ import ast as py_ast
 import spy.ast
 from spy.location import Loc
 from spy.errors import SPyCompileError, SPyParseError
+from spy.util import magic_dispatch
 
 class Parser:
     """
@@ -41,6 +42,14 @@ class Parser:
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyParseError.simple(primary, secondary, loc)
 
+    def to_Node_NotImplemented(self, node: py_ast.AST) -> NoReturn:
+        """
+        Emit a nice error in case we encounter an unsupported AST node.
+        """
+        thing = node.__class__.__name__
+        self.error(f'not implemented yet: {thing}',
+                   'this is not yet supported by SPy', node.loc)
+
     def to_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
         mod = spy.ast.Module(filename=self.filename, decls=[])
         for py_stmt in py_mod.body:
@@ -73,12 +82,14 @@ class Parser:
             )
             self.error('missing return type', '', func_loc)
         #
+        return_type = self.to_Expr(py_returns)
+        body = [self.to_Stmt(py_stmt) for py_stmt in py_funcdef.body]
         return spy.ast.FuncDef(
             loc = py_funcdef.loc,
             name = py_funcdef.name,
             args = args,
-            return_type = py_returns,
-            body = py_funcdef.body,
+            return_type = return_type,
+            body = body,
         )
 
     def to_FuncArgs(self, py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
@@ -109,5 +120,39 @@ class Parser:
         return spy.ast.FuncArg(
             loc = py_arg.loc,
             name = py_arg.arg,
-            type = py_arg.annotation,
+            type = self.to_Expr(py_arg.annotation),
         )
+
+    # ====== spy.ast.Stmt ======
+
+    def to_Stmt(self, py_node: py_ast.stmt) -> spy.ast.Stmt:
+        return magic_dispatch(self, 'to_Stmt', py_node)
+
+    to_Stmt_NotImplemented = to_Node_NotImplemented
+
+    def to_Stmt_Pass(self, py_node: py_ast.Pass) -> spy.ast.Pass:
+        return spy.ast.Pass(py_node.loc)
+
+    def to_Stmt_Return(self, py_node: py_ast.Return) -> spy.ast.Return:
+        # we make 'return' completely equivalent to 'return None' already
+        # during parsing: this simplifies quite a bit the rest
+        value: spy.ast.Expr
+        if py_node.value is None:
+            value = spy.ast.Name(py_node.loc, 'None')
+        else:
+            value = self.to_Expr(py_node.value)
+        return spy.ast.Return(py_node.loc, value)
+
+    # ====== spy.ast.Expr ======
+
+    def to_Expr(self, py_node: py_ast.expr) -> spy.ast.Expr:
+        return magic_dispatch(self, 'to_Expr', py_node)
+
+    to_Expr_NotImplemented = to_Node_NotImplemented
+
+    def to_Expr_Name(self, py_node: py_ast.Name) -> spy.ast.Name:
+        return spy.ast.Name(py_node.loc, py_node.id)
+
+    def to_Expr_Constant(self, py_node: py_ast.Constant) -> spy.ast.Constant:
+        assert py_node.kind is None  # I don't know what is 'kind' here
+        return spy.ast.Constant(py_node.loc, py_node.value)

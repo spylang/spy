@@ -35,9 +35,9 @@ class TestParser(CompilerTest):
                 FuncDef(
                     name='foo',
                     args=[],
-                    return_type=py:Name(id='void', ctx=py:Load()),
+                    return_type=Name(id='void'),
                     body=[
-                        py:Pass(),
+                        Pass(),
                     ],
                 ),
             ],
@@ -59,16 +59,16 @@ class TestParser(CompilerTest):
                     args=[
                         FuncArg(
                             name='a',
-                            type=py:Name(id='i32', ctx=py:Load()),
+                            type=Name(id='i32'),
                         ),
                         FuncArg(
                             name='b',
-                            type=py:Name(id='float', ctx=py:Load()),
+                            type=Name(id='float'),
                         ),
                     ],
-                    return_type=py:Name(id='void', ctx=py:Load()),
+                    return_type=Name(id='void'),
                     body=[
-                        py:Pass(),
+                        Pass(),
                     ],
                 ),
             ],
@@ -129,14 +129,62 @@ class TestParser(CompilerTest):
                 pass
             """)
 
-
     def test_FuncDef_body(self):
         mod = self.parse("""
         def foo() -> i32:
             return 42
         """)
         funcdef = mod.decls[0]
-        assert isinstance(funcdef, spy.ast.FuncDef)
-        assert len(funcdef.body) == 1
-        stmt = funcdef.body[0]
-        assert isinstance(stmt, py_ast.Return)
+        expected = """
+        FuncDef(
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_empty_return(self):
+        mod = self.parse("""
+        def foo() -> void:
+            return
+        """)
+        funcdef = mod.decls[0]
+        expected = """
+        FuncDef(
+            name='foo',
+            args=[],
+            return_type=Name(id='void'),
+            body=[
+                Return(
+                    value=Name(id='None'),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    ## def test_getitem(self):
+    ##     mod = self.parse("""
+    ##     def foo() -> void:
+    ##         mylist[0]
+    ##     """)
+    ##     funcdef = mod.decls[0]
+    ##     expected = """
+    ##     FuncDef(
+    ##         name='foo',
+    ##         args=[],
+    ##         return_type=Name(id='void'),
+    ##         body=[
+    ##             Return(
+    ##                 value=Name(id='None'),
+    ##             ),
+    ##         ],
+    ##     )
+    ##     """
+    ##     self.assert_dump(funcdef, expected)

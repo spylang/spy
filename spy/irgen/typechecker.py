@@ -19,7 +19,7 @@ class TypeChecker:
     mod: spy.ast.Module
     funcdef_types: dict[spy.ast.FuncDef, W_FunctionType]
     funcdef_scopes: dict[spy.ast.FuncDef, SymTable]
-    expr_types: dict[py_ast.expr, W_Type]
+    expr_types: dict[spy.ast.Expr, W_Type]
 
     def __init__(self, vm: SPyVM, mod: spy.ast.Module) -> None:
         self.vm = vm
@@ -36,7 +36,7 @@ class TypeChecker:
     def check_everything(self) -> None:
         self.check_Module(self.mod, self.global_scope)
 
-    def get_expr_type(self, expr: py_ast.expr) -> W_Type:
+    def get_expr_type(self, expr: spy.ast.Expr) -> W_Type:
         """
         Return the W_Type of the given AST expression.
 
@@ -56,7 +56,7 @@ class TypeChecker:
     # implementation
     # ===============
 
-    def record_expr(self, expr: py_ast.expr, w_type: W_Type) -> None:
+    def record_expr(self, expr: spy.ast.Expr, w_type: W_Type) -> None:
         assert expr not in self.expr_types
         self.expr_types[expr] = w_type
 
@@ -73,7 +73,7 @@ class TypeChecker:
         err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
         raise err
 
-    def resolve_type(self, expr: py_ast.expr) -> W_Type:
+    def resolve_type(self, expr: spy.ast.Expr) -> W_Type:
         # OK, this is very wrong. We should have a proper table of types with
         # the possibility of nested scopes and lookups. For now, we just to a
         # hardcoded lookup in the VM builtins, which is good enough to resolve
@@ -97,11 +97,11 @@ class TypeChecker:
         #
         return w_type
 
-    def ensure_Name(self, expr: py_ast.expr) -> Optional[str]:
+    def ensure_Name(self, expr: spy.ast.Expr) -> Optional[str]:
         """
         Return the name as a string, or None if the expr is not a Name.
         """
-        if isinstance(expr, py_ast.Name):
+        if isinstance(expr, spy.ast.Name):
             return expr.id
         return None
 
@@ -114,26 +114,10 @@ class TypeChecker:
     def check_stmt(self, node: spy.ast.AnyNode, scope: SymTable) -> None:
         return magic_dispatch(self, 'check_stmt', node, scope)
 
-    def check_expr(self, expr: py_ast.expr, scope: SymTable) -> W_Type:
+    def check_expr(self, expr: spy.ast.Expr, scope: SymTable) -> W_Type:
         w_type = magic_dispatch(self, 'check_expr', expr, scope)
         self.record_expr(expr, w_type)
         return w_type
-
-    # =====
-
-    def check_stmt_NotImplemented(self, node: py_ast.AST,
-                                  scope: SymTable) -> NoReturn:
-        """
-        Emit a nice error in case we encounter an unsupported AST node.
-
-        In theory this should belong to the parser, but since we are passing
-        around py_ast.{expr,stmt} untouched, this is the easiest place where
-        to detect them.
-        """
-        thing = node.__class__.__name__
-        self.error(f'not implemented yet: {thing}',
-                   'this is not yet supported by SPy', node.loc)
-    check_expr_NotImplemented = check_stmt_NotImplemented
 
     # =====
 
@@ -194,8 +178,7 @@ class TypeChecker:
                                      assign.value.loc,
                                      'because of type declaration')
 
-    def check_stmt_Return(self, ret: py_ast.Return, scope: SymTable) -> None:
-        assert ret.value is not None # XXX implement better error
+    def check_stmt_Return(self, ret: spy.ast.Return, scope: SymTable) -> None:
         return_sym = scope.lookup('@return')
         assert return_sym is not None
         #
@@ -209,7 +192,7 @@ class TypeChecker:
 
     # ==== expressions ====
 
-    def check_expr_Constant(self, const: py_ast.Constant, scope: SymTable) -> W_Type:
+    def check_expr_Constant(self, const: spy.ast.Constant, scope: SymTable) -> W_Type:
         T = type(const.value)
         if T is int:
             return self.vm.builtins.w_i32
@@ -217,7 +200,7 @@ class TypeChecker:
             self.error(f'unsupported literal: {const.value!r}',
                        f'this is not supported', const.loc)
 
-    def check_expr_Name(self, expr: py_ast.Name, scope: SymTable) -> W_Type:
+    def check_expr_Name(self, expr: spy.ast.Name, scope: SymTable) -> W_Type:
         varname = expr.id
         sym = scope.lookup(varname)
         if not sym:

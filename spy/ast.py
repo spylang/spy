@@ -69,7 +69,7 @@ class Decl(Node):
 class FuncArg(Node):
     loc: Loc
     name: str
-    type: py_ast.expr
+    type: 'Expr'
 
 
 @dataclass(eq=False)
@@ -77,8 +77,41 @@ class FuncDef(Decl):
     loc: Loc
     name: str
     args: list[FuncArg]
-    return_type: py_ast.expr
-    body: list[py_ast.stmt]
+    return_type: 'Expr'
+    body: list['Stmt']
 
     def __hash__(self) -> int:
         return id(self)
+
+
+# ====== Expr hierarchy ======
+
+@dataclass
+class Expr(Node):
+    loc: Loc
+
+@dataclass
+class Name(Expr):
+    id: str
+
+@dataclass(eq=False)
+class Constant(Expr):
+    value: object
+
+    def __hash__(self) -> int:
+        return id(self)
+
+
+# ====== Stmt hierarchy ======
+
+@dataclass
+class Stmt(Node):
+    loc: Loc
+
+@dataclass
+class Pass(Stmt):
+    pass
+
+@dataclass
+class Return(Stmt):
+    value: Expr
