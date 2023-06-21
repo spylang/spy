@@ -6,17 +6,21 @@ import spy.ast
 from spy.ast_dump import dump
 from spy.parser import Parser
 from spy.errors import SPyParseError
+from spy.tests.support import CompilerTest
 
 
-class TestParser:
+class TestParser(CompilerTest):
 
     def parse(self, src) -> spy.ast.Module:
-        p = Parser.from_string(src, dedent=True)
+        srcfile = self.write_source('test.py', src)
+        p = Parser.from_filename(str(srcfile))
         return p.parse()
 
     def assert_dump(self, node: spy.ast.Node, expected: str):
         dumped = dump(node, use_colors=False)
         expected = textwrap.dedent(expected)
+        if '{tmpdir}' in expected:
+            expected = expected.format(tmpdir=self.tmpdir)
         assert dumped.strip() == expected.strip()
 
     def test_Module(self):
@@ -26,7 +30,7 @@ class TestParser:
         """)
         expected = """
         Module(
-            filename='<string>',
+            filename='{tmpdir}/test.py',
             decls=[
                 FuncDef(
                     name='foo',
@@ -48,7 +52,7 @@ class TestParser:
         """)
         expected = """
         Module(
-            filename='<string>',
+            filename='{tmpdir}/test.py',
             decls=[
                 FuncDef(
                     name='foo',

@@ -1,7 +1,6 @@
 from typing import Optional, NoReturn
 import textwrap
 import ast as py_ast
-import astpretty
 import spy.ast
 from spy.location import Loc
 from spy.errors import SPyCompileError, SPyParseError
@@ -26,12 +25,6 @@ class Parser:
     def __init__(self, src: str, filename: str) -> None:
         self.src = src
         self.filename = filename
-
-    @classmethod
-    def from_string(cls, src: str, *, dedent: bool = False) -> 'Parser':
-        if dedent:
-            src = textwrap.dedent(src)
-        return Parser(src, filename='<string>')
 
     @classmethod
     def from_filename(cls, filename: str) -> 'Parser':

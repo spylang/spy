@@ -1,5 +1,4 @@
 import typing
-import astpretty
 import pprint
 import ast as py_ast
 from dataclasses import dataclass

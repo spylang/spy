@@ -1,4 +1,5 @@
 from typing import Any
+import textwrap
 import pytest
 import spy.ast
 from spy.parser import Parser
@@ -8,21 +9,18 @@ from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FunctionType
+from spy.tests.support import CompilerTest
 
 class AnyLocClass:
     def __eq__(self, other):
         return True
 ANYLOC: Any = AnyLocClass()
 
-@pytest.mark.usefixtures('init')
-class TestIRGen:
-
-    @pytest.fixture
-    def init(self):
-        self.vm = SPyVM()
+class TestIRGen(CompilerTest):
 
     def compile(self, src: str):
-        self.p = Parser.from_string(src, dedent=True)
+        srcfile = self.write_source('test.py', src)
+        self.p = Parser.from_filename(str(srcfile))
         self.mod = self.p.parse()
         self.t = TypeChecker(self.vm, self.mod)
         self.t.check_everything()
