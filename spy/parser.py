@@ -118,18 +118,3 @@ class Parser:
             name = py_arg.arg,
             type = py_arg.annotation,
         )
-
-
-
-def main() -> None:
-    import sys
-    p = Parser.from_filename(sys.argv[1])
-    try:
-        mod = p.parse()
-    except SPyCompileError as e:
-        print(e)
-    else:
-        mod.pp()
-
-if __name__ == '__main__':
-    main()
