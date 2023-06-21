@@ -137,7 +137,7 @@ class TestIRGen(CompilerTest):
         def foo() -> i32:
             x: i32 = 42
             return x
-        """, only_typecheck=True)
+        """)
         vm = self.vm
         w_i32 = vm.builtins.w_i32
         #
@@ -145,14 +145,14 @@ class TestIRGen(CompilerTest):
         funcdef = self.get_funcdef('foo')
         w_functype, scope = self.t.get_funcdef_info(funcdef)
         assert scope.symbols == {
-            '@return': Symbol('@return', w_i32, ANYLOC),
-            'x': Symbol('x', w_i32, ANYLOC),
+            '@return': Symbol('@return', w_i32, ANYLOC, scope),
+            'x': Symbol('x', w_i32, ANYLOC, scope),
         }
         #
         # codegen tests
-        ## w_foo = w_mod.content.get('foo')
-        ## w_result = vm.call_function(w_foo, [])
-        ## assert vm.unwrap(w_result) == 42
+        w_foo = w_mod.content.get('foo')
+        w_result = vm.call_function(w_foo, [])
+        assert vm.unwrap(w_result) == 42
 
     def test_declare_variable_errors(self):
         self.expect_errors(

@@ -14,7 +14,8 @@ class SymbolAlreadyDeclaredError(Exception):
 class Symbol:
     name: str
     w_type: W_Type
-    loc: Loc  # where the symbol was defined
+    loc: Loc           # where the symbol is defined, in the source code
+    scope: 'SymTable'  # the scope where the symbol lives in
 
 class SymTable:
     name: str  # just for debugging
@@ -26,10 +27,16 @@ class SymTable:
         self.parent = parent
         self.symbols = {}
 
+    def pp(self) -> None:
+        print(f'<symbol table for {self.name}>')
+        for name, sym in self.symbols.items():
+            assert name == sym.name
+            print(f'    {name}: {sym.w_type.name}')
+
     def declare(self, name: str, w_type: W_Type, loc: Loc) -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
-        self.symbols[name] = s = Symbol(name, w_type, loc)
+        self.symbols[name] = s = Symbol(name, w_type, loc, self)
         return s
 
     def lookup(self, name: str) -> Optional[Symbol]:

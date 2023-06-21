@@ -32,7 +32,7 @@ class ModuleGen:
 
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Function:
         w_functype, scope = self.t.get_funcdef_info(funcdef)
-        codegen = CodeGen(self.vm, funcdef, w_functype)
+        codegen = CodeGen(self.vm, self.t, funcdef)
         w_code = codegen.make_w_code()
         w_func = W_Function(w_functype, w_code, self.w_mod.content)
         return w_func

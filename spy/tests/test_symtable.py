@@ -21,6 +21,8 @@ class TestSymtable:
         sym = t.declare('a', self.w_i32, LOC)
         assert sym.name == 'a'
         assert sym.w_type == self.w_i32
+        assert sym.scope is t
+        #
         assert t.lookup('a') is sym
         assert t.lookup('I-dont-exist') is None
         #
