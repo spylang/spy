@@ -30,7 +30,7 @@ class CodeGen:
                                    w_restype=w_functype.w_restype)
         self.add_local_variables()
 
-    def add_local_variables(self):
+    def add_local_variables(self) -> None:
         for sym in self.scope.symbols.values():
             if sym.name == '@return':
                 continue
@@ -72,6 +72,8 @@ class CodeGen:
         self.emit('return')
 
     def do_exec_AnnAssign(self, assign: py_ast.AnnAssign) -> None:
+        assert isinstance(assign.target, py_ast.Name)
+        assert assign.value is not None
         varname = assign.target.id
         # sanity check, the var must be in the local scope
         assert varname in self.scope.symbols

@@ -82,7 +82,7 @@ class TestIRGen(CompilerTest):
         w_functype, scope = self.t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', w_i32, ANYLOC),
+            '@return': Symbol('@return', w_i32, ANYLOC, scope),
         }
         #
         # codegen tests
