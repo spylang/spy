@@ -7,38 +7,31 @@ from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.vm.vm import SPyVM
+from spy.vm.module import W_Module
 
-app = typer.Typer()
-
-@app.command()
-def parse(filename: Path):
-    main(filename, 'parse')
+app = typer.Typer(pretty_exceptions_enable=False)
+OPT = typer.Option
 
 @app.command()
-def irgen(filename: str):
-    main(filename, 'irgen')
-
-def main(filename: Path, command: str) -> None:
+def main(filename: Path,
+         parse: Annotated[bool, OPT(help="dump the AST and exit")] = False,
+         ) -> None:
     vm = SPyVM()
-    p = Parser.from_filename(filename)
+    p = Parser.from_filename(str(filename))
     try:
         mod = p.parse()
-        if command == 'parse':
+        if parse == 'parse':
             mod.pp()
             return
-        elif command == 'irgen':
-            t = TypeChecker(vm, mod)
-            t.check_everything()
-            modgen = ModuleGen(vm, t, mod)
-            w_mod = modgen.make_w_mod()
-            print_w_mod(w_mod)
-            return
-        else:
-            assert False
+        t = TypeChecker(vm, mod)
+        t.check_everything()
+        modgen = ModuleGen(vm, t, mod)
+        w_mod = modgen.make_w_mod()
+        print_w_mod(w_mod)
     except SPyCompileError as e:
         print(e.format(use_colors=True))
 
-def print_w_mod(self, w_mod):
+def print_w_mod(w_mod: W_Module) -> None:
     print(f'Module {w_mod.name}:')
     for attr, w_obj in w_mod.content.values_w.items():
         print(f'    {attr}: {w_obj}')
