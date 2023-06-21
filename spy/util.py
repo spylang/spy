@@ -21,7 +21,9 @@ def magic_dispatch(self, prefix, obj, *args, **kwargs):
     methname = f'{prefix}_{obj.__class__.__name__}'
     meth = getattr(self, methname, None)
     if meth is None:
-        raise NotImplementedError(methname)
+        meth = getattr(self, f'{prefix}_NotImplemented', None)
+        if meth is None:
+            raise NotImplementedError(methname)
     return meth(obj, *args, **kwargs)
 
 

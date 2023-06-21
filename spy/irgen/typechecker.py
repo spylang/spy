@@ -102,6 +102,20 @@ class TypeChecker:
 
     # =====
 
+    def check_stmt_NotImplemented(self, node: py_ast.AST,
+                                  scope: SymTable) -> NoReturn:
+        """
+        Emit a nice error in case we encounter an unsupported AST node.
+
+        In theory this should belong to the parser, but since we are passing
+        around py_ast.{expr,stmt} untouched, this is the easiest place where
+        to detect them.
+        """
+        thing = node.__class__.__name__
+        self.error(f'not implemented yet: {thing}',
+                   'this is not yet supported by SPy', node.loc)
+    check_expr_NotImplemented = check_stmt_NotImplemented
+
     def check_Module(self, mod: spy.ast.Module, scope: SymTable) -> None:
         for decl in mod.decls:
             self.declare(decl, scope)

@@ -19,6 +19,22 @@ def test_magic_dispatch():
     with pytest.raises(NotImplementedError, match='visit_float'):
         f.visit(1.0, -1)
 
+def test_magic_dispatch_NotImplemented():
+    class Foo:
+        def visit(self, obj: Any, arg: int) -> Any:
+            return magic_dispatch(self, 'visit', obj, arg)
+
+        def visit_int(self, x: int, y: int) -> int:
+            return x + y
+
+        def visit_NotImplemented(self, obj: Any, arg: int) -> Any:
+            return f'hello NotImplemented {obj} {arg}'
+
+    f = Foo()
+    assert f.visit(4, 5) == 9
+    assert f.visit('world', 42) == 'hello NotImplemented world 42'
+
+
 def test_extend():
     class Foo:
         pass
