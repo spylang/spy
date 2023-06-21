@@ -32,25 +32,24 @@ class TestIRGen(CompilerTest):
             self.modgen = ModuleGen(self.vm, self.t, self.mod)
             return self.modgen.make_w_mod()
 
-    def expect_error(self, src: str) -> SPyCompileError:
+    def expect_errors(self, src: str, *, errors: list[str]) -> SPyCompileError:
         """
-        Same as compile(), but expect that the compilation fails and return the
-        raised SPyCompileError.
-
-        Note, this RETURNS the error, it does not RAISE it.
-        Then, you can assert more details about the error by using .match().
+        Expect that compile() fails, and check that the expected errors are
+        reported
         """
         with pytest.raises(SPyCompileError) as exc:
             self.compile(src)
-        return exc.value
+        err = exc.value
+        self.assert_messages(err, errors=errors)
+        return err
 
-    def match(self, err: SPyCompileError, *expected_msgs: str) -> bool:
+    def assert_messages(self, err: SPyCompileError, *, errors: list[str]) -> None:
         """
         Check whether all the given messages are present in the error, either as
         the main message or in the annotations.
         """
         all_messages = [err.message] + [ann.message for ann in err.annotations]
-        for expected in expected_msgs:
+        for expected in errors:
             if expected not in all_messages:
                 expected = Color.set('yellow', expected)
                 print('Error match failed!')
@@ -61,7 +60,6 @@ class TestIRGen(CompilerTest):
                 formatted_error = err.format(use_colors=True)
                 print(textwrap.indent(formatted_error, '    '))
                 pytest.fail(f'Error message not found: {expected}')
-        return True
 
     def get_funcdef(self, name: str) -> spy.ast.FuncDef:
         for decl in self.mod.decls:
@@ -93,37 +91,45 @@ class TestIRGen(CompilerTest):
         assert vm.unwrap(w_result) == 42
 
     def test_resolve_type_errors(self):
-        with pytest.raises(SPyTypeError,
-                           match='only simple types are supported for now'):
-            self.compile("""
+        self.expect_errors(
+            """
             def foo() -> MyList[i32]:
                 return 42
-            """)
-        #
-        with pytest.raises(SPyTypeError, match='cannot find type `aaa`'):
-            self.compile("""
+            """,
+            errors = [
+                'only simple types are supported for now'
+            ])
+
+        self.expect_errors(
+            """
             def foo() -> aaa:
                 return 42
-            """)
-        #
+            """,
+            errors = [
+                'cannot find type `aaa`'
+            ])
+
         self.vm.builtins.w_I_am_not_a_type = self.vm.wrap(42)  # type: ignore
-        with pytest.raises(SPyTypeError, match='I_am_not_a_type is not a type'):
-            self.compile("""
+        self.expect_errors(
+            """
             def foo() -> I_am_not_a_type:
                 return 42
-            """)
+            """,
+            errors = [
+                'I_am_not_a_type is not a type'
+            ])
 
     def test_wrong_return_type(self):
-        err = self.expect_error("""
-        def foo() -> str:
-            return 42
-        """)
-        assert self.match(
-            err,
-            'mismatched types',
-            'expected `str`, got `i32`',
-            'expected `str` because of return type',
-        )
+        self.expect_errors(
+            """
+            def foo() -> str:
+                return 42
+            """,
+            errors = [
+                'mismatched types',
+                'expected `str`, got `i32`',
+                'expected `str` because of return type',
+            ])
 
     def test_local_variables(self):
         w_mod = self.compile(
