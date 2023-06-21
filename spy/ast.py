@@ -101,6 +101,10 @@ class Constant(Expr):
     def __hash__(self) -> int:
         return id(self)
 
+@dataclass
+class GetItem(Expr):
+    value: Expr
+    index: Expr
 
 # ====== Stmt hierarchy ======
 

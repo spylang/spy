@@ -154,37 +154,26 @@ class TestParser(CompilerTest):
         def foo() -> void:
             return
         """)
-        funcdef = mod.decls[0]
+        stmt = mod.decls[0].body[0]
         expected = """
-        FuncDef(
-            name='foo',
-            args=[],
-            return_type=Name(id='void'),
-            body=[
-                Return(
-                    value=Name(id='None'),
-                ),
-            ],
+        Return(
+            value=Name(id='None'),
         )
         """
-        self.assert_dump(funcdef, expected)
+        self.assert_dump(stmt, expected)
 
-    ## def test_getitem(self):
-    ##     mod = self.parse("""
-    ##     def foo() -> void:
-    ##         mylist[0]
-    ##     """)
-    ##     funcdef = mod.decls[0]
-    ##     expected = """
-    ##     FuncDef(
-    ##         name='foo',
-    ##         args=[],
-    ##         return_type=Name(id='void'),
-    ##         body=[
-    ##             Return(
-    ##                 value=Name(id='None'),
-    ##             ),
-    ##         ],
-    ##     )
-    ##     """
-    ##     self.assert_dump(funcdef, expected)
+    def test_getitem(self):
+        mod = self.parse("""
+        def foo() -> void:
+            return mylist[0]
+        """)
+        stmt = mod.decls[0].body[0]
+        expected = """
+        Return(
+            value=GetItem(
+                value=Name(id='mylist'),
+                index=Constant(value=0),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)

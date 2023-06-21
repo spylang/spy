@@ -91,14 +91,14 @@ class TestIRGen(CompilerTest):
         assert vm.unwrap(w_result) == 42
 
     def test_resolve_type_errors(self):
-        ## self.expect_errors(
-        ##     """
-        ##     def foo() -> MyList[i32]:
-        ##         return 42
-        ##     """,
-        ##     errors = [
-        ##         'only simple types are supported for now'
-        ##     ])
+        self.expect_errors(
+            """
+            def foo() -> MyList[i32]:
+                return 42
+            """,
+            errors = [
+                'only simple types are supported for now'
+            ])
 
         self.expect_errors(
             """

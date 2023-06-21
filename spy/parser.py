@@ -156,3 +156,8 @@ class Parser:
     def to_Expr_Constant(self, py_node: py_ast.Constant) -> spy.ast.Constant:
         assert py_node.kind is None  # I don't know what is 'kind' here
         return spy.ast.Constant(py_node.loc, py_node.value)
+
+    def to_Expr_Subscript(self, py_node: py_ast.Subscript) -> spy.ast.GetItem:
+        value = self.to_Expr(py_node.value)
+        index = self.to_Expr(py_node.slice)
+        return spy.ast.GetItem(py_node.loc, value, index)
