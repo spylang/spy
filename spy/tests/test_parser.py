@@ -203,15 +203,69 @@ class TestParser(CompilerTest):
     def test_BinOp(self):
         mod = self.parse("""
         def foo() -> i32:
-            return x + 1
+            return [x +  1, x - 1, x *  1, x /  1,
+                    x // 1, x % 1, x ** 1, x << 1,
+                    x >> 1, x ^ 1, x |  1, x &  1,
+                    x @ 1]
         """)
         stmt = self.get_funcdef(mod).body[0]
         expected = """
         Return(
-            value=BinOp(
-                left=Name(id='x'),
-                op='+',
-                right=Constant(value=1),
+            value=List(
+                items=[
+                    Add(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    Sub(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    Mul(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    Div(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    FloorDiv(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    Mod(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    Pow(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    LShift(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    RShift(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    BitXor(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    BitOr(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    BitAnd(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                    MatMul(
+                        left=Name(id='x'),
+                        right=Constant(value=1),
+                    ),
+                ],
             ),
         )
         """

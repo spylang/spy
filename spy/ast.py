@@ -124,16 +124,68 @@ class GetItem(Expr):
     value: Expr
     index: Expr
 
-Operator = Literal['+', '-', '*', '/',
-                   '//', '%', '**',
-                   '<<', '>>', '|', '^', '&',
-                   '@']
+@dataclass(eq=False)
+class List(Expr):
+    items: list[Expr]
+
+# ====== BinOp sub-hierarchy ======
 
 @dataclass(eq=False)
 class BinOp(Expr):
     left: Expr
-    op: Operator
     right: Expr
+
+@dataclass(eq=False)
+class Add(BinOp):
+    op = '+'
+
+@dataclass(eq=False)
+class Sub(BinOp):
+    op = '-'
+
+@dataclass(eq=False)
+class Mul(BinOp):
+    op = '*'
+
+@dataclass(eq=False)
+class Div(BinOp):
+    op = '/'
+
+@dataclass(eq=False)
+class FloorDiv(BinOp):
+    op = '//'
+
+@dataclass(eq=False)
+class Mod(BinOp):
+    op = '%'
+
+@dataclass(eq=False)
+class Pow(BinOp):
+    op = '**'
+
+@dataclass(eq=False)
+class LShift(BinOp):
+    op = '<<'
+
+@dataclass(eq=False)
+class RShift(BinOp):
+    op = '>>'
+
+@dataclass(eq=False)
+class BitXor(BinOp):
+    op = '^'
+
+@dataclass(eq=False)
+class BitOr(BinOp):
+    op = '|'
+
+@dataclass(eq=False)
+class BitAnd(BinOp):
+    op = '&'
+
+@dataclass(eq=False)
+class MatMul(BinOp):
+    op = '@'
 
 
 # ====== Stmt hierarchy ======

@@ -215,7 +215,7 @@ class TypeChecker:
             raise err
         return sym.w_type
 
-    def check_expr_BinOp(self, expr: spy.ast.BinOp, scope: SymTable) -> W_Type:
+    def check_expr_Add(self, expr: spy.ast.Add, scope: SymTable) -> W_Type:
         # XXX this is wrong: here we assume that the result of a binop is the
         # same as its arguments, but we need to tweak it when we have floats
         w_ltype = self.check_expr(expr.left, scope)
