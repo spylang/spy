@@ -59,6 +59,8 @@ class TestFunction:
         w_mod = W_Module(vm, 'mymod')
         w_functype = W_FunctionType.make(a=w_i32, b=w_i32, w_restype=w_i32)
         w_code = W_CodeObject('fn', w_functype=w_functype)
+        w_code.declare_local('a', w_i32)
+        w_code.declare_local('b', w_i32)
         w_code.body = [
             OpCode('local_get', 'a'),
             OpCode('local_get', 'b'),

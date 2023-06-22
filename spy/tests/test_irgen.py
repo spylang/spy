@@ -188,10 +188,27 @@ class TestIRGen(CompilerTest):
                 'not found in this scope',
             ])
 
-    @pytest.mark.skip('WIP')
     def test_function_arguments(self):
         w_mod = self.compile(
         """
         def inc(x: i32) -> i32:
             return x + 1
         """)
+        vm = self.vm
+        w_i32 = vm.builtins.w_i32
+        #
+        # typechecker tests
+        funcdef = self.get_funcdef('inc')
+        w_expected_functype = W_FunctionType.make(x=w_i32, w_restype=w_i32)
+        w_functype, scope = self.t.get_funcdef_info(funcdef)
+        assert w_functype == w_expected_functype
+        assert scope.symbols == {
+            '@return': Symbol('@return', w_i32, ANYLOC, scope),
+            'x': Symbol('x', w_i32, ANYLOC, scope),
+        }
+        #
+        # codegen tests
+        w_inc = w_mod.content.get('inc')
+        w_x = vm.wrap(100)
+        w_result = vm.call_function(w_inc, [w_x])
+        assert vm.unwrap(w_result) == 101

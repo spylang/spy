@@ -92,3 +92,17 @@ class CodeGen:
         else:
             # outer variable, maybe global
             assert False, 'XXX todo'
+
+    def do_eval_BinOp(self, binop: spy.ast.BinOp) -> None:
+        w_i32 = self.vm.builtins.w_i32
+        w_ltype = self.t.get_expr_type(binop.left)
+        w_rtype = self.t.get_expr_type(binop.right)
+        if binop.op == '+':
+            if w_ltype is w_i32 and w_rtype is w_i32:
+                self.eval_expr(binop.left)
+                self.eval_expr(binop.right)
+                self.emit('i32_add')
+            else:
+                raise NotImplementedError(f'+ op between {w_ltype.name} and {w_rtype.name}')
+        else:
+            raise NotImplementedError(f'operator {binop.op}')

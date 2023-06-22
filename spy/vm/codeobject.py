@@ -51,8 +51,6 @@ class W_CodeObject(W_Object):
         self.filename = filename
         self.body = []
         self.locals_w_types = {}
-        for param in w_functype.params:
-            self.declare_local(param.name, param.w_type)
 
     def __repr__(self) -> str:
         return f'<spy CodeObject {self.name}>'

@@ -124,6 +124,8 @@ class TestFrame:
         w_i32 = vm.builtins.w_i32
         w_functype = W_FunctionType.make(a=w_i32, b=w_i32, w_restype=w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
+        code.declare_local('a', w_i32)
+        code.declare_local('b', w_i32)
         code.body = [
             OpCode('local_get', 'a'),
             OpCode('local_get', 'b'),

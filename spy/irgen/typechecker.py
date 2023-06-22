@@ -143,8 +143,14 @@ class TypeChecker:
         local_scope = SymTable(funcdef.name, parent=outer_scope)
         self.funcdef_scopes[funcdef] = local_scope
         w_functype = self.funcdef_types[funcdef]
+        #
+        # add function arguments to the local scope
         local_scope.declare('@return', w_functype.w_restype,
                             funcdef.return_type.loc)
+        assert len(funcdef.args) == len(w_functype.params)
+        for arg_node, param in zip(funcdef.args, w_functype.params):
+            local_scope.declare(param.name, param.w_type, arg_node.loc)
+        #
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
 
