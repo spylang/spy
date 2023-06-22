@@ -131,7 +131,6 @@ class TestIRGen(CompilerTest):
                 'expected `str` because of return type',
             ])
 
-    @pytest.mark.skip(reason='WIP')
     def test_local_variables(self):
         w_mod = self.compile(
         """
@@ -155,7 +154,6 @@ class TestIRGen(CompilerTest):
         w_result = vm.call_function(w_foo, [])
         assert vm.unwrap(w_result) == 42
 
-    @pytest.mark.skip(reason='WIP')
     def test_declare_variable_errors(self):
         self.expect_errors(
             """

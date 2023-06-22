@@ -144,8 +144,7 @@ class TypeChecker:
 
     # ==== statements ====
 
-    def check_stmt_AnnAssign(self, assign: py_ast.AnnAssign,
-                             scope: SymTable) -> None:
+    def check_stmt_VarDef(self, vardef: spy.ast.VarDef, scope: SymTable) -> None:
         """
         This is our way of declaring variables (for now):
             x: i32 = <expr>
@@ -153,29 +152,24 @@ class TypeChecker:
         # XXX: we probably want to have a declaration pass, to detect cases in
         # which the variable is declared below but not yet (and report a
         # meaningful error)
-        varname = self.ensure_Name(assign.target)
-        if varname is None:
-            # I don't think it's possible to generate an AnnAssign node with a
-            # non-name target
-            assert False, 'WTF?'
         #
-        existing_sym = scope.lookup(varname)
+        existing_sym = scope.lookup(vardef.name)
         if existing_sym:
-            err = SPyTypeError(f'variable `{varname}` already declared')
-            err.add('error', 'this is the new declaration', assign.loc)
+            err = SPyTypeError(f'variable `{vardef.name}` already declared')
+            err.add('error', 'this is the new declaration', vardef.loc)
             err.add('note', 'this is the previous declaration', existing_sym.loc)
             raise err
         #
-        w_declared_type = self.resolve_type(assign.annotation)
-        scope.declare(varname, w_declared_type, assign.loc)
+        w_declared_type = self.resolve_type(vardef.type)
+        scope.declare(vardef.name, w_declared_type, vardef.loc)
         #
-        assert assign.value is not None
-        w_type = self.check_expr(assign.value, scope)
+        assert vardef.value is not None, 'TODO'
+        w_type = self.check_expr(vardef.value, scope)
         if not can_assign_to(w_type, w_declared_type):
             self.raise_type_mismatch(w_declared_type,
-                                     assign.loc,
+                                     vardef.loc,
                                      w_type,
-                                     assign.value.loc,
+                                     vardef.value.loc,
                                      'because of type declaration')
 
     def check_stmt_Return(self, ret: spy.ast.Return, scope: SymTable) -> None:

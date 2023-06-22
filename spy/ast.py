@@ -1,4 +1,5 @@
 import typing
+from typing import Optional
 import pprint
 import ast as py_ast
 from dataclasses import dataclass
@@ -47,7 +48,21 @@ class AST:
 del AST
 
 
-@dataclass
+# we want all nodes to compare by *identity* and be hashable, because e.g. we
+# put them in dictionaries inside the typechecker. So, we must use eq=False ON
+# ALL AST NODES.
+#
+# Ideally, I would like to do the following:
+#     def astnode():
+#         return dataclass (eq=False)
+#
+#     @astnode
+#     class Node:
+#         ...
+#
+# But we can't because this pattern is not understood by mypy.
+
+@dataclass(eq=False)
 class Node:
 
     def pp(self) -> None:
@@ -55,7 +70,7 @@ class Node:
         spy.ast_dump.pprint(self)
 
 
-@dataclass
+@dataclass(eq=False)
 class Module(Node):
     filename: str
     decls: list['Decl']
@@ -65,7 +80,7 @@ class Decl(Node):
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class FuncArg(Node):
     loc: Loc
     name: str
@@ -80,42 +95,43 @@ class FuncDef(Decl):
     return_type: 'Expr'
     body: list['Stmt']
 
-    def __hash__(self) -> int:
-        return id(self)
-
-
 # ====== Expr hierarchy ======
 
-@dataclass
+@dataclass(eq=False)
 class Expr(Node):
     loc: Loc
 
-@dataclass
+@dataclass(eq=False)
 class Name(Expr):
     id: str
+
 
 @dataclass(eq=False)
 class Constant(Expr):
     value: object
 
-    def __hash__(self) -> int:
-        return id(self)
-
-@dataclass
+@dataclass(eq=False)
 class GetItem(Expr):
     value: Expr
     index: Expr
 
 # ====== Stmt hierarchy ======
 
-@dataclass
+@dataclass(eq=False)
 class Stmt(Node):
     loc: Loc
 
-@dataclass
+@dataclass(eq=False)
 class Pass(Stmt):
     pass
 
-@dataclass
+@dataclass(eq=False)
 class Return(Stmt):
     value: Expr
+
+@dataclass(eq=False)
+class VarDef(Stmt):
+    loc: Loc
+    name: str
+    type: Expr
+    value: Optional[Expr]

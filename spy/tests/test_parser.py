@@ -162,7 +162,7 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
-    def test_getitem(self):
+    def test_GetItem(self):
         mod = self.parse("""
         def foo() -> void:
             return mylist[0]
@@ -174,6 +174,21 @@ class TestParser(CompilerTest):
                 value=Name(id='mylist'),
                 index=Constant(value=0),
             ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_VarDef(self):
+        mod = self.parse("""
+        def foo() -> void:
+            x: i32 = 42
+        """)
+        stmt = mod.decls[0].body[0]
+        expected = """
+        VarDef(
+            name='x',
+            type=Name(id='i32'),
+            value=Constant(value=42),
         )
         """
         self.assert_dump(stmt, expected)

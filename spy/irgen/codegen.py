@@ -66,28 +66,24 @@ class CodeGen:
 
     # ====== statements ======
 
-    def do_exec_Return(self, ret: py_ast.Return) -> None:
+    def do_exec_Return(self, ret: spy.ast.Return) -> None:
         assert ret.value is not None
         self.eval_expr(ret.value)
         self.emit('return')
 
-    def do_exec_AnnAssign(self, assign: py_ast.AnnAssign) -> None:
-        assert isinstance(assign.target, py_ast.Name)
-        assert assign.value is not None
-        varname = assign.target.id
+    def do_exec_VarDef(self, vardef: spy.ast.VarDef) -> None:
         # sanity check, the var must be in the local scope
-        assert varname in self.scope.symbols
-        self.eval_expr(assign.value)
-        self.emit('local_set', varname)
+        assert vardef.name in self.scope.symbols
+        self.eval_expr(vardef.value)
+        self.emit('local_set', vardef.name)
 
     # ====== expressions ======
 
-    def do_eval_Constant(self, const: py_ast.Constant) -> None:
-        # XXX we need a typechecking phase
+    def do_eval_Constant(self, const: spy.ast.Constant) -> None:
         assert type(const.value) is int
         self.emit('const_load', self.vm.wrap(const.value))
 
-    def do_eval_Name(self, expr: py_ast.Name) -> None:
+    def do_eval_Name(self, expr: spy.ast.Name) -> None:
         varname = expr.id
         sym = self.scope.lookup(varname)
         assert sym is not None

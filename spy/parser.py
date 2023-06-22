@@ -143,6 +143,20 @@ class Parser:
             value = self.to_Expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
 
+    def to_Stmt_AnnAssign(self, py_node: py_ast.AnnAssign) -> spy.ast.VarDef:
+        if not py_node.simple:
+            self.error(f"not supported: assignments targets with parentheses",
+                       "this is not supported", py_node.target.loc)
+        # I don't think it's possible to generate an AnnAssign node with a
+        # non-name target
+        assert isinstance(py_node.target, py_ast.Name), 'WTF?'
+        return spy.ast.VarDef(
+            loc = py_node.loc,
+            name = py_node.target.id,
+            type = self.to_Expr(py_node.annotation),
+            value = self.to_Expr(py_node.value)
+        )
+
     # ====== spy.ast.Expr ======
 
     def to_Expr(self, py_node: py_ast.expr) -> spy.ast.Expr:
