@@ -1,18 +1,20 @@
 import pytest
 from spy.vm.vm import SPyVM
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_FunctionType, W_Function
+from spy.vm.function import W_FunctionType, W_Function, FuncParam, make_params
 from spy.vm.varstorage import VarStorage
 from spy.vm.module import W_Module
+
 
 class TestFunction:
 
     def test_FunctionType_repr(self):
         vm = SPyVM()
         w_i32 = vm.builtins.w_i32
-        w_functype = W_FunctionType([w_i32, w_i32], w_i32)
-        assert w_functype.name == 'fn (i32, i32) -> i32'
-        assert repr(w_functype) == "<spy type 'fn (i32, i32) -> i32'>"
+        params = make_params(x=w_i32, y=w_i32)
+        w_functype = W_FunctionType(params, w_i32)
+        assert w_functype.name == 'fn (x: i32, y: i32) -> i32'
+        assert repr(w_functype) == "<spy type 'fn (x: i32, y: i32) -> i32'>"
 
     def test_simple_function(self):
         vm = SPyVM()
@@ -56,7 +58,8 @@ class TestFunction:
         vm = SPyVM()
         w_i32 = vm.builtins.w_i32
         w_mod = W_Module(vm, 'mymod')
-        w_functype = W_FunctionType([w_i32, w_i32], w_i32)
+        params = make_params(a=w_i32, b=w_i32)
+        w_functype = W_FunctionType(params, w_i32)
         w_code = W_CodeObject('fn', w_restype=vm.builtins.w_i32)
         w_code.params = ('a', 'b')
         w_code.locals_w_types = {

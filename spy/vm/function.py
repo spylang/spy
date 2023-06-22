@@ -7,19 +7,37 @@ from spy.vm.varstorage import VarStorage
 if typing.TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+@dataclass
+class FuncParam:
+    name: str
+    w_type: W_Type
+
+def make_params(**kwargs: W_Type) -> list[FuncParam]:
+    """
+    Small helper to make it easier to build a list of FuncParam, especially in
+    tests
+    """
+    return [FuncParam(key, w_type) for key, w_type in kwargs.items()]
+
 @dataclass(repr=False)
 class W_FunctionType(W_Type):
-    argtypes_w: list[W_Type]
+    params: list[FuncParam]
     w_restype: W_Type
 
-    def __init__(self, argtypes_w: list[W_Type], w_restype: W_Type):
-        argnames = [w_t.name for w_t in argtypes_w]
-        resname = w_restype.name
-        args = ', '.join(argnames)
-        sig = f'({args}) -> {resname}'
-        super().__init__(f'fn {sig}', W_Function)
-        self.argtypes_w = argtypes_w
+    def __init__(self, params: list[FuncParam], w_restype: W_Type):
+        # sanity check
+        if params:
+            assert isinstance(params[0], FuncParam)
+        self.params = params
         self.w_restype = w_restype
+        sig = self._str_sig()
+        super().__init__(f'fn {sig}', W_Function)
+
+    def _str_sig(self) -> str:
+        params = [f'{p.name}: {p.w_type.name}' for p in self.params]
+        str_params = ', '.join(params)
+        resname = self.w_restype.name
+        return f'({str_params}) -> {resname}'
 
 
 class W_Function(W_Object):

@@ -89,9 +89,9 @@ class SPyVM:
 
     def call_function(self, w_func: W_Function, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
-        assert len(w_functype.argtypes_w) == len(args_w)
-        for w_type, w_arg in zip(w_functype.argtypes_w, args_w):
-            assert self.is_compatible_type(w_arg, w_type)
+        assert len(w_functype.params) == len(args_w)
+        for param, w_arg in zip(w_functype.params, args_w):
+            assert self.is_compatible_type(w_arg, param.w_type)
         #
         frame = Frame(self, w_func.w_code, w_func.globals)
         return frame.run(args_w)

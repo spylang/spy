@@ -5,7 +5,7 @@ from spy.errors import SPyTypeError
 from spy.irgen.symtable import SymTable
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type
-from spy.vm.function import W_FunctionType
+from spy.vm.function import W_FunctionType, FuncParam
 from spy.util import magic_dispatch
 
 def can_assign_to(w_type_from: W_Type, w_type_to: W_Type) -> bool:
@@ -127,9 +127,15 @@ class TypeChecker:
             self.check(decl, scope)
 
     def declare_FuncDef(self, funcdef: spy.ast.FuncDef, scope: SymTable) -> None:
-        argtypes_w = [self.resolve_type(arg.type) for arg in funcdef.args]
+        params = [
+            FuncParam(
+                name = arg.name,
+                w_type = self.resolve_type(arg.type)
+            )
+            for arg in funcdef.args
+        ]
         w_return_type = self.resolve_type(funcdef.return_type)
-        w_functype = W_FunctionType(argtypes_w, w_return_type)
+        w_functype = W_FunctionType(params, w_return_type)
         scope.declare(funcdef.name, w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
@@ -213,5 +219,5 @@ class TypeChecker:
             r = w_rtype.name
             err = SPyTypeError(f'cannot do `{l}` {expr.op} `{r}`')
             # XXX add more
-            raise err()
+            raise err
         return w_ltype

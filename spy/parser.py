@@ -177,7 +177,7 @@ class Parser:
         index = self.to_Expr(py_node.slice)
         return spy.ast.GetItem(py_node.loc, value, index)
 
-    OPERATORS = {
+    OPERATORS: dict[type, spy.ast.Operator] = {
         py_ast.Add:      '+',
         py_ast.Sub:      '-',
         py_ast.Mult:     '*',
