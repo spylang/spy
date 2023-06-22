@@ -1,7 +1,6 @@
 from typing import Optional, Literal
 from dataclasses import dataclass
 import linecache
-import ast as py_ast
 import spy.ast
 from spy.location import Loc
 from spy.util import ColorFormatter

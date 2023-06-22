@@ -1,5 +1,4 @@
 from typing import NoReturn, Optional
-import ast as py_ast
 import spy.ast
 from spy.location import Loc
 from spy.errors import SPyTypeError

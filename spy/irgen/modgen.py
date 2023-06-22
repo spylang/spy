@@ -1,4 +1,3 @@
-import ast as py_ast
 import spy.ast
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.codegen import CodeGen

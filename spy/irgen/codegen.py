@@ -1,4 +1,3 @@
-import ast as py_ast
 import spy.ast
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
@@ -48,7 +47,7 @@ class CodeGen:
         opcode = OpCode(name, *args)
         self.w_code.body.append(opcode)
 
-    def exec_stmt(self, stmt: py_ast.stmt) -> None:
+    def exec_stmt(self, stmt: spy.ast.Stmt) -> None:
         """
         Compile a statement.
 
@@ -56,7 +55,7 @@ class CodeGen:
         """
         magic_dispatch(self, 'do_exec', stmt)
 
-    def eval_expr(self, expr: py_ast.expr) -> None:
+    def eval_expr(self, expr: spy.ast.Expr) -> None:
         """
         Compile an expression.
 

@@ -1,4 +1,3 @@
-import ast as py_ast
 from typing import Any
 import textwrap
 import pytest
