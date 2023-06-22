@@ -73,6 +73,7 @@ class CodeGen:
     def do_exec_VarDef(self, vardef: spy.ast.VarDef) -> None:
         # sanity check, the var must be in the local scope
         assert vardef.name in self.scope.symbols
+        assert vardef.value is not None
         self.eval_expr(vardef.value)
         self.emit('local_set', vardef.name)
 

@@ -150,6 +150,7 @@ class Parser:
         # I don't think it's possible to generate an AnnAssign node with a
         # non-name target
         assert isinstance(py_node.target, py_ast.Name), 'WTF?'
+        assert py_node.value is not None
         return spy.ast.VarDef(
             loc = py_node.loc,
             name = py_node.target.id,

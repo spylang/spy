@@ -22,6 +22,14 @@ class TestParser(CompilerTest):
             expected = expected.format(tmpdir=self.tmpdir)
         assert dumped.strip() == expected.strip()
 
+    def get_funcdef(self, mod: spy.ast.Module) -> spy.ast.FuncDef:
+        n = len(mod.decls)
+        if n != 1:
+            raise ValueError(f'Expected only 1 funcdef, got {n}')
+        funcdef = mod.decls[0]
+        assert isinstance(funcdef, spy.ast.FuncDef)
+        return funcdef
+
     def test_Module(self):
         mod = self.parse("""
         def foo() -> void:
@@ -133,7 +141,7 @@ class TestParser(CompilerTest):
         def foo() -> i32:
             return 42
         """)
-        funcdef = mod.decls[0]
+        funcdef = self.get_funcdef(mod)
         expected = """
         FuncDef(
             name='foo',
@@ -153,7 +161,7 @@ class TestParser(CompilerTest):
         def foo() -> void:
             return
         """)
-        stmt = mod.decls[0].body[0]
+        stmt = self.get_funcdef(mod).body[0]
         expected = """
         Return(
             value=Name(id='None'),
@@ -166,7 +174,7 @@ class TestParser(CompilerTest):
         def foo() -> void:
             return mylist[0]
         """)
-        stmt = mod.decls[0].body[0]
+        stmt = self.get_funcdef(mod).body[0]
         expected = """
         Return(
             value=GetItem(
@@ -182,7 +190,7 @@ class TestParser(CompilerTest):
         def foo() -> void:
             x: i32 = 42
         """)
-        stmt = mod.decls[0].body[0]
+        stmt = self.get_funcdef(mod).body[0]
         expected = """
         VarDef(
             name='x',
