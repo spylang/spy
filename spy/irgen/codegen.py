@@ -25,15 +25,14 @@ class CodeGen:
         self.funcdef = funcdef
         w_functype, scope = t.get_funcdef_info(funcdef)
         self.scope = scope
-        self.w_code = W_CodeObject(self.funcdef.name,
-                                   w_restype=w_functype.w_restype)
+        self.w_code = W_CodeObject(self.funcdef.name, w_functype=w_functype)
         self.add_local_variables()
 
     def add_local_variables(self) -> None:
         for sym in self.scope.symbols.values():
             if sym.name == '@return':
                 continue
-            self.w_code.locals_w_types[sym.name] = sym.w_type
+            self.w_code.declare_local(sym.name, sym.w_type)
 
     def make_w_code(self) -> W_CodeObject:
         for stmt in self.funcdef.body:

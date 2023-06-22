@@ -48,9 +48,10 @@ class Frame:
         return self.stack.pop()
 
     def init_arguments(self, args_w: list[W_Object]) -> None:
-        assert len(args_w) == len(self.w_code.params)
-        for varname, w_arg in zip(self.w_code.params, args_w):
-            self.locals.set(varname, w_arg)
+        params = self.w_code.w_functype.params
+        assert len(args_w) == len(params)
+        for param, w_arg in zip(params, args_w):
+            self.locals.set(param.name, w_arg)
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
@@ -60,7 +61,9 @@ class Frame:
             if op.name == 'return':
                 assert len(self.stack) == 1
                 w_result = self.pop()
-                assert self.vm.is_compatible_type(w_result, self.w_code.w_restype)
+                assert self.vm.is_compatible_type(
+                    w_result,
+                    self.w_code.w_functype.w_restype)
                 return w_result
             else:
                 meth_name = f'op_{op.name}'

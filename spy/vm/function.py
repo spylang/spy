@@ -12,19 +12,13 @@ class FuncParam:
     name: str
     w_type: W_Type
 
-def make_params(**kwargs: W_Type) -> list[FuncParam]:
-    """
-    Small helper to make it easier to build a list of FuncParam, especially in
-    tests
-    """
-    return [FuncParam(key, w_type) for key, w_type in kwargs.items()]
 
 @dataclass(repr=False)
 class W_FunctionType(W_Type):
     params: list[FuncParam]
     w_restype: W_Type
 
-    def __init__(self, params: list[FuncParam], w_restype: W_Type):
+    def __init__(self, params: list[FuncParam], w_restype: W_Type) -> None:
         # sanity check
         if params:
             assert isinstance(params[0], FuncParam)
@@ -32,6 +26,15 @@ class W_FunctionType(W_Type):
         self.w_restype = w_restype
         sig = self._str_sig()
         super().__init__(f'fn {sig}', W_Function)
+
+    @classmethod
+    def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FunctionType':
+        """
+        Small helper to make it easier to build W_FunctionType, especially in
+        tests
+        """
+        params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
+        return cls(params, w_restype)
 
     def _str_sig(self) -> str:
         params = [f'{p.name}: {p.w_type.name}' for p in self.params]
@@ -41,18 +44,19 @@ class W_FunctionType(W_Type):
 
 
 class W_Function(W_Object):
-    w_functype: W_FunctionType
     w_code: W_CodeObject
     globals: VarStorage
 
-    def __init__(self, w_functype: W_FunctionType, w_code: W_CodeObject,
-                 globals: VarStorage) -> None:
-        self.w_functype = w_functype
+    def __init__(self, w_code: W_CodeObject, globals: VarStorage) -> None:
         self.w_code = w_code
         self.globals = globals
 
     def __repr__(self) -> str:
         return f"<spy function '{self.w_code.name}'>"
+
+    @property
+    def w_functype(self) -> W_FunctionType:
+        return self.w_code.w_functype
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype

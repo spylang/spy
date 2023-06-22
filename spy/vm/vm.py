@@ -73,12 +73,11 @@ class SPyVM:
         assert isinstance(w_value, W_Object)
         return w_value.spy_unwrap(self)
 
-    def make_function(self, w_functype: W_FunctionType, w_code: W_CodeObject,
-                      w_mod: W_Module) -> W_Function:
+    def make_function(self, w_code: W_CodeObject, w_mod: W_Module) -> W_Function:
         """
         Create a function inside a module
         """
-        w_func = W_Function(w_functype, w_code, w_mod.content)
+        w_func = W_Function(w_code, w_mod.content)
         w_mod.add(w_code.name, w_func)
         return w_func
 

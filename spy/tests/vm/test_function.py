@@ -1,7 +1,7 @@
 import pytest
 from spy.vm.vm import SPyVM
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_FunctionType, W_Function, FuncParam, make_params
+from spy.vm.function import W_FunctionType, W_Function, FuncParam
 from spy.vm.varstorage import VarStorage
 from spy.vm.module import W_Module
 
@@ -11,8 +11,7 @@ class TestFunction:
     def test_FunctionType_repr(self):
         vm = SPyVM()
         w_i32 = vm.builtins.w_i32
-        params = make_params(x=w_i32, y=w_i32)
-        w_functype = W_FunctionType(params, w_i32)
+        w_functype = W_FunctionType.make(x=w_i32, y=w_i32, w_restype=w_i32)
         assert w_functype.name == 'fn (x: i32, y: i32) -> i32'
         assert repr(w_functype) == "<spy type 'fn (x: i32, y: i32) -> i32'>"
 
@@ -20,14 +19,14 @@ class TestFunction:
         vm = SPyVM()
         w_functype = W_FunctionType([], vm.builtins.w_i32)
         #
-        w_code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
+        w_code = W_CodeObject('simple', w_functype=w_functype)
         w_code.body = [
             OpCode('const_load', vm.wrap(42)),
             OpCode('return'),
         ]
         #
         globals = VarStorage(vm, 'globals', {})
-        w_func = W_Function(w_functype, w_code, globals)
+        w_func = W_Function(w_code, globals)
         assert repr(w_func) == "<spy function 'simple'>"
         #
         w_t = vm.dynamic_type(w_func)
@@ -40,13 +39,13 @@ class TestFunction:
         w_mod.add('a', w_a)
         #
         w_functype = W_FunctionType([], vm.builtins.w_i32)
-        w_code = W_CodeObject('fn', w_restype=vm.builtins.w_i32)
+        w_code = W_CodeObject('fn', w_functype=w_functype)
         w_code.body = [
             OpCode('global_get', 'a'),
             OpCode('return'),
         ]
         #
-        w_fn = vm.make_function(w_functype, w_code, w_mod)
+        w_fn = vm.make_function(w_code, w_mod)
         assert repr(w_fn) == "<spy function 'fn'>"
         assert w_mod.content.get('fn') is w_fn
         assert w_fn.globals is w_mod.content
@@ -58,14 +57,8 @@ class TestFunction:
         vm = SPyVM()
         w_i32 = vm.builtins.w_i32
         w_mod = W_Module(vm, 'mymod')
-        params = make_params(a=w_i32, b=w_i32)
-        w_functype = W_FunctionType(params, w_i32)
-        w_code = W_CodeObject('fn', w_restype=vm.builtins.w_i32)
-        w_code.params = ('a', 'b')
-        w_code.locals_w_types = {
-            'a': vm.builtins.w_i32,
-            'b': vm.builtins.w_i32,
-        }
+        w_functype = W_FunctionType.make(a=w_i32, b=w_i32, w_restype=w_i32)
+        w_code = W_CodeObject('fn', w_functype=w_functype)
         w_code.body = [
             OpCode('local_get', 'a'),
             OpCode('local_get', 'b'),
@@ -73,7 +66,7 @@ class TestFunction:
             OpCode('return'),
         ]
         #
-        w_fn = vm.make_function(w_functype, w_code, w_mod)
+        w_fn = vm.make_function(w_code, w_mod)
         #
         w_result = vm.call_function(w_fn, [vm.wrap(100), vm.wrap(80)])
         assert vm.unwrap(w_result) == 20

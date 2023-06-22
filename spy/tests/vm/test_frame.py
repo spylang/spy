@@ -4,6 +4,7 @@ from spy.vm.object import W_Object
 from spy.vm.frame import Frame
 from spy.vm.codeobject import OpCode, W_CodeObject
 from spy.vm.varstorage import VarStorage
+from spy.vm.function import W_FunctionType
 
 def make_Frame(vm: SPyVM, w_code: W_Object,
                globals: Optional[VarStorage] = None) -> Frame:
@@ -19,7 +20,8 @@ class TestFrame:
     def test_simple_eval(self):
         vm = SPyVM()
         w_42 = vm.wrap(42)
-        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('const_load', w_42),
             OpCode('return'),
@@ -32,7 +34,8 @@ class TestFrame:
         vm = SPyVM()
         w_100 = vm.wrap(100)
         w_1 = vm.wrap(1)
-        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('const_load', w_100),
             OpCode('const_load', w_1),
@@ -48,7 +51,8 @@ class TestFrame:
         vm = SPyVM()
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
-        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('const_load', w_50),
             OpCode('const_load', w_8),
@@ -62,10 +66,9 @@ class TestFrame:
 
     def test_uninitialized_locals(self):
         vm = SPyVM()
-        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
-        code.locals_w_types = {
-            'a': vm.builtins.w_i32,
-        }
+        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
+        code.declare_local('a', vm.builtins.w_i32)
         code.body = [
             OpCode('local_get', 'a'),
             OpCode('return'),
@@ -78,10 +81,9 @@ class TestFrame:
     def test_locals(self):
         vm = SPyVM()
         w_100 = vm.wrap(100)
-        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
-        code.locals_w_types = {
-            'a': vm.builtins.w_i32,
-        }
+        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
+        code.declare_local('a', vm.builtins.w_i32)
         code.body = [
             OpCode('const_load', w_100),
             OpCode('local_set', 'a'),
@@ -94,7 +96,8 @@ class TestFrame:
 
     def test_globals(self):
         vm = SPyVM()
-        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('global_get', 'a'),
             OpCode('const_load', vm.wrap(11)),
@@ -118,12 +121,9 @@ class TestFrame:
 
     def test_params(self):
         vm = SPyVM()
-        code = W_CodeObject('simple', w_restype=vm.builtins.w_i32)
-        code.params = ('a', 'b')
-        code.locals_w_types = {
-            'a': vm.builtins.w_i32,
-            'b': vm.builtins.w_i32,
-        }
+        w_i32 = vm.builtins.w_i32
+        w_functype = W_FunctionType.make(a=w_i32, b=w_i32, w_restype=w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('local_get', 'a'),
             OpCode('local_get', 'b'),
