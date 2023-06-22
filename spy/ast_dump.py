@@ -9,8 +9,12 @@ def dump(node: Any, *, use_colors: bool = True) -> str:
     dumper.dump_anything(node)
     return dumper.build()
 
-def pprint(node: Any) -> None:
+def pprint(node: Any, *, copy_to_clipboard=False) -> None:
     print(dump(node))
+    if copy_to_clipboard:
+        import pyperclip
+        out = dump(node, use_colors=False)
+        pyperclip.copy(out)
 
 
 class Dumper:

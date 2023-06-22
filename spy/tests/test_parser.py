@@ -199,3 +199,20 @@ class TestParser(CompilerTest):
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_BinOp(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            return x + 1
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        Return(
+            value=BinOp(
+                left=Name(id='x'),
+                op='+',
+                right=Constant(value=1),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)

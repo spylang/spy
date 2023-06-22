@@ -176,3 +176,29 @@ class Parser:
         value = self.to_Expr(py_node.value)
         index = self.to_Expr(py_node.slice)
         return spy.ast.GetItem(py_node.loc, value, index)
+
+    OPERATORS = {
+        py_ast.Add:      '+',
+        py_ast.Sub:      '-',
+        py_ast.Mult:     '*',
+        py_ast.Div:      '/',
+        py_ast.FloorDiv: '//',
+        py_ast.Mod:      '%',
+        py_ast.Pow:      '**',
+        py_ast.LShift:   '<<',
+        py_ast.RShift:   '>>',
+        py_ast.BitOr:    '|',
+        py_ast.BitXor:   '^',
+        py_ast.BitAnd:   '&',
+        py_ast.MatMult:  '@',
+    }
+
+    def to_Expr_BinOp(self, py_node: py_ast.BinOp) -> spy.ast.BinOp:
+        left = self.to_Expr(py_node.left)
+        right = self.to_Expr(py_node.right)
+        #
+        t = type(py_node.op)
+        op = self.OPERATORS.get(t)
+        assert op is not None, f'Unkown operator: {t}'
+        #
+        return spy.ast.BinOp(py_node.loc, left, op, right)

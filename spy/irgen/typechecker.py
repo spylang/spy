@@ -137,7 +137,8 @@ class TypeChecker:
         local_scope = SymTable(funcdef.name, parent=outer_scope)
         self.funcdef_scopes[funcdef] = local_scope
         w_functype = self.funcdef_types[funcdef]
-        local_scope.declare('@return', w_functype.w_restype, funcdef.return_type.loc)
+        local_scope.declare('@return', w_functype.w_restype,
+                            funcdef.return_type.loc)
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
 
@@ -201,3 +202,16 @@ class TypeChecker:
             err.add('error', 'not found in this scope', expr.loc)
             raise err
         return sym.w_type
+
+    def check_expr_BinOp(self, expr: spy.ast.BinOp, scope: SymTable) -> W_Type:
+        # XXX this is wrong: here we assume that the result of a binop is the
+        # same as its arguments, but we need to tweak it when we have floats
+        w_ltype = self.check_expr(expr.left, scope)
+        w_rtype = self.check_expr(expr.right, scope)
+        if w_ltype != w_rtype:
+            l = w_ltype.name
+            r = w_rtype.name
+            err = SPyTypeError(f'cannot do `{l}` {expr.op} `{r}`')
+            # XXX add more
+            raise err()
+        return w_ltype

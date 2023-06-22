@@ -187,3 +187,11 @@ class TestIRGen(CompilerTest):
                 'cannot find variable `x` in this scope',
                 'not found in this scope',
             ])
+
+    @pytest.mark.skip('WIP')
+    def test_function_arguments(self):
+        w_mod = self.compile(
+        """
+        def inc(x: i32) -> i32:
+            return x + 1
+        """)

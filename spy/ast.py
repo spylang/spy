@@ -1,5 +1,5 @@
 import typing
-from typing import Optional
+from typing import Optional, Literal
 import pprint
 import ast as py_ast
 from dataclasses import dataclass
@@ -69,6 +69,15 @@ class Node:
         import spy.ast_dump
         spy.ast_dump.pprint(self)
 
+    @typing.no_type_check
+    def ppc(self) -> None:
+        """
+        Like .pp(), but also copies the output in the clipboard. Useful for
+        copy&paste expected output into your editor.
+        """
+        import spy.ast_dump
+        spy.ast_dump.pprint(self, copy_to_clipboard=True)
+
 
 @dataclass(eq=False)
 class Module(Node):
@@ -114,6 +123,18 @@ class Constant(Expr):
 class GetItem(Expr):
     value: Expr
     index: Expr
+
+Operator = Literal['+', '-', '*', '/',
+                   '//', '%', '**',
+                   '<<', '>>', '|', '^', '&',
+                   '@']
+
+@dataclass(eq=False)
+class BinOp(Expr):
+    left: Expr
+    op: Operator
+    right: Expr
+
 
 # ====== Stmt hierarchy ======
 
