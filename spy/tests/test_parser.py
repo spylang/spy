@@ -4,7 +4,7 @@ import pytest
 import spy.ast
 from spy.ast_dump import dump
 from spy.parser import Parser
-from spy.errors import SPyParseError
+from spy.errors import SPyCompileError
 from spy.tests.support import CompilerTest
 
 
@@ -14,6 +14,13 @@ class TestParser(CompilerTest):
         srcfile = self.write_source('test.py', src)
         p = Parser.from_filename(str(srcfile))
         return p.parse()
+
+    def expect_errors(self, src: str, *, errors: list[str]) -> SPyCompileError:
+        """
+        Expect that parse() fails, and check that the expected errors are
+        reported
+        """
+        return self._do_expect_errors('parse', src, errors=errors)
 
     def assert_dump(self, node: spy.ast.Node, expected: str):
         dumped = dump(node, use_colors=False)
@@ -84,57 +91,64 @@ class TestParser(CompilerTest):
         self.assert_dump(mod, expected)
 
     def test_FuncDef_errors(self):
-        with pytest.raises(SPyParseError, match="missing return type"):
-            mod = self.parse("""
+        self.expect_errors(
+            """
             def foo():
                 pass
-            """)
-        #
-        with pytest.raises(SPyParseError, match=r"\*args is not supported yet"):
-            mod = self.parse("""
+
+            """,
+            errors = ["missing return type"],
+        )
+        self.expect_errors(
+            """
             def foo(*args) -> void:
                 pass
-            """)
-        #
-        with pytest.raises(SPyParseError, match=r"\*\*kwargs is not supported yet"):
-            mod = self.parse("""
+            """,
+            errors = ["*args is not supported yet"]
+        )
+        self.expect_errors(
+            """
             def foo(**kwargs) -> void:
                 pass
-            """)
-        #
-        with pytest.raises(SPyParseError,
-                           match="default arguments are not supported yet"):
-            mod = self.parse("""
+            """,
+            errors = ["**kwargs is not supported yet"]
+        )
+        self.expect_errors(
+            """
             def foo(a: i32 = 42) -> void:
                 pass
-            """)
-        #
-        with pytest.raises(SPyParseError,
-                           match="positional-only arguments are not supported yet"):
-            mod = self.parse("""
+            """,
+            errors = ["default arguments are not supported yet"]
+        )
+        self.expect_errors(
+            """
             def foo(a: i32, /, b: i32) -> void:
                 pass
-            """)
-        #
-        with pytest.raises(SPyParseError,
-                           match="keyword-only arguments are not supported yet"):
-            mod = self.parse("""
+            """,
+            errors = ["positional-only arguments are not supported yet"]
+        )
+        self.expect_errors(
+            """
             def foo(a: i32, *, b: i32) -> void:
                 pass
-            """)
-        #
-        with pytest.raises(SPyParseError, match="missing type for argument 'a'"):
-            mod = self.parse("""
+            """,
+            errors = ["keyword-only arguments are not supported yet"]
+        )
+        self.expect_errors(
+            """
             def foo(a, b) -> void:
                 pass
-            """)
-        #
-        with pytest.raises(SPyParseError, match="decorators are not supported yet"):
-            mod = self.parse("""
+            """,
+            errors = ["missing type for argument 'a'"]
+        )
+        self.expect_errors(
+            """
             @mydecorator
             def foo() -> void:
                 pass
-            """)
+            """,
+            errors = ["decorators are not supported yet"]
+        )
 
     def test_FuncDef_body(self):
         mod = self.parse("""
