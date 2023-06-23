@@ -42,11 +42,12 @@ class Parser:
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyParseError.simple(primary, secondary, loc)
 
-    def to_Node_NotImplemented(self, node: py_ast.AST) -> NoReturn:
+    def unsupported(self, node: py_ast.AST, reason: Optional[str] = None) -> NoReturn:
         """
         Emit a nice error in case we encounter an unsupported AST node.
         """
-        thing = node.__class__.__name__
+        if reason is None:
+            reason = thing = node.__class__.__name__
         self.error(f'not implemented yet: {thing}',
                    'this is not yet supported by SPy', node.loc)
 
@@ -128,7 +129,7 @@ class Parser:
     def to_Stmt(self, py_node: py_ast.stmt) -> spy.ast.Stmt:
         return magic_dispatch(self, 'to_Stmt', py_node)
 
-    to_Stmt_NotImplemented = to_Node_NotImplemented
+    to_Stmt_NotImplemented = unsupported
 
     def to_Stmt_Pass(self, py_node: py_ast.Pass) -> spy.ast.Pass:
         return spy.ast.Pass(py_node.loc)
@@ -158,12 +159,28 @@ class Parser:
             value = self.to_Expr(py_node.value)
         )
 
+    def to_Stmt_Assign(self, py_node: py_ast.Assign) -> spy.ast.Stmt:
+        # Assign can be pretty complex: it can have multiple targets, and a
+        # target can be a Tuple or List in case of unpacking. For now, we
+        # support only the very simple case of single assign to a Name.
+        if len(py_node.targets) != 1:
+            self.unsupported(py_node, 'assign to multiple targets')
+        py_target = py_node.targets[0]
+        if not isinstance(py_target, py_ast.Name):
+            self.unsupported(py_target, 'assign to complex expressions')
+        return spy.ast.Assign(
+            loc = py_node.loc,
+            target = py_target.id,
+            value = self.to_Expr(py_node.value)
+        )
+
+
     # ====== spy.ast.Expr ======
 
     def to_Expr(self, py_node: py_ast.expr) -> spy.ast.Expr:
         return magic_dispatch(self, 'to_Expr', py_node)
 
-    to_Expr_NotImplemented = to_Node_NotImplemented
+    to_Expr_NotImplemented = unsupported
 
     def to_Expr_Name(self, py_node: py_ast.Name) -> spy.ast.Name:
         return spy.ast.Name(py_node.loc, py_node.id)

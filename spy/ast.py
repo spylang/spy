@@ -207,3 +207,8 @@ class VarDef(Stmt):
     name: str
     type: Expr
     value: Optional[Expr]
+
+@dataclass(eq=False)
+class Assign(Stmt):
+    target: str
+    value: Expr

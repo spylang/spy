@@ -253,3 +253,17 @@ class TestParser(CompilerTest):
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_Assign(self):
+        mod = self.parse("""
+        def foo() -> void:
+            x = 42
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        Assign(
+            target='x',
+            value=Constant(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)
