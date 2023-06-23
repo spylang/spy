@@ -204,7 +204,6 @@ class Return(Stmt):
 
 @dataclass(eq=False)
 class VarDef(Stmt):
-    loc: Loc
     name: str
     type: Expr
     value: Optional[Expr]
