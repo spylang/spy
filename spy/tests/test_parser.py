@@ -200,6 +200,25 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
+    def test_List(self):
+        mod = self.parse("""
+        def foo() -> void:
+            return [1, 2, 3]
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        Return(
+            value=List(
+                items=[
+                    Constant(value=1),
+                    Constant(value=2),
+                    Constant(value=3),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_BinOp(self, op):
         # map the operator to the spy.ast class name
