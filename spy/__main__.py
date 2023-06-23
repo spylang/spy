@@ -8,6 +8,7 @@ from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+from spy.vm.function import W_Function
 
 app = typer.Typer(pretty_exceptions_enable=False)
 OPT = typer.Option
@@ -35,6 +36,11 @@ def print_w_mod(w_mod: W_Module) -> None:
     print(f'Module {w_mod.name}:')
     for attr, w_obj in w_mod.content.values_w.items():
         print(f'    {attr}: {w_obj}')
+
+    print()
+    for attr, w_obj in w_mod.content.values_w.items():
+        if isinstance(w_obj, W_Function):
+            w_obj.w_code.pp()
 
 if __name__ == '__main__':
     app()

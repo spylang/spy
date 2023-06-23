@@ -160,7 +160,7 @@ class W_i32(W_Object):
         self.value = fixedint.Int32(value)
 
     def __repr__(self) -> str:
-        return f'<spy {self.value}: i32>'
+        return f'W_i32({self.value})'
 
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
         return self.value

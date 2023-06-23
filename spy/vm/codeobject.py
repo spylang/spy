@@ -1,6 +1,7 @@
 import typing
 from typing import Any
 from spy.vm.object import W_Object, W_Type, spytype
+from spy.util import ColorFormatter
 
 if typing.TYPE_CHECKING:
     from spy.vm.function import W_FunctionType
@@ -58,3 +59,24 @@ class W_CodeObject(W_Object):
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_w_types
         self.locals_w_types[name] = w_type
+
+    def pp(self) -> None:
+        """
+        Pretty print
+        """
+        color = ColorFormatter(use_colors=True)
+        name = color.set('green', self.name)
+        sig = color.set('red', self.w_functype.name)
+        print(f'Disassembly of code {name}: {sig}')
+        for name, w_type in self.locals_w_types.items():
+            name = color.set('green', name)
+            typename = color.set('red', w_type.name)
+            print(f'    var {name}: {typename}')
+        #
+        print()
+        for op in self.body:
+            line = [color.set('blue', op.name)]
+            args = ', '.join([str(arg) for arg in op.args])
+            if op.name in ('local_get', 'local_set', 'global_get', 'global_set'):
+                args = color.set('green', args)
+            print(f'    {op.name:<15} {args}')

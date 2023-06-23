@@ -105,7 +105,7 @@ class TestVM:
         w_y = vm.wrap(fixedint.Int32(456))
         assert isinstance(w_x, W_i32)
         assert vm.dynamic_type(w_x) is vm.builtins.w_i32
-        assert repr(w_x) == '<spy 123: i32>'
+        assert repr(w_x) == 'W_i32(123)'
         assert repr(vm.builtins.w_i32) == "<spy type 'i32'>"
         #
         x = vm.unwrap(w_x)
