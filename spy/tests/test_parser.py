@@ -200,72 +200,36 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
-    def test_BinOp(self):
-        mod = self.parse("""
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_BinOp(self, op):
+        # map the operator to the spy.ast class name
+        binops = {
+            '+':  'Add',
+            '-':  'Sub',
+            '*':  'Mul',
+            '/':  'Div',
+            '//': 'FloorDiv',
+            '%':  'Mod',
+            '**': 'Pow',
+            '<<': 'LShift',
+            '>>': 'RShift',
+            '|':  'BitOr',
+            '^':  'BitXor',
+            '&':  'BitAnd',
+            '@':  'MatMul',
+        }
+        OpClass = binops[op]
+        #
+        mod = self.parse(f"""
         def foo() -> i32:
-            return [x +  1, x - 1, x *  1, x /  1,
-                    x // 1, x % 1, x ** 1, x << 1,
-                    x >> 1, x ^ 1, x |  1, x &  1,
-                    x @ 1]
+            return x {op} 1
         """)
         stmt = self.get_funcdef(mod).body[0]
-        expected = """
+        expected = f"""
         Return(
-            value=List(
-                items=[
-                    Add(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    Sub(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    Mul(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    Div(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    FloorDiv(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    Mod(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    Pow(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    LShift(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    RShift(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    BitXor(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    BitOr(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    BitAnd(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                    MatMul(
-                        left=Name(id='x'),
-                        right=Constant(value=1),
-                    ),
-                ],
+            value={OpClass}(
+                left=Name(id='x'),
+                right=Constant(value=1),
             ),
         )
         """
