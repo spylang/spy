@@ -203,3 +203,30 @@ class TestIRGen(CompilerTest):
         w_x = vm.wrap(100)
         w_result = vm.call_function(w_inc, [w_x])
         assert vm.unwrap(w_result) == 101
+
+    def test_global_variables(self):
+        w_mod = self.compile(
+        """
+        x: i32 = 42
+        def get_x() -> i32:
+            return x
+        def set_x(newval: i32) -> i32:
+            x = newval
+            return 0 # XXX: we cannot just 'return'
+        """)
+        vm = self.vm
+        w_get_x = w_mod.content.get('get_x')
+        w_set_x = w_mod.content.get('set_x')
+        #
+        w_x = w_mod.content.get('x')
+        assert vm.unwrap(w_x) == 42
+        #
+        w_result = vm.call_function(w_get_x, [])
+        assert vm.unwrap(w_result) == 42
+        #
+        vm.call_function(w_set_x, [vm.wrap(100)])
+        w_x = w_mod.content.get('x')
+        assert vm.unwrap(w_x) == 100
+        #
+        w_result = vm.call_function(w_get_x, [])
+        assert vm.unwrap(w_result) == 100

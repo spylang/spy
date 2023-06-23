@@ -2,9 +2,14 @@ import spy.ast
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
 from spy.vm.vm import SPyVM
+from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FunctionType
 from spy.util import magic_dispatch
+
+def make_w_const(vm: SPyVM, const: spy.ast.Constant) -> W_Object:
+    assert type(const.value) is int
+    return vm.wrap(const.value)
 
 class CodeGen:
     """
@@ -77,15 +82,21 @@ class CodeGen:
         self.emit('local_set', vardef.name)
 
     def do_exec_Assign(self, assign: spy.ast.Assign) -> None:
-        assert assign.target in self.scope.symbols
+        sym = self.scope.lookup(assign.target)
+        assert sym # there MUST be a symbol somewhere, else the typechecker is broken
         self.eval_expr(assign.value)
-        self.emit('local_set', assign.target)
+        if sym.scope is self.scope:
+            self.emit('local_set', assign.target) # local variable
+        elif sym.scope is self.t.global_scope:
+            self.emit('global_set', assign.target) # local variable
+        else:
+            assert False, 'TODO' # non-local variables
 
     # ====== expressions ======
 
     def do_eval_Constant(self, const: spy.ast.Constant) -> None:
-        assert type(const.value) is int
-        self.emit('const_load', self.vm.wrap(const.value))
+        w_const = make_w_const(self.vm, const)
+        self.emit('const_load', w_const)
 
     def do_eval_Name(self, expr: spy.ast.Name) -> None:
         varname = expr.id
@@ -94,8 +105,11 @@ class CodeGen:
         if sym.scope is self.scope:
             # local variable
             self.emit('local_get', varname)
+        elif sym.scope is self.t.global_scope:
+            # global var
+            self.emit('global_get', varname)
         else:
-            # outer variable, maybe global
+            # non-local variable
             assert False, 'XXX todo'
 
     def do_eval_Add(self, binop: spy.ast.BinOp) -> None:

@@ -21,7 +21,7 @@ def main(filename: Path,
     p = Parser.from_filename(str(filename))
     try:
         mod = p.parse()
-        if parse == 'parse':
+        if parse:
             mod.pp()
             return
         t = TypeChecker(vm, mod)

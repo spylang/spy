@@ -1,6 +1,6 @@
 import spy.ast
 from spy.irgen.typechecker import TypeChecker
-from spy.irgen.codegen import CodeGen
+from spy.irgen.codegen import CodeGen, make_w_const
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
@@ -24,9 +24,12 @@ class ModuleGen:
         name = 'mymod' # XXX
         self.w_mod = W_Module(self.vm, name)
         for decl in self.mod.decls:
-            assert isinstance(decl, spy.ast.FuncDef)
-            w_func = self.make_w_func(decl)
-            self.w_mod.add(w_func.w_code.name, w_func)
+            if isinstance(decl, spy.ast.FuncDef):
+                w_func = self.make_w_func(decl)
+                self.w_mod.add(w_func.w_code.name, w_func)
+            elif isinstance(decl, spy.ast.GlobalVarDef):
+                w_const = make_w_const(self.vm, decl.vardef.value)
+                self.w_mod.add(decl.vardef.name, w_const)
         return self.w_mod
 
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Function:

@@ -214,6 +214,26 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
+    def test_global_VarDef(self):
+        mod = self.parse("""
+        x: i32 = 42
+        """)
+        expected = f"""
+        Module(
+            filename='{self.tmpdir}/test.py',
+            decls=[
+                GlobalVarDef(
+                    vardef=VarDef(
+                        name='x',
+                        type=Name(id='i32'),
+                        value=Constant(value=42),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
     def test_List(self):
         mod = self.parse("""
         def foo() -> void:

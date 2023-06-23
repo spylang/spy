@@ -154,6 +154,24 @@ class TypeChecker:
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
 
+    def declare_GlobalVarDef(self, globvar: spy.ast.GlobalVarDef, scope: SymTable) -> None:
+        # only constants are allowed as initializers, for now
+        vardef = globvar.vardef
+        if not isinstance(vardef.value, spy.ast.Constant):
+            assert False
+        #
+        # this seems weird but it's actually correct. At this point, we only
+        # want to declare module-level vars and functions: we don't want to
+        # *check* statements because in theory they could reference names
+        # which have not been declared yet (precisely because we are declaring
+        # them now). However, here we know for sure that vardef.value is a
+        # Constant, so this is safe to do.
+        self.check_stmt_VarDef(vardef, scope)
+
+    def check_GlobalVarDef(self, globvar: spy.ast.GlobalVarDef, scope: SymTable) -> None:
+        # nothing to do, we did everything inside declare()
+        pass
+
     # ==== statements ====
 
     def check_stmt_VarDef(self, vardef: spy.ast.VarDef, scope: SymTable) -> None:

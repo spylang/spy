@@ -57,8 +57,13 @@ class Parser:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.to_FuncDef(py_stmt)
                 mod.decls.append(funcdef)
+            elif isinstance(py_stmt, py_ast.AnnAssign):
+                vardef = self.to_Stmt_AnnAssign(py_stmt)
+                globvar = spy.ast.GlobalVarDef(vardef)
+                mod.decls.append(globvar)
             else:
-                assert False, 'XXX'
+                msg = 'only function and variable definitions are allowed at global scope'
+                self.error(msg, 'this is not allowed here', py_stmt.loc)
         #
         return mod
 

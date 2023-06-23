@@ -104,6 +104,15 @@ class FuncDef(Decl):
     return_type: 'Expr'
     body: list['Stmt']
 
+
+@dataclass(eq=False)
+class GlobalVarDef(Decl):
+    vardef: 'VarDef'
+
+    @property
+    def loc(self):
+        return self.vardef.loc
+
 # ====== Expr hierarchy ======
 
 @dataclass(eq=False)
