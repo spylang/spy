@@ -281,3 +281,19 @@ class TestParser(CompilerTest):
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_Assign_unsupported(self):
+        self.expect_errors(
+            """
+            def foo() -> void:
+                a = b = 1
+            """,
+            errors = ["not implemented yet: assign to multiple targets"]
+        )
+        self.expect_errors(
+            """
+            def foo() -> void:
+                a, b = 1, 2
+            """,
+            errors = ["not implemented yet: assign to complex expressions"]
+        )

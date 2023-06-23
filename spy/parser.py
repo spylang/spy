@@ -47,8 +47,8 @@ class Parser:
         Emit a nice error in case we encounter an unsupported AST node.
         """
         if reason is None:
-            reason = thing = node.__class__.__name__
-        self.error(f'not implemented yet: {thing}',
+            reason = node.__class__.__name__
+        self.error(f'not implemented yet: {reason}',
                    'this is not yet supported by SPy', node.loc)
 
     def to_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
