@@ -184,6 +184,16 @@ class TypeChecker:
                                      vardef.value.loc,
                                      'because of type declaration')
 
+    def check_stmt_Assign(self, assign: spy.ast.Assign, scope: SymTable) -> None:
+        varname = assign.target
+        sym = scope.lookup(varname)
+        if not sym:
+            ...
+        w_valuetype = self.check_expr(assign.value, scope)
+        if not can_assign_to(w_valuetype, sym.w_type):
+            ...
+
+
     def check_stmt_Return(self, ret: spy.ast.Return, scope: SymTable) -> None:
         return_sym = scope.lookup('@return')
         assert return_sym is not None

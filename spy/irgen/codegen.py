@@ -76,6 +76,11 @@ class CodeGen:
         self.eval_expr(vardef.value)
         self.emit('local_set', vardef.name)
 
+    def do_exec_Assign(self, assign: spy.ast.Assign) -> None:
+        assert assign.target in self.scope.symbols
+        self.eval_expr(assign.value)
+        self.emit('local_set', assign.target)
+
     # ====== expressions ======
 
     def do_eval_Constant(self, const: spy.ast.Constant) -> None:

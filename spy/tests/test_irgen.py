@@ -189,3 +189,17 @@ class TestIRGen(CompilerTest):
         w_x = vm.wrap(100)
         w_result = vm.call_function(w_inc, [w_x])
         assert vm.unwrap(w_result) == 101
+
+    def test_assign(self):
+        w_mod = self.compile(
+        """
+        def inc(x: i32) -> i32:
+            res: i32 = 0
+            res = x + 1
+            return res
+        """)
+        vm = self.vm
+        w_inc = w_mod.content.get('inc')
+        w_x = vm.wrap(100)
+        w_result = vm.call_function(w_inc, [w_x])
+        assert vm.unwrap(w_result) == 101
