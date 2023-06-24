@@ -219,5 +219,6 @@ class VarDef(Stmt):
 
 @dataclass(eq=False)
 class Assign(Stmt):
+    target_loc: Loc
     target: str
     value: Expr

@@ -27,7 +27,7 @@ class Dumper:
         self.level = 0
         self.lines = ['']
         self.color = ColorFormatter(use_colors)
-        self.fields_to_ignore = ('loc',)
+        self.fields_to_ignore = ('loc', 'target_loc')
 
     @contextmanager
     def indent(self) -> Iterator[None]:

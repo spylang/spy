@@ -175,6 +175,7 @@ class Parser:
             self.unsupported(py_target, 'assign to complex expressions')
         return spy.ast.Assign(
             loc = py_node.loc,
+            target_loc = py_target.loc,
             target = py_target.id,
             value = self.from_py_expr(py_node.value)
         )

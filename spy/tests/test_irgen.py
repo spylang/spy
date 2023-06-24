@@ -204,6 +204,28 @@ class TestIRGen(CompilerTest):
         w_result = vm.call_function(w_inc, [w_x])
         assert vm.unwrap(w_result) == 101
 
+    def test_assign_errors(self):
+        self.expect_errors(
+            """
+            def foo() -> void:
+                x = 42
+            """,
+            errors = [
+                'variable `x` is not declared',
+                'hint: to declare a new variable, you can use: `x: i32 = ...`',
+            ])
+        #
+        self.expect_errors(
+            """
+            def foo(x: str) -> void:
+                x = 42
+            """,
+            errors = [
+                'mismatched types',
+                'expected `str`, got `i32`',
+                'expected `str` because of type declaration',
+            ])
+
     def test_global_variables(self):
         w_mod = self.compile(
         """

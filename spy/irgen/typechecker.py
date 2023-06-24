@@ -204,12 +204,22 @@ class TypeChecker:
 
     def check_stmt_Assign(self, assign: spy.ast.Assign, scope: SymTable) -> None:
         varname = assign.target
+        w_valuetype = self.check_expr(assign.value, scope)
         sym = scope.lookup(varname)
         if not sym:
-            ...
-        w_valuetype = self.check_expr(assign.value, scope)
+            err = SPyTypeError(f'variable `{varname}` is not declared')
+            err.add('error', 'this is not declared', assign.target_loc)
+            hint = (f'hint: to declare a new variable, you can use: ' +
+                    f'`{varname}: {w_valuetype.name} = ...`')
+            err.add('note', hint, assign.loc)
+            raise err
         if not can_assign_to(w_valuetype, sym.w_type):
-            ...
+            self.raise_type_mismatch(sym.w_type,
+                                     sym.loc,
+                                     w_valuetype,
+                                     assign.value.loc,
+                                     'because of type declaration')
+
 
 
     def check_stmt_Return(self, ret: spy.ast.Return, scope: SymTable) -> None:
