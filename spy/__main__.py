@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any, no_type_check
 from pathlib import Path
 import typer
 #
@@ -11,12 +11,25 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_Function
 
 app = typer.Typer(pretty_exceptions_enable=False)
-OPT = typer.Option
 
+def boolopt(help: str) -> Any:
+    return Annotated[bool, typer.Option(help=help)]
+
+def do_pyparse(filename: str) -> None:
+    import ast as py_ast
+    with open(filename) as f:
+        src = f.read()
+    mod = py_ast.parse(src)
+    mod.pp()
+
+@no_type_check
 @app.command()
 def main(filename: Path,
-         parse: Annotated[bool, OPT(help="dump the AST and exit")] = False,
+         pyparse: boolopt("dump the Python AST exit") = False,
+         parse: boolopt("dump the SPy AST and exit") = False,
          ) -> None:
+    if pyparse:
+        return do_pyparse(filename)
     vm = SPyVM()
     p = Parser.from_filename(str(filename))
     try:

@@ -110,7 +110,7 @@ class GlobalVarDef(Decl):
     vardef: 'VarDef'
 
     @property
-    def loc(self):
+    def loc(self) -> Loc:
         return self.vardef.loc
 
 # ====== Expr hierarchy ======

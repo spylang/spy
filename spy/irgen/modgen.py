@@ -28,6 +28,7 @@ class ModuleGen:
                 w_func = self.make_w_func(decl)
                 self.w_mod.add(w_func.w_code.name, w_func)
             elif isinstance(decl, spy.ast.GlobalVarDef):
+                assert isinstance(decl.vardef.value, spy.ast.Constant)
                 w_const = make_w_const(self.vm, decl.vardef.value)
                 self.w_mod.add(decl.vardef.name, w_const)
         return self.w_mod

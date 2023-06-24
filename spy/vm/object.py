@@ -130,7 +130,7 @@ class W_void(W_Object):
     """
     Equivalent of Python's NoneType.
 
-    This is a singleton: there should be only one instance of this calls,
+    This is a singleton: there should be only one instance of this class,
     which is w_None.
     """
 

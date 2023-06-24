@@ -27,7 +27,7 @@ class SymTable:
         self.parent = parent
         self.symbols = {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<SymTable {self.name}>'
 
     def pp(self) -> None:
