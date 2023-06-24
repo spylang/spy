@@ -3,6 +3,7 @@ from spy.vm.object import W_Object, spytype
 from spy.vm.varstorage import VarStorage
 if typing.TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.function import W_Function
 
 @spytype('module')
 class W_Module(W_Object):
@@ -27,3 +28,12 @@ class W_Module(W_Object):
         if self._frozen:
             raise Exception("Frozen")
         self.content.add(name, w_value)
+
+    def getattr(self, name: str) -> W_Object:
+        return self.content.get(name)
+
+    def getattr_function(self, name: str) -> 'W_Function':
+        from spy.vm.function import W_Function
+        w_obj = self.content.get(name)
+        assert isinstance(w_obj, W_Function)
+        return w_obj

@@ -3,24 +3,10 @@ import textwrap
 import pytest
 import spy.ast
 from spy.ast_dump import dump
-from spy.parser import Parser
-from spy.errors import SPyCompileError
 from spy.tests.support import CompilerTest
 
 
 class TestParser(CompilerTest):
-
-    def parse(self, src) -> spy.ast.Module:
-        srcfile = self.write_source('test.py', src)
-        p = Parser.from_filename(str(srcfile))
-        return p.parse()
-
-    def expect_errors(self, src: str, *, errors: list[str]) -> SPyCompileError:
-        """
-        Expect that parse() fails, and check that the expected errors are
-        reported
-        """
-        return self._do_expect_errors('parse', src, errors=errors)
 
     def assert_dump(self, node: spy.ast.Node, expected: str):
         dumped = dump(node, use_colors=False)
