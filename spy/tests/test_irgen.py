@@ -225,3 +225,12 @@ class TestIRGen(CompilerTest):
         #
         w_result = vm.call_function(w_get_x, [])
         assert vm.unwrap(w_result) == 100
+
+    def test_compile(self):
+        mod = self.compile("""
+        N: i32 = 100
+        def add(x: i32, y: i32) -> i32:
+            return x + y
+        """)
+        assert mod.add(1, 2) == 3
+        assert mod.N == 100

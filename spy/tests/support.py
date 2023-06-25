@@ -8,6 +8,7 @@ from spy.irgen.modgen import ModuleGen
 from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+from spy.vm.function import W_Function
 
 class CompilerPipeline:
     """
@@ -55,9 +56,56 @@ class CompilerPipeline:
         self.w_mod = self.modgen.make_w_mod()
         return self.w_mod
 
-    ## def compile(self):
-    ##     self.irgen()
-    ##     ...
+    def compile(self, backend: str = 'interp') -> Any:
+        """
+        Compile the W_Module into something which can be accessed and called by
+        tests.
+
+        Currently, the only support backend is 'interp', which is a fake
+        backend: the IR code is not compiled and function are executed by the
+        VM.
+        """
+        assert backend == 'interp'
+        self.irgen()
+        interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
+        return interp_mod
+
+
+class InterpModuleWrapper:
+    """
+    Wrap W_Module for the interp backend.
+    """
+    vm: SPyVM
+    w_mod: W_Module
+
+    def __init__(self, vm: SPyVM, w_mod: W_Module) -> None:
+        self.vm = vm
+        self.w_mod = w_mod
+
+    def __getattr__(self, attr: str) -> Any:
+        w_obj = self.w_mod.getattr(attr)
+        if isinstance(w_obj, W_Function):
+            return InterpFuncWrapper(self.vm, w_obj)
+        return self.vm.unwrap(w_obj)
+
+
+class InterpFuncWrapper:
+    """
+    Wrap a W_Function for the interp backend.
+    """
+    vm: SPyVM
+    w_func: W_Function
+
+    def __init__(self, vm: SPyVM, w_func: W_Function):
+        self.vm = vm
+        self.w_func = w_func
+
+    def __call__(self, *args):
+        # *args contains python-level objs. We want to wrap them into args_w
+        # *and to call the func, and unwrap the result
+        args_w = [self.vm.wrap(arg) for arg in args]
+        w_res = self.vm.call_function(self.w_func, args_w)
+        return self.vm.unwrap(w_res)
 
 
 class AnyLocClass:
@@ -101,6 +149,9 @@ class CompilerTest:
 
     def irgen(self, src: str) -> W_Module:
         return self._run_pipeline(src, 'irgen')
+
+    def compile(self, src: str) -> Any:
+        return self._run_pipeline(src, 'compile')
 
     def expect_errors(self,src: str, *,
                       errors: list[str],
