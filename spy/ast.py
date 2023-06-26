@@ -137,6 +137,11 @@ class GetItem(Expr):
 class List(Expr):
     items: list[Expr]
 
+@dataclass(eq=False)
+class Call(Expr):
+    func: Expr
+    args: list[Expr]
+
 # ====== BinOp sub-hierarchy ======
 
 @dataclass(eq=False)

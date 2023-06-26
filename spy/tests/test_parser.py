@@ -303,3 +303,33 @@ class TestParser(CompilerTest):
             """,
             errors = ["not implemented yet: assign to complex expressions"]
         )
+
+    def test_Call(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            return bar(1, 2, 3)
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        Return(
+            value=Call(
+                func=Name(id='bar'),
+                args=[
+                    Constant(value=1),
+                    Constant(value=2),
+                    Constant(value=3),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Call_errors(self):
+        self.expect_errors(
+            """
+            def foo() -> i32:
+                return Bar(1, 2, x=3)
+            """,
+            errors = ["not implemented yet: keyword arguments"],
+            stepname = 'parse',
+        )
