@@ -253,9 +253,10 @@ class TypeChecker:
             raise err
         return sym.w_type
 
-    def check_expr_Add(self, expr: spy.ast.Add, scope: SymTable) -> W_Type:
+    def check_expr_BinOp(self, expr: spy.ast.BinOp, scope: SymTable) -> W_Type:
         # XXX this is wrong: here we assume that the result of a binop is the
-        # same as its arguments, but we need to tweak it when we have floats
+        # same as its arguments, but we need to tweak it when we have
+        # e.g. floats and division
         w_ltype = self.check_expr(expr.left, scope)
         w_rtype = self.check_expr(expr.right, scope)
         if w_ltype != w_rtype:
@@ -265,3 +266,6 @@ class TypeChecker:
             # XXX add more
             raise err
         return w_ltype
+
+    check_expr_Add = check_expr_BinOp
+    check_expr_Mul = check_expr_BinOp

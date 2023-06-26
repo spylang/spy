@@ -14,6 +14,7 @@ ALL_OPCODES = [
     'const_load',
     'i32_add',
     'i32_sub',
+    'i32_mul',
     'local_set',
     'local_get',
     'global_set',

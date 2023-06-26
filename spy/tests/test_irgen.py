@@ -235,13 +235,9 @@ class TestIRGen(CompilerTest):
         assert mod.add(1, 2) == 3
         assert mod.N == 100
 
-    def test_function_call(self):
+    def test_i32_mul(self):
         mod = self.compile("""
-        def inc(x: i32) -> i32:
-            return x + 1
-
-        def foo(y: i32) -> i32:
-            return inc(y) * 2
+        def mul(x: i32, y: i32) -> i32:
+            return x * y
         """)
-        assert mod.inc(4) == 5
-        assert mod.foo(5) == 12
+        assert mod.mul(3, 4) == 12

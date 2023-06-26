@@ -146,6 +146,7 @@ class Call(Expr):
 
 @dataclass(eq=False)
 class BinOp(Expr):
+    op = ''
     left: Expr
     right: Expr
 
