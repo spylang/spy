@@ -269,3 +269,21 @@ class TypeChecker:
 
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
+
+    def check_expr_Call(self, call: spy.ast.Call, scope: SymTable) -> W_Type:
+        w_functype = self.check_expr(call.func, scope)
+        if not isinstance(w_functype, W_FunctionType):
+            err = SPyTypeError('...')
+            XXX
+            raise Err
+        argtypes_w = [self.check_expr(arg, scope) for arg in call.args]
+        if len(w_functype.params) != len(argtypes_w):
+            err = SPyTypeError('this function takes X arguments but Y arguments were supplied')
+            XXX
+            raise err
+        for param, w_arg_type in zip(w_functype.params, argtypes_w):
+            if not can_assign_to(w_arg_type, param.w_type):
+                # XXX
+                self.raise_type_mismatch(...)
+        #
+        return w_functype.w_restype

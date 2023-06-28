@@ -130,3 +130,7 @@ class CodeGen:
 
     do_eval_Add = do_eval_BinOp
     do_eval_Mul = do_eval_BinOp
+
+    def do_eval_Call(self, call: spy.ast.BinOp) -> None:
+        # XXX: first, we need to distinguish between direct and indirect calls
+        import pdb;pdb.set_trace()

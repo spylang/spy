@@ -241,3 +241,15 @@ class TestIRGen(CompilerTest):
             return x * y
         """)
         assert mod.mul(3, 4) == 12
+
+    @pytest.mark.skip(reason='WIP')
+    def test_function_call(self):
+        mod = self.compile("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo(y: i32) -> i32:
+            return inc(y) * 2
+        """)
+        assert mod.inc(4) == 5
+        assert mod.foo(5) == 12
