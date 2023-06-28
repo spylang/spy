@@ -25,7 +25,7 @@ class W_FunctionType(W_Type):
         self.params = params
         self.w_restype = w_restype
         sig = self._str_sig()
-        super().__init__(f'fn {sig}', W_Function)
+        super().__init__(f'def{sig}', W_Function)
 
     @classmethod
     def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FunctionType':

@@ -12,8 +12,8 @@ class TestFunction:
         vm = SPyVM()
         w_i32 = vm.builtins.w_i32
         w_functype = W_FunctionType.make(x=w_i32, y=w_i32, w_restype=w_i32)
-        assert w_functype.name == 'fn (x: i32, y: i32) -> i32'
-        assert repr(w_functype) == "<spy type 'fn (x: i32, y: i32) -> i32'>"
+        assert w_functype.name == 'def(x: i32, y: i32) -> i32'
+        assert repr(w_functype) == "<spy type 'def(x: i32, y: i32) -> i32'>"
 
     def test_simple_function(self):
         vm = SPyVM()
