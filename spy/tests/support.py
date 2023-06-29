@@ -108,10 +108,14 @@ class InterpFuncWrapper:
         return self.vm.unwrap(w_res)
 
 
-class AnyLocClass:
+class AnythingClass:
+    """
+    Magic object which compares equal to everything. Useful for equality tests
+    in which you don't care about the exact value of a specific field.
+    """
     def __eq__(self, other):
         return True
-ANYLOC: Any = AnyLocClass()
+ANYTHING: Any = AnythingClass()
 
 
 @pytest.mark.usefixtures('init')

@@ -44,6 +44,20 @@ class CodeGen:
             self.exec_stmt(stmt)
         return self.w_code
 
+    def is_const(self, expr: spy.ast.Expr) -> bool:
+        """
+        Check whether the given expr is a compile time const. We consider consts:
+          - spy.ast.Constant
+          - spy.ast.Name which refers to a 'const'
+        """
+        if isinstance(expr, spy.ast.Constant):
+            return True
+        elif isinstance(expr, spy.ast.Name):
+            varname = expr.id
+            sym = self.scope.lookup(varname)
+            return sym.qualifier == 'const'
+        return False
+
     def emit(self, name: str, *args: object) -> None:
         """
         Emit an OpCode into the w_code body
@@ -126,11 +140,18 @@ class CodeGen:
                 self.emit('i32_mul')
                 return
         #
-        raise NotImplementedError(f'{binop.op} op between {w_ltype.name} and {w_rtype.name}')
+        raise NotImplementedError(
+            f'{binop.op} op between {w_ltype.name} and {w_rtype.name}')
 
     do_eval_Add = do_eval_BinOp
     do_eval_Mul = do_eval_BinOp
 
     def do_eval_Call(self, call: spy.ast.BinOp) -> None:
-        # XXX: first, we need to distinguish between direct and indirect calls
-        import pdb;pdb.set_trace()
+        if not self.is_const(call.func):
+            err = SPyCompileError('indirect calls not supported')
+            raise err
+        assert isinstance(call.func, spy.ast.Name)
+        funcname = call.func.id
+        for expr in call.args:
+            self.eval_expr(expr)
+        self.emit('call', funcname, len(call.args))

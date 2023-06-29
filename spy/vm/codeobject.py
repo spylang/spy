@@ -19,6 +19,7 @@ ALL_OPCODES = [
     'local_get',
     'global_set',
     'global_get',
+    'call',
 ]
 
 class OpCode:

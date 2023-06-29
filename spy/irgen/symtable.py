@@ -1,8 +1,10 @@
-from typing import Optional
-from dataclasses import dataclass
+from typing import Optional, Literal
+from dataclasses import dataclass, KW_ONLY
 import spy.ast
 from spy.location import Loc
 from spy.vm.object import W_Type, W_Object
+
+Qualifier = Literal['var', 'const']
 
 class SymbolAlreadyDeclaredError(Exception):
     """
@@ -13,9 +15,12 @@ class SymbolAlreadyDeclaredError(Exception):
 @dataclass
 class Symbol:
     name: str
+    qualifier: Qualifier
     w_type: W_Type
+    _: KW_ONLY
     loc: Loc           # where the symbol is defined, in the source code
     scope: 'SymTable'  # the scope where the symbol lives in
+
 
 class SymTable:
     name: str  # just for debugging
@@ -36,10 +41,15 @@ class SymTable:
             assert name == sym.name
             print(f'    {name}: {sym.w_type.name}')
 
-    def declare(self, name: str, w_type: W_Type, loc: Loc) -> Symbol:
+    def declare(self, name: str, qualifier: Qualifier, w_type: W_Type,
+                loc: Loc) -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
-        self.symbols[name] = s = Symbol(name, w_type, loc, self)
+        self.symbols[name] = s = Symbol(name = name,
+                                        qualifier = qualifier,
+                                        w_type = w_type,
+                                        loc = loc,
+                                        scope = self)
         return s
 
     def lookup(self, name: str) -> Optional[Symbol]:

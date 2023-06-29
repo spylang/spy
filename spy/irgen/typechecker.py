@@ -136,7 +136,7 @@ class TypeChecker:
         ]
         w_return_type = self.resolve_type(funcdef.return_type)
         w_functype = W_FunctionType(params, w_return_type)
-        scope.declare(funcdef.name, w_functype, funcdef.loc)
+        scope.declare(funcdef.name, 'const', w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
     def check_FuncDef(self, funcdef: spy.ast.FuncDef, outer_scope: SymTable) -> None:
@@ -145,11 +145,11 @@ class TypeChecker:
         w_functype = self.funcdef_types[funcdef]
         #
         # add function arguments to the local scope
-        local_scope.declare('@return', w_functype.w_restype,
+        local_scope.declare('@return', 'var', w_functype.w_restype,
                             funcdef.return_type.loc)
         assert len(funcdef.args) == len(w_functype.params)
         for arg_node, param in zip(funcdef.args, w_functype.params):
-            local_scope.declare(param.name, param.w_type, arg_node.loc)
+            local_scope.declare(param.name, 'var', param.w_type, arg_node.loc)
         #
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
@@ -191,7 +191,7 @@ class TypeChecker:
             raise err
         #
         w_declared_type = self.resolve_type(vardef.type)
-        scope.declare(vardef.name, w_declared_type, vardef.loc)
+        scope.declare(vardef.name, 'var', w_declared_type, vardef.loc)
         #
         assert vardef.value is not None, 'TODO'
         w_type = self.check_expr(vardef.value, scope)

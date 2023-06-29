@@ -7,7 +7,7 @@ from spy.errors import SPyCompileError
 from spy.irgen.symtable import Symbol
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FunctionType
-from spy.tests.support import CompilerTest, ANYLOC
+from spy.tests.support import CompilerTest, ANYTHING
 
 class TestIRGen(CompilerTest):
 
@@ -25,14 +25,22 @@ class TestIRGen(CompilerTest):
         """)
         vm = self.vm
         w_i32 = vm.builtins.w_i32
+        w_expected_functype = W_FunctionType([], w_i32)
         #
         # typechecker tests
+        t = self.compiler.t
+        assert t.global_scope.symbols == {
+            'foo': Symbol('foo', 'const', w_expected_functype,
+                          loc = ANYTHING,
+                          scope = t.global_scope)
+        }
+        #
         funcdef = self.get_funcdef('foo')
         w_expected_functype = W_FunctionType([], w_i32)
-        w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
+        w_functype, scope = t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', w_i32, ANYLOC, scope),
+            '@return': Symbol('@return', 'var', w_i32, loc=ANYTHING, scope=scope)
         }
         #
         # codegen tests
@@ -95,8 +103,8 @@ class TestIRGen(CompilerTest):
         funcdef = self.get_funcdef('foo')
         w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
         assert scope.symbols == {
-            '@return': Symbol('@return', w_i32, ANYLOC, scope),
-            'x': Symbol('x', w_i32, ANYLOC, scope),
+            '@return': Symbol('@return', 'var', w_i32, loc=ANYTHING, scope=scope),
+            'x': Symbol('x', 'var', w_i32, loc=ANYTHING, scope=scope),
         }
         #
         # codegen tests
@@ -153,8 +161,8 @@ class TestIRGen(CompilerTest):
         w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', w_i32, ANYLOC, scope),
-            'x': Symbol('x', w_i32, ANYLOC, scope),
+            '@return': Symbol('@return', 'var', w_i32, loc=ANYTHING, scope=scope),
+            'x': Symbol('x', 'var', w_i32, loc=ANYTHING, scope=scope),
         }
         #
         # codegen tests
@@ -242,14 +250,13 @@ class TestIRGen(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
-    @pytest.mark.skip(reason='WIP')
     def test_function_call(self):
         mod = self.compile("""
-        def inc(x: i32) -> i32:
-            return x + 1
+        def foo(x: i32, y: i32, z: i32) -> i32:
+            return x*100 + y*10 + z
 
-        def foo(y: i32) -> i32:
-            return inc(y) * 2
+        def bar(y: i32) -> i32:
+            return foo(y, y+1, y+2)
         """)
-        assert mod.inc(4) == 5
-        assert mod.foo(5) == 12
+        assert mod.foo(1, 2, 3) == 123
+        assert mod.bar(4) == 456

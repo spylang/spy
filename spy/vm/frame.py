@@ -111,3 +111,12 @@ class Frame:
     def op_global_set(self, varname: str) -> None:
         w_value = self.pop()
         self.globals.set(varname, w_value)
+
+    def op_call(self, funcname: str, argcount: int) -> None:
+        w_func = self.globals.get(funcname)
+        args_w = []
+        for i in range(argcount):
+            args_w.append(self.pop())
+        args_w.reverse()
+        w_res = self.vm.call_function(w_func, args_w)
+        self.push(w_res)
