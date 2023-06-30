@@ -7,6 +7,14 @@ from spy.util import ColorFormatter
 
 Level = Literal["error", "note"]
 
+def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
+    if n == 1:
+        return singular
+    elif plural is None:
+        return singular + 's'
+    else:
+        return plural
+
 @dataclass
 class Annotation:
     level: Level

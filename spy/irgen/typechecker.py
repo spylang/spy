@@ -1,8 +1,8 @@
 from typing import NoReturn, Optional
 import spy.ast
 from spy.location import Loc
-from spy.errors import SPyTypeError
-from spy.irgen.symtable import SymTable
+from spy.errors import SPyTypeError, maybe_plural
+from spy.irgen.symtable import SymTable, Symbol
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type
 from spy.vm.function import W_FunctionType, FuncParam
@@ -102,6 +102,14 @@ class TypeChecker:
         """
         if isinstance(expr, spy.ast.Name):
             return expr.id
+        return None
+
+    def lookup_Name_maybe(self, expr: spy.ast.Expr, scope: SymTable) -> Optional[Symbol]:
+        """
+        Try to get the place where expr was defined, in case expr is a Name.
+        """
+        if isinstance(expr, spy.ast.Name):
+            return scope.lookup(expr.id)
         return None
 
     def declare(self, decl: spy.ast.Decl, scope: SymTable) -> None:
@@ -271,19 +279,55 @@ class TypeChecker:
     check_expr_Mul = check_expr_BinOp
 
     def check_expr_Call(self, call: spy.ast.Call, scope: SymTable) -> W_Type:
+        sym = self.lookup_Name_maybe(call.func, scope) # only used for error reporting
         w_functype = self.check_expr(call.func, scope)
         if not isinstance(w_functype, W_FunctionType):
-            err = SPyTypeError('...')
-            XXX
-            raise Err
+            self._call_error_non_callable(call, sym, w_functype)
+        #
         argtypes_w = [self.check_expr(arg, scope) for arg in call.args]
-        if len(w_functype.params) != len(argtypes_w):
-            err = SPyTypeError('this function takes X arguments but Y arguments were supplied')
-            XXX
-            raise err
+        got_nargs = len(argtypes_w)
+        exp_nargs = len(w_functype.params)
+        if got_nargs != exp_nargs:
+            self._call_error_wrong_argcount(call, sym, got_nargs, exp_nargs)
+        #
         for param, w_arg_type in zip(w_functype.params, argtypes_w):
             if not can_assign_to(w_arg_type, param.w_type):
                 # XXX
                 self.raise_type_mismatch(...)
         #
         return w_functype.w_restype
+
+
+    def _call_error_non_callable(self, call: spy.ast.Call, sym: Symbol,
+                                 w_functype: W_FunctionType) -> NoReturn:
+        err = SPyTypeError(f'cannot call objects of type `{w_functype.name}`')
+        err.add('error', 'this is not a function', call.func.loc)
+        if sym:
+            err.add('note', 'variable defined here', sym.loc)
+        raise err
+
+    def _call_error_wrong_argcount(self, call: spy.ast.Call, sym: Symbol,
+                                   got: int, exp: int) -> NoReturn:
+        assert got != exp
+        takes = maybe_plural(exp, f'takes {exp} argument')
+        supplied = maybe_plural(got,
+                                f'1 argument was supplied',
+                                f'{got} arguments were supplied')
+        err = SPyTypeError(f'this function {takes} but {supplied}')
+        #
+        if got < exp:
+            diff = exp - got
+            arguments = maybe_plural(diff, 'argument')
+            err.add('error', f'{diff} {arguments} missing', call.func.loc)
+        else:
+            diff = got - exp
+            arguments = maybe_plural(diff, 'argument')
+            first_extra_arg = call.args[exp]
+            last_extra_arg = call.args[-1]
+            # XXX this assumes that all the arguments are on the same line
+            loc = first_extra_arg.loc.replace(col_end=last_extra_arg.loc.col_end)
+            err.add('error', f'{diff} extra {arguments}', loc)
+        #
+        if sym:
+            err.add('note', 'function defined here', sym.loc)
+        raise err

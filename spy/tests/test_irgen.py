@@ -260,3 +260,45 @@ class TestIRGen(CompilerTest):
         """)
         assert mod.foo(1, 2, 3) == 123
         assert mod.bar(4) == 456
+
+    def test_function_call_errors(self):
+        self.expect_errors(
+            f"""
+            inc: i32 = 0
+            def bar() -> void:
+                return inc(0)
+            """,
+            errors = [
+                'cannot call objects of type `i32`',
+                'this is not a function',
+                'variable defined here'
+            ]
+        )
+        #
+        self.expect_errors(
+            f"""
+            def inc(x: i32) -> i32:
+                return x+1
+            def bar() -> void:
+                return inc()
+            """,
+            errors = [
+                'this function takes 1 argument but 0 arguments were supplied',
+                '1 argument missing',
+                'function defined here',
+            ]
+        )
+        #
+        self.expect_errors(
+            f"""
+            def inc(x: i32) -> i32:
+                return x+1
+            def bar() -> void:
+                return inc(1, 2, 3)
+            """,
+            errors = [
+                'this function takes 1 argument but 3 arguments were supplied',
+                '2 extra arguments',
+                'function defined here',
+            ]
+        )
