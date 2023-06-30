@@ -302,3 +302,17 @@ class TestIRGen(CompilerTest):
                 'function defined here',
             ]
         )
+        #
+        self.expect_errors(
+            f"""
+            def inc(x: i32) -> i32:
+                return x+1
+            def bar(s: str) -> i32:
+                return inc(s)
+            """,
+            errors = [
+                'mismatched types',
+                'expected `i32`, got `str`',
+                'function defined here'
+            ]
+        )

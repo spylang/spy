@@ -290,10 +290,11 @@ class TypeChecker:
         if got_nargs != exp_nargs:
             self._call_error_wrong_argcount(call, sym, got_nargs, exp_nargs)
         #
-        for param, w_arg_type in zip(w_functype.params, argtypes_w):
+        for i, (param, w_arg_type) in enumerate(zip(w_functype.params, argtypes_w)):
             if not can_assign_to(w_arg_type, param.w_type):
-                # XXX
-                self.raise_type_mismatch(...)
+                self._call_error_type_mismatch(call, sym, i,
+                                               w_exp_type = param.w_type,
+                                               w_got_type = w_arg_type)
         #
         return w_functype.w_restype
 
@@ -328,6 +329,16 @@ class TypeChecker:
             loc = first_extra_arg.loc.replace(col_end=last_extra_arg.loc.col_end)
             err.add('error', f'{diff} extra {arguments}', loc)
         #
+        if sym:
+            err.add('note', 'function defined here', sym.loc)
+        raise err
+
+    def _call_error_type_mismatch(self, call: spy.ast.Call, sym: Symbol, i: int,
+                                  w_exp_type: W_Type, w_got_type: W_Type) -> NoReturn:
+        err = SPyTypeError('mismatched types')
+        exp = w_exp_type.name
+        got = w_got_type.name
+        err.add('error', f'expected `{exp}`, got `{got}`', call.args[i].loc)
         if sym:
             err.add('note', 'function defined here', sym.loc)
         raise err

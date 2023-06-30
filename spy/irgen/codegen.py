@@ -148,6 +148,9 @@ class CodeGen:
 
     def do_eval_Call(self, call: spy.ast.BinOp) -> None:
         if not self.is_const(call.func):
+            # XXX there is no test for this at the moment because we don't
+            # have higher order functions, so it's impossible to reach this
+            # branch
             err = SPyCompileError('indirect calls not supported')
             raise err
         assert isinstance(call.func, spy.ast.Name)
