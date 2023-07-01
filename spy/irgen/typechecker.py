@@ -299,15 +299,15 @@ class TypeChecker:
         return w_functype.w_restype
 
 
-    def _call_error_non_callable(self, call: spy.ast.Call, sym: Symbol,
-                                 w_functype: W_FunctionType) -> NoReturn:
-        err = SPyTypeError(f'cannot call objects of type `{w_functype.name}`')
+    def _call_error_non_callable(self, call: spy.ast.Call, sym: Optional[Symbol],
+                                 w_type: W_Type) -> NoReturn:
+        err = SPyTypeError(f'cannot call objects of type `{w_type.name}`')
         err.add('error', 'this is not a function', call.func.loc)
         if sym:
             err.add('note', 'variable defined here', sym.loc)
         raise err
 
-    def _call_error_wrong_argcount(self, call: spy.ast.Call, sym: Symbol,
+    def _call_error_wrong_argcount(self, call: spy.ast.Call, sym: Optional[Symbol],
                                    got: int, exp: int) -> NoReturn:
         assert got != exp
         takes = maybe_plural(exp, f'takes {exp} argument')
@@ -333,7 +333,7 @@ class TypeChecker:
             err.add('note', 'function defined here', sym.loc)
         raise err
 
-    def _call_error_type_mismatch(self, call: spy.ast.Call, sym: Symbol, i: int,
+    def _call_error_type_mismatch(self, call: spy.ast.Call, sym: Optional[Symbol], i: int,
                                   w_exp_type: W_Type, w_got_type: W_Type) -> NoReturn:
         err = SPyTypeError('mismatched types')
         exp = w_exp_type.name

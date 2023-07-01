@@ -1,6 +1,7 @@
 import spy.ast
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
+from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
@@ -55,6 +56,7 @@ class CodeGen:
         elif isinstance(expr, spy.ast.Name):
             varname = expr.id
             sym = self.scope.lookup(varname)
+            assert sym is not None
             return sym.qualifier == 'const'
         return False
 
@@ -146,7 +148,7 @@ class CodeGen:
     do_eval_Add = do_eval_BinOp
     do_eval_Mul = do_eval_BinOp
 
-    def do_eval_Call(self, call: spy.ast.BinOp) -> None:
+    def do_eval_Call(self, call: spy.ast.Call) -> None:
         if not self.is_const(call.func):
             # XXX there is no test for this at the moment because we don't
             # have higher order functions, so it's impossible to reach this

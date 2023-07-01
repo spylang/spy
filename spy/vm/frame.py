@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
+from spy.vm.function import W_Function
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -114,6 +115,7 @@ class Frame:
 
     def op_call(self, funcname: str, argcount: int) -> None:
         w_func = self.globals.get(funcname)
+        assert isinstance(w_func, W_Function)
         args_w = []
         for i in range(argcount):
             args_w.append(self.pop())
