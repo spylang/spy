@@ -1,6 +1,6 @@
 from typing import Any, Optional
 import fixedint
-from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_str
+from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool, W_str
 from spy.vm.function import W_FunctionType, W_Function
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
@@ -34,9 +34,12 @@ class SPyVM:
         self.builtins.w_object = W_Object._w
         self.builtins.w_type = W_Type._w
         self.builtins.w_i32 = W_i32._w
+        self.builtins.w_bool = W_bool._w
         self.builtins.w_void = W_void._w
         self.builtins.w_str = W_str._w
         self.builtins.w_None = W_void._w_singleton
+        self.builtins.w_True = W_bool._w_singleton_True
+        self.builtins.w_False = W_bool._w_singleton_False
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
@@ -61,6 +64,11 @@ class SPyVM:
             return self.builtins.w_None
         elif type(value) in (int, fixedint.Int32):
             return W_i32(value)
+        elif type(value) is bool:
+            if value:
+                return self.builtins.w_True
+            else:
+                return self.builtins.w_False
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
         raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")

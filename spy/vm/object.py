@@ -155,8 +155,7 @@ class W_i32(W_Object):
     value: fixedint.Int32
 
     def __init__(self, value: int | fixedint.Int32) -> None:
-        if type(value) not in (int, fixedint.Int32):
-            raise TypeError()
+        assert type(value) in (int, fixedint.Int32)
         self.value = fixedint.Int32(value)
 
     def __repr__(self) -> str:
@@ -165,6 +164,30 @@ class W_i32(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
         return self.value
 
+
+@spytype('bool')
+class W_bool(W_Object):
+    value: bool
+
+    def __init__(self, value: bool) -> None:
+        # this is just a sanity check: we don't want people to be able to
+        # create additional instances of W_bool
+        raise Exception("You cannot instantiate W_bool. Use vm.wrap().")
+
+    @staticmethod
+    def _make_singleton(value: bool) -> 'W_bool':
+        w_obj = W_bool.__new__(W_bool)
+        w_obj.value = value
+        return w_obj
+
+    def __repr__(self) -> str:
+        return f'W_bool({self.value})'
+
+    def spy_unwrap(self, vm: 'SPyVM') -> Any:
+        return self.value
+
+W_bool._w_singleton_True = W_bool._make_singleton(True)
+W_bool._w_singleton_False = W_bool._make_singleton(False)
 
 @spytype('str')
 class W_str(W_Object):
