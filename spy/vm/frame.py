@@ -74,7 +74,7 @@ class Frame:
                 meth(*op.args)
                 self.pc += 1
 
-    def op_const_load(self, w_const: W_Object) -> None:
+    def op_load_const(self, w_const: W_Object) -> None:
         self.push(w_const)
 
     def _exec_op_i32_binop(self, func: Any) -> None:
@@ -97,23 +97,23 @@ class Frame:
     def op_i32_mul(self) -> None:
         self._exec_op_i32_binop(lambda a, b: a * b)
 
-    def op_local_get(self, varname: str) -> None:
+    def op_load_local(self, varname: str) -> None:
         w_value = self.locals.get(varname)
         self.push(w_value)
 
-    def op_local_set(self, varname: str) -> None:
+    def op_store_local(self, varname: str) -> None:
         w_value = self.pop()
         self.locals.set(varname, w_value)
 
-    def op_global_get(self, varname: str) -> None:
+    def op_load_global(self, varname: str) -> None:
         w_value = self.globals.get(varname)
         self.push(w_value)
 
-    def op_global_set(self, varname: str) -> None:
+    def op_store_global(self, varname: str) -> None:
         w_value = self.pop()
         self.globals.set(varname, w_value)
 
-    def op_call(self, funcname: str, argcount: int) -> None:
+    def op_call_global(self, funcname: str, argcount: int) -> None:
         w_func = self.globals.get(funcname)
         assert isinstance(w_func, W_Function)
         args_w = []

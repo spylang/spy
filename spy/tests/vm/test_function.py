@@ -21,7 +21,7 @@ class TestFunction:
         #
         w_code = W_CodeObject('simple', w_functype=w_functype)
         w_code.body = [
-            OpCode('const_load', vm.wrap(42)),
+            OpCode('load_const', vm.wrap(42)),
             OpCode('return'),
         ]
         #
@@ -41,7 +41,7 @@ class TestFunction:
         w_functype = W_FunctionType([], vm.builtins.w_i32)
         w_code = W_CodeObject('fn', w_functype=w_functype)
         w_code.body = [
-            OpCode('global_get', 'a'),
+            OpCode('load_global', 'a'),
             OpCode('return'),
         ]
         #
@@ -62,8 +62,8 @@ class TestFunction:
         w_code.declare_local('a', w_i32)
         w_code.declare_local('b', w_i32)
         w_code.body = [
-            OpCode('local_get', 'a'),
-            OpCode('local_get', 'b'),
+            OpCode('load_local', 'a'),
+            OpCode('load_local', 'b'),
             OpCode('i32_sub'),
             OpCode('return'),
         ]

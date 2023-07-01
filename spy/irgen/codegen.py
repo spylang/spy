@@ -95,16 +95,16 @@ class CodeGen:
         assert vardef.name in self.scope.symbols
         assert vardef.value is not None
         self.eval_expr(vardef.value)
-        self.emit('local_set', vardef.name)
+        self.emit('store_local', vardef.name)
 
     def do_exec_Assign(self, assign: spy.ast.Assign) -> None:
         sym = self.scope.lookup(assign.target)
         assert sym # there MUST be a symbol somewhere, else the typechecker is broken
         self.eval_expr(assign.value)
         if sym.scope is self.scope:
-            self.emit('local_set', assign.target) # local variable
+            self.emit('store_local', assign.target) # local variable
         elif sym.scope is self.t.global_scope:
-            self.emit('global_set', assign.target) # local variable
+            self.emit('store_global', assign.target) # local variable
         else:
             assert False, 'TODO' # non-local variables
 
@@ -112,7 +112,7 @@ class CodeGen:
 
     def do_eval_Constant(self, const: spy.ast.Constant) -> None:
         w_const = make_w_const(self.vm, const)
-        self.emit('const_load', w_const)
+        self.emit('load_const', w_const)
 
     def do_eval_Name(self, expr: spy.ast.Name) -> None:
         varname = expr.id
@@ -120,10 +120,10 @@ class CodeGen:
         assert sym is not None
         if sym.scope is self.scope:
             # local variable
-            self.emit('local_get', varname)
+            self.emit('load_local', varname)
         elif sym.scope is self.t.global_scope:
             # global var
-            self.emit('global_get', varname)
+            self.emit('load_global', varname)
         else:
             # non-local variable
             assert False, 'XXX todo'
@@ -159,4 +159,4 @@ class CodeGen:
         funcname = call.func.id
         for expr in call.args:
             self.eval_expr(expr)
-        self.emit('call', funcname, len(call.args))
+        self.emit('call_global', funcname, len(call.args))

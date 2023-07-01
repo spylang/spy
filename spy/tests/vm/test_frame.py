@@ -23,7 +23,7 @@ class TestFrame:
         w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
-            OpCode('const_load', w_42),
+            OpCode('load_const', w_42),
             OpCode('return'),
         ]
         frame = make_Frame(vm, code)
@@ -37,8 +37,8 @@ class TestFrame:
         w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
-            OpCode('const_load', w_100),
-            OpCode('const_load', w_1),
+            OpCode('load_const', w_100),
+            OpCode('load_const', w_1),
             OpCode('i32_add'),
             OpCode('return'),
         ]
@@ -54,8 +54,8 @@ class TestFrame:
         w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
-            OpCode('const_load', w_50),
-            OpCode('const_load', w_8),
+            OpCode('load_const', w_50),
+            OpCode('load_const', w_8),
             OpCode('i32_sub'),
             OpCode('return'),
         ]
@@ -70,7 +70,7 @@ class TestFrame:
         code = W_CodeObject('simple', w_functype=w_functype)
         code.declare_local('a', vm.builtins.w_i32)
         code.body = [
-            OpCode('local_get', 'a'),
+            OpCode('load_local', 'a'),
             OpCode('return'),
         ]
         frame = make_Frame(vm, code)
@@ -85,9 +85,9 @@ class TestFrame:
         code = W_CodeObject('simple', w_functype=w_functype)
         code.declare_local('a', vm.builtins.w_i32)
         code.body = [
-            OpCode('const_load', w_100),
-            OpCode('local_set', 'a'),
-            OpCode('local_get', 'a'),
+            OpCode('load_const', w_100),
+            OpCode('store_local', 'a'),
+            OpCode('load_local', 'a'),
             OpCode('return'),
         ]
         frame = make_Frame(vm, code)
@@ -99,11 +99,11 @@ class TestFrame:
         w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
-            OpCode('global_get', 'a'),
-            OpCode('const_load', vm.wrap(11)),
+            OpCode('load_global', 'a'),
+            OpCode('load_const', vm.wrap(11)),
             OpCode('i32_add'),
-            OpCode('global_set', 'b'),
-            OpCode('const_load', vm.wrap(0)),
+            OpCode('store_global', 'b'),
+            OpCode('load_const', vm.wrap(0)),
             OpCode('return'),
         ]
 
@@ -127,8 +127,8 @@ class TestFrame:
         code.declare_local('a', w_i32)
         code.declare_local('b', w_i32)
         code.body = [
-            OpCode('local_get', 'a'),
-            OpCode('local_get', 'b'),
+            OpCode('load_local', 'a'),
+            OpCode('load_local', 'b'),
             OpCode('i32_sub'),
             OpCode('return'),
         ]

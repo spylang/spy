@@ -11,15 +11,15 @@ if typing.TYPE_CHECKING:
 # or wordcode.
 ALL_OPCODES = [
     'return',
-    'const_load',
+    'load_const',
+    'load_local',
+    'load_global',
+    'store_local',
+    'store_global',
+    'call_global',
     'i32_add',
     'i32_sub',
     'i32_mul',
-    'local_set',
-    'local_get',
-    'global_set',
-    'global_get',
-    'call',
 ]
 
 class OpCode:
@@ -79,6 +79,6 @@ class W_CodeObject(W_Object):
         for op in self.body:
             line = [color.set('blue', op.name)]
             args = ', '.join([str(arg) for arg in op.args])
-            if op.name in ('local_get', 'local_set', 'global_get', 'global_set'):
+            if op.name in ('load_local', 'store_local', 'load_global', 'store_global'):
                 args = color.set('green', args)
             print(f'    {op.name:<15} {args}')
