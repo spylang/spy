@@ -4,7 +4,7 @@ from spy.location import Loc
 from spy.errors import SPyTypeError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
 from spy.vm.vm import SPyVM
-from spy.vm.object import W_Type
+from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FunctionType, FuncParam
 from spy.util import magic_dispatch
 
@@ -19,6 +19,7 @@ class TypeChecker:
     funcdef_types: dict[spy.ast.FuncDef, W_FunctionType]
     funcdef_scopes: dict[spy.ast.FuncDef, SymTable]
     expr_types: dict[spy.ast.Expr, W_Type]
+    consts_w: dict[spy.ast.Constant, W_Object]
 
     def __init__(self, vm: SPyVM, mod: spy.ast.Module) -> None:
         self.vm = vm
@@ -27,6 +28,7 @@ class TypeChecker:
         self.funcdef_types = {}
         self.funcdef_scopes = {}
         self.expr_types = {}
+        self.consts_w = {}
 
     # ===============
     # public API
@@ -50,6 +52,25 @@ class TypeChecker:
         w_type = self.funcdef_types[funcdef]
         scope = self.funcdef_scopes[funcdef]
         return w_type, scope
+
+    def get_w_const(self, const: spy.ast.Constant) -> W_Object:
+        """
+        Convert a spy.ast.Constant into the equivalent w_* value.
+        """
+        if const in self.consts_w:
+            return self.consts_w[const]
+        #
+        # not found, make it
+        w_const = None
+        T = type(const.value)
+        if T in (int, bool):
+            w_const = self.vm.wrap(const.value)
+        else:
+            self.error(f'unsupported literal: {const.value!r}',
+                       f'this is not supported', const.loc)
+        #
+        self.consts_w[const] = w_const
+        return w_const
 
     # ===============
     # implementation
@@ -245,12 +266,10 @@ class TypeChecker:
     # ==== expressions ====
 
     def check_expr_Constant(self, const: spy.ast.Constant, scope: SymTable) -> W_Type:
-        T = type(const.value)
-        if T is int:
-            return self.vm.builtins.w_i32
-        else:
-            self.error(f'unsupported literal: {const.value!r}',
-                       f'this is not supported', const.loc)
+        # this is a bit suboptimal: we are making the constant and throw it
+        # away just to compute the type, and then we re-make it in CodeGen.
+        w_const = self.get_w_const(const)
+        return self.vm.dynamic_type(w_const)
 
     def check_expr_Name(self, expr: spy.ast.Name, scope: SymTable) -> W_Type:
         varname = expr.id

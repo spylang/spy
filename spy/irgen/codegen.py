@@ -8,9 +8,6 @@ from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FunctionType
 from spy.util import magic_dispatch
 
-def make_w_const(vm: SPyVM, const: spy.ast.Constant) -> W_Object:
-    assert type(const.value) is int
-    return vm.wrap(const.value)
 
 class CodeGen:
     """
@@ -111,7 +108,7 @@ class CodeGen:
     # ====== expressions ======
 
     def do_eval_Constant(self, const: spy.ast.Constant) -> None:
-        w_const = make_w_const(self.vm, const)
+        w_const = self.t.get_w_const(const)
         self.emit('load_const', w_const)
 
     def do_eval_Name(self, expr: spy.ast.Name) -> None:

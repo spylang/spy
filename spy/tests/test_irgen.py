@@ -316,3 +316,14 @@ class TestIRGen(CompilerTest):
                 'function defined here'
             ]
         )
+
+    def test_True_False(self):
+        mod = self.compile("""
+        def get_True() -> bool:
+            return True
+
+        def get_False() -> bool:
+            return False
+        """)
+        assert mod.get_True() is True
+        assert mod.get_False() is False
