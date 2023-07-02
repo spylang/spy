@@ -203,6 +203,55 @@ class MatMul(BinOp):
     op = '@'
 
 
+# ====== CompareOp sub-hierarchy ======
+
+@dataclass(eq=False)
+class CompareOp(Expr):
+    op = ''
+    left: Expr
+    right: Expr
+
+@dataclass(eq=False)
+class Eq(CompareOp):
+    op = '=='
+
+@dataclass(eq=False)
+class NotEq(CompareOp):
+    op = '!='
+
+@dataclass(eq=False)
+class Lt(CompareOp):
+    op = '<'
+
+@dataclass(eq=False)
+class LtE(CompareOp):
+    op = '<='
+
+@dataclass(eq=False)
+class Gt(CompareOp):
+    op = '>'
+
+@dataclass(eq=False)
+class GtE(CompareOp):
+    op = '>='
+
+@dataclass(eq=False)
+class Is(CompareOp):
+    op = 'is'
+
+@dataclass(eq=False)
+class IsNot(CompareOp):
+    op = 'is not'
+
+@dataclass(eq=False)
+class In(CompareOp):
+    op = 'in'
+
+@dataclass(eq=False)
+class NotIn(CompareOp):
+    op = 'not in'
+
+
 # ====== Stmt hierarchy ======
 
 @dataclass(eq=False)

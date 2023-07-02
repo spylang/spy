@@ -219,6 +219,17 @@ class Parser:
         assert spy_cls is not None, f'Unkown operator: {opname}'
         return spy_cls(py_node.loc, left, right)
 
+    def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.CompareOp:
+        if len(py_node.comparators) > 1:
+            assert False, 'TEST ME'
+            self.unsupported(py_node.comparators[1], 'chained comparisons')
+        left = self.from_py_expr(py_node.left)
+        right = self.from_py_expr(py_node.comparators[0])
+        opname = type(py_node.ops[0]).__name__
+        spy_cls = getattr(spy.ast, opname, None)
+        assert spy_cls is not None, f'Unkown operator: {opname}'
+        return spy_cls(py_node.loc, left, right)
+
     def from_py_expr_Call(self, py_node: py_ast.Call) -> spy.ast.Call:
         if py_node.keywords:
             self.unsupported(py_node.keywords[0], 'keyword arguments')

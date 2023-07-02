@@ -274,6 +274,40 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
+    @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
+    def test_CompareOp(self, op):
+        op = op.replace('_', ' ')  # is_not ==> is not
+        # map the operator to the spy.ast class name
+        cmpops = {
+            '==':     'Eq',
+            '!=':     'NotEq',
+            '<':      'Lt',
+            '<=':     'LtE',
+            '>':      'Gt',
+            '>=':     'GtE',
+            'is':     'Is',
+            'is not': 'IsNot',
+            'in':     'In',
+            'not in': 'NotIn',
+
+        }
+        OpClass = cmpops[op]
+        #
+        mod = self.parse(f"""
+        def foo() -> i32:
+            return x {op} 1
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = f"""
+        Return(
+            value={OpClass}(
+                left=Name(id='x'),
+                right=Constant(value=1),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_Assign(self):
         mod = self.parse("""
         def foo() -> void:

@@ -327,3 +327,12 @@ class TestIRGen(CompilerTest):
         """)
         assert mod.get_True() is True
         assert mod.get_False() is False
+
+    def test_comparison_operators(self):
+        mod = self.compile("""
+        def cmp_eq(x: i32, y: i32) -> bool:
+            return x == y
+
+        """)
+        assert mod.cmp_eq(5, 5) is True
+        assert mod.cmp_eq(5, 6) is False
