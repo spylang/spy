@@ -290,12 +290,31 @@ class TypeChecker:
             l = w_ltype.name
             r = w_rtype.name
             err = SPyTypeError(f'cannot do `{l}` {expr.op} `{r}`')
-            # XXX add more
+            # XXX add more details
             raise err
         return w_ltype
 
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
+
+    def check_expr_CompareOp(self, expr: spy.ast.CompareOp, scope: SymTable) -> W_Type:
+        w_ltype = self.check_expr(expr.left, scope)
+        w_rtype = self.check_expr(expr.right, scope)
+        if w_ltype != w_rtype:
+            # XXX this is wrong, we need to add support for implicit conversions
+            l = w_ltype.name
+            r = w_rtype.name
+            err = SPyTypeError(f'cannot do `{l}` {expr.op} `{r}`')
+            # XXX add more details
+            raise err
+        return self.vm.builtins.w_bool
+
+    check_expr_Eq = check_expr_CompareOp
+    check_expr_NotEq = check_expr_CompareOp
+    check_expr_Lt = check_expr_CompareOp
+    check_expr_LtE = check_expr_CompareOp
+    check_expr_Gt = check_expr_CompareOp
+    check_expr_GtE = check_expr_CompareOp
 
     def check_expr_Call(self, call: spy.ast.Call, scope: SymTable) -> W_Type:
         sym = self.lookup_Name_maybe(call.func, scope) # only used for error reporting

@@ -97,6 +97,24 @@ class Frame:
     def op_i32_mul(self) -> None:
         self._exec_op_i32_binop(lambda a, b: a * b)
 
+    def op_i32_eq(self) -> None:
+        self._exec_op_i32_binop(lambda a, b: a == b)
+
+    def op_i32_neq(self) -> None:
+        self._exec_op_i32_binop(lambda a, b: a != b)
+
+    def op_i32_lt(self) -> None:
+        self._exec_op_i32_binop(lambda a, b: a < b)
+
+    def op_i32_lte(self) -> None:
+        self._exec_op_i32_binop(lambda a, b: a <= b)
+
+    def op_i32_gt(self) -> None:
+        self._exec_op_i32_binop(lambda a, b: a > b)
+
+    def op_i32_gte(self) -> None:
+        self._exec_op_i32_binop(lambda a, b: a >= b)
+
     def op_load_local(self, varname: str) -> None:
         w_value = self.locals.get(varname)
         self.push(w_value)

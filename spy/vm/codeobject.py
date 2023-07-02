@@ -20,6 +20,12 @@ ALL_OPCODES = [
     'i32_add',
     'i32_sub',
     'i32_mul',
+    'i32_eq',
+    'i32_neq',
+    'i32_lt',
+    'i32_lte',
+    'i32_gt',
+    'i32_gte',
 ]
 
 class OpCode:

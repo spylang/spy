@@ -328,11 +328,34 @@ class TestIRGen(CompilerTest):
         assert mod.get_True() is True
         assert mod.get_False() is False
 
+
     def test_comparison_operators(self):
         mod = self.compile("""
-        def cmp_eq(x: i32, y: i32) -> bool:
-            return x == y
-
+        def cmp_eq (x: i32, y: i32) -> bool: return x == y
+        def cmp_neq(x: i32, y: i32) -> bool: return x != y
+        def cmp_lt (x: i32, y: i32) -> bool: return x  < y
+        def cmp_lte(x: i32, y: i32) -> bool: return x <= y
+        def cmp_gt (x: i32, y: i32) -> bool: return x  > y
+        def cmp_gte(x: i32, y: i32) -> bool: return x >= y
         """)
         assert mod.cmp_eq(5, 5) is True
         assert mod.cmp_eq(5, 6) is False
+        #
+        assert mod.cmp_neq(5, 5) is False
+        assert mod.cmp_neq(5, 6) is True
+        #
+        assert mod.cmp_lt(5, 6) is True
+        assert mod.cmp_lt(5, 5) is False
+        assert mod.cmp_lt(6, 5) is False
+        #
+        assert mod.cmp_lte(5, 6) is True
+        assert mod.cmp_lte(5, 5) is True
+        assert mod.cmp_lte(6, 5) is False
+        #
+        assert mod.cmp_gt(5, 6) is False
+        assert mod.cmp_gt(5, 5) is False
+        assert mod.cmp_gt(6, 5) is True
+        #
+        assert mod.cmp_gte(5, 6) is False
+        assert mod.cmp_gte(5, 5) is True
+        assert mod.cmp_gte(6, 5) is True

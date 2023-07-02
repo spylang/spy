@@ -145,6 +145,30 @@ class CodeGen:
     do_eval_Add = do_eval_BinOp
     do_eval_Mul = do_eval_BinOp
 
+    def do_eval_CompareOp(self, cmpop: spy.ast.CompareOp) -> None:
+        w_i32 = self.vm.builtins.w_i32
+        w_ltype = self.t.get_expr_type(cmpop.left)
+        w_rtype = self.t.get_expr_type(cmpop.right)
+        if w_ltype is w_i32 and w_rtype is w_i32:
+            self.eval_expr(cmpop.left)
+            self.eval_expr(cmpop.right)
+            if   cmpop.op == '==': return self.emit('i32_eq')
+            elif cmpop.op == '!=': return self.emit('i32_neq')
+            elif cmpop.op == '<':  return self.emit('i32_lt')
+            elif cmpop.op == '<=': return self.emit('i32_lte')
+            elif cmpop.op == '>':  return self.emit('i32_gt')
+            elif cmpop.op == '>=': return self.emit('i32_gte')
+        #
+        raise NotImplementedError(
+            f'{cmpop.op} op between {w_ltype.name} and {w_rtype.name}')
+
+    do_eval_Eq = do_eval_CompareOp
+    do_eval_NotEq = do_eval_CompareOp
+    do_eval_Lt = do_eval_CompareOp
+    do_eval_LtE = do_eval_CompareOp
+    do_eval_Gt = do_eval_CompareOp
+    do_eval_GtE = do_eval_CompareOp
+
     def do_eval_Call(self, call: spy.ast.Call) -> None:
         if not self.is_const(call.func):
             # XXX there is no test for this at the moment because we don't
