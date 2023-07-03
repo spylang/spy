@@ -250,6 +250,19 @@ class TestIRGen(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
+    def test_BinOp_error(self):
+        self.expect_errors(
+            f"""
+            def bar(a: i32, b: str) -> void:
+                return a + b
+            """,
+            errors = [
+                'cannot do `i32` + `str`',
+                'this is `i32`',
+                'this is `str`',
+            ]
+        )
+
     def test_function_call(self):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:
@@ -329,7 +342,7 @@ class TestIRGen(CompilerTest):
         assert mod.get_False() is False
 
 
-    def test_comparison_operators(self):
+    def test_CompareOp(self):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
         def cmp_neq(x: i32, y: i32) -> bool: return x != y
@@ -359,3 +372,16 @@ class TestIRGen(CompilerTest):
         assert mod.cmp_gte(5, 6) is False
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
+
+    def test_CompareOp_error(self):
+        self.expect_errors(
+            f"""
+            def foo(a: i32, b: str) -> bool:
+                return a == b
+            """,
+            errors = [
+                'cannot do `i32` == `str`',
+                'this is `i32`',
+                'this is `str`',
+            ]
+        )

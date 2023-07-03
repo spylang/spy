@@ -290,7 +290,8 @@ class TypeChecker:
             l = w_ltype.name
             r = w_rtype.name
             err = SPyTypeError(f'cannot do `{l}` {expr.op} `{r}`')
-            # XXX add more details
+            err.add('error', f'this is `{l}`', expr.left.loc)
+            err.add('error', f'this is `{r}`', expr.right.loc)
             raise err
         return w_ltype
 
@@ -305,7 +306,8 @@ class TypeChecker:
             l = w_ltype.name
             r = w_rtype.name
             err = SPyTypeError(f'cannot do `{l}` {expr.op} `{r}`')
-            # XXX add more details
+            err.add('error', f'this is `{l}`', expr.left.loc)
+            err.add('error', f'this is `{r}`', expr.right.loc)
             raise err
         return self.vm.builtins.w_bool
 
