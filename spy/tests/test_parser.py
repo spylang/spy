@@ -308,6 +308,16 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
+    def test_CompareOp_chained(self):
+        self.expect_errors(
+            """
+            def foo() -> i32:
+                return 1 == 2 == 3
+            """,
+            errors = ["not implemented yet: chained comparisons"],
+            stepname = 'parse',
+        )
+
     def test_Assign(self):
         mod = self.parse("""
         def foo() -> void:

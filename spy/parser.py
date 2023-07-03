@@ -221,7 +221,6 @@ class Parser:
 
     def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.CompareOp:
         if len(py_node.comparators) > 1:
-            assert False, 'TEST ME'
             self.unsupported(py_node.comparators[1], 'chained comparisons')
         left = self.from_py_expr(py_node.left)
         right = self.from_py_expr(py_node.comparators[0])
