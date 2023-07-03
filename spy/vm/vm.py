@@ -10,9 +10,12 @@ class Builtins:
     w_object: W_Type
     w_type: W_Type
     w_i32: W_Type
+    w_bool: W_Type
     w_void: W_Type
     w_str: W_Type
     w_None: W_void
+    w_True: W_bool
+    w_False: W_bool
 
     def lookup(self, name: str) -> Optional[W_Object]:
         attr = 'w_' + name

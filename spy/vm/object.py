@@ -168,6 +168,9 @@ class W_i32(W_Object):
 @spytype('bool')
 class W_bool(W_Object):
     value: bool
+    #
+    _w_singleton_True: ClassVar['W_bool']
+    _w_singleton_False: ClassVar['W_bool']
 
     def __init__(self, value: bool) -> None:
         # this is just a sanity check: we don't want people to be able to
