@@ -385,3 +385,14 @@ class TestIRGen(CompilerTest):
                 'this is `str`',
             ]
         )
+
+    @pytest.mark.skip(reason='WIP')
+    def test_if(self):
+        mod = self.compile("""
+        def sign(x: i32) -> i32:
+            if x > 0:
+                return 1
+            return -1
+        """)
+        assert mod.sign(5) == 1
+        assert mod.sign(-5) == -1
