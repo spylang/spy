@@ -231,6 +231,12 @@ class Parser:
     def from_py_expr_UnaryOp(self, py_node: py_ast.UnaryOp) -> spy.ast.UnaryOp:
         value = self.from_py_expr(py_node.operand)
         opname = type(py_node.op).__name__
+        # special-case -NUM
+        if (opname == 'USub' and
+            isinstance(value, spy.ast.Constant) and
+            isinstance(value.value, int)):
+            return spy.ast.Constant(value.loc, -value.value)
+        # standard case
         if opname == 'UAdd':
             spy_cls = spy.ast.UnaryPos
         elif opname == 'USub':
@@ -241,6 +247,7 @@ class Parser:
             spy_cls = spy.ast.Not
         else:
             assert False, f'Unkown operator: {opname}'
+        #
         return spy_cls(py_node.loc, value)
 
     def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.CompareOp:

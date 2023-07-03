@@ -299,6 +299,20 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
+    def test_negative_const(self):
+        # special case -NUM, so that it's seen as a constant by the rest of the code
+        mod = self.parse(f"""
+        def foo() -> i32:
+            return -123
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        Return(
+            value=Constant(value=-123),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
         op = op.replace('_', ' ')  # is_not ==> is not
