@@ -377,3 +377,29 @@ class TestParser(CompilerTest):
             errors = ["not implemented yet: keyword arguments"],
             stepname = 'parse',
         )
+
+    def test_If(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            if x:
+                return 1
+            else:
+                return 2
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        If(
+            test=Name(id='x'),
+            then_body=[
+                Return(
+                    value=Constant(value=1),
+                ),
+            ],
+            else_body=[
+                Return(
+                    value=Constant(value=2),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(stmt, expected)

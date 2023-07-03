@@ -89,7 +89,7 @@ class Parser:
             self.error('missing return type', '', func_loc)
         #
         return_type = self.from_py_expr(py_returns)
-        body = [self.from_py_stmt(py_stmt) for py_stmt in py_funcdef.body]
+        body = self.from_py_body(py_funcdef.body)
         return spy.ast.FuncDef(
             loc = py_funcdef.loc,
             name = py_funcdef.name,
@@ -130,6 +130,9 @@ class Parser:
         )
 
     # ====== spy.ast.Stmt ======
+
+    def from_py_body(self, py_body: list[py_ast.stmt]) -> list[spy.ast.Stmt]:
+        return [self.from_py_stmt(py_stmt) for py_stmt in py_body]
 
     def from_py_stmt(self, py_node: py_ast.stmt) -> spy.ast.Stmt:
         return magic_dispatch(self, 'from_py_stmt', py_node)
@@ -180,6 +183,13 @@ class Parser:
             value = self.from_py_expr(py_node.value)
         )
 
+    def from_py_stmt_If(self, py_node: py_ast.If) -> spy.ast.If:
+        return spy.ast.If(
+            loc = py_node.loc,
+            test = self.from_py_expr(py_node.test),
+            then_body = self.from_py_body(py_node.body),
+            else_body = self.from_py_body(py_node.orelse),
+        )
 
     # ====== spy.ast.Expr ======
 

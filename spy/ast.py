@@ -277,3 +277,13 @@ class Assign(Stmt):
     target_loc: Loc
     target: str
     value: Expr
+
+@dataclass(eq=False)
+class If(Stmt):
+    test: Expr
+    then_body: list[Stmt]
+    else_body: list[Stmt]
+
+    @property
+    def has_else(self) -> bool:
+        return len(self.else_body) > 0
