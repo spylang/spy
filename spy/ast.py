@@ -203,6 +203,30 @@ class MatMul(BinOp):
     op = '@'
 
 
+# ====== UnaryOp sub-hierarchy ======
+
+@dataclass(eq=False)
+class UnaryOp(Expr):
+    op = ''
+    value: Expr
+
+@dataclass(eq=False)
+class UnaryPos(UnaryOp):
+    op = '+'
+
+@dataclass(eq=False)
+class UnaryNeg(UnaryOp):
+    op = '-'
+
+@dataclass(eq=False)
+class Invert(UnaryOp):
+    op = '~'
+
+@dataclass(eq=False)
+class Not(UnaryOp):
+    op = 'not'
+
+
 # ====== CompareOp sub-hierarchy ======
 
 @dataclass(eq=False)

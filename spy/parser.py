@@ -218,8 +218,7 @@ class Parser:
         left = self.from_py_expr(py_node.left)
         right = self.from_py_expr(py_node.right)
         #
-        # this is some magic to automatically find the correct spy.ast.*
-        # class
+        # some magic to automatically find the correct spy.ast.* class
         opname = type(py_node.op).__name__
         if opname == 'Mult':
             opname = 'Mul'
@@ -229,11 +228,27 @@ class Parser:
         assert spy_cls is not None, f'Unkown operator: {opname}'
         return spy_cls(py_node.loc, left, right)
 
+    def from_py_expr_UnaryOp(self, py_node: py_ast.UnaryOp) -> spy.ast.UnaryOp:
+        value = self.from_py_expr(py_node.operand)
+        opname = type(py_node.op).__name__
+        if opname == 'UAdd':
+            spy_cls = spy.ast.UnaryPos
+        elif opname == 'USub':
+            spy_cls = spy.ast.UnaryNeg
+        elif opname == 'Invert':
+            spy_cls = spy.ast.Invert
+        elif opname == 'Not':
+            spy_cls = spy.ast.Not
+        else:
+            assert False, f'Unkown operator: {opname}'
+        return spy_cls(py_node.loc, value)
+
     def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.CompareOp:
         if len(py_node.comparators) > 1:
             self.unsupported(py_node.comparators[1], 'chained comparisons')
         left = self.from_py_expr(py_node.left)
         right = self.from_py_expr(py_node.comparators[0])
+        # some magic to automatically find the correct spy.ast.* class
         opname = type(py_node.ops[0]).__name__
         spy_cls = getattr(spy.ast, opname, None)
         assert spy_cls is not None, f'Unkown operator: {opname}'

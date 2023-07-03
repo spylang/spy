@@ -274,6 +274,31 @@ class TestParser(CompilerTest):
         """
         self.assert_dump(stmt, expected)
 
+    @pytest.mark.parametrize("op", "+ - ~ not".split())
+    def test_UnaryOp(self, op):
+        # map the operator to the spy.ast class name
+        unops = {
+            '+': 'UnaryPos',
+            '-': 'UnaryNeg',
+            '~': 'Invert',
+            'not': 'Not',
+        }
+        OpClass = unops[op]
+        #
+        mod = self.parse(f"""
+        def foo() -> i32:
+            return {op} x
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = f"""
+        Return(
+            value={OpClass}(
+                value=Name(id='x'),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
         op = op.replace('_', ' ')  # is_not ==> is not
