@@ -139,3 +139,28 @@ class TestFrame:
         w_result = frame.run([w_50, w_8])
         result = vm.unwrap(w_result)
         assert result == 42
+
+    def test_br_if_not(self):
+        vm = SPyVM()
+        w_bool = vm.builtins.w_bool
+        w_i32 = vm.builtins.w_i32
+        w_functype = W_FunctionType.make(a=w_bool, w_restype=w_i32)
+        code = W_CodeObject('simple', w_functype=w_functype)
+        code.declare_local('a', w_bool)
+        code.body = [
+            OpCode('load_local', 'a'),           # 0
+            OpCode('br_if_not', 4),              # 1
+            OpCode('load_const', vm.wrap(100)),  # 2
+            OpCode('return'),                    # 3
+            OpCode('load_const', vm.wrap(200)),  # 4
+            OpCode('return'),                    # 5
+        ]
+        frame1 = make_Frame(vm, code)
+        w_result = frame1.run([vm.builtins.w_True])
+        result = vm.unwrap(w_result)
+        assert result == 100
+        #
+        frame2 = make_Frame(vm, code)
+        w_result = frame2.run([vm.builtins.w_False])
+        result = vm.unwrap(w_result)
+        assert result == 200

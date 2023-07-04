@@ -58,6 +58,12 @@ class SPyVM:
             w_class = w_class.w_base  # type:ignore
         return False
 
+    def is_True(self, w_obj: W_bool) -> bool:
+        return w_obj is self.builtins.w_True
+
+    def is_False(self, w_obj: W_bool) -> bool:
+        return w_obj is self.builtins.w_False
+
     def wrap(self, value: Any) -> W_Object:
         """
         Useful for tests: magic funtion which wraps the given inter-level object

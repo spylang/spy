@@ -263,6 +263,17 @@ class TypeChecker:
                                      ret.value.loc,
                                      "because of return type")
 
+    def check_stmt_If(self, if_node: spy.ast.If, scope: SymTable) -> None:
+        w_cond_type = self.check_expr(if_node.test, scope)
+        if w_cond_type is not self.vm.builtins.w_bool:
+            XXX
+        # XXX do we want to introduce new scopes for if and else?
+        for stmt in if_node.then_body:
+            self.check_stmt(stmt, scope)
+        for stmt in if_node.else_body:
+            self.check_stmt(stmt, scope)
+
+
     # ==== expressions ====
 
     def check_expr_Constant(self, const: spy.ast.Constant, scope: SymTable) -> W_Type:

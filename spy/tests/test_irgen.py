@@ -386,13 +386,26 @@ class TestIRGen(CompilerTest):
             ]
         )
 
-    @pytest.mark.skip(reason='WIP')
     def test_if(self):
         mod = self.compile("""
-        def sign(x: i32) -> i32:
+        a: i32 = 0
+        b: i32 = 0
+        c: i32 = 0
+
+        def reset() -> i32:
+            a = 0
+            b = 0
+            c = 0
+            return 0 # XXX we don't support return from void funcs
+
+        def foo(x: i32) -> i32:
             if x > 0:
-                return 1
-            return -1
+                a = 100
+            c = 300
+            return 0
         """)
-        assert mod.sign(5) == 1
-        assert mod.sign(-5) == -1
+        #
+        mod.foo(1)
+        assert mod.a == 100
+        assert mod.b == 0
+        assert mod.c == 300

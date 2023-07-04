@@ -17,8 +17,12 @@ class VarStorage:
         for varname, w_type in types_w.items():
             # for now we know how to initialize only i32 local vars. We need
             # to think of a more generic way
-            assert w_type is vm.builtins.w_i32
-            self.values_w[varname] = W_i32(0)
+            if w_type is vm.builtins.w_i32:
+                self.values_w[varname] = W_i32(0)
+            elif w_type is vm.builtins.w_bool:
+                self.values_w[varname] = vm.builtins.w_False
+            else:
+                assert False, f'WIP: unsupported type for locals : {w_type}'
 
     def __repr__(self) -> str:
         return f'<VarStorage {self.name}>'

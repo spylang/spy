@@ -57,12 +57,20 @@ class CodeGen:
             return sym.qualifier == 'const'
         return False
 
-    def emit(self, name: str, *args: object) -> None:
+    def emit(self, name: str, *args: object) -> OpCode:
         """
         Emit an OpCode into the w_code body
         """
         opcode = OpCode(name, *args)
         self.w_code.body.append(opcode)
+        return opcode
+
+    def get_upcoming_pos(self) -> int:
+        """
+        Return the position in the resulting w_code body which corresponds to the
+        NEXT opcode which will be emitted.
+        """
+        return len(self.w_code.body)
 
     def exec_stmt(self, stmt: spy.ast.Stmt) -> None:
         """
@@ -104,6 +112,17 @@ class CodeGen:
             self.emit('store_global', assign.target) # local variable
         else:
             assert False, 'TODO' # non-local variables
+
+    def do_exec_If(self, if_node: spy.ast.If) -> None:
+        assert not if_node.else_body, 'XXX WIP'
+        self.eval_expr(if_node.test)
+        # if the condition is False, we just fall inside the 'then'
+        br_opcode = self.emit('br_if_not', None)
+        for stmt in if_node.then_body:
+            self.exec_stmt(stmt)
+        #
+        # if the condition is True, we jump here
+        br_opcode.set_br_target(self.get_upcoming_pos())
 
     # ====== expressions ======
 
@@ -152,12 +171,12 @@ class CodeGen:
         if w_ltype is w_i32 and w_rtype is w_i32:
             self.eval_expr(cmpop.left)
             self.eval_expr(cmpop.right)
-            if   cmpop.op == '==': return self.emit('i32_eq')
-            elif cmpop.op == '!=': return self.emit('i32_neq')
-            elif cmpop.op == '<':  return self.emit('i32_lt')
-            elif cmpop.op == '<=': return self.emit('i32_lte')
-            elif cmpop.op == '>':  return self.emit('i32_gt')
-            elif cmpop.op == '>=': return self.emit('i32_gte')
+            if   cmpop.op == '==': self.emit('i32_eq');  return
+            elif cmpop.op == '!=': self.emit('i32_neq'); return
+            elif cmpop.op == '<':  self.emit('i32_lt');  return
+            elif cmpop.op == '<=': self.emit('i32_lte'); return
+            elif cmpop.op == '>':  self.emit('i32_gt');  return
+            elif cmpop.op == '>=': self.emit('i32_gte'); return
         #
         raise NotImplementedError(
             f'{cmpop.op} op between {w_ltype.name} and {w_rtype.name}')

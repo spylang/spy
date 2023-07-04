@@ -26,6 +26,7 @@ ALL_OPCODES = [
     'i32_lte',
     'i32_gt',
     'i32_gte',
+    'br_if_not',
 ]
 
 class OpCode:
@@ -38,11 +39,26 @@ class OpCode:
         self.name = name
         self.args = args
 
+    def is_br(self) -> None:
+        return self.name.startswith('br')
+
+    def set_br_target(self, target: int) -> None:
+        """
+        Assuming that this is an OpCode of the br_* family which is not fully
+        initialized yet, set the target opcode.
+        """
+        if not self.is_br():
+            raise ValueError(f'cannot set br target on opcode {self.name}')
+        if self.args != (None,):
+            raise ValueError('target already set')
+        self.args = (target,)
+
     def __repr__(self) -> str:
         if self.args:
             return f'<OpCode {self.name} {list(self.args)}>'
         else:
             return f'<OpCode {self.name}>'
+
 
 
 @spytype('CodeObject')
@@ -82,9 +98,21 @@ class W_CodeObject(W_Object):
             print(f'    var {name}: {typename}')
         #
         print()
+        # first, find all the branches and record the targets, for coloring
+        all_br_targets = set()
         for op in self.body:
+            if op.is_br():
+                all_br_targets.add(op.args[0])
+        #
+        for i, op in enumerate(self.body):
             line = [color.set('blue', op.name)]
             args = ', '.join([str(arg) for arg in op.args])
             if op.name in ('load_local', 'store_local', 'load_global', 'store_global'):
                 args = color.set('green', args)
-            print(f'    {op.name:<15} {args}')
+            elif op.is_br():
+                args = color.set('yellow', args)
+            #
+            label = format(i, '>5')
+            if i in all_br_targets:
+                label = color.set('yellow', label)
+            print(f'    {label} {op.name:<15} {args}')
