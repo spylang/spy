@@ -481,7 +481,21 @@ class TestIRGen(CompilerTest):
         assert mod.b == 200
         assert mod.c == 300
 
-    def test_if_error(self):
+    def test_while(self):
+        mod = self.compile("""
+        def factorial(n: i32) -> i32:
+            res: i32 = 1
+            i: i32 = 1
+            while i <= n:
+                res = res * i
+                i = i + 1
+            return res
+        """)
+        #
+        assert mod.factorial(0) == 1
+        assert mod.factorial(5) == 120
+
+    def test_if_while_errors(self):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a
         # bool
@@ -491,6 +505,19 @@ class TestIRGen(CompilerTest):
                 if a:
                     return 1
                 return 2
+            """,
+            errors = [
+                'mismatched types',
+                'expected `bool`, got `i32`',
+                'implicit conversion to `bool` is not implemented yet'
+            ]
+        )
+        #
+        self.expect_errors(
+            f"""
+            def foo() -> void:
+                while 1:
+                    pass
             """,
             errors = [
                 'mismatched types',

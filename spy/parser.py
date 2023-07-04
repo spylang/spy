@@ -198,6 +198,15 @@ class Parser:
             else_body = self.from_py_body(py_node.orelse),
         )
 
+    def from_py_stmt_While(self, py_node: py_ast.While) -> spy.ast.While:
+        if py_node.orelse:
+            self.unsupported(py_node, '`else` clause in `while` loops')
+        return spy.ast.While(
+            loc = py_node.loc,
+            test = self.from_py_expr(py_node.test),
+            body = self.from_py_body(py_node.body)
+        )
+
     # ====== spy.ast.Expr ======
 
     def from_py_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:

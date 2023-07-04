@@ -318,3 +318,8 @@ class If(Stmt):
     @property
     def has_else(self) -> bool:
         return len(self.else_body) > 0
+
+@dataclass(eq=False)
+class While(Stmt):
+    test: Expr
+    body: list[Stmt]

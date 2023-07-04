@@ -267,22 +267,28 @@ class TypeChecker:
                                      ret.value.loc,
                                      "because of return type")
 
-    def check_stmt_If(self, if_node: spy.ast.If, scope: SymTable) -> None:
-        w_cond_type = self.check_expr(if_node.test, scope)
-        if w_cond_type is not self.vm.builtins.w_bool:
+    def _assert_bool(self, w_type: W_Type, loc: Loc) -> None:
+        if w_type is not self.vm.builtins.w_bool:
             err = SPyTypeError('mismatched types')
-            err.add('error', f'expected `bool`, got `{w_cond_type.name}`',
-                    loc=if_node.test.loc)
-            err.add('note', f'implicit conversion to `bool` is not implemented yet',
-                    loc=if_node.test.loc)
+            err.add('error', f'expected `bool`, got `{w_type.name}`', loc)
+            err.add('note', f'implicit conversion to `bool` is not implemented yet', loc)
             raise err
-        #
+
+    def check_stmt_If(self, if_node: spy.ast.If, scope: SymTable) -> None:
         # XXX do we want to introduce new scopes for if and else?
+        w_cond_type = self.check_expr(if_node.test, scope)
+        self._assert_bool(w_cond_type, if_node.test.loc)
         for stmt in if_node.then_body:
             self.check_stmt(stmt, scope)
         for stmt in if_node.else_body:
             self.check_stmt(stmt, scope)
 
+    def check_stmt_While(self, while_node: spy.ast.While, scope: SymTable) -> None:
+        # same XXX as above: do we want to introduce a new scope inside the loop?
+        w_cond_type = self.check_expr(while_node.test, scope)
+        self._assert_bool(w_cond_type, while_node.test.loc)
+        for stmt in while_node.body:
+            self.check_stmt(stmt, scope)
 
     # ==== expressions ====
 

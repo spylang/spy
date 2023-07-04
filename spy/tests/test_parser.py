@@ -455,3 +455,20 @@ class TestParser(CompilerTest):
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_While(self):
+        mod = self.parse("""
+        def foo() -> void:
+            while True:
+                pass
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        While(
+            test=Constant(value=True),
+            body=[
+                Pass(),
+            ],
+        )
+        """
+        self.assert_dump(stmt, expected)
