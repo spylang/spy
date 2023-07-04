@@ -442,3 +442,16 @@ class TestParser(CompilerTest):
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_StmtExpr(self):
+        mod = self.parse("""
+        def foo() -> void:
+            42
+        """)
+        stmt = self.get_funcdef(mod).body[0]
+        expected = """
+        StmtExpr(
+            value=Constant(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)

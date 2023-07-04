@@ -61,7 +61,8 @@ class Frame:
             op = self.w_code.body[self.pc]
             # 'return' is special, handle it explicitly
             if op.name == 'return':
-                assert len(self.stack) == 1
+                n = len(self.stack)
+                assert n == 1, f'Wrong stack size upon return: {n}'
                 w_result = self.pop()
                 assert self.vm.is_compatible_type(
                     w_result,
@@ -78,6 +79,9 @@ class Frame:
 
     def op_abort(self, message: str) -> None:
         raise SPyRuntimeAbort(message)
+
+    def op_pop_and_discard(self) -> None:
+        self.pop()
 
     def op_load_const(self, w_const: W_Object) -> None:
         self.push(w_const)

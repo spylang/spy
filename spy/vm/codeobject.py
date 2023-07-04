@@ -27,6 +27,7 @@ ALL_OPCODES = [
     'i32_lte',
     'i32_gt',
     'i32_gte',
+    'pop_and_discard',
     'br',
     'br_if_not',
 ]

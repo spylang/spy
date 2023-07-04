@@ -232,6 +232,9 @@ class TypeChecker:
                                      vardef.value.loc,
                                      'because of type declaration')
 
+    def check_stmt_StmtExpr(self, stmt: spy.ast.StmtExpr, scope: SymTable) -> None:
+        self.check_expr(stmt.value, scope)
+
     def check_stmt_Assign(self, assign: spy.ast.Assign, scope: SymTable) -> None:
         varname = assign.target
         w_valuetype = self.check_expr(assign.value, scope)

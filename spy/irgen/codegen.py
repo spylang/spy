@@ -104,6 +104,10 @@ class CodeGen:
         self.eval_expr(ret.value)
         self.emit('return')
 
+    def do_exec_StmtExpr(self, stmt: spy.ast.StmtExpr) -> None:
+        self.eval_expr(stmt.value)
+        self.emit('pop_and_discard')
+
     def do_exec_VarDef(self, vardef: spy.ast.VarDef) -> None:
         # sanity check, the var must be in the local scope
         assert vardef.name in self.scope.symbols

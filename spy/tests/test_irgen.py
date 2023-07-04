@@ -366,6 +366,19 @@ class TestIRGen(CompilerTest):
             ]
         )
 
+    def test_StmtExpr(self):
+        mod = self.compile("""
+        x: i32 = 0
+        def inc() -> void:
+            x = x + 1
+
+        def foo() -> void:
+            inc()
+            inc()
+        """)
+        mod.foo()
+        assert mod.x == 2
+
     def test_True_False(self):
         mod = self.compile("""
         def get_True() -> bool:

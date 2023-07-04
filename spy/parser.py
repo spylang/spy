@@ -142,6 +142,13 @@ class Parser:
     def from_py_stmt_Pass(self, py_node: py_ast.Pass) -> spy.ast.Pass:
         return spy.ast.Pass(py_node.loc)
 
+    def from_py_stmt_Expr(self, py_node: py_ast.Expr) -> spy.ast.StmtExpr:
+        # note: this is NOT an expr in the proper sense: it's an expr used as
+        # a statement (e.g., a function call). This is perfectly valid of
+        # course.
+        value = self.from_py_expr(py_node.value)
+        return spy.ast.StmtExpr(py_node.loc, value)
+
     def from_py_stmt_Return(self, py_node: py_ast.Return) -> spy.ast.Return:
         # we make 'return' completely equivalent to 'return None' already
         # during parsing: this simplifies quite a bit the rest

@@ -297,6 +297,13 @@ class VarDef(Stmt):
     value: Optional[Expr]
 
 @dataclass(eq=False)
+class StmtExpr(Stmt):
+    """
+    An expr used as a statement
+    """
+    value: Expr
+
+@dataclass(eq=False)
 class Assign(Stmt):
     target_loc: Loc
     target: str
