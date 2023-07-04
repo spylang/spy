@@ -2,7 +2,7 @@ import pytest
 import os
 import pathlib
 
-ROOT = pathlib.Path(__file__).parent.parent.parent.parent
+ROOT = pathlib.Path(__file__).parent.parent.parent
 
 def test_mypy():
     mypy_ini = ROOT.joinpath('mypy.ini')
