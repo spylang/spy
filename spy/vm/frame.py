@@ -146,6 +146,9 @@ class Frame:
         w_res = self.vm.call_function(w_func, args_w)
         self.push(w_res)
 
+    def op_br(self, target: int) -> None:
+        self.pc = target - 1 # because run() does pc += 1
+
     def op_br_if_not(self, target: int) -> None:
         w_cond = self.pop()
         assert isinstance(w_cond, W_bool)

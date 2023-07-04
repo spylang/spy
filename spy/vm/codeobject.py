@@ -27,6 +27,7 @@ ALL_OPCODES = [
     'i32_lte',
     'i32_gt',
     'i32_gte',
+    'br',
     'br_if_not',
 ]
 

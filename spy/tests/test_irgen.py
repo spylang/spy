@@ -433,15 +433,39 @@ class TestIRGen(CompilerTest):
             b = 0
             c = 0
 
-        def foo(x: i32) -> void:
-            if x > 0:
+        def if_then(x: i32) -> void:
+            if x == 0:
                 a = 100
             c = 300
+
+        def if_then_else(x: i32) -> void:
+            if x == 0:
+                a = 100
+            else:
+                b = 200
+            c = 300
+
         """)
         #
-        mod.foo(1)
+        mod.if_then(0)
+        assert mod.a == 100
+        assert mod.c == 300
+        #
+        mod.reset()
+        mod.if_then(1)
+        assert mod.a == 0
+        assert mod.c == 300
+        #
+        mod.reset()
+        mod.if_then_else(0)
         assert mod.a == 100
         assert mod.b == 0
+        assert mod.c == 300
+        #
+        mod.reset()
+        mod.if_then_else(1)
+        assert mod.a == 0
+        assert mod.b == 200
         assert mod.c == 300
 
     def test_if_error(self):

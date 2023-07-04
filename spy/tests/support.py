@@ -82,6 +82,9 @@ class InterpModuleWrapper:
         self.vm = vm
         self.w_mod = w_mod
 
+    def __dir__(self) -> list[str]:
+        return list(self.w_mod.content.types_w.keys())
+
     def __getattr__(self, attr: str) -> Any:
         w_obj = self.w_mod.getattr(attr)
         if isinstance(w_obj, W_Function):
@@ -99,6 +102,9 @@ class InterpFuncWrapper:
     def __init__(self, vm: SPyVM, w_func: W_Function):
         self.vm = vm
         self.w_func = w_func
+
+    def dis(self) -> None:
+        self.w_func.w_code.pp()
 
     def __call__(self, *args):
         # *args contains python-level objs. We want to wrap them into args_w

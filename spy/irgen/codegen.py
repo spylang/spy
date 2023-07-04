@@ -74,7 +74,7 @@ class CodeGen:
         self.w_code.body.append(opcode)
         return opcode
 
-    def get_upcoming_pos(self) -> int:
+    def make_br_label(self) -> int:
         """
         Return the position in the resulting w_code body which corresponds to the
         NEXT opcode which will be emitted.
@@ -123,15 +123,31 @@ class CodeGen:
             assert False, 'TODO' # non-local variables
 
     def do_exec_If(self, if_node: spy.ast.If) -> None:
-        assert not if_node.else_body, 'XXX WIP'
-        self.eval_expr(if_node.test)
-        # if the condition is False, we just fall inside the 'then'
-        br_opcode = self.emit('br_if_not', None)
-        for stmt in if_node.then_body:
-            self.exec_stmt(stmt)
+        # Emit the following, depending on whether we have or not an 'else'
+        #    <eval cond>           |    <eval cond>
+        #    br_if_not A           |    br_if_not B
+        #        <then body>       |        <then body>
+        #    br B                  |
+        # A:     <else body>       |
+        # B: <rest of the program> | B: <rest of the program>
         #
-        # if the condition is True, we jump here
-        br_opcode.set_br_target(self.get_upcoming_pos())
+        self.eval_expr(if_node.test) # <eval cond>
+        br_if_not = self.emit('br_if_not', None)
+        for stmt in if_node.then_body:
+            self.exec_stmt(stmt)     # <then body>
+
+        if if_node.else_body:
+            br = self.emit('br', None)
+            A = self.make_br_label()
+            for stmt in if_node.else_body:
+                self.exec_stmt(stmt) # <else body>
+            B = self.make_br_label()
+            br_if_not.set_br_target(A)
+            br.set_br_target(B)
+        else:
+            B = self.make_br_label()
+            br_if_not.set_br_target(B)
+
 
     # ====== expressions ======
 
