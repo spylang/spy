@@ -443,3 +443,21 @@ class TestIRGen(CompilerTest):
         assert mod.a == 100
         assert mod.b == 0
         assert mod.c == 300
+
+    def test_if_error(self):
+        # XXX: eventually, we want to introduce the concept of "truth value"
+        # and insert automatic conversions but for now the condition must be a
+        # bool
+        self.expect_errors(
+            f"""
+            def foo(a: i32) -> i32:
+                if a:
+                    return 1
+                return 2
+            """,
+            errors = [
+                'mismatched types',
+                'expected `bool`, got `i32`',
+                'implicit conversion to `bool` is not implemented yet'
+            ]
+        )

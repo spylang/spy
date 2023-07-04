@@ -267,7 +267,13 @@ class TypeChecker:
     def check_stmt_If(self, if_node: spy.ast.If, scope: SymTable) -> None:
         w_cond_type = self.check_expr(if_node.test, scope)
         if w_cond_type is not self.vm.builtins.w_bool:
-            XXX
+            err = SPyTypeError('mismatched types')
+            err.add('error', f'expected `bool`, got `{w_cond_type.name}`',
+                    loc=if_node.test.loc)
+            err.add('note', f'implicit conversion to `bool` is not implemented yet',
+                    loc=if_node.test.loc)
+            raise err
+        #
         # XXX do we want to introduce new scopes for if and else?
         for stmt in if_node.then_body:
             self.check_stmt(stmt, scope)
