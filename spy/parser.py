@@ -1,4 +1,4 @@
-from typing import Optional, NoReturn
+from typing import Optional, NoReturn, Any
 import textwrap
 import ast as py_ast
 import spy.ast
@@ -228,7 +228,7 @@ class Parser:
         assert spy_cls is not None, f'Unkown operator: {opname}'
         return spy_cls(py_node.loc, left, right)
 
-    def from_py_expr_UnaryOp(self, py_node: py_ast.UnaryOp) -> spy.ast.UnaryOp:
+    def from_py_expr_UnaryOp(self, py_node: py_ast.UnaryOp) -> spy.ast.Expr:
         value = self.from_py_expr(py_node.operand)
         opname = type(py_node.op).__name__
         # special-case -NUM
@@ -237,6 +237,7 @@ class Parser:
             isinstance(value.value, int)):
             return spy.ast.Constant(value.loc, -value.value)
         # standard case
+        spy_cls: Any
         if opname == 'UAdd':
             spy_cls = spy.ast.UnaryPos
         elif opname == 'USub':

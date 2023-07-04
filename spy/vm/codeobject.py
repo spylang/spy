@@ -40,7 +40,7 @@ class OpCode:
         self.name = name
         self.args = args
 
-    def is_br(self) -> None:
+    def is_br(self) -> bool:
         return self.name.startswith('br')
 
     def set_br_target(self, target: int) -> None:
