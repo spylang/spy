@@ -40,6 +40,15 @@ class CodeGen:
     def make_w_code(self) -> W_CodeObject:
         for stmt in self.funcdef.body:
             self.exec_stmt(stmt)
+        #
+        # if we arrive here, we have reached the end of the function. Let's
+        # emit an implicit return (if the return type is void) or an abort (in
+        # all other cases)
+        if self.w_code.w_functype.w_restype is self.vm.builtins.w_void:
+            self.emit('load_const', self.vm.builtins.w_None)
+            self.emit('return')
+        else:
+            self.emit('abort', 'reached the end of the function without a `return`')
         return self.w_code
 
     def is_const(self, expr: spy.ast.Expr) -> bool:

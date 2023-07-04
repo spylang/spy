@@ -3,7 +3,7 @@ import textwrap
 import pytest
 import spy.ast
 from spy.parser import Parser
-from spy.errors import SPyCompileError
+from spy.errors import SPyCompileError, SPyRuntimeAbort
 from spy.irgen.symtable import Symbol
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FunctionType
@@ -213,9 +213,8 @@ class TestIRGen(CompilerTest):
         x: i32 = 42
         def get_x() -> i32:
             return x
-        def set_x(newval: i32) -> i32:
+        def set_x(newval: i32) -> void:
             x = newval
-            return 0 # XXX: we cannot just 'return'
         """)
         vm = self.vm
         w_get_x = w_mod.getattr_function('get_x')
@@ -249,6 +248,43 @@ class TestIRGen(CompilerTest):
             return x * y
         """)
         assert mod.mul(3, 4) == 12
+
+    def test_void_return(self):
+        mod = self.compile("""
+        x: i32 = 0
+        def foo() -> void:
+            x = 1
+            return
+            x = 2
+
+        def bar() -> void:
+            x = 3
+            return None
+            x = 4
+        """)
+        mod.foo()
+        assert mod.x == 1
+        mod.bar()
+        assert mod.x == 3
+
+    def test_implicit_return(self):
+        mod = self.compile("""
+        x: i32 = 0
+        def implicit_return_void() -> void:
+            x = 1
+
+        def implicit_return_i32() -> i32:
+            x = 3
+            # ideally, we should detect this case at compile time.
+            # For now, it is a runtime error.
+        """)
+        mod.implicit_return_void()
+        assert mod.x == 1
+
+        with pytest.raises(SPyRuntimeAbort,
+                           match='reached the end of the function without a `return`'):
+            mod.implicit_return_i32()
+
 
     def test_BinOp_error(self):
         self.expect_errors(
@@ -392,17 +428,15 @@ class TestIRGen(CompilerTest):
         b: i32 = 0
         c: i32 = 0
 
-        def reset() -> i32:
+        def reset() -> void:
             a = 0
             b = 0
             c = 0
-            return 0 # XXX we don't support return from void funcs
 
-        def foo(x: i32) -> i32:
+        def foo(x: i32) -> void:
             if x > 0:
                 a = 100
             c = 300
-            return 0
         """)
         #
         mod.foo(1)

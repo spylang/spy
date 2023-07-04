@@ -147,7 +147,7 @@ class Parser:
         # during parsing: this simplifies quite a bit the rest
         value: spy.ast.Expr
         if py_node.value is None:
-            value = spy.ast.Name(py_node.loc, 'None')
+            value = spy.ast.Constant(py_node.loc, None)
         else:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)

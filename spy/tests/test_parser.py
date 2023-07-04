@@ -164,7 +164,7 @@ class TestParser(CompilerTest):
         stmt = self.get_funcdef(mod).body[0]
         expected = """
         Return(
-            value=Name(id='None'),
+            value=Constant(value=None),
         )
         """
         self.assert_dump(stmt, expected)

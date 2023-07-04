@@ -11,6 +11,7 @@ if typing.TYPE_CHECKING:
 # or wordcode.
 ALL_OPCODES = [
     'return',
+    'abort',
     'load_const',
     'load_local',
     'load_global',

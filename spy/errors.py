@@ -101,3 +101,12 @@ class SPyParseError(SPyCompileError):
 
 class SPyTypeError(SPyCompileError):
     pass
+
+
+# ======
+
+class SPyRuntimeError(Exception):
+    pass
+
+class SPyRuntimeAbort(SPyRuntimeError):
+    pass

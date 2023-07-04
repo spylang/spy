@@ -17,6 +17,7 @@ codegen, so the point of the assert()s is mostly to catch bugs in it.
 """
 
 from typing import TYPE_CHECKING, Any
+from spy.errors import SPyRuntimeAbort
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
@@ -73,6 +74,10 @@ class Frame:
                     raise NotImplementedError(meth_name)
                 meth(*op.args)
                 self.pc += 1
+                assert self.pc < len(self.w_code.body), 'no return?'
+
+    def op_abort(self, message: str) -> None:
+        raise SPyRuntimeAbort(message)
 
     def op_load_const(self, w_const: W_Object) -> None:
         self.push(w_const)

@@ -1,4 +1,5 @@
 from typing import NoReturn, Optional
+from types import NoneType
 import spy.ast
 from spy.location import Loc
 from spy.errors import SPyTypeError, maybe_plural
@@ -63,7 +64,7 @@ class TypeChecker:
         # not found, make it
         w_const = None
         T = type(const.value)
-        if T in (int, bool):
+        if T in (int, bool, NoneType):
             w_const = self.vm.wrap(const.value)
         else:
             self.error(f'unsupported literal: {const.value!r}',
