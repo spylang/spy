@@ -113,9 +113,11 @@ class W_CodeObject(W_Object):
             if op.name in ('load_local', 'store_local', 'load_global', 'store_global'):
                 args = color.set('green', args)
             elif op.is_br():
-                args = color.set('yellow', args)
+                args = color.set('red', args)
+            elif op.name == 'abort':
+                args = repr(args)
             #
             label = format(i, '>5')
             if i in all_br_targets:
-                label = color.set('yellow', label)
+                label = color.set('red', label)
             print(f'    {label} {op.name:<15} {args}')
