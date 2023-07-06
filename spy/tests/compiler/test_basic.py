@@ -18,7 +18,7 @@ class TestIRGen(CompilerTest):
         raise KeyError(name)
 
     def test_simple(self):
-        w_mod = self.irgen(
+        mod = self.compile(
         """
         def foo() -> i32:
             return 42
@@ -44,9 +44,7 @@ class TestIRGen(CompilerTest):
         }
         #
         # codegen tests
-        w_foo = w_mod.getattr_function('foo')
-        w_result = vm.call_function(w_foo, [])
-        assert vm.unwrap(w_result) == 42
+        assert mod.foo() == 42
 
     def test_resolve_type_errors(self):
         self.expect_errors(
@@ -90,7 +88,7 @@ class TestIRGen(CompilerTest):
             ])
 
     def test_local_variables(self):
-        w_mod = self.irgen(
+        mod = self.compile(
         """
         def foo() -> i32:
             x: i32 = 42
@@ -108,9 +106,7 @@ class TestIRGen(CompilerTest):
         }
         #
         # codegen tests
-        w_foo = w_mod.getattr_function('foo')
-        w_result = vm.call_function(w_foo, [])
-        assert vm.unwrap(w_result) == 42
+        assert mod.foo() == 42
 
     def test_declare_variable_errors(self):
         self.expect_errors(
@@ -147,7 +143,7 @@ class TestIRGen(CompilerTest):
             ])
 
     def test_function_arguments(self):
-        w_mod = self.irgen(
+        mod = self.compile(
         """
         def inc(x: i32) -> i32:
             return x + 1
@@ -166,24 +162,17 @@ class TestIRGen(CompilerTest):
         }
         #
         # codegen tests
-        w_inc = w_mod.getattr_function('inc')
-        w_x = vm.wrap(100)
-        w_result = vm.call_function(w_inc, [w_x])
-        assert vm.unwrap(w_result) == 101
+        assert mod.inc(100) == 101
 
     def test_assign(self):
-        w_mod = self.irgen(
+        mod = self.compile(
         """
         def inc(x: i32) -> i32:
             res: i32 = 0
             res = x + 1
             return res
         """)
-        vm = self.vm
-        w_inc = w_mod.getattr_function('inc')
-        w_x = vm.wrap(100)
-        w_result = vm.call_function(w_inc, [w_x])
-        assert vm.unwrap(w_result) == 101
+        assert mod.inc(100) == 101
 
     def test_assign_errors(self):
         self.expect_errors(
@@ -208,7 +197,7 @@ class TestIRGen(CompilerTest):
             ])
 
     def test_global_variables(self):
-        w_mod = self.irgen(
+        mod = self.compile(
         """
         x: i32 = 42
         def get_x() -> i32:
@@ -217,23 +206,13 @@ class TestIRGen(CompilerTest):
             x = newval
         """)
         vm = self.vm
-        w_get_x = w_mod.getattr_function('get_x')
-        w_set_x = w_mod.getattr_function('set_x')
-        #
-        w_x = w_mod.getattr('x')
-        assert vm.unwrap(w_x) == 42
-        #
-        w_result = vm.call_function(w_get_x, [])
-        assert vm.unwrap(w_result) == 42
-        #
-        vm.call_function(w_set_x, [vm.wrap(100)])
-        w_x = w_mod.content.get('x')
-        assert vm.unwrap(w_x) == 100
-        #
-        w_result = vm.call_function(w_get_x, [])
-        assert vm.unwrap(w_result) == 100
+        assert mod.x == 42
+        assert mod.get_x() == 42
+        mod.set_x(100)
+        assert mod.x == 100
+        assert mod.get_x() == 100
 
-    def test_compile(self):
+    def test_i32_add(self):
         mod = self.compile("""
         N: i32 = 100
         def add(x: i32, y: i32) -> i32:
