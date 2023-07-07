@@ -10,7 +10,6 @@ from spy.vm.function import W_FunctionType
 from spy.util import ANYTHING
 from spy.tests.support import CompilerTest, skip_backends
 
-@skip_backends('C')
 class TestBasic(CompilerTest):
 
     def get_funcdef(self, name: str) -> spy.ast.FuncDef:
@@ -19,6 +18,7 @@ class TestBasic(CompilerTest):
                 return decl
         raise KeyError(name)
 
+    @skip_backends('C')
     def test_simple(self):
         mod = self.compile(
         """
@@ -48,6 +48,7 @@ class TestBasic(CompilerTest):
         # codegen tests
         assert mod.foo() == 42
 
+    @skip_backends('C')
     def test_resolve_type_errors(self):
         self.expect_errors(
             """
@@ -77,6 +78,7 @@ class TestBasic(CompilerTest):
                 'I_am_not_a_type is not a type'
             ])
 
+    @skip_backends('C')
     def test_wrong_return_type(self):
         self.expect_errors(
             """
@@ -89,6 +91,7 @@ class TestBasic(CompilerTest):
                 'expected `str` because of return type',
             ])
 
+    @skip_backends('C')
     def test_local_variables(self):
         mod = self.compile(
         """
@@ -110,6 +113,7 @@ class TestBasic(CompilerTest):
         # codegen tests
         assert mod.foo() == 42
 
+    @skip_backends('C')
     def test_declare_variable_errors(self):
         self.expect_errors(
             """
@@ -144,6 +148,7 @@ class TestBasic(CompilerTest):
                 'not found in this scope',
             ])
 
+    @skip_backends('C')
     def test_function_arguments(self):
         mod = self.compile(
         """
@@ -166,6 +171,7 @@ class TestBasic(CompilerTest):
         # codegen tests
         assert mod.inc(100) == 101
 
+    @skip_backends('C')
     def test_assign(self):
         mod = self.compile(
         """
@@ -176,6 +182,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
+    @skip_backends('C')
     def test_assign_errors(self):
         self.expect_errors(
             """
@@ -198,6 +205,7 @@ class TestBasic(CompilerTest):
                 'expected `str` because of type declaration',
             ])
 
+    @skip_backends('C')
     def test_global_variables(self):
         mod = self.compile(
         """
@@ -214,6 +222,7 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
+    @skip_backends('C')
     def test_i32_add(self):
         mod = self.compile("""
         N: i32 = 100
@@ -223,6 +232,7 @@ class TestBasic(CompilerTest):
         assert mod.add(1, 2) == 3
         assert mod.N == 100
 
+    @skip_backends('C')
     def test_i32_mul(self):
         mod = self.compile("""
         def mul(x: i32, y: i32) -> i32:
@@ -230,6 +240,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
+    @skip_backends('C')
     def test_void_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -248,6 +259,7 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
+    @skip_backends('C')
     def test_implicit_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -267,6 +279,7 @@ class TestBasic(CompilerTest):
             mod.implicit_return_i32()
 
 
+    @skip_backends('C')
     def test_BinOp_error(self):
         self.expect_errors(
             f"""
@@ -280,6 +293,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
+    @skip_backends('C')
     def test_function_call(self):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:
@@ -291,6 +305,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(1, 2, 3) == 123
         assert mod.bar(4) == 456
 
+    @skip_backends('C')
     def test_function_call_errors(self):
         self.expect_errors(
             f"""
@@ -347,6 +362,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
+    @skip_backends('C')
     def test_StmtExpr(self):
         mod = self.compile("""
         x: i32 = 0
@@ -360,6 +376,7 @@ class TestBasic(CompilerTest):
         mod.foo()
         assert mod.x == 2
 
+    @skip_backends('C')
     def test_True_False(self):
         mod = self.compile("""
         def get_True() -> bool:
@@ -372,6 +389,7 @@ class TestBasic(CompilerTest):
         assert mod.get_False() is False
 
 
+    @skip_backends('C')
     def test_CompareOp(self):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
@@ -403,6 +421,7 @@ class TestBasic(CompilerTest):
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
 
+    @skip_backends('C')
     def test_CompareOp_error(self):
         self.expect_errors(
             f"""
@@ -416,6 +435,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
+    @skip_backends('C')
     def test_if(self):
         mod = self.compile("""
         a: i32 = 0
@@ -462,6 +482,7 @@ class TestBasic(CompilerTest):
         assert mod.b == 200
         assert mod.c == 300
 
+    @skip_backends('C')
     def test_while(self):
         mod = self.compile("""
         def factorial(n: i32) -> i32:
@@ -476,6 +497,7 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
+    @skip_backends('C')
     def test_if_while_errors(self):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a

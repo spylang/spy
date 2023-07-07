@@ -9,6 +9,23 @@ from spy.vm.module import W_Module
 
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
+def params_with_marks(params):
+    """
+    Small helper to automatically apply to each param a pytest.mark with the
+    same name of the param itself. E.g.:
+
+        params_with_marks(['aaa', 'bbb'])
+
+    is equivalent to:
+
+        [pytest.param('aaa', marks=pytest.mark.aaa),
+         pytest.param('bbb', marks=pytest.mark.bbb)]
+
+    This makes it possible to use 'pytest -m aaa' to run ONLY the tests which
+    uses the param 'aaa'.
+    """
+    return [pytest.param(name, marks=getattr(pytest.mark, name)) for name in params]
+
 def skip_backends(*backends_to_skip: Backend, reason=''):
     """
     Decorator to skip tests only for certain backends. Can be used to decorate
@@ -31,9 +48,11 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
 
     new_backends = []
     for backend in ALL_BACKENDS:
+        marks = [getattr(pytest.mark, backend)]
         if backend in backends_to_skip:
-            backend = pytest.param(backend, marks=pytest.mark.skip(reason=reason))
-        new_backends.append(backend)
+            marks.append(pytest.mark.skip(reason=reason))
+        param = pytest.param(backend, marks=marks)
+        new_backends.append(param)
 
     def decorator(func):
         return pytest.mark.parametrize('compiler_backend', new_backends)(func)
@@ -46,7 +65,7 @@ class CompilerTest:
     backend: Backend
     vm: SPyVM
 
-    @pytest.fixture(params=ALL_BACKENDS)
+    @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
         return request.param
 
