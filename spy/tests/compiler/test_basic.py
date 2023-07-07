@@ -7,9 +7,11 @@ from spy.errors import SPyCompileError, SPyRuntimeAbort
 from spy.irgen.symtable import Symbol
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FunctionType
-from spy.tests.support import CompilerTest, ANYTHING
+from spy.util import ANYTHING
+from spy.tests.support import CompilerTest, skip_backends
 
-class TestIRGen(CompilerTest):
+@skip_backends('C')
+class TestBasic(CompilerTest):
 
     def get_funcdef(self, name: str) -> spy.ast.FuncDef:
         for decl in self.compiler.mod.decls:

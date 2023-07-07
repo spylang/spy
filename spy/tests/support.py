@@ -2,136 +2,58 @@ from typing import Any
 import textwrap
 import pytest
 import spy.ast
-from spy.parser import Parser
-from spy.irgen.typechecker import TypeChecker
-from spy.irgen.modgen import ModuleGen
+from spy.compiler import CompilerPipeline, Backend
 from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
-from spy.vm.function import W_Function
 
-class CompilerPipeline:
+ALL_BACKENDS = Backend.__args__  # type: ignore
+
+def skip_backends(*backends_to_skip: Backend, reason=''):
     """
-    Glue together all the various pieces which are necessary to compile a SPy
-    module.
+    Decorator to skip tests only for certain backends. Can be used to decorate
+    classes or functions.
 
-    By calling the appropriate methods, it is possible to run the compiler
-    only up to a certain point, which is useful to inspect and test the
-    individual steps.
+    Examples:
+
+        @skip_backends('C')
+        class TestXXX(CompilerTest):
+            ...
+
+        class TestYYY(CompilerTest):
+            @skip_backends('C', reason='FIXME')
+            def test_something(self):
+                ...
     """
-    vm: SPyVM
-    srcfile: str
-    parser: Parser
-    mod: spy.ast.Module
-    t: TypeChecker
-    modgen: ModuleGen
-    w_mod: W_Module
+    for b in backends_to_skip:
+        if b not in ALL_BACKENDS:
+            pytest.fail(f'Invalid backend passed to @skip_backends: {b}')
 
-    def __init__(self, vm: SPyVM, srcfile: str) -> None:
-        self.vm = vm
-        self.srcfile = srcfile
-        self.parser = None  # type: ignore
-        self.mod = None     # type: ignore
-        self.t = None       # type: ignore
-        self.modgen = None  # type: ignore
-        self.w_mod = None   # type: ignore
+    new_backends = []
+    for backend in ALL_BACKENDS:
+        if backend in backends_to_skip:
+            backend = pytest.param(backend, marks=pytest.mark.skip(reason=reason))
+        new_backends.append(backend)
 
-    def parse(self) -> spy.ast.Module:
-        assert self.parser is None, 'parse() already called'
-        self.parser = Parser.from_filename(str(self.srcfile))
-        self.mod = self.parser.parse()
-        return self.mod
-
-    def typecheck(self) -> spy.ast.Module:
-        assert self.t is None, 'typecheck() already called'
-        self.parse()
-        self.t = TypeChecker(self.vm, self.mod)
-        self.t.check_everything()
-        return self.mod
-
-    def irgen(self) -> W_Module:
-        assert self.modgen is None, 'irgen() already called'
-        self.typecheck()
-        self.modgen = ModuleGen(self.vm, self.t, self.mod)
-        self.w_mod = self.modgen.make_w_mod()
-        return self.w_mod
-
-    def compile(self, backend: str = 'interp') -> Any:
-        """
-        Compile the W_Module into something which can be accessed and called by
-        tests.
-
-        Currently, the only support backend is 'interp', which is a fake
-        backend: the IR code is not compiled and function are executed by the
-        VM.
-        """
-        assert backend == 'interp'
-        self.irgen()
-        interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
-        return interp_mod
-
-
-class InterpModuleWrapper:
-    """
-    Wrap W_Module for the interp backend.
-    """
-    vm: SPyVM
-    w_mod: W_Module
-
-    def __init__(self, vm: SPyVM, w_mod: W_Module) -> None:
-        self.vm = vm
-        self.w_mod = w_mod
-
-    def __dir__(self) -> list[str]:
-        return list(self.w_mod.content.types_w.keys())
-
-    def __getattr__(self, attr: str) -> Any:
-        w_obj = self.w_mod.getattr(attr)
-        if isinstance(w_obj, W_Function):
-            return InterpFuncWrapper(self.vm, w_obj)
-        return self.vm.unwrap(w_obj)
-
-
-class InterpFuncWrapper:
-    """
-    Wrap a W_Function for the interp backend.
-    """
-    vm: SPyVM
-    w_func: W_Function
-
-    def __init__(self, vm: SPyVM, w_func: W_Function):
-        self.vm = vm
-        self.w_func = w_func
-
-    def dis(self) -> None:
-        self.w_func.w_code.pp()
-
-    def __call__(self, *args):
-        # *args contains python-level objs. We want to wrap them into args_w
-        # *and to call the func, and unwrap the result
-        args_w = [self.vm.wrap(arg) for arg in args]
-        w_res = self.vm.call_function(self.w_func, args_w)
-        return self.vm.unwrap(w_res)
-
-
-class AnythingClass:
-    """
-    Magic object which compares equal to everything. Useful for equality tests
-    in which you don't care about the exact value of a specific field.
-    """
-    def __eq__(self, other):
-        return True
-ANYTHING: Any = AnythingClass()
+    def decorator(func):
+        return pytest.mark.parametrize('compiler_backend', new_backends)(func)
+    return decorator
 
 
 @pytest.mark.usefixtures('init')
 class CompilerTest:
     tmpdir: Any
+    backend: Backend
     vm: SPyVM
 
+    @pytest.fixture(params=ALL_BACKENDS)
+    def compiler_backend(self, request):
+        return request.param
+
     @pytest.fixture
-    def init(self, tmpdir):
+    def init(self, tmpdir, compiler_backend):
         self.tmpdir = tmpdir
+        self.backend = compiler_backend
         self.vm = SPyVM()
 
     def write_source(self, filename: str, src: str) -> Any:
@@ -145,11 +67,11 @@ class CompilerTest:
         srcfile.write(src)
         return srcfile
 
-    def _run_pipeline(self, src: str, stepname: str) -> Any:
+    def _run_pipeline(self, src: str, stepname: str, **kwargs: Any) -> Any:
         srcfile = self.write_source('test.py', src)
-        self.compiler = CompilerPipeline(self.vm, srcfile)
+        self.compiler = CompilerPipeline(self.vm, self.backend, srcfile)
         meth = getattr(self.compiler, stepname)
-        return meth()
+        return meth(**kwargs)
 
     def parse(self, src: str) -> spy.ast.Module:
         return self._run_pipeline(src, 'parse')
@@ -161,7 +83,7 @@ class CompilerTest:
         return self._run_pipeline(src, 'irgen')
 
     def compile(self, src: str) -> Any:
-        return self._run_pipeline(src, 'compile')
+        return self._run_pipeline(src, 'compile', backend=self.backend)
 
     def expect_errors(self,src: str, *,
                       errors: list[str],

@@ -8,6 +8,14 @@ from spy.tests.support import CompilerTest
 
 class TestParser(CompilerTest):
 
+    @pytest.fixture
+    def compiler_backend(self, request):
+        """
+        The parser tests don't need a backend. By overrinding the compiler_backend
+        fixture here, we make sure that each test run only once.
+        """
+        return 'no-backend'
+
     def assert_dump(self, node: spy.ast.Node, expected: str):
         dumped = dump(node, use_colors=False)
         expected = textwrap.dedent(expected)

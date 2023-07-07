@@ -2,6 +2,17 @@
 import typing
 from typing import Optional
 
+class AnythingClass:
+    """
+    Magic object which compares equal to everything. Useful for equality tests
+    in which you don't care about the exact value of a specific field.
+    """
+    def __eq__(self, other: typing.Any) -> bool:
+        return True
+
+ANYTHING: typing.Any = AnythingClass()
+
+
 @typing.no_type_check
 def magic_dispatch(self, prefix, obj, *args, **kwargs):
     """
