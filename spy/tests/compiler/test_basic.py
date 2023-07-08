@@ -8,7 +8,7 @@ from spy.irgen.symtable import Symbol
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FunctionType
 from spy.util import ANYTHING
-from spy.tests.support import CompilerTest, skip_backends
+from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestBasic(CompilerTest):
 
@@ -47,7 +47,7 @@ class TestBasic(CompilerTest):
         # codegen tests
         assert mod.foo() == 42
 
-    @skip_backends('C')
+    @no_backend
     def test_resolve_type_errors(self):
         self.expect_errors(
             """

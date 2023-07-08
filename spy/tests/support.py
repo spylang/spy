@@ -58,6 +58,8 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
         return pytest.mark.parametrize('compiler_backend', new_backends)(func)
     return decorator
 
+def no_backend(func):
+    return pytest.mark.parametrize('compiler_backend', [''])(func)
 
 @pytest.mark.usefixtures('init')
 class CompilerTest:
@@ -103,6 +105,9 @@ class CompilerTest:
         return self._run_pipeline(src, 'irgen')
 
     def compile(self, src: str) -> Any:
+        if self.backend == '':
+            pytest.fail('Cannot call self.compile() if the method was '
+                        'decorated with @no_backend')
         return self._run_pipeline(src, 'compile', backend=self.backend)
 
     def expect_errors(self,src: str, *,
