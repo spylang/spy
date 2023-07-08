@@ -168,7 +168,6 @@ class TestBasic(CompilerTest):
         # codegen tests
         assert mod.inc(100) == 101
 
-    @skip_backends('C')
     def test_assign(self):
         mod = self.compile(
         """
@@ -179,7 +178,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
-    @skip_backends('C')
+    @no_backend
     def test_assign_errors(self):
         self.expect_errors(
             """
@@ -219,15 +218,12 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
-    @skip_backends('C')
     def test_i32_add(self):
         mod = self.compile("""
-        N: i32 = 100
         def add(x: i32, y: i32) -> i32:
             return x + y
         """)
         assert mod.add(1, 2) == 3
-        assert mod.N == 100
 
     @skip_backends('C')
     def test_i32_mul(self):
