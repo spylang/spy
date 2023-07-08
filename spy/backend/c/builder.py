@@ -96,17 +96,20 @@ class CModuleBuilder:
             print()
             print(f'---- {self.output_c} ----')
             print(self.output_c.read())
-
-
+        #
+        exports = []
+        for name in self.w_mod.content.values_w:
+            exports.append(f'-Wl,--export={name}')
+        #
         cmdline = [str(ZIG), 'cc',
 		   '--target=wasm32-freestanding',
 		   '-nostdlib',
-		   '-Wl,--export=foo', # XXX hardcoded
                    '-shared',
 		   '-g',
 		   '-O3',
 		   '-o', str(self.output_wasm),
 		   str(self.output_c)]
+        cmdline += exports
         subprocess.check_call(cmdline)
         return self.output_wasm
 
@@ -154,15 +157,20 @@ class CFuncBuilder:
         w2c = self.builder.types.w2c
         w_functype = w_func.w_functype
         c_restype = w2c(w_functype.w_restype)
-        c_params = [C_FuncParam(name=p.name, c_type=w2c(p.w_type))
-                    for p in w_functype.params]
+        c_params = []
+        param_names = set()
+        for p in w_functype.params:
+            c_param = C_FuncParam(name=p.name, c_type=w2c(p.w_type))
+            c_params.append(c_param)
+            param_names.add(p.name)
         c_func = C_Function(name, c_params, c_restype)
         self.w(c_func, '{')
         #
         for varname, w_type in w_func.w_code.locals_w_types.items():
             c_type = self.types.w2c(w_type)
             self.local_vars[varname] = c_type
-            self.w(f'    {c_type} {varname};')
+            if varname not in param_names:
+                self.w(f'    {c_type} {varname};')
         for op in w_func.w_code.body:
             self.write_op(op)
         self.w('}')
@@ -200,3 +208,11 @@ class CFuncBuilder:
     def write_op_store_local(self, varname: str) -> None:
         tmpvar = self.stack.pop()
         self.w(f'    {varname} = {tmpvar};')
+
+    def write_op_i32_add(self) -> None:
+        t = C_Type('int32_t')
+        right = self.stack.pop()
+        left = self.stack.pop()
+        tmp = self.new_var(t)
+        self.w(f'    {t} {tmp} = {left} + {right};')
+        self.stack.append(tmp)

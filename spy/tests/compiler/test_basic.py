@@ -111,7 +111,7 @@ class TestBasic(CompilerTest):
         # codegen tests
         assert mod.foo() == 42
 
-    @skip_backends('C')
+    @no_backend
     def test_declare_variable_errors(self):
         self.expect_errors(
             """
@@ -146,7 +146,6 @@ class TestBasic(CompilerTest):
                 'not found in this scope',
             ])
 
-    @skip_backends('C')
     def test_function_arguments(self):
         mod = self.compile(
         """
