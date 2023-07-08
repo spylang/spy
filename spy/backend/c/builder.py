@@ -200,10 +200,7 @@ class CFuncBuilder:
         pass
 
     def write_op_load_local(self, varname: str) -> None:
-        t = self.local_vars[varname]
-        tmpvar = self.new_var(t)
-        self.w(f'    {t} {tmpvar} = {varname};')
-        self.stack.append(tmpvar)
+        self.stack.append(varname)
 
     def write_op_store_local(self, varname: str) -> None:
         tmpvar = self.stack.pop()
