@@ -6,6 +6,7 @@ from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.builder import CModuleBuilder
+from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
@@ -75,10 +76,14 @@ class CompilerPipeline:
             return interp_mod
         elif backend == 'C':
             cmod = CModuleBuilder(self.vm, self.w_mod, self.builddir)
-            cmod.write_source()
-
-            print()
-            print(cmod.outfile.read())
-            import pdb;pdb.set_trace()
+            output_wasm = cmod.build()
+            ## print()
+            ## print(cmod.output_c)
+            ## print(cmod.output_c.read())
+            ## print()
+            ## import os
+            ## print(wasmfile)
+            ## os.system(f'wasm2wat {wasmfile}')
+            return WasmModuleWrapper(output_wasm)
         else:
             assert False, f'Unknown backend: {backend}'

@@ -18,7 +18,6 @@ class TestBasic(CompilerTest):
                 return decl
         raise KeyError(name)
 
-    #@skip_backends('C')
     def test_simple(self):
         mod = self.compile(
         """

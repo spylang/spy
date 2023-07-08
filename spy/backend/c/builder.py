@@ -1,12 +1,17 @@
 from dataclasses import dataclass
 from typing import TextIO, Any
+import subprocess
+import py
 from py.path import LocalPath
+import ziglang
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function
 from spy.vm.codeobject import OpCode
 from spy.util import magic_dispatch
+
+ZIG = py.path.local(ziglang.__file__).dirpath('zig')
 
 @dataclass
 class C_Type:
@@ -75,16 +80,35 @@ class CModuleBuilder:
         self.vm = vm
         self.w_mod = w_mod
         self.outdir = outdir
-        self.outfile = self.outdir.join(f'{w_mod.name}.c')
+        self.output_c = self.outdir.join(f'{w_mod.name}.c')
+        self.output_wasm = self.outdir.join(f'{w_mod.name}.wasm')
         self.types = TypeManager(vm)
+
+    def build(self) -> None:
+        # compile the C code to WASM, using zig cc
+        if not ZIG.check(exists=True):
+            raise ValueError('Cannot find the zig executable; try pip install ziglang')
+        #
+        self.write_source()
+        cmdline = [str(ZIG), 'cc',
+		   '--target=wasm32-freestanding',
+		   '-nostdlib',
+		   '-Wl,--export=foo', # XXX hardcoded
+                   '-shared',
+		   '-g',
+		   '-O3',
+		   '-o', str(self.output_wasm),
+		   str(self.output_c)]
+        subprocess.check_call(cmdline)
+        return self.output_wasm
 
     def w(self, *args: Any, end: str = '\n') -> None:
         print(*args, file=self.f, end=end)
 
     def write_source(self) -> None:
-        with self.outfile.open('w') as self.f:
-            self.w('#include <stdint>')
-            self.w('#include <stdbool>')
+        with self.output_c.open('w') as self.f:
+            self.w('#include <stdint.h>')
+            self.w('#include <stdbool.h>')
             self.w()
             # XXX we should pre-declare variables and functions
             for name, w_obj in self.w_mod.content.values_w.items():
@@ -94,6 +118,7 @@ class CModuleBuilder:
                     func_builder.write(name, w_obj)
                 else:
                     raise NotImplementedError('WIP')
+
 
 
 
