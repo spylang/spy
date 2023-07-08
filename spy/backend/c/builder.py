@@ -13,6 +13,8 @@ from spy.util import magic_dispatch
 
 ZIG = py.path.local(ziglang.__file__).dirpath('zig')
 
+DUMP_C_SOURCE = True
+
 @dataclass
 class C_Type:
     """
@@ -90,6 +92,12 @@ class CModuleBuilder:
             raise ValueError('Cannot find the zig executable; try pip install ziglang')
         #
         self.write_source()
+        if DUMP_C_SOURCE:
+            print()
+            print(f'---- {self.output_c} ----')
+            print(self.output_c.read())
+
+
         cmdline = [str(ZIG), 'cc',
 		   '--target=wasm32-freestanding',
 		   '-nostdlib',
@@ -130,6 +138,7 @@ class CFuncBuilder:
         self.vm = builder.vm
         self.types = builder.types
         self.tmp_vars = {}
+        self.local_vars = {}  # dict[str, C_Type]
         self.stack = []
 
     def new_var(self, c_type: C_Type) -> str:
@@ -149,6 +158,11 @@ class CFuncBuilder:
                     for p in w_functype.params]
         c_func = C_Function(name, c_params, c_restype)
         self.w(c_func, '{')
+        #
+        for varname, w_type in w_func.w_code.locals_w_types.items():
+            c_type = self.types.w2c(w_type)
+            self.local_vars[varname] = c_type
+            self.w(f'    {c_type} {varname};')
         for op in w_func.w_code.body:
             self.write_op(op)
         self.w('}')
@@ -176,3 +190,13 @@ class CFuncBuilder:
     def write_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now
         pass
+
+    def write_op_load_local(self, varname: str) -> None:
+        t = self.local_vars[varname]
+        tmpvar = self.new_var(t)
+        self.w(f'    {t} {tmpvar} = {varname};')
+        self.stack.append(tmpvar)
+
+    def write_op_store_local(self, varname: str) -> None:
+        tmpvar = self.stack.pop()
+        self.w(f'    {varname} = {tmpvar};')

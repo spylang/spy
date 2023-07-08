@@ -78,9 +78,6 @@ class CompilerPipeline:
             cmod = CModuleBuilder(self.vm, self.w_mod, self.builddir)
             output_wasm = cmod.build()
             ## print()
-            ## print(cmod.output_c)
-            ## print(cmod.output_c.read())
-            ## print()
             ## import os
             ## print(wasmfile)
             ## os.system(f'wasm2wat {wasmfile}')

@@ -77,7 +77,7 @@ class TestBasic(CompilerTest):
                 'I_am_not_a_type is not a type'
             ])
 
-    @skip_backends('C')
+    @no_backend
     def test_wrong_return_type(self):
         self.expect_errors(
             """
@@ -90,7 +90,6 @@ class TestBasic(CompilerTest):
                 'expected `str` because of return type',
             ])
 
-    @skip_backends('C')
     def test_local_variables(self):
         mod = self.compile(
         """
