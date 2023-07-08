@@ -1,9 +1,11 @@
 from typing import Any, Literal
+from py.path import LocalPath
 import spy.ast
 from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.backend.interp import InterpModuleWrapper
+from spy.backend.c.builder import CModuleBuilder
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
@@ -20,15 +22,18 @@ class CompilerPipeline:
     """
     vm: SPyVM
     srcfile: str
+    builddir: LocalPath
     parser: Parser
     mod: spy.ast.Module
     t: TypeChecker
     modgen: ModuleGen
     w_mod: W_Module
 
-    def __init__(self, vm: SPyVM, backend: str, srcfile: str) -> None:
+    def __init__(self, vm: SPyVM, backend: str, srcfile: str,
+                 builddir: LocalPath) -> None:
         self.vm = vm
         self.srcfile = srcfile
+        self.builddir = builddir
         self.parser = None  # type: ignore
         self.mod = None     # type: ignore
         self.t = None       # type: ignore
@@ -69,6 +74,11 @@ class CompilerPipeline:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif backend == 'C':
-            raise NotImplementedError('WIP')
+            cmod = CModuleBuilder(self.vm, self.w_mod, self.builddir)
+            cmod.write_source()
+
+            print()
+            print(cmod.outfile.read())
+            import pdb;pdb.set_trace()
         else:
             assert False, f'Unknown backend: {backend}'

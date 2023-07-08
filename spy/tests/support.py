@@ -87,8 +87,9 @@ class CompilerTest:
         return srcfile
 
     def _run_pipeline(self, src: str, stepname: str, **kwargs: Any) -> Any:
+        builddir = self.tmpdir.join('build').ensure(dir=True)
         srcfile = self.write_source('test.py', src)
-        self.compiler = CompilerPipeline(self.vm, self.backend, srcfile)
+        self.compiler = CompilerPipeline(self.vm, self.backend, srcfile, builddir)
         meth = getattr(self.compiler, stepname)
         return meth(**kwargs)
 
