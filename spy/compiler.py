@@ -4,9 +4,7 @@ import spy.ast
 from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
-from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.builder import CModuleBuilder
-from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
@@ -22,7 +20,7 @@ class CompilerPipeline:
     individual steps.
     """
     vm: SPyVM
-    srcfile: str
+    srcfile: LocalPath
     builddir: LocalPath
     parser: Parser
     mod: spy.ast.Module
@@ -30,11 +28,10 @@ class CompilerPipeline:
     modgen: ModuleGen
     w_mod: W_Module
 
-    def __init__(self, vm: SPyVM, backend: str, srcfile: str,
-                 builddir: LocalPath) -> None:
+    def __init__(self, vm: SPyVM, srcfile: LocalPath, builddir: LocalPath) -> None:
         self.vm = vm
-        self.srcfile = srcfile
         self.builddir = builddir
+        self.srcfile = srcfile
         self.parser = None  # type: ignore
         self.mod = None     # type: ignore
         self.t = None       # type: ignore
@@ -61,26 +58,16 @@ class CompilerPipeline:
         self.w_mod = self.modgen.make_w_mod()
         return self.w_mod
 
-    def compile(self, backend: Backend) -> Any:
+    def cwrite(self):
         """
-        Compile the W_Module into something which can be accessed and called by
-        tests.
-
-        Currently, the only support backend is 'interp', which is a fake
-        backend: the IR code is not compiled and function are executed by the
-        VM.
+        Convert the W_Module into a .c file
         """
         self.irgen()
-        if backend == 'interp':
-            interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
-            return interp_mod
-        elif backend == 'C':
-            cmod = CModuleBuilder(self.vm, self.w_mod, self.builddir)
-            output_wasm = cmod.build()
-            ## print()
-            ## import os
-            ## print(wasmfile)
-            ## os.system(f'wasm2wat {wasmfile}')
-            return WasmModuleWrapper(output_wasm)
-        else:
-            assert False, f'Unknown backend: {backend}'
+        self.cmod = CModuleBuilder(self.vm, self.w_mod, self.builddir)
+
+    def cbuild(self):
+        """
+        Build the .c file into a .wasm file
+        """
+        self.cwrite()
+        return self.cmod.build()

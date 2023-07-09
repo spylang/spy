@@ -3,6 +3,8 @@ import textwrap
 import pytest
 import spy.ast
 from spy.compiler import CompilerPipeline, Backend
+from spy.backend.interp import InterpModuleWrapper
+from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
@@ -61,6 +63,7 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
 def no_backend(func):
     return pytest.mark.parametrize('compiler_backend', [''])(func)
 
+
 @pytest.mark.usefixtures('init')
 class CompilerTest:
     tmpdir: Any
@@ -74,10 +77,16 @@ class CompilerTest:
     @pytest.fixture
     def init(self, tmpdir, compiler_backend):
         self.tmpdir = tmpdir
+        self.builddir = self.tmpdir.join('build').ensure(dir=True)
         self.backend = compiler_backend
         self.vm = SPyVM()
+        self.compiler = None
 
-    def write_source(self, filename: str, src: str) -> Any:
+    def new_compiler(self, src: str):
+        srcfile = self.write_file('test.spy', src)
+        self.compiler = CompilerPipeline(self.vm, srcfile, self.builddir)
+
+    def write_file(self, filename: str, src: str) -> Any:
         """
         Write the give source code to the specified filename, in the tmpdir.
 
@@ -88,37 +97,48 @@ class CompilerTest:
         srcfile.write(src)
         return srcfile
 
-    def _run_pipeline(self, src: str, stepname: str, **kwargs: Any) -> Any:
-        builddir = self.tmpdir.join('build').ensure(dir=True)
-        srcfile = self.write_source('test.py', src)
-        self.compiler = CompilerPipeline(self.vm, self.backend, srcfile, builddir)
-        meth = getattr(self.compiler, stepname)
-        return meth(**kwargs)
-
     def parse(self, src: str) -> spy.ast.Module:
-        return self._run_pipeline(src, 'parse')
-
-    def typecheck(self, src: str) -> spy.ast.Module:
-        return self._run_pipeline(src, 'typecheck')
-
-    def irgen(self, src: str) -> W_Module:
-        return self._run_pipeline(src, 'irgen')
+        self.new_compiler(src)
+        return self.compiler.parse()
 
     def compile(self, src: str) -> Any:
-        if self.backend == '':
-            pytest.fail('Cannot call self.compile() if the method was '
-                        'decorated with @no_backend')
-        return self._run_pipeline(src, 'compile', backend=self.backend)
+        """
+        Compile the W_Module into something which can be accessed and called by
+        tests.
 
-    def expect_errors(self,src: str, *,
+        Currently, the only support backend is 'interp', which is a fake
+        backend: the IR code is not compiled and function are executed by the
+        VM.
+        """
+        self.new_compiler(src)
+        if self.backend == '':
+            pytest.fail('Cannot call self.compile() on @no_backend tests')
+        elif self.backend == 'interp':
+            w_mod = self.compiler.irgen()
+            interp_mod = InterpModuleWrapper(self.vm, w_mod)
+            return interp_mod
+        elif self.backend == 'C':
+            output_wasm = self.compiler.cbuild()
+            ## print()
+            ## import os
+            ## print(wasmfile)
+            ## os.system(f'wasm2wat {wasmfile}')
+            return WasmModuleWrapper(output_wasm)
+        else:
+            assert False, f'Unknown backend: {backend}'
+
+
+    def expect_errors(self, src: str, *,
                       errors: list[str],
                       stepname: str = 'irgen') -> SPyCompileError:
         """
         Expect that compilation fails, and check that the expected errors are
         reported
         """
+        self.new_compiler(src)
+        meth = getattr(self.compiler, stepname)
         with pytest.raises(SPyCompileError) as exc:
-            self._run_pipeline(src, stepname)
+            meth()
         err = exc.value
         self.assert_messages(err, errors=errors)
         return err
