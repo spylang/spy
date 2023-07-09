@@ -1,14 +1,15 @@
-from typing import Any, Literal
 from py.path import LocalPath
 import spy.ast
 from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
-from spy.backend.c.builder import CModuleBuilder
+from spy.backend.c.writer import CModuleWriter
+from spy.backend.c.cbuild import ZigToolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
-Backend = Literal['interp', 'C']
+
+DUMP_C_SOURCE = True
 
 class CompilerPipeline:
     """
@@ -20,27 +21,35 @@ class CompilerPipeline:
     individual steps.
     """
     vm: SPyVM
-    srcfile: LocalPath
+    file_spy: LocalPath  # input file
     builddir: LocalPath
+    #
     parser: Parser
     mod: spy.ast.Module
     t: TypeChecker
     modgen: ModuleGen
     w_mod: W_Module
+    file_c: LocalPath    # output file
+    file_wasm: LocalPath # output file
 
-    def __init__(self, vm: SPyVM, srcfile: LocalPath, builddir: LocalPath) -> None:
+    def __init__(self, vm: SPyVM, file_spy: LocalPath, builddir: LocalPath) -> None:
         self.vm = vm
+        self.file_spy = file_spy
         self.builddir = builddir
-        self.srcfile = srcfile
+        #
         self.parser = None  # type: ignore
         self.mod = None     # type: ignore
         self.t = None       # type: ignore
         self.modgen = None  # type: ignore
         self.w_mod = None   # type: ignore
+        #
+        basename = file_spy.purebasename
+        self.file_c = builddir.join(f'{basename}.c')
+        self.file_wasm = builddir.join(f'{basename}.wasm')
 
     def parse(self) -> spy.ast.Module:
         assert self.parser is None, 'parse() already called'
-        self.parser = Parser.from_filename(str(self.srcfile))
+        self.parser = Parser.from_filename(str(self.file_spy))
         self.mod = self.parser.parse()
         return self.mod
 
@@ -58,16 +67,33 @@ class CompilerPipeline:
         self.w_mod = self.modgen.make_w_mod()
         return self.w_mod
 
-    def cwrite(self):
+    def cwrite(self) -> LocalPath:
         """
         Convert the W_Module into a .c file
         """
         self.irgen()
-        self.cmod = CModuleBuilder(self.vm, self.w_mod, self.builddir)
+        self.cwriter = CModuleWriter(self.vm, self.w_mod)
+        self.cwriter.write_c_source(self.file_c)
+        #
+        if DUMP_C_SOURCE:
+            print()
+            print(f'---- {self.file_c} ----')
+            print(self.file_c.read())
+        #
+        return self.file_c
 
-    def cbuild(self):
+    def cbuild(self) -> LocalPath:
         """
         Build the .c file into a .wasm file
         """
-        self.cwrite()
-        return self.cmod.build()
+        file_c = self.cwrite()
+        toolchain = ZigToolchain()
+        exports = list(self.w_mod.content.values_w.keys())
+        file_wasm = toolchain.c2wasm(file_c, exports, self.file_wasm)
+        #
+        ## if DUMP_WASM:
+        ##     import os
+        ##     print(file_wasm)
+        ##     os.system(f'wasm2wat {file_wasm}')
+        #
+        return file_wasm

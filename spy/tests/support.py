@@ -1,14 +1,15 @@
-from typing import Any
+from typing import Any, Literal
 import textwrap
 import pytest
 import spy.ast
-from spy.compiler import CompilerPipeline, Backend
+from spy.compiler import CompilerPipeline
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
+Backend = Literal['interp', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
 def params_with_marks(params):
@@ -118,15 +119,10 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, w_mod)
             return interp_mod
         elif self.backend == 'C':
-            output_wasm = self.compiler.cbuild()
-            ## print()
-            ## import os
-            ## print(wasmfile)
-            ## os.system(f'wasm2wat {wasmfile}')
-            return WasmModuleWrapper(output_wasm)
+            file_wasm = self.compiler.cbuild()
+            return WasmModuleWrapper(file_wasm)
         else:
             assert False, f'Unknown backend: {backend}'
-
 
     def expect_errors(self, src: str, *,
                       errors: list[str],

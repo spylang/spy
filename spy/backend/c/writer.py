@@ -1,20 +1,12 @@
 from dataclasses import dataclass
-from typing import Any
-import subprocess
-import py
 from py.path import LocalPath
-import ziglang
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function
 from spy.vm.codeobject import OpCode
 from spy.textbuilder import TextBuilder
-from spy.util import magic_dispatch
 
-ZIG = py.path.local(ziglang.__file__).dirpath('zig')
-
-DUMP_C_SOURCE = True
 
 @dataclass
 class C_Type:
@@ -72,78 +64,42 @@ class TypeManager:
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
 
 
-class CModuleBuilder:
+class CModuleWriter:
     vm: SPyVM
     w_mod: W_Module
-    outdir: LocalPath
-    output_c: LocalPath
-    output_wasm: LocalPath
     c: TextBuilder
     types: TypeManager
 
-
-    def __init__(self, vm: SPyVM, w_mod: W_Module, outdir: LocalPath) -> None:
+    def __init__(self, vm: SPyVM, w_mod: W_Module) -> None:
         self.vm = vm
         self.w_mod = w_mod
-        self.outdir = outdir
-        self.output_c = self.outdir.join(f'{w_mod.name}.c')
-        self.output_wasm = self.outdir.join(f'{w_mod.name}.wasm')
         self.c = TextBuilder(use_colors=False)
         self.types = TypeManager(vm)
 
-    def build(self) -> None:
-        # compile the C code to WASM, using zig cc
-        if not ZIG.check(exists=True):
-            raise ValueError('Cannot find the zig executable; try pip install ziglang')
+    def write_c_source(self, outfile: LocalPath) -> None:
+        c_src = self.generate_c_file()
+        outfile.write(c_src)
+
+    def generate_c_file(self) -> str:
+        self.c.wl('#include <stdint.h>')
+        self.c.wl('#include <stdbool.h>')
+        self.c.wl()
+        # XXX we should pre-declare variables and functions
+        for name, w_obj in self.w_mod.content.values_w.items():
+            # XXX we should mangle the name somehow
+            if isinstance(w_obj, W_Function):
+                func_builder = CFuncBuilder(self)
+                func_builder.write(name, w_obj)
+            else:
+                raise NotImplementedError('WIP')
         #
-        self.write_source()
-        src = self.c.build()
-        self.output_c.write(src)
-        if DUMP_C_SOURCE:
-            print()
-            print(f'---- {self.output_c} ----')
-            print(src)
-        #
-        exports = []
-        for name in self.w_mod.content.values_w:
-            exports.append(f'-Wl,--export={name}')
-        #
-        cmdline = [str(ZIG), 'cc',
-		   '--target=wasm32-freestanding',
-		   '-nostdlib',
-                   '-shared',
-		   '-g',
-		   '-O3',
-		   '-o', str(self.output_wasm),
-		   str(self.output_c)]
-        cmdline += exports
-        subprocess.check_call(cmdline)
-        return self.output_wasm
-
-    def w(self, *args: Any, end: str = '\n') -> None:
-        print(*args, file=self.f, end=end)
-
-    def write_source(self) -> None:
-        with self.output_c.open('w') as self.f:
-            self.c.wl('#include <stdint.h>')
-            self.c.wl('#include <stdbool.h>')
-            self.c.wl()
-            # XXX we should pre-declare variables and functions
-            for name, w_obj in self.w_mod.content.values_w.items():
-                # XXX we should mangle the name somehow
-                if isinstance(w_obj, W_Function):
-                    func_builder = CFuncBuilder(self)
-                    func_builder.write(name, w_obj)
-                else:
-                    raise NotImplementedError('WIP')
-
-
+        return self.c.build()
 
 
 class CFuncBuilder:
-    builder: CModuleBuilder
+    builder: CModuleWriter
 
-    def __init__(self, builder: CModuleBuilder):
+    def __init__(self, builder: CModuleWriter):
         self.builder = builder
         self.vm = builder.vm
         self.types = builder.types

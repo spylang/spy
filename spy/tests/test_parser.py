@@ -38,7 +38,7 @@ class TestParser(CompilerTest):
         """)
         expected = """
         Module(
-            filename='{tmpdir}/test.py',
+            filename='{tmpdir}/test.spy',
             decls=[
                 FuncDef(
                     name='foo',
@@ -60,7 +60,7 @@ class TestParser(CompilerTest):
         """)
         expected = """
         Module(
-            filename='{tmpdir}/test.py',
+            filename='{tmpdir}/test.spy',
             decls=[
                 FuncDef(
                     name='foo',
@@ -214,7 +214,7 @@ class TestParser(CompilerTest):
         """)
         expected = f"""
         Module(
-            filename='{self.tmpdir}/test.py',
+            filename='{self.tmpdir}/test.spy',
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
