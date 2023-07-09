@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type
+from spy.vm.function import W_FunctionType
 
 @dataclass
 class C_Type:
@@ -30,7 +31,7 @@ class C_Function:
     def __repr__(self) -> str:
         return f"<C func '{self.name}'>"
 
-    def __str__(self) -> str:
+    def decl(self) -> str:
         if self.params == []:
             s_params = 'void'
         else:
@@ -38,7 +39,6 @@ class C_Function:
             s_params = ', '.join(paramlist)
         #
         return f'{self.c_restype} {self.name}({s_params})'
-
 
 
 class Context:
@@ -61,3 +61,11 @@ class Context:
         if w_type in self._d:
             return self._d[w_type]
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
+
+    def c_function(self, name, w_functype: W_FunctionType) -> C_Function:
+        c_restype = self.w2c(w_functype.w_restype)
+        c_params = [
+            C_FuncParam(name=p.name, c_type=self.w2c(p.w_type))
+            for p in w_functype.params
+        ]
+        return C_Function(name, c_params, c_restype)
