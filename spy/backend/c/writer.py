@@ -44,7 +44,6 @@ class CFuncWriter:
     name: str
     w_func: W_Function
     tmp_vars: dict[str, C_Type]
-    local_vars: dict[str, C_Type]
     stack: list[str]
 
     def __init__(self, ctx: Context, out: TextBuilder, name: str, w_func: W_Function):
@@ -53,7 +52,6 @@ class CFuncWriter:
         self.name = name
         self.w_func = w_func
         self.tmp_vars = {}
-        self.local_vars = {}
         self.stack = []
 
     def new_var(self, c_type: C_Type) -> str:
@@ -63,19 +61,26 @@ class CFuncWriter:
         return name
 
     def emit(self) -> None:
+        """
+        Emit the code for the whole function
+        """
         c_func = self.ctx.c_function(self.name, self.w_func.w_functype)
-        param_names = [p.name for p in c_func.params]
         self.out.wl(c_func.decl() + ' {')
-        #
+        with self.out.indent():
+            self.emit_local_vars()
+            for op in self.w_func.w_code.body:
+                self.emit_op(op)
+        self.out.wl('}')
+
+    def emit_local_vars(self):
+        """
+        Declare all local variables
+        """
+        param_names = [p.name for p in self.w_func.w_functype.params]
         for varname, w_type in self.w_func.w_code.locals_w_types.items():
             c_type = self.ctx.w2c(w_type)
-            self.local_vars[varname] = c_type
             if varname not in param_names:
-                self.out.wl(f'    {c_type} {varname};')
-        #
-        for op in self.w_func.w_code.body:
-            self.emit_op(op)
-        self.out.wl('}')
+                self.out.wl(f'{c_type} {varname};')
 
     def emit_op(self, op: OpCode) -> None:
         meth_name = f'emit_op_{op.name}'
@@ -90,12 +95,12 @@ class CFuncWriter:
         tmpvar = self.new_var(c_type)
         assert isinstance(w_const, W_i32), 'WIP'
         intval = self.ctx.vm.unwrap(w_const)
-        self.out.wl(f'    {c_type} {tmpvar} = {intval};')
+        self.out.wl(f'{c_type} {tmpvar} = {intval};')
         self.stack.append(tmpvar)
 
     def emit_op_return(self) -> None:
         tmpvar = self.stack.pop()
-        self.out.wl(f'    return {tmpvar};')
+        self.out.wl(f'return {tmpvar};')
 
     def emit_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now
@@ -106,12 +111,12 @@ class CFuncWriter:
 
     def emit_op_store_local(self, varname: str) -> None:
         tmpvar = self.stack.pop()
-        self.out.wl(f'    {varname} = {tmpvar};')
+        self.out.wl(f'{varname} = {tmpvar};')
 
     def emit_op_i32_add(self) -> None:
         t = C_Type('int32_t')
         right = self.stack.pop()
         left = self.stack.pop()
         tmp = self.new_var(t)
-        self.out.wl(f'    {t} {tmp} = {left} + {right};')
+        self.out.wl(f'{t} {tmp} = {left} + {right};')
         self.stack.append(tmp)
