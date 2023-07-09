@@ -70,6 +70,7 @@ class CompilerTest:
     tmpdir: Any
     backend: Backend
     vm: SPyVM
+    compiler: CompilerPipeline
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
@@ -81,7 +82,7 @@ class CompilerTest:
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
         self.backend = compiler_backend
         self.vm = SPyVM()
-        self.compiler = None
+        self.compiler = None  # type: ignore
 
     def new_compiler(self, src: str):
         srcfile = self.write_file('test.spy', src)
@@ -122,7 +123,7 @@ class CompilerTest:
             file_wasm = self.compiler.cbuild()
             return WasmModuleWrapper(file_wasm)
         else:
-            assert False, f'Unknown backend: {backend}'
+            assert False, f'Unknown backend: {self.backend}'
 
     def expect_errors(self, src: str, *,
                       errors: list[str],

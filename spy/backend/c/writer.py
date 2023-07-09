@@ -11,8 +11,6 @@ from spy.textbuilder import TextBuilder
 @dataclass
 class C_Type:
     """
-    A C type.
-
     Just a tiny wrapper around a string, but it helps to make things tidy.
     """
     name: str
@@ -98,6 +96,11 @@ class CModuleWriter:
 
 class CFuncBuilder:
     builder: CModuleWriter
+    vm: SPyVM
+    types: TypeManager
+    tmp_vars: dict[str, C_Type]
+    local_vars: dict[str, C_Type]
+    stack: list[str]
 
     def __init__(self, builder: CModuleWriter):
         self.builder = builder
@@ -105,7 +108,7 @@ class CFuncBuilder:
         self.types = builder.types
         self.c = builder.c
         self.tmp_vars = {}
-        self.local_vars = {}  # dict[str, C_Type]
+        self.local_vars = {}
         self.stack = []
 
     def new_var(self, c_type: C_Type) -> str:

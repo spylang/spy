@@ -4,14 +4,14 @@ from py.path import LocalPath
 
 class ZigToolchain:
 
-    def __init__(self):
-        import ziglang
+    def __init__(self) -> None:
+        import ziglang  # type: ignore
         self.ZIG = py.path.local(ziglang.__file__).dirpath('zig')
         if not self.ZIG.check(exists=True):
             raise ValueError('Cannot find the zig executable; try pip install ziglang')
 
     def c2wasm(self, file_c: LocalPath, exports: list[str],
-               file_wasm: LocalPath) -> None:
+               file_wasm: LocalPath) -> LocalPath:
         """
         Compile the C code to WASM, using zig cc
         """
