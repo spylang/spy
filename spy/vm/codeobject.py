@@ -1,7 +1,7 @@
 import typing
 from typing import Any
 from spy.vm.object import W_Object, W_Type, spytype
-from spy.util import ColorFormatter
+from spy.textbuilder import ColorFormatter
 
 if typing.TYPE_CHECKING:
     from spy.vm.function import W_FunctionType

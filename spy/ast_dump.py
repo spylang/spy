@@ -2,7 +2,7 @@ from typing import Any, Iterator, Optional
 from contextlib import contextmanager
 import ast as py_ast
 import spy.ast
-from spy.util import ColorFormatter
+from spy.textbuilder import TextBuilder, ColorFormatter
 
 def dump(node: Any, *, use_colors: bool = True) -> str:
     dumper = Dumper(use_colors=use_colors)
@@ -17,38 +17,12 @@ def pprint(node: Any, *, copy_to_clipboard: bool = False) -> None:
         pyperclip.copy(out)
 
 
-class Dumper:
-    level: int
-    lines: list[str]
+class Dumper(TextBuilder):
     fields_to_ignore: tuple[str, ...]
-    use_colors: bool
 
     def __init__(self, *, use_colors: bool) -> None:
-        self.level = 0
-        self.lines = ['']
-        self.color = ColorFormatter(use_colors)
+        super().__init__(use_colors=use_colors)
         self.fields_to_ignore = ('loc', 'target_loc')
-
-    @contextmanager
-    def indent(self) -> Iterator[None]:
-        self.level += 1
-        yield
-        self.level -= 1
-
-    def write(self, s: str, *, color: Optional[str] = None) -> None:
-        s = self.color.set(color, s)
-        if self.lines[-1] == '':
-            # add the indentation
-            spaces = ' ' * (self.level * 4)
-            self.lines[-1] = spaces
-        self.lines[-1] += s
-
-    def writeline(self, s: str, *, color: Optional[str] = None) -> None:
-        self.write(s, color=color)
-        self.lines.append('')
-
-    def build(self) -> str:
-        return '\n'.join(self.lines)
 
     def dump_anything(self, obj: Any) -> None:
         if isinstance(obj, spy.ast.Node):

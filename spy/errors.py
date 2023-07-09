@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import linecache
 import spy.ast
 from spy.location import Loc
-from spy.util import ColorFormatter
+from spy.textbuilder import ColorFormatter
 
 Level = Literal["error", "note"]
 
