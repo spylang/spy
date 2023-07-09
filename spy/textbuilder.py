@@ -25,7 +25,7 @@ class TextBuilder:
             self.lines[-1] = spaces
         self.lines[-1] += s
 
-    def writeline(self, s: str, *, color: Optional[str] = None) -> None:
+    def writeline(self, s: str = '', *, color: Optional[str] = None) -> None:
         self.write(s, color=color)
         self.lines.append('')
 

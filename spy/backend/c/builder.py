@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TextIO, Any
+from typing import Any
 import subprocess
 import py
 from py.path import LocalPath
@@ -9,6 +9,7 @@ from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function
 from spy.vm.codeobject import OpCode
+from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch
 
 ZIG = py.path.local(ziglang.__file__).dirpath('zig')
@@ -75,8 +76,11 @@ class CModuleBuilder:
     vm: SPyVM
     w_mod: W_Module
     outdir: LocalPath
-    outfile: LocalPath
-    f: TextIO
+    output_c: LocalPath
+    output_wasm: LocalPath
+    c: TextBuilder
+    types: TypeManager
+
 
     def __init__(self, vm: SPyVM, w_mod: W_Module, outdir: LocalPath) -> None:
         self.vm = vm
@@ -84,6 +88,7 @@ class CModuleBuilder:
         self.outdir = outdir
         self.output_c = self.outdir.join(f'{w_mod.name}.c')
         self.output_wasm = self.outdir.join(f'{w_mod.name}.wasm')
+        self.c = TextBuilder(use_colors=False)
         self.types = TypeManager(vm)
 
     def build(self) -> None:
@@ -92,10 +97,12 @@ class CModuleBuilder:
             raise ValueError('Cannot find the zig executable; try pip install ziglang')
         #
         self.write_source()
+        src = self.c.build()
+        self.output_c.write(src)
         if DUMP_C_SOURCE:
             print()
             print(f'---- {self.output_c} ----')
-            print(self.output_c.read())
+            print(src)
         #
         exports = []
         for name in self.w_mod.content.values_w:
@@ -118,9 +125,9 @@ class CModuleBuilder:
 
     def write_source(self) -> None:
         with self.output_c.open('w') as self.f:
-            self.w('#include <stdint.h>')
-            self.w('#include <stdbool.h>')
-            self.w()
+            self.c.wl('#include <stdint.h>')
+            self.c.wl('#include <stdbool.h>')
+            self.c.wl()
             # XXX we should pre-declare variables and functions
             for name, w_obj in self.w_mod.content.values_w.items():
                 # XXX we should mangle the name somehow
@@ -140,6 +147,7 @@ class CFuncBuilder:
         self.builder = builder
         self.vm = builder.vm
         self.types = builder.types
+        self.c = builder.c
         self.tmp_vars = {}
         self.local_vars = {}  # dict[str, C_Type]
         self.stack = []
@@ -149,9 +157,6 @@ class CFuncBuilder:
         name = f'tmp{n}'
         self.tmp_vars[name] = c_type
         return name
-
-    def w(self, *args: Any, end: str = '\n') -> None:
-        print(*args, file=self.builder.f, end=end)
 
     def write(self, name: str, w_func: W_Function) -> None:
         w2c = self.builder.types.w2c
@@ -164,16 +169,16 @@ class CFuncBuilder:
             c_params.append(c_param)
             param_names.add(p.name)
         c_func = C_Function(name, c_params, c_restype)
-        self.w(c_func, '{')
+        self.c.wl(str(c_func) + ' {')
         #
         for varname, w_type in w_func.w_code.locals_w_types.items():
             c_type = self.types.w2c(w_type)
             self.local_vars[varname] = c_type
             if varname not in param_names:
-                self.w(f'    {c_type} {varname};')
+                self.c.wl(f'    {c_type} {varname};')
         for op in w_func.w_code.body:
             self.write_op(op)
-        self.w('}')
+        self.c.wl('}')
 
     def write_op(self, op: OpCode) -> None:
         meth_name = f'write_op_{op.name}'
@@ -188,12 +193,12 @@ class CFuncBuilder:
         tmpvar = self.new_var(c_type)
         assert isinstance(w_const, W_i32), 'WIP'
         intval = self.vm.unwrap(w_const)
-        self.w(f'    {c_type} {tmpvar} = {intval};')
+        self.c.wl(f'    {c_type} {tmpvar} = {intval};')
         self.stack.append(tmpvar)
 
     def write_op_return(self) -> None:
         tmpvar = self.stack.pop()
-        self.w(f'    return {tmpvar};')
+        self.c.wl(f'    return {tmpvar};')
 
     def write_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now
@@ -204,12 +209,12 @@ class CFuncBuilder:
 
     def write_op_store_local(self, varname: str) -> None:
         tmpvar = self.stack.pop()
-        self.w(f'    {varname} = {tmpvar};')
+        self.c.wl(f'    {varname} = {tmpvar};')
 
     def write_op_i32_add(self) -> None:
         t = C_Type('int32_t')
         right = self.stack.pop()
         left = self.stack.pop()
         tmp = self.new_var(t)
-        self.w(f'    {t} {tmp} = {left} + {right};')
+        self.c.wl(f'    {t} {tmp} = {left} + {right};')
         self.stack.append(tmp)
