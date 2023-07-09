@@ -1,112 +1,50 @@
-from dataclasses import dataclass
 from py.path import LocalPath
-from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function
 from spy.vm.codeobject import OpCode
+from spy.vm.vm import SPyVM
 from spy.textbuilder import TextBuilder
-
-
-@dataclass
-class C_Type:
-    """
-    Just a tiny wrapper around a string, but it helps to make things tidy.
-    """
-    name: str
-
-    def __repr__(self) -> str:
-        return f"<C type '{self.name}'>"
-
-    def __str__(self) -> str:
-        return self.name
-
-@dataclass
-class C_FuncParam:
-    name: str
-    c_type: C_Type
-
-
-@dataclass
-class C_Function:
-    name: str
-    params: list[C_FuncParam]
-    c_restype: C_Type
-
-    def __repr__(self) -> str:
-        return f"<C func '{self.name}'>"
-
-    def __str__(self) -> str:
-        if self.params == []:
-            s_params = 'void'
-        else:
-            paramlist = [f'{p.c_type} {p.name}' for p in self.params]
-            s_params = ', '.join(paramlist)
-        #
-        return f'{self.c_restype} {self.name}({s_params})'
-
-
-
-class TypeManager:
-    _d: dict[W_Type, C_Type]
-
-    def __init__(self, vm: SPyVM) -> None:
-        self._d = {}
-        b = vm.builtins
-        self._d[b.w_i32] = C_Type('int32_t')
-        self._d[b.w_bool] = C_Type('bool')
-
-    def w2c(self, w_type: W_Type) -> C_Type:
-        if w_type in self._d:
-            return self._d[w_type]
-        raise NotImplementedError(f'Cannot translate type {w_type} to C')
-
+from spy.backend.c.context import Context, C_Type, C_Function, C_FuncParam
 
 class CModuleWriter:
-    vm: SPyVM
     w_mod: W_Module
-    c: TextBuilder
-    types: TypeManager
+    out: TextBuilder
 
     def __init__(self, vm: SPyVM, w_mod: W_Module) -> None:
-        self.vm = vm
+        self.ctx = Context(vm)
         self.w_mod = w_mod
-        self.c = TextBuilder(use_colors=False)
-        self.types = TypeManager(vm)
+        self.out = TextBuilder(use_colors=False)
 
     def write_c_source(self, outfile: LocalPath) -> None:
         c_src = self.generate_c_file()
         outfile.write(c_src)
 
     def generate_c_file(self) -> str:
-        self.c.wl('#include <stdint.h>')
-        self.c.wl('#include <stdbool.h>')
-        self.c.wl()
+        self.out.wl('#include <stdint.h>')
+        self.out.wl('#include <stdbool.h>')
+        self.out.wl()
         # XXX we should pre-declare variables and functions
         for name, w_obj in self.w_mod.content.values_w.items():
             # XXX we should mangle the name somehow
             if isinstance(w_obj, W_Function):
-                func_builder = CFuncBuilder(self)
+                func_builder = CFuncBuilder(self.ctx, self.out)
                 func_builder.write(name, w_obj)
             else:
                 raise NotImplementedError('WIP')
         #
-        return self.c.build()
+        return self.out.build()
 
 
 class CFuncBuilder:
-    builder: CModuleWriter
-    vm: SPyVM
-    types: TypeManager
+    ctx: Context
     tmp_vars: dict[str, C_Type]
     local_vars: dict[str, C_Type]
     stack: list[str]
 
-    def __init__(self, builder: CModuleWriter):
-        self.builder = builder
-        self.vm = builder.vm
-        self.types = builder.types
-        self.c = builder.c
+    def __init__(self, ctx: Context, out: TextBuilder):
+        self.ctx = ctx
+        self.out = out
         self.tmp_vars = {}
         self.local_vars = {}
         self.stack = []
@@ -118,7 +56,7 @@ class CFuncBuilder:
         return name
 
     def write(self, name: str, w_func: W_Function) -> None:
-        w2c = self.builder.types.w2c
+        w2c = self.ctx.w2c
         w_functype = w_func.w_functype
         c_restype = w2c(w_functype.w_restype)
         c_params = []
@@ -128,16 +66,16 @@ class CFuncBuilder:
             c_params.append(c_param)
             param_names.add(p.name)
         c_func = C_Function(name, c_params, c_restype)
-        self.c.wl(str(c_func) + ' {')
+        self.out.wl(str(c_func) + ' {')
         #
         for varname, w_type in w_func.w_code.locals_w_types.items():
-            c_type = self.types.w2c(w_type)
+            c_type = self.ctx.w2c(w_type)
             self.local_vars[varname] = c_type
             if varname not in param_names:
-                self.c.wl(f'    {c_type} {varname};')
+                self.out.wl(f'    {c_type} {varname};')
         for op in w_func.w_code.body:
             self.write_op(op)
-        self.c.wl('}')
+        self.out.wl('}')
 
     def write_op(self, op: OpCode) -> None:
         meth_name = f'write_op_{op.name}'
@@ -147,17 +85,17 @@ class CFuncBuilder:
         meth(*op.args)
 
     def write_op_load_const(self, w_const: W_Object) -> None:
-        w_type = self.vm.dynamic_type(w_const)
-        c_type = self.types.w2c(w_type)
+        w_type = self.ctx.vm.dynamic_type(w_const)
+        c_type = self.ctx.w2c(w_type)
         tmpvar = self.new_var(c_type)
         assert isinstance(w_const, W_i32), 'WIP'
-        intval = self.vm.unwrap(w_const)
-        self.c.wl(f'    {c_type} {tmpvar} = {intval};')
+        intval = self.ctx.vm.unwrap(w_const)
+        self.out.wl(f'    {c_type} {tmpvar} = {intval};')
         self.stack.append(tmpvar)
 
     def write_op_return(self) -> None:
         tmpvar = self.stack.pop()
-        self.c.wl(f'    return {tmpvar};')
+        self.out.wl(f'    return {tmpvar};')
 
     def write_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now
@@ -168,12 +106,12 @@ class CFuncBuilder:
 
     def write_op_store_local(self, varname: str) -> None:
         tmpvar = self.stack.pop()
-        self.c.wl(f'    {varname} = {tmpvar};')
+        self.out.wl(f'    {varname} = {tmpvar};')
 
     def write_op_i32_add(self) -> None:
         t = C_Type('int32_t')
         right = self.stack.pop()
         left = self.stack.pop()
         tmp = self.new_var(t)
-        self.c.wl(f'    {t} {tmp} = {left} + {right};')
+        self.out.wl(f'    {t} {tmp} = {left} + {right};')
         self.stack.append(tmp)
