@@ -156,16 +156,23 @@ class CFuncWriter:
         self._emit_op_binop('*')
 
     def emit_op_call_global(self, funcname: str, argcount: int) -> None:
-        w_functype = self.w_func.globals.types_w[funcname]
-        w_restype = w_functype.w_restype
-        c_restype = self.ctx.w2c(w_restype)
-        tmp = self.new_var(c_restype)
-        #
         args = []
         for i in range(argcount):
             args.append(self.pop().str())
         args.reverse()
-        #
         arglist = ', '.join(args)
-        self.out.wl(f'{c_restype} {tmp} = {funcname}({arglist});')
-        self.push(c_expr.Literal(tmp))
+        #
+        w_functype = self.w_func.globals.types_w[funcname]
+        w_restype = w_functype.w_restype
+        c_restype = self.ctx.w2c(w_restype)
+        #
+        if w_restype is self.ctx.vm.builtins.w_void:
+            self.out.wl(f'{funcname}({arglist});')
+            self.push(c_expr.Void())
+        else:
+            tmp = self.new_var(c_restype)
+            self.out.wl(f'{c_restype} {tmp} = {funcname}({arglist});')
+            self.push(c_expr.Literal(tmp))
+
+    def emit_op_pop_and_discard(self) -> None:
+        self.pop()

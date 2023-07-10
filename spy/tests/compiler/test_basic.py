@@ -295,7 +295,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(1, 2, 3) == 123
         assert mod.bar(4) == 456
 
-    @skip_backends('C')
+    @no_backend
     def test_function_call_errors(self):
         self.expect_errors(
             f"""
@@ -352,7 +352,6 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    @skip_backends('C')
     def test_StmtExpr(self):
         mod = self.compile("""
         x: i32 = 0
