@@ -158,6 +158,24 @@ class CFuncWriter:
     def emit_op_i32_mul(self) -> None:
         self._emit_op_binop('*')
 
+    def emit_op_i32_eq(self) -> None:
+        self._emit_op_binop('==')
+
+    def emit_op_i32_neq(self) -> None:
+        self._emit_op_binop('!=')
+
+    def emit_op_i32_lt(self) -> None:
+        self._emit_op_binop('<')
+
+    def emit_op_i32_lte(self) -> None:
+        self._emit_op_binop('<=')
+
+    def emit_op_i32_gt(self) -> None:
+        self._emit_op_binop('>')
+
+    def emit_op_i32_gte(self) -> None:
+        self._emit_op_binop('>=')
+
     def emit_op_call_global(self, funcname: str, argcount: int) -> None:
         args = []
         for i in range(argcount):

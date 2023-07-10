@@ -376,7 +376,6 @@ class TestBasic(CompilerTest):
         assert mod.get_True() is True
         assert mod.get_False() is False
 
-    @skip_backends('C')
     def test_CompareOp(self):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
@@ -408,7 +407,7 @@ class TestBasic(CompilerTest):
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
 
-    @skip_backends('C')
+    @no_backend
     def test_CompareOp_error(self):
         self.expect_errors(
             f"""
