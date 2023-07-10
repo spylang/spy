@@ -143,8 +143,14 @@ class CFuncWriter:
     emit_op_load_global = emit_op_load_local
     emit_op_store_global = emit_op_store_local
 
-    def emit_op_i32_add(self) -> None:
+    def _emit_op_binop(self, op: str) -> None:
         right = self.pop()
         left = self.pop()
-        expr = c_expr.BinOp('+', left, right)
+        expr = c_expr.BinOp(op, left, right)
         self.push(expr)
+
+    def emit_op_i32_add(self) -> None:
+        self._emit_op_binop('+')
+
+    def emit_op_i32_mul(self) -> None:
+        self._emit_op_binop('*')

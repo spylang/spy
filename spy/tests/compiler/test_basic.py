@@ -224,7 +224,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.add(1, 2) == 3
 
-    @skip_backends('C')
     def test_i32_mul(self):
         mod = self.compile("""
         def mul(x: i32, y: i32) -> i32:
@@ -232,7 +231,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
-    @skip_backends('C')
     def test_void_return(self):
         mod = self.compile("""
         x: i32 = 0
