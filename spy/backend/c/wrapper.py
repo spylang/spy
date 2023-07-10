@@ -1,21 +1,27 @@
 import struct
 from typing import Any
 from py.path import LocalPath
-import wasmtime as w
-
+import wasmtime
+from spy.vm.module import W_Module
+from spy.vm.function import W_Function, W_FunctionType
+from spy.vm.vm import SPyVM
 
 class WasmModuleWrapper:
+    vm: SPyVM
+    w_mod: W_Module
     name: str
-    store: w.Store
-    module: w.Module
-    instance: w.Instance
-    memory: w.Memory
+    store: wasmtime.Store
+    module: wasmtime.Module
+    instance: wasmtime.Instance
+    memory: wasmtime.Memory
 
-    def __init__(self, wasmfile: LocalPath) -> None:
-        self.name = wasmfile.purebasename
-        self.store = w.Store()
-        self.module = w.Module.from_file(self.store.engine, str(wasmfile))
-        self.instance = w.Instance(self.store, self.module, [])
+    def __init__(self, vm: SPyVM, w_mod: W_Module, f: LocalPath) -> None:
+        self.vm = vm
+        self.w_mod = w_mod
+        self.name = f.purebasename
+        self.store = wasmtime.Store()
+        self.module = wasmtime.Module.from_file(self.store.engine, str(f))
+        self.instance = wasmtime.Instance(self.store, self.module, [])
         self.memory = self.instance.exports(self.store).get('memory')
 
     def __repr__(self) -> str:
@@ -26,15 +32,21 @@ class WasmModuleWrapper:
         wasm_obj = exports.get(name)
         if wasm_obj is None:
             raise AttributeError(name)
-        elif isinstance(wasm_obj, w.Func):
-            return WasmFuncWrapper(self.store, wasm_obj)
-        elif isinstance(wasm_obj, w.Global):
-            return self.read_global(wasm_obj)
+        elif isinstance(wasm_obj, wasmtime.Func):
+            return self.read_function(name, wasm_obj)
+        elif isinstance(wasm_obj, wasmtime.Global):
+            return self.read_global(name, wasm_obj)
         else:
             t = type(wasm_obj)
             raise NotImplementedError(f'Unknown WASM object: {t}')
 
-    def read_global(self, g: w.Global) -> Any:
+
+    def read_function(self, name: str, f: wasmtime.Func) -> 'WasmFuncWrapper':
+        w_func = self.w_mod.content.get(name)
+        assert isinstance(w_func, W_Function)
+        return WasmFuncWrapper(self.vm, w_func.w_functype, self.store, f)
+
+    def read_global(self, name: str, g: wasmtime.Global) -> Any:
         # sigh, this is very unfortunate. Currently, there is no way to
         # convince clang to use a proper WASM global for C global variables:
         # instead, they are stored in linear memory, and so the global symbol
@@ -50,12 +62,22 @@ class WasmModuleWrapper:
 
 
 class WasmFuncWrapper:
-    _store: w.Store
-    _wasm_func: w.Func
+    vm: SPyVM
+    w_functype: W_FunctionType
+    store: wasmtime.Store
+    f: wasmtime.Func
 
-    def __init__(self, store: w.Store, wasm_func: w.Func) -> None:
-        self._store = store
-        self._wasm_func = wasm_func
+    def __init__(self, vm: SPyVM, w_functype: W_FunctionType,
+                 store: wasmtime.Store, f: wasmtime.Func) -> None:
+        self.vm = vm
+        self.w_functype = w_functype
+        self.store = store
+        self.f = f
 
     def __call__(self, *args: Any) -> Any:
-        return self._wasm_func(self._store, *args)
+        res = self.f(self.store, *args)
+        # wasmtime doesn't distinguish between ints and bools, but we
+        # do. Let's try to fix that
+        if self.w_functype.w_restype is self.vm.builtins.w_bool:
+            return bool(res)
+        return res

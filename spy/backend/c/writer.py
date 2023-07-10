@@ -118,6 +118,9 @@ class CFuncWriter:
         elif w_type is b.w_i32:
             intval = self.ctx.vm.unwrap(w_obj)
             self.push(c_expr.Literal(str(intval)))
+        elif w_type is b.w_bool:
+            boolval = self.ctx.vm.unwrap(w_obj)
+            self.push(c_expr.Literal(str(boolval).lower()))
         else:
             raise NotImplementedError('WIP')
 

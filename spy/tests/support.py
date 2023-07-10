@@ -121,7 +121,7 @@ class CompilerTest:
             return interp_mod
         elif self.backend == 'C':
             file_wasm = self.compiler.cbuild()
-            return WasmModuleWrapper(file_wasm)
+            return WasmModuleWrapper(self.vm, self.compiler.w_mod, file_wasm)
         else:
             assert False, f'Unknown backend: {self.backend}'
 

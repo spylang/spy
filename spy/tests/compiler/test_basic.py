@@ -365,7 +365,6 @@ class TestBasic(CompilerTest):
         mod.foo()
         assert mod.x == 2
 
-    @skip_backends('C')
     def test_True_False(self):
         mod = self.compile("""
         def get_True() -> bool:
@@ -376,7 +375,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.get_True() is True
         assert mod.get_False() is False
-
 
     @skip_backends('C')
     def test_CompareOp(self):
