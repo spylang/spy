@@ -249,7 +249,6 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
-    @skip_backends('C')
     def test_implicit_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -264,12 +263,14 @@ class TestBasic(CompilerTest):
         mod.implicit_return_void()
         assert mod.x == 1
 
-        with pytest.raises(SPyRuntimeAbort,
-                           match='reached the end of the function without a `return`'):
-            mod.implicit_return_i32()
+        if self.backend != 'C':
+            # we don't support the opcode abort() in the C backend for now
+            msg = 'reached the end of the function without a `return`'
+            with pytest.raises(SPyRuntimeAbort, match=msg):
+                mod.implicit_return_i32()
 
 
-    @skip_backends('C')
+    @no_backend
     def test_BinOp_error(self):
         self.expect_errors(
             f"""
@@ -283,7 +284,6 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    @skip_backends('C')
     def test_function_call(self):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:
