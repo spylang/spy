@@ -97,6 +97,25 @@ class Literal(Expr):
         return self.value
 
 @dataclass
+class Void(Expr):
+    """
+    This is a special case. It is used to represent a 'void' expression in the
+    virtual stack (e.g. for the pattern 'load_const None; return'), but it's
+    not a valid C expression, because C doesn't allow void values to be passed
+    around.
+
+    As such, we need to special-case it in all the places where it could be
+    used.
+    """
+    def precedence(self):
+        return 100
+
+    def str(self) -> str:
+        raise ValueError('You should never call Void.str(). '
+                         'You should special-case your code to '
+                         'handle this case specifically')
+
+@dataclass
 class BinOp(Expr):
     op: str
     left: Expr

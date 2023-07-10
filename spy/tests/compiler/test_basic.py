@@ -201,7 +201,6 @@ class TestBasic(CompilerTest):
                 'expected `str` because of type declaration',
             ])
 
-    @skip_backends('C')
     def test_global_variables(self):
         mod = self.compile(
         """

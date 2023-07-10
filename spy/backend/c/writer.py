@@ -31,13 +31,22 @@ class CModuleWriter:
             if isinstance(w_obj, W_Function):
                 self.emit_function(name, w_obj)
             else:
-                raise NotImplementedError('WIP')
-        #
+                self.emit_variable(name, w_obj)
         return self.out.build()
 
     def emit_function(self, name: str, w_func: W_Function) -> None:
         fw = CFuncWriter(self.ctx, self.out, name, w_func)
         fw.emit()
+
+    def emit_variable(self, name: str, w_obj: W_Object) -> None:
+        b = self.ctx.vm.builtins
+        w_type = self.ctx.vm.dynamic_type(w_obj)
+        c_type = self.ctx.w2c(w_type)
+        if w_type is b.w_i32:
+            intval = self.ctx.vm.unwrap(w_obj)
+            self.out.wl(f'{c_type} {name} = {intval};')
+        else:
+            raise NotImplementedError('WIP')
 
 
 class CFuncWriter:
@@ -99,14 +108,26 @@ class CFuncWriter:
             raise NotImplementedError(meth_name)
         meth(*op.args)
 
-    def emit_op_load_const(self, w_const: W_Object) -> None:
-        assert isinstance(w_const, W_i32), 'WIP'
-        intval = self.ctx.vm.unwrap(w_const)
-        self.push(c_expr.Literal(str(intval)))
+    def emit_op_load_const(self, w_obj: W_Object) -> None:
+        # XXX we need to share code with 'emit_variable'
+        b = self.ctx.vm.builtins
+        w_type = self.ctx.vm.dynamic_type(w_obj)
+        c_type = self.ctx.w2c(w_type)
+        if w_type is b.w_void:
+            self.push(c_expr.Void())
+        elif w_type is b.w_i32:
+            intval = self.ctx.vm.unwrap(w_obj)
+            self.push(c_expr.Literal(str(intval)))
+        else:
+            raise NotImplementedError('WIP')
 
     def emit_op_return(self) -> None:
         expr = self.pop()
-        self.out.wl(f'return {expr.str()};')
+        if expr == c_expr.Void():
+            # special case for void functions
+            self.out.wl('return;')
+        else:
+            self.out.wl(f'return {expr.str()};')
 
     def emit_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now
@@ -118,6 +139,9 @@ class CFuncWriter:
     def emit_op_store_local(self, varname: str) -> None:
         expr = self.pop()
         self.out.wl(f'{varname} = {expr.str()};')
+
+    emit_op_load_global = emit_op_load_local
+    emit_op_store_global = emit_op_store_local
 
     def emit_op_i32_add(self) -> None:
         right = self.pop()

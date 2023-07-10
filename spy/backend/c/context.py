@@ -54,6 +54,7 @@ class Context:
         self.vm = vm
         self._d = {}
         b = vm.builtins
+        self._d[b.w_void] = C_Type('void')
         self._d[b.w_i32] = C_Type('int32_t')
         self._d[b.w_bool] = C_Type('bool')
 

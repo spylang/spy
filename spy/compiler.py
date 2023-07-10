@@ -1,3 +1,4 @@
+import os
 from py.path import LocalPath
 import spy.ast
 from spy.parser import Parser
@@ -9,7 +10,8 @@ from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
 
-DUMP_C_SOURCE = True
+DUMP_C = True
+DUMP_WASM = False
 
 class CompilerPipeline:
     """
@@ -75,7 +77,7 @@ class CompilerPipeline:
         self.cwriter = CModuleWriter(self.vm, self.w_mod)
         self.cwriter.write_c_source(self.file_c)
         #
-        if DUMP_C_SOURCE:
+        if DUMP_C:
             print()
             print(f'---- {self.file_c} ----')
             print(self.file_c.read())
@@ -91,9 +93,9 @@ class CompilerPipeline:
         exports = list(self.w_mod.content.values_w.keys())
         file_wasm = toolchain.c2wasm(file_c, exports, self.file_wasm)
         #
-        ## if DUMP_WASM:
-        ##     import os
-        ##     print(file_wasm)
-        ##     os.system(f'wasm2wat {file_wasm}')
+        if DUMP_WASM:
+            print()
+            print(f'---- {self.file_wasm} ----')
+            os.system(f'wasm2wat {file_wasm}')
         #
         return file_wasm
