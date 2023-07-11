@@ -63,7 +63,7 @@ class Context:
             return self._d[w_type]
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
 
-    def c_function(self, name, w_functype: W_FunctionType) -> C_Function:
+    def c_function(self, name: str, w_functype: W_FunctionType) -> C_Function:
         c_restype = self.w2c(w_functype.w_restype)
         c_params = [
             C_FuncParam(name=p.name, c_type=self.w2c(p.w_type))

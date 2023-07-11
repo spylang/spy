@@ -1,7 +1,8 @@
+from typing import Optional
 from py.path import LocalPath
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.module import W_Module
-from spy.vm.function import W_Function
+from spy.vm.function import W_Function, W_FunctionType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM
 from spy.textbuilder import TextBuilder
@@ -66,13 +67,13 @@ class CFuncWriter:
         self.stack = []
         self.next_op_index = 0
 
-    def ppc(self):
+    def ppc(self) -> None:
         """
         Pretty print the C code generated so far
         """
         print(self.out.build())
 
-    def ppir(self):
+    def ppir(self) -> None:
         """
         Pretty print the IR code
         """
@@ -106,7 +107,7 @@ class CFuncWriter:
             assert self.stack == []
         self.out.wl('}')
 
-    def advance(self):
+    def advance(self) -> Optional[OpCode]:
         i = self.next_op_index
         if i >= len(self.w_func.w_code.body):
             return None
@@ -114,7 +115,12 @@ class CFuncWriter:
         self.next_op_index += 1
         return op
 
-    def emit_local_vars(self):
+    def advance_surely(self) -> OpCode:
+        op = self.advance()
+        assert op is not None
+        return op
+
+    def emit_local_vars(self) -> None:
         """
         Declare all local variables
         """
@@ -207,6 +213,7 @@ class CFuncWriter:
         arglist = ', '.join(args)
         #
         w_functype = self.w_func.globals.types_w[funcname]
+        assert isinstance(w_functype, W_FunctionType)
         w_restype = w_functype.w_restype
         c_restype = self.ctx.w2c(w_restype)
         #
@@ -249,9 +256,9 @@ class CFuncWriter:
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
         with self.out.indent():
-            assert self.advance().name == 'br_if_not'  # consume the 'br_if_not'
+            assert self.advance_surely().name == 'br_if_not'  # consume the 'br_if_not'
             while self.next_op_index < lbl_endif:
-                op = self.advance()
+                op = self.advance_surely()
                 self.emit_op(op)
         self.out.wl('}')
 
@@ -266,16 +273,16 @@ class CFuncWriter:
         self.out.wl(f'if ({cond.str()}) ' + '{')
         # emit the 'then'
         with self.out.indent():
-            assert self.advance().name == 'br_if_not'  # consume the 'br_if_not'
+            assert self.advance_surely().name == 'br_if_not'  # consume the 'br_if_not'
             # note: we go up to lbl_else-1 because we do NOT want to emit the 'br'
             while self.next_op_index < lbl_else - 1:
-                op = self.advance()
+                op = self.advance_surely()
                 self.emit_op(op)
         # emit the 'else'
         self.out.wl('} else {')
         with self.out.indent():
-            assert self.advance().name == 'br' # consume the 'br'
+            assert self.advance_surely().name == 'br' # consume the 'br'
             while self.next_op_index < lbl_endif:
-                op = self.advance()
+                op = self.advance_surely()
                 self.emit_op(op)
         self.out.wl('}')

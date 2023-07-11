@@ -22,7 +22,9 @@ class WasmModuleWrapper:
         self.store = wasmtime.Store()
         self.module = wasmtime.Module.from_file(self.store.engine, str(f))
         self.instance = wasmtime.Instance(self.store, self.module, [])
-        self.memory = self.instance.exports(self.store).get('memory')
+        memory = self.instance.exports(self.store).get('memory')
+        assert isinstance(memory, wasmtime.Memory)
+        self.memory = memory
 
     def __repr__(self) -> str:
         return f"<WasmModuleWrapper 'self.name'>"
@@ -57,6 +59,7 @@ class WasmModuleWrapper:
         #
         # XXX here we assume/hardcode that we are reading an i32
         addr = g.value(self.store)
+        assert isinstance(addr, int)
         rawbytes = self.memory.read(self.store, addr, addr+4)
         return struct.unpack('i', rawbytes)[0]
 

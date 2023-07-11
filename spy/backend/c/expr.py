@@ -53,7 +53,7 @@ PREC  CATEGORY         OPERATOR            ASSOCIATIVITY
 import re
 from dataclasses import dataclass
 
-def make_table(src):
+def make_table(src: str) -> dict[str, int]:
     """
     Helper function to create a dict of operator precedence
     """
@@ -107,7 +107,7 @@ class Void(Expr):
     As such, we need to special-case it in all the places where it could be
     used.
     """
-    def precedence(self):
+    def precedence(self) -> int:
         return 100
 
     def str(self) -> str:
@@ -138,7 +138,7 @@ class BinOp(Expr):
         assert self.op in self._table, f'Unknown operator {self.op}'
         return self._table[self.op]
 
-    def str(self):
+    def str(self) -> str:
         l = self.left.str()
         r = self.right.str()
         if self.left.precedence() < self.precedence():
@@ -161,7 +161,7 @@ class UnaryOp(Expr):
         assert self.op in self._table, f'Unknown operator {self.op}'
         return self._table[self.op]
 
-    def str(self):
+    def str(self) -> str:
         v = self.value.str()
         if self.value.precedence() < self.precedence():
             v = f'({v})'
