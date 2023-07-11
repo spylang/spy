@@ -161,19 +161,28 @@ class CodeGen:
 
 
     def do_exec_While(self, while_node: spy.ast.While) -> None:
-        # A: <eval cond>
-        #    br_if_not B
-        #    <body>
-        #    br A
-        # B: <rest of the program>
-        A = self.make_br_label()
+        """
+               mark_while IF LOOP
+        START: <eval cond>
+        IF:    br_if_not END
+               <body>
+        LOOP:  br START
+        END:   <rest of the program>
+        """
+        mark_while = self.emit('mark_while', None, None)
+        START = self.make_br_label()
         self.eval_expr(while_node.test)
+        #
+        IF = self.make_br_label()
         br_if_not = self.emit('br_if_not', None)
         for stmt in while_node.body:
             self.exec_stmt(stmt)
-        self.emit('br', A)
-        B = self.make_br_label()
-        br_if_not.set_br_target(B)
+        #
+        LOOP = self.make_br_label()
+        self.emit('br', START)
+        END = self.make_br_label()
+        br_if_not.set_br_target(END)
+        mark_while.args = (IF, LOOP)
 
     # ====== expressions ======
 

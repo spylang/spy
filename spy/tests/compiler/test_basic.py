@@ -466,7 +466,6 @@ class TestBasic(CompilerTest):
         assert mod.b == 200
         assert mod.c == 300
 
-    @skip_backends('C')
     def test_while(self):
         mod = self.compile("""
         def factorial(n: i32) -> i32:
@@ -481,7 +480,7 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
-    @skip_backends('C')
+    @no_backend
     def test_if_while_errors(self):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a

@@ -13,6 +13,7 @@ ALL_OPCODES = [
     'return',
     'abort',
     'mark',
+    'mark_while',
     'load_const',
     'load_local',
     'load_global',

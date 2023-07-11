@@ -88,6 +88,10 @@ class Frame:
         else:
             assert False, f'Unknown op_mark: {marker}'
 
+    def op_mark_while(self, IF: int, LOOP: int) -> None:
+        assert self.w_code.body[IF].name == 'br_if_not'
+        assert self.w_code.body[LOOP].name == 'br'
+
     def op_pop_and_discard(self) -> None:
         self.pop()
 

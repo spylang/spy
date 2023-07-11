@@ -273,7 +273,7 @@ class CFuncWriter:
         self.out.wl(f'if ({cond.str()}) ' + '{')
         # emit the 'then'
         with self.out.indent():
-            assert self.advance_surely().name == 'br_if_not'  # consume the 'br_if_not'
+            assert self.advance_surely().name == 'br_if_not'  # consume this op
             # note: we go up to lbl_else-1 because we do NOT want to emit the 'br'
             while self.next_op_index < lbl_else - 1:
                 op = self.advance_surely()
@@ -285,4 +285,31 @@ class CFuncWriter:
             while self.next_op_index < lbl_endif:
                 op = self.advance_surely()
                 self.emit_op(op)
+        self.out.wl('}')
+
+    def emit_op_mark_while(self, IF: int, LOOP: int) -> None:
+        """
+               mark_while IF LOOP
+        START: <eval cond>
+        IF:    br_if_not END
+               <body>
+        LOOP:  br START
+        END:   <rest of the program>
+        """
+        self.out.wl('while(1) {')
+        with self.out.indent():
+            while self.next_op_index < IF:
+                op = self.advance_surely()
+                self.emit_op(op)
+            #
+            assert self.advance_surely().name == 'br_if_not' # consume this op
+            cond = self.pop()
+            not_cond = c_expr.UnaryOp('!', cond)
+            self.out.wl(f'if ({not_cond.str()})')
+            self.out.wl('    break;')
+            #
+            while self.next_op_index < LOOP:
+                op = self.advance_surely()
+                self.emit_op(op)
+            assert self.advance_surely().name == 'br'
         self.out.wl('}')
