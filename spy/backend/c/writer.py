@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from py.path import LocalPath
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.module import W_Module
@@ -92,6 +92,36 @@ class CFuncWriter:
         self.tmp_vars[name] = c_type
         return name
 
+    # === methods to control the iteration over the opcodes ===
+
+    def advance(self) -> Optional[OpCode]:
+        """
+        Move to the next op.
+        """
+        i = self.next_op_index
+        if i >= len(self.w_func.w_code.body):
+            return None
+        op = self.w_func.w_code.body[i]
+        self.next_op_index += 1
+        return op
+
+    def advance_and_emit(self) -> OpCode:
+        """
+        Move to the next op and emit it
+        """
+        op = self.advance()
+        assert op is not None
+        self.emit_op(op)
+        return op
+
+    def consume(self, expected_name: str, *args: Any):
+        """
+        Consume the next op without emitting it.
+        """
+        op = self.advance()
+        assert op, 'Unexpected EOF of body'
+        assert op.match(expected_name, *args)
+
     def emit(self) -> None:
         """
         Emit the code for the whole function
@@ -106,19 +136,6 @@ class CFuncWriter:
                 self.emit_op(op)
             assert self.stack == []
         self.out.wl('}')
-
-    def advance(self) -> Optional[OpCode]:
-        i = self.next_op_index
-        if i >= len(self.w_func.w_code.body):
-            return None
-        op = self.w_func.w_code.body[i]
-        self.next_op_index += 1
-        return op
-
-    def advance_surely(self) -> OpCode:
-        op = self.advance()
-        assert op is not None
-        return op
 
     def emit_local_vars(self) -> None:
         """
@@ -249,17 +266,15 @@ class CFuncWriter:
         END: <rest of the program>
         """
         while self.next_op_index < IF:
-            op = self.advance_surely()
-            self.emit_op(op)
+            self.advance_and_emit()
         #
-        assert self.advance_surely().name == 'br_if_not' # consume
+        self.consume('br_if_not', END)
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
         #
         with self.out.indent():
             while self.next_op_index < END:
-                op = self.advance_surely()
-                self.emit_op(op)
+                self.advance_and_emit()
         self.out.wl('}')
 
     def emit_op_mark_if_then_else(self, IF: int, ELSE: int, END: int) -> None:
@@ -275,26 +290,22 @@ class CFuncWriter:
         END:  <rest of the program>
         """
         while self.next_op_index < IF:
-            op = self.advance_surely()
-            self.emit_op(op)
-        #
-        assert self.advance_surely().name == 'br_if_not' # consume
+            self.advance_and_emit()
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
+        self.consume('br_if_not', ELSE)
         #
         # emit the 'then'
         with self.out.indent():
             # note: we go up to ELSE-1 because we do NOT want to emit the 'br'
             while self.next_op_index < ELSE - 1:
-                op = self.advance_surely()
-                self.emit_op(op)
-        assert self.advance_surely().name == 'br' # consume the 'br'
+                self.advance_and_emit()
+        self.consume('br', END)
         # emit the 'else'
         self.out.wl('} else {')
         with self.out.indent():
             while self.next_op_index < END:
-                op = self.advance_surely()
-                self.emit_op(op)
+                self.advance_and_emit()
         self.out.wl('}')
 
     def emit_op_mark_while(self, IF: int, LOOP: int) -> None:
@@ -311,17 +322,15 @@ class CFuncWriter:
         self.out.wl('while(1) {')
         with self.out.indent():
             while self.next_op_index < IF:
-                op = self.advance_surely()
-                self.emit_op(op)
+                self.advance_and_emit()
             #
-            assert self.advance_surely().name == 'br_if_not' # consume this op
+            self.consume('br_if_not', ...)
             cond = self.pop()
             not_cond = c_expr.UnaryOp('!', cond)
             self.out.wl(f'if ({not_cond.str()})')
             self.out.wl('    break;')
             #
             while self.next_op_index < LOOP:
-                op = self.advance_surely()
-                self.emit_op(op)
-            assert self.advance_surely().name == 'br'
+                self.advance_and_emit()
+            self.consume('br', ...)
         self.out.wl('}')
