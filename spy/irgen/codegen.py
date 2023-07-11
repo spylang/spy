@@ -129,6 +129,7 @@ class CodeGen:
     def do_exec_If(self, if_node: spy.ast.If) -> None:
         # Emit the following, depending on whether we have or not an 'else'
         #    <eval cond>           |    <eval cond>
+        #    mark if_then_else     |    mark if_then
         #    br_if_not A           |    br_if_not B
         #        <then body>       |        <then body>
         #    br B                  |
@@ -136,6 +137,12 @@ class CodeGen:
         # B: <rest of the program> | B: <rest of the program>
         #
         self.eval_expr(if_node.test) # <eval cond>
+
+        if if_node.else_body:
+            self.emit('mark', 'if_then_else')
+        else:
+            self.emit('mark', 'if_then')
+
         br_if_not = self.emit('br_if_not', None)
         for stmt in if_node.then_body:
             self.exec_stmt(stmt)     # <then body>

@@ -12,6 +12,7 @@ if typing.TYPE_CHECKING:
 ALL_OPCODES = [
     'return',
     'abort',
+    'mark',
     'load_const',
     'load_local',
     'load_global',
@@ -44,6 +45,9 @@ class OpCode:
 
     def is_br(self) -> bool:
         return self.name.startswith('br')
+
+    def is_mark(self, marker: str) -> bool:
+        return self.name == 'mark' and self.args == (marker,)
 
     def set_br_target(self, target: int) -> None:
         """
@@ -86,6 +90,24 @@ class W_CodeObject(W_Object):
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_w_types
         self.locals_w_types[name] = w_type
+
+    def validate_if_then(self, i: int) -> int:
+        """
+        Check that the codegen emitted the expected code for an if/then
+        block. Return the ENDIF index.
+
+        The expected pattern is the following (see CodeGen.do_exec_If):
+             I: mark if_then
+                br_if_not ENDIF
+                    <then body>
+         ENDIF: <rest of the program>
+        """
+        op_mark = self.body[i]
+        assert op_mark.is_mark('if_then')
+        op_br_if_not = self.body[i + 1]
+        assert op_br_if_not.name == 'br_if_not'
+        endif_i = op_br_if_not.args[0]
+        return endif_i
 
     def pp(self) -> None:
         """

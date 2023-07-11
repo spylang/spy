@@ -444,7 +444,6 @@ class TestBasic(CompilerTest):
             else:
                 b = 200
             c = 300
-
         """)
         #
         mod.if_then(0)

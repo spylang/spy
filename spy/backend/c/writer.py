@@ -64,6 +64,19 @@ class CFuncWriter:
         self.w_func = w_func
         self.tmp_vars = {}
         self.stack = []
+        self.next_op_index = 0
+
+    def ppc(self):
+        """
+        Pretty print the C code generated so far
+        """
+        print(self.out.build())
+
+    def ppir(self):
+        """
+        Pretty print the IR code
+        """
+        self.w_func.w_code.pp()
 
     def push(self, expr: c_expr.Expr) -> None:
         assert isinstance(expr, c_expr.Expr)
@@ -86,10 +99,20 @@ class CFuncWriter:
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
             self.emit_local_vars()
-            for op in self.w_func.w_code.body:
+            # emit the body
+            self.next_op_index = 0
+            while op := self.advance():
                 self.emit_op(op)
             assert self.stack == []
         self.out.wl('}')
+
+    def advance(self):
+        i = self.next_op_index
+        if i >= len(self.w_func.w_code.body):
+            return None
+        op = self.w_func.w_code.body[i]
+        self.next_op_index += 1
+        return op
 
     def emit_local_vars(self):
         """
@@ -197,3 +220,31 @@ class CFuncWriter:
 
     def emit_op_pop_and_discard(self) -> None:
         self.pop()
+
+    def emit_op_mark(self, marker: str) -> None:
+        """
+        This is a special op. We use op_mark to recognize the various higher level
+        patterns which are emitted by the codegen, such as if/then,
+        if/then/else, while, and we use these to emit "proper" C code.
+
+        Note that this is not strictly necessary: we could easily implement
+        ifs and loops using just gotos, but by doing this we generate C code
+        which is WAY easier to read by humans, which simplifies a lot the
+        debugging.
+        """
+        if marker == 'if_then':
+            self.emit_if_then()
+        else:
+            raise NotImplementedError(f'Unknown marker: {marker}')
+
+    def emit_if_then(self) -> None:
+        i = self.next_op_index - 1 # this is the index of the current op
+        lbl_endif = self.w_func.w_code.validate_if_then(i)
+        cond = self.pop()
+        self.out.wl(f'if ({cond.str()}) ' + '{')
+        with self.out.indent():
+            assert self.advance().name == 'br_if_not'  # consume the 'br_if_not'
+            while self.next_op_index < lbl_endif:
+                op = self.advance()
+                self.emit_op(op)
+        self.out.wl('}')
