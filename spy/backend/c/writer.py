@@ -234,16 +234,47 @@ class CFuncWriter:
         """
         if marker == 'if_then':
             self.emit_if_then()
+        elif marker == 'if_then_else':
+            self.emit_if_then_else()
         else:
             raise NotImplementedError(f'Unknown marker: {marker}')
 
     def emit_if_then(self) -> None:
+        """
+        See CodeObject.validate_if_then for a visual description of the pattern
+        which we expect
+        """
         i = self.next_op_index - 1 # this is the index of the current op
         lbl_endif = self.w_func.w_code.validate_if_then(i)
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
         with self.out.indent():
             assert self.advance().name == 'br_if_not'  # consume the 'br_if_not'
+            while self.next_op_index < lbl_endif:
+                op = self.advance()
+                self.emit_op(op)
+        self.out.wl('}')
+
+    def emit_if_then_else(self) -> None:
+        """
+        See CodeObject.validate_if_then_else for a visual description of the
+        pattern which we expect
+        """
+        i = self.next_op_index - 1 # this is the index of the current op
+        lbl_else, lbl_endif = self.w_func.w_code.validate_if_then_else(i)
+        cond = self.pop()
+        self.out.wl(f'if ({cond.str()}) ' + '{')
+        # emit the 'then'
+        with self.out.indent():
+            assert self.advance().name == 'br_if_not'  # consume the 'br_if_not'
+            # note: we go up to lbl_else-1 because we do NOT want to emit the 'br'
+            while self.next_op_index < lbl_else - 1:
+                op = self.advance()
+                self.emit_op(op)
+        # emit the 'else'
+        self.out.wl('} else {')
+        with self.out.indent():
+            assert self.advance().name == 'br' # consume the 'br'
             while self.next_op_index < lbl_endif:
                 op = self.advance()
                 self.emit_op(op)

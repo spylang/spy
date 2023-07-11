@@ -97,10 +97,10 @@ class W_CodeObject(W_Object):
         block. Return the ENDIF index.
 
         The expected pattern is the following (see CodeGen.do_exec_If):
-             I: mark if_then
-                br_if_not ENDIF
-                    <then body>
-         ENDIF: <rest of the program>
+            I: mark if_then
+               br_if_not ENDIF
+                   <then body>
+        ENDIF: <rest of the program>
         """
         op_mark = self.body[i]
         assert op_mark.is_mark('if_then')
@@ -108,6 +108,29 @@ class W_CodeObject(W_Object):
         assert op_br_if_not.name == 'br_if_not'
         endif_i = op_br_if_not.args[0]
         return endif_i
+
+    def validate_if_then_else(self, i: int) -> tuple[int, int]:
+        """
+        Check that the codegen emitted the expected code for an if/then/else
+        block. Return the ELSE, ENDIF indexes.
+
+        The expected pattern is the following (see CodeGen.do_exec_If):
+            I: mark if_then_else
+               br_if_not ELSE
+                   <then body>
+               br ENDIF
+         ELSE:     <else body>
+        ENDIF: <rest of the program>
+        """
+        op_mark = self.body[i]
+        assert op_mark.is_mark('if_then_else')
+        op_br_if_not = self.body[i + 1]
+        assert op_br_if_not.name == 'br_if_not'
+        else_i = op_br_if_not.args[0]
+        op_br = self.body[else_i - 1]
+        assert op_br.name == 'br'
+        endif_i = op_br.args[0]
+        return else_i, endif_i
 
     def pp(self) -> None:
         """

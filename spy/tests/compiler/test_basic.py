@@ -421,7 +421,6 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    @skip_backends('C')
     def test_if(self):
         mod = self.compile("""
         a: i32 = 0

@@ -84,7 +84,7 @@ class Frame:
         if marker == 'if_then':
             self.w_code.validate_if_then(self.pc)
         elif marker == 'if_then_else':
-            ... # TODO
+            self.w_code.validate_if_then_else(self.pc)
         else:
             assert False, f'Unknown op_mark: {marker}'
 
