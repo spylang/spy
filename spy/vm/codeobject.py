@@ -12,7 +12,8 @@ if typing.TYPE_CHECKING:
 ALL_OPCODES = [
     'return',
     'abort',
-    'mark',
+    'mark_if_then',
+    'mark_if_then_else',
     'mark_while',
     'load_const',
     'load_local',
@@ -47,9 +48,6 @@ class OpCode:
     def is_br(self) -> bool:
         return self.name.startswith('br')
 
-    def is_mark(self, marker: str) -> bool:
-        return self.name == 'mark' and self.args == (marker,)
-
     def set_br_target(self, target: int) -> None:
         """
         Assuming that this is an OpCode of the br_* family which is not fully
@@ -60,6 +58,10 @@ class OpCode:
         if self.args != (None,):
             raise ValueError('target already set')
         self.args = (target,)
+
+    def set_args(self, *args: int) -> None:
+        assert self.args == (...,), 'args already set'
+        self.args = args
 
     def __repr__(self) -> str:
         if self.args:
@@ -91,47 +93,6 @@ class W_CodeObject(W_Object):
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_w_types
         self.locals_w_types[name] = w_type
-
-    def validate_if_then(self, i: int) -> int:
-        """
-        Check that the codegen emitted the expected code for an if/then
-        block. Return the ENDIF index.
-
-        The expected pattern is the following (see CodeGen.do_exec_If):
-            I: mark if_then
-               br_if_not ENDIF
-                   <then body>
-        ENDIF: <rest of the program>
-        """
-        op_mark = self.body[i]
-        assert op_mark.is_mark('if_then')
-        op_br_if_not = self.body[i + 1]
-        assert op_br_if_not.name == 'br_if_not'
-        endif_i = op_br_if_not.args[0]
-        return endif_i
-
-    def validate_if_then_else(self, i: int) -> tuple[int, int]:
-        """
-        Check that the codegen emitted the expected code for an if/then/else
-        block. Return the ELSE, ENDIF indexes.
-
-        The expected pattern is the following (see CodeGen.do_exec_If):
-            I: mark if_then_else
-               br_if_not ELSE
-                   <then body>
-               br ENDIF
-         ELSE:     <else body>
-        ENDIF: <rest of the program>
-        """
-        op_mark = self.body[i]
-        assert op_mark.is_mark('if_then_else')
-        op_br_if_not = self.body[i + 1]
-        assert op_br_if_not.name == 'br_if_not'
-        else_i = op_br_if_not.args[0]
-        op_br = self.body[else_i - 1]
-        assert op_br.name == 'br'
-        endif_i = op_br.args[0]
-        return else_i, endif_i
 
     def pp(self) -> None:
         """

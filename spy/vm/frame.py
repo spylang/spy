@@ -80,13 +80,18 @@ class Frame:
     def op_abort(self, message: str) -> None:
         raise SPyRuntimeAbort(message)
 
-    def op_mark(self, marker: str) -> None:
-        if marker == 'if_then':
-            self.w_code.validate_if_then(self.pc)
-        elif marker == 'if_then_else':
-            self.w_code.validate_if_then_else(self.pc)
-        else:
-            assert False, f'Unknown op_mark: {marker}'
+    def op_mark_if_then(self, IF: int, END: int) -> None:
+        op = self.w_code.body[IF]
+        assert op.name == 'br_if_not'
+        assert op.args[0] == END
+
+    def op_mark_if_then_else(self, IF: int, ELSE: int, END: int) -> None:
+        op = self.w_code.body[IF]
+        assert op.name == 'br_if_not'
+        assert op.args[0] == ELSE
+        op = self.w_code.body[ELSE - 1]
+        assert op.name == 'br'
+        assert op.args[0] == END
 
     def op_mark_while(self, IF: int, LOOP: int) -> None:
         assert self.w_code.body[IF].name == 'br_if_not'

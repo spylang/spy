@@ -66,15 +66,19 @@ class CodeGen:
             return sym.qualifier == 'const'
         return False
 
-    def emit(self, name: str, *args: object) -> OpCode:
+    def emit(self, name: str, *args: object) -> tuple[int, OpCode]:
         """
-        Emit an OpCode into the w_code body
-        """
-        opcode = OpCode(name, *args)
-        self.w_code.body.append(opcode)
-        return opcode
+        Emit an OpCode into the w_code body.
 
-    def make_br_label(self) -> int:
+        Return a tuple (label, op) where label is the index of op inside the
+        body.
+        """
+        label = self.get_label()
+        op = OpCode(name, *args)
+        self.w_code.body.append(op)
+        return label, op
+
+    def get_label(self) -> int:
         """
         Return the position in the resulting w_code body which corresponds to the
         NEXT opcode which will be emitted.
@@ -127,62 +131,80 @@ class CodeGen:
             assert False, 'TODO' # non-local variables
 
     def do_exec_If(self, if_node: spy.ast.If) -> None:
-        # Emit the following, depending on whether we have or not an 'else'
-        #    <eval cond>           |    <eval cond>
-        #    mark if_then_else     |    mark if_then
-        #    br_if_not A           |    br_if_not B
-        #        <then body>       |        <then body>
-        #    br B                  |
-        # A:     <else body>       |
-        # B: <rest of the program> | B: <rest of the program>
-        #
+        if if_node.else_body:
+            self._do_exec_If_then_else(if_node)
+        else:
+            self._do_exec_If_then(if_node)
+
+    def _do_exec_If_then(self, if_node: spy.ast.If) -> None:
+        """
+             mark_if_then IF, END
+             <eval cond>
+        IF:  br_if_not END
+             <then body>
+        END: <rest of the program>
+
+        """
+        _, op_mark = self.emit('mark_if_then', ...)
         self.eval_expr(if_node.test) # <eval cond>
-
-        if if_node.else_body:
-            self.emit('mark', 'if_then_else')
-        else:
-            self.emit('mark', 'if_then')
-
-        br_if_not = self.emit('br_if_not', None)
+        IF, br_if_not = self.emit('br_if_not', None)
+        # <then body>
         for stmt in if_node.then_body:
-            self.exec_stmt(stmt)     # <then body>
+            self.exec_stmt(stmt)
+        #
+        END = self.get_label()
+        br_if_not.set_br_target(END)
+        op_mark.set_args(IF, END)
 
-        if if_node.else_body:
-            br = self.emit('br', None)
-            A = self.make_br_label()
-            for stmt in if_node.else_body:
-                self.exec_stmt(stmt) # <else body>
-            B = self.make_br_label()
-            br_if_not.set_br_target(A)
-            br.set_br_target(B)
-        else:
-            B = self.make_br_label()
-            br_if_not.set_br_target(B)
-
+    def _do_exec_If_then_else(self, if_node: spy.ast.If) -> None:
+        """
+              mark_if_then_else IF, ELSE, END
+              <eval cond>
+        IF:   br_if_not ELSE
+              <then body>
+              br END
+        ELSE: <else body>
+        END:  <rest of the program>
+        """
+        _, op_mark = self.emit('mark_if_then_else', ...)
+        self.eval_expr(if_node.test) # <eval cond>
+        IF, br_if_not = self.emit('br_if_not', None)
+        # <then body>
+        for stmt in if_node.then_body:
+            self.exec_stmt(stmt)
+        #
+        _, br = self.emit('br', None)
+        # <else body>
+        ELSE = self.get_label()
+        for stmt in if_node.else_body:
+            self.exec_stmt(stmt)
+        #
+        END = self.get_label()
+        br_if_not.set_br_target(ELSE)
+        br.set_br_target(END)
+        op_mark.set_args(IF, ELSE, END)
 
     def do_exec_While(self, while_node: spy.ast.While) -> None:
         """
-               mark_while IF LOOP
+               mark_while IF, LOOP
         START: <eval cond>
         IF:    br_if_not END
                <body>
         LOOP:  br START
         END:   <rest of the program>
         """
-        mark_while = self.emit('mark_while', None, None)
-        START = self.make_br_label()
+        _, op_mark = self.emit('mark_while', ...)
+        START = self.get_label()
         self.eval_expr(while_node.test)
         #
-        IF = self.make_br_label()
-        br_if_not = self.emit('br_if_not', None)
+        IF, br_if_not = self.emit('br_if_not', None)
         for stmt in while_node.body:
             self.exec_stmt(stmt)
         #
-        LOOP = self.make_br_label()
-        self.emit('br', START)
-        END = self.make_br_label()
+        LOOP, _ = self.emit('br', START)
+        END = self.get_label()
         br_if_not.set_br_target(END)
-        mark_while.args = (IF, LOOP)
+        op_mark.set_args(IF, LOOP)
 
     # ====== expressions ======
 

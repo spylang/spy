@@ -228,67 +228,79 @@ class CFuncWriter:
     def emit_op_pop_and_discard(self) -> None:
         self.pop()
 
-    def emit_op_mark(self, marker: str) -> None:
-        """
-        This is a special op. We use op_mark to recognize the various higher level
-        patterns which are emitted by the codegen, such as if/then,
-        if/then/else, while, and we use these to emit "proper" C code.
+    ## ====== mark operations =====
+    ## These are special ops We use op_mark_* to recognize the various higher
+    ## level patterns which are emitted by the codegen, such as if/then,
+    ## if/then/else, while, and we use these to emit "proper" C code.
+    ##
+    ## Note that this is not strictly necessary: we could easily implement
+    ## ifs and loops using just gotos, but by doing this we generate C code
+    ## which is WAY easier to read by humans, which simplifies a lot the
+    ## debugging.
 
-        Note that this is not strictly necessary: we could easily implement
-        ifs and loops using just gotos, but by doing this we generate C code
-        which is WAY easier to read by humans, which simplifies a lot the
-        debugging.
+    def emit_op_mark_if_then(self, IF: int, END: int) -> None:
         """
-        if marker == 'if_then':
-            self.emit_if_then()
-        elif marker == 'if_then_else':
-            self.emit_if_then_else()
-        else:
-            raise NotImplementedError(f'Unknown marker: {marker}')
+        CodeGen._do_exec_If_then emits the following:
 
-    def emit_if_then(self) -> None:
+             mark_if_then IF, END
+             <eval cond>
+        IF:  br_if_not END
+             <then body>
+        END: <rest of the program>
         """
-        See CodeObject.validate_if_then for a visual description of the pattern
-        which we expect
-        """
-        i = self.next_op_index - 1 # this is the index of the current op
-        lbl_endif = self.w_func.w_code.validate_if_then(i)
+        while self.next_op_index < IF:
+            op = self.advance_surely()
+            self.emit_op(op)
+        #
+        assert self.advance_surely().name == 'br_if_not' # consume
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
+        #
         with self.out.indent():
-            assert self.advance_surely().name == 'br_if_not'  # consume the 'br_if_not'
-            while self.next_op_index < lbl_endif:
+            while self.next_op_index < END:
                 op = self.advance_surely()
                 self.emit_op(op)
         self.out.wl('}')
 
-    def emit_if_then_else(self) -> None:
+    def emit_op_mark_if_then_else(self, IF: int, ELSE: int, END: int) -> None:
         """
-        See CodeObject.validate_if_then_else for a visual description of the
-        pattern which we expect
+        CodeGen._do_exec_If_then_else emits the following:
+
+              mark_if_then_else IF, ELSE, END
+              <eval cond>
+        IF:   br_if_not ELSE
+              <then body>
+              br END
+        ELSE: <else body>
+        END:  <rest of the program>
         """
-        i = self.next_op_index - 1 # this is the index of the current op
-        lbl_else, lbl_endif = self.w_func.w_code.validate_if_then_else(i)
+        while self.next_op_index < IF:
+            op = self.advance_surely()
+            self.emit_op(op)
+        #
+        assert self.advance_surely().name == 'br_if_not' # consume
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
+        #
         # emit the 'then'
         with self.out.indent():
-            assert self.advance_surely().name == 'br_if_not'  # consume this op
-            # note: we go up to lbl_else-1 because we do NOT want to emit the 'br'
-            while self.next_op_index < lbl_else - 1:
+            # note: we go up to ELSE-1 because we do NOT want to emit the 'br'
+            while self.next_op_index < ELSE - 1:
                 op = self.advance_surely()
                 self.emit_op(op)
+        assert self.advance_surely().name == 'br' # consume the 'br'
         # emit the 'else'
         self.out.wl('} else {')
         with self.out.indent():
-            assert self.advance_surely().name == 'br' # consume the 'br'
-            while self.next_op_index < lbl_endif:
+            while self.next_op_index < END:
                 op = self.advance_surely()
                 self.emit_op(op)
         self.out.wl('}')
 
     def emit_op_mark_while(self, IF: int, LOOP: int) -> None:
         """
+        CodeGen.do_exec_While emits the following:
+
                mark_while IF LOOP
         START: <eval cond>
         IF:    br_if_not END
