@@ -40,27 +40,19 @@ class OpCode:
     args: tuple
 
     def __init__(self, name: str, *args: Any) -> None:
+        """
+        A generic opcode.
+
+        Each opcode expects a specific number of args, it's up to the caller
+        to ensure it's correct.
+
+        A special case is passing ... (the ellipsis object) as the only arg:
+        in this case, it means that the OpCode is not fully constructed, and
+        can be amended later by calling set_args().
+        """
         if name not in ALL_OPCODES:
             raise ValueError(f'Invalid opcode: {name}')
         self.name = name
-        self.args = args
-
-    def is_br(self) -> bool:
-        return self.name.startswith('br')
-
-    def set_br_target(self, target: int) -> None:
-        """
-        Assuming that this is an OpCode of the br_* family which is not fully
-        initialized yet, set the target opcode.
-        """
-        if not self.is_br():
-            raise ValueError(f'cannot set br target on opcode {self.name}')
-        if self.args != (None,):
-            raise ValueError('target already set')
-        self.args = (target,)
-
-    def set_args(self, *args: int) -> None:
-        assert self.args == (...,), 'args already set'
         self.args = args
 
     def __repr__(self) -> str:
@@ -69,6 +61,13 @@ class OpCode:
         else:
             return f'<OpCode {self.name}>'
 
+    def is_br(self) -> bool:
+        return self.name.startswith('br')
+
+    def set_args(self, *args: int) -> None:
+        if self.args != (...,):
+            raise ValueError('Cannot set args on a fully constructed op')
+        self.args = args
 
 
 @spytype('CodeObject')

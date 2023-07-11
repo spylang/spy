@@ -147,13 +147,13 @@ class CodeGen:
         """
         _, op_mark = self.emit('mark_if_then', ...)
         self.eval_expr(if_node.test) # <eval cond>
-        IF, br_if_not = self.emit('br_if_not', None)
+        IF, br_if_not = self.emit('br_if_not', ...)
         # <then body>
         for stmt in if_node.then_body:
             self.exec_stmt(stmt)
         #
         END = self.get_label()
-        br_if_not.set_br_target(END)
+        br_if_not.set_args(END)
         op_mark.set_args(IF, END)
 
     def _do_exec_If_then_else(self, if_node: spy.ast.If) -> None:
@@ -168,20 +168,20 @@ class CodeGen:
         """
         _, op_mark = self.emit('mark_if_then_else', ...)
         self.eval_expr(if_node.test) # <eval cond>
-        IF, br_if_not = self.emit('br_if_not', None)
+        IF, br_if_not = self.emit('br_if_not', ...)
         # <then body>
         for stmt in if_node.then_body:
             self.exec_stmt(stmt)
         #
-        _, br = self.emit('br', None)
+        _, br = self.emit('br', ...)
         # <else body>
         ELSE = self.get_label()
         for stmt in if_node.else_body:
             self.exec_stmt(stmt)
         #
         END = self.get_label()
-        br_if_not.set_br_target(ELSE)
-        br.set_br_target(END)
+        br_if_not.set_args(ELSE)
+        br.set_args(END)
         op_mark.set_args(IF, ELSE, END)
 
     def do_exec_While(self, while_node: spy.ast.While) -> None:
@@ -197,13 +197,13 @@ class CodeGen:
         START = self.get_label()
         self.eval_expr(while_node.test)
         #
-        IF, br_if_not = self.emit('br_if_not', None)
+        IF, br_if_not = self.emit('br_if_not', ...)
         for stmt in while_node.body:
             self.exec_stmt(stmt)
         #
         LOOP, _ = self.emit('br', START)
         END = self.get_label()
-        br_if_not.set_br_target(END)
+        br_if_not.set_args(END)
         op_mark.set_args(IF, LOOP)
 
     # ====== expressions ======
