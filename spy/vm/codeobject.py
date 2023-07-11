@@ -64,6 +64,14 @@ class OpCode:
     def is_br(self) -> bool:
         return self.name.startswith('br')
 
+    def match(self, name: str, *args: Any) -> bool:
+        if args == (...,):
+            # match only the name
+            return self.name == name
+        else:
+            # match also the args
+            return self.name == name and self.args == args
+
     def set_args(self, *args: int) -> None:
         if self.args != (...,):
             raise ValueError('Cannot set args on a fully constructed op')

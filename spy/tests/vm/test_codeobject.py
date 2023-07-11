@@ -19,3 +19,10 @@ class TestOpCode:
         assert op.args == (42,)
         with pytest.raises(ValueError, match='Cannot set args on a fully constructed op'):
             op.set_args(43)
+
+    def test_match(self):
+        op = OpCode('load_local', 'a')
+        assert op.match('load_local', 'a')
+        assert op.match('load_local', ...)
+        assert not op.match('load_local')
+        assert not op.match('i32_add')
