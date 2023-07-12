@@ -102,7 +102,7 @@ class W_Type(W_Object):
     def __repr__(self) -> str:
         return f"<spy type '{self.name}'>"
 
-    def spy_unwrap(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> Type[W_Object]:
         return self.pyclass
 
 W_Object._w = W_Type('object', W_Object)
@@ -144,7 +144,7 @@ class W_void(W_Object):
     def __repr__(self) -> str:
         return '<spy None>'
 
-    def spy_unwrap(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> None:
         return None
 
 W_void._w_singleton = W_void.__new__(W_void)
@@ -161,7 +161,7 @@ class W_i32(W_Object):
     def __repr__(self) -> str:
         return f'W_i32({self.value})'
 
-    def spy_unwrap(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
         return self.value
 
 
@@ -186,7 +186,7 @@ class W_bool(W_Object):
     def __repr__(self) -> str:
         return f'W_bool({self.value})'
 
-    def spy_unwrap(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> bool:
         return self.value
 
 W_bool._w_singleton_True = W_bool._make_singleton(True)

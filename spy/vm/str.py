@@ -24,5 +24,5 @@ class W_str(W_Object):
         s = self._as_str()
         return f'W_str({s!r})'
 
-    def spy_unwrap(self, vm: 'SPyVM') -> Any:
+    def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()
