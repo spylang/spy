@@ -1,7 +1,8 @@
 import fixedint
 import pytest
 from spy.vm.vm import SPyVM
-from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32, W_bool
+from spy.vm.object import (W_Object, W_Type, spytype, W_void, W_i32, W_bool,
+                           W_str)
 
 class TestVM:
 
@@ -137,3 +138,11 @@ class TestVM:
         assert repr(w_True) == 'W_bool(True)'
         assert repr(w_False) == 'W_bool(False)'
         assert repr(vm.builtins.w_bool) == "<spy type 'bool'>"
+
+    def test_W_str(self):
+        vm = SPyVM()
+        w_hello = vm.wrap('hello')
+        assert isinstance(w_hello, W_str)
+        assert vm.dynamic_type(w_hello) is vm.builtins.w_str
+        assert vm.unwrap(w_hello) == 'hello'
+        assert repr(w_hello) == "W_str('hello')"

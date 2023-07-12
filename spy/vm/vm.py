@@ -69,15 +69,18 @@ class SPyVM:
         Useful for tests: magic funtion which wraps the given inter-level object
         into the most appropriate app-level W_* object.
         """
+        T = type(value)
         if value is None:
             return self.builtins.w_None
-        elif type(value) in (int, fixedint.Int32):
+        elif T in (int, fixedint.Int32):
             return W_i32(value)
-        elif type(value) is bool:
+        elif T is bool:
             if value:
                 return self.builtins.w_True
             else:
                 return self.builtins.w_False
+        elif T is str:
+            return W_str(value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
         raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")

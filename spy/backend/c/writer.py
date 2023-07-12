@@ -321,6 +321,7 @@ class CFuncWriter:
         """
         self.out.wl('while(1) {')
         with self.out.indent():
+            # <eval cond>
             while self.next_op_index < IF:
                 self.advance_and_emit()
             #
@@ -330,6 +331,7 @@ class CFuncWriter:
             self.out.wl(f'if ({not_cond.str()})')
             self.out.wl('    break;')
             #
+            # <body>
             while self.next_op_index < LOOP:
                 self.advance_and_emit()
             self.consume('br', ...)
