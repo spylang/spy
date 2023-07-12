@@ -114,13 +114,14 @@ class CFuncWriter:
         self.emit_op(op)
         return op
 
-    def consume(self, expected_name: str, *args: Any):
+    def consume(self, expected_name: str, *args: Any) -> OpCode:
         """
         Consume the next op without emitting it.
         """
         op = self.advance()
         assert op, 'Unexpected EOF of body'
         assert op.match(expected_name, *args)
+        return op
 
     def emit(self) -> None:
         """
