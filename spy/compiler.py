@@ -5,7 +5,7 @@ from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.backend.c.cwriter import CModuleWriter
-from spy.backend.c.cbuild import ZigToolchain
+from spy.cbuild import ZigToolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
