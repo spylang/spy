@@ -1,6 +1,10 @@
 import subprocess
 import py
 from py.path import LocalPath
+import spy
+
+INCLUDE = spy.ROOT.join('libspy', 'include')
+LIBSPY_A = spy.ROOT.join('libspy', 'libspy.a')
 
 class ZigToolchain:
 
@@ -28,5 +32,10 @@ class ZigToolchain:
         for name in exports:
             cmdline.append(f'-Wl,--export={name}')
         #
+        # these are needed for libspy
+        cmdline += [
+            '-I', str(INCLUDE),
+            str(LIBSPY_A),
+        ]
         subprocess.check_call(cmdline)
         return file_wasm
