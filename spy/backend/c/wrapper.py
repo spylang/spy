@@ -88,11 +88,13 @@ class WasmModuleWrapper:
         # memory.
         # https://github.com/emscripten-core/emscripten/issues/12793
         #
-        # XXX here we assume/hardcode that we are reading an i32
         addr = g.value(self.llmod.store)
         assert isinstance(addr, int)
-        rawbytes = self.llmod.memory.read(self.llmod.store, addr, addr+4)
-        return struct.unpack('i', rawbytes)[0]
+        w_type = self.w_mod.content.types_w[name]
+        if w_type is self.vm.builtins.w_i32:
+            return self.llmod.read_mem(addr, 4, fmt='i')
+        else:
+            assert False, f'Unknown type: {w_type}'
 
 
 class WasmFuncWrapper:
