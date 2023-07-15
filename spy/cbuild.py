@@ -1,3 +1,4 @@
+from typing import Optional
 import subprocess
 import py
 from py.path import LocalPath
@@ -14,8 +15,8 @@ class ZigToolchain:
         if not self.ZIG.check(exists=True):
             raise ValueError('Cannot find the zig executable; try pip install ziglang')
 
-    def c2wasm(self, file_c: LocalPath, exports: list[str],
-               file_wasm: LocalPath) -> LocalPath:
+    def c2wasm(self, file_c: LocalPath, file_wasm: LocalPath,
+               *, exports: Optional[list[str]] = None) -> LocalPath:
         """
         Compile the C code to WASM, using zig cc
         """
@@ -29,8 +30,9 @@ class ZigToolchain:
 	    '-o', str(file_wasm),
 	    str(file_c)
         ]
-        for name in exports:
-            cmdline.append(f'-Wl,--export={name}')
+        if exports:
+            for name in exports:
+                cmdline.append(f'-Wl,--export={name}')
         #
         # these are needed for libspy
         cmdline += [

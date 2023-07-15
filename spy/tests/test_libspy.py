@@ -11,7 +11,8 @@ class TestLibSPy(CompilerTest):
         src = r"""
         #include <spy.h>
 
-        char *make_str(char a, char b, char c) {
+        char * WASM_EXPORT("make_str")
+        make_str(char a, char b, char c) {
             char *buf = malloc(4);
             buf[0] = a;
             buf[1] = b;
@@ -23,8 +24,7 @@ class TestLibSPy(CompilerTest):
         test_c = self.write_file("test.c", src)
         test_wasm = self.builddir.join("test.wasm")
         toolchain = ZigToolchain()
-        exports = ['make_str']
-        toolchain.c2wasm(test_c, exports, test_wasm)
+        toolchain.c2wasm(test_c, test_wasm)
         llmod = LLWasmModule(test_wasm)
         p1 = llmod.call('make_str', ord('A'), ord('B'), ord('C'))
         p2 = llmod.call('make_str', ord('X'), ord('Y'), ord('Z'))

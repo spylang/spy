@@ -91,7 +91,8 @@ class CompilerPipeline:
         file_c = self.cwrite()
         toolchain = ZigToolchain()
         exports = list(self.w_mod.content.values_w.keys())
-        file_wasm = toolchain.c2wasm(file_c, exports, self.file_wasm)
+        file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
+                                     exports=exports)
         #
         if DUMP_WASM:
             print()
