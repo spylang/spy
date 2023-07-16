@@ -125,6 +125,16 @@ class CompilerTest:
         else:
             assert False, f'Unknown backend: {self.backend}'
 
+
+    def get_funcdef(self, name: str) -> spy.ast.FuncDef:
+        """
+        Search for the spy.ast.FuncDef with the given name in the parsed module
+        """
+        for decl in self.compiler.mod.decls:
+            if isinstance(decl, spy.ast.FuncDef) and decl.name == name:
+                return decl
+        raise KeyError(name)
+
     def expect_errors(self, src: str, *,
                       errors: list[str],
                       stepname: str = 'irgen') -> SPyCompileError:

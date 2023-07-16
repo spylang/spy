@@ -1,22 +1,11 @@
-from typing import Any
-import textwrap
 import pytest
-import spy.ast
-from spy.parser import Parser
-from spy.errors import SPyCompileError, SPyRuntimeAbort
+from spy.errors import SPyRuntimeAbort
 from spy.irgen.symtable import Symbol
-from spy.vm.vm import SPyVM
 from spy.vm.function import W_FunctionType
 from spy.util import ANYTHING
 from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestBasic(CompilerTest):
-
-    def get_funcdef(self, name: str) -> spy.ast.FuncDef:
-        for decl in self.compiler.mod.decls:
-            if isinstance(decl, spy.ast.FuncDef) and decl.name == name:
-                return decl
-        raise KeyError(name)
 
     def test_simple(self):
         mod = self.compile(

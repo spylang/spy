@@ -23,14 +23,6 @@ class TestParser(CompilerTest):
             expected = expected.format(tmpdir=self.tmpdir)
         assert dumped.strip() == expected.strip()
 
-    def get_funcdef(self, mod: spy.ast.Module) -> spy.ast.FuncDef:
-        n = len(mod.decls)
-        if n != 1:
-            raise ValueError(f'Expected only 1 funcdef, got {n}')
-        funcdef = mod.decls[0]
-        assert isinstance(funcdef, spy.ast.FuncDef)
-        return funcdef
-
     def test_Module(self):
         mod = self.parse("""
         def foo() -> void:
@@ -145,11 +137,11 @@ class TestParser(CompilerTest):
         )
 
     def test_FuncDef_body(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> i32:
             return 42
         """)
-        funcdef = self.get_funcdef(mod)
+        funcdef = self.get_funcdef('foo')
         expected = """
         FuncDef(
             name='foo',
@@ -165,11 +157,11 @@ class TestParser(CompilerTest):
         self.assert_dump(funcdef, expected)
 
     def test_empty_return(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> void:
             return
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Constant(value=None),
@@ -178,11 +170,11 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_GetItem(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> void:
             return mylist[0]
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=GetItem(
@@ -194,11 +186,11 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_VarDef(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> void:
             x: i32 = 42
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         VarDef(
             name='x',
@@ -229,11 +221,11 @@ class TestParser(CompilerTest):
         self.assert_dump(mod, expected)
 
     def test_List(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> void:
             return [1, 2, 3]
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=List(
@@ -267,11 +259,11 @@ class TestParser(CompilerTest):
         }
         OpClass = binops[op]
         #
-        mod = self.parse(f"""
+        self.parse(f"""
         def foo() -> i32:
             return x {op} 1
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -293,11 +285,11 @@ class TestParser(CompilerTest):
         }
         OpClass = unops[op]
         #
-        mod = self.parse(f"""
+        self.parse(f"""
         def foo() -> i32:
             return {op} x
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -309,11 +301,11 @@ class TestParser(CompilerTest):
 
     def test_negative_const(self):
         # special case -NUM, so that it's seen as a constant by the rest of the code
-        mod = self.parse(f"""
+        self.parse(f"""
         def foo() -> i32:
             return -123
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Constant(value=-123),
@@ -340,11 +332,11 @@ class TestParser(CompilerTest):
         }
         OpClass = cmpops[op]
         #
-        mod = self.parse(f"""
+        self.parse(f"""
         def foo() -> i32:
             return x {op} 1
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -366,11 +358,11 @@ class TestParser(CompilerTest):
         )
 
     def test_Assign(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> void:
             x = 42
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         Assign(
             target='x',
@@ -396,11 +388,11 @@ class TestParser(CompilerTest):
         )
 
     def test_Call(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> i32:
             return bar(1, 2, 3)
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Call(
@@ -426,14 +418,14 @@ class TestParser(CompilerTest):
         )
 
     def test_If(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> i32:
             if x:
                 return 1
             else:
                 return 2
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         If(
             test=Name(id='x'),
@@ -452,11 +444,11 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_StmtExpr(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> void:
             42
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         StmtExpr(
             value=Constant(value=42),
@@ -465,12 +457,12 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_While(self):
-        mod = self.parse("""
+        self.parse("""
         def foo() -> void:
             while True:
                 pass
         """)
-        stmt = self.get_funcdef(mod).body[0]
+        stmt = self.get_funcdef('foo').body[0]
         expected = """
         While(
             test=Constant(value=True),
