@@ -1,14 +1,10 @@
 from typing import Annotated, Any, no_type_check
 from pathlib import Path
 import typer
-#
+import py.path
 from spy.errors import SPyCompileError
-from spy.parser import Parser
-from spy.irgen.typechecker import TypeChecker
-from spy.irgen.modgen import ModuleGen
+from spy.compiler import CompilerPipeline
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
-from spy.vm.function import W_Function
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -27,33 +23,30 @@ def do_pyparse(filename: str) -> None:
 def main(filename: Path,
          pyparse: boolopt("dump the Python AST exit") = False,
          parse: boolopt("dump the SPy AST and exit") = False,
+         dis: boolopt("disassemble the SPy IR and exit") = False,
+         cwrite: boolopt("create the .c file and exit") = False,
          ) -> None:
-    if pyparse:
-        return do_pyparse(filename)
+    filename = py.path.local(filename)
+    builddir = filename.dirpath()
     vm = SPyVM()
-    p = Parser.from_filename(str(filename))
+    compiler = CompilerPipeline(vm, filename, builddir)
+
     try:
-        mod = p.parse()
-        if parse:
+        if pyparse:
+            do_pyparse(str(filename))
+        elif parse:
+            mod = compiler.parse()
             mod.pp()
-            return
-        t = TypeChecker(vm, mod)
-        t.check_everything()
-        modgen = ModuleGen(vm, t, mod)
-        w_mod = modgen.make_w_mod()
-        print_w_mod(w_mod)
+        elif dis:
+            w_mod = compiler.irgen()
+            w_mod.pp()
+        elif cwrite:
+            compiler.cwrite()
+        else:
+            compiler.cbuild()
+
     except SPyCompileError as e:
         print(e.format(use_colors=True))
-
-def print_w_mod(w_mod: W_Module) -> None:
-    print(f'Module {w_mod.name}:')
-    for attr, w_obj in w_mod.content.values_w.items():
-        print(f'    {attr}: {w_obj}')
-
-    print()
-    for attr, w_obj in w_mod.content.values_w.items():
-        if isinstance(w_obj, W_Function):
-            w_obj.w_code.pp()
 
 if __name__ == '__main__':
     app()

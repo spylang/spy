@@ -37,3 +37,17 @@ class W_Module(W_Object):
         w_obj = self.content.get(name)
         assert isinstance(w_obj, W_Function)
         return w_obj
+
+    def pp(self) -> None:
+        """
+        Pretty print
+        """
+        from spy.vm.function import W_Function
+        print(f'Module {self.name}:')
+        for attr, w_obj in self.content.values_w.items():
+            print(f'    {attr}: {w_obj}')
+
+        print()
+        for attr, w_obj in self.content.values_w.items():
+            if isinstance(w_obj, W_Function):
+                w_obj.w_code.pp()
