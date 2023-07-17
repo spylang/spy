@@ -2,6 +2,7 @@
 #define SPY_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef __SIZE_TYPE__ size_t;
 #define WASM_EXPORT(name) __attribute__((export_name(name)))

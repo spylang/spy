@@ -114,7 +114,10 @@ class WasmFuncWrapper:
         res = self.llmod.call(self.name, *args)
         w_type = self.w_functype.w_restype
         b = self.vm.builtins
-        if w_type is b.w_i32:
+        if w_type is b.w_void:
+            assert res is None
+            return None
+        elif w_type is b.w_i32:
             return res
         elif w_type is b.w_bool:
             return bool(res)
