@@ -96,6 +96,24 @@ class Literal(Expr):
     def str(self) -> str:
         return self.value
 
+    @classmethod
+    def from_bytes(cls, b: bytearray) -> 'Literal':
+        """
+        Transform the given bytearray into a C literal surrounded by double
+        quotes, taking care of escaping.
+        """
+        def char_repr(val):
+            ch = chr(val)
+            if val in (ord('\\'), ord('"')):
+                return rf'\{ch}'
+            elif 32 <= val < 127:
+                return ch
+            return rf'\x{val:02x}' # :x is "hex format"
+
+        lit = ''.join([char_repr(val) for val in b])
+        return Literal(f'"{lit}"')
+
+
 @dataclass
 class Void(Expr):
     """

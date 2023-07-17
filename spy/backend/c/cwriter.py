@@ -175,24 +175,9 @@ class CFuncWriter:
 
     def _emit_op_load_str(self, w_obj: W_str):
         n = len(w_obj.utf8_bytes)
-        lit = self._c_literal_string(w_obj.utf8_bytes)
-        c = f'spy_StrMake({n}, {lit})'
+        lit = c_expr.Literal.from_bytes(w_obj.utf8_bytes)
+        c = f'spy_StrMake({n}, {lit.str()})'
         self.push(c_expr.Literal(c))
-
-    def _c_literal_string(self, b: bytearray) -> str:
-        """
-        Transform the given bytearray into a C literal surrounded by double quotes.
-        """
-        def char_repr(val):
-            ch = chr(val)
-            if val in (ord('\\'), ord('"')):
-                return r'\{ch}'
-            elif 32 <= val < 127:
-                return ch
-            return r'\x{val:x}' # :x is "hex format"
-
-        literal = ''.join([char_repr(val) for val in b])
-        return f'"{literal}"'
 
     def emit_op_return(self) -> None:
         expr = self.pop()
