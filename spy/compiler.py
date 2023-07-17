@@ -9,8 +9,7 @@ from spy.cbuild import ZigToolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
-
-DUMP_C = True
+DUMP_C = False
 DUMP_WASM = False
 
 class CompilerPipeline:
