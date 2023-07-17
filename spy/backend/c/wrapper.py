@@ -112,8 +112,16 @@ class WasmFuncWrapper:
 
     def __call__(self, *args: Any) -> Any:
         res = self.llmod.call(self.name, *args)
-        # wasmtime doesn't distinguish between ints and bools, but we
-        # do. Let's try to fix that
-        if self.w_functype.w_restype is self.vm.builtins.w_bool:
+        w_type = self.w_functype.w_restype
+        b = self.vm.builtins
+        if w_type is b.w_i32:
+            return res
+        elif w_type is b.w_bool:
             return bool(res)
-        return res
+        elif w_type is b.w_str:
+            # we expect a struct spy_StrObject by value
+            length, addr = res
+            utf8_bytes = self.llmod.read_mem(addr, length)
+            return utf8_bytes.decode('utf-8')
+        else:
+            assert False, f"Don't know how to read {w_type} from WASM"

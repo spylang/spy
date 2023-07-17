@@ -64,7 +64,7 @@ class TypeChecker:
         # not found, make it
         w_const = None
         T = type(const.value)
-        if T in (int, bool, NoneType):
+        if T in (int, bool, str, NoneType):
             w_const = self.vm.wrap(const.value)
         else:
             self.error(f'unsupported literal: {const.value!r}',

@@ -30,14 +30,22 @@ class ZigToolchain:
 	    '-o', str(file_wasm),
 	    str(file_c)
         ]
-        if exports:
-            for name in exports:
-                cmdline.append(f'-Wl,--export={name}')
         #
-        # these are needed for libspy
+        # for multivalue support
+        cmdline += [
+            '-mmultivalue',
+            '-Xclang', '-target-abi',
+            '-Xclang', 'experimental-mv'
+        ]
+        # make sure that libspy is available
         cmdline += [
             '-I', str(INCLUDE),
             str(LIBSPY_A),
         ]
+        #
+        if exports:
+            for name in exports:
+                cmdline.append(f'-Wl,--export={name}')
+        #
         subprocess.check_call(cmdline)
         return file_wasm
