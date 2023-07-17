@@ -169,11 +169,12 @@ class CFuncWriter:
             boolval = self.ctx.vm.unwrap(w_obj)
             self.push(c_expr.Literal(str(boolval).lower()))
         elif w_type is b.w_str:
+            assert isinstance(w_obj, W_str)
             self._emit_op_load_str(w_obj)
         else:
             raise NotImplementedError('WIP')
 
-    def _emit_op_load_str(self, w_obj: W_str):
+    def _emit_op_load_str(self, w_obj: W_str) -> None:
         n = len(w_obj.utf8_bytes)
         lit = c_expr.Literal.from_bytes(w_obj.utf8_bytes)
         c = f'spy_StrMake({n}, {lit.str()})'

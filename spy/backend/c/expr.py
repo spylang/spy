@@ -97,12 +97,12 @@ class Literal(Expr):
         return self.value
 
     @classmethod
-    def from_bytes(cls, b: bytearray) -> 'Literal':
+    def from_bytes(cls, b: bytes) -> 'Literal':
         """
         Transform the given bytearray into a C literal surrounded by double
         quotes, taking care of escaping.
         """
-        def char_repr(val):
+        def char_repr(val: int) -> str:
             ch = chr(val)
             if val in (ord('\\'), ord('"')):
                 return rf'\{ch}'

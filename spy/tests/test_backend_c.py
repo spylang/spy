@@ -56,7 +56,7 @@ class TestExpr:
         assert expr.str() == '-(1 * 2)'
 
     def test_Literal_from_bytes(self):
-        def cstr(b):
+        def cstr(b: bytes) -> str:
             return Literal.from_bytes(b).str()
         #
         assert cstr(b'--hello--') == '"--hello--"'
