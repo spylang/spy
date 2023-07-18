@@ -1,5 +1,5 @@
 from typing import Optional, Any
-from py.path import LocalPath
+import py.path
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
@@ -19,7 +19,7 @@ class CModuleWriter:
         self.w_mod = w_mod
         self.out = TextBuilder(use_colors=False)
 
-    def write_c_source(self, outfile: LocalPath) -> None:
+    def write_c_source(self, outfile: py.path.local) -> None:
         c_src = self.emit_module()
         outfile.write(c_src)
 

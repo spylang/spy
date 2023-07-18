@@ -1,7 +1,6 @@
 from typing import Optional
 import subprocess
-import py
-from py.path import LocalPath
+import py.path
 import spy
 
 INCLUDE = spy.ROOT.join('libspy', 'include')
@@ -15,8 +14,8 @@ class ZigToolchain:
         if not self.ZIG.check(exists=True):
             raise ValueError('Cannot find the zig executable; try pip install ziglang')
 
-    def c2wasm(self, file_c: LocalPath, file_wasm: LocalPath,
-               *, exports: Optional[list[str]] = None) -> LocalPath:
+    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local,
+               *, exports: Optional[list[str]] = None) -> py.path.local:
         """
         Compile the C code to WASM, using zig cc
         """

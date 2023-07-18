@@ -1,6 +1,6 @@
 import struct
 from typing import Any, Optional
-from py.path import LocalPath
+import py.path
 import wasmtime
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function, W_FunctionType
@@ -16,7 +16,7 @@ class LLWasmModule:
     instance: wasmtime.Instance
     memory: wasmtime.Memory
 
-    def __init__(self, f: LocalPath) -> None:
+    def __init__(self, f: py.path.local) -> None:
         self.name = f.purebasename
         self.store = wasmtime.Store()
         self.module = wasmtime.Module.from_file(self.store.engine, str(f))
@@ -56,7 +56,7 @@ class WasmModuleWrapper:
     w_mod: W_Module
     llmod: LLWasmModule
 
-    def __init__(self, vm: SPyVM, w_mod: W_Module, f: LocalPath) -> None:
+    def __init__(self, vm: SPyVM, w_mod: W_Module, f: py.path.local) -> None:
         self.vm = vm
         self.w_mod = w_mod
         self.llmod = LLWasmModule(f)

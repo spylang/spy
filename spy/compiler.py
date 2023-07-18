@@ -1,5 +1,5 @@
 import os
-from py.path import LocalPath
+import py.path
 import spy.ast
 from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
@@ -22,18 +22,18 @@ class CompilerPipeline:
     individual steps.
     """
     vm: SPyVM
-    file_spy: LocalPath  # input file
-    builddir: LocalPath
+    file_spy: py.path.local  # input file
+    builddir: py.path.local
     #
     parser: Parser
     mod: spy.ast.Module
     t: TypeChecker
     modgen: ModuleGen
     w_mod: W_Module
-    file_c: LocalPath    # output file
-    file_wasm: LocalPath # output file
+    file_c: py.path.local    # output file
+    file_wasm: py.path.local # output file
 
-    def __init__(self, vm: SPyVM, file_spy: LocalPath, builddir: LocalPath) -> None:
+    def __init__(self, vm: SPyVM, file_spy: py.path.local, builddir: py.path.local) -> None:
         self.vm = vm
         self.file_spy = file_spy
         self.builddir = builddir
@@ -68,7 +68,7 @@ class CompilerPipeline:
         self.w_mod = self.modgen.make_w_mod()
         return self.w_mod
 
-    def cwrite(self) -> LocalPath:
+    def cwrite(self) -> py.path.local:
         """
         Convert the W_Module into a .c file
         """
@@ -83,7 +83,7 @@ class CompilerPipeline:
         #
         return self.file_c
 
-    def cbuild(self) -> LocalPath:
+    def cbuild(self) -> py.path.local:
         """
         Build the .c file into a .wasm file
         """
