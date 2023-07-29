@@ -11,8 +11,8 @@ class TestLibSPy(CompilerTest):
         src = r"""
         #include <spy.h>
 
-        char * WASM_EXPORT("make_str")
-        make_str(char a, char b, char c) {
+        char *
+        WASM_EXPORT(make_str)(char a, char b, char c) {
             char *buf = malloc(4);
             buf[0] = a;
             buf[1] = b;

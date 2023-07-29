@@ -5,7 +5,10 @@
 #include <stdbool.h>
 
 typedef __SIZE_TYPE__ size_t;
-#define WASM_EXPORT(name) __attribute__((export_name(name)))
+
+#define WASM_EXPORT(name) \
+    __attribute__((export_name(#name))) \
+    name
 
 static inline void *memcpy(void *dest, const void *src, size_t n) {
     return __builtin_memcpy(dest, src, n);

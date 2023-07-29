@@ -1,4 +1,5 @@
 libspy.a
+libspy.wasm
 *.o
 tmp/
 tmp_*
