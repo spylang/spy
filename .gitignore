@@ -1,3 +1,5 @@
+libspy.a
+*.o
 tmp/
 tmp_*
 

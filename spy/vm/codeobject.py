@@ -21,6 +21,7 @@ ALL_OPCODES = [
     'store_local',
     'store_global',
     'call_global',
+    'call_primitive',
     'i32_add',
     'i32_sub',
     'i32_mul',

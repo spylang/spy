@@ -15,4 +15,6 @@ spy_StrMake(size_t length, const char *utf8_bytes) {
     return (spy_StrObject){length, utf8_bytes};
 }
 
+spy_StrObject spy_StrAdd(spy_StrObject a, spy_StrObject b);
+
 #endif /* SPY_STR_H */

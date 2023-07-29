@@ -19,6 +19,7 @@ codegen, so the point of the assert()s is mostly to catch bugs in it.
 from typing import TYPE_CHECKING, Any
 from spy.errors import SPyRuntimeAbort
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
+from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
 from spy.vm.function import W_Function
@@ -161,6 +162,13 @@ class Frame:
         w_res = self.vm.call_function(w_func, args_w)
         self.push(w_res)
 
+    def op_call_primitive(self, funcname: str) -> None:
+        assert funcname == 'str_add'
+        w_b = self.pop()
+        w_a = self.pop()
+        w_res = primitive_str_add(self.vm, w_a, w_b)
+        self.push(w_res)
+
     def op_br(self, target: int) -> None:
         self.pc = target - 1 # because run() does pc += 1
 
@@ -169,3 +177,10 @@ class Frame:
         assert isinstance(w_cond, W_bool)
         if self.vm.is_False(w_cond):
             self.pc = target - 1 # because run() does pc += 1
+
+
+
+def primitive_str_add(vm: 'SPyVM', w_a: W_str, w_b: W_str) -> W_str:
+    a = vm.unwrap(w_a)
+    b = vm.unwrap(w_b)
+    return vm.wrap(a + b)

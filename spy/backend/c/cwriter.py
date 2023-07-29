@@ -252,6 +252,15 @@ class CFuncWriter:
             self.out.wl(f'{c_restype} {tmp} = {funcname}({arglist});')
             self.push(c_expr.Literal(tmp))
 
+    def emit_op_call_primitive(self, funcname: str) -> None:
+        assert funcname == 'str_add'
+        b = self.pop()
+        a = self.pop()
+        c_restype = self.ctx.w2c(self.ctx.vm.builtins.w_str)
+        tmp = self.new_var(c_restype)
+        self.out.wl(f'{c_restype} {tmp} = spy_StrAdd({a.str()}, {b.str()});')
+        self.push(c_expr.Literal(tmp))
+
     def emit_op_pop_and_discard(self) -> None:
         self.pop()
 

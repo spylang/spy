@@ -228,6 +228,7 @@ class CodeGen:
 
     def do_eval_BinOp(self, binop: spy.ast.BinOp) -> None:
         w_i32 = self.vm.builtins.w_i32
+        w_str = self.vm.builtins.w_str
         w_ltype = self.t.get_expr_type(binop.left)
         w_rtype = self.t.get_expr_type(binop.right)
         if w_ltype is w_i32 and w_rtype is w_i32:
@@ -239,6 +240,11 @@ class CodeGen:
             elif binop.op == '*':
                 self.emit('i32_mul')
                 return
+        elif w_ltype is w_str and w_rtype is w_str and binop.op == '+':
+            self.eval_expr(binop.left)
+            self.eval_expr(binop.right)
+            self.emit('call_primitive', 'str_add')
+            return
         #
         raise NotImplementedError(
             f'{binop.op} op between {w_ltype.name} and {w_rtype.name}')

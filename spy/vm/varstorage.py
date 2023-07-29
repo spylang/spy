@@ -21,6 +21,8 @@ class VarStorage:
                 self.values_w[varname] = W_i32(0)
             elif w_type is vm.builtins.w_bool:
                 self.values_w[varname] = vm.builtins.w_False
+            elif w_type is vm.builtins.w_str:
+                self.values_w[varname] = None # ???
             else:
                 assert False, f'WIP: unsupported type for locals : {w_type}'
 
