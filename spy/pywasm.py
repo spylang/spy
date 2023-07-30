@@ -44,7 +44,7 @@ class LLWasmInstance:
         self.memory = memory
 
     @staticmethod
-    def from_file(f: py.path.local) -> 'WasmInstance':
+    def from_file(f: py.path.local) -> 'LLWasmInstance':
         return LLWasmModule(f).instantiate()
 
     def get_export(self, name: str) -> Any:
@@ -104,7 +104,7 @@ class LLWasmInstance:
         elif deref == 'int16_t':
             return self.read_mem_i16(addr)
         else:
-            assert False, f'Unknown type: {t}'
+            assert False, f'Unknown type: {deref}'
 
     def read_mem(self, addr: int, n: int) -> bytearray:
         """

@@ -166,6 +166,8 @@ class Frame:
         assert funcname == 'str_add'
         w_b = self.pop()
         w_a = self.pop()
+        assert isinstance(w_a, W_str)
+        assert isinstance(w_b, W_str)
         w_res = primitive_str_add(self.vm, w_a, w_b)
         self.push(w_res)
 
