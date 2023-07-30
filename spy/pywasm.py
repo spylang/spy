@@ -2,12 +2,14 @@
 A pythonic wrapper around wasmtime
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 import py.path
 import wasmtime
 import struct
 
 ENGINE = wasmtime.Engine()
+
+WasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
 
 class LLWasmModule:
     f: py.path.local
@@ -60,6 +62,50 @@ class LLWasmInstance:
         assert isinstance(func, wasmtime.Func)
         return func(self.store, *args)
 
+    def read_global(self, name: str, deref: WasmType = None) -> Any:
+        """
+        Read the given global.
+
+        The semantics is a bit unfortunately: currently, clang always store C
+        globals in linear memory, meaning that the corresponding WASM global
+        contains a *pointer* to the memory.
+
+        clang has plans to support "real" WASM globals: see
+        https://github.com/emscripten-core/emscripten/issues/12793
+
+        If we are reading a scalar, we most likely want to deref the pointer
+        and cast the bytes to the desired type. However, in some cases we are
+        interested in the address, e.g. if the global points to an array or a
+        struct: in that case, we can pass deref=None.
+
+        For example, the following C program:
+            int16_t a = 0xAAAA;
+            int16_t b[] = {0xBBBB, 0xCCCC};
+
+        Produces the following WASM:
+            (global $a i32 (i32.const 1024))
+            (global $b i32 (i32.const 1026))
+            (data $d0 (i32.const 1024) "\aa\aa\bb\bb\cc\cc")
+
+        In this case:
+            read_global('a', deref=None) == 1024
+            read_global('b', deref=None) == 1026
+            read_global('a', deref='i16') == 0xAAAA
+            read_global('b', deref='i16') == 0xBBBB # first item of the array
+        """
+        g = self.get_export(name)
+        assert isinstance(g, wasmtime.Global)
+        addr = g.value(self.store)
+        assert isinstance(addr, int)
+        if deref is None:
+            return addr
+        elif deref == 'int32_t' or deref == 'void *':
+            return self.read_mem_i32(addr)
+        elif deref == 'int16_t':
+            return self.read_mem_i16(addr)
+        else:
+            assert False, f'Unknown type: {t}'
+
     def read_mem(self, addr: int, n: int) -> bytearray:
         """
         Read n bytes of memory at the given address.
@@ -69,6 +115,10 @@ class LLWasmInstance:
     def read_mem_i32(self, addr: int) -> int:
         rawbytes = self.read_mem(addr, 4)
         return struct.unpack('i', rawbytes)[0]
+
+    def read_mem_i16(self, addr: int) -> int:
+        rawbytes = self.read_mem(addr, 2)
+        return struct.unpack('h', rawbytes)[0]
 
     def write_mem(self, addr: int, b: bytes) -> None:
         self.memory.write(self.store, b, addr)

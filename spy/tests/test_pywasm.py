@@ -6,68 +6,66 @@ class TestPyWasm(CTest):
 
     def test_call(self):
         src = r"""
-        #include "spy.h"
-
-        int
-        WASM_EXPORT(add)(int x, int y) {
+        int add(int x, int y) {
             return x+y;
         }
         """
-        test_wasm = self.compile(src)
+        test_wasm = self.compile(src, exports=['add'])
         llmod = LLWasmInstance.from_file(test_wasm)
         assert llmod.call('add', 4, 8) == 12
 
+    def test_read_global(self):
+        src = r"""
+        #include <stdint.h>
+        int32_t x = 100;
+        int16_t y = 200;
+        int16_t z = 300;
+        """
+        test_wasm = self.compile(src, exports=['x', 'y', 'z'])
+        llmod = LLWasmInstance.from_file(test_wasm)
+        assert llmod.read_global('x', 'int32_t') == 100
+        assert llmod.read_global('y', 'int16_t') == 200
+        assert llmod.read_global('z', 'int16_t') == 300
+
     def test_read_mem(self):
         src = r"""
-        #include "spy.h"
-
-        const char *
-        WASM_EXPORT(get_hello)(void) {
-            return "hello";
-        }
-
+        #include <stdint.h>
+        const char *hello = "hello";
         int32_t foo[] = {100, 200};
-        int32_t *
-        WASM_EXPORT(get_foo)(void) {
-            return foo;
-        }
         """
-        test_wasm = self.compile(src)
+        test_wasm = self.compile(src, exports=['hello', 'foo'])
         llmod = LLWasmInstance.from_file(test_wasm)
-        ptr = llmod.call('get_hello')
+        ptr = llmod.read_global('hello', 'void *')
         assert llmod.read_mem(ptr, 6) == b'hello\0'
         #
-        ptr = llmod.call('get_foo')
+        ptr = llmod.read_global('foo')
         assert llmod.read_mem_i32(ptr) == 100
         assert llmod.read_mem_i32(ptr+4) == 200
 
     def test_write_mem(self):
         src = r"""
-        #include "spy.h"
-
-        char foo[] = {'f', 'o', 'o', '\0'};
-        char *
-        WASM_EXPORT(get_foo)(void) {
-            return foo;
+        #include <stdint.h>
+        int8_t foo[] = {10, 20, 30};
+        int32_t foo_total(void) {
+            return foo[0] + foo[1] + foo[2];
         }
         """
-        test_wasm = self.compile(src)
+        test_wasm = self.compile(src, exports=['foo', 'foo_total'])
         llmod = LLWasmInstance.from_file(test_wasm)
-        ptr = llmod.call('get_foo')
-        assert llmod.read_mem(ptr, 4) == b'foo\0'
-        llmod.write_mem(ptr, b'bar\0')
-        assert llmod.read_mem(ptr, 4) == b'bar\0'
+        assert llmod.call('foo_total') == 60
+        #
+        ptr = llmod.read_global('foo')
+        llmod.write_mem(ptr, bytearray([40, 50, 60]))
+        assert llmod.call('foo_total') == 150
 
     def test_multiple_instances(self):
         src = r"""
-        #include "spy.h"
-
         int x = 100;
-        int WASM_EXPORT(inc)(void) {
+        int inc(void) {
             return ++x;
         }
         """
-        test_wasm = self.compile(src)
+        test_wasm = self.compile(src, exports=['inc'])
         llmod_factory = LLWasmModule(test_wasm)
         llmod1 = llmod_factory.instantiate()
         llmod2 = llmod_factory.instantiate()

@@ -26,7 +26,7 @@ class WasmModuleWrapper:
         if isinstance(wasm_obj, wasmtime.Func):
             return self.read_function(name)
         elif isinstance(wasm_obj, wasmtime.Global):
-            return self.read_global(name, wasm_obj)
+            return self.read_global(name)
         else:
             t = type(wasm_obj)
             raise NotImplementedError(f'Unknown WASM object: {t}')
@@ -36,22 +36,14 @@ class WasmModuleWrapper:
         assert isinstance(w_func, W_Function)
         return WasmFuncWrapper(self.vm, name, w_func.w_functype, self.llmod)
 
-    def read_global(self, name: str, g: wasmtime.Global) -> Any:
-        # sigh, this is very unfortunate. Currently, there is no way to
-        # convince clang to use a proper WASM global for C global variables:
-        # instead, they are stored in linear memory, and so the global symbol
-        # that we get contains the address.  Ideally, eventually we want to
-        # fix this, but for now we simply work around by reading the linear
-        # memory.
-        # https://github.com/emscripten-core/emscripten/issues/12793
-        #
-        addr = g.value(self.llmod.store)
-        assert isinstance(addr, int)
+    def read_global(self, name: str) -> Any:
         w_type = self.w_mod.content.types_w[name]
         if w_type is self.vm.builtins.w_i32:
-            return self.llmod.read_mem_i32(addr)
+            t = 'int32_t'
         else:
             assert False, f'Unknown type: {w_type}'
+
+        return self.llmod.read_global(name, deref=t)
 
 
 class WasmFuncWrapper:

@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 import textwrap
 import pytest
 import spy.ast
@@ -181,10 +181,10 @@ class CTest:
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
 
 
-    def compile(self, src: str) -> None:
+    def compile(self, src: str, *, exports: Optional[list[str]] = None) -> None:
         src = textwrap.dedent(src)
         test_c = self.tmpdir.join('test.c')
         test_c.write(src)
         test_wasm = self.builddir.join('test.wasm')
-        self.toolchain.c2wasm(test_c, test_wasm)
+        self.toolchain.c2wasm(test_c, test_wasm, exports=exports)
         return test_wasm
