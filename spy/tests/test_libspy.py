@@ -1,11 +1,8 @@
-import os
 import pytest
-from spy.cbuild import ZigToolchain
-from spy.backend.c.wrapper import LLWasmModule
-from spy.tests.support import CompilerTest, no_backend
+from spy.pywasm import LLWasmInstance
+from spy.tests.support import CTest
 
-@no_backend
-class TestLibSPy(CompilerTest):
+class TestLibSPy(CTest):
 
     def test_walloc(self):
         src = r"""
@@ -21,11 +18,8 @@ class TestLibSPy(CompilerTest):
             return buf;
         }
         """
-        test_c = self.write_file("test.c", src)
-        test_wasm = self.builddir.join("test.wasm")
-        toolchain = ZigToolchain()
-        toolchain.c2wasm(test_c, test_wasm)
-        llmod = LLWasmModule(test_wasm)
+        test_wasm = self.compile(src)
+        llmod = LLWasmInstance.from_file(test_wasm)
         p1 = llmod.call('make_str', ord('A'), ord('B'), ord('C'))
         p2 = llmod.call('make_str', ord('X'), ord('Y'), ord('Z'))
         assert p1 != p2

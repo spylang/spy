@@ -5,6 +5,7 @@ import spy.ast
 from spy.compiler import CompilerPipeline
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
+from spy.cbuild import ZigToolchain
 from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
@@ -166,3 +167,24 @@ class CompilerTest:
                 formatted_error = err.format(use_colors=True)
                 print(textwrap.indent(formatted_error, '    '))
                 pytest.fail(f'Error message not found: {expected}')
+
+
+
+@pytest.mark.usefixtures('init')
+class CTest:
+    tmpdir: Any
+
+    @pytest.fixture
+    def init(self, tmpdir):
+        self.tmpdir = tmpdir
+        self.toolchain = ZigToolchain()
+        self.builddir = self.tmpdir.join('build').ensure(dir=True)
+
+
+    def compile(self, src: str) -> None:
+        src = textwrap.dedent(src)
+        test_c = self.tmpdir.join('test.c')
+        test_c.write(src)
+        test_wasm = self.builddir.join('test.wasm')
+        self.toolchain.c2wasm(test_c, test_wasm)
+        return test_wasm
