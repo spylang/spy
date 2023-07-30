@@ -1,3 +1,4 @@
+import pytest
 import textwrap
 from spy.textbuilder import TextBuilder, ColorFormatter
 
@@ -49,6 +50,46 @@ class TestTextBuilder:
         \x1b[31;01mworld\x1b[00m
         """)
         assert s == expected
+
+    def test_nested(self):
+        outer = TextBuilder()
+        outer.wl('begin')
+        inner = outer.make_nested_builder()
+        outer.wl('end')
+        inner.wl('AAA')
+        inner.wl('BBB')
+        s = outer.build()
+        expected = textwrap.dedent("""\
+        begin
+        AAA
+        BBB
+        end
+        """)
+        assert s == expected
+
+    def test_nested_indent(self):
+        outer = TextBuilder()
+        outer.wl('begin')
+        with outer.indent():
+            inner = outer.make_nested_builder()
+        outer.wl('end')
+        inner.wl('AAA')
+        inner.wl('BBB')
+        s = outer.build()
+        expected = textwrap.dedent("""\
+        begin
+            AAA
+            BBB
+        end
+        """)
+        assert s == expected
+
+    def test_nested_error(self):
+        outer = TextBuilder()
+        outer.w('begin')
+        with pytest.raises(ValueError, match='make_nested_builder can be '
+                           'called only after a newline'):
+            inner = outer.make_nested_builder()
 
 
 class TestColorFormatter:

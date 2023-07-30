@@ -1,14 +1,15 @@
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Union
 from contextlib import contextmanager
 
 class TextBuilder:
     level: int  # indentation level
-    lines: list[str]
+    lines: list[Union[str, 'TextBuilder']]
     use_colors: bool
 
     def __init__(self, *, use_colors: bool = False) -> None:
         self.level = 0
         self.lines = ['']
+        self.use_colors = use_colors
         self.color = ColorFormatter(use_colors)
 
     @contextmanager
@@ -17,7 +18,24 @@ class TextBuilder:
         yield
         self.level -= 1
 
+    def make_nested_builder(self) -> 'TextBuilder':
+        """
+        Create a new nested TextBuilder, at the current position.
+
+        The nested builder can be written independently of the outer one, and
+        it will be built automatically when the outer is built.
+        """
+        if self.lines[-1] != '':
+            raise ValueError('make_nested_builder can be called only '
+                             'after a newline')
+        nested = TextBuilder(use_colors=self.use_colors)
+        nested.level = self.level
+        self.lines[-1] = nested
+        self.lines.append('')
+        return nested
+
     def write(self, s: str, *, color: Optional[str] = None) -> None:
+        assert isinstance(self.lines[-1], str)
         s = self.color.set(color, s)
         if self.lines[-1] == '':
             # add the indentation
@@ -34,7 +52,14 @@ class TextBuilder:
     wl = writeline
 
     def build(self) -> str:
-        return '\n'.join(self.lines)
+        strlines = []
+        for line in self.lines:
+            if isinstance(line, TextBuilder):
+                line = line.build()
+                assert line.endswith('\n')
+                line = line[:-1]
+            strlines.append(line)
+        return '\n'.join(strlines)
 
 
 class ColorFormatter:
