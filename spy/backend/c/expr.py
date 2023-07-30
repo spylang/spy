@@ -172,7 +172,7 @@ class UnaryOp(Expr):
     value: Expr
 
     _table = make_table("""
-        13: + - ! ~
+        13: + - ! ~ &
     """)
 
     def precedence(self) -> int:

@@ -72,9 +72,10 @@ class WasmFuncWrapper:
         elif w_type is b.w_bool:
             return bool(res)
         elif w_type is b.w_str:
-            # we expect a struct spy_StrObject by value
-            length, addr = res
-            utf8_bytes = self.llmod.read_mem(addr, length)
-            return utf8_bytes.decode('utf-8')
+            # res is a  spy_Str*
+            addr = res
+            length = self.llmod.read_mem_i32(addr)
+            utf8 = self.llmod.read_mem(addr + 4, length)
+            return utf8.decode('utf-8')
         else:
             assert False, f"Don't know how to read {w_type} from WASM"

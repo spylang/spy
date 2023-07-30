@@ -12,12 +12,14 @@ from spy.backend.c import expr as c_expr
 
 class CModuleWriter:
     w_mod: W_Module
-    out: TextBuilder
+    out: TextBuilder          # main builder
+    global_decls: TextBuilder # nested builder for declarations
 
     def __init__(self, vm: SPyVM, w_mod: W_Module) -> None:
         self.ctx = Context(vm)
         self.w_mod = w_mod
         self.out = TextBuilder(use_colors=False)
+        self.global_decls = None
 
     def write_c_source(self, outfile: py.path.local) -> None:
         c_src = self.emit_module()
@@ -25,6 +27,8 @@ class CModuleWriter:
 
     def emit_module(self) -> str:
         self.out.wl('#include <spy.h>')
+        self.out.wl()
+        self.global_decls = self.out.make_nested_builder()
         self.out.wl()
         # XXX we should pre-declare variables and functions
         for name, w_obj in self.w_mod.content.values_w.items():
@@ -37,7 +41,7 @@ class CModuleWriter:
         return self.out.build()
 
     def emit_function(self, name: str, w_func: W_Function) -> None:
-        fw = CFuncWriter(self.ctx, self.out, name, w_func)
+        fw = CFuncWriter(self.ctx, self.out, self.global_decls, name, w_func)
         fw.emit()
 
     def emit_variable(self, name: str, w_obj: W_Object) -> None:
@@ -53,15 +57,20 @@ class CModuleWriter:
 
 class CFuncWriter:
     ctx: Context
+    out: TextBuilder
+    global_decls: TextBuilder
     name: str
     w_func: W_Function
     tmp_vars: dict[str, C_Type]
     stack: list[c_expr.Expr]
 
-    def __init__(self, ctx: Context, out: TextBuilder, name: str,
-                 w_func: W_Function):
+    def __init__(self, ctx: Context,
+                 out: TextBuilder,
+                 global_decls: TextBuilder,
+                 name: str, w_func: W_Function):
         self.ctx = ctx
         self.out = out
+        self.global_decls = global_decls
         self.name = name
         self.w_func = w_func
         self.tmp_vars = {}
@@ -176,10 +185,13 @@ class CFuncWriter:
             raise NotImplementedError('WIP')
 
     def _emit_op_load_str(self, w_obj: W_str) -> None:
+        # XXX we should not hardcode the name MYSTR, of course :)
         n = len(w_obj.utf8_bytes)
         lit = c_expr.Literal.from_bytes(w_obj.utf8_bytes)
-        c = f'spy_StrMake({n}, {lit.str()})'
-        self.push(c_expr.Literal(c))
+        self.global_decls.wl(
+            'static spy_Str MYSTR = {%d, %s};' % (n, lit.str()))
+        res = c_expr.UnaryOp('&', c_expr.Literal('MYSTR'))
+        self.push(res)
 
     def emit_op_return(self) -> None:
         expr = self.pop()
