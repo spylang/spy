@@ -1,4 +1,6 @@
+import pytest
 from typing import Optional
+from spy.errors import SPyRuntimeError
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object
 from spy.vm.frame import Frame
@@ -74,9 +76,9 @@ class TestFrame:
             OpCode('return'),
         ]
         frame = make_Frame(vm, code)
-        w_result = frame.run([])
-        result = vm.unwrap(w_result)
-        assert result == 0
+        with pytest.raises(SPyRuntimeError,
+                           match='read from uninitialized local'):
+            w_result = frame.run([])
 
     def test_locals(self):
         vm = SPyVM()

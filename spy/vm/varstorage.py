@@ -1,13 +1,14 @@
-import typing
+from typing import Optional, TYPE_CHECKING
+from spy.errors import SPyRuntimeError
 from spy.vm.object import W_Object, W_Type, W_i32
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 class VarStorage:
     vm: 'SPyVM'
     name: str
     types_w: dict[str, W_Type]
-    values_w: dict[str, W_Object]
+    values_w: dict[str, Optional[W_Object]]
 
     def __init__(self, vm: 'SPyVM', name: str, types_w: dict[str, W_Type]) -> None:
         self.vm = vm
@@ -15,16 +16,7 @@ class VarStorage:
         self.types_w = types_w
         self.values_w = {}
         for varname, w_type in types_w.items():
-            # for now we know how to initialize only i32 local vars. We need
-            # to think of a more generic way
-            if w_type is vm.builtins.w_i32:
-                self.values_w[varname] = W_i32(0)
-            elif w_type is vm.builtins.w_bool:
-                self.values_w[varname] = vm.builtins.w_False
-            elif w_type is vm.builtins.w_str:
-                self.values_w[varname] = None # ???
-            else:
-                assert False, f'WIP: unsupported type for locals : {w_type}'
+            self.values_w[varname] = None # uninitialized
 
     def __repr__(self) -> str:
         return f'<VarStorage {self.name}>'
@@ -40,8 +32,10 @@ class VarStorage:
 
     def get(self, name: str) -> W_Object:
         assert name in self.types_w
-        assert name in self.values_w
-        return self.values_w[name]
+        w_res = self.values_w[name]
+        if w_res is None:
+            raise SPyRuntimeError('read from uninitialized local')
+        return w_res
 
     def add(self, name: str, w_value: W_Object) -> None:
         if name in self.values_w:
