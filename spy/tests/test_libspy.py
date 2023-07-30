@@ -3,7 +3,7 @@ import pytest
 from spy.pywasm import LLWasmInstance
 from spy.tests.support import CTest
 
-def mk_spy_Str(utf8):
+def mk_spy_Str(utf8: bytes) -> bytes:
     """
     Return the spy_Str representation of the given utf8 bytes.
 
