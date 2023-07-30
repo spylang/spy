@@ -28,6 +28,7 @@ class CModuleWriter:
         self.out.wl()
         # XXX we should pre-declare variables and functions
         for name, w_obj in self.w_mod.content.values_w.items():
+            assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
             if isinstance(w_obj, W_Function):
                 self.emit_function(name, w_obj)

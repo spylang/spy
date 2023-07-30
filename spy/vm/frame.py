@@ -182,7 +182,7 @@ class Frame:
 
 
 
-def primitive_str_add(vm: 'SPyVM', w_a: W_str, w_b: W_str) -> W_str:
+def primitive_str_add(vm: 'SPyVM', w_a: W_str, w_b: W_str) -> W_Object:
     a = vm.unwrap(w_a)
     b = vm.unwrap(w_b)
     return vm.wrap(a + b)

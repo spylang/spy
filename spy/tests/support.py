@@ -1,6 +1,7 @@
 from typing import Any, Literal, Optional
 import textwrap
 import pytest
+import py.path
 import spy.ast
 from spy.compiler import CompilerPipeline
 from spy.backend.interp import InterpModuleWrapper
@@ -181,7 +182,8 @@ class CTest:
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
 
 
-    def compile(self, src: str, *, exports: Optional[list[str]] = None) -> None:
+    def compile(self, src: str, *,
+                exports: Optional[list[str]] = None) -> py.path.local:
         src = textwrap.dedent(src)
         test_c = self.tmpdir.join('test.c')
         test_c.write(src)
