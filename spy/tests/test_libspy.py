@@ -1,6 +1,6 @@
 import struct
 import pytest
-from spy.pywasm import LLWasmInstance
+from spy.llwasm import LLWasmInstance
 from spy.tests.support import CTest
 
 def mk_spy_Str(utf8: bytes) -> bytes:

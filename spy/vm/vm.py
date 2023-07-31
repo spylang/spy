@@ -1,6 +1,6 @@
 from typing import Any, Optional
 import fixedint
-from spy.pywasm import LLWasmModule, LLWasmInstance
+from spy.llwasm import LLWasmModule, LLWasmInstance
 from spy.cbuild import LIBSPY_WASM
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str

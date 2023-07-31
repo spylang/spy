@@ -1,5 +1,14 @@
 """
-A pythonic wrapper around wasmtime
+A pythonic wrapper around wasmtime.
+
+It is called 'LL' for two reasons:
+
+  - it exposes a low-level view on the code, compared to other wrappers which
+    are more higher level (e.g., the concept of strings doesn't exist, we only
+    have ints, floats and bytes of memory).
+
+  - it's an unused prefix: other prefixes as "Py", "Wasm", "W" etc. would have
+    been very confusing :)
 """
 
 from typing import Any, Optional, Literal
@@ -9,7 +18,7 @@ import struct
 
 ENGINE = wasmtime.Engine()
 
-WasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
+LLWasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
 
 class LLWasmModule:
     f: py.path.local
@@ -63,7 +72,7 @@ class LLWasmInstance:
         assert isinstance(func, wasmtime.Func)
         return func(self.store, *args)
 
-    def read_global(self, name: str, deref: WasmType = None) -> Any:
+    def read_global(self, name: str, deref: LLWasmType = None) -> Any:
         """
         Read the given global.
 

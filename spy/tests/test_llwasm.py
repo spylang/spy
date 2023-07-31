@@ -1,8 +1,8 @@
 import pytest
-from spy.pywasm import LLWasmModule, LLWasmInstance
+from spy.llwasm import LLWasmModule, LLWasmInstance
 from spy.tests.support import CTest
 
-class TestPyWasm(CTest):
+class TestLLWasm(CTest):
 
     def test_call(self):
         src = r"""

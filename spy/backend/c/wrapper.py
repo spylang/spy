@@ -2,7 +2,7 @@ import struct
 from typing import Any, Optional
 import py.path
 import wasmtime
-from spy.pywasm import LLWasmInstance, WasmType
+from spy.llwasm import LLWasmInstance, LLWasmType
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function, W_FunctionType
 from spy.vm.vm import SPyVM
@@ -38,7 +38,7 @@ class WasmModuleWrapper:
 
     def read_global(self, name: str) -> Any:
         w_type = self.w_mod.content.types_w[name]
-        t: WasmType
+        t: LLWasmType
         if w_type is self.vm.builtins.w_i32:
             t = 'int32_t'
         else:
