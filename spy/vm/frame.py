@@ -23,6 +23,7 @@ from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
 from spy.vm.function import W_Function
+from spy.vm import helpers
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -162,13 +163,11 @@ class Frame:
         w_res = self.vm.call_function(w_func, args_w)
         self.push(w_res)
 
-    def op_call_primitive(self, funcname: str) -> None:
+    def op_call_helper(self, funcname: str) -> None:
         assert funcname == 'str_add'
         w_b = self.pop()
         w_a = self.pop()
-        assert isinstance(w_a, W_str)
-        assert isinstance(w_b, W_str)
-        w_res = primitive_str_add(self.vm, w_a, w_b)
+        w_res = helpers.str_add(self.vm, w_a, w_b)
         self.push(w_res)
 
     def op_br(self, target: int) -> None:
@@ -179,10 +178,3 @@ class Frame:
         assert isinstance(w_cond, W_bool)
         if self.vm.is_False(w_cond):
             self.pc = target - 1 # because run() does pc += 1
-
-
-
-def primitive_str_add(vm: 'SPyVM', w_a: W_str, w_b: W_str) -> W_Object:
-    # implement this in terms of spy_StrAdd
-    ptr_c = vm.ll.call('spy_StrAdd', w_a.ptr, w_b.ptr)
-    return W_str(vm, ptr_c)

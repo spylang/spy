@@ -243,7 +243,7 @@ class CodeGen:
         elif w_ltype is w_str and w_rtype is w_str and binop.op == '+':
             self.eval_expr(binop.left)
             self.eval_expr(binop.right)
-            self.emit('call_primitive', 'str_add')
+            self.emit('call_helper', 'str_add')
             return
         #
         raise NotImplementedError(

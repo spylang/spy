@@ -301,7 +301,7 @@ class CFuncWriter:
             self.out.wl(f'{c_restype} {tmp} = {funcname}({arglist});')
             self.push(c_expr.Literal(tmp))
 
-    def emit_op_call_primitive(self, funcname: str) -> None:
+    def emit_op_call_helper(self, funcname: str) -> None:
         assert funcname == 'str_add'
         b = self.pop()
         a = self.pop()
