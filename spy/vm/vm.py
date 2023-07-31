@@ -35,11 +35,11 @@ class SPyVM:
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
     builtins: Builtins
-    llmod: LLWasmInstance
+    ll: LLWasmInstance
 
     def __init__(self) -> None:
         self.init_builtins()
-        self.llmod = LIBSPY.instantiate()
+        self.ll = LIBSPY.instantiate()
 
     def init_builtins(self) -> None:
         self.builtins = Builtins()

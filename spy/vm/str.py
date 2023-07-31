@@ -28,16 +28,16 @@ class W_str(W_Object):
     def from_str(vm: 'SPyVM', s: str) -> 'W_str':
         utf8 = s.encode('utf-8')
         length = len(utf8)
-        p = vm.llmod.call('spy_StrAlloc', length)
-        vm.llmod.mem.write(p+4, utf8)
+        p = vm.ll.call('spy_StrAlloc', length)
+        vm.ll.mem.write(p+4, utf8)
         return W_str(vm, p)
 
     def get_length(self) -> int:
-        return self.vm.llmod.mem.read_i32(self.ptr)
+        return self.vm.ll.mem.read_i32(self.ptr)
 
     def get_utf8(self) -> bytes:
         length = self.get_length()
-        ba = self.vm.llmod.mem.read(self.ptr+4, length)
+        ba = self.vm.ll.mem.read(self.ptr+4, length)
         return bytes(ba)
 
     def _as_str(self) -> str:
