@@ -183,6 +183,6 @@ class Frame:
 
 
 def primitive_str_add(vm: 'SPyVM', w_a: W_str, w_b: W_str) -> W_Object:
-    a = vm.unwrap(w_a)
-    b = vm.unwrap(w_b)
-    return vm.wrap(a + b)
+    # implement this in terms of spy_StrAdd
+    ptr_c = vm.llmod.call('spy_StrAdd', w_a.ptr, w_b.ptr)
+    return W_str(vm, ptr_c)
