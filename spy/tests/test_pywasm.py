@@ -48,11 +48,11 @@ class TestPyWasm(CTest):
         test_wasm = self.compile(src, exports=['hello', 'foo'])
         llmod = LLWasmInstance.from_file(test_wasm)
         ptr = llmod.read_global('hello', 'void *')
-        assert llmod.read_mem(ptr, 6) == b'hello\0'
+        assert llmod.mem.read(ptr, 6) == b'hello\0'
         #
         ptr = llmod.read_global('foo')
-        assert llmod.read_mem_i32(ptr) == 100
-        assert llmod.read_mem_i32(ptr+4) == 200
+        assert llmod.mem.read_i32(ptr) == 100
+        assert llmod.mem.read_i32(ptr+4) == 200
 
     def test_write_mem(self):
         src = r"""
@@ -67,7 +67,7 @@ class TestPyWasm(CTest):
         assert llmod.call('foo_total') == 60
         #
         ptr = llmod.read_global('foo')
-        llmod.write_mem(ptr, bytearray([40, 50, 60]))
+        llmod.mem.write(ptr, bytearray([40, 50, 60]))
         assert llmod.call('foo_total') == 150
 
     def test_multiple_instances(self):

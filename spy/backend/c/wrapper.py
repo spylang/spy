@@ -74,8 +74,8 @@ class WasmFuncWrapper:
         elif w_type is b.w_str:
             # res is a  spy_Str*
             addr = res
-            length = self.llmod.read_mem_i32(addr)
-            utf8 = self.llmod.read_mem(addr + 4, length)
+            length = self.llmod.mem.read_i32(addr)
+            utf8 = self.llmod.mem.read(addr + 4, length)
             return utf8.decode('utf-8')
         else:
             assert False, f"Don't know how to read {w_type} from WASM"

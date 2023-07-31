@@ -36,9 +36,9 @@ class TestLibSPy(CTest):
         p1 = llmod.call('make_str', ord('A'), ord('B'), ord('C'))
         p2 = llmod.call('make_str', ord('X'), ord('Y'), ord('Z'))
         assert p1 != p2
-        abc = llmod.read_mem(p1, 4)
+        abc = llmod.mem.read(p1, 4)
         assert abc == b'ABC\0'
-        xyz = llmod.read_mem(p2, 4)
+        xyz = llmod.mem.read(p2, 4)
         assert xyz == b'XYZ\0'
 
     def test_str(self):
@@ -56,10 +56,10 @@ class TestLibSPy(CTest):
         test_wasm = self.compile(src, exports=['H', 'mk_W'])
         llmod = LLWasmInstance.from_file(test_wasm)
         ptr_H = llmod.read_global('H')
-        assert llmod.read_mem(ptr_H, 10) == mk_spy_Str(b'hello ')
+        assert llmod.mem.read(ptr_H, 10) == mk_spy_Str(b'hello ')
         #
         ptr_W = llmod.call('mk_W')
-        assert llmod.read_mem(ptr_W, 9) == mk_spy_Str(b'world')
+        assert llmod.mem.read(ptr_W, 9) == mk_spy_Str(b'world')
         #
         ptr_HW = llmod.call('spy_StrAdd', ptr_H, ptr_W)
-        assert llmod.read_mem(ptr_HW, 15) == mk_spy_Str(b'hello world')
+        assert llmod.mem.read(ptr_HW, 15) == mk_spy_Str(b'hello world')

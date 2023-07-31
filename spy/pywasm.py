@@ -32,7 +32,7 @@ class LLWasmInstance:
     f: py.path.local
     store: wasmtime.Store
     instance: wasmtime.Instance
-    memory: wasmtime.Memory
+    mem: 'LLWasmMemory'
 
     def __init__(self, f: py.path.local, store: wasmtime.Store,
                  instance: wasmtime.Instance) -> None:
@@ -41,7 +41,7 @@ class LLWasmInstance:
         self.instance = instance
         memory = self.instance.exports(store).get('memory')
         assert isinstance(memory, wasmtime.Memory)
-        self.memory = memory
+        self.mem = LLWasmMemory(store, memory)
 
     @staticmethod
     def from_file(f: py.path.local) -> 'LLWasmInstance':
@@ -101,25 +101,37 @@ class LLWasmInstance:
         if deref is None:
             return addr
         elif deref == 'int32_t' or deref == 'void *':
-            return self.read_mem_i32(addr)
+            return self.mem.read_i32(addr)
         elif deref == 'int16_t':
-            return self.read_mem_i16(addr)
+            return self.mem.read_i16(addr)
         else:
             assert False, f'Unknown type: {deref}'
 
-    def read_mem(self, addr: int, n: int) -> bytearray:
+
+class LLWasmMemory:
+    """
+    Thin wrapper around wasmtime.Memory
+    """
+    store: wasmtime.Store
+    mem: wasmtime.Memory
+
+    def __init__(self, store: wasmtime.Store, mem: wasmtime.Memory):
+        self.store = store
+        self.mem = mem
+
+    def read(self, addr: int, n: int) -> bytearray:
         """
         Read n bytes of memory at the given address.
         """
-        return self.memory.read(self.store, addr, addr+n)
+        return self.mem.read(self.store, addr, addr+n)
 
-    def read_mem_i32(self, addr: int) -> int:
-        rawbytes = self.read_mem(addr, 4)
+    def read_i32(self, addr: int) -> int:
+        rawbytes = self.read(addr, 4)
         return struct.unpack('i', rawbytes)[0]
 
-    def read_mem_i16(self, addr: int) -> int:
-        rawbytes = self.read_mem(addr, 2)
+    def read_i16(self, addr: int) -> int:
+        rawbytes = self.read(addr, 2)
         return struct.unpack('h', rawbytes)[0]
 
-    def write_mem(self, addr: int, b: bytes) -> None:
-        self.memory.write(self.store, b, addr)
+    def write(self, addr: int, b: bytes) -> None:
+        self.mem.write(self.store, b, addr)
