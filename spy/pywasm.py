@@ -54,8 +54,9 @@ class LLWasmInstance:
             raise AttributeError(name)
         return wasm_obj
 
-    ## def all_exports(self) -> Any:
-    ##     exports = self.instance.exports(self.store)
+    def all_exports(self) -> Any:
+        exports = self.instance.exports(self.store)
+        return list(exports._extern_map)
 
     def call(self, name: str, *args: Any) -> Any:
         func = self.get_export(name)

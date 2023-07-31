@@ -14,6 +14,18 @@ class TestPyWasm(CTest):
         llmod = LLWasmInstance.from_file(test_wasm)
         assert llmod.call('add', 4, 8) == 12
 
+    def test_all_exports(self):
+        src = r"""
+        int add(int x, int y) {
+            return x+y;
+        }
+        int x;
+        int y;
+        """
+        test_wasm = self.compile(src, exports=['add', 'x', 'y'])
+        llmod = LLWasmInstance.from_file(test_wasm)
+        assert llmod.all_exports() == ['memory', 'add', 'x', 'y']
+
     def test_read_global(self):
         src = r"""
         #include <stdint.h>

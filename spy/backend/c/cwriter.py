@@ -216,7 +216,7 @@ class CFuncWriter:
         # readable for humans.
         #
         # Emit the global decl
-        utf8 = w_obj.utf8_bytes
+        utf8 = w_obj.get_utf8()
         v = self.cmod.new_global_var('str')  # SPY_g_str0
         n = len(utf8)
         lit = c_expr.Literal.from_bytes(utf8)

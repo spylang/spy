@@ -1,11 +1,15 @@
 from typing import Any, Optional
 import fixedint
+from spy.pywasm import LLWasmModule, LLWasmInstance
+from spy.cbuild import LIBSPY_WASM
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_FunctionType, W_Function
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
+
+LIBSPY = LLWasmModule(LIBSPY_WASM)
 
 class Builtins:
     w_object: W_Type
@@ -26,12 +30,16 @@ class Builtins:
 class SPyVM:
     """
     A Virtual Machine to execute SPy code.
-    """
 
+    Each instance of the VM contains an instance of libspy.wasm: all the
+    non-scalar objects (e.g. strings) are stored in the WASM linear memory.
+    """
     builtins: Builtins
+    llmod: LLWasmInstance
 
     def __init__(self) -> None:
         self.init_builtins()
+        self.llmod = LIBSPY.instantiate()
 
     def init_builtins(self) -> None:
         self.builtins = Builtins()
@@ -81,7 +89,7 @@ class SPyVM:
             else:
                 return self.builtins.w_False
         elif T is str:
-            return W_str(value)
+            return W_str.from_str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
         raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")
