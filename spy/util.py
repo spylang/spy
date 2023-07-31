@@ -76,6 +76,18 @@ def print_class_hierarchy(cls):
     print_class(cls, prefix='', indent='', marker='')
 
 
+def shortrepr(s: str, n: int) -> str:
+    """
+    Return a repr of the `s`.
+
+    If len(s) <= n, this is equivalent as repr(s).
+    Else, we use '...' to put a cap on the length of s.
+    """
+    if len(s) > n:
+        s = s[:n-2] + '...'
+    return repr(s)
+
+
 if __name__ == '__main__':
     import ast as py_ast
     print_class_hierarchy(py_ast.AST)

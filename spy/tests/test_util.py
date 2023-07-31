@@ -1,6 +1,6 @@
 from typing import Any
 import pytest
-from spy.util import ANYTHING, magic_dispatch, extend
+from spy.util import ANYTHING, magic_dispatch, extend, shortrepr
 
 def test_ANYTHING():
     assert ANYTHING == 1
@@ -66,3 +66,10 @@ def test_extend_dont_overwrite():
         @extend(Foo)
         class Foo2:
             X = 100
+
+
+def test_shortrepr():
+    s = '12345678'
+    assert shortrepr(s, 10) == "'12345678'"
+    assert shortrepr(s,  8) == "'12345678'"
+    assert shortrepr(s,  7) == "'12345...'"
