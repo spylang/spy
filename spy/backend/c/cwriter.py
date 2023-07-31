@@ -22,7 +22,7 @@ class CModuleWriter:
         self.ctx = Context(vm)
         self.w_mod = w_mod
         self.out = TextBuilder(use_colors=False)
-        self.out_globals = None
+        self.out_globals = None  # type: ignore
         self.global_vars = set()
 
     def write_c_source(self, outfile: py.path.local) -> None:
