@@ -7,6 +7,7 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_Function, W_FunctionType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM
+from spy.vm import helpers
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import expr as c_expr
@@ -281,13 +282,16 @@ class CFuncWriter:
     def emit_op_i32_gte(self) -> None:
         self._emit_op_binop('>=')
 
-    def emit_op_call_global(self, funcname: str, argcount: int) -> None:
+    def _pop_args(self, argcount: int) -> str:
         args = []
         for i in range(argcount):
             args.append(self.pop().str())
         args.reverse()
         arglist = ', '.join(args)
-        #
+        return arglist
+
+    def emit_op_call_global(self, funcname: str, argcount: int) -> None:
+        arglist = self._pop_args(argcount)
         w_functype = self.w_func.globals.types_w[funcname]
         assert isinstance(w_functype, W_FunctionType)
         w_restype = w_functype.w_restype
@@ -301,13 +305,18 @@ class CFuncWriter:
             self.out.wl(f'{c_restype} {tmp} = {funcname}({arglist});')
             self.push(c_expr.Literal(tmp))
 
-    def emit_op_call_helper(self, funcname: str) -> None:
-        assert funcname == 'str_add'
-        b = self.pop()
-        a = self.pop()
-        c_restype = self.ctx.w2c(self.ctx.vm.builtins.w_str)
+    def emit_op_call_helper(self, funcname: str, argcount: int) -> None:
+        # determine the c_restype by looking at the signature of the helper
+        helper_func = helpers.get(funcname)
+        pycls = helper_func.__annotations__['return']
+        assert issubclass(pycls, W_Object)
+        w_restype = self.ctx.vm.wrap(pycls)
+        assert isinstance(w_restype, W_Type)
+        c_restype = self.ctx.w2c(w_restype)
+        #
+        arglist = self._pop_args(argcount)
         tmp = self.new_var(c_restype)
-        self.out.wl(f'{c_restype} {tmp} = spy_StrAdd({a.str()}, {b.str()});')
+        self.out.wl(f'{c_restype} {tmp} = spy_{funcname}({arglist});')
         self.push(c_expr.Literal(tmp))
 
     def emit_op_pop_and_discard(self) -> None:

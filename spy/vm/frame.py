@@ -153,21 +153,24 @@ class Frame:
         w_value = self.pop()
         self.globals.set(varname, w_value)
 
-    def op_call_global(self, funcname: str, argcount: int) -> None:
-        w_func = self.globals.get(funcname)
-        assert isinstance(w_func, W_Function)
+    def _pop_args(self, argcount: int) -> list[W_Object]:
         args_w = []
         for i in range(argcount):
             args_w.append(self.pop())
         args_w.reverse()
+        return args_w
+
+    def op_call_global(self, funcname: str, argcount: int) -> None:
+        w_func = self.globals.get(funcname)
+        assert isinstance(w_func, W_Function)
+        args_w = self._pop_args(argcount)
         w_res = self.vm.call_function(w_func, args_w)
         self.push(w_res)
 
-    def op_call_helper(self, funcname: str) -> None:
-        assert funcname == 'str_add'
-        w_b = self.pop()
-        w_a = self.pop()
-        w_res = helpers.str_add(self.vm, w_a, w_b)
+    def op_call_helper(self, funcname: str, argcount: int) -> None:
+        helper_func = helpers.get(funcname)
+        args_w = self._pop_args(argcount)
+        w_res = helper_func(self.vm, *args_w)
         self.push(w_res)
 
     def op_br(self, target: int) -> None:

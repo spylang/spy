@@ -4,7 +4,13 @@ from spy.vm.object import W_Object
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-def str_add(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_Object:
+def get(funcname: str) -> Any:
+    func = globals().get(funcname)
+    if func is None:
+        raise KeyError(f'Cannot find {funcname} in helpers.py')
+    return func
+
+def StrAdd(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
     assert isinstance(w_a, W_str)
     assert isinstance(w_b, W_str)
     ptr_c = vm.ll.call('spy_StrAdd', w_a.ptr, w_b.ptr)
