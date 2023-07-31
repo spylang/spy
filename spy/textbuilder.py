@@ -56,9 +56,14 @@ class TextBuilder:
         for line in self.lines:
             if isinstance(line, TextBuilder):
                 line = line.build()
-                assert line.endswith('\n')
-                line = line[:-1]
-            strlines.append(line)
+                if line == '':
+                    continue # nothing to do
+                else:
+                    assert line.endswith('\n')
+                    line = line[:-1]
+                    strlines.append(line)
+            else:
+                strlines.append(line)
         return '\n'.join(strlines)
 
 

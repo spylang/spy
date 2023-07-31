@@ -67,6 +67,18 @@ class TestTextBuilder:
         """)
         assert s == expected
 
+    def test_nested_empty(self):
+        outer = TextBuilder()
+        outer.wl('begin')
+        inner = outer.make_nested_builder()
+        outer.wl('end')
+        s = outer.build()
+        expected = textwrap.dedent("""\
+        begin
+        end
+        """)
+        assert s == expected
+
     def test_nested_indent(self):
         outer = TextBuilder()
         outer.wl('begin')
