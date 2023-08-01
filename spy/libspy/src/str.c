@@ -17,3 +17,15 @@ spy_StrAdd(spy_Str *a, spy_Str *b) {
     memcpy(buf + a->length, b->utf8, b->length);
     return res;
 }
+
+spy_Str *
+spy_StrMul(spy_Str *a, int32_t b) {
+    size_t l = a->length * b;
+    spy_Str *res = spy_StrAlloc(l);
+    char *buf = (char*)res->utf8;
+    for(int i=0; i<b; i++) {
+        memcpy(buf, a->utf8, a->length);
+        buf += a->length;
+    }
+    return res;
+}

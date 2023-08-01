@@ -25,10 +25,18 @@ class TestStr(CompilerTest):
     def test_add(self):
         mod = self.compile(
         """
-        # -*- encoding: utf-8 -*-
         def foo() -> str:
             a: str = 'hello '
             b: str = 'world'
             return a + b
         """)
         assert mod.foo() == 'hello world'
+
+    def test_multiply(self):
+        mod = self.compile(
+        """
+        def foo() -> str:
+            a: str = 'hello '
+            return a * 3
+        """)
+        assert mod.foo() == 'hello hello hello '

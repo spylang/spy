@@ -14,4 +14,7 @@ WASM_EXPORT(spy_StrAlloc)(size_t length);
 spy_Str *
 WASM_EXPORT(spy_StrAdd)(spy_Str *a, spy_Str *b);
 
+spy_Str *
+WASM_EXPORT(spy_StrMul)(spy_Str *a, int32_t b);
+
 #endif /* SPY_STR_H */

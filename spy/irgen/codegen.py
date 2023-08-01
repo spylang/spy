@@ -245,6 +245,11 @@ class CodeGen:
             self.eval_expr(binop.right)
             self.emit('call_helper', 'StrAdd', 2)
             return
+        elif w_ltype is w_str and w_rtype is w_i32 and binop.op == '*':
+            self.eval_expr(binop.left)
+            self.eval_expr(binop.right)
+            self.emit('call_helper', 'StrMul', 2)
+            return
         #
         raise NotImplementedError(
             f'{binop.op} op between {w_ltype.name} and {w_rtype.name}')

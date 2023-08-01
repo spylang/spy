@@ -308,19 +308,23 @@ class TypeChecker:
         return sym.w_type
 
     def check_expr_BinOp(self, expr: spy.ast.BinOp, scope: SymTable) -> W_Type:
-        # XXX this is wrong: here we assume that the result of a binop is the
-        # same as its arguments, but we need to tweak it when we have
-        # e.g. floats and division
+        b = self.vm.builtins
         w_ltype = self.check_expr(expr.left, scope)
         w_rtype = self.check_expr(expr.right, scope)
-        if w_ltype != w_rtype:
+        if w_ltype == w_rtype:
+            # XXX this is wrong: here we assume that the result of a binop is the
+            # same as its arguments, but we need to tweak it when we have
+            # e.g. floats and division
+            return w_ltype
+        elif w_ltype is b.w_str and w_rtype is b.w_i32:
+            return b.w_str
+        else:
             l = w_ltype.name
             r = w_rtype.name
             err = SPyTypeError(f'cannot do `{l}` {expr.op} `{r}`')
             err.add('error', f'this is `{l}`', expr.left.loc)
             err.add('error', f'this is `{r}`', expr.right.loc)
             raise err
-        return w_ltype
 
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
