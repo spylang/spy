@@ -40,3 +40,12 @@ class TestStr(CompilerTest):
             return a * 3
         """)
         assert mod.foo() == 'hello hello hello '
+
+    @pytest.mark.xfail(reason='FIXME')
+    def test_str_argument(self):
+        mod = self.compile(
+        """
+        def foo(a: str) -> str:
+            return a + ' world'
+        """)
+        assert mod.foo('hello') == 'hello world'
