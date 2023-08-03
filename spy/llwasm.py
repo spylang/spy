@@ -13,43 +13,66 @@ It is called 'LL' for two reasons:
 
 from typing import Any, Optional, Literal
 import py.path
-import wasmtime
+import wasmtime as wt
 import struct
 
-ENGINE = wasmtime.Engine()
-
 LLWasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
+ENGINE = wt.Engine()
+
+def FuncType_from_pyfunc(pyfunc: Any) -> wt.FuncType:
+    py2w = {
+        int: wt.ValType.i32()
+    }
+    annotations = pyfunc.__annotations__.copy()
+    restype = py2w[annotations.pop('return')]
+    args = [py2w[pytype] for pytype in annotations.values()]
+    return wt.FuncType(args, [restype])
 
 class LLWasmModule:
     f: py.path.local
-    mod: wasmtime.Module
+    mod: wt.Module
 
     def __init__(self, f: py.path.local) -> None:
         self.f = f
-        self.mod = wasmtime.Module.from_file(ENGINE, str(f))
+        self.mod = wt.Module.from_file(ENGINE, str(f))
 
     def __repr__(self) -> str:
         return '<LLWasmModule {self.f}>'
 
-    def instantiate(self) -> 'LLWasmInstance':
-        store = wasmtime.Store(ENGINE)
-        inst = wasmtime.Instance(store, self.mod, [])
+    def resolve_imports(self, store: wt.Store, given: Optional[dict[str, Any]]) -> Any:
+        if given is None:
+            given = {}
+        imports = []
+        for expected in self.mod.imports:
+            assert expected.name is not None
+            pyfunc = given.get(expected.name)
+            if pyfunc is None:
+                raise KeyError(f'Missing import: {expected.name}')
+            functype = FuncType_from_pyfunc(pyfunc)
+            wasmfunc = wt.Func(store, functype, pyfunc)
+            imports.append(wasmfunc)
+        return imports
+
+    def instantiate(self, imports: Optional[dict[str, Any]]=None) -> 'LLWasmInstance':
+        store = wt.Store(ENGINE)
+        import_list = self.resolve_imports(store, imports)
+        inst = wt.Instance(store, self.mod, import_list)
         return LLWasmInstance(self.f, store, inst)
 
 
 class LLWasmInstance:
     f: py.path.local
-    store: wasmtime.Store
-    instance: wasmtime.Instance
+    store: wt.Store
+    instance: wt.Instance
     mem: 'LLWasmMemory'
 
-    def __init__(self, f: py.path.local, store: wasmtime.Store,
-                 instance: wasmtime.Instance) -> None:
+    def __init__(self, f: py.path.local, store: wt.Store,
+                 instance: wt.Instance) -> None:
         self.f = f
         self.store = store
         self.instance = instance
         memory = self.instance.exports(store).get('memory')
-        assert isinstance(memory, wasmtime.Memory)
+        assert isinstance(memory, wt.Memory)
         self.mem = LLWasmMemory(store, memory)
 
     @staticmethod
@@ -69,7 +92,7 @@ class LLWasmInstance:
 
     def call(self, name: str, *args: Any) -> Any:
         func = self.get_export(name)
-        assert isinstance(func, wasmtime.Func)
+        assert isinstance(func, wt.Func)
         return func(self.store, *args)
 
     def read_global(self, name: str, deref: LLWasmType = None) -> Any:
@@ -104,7 +127,7 @@ class LLWasmInstance:
             read_global('b', deref='i16') == 0xBBBB # first item of the array
         """
         g = self.get_export(name)
-        assert isinstance(g, wasmtime.Global)
+        assert isinstance(g, wt.Global)
         addr = g.value(self.store)
         assert isinstance(addr, int)
         if deref is None:
@@ -119,12 +142,12 @@ class LLWasmInstance:
 
 class LLWasmMemory:
     """
-    Thin wrapper around wasmtime.Memory
+    Thin wrapper around wt.Memory
     """
-    store: wasmtime.Store
-    mem: wasmtime.Memory
+    store: wt.Store
+    mem: wt.Memory
 
-    def __init__(self, store: wasmtime.Store, mem: wasmtime.Memory):
+    def __init__(self, store: wt.Store, mem: wt.Memory):
         self.store = store
         self.mem = mem
 

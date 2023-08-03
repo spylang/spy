@@ -17,6 +17,7 @@ WASM_EXPORT(spy_StrAdd)(spy_Str *a, spy_Str *b);
 spy_Str *
 WASM_EXPORT(spy_StrMul)(spy_Str *a, int32_t b);
 
+// XXX: should we introduce a separate type Char?
 spy_Str *
 WASM_EXPORT(spy_StrGetItem)(spy_Str *s, int32_t i);
 

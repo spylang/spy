@@ -1,11 +1,7 @@
 from typing import Optional
 import subprocess
 import py.path
-import spy
-
-INCLUDE = spy.ROOT.join('libspy', 'include')
-LIBSPY_A = spy.ROOT.join('libspy', 'libspy.a')
-LIBSPY_WASM = spy.ROOT.join('libspy', 'libspy.wasm')
+import spy.libspy
 
 class ZigToolchain:
 
@@ -39,8 +35,8 @@ class ZigToolchain:
         ]
         # make sure that libspy is available
         cmdline += [
-            '-I', str(INCLUDE),
-            str(LIBSPY_A),
+            '-I', str(spy.libspy.INCLUDE),
+            str(spy.libspy.LIBSPY_A),
         ]
         #
         if exports:

@@ -1,7 +1,6 @@
 from typing import Any, Optional
 import fixedint
 from spy.llwasm import LLWasmModule, LLWasmInstance
-from spy.cbuild import LIBSPY_WASM
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_FunctionType, W_Function
@@ -9,6 +8,7 @@ from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
 
+from spy.libspy import LIBSPY_WASM
 LIBSPY = LLWasmModule(LIBSPY_WASM)
 
 class Builtins:

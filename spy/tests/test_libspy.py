@@ -63,3 +63,16 @@ class TestLibSPy(CTest):
         #
         ptr_HW = ll.call('spy_StrAdd', ptr_H, ptr_W)
         assert ll.mem.read(ptr_HW, 15) == mk_spy_Str(b'hello world')
+
+    def xtest_debug_log(self):
+        src = r"""
+        #include <spy.h>
+
+        void log_hello(void) {
+            debug_log("hello");
+        }
+        """
+        test_wasm = self.compile(src, exports=['log_hello'])
+        ll = LLWasmInstance.from_file(test_wasm)
+        ptr_H = ll.read_global('H')
+        assert ll.mem.read(ptr_H, 10) == mk_spy_Str(b'hello ')

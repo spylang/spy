@@ -88,3 +88,26 @@ class TestLLWasm(CTest):
         assert ll2.call('inc') == 101
         assert ll2.call('inc') == 102
         assert ll2.call('inc') == 103
+
+    def test_imports(self):
+        src = r"""
+        #include <stdint.h>
+        // WASM imports
+        int32_t add(int32_t x, int32_t y);
+        int32_t square(int32_t x);
+
+        int32_t compute(void) {
+            return square(add(10, 20));
+        }
+        """
+        test_wasm = self.compile(src, exports=['compute'])
+        ll_factory = LLWasmModule(test_wasm)
+
+        def add(x: int, y: int) -> int:
+            return x + y
+        def square(x: int) -> int:
+            return x*x
+
+        imports = {'add': add, 'square': square}
+        ll = ll_factory.instantiate(imports)
+        assert ll.call('compute') == 900

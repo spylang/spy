@@ -33,6 +33,7 @@ spy_StrMul(spy_Str *a, int32_t b) {
 
 spy_Str *
 spy_StrGetItem(spy_Str *s, int32_t i) {
+    // XXX this is wrong: it should return a code point
     size_t l = s->length;
     if (i < 0) {
         i += l;
