@@ -89,7 +89,7 @@ class SPyVM:
             else:
                 return self.builtins.w_False
         elif T is str:
-            return W_str.from_str(self, value)
+            return W_str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
         raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")

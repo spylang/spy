@@ -1,9 +1,21 @@
 from typing import TYPE_CHECKING, Any
+from spy.llwasm import LLWasmInstance
 from spy.vm.object import W_Object, spytype
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
+    """
+    Create a new spy_Str object inside the given LLWasmInstance, and fill it
+    with the utf8-encoded content of s.
 
+    Return the corresponding 'spy_Str *'
+    """
+    utf8 = s.encode('utf-8')
+    length = len(utf8)
+    ptr = ll.call('spy_StrAlloc', length)
+    ll.mem.write(ptr+4, utf8)
+    return ptr
 
 @spytype('str')
 class W_str(W_Object):
@@ -20,17 +32,17 @@ class W_str(W_Object):
     vm: 'SPyVM'
     ptr: int
 
-    def __init__(self, vm: 'SPyVM', ptr: int) -> None:
+    def __init__(self, vm: 'SPyVM', s: str) -> None:
+        ptr = ll_spy_Str_new(vm.ll, s)
         self.vm = vm
         self.ptr = ptr
 
     @staticmethod
-    def from_str(vm: 'SPyVM', s: str) -> 'W_str':
-        utf8 = s.encode('utf-8')
-        length = len(utf8)
-        p = vm.ll.call('spy_StrAlloc', length)
-        vm.ll.mem.write(p+4, utf8)
-        return W_str(vm, p)
+    def from_ptr(vm: 'SPyVM', ptr: int) -> 'W_str':
+        w_res = W_str.__new__(W_str)
+        w_res.vm = vm
+        w_res.ptr = ptr
+        return w_res
 
     def get_length(self) -> int:
         return self.vm.ll.mem.read_i32(self.ptr)

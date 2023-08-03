@@ -4,7 +4,7 @@ import py.path
 import wasmtime
 from spy.llwasm import LLWasmInstance, LLWasmType
 from spy.vm.object import W_Type
-from spy.vm.str import W_str
+from spy.vm.str import ll_spy_Str_new
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function, W_FunctionType
 from spy.vm.vm import SPyVM
@@ -36,7 +36,7 @@ class WasmModuleWrapper:
     def read_function(self, name: str) -> 'WasmFuncWrapper':
         w_func = self.w_mod.content.get(name)
         assert isinstance(w_func, W_Function)
-        return WasmFuncWrapper(self.vm, name, w_func.w_functype, self.ll)
+        return WasmFuncWrapper(self.vm, self.ll, name, w_func.w_functype)
 
     def read_global(self, name: str) -> Any:
         w_type = self.w_mod.content.types_w[name]
@@ -51,29 +51,26 @@ class WasmModuleWrapper:
 
 class WasmFuncWrapper:
     vm: SPyVM
+    ll: LLWasmInstance
     name: str
     w_functype: W_FunctionType
-    ll: LLWasmInstance
 
-    def __init__(self, vm: SPyVM, name:str, w_functype: W_FunctionType,
-                 ll: LLWasmInstance) -> None:
+    def __init__(self, vm: SPyVM, ll: LLWasmInstance, name:str,
+                 w_functype: W_FunctionType) -> None:
         self.vm = vm
+        self.ll = ll
         self.name = name
         self.w_functype = w_functype
-        self.ll = ll
 
     def py2wasm(self, pyval: Any, w_type: W_Type) -> Any:
         b = self.vm.builtins
         if w_type is b.w_i32:
             return pyval
         elif w_type is b.w_str:
-            w_val = self.vm.wrap(pyval)
-            assert isinstance(w_val, W_str)
-            # XXX: when we introduce the GC, we need to think how to keep this alive
-            return w_val.ptr
+            # XXX: with the GC, we need to think how to keep this alive
+            return ll_spy_Str_new(self.ll, pyval)
         else:
             assert False, f'Unsupported type: {w_type}'
-
 
     def from_py_args(self, py_args: Any) -> Any:
         a = len(py_args)
@@ -89,7 +86,6 @@ class WasmFuncWrapper:
 
     def __call__(self, *py_args: Any) -> Any:
         wasm_args = self.from_py_args(py_args)
-        #import pdb;pdb.set_trace()
         res = self.ll.call(self.name, *wasm_args)
         w_type = self.w_functype.w_restype
         b = self.vm.builtins

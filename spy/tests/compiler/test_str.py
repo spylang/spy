@@ -41,7 +41,6 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello hello hello '
 
-    @pytest.mark.xfail(reason='FIXME')
     def test_str_argument(self):
         mod = self.compile(
         """
