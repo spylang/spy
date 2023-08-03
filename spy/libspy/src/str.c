@@ -29,3 +29,20 @@ spy_StrMul(spy_Str *a, int32_t b) {
     }
     return res;
 }
+
+
+spy_Str *
+spy_StrGetItem(spy_Str *s, int32_t i) {
+    size_t l = s->length;
+    if (i < 0) {
+        i += l;
+    }
+    if (i >= l || i < 0) {
+        // XXX panic()
+        return NULL;
+    }
+    spy_Str *res = spy_StrAlloc(1);
+    char *buf = (char*)res->utf8;
+    buf[0] = s->utf8[i];
+    return res;
+}

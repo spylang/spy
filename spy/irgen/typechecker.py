@@ -349,6 +349,25 @@ class TypeChecker:
     check_expr_Gt = check_expr_CompareOp
     check_expr_GtE = check_expr_CompareOp
 
+    def check_expr_GetItem(self, expr: spy.ast.GetItem, scope: SymTable) -> W_Type:
+        b = self.vm.builtins
+        w_vtype = self.check_expr(expr.value, scope)
+        w_itype = self.check_expr(expr.index, scope)
+        if w_vtype is b.w_str:
+            if w_itype is b.w_i32:
+                return b.w_str
+            else:
+                err = SPyTypeError('mismatched types')
+                got = w_itype.name
+                err.add('error', f'expected `i32`, got `{got}`', expr.index.loc)
+                err.add('note', f'this is a `str`', expr.value.loc)
+                raise err
+        else:
+            got = w_vtype.name
+            err = SPyTypeError(f'`{got}` does not support `[]`')
+            err.add('note', f'this is a `{got}`', expr.value.loc)
+            raise err
+
     def check_expr_Call(self, call: spy.ast.Call, scope: SymTable) -> W_Type:
         sym = self.lookup_Name_maybe(call.func, scope) # only used for error reporting
         w_functype = self.check_expr(call.func, scope)

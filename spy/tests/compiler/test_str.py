@@ -48,3 +48,13 @@ class TestStr(CompilerTest):
             return a + ' world'
         """)
         assert mod.foo('hello') == 'hello world'
+
+    def test_getitem(self):
+        mod = self.compile(
+        """
+        def foo(a: str, i: i32) -> str:
+            return a[i]
+        """)
+        assert mod.foo('ABCDE', 0) == 'A'
+        assert mod.foo('ABCDE', 1) == 'B'
+        assert mod.foo('ABCDE', -1) == 'E'

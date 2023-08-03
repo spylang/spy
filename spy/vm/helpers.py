@@ -21,3 +21,9 @@ def StrMul(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
     assert isinstance(w_b, W_i32)
     ptr_c = vm.ll.call('spy_StrMul', w_a.ptr, w_b.value)
     return W_str.from_ptr(vm, ptr_c)
+
+def StrGetItem(vm: 'SPyVM', w_s: W_Object, w_i: W_Object) -> W_str:
+    assert isinstance(w_s, W_str)
+    assert isinstance(w_i, W_i32)
+    ptr_c = vm.ll.call('spy_StrGetItem', w_s.ptr, w_i.value)
+    return W_str.from_ptr(vm, ptr_c)

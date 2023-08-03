@@ -500,3 +500,28 @@ class TestBasic(CompilerTest):
                 'implicit conversion to `bool` is not implemented yet'
             ]
         )
+
+    @no_backend
+    def test_getitem_errors(self):
+        self.expect_errors(
+            f"""
+            def foo(a: str, i: bool) -> void:
+                a[i]
+            """,
+            errors = [
+                'mismatched types',
+                'expected `i32`, got `bool`',
+                'this is a `str`',
+            ]
+        )
+        #
+        self.expect_errors(
+            f"""
+            def foo(a: bool, i: i32) -> void:
+                a[i]
+            """,
+            errors = [
+                '`bool` does not support `[]`',
+                'this is a `bool`',
+            ]
+        )

@@ -281,6 +281,17 @@ class CodeGen:
     do_eval_Gt = do_eval_CompareOp
     do_eval_GtE = do_eval_CompareOp
 
+    def do_eval_GetItem(self, expr: spy.ast.GetItem) -> None:
+        b = self.vm.builtins
+        w_vtype = self.t.get_expr_type(expr.value)
+        w_itype = self.t.get_expr_type(expr.index)
+        if w_vtype is b.w_str and w_itype is b.w_i32:
+            self.eval_expr(expr.value)
+            self.eval_expr(expr.index)
+            self.emit('call_helper', 'StrGetItem', 2)
+            return
+        raise NotImplementedError(f'{w_vtype.name}[w_itype.name]')
+
     def do_eval_Call(self, call: spy.ast.Call) -> None:
         if not self.is_const(call.func):
             # XXX there is no test for this at the moment because we don't
