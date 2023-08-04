@@ -1,15 +1,13 @@
 from typing import Any, Optional
 import fixedint
-from spy.llwasm import LLWasmModule, LLWasmInstance
+from spy.llwasm import LLWasmInstance
+from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_FunctionType, W_Function
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
-
-from spy.libspy import LIBSPY_WASM
-LIBSPY = LLWasmModule(LIBSPY_WASM)
 
 class Builtins:
     w_object: W_Type
@@ -35,11 +33,11 @@ class SPyVM:
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
     builtins: Builtins
-    ll: LLWasmInstance
+    #ll: ...
 
     def __init__(self) -> None:
         self.init_builtins()
-        self.ll = LIBSPY.instantiate()
+        self.ll = LLWasmInstance(libspy.MOD)
 
     def init_builtins(self) -> None:
         self.builtins = Builtins()

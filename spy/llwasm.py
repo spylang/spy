@@ -45,48 +45,37 @@ class LLWasmModule:
     def __repr__(self) -> str:
         return '<LLWasmModule {self.f}>'
 
-    def resolve_imports(self, store: wt.Store,
-                        imports_dict: Optional[dict[str, Any]]) -> Any:
-        if imports_dict is None:
-            imports_dict = {}
-        imports_list = []
-        for expected in self.mod.imports:
-            assert expected.name is not None
-            pyfunc = imports_dict.get(expected.module, {}).get(expected.name)
-            if pyfunc is None:
-                raise KeyError(f'Missing import: {expected.name}')
-            functype = FuncType_from_pyfunc(pyfunc)
-            wasmfunc = wt.Func(store, functype, pyfunc)
-            imports_list.append(wasmfunc)
-        return imports_list
-
-    def instantiate(self,
-                    imports_dict: Optional[dict[str, Any]]=None
-                    ) -> 'LLWasmInstance':
-        store = wt.Store(ENGINE)
-        imports_list = self.resolve_imports(store, imports_dict)
-        inst = wt.Instance(store, self.mod, imports_list)
-        return LLWasmInstance(self.f, store, inst)
-
-
 class LLWasmInstance:
     f: py.path.local
     store: wt.Store
     instance: wt.Instance
     mem: 'LLWasmMemory'
 
-    def __init__(self, f: py.path.local, store: wt.Store,
-                 instance: wt.Instance) -> None:
-        self.f = f
-        self.store = store
-        self.instance = instance
-        memory = self.instance.exports(store).get('memory')
+    def __init__(self, llmod: LLWasmModule) -> None:
+        self.llmod = llmod
+        self.store = wt.Store(ENGINE)
+        imports = self.resolve_imports()
+        self.instance = wt.Instance(self.store, self.llmod.mod, imports)
+        memory = self.instance.exports(self.store).get('memory')
         assert isinstance(memory, wt.Memory)
-        self.mem = LLWasmMemory(store, memory)
+        self.mem = LLWasmMemory(self.store, memory)
 
-    @staticmethod
-    def from_file(f: py.path.local) -> 'LLWasmInstance':
-        return LLWasmModule(f).instantiate()
+    @classmethod
+    def from_file(cls, f: py.path.local) -> 'LLWasmInstance':
+        llmod = LLWasmModule(f)
+        return cls(llmod)
+
+    def resolve_imports(self) -> Any:
+        imports = []
+        for imp in self.llmod.mod.imports:
+            methname = f'{imp.module}_{imp.name}'
+            meth = getattr(self, methname, None)
+            if meth is None:
+                raise NotImplementedError(f'Missing WASM import: {methname}')
+            functype = FuncType_from_pyfunc(meth)
+            wasmfunc = wt.Func(self.store, functype, meth)
+            imports.append(wasmfunc)
+        return imports
 
     def get_export(self, name: str) -> Any:
         exports = self.instance.exports(self.store)

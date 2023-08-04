@@ -78,9 +78,9 @@ class TestLLWasm(CTest):
         }
         """
         test_wasm = self.compile(src, exports=['inc'])
-        ll_factory = LLWasmModule(test_wasm)
-        ll1 = ll_factory.instantiate()
-        ll2 = ll_factory.instantiate()
+        llmod = LLWasmModule(test_wasm)
+        ll1 = LLWasmInstance(llmod)
+        ll2 = LLWasmInstance(llmod)
         assert ll1.call('inc') == 101
         assert ll1.call('inc') == 102
         assert ll1.call('inc') == 103
@@ -103,18 +103,21 @@ class TestLLWasm(CTest):
         }
         """
         test_wasm = self.compile(src, exports=['compute'])
-        ll_factory = LLWasmModule(test_wasm)
+        llmod = LLWasmModule(test_wasm)
 
-        log = []
-        def record(x: int) -> None:
-            log.append(x)
-        def add(x: int, y: int) -> int:
-            return x + y
+        class MyLL(LLWasmInstance):
+            log: list[int]
 
-        imports = {
-            'env': {'add': add,
-                    'record': record}
-        }
-        ll = ll_factory.instantiate(imports)
+            def __init__(self, *args, **kwargs) -> None:
+                super().__init__(*args, **kwargs)
+                self.log = []
+
+            def env_add(self, x: int, y: int) -> int:
+                return x + y
+
+            def env_record(self, x: int) -> None:
+                self.log.append(x)
+
+        ll = MyLL(llmod)
         assert ll.call('compute') == 30
-        assert log == [100, 200]
+        assert ll.log == [100, 200]
