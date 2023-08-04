@@ -1,6 +1,7 @@
 import struct
 import pytest
-from spy.llwasm import LLWasmInstance
+from spy.llwasm import LLWasmInstance, LLWasmModule
+from spy.libspy import LibSPyHost
 from spy.tests.support import CTest
 
 def mk_spy_Str(utf8: bytes) -> bytes:
@@ -64,15 +65,18 @@ class TestLibSPy(CTest):
         ptr_HW = ll.call('spy_StrAdd', ptr_H, ptr_W)
         assert ll.mem.read(ptr_HW, 15) == mk_spy_Str(b'hello world')
 
-    def xtest_debug_log(self):
+    def test_debug_log(self):
         src = r"""
         #include <spy.h>
 
         void log_hello(void) {
-            debug_log("hello");
+            spy_debug_log("hello");
+            spy_debug_log("world");
         }
         """
         test_wasm = self.compile(src, exports=['log_hello'])
-        ll = LLWasmInstance.from_file(test_wasm)
-        ptr_H = ll.read_global('H')
-        assert ll.mem.read(ptr_H, 10) == mk_spy_Str(b'hello ')
+        llmod = LLWasmModule(test_wasm)
+        libspy = LibSPyHost()
+        ll = LLWasmInstance(llmod, [libspy])
+        ll.call('log_hello')
+        assert libspy.log == ['hello', 'world']

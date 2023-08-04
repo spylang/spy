@@ -19,21 +19,6 @@ import struct
 LLWasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
 ENGINE = wt.Engine()
 
-def FuncType_from_pyfunc(pyfunc: Any) -> wt.FuncType:
-    py2w = {
-        int: wt.ValType.i32(),
-    }
-    annotations = pyfunc.__annotations__.copy()
-    #
-    py_restype = annotations.pop('return')
-    if py_restype is None:
-        restypes = []
-    else:
-        restypes = [py2w[py_restype]]
-    #
-    args = [py2w[pytype] for pytype in annotations.values()]
-    return wt.FuncType(args, restypes)
-
 class LLWasmModule:
     f: py.path.local
     mod: wt.Module
@@ -45,37 +30,78 @@ class LLWasmModule:
     def __repr__(self) -> str:
         return '<LLWasmModule {self.f}>'
 
+
+class HostModule:
+    """
+    Base class for host modules.
+
+    Each host module can provide one or more WASM import, used by link().
+    """
+    ll: 'LLWasmInstance' # this attribute is set by LLWasmInstance.__init__
+
+
+def link(store: wt.Store, llmod: LLWasmModule, hostmods: list[HostModule]) -> list[wt.Func]:
+    """
+    Perform the linking between a given llmod and the given HostModules.
+
+    All the WASM imports expected by llmod are searched inside the
+    HostModules. Return a list of imports which can be used to instantiate a
+    wt.Instance.
+    """
+    def find_meth(imp: Any) -> Any:
+        methname = f'{imp.module}_{imp.name}'
+        for hostmod in hostmods:
+            meth = getattr(hostmod, methname, None)
+            if meth is not None:
+                return meth
+        raise NotImplementedError(f'Missing WASM import: {methname}')
+
+    py2w = {
+        int: wt.ValType.i32(),
+    }
+
+    def FuncType_from_pyfunc(pyfunc: Any) -> wt.FuncType:
+        annotations = pyfunc.__annotations__.copy()
+        py_restype = annotations.pop('return')
+        if py_restype is None:
+            restypes = []
+        else:
+            restypes = [py2w[py_restype]]
+        args = [py2w[pytype] for pytype in annotations.values()]
+        return wt.FuncType(args, restypes)
+
+    def get_wasmfunc(imp: Any) -> wt.Func:
+        meth = find_meth(imp)
+        functype = FuncType_from_pyfunc(meth)
+        wasmfunc = wt.Func(store, functype, meth)
+        return wasmfunc
+
+    imports = [get_wasmfunc(imp) for imp in llmod.mod.imports]
+    return imports
+
+
 class LLWasmInstance:
     f: py.path.local
     store: wt.Store
     instance: wt.Instance
     mem: 'LLWasmMemory'
 
-    def __init__(self, llmod: LLWasmModule) -> None:
+    def __init__(self, llmod: LLWasmModule,
+                 hostmods: list[HostModule]=[]) -> None:
         self.llmod = llmod
         self.store = wt.Store(ENGINE)
-        imports = self.resolve_imports()
+        imports = link(self.store, llmod, hostmods)
         self.instance = wt.Instance(self.store, self.llmod.mod, imports)
         memory = self.instance.exports(self.store).get('memory')
         assert isinstance(memory, wt.Memory)
         self.mem = LLWasmMemory(self.store, memory)
+        for hostmod in hostmods:
+            hostmod.ll = self
 
     @classmethod
     def from_file(cls, f: py.path.local) -> 'LLWasmInstance':
         llmod = LLWasmModule(f)
         return cls(llmod)
-
-    def resolve_imports(self) -> Any:
-        imports = []
-        for imp in self.llmod.mod.imports:
-            methname = f'{imp.module}_{imp.name}'
-            meth = getattr(self, methname, None)
-            if meth is None:
-                raise NotImplementedError(f'Missing WASM import: {methname}')
-            functype = FuncType_from_pyfunc(meth)
-            wasmfunc = wt.Func(self.store, functype, meth)
-            imports.append(wasmfunc)
-        return imports
 
     def get_export(self, name: str) -> Any:
         exports = self.instance.exports(self.store)
@@ -162,6 +188,23 @@ class LLWasmMemory:
     def read_i16(self, addr: int) -> int:
         rawbytes = self.read(addr, 2)
         return struct.unpack('h', rawbytes)[0]
+
+    def read_i8(self, addr: int) -> int:
+        rawbytes = self.read(addr, 1)
+        return rawbytes[0]
+
+    def read_cstr(self, addr: int) -> bytearray:
+        """
+        Read the NULL-terminated string starting at addr.
+
+        WARNING: this is inefficient because it creates a temporary bytearray
+        for every char To be faster we probably need to bypass wasmtime and
+        access directly the ctypes-based view of the memory.
+        """
+        n = 0
+        while self.read_i8(addr + n) != 0:
+            n += 1
+        return self.read(addr, n)
 
     def write(self, addr: int, b: bytes) -> None:
         self.mem.write(self.store, b, addr)

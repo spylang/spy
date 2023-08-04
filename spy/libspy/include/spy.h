@@ -10,6 +10,7 @@ typedef __SIZE_TYPE__ size_t;
     __attribute__((export_name(#name))) \
     name
 
+
 static inline void *memcpy(void *dest, const void *src, size_t n) {
     return __builtin_memcpy(dest, src, n);
 }
@@ -24,5 +25,6 @@ void free(void *p);
 
 #include "spy/str.h"
 #include "spy/gc.h"
+#include "spy/debug.h"
 
 #endif /* SPY_H */

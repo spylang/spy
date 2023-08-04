@@ -37,7 +37,7 @@ class SPyVM:
 
     def __init__(self) -> None:
         self.init_builtins()
-        self.ll = LLWasmInstance(libspy.MOD)
+        self.ll = LLWasmInstance(libspy.LLMOD)
 
     def init_builtins(self) -> None:
         self.builtins = Builtins()

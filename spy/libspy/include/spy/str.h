@@ -2,6 +2,7 @@
 #define SPY_STR_H
 
 #include <stddef.h>
+#include "spy.h"
 
 typedef struct {
     size_t length;

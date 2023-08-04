@@ -21,6 +21,7 @@ class ZigToolchain:
 	    '--target=wasm32-freestanding',
 	    '-nostdlib',
             '-shared',
+#            '-Werror',
 	    '-g',
 	    '-O3',
 	    '-o', str(file_wasm),

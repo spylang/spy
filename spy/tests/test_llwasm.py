@@ -1,5 +1,5 @@
 import pytest
-from spy.llwasm import LLWasmModule, LLWasmInstance
+from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
 from spy.tests.support import CTest
 
 class TestLLWasm(CTest):
@@ -89,35 +89,41 @@ class TestLLWasm(CTest):
         assert ll2.call('inc') == 102
         assert ll2.call('inc') == 103
 
-    def test_imports(self):
+    def test_HostModule(self):
         src = r"""
         #include <stdint.h>
         // WASM imports
         int32_t add(int32_t x, int32_t y);
+        int32_t square(int32_t x);
         void record(int32_t x);
 
         int32_t compute(void) {
             record(100);
             record(200);
-            return add(10, 20);
+            return square(add(10, 20));
         }
         """
         test_wasm = self.compile(src, exports=['compute'])
         llmod = LLWasmModule(test_wasm)
 
-        class MyLL(LLWasmInstance):
+        class Math(HostModule):
+            def env_add(self, x: int, y: int) -> int:
+                return x + y
+
+            def env_square(self, x: int) -> int:
+                return x * x
+
+        class Recorder(HostModule):
             log: list[int]
 
             def __init__(self, *args, **kwargs) -> None:
-                super().__init__(*args, **kwargs)
                 self.log = []
-
-            def env_add(self, x: int, y: int) -> int:
-                return x + y
 
             def env_record(self, x: int) -> None:
                 self.log.append(x)
 
-        ll = MyLL(llmod)
-        assert ll.call('compute') == 30
-        assert ll.log == [100, 200]
+        math = Math()
+        recorder = Recorder()
+        ll = LLWasmInstance(llmod, [math, recorder])
+        assert ll.call('compute') == 900
+        assert recorder.log == [100, 200]
