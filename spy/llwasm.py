@@ -21,12 +21,18 @@ ENGINE = wt.Engine()
 
 def FuncType_from_pyfunc(pyfunc: Any) -> wt.FuncType:
     py2w = {
-        int: wt.ValType.i32()
+        int: wt.ValType.i32(),
     }
     annotations = pyfunc.__annotations__.copy()
-    restype = py2w[annotations.pop('return')]
+    #
+    py_restype = annotations.pop('return')
+    if py_restype is None:
+        restypes = []
+    else:
+        restypes = [py2w[py_restype]]
+    #
     args = [py2w[pytype] for pytype in annotations.values()]
-    return wt.FuncType(args, [restype])
+    return wt.FuncType(args, restypes)
 
 class LLWasmModule:
     f: py.path.local
@@ -39,24 +45,27 @@ class LLWasmModule:
     def __repr__(self) -> str:
         return '<LLWasmModule {self.f}>'
 
-    def resolve_imports(self, store: wt.Store, given: Optional[dict[str, Any]]) -> Any:
-        if given is None:
-            given = {}
-        imports = []
+    def resolve_imports(self, store: wt.Store,
+                        imports_dict: Optional[dict[str, Any]]) -> Any:
+        if imports_dict is None:
+            imports_dict = {}
+        imports_list = []
         for expected in self.mod.imports:
             assert expected.name is not None
-            pyfunc = given.get(expected.name)
+            pyfunc = imports_dict.get(expected.module, {}).get(expected.name)
             if pyfunc is None:
                 raise KeyError(f'Missing import: {expected.name}')
             functype = FuncType_from_pyfunc(pyfunc)
             wasmfunc = wt.Func(store, functype, pyfunc)
-            imports.append(wasmfunc)
-        return imports
+            imports_list.append(wasmfunc)
+        return imports_list
 
-    def instantiate(self, imports: Optional[dict[str, Any]]=None) -> 'LLWasmInstance':
+    def instantiate(self,
+                    imports_dict: Optional[dict[str, Any]]=None
+                    ) -> 'LLWasmInstance':
         store = wt.Store(ENGINE)
-        import_list = self.resolve_imports(store, imports)
-        inst = wt.Instance(store, self.mod, import_list)
+        imports_list = self.resolve_imports(store, imports_dict)
+        inst = wt.Instance(store, self.mod, imports_list)
         return LLWasmInstance(self.f, store, inst)
 
 
