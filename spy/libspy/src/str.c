@@ -39,7 +39,7 @@ spy_StrGetItem(spy_Str *s, int32_t i) {
         i += l;
     }
     if (i >= l || i < 0) {
-        // XXX panic()
+        spy_panic("string index out of bound");
         return NULL;
     }
     spy_Str *res = spy_StrAlloc(1);

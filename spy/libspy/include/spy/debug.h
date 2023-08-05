@@ -3,7 +3,15 @@
 
 #include "spy.h"
 
-// this is a WASM import, must be provided by the host
+/***** WASM imports, must be provided by the host *****/
 void spy_debug_log(const char *s);
+void spy_debug_set_panic_message(const char *s);
+/***** end of WASM imports *****/
+
+static void inline spy_panic(const char *s) {
+    spy_debug_log(s);
+    spy_debug_set_panic_message(s);
+    __builtin_trap();
+}
 
 #endif /* SPY_DEBUG_H */

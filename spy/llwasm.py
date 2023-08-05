@@ -99,9 +99,10 @@ class LLWasmInstance:
             hostmod.ll = self
 
     @classmethod
-    def from_file(cls, f: py.path.local) -> 'LLWasmInstance':
+    def from_file(cls, f: py.path.local,
+                  hostmods: list[HostModule]=[]) -> 'LLWasmInstance':
         llmod = LLWasmModule(f)
-        return cls(llmod)
+        return cls(llmod, hostmods)
 
     def get_export(self, name: str) -> Any:
         exports = self.instance.exports(self.store)

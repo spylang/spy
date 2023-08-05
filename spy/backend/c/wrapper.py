@@ -2,7 +2,8 @@ import struct
 from typing import Any, Optional
 import py.path
 import wasmtime
-from spy.llwasm import LLWasmInstance, LLWasmType
+from spy.llwasm import LLWasmType
+from spy.libspy import LLSPyInstance
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.module import W_Module
@@ -13,12 +14,12 @@ from spy.vm.vm import SPyVM
 class WasmModuleWrapper:
     vm: SPyVM
     w_mod: W_Module
-    ll: LLWasmInstance
+    ll: LLSPyInstance
 
     def __init__(self, vm: SPyVM, w_mod: W_Module, f: py.path.local) -> None:
         self.vm = vm
         self.w_mod = w_mod
-        self.ll = LLWasmInstance.from_file(f)
+        self.ll = LLSPyInstance.from_file(f)
 
     def __repr__(self) -> str:
         return f"<WasmModuleWrapper 'self.ll.name'>"
@@ -51,11 +52,11 @@ class WasmModuleWrapper:
 
 class WasmFuncWrapper:
     vm: SPyVM
-    ll: LLWasmInstance
+    ll: LLSPyInstance
     name: str
     w_functype: W_FunctionType
 
-    def __init__(self, vm: SPyVM, ll: LLWasmInstance, name:str,
+    def __init__(self, vm: SPyVM, ll: LLSPyInstance, name:str,
                  w_functype: W_FunctionType) -> None:
         self.vm = vm
         self.ll = ll

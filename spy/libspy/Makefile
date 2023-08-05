@@ -11,7 +11,12 @@ LDFLAGS=--no-entry --import-memory
 OBJECTS=vendored/walloc/walloc.o src/str.o
 
 libspy.wasm: libspy.a
-	zig wasm-ld --no-entry --whole-archive libspy.a -o libspy.wasm
+	zig wasm-ld \
+		--no-entry	 \
+		--import-undefined \
+		--whole-archive \
+		libspy.a \
+		-o libspy.wasm
 
 libspy.a: $(OBJECTS)
 	zig ar rcs libspy.a $(OBJECTS)

@@ -1,7 +1,7 @@
 import struct
 import pytest
-from spy.llwasm import LLWasmInstance, LLWasmModule
-from spy.libspy import LibSPyHost
+from spy.llwasm import LLWasmModule
+from spy.libspy import LLSPyInstance, SPyPanicError
 from spy.tests.support import CTest
 
 def mk_spy_Str(utf8: bytes) -> bytes:
@@ -33,7 +33,7 @@ class TestLibSPy(CTest):
         }
         """
         test_wasm = self.compile(src)
-        ll = LLWasmInstance.from_file(test_wasm)
+        ll = LLSPyInstance.from_file(test_wasm)
         p1 = ll.call('make_str', ord('A'), ord('B'), ord('C'))
         p2 = ll.call('make_str', ord('X'), ord('Y'), ord('Z'))
         assert p1 != p2
@@ -55,7 +55,7 @@ class TestLibSPy(CTest):
         }
         """
         test_wasm = self.compile(src, exports=['H', 'mk_W'])
-        ll = LLWasmInstance.from_file(test_wasm)
+        ll = LLSPyInstance.from_file(test_wasm)
         ptr_H = ll.read_global('H')
         assert ll.mem.read(ptr_H, 10) == mk_spy_Str(b'hello ')
         #
@@ -76,7 +76,19 @@ class TestLibSPy(CTest):
         """
         test_wasm = self.compile(src, exports=['log_hello'])
         llmod = LLWasmModule(test_wasm)
-        libspy = LibSPyHost()
-        ll = LLWasmInstance(llmod, [libspy])
+        ll = LLSPyInstance(llmod)
         ll.call('log_hello')
-        assert libspy.log == ['hello', 'world']
+        assert ll.libspy.log == ['hello', 'world']
+
+    def test_panic(self):
+        src = r"""
+        #include <spy.h>
+
+        void crash(void) {
+            spy_panic("don't panic!");
+        }
+        """
+        test_wasm = self.compile(src, exports=['crash', 'spy_panic_message'])
+        ll = LLSPyInstance.from_file(test_wasm)
+        with pytest.raises(SPyPanicError, match="don't panic!"):
+            ll.call('crash')

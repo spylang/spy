@@ -1,6 +1,5 @@
 from typing import Any, Optional
 import fixedint
-from spy.llwasm import LLWasmInstance
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
@@ -37,7 +36,7 @@ class SPyVM:
 
     def __init__(self) -> None:
         self.init_builtins()
-        self.ll = LLWasmInstance(libspy.LLMOD)
+        self.ll = libspy.LLSPyInstance(libspy.LLMOD)
 
     def init_builtins(self) -> None:
         self.builtins = Builtins()
