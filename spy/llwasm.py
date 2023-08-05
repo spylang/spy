@@ -12,6 +12,7 @@ It is called 'LL' for two reasons:
 """
 
 from typing import Any, Optional, Literal
+from typing_extensions import Self
 import py.path
 import wasmtime as wt
 import struct
@@ -100,7 +101,7 @@ class LLWasmInstance:
 
     @classmethod
     def from_file(cls, f: py.path.local,
-                  hostmods: list[HostModule]=[]) -> 'LLWasmInstance':
+                  hostmods: list[HostModule]=[]) -> Self:
         llmod = LLWasmModule(f)
         return cls(llmod, hostmods)
 
