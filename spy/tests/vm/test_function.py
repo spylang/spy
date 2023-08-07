@@ -1,5 +1,5 @@
 import pytest
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FunctionType, W_Function, FuncParam
 from spy.vm.varstorage import VarStorage
@@ -10,14 +10,13 @@ class TestFunction:
 
     def test_FunctionType_repr(self):
         vm = SPyVM()
-        w_i32 = vm.builtins.w_i32
-        w_functype = W_FunctionType.make(x=w_i32, y=w_i32, w_restype=w_i32)
+        w_functype = W_FunctionType.make(x=B.w_i32, y=B.w_i32, w_restype=B.w_i32)
         assert w_functype.name == 'def(x: i32, y: i32) -> i32'
         assert repr(w_functype) == "<spy type 'def(x: i32, y: i32) -> i32'>"
 
     def test_simple_function(self):
         vm = SPyVM()
-        w_functype = W_FunctionType([], vm.builtins.w_i32)
+        w_functype = W_FunctionType([], B.w_i32)
         #
         w_code = W_CodeObject('simple', w_functype=w_functype)
         w_code.body = [
@@ -38,7 +37,7 @@ class TestFunction:
         w_a = vm.wrap(10)
         w_mod.add('a', w_a)
         #
-        w_functype = W_FunctionType([], vm.builtins.w_i32)
+        w_functype = W_FunctionType([], B.w_i32)
         w_code = W_CodeObject('fn', w_functype=w_functype)
         w_code.body = [
             OpCode('load_global', 'a'),
@@ -55,12 +54,11 @@ class TestFunction:
 
     def test_call_function_with_arguments(self):
         vm = SPyVM()
-        w_i32 = vm.builtins.w_i32
         w_mod = W_Module(vm, 'mymod')
-        w_functype = W_FunctionType.make(a=w_i32, b=w_i32, w_restype=w_i32)
+        w_functype = W_FunctionType.make(a=B.w_i32, b=B.w_i32, w_restype=B.w_i32)
         w_code = W_CodeObject('fn', w_functype=w_functype)
-        w_code.declare_local('a', w_i32)
-        w_code.declare_local('b', w_i32)
+        w_code.declare_local('a', B.w_i32)
+        w_code.declare_local('b', B.w_i32)
         w_code.body = [
             OpCode('load_local', 'a'),
             OpCode('load_local', 'b'),

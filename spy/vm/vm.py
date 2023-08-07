@@ -9,20 +9,20 @@ from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
 
 class Builtins:
-    w_object: W_Type
-    w_type: W_Type
-    w_i32: W_Type
-    w_bool: W_Type
-    w_void: W_Type
-    w_str: W_Type
-    w_None: W_void
-    w_True: W_bool
-    w_False: W_bool
+    w_object = W_Object._w
+    w_type = W_Type._w
+    w_i32 = W_i32._w
+    w_bool = W_bool._w
+    w_void = W_void._w
+    w_str = W_str._w
+    w_None = W_void._w_singleton
+    w_True = W_bool._w_singleton_True
+    w_False = W_bool._w_singleton_False
 
-    def lookup(self, name: str) -> Optional[W_Object]:
+    @classmethod
+    def lookup(cls, name: str) -> Optional[W_Object]:
         attr = 'w_' + name
-        return getattr(self, attr, None)
-
+        return getattr(cls, attr, None)
 
 class SPyVM:
     """
@@ -31,24 +31,10 @@ class SPyVM:
     Each instance of the VM contains an instance of libspy.wasm: all the
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
-    builtins: Builtins
-    #ll: ...
+    ll: libspy.LLSPyInstance
 
     def __init__(self) -> None:
-        self.init_builtins()
         self.ll = libspy.LLSPyInstance(libspy.LLMOD)
-
-    def init_builtins(self) -> None:
-        self.builtins = Builtins()
-        self.builtins.w_object = W_Object._w
-        self.builtins.w_type = W_Type._w
-        self.builtins.w_i32 = W_i32._w
-        self.builtins.w_bool = W_bool._w
-        self.builtins.w_void = W_void._w
-        self.builtins.w_str = W_str._w
-        self.builtins.w_None = W_void._w_singleton
-        self.builtins.w_True = W_bool._w_singleton_True
-        self.builtins.w_False = W_bool._w_singleton_False
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
@@ -58,17 +44,17 @@ class SPyVM:
         assert isinstance(w_super, W_Type)
         assert isinstance(w_sub, W_Type)
         w_class = w_sub
-        while w_class is not self.builtins.w_None:
+        while w_class is not Builtins.w_None:
             if w_class is w_super:
                 return True
             w_class = w_class.w_base  # type:ignore
         return False
 
     def is_True(self, w_obj: W_bool) -> bool:
-        return w_obj is self.builtins.w_True
+        return w_obj is Builtins.w_True
 
     def is_False(self, w_obj: W_bool) -> bool:
-        return w_obj is self.builtins.w_False
+        return w_obj is Builtins.w_False
 
     def wrap(self, value: Any) -> W_Object:
         """
@@ -77,14 +63,14 @@ class SPyVM:
         """
         T = type(value)
         if value is None:
-            return self.builtins.w_None
+            return Builtins.w_None
         elif T in (int, fixedint.Int32):
             return W_i32(value)
         elif T is bool:
             if value:
-                return self.builtins.w_True
+                return Builtins.w_True
             else:
-                return self.builtins.w_False
+                return Builtins.w_False
         elif T is str:
             return W_str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):

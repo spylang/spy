@@ -1,7 +1,7 @@
 import pytest
 from typing import Optional
 from spy.errors import SPyRuntimeError
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.frame import Frame
 from spy.vm.codeobject import OpCode, W_CodeObject
@@ -22,7 +22,7 @@ class TestFrame:
     def test_simple_eval(self):
         vm = SPyVM()
         w_42 = vm.wrap(42)
-        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_42),
@@ -36,7 +36,7 @@ class TestFrame:
         vm = SPyVM()
         w_100 = vm.wrap(100)
         w_1 = vm.wrap(1)
-        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_100),
@@ -53,7 +53,7 @@ class TestFrame:
         vm = SPyVM()
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
-        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_50),
@@ -68,9 +68,9 @@ class TestFrame:
 
     def test_uninitialized_locals(self):
         vm = SPyVM()
-        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
-        code.declare_local('a', vm.builtins.w_i32)
+        code.declare_local('a', B.w_i32)
         code.body = [
             OpCode('load_local', 'a'),
             OpCode('return'),
@@ -83,9 +83,9 @@ class TestFrame:
     def test_locals(self):
         vm = SPyVM()
         w_100 = vm.wrap(100)
-        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
-        code.declare_local('a', vm.builtins.w_i32)
+        code.declare_local('a', B.w_i32)
         code.body = [
             OpCode('load_const', w_100),
             OpCode('store_local', 'a'),
@@ -98,7 +98,7 @@ class TestFrame:
 
     def test_globals(self):
         vm = SPyVM()
-        w_functype = W_FunctionType.make(w_restype=vm.builtins.w_i32)
+        w_functype = W_FunctionType.make(w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
         code.body = [
             OpCode('load_global', 'a'),
@@ -110,8 +110,8 @@ class TestFrame:
         ]
 
         globals_w_types = {
-            'a': vm.builtins.w_i32,
-            'b': vm.builtins.w_i32,
+            'a': B.w_i32,
+            'b': B.w_i32,
         }
         myglobs = VarStorage(vm, 'globals', globals_w_types)
         myglobs.set('a', vm.wrap(100))
@@ -123,11 +123,10 @@ class TestFrame:
 
     def test_params(self):
         vm = SPyVM()
-        w_i32 = vm.builtins.w_i32
-        w_functype = W_FunctionType.make(a=w_i32, b=w_i32, w_restype=w_i32)
+        w_functype = W_FunctionType.make(a=B.w_i32, b=B.w_i32, w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
-        code.declare_local('a', w_i32)
-        code.declare_local('b', w_i32)
+        code.declare_local('a', B.w_i32)
+        code.declare_local('b', B.w_i32)
         code.body = [
             OpCode('load_local', 'a'),
             OpCode('load_local', 'b'),
@@ -144,11 +143,9 @@ class TestFrame:
 
     def test_br_if_not(self):
         vm = SPyVM()
-        w_bool = vm.builtins.w_bool
-        w_i32 = vm.builtins.w_i32
-        w_functype = W_FunctionType.make(a=w_bool, w_restype=w_i32)
+        w_functype = W_FunctionType.make(a=B.w_bool, w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
-        code.declare_local('a', w_bool)
+        code.declare_local('a', B.w_bool)
         code.body = [
             OpCode('load_local', 'a'),           # 0
             OpCode('br_if_not', 4),              # 1
@@ -158,11 +155,11 @@ class TestFrame:
             OpCode('return'),                    # 5
         ]
         frame1 = make_Frame(vm, code)
-        w_result = frame1.run([vm.builtins.w_True])
+        w_result = frame1.run([B.w_True])
         result = vm.unwrap(w_result)
         assert result == 100
         #
         frame2 = make_Frame(vm, code)
-        w_result = frame2.run([vm.builtins.w_False])
+        w_result = frame2.run([B.w_False])
         result = vm.unwrap(w_result)
         assert result == 200

@@ -1,5 +1,5 @@
 import pytest
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.module import W_Module
 
 class TestModule:
@@ -12,8 +12,8 @@ class TestModule:
         w_mod.add('a', w_a)
         w_mod.add('b', w_b)
         assert w_mod.content.types_w == {
-            'a': vm.builtins.w_i32,
-            'b': vm.builtins.w_i32,
+            'a': B.w_i32,
+            'b': B.w_i32,
         }
         assert w_mod.content.values_w == {
             'a': w_a,

@@ -4,7 +4,7 @@ import spy.ast
 from spy.location import Loc
 from spy.errors import SPyTypeError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FunctionType, FuncParam
 from spy.util import magic_dispatch
@@ -107,7 +107,7 @@ class TypeChecker:
             self.error('only simple types are supported for now',
                        'this expression is too complex', expr.loc)
 
-        w_type = self.vm.builtins.lookup(typename)
+        w_type = B.lookup(typename)
         if w_type is None:
             self.error(f'cannot find type `{typename}`',
                        'not found in this scope', expr.loc)
@@ -268,7 +268,7 @@ class TypeChecker:
                                      "because of return type")
 
     def _assert_bool(self, w_type: W_Type, loc: Loc) -> None:
-        if w_type is not self.vm.builtins.w_bool:
+        if w_type is not B.w_bool:
             err = SPyTypeError('mismatched types')
             err.add('error', f'expected `bool`, got `{w_type.name}`', loc)
             err.add('note', f'implicit conversion to `bool` is not implemented yet', loc)
@@ -308,7 +308,6 @@ class TypeChecker:
         return sym.w_type
 
     def check_expr_BinOp(self, expr: spy.ast.BinOp, scope: SymTable) -> W_Type:
-        b = self.vm.builtins
         w_ltype = self.check_expr(expr.left, scope)
         w_rtype = self.check_expr(expr.right, scope)
         if w_ltype == w_rtype:
@@ -316,8 +315,8 @@ class TypeChecker:
             # same as its arguments, but we need to tweak it when we have
             # e.g. floats and division
             return w_ltype
-        elif w_ltype is b.w_str and w_rtype is b.w_i32:
-            return b.w_str
+        elif w_ltype is B.w_str and w_rtype is B.w_i32:
+            return B.w_str
         else:
             l = w_ltype.name
             r = w_rtype.name
@@ -340,7 +339,7 @@ class TypeChecker:
             err.add('error', f'this is `{l}`', expr.left.loc)
             err.add('error', f'this is `{r}`', expr.right.loc)
             raise err
-        return self.vm.builtins.w_bool
+        return B.w_bool
 
     check_expr_Eq = check_expr_CompareOp
     check_expr_NotEq = check_expr_CompareOp
@@ -350,12 +349,11 @@ class TypeChecker:
     check_expr_GtE = check_expr_CompareOp
 
     def check_expr_GetItem(self, expr: spy.ast.GetItem, scope: SymTable) -> W_Type:
-        b = self.vm.builtins
         w_vtype = self.check_expr(expr.value, scope)
         w_itype = self.check_expr(expr.index, scope)
-        if w_vtype is b.w_str:
-            if w_itype is b.w_i32:
-                return b.w_str
+        if w_vtype is B.w_str:
+            if w_itype is B.w_i32:
+                return B.w_str
             else:
                 err = SPyTypeError('mismatched types')
                 got = w_itype.name

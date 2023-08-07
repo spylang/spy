@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Type
 from spy.vm.function import W_FunctionType
 
@@ -53,11 +53,10 @@ class Context:
     def __init__(self, vm: SPyVM) -> None:
         self.vm = vm
         self._d = {}
-        b = vm.builtins
-        self._d[b.w_void] = C_Type('void')
-        self._d[b.w_i32] = C_Type('int32_t')
-        self._d[b.w_bool] = C_Type('bool')
-        self._d[b.w_str] = C_Type('spy_Str *')
+        self._d[B.w_void] = C_Type('void')
+        self._d[B.w_i32] = C_Type('int32_t')
+        self._d[B.w_bool] = C_Type('bool')
+        self._d[B.w_str] = C_Type('spy_Str *')
 
     def w2c(self, w_type: W_Type) -> C_Type:
         if w_type in self._d:

@@ -2,7 +2,7 @@ import spy.ast
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
 from spy.errors import SPyCompileError
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FunctionType
@@ -44,8 +44,8 @@ class CodeGen:
         # if we arrive here, we have reached the end of the function. Let's
         # emit an implicit return (if the return type is void) or an abort (in
         # all other cases)
-        if self.w_code.w_functype.w_restype is self.vm.builtins.w_void:
-            self.emit('load_const', self.vm.builtins.w_None)
+        if self.w_code.w_functype.w_restype is B.w_void:
+            self.emit('load_const', B.w_None)
             self.emit('return')
         else:
             self.emit('abort', 'reached the end of the function without a `return`')
@@ -227,8 +227,8 @@ class CodeGen:
             assert False, 'XXX todo'
 
     def do_eval_BinOp(self, binop: spy.ast.BinOp) -> None:
-        w_i32 = self.vm.builtins.w_i32
-        w_str = self.vm.builtins.w_str
+        w_i32 = B.w_i32
+        w_str = B.w_str
         w_ltype = self.t.get_expr_type(binop.left)
         w_rtype = self.t.get_expr_type(binop.right)
         if w_ltype is w_i32 and w_rtype is w_i32:
@@ -258,7 +258,7 @@ class CodeGen:
     do_eval_Mul = do_eval_BinOp
 
     def do_eval_CompareOp(self, cmpop: spy.ast.CompareOp) -> None:
-        w_i32 = self.vm.builtins.w_i32
+        w_i32 = B.w_i32
         w_ltype = self.t.get_expr_type(cmpop.left)
         w_rtype = self.t.get_expr_type(cmpop.right)
         if w_ltype is w_i32 and w_rtype is w_i32:
@@ -282,10 +282,9 @@ class CodeGen:
     do_eval_GtE = do_eval_CompareOp
 
     def do_eval_GetItem(self, expr: spy.ast.GetItem) -> None:
-        b = self.vm.builtins
         w_vtype = self.t.get_expr_type(expr.value)
         w_itype = self.t.get_expr_type(expr.index)
-        if w_vtype is b.w_str and w_itype is b.w_i32:
+        if w_vtype is B.w_str and w_itype is B.w_i32:
             self.eval_expr(expr.value)
             self.eval_expr(expr.index)
             self.emit('call_helper', 'StrGetItem', 2)

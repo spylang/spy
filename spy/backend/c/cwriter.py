@@ -6,7 +6,7 @@ from spy.vm.str import W_str
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function, W_FunctionType
 from spy.vm.codeobject import OpCode
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm import helpers
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
@@ -64,10 +64,9 @@ class CModuleWriter:
         fw.emit()
 
     def emit_variable(self, name: str, w_obj: W_Object) -> None:
-        b = self.ctx.vm.builtins
         w_type = self.ctx.vm.dynamic_type(w_obj)
         c_type = self.ctx.w2c(w_type)
-        if w_type is b.w_i32:
+        if w_type is B.w_i32:
             intval = self.ctx.vm.unwrap(w_obj)
             self.out.wl(f'{c_type} {name} = {intval};')
         else:
@@ -185,18 +184,17 @@ class CFuncWriter:
 
     def emit_op_load_const(self, w_obj: W_Object) -> None:
         # XXX we need to share code with 'emit_variable'
-        b = self.ctx.vm.builtins
         w_type = self.ctx.vm.dynamic_type(w_obj)
         c_type = self.ctx.w2c(w_type)
-        if w_type is b.w_void:
+        if w_type is B.w_void:
             self.push(c_expr.Void())
-        elif w_type is b.w_i32:
+        elif w_type is B.w_i32:
             intval = self.ctx.vm.unwrap(w_obj)
             self.push(c_expr.Literal(str(intval)))
-        elif w_type is b.w_bool:
+        elif w_type is B.w_bool:
             boolval = self.ctx.vm.unwrap(w_obj)
             self.push(c_expr.Literal(str(boolval).lower()))
-        elif w_type is b.w_str:
+        elif w_type is B.w_str:
             assert isinstance(w_obj, W_str)
             self._emit_op_load_str(w_obj)
         else:
@@ -297,7 +295,7 @@ class CFuncWriter:
         w_restype = w_functype.w_restype
         c_restype = self.ctx.w2c(w_restype)
         #
-        if w_restype is self.ctx.vm.builtins.w_void:
+        if w_restype is B.w_void:
             self.out.wl(f'{funcname}({arglist});')
             self.push(c_expr.Void())
         else:

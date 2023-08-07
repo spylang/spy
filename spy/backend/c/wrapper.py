@@ -8,7 +8,7 @@ from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.module import W_Module
 from spy.vm.function import W_Function, W_FunctionType
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 
 
 class WasmModuleWrapper:
@@ -42,7 +42,7 @@ class WasmModuleWrapper:
     def read_global(self, name: str) -> Any:
         w_type = self.w_mod.content.types_w[name]
         t: LLWasmType
-        if w_type is self.vm.builtins.w_i32:
+        if w_type is B.w_i32:
             t = 'int32_t'
         else:
             assert False, f'Unknown type: {w_type}'
@@ -64,10 +64,9 @@ class WasmFuncWrapper:
         self.w_functype = w_functype
 
     def py2wasm(self, pyval: Any, w_type: W_Type) -> Any:
-        b = self.vm.builtins
-        if w_type is b.w_i32:
+        if w_type is B.w_i32:
             return pyval
-        elif w_type is b.w_str:
+        elif w_type is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
             return ll_spy_Str_new(self.ll, pyval)
         else:
@@ -89,15 +88,14 @@ class WasmFuncWrapper:
         wasm_args = self.from_py_args(py_args)
         res = self.ll.call(self.name, *wasm_args)
         w_type = self.w_functype.w_restype
-        b = self.vm.builtins
-        if w_type is b.w_void:
+        if w_type is B.w_void:
             assert res is None
             return None
-        elif w_type is b.w_i32:
+        elif w_type is B.w_i32:
             return res
-        elif w_type is b.w_bool:
+        elif w_type is B.w_bool:
             return bool(res)
-        elif w_type is b.w_str:
+        elif w_type is B.w_str:
             # res is a  spy_Str*
             addr = res
             length = self.ll.mem.read_i32(addr)

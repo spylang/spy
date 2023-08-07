@@ -1,6 +1,7 @@
 import pytest
 from spy.errors import SPyRuntimeAbort
 from spy.irgen.symtable import Symbol
+from spy.vm.vm import Builtins as B
 from spy.vm.function import W_FunctionType
 from spy.util import ANYTHING
 from spy.tests.support import CompilerTest, skip_backends, no_backend
@@ -14,8 +15,7 @@ class TestBasic(CompilerTest):
             return 42
         """)
         vm = self.vm
-        w_i32 = vm.builtins.w_i32
-        w_expected_functype = W_FunctionType([], w_i32)
+        w_expected_functype = W_FunctionType([], B.w_i32)
         #
         # typechecker tests
         t = self.compiler.t
@@ -26,18 +26,18 @@ class TestBasic(CompilerTest):
         }
         #
         funcdef = self.get_funcdef('foo')
-        w_expected_functype = W_FunctionType([], w_i32)
+        w_expected_functype = W_FunctionType([], B.w_i32)
         w_functype, scope = t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', 'var', w_i32, loc=ANYTHING, scope=scope)
+            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope)
         }
         #
         # codegen tests
         assert mod.foo() == 42
 
     @no_backend
-    def test_resolve_type_errors(self):
+    def test_resolve_type_errors(self, monkeypatch):
         self.expect_errors(
             """
             def foo() -> MyList[i32]:
@@ -56,15 +56,16 @@ class TestBasic(CompilerTest):
                 'cannot find type `aaa`'
             ])
 
-        self.vm.builtins.w_I_am_not_a_type = self.vm.wrap(42)  # type: ignore
-        self.expect_errors(
-            """
-            def foo() -> I_am_not_a_type:
-                return 42
-            """,
-            errors = [
-                'I_am_not_a_type is not a type'
-            ])
+        with monkeypatch.context() as m:
+            m.setattr(B, 'w_I_am_not_a_type', self.vm.wrap(42), raising=False)
+            self.expect_errors(
+                """
+                def foo() -> I_am_not_a_type:
+                    return 42
+                """,
+                errors = [
+                    'I_am_not_a_type is not a type'
+                ])
 
     @no_backend
     def test_wrong_return_type(self):
@@ -87,14 +88,12 @@ class TestBasic(CompilerTest):
             return x
         """)
         vm = self.vm
-        w_i32 = vm.builtins.w_i32
-        #
         # typechecker tests
         funcdef = self.get_funcdef('foo')
         w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
         assert scope.symbols == {
-            '@return': Symbol('@return', 'var', w_i32, loc=ANYTHING, scope=scope),
-            'x': Symbol('x', 'var', w_i32, loc=ANYTHING, scope=scope),
+            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope),
+            'x': Symbol('x', 'var', B.w_i32, loc=ANYTHING, scope=scope),
         }
         #
         # codegen tests
@@ -142,16 +141,14 @@ class TestBasic(CompilerTest):
             return x + 1
         """)
         vm = self.vm
-        w_i32 = vm.builtins.w_i32
-        #
         # typechecker tests
         funcdef = self.get_funcdef('inc')
-        w_expected_functype = W_FunctionType.make(x=w_i32, w_restype=w_i32)
+        w_expected_functype = W_FunctionType.make(x=B.w_i32, w_restype=B.w_i32)
         w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', 'var', w_i32, loc=ANYTHING, scope=scope),
-            'x': Symbol('x', 'var', w_i32, loc=ANYTHING, scope=scope),
+            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope),
+            'x': Symbol('x', 'var', B.w_i32, loc=ANYTHING, scope=scope),
         }
         #
         # codegen tests
