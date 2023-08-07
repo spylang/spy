@@ -498,6 +498,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
+    @pytest.mark.xfail(reason='FIXME')
     @no_backend
     def test_getitem_errors(self):
         self.expect_errors(

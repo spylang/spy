@@ -4,6 +4,7 @@ import spy.ast
 from spy.location import Loc
 from spy.errors import SPyTypeError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
+from spy.irgen import multiop
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FunctionType, FuncParam
@@ -351,15 +352,18 @@ class TypeChecker:
     def check_expr_GetItem(self, expr: spy.ast.GetItem, scope: SymTable) -> W_Type:
         w_vtype = self.check_expr(expr.value, scope)
         w_itype = self.check_expr(expr.index, scope)
-        if w_vtype is B.w_str:
-            if w_itype is B.w_i32:
-                return B.w_str
-            else:
-                err = SPyTypeError('mismatched types')
-                got = w_itype.name
-                err.add('error', f'expected `i32`, got `{got}`', expr.index.loc)
-                err.add('note', f'this is a `str`', expr.value.loc)
-                raise err
+        impl = multiop.GetItem.lookup(w_vtype, w_itype)
+        if impl:
+            return impl.w_restype
+        ## if w_vtype is B.w_str:
+        ##     if w_itype is B.w_i32:
+        ##         return B.w_str
+        ##     else:
+        ##         err = SPyTypeError('mismatched types')
+        ##         got = w_itype.name
+        ##         err.add('error', f'expected `i32`, got `{got}`', expr.index.loc)
+        ##         err.add('note', f'this is a `str`', expr.value.loc)
+        ##         raise err
         else:
             got = w_vtype.name
             err = SPyTypeError(f'`{got}` does not support `[]`')

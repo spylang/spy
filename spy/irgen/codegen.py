@@ -1,6 +1,7 @@
 import spy.ast
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
+from spy.irgen import multiop
 from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
@@ -281,15 +282,13 @@ class CodeGen:
     do_eval_Gt = do_eval_CompareOp
     do_eval_GtE = do_eval_CompareOp
 
-    def do_eval_GetItem(self, expr: spy.ast.GetItem) -> None:
-        w_vtype = self.t.get_expr_type(expr.value)
-        w_itype = self.t.get_expr_type(expr.index)
-        if w_vtype is B.w_str and w_itype is B.w_i32:
-            self.eval_expr(expr.value)
-            self.eval_expr(expr.index)
-            self.emit('call_helper', 'StrGetItem', 2)
-            return
-        raise NotImplementedError(f'{w_vtype.name}[w_itype.name]')
+    def do_eval_GetItem(self, op: spy.ast.GetItem) -> None:
+        w_vtype = self.t.get_expr_type(op.value)
+        w_itype = self.t.get_expr_type(op.index)
+        impl = multiop.GetItem.lookup(w_vtype, w_itype)
+        if impl is None:
+            raise NotImplementedError(f'{w_vtype.name}[{w_itype.name}]')
+        impl.emit(self, op)
 
     def do_eval_Call(self, call: spy.ast.Call) -> None:
         if not self.is_const(call.func):
