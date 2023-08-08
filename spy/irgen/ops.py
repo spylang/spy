@@ -9,4 +9,4 @@ if typing.TYPE_CHECKING:
 def str_emit_getitem(cg: 'CodeGen', op: spy.ast.GetItem) -> None:
     cg.eval_expr(op.value)
     cg.eval_expr(op.index)
-    cg.emit('call_helper', 'StrGetItem', 2)
+    cg.emit(op.loc, 'call_helper', 'StrGetItem', 2)

@@ -126,7 +126,7 @@ class CodeGen:
 
     def do_exec_StmtExpr(self, stmt: spy.ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
-        self.emit('pop_and_discard')
+        self.emit(stmt.loc, 'pop_and_discard')
 
     def do_exec_VarDef(self, vardef: spy.ast.VarDef) -> None:
         # sanity check, the var must be in the local scope
@@ -161,9 +161,9 @@ class CodeGen:
         END: <rest of the program>
 
         """
-        _, op_mark = self.emit('mark_if_then', ...)
+        _, op_mark = self.emit(if_node.loc, 'mark_if_then', ...)
         self.eval_expr(if_node.test) # <eval cond>
-        IF, br_if_not = self.emit('br_if_not', ...)
+        IF, br_if_not = self.emit(if_node.loc, 'br_if_not', ...)
         # <then body>
         for stmt in if_node.then_body:
             self.exec_stmt(stmt)
@@ -182,14 +182,14 @@ class CodeGen:
         ELSE: <else body>
         END:  <rest of the program>
         """
-        _, op_mark = self.emit('mark_if_then_else', ...)
+        _, op_mark = self.emit(if_node.loc, 'mark_if_then_else', ...)
         self.eval_expr(if_node.test) # <eval cond>
-        IF, br_if_not = self.emit('br_if_not', ...)
+        IF, br_if_not = self.emit(if_node.loc, 'br_if_not', ...)
         # <then body>
         for stmt in if_node.then_body:
             self.exec_stmt(stmt)
         #
-        _, br = self.emit('br', ...)
+        _, br = self.emit(if_node.else_body[0].loc, 'br', ...)
         # <else body>
         ELSE = self.get_label()
         for stmt in if_node.else_body:
@@ -317,4 +317,4 @@ class CodeGen:
         funcname = call.func.id
         for expr in call.args:
             self.eval_expr(expr)
-        self.emit('call_global', funcname, len(call.args))
+        self.emit(call.loc, 'call_global', funcname, len(call.args))

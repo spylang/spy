@@ -31,5 +31,6 @@ class TestDebug(CompilerTest):
             ]
         elif self.backend == 'C':
             # XXX write a test, but how?
+            pass
         else:
             assert False

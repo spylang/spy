@@ -82,6 +82,9 @@ class Frame:
     def op_abort(self, message: str) -> None:
         raise SPyRuntimeAbort(message)
 
+    def op_line(self, lineno: int) -> None:
+        pass
+
     def op_mark_if_then(self, IF: int, END: int) -> None:
         assert self.w_code.body[IF].match('br_if_not', END)
 
