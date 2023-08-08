@@ -103,6 +103,36 @@ class TestTextBuilder:
                            'called only after a newline'):
             inner = outer.make_nested_builder()
 
+    def test_writeblock(self):
+        b = TextBuilder()
+        b.wl('hello')
+        b.wb("""
+            one
+            two
+            three
+        """)
+        b.wl('world')
+        s = b.build()
+        expected = textwrap.dedent("""\
+        hello
+        one
+        two
+        three
+        world
+        """)
+        assert s == expected
+
+    def test_lineno(self):
+        b = TextBuilder()
+        assert b.lineno == 1
+        b.wl('one')
+        assert b.lineno == 2
+        b.wb("""
+        two
+        three
+        four
+        """)
+        assert b.lineno == 5
 
 class TestColorFormatter:
 

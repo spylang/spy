@@ -1,4 +1,5 @@
 from typing import Optional, Iterator, Union
+import textwrap
 from contextlib import contextmanager
 
 class TextBuilder:
@@ -11,6 +12,16 @@ class TextBuilder:
         self.lines = ['']
         self.use_colors = use_colors
         self.color = ColorFormatter(use_colors)
+
+    @property
+    def lineno(self) -> int:
+        """
+        Return the number of the CURRENT line.
+
+        The invariant is that if .lineno == N, then .write(), .writeline(),
+        etc. will write text on line number N.
+        """
+        return len(self.lines)
 
     @contextmanager
     def indent(self) -> Iterator[None]:
@@ -35,6 +46,7 @@ class TextBuilder:
         return nested
 
     def write(self, s: str, *, color: Optional[str] = None) -> None:
+        assert '\n' not in s
         assert isinstance(self.lines[-1], str)
         s = self.color.set(color, s)
         if self.lines[-1] == '':
@@ -47,9 +59,15 @@ class TextBuilder:
         self.write(s, color=color)
         self.lines.append('')
 
+    def writeblock(self, s: str, *, color: Optional[str] = None) -> None:
+        s = textwrap.dedent(s).strip()
+        for line in s.splitlines():
+            self.writeline(line, color=color)
+
     # shortcuts
     w = write
     wl = writeline
+    wb = writeblock
 
     def build(self) -> str:
         strlines = []

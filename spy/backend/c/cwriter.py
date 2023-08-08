@@ -14,21 +14,28 @@ from spy.backend.c import expr as c_expr
 from spy.util import shortrepr
 
 class CModuleWriter:
+    ctx: Context
     w_mod: W_Module
+    spyfile: py.path.local
+    cfile: py.path.local
     out: TextBuilder          # main builder
     out_globals: TextBuilder  # nested builder for global declarations
     global_vars: set[str]
 
-    def __init__(self, vm: SPyVM, w_mod: W_Module) -> None:
+    def __init__(self, vm: SPyVM, w_mod: W_Module,
+                 spyfile: py.path.local,
+                 cfile: py.path.local) -> None:
         self.ctx = Context(vm)
         self.w_mod = w_mod
+        self.spyfile = spyfile
+        self.cfile = cfile
         self.out = TextBuilder(use_colors=False)
         self.out_globals = None  # type: ignore
         self.global_vars = set()
 
-    def write_c_source(self, outfile: py.path.local) -> None:
+    def write_c_source(self) -> None:
         c_src = self.emit_module()
-        outfile.write(c_src)
+        self.cfile.write(c_src)
 
     def new_global_var(self, prefix: str) -> str:
         """
@@ -43,12 +50,21 @@ class CModuleWriter:
         return varname
 
     def emit_module(self) -> str:
-        self.out.wl('#include <spy.h>')
-        self.out.wl()
-        self.out.wl('// global declarations and definitions')
+        self.out.wb("""
+        #include <spy.h>
+
+        #ifdef SPY_DEBUG_C
+        #    define SPY_LINE(SPY, C) C "{self.cfile}"
+        #else
+        #    define SPY_LINE(SPY, C) SPY "{self.spyfile}"
+        #endif
+
+        // global declarations and definitions
+        """)
         self.out_globals = self.out.make_nested_builder()
-        self.out.wl()
-        self.out.wl('// content of the module')
+        self.out.wb("""
+        // content of the module
+        """)
         # XXX we should pre-declare variables and functions
         for name, w_obj in self.w_mod.content.values_w.items():
             assert w_obj is not None, 'uninitialized global?'

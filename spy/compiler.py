@@ -73,8 +73,9 @@ class CompilerPipeline:
         Convert the W_Module into a .c file
         """
         self.irgen()
-        self.cwriter = CModuleWriter(self.vm, self.w_mod)
-        self.cwriter.write_c_source(self.file_c)
+        self.cwriter = CModuleWriter(self.vm, self.w_mod,
+                                     self.file_spy, self.file_c)
+        self.cwriter.write_c_source()
         #
         if DUMP_C:
             print()
