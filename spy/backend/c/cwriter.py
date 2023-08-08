@@ -50,7 +50,7 @@ class CModuleWriter:
         return varname
 
     def emit_module(self) -> str:
-        self.out.wb("""
+        self.out.wb(f"""
         #include <spy.h>
 
         #ifdef SPY_DEBUG_C
@@ -170,6 +170,7 @@ class CFuncWriter:
         """
         Emit the code for the whole function
         """
+        self.emit_op_line(self.w_func.w_code.lineno)
         c_func = self.ctx.c_function(self.name, self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
@@ -197,6 +198,11 @@ class CFuncWriter:
         if meth is None:
             raise NotImplementedError(meth_name)
         meth(*op.args)
+
+    def emit_op_line(self, lineno: int) -> None:
+        spyline = lineno
+        cline = self.out.lineno
+        self.out.wl(f'#line SPY_LINE({spyline}, {cline})')
 
     def emit_op_load_const(self, w_obj: W_Object) -> None:
         # XXX we need to share code with 'emit_variable'

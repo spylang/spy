@@ -1,5 +1,6 @@
 import typing
 from typing import Any
+from dataclasses import dataclass
 from spy.vm.object import W_Object, W_Type, spytype
 from spy.textbuilder import ColorFormatter
 
@@ -9,7 +10,12 @@ if typing.TYPE_CHECKING:
 # for now, each opcode is represented by its name. Very inefficient but we
 # don't care for now. Eventually, we could migrate to a more proper bytecode
 # or wordcode.
+#
+# In particular, the 'line' opcode marks the location in the source code: it
+# is a very inefficient encoding, so eventually we want to migrate to
+# something like CPython's lnotab
 ALL_OPCODES = [
+    'line',
     'return',
     'abort',
     'mark_if_then',
@@ -36,6 +42,7 @@ ALL_OPCODES = [
     'br_if_not',
 ]
 
+@dataclass
 class OpCode:
     name: str
     args: tuple
@@ -84,14 +91,16 @@ class W_CodeObject(W_Object):
     name: str
     w_functype: 'W_FunctionType'
     filename: str
+    lineno: int
     body: list[OpCode]
     locals_w_types: dict[str, W_Type]
 
     def __init__(self, name: str, *, w_functype: 'W_FunctionType',
-                 filename: str = '') -> None:
+                 filename: str = '', lineno: int = -1) -> None:
         self.name = name
         self.w_functype = w_functype
         self.filename = filename
+        self.lineno = lineno
         self.body = []
         self.locals_w_types = {}
 

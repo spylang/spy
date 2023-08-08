@@ -24,6 +24,7 @@ class ZigToolchain:
 #            '-Werror',
 	    '-g',
 	    '-O3',
+#            '-Og',
 	    '-o', str(file_wasm),
 	    str(file_c)
         ]

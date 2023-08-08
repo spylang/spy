@@ -14,3 +14,10 @@ class Loc:
 
     def replace(self, **kwargs: int) -> 'Loc':
         return dataclasses.replace(self, **kwargs)
+
+    def make_end_loc(self) -> 'Loc':
+        """
+        Return a new Loc which starts where this one ends
+        """
+        return self.replace(line_start=self.line_end,
+                            col_start=self.col_end)
