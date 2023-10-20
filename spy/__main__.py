@@ -8,8 +8,8 @@ from spy.vm.vm import SPyVM
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
-def boolopt(help: str) -> Any:
-    return Annotated[bool, typer.Option(help=help)]
+def boolopt(help: str, names: tuple[str, ...]=()) -> Any:
+    return Annotated[bool, typer.Option(*names, help=help)]
 
 def do_pyparse(filename: str) -> None:
     import ast as py_ast
@@ -25,12 +25,13 @@ def main(filename: Path,
          parse: boolopt("dump the SPy AST and exit") = False,
          dis: boolopt("disassemble the SPy IR and exit") = False,
          cwrite: boolopt("create the .c file and exit") = False,
+         g: boolopt("generate debug symbols", names=['-g']) = False,
          ) -> None:
     filename = py.path.local(filename)
     builddir = filename.dirpath()
     vm = SPyVM()
     compiler = CompilerPipeline(vm, filename, builddir)
-
+    debug_symbols = g
     try:
         if pyparse:
             do_pyparse(str(filename))
@@ -43,7 +44,7 @@ def main(filename: Path,
         elif cwrite:
             compiler.cwrite()
         else:
-            compiler.cbuild()
+            compiler.cbuild(debug_symbols=debug_symbols)
 
     except SPyCompileError as e:
         print(e.format(use_colors=True))

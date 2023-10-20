@@ -5,7 +5,7 @@ from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.modgen import ModuleGen
 from spy.backend.c.cwriter import CModuleWriter
-from spy.cbuild import ZigToolchain
+from spy.cbuild import ZigToolchain, ClangToolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
@@ -84,15 +84,17 @@ class CompilerPipeline:
         #
         return self.file_c
 
-    def cbuild(self) -> py.path.local:
+    def cbuild(self, *, debug_symbols: bool=False) -> py.path.local:
         """
         Build the .c file into a .wasm file
         """
         file_c = self.cwrite()
         toolchain = ZigToolchain()
+        #toolchain = ClangToolchain()
         exports = list(self.w_mod.content.values_w.keys())
         file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
-                                     exports=exports)
+                                     exports=exports,
+                                     debug_symbols=debug_symbols)
         #
         if DUMP_WASM:
             print()
