@@ -61,6 +61,9 @@ class Parser:
                 vardef = self.from_py_stmt_AnnAssign(py_stmt)
                 globvar = spy.ast.GlobalVarDef(vardef)
                 mod.decls.append(globvar)
+            elif isinstance(py_stmt, py_ast.ImportFrom):
+                importdecls = self.from_py_ImportFrom(py_stmt)
+                mod.decls += importdecls
             else:
                 msg = 'only function and variable definitions are allowed at global scope'
                 self.error(msg, 'this is not allowed here', py_stmt.loc)
@@ -128,6 +131,19 @@ class Parser:
             name = py_arg.arg,
             type = self.from_py_expr(py_arg.annotation),
         )
+
+    def from_py_ImportFrom(self, py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:
+        res = []
+        root = py_imp.module
+        for py_alias in py_imp.names:
+            fqn = f'{root}.{py_alias.name}'
+            asname = py_alias.asname or py_alias.name
+            res.append(spy.ast.Import(
+                loc = py_imp.loc,
+                fqn = fqn,
+                asname = asname
+            ))
+        return res
 
     # ====== spy.ast.Stmt ======
 

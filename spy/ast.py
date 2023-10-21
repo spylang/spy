@@ -113,6 +113,13 @@ class GlobalVarDef(Decl):
     def loc(self) -> Loc:
         return self.vardef.loc
 
+
+@dataclass(eq=False)
+class Import(Decl):
+    loc: Loc
+    fqn: str   # fully qualified name
+    asname: str
+
 # ====== Expr hierarchy ======
 
 @dataclass(eq=False)

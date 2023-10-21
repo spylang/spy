@@ -523,3 +523,14 @@ class TestBasic(CompilerTest):
                 'this is a `bool`',
             ]
         )
+
+    @pytest.mark.skip('WIP')
+    def test_import(self):
+        mod = self.compile("""
+        from testmod import double
+
+        def foo(x: i32, y: i32) -> i32:
+            return double(x) + double(y)
+        """)
+        #
+        assert mod.foo(1, 2) == 6

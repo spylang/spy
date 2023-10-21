@@ -203,6 +203,9 @@ class TypeChecker:
         # nothing to do, we did everything inside declare()
         pass
 
+    def declare_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
+        import pdb;pdb.set_trace()
+
     # ==== statements ====
 
     def check_stmt_VarDef(self, vardef: spy.ast.VarDef, scope: SymTable) -> None:

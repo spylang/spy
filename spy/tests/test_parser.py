@@ -472,3 +472,19 @@ class TestParser(CompilerTest):
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_from_import(self):
+        mod = self.parse("""
+        from testmod import a, b as b2
+        """)
+        #
+        expected = """
+        Module(
+            filename='{tmpdir}/test.spy',
+            decls=[
+                Import(fqn='testmod.a', asname='a'),
+                Import(fqn='testmod.b', asname='b2'),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
