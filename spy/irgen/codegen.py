@@ -319,6 +319,7 @@ class CodeGen:
         assert isinstance(call.func, spy.ast.Name)
         funcname = call.func.id
         sym = self.scope.lookup(call.func.id)
+        assert sym is not None
         if sym.scope is self.t.builtins_scope:
             opcode = 'call_builtin'
         elif sym.scope is self.t.global_scope:

@@ -19,17 +19,17 @@ class Builtins:
     w_True = W_bool._w_singleton_True
     w_False = W_bool._w_singleton_False
 
+    w_abs = W_BuiltinFunction(
+        name = 'abs',
+        llname = 'spy_abs',
+        w_functype = W_FunctionType.make(x=w_i32, w_restype=w_i32),
+    )
+
     @classmethod
     def lookup(cls, name: str) -> Optional[W_Object]:
         attr = 'w_' + name
         return getattr(cls, attr, None)
 
-
-Builtins.w_abs = W_BuiltinFunction(
-    name = 'abs',
-    llname = 'spy_abs',
-    w_functype = W_FunctionType.make(x=Builtins.w_i32, w_restype=Builtins.w_i32),
-)
 
 class SPyVM:
     """
@@ -97,7 +97,7 @@ class SPyVM:
             raise Exception('Type mismatch')
         return w_value.value
 
-    def make_function(self, w_code: W_CodeObject, w_mod: W_Module) -> W_Function:
+    def make_function(self, w_code: W_CodeObject, w_mod: W_Module) -> W_UserFunction:
         """
         Create a function inside a module
         """

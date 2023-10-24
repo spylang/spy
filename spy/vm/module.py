@@ -3,7 +3,7 @@ from spy.vm.object import W_Object, spytype
 from spy.vm.varstorage import VarStorage
 if typing.TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.function import W_Function
+    from spy.vm.function import W_UserFunction
 
 @spytype('module')
 class W_Module(W_Object):
@@ -32,22 +32,22 @@ class W_Module(W_Object):
     def getattr(self, name: str) -> W_Object:
         return self.content.get(name)
 
-    def getattr_function(self, name: str) -> 'W_Function':
-        from spy.vm.function import W_Function
+    def getattr_userfunc(self, name: str) -> 'W_UserFunction':
+        from spy.vm.function import W_UserFunction
         w_obj = self.content.get(name)
-        assert isinstance(w_obj, W_Function)
+        assert isinstance(w_obj, W_UserFunction)
         return w_obj
 
     def pp(self) -> None:
         """
         Pretty print
         """
-        from spy.vm.function import W_Function
+        from spy.vm.function import W_UserFunction
         print(f'Module {self.name}:')
         for attr, w_obj in self.content.values_w.items():
             print(f'    {attr}: {w_obj}')
 
         print()
         for attr, w_obj in self.content.values_w.items():
-            if isinstance(w_obj, W_Function):
+            if isinstance(w_obj, W_UserFunction):
                 w_obj.w_code.pp()

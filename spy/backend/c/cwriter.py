@@ -4,7 +4,7 @@ import py.path
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
-from spy.vm.function import W_Function, W_FunctionType, W_BuiltinFunction
+from spy.vm.function import W_UserFunction, W_BuiltinFunction, W_FunctionType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm import helpers
@@ -69,13 +69,13 @@ class CModuleWriter:
         for name, w_obj in self.w_mod.content.values_w.items():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
-            if isinstance(w_obj, W_Function):
+            if isinstance(w_obj, W_UserFunction):
                 self.emit_function(name, w_obj)
             else:
                 self.emit_variable(name, w_obj)
         return self.out.build()
 
-    def emit_function(self, name: str, w_func: W_Function) -> None:
+    def emit_function(self, name: str, w_func: W_UserFunction) -> None:
         fw = CFuncWriter(self.ctx, self, name, w_func)
         fw.emit()
 
@@ -94,13 +94,13 @@ class CFuncWriter:
     cmod: CModuleWriter
     out: TextBuilder
     name: str
-    w_func: W_Function
+    w_func: W_UserFunction
     tmp_vars: dict[str, C_Type]
     stack: list[c_expr.Expr]
 
     def __init__(self, ctx: Context,
                  cmod: CModuleWriter,
-                 name: str, w_func: W_Function):
+                 name: str, w_func: W_UserFunction):
         self.ctx = ctx
         self.cmod = cmod
         self.out = cmod.out
@@ -312,6 +312,7 @@ class CFuncWriter:
 
     def emit_op_call_builtin(self, funcname: str, argcount: int) -> None:
         w_func = B.lookup(funcname)
+        assert w_func is not None
         w_functype = self.ctx.vm.dynamic_type(w_func)
         assert isinstance(w_func, W_BuiltinFunction)
         assert isinstance(w_functype, W_FunctionType)

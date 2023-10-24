@@ -52,7 +52,7 @@ class W_Function(W_Object):
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
 
-    def spy_call(self, args_w: list[W_Object]) -> W_Object:
+    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         raise NotImplementedError
 
 

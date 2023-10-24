@@ -44,10 +44,12 @@ class TestSymtable:
     def test_from_builtins(self):
         scope = SymTable.from_builtins(self.vm)
         sym = scope.lookup('i32')
+        assert sym is not None
         assert sym.name == 'i32'
         assert sym.qualifier == 'const'
         assert sym.w_type is B.w_type
         #
         sym = scope.lookup('True')
+        assert sym is not None
         assert sym.name == 'True'
         assert sym.w_type is B.w_bool

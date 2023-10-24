@@ -4,7 +4,7 @@ from spy.irgen.codegen import CodeGen
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
-from spy.vm.function import W_FunctionType, W_Function, W_UserFunction
+from spy.vm.function import W_FunctionType, W_UserFunction
 
 
 class ModuleGen:
@@ -33,7 +33,7 @@ class ModuleGen:
                 self.w_mod.add(decl.vardef.name, w_const)
         return self.w_mod
 
-    def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Function:
+    def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_UserFunction:
         w_functype, scope = self.t.get_funcdef_info(funcdef)
         codegen = CodeGen(self.vm, self.t, funcdef)
         w_code = codegen.make_w_code()

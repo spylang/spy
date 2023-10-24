@@ -15,7 +15,7 @@ class TestDebug(CompilerTest):
         """)
         if self.backend == 'interp':
             w_mod = self.compiler.w_mod
-            w_func = w_mod.getattr_function('foo')
+            w_func = w_mod.getattr_userfunc('foo')
             w_code = w_func.w_code
             assert w_code.lineno == 2
             assert w_code.body == [
