@@ -4,7 +4,7 @@ import py.path
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
-from spy.vm.function import W_Function, W_FunctionType
+from spy.vm.function import W_Function, W_FunctionType, W_BuiltinFunction
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm import helpers
@@ -310,19 +310,31 @@ class CFuncWriter:
         arglist = ', '.join(args)
         return arglist
 
+    def emit_op_call_builtin(self, funcname: str, argcount: int) -> None:
+        w_func = B.lookup(funcname)
+        w_functype = self.ctx.vm.dynamic_type(w_func)
+        assert isinstance(w_func, W_BuiltinFunction)
+        assert isinstance(w_functype, W_FunctionType)
+        llname = w_func.llname
+        self._emit_op_call(llname, argcount, w_functype)
+
     def emit_op_call_global(self, funcname: str, argcount: int) -> None:
-        arglist = self._pop_args(argcount)
         w_functype = self.w_func.globals.types_w[funcname]
+        assert isinstance(w_functype, W_FunctionType)
+        self._emit_op_call(funcname, argcount, w_functype)
+
+    def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FunctionType) -> None:
+        arglist = self._pop_args(argcount)
         assert isinstance(w_functype, W_FunctionType)
         w_restype = w_functype.w_restype
         c_restype = self.ctx.w2c(w_restype)
         #
         if w_restype is B.w_void:
-            self.out.wl(f'{funcname}({arglist});')
+            self.out.wl(f'{llname}({arglist});')
             self.push(c_expr.Void())
         else:
             tmp = self.new_var(c_restype)
-            self.out.wl(f'{c_restype} {tmp} = {funcname}({arglist});')
+            self.out.wl(f'{c_restype} {tmp} = {llname}({arglist});')
             self.push(c_expr.Literal(tmp))
 
     def emit_op_call_helper(self, funcname: str, argcount: int) -> None:
