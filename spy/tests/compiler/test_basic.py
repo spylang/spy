@@ -524,6 +524,16 @@ class TestBasic(CompilerTest):
             ]
         )
 
+    @skip_backends('C')
+    def test_builtin_function(self):
+        mod = self.compile("""
+        def foo(x: i32) -> i32:
+            return abs(x)
+        """)
+        #
+        assert mod.foo(10) == 10
+        assert mod.foo(-20) == 20
+
     @pytest.mark.skip('WIP')
     def test_import(self):
         mod = self.compile("""

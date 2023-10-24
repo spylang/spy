@@ -26,7 +26,8 @@ class TypeChecker:
     def __init__(self, vm: SPyVM, mod: spy.ast.Module) -> None:
         self.vm = vm
         self.mod = mod
-        self.global_scope = SymTable('<globals>', parent=None) # XXX should be builtins
+        self.builtins_scope = SymTable.from_builtins(vm)
+        self.global_scope = SymTable('<globals>', parent=self.builtins_scope)
         self.funcdef_types = {}
         self.funcdef_scopes = {}
         self.expr_types = {}

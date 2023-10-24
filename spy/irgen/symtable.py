@@ -2,6 +2,7 @@ from typing import Optional, Literal
 from dataclasses import dataclass, KW_ONLY
 import spy.ast
 from spy.location import Loc
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Type, W_Object
 
 Qualifier = Literal['var', 'const']
@@ -31,6 +32,23 @@ class SymTable:
         self.name = name
         self.parent = parent
         self.symbols = {}
+
+    @classmethod
+    def from_builtins(cls, vm: SPyVM) -> 'SymTable':
+        res = cls('<builtins>', parent=None)
+        loc = Loc(filename='<builtins>',
+                  line_start=1,
+                  line_end=1,
+                  col_start=1,
+                  col_end=1)
+        #
+        for varname, w_obj in B.__dict__.items():
+            if not varname.startswith('w_'):
+                continue
+            assert isinstance(w_obj, W_Object)
+            w_type = vm.dynamic_type(w_obj)
+            res.declare(varname[2:], 'const', w_type, loc)
+        return res
 
     def __repr__(self) -> str:
         return f'<SymTable {self.name}>'

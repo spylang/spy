@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import typing
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
@@ -44,6 +44,19 @@ class W_FunctionType(W_Type):
 
 
 class W_Function(W_Object):
+
+    @property
+    def w_functype(self) -> W_FunctionType:
+        raise NotImplementedError
+
+    def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
+        return self.w_functype
+
+    def spy_call(self, args_w: list[W_Object]) -> W_Object:
+        raise NotImplementedError
+
+
+class W_UserFunction(W_Function):
     w_code: W_CodeObject
     globals: VarStorage
 
@@ -58,5 +71,31 @@ class W_Function(W_Object):
     def w_functype(self) -> W_FunctionType:
         return self.w_code.w_functype
 
-    def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
-        return self.w_functype
+
+class W_BuiltinFunction(W_Function):
+    name: str
+    llname: str
+    _w_functype: W_FunctionType
+
+    def __init__(self, name: str, llname: str, w_functype: W_FunctionType) -> None:
+        self.name = name
+        self.llname = llname
+        self._w_functype = w_functype
+
+    def __repr__(self) -> str:
+        return f"<spy function '{self.name}' (builtin)>"
+
+    @property
+    def w_functype(self) -> W_FunctionType:
+        return self._w_functype
+
+    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+        # XXX we need a way to automatically generate unwrapping code for
+        # args_w. For now, let's just hardcode
+        if self.llname == 'spy_abs':
+            assert len(args_w) == 1
+            arg = vm.unwrap_i32(args_w[0])
+            res = vm.ll.call('spy_abs', arg)
+            return vm.wrap(res)
+        else:
+            assert False

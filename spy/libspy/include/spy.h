@@ -23,6 +23,7 @@ static void _Noreturn abort(void) {
 void *malloc(size_t size);
 void free(void *p);
 
+#include "spy/builtins.h"
 #include "spy/str.h"
 #include "spy/gc.h"
 #include "spy/debug.h"

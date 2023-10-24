@@ -1,7 +1,7 @@
 import pytest
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_FunctionType, W_Function, FuncParam
+from spy.vm.function import W_FunctionType, W_UserFunction, FuncParam
 from spy.vm.varstorage import VarStorage
 from spy.vm.module import W_Module
 
@@ -25,7 +25,7 @@ class TestFunction:
         ]
         #
         globals = VarStorage(vm, 'globals', {})
-        w_func = W_Function(w_code, globals)
+        w_func = W_UserFunction(w_code, globals)
         assert repr(w_func) == "<spy function 'simple'>"
         #
         w_t = vm.dynamic_type(w_func)

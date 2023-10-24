@@ -313,8 +313,17 @@ class CodeGen:
             # branch
             err = SPyCompileError('indirect calls not supported')
             raise err
-        assert isinstance(call.func, spy.ast.Name)
-        funcname = call.func.id
         for expr in call.args:
             self.eval_expr(expr)
-        self.emit(call.loc, 'call_global', funcname, len(call.args))
+
+        assert isinstance(call.func, spy.ast.Name)
+        funcname = call.func.id
+        sym = self.scope.lookup(call.func.id)
+        if sym.scope is self.t.builtins_scope:
+            opcode = 'call_builtin'
+        elif sym.scope is self.t.global_scope:
+            opcode = 'call_global'
+        else:
+            assert False
+
+        self.emit(call.loc, opcode, funcname, len(call.args))

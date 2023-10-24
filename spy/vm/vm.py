@@ -3,7 +3,7 @@ import fixedint
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.function import W_FunctionType, W_Function
+from spy.vm.function import W_FunctionType, W_Function, W_UserFunction, W_BuiltinFunction
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
@@ -23,6 +23,13 @@ class Builtins:
     def lookup(cls, name: str) -> Optional[W_Object]:
         attr = 'w_' + name
         return getattr(cls, attr, None)
+
+
+Builtins.w_abs = W_BuiltinFunction(
+    name = 'abs',
+    llname = 'spy_abs',
+    w_functype = W_FunctionType.make(x=Builtins.w_i32, w_restype=Builtins.w_i32),
+)
 
 class SPyVM:
     """
@@ -85,11 +92,16 @@ class SPyVM:
         assert isinstance(w_value, W_Object)
         return w_value.spy_unwrap(self)
 
+    def unwrap_i32(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_i32):
+            raise Exception('Type mismatch')
+        return w_value.value
+
     def make_function(self, w_code: W_CodeObject, w_mod: W_Module) -> W_Function:
         """
         Create a function inside a module
         """
-        w_func = W_Function(w_code, w_mod.content)
+        w_func = W_UserFunction(w_code, w_mod.content)
         w_mod.add(w_code.name, w_func)
         return w_func
 
@@ -104,5 +116,10 @@ class SPyVM:
         for param, w_arg in zip(w_functype.params, args_w):
             assert self.is_compatible_type(w_arg, param.w_type)
         #
-        frame = Frame(self, w_func.w_code, w_func.globals)
-        return frame.run(args_w)
+        if isinstance(w_func, W_UserFunction):
+            frame = Frame(self, w_func.w_code, w_func.globals)
+            return frame.run(args_w)
+        elif isinstance(w_func, W_BuiltinFunction):
+            return w_func.spy_call(self, args_w)
+        else:
+            assert False
