@@ -25,12 +25,14 @@ class ModuleGen:
         self.w_mod = W_Module(self.vm, name)
         for decl in self.mod.decls:
             if isinstance(decl, spy.ast.FuncDef):
+                w_type = self.t.global_scope.lookup_type(decl.name)
                 w_func = self.make_w_func(decl)
-                self.w_mod.add(w_func.w_code.name, w_func)
+                self.w_mod.add(w_func.w_code.name, w_func, w_type)
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 assert isinstance(decl.vardef.value, spy.ast.Constant)
+                w_type = self.t.global_scope.lookup_type(decl.vardef.name)
                 w_const = self.t.get_w_const(decl.vardef.value)
-                self.w_mod.add(decl.vardef.name, w_const)
+                self.w_mod.add(decl.vardef.name, w_const, w_type)
         return self.w_mod
 
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_UserFunction:

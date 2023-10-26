@@ -35,7 +35,7 @@ class TestFunction:
         vm = SPyVM()
         w_mod = W_Module(vm, 'mymod')
         w_a = vm.wrap(10)
-        w_mod.add('a', w_a)
+        w_mod.add('a', w_a, w_type=None)
         #
         w_functype = W_FunctionType([], B.w_i32)
         w_code = W_CodeObject('fn', w_functype=w_functype)

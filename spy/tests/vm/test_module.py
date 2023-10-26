@@ -9,8 +9,8 @@ class TestModule:
         w_mod = W_Module(vm, 'mymod')
         w_a = vm.wrap(10)
         w_b = vm.wrap(20)
-        w_mod.add('a', w_a)
-        w_mod.add('b', w_b)
+        w_mod.add('a', w_a, w_type=None)
+        w_mod.add('b', w_b, w_type=None)
         assert w_mod.content.types_w == {
             'a': B.w_i32,
             'b': B.w_i32,
@@ -25,8 +25,8 @@ class TestModule:
         w_mod = W_Module(vm, 'mymod')
         w_a = vm.wrap(10)
         w_b = vm.wrap(20)
-        w_mod.add('a', w_a)
+        w_mod.add('a', w_a, w_type=None)
         w_mod.freeze()
         with pytest.raises(Exception, match='Frozen'):
-            w_mod.add('b', w_b)
+            w_mod.add('b', w_b, w_type=None)
         assert list(w_mod.content.values_w.keys()) == ['a']

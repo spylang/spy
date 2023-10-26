@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Optional
-from spy.vm.object import W_Object, spytype
+from spy.vm.object import W_Object, spytype, W_Type
 from spy.vm.varstorage import VarStorage
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -25,10 +25,14 @@ class W_Module(W_Object):
     def freeze(self) -> None:
         self._frozen = True
 
-    def add(self, name: str, w_value: W_Object) -> None:
+    def add(self,
+            name: str,
+            w_value: W_Object,
+            w_type: Optional[W_Type],
+        ) -> None:
         if self._frozen:
             raise Exception("Frozen")
-        self.content.add(name, w_value)
+        self.content.add(name, w_value, w_type)
 
     def getattr(self, name: str) -> W_Object:
         return self.content.get(name)

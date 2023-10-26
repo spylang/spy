@@ -149,8 +149,9 @@ class TestVM:
 
     def test_lookup(self):
         vm = SPyVM()
-        w_obj = vm.lookup(FQN('testmod::double'))
+        w_type, w_obj = vm.lookup(FQN('testmod::double'))
         assert isinstance(w_obj, W_BuiltinFunction)
+        assert w_type is w_obj.w_functype
         assert w_obj.name == 'double'
         #
         with pytest.raises(SPyLookupError, match='Cannot find module `wrongmod`'):

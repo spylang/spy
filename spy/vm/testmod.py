@@ -13,5 +13,5 @@ def make(vm: 'SPyVM') -> W_Module:
         llname = 'spy_testmod_double',
         w_functype = W_FunctionType.make(x=B.w_i32, w_restype=B.w_i32),
     )
-    w_mod.add('double', w_double)
+    w_mod.add('double', w_double, w_type=None)
     return w_mod

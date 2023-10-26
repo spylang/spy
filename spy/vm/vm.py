@@ -58,7 +58,8 @@ class SPyVM:
         if w_obj is None:
             raise SPyLookupError(f'Cannot find attribute `{fqn.attr}` ' +
                                  f'in module `{fqn.module}`')
-        return w_obj
+        w_type = w_mod.content.types_w[fqn.attr]
+        return w_type, w_obj
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
@@ -119,7 +120,7 @@ class SPyVM:
         Create a function inside a module
         """
         w_func = W_UserFunction(w_code, w_mod.content)
-        w_mod.add(w_code.name, w_func)
+        w_mod.add(w_code.name, w_func, w_type=None)
         return w_func
 
     def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
