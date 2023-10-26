@@ -1,9 +1,10 @@
-import typing
+from typing import TYPE_CHECKING, Optional
 from spy.vm.object import W_Object, spytype
 from spy.vm.varstorage import VarStorage
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.function import W_UserFunction
+
 
 @spytype('module')
 class W_Module(W_Object):
@@ -31,6 +32,11 @@ class W_Module(W_Object):
 
     def getattr(self, name: str) -> W_Object:
         return self.content.get(name)
+
+    def getattr_maybe(self, name: str) -> Optional[W_Object]:
+        if name in self.content.types_w:
+            return self.content.get(name)
+        return None
 
     def getattr_userfunc(self, name: str) -> 'W_UserFunction':
         from spy.vm.function import W_UserFunction

@@ -205,7 +205,14 @@ class TypeChecker:
         pass
 
     def declare_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
-        import pdb;pdb.set_trace()
+        w_obj = self.vm.lookup(imp.fqn)
+        # ouch, this is slightly wrong: we don't want the dynamic type, we
+        # want the static/declared type. XXX fix
+        w_type = self.vm.dynamic_type(w_obj)
+        scope.declare(imp.asname, 'const', w_type, imp.loc)
+
+    def check_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
+        pass
 
     # ==== statements ====
 

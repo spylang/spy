@@ -482,8 +482,8 @@ class TestParser(CompilerTest):
         Module(
             filename='{tmpdir}/test.spy',
             decls=[
-                Import(fqn='testmod.a', asname='a'),
-                Import(fqn='testmod.b', asname='b2'),
+                Import(fqn=FQN('testmod::a'), asname='a'),
+                Import(fqn=FQN('testmod::b'), asname='b2'),
             ],
         )
         """

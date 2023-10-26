@@ -543,3 +543,10 @@ class TestBasic(CompilerTest):
         """)
         #
         assert mod.foo(1, 2) == 6
+
+    @pytest.mark.skip("WIP")
+    def test_import_errors(self):
+        mod = self.compile("""
+        from testmod import aaa
+        from wrongmod import aaa
+        """)

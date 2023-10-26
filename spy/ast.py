@@ -48,6 +48,43 @@ class AST:
 del AST
 
 
+@dataclass
+class FQN:
+    """
+    Fully qualified name.
+
+    A FQN uniquely identify a named object inside the current VM. It is
+    formated as 'module::attr', where module can be composed of multiple parts
+    separated by dots (e.g. 'a.b.c').
+
+    NOTE: this is not part of the Node hierarchy
+    """
+    fqn: str
+
+    def __post_init__(self):
+        c = self.fqn.count('::')
+        if c != 1:
+            raise ValueError(f'{self.fqn} is not a valid FQN')
+
+    @classmethod
+    def from_parts(cls, module: str, attr: str) -> 'FQN':
+        fqn = f'{module}::{attr}'
+        return cls(fqn)
+
+    def __repr__(self):
+        return f"FQN({self.fqn!r})"
+
+    @property
+    def module(self):
+        return self.fqn.split('::')[0]
+
+    @property
+    def attr(self):
+        return self.fqn.split('::')[1]
+
+
+
+
 # we want all nodes to compare by *identity* and be hashable, because e.g. we
 # put them in dictionaries inside the typechecker. So, we must use eq=False ON
 # ALL AST NODES.
@@ -117,7 +154,7 @@ class GlobalVarDef(Decl):
 @dataclass(eq=False)
 class Import(Decl):
     loc: Loc
-    fqn: str   # fully qualified name
+    fqn: FQN
     asname: str
 
 # ====== Expr hierarchy ======

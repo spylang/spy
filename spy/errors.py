@@ -103,6 +103,10 @@ class SPyTypeError(SPyCompileError):
     pass
 
 
+class SPyLookupError(SPyCompileError):
+    pass
+
+
 # ======
 
 class SPyRuntimeError(Exception):

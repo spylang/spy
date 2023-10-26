@@ -1,5 +1,8 @@
 from typing import Any, Optional
+from dataclasses import dataclass
 import fixedint
+from spy.ast import FQN
+from spy.errors import SPyLookupError
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
@@ -7,6 +10,8 @@ from spy.vm.function import W_FunctionType, W_Function, W_UserFunction, W_Builti
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
+from spy.vm import testmod
+
 
 class Builtins:
     w_object = W_Object._w
@@ -42,6 +47,18 @@ class SPyVM:
 
     def __init__(self) -> None:
         self.ll = libspy.LLSPyInstance(libspy.LLMOD)
+        self.modules_w = {}
+        self.modules_w['testmod'] = testmod.make(self)
+
+    def lookup(self, fqn: FQN) -> W_Object:
+        w_mod = self.modules_w.get(fqn.module)
+        if w_mod is None:
+            raise SPyLookupError(f'Cannot find module `{fqn.module}`')
+        w_obj = w_mod.getattr_maybe(fqn.attr)
+        if w_obj is None:
+            raise SPyLookupError(f'Cannot find attribute `{fqn.attr}` ' +
+                                 f'in module `{fqn.module}`')
+        return w_obj
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)

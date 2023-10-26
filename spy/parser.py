@@ -134,9 +134,10 @@ class Parser:
 
     def from_py_ImportFrom(self, py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:
         res = []
-        root = py_imp.module
         for py_alias in py_imp.names:
-            fqn = f'{root}.{py_alias.name}'
+            fqn = spy.ast.FQN.from_parts(
+                module=py_imp.module,
+                attr=py_alias.name)
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,

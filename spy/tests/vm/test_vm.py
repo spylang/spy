@@ -1,8 +1,10 @@
 import fixedint
 import pytest
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.errors import SPyLookupError
+from spy.vm.vm import SPyVM, Builtins as B, FQN
 from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32, W_bool
 from spy.vm.str import W_str
+from spy.vm.function import W_BuiltinFunction
 
 class TestVM:
 
@@ -144,3 +146,16 @@ class TestVM:
         assert vm.dynamic_type(w_hello) is B.w_str
         assert vm.unwrap(w_hello) == 'hello'
         assert repr(w_hello) == "W_str('hello')"
+
+    def test_lookup(self):
+        vm = SPyVM()
+        w_obj = vm.lookup(FQN('testmod::double'))
+        assert isinstance(w_obj, W_BuiltinFunction)
+        assert w_obj.name == 'double'
+        #
+        with pytest.raises(SPyLookupError, match='Cannot find module `wrongmod`'):
+            vm.lookup(FQN('wrongmod::aaa'))
+        #
+        with pytest.raises(SPyLookupError,
+                           match='Cannot find attribute `aaa` in module `testmod`'):
+            vm.lookup(FQN('testmod::aaa'))
