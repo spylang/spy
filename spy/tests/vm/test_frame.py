@@ -15,7 +15,7 @@ class TestFrame:
         vm = SPyVM()
         w_42 = vm.wrap(42)
         w_functype = W_FunctionType.make(w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_42),
             OpCode('return'),
@@ -29,7 +29,7 @@ class TestFrame:
         w_100 = vm.wrap(100)
         w_1 = vm.wrap(1)
         w_functype = W_FunctionType.make(w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_100),
             OpCode('load_const', w_1),
@@ -46,7 +46,7 @@ class TestFrame:
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
         w_functype = W_FunctionType.make(w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_50),
             OpCode('load_const', w_8),
@@ -61,7 +61,7 @@ class TestFrame:
     def test_uninitialized_locals(self):
         vm = SPyVM()
         w_functype = W_FunctionType.make(w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_i32)
         code.body = [
             OpCode('load_local', 'a'),
@@ -76,7 +76,7 @@ class TestFrame:
         vm = SPyVM()
         w_100 = vm.wrap(100)
         w_functype = W_FunctionType.make(w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_i32)
         code.body = [
             OpCode('load_const', w_100),
@@ -93,7 +93,7 @@ class TestFrame:
         w_mod = W_Module(vm, 'mymod')
         vm.register_module(w_mod)
         w_functype = W_FunctionType.make(w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
 
         mymod_a = FQN('mymod::a')
         mymod_b = FQN('mymod::b')
@@ -111,12 +111,14 @@ class TestFrame:
         frame = Frame(vm, code)
         w_result = frame.run([])
         assert vm.unwrap(w_result) == 0
-        assert vm.unwrap(vm.lookup_global(mymod_b)) == 111
+        w_b = vm.lookup_global(mymod_b)
+        assert w_b is not None
+        assert vm.unwrap(w_b) == 111
 
     def test_params(self):
         vm = SPyVM()
         w_functype = W_FunctionType.make(a=B.w_i32, b=B.w_i32, w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_i32)
         code.declare_local('b', B.w_i32)
         code.body = [
@@ -136,7 +138,7 @@ class TestFrame:
     def test_br_if_not(self):
         vm = SPyVM()
         w_functype = W_FunctionType.make(a=B.w_bool, w_restype=B.w_i32)
-        code = W_CodeObject('simple', w_functype=w_functype)
+        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_bool)
         code.body = [
             OpCode('load_local', 'a'),           # 0

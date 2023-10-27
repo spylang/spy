@@ -19,14 +19,14 @@ class TestFunction:
         vm = SPyVM()
         w_functype = W_FunctionType([], B.w_i32)
         #
-        w_code = W_CodeObject('simple', w_functype=w_functype)
+        w_code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         w_code.body = [
             OpCode('load_const', vm.wrap(42)),
             OpCode('return'),
         ]
         #
         w_func = W_UserFunction(w_code)
-        assert repr(w_func) == "<spy function 'simple'>"
+        assert repr(w_func) == "<spy function 'test::fn'>"
         #
         w_t = vm.dynamic_type(w_func)
         assert w_t is w_functype
@@ -40,14 +40,13 @@ class TestFunction:
                       vm.wrap(10))
         #
         w_functype = W_FunctionType([], B.w_i32)
-        w_code = W_CodeObject('fn', w_functype=w_functype)
+        w_code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         w_code.body = [
             OpCode('load_global', FQN('mymod::a')),
             OpCode('return'),
         ]
         #
         w_fn = W_UserFunction(w_code)
-        assert repr(w_fn) == "<spy function 'fn'>"
         w_result = vm.call_function(w_fn, [])
         assert vm.unwrap(w_result) == 10
 
@@ -58,7 +57,7 @@ class TestFunction:
             a=B.w_i32,
             b=B.w_i32,
             w_restype=B.w_i32)
-        w_code = W_CodeObject('fn', w_functype=w_functype)
+        w_code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         w_code.declare_local('a', B.w_i32)
         w_code.declare_local('b', B.w_i32)
         w_code.body = [

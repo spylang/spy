@@ -205,6 +205,7 @@ class TypeChecker:
         pass
 
     def declare_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
+        assert False, 'FIXME'
         w_type, w_obj = self.vm.lookup(imp.fqn)
 
         ## w_mod = self.modules_w.get(fqn.module)

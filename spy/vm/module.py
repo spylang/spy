@@ -40,7 +40,7 @@ class W_Module(W_Object):
             if fqn.modname == self.name:
                 yield fqn
 
-    def items_w(self) -> Iterable[W_Object]:
+    def items_w(self) -> Iterable[tuple[FQN, W_Object]]:
         for fqn, w_obj in self.vm.globals_w.items():
             if fqn.modname == self.name:
                 yield fqn, w_obj

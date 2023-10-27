@@ -1,4 +1,5 @@
 import typing
+from spy.fqn import FQN
 from spy.vm.module import W_Module
 from spy.vm.function import W_BuiltinFunction, W_FunctionType
 if typing.TYPE_CHECKING:
@@ -13,5 +14,8 @@ def make(vm: 'SPyVM') -> W_Module:
         llname = 'spy_testmod_double',
         w_functype = W_FunctionType.make(x=B.w_i32, w_restype=B.w_i32),
     )
-    w_mod.add('double', w_double, w_type=None)
+    vm.register_module(w_mod)
+    vm.add_global(FQN('testmod::double'),
+                  w_double.w_functype,
+                  w_double)
     return w_mod

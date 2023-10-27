@@ -151,6 +151,7 @@ class Frame:
 
     def op_load_global(self, fqn: FQN) -> None:
         w_value = self.vm.lookup_global(fqn)
+        assert w_value is not None
         self.push(w_value)
 
     def op_store_global(self, fqn: FQN) -> None:

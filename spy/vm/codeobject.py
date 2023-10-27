@@ -121,7 +121,7 @@ class W_CodeObject(W_Object):
         Pretty print
         """
         color = ColorFormatter(use_colors=True)
-        name = color.set('green', self.fqn)
+        name = color.set('green', self.fqn.fullname)
         sig = color.set('red', self.w_functype.name)
         print(f'Disassembly of code {name}: {sig}')
         for name, w_type in self.locals_w_types.items():

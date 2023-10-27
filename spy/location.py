@@ -22,7 +22,7 @@ class Loc:
         return self.replace(line_start=self.line_end,
                             col_start=self.col_end)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         l1 = self.line_start
         c1 = self.col_start
         l2 = self.line_end

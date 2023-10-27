@@ -136,14 +136,6 @@ class SPyVM:
             raise Exception('Type mismatch')
         return w_value.value
 
-    def make_function(self, w_code: W_CodeObject, w_mod: W_Module) -> W_UserFunction:
-        """
-        Create a function inside a module
-        """
-        w_func = W_UserFunction(w_code)
-        w_mod.add(w_code.name, w_func, w_type=None)
-        return w_func
-
     def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
         # XXX: this check is wrong: we should define better what it means to
         # be "compatible", but we don't have this notion yet

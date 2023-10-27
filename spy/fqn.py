@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 class FQN:
     """
@@ -31,24 +31,24 @@ class FQN:
         self.modname = modname
         self.attr = attr
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"FQN({self.fullname!r})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.fullname
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, FQN):
             return NotImplemented
         return self.fullname == other.fullname
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.fullname)
 
     @property
-    def fullname(self):
+    def fullname(self) -> str:
         return f'{self.modname}::{self.attr}'
 
     @property
-    def c_name(self):
+    def c_name(self) -> str:
         return self.fullname.replace('.', '_').replace('::', '_')

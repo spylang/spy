@@ -35,12 +35,14 @@ class ModuleGen:
             if isinstance(decl, spy.ast.FuncDef):
                 fqn = FQN(modname=self.modname, attr=decl.name)
                 w_type = self.t.global_scope.lookup_type(decl.name)
+                assert w_type is not None
                 w_func = self.make_w_func(decl)
                 self.vm.add_global(fqn, w_type, w_func)
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 assert isinstance(decl.vardef.value, spy.ast.Constant)
                 fqn = FQN(modname=self.modname, attr=decl.vardef.name)
                 w_type = self.t.global_scope.lookup_type(decl.vardef.name)
+                assert w_type is not None
                 w_const = self.t.get_w_const(decl.vardef.value)
                 self.vm.add_global(fqn, w_type, w_const)
         return self.w_mod
