@@ -35,12 +35,15 @@ class CodeGen:
         w_functype, scope = t.get_funcdef_info(funcdef)
         self.scope = scope
         self.w_code = W_CodeObject(
-            FQN(modname=modname, attr=funcdef.name),
+            self.fqn(funcdef.name),
             w_functype=w_functype,
             filename=self.funcdef.loc.filename,
             lineno=self.funcdef.loc.line_start)
         self.last_lineno = -1
         self.add_local_variables()
+
+    def fqn(self, attr: str) -> FQN:
+        return FQN(modname=self.modname, attr=attr)
 
     def add_local_variables(self) -> None:
         for sym in self.scope.symbols.values():
@@ -149,8 +152,7 @@ class CodeGen:
             # local variable
             self.emit(assign.loc, 'store_local', assign.target)
         elif sym.scope is self.t.global_scope:
-            fqn = FQN(modname=self.modname, attr=assign.target)
-            self.emit(assign.loc, 'store_global', fqn)
+            self.emit(assign.loc, 'store_global', self.fqn(assign.target))
         else:
             assert False, 'TODO' # non-local variables
 
@@ -245,8 +247,7 @@ class CodeGen:
             self.emit(expr.loc, 'load_local', varname)
         elif sym.scope is self.t.global_scope:
             # global var
-            fqn = FQN(modname=self.modname, attr=varname)
-            self.emit(expr.loc, 'load_global', fqn)
+            self.emit(expr.loc, 'load_global', self.fqn(varname))
         else:
             # non-local variable
             assert False, 'XXX todo'
@@ -326,14 +327,15 @@ class CodeGen:
             self.eval_expr(expr)
 
         assert isinstance(call.func, spy.ast.Name)
-        funcname = call.func.id
+        fqn = self.fqn(call.func.id)
         sym = self.scope.lookup(call.func.id)
         assert sym is not None
         if sym.scope is self.t.builtins_scope:
             opcode = 'call_builtin'
+            fqn = call.func.id # XXX hack fix me
         elif sym.scope is self.t.global_scope:
             opcode = 'call_global'
         else:
             assert False
 
-        self.emit(call.loc, opcode, funcname, len(call.args))
+        self.emit(call.loc, opcode, fqn, len(call.args))

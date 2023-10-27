@@ -327,10 +327,10 @@ class CFuncWriter:
         llname = w_func.llname
         self._emit_op_call(llname, argcount, w_functype)
 
-    def emit_op_call_global(self, funcname: str, argcount: int) -> None:
-        w_functype = self.w_func.globals.types_w[funcname]
+    def emit_op_call_global(self, fqn: FQN, argcount: int) -> None:
+        w_functype = self.ctx.vm.lookup_global_type(fqn)
         assert isinstance(w_functype, W_FunctionType)
-        self._emit_op_call(funcname, argcount, w_functype)
+        self._emit_op_call(fqn.as_c_name(), argcount, w_functype)
 
     def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FunctionType) -> None:
         arglist = self._pop_args(argcount)

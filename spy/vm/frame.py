@@ -170,9 +170,8 @@ class Frame:
         assert isinstance(w_func, W_Function)
         return self._op_call(w_func, argcount)
 
-    def op_call_global(self, funcname: str, argcount: int) -> None:
-        import pdb;pdb.set_trace()
-        w_func = self.globals.get(funcname)
+    def op_call_global(self, fqn: FQN, argcount: int) -> None:
+        w_func = self.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Function)
         return self._op_call(w_func, argcount)
 
