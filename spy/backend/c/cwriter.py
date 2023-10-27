@@ -85,7 +85,7 @@ class CModuleWriter:
         c_type = self.ctx.w2c(w_type)
         if w_type is B.w_i32:
             intval = self.ctx.vm.unwrap(w_obj)
-            self.out.wl(f'{c_type} {fqn.as_c_name()} = {intval};')
+            self.out.wl(f'{c_type} {fqn.c_name} = {intval};')
         else:
             raise NotImplementedError('WIP')
 
@@ -174,7 +174,7 @@ class CFuncWriter:
         Emit the code for the whole function
         """
         self.emit_op_line(self.w_func.w_code.lineno)
-        c_func = self.ctx.c_function(self.fqn.as_c_name(),
+        c_func = self.ctx.c_function(self.fqn.c_name,
                                      self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
@@ -274,11 +274,11 @@ class CFuncWriter:
         self.out.wl(f'{varname} = {expr.str()};')
 
     def emit_op_load_global(self, fqn: FQN) -> None:
-        self.push(c_expr.Literal(fqn.as_c_name()))
+        self.push(c_expr.Literal(fqn.c_name))
 
     def emit_op_store_global(self, fqn: FQN) -> None:
         expr = self.pop()
-        self.out.wl(f'{fqn.as_c_name()} = {expr.str()};')
+        self.out.wl(f'{fqn.c_name} = {expr.str()};')
 
     def _emit_op_binop(self, op: str) -> None:
         right = self.pop()
@@ -330,7 +330,7 @@ class CFuncWriter:
     def emit_op_call_global(self, fqn: FQN, argcount: int) -> None:
         w_functype = self.ctx.vm.lookup_global_type(fqn)
         assert isinstance(w_functype, W_FunctionType)
-        self._emit_op_call(fqn.as_c_name(), argcount, w_functype)
+        self._emit_op_call(fqn.c_name, argcount, w_functype)
 
     def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FunctionType) -> None:
         arglist = self._pop_args(argcount)

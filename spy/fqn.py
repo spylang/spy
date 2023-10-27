@@ -49,5 +49,6 @@ class FQN:
     def fullname(self):
         return f'{self.modname}::{self.attr}'
 
-    def as_c_name(self):
+    @property
+    def c_name(self):
         return self.fullname.replace('.', '_').replace('::', '_')

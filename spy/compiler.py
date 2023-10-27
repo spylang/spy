@@ -97,7 +97,7 @@ class CompilerPipeline:
         file_c = self.cwrite()
         toolchain = ZigToolchain()
         #toolchain = ClangToolchain()
-        exports = [fqn.as_c_name() for fqn in self.w_mod.keys()]
+        exports = [fqn.c_name for fqn in self.w_mod.keys()]
         file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                      exports=exports,
                                      debug_symbols=debug_symbols)

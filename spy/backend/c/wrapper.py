@@ -27,8 +27,7 @@ class WasmModuleWrapper:
 
     def __getattr__(self, attr: str) -> Any:
         fqn = FQN(modname=self.w_mod.name, attr=attr)
-        c_name = fqn.as_c_name()
-        wasm_obj = self.ll.get_export(c_name)
+        wasm_obj = self.ll.get_export(fqn.c_name)
         if isinstance(wasm_obj, wasmtime.Func):
             return self.read_function(fqn)
         elif isinstance(wasm_obj, wasmtime.Global):
@@ -41,7 +40,7 @@ class WasmModuleWrapper:
         w_func = self.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Function)
         return WasmFuncWrapper(self.vm, self.ll,
-                               fqn.as_c_name(), w_func.w_functype)
+                               fqn.c_name, w_func.w_functype)
 
     def read_global(self, fqn: FQN) -> Any:
         w_type = self.vm.lookup_global_type(fqn)
@@ -51,7 +50,7 @@ class WasmModuleWrapper:
         else:
             assert False, f'Unknown type: {w_type}'
 
-        return self.ll.read_global(fqn.as_c_name(), deref=t)
+        return self.ll.read_global(fqn.c_name, deref=t)
 
 
 class WasmFuncWrapper:

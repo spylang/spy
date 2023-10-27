@@ -38,6 +38,6 @@ def test_hash_eq():
     assert a == b
     assert hash(a) == hash(b)
 
-def test_as_c_name():
+def test_c_name():
     a = FQN("a.b.c::xxx")
-    assert a.as_c_name() == "a_b_c_xxx"
+    assert a.c_name == "a_b_c_xxx"
