@@ -44,14 +44,14 @@ class WasmModuleWrapper:
                                fqn.as_c_name(), w_func.w_functype)
 
     def read_global(self, fqn: FQN) -> Any:
-        w_type = self.w_mod.content.types_w[name]
+        w_type = self.vm.lookup_global_type(fqn)
         t: LLWasmType
         if w_type is B.w_i32:
             t = 'int32_t'
         else:
             assert False, f'Unknown type: {w_type}'
 
-        return self.ll.read_global(name, deref=t)
+        return self.ll.read_global(fqn.as_c_name(), deref=t)
 
 
 class WasmFuncWrapper:

@@ -17,6 +17,7 @@ class CodeGen:
     """
     vm: SPyVM
     t: TypeChecker
+    modname: str
     funcdef: spy.ast.FuncDef
     scope: SymTable
     w_code: W_CodeObject
@@ -25,17 +26,19 @@ class CodeGen:
     def __init__(self,
                  vm: SPyVM,
                  t: TypeChecker,
-                 fqn: FQN,
+                 modname: str,
                  funcdef: spy.ast.FuncDef) -> None:
         self.vm = vm
         self.t = t
+        self.modname = modname
         self.funcdef = funcdef
         w_functype, scope = t.get_funcdef_info(funcdef)
         self.scope = scope
-        self.w_code = W_CodeObject(fqn,
-                                   w_functype=w_functype,
-                                   filename=self.funcdef.loc.filename,
-                                   lineno=self.funcdef.loc.line_start)
+        self.w_code = W_CodeObject(
+            FQN(modname=modname, attr=funcdef.name),
+            w_functype=w_functype,
+            filename=self.funcdef.loc.filename,
+            lineno=self.funcdef.loc.line_start)
         self.last_lineno = -1
         self.add_local_variables()
 
@@ -143,9 +146,11 @@ class CodeGen:
         assert sym # there MUST be a symbol somewhere, else the typechecker is broken
         self.eval_expr(assign.value)
         if sym.scope is self.scope:
-            self.emit(assign.loc, 'store_local', assign.target) # local variable
+            # local variable
+            self.emit(assign.loc, 'store_local', assign.target)
         elif sym.scope is self.t.global_scope:
-            self.emit(assign.loc, 'store_global', assign.target) # local variable
+            fqn = FQN(modname=self.modname, attr=assign.target)
+            self.emit(assign.loc, 'store_global', fqn)
         else:
             assert False, 'TODO' # non-local variables
 
@@ -240,7 +245,8 @@ class CodeGen:
             self.emit(expr.loc, 'load_local', varname)
         elif sym.scope is self.t.global_scope:
             # global var
-            self.emit(expr.loc, 'load_global', varname)
+            fqn = FQN(modname=self.modname, attr=varname)
+            self.emit(expr.loc, 'load_global', fqn)
         else:
             # non-local variable
             assert False, 'XXX todo'

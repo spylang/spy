@@ -2,6 +2,7 @@ from typing import Optional, NoReturn, Any
 import textwrap
 import ast as py_ast
 import spy.ast
+from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import SPyCompileError, SPyParseError
 from spy.util import magic_dispatch
@@ -42,7 +43,8 @@ class Parser:
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyParseError.simple(primary, secondary, loc)
 
-    def unsupported(self, node: py_ast.AST, reason: Optional[str] = None) -> NoReturn:
+    def unsupported(self, node: py_ast.AST,
+                    reason: Optional[str] = None) -> NoReturn:
         """
         Emit a nice error in case we encounter an unsupported AST node.
         """
@@ -101,7 +103,8 @@ class Parser:
             body = body,
         )
 
-    def from_py_arguments(self, py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
+    def from_py_arguments(self,
+                          py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
         if py_args.vararg:
             self.error('*args is not supported yet',
                        'this is not supported', py_args.vararg.loc)
@@ -132,12 +135,11 @@ class Parser:
             type = self.from_py_expr(py_arg.annotation),
         )
 
-    def from_py_ImportFrom(self, py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:
+    def from_py_ImportFrom(self,
+                           py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:
         res = []
         for py_alias in py_imp.names:
-            fqn = spy.ast.FQN.from_parts(
-                module=py_imp.module,
-                attr=py_alias.name)
+            fqn = FQN(modname=py_imp.module, attr=py_alias.name)
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,

@@ -33,21 +33,21 @@ class ModuleGen:
 
         for decl in self.mod.decls:
             if isinstance(decl, spy.ast.FuncDef):
+                fqn = FQN(modname=self.modname, attr=decl.name)
                 w_type = self.t.global_scope.lookup_type(decl.name)
                 w_func = self.make_w_func(decl)
-                fqn = w_func.w_code.fqn
                 self.vm.add_global(fqn, w_type, w_func)
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 assert isinstance(decl.vardef.value, spy.ast.Constant)
+                fqn = FQN(modname=self.modname, attr=decl.vardef.name)
                 w_type = self.t.global_scope.lookup_type(decl.vardef.name)
                 w_const = self.t.get_w_const(decl.vardef.value)
-                self.w_mod.add(decl.vardef.name, w_const, w_type)
+                self.vm.add_global(fqn, w_type, w_const)
         return self.w_mod
 
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_UserFunction:
-        name = FQN(modname=self.modname, attr=funcdef.name)
         w_functype, scope = self.t.get_funcdef_info(funcdef)
-        codegen = CodeGen(self.vm, self.t, name, funcdef)
+        codegen = CodeGen(self.vm, self.t, self.modname, funcdef)
         w_code = codegen.make_w_code()
         w_func = W_UserFunction(w_code)
         return w_func

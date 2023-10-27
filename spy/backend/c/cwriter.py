@@ -1,6 +1,7 @@
 from typing import Optional, Any
 import itertools
 import py.path
+from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
@@ -66,25 +67,25 @@ class CModuleWriter:
         // content of the module
         """)
         # XXX we should pre-declare variables and functions
-        for name, w_obj in self.w_mod.items_w():
+        for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
             if isinstance(w_obj, W_UserFunction):
-                self.emit_function(name, w_obj)
+                self.emit_function(fqn, w_obj)
             else:
-                self.emit_variable(name, w_obj)
+                self.emit_variable(fqn, w_obj)
         return self.out.build()
 
-    def emit_function(self, name: str, w_func: W_UserFunction) -> None:
-        fw = CFuncWriter(self.ctx, self, name, w_func)
+    def emit_function(self, fqn: FQN, w_func: W_UserFunction) -> None:
+        fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
 
-    def emit_variable(self, name: str, w_obj: W_Object) -> None:
+    def emit_variable(self, fqn: FQN, w_obj: W_Object) -> None:
         w_type = self.ctx.vm.dynamic_type(w_obj)
         c_type = self.ctx.w2c(w_type)
         if w_type is B.w_i32:
             intval = self.ctx.vm.unwrap(w_obj)
-            self.out.wl(f'{c_type} {name} = {intval};')
+            self.out.wl(f'{c_type} {fqn.as_c_name()} = {intval};')
         else:
             raise NotImplementedError('WIP')
 
@@ -93,18 +94,20 @@ class CFuncWriter:
     ctx: Context
     cmod: CModuleWriter
     out: TextBuilder
-    name: str
+    fqn: FQN
     w_func: W_UserFunction
     tmp_vars: dict[str, C_Type]
     stack: list[c_expr.Expr]
 
-    def __init__(self, ctx: Context,
+    def __init__(self,
+                 ctx: Context,
                  cmod: CModuleWriter,
-                 name: str, w_func: W_UserFunction):
+                 fqn: FQN,
+                 w_func: W_UserFunction) -> None:
         self.ctx = ctx
         self.cmod = cmod
         self.out = cmod.out
-        self.name = name
+        self.fqn = fqn
         self.w_func = w_func
         self.tmp_vars = {}
         self.stack = []
@@ -171,7 +174,7 @@ class CFuncWriter:
         Emit the code for the whole function
         """
         self.emit_op_line(self.w_func.w_code.lineno)
-        c_func = self.ctx.c_function(self.name.as_c_name(),
+        c_func = self.ctx.c_function(self.fqn.as_c_name(),
                                      self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
@@ -270,8 +273,12 @@ class CFuncWriter:
         expr = self.pop()
         self.out.wl(f'{varname} = {expr.str()};')
 
-    emit_op_load_global = emit_op_load_local
-    emit_op_store_global = emit_op_store_local
+    def emit_op_load_global(self, fqn: FQN) -> None:
+        self.push(c_expr.Literal(fqn.as_c_name()))
+
+    def emit_op_store_global(self, fqn: FQN) -> None:
+        expr = self.pop()
+        self.out.wl(f'{fqn.as_c_name()} = {expr.str()};')
 
     def _emit_op_binop(self, op: str) -> None:
         right = self.pop()
