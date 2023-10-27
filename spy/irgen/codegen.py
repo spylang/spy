@@ -1,5 +1,5 @@
 import spy.ast
-from spy.ast import FQN
+from spy.fqn import FQN
 from spy.location import Loc
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
@@ -25,14 +25,14 @@ class CodeGen:
     def __init__(self,
                  vm: SPyVM,
                  t: TypeChecker,
-                 name: FQN,
+                 fqn: FQN,
                  funcdef: spy.ast.FuncDef) -> None:
         self.vm = vm
         self.t = t
         self.funcdef = funcdef
         w_functype, scope = t.get_funcdef_info(funcdef)
         self.scope = scope
-        self.w_code = W_CodeObject(name,
+        self.w_code = W_CodeObject(fqn,
                                    w_functype=w_functype,
                                    filename=self.funcdef.loc.filename,
                                    lineno=self.funcdef.loc.line_start)

@@ -63,7 +63,7 @@ class W_UserFunction(W_Function):
         self.w_code = w_code
 
     def __repr__(self) -> str:
-        return f"<spy function '{self.w_code.name.fqn}'>"
+        return f"<spy function '{self.w_code.fqn}'>"
 
     @property
     def w_functype(self) -> W_FunctionType:

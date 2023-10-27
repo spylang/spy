@@ -22,13 +22,6 @@ class TestParser(CompilerTest):
             expected = expected.format(tmpdir=self.tmpdir)
         assert dumped.strip() == expected.strip()
 
-
-    def test_FQN(self):
-        a = spy.ast.FQN("aaa::bbb")
-        b = spy.ast.FQN("aaa::bbb")
-        assert a == b
-        assert hash(a) == hash(b)
-
     def test_Module(self):
         mod = self.parse("""
         def foo() -> void:

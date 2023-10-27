@@ -39,7 +39,7 @@ class Frame:
         assert isinstance(w_code, W_CodeObject)
         self.vm = vm
         self.w_code = w_code
-        self.locals = VarStorage(vm, f"'{w_code.name} locals'",
+        self.locals = VarStorage(vm, f"'{w_code.fqn} locals'",
                                  w_code.locals_w_types)
         self.pc = 0
         self.stack = []

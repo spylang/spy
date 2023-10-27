@@ -2,7 +2,7 @@ import struct
 from typing import Any, Optional
 import py.path
 import wasmtime
-from spy.ast import FQN
+from spy.fqn import FQN
 from spy.llwasm import LLWasmType
 from spy.libspy import LLSPyInstance
 from spy.vm.object import W_Type
@@ -26,7 +26,7 @@ class WasmModuleWrapper:
         return f"<WasmModuleWrapper 'self.ll.name'>"
 
     def __getattr__(self, attr: str) -> Any:
-        fqn = FQN.from_parts(self.w_mod.name, attr)
+        fqn = FQN(modname=self.w_mod.name, attr=attr)
         c_name = fqn.as_c_name()
         wasm_obj = self.ll.get_export(c_name)
         if isinstance(wasm_obj, wasmtime.Func):

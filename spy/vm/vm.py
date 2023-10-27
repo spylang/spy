@@ -1,7 +1,7 @@
 from typing import Any, Optional
 from dataclasses import dataclass
 import fixedint
-from spy.ast import FQN
+from spy.fqn import FQN
 from spy.errors import SPyLookupError
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
@@ -71,11 +71,11 @@ class SPyVM:
         self.globals_types[name] = w_type
         self.globals_w[name] = w_value
 
-    def lookup_global_type(self, name: FQN) -> Optional[W_Type]:
-        return self.globals_types.get(name)
+    def lookup_global_type(self, fqn: FQN) -> Optional[W_Type]:
+        return self.globals_types.get(fqn)
 
-    def lookup_global(self, name: FQN) -> Optional[W_Object]:
-        return self.globals_w.get(name)
+    def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
+        return self.globals_w.get(fqn)
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
