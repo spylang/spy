@@ -35,12 +35,12 @@ class Frame:
     stack: list[W_Object]
     locals: VarStorage
 
-    def __init__(self, vm: 'SPyVM', w_code: W_Object, globals: VarStorage) -> None:
+    def __init__(self, vm: 'SPyVM', w_code: W_Object) -> None:
         assert isinstance(w_code, W_CodeObject)
         self.vm = vm
         self.w_code = w_code
-        self.globals = globals
-        self.locals = VarStorage(vm, f"'{w_code.name} locals'", w_code.locals_w_types)
+        self.locals = VarStorage(vm, f"'{w_code.name} locals'",
+                                 w_code.locals_w_types)
         self.pc = 0
         self.stack = []
 
@@ -149,10 +149,12 @@ class Frame:
         self.locals.set(varname, w_value)
 
     def op_load_global(self, varname: str) -> None:
+        import pdb;pdb.set_trace()
         w_value = self.globals.get(varname)
         self.push(w_value)
 
     def op_store_global(self, varname: str) -> None:
+        import pdb;pdb.set_trace()
         w_value = self.pop()
         self.globals.set(varname, w_value)
 
@@ -170,6 +172,7 @@ class Frame:
         return self._op_call(w_func, argcount)
 
     def op_call_global(self, funcname: str, argcount: int) -> None:
+        import pdb;pdb.set_trace()
         w_func = self.globals.get(funcname)
         assert isinstance(w_func, W_Function)
         return self._op_call(w_func, argcount)

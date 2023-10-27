@@ -206,6 +206,16 @@ class TypeChecker:
 
     def declare_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
         w_type, w_obj = self.vm.lookup(imp.fqn)
+
+        ## w_mod = self.modules_w.get(fqn.module)
+        ## if w_mod is None:
+        ##     raise SPyLookupError(f'Cannot find module `{fqn.module}`')
+        ## w_obj = w_mod.getattr_maybe(fqn.attr)
+        ## if w_obj is None:
+        ##     raise SPyLookupError(f'Cannot find attribute `{fqn.attr}` ' +
+        ##                          f'in module `{fqn.module}`')
+        ## w_type = w_mod.content.types_w[fqn.attr]
+
         scope.declare(imp.asname, 'const', w_type, imp.loc)
 
     def check_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:

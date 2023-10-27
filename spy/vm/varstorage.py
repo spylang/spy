@@ -36,18 +36,3 @@ class VarStorage:
         if w_res is None:
             raise SPyRuntimeError('read from uninitialized local')
         return w_res
-
-    def add(self,
-            name: str,
-            w_value: W_Object,
-            w_type: Optional[W_Type],
-            ) -> None:
-        if name in self.values_w:
-            raise Exception(f'Attribute {name} already present in the module')
-        assert name not in self.types_w
-        if w_type is None:
-            w_type = self.vm.dynamic_type(w_value)
-        else:
-            assert self.vm.is_compatible_type(w_value, w_type)
-        self.types_w[name] = w_type
-        self.values_w[name] = w_value

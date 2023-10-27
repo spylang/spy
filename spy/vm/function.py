@@ -58,14 +58,12 @@ class W_Function(W_Object):
 
 class W_UserFunction(W_Function):
     w_code: W_CodeObject
-    globals: VarStorage
 
-    def __init__(self, w_code: W_CodeObject, globals: VarStorage) -> None:
+    def __init__(self, w_code: W_CodeObject) -> None:
         self.w_code = w_code
-        self.globals = globals
 
     def __repr__(self) -> str:
-        return f"<spy function '{self.w_code.name}'>"
+        return f"<spy function '{self.w_code.name.fqn}'>"
 
     @property
     def w_functype(self) -> W_FunctionType:

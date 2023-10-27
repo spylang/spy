@@ -1,4 +1,5 @@
 import spy.ast
+from spy.ast import FQN
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.codegen import CodeGen
 from spy.vm.vm import SPyVM
@@ -12,22 +13,30 @@ class ModuleGen:
     Generate a W_Module, given a spy.ast.Module.
     """
     vm: SPyVM
+    modname: str
     mod: spy.ast.Module
     t: TypeChecker
 
-    def __init__(self, vm: SPyVM, t: TypeChecker, mod: spy.ast.Module) -> None:
+    def __init__(self,
+                 vm: SPyVM,
+                 t: TypeChecker,
+                 modname: str,
+                 mod: spy.ast.Module) -> None:
         self.vm = vm
         self.t = t
+        self.modname = modname
         self.mod = mod
 
     def make_w_mod(self) -> W_Module:
-        name = 'mymod' # XXX
-        self.w_mod = W_Module(self.vm, name)
+        self.w_mod = W_Module(self.vm, self.modname)
+        self.vm.register_module(self.w_mod)
+
         for decl in self.mod.decls:
             if isinstance(decl, spy.ast.FuncDef):
                 w_type = self.t.global_scope.lookup_type(decl.name)
                 w_func = self.make_w_func(decl)
-                self.w_mod.add(w_func.w_code.name, w_func, w_type)
+                name = w_func.w_code.name
+                self.vm.add_global(name, w_type, w_func)
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 assert isinstance(decl.vardef.value, spy.ast.Constant)
                 w_type = self.t.global_scope.lookup_type(decl.vardef.name)
@@ -36,8 +45,9 @@ class ModuleGen:
         return self.w_mod
 
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_UserFunction:
+        name = FQN.from_parts(self.modname, funcdef.name)
         w_functype, scope = self.t.get_funcdef_info(funcdef)
-        codegen = CodeGen(self.vm, self.t, funcdef)
+        codegen = CodeGen(self.vm, self.t, name, funcdef)
         w_code = codegen.make_w_code()
-        w_func = W_UserFunction(w_code, self.w_mod.content)
+        w_func = W_UserFunction(w_code) #, self.w_mod.content)
         return w_func

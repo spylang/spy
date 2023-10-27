@@ -24,6 +24,7 @@ class CompilerPipeline:
     vm: SPyVM
     file_spy: py.path.local  # input file
     builddir: py.path.local
+    modname: str
     #
     parser: Parser
     mod: spy.ast.Module
@@ -33,10 +34,15 @@ class CompilerPipeline:
     file_c: py.path.local    # output file
     file_wasm: py.path.local # output file
 
-    def __init__(self, vm: SPyVM, file_spy: py.path.local, builddir: py.path.local) -> None:
+    def __init__(self, vm: SPyVM, file_spy: py.path.local,
+                 builddir: py.path.local) -> None:
         self.vm = vm
         self.file_spy = file_spy
         self.builddir = builddir
+        # XXX this is good for now but should probably change in the future:
+        # for now, we derive the modname only from the filename, but
+        # eventually we need to add support for packages and submodules
+        self.modname = file_spy.purebasename
         #
         self.parser = None  # type: ignore
         self.mod = None     # type: ignore
@@ -64,7 +70,7 @@ class CompilerPipeline:
     def irgen(self) -> W_Module:
         assert self.modgen is None, 'irgen() already called'
         self.typecheck()
-        self.modgen = ModuleGen(self.vm, self.t, self.mod)
+        self.modgen = ModuleGen(self.vm, self.t, self.modname, self.mod)
         self.w_mod = self.modgen.make_w_mod()
         return self.w_mod
 
@@ -91,7 +97,7 @@ class CompilerPipeline:
         file_c = self.cwrite()
         toolchain = ZigToolchain()
         #toolchain = ClangToolchain()
-        exports = list(self.w_mod.content.values_w.keys())
+        exports = [fqn.as_c_name() for fqn in self.w_mod.keys()]
         file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                      exports=exports,
                                      debug_symbols=debug_symbols)

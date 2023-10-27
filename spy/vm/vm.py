@@ -6,7 +6,8 @@ from spy.errors import SPyLookupError
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.function import W_FunctionType, W_Function, W_UserFunction, W_BuiltinFunction
+from spy.vm.function import (W_FunctionType, W_Function, W_UserFunction,
+                             W_BuiltinFunction)
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
@@ -44,22 +45,37 @@ class SPyVM:
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
     ll: libspy.LLSPyInstance
+    globals_types: dict[FQN, W_Type]
+    globals_w: dict[FQN, W_Object]
+    modules_w: dict[str, W_Module]
 
     def __init__(self) -> None:
         self.ll = libspy.LLSPyInstance(libspy.LLMOD)
+        self.globals_types = {}
+        self.globals_w = {}
         self.modules_w = {}
-        self.modules_w['testmod'] = testmod.make(self)
+        #self.modules_w['testmod'] = testmod.make(self)
 
-    def lookup(self, fqn: FQN) -> W_Object:
-        w_mod = self.modules_w.get(fqn.module)
-        if w_mod is None:
-            raise SPyLookupError(f'Cannot find module `{fqn.module}`')
-        w_obj = w_mod.getattr_maybe(fqn.attr)
-        if w_obj is None:
-            raise SPyLookupError(f'Cannot find attribute `{fqn.attr}` ' +
-                                 f'in module `{fqn.module}`')
-        w_type = w_mod.content.types_w[fqn.attr]
-        return w_type, w_obj
+    def register_module(self, w_mod: W_Module) -> None:
+        assert w_mod.name not in self.modules_w
+        self.modules_w[w_mod.name] = w_mod
+
+    def add_global(self, name: FQN, w_type: W_Type, w_value: W_Object) -> None:
+        assert name.modname in self.modules_w
+        assert name not in self.globals_w
+        assert name not in self.globals_types
+        if w_type is None:
+            w_type = self.dynamic_type(w_value)
+        else:
+            assert self.is_compatible_type(w_value, w_type)
+        self.globals_types[name] = w_type
+        self.globals_w[name] = w_value
+
+    def lookup_global_type(self, name: FQN) -> Optional[W_Type]:
+        return self.globals_types.get(name)
+
+    def lookup_global(self, name: FQN) -> Optional[W_Object]:
+        return self.globals_w.get(name)
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
@@ -135,7 +151,7 @@ class SPyVM:
             assert self.is_compatible_type(w_arg, param.w_type)
         #
         if isinstance(w_func, W_UserFunction):
-            frame = Frame(self, w_func.w_code, w_func.globals)
+            frame = Frame(self, w_func.w_code)
             return frame.run(args_w)
         elif isinstance(w_func, W_BuiltinFunction):
             return w_func.spy_call(self, args_w)

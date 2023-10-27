@@ -48,14 +48,14 @@ class AST:
 del AST
 
 
-@dataclass
+@dataclass(frozen=True)
 class FQN:
     """
     Fully qualified name.
 
     A FQN uniquely identify a named object inside the current VM. It is
-    formated as 'module::attr', where module can be composed of multiple parts
-    separated by dots (e.g. 'a.b.c').
+    formated as 'modname::attr', where 'modname' can be composed of multiple
+    parts separated by dots (e.g. 'a.b.c').
 
     NOTE: this is not part of the Node hierarchy
     """
@@ -67,23 +67,26 @@ class FQN:
             raise ValueError(f'{self.fqn} is not a valid FQN')
 
     @classmethod
-    def from_parts(cls, module: str, attr: str) -> 'FQN':
-        fqn = f'{module}::{attr}'
+    def from_parts(cls, modname: str, attr: str) -> 'FQN':
+        fqn = f'{modname}::{attr}'
         return cls(fqn)
 
     def __repr__(self):
         return f"FQN({self.fqn!r})"
 
     @property
-    def module(self):
+    def modname(self):
         return self.fqn.split('::')[0]
 
     @property
     def attr(self):
         return self.fqn.split('::')[1]
 
+    def is_in_module(self, modname: str) -> bool:
+        return self.fqn.startswith(f'{modname}::')
 
-
+    def as_c_name(self):
+        return self.fqn.replace('.', '_').replace('::', '_')
 
 # we want all nodes to compare by *identity* and be hashable, because e.g. we
 # put them in dictionaries inside the typechecker. So, we must use eq=False ON

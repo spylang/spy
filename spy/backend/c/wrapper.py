@@ -2,6 +2,7 @@ import struct
 from typing import Any, Optional
 import py.path
 import wasmtime
+from spy.ast import FQN
 from spy.llwasm import LLWasmType
 from spy.libspy import LLSPyInstance
 from spy.vm.object import W_Type
@@ -24,22 +25,25 @@ class WasmModuleWrapper:
     def __repr__(self) -> str:
         return f"<WasmModuleWrapper 'self.ll.name'>"
 
-    def __getattr__(self, name: str) -> Any:
-        wasm_obj = self.ll.get_export(name)
+    def __getattr__(self, attr: str) -> Any:
+        fqn = FQN.from_parts(self.w_mod.name, attr)
+        c_name = fqn.as_c_name()
+        wasm_obj = self.ll.get_export(c_name)
         if isinstance(wasm_obj, wasmtime.Func):
-            return self.read_function(name)
+            return self.read_function(fqn)
         elif isinstance(wasm_obj, wasmtime.Global):
-            return self.read_global(name)
+            return self.read_global(fqn)
         else:
             t = type(wasm_obj)
             raise NotImplementedError(f'Unknown WASM object: {t}')
 
-    def read_function(self, name: str) -> 'WasmFuncWrapper':
-        w_func = self.w_mod.content.get(name)
+    def read_function(self, fqn: FQN) -> 'WasmFuncWrapper':
+        w_func = self.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Function)
-        return WasmFuncWrapper(self.vm, self.ll, name, w_func.w_functype)
+        return WasmFuncWrapper(self.vm, self.ll,
+                               fqn.as_c_name(), w_func.w_functype)
 
-    def read_global(self, name: str) -> Any:
+    def read_global(self, fqn: FQN) -> Any:
         w_type = self.w_mod.content.types_w[name]
         t: LLWasmType
         if w_type is B.w_i32:
@@ -53,14 +57,14 @@ class WasmModuleWrapper:
 class WasmFuncWrapper:
     vm: SPyVM
     ll: LLSPyInstance
-    name: str
+    c_name: str
     w_functype: W_FunctionType
 
-    def __init__(self, vm: SPyVM, ll: LLSPyInstance, name:str,
+    def __init__(self, vm: SPyVM, ll: LLSPyInstance, c_name: str,
                  w_functype: W_FunctionType) -> None:
         self.vm = vm
         self.ll = ll
-        self.name = name
+        self.c_name = c_name
         self.w_functype = w_functype
 
     def py2wasm(self, pyval: Any, w_type: W_Type) -> Any:
@@ -76,7 +80,7 @@ class WasmFuncWrapper:
         a = len(py_args)
         b = len(self.w_functype.params)
         if a != b:
-            raise TypeError(f'{self.name}: expected {b} arguments, got {a}')
+            raise TypeError(f'{self.c_name}: expected {b} arguments, got {a}')
         #
         wasm_args = []
         for py_arg, param in zip(py_args, self.w_functype.params):
@@ -86,7 +90,7 @@ class WasmFuncWrapper:
 
     def __call__(self, *py_args: Any) -> Any:
         wasm_args = self.from_py_args(py_args)
-        res = self.ll.call(self.name, *wasm_args)
+        res = self.ll.call(self.c_name, *wasm_args)
         w_type = self.w_functype.w_restype
         if w_type is B.w_void:
             assert res is None

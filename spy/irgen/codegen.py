@@ -1,4 +1,5 @@
 import spy.ast
+from spy.ast import FQN
 from spy.location import Loc
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
@@ -9,7 +10,6 @@ from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FunctionType
 from spy.util import magic_dispatch
-
 
 class CodeGen:
     """
@@ -25,13 +25,14 @@ class CodeGen:
     def __init__(self,
                  vm: SPyVM,
                  t: TypeChecker,
+                 name: FQN,
                  funcdef: spy.ast.FuncDef) -> None:
         self.vm = vm
         self.t = t
         self.funcdef = funcdef
         w_functype, scope = t.get_funcdef_info(funcdef)
         self.scope = scope
-        self.w_code = W_CodeObject(self.funcdef.name,
+        self.w_code = W_CodeObject(name,
                                    w_functype=w_functype,
                                    filename=self.funcdef.loc.filename,
                                    lineno=self.funcdef.loc.line_start)
@@ -63,6 +64,8 @@ class CodeGen:
     def is_const(self, expr: spy.ast.Expr) -> bool:
         """
         Check whether the given expr is a compile time const. We consider consts:
+
+
           - spy.ast.Constant
           - spy.ast.Name which refers to a 'const'
         """

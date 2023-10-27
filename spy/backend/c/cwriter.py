@@ -66,7 +66,7 @@ class CModuleWriter:
         // content of the module
         """)
         # XXX we should pre-declare variables and functions
-        for name, w_obj in self.w_mod.content.values_w.items():
+        for name, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
             if isinstance(w_obj, W_UserFunction):
@@ -171,7 +171,8 @@ class CFuncWriter:
         Emit the code for the whole function
         """
         self.emit_op_line(self.w_func.w_code.lineno)
-        c_func = self.ctx.c_function(self.name, self.w_func.w_functype)
+        c_func = self.ctx.c_function(self.name.as_c_name(),
+                                     self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
             self.emit_local_vars()
