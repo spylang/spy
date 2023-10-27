@@ -77,6 +77,11 @@ class SPyVM:
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
         return self.globals_w.get(fqn)
 
+    def store_global(self, fqn: FQN, w_value: W_Object) -> None:
+        w_type = self.globals_types[fqn]
+        assert self.is_compatible_type(w_value, w_type)
+        self.globals_w[fqn] = w_value
+
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
         return w_obj.spy_get_w_type(self)
@@ -135,7 +140,7 @@ class SPyVM:
         """
         Create a function inside a module
         """
-        w_func = W_UserFunction(w_code, w_mod.content)
+        w_func = W_UserFunction(w_code)
         w_mod.add(w_code.name, w_func, w_type=None)
         return w_func
 

@@ -17,6 +17,7 @@ codegen, so the point of the assert()s is mostly to catch bugs in it.
 """
 
 from typing import TYPE_CHECKING, Any
+from spy.fqn import FQN
 from spy.errors import SPyRuntimeAbort
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
@@ -148,15 +149,13 @@ class Frame:
         w_value = self.pop()
         self.locals.set(varname, w_value)
 
-    def op_load_global(self, varname: str) -> None:
-        import pdb;pdb.set_trace()
-        w_value = self.globals.get(varname)
+    def op_load_global(self, fqn: FQN) -> None:
+        w_value = self.vm.lookup_global(fqn)
         self.push(w_value)
 
-    def op_store_global(self, varname: str) -> None:
-        import pdb;pdb.set_trace()
+    def op_store_global(self, fqn: FQN) -> None:
         w_value = self.pop()
-        self.globals.set(varname, w_value)
+        self.vm.store_global(fqn, w_value)
 
     def _pop_args(self, argcount: int) -> list[W_Object]:
         args_w = []

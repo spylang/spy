@@ -1,21 +1,13 @@
 import pytest
 from typing import Optional
+from spy.fqn import FQN
 from spy.errors import SPyRuntimeError
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.frame import Frame
 from spy.vm.codeobject import OpCode, W_CodeObject
-from spy.vm.varstorage import VarStorage
 from spy.vm.function import W_FunctionType
-
-def make_Frame(vm: SPyVM, w_code: W_Object,
-               globals: Optional[VarStorage] = None) -> Frame:
-    """
-    Like Frame(), but allows to pass None for globals
-    """
-    if globals is None:
-        globals = VarStorage(vm, 'globals', {})
-    return Frame(vm, w_code, globals)
+from spy.vm.module import W_Module
 
 class TestFrame:
 
@@ -28,7 +20,7 @@ class TestFrame:
             OpCode('load_const', w_42),
             OpCode('return'),
         ]
-        frame = make_Frame(vm, code)
+        frame = Frame(vm, code)
         w_result = frame.run([])
         assert w_result is w_42
 
@@ -44,7 +36,7 @@ class TestFrame:
             OpCode('i32_add'),
             OpCode('return'),
         ]
-        frame = make_Frame(vm, code)
+        frame = Frame(vm, code)
         w_result = frame.run([])
         result = vm.unwrap(w_result)
         assert result == 101
@@ -61,7 +53,7 @@ class TestFrame:
             OpCode('i32_sub'),
             OpCode('return'),
         ]
-        frame = make_Frame(vm, code)
+        frame = Frame(vm, code)
         w_result = frame.run([])
         result = vm.unwrap(w_result)
         assert result == 42
@@ -75,7 +67,7 @@ class TestFrame:
             OpCode('load_local', 'a'),
             OpCode('return'),
         ]
-        frame = make_Frame(vm, code)
+        frame = Frame(vm, code)
         with pytest.raises(SPyRuntimeError,
                            match='read from uninitialized local'):
             w_result = frame.run([])
@@ -92,34 +84,34 @@ class TestFrame:
             OpCode('load_local', 'a'),
             OpCode('return'),
         ]
-        frame = make_Frame(vm, code)
+        frame = Frame(vm, code)
         w_result = frame.run([])
         assert w_result is w_100
 
     def test_globals(self):
         vm = SPyVM()
+        w_mod = W_Module(vm, 'mymod')
+        vm.register_module(w_mod)
         w_functype = W_FunctionType.make(w_restype=B.w_i32)
         code = W_CodeObject('simple', w_functype=w_functype)
+
+        mymod_a = FQN('mymod::a')
+        mymod_b = FQN('mymod::b')
         code.body = [
-            OpCode('load_global', 'a'),
+            OpCode('load_global', mymod_a),
             OpCode('load_const', vm.wrap(11)),
             OpCode('i32_add'),
-            OpCode('store_global', 'b'),
+            OpCode('store_global', mymod_b),
             OpCode('load_const', vm.wrap(0)),
             OpCode('return'),
         ]
 
-        globals_w_types = {
-            'a': B.w_i32,
-            'b': B.w_i32,
-        }
-        myglobs = VarStorage(vm, 'globals', globals_w_types)
-        myglobs.set('a', vm.wrap(100))
-
-        frame = Frame(vm, code, myglobs)
+        vm.add_global(mymod_a, B.w_i32, vm.wrap(100))
+        vm.add_global(mymod_b, B.w_i32, vm.wrap(0))
+        frame = Frame(vm, code)
         w_result = frame.run([])
         assert vm.unwrap(w_result) == 0
-        assert vm.unwrap(myglobs.get('b')) == 111
+        assert vm.unwrap(vm.lookup_global(mymod_b)) == 111
 
     def test_params(self):
         vm = SPyVM()
@@ -136,7 +128,7 @@ class TestFrame:
         #
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
-        frame = make_Frame(vm, code)
+        frame = Frame(vm, code)
         w_result = frame.run([w_50, w_8])
         result = vm.unwrap(w_result)
         assert result == 42
@@ -154,12 +146,12 @@ class TestFrame:
             OpCode('load_const', vm.wrap(200)),  # 4
             OpCode('return'),                    # 5
         ]
-        frame1 = make_Frame(vm, code)
+        frame1 = Frame(vm, code)
         w_result = frame1.run([B.w_True])
         result = vm.unwrap(w_result)
         assert result == 100
         #
-        frame2 = make_Frame(vm, code)
+        frame2 = Frame(vm, code)
         w_result = frame2.run([B.w_False])
         result = vm.unwrap(w_result)
         assert result == 200

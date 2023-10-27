@@ -146,17 +146,3 @@ class TestVM:
         assert vm.dynamic_type(w_hello) is B.w_str
         assert vm.unwrap(w_hello) == 'hello'
         assert repr(w_hello) == "W_str('hello')"
-
-    def test_lookup(self):
-        vm = SPyVM()
-        w_type, w_obj = vm.lookup(FQN('testmod::double'))
-        assert isinstance(w_obj, W_BuiltinFunction)
-        assert w_type is w_obj.w_functype
-        assert w_obj.name == 'double'
-        #
-        with pytest.raises(SPyLookupError, match='Cannot find module `wrongmod`'):
-            vm.lookup(FQN('wrongmod::aaa'))
-        #
-        with pytest.raises(SPyLookupError,
-                           match='Cannot find attribute `aaa` in module `testmod`'):
-            vm.lookup(FQN('testmod::aaa'))

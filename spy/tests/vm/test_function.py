@@ -1,4 +1,5 @@
 import pytest
+from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FunctionType, W_UserFunction, FuncParam
@@ -24,8 +25,7 @@ class TestFunction:
             OpCode('return'),
         ]
         #
-        globals = VarStorage(vm, 'globals', {})
-        w_func = W_UserFunction(w_code, globals)
+        w_func = W_UserFunction(w_code)
         assert repr(w_func) == "<spy function 'simple'>"
         #
         w_t = vm.dynamic_type(w_func)
@@ -34,28 +34,30 @@ class TestFunction:
     def test_make_and_call_function(self):
         vm = SPyVM()
         w_mod = W_Module(vm, 'mymod')
-        w_a = vm.wrap(10)
-        w_mod.add('a', w_a, w_type=None)
+        vm.register_module(w_mod)
+        vm.add_global(FQN('mymod::a'),
+                      B.w_i32,
+                      vm.wrap(10))
         #
         w_functype = W_FunctionType([], B.w_i32)
         w_code = W_CodeObject('fn', w_functype=w_functype)
         w_code.body = [
-            OpCode('load_global', 'a'),
+            OpCode('load_global', FQN('mymod::a')),
             OpCode('return'),
         ]
         #
-        w_fn = vm.make_function(w_code, w_mod)
+        w_fn = W_UserFunction(w_code)
         assert repr(w_fn) == "<spy function 'fn'>"
-        assert w_mod.content.get('fn') is w_fn
-        assert w_fn.globals is w_mod.content
-        #
         w_result = vm.call_function(w_fn, [])
         assert vm.unwrap(w_result) == 10
 
     def test_call_function_with_arguments(self):
         vm = SPyVM()
         w_mod = W_Module(vm, 'mymod')
-        w_functype = W_FunctionType.make(a=B.w_i32, b=B.w_i32, w_restype=B.w_i32)
+        w_functype = W_FunctionType.make(
+            a=B.w_i32,
+            b=B.w_i32,
+            w_restype=B.w_i32)
         w_code = W_CodeObject('fn', w_functype=w_functype)
         w_code.declare_local('a', B.w_i32)
         w_code.declare_local('b', B.w_i32)
@@ -66,7 +68,6 @@ class TestFunction:
             OpCode('return'),
         ]
         #
-        w_fn = vm.make_function(w_code, w_mod)
-        #
+        w_fn = W_UserFunction(w_code)
         w_result = vm.call_function(w_fn, [vm.wrap(100), vm.wrap(80)])
         assert vm.unwrap(w_result) == 20

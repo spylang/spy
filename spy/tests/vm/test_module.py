@@ -1,4 +1,5 @@
 import pytest
+from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.module import W_Module
 
@@ -7,26 +8,16 @@ class TestModule:
     def test_add(self):
         vm = SPyVM()
         w_mod = W_Module(vm, 'mymod')
+        vm.register_module(w_mod)
+        #
+        fqn_a = FQN('mymod::a')
+        fqn_b = FQN('mymod::b')
         w_a = vm.wrap(10)
         w_b = vm.wrap(20)
-        w_mod.add('a', w_a, w_type=None)
-        w_mod.add('b', w_b, w_type=None)
-        assert w_mod.content.types_w == {
-            'a': B.w_i32,
-            'b': B.w_i32,
-        }
-        assert w_mod.content.values_w == {
-            'a': w_a,
-            'b': w_b,
-        }
-
-    def test_freeze(self):
-        vm = SPyVM()
-        w_mod = W_Module(vm, 'mymod')
-        w_a = vm.wrap(10)
-        w_b = vm.wrap(20)
-        w_mod.add('a', w_a, w_type=None)
-        w_mod.freeze()
-        with pytest.raises(Exception, match='Frozen'):
-            w_mod.add('b', w_b, w_type=None)
-        assert list(w_mod.content.values_w.keys()) == ['a']
+        vm.add_global(fqn_a, B.w_i32, w_a)
+        vm.add_global(fqn_b, B.w_i32, w_b)
+        assert list(w_mod.keys()) == [fqn_a, fqn_b]
+        assert list(w_mod.items_w()) == [
+            (fqn_a, w_a),
+            (fqn_b, w_b),
+        ]
