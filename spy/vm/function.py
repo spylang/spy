@@ -89,7 +89,7 @@ class W_BuiltinFunction(W_Function):
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         # XXX we need a way to automatically generate unwrapping code for
         # args_w. For now, let's just hardcode
-        if self.fqn.fullname == 'builtins::abs':
+        if self.w_functype.name == 'def(x: i32) -> i32':
             assert len(args_w) == 1
             arg = vm.unwrap_i32(args_w[0])
             res = vm.ll.call(self.fqn.c_name, arg)
