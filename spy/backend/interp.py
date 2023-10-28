@@ -12,7 +12,7 @@ vice-versa, by using vm.wrap and vm.unwrap.
 from typing import Any
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
-from spy.vm.function import W_Function, W_UserFunction
+from spy.vm.function import W_Function, W_UserFunction, W_FunctionType
 
 
 class InterpModuleWrapper:
@@ -42,10 +42,12 @@ class InterpFuncWrapper:
     """
     vm: SPyVM
     w_func: W_Function
+    w_functype: W_FunctionType
 
     def __init__(self, vm: SPyVM, w_func: W_Function):
         self.vm = vm
         self.w_func = w_func
+        self.w_functype = w_func.w_functype
 
     def dis(self) -> None:
         assert isinstance(self.w_func, W_UserFunction)

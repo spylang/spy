@@ -533,16 +533,15 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
-    @pytest.mark.skip('WIP')
     def test_import(self):
         mod = self.compile("""
-        from testmod import double
+        from builtins import abs as my_abs
 
-        def foo(x: i32, y: i32) -> i32:
-            return double(x) + double(y)
+        def foo(x: i32) -> i32:
+            return my_abs(x)
         """)
         #
-        assert mod.foo(1, 2) == 6
+        assert mod.foo(-20) == 20
 
     @pytest.mark.skip("WIP")
     def test_import_errors(self):
@@ -550,3 +549,15 @@ class TestBasic(CompilerTest):
         from testmod import aaa
         from wrongmod import aaa
         """)
+
+    def test_resolve_name(self):
+        mod = self.compile("""
+        from builtins import i32 as my_int
+
+        def foo(x: my_int) -> my_int:
+            return x+1
+        """)
+        #
+        w_functype = mod.foo.w_functype
+        assert w_functype.name == 'def(x: i32) -> i32'
+        assert mod.foo(1) == 2

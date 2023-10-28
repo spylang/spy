@@ -97,23 +97,25 @@ class TypeChecker:
         err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
         raise err
 
-    def resolve_type(self, expr: spy.ast.Expr) -> W_Type:
-        # OK, this is very wrong. We should have a proper table of types with
-        # the possibility of nested scopes and lookups. For now, we just to a
-        # hardcoded lookup in the VM builtins, which is good enough to resolve
-        # builtin types.
-        #
-        # Also, eventually we should support arbitrary expressions, but for
-        # now we just support simple Names.
+    def resolve_type(self, expr: spy.ast.Expr, scope: SymTable) -> W_Type:
+        # This is sub-optimal: eventually we should support arbitrary
+        # expressions, but for now we just support simple Names.
         typename = self.ensure_Name(expr)
         if not typename:
             self.error('only simple types are supported for now',
                        'this expression is too complex', expr.loc)
 
-        w_type = B.lookup(typename)
-        if w_type is None:
+        sym = scope.lookup(typename)
+        if sym is None:
             self.error(f'cannot find type `{typename}`',
                        'not found in this scope', expr.loc)
+
+        if sym.qualifier != 'const' or sym.fqn is None:
+            # XXX write a test?
+            self.error(f'the type `{typename}` is not const', expr.loc)
+
+        w_type = self.vm.lookup_global(sym.fqn)
+        assert w_type is not None
         if not isinstance(w_type, W_Type):
             got = self.vm.dynamic_type(w_type).name
             self.error(f'{typename} is not a type',
@@ -165,11 +167,11 @@ class TypeChecker:
         params = [
             FuncParam(
                 name = arg.name,
-                w_type = self.resolve_type(arg.type)
+                w_type = self.resolve_type(arg.type, scope)
             )
             for arg in funcdef.args
         ]
-        w_return_type = self.resolve_type(funcdef.return_type)
+        w_return_type = self.resolve_type(funcdef.return_type, scope)
         w_functype = W_FunctionType(params, w_return_type)
         scope.declare(funcdef.name, 'const', w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
@@ -211,9 +213,8 @@ class TypeChecker:
         pass
 
     def declare_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
-        assert False, 'FIXME'
-        w_type, w_obj = self.vm.lookup(imp.fqn)
-
+        w_type = self.vm.lookup_global_type(imp.fqn)
+        scope.declare(imp.asname, 'const', w_type, imp.loc, fqn=imp.fqn)
         ## w_mod = self.modules_w.get(fqn.module)
         ## if w_mod is None:
         ##     raise SPyLookupError(f'Cannot find module `{fqn.module}`')
@@ -223,7 +224,7 @@ class TypeChecker:
         ##                          f'in module `{fqn.module}`')
         ## w_type = w_mod.content.types_w[fqn.attr]
 
-        scope.declare(imp.asname, 'const', w_type, imp.loc)
+
 
     def check_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
         pass
@@ -247,7 +248,7 @@ class TypeChecker:
             err.add('note', 'this is the previous declaration', existing_sym.loc)
             raise err
         #
-        w_declared_type = self.resolve_type(vardef.type)
+        w_declared_type = self.resolve_type(vardef.type, scope)
         scope.declare(vardef.name, 'var', w_declared_type, vardef.loc)
         #
         assert vardef.value is not None, 'TODO'
