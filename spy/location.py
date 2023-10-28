@@ -27,4 +27,7 @@ class Loc:
         c1 = self.col_start
         l2 = self.line_end
         c2 = self.col_end
-        return f"<Loc: '{self.filename} {l1}:{c1} {l2}:{c2}'>"
+        if l1 == l2 == c1 == c2 == 0:
+            return f"<Loc: '{self.filename}'>"
+        else:
+            return f"<Loc: '{self.filename} {l1}:{c1} {l2}:{c2}'>"

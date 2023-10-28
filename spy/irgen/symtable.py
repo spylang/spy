@@ -1,6 +1,7 @@
 from typing import Optional, Literal
 from dataclasses import dataclass, KW_ONLY
 import spy.ast
+from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Type, W_Object
@@ -21,6 +22,7 @@ class Symbol:
     _: KW_ONLY
     loc: Loc           # where the symbol is defined, in the source code
     scope: 'SymTable'  # the scope where the symbol lives in
+    fqn: Optional[FQN] = None
 
 
 class SymTable:
@@ -37,17 +39,19 @@ class SymTable:
     def from_builtins(cls, vm: SPyVM) -> 'SymTable':
         res = cls('<builtins>', parent=None)
         loc = Loc(filename='<builtins>',
-                  line_start=1,
-                  line_end=1,
-                  col_start=1,
-                  col_end=1)
+                  line_start=0,
+                  line_end=0,
+                  col_start=0,
+                  col_end=0)
         #
         for varname, w_obj in B.__dict__.items():
             if not varname.startswith('w_'):
                 continue
             assert isinstance(w_obj, W_Object)
+            attr = varname[2:]
+            fqn = FQN(modname='builtins', attr=attr)
             w_type = vm.dynamic_type(w_obj)
-            res.declare(varname[2:], 'const', w_type, loc)
+            res.declare(attr, 'const', w_type, loc, fqn=fqn)
         return res
 
     def __repr__(self) -> str:
@@ -60,14 +64,15 @@ class SymTable:
             print(f'    {name}: {sym.w_type.name}')
 
     def declare(self, name: str, qualifier: Qualifier, w_type: W_Type,
-                loc: Loc) -> Symbol:
+                loc: Loc, fqn: Optional[FQN] = None) -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
         self.symbols[name] = s = Symbol(name = name,
                                         qualifier = qualifier,
                                         w_type = w_type,
                                         loc = loc,
-                                        scope = self)
+                                        scope = self,
+                                        fqn = fqn)
         return s
 
     def lookup(self, name: str) -> Optional[Symbol]:

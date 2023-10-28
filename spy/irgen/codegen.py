@@ -327,15 +327,13 @@ class CodeGen:
             self.eval_expr(expr)
 
         assert isinstance(call.func, spy.ast.Name)
-        fqn = self.fqn(call.func.id)
         sym = self.scope.lookup(call.func.id)
         assert sym is not None
 
-        # XXX rewrite this ugly if
-        if sym.scope is self.t.builtins_scope:
-            fqn = FQN(modname='builtins', attr=call.func.id)
+        if sym.fqn is not None:
+            fqn = sym.fqn
         elif sym.scope is self.t.global_scope:
-            pass
+            fqn = self.fqn(call.func.id)
         else:
             assert False
 
