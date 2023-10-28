@@ -50,8 +50,9 @@ class TypeChecker:
             'probably a bug in the typechecker, some AST node was not visited?'
         return self.expr_types[expr]
 
-    def get_funcdef_info(self, funcdef: spy.ast.FuncDef) \
-                                                  -> tuple[W_FunctionType, SymTable]:
+    def get_funcdef_info(self,
+                         funcdef: spy.ast.FuncDef
+                         ) -> tuple[W_FunctionType, SymTable]:
         w_type = self.funcdef_types[funcdef]
         scope = self.funcdef_scopes[funcdef]
         return w_type, scope
@@ -128,7 +129,8 @@ class TypeChecker:
             return expr.id
         return None
 
-    def lookup_Name_maybe(self, expr: spy.ast.Expr, scope: SymTable) -> Optional[Symbol]:
+    def lookup_Name_maybe(self, expr: spy.ast.Expr,
+                          scope: SymTable) -> Optional[Symbol]:
         """
         Try to get the place where expr was defined, in case expr is a Name.
         """
@@ -158,7 +160,8 @@ class TypeChecker:
         for decl in mod.decls:
             self.check(decl, scope)
 
-    def declare_FuncDef(self, funcdef: spy.ast.FuncDef, scope: SymTable) -> None:
+    def declare_FuncDef(self, funcdef: spy.ast.FuncDef,
+                        scope: SymTable) -> None:
         params = [
             FuncParam(
                 name = arg.name,
@@ -171,7 +174,8 @@ class TypeChecker:
         scope.declare(funcdef.name, 'const', w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
-    def check_FuncDef(self, funcdef: spy.ast.FuncDef, outer_scope: SymTable) -> None:
+    def check_FuncDef(self, funcdef: spy.ast.FuncDef,
+                      outer_scope: SymTable) -> None:
         local_scope = SymTable(funcdef.name, parent=outer_scope)
         self.funcdef_scopes[funcdef] = local_scope
         w_functype = self.funcdef_types[funcdef]
@@ -186,7 +190,8 @@ class TypeChecker:
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
 
-    def declare_GlobalVarDef(self, globvar: spy.ast.GlobalVarDef, scope: SymTable) -> None:
+    def declare_GlobalVarDef(self, globvar: spy.ast.GlobalVarDef,
+                             scope: SymTable) -> None:
         # only constants are allowed as initializers, for now
         vardef = globvar.vardef
         if not isinstance(vardef.value, spy.ast.Constant):
@@ -200,7 +205,8 @@ class TypeChecker:
         # Constant, so this is safe to do.
         self.check_stmt_VarDef(vardef, scope)
 
-    def check_GlobalVarDef(self, globvar: spy.ast.GlobalVarDef, scope: SymTable) -> None:
+    def check_GlobalVarDef(self, globvar: spy.ast.GlobalVarDef,
+                           scope: SymTable) -> None:
         # nothing to do, we did everything inside declare()
         pass
 
@@ -224,7 +230,8 @@ class TypeChecker:
 
     # ==== statements ====
 
-    def check_stmt_VarDef(self, vardef: spy.ast.VarDef, scope: SymTable) -> None:
+    def check_stmt_VarDef(self, vardef: spy.ast.VarDef,
+                          scope: SymTable) -> None:
         """
         This is our way of declaring variables (for now):
             x: i32 = <expr>
@@ -252,10 +259,12 @@ class TypeChecker:
                                      vardef.value.loc,
                                      'because of type declaration')
 
-    def check_stmt_StmtExpr(self, stmt: spy.ast.StmtExpr, scope: SymTable) -> None:
+    def check_stmt_StmtExpr(self, stmt: spy.ast.StmtExpr,
+                            scope: SymTable) -> None:
         self.check_expr(stmt.value, scope)
 
-    def check_stmt_Assign(self, assign: spy.ast.Assign, scope: SymTable) -> None:
+    def check_stmt_Assign(self, assign: spy.ast.Assign,
+                          scope: SymTable) -> None:
         varname = assign.target
         w_valuetype = self.check_expr(assign.value, scope)
         sym = scope.lookup(varname)
@@ -291,7 +300,9 @@ class TypeChecker:
         if w_type is not B.w_bool:
             err = SPyTypeError('mismatched types')
             err.add('error', f'expected `bool`, got `{w_type.name}`', loc)
-            err.add('note', f'implicit conversion to `bool` is not implemented yet', loc)
+            err.add('note',
+                    f'implicit conversion to `bool` is not implemented yet',
+                    loc)
             raise err
 
     def check_stmt_If(self, if_node: spy.ast.If, scope: SymTable) -> None:
@@ -303,8 +314,10 @@ class TypeChecker:
         for stmt in if_node.else_body:
             self.check_stmt(stmt, scope)
 
-    def check_stmt_While(self, while_node: spy.ast.While, scope: SymTable) -> None:
-        # same XXX as above: do we want to introduce a new scope inside the loop?
+    def check_stmt_While(self, while_node: spy.ast.While,
+                         scope: SymTable) -> None:
+        # same XXX as above: do we want to introduce a new scope inside the
+        # loop?
         w_cond_type = self.check_expr(while_node.test, scope)
         self._assert_bool(w_cond_type, while_node.test.loc)
         for stmt in while_node.body:
@@ -312,7 +325,8 @@ class TypeChecker:
 
     # ==== expressions ====
 
-    def check_expr_Constant(self, const: spy.ast.Constant, scope: SymTable) -> W_Type:
+    def check_expr_Constant(self, const: spy.ast.Constant,
+                            scope: SymTable) -> W_Type:
         # this is a bit suboptimal: we are making the constant and throw it
         # away just to compute the type, and then we re-make it in CodeGen.
         w_const = self.get_w_const(const)
@@ -322,7 +336,8 @@ class TypeChecker:
         varname = expr.id
         sym = scope.lookup(varname)
         if not sym:
-            err = SPyTypeError(f'cannot find variable `{varname}` in this scope')
+            err = SPyTypeError(
+                f'cannot find variable `{varname}` in this scope')
             err.add('error', 'not found in this scope', expr.loc)
             raise err
         return sym.w_type
@@ -331,8 +346,8 @@ class TypeChecker:
         w_ltype = self.check_expr(expr.left, scope)
         w_rtype = self.check_expr(expr.right, scope)
         if w_ltype == w_rtype:
-            # XXX this is wrong: here we assume that the result of a binop is the
-            # same as its arguments, but we need to tweak it when we have
+            # XXX this is wrong: here we assume that the result of a binop is
+            # the same as its arguments, but we need to tweak it when we have
             # e.g. floats and division
             return w_ltype
         elif w_ltype is B.w_str and w_rtype is B.w_i32:
@@ -348,7 +363,8 @@ class TypeChecker:
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
 
-    def check_expr_CompareOp(self, expr: spy.ast.CompareOp, scope: SymTable) -> W_Type:
+    def check_expr_CompareOp(self, expr: spy.ast.CompareOp,
+                             scope: SymTable) -> W_Type:
         w_ltype = self.check_expr(expr.left, scope)
         w_rtype = self.check_expr(expr.right, scope)
         if w_ltype != w_rtype:
@@ -368,7 +384,8 @@ class TypeChecker:
     check_expr_Gt = check_expr_CompareOp
     check_expr_GtE = check_expr_CompareOp
 
-    def check_expr_GetItem(self, expr: spy.ast.GetItem, scope: SymTable) -> W_Type:
+    def check_expr_GetItem(self, expr: spy.ast.GetItem,
+                           scope: SymTable) -> W_Type:
         w_vtype = self.check_expr(expr.value, scope)
         w_itype = self.check_expr(expr.index, scope)
         impl = multiop.GetItem.lookup(w_vtype, w_itype)
@@ -390,7 +407,7 @@ class TypeChecker:
             raise err
 
     def check_expr_Call(self, call: spy.ast.Call, scope: SymTable) -> W_Type:
-        sym = self.lookup_Name_maybe(call.func, scope) # only used for error reporting
+        sym = self.lookup_Name_maybe(call.func, scope) # for error reporting
         w_functype = self.check_expr(call.func, scope)
         if not isinstance(w_functype, W_FunctionType):
             self._call_error_non_callable(call, sym, w_functype)
@@ -401,7 +418,8 @@ class TypeChecker:
         if got_nargs != exp_nargs:
             self._call_error_wrong_argcount(call, sym, got_nargs, exp_nargs)
         #
-        for i, (param, w_arg_type) in enumerate(zip(w_functype.params, argtypes_w)):
+        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
+                                                    argtypes_w)):
             if not can_assign_to(w_arg_type, param.w_type):
                 self._call_error_type_mismatch(call, sym, i,
                                                w_exp_type = param.w_type,
@@ -410,7 +428,8 @@ class TypeChecker:
         return w_functype.w_restype
 
 
-    def _call_error_non_callable(self, call: spy.ast.Call, sym: Optional[Symbol],
+    def _call_error_non_callable(self, call: spy.ast.Call,
+                                 sym: Optional[Symbol],
                                  w_type: W_Type) -> NoReturn:
         err = SPyTypeError(f'cannot call objects of type `{w_type.name}`')
         err.add('error', 'this is not a function', call.func.loc)
@@ -418,7 +437,8 @@ class TypeChecker:
             err.add('note', 'variable defined here', sym.loc)
         raise err
 
-    def _call_error_wrong_argcount(self, call: spy.ast.Call, sym: Optional[Symbol],
+    def _call_error_wrong_argcount(self, call: spy.ast.Call,
+                                   sym: Optional[Symbol],
                                    got: int, exp: int) -> NoReturn:
         assert got != exp
         takes = maybe_plural(exp, f'takes {exp} argument')
@@ -437,15 +457,22 @@ class TypeChecker:
             first_extra_arg = call.args[exp]
             last_extra_arg = call.args[-1]
             # XXX this assumes that all the arguments are on the same line
-            loc = first_extra_arg.loc.replace(col_end=last_extra_arg.loc.col_end)
+            loc = first_extra_arg.loc.replace(
+                col_end = last_extra_arg.loc.col_end
+            )
             err.add('error', f'{diff} extra {arguments}', loc)
         #
         if sym:
             err.add('note', 'function defined here', sym.loc)
         raise err
 
-    def _call_error_type_mismatch(self, call: spy.ast.Call, sym: Optional[Symbol], i: int,
-                                  w_exp_type: W_Type, w_got_type: W_Type) -> NoReturn:
+    def _call_error_type_mismatch(self,
+                                  call: spy.ast.Call,
+                                  sym: Optional[Symbol],
+                                  i: int,
+                                  w_exp_type: W_Type,
+                                  w_got_type: W_Type
+                                  ) -> NoReturn:
         err = SPyTypeError('mismatched types')
         exp = w_exp_type.name
         got = w_got_type.name
