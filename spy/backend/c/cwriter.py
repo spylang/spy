@@ -318,15 +318,6 @@ class CFuncWriter:
         arglist = ', '.join(args)
         return arglist
 
-    def emit_op_call_builtin(self, funcname: str, argcount: int) -> None:
-        w_func = B.lookup(funcname)
-        assert w_func is not None
-        w_functype = self.ctx.vm.dynamic_type(w_func)
-        assert isinstance(w_func, W_BuiltinFunction)
-        assert isinstance(w_functype, W_FunctionType)
-        llname = w_func.llname
-        self._emit_op_call(llname, argcount, w_functype)
-
     def emit_op_call_global(self, fqn: FQN, argcount: int) -> None:
         w_functype = self.ctx.vm.lookup_global_type(fqn)
         assert isinstance(w_functype, W_FunctionType)

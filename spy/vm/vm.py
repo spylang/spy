@@ -26,8 +26,7 @@ class Builtins:
     w_False = W_bool._w_singleton_False
 
     w_abs = W_BuiltinFunction(
-        name = 'abs',
-        llname = 'spy_abs',
+        fqn = FQN('builtins::abs'),
         w_functype = W_FunctionType.make(x=w_i32, w_restype=w_i32),
     )
 
@@ -54,7 +53,20 @@ class SPyVM:
         self.globals_types = {}
         self.globals_w = {}
         self.modules_w = {}
+        self.make_builtins_module()
         #self.modules_w['testmod'] = testmod.make(self)
+
+    def make_builtins_module(self) -> None:
+        w_mod = W_Module(self, 'builtins')
+        self.register_module(w_mod)
+        for attr, w_obj in Builtins.__dict__.items():
+            if not isinstance(w_obj, W_Object):
+                continue
+            assert attr.startswith('w_')
+            attr = attr[2:]  # remove the w_
+            fqn = FQN(modname='builtins', attr=attr)
+            w_type = self.dynamic_type(w_obj)
+            self.add_global(fqn, w_type, w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w

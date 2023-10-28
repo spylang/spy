@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import typing
+from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
@@ -71,17 +72,15 @@ class W_UserFunction(W_Function):
 
 
 class W_BuiltinFunction(W_Function):
-    name: str
-    llname: str
+    fqn: FQN
     _w_functype: W_FunctionType
 
-    def __init__(self, name: str, llname: str, w_functype: W_FunctionType) -> None:
-        self.name = name
-        self.llname = llname
+    def __init__(self, fqn: FQN, w_functype: W_FunctionType) -> None:
+        self.fqn = fqn
         self._w_functype = w_functype
 
     def __repr__(self) -> str:
-        return f"<spy function '{self.name}' (builtin)>"
+        return f"<spy function '{self.fqn}' (builtin)>"
 
     @property
     def w_functype(self) -> W_FunctionType:
@@ -90,10 +89,10 @@ class W_BuiltinFunction(W_Function):
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         # XXX we need a way to automatically generate unwrapping code for
         # args_w. For now, let's just hardcode
-        if self.llname == 'spy_abs':
+        if self.fqn.fullname == 'builtins::abs':
             assert len(args_w) == 1
             arg = vm.unwrap_i32(args_w[0])
-            res = vm.ll.call('spy_abs', arg)
+            res = vm.ll.call(self.fqn.c_name, arg)
             return vm.wrap(res)
         else:
             assert False

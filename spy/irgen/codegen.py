@@ -330,12 +330,13 @@ class CodeGen:
         fqn = self.fqn(call.func.id)
         sym = self.scope.lookup(call.func.id)
         assert sym is not None
+
+        # XXX rewrite this ugly if
         if sym.scope is self.t.builtins_scope:
-            opcode = 'call_builtin'
-            fqn = call.func.id # XXX hack fix me
+            fqn = FQN(modname='builtins', attr=call.func.id)
         elif sym.scope is self.t.global_scope:
-            opcode = 'call_global'
+            pass
         else:
             assert False
 
-        self.emit(call.loc, opcode, fqn, len(call.args))
+        self.emit(call.loc, 'call_global', fqn, len(call.args))

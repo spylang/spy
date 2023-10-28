@@ -10,8 +10,7 @@ def make(vm: 'SPyVM') -> W_Module:
     from spy.vm.vm import Builtins as B
     w_mod = W_Module(vm, 'testmod')
     w_double = W_BuiltinFunction(
-        name = 'double',
-        llname = 'spy_testmod_double',
+        fqn = FQN('testmod::double'),
         w_functype = W_FunctionType.make(x=B.w_i32, w_restype=B.w_i32),
     )
     vm.register_module(w_mod)

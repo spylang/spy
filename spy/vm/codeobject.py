@@ -29,7 +29,6 @@ ALL_OPCODES = [
     'store_global',
     'call_global',
     'call_helper',
-    'call_builtin',
     'i32_add',
     'i32_sub',
     'i32_mul',

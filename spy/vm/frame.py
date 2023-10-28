@@ -165,12 +165,6 @@ class Frame:
         args_w.reverse()
         return args_w
 
-    def op_call_builtin(self, funcname: str, argcount: int) -> None:
-        from spy.vm.vm import Builtins as B
-        w_func = B.lookup(funcname)
-        assert isinstance(w_func, W_Function)
-        return self._op_call(w_func, argcount)
-
     def op_call_global(self, fqn: FQN, argcount: int) -> None:
         w_func = self.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Function)

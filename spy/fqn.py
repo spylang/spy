@@ -51,4 +51,5 @@ class FQN:
 
     @property
     def c_name(self) -> str:
-        return self.fullname.replace('.', '_').replace('::', '_')
+        modname = self.modname.replace('.', '_')
+        return f'spy_{modname}__{self.attr}'

@@ -29,7 +29,7 @@ class LLWasmModule:
         self.mod = wt.Module.from_file(ENGINE, str(f))
 
     def __repr__(self) -> str:
-        return '<LLWasmModule {self.f}>'
+        return f'<LLWasmModule {self.f}>'
 
 
 class HostModule:
@@ -41,7 +41,8 @@ class HostModule:
     ll: 'LLWasmInstance' # this attribute is set by LLWasmInstance.__init__
 
 
-def link(store: wt.Store, llmod: LLWasmModule, hostmods: list[HostModule]) -> list[wt.Func]:
+def link(store: wt.Store, llmod: LLWasmModule,
+         hostmods: list[HostModule]) -> list[wt.Func]:
     """
     Perform the linking between a given llmod and the given HostModules.
 

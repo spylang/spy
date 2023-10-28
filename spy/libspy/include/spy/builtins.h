@@ -4,9 +4,9 @@
 #include "spy.h"
 
 int32_t
-WASM_EXPORT(spy_abs)(int32_t x);
+WASM_EXPORT(spy_builtins__abs)(int32_t x);
 
 int32_t
-WASM_EXPORT(spy_testmod_double)(int32_t x);
+WASM_EXPORT(spy_testmod__double)(int32_t x);
 
 #endif /* SPY_BUILTIS_H */

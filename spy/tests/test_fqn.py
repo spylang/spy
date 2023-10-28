@@ -40,4 +40,4 @@ def test_hash_eq():
 
 def test_c_name():
     a = FQN("a.b.c::xxx")
-    assert a.c_name == "a_b_c_xxx"
+    assert a.c_name == "spy_a_b_c__xxx"
