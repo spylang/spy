@@ -117,6 +117,7 @@ class GlobalVarDef(Decl):
 @dataclass(eq=False)
 class Import(Decl):
     loc: Loc
+    loc_asname: Loc
     fqn: FQN
     asname: str
 

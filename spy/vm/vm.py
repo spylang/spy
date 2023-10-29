@@ -2,7 +2,6 @@ from typing import Any, Optional
 from dataclasses import dataclass
 import fixedint
 from spy.fqn import FQN
-from spy.errors import SPyLookupError
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str

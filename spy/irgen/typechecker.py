@@ -2,7 +2,7 @@ from typing import NoReturn, Optional
 from types import NoneType
 import spy.ast
 from spy.location import Loc
-from spy.errors import SPyTypeError, maybe_plural
+from spy.errors import SPyTypeError, SPyImportError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
 from spy.irgen import multiop
 from spy.vm.vm import SPyVM, Builtins as B
@@ -214,17 +214,23 @@ class TypeChecker:
 
     def declare_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
         w_type = self.vm.lookup_global_type(imp.fqn)
-        scope.declare(imp.asname, 'const', w_type, imp.loc, fqn=imp.fqn)
-        ## w_mod = self.modules_w.get(fqn.module)
-        ## if w_mod is None:
-        ##     raise SPyLookupError(f'Cannot find module `{fqn.module}`')
-        ## w_obj = w_mod.getattr_maybe(fqn.attr)
-        ## if w_obj is None:
-        ##     raise SPyLookupError(f'Cannot find attribute `{fqn.attr}` ' +
-        ##                          f'in module `{fqn.module}`')
-        ## w_type = w_mod.content.types_w[fqn.attr]
-
-
+        if w_type is not None:
+            scope.declare(imp.asname, 'const', w_type, imp.loc, fqn=imp.fqn)
+            return
+        #
+        err = SPyImportError(f'cannot import `{imp.fqn.spy_name}`')
+        if imp.fqn.modname not in self.vm.modules_w:
+            # module not found
+            err.add('error',
+                    f'module `{imp.fqn.modname}` does not exist',
+                    loc=imp.loc)
+        else:
+            # attribute not found
+            err.add('error',
+                    f'attribute `{imp.fqn.attr}` does not exist ' +
+                    f'in module `{imp.fqn.modname}`',
+                    loc=imp.loc_asname)
+        raise err
 
     def check_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
         pass

@@ -103,7 +103,7 @@ class SPyTypeError(SPyCompileError):
     pass
 
 
-class SPyLookupError(SPyCompileError):
+class SPyImportError(SPyCompileError):
     pass
 
 

@@ -543,12 +543,25 @@ class TestBasic(CompilerTest):
         #
         assert mod.foo(-20) == 20
 
-    @pytest.mark.skip("WIP")
     def test_import_errors(self):
-        mod = self.compile("""
-        from builtins import aaa
-        from wrongmod import aaa
-        """)
+        self.expect_errors(
+            """
+            from builtins import aaa
+            """,
+            errors = [
+                'cannot import `builtins.aaa`',
+                'attribute `aaa` does not exist in module `builtins`'
+            ]
+        )
+        self.expect_errors(
+            """
+            from xxx import aaa
+            """,
+            errors = [
+                'cannot import `xxx.aaa`',
+                'module `xxx` does not exist'
+            ]
+        )
 
     def test_resolve_name(self):
         mod = self.compile("""

@@ -53,3 +53,7 @@ class FQN:
     def c_name(self) -> str:
         modname = self.modname.replace('.', '_')
         return f'spy_{modname}__{self.attr}'
+
+    @property
+    def spy_name(self) -> str:
+        return f'{self.modname}.{self.attr}'

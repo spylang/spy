@@ -143,6 +143,7 @@ class Parser:
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
+                loc_asname = py_alias.loc,
                 fqn = fqn,
                 asname = asname
             ))
