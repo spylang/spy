@@ -11,7 +11,6 @@ from spy.vm.function import (W_FunctionType, W_Function, W_UserFunction,
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
-from spy.vm import testmod
 
 
 class Builtins:
@@ -54,7 +53,6 @@ class SPyVM:
         self.globals_w = {}
         self.modules_w = {}
         self.make_builtins_module()
-        #self.modules_w['testmod'] = testmod.make(self)
 
     def make_builtins_module(self) -> None:
         w_mod = W_Module(self, 'builtins')

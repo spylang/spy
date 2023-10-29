@@ -546,7 +546,7 @@ class TestBasic(CompilerTest):
     @pytest.mark.skip("WIP")
     def test_import_errors(self):
         mod = self.compile("""
-        from testmod import aaa
+        from builtins import aaa
         from wrongmod import aaa
         """)
 
