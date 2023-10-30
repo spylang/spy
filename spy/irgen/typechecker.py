@@ -112,7 +112,8 @@ class TypeChecker:
 
         if sym.qualifier != 'const' or sym.fqn is None:
             # XXX write a test?
-            self.error(f'the type `{typename}` is not const', expr.loc)
+            self.error(f'the type `{typename}` is not const',
+                       'error', expr.loc)
 
         w_type = self.vm.lookup_global(sym.fqn)
         assert w_type is not None
