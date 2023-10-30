@@ -1,4 +1,5 @@
 import pytest
+from spy.fqn import FQN
 from spy.errors import SPyRuntimeAbort
 from spy.irgen.symtable import Symbol
 from spy.vm.vm import Builtins as B
@@ -53,19 +54,20 @@ class TestBasic(CompilerTest):
                 return 42
             """,
             errors = [
-                'cannot find type `aaa`'
+                'unknown type `aaa`'
             ])
 
-        with monkeypatch.context() as m:
-            m.setattr(B, 'w_I_am_not_a_type', self.vm.wrap(42), raising=False)
-            self.expect_errors(
-                """
-                def foo() -> I_am_not_a_type:
-                    return 42
-                """,
-                errors = [
-                    'I_am_not_a_type is not a type'
-                ])
+        self.vm.add_global(FQN('builtins::I_am_not_a_type'),
+                           B.w_i32,
+                           self.vm.wrap(42))
+        self.expect_errors(
+            """
+            def foo() -> I_am_not_a_type:
+                return 42
+            """,
+            errors = [
+                'I_am_not_a_type is not a type'
+            ])
 
     @no_backend
     def test_wrong_return_type(self):

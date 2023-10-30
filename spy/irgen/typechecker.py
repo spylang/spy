@@ -107,7 +107,7 @@ class TypeChecker:
 
         sym = scope.lookup(typename)
         if sym is None:
-            self.error(f'cannot find type `{typename}`',
+            self.error(f'unknown type `{typename}`',
                        'not found in this scope', expr.loc)
 
         if sym.qualifier != 'const' or sym.fqn is None:

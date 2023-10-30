@@ -44,14 +44,10 @@ class SymTable:
                   col_start=0,
                   col_end=0)
         #
-        for varname, w_obj in B.__dict__.items():
-            if not varname.startswith('w_'):
-                continue
-            assert isinstance(w_obj, W_Object)
-            attr = varname[2:]
-            fqn = FQN(modname='builtins', attr=attr)
+        builtins_mod = vm.modules_w['builtins']
+        for fqn, w_obj in builtins_mod.items_w():
             w_type = vm.dynamic_type(w_obj)
-            res.declare(attr, 'const', w_type, loc, fqn=fqn)
+            res.declare(fqn.attr, 'const', w_type, loc, fqn=fqn)
         return res
 
     def __repr__(self) -> str:

@@ -22,7 +22,7 @@ class Dumper(TextBuilder):
 
     def __init__(self, *, use_colors: bool) -> None:
         super().__init__(use_colors=use_colors)
-        self.fields_to_ignore = ('loc', 'target_loc')
+        self.fields_to_ignore = ('loc', 'target_loc', 'loc_asname')
 
     def dump_anything(self, obj: Any) -> None:
         if isinstance(obj, spy.ast.Node):
