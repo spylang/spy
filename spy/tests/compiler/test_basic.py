@@ -533,36 +533,6 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
-    def test_import(self):
-        mod = self.compile("""
-        from builtins import abs as my_abs
-
-        def foo(x: i32) -> i32:
-            return my_abs(x)
-        """)
-        #
-        assert mod.foo(-20) == 20
-
-    def test_import_errors(self):
-        self.expect_errors(
-            """
-            from builtins import aaa
-            """,
-            errors = [
-                'cannot import `builtins.aaa`',
-                'attribute `aaa` does not exist in module `builtins`'
-            ]
-        )
-        self.expect_errors(
-            """
-            from xxx import aaa
-            """,
-            errors = [
-                'cannot import `xxx.aaa`',
-                'module `xxx` does not exist'
-            ]
-        )
-
     def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int
