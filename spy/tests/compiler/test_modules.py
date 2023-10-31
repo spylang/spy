@@ -32,3 +32,31 @@ class TestBasic(CompilerTest):
                 'module `xxx` does not exist'
             ]
         )
+
+    @pytest.mark.skip("WIP")
+    def test_two_modules(self):
+        self.write_file(
+            "delta.spy",
+            """
+            def get_delta() -> i32:
+                return 10
+            """)
+
+        self.write_file(
+            "main.spy",
+            """
+            from delta import get_delta
+
+            def inc(x: i32) -> i32:
+                return x + get_delta()
+            """)
+
+        self.tmpdir.chdir() # XXX
+        w_delta = self.vm.import_('delta')
+        w_main = self.vm.import_('main')
+
+        from spy.backend.interp import InterpModuleWrapper
+        delta = InterpModuleWrapper(self.vm, w_delta)
+        main = InterpModuleWrapper(self.vm, w_main)
+        assert delta.get_delta() == 10
+        assert main.inc(4) == 14

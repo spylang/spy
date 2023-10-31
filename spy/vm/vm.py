@@ -53,6 +53,17 @@ class SPyVM:
         self.modules_w = {}
         self.make_builtins_module()
 
+    def import_(self, modname: str) -> W_Module:
+        assert False, "WIP"
+        import py
+        from spy.compiler import CompilerPipeline
+        if modname in self.modules_w:
+            return self.modules_w[modname]
+        #
+        file_spy = py.path.local(f'{modname}.spy')
+        compiler = CompilerPipeline(self, file_spy, builddir=None)
+        return compiler.irgen()
+
     def make_builtins_module(self) -> None:
         w_mod = W_Module(self, 'builtins')
         self.register_module(w_mod)
