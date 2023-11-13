@@ -1,12 +1,18 @@
 import typing
-from typing import Any
+from typing import Any, Optional
+import textwrap
+import re
 from dataclasses import dataclass
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, spytype
 from spy.textbuilder import ColorFormatter
+from spy.util import print_diff
 
 if typing.TYPE_CHECKING:
     from spy.vm.function import W_FunctionType
+
+
+RE_WHITESPACE = re.compile(r" +")
 
 # for now, each opcode is represented by its name. Very inefficient but we
 # don't care for now. Eventually, we could migrate to a more proper bytecode
@@ -86,6 +92,9 @@ class OpCode:
             raise ValueError('Cannot set args on a fully constructed op')
         self.args = args
 
+    def copy(self) -> 'OpCode':
+        return OpCode(self.name, *self.args)
+
 
 @spytype('CodeObject')
 class W_CodeObject(W_Object):
@@ -129,12 +138,20 @@ class W_CodeObject(W_Object):
             print(f'    var {name}: {typename}')
         #
         print()
+        body = self.dump(color)
+        print(body)
+
+    def dump(self, color: Optional[ColorFormatter] = None) -> None:
+        if color is None:
+            color = ColorFormatter(use_colors=False)
+
         # first, find all the branches and record the targets, for coloring
         all_br_targets = set()
         for op in self.body:
             if op.is_br():
                 all_br_targets.add(op.args[0])
         #
+        lines = []
         for i, op in enumerate(self.body):
             line = [color.set('blue', op.name)]
             args = ', '.join([str(arg) for arg in op.args])
@@ -148,4 +165,20 @@ class W_CodeObject(W_Object):
             label = format(i, '>5')
             if i in all_br_targets:
                 label = color.set('red', label)
-            print(f'    {label} {op.name:<15} {args}')
+            lines.append((f'    {label} {op.name:<15} {args}'))
+        return '\n'.join(lines)
+
+
+    def equals(self, expected: str) -> bool:
+        """
+        For tests. Ignore all the whitespace.
+        """
+        expected = textwrap.dedent(expected).strip()
+        got = textwrap.dedent(self.dump()).strip()
+        expected = RE_WHITESPACE.sub(" ", expected)
+        got = RE_WHITESPACE.sub(" ", got)
+        if expected == got:
+            return True
+        else:
+            print_diff(expected, got, 'expected', 'got')
+            return False

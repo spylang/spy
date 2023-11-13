@@ -1,6 +1,8 @@
 #-*- encoding: utf-8 -*-
 import typing
 from typing import Optional
+import difflib
+from spy.textbuilder import Color
 
 class AnythingClass:
     """
@@ -74,6 +76,21 @@ def print_class_hierarchy(cls):
             print_class(subclasses[-1], prefix, indent=SPACE, marker=CORNER)
 
     print_class(cls, prefix='', indent='', marker='')
+
+
+def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
+    a = a.splitlines()
+    b = b.splitlines()
+    diff = difflib.unified_diff(a, b, fromfile, tofile, lineterm="")
+    print()
+    for line in diff:
+        if line.startswith('+'):
+            line = Color.set('yellow', line)
+        elif line.startswith('-'):
+            line = Color.set('red', line)
+        elif line.startswith('@@'):
+            line = Color.set('fuchsia', line)
+        print(line)
 
 
 def shortrepr(s: str, n: int) -> str:
