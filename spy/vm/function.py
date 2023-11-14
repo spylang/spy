@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-import typing
+from typing import TYPE_CHECKING, Any
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @dataclass
@@ -37,11 +37,39 @@ class W_FunctionType(W_Type):
         params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
         return cls(params, w_restype)
 
+    @classmethod
+    def parse(cls, s: str) -> 'W_FunctionType':
+        """
+        Quick & dirty function to parse function types.
+
+        It's meant to be used in tests, it's not robust at all, especially in
+        case of wrong inputs. It supports only builtin types.
+        """
+        from spy.vm.vm import Builtins as B
+        def parse_type(s: str) -> Any:
+            return getattr(B, f'w_{s}')
+
+        args, res = map(str.strip, s.split('->'))
+        assert args.startswith('def(')
+        assert args.endswith(')')
+        kwargs = {}
+        arglist = args[4:-1].split(',')
+        for arg in arglist:
+            if arg == '':
+                continue
+            argname, argtype = map(str.strip, arg.split(':'))
+            kwargs[argname] = parse_type(argtype)
+        #
+        w_restype = parse_type(res)
+        return cls.make(w_restype=w_restype, **kwargs)
+
+
     def _str_sig(self) -> str:
         params = [f'{p.name}: {p.w_type.name}' for p in self.params]
         str_params = ', '.join(params)
         resname = self.w_restype.name
         return f'({str_params}) -> {resname}'
+
 
 
 class W_Function(W_Object):
