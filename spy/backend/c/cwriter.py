@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
-from spy.vm.function import W_UserFunction, W_BuiltinFunction, W_FuncType
+from spy.vm.function import W_UserFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm import helpers
@@ -70,13 +70,13 @@ class CModuleWriter:
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
-            if isinstance(w_obj, W_UserFunction):
+            if isinstance(w_obj, W_UserFunc):
                 self.emit_function(fqn, w_obj)
             else:
                 self.emit_variable(fqn, w_obj)
         return self.out.build()
 
-    def emit_function(self, fqn: FQN, w_func: W_UserFunction) -> None:
+    def emit_function(self, fqn: FQN, w_func: W_UserFunc) -> None:
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
 
@@ -95,7 +95,7 @@ class CFuncWriter:
     cmod: CModuleWriter
     out: TextBuilder
     fqn: FQN
-    w_func: W_UserFunction
+    w_func: W_UserFunc
     tmp_vars: dict[str, C_Type]
     stack: list[c_expr.Expr]
     labels: dict[str, int]
@@ -104,7 +104,7 @@ class CFuncWriter:
                  ctx: Context,
                  cmod: CModuleWriter,
                  fqn: FQN,
-                 w_func: W_UserFunction) -> None:
+                 w_func: W_UserFunc) -> None:
         self.ctx = ctx
         self.cmod = cmod
         self.out = cmod.out

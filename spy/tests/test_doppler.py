@@ -2,13 +2,13 @@ import pytest
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.codeobject import OpCode, W_CodeObject
-from spy.vm.function import W_FuncType, W_UserFunction
+from spy.vm.function import W_FuncType, W_UserFunc
 from spy.doppler import DopplerInterpreter
 
 class TestDoppler:
 
     def doppler(self, vm: SPyVM,
-                      w_func: W_UserFunction) -> W_UserFunction:
+                      w_func: W_UserFunc) -> W_UserFunc:
         self.interp = DopplerInterpreter(vm, w_func)
         return self.interp.run()
 
@@ -21,7 +21,7 @@ class TestDoppler:
             OpCode('load_const', w_42),
             OpCode('return'),
         ]
-        w_func = W_UserFunction(code)
+        w_func = W_UserFunc(code)
         w_func2 = self.doppler(vm, w_func)
         assert vm.call_function(w_func2, []) == w_42
         assert w_func2.w_code.equals("""

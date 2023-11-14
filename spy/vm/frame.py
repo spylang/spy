@@ -23,7 +23,7 @@ from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
-from spy.vm.function import W_Function
+from spy.vm.function import W_Func
 from spy.vm import helpers
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -183,10 +183,10 @@ class Frame:
 
     def op_call_global(self, fqn: FQN, argcount: int) -> None:
         w_func = self.vm.lookup_global(fqn)
-        assert isinstance(w_func, W_Function)
+        assert isinstance(w_func, W_Func)
         return self._op_call(w_func, argcount)
 
-    def _op_call(self, w_func: W_Function, argcount: int) -> None:
+    def _op_call(self, w_func: W_Func, argcount: int) -> None:
         args_w = self._pop_args(argcount)
         w_res = self.vm.call_function(w_func, args_w)
         self.push(w_res)

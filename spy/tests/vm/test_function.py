@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_FuncType, W_UserFunction, FuncParam
+from spy.vm.function import W_FuncType, W_UserFunc, FuncParam
 from spy.vm.varstorage import VarStorage
 from spy.vm.module import W_Module
 
@@ -35,7 +35,7 @@ class TestFunction:
             OpCode('return'),
         ]
         #
-        w_func = W_UserFunction(w_code)
+        w_func = W_UserFunc(w_code)
         assert repr(w_func) == "<spy function 'test::fn'>"
         #
         w_t = vm.dynamic_type(w_func)
@@ -56,7 +56,7 @@ class TestFunction:
             OpCode('return'),
         ]
         #
-        w_fn = W_UserFunction(w_code)
+        w_fn = W_UserFunc(w_code)
         w_result = vm.call_function(w_fn, [])
         assert vm.unwrap(w_result) == 10
 
@@ -74,6 +74,6 @@ class TestFunction:
             OpCode('return'),
         ]
         #
-        w_fn = W_UserFunction(w_code)
+        w_fn = W_UserFunc(w_code)
         w_result = vm.call_function(w_fn, [vm.wrap(100), vm.wrap(80)])
         assert vm.unwrap(w_result) == 20

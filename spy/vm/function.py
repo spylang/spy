@@ -26,7 +26,7 @@ class W_FuncType(W_Type):
         self.params = params
         self.w_restype = w_restype
         sig = self._str_sig()
-        super().__init__(f'def{sig}', W_Function)
+        super().__init__(f'def{sig}', W_Func)
 
     @classmethod
     def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FuncType':
@@ -72,7 +72,7 @@ class W_FuncType(W_Type):
 
 
 
-class W_Function(W_Object):
+class W_Func(W_Object):
 
     @property
     def w_functype(self) -> W_FuncType:
@@ -85,7 +85,7 @@ class W_Function(W_Object):
         raise NotImplementedError
 
 
-class W_UserFunction(W_Function):
+class W_UserFunc(W_Func):
     w_code: W_CodeObject
 
     def __init__(self, w_code: W_CodeObject) -> None:
@@ -99,7 +99,7 @@ class W_UserFunction(W_Function):
         return self.w_code.w_functype
 
 
-class W_BuiltinFunction(W_Function):
+class W_BuiltinFunc(W_Func):
     fqn: FQN
     _w_functype: W_FuncType
 

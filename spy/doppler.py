@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Type, W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_UserFunction
+from spy.vm.function import W_UserFunc
 
 class DopplerInterpreter:
     """
@@ -17,7 +17,7 @@ class DopplerInterpreter:
     """
     typestack_w: list[W_Type]
 
-    def __init__(self, vm: SPyVM, w_func: W_UserFunction):
+    def __init__(self, vm: SPyVM, w_func: W_UserFunc):
         self.vm = vm
         self.w_func = w_func
         self.code = w_func.w_code
@@ -47,12 +47,12 @@ class DopplerInterpreter:
         # XXX implement me
         pass
 
-    def run(self) -> W_UserFunction:
+    def run(self) -> W_UserFunc:
         """
         Do abstract interpretation of the whole code
         """
         self.run_range(0, len(self.code.body))
-        return W_UserFunction(self.code_out)
+        return W_UserFunc(self.code_out)
 
     def run_range(self, pc_start: int, pc_end: int) -> None:
         """

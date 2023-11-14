@@ -8,7 +8,7 @@ from spy.libspy import LLSPyInstance
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.module import W_Module
-from spy.vm.function import W_Function, W_FuncType
+from spy.vm.function import W_Func, W_FuncType
 from spy.vm.vm import SPyVM, Builtins as B
 
 
@@ -38,7 +38,7 @@ class WasmModuleWrapper:
 
     def read_function(self, fqn: FQN) -> 'WasmFuncWrapper':
         w_func = self.vm.lookup_global(fqn)
-        assert isinstance(w_func, W_Function)
+        assert isinstance(w_func, W_Func)
         return WasmFuncWrapper(self.vm, self.ll,
                                fqn.c_name, w_func.w_functype)
 
