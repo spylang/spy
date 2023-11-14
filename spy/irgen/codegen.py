@@ -184,25 +184,25 @@ class CodeGen:
              mark_if_then IF
              <eval cond>
         IF:
-             br_if THEN ENDIF ENDIF
+            br_if THEN ENDIF ENDIF
         THEN:
-             <then body>
+            <then body>
         ENDIF:
-             <rest of the program>
+            <rest of the program>
 
         if-then-else case
         ------------------
              mark_if_then_else IF
              <eval cond>
         IF:
-             br_if THEN ELSE ENDIF
+            br_if THEN ELSE ENDIF
         THEN:
-             <then body>
-             br ENDIF
+            <then body>
+            br ENDIF
         ELSE:
-             <else body>
+            <else body>
         ENDIF:
-             <rest of the program>
+            <rest of the program>
         """
         IF, THEN, ELSE, ENDIF = self.new_labels('if', 'then', 'else', 'endif')
         has_else  = len(if_node.else_body) > 0
@@ -230,25 +230,29 @@ class CodeGen:
 
     def do_exec_While(self, while_node: spy.ast.While) -> None:
         """
-               mark_while IF, LOOP
-        START: <eval cond>
-        IF:    br_if_not END
-               <body>
-        LOOP:  br START
-        END:   <rest of the program>
+            mark_while WHILE IF END
+        WHILE:
+            <eval cond>
+        IF:
+            br_while_not END
+            <body>
+            br WHILE
+        END:
+            <rest of the program>
         """
-        _, op_mark = self.emit(while_node.loc, 'mark_while', ...)
-        START = self.get_label()
+        WHILE, IF, END = self.new_labels('while', 'while_if', 'while_end')
+        self.emit(while_node.loc, 'mark_while', WHILE, IF, END)
+        # WHILE:
+        self.emit_label(WHILE)
         self.eval_expr(while_node.test)
-        #
-        IF, br_if_not = self.emit(while_node.test.loc, 'br_if_not', ...)
+        # IF:
+        self.emit_label(IF)
+        self.emit(while_node.test.loc, 'br_while_not', END)
         for stmt in while_node.body:
             self.exec_stmt(stmt)
-        #
-        LOOP, _ = self.emit(while_node.loc, 'br', START)
-        END = self.get_label()
-        br_if_not.set_args(END)
-        op_mark.set_args(IF, LOOP)
+        self.emit(while_node.loc, 'br', WHILE)
+        # END:
+        self.emit_label(END)
 
     # ====== expressions ======
 

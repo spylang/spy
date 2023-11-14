@@ -47,6 +47,7 @@ ALL_OPCODES = [
     'pop_and_discard',
     'br',
     'br_if',
+    'br_while_not',
     'label',
 ]
 
@@ -61,10 +62,6 @@ class OpCode:
 
         Each opcode expects a specific number of args, it's up to the caller
         to ensure it's correct.
-
-        A special case is passing ... (the ellipsis object) as the only arg:
-        in this case, it means that the OpCode is not fully constructed, and
-        can be amended later by calling set_args().
         """
         if name not in ALL_OPCODES:
             raise ValueError(f'Invalid opcode: {name}')
@@ -87,11 +84,6 @@ class OpCode:
         else:
             # match also the args
             return self.name == name and self.args == args
-
-    def set_args(self, *args: int) -> None:
-        if self.args != (...,):
-            raise ValueError('Cannot set args on a fully constructed op')
-        self.args = args
 
     def copy(self) -> 'OpCode':
         return OpCode(self.name, *self.args)

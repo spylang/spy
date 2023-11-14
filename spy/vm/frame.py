@@ -55,8 +55,8 @@ class Frame:
                 assert l not in self.labels, f'duplicate label: {l}'
                 self.labels[l] = pc
 
-    def jump(self, label: str):
-        self.pc = self.labels[label]
+    def jump(self, LABEL: str):
+        self.pc = self.labels[LABEL]
 
     def push(self, w_value: W_Object) -> None:
         assert isinstance(w_value, W_Object)
@@ -107,9 +107,11 @@ class Frame:
         assert self.w_code.body[pc_if + 1].match('br_if', ...)
     op_mark_if_then_else = op_mark_if_then
 
-    def op_mark_while(self, IF: int, LOOP: int) -> None:
-        assert self.w_code.body[IF].match('br_if_not', ...)
-        assert self.w_code.body[LOOP].match('br', ...)
+    def op_mark_while(self, WHILE: str, IF: str, END: str) -> None:
+        pc_if = self.labels[IF]
+        pc_end = self.labels[END]
+        assert self.w_code.body[pc_if + 1].match('br_while_not', ...)
+        assert self.w_code.body[pc_end - 1].match('br', WHILE)
 
     def op_pop_and_discard(self) -> None:
         self.pop()
@@ -195,13 +197,19 @@ class Frame:
         w_res = helper_func(self.vm, *args_w)
         self.push(w_res)
 
-    def op_br(self, target: str) -> None:
-        self.jump(target)
+    def op_br(self, TARGET: str) -> None:
+        self.jump(TARGET)
 
-    def op_br_if(self, then: str, else_: str, endif: str) -> None:
+    def op_br_if(self, THEN: str, ELSE: str, ENDIF: str) -> None:
         w_cond = self.pop()
         assert isinstance(w_cond, W_bool)
         if self.vm.is_True(w_cond):
-            self.jump(then)
+            self.jump(THEN)
         else:
-            self.jump(else_)
+            self.jump(ELSE)
+
+    def op_br_while_not(self, END: str) -> None:
+        w_cond = self.pop()
+        assert isinstance(w_cond, W_bool)
+        if self.vm.is_False(w_cond):
+            self.jump(END)

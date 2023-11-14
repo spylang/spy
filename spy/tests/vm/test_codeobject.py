@@ -13,13 +13,6 @@ class TestOpCode:
         with pytest.raises(ValueError, match='Invalid opcode: xxx'):
             op = OpCode('xxx')
 
-    def test_set_args(self):
-        op = OpCode('br_if_not', ...)
-        op.set_args(42)
-        assert op.args == (42,)
-        with pytest.raises(ValueError, match='Cannot set args on a fully constructed op'):
-            op.set_args(43)
-
     def test_match(self):
         op = OpCode('load_local', 'a')
         assert op.match('load_local', 'a')

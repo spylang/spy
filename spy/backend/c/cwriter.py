@@ -458,31 +458,42 @@ class CFuncWriter:
         # ENDIF:
         self.consume('label', ENDIF)
 
-    def emit_op_mark_while(self, IF: int, LOOP: int) -> None:
+    def emit_op_mark_while(self, WHILE: str, IF: str, END: str) -> None:
         """
         CodeGen.do_exec_While emits the following:
 
-               mark_while IF LOOP
-        START: <eval cond>
-        IF:    br_if_not END
-               <body>
-        LOOP:  br START
-        END:   <rest of the program>
+            mark_while WHILE IF END
+        WHILE:
+            <eval cond>
+        IF:
+            br_while_not END
+            <body>
+            br WHILE
+        END:
+            <rest of the program>
         """
         self.out.wl('while(1) {')
         with self.out.indent():
-            # <eval cond>
-            while self.next_op_index < IF:
+            # WHILE:
+            self.consume('label', WHILE)
+            pc_if = self.labels[IF]
+            while self.next_op_index < pc_if:
                 self.advance_and_emit()
             #
-            self.consume('br_if_not', ...)
+            # IF:
+            self.consume('label', IF)
+            self.consume('br_while_not', END)
             cond = self.pop()
             not_cond = c_expr.UnaryOp('!', cond)
             self.out.wl(f'if ({not_cond.str()})')
             self.out.wl('    break;')
             #
             # <body>
-            while self.next_op_index < LOOP:
+            pc_end = self.labels[END]
+            while self.next_op_index < pc_end - 1:
                 self.advance_and_emit()
-            self.consume('br', ...)
+            self.consume('br', WHILE)
+            #
+            # END:
+            self.consume('label', END)
         self.out.wl('}')
