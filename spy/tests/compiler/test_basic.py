@@ -453,6 +453,7 @@ class TestBasic(CompilerTest):
         assert mod.a == 0
         assert mod.b == 200
         assert mod.c == 300
+        mod.if_then.w_func.w_code.pp()
 
     def test_while(self):
         mod = self.compile("""

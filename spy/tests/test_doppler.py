@@ -25,6 +25,6 @@ class TestDoppler:
         w_func2 = self.doppler(vm, w_func)
         assert vm.call_function(w_func2, []) == w_42
         assert w_func2.w_code.equals("""
-        0 load_const W_i32(42)
-        1 return
+        load_const W_i32(42)
+        return
         """)

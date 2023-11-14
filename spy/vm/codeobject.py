@@ -146,19 +146,21 @@ class W_CodeObject(W_Object):
         #
         lines = []
         for i, op in enumerate(self.body):
-            line = [color.set('blue', op.name)]
             args = ', '.join([str(arg) for arg in op.args])
-            if op.name in ('load_local', 'store_local', 'load_global', 'store_global'):
+            if op.name == 'label':
+                label_name, = op.args
+                lines.append(color.set('yellow', f'{label_name}:'))
+                continue
+            #
+            if op.name in ('load_local', 'store_local',
+                           'load_global', 'store_global'):
                 args = color.set('green', args)
-            elif op.is_br():
-                args = color.set('red', args)
+            elif op.is_br() or op.name.startswith('mark_'):
+                args = color.set('yellow', args)
             elif op.name == 'abort':
                 args = repr(args)
             #
-            label = format(i, '>5')
-            if i in all_br_targets:
-                label = color.set('red', label)
-            lines.append((f'    {label} {op.name:<15} {args}'))
+            lines.append((f'    {op.name:<15} {args}'))
         return '\n'.join(lines)
 
 
