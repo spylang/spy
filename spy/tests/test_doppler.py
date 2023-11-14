@@ -3,14 +3,14 @@ from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.codeobject import OpCode, W_CodeObject
 from spy.vm.function import W_FunctionType, W_UserFunction
-from spy.rainbow import RainbowInterpreter
+from spy.doppler import DopplerInterpreter
 
-class TestRainbow:
+class TestDoppler:
 
-    def rainbow_peval(self, vm: SPyVM,
+    def doppler(self, vm: SPyVM,
                       w_func: W_UserFunction) -> W_UserFunction:
-        self.rainbow = RainbowInterpreter(vm, w_func)
-        return self.rainbow.run()
+        self.interp = DopplerInterpreter(vm, w_func)
+        return self.interp.run()
 
     def test_simple(self):
         vm = SPyVM()
@@ -22,7 +22,7 @@ class TestRainbow:
             OpCode('return'),
         ]
         w_func = W_UserFunction(code)
-        w_func2 = self.rainbow_peval(vm, w_func)
+        w_func2 = self.doppler(vm, w_func)
         assert vm.call_function(w_func2, []) == w_42
         assert w_func2.w_code.equals("""
         0 load_const W_i32(42)

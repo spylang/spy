@@ -5,9 +5,13 @@ from spy.vm.object import W_Type, W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_UserFunction
 
-class RainbowInterpreter:
+class DopplerInterpreter:
     """
     Perform typecheck and partial evaluation on the given function object.
+
+    The input bytecode contains blue and red operations. The output bytecode
+    contains only red operations, thus it performs a "red shift"... hence the
+    name :)
 
     Return a new function object where all blue ops have been evaluated.
     """
@@ -18,7 +22,7 @@ class RainbowInterpreter:
         self.w_func = w_func
         self.code = w_func.w_code
         self.code_out = W_CodeObject(
-            FQN('rainbow::test'),
+            FQN('doppler::test'),
             w_functype = w_func.w_functype,
             filename = w_func.w_code.filename,
             lineno = w_func.w_code.lineno)
