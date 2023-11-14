@@ -135,18 +135,22 @@ class TestFrame:
         result = vm.unwrap(w_result)
         assert result == 42
 
-    def test_br_if_not(self):
+    def test_br_if(self):
         vm = SPyVM()
         w_functype = W_FunctionType.make(a=B.w_bool, w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_bool)
         code.body = [
-            OpCode('load_local', 'a'),           # 0
-            OpCode('br_if_not', 4),              # 1
-            OpCode('load_const', vm.wrap(100)),  # 2
-            OpCode('return'),                    # 3
-            OpCode('load_const', vm.wrap(200)),  # 4
-            OpCode('return'),                    # 5
+            OpCode('load_local', 'a'),
+            OpCode('br_if', 'then_0', 'else_0', 'endif_0'),
+            OpCode('label', 'then_0'),
+            OpCode('load_const', vm.wrap(100)),
+            OpCode('return'),
+            OpCode('label', 'else_0'),
+            OpCode('load_const', vm.wrap(200)),
+            OpCode('return'),
+            OpCode('label', 'endif_0'),
+            OpCode('abort', 'unreachable'),
         ]
         frame1 = Frame(vm, code)
         w_result = frame1.run([B.w_True])

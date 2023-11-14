@@ -46,7 +46,8 @@ ALL_OPCODES = [
     'i32_gte',
     'pop_and_discard',
     'br',
-    'br_if_not',
+    'br_if',
+    'label',
 ]
 
 @dataclass

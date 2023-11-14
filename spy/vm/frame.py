@@ -35,6 +35,7 @@ class Frame:
     pc: int  # program counter
     stack: list[W_Object]
     locals: VarStorage
+    labels: dict[str, int] # name -> pc
 
     def __init__(self, vm: 'SPyVM', w_code: W_Object) -> None:
         assert isinstance(w_code, W_CodeObject)
@@ -44,6 +45,18 @@ class Frame:
                                  w_code.locals_w_types)
         self.pc = 0
         self.stack = []
+        self.labels = {}
+        self.init_labels()
+
+    def init_labels(self) -> None:
+        for pc, op in enumerate(self.w_code.body):
+            if op.name == 'label':
+                l = op.args[0]
+                assert l not in self.labels, f'duplicate label: {l}'
+                self.labels[l] = pc
+
+    def jump(self, label: str):
+        self.pc = self.labels[label]
 
     def push(self, w_value: W_Object) -> None:
         assert isinstance(w_value, W_Object)
@@ -83,15 +96,16 @@ class Frame:
     def op_abort(self, message: str) -> None:
         raise SPyRuntimeAbort(message)
 
+    def op_label(self, name: str) -> None:
+        assert self.labels[name] == self.pc
+
     def op_line(self, lineno: int) -> None:
         pass
 
-    def op_mark_if_then(self, IF: int, END: int) -> None:
-        assert self.w_code.body[IF].match('br_if_not', END)
-
-    def op_mark_if_then_else(self, IF: int, ELSE: int, END: int) -> None:
-        assert self.w_code.body[IF].match('br_if_not', ELSE)
-        assert self.w_code.body[ELSE-1].match('br', END)
+    def op_mark_if_then(self, IF: str) -> None:
+        pc_if = self.labels[IF]
+        assert self.w_code.body[pc_if + 1].match('br_if', ...)
+    op_mark_if_then_else = op_mark_if_then
 
     def op_mark_while(self, IF: int, LOOP: int) -> None:
         assert self.w_code.body[IF].match('br_if_not', ...)
@@ -181,11 +195,13 @@ class Frame:
         w_res = helper_func(self.vm, *args_w)
         self.push(w_res)
 
-    def op_br(self, target: int) -> None:
-        self.pc = target - 1 # because run() does pc += 1
+    def op_br(self, target: str) -> None:
+        self.jump(target)
 
-    def op_br_if_not(self, target: int) -> None:
+    def op_br_if(self, then: str, else_: str, endif: str) -> None:
         w_cond = self.pop()
         assert isinstance(w_cond, W_bool)
-        if self.vm.is_False(w_cond):
-            self.pc = target - 1 # because run() does pc += 1
+        if self.vm.is_True(w_cond):
+            self.jump(then)
+        else:
+            self.jump(else_)

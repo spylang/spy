@@ -40,6 +40,7 @@ class CodeGen:
             filename=self.funcdef.loc.filename,
             lineno=self.funcdef.loc.line_start)
         self.last_lineno = -1
+        self.label_counter = 0
         self.add_local_variables()
 
     def fqn(self, attr: str) -> FQN:
@@ -50,6 +51,22 @@ class CodeGen:
             if sym.name == '@return':
                 continue
             self.w_code.declare_local(sym.name, sym.w_type)
+
+    def new_label(self, stem):
+        """
+        Create a new unique label name
+        """
+        n = self.label_counter
+        self.label_counter += 1
+        return f'{stem}_{n}'
+
+    def new_labels(self, *stems):
+        """
+        Create multiple unique label names
+        """
+        n = self.label_counter
+        self.label_counter += 1
+        return [f'{stem}_{n}' for stem in stems]
 
     def make_w_code(self) -> W_CodeObject:
         for stmt in self.funcdef.body:
@@ -102,6 +119,10 @@ class CodeGen:
         op = OpCode(name, *args)
         self.w_code.body.append(op)
         return label, op
+
+    def emit_label(self, name: str) -> None:
+        op = OpCode('label', name)
+        self.w_code.body.append(op)
 
     def get_label(self) -> int:
         """
@@ -157,58 +178,55 @@ class CodeGen:
             assert False, 'TODO' # non-local variables
 
     def do_exec_If(self, if_node: spy.ast.If) -> None:
-        if if_node.else_body:
-            self._do_exec_If_then_else(if_node)
-        else:
-            self._do_exec_If_then(if_node)
-
-    def _do_exec_If_then(self, if_node: spy.ast.If) -> None:
         """
-             mark_if_then IF, END
+        if-then case
+        ------------
+             mark_if_then IF
              <eval cond>
-        IF:  br_if_not END
+        IF:
+             br_if THEN ENDIF ENDIF
+        THEN:
              <then body>
-        END: <rest of the program>
+        ENDIF:
+             <rest of the program>
 
+        if-then-else case
+        ------------------
+             mark_if_then_else IF
+             <eval cond>
+        IF:
+             br_if THEN ELSE ENDIF
+        THEN:
+             <then body>
+             br ENDIF
+        ELSE:
+             <else body>
+        ENDIF:
+             <rest of the program>
         """
-        _, op_mark = self.emit(if_node.loc, 'mark_if_then', ...)
+        IF, THEN, ELSE, ENDIF = self.new_labels('if', 'then', 'else', 'endif')
+        has_else  = len(if_node.else_body) > 0
+        if has_else:
+            self.emit(if_node.loc, 'mark_if_then_else', IF)
+        else:
+            self.emit(if_node.loc, 'mark_if_then', IF)
+            ELSE = ENDIF
         self.eval_expr(if_node.test) # <eval cond>
-        IF, br_if_not = self.emit(if_node.loc, 'br_if_not', ...)
-        # <then body>
+        # IF:
+        self.emit_label(IF)
+        self.emit(if_node.loc, 'br_if', THEN, ELSE, ENDIF)
+        # THEN:
+        self.emit_label(THEN)
         for stmt in if_node.then_body:
             self.exec_stmt(stmt)
-        #
-        END = self.get_label()
-        br_if_not.set_args(END)
-        op_mark.set_args(IF, END)
-
-    def _do_exec_If_then_else(self, if_node: spy.ast.If) -> None:
-        """
-              mark_if_then_else IF, ELSE, END
-              <eval cond>
-        IF:   br_if_not ELSE
-              <then body>
-              br END
-        ELSE: <else body>
-        END:  <rest of the program>
-        """
-        _, op_mark = self.emit(if_node.loc, 'mark_if_then_else', ...)
-        self.eval_expr(if_node.test) # <eval cond>
-        IF, br_if_not = self.emit(if_node.loc, 'br_if_not', ...)
-        # <then body>
-        for stmt in if_node.then_body:
-            self.exec_stmt(stmt)
-        #
-        _, br = self.emit(if_node.else_body[0].loc, 'br', ...)
-        # <else body>
-        ELSE = self.get_label()
-        for stmt in if_node.else_body:
-            self.exec_stmt(stmt)
-        #
-        END = self.get_label()
-        br_if_not.set_args(ELSE)
-        br.set_args(END)
-        op_mark.set_args(IF, ELSE, END)
+        if has_else:
+            self.emit(if_node.else_body[0].loc, 'br', ENDIF)
+            # ELSE:
+            self.emit_label(ELSE)
+            for stmt in if_node.else_body:
+                self.exec_stmt(stmt)
+        # ENDIF:
+        self.emit_label(ENDIF)
 
     def do_exec_While(self, while_node: spy.ast.While) -> None:
         """

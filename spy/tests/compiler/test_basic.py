@@ -409,7 +409,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    def test_if(self):
+    def test_if_stmt(self):
         mod = self.compile("""
         a: i32 = 0
         b: i32 = 0
