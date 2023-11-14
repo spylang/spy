@@ -7,7 +7,7 @@ from spy.irgen.symtable import SymTable, Symbol
 from spy.irgen import multiop
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Type, W_Object
-from spy.vm.function import W_FunctionType, FuncParam
+from spy.vm.function import W_FuncType, FuncParam
 from spy.util import magic_dispatch
 
 def can_assign_to(w_type_from: W_Type, w_type_to: W_Type) -> bool:
@@ -18,7 +18,7 @@ def can_assign_to(w_type_from: W_Type, w_type_to: W_Type) -> bool:
 class TypeChecker:
     vm: SPyVM
     mod: spy.ast.Module
-    funcdef_types: dict[spy.ast.FuncDef, W_FunctionType]
+    funcdef_types: dict[spy.ast.FuncDef, W_FuncType]
     funcdef_scopes: dict[spy.ast.FuncDef, SymTable]
     expr_types: dict[spy.ast.Expr, W_Type]
     consts_w: dict[spy.ast.Constant, W_Object]
@@ -52,7 +52,7 @@ class TypeChecker:
 
     def get_funcdef_info(self,
                          funcdef: spy.ast.FuncDef
-                         ) -> tuple[W_FunctionType, SymTable]:
+                         ) -> tuple[W_FuncType, SymTable]:
         w_type = self.funcdef_types[funcdef]
         scope = self.funcdef_scopes[funcdef]
         return w_type, scope
@@ -173,7 +173,7 @@ class TypeChecker:
             for arg in funcdef.args
         ]
         w_return_type = self.resolve_type(funcdef.return_type, scope)
-        w_functype = W_FunctionType(params, w_return_type)
+        w_functype = W_FuncType(params, w_return_type)
         scope.declare(funcdef.name, 'const', w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
@@ -417,7 +417,7 @@ class TypeChecker:
     def check_expr_Call(self, call: spy.ast.Call, scope: SymTable) -> W_Type:
         sym = self.lookup_Name_maybe(call.func, scope) # for error reporting
         w_functype = self.check_expr(call.func, scope)
-        if not isinstance(w_functype, W_FunctionType):
+        if not isinstance(w_functype, W_FuncType):
             self._call_error_non_callable(call, sym, w_functype)
         #
         argtypes_w = [self.check_expr(arg, scope) for arg in call.args]

@@ -5,7 +5,7 @@ from spy.irgen.codegen import CodeGen
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
-from spy.vm.function import W_FunctionType, W_UserFunction
+from spy.vm.function import W_FuncType, W_UserFunction
 
 
 class ModuleGen:

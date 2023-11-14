@@ -8,7 +8,7 @@ from spy.libspy import LLSPyInstance
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.module import W_Module
-from spy.vm.function import W_Function, W_FunctionType
+from spy.vm.function import W_Function, W_FuncType
 from spy.vm.vm import SPyVM, Builtins as B
 
 
@@ -57,10 +57,10 @@ class WasmFuncWrapper:
     vm: SPyVM
     ll: LLSPyInstance
     c_name: str
-    w_functype: W_FunctionType
+    w_functype: W_FuncType
 
     def __init__(self, vm: SPyVM, ll: LLSPyInstance, c_name: str,
-                 w_functype: W_FunctionType) -> None:
+                 w_functype: W_FuncType) -> None:
         self.vm = vm
         self.ll = ll
         self.c_name = c_name

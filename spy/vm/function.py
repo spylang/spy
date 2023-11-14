@@ -15,7 +15,7 @@ class FuncParam:
 
 
 @dataclass(repr=False)
-class W_FunctionType(W_Type):
+class W_FuncType(W_Type):
     params: list[FuncParam]
     w_restype: W_Type
 
@@ -29,16 +29,16 @@ class W_FunctionType(W_Type):
         super().__init__(f'def{sig}', W_Function)
 
     @classmethod
-    def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FunctionType':
+    def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FuncType':
         """
-        Small helper to make it easier to build W_FunctionType, especially in
+        Small helper to make it easier to build W_FuncType, especially in
         tests
         """
         params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
         return cls(params, w_restype)
 
     @classmethod
-    def parse(cls, s: str) -> 'W_FunctionType':
+    def parse(cls, s: str) -> 'W_FuncType':
         """
         Quick & dirty function to parse function types.
 
@@ -75,7 +75,7 @@ class W_FunctionType(W_Type):
 class W_Function(W_Object):
 
     @property
-    def w_functype(self) -> W_FunctionType:
+    def w_functype(self) -> W_FuncType:
         raise NotImplementedError
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
@@ -95,15 +95,15 @@ class W_UserFunction(W_Function):
         return f"<spy function '{self.w_code.fqn}'>"
 
     @property
-    def w_functype(self) -> W_FunctionType:
+    def w_functype(self) -> W_FuncType:
         return self.w_code.w_functype
 
 
 class W_BuiltinFunction(W_Function):
     fqn: FQN
-    _w_functype: W_FunctionType
+    _w_functype: W_FuncType
 
-    def __init__(self, fqn: FQN, w_functype: W_FunctionType) -> None:
+    def __init__(self, fqn: FQN, w_functype: W_FuncType) -> None:
         self.fqn = fqn
         self._w_functype = w_functype
 
@@ -111,7 +111,7 @@ class W_BuiltinFunction(W_Function):
         return f"<spy function '{self.fqn}' (builtin)>"
 
     @property
-    def w_functype(self) -> W_FunctionType:
+    def w_functype(self) -> W_FuncType:
         return self._w_functype
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:

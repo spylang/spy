@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.function import (W_FunctionType, W_Function, W_UserFunction,
+from spy.vm.function import (W_FuncType, W_Function, W_UserFunction,
                              W_BuiltinFunction)
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
@@ -25,7 +25,7 @@ class Builtins:
 
     w_abs = W_BuiltinFunction(
         fqn = FQN('builtins::abs'),
-        w_functype = W_FunctionType.make(x=w_i32, w_restype=w_i32),
+        w_functype = W_FuncType.make(x=w_i32, w_restype=w_i32),
     )
 
     @classmethod

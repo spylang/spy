@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.errors import SPyRuntimeAbort
 from spy.irgen.symtable import Symbol
 from spy.vm.vm import Builtins as B
-from spy.vm.function import W_FunctionType
+from spy.vm.function import W_FuncType
 from spy.util import ANYTHING
 from spy.tests.support import CompilerTest, skip_backends, no_backend
 
@@ -16,7 +16,7 @@ class TestBasic(CompilerTest):
             return 42
         """)
         vm = self.vm
-        w_expected_functype = W_FunctionType([], B.w_i32)
+        w_expected_functype = W_FuncType([], B.w_i32)
         #
         # typechecker tests
         t = self.compiler.t
@@ -27,7 +27,7 @@ class TestBasic(CompilerTest):
         }
         #
         funcdef = self.get_funcdef('foo')
-        w_expected_functype = W_FunctionType([], B.w_i32)
+        w_expected_functype = W_FuncType([], B.w_i32)
         w_functype, scope = t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
@@ -145,7 +145,7 @@ class TestBasic(CompilerTest):
         vm = self.vm
         # typechecker tests
         funcdef = self.get_funcdef('inc')
-        w_expected_functype = W_FunctionType.make(x=B.w_i32, w_restype=B.w_i32)
+        w_expected_functype = W_FuncType.make(x=B.w_i32, w_restype=B.w_i32)
         w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
@@ -453,7 +453,6 @@ class TestBasic(CompilerTest):
         assert mod.a == 0
         assert mod.b == 200
         assert mod.c == 300
-        mod.if_then.w_func.w_code.pp()
 
     def test_while(self):
         mod = self.compile("""

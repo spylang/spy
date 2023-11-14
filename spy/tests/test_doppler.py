@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.codeobject import OpCode, W_CodeObject
-from spy.vm.function import W_FunctionType, W_UserFunction
+from spy.vm.function import W_FuncType, W_UserFunction
 from spy.doppler import DopplerInterpreter
 
 class TestDoppler:
@@ -15,7 +15,7 @@ class TestDoppler:
     def test_simple(self):
         vm = SPyVM()
         w_42 = vm.wrap(42)
-        w_functype = W_FunctionType.make(w_restype=B.w_i32)
+        w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_42),

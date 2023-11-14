@@ -8,7 +8,7 @@ from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_FunctionType
+from spy.vm.function import W_FuncType
 from spy.util import magic_dispatch
 
 class CodeGen:

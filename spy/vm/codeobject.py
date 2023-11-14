@@ -9,7 +9,7 @@ from spy.textbuilder import ColorFormatter
 from spy.util import print_diff
 
 if typing.TYPE_CHECKING:
-    from spy.vm.function import W_FunctionType
+    from spy.vm.function import W_FuncType
 
 
 RE_WHITESPACE = re.compile(r" +")
@@ -92,13 +92,13 @@ class OpCode:
 @spytype('CodeObject')
 class W_CodeObject(W_Object):
     fqn: FQN
-    w_functype: 'W_FunctionType'
+    w_functype: 'W_FuncType'
     filename: str
     lineno: int
     body: list[OpCode]
     locals_w_types: dict[str, W_Type]
 
-    def __init__(self, fqn: FQN, *, w_functype: 'W_FunctionType',
+    def __init__(self, fqn: FQN, *, w_functype: 'W_FuncType',
                  filename: str = '', lineno: int = -1) -> None:
         # XXX this might be wrong? The fqn should be attached to the function,
         # not to the code object. With closures/generic, we could have the

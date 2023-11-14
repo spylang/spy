@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
-from spy.vm.function import W_UserFunction, W_BuiltinFunction, W_FunctionType
+from spy.vm.function import W_UserFunction, W_BuiltinFunction, W_FuncType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm import helpers
@@ -336,12 +336,12 @@ class CFuncWriter:
 
     def emit_op_call_global(self, fqn: FQN, argcount: int) -> None:
         w_functype = self.ctx.vm.lookup_global_type(fqn)
-        assert isinstance(w_functype, W_FunctionType)
+        assert isinstance(w_functype, W_FuncType)
         self._emit_op_call(fqn.c_name, argcount, w_functype)
 
-    def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FunctionType) -> None:
+    def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FuncType) -> None:
         arglist = self._pop_args(argcount)
-        assert isinstance(w_functype, W_FunctionType)
+        assert isinstance(w_functype, W_FuncType)
         w_restype = w_functype.w_restype
         c_restype = self.ctx.w2c(w_restype)
         #
