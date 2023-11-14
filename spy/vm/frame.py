@@ -55,7 +55,7 @@ class Frame:
                 assert l not in self.labels, f'duplicate label: {l}'
                 self.labels[l] = pc
 
-    def jump(self, LABEL: str):
+    def jump(self, LABEL: str) -> None:
         self.pc = self.labels[LABEL]
 
     def push(self, w_value: W_Object) -> None:

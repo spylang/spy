@@ -98,6 +98,7 @@ class CFuncWriter:
     w_func: W_UserFunction
     tmp_vars: dict[str, C_Type]
     stack: list[c_expr.Expr]
+    labels: dict[str, int]
 
     def __init__(self,
                  ctx: Context,

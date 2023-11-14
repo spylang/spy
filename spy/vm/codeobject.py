@@ -134,7 +134,7 @@ class W_CodeObject(W_Object):
         body = self.dump(color)
         print(body)
 
-    def dump(self, color: Optional[ColorFormatter] = None) -> None:
+    def dump(self, color: Optional[ColorFormatter] = None) -> str:
         if color is None:
             color = ColorFormatter(use_colors=False)
 

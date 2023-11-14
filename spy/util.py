@@ -79,9 +79,9 @@ def print_class_hierarchy(cls):
 
 
 def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
-    a = a.splitlines()
-    b = b.splitlines()
-    diff = difflib.unified_diff(a, b, fromfile, tofile, lineterm="")
+    la = a.splitlines()
+    lb = b.splitlines()
+    diff = difflib.unified_diff(la, lb, fromfile, tofile, lineterm="")
     print()
     for line in diff:
         if line.startswith('+'):

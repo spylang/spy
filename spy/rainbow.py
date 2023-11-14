@@ -1,7 +1,8 @@
+from typing import Any, Optional
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
-from spy.vm.object import W_Type
-from spy.vm.codeobject import W_CodeObject
+from spy.vm.object import W_Type, W_Object
+from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_UserFunction
 
 class RainbowInterpreter:
@@ -15,7 +16,7 @@ class RainbowInterpreter:
     def __init__(self, vm: SPyVM, w_func: W_UserFunction):
         self.vm = vm
         self.w_func = w_func
-        self.code= w_func.w_code
+        self.code = w_func.w_code
         self.code_out = W_CodeObject(
             FQN('rainbow::test'),
             w_functype = w_func.w_functype,
@@ -33,23 +34,23 @@ class RainbowInterpreter:
     def poptype(self) -> W_Type:
         return self.typestack_w.pop()
 
-    def emit(self, op):
+    def emit(self, op: OpCode) -> None:
         ## if self.label_maps:
         ##     op = op.relabel(self.label_maps[-1])
         self.code_out.body.append(op)
 
-    def flush(self):
+    def flush(self) -> None:
         # XXX implement me
         pass
 
-    def run(self):
+    def run(self) -> W_UserFunction:
         """
         Do abstract interpretation of the whole code
         """
         self.run_range(0, len(self.code.body))
         return W_UserFunction(self.code_out)
 
-    def run_range(self, pc_start, pc_end):
+    def run_range(self, pc_start: int, pc_end: int) -> None:
         """
         Do abstract interpretation of the given code range
         """
@@ -58,7 +59,7 @@ class RainbowInterpreter:
             pc = self.run_single_op(pc)
         self.flush()
 
-    def run_single_op(self, pc):
+    def run_single_op(self, pc: int) -> int:
         """
         Do abstract interpretation of the op at the given PC.
 
@@ -73,19 +74,20 @@ class RainbowInterpreter:
             assert type(pc_next) is int
             return pc_next
 
-    def op_default(self, pc, op, *args):
+    def op_default(self, pc: int, op: OpCode, *args: Any) -> Optional[int]:
         raise NotImplementedError(f'op_{op.name}')
         ## if self.is_blue(op):
         ##     return self.op_blue(pc, op, *args)
         ## else:
         ##     return self.op_red(pc, op, *args)
 
-    def op_load_const(self, pc, op, w_value):
+    def op_load_const(self, pc: int, op: OpCode,
+                      w_value: W_Object) -> Any:
         w_type = self.vm.dynamic_type(w_value)
         self.pushtype(w_type)
         self.emit(op)
 
-    def op_return(self, pc, op):
+    def op_return(self, pc: int, op: OpCode) -> Any:
         w_type = self.poptype()
         # XXX this should be turned into a proper error
         # XXX 2: we should use is_compatible_type

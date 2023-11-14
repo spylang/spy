@@ -52,7 +52,7 @@ class CodeGen:
                 continue
             self.w_code.declare_local(sym.name, sym.w_type)
 
-    def new_label(self, stem):
+    def new_label(self, stem: str) -> str:
         """
         Create a new unique label name
         """
@@ -60,7 +60,7 @@ class CodeGen:
         self.label_counter += 1
         return f'{stem}_{n}'
 
-    def new_labels(self, *stems):
+    def new_labels(self, *stems: str) -> list[str]:
         """
         Create multiple unique label names
         """

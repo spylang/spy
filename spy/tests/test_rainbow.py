@@ -7,7 +7,8 @@ from spy.rainbow import RainbowInterpreter
 
 class TestRainbow:
 
-    def rainbow_peval(self, vm, w_func):
+    def rainbow_peval(self, vm: SPyVM,
+                      w_func: W_UserFunction) -> W_UserFunction:
         self.rainbow = RainbowInterpreter(vm, w_func)
         return self.rainbow.run()
 
