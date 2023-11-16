@@ -43,7 +43,7 @@ class TestFunction:
 
     def test_make_and_call_function(self):
         vm = SPyVM()
-        w_mod = W_Module(vm, 'mymod')
+        w_mod = W_Module(vm, 'mymod', 'mymod.spy')
         vm.register_module(w_mod)
         vm.add_global(FQN('mymod::a'),
                       B.w_i32,
@@ -62,7 +62,7 @@ class TestFunction:
 
     def test_call_function_with_arguments(self):
         vm = SPyVM()
-        w_mod = W_Module(vm, 'mymod')
+        w_mod = W_Module(vm, 'mymod', 'mymod.spy')
         w_functype = W_FuncType.parse('def(a: i32, b: i32) -> i32')
         w_code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         w_code.declare_local('a', B.w_i32)

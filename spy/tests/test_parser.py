@@ -2,18 +2,28 @@ from typing import Any
 import textwrap
 import pytest
 import spy.ast
+from spy.parser import Parser
 from spy.ast_dump import dump
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, expect_errors
 
-class TestParser(CompilerTest):
+@pytest.mark.usefixtures('init')
+class TestParser:
 
     @pytest.fixture
-    def compiler_backend(self, request):
-        """
-        The parser tests don't need a backend. By overrinding the compiler_backend
-        fixture here, we make sure that each test run only once.
-        """
-        return 'no-backend'
+    def init(self, tmpdir):
+        self.tmpdir = tmpdir
+
+    def parse(self, src: str) -> spy.ast.Module:
+        f = self.tmpdir.join('test.spy')
+        src = textwrap.dedent(src)
+        f.write(src)
+        parser = Parser(src, str(f))
+        self.mod = parser.parse()
+        return self.mod
+
+    def expect_errors(self, src: str, *, errors: list[str]):
+        with expect_errors(errors):
+            self.parse(src)
 
     def assert_dump(self, node: spy.ast.Node, expected: str):
         dumped = dump(node, use_colors=False)
@@ -136,11 +146,11 @@ class TestParser(CompilerTest):
         )
 
     def test_FuncDef_body(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> i32:
             return 42
         """)
-        funcdef = self.get_funcdef('foo')
+        funcdef = mod.get_funcdef('foo')
         expected = """
         FuncDef(
             name='foo',
@@ -156,11 +166,11 @@ class TestParser(CompilerTest):
         self.assert_dump(funcdef, expected)
 
     def test_empty_return(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             return
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Constant(value=None),
@@ -169,11 +179,11 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_GetItem(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             return mylist[0]
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=GetItem(
@@ -185,11 +195,11 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_VarDef(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             x: i32 = 42
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         VarDef(
             name='x',
@@ -220,11 +230,11 @@ class TestParser(CompilerTest):
         self.assert_dump(mod, expected)
 
     def test_List(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             return [1, 2, 3]
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=List(
@@ -258,11 +268,11 @@ class TestParser(CompilerTest):
         }
         OpClass = binops[op]
         #
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return x {op} 1
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -284,11 +294,11 @@ class TestParser(CompilerTest):
         }
         OpClass = unops[op]
         #
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return {op} x
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -300,11 +310,11 @@ class TestParser(CompilerTest):
 
     def test_negative_const(self):
         # special case -NUM, so that it's seen as a constant by the rest of the code
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return -123
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Constant(value=-123),
@@ -331,11 +341,11 @@ class TestParser(CompilerTest):
         }
         OpClass = cmpops[op]
         #
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return x {op} 1
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -353,15 +363,14 @@ class TestParser(CompilerTest):
                 return 1 == 2 == 3
             """,
             errors = ["not implemented yet: chained comparisons"],
-            stepname = 'parse',
         )
 
     def test_Assign(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             x = 42
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Assign(
             target='x',
@@ -387,11 +396,11 @@ class TestParser(CompilerTest):
         )
 
     def test_Call(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> i32:
             return bar(1, 2, 3)
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Call(
@@ -413,18 +422,17 @@ class TestParser(CompilerTest):
                 return Bar(1, 2, x=3)
             """,
             errors = ["not implemented yet: keyword arguments"],
-            stepname = 'parse',
         )
 
     def test_If(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> i32:
             if x:
                 return 1
             else:
                 return 2
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         If(
             test=Name(id='x'),
@@ -443,11 +451,11 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_StmtExpr(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             42
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         StmtExpr(
             value=Constant(value=42),
@@ -456,12 +464,12 @@ class TestParser(CompilerTest):
         self.assert_dump(stmt, expected)
 
     def test_While(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             while True:
                 pass
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         While(
             test=Constant(value=True),

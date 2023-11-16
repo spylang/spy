@@ -1,3 +1,4 @@
+import py
 import spy.ast
 from spy.fqn import FQN
 from spy.irgen.typechecker import TypeChecker
@@ -21,14 +22,17 @@ class ModuleGen:
                  vm: SPyVM,
                  t: TypeChecker,
                  modname: str,
-                 mod: spy.ast.Module) -> None:
+                 mod: spy.ast.Module,
+                 file_spy: py.path.local,
+                 ) -> None:
         self.vm = vm
         self.t = t
         self.modname = modname
         self.mod = mod
+        self.file_spy = file_spy
 
     def make_w_mod(self) -> W_Module:
-        self.w_mod = W_Module(self.vm, self.modname)
+        self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
         self.vm.register_module(self.w_mod)
 
         for decl in self.mod.decls:

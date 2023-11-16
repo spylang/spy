@@ -3,7 +3,8 @@ from pathlib import Path
 import typer
 import py.path
 from spy.errors import SPyCompileError
-from spy.compiler import CompilerPipeline
+from spy.parser import Parser
+from spy.compiler import Compiler
 from spy.vm.vm import SPyVM
 
 app = typer.Typer(pretty_exceptions_enable=False)
@@ -27,27 +28,37 @@ def main(filename: Path,
          cwrite: boolopt("create the .c file and exit") = False,
          g: boolopt("generate debug symbols", names=['-g']) = False,
          ) -> None:
-    filename = py.path.local(filename)
-    builddir = filename.dirpath()
-    vm = SPyVM()
-    compiler = CompilerPipeline(vm, filename, builddir)
-    debug_symbols = g
     try:
-        if pyparse:
-            do_pyparse(str(filename))
-        elif parse:
-            mod = compiler.parse()
-            mod.pp()
-        elif dis:
-            w_mod = compiler.irgen()
-            w_mod.pp()
-        elif cwrite:
-            compiler.cwrite()
-        else:
-            compiler.cbuild(debug_symbols=debug_symbols)
-
+        do_main(filename, pyparse, parse, dis, cwrite, g)
     except SPyCompileError as e:
         print(e.format(use_colors=True))
+
+def do_main(filename: Path, pyparse: bool, parse: bool, dis: bool,
+            cwrite: bool, debug_symbols: bool) -> None:
+    if pyparse:
+        do_pyparse(str(filename))
+        return
+
+    if parse:
+        parser = Parser.from_filename(str(filename))
+        mod = parser.parse()
+        mod.pp()
+        return
+
+    modname = filename.stem
+    builddir = filename.parent
+    vm = SPyVM()
+    vm.path.append(str(builddir))
+    w_mod = vm.import_(modname)
+    if dis:
+        w_mod.pp()
+        return
+
+    compiler = Compiler(vm, modname, py.path.local(builddir))
+    if cwrite:
+        compiler.cwrite()
+    else:
+        compiler.cbuild(debug_symbols=debug_symbols)
 
 if __name__ == '__main__':
     app()

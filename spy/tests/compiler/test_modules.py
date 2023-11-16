@@ -33,7 +33,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    @pytest.mark.skip("WIP")
+    @skip_backends("C")
     def test_two_modules(self):
         self.write_file(
             "delta.spy",
@@ -51,12 +51,14 @@ class TestBasic(CompilerTest):
                 return x + get_delta()
             """)
 
-        self.tmpdir.chdir() # XXX
         w_delta = self.vm.import_('delta')
         w_main = self.vm.import_('main')
-
-        from spy.backend.interp import InterpModuleWrapper
-        delta = InterpModuleWrapper(self.vm, w_delta)
-        main = InterpModuleWrapper(self.vm, w_main)
-        assert delta.get_delta() == 10
-        assert main.inc(4) == 14
+        if self.backend == 'interp':
+            from spy.backend.interp import InterpModuleWrapper
+            delta = InterpModuleWrapper(self.vm, w_delta)
+            main = InterpModuleWrapper(self.vm, w_main)
+            assert delta.get_delta() == 10
+            assert main.inc(4) == 14
+        else:
+            # we need to implement multi-module compilation to C
+            assert False

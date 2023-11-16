@@ -84,6 +84,15 @@ class Module(Node):
     filename: str
     decls: list['Decl']
 
+    def get_funcdef(self, name: str) -> 'FuncDef':
+        """
+        Search for the FuncDef with the given name.
+        """
+        for decl in self.decls:
+            if isinstance(decl, FuncDef) and decl.name == name:
+                return decl
+        raise KeyError(name)
+
 
 class Decl(Node):
     pass

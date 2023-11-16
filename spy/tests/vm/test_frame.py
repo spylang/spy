@@ -90,7 +90,7 @@ class TestFrame:
 
     def test_globals(self):
         vm = SPyVM()
-        w_mod = W_Module(vm, 'mymod')
+        w_mod = W_Module(vm, 'mymod', 'mymod.spy')
         vm.register_module(w_mod)
         w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)

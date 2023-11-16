@@ -15,26 +15,6 @@ class TestBasic(CompilerTest):
         def foo() -> i32:
             return 42
         """)
-        vm = self.vm
-        w_expected_functype = W_FuncType([], B.w_i32)
-        #
-        # typechecker tests
-        t = self.compiler.t
-        assert t.global_scope.symbols == {
-            'foo': Symbol('foo', 'const', w_expected_functype,
-                          loc = ANYTHING,
-                          scope = t.global_scope)
-        }
-        #
-        funcdef = self.get_funcdef('foo')
-        w_expected_functype = W_FuncType([], B.w_i32)
-        w_functype, scope = t.get_funcdef_info(funcdef)
-        assert w_functype == w_expected_functype
-        assert scope.symbols == {
-            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope)
-        }
-        #
-        # codegen tests
         assert mod.foo() == 42
 
     @no_backend
@@ -89,16 +69,6 @@ class TestBasic(CompilerTest):
             x: i32 = 42
             return x
         """)
-        vm = self.vm
-        # typechecker tests
-        funcdef = self.get_funcdef('foo')
-        w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
-        assert scope.symbols == {
-            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope),
-            'x': Symbol('x', 'var', B.w_i32, loc=ANYTHING, scope=scope),
-        }
-        #
-        # codegen tests
         assert mod.foo() == 42
 
     @no_backend
@@ -142,18 +112,6 @@ class TestBasic(CompilerTest):
         def inc(x: i32) -> i32:
             return x + 1
         """)
-        vm = self.vm
-        # typechecker tests
-        funcdef = self.get_funcdef('inc')
-        w_expected_functype = W_FuncType.make(x=B.w_i32, w_restype=B.w_i32)
-        w_functype, scope = self.compiler.t.get_funcdef_info(funcdef)
-        assert w_functype == w_expected_functype
-        assert scope.symbols == {
-            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope),
-            'x': Symbol('x', 'var', B.w_i32, loc=ANYTHING, scope=scope),
-        }
-        #
-        # codegen tests
         assert mod.inc(100) == 101
 
     def test_assign(self):
