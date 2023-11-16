@@ -110,11 +110,11 @@ class CompilerTest:
         """
         modname = 'test'
         self.write_file(f'{modname}.spy', src)
-        self.irgen = self.vm.run_irgen(modname)
+        self.w_mod = self.vm.import_(modname)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
-            interp_mod = InterpModuleWrapper(self.vm, self.irgen.w_mod)
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
             compiler = Compiler(self.vm, modname, self.builddir)
@@ -122,16 +122,6 @@ class CompilerTest:
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         else:
             assert False, f'Unknown backend: {self.backend}'
-
-
-    def get_funcdef(self, name: str) -> spy.ast.FuncDef:
-        """
-        Search for the spy.ast.FuncDef with the given name in the parsed module
-        """
-        for decl in self.irgen.mod.decls:
-            if isinstance(decl, spy.ast.FuncDef) and decl.name == name:
-                return decl
-        raise KeyError(name)
 
     def expect_errors(self, src: str, *, errors: list[str]):
         """

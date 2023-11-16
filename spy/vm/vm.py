@@ -56,27 +56,18 @@ class SPyVM:
         self.path = []
         self.make_builtins_module()
 
-    def run_irgen(self, modname: str) -> Any:
-        """
-        Same as import_, but return the IRGenerator. Useful for tests.
-        """
-        from spy.irgen.irgen import IRGenerator
-        assert modname not in self.modules_w
+    def import_(self, modname: str) -> W_Module:
+        from spy.irgen.irgen import make_w_mod_from_file
+        if modname in self.modules_w:
+            return self.modules_w[modname]
         # XXX for now we assume that we find the module as a single file in
         # the only vm.path entry. Eventually we will need a proper import
         # mechanism and support for packages
         assert self.path, 'vm.path not set'
         file_spy = py.path.local(self.path[0]).join(f'{modname}.spy')
-        irgen = IRGenerator(self, file_spy)
-        w_mod = irgen.make_w_mod()
+        w_mod = make_w_mod_from_file(self, file_spy)
         self.modules_w[modname] = w_mod
-        return irgen
-
-    def import_(self, modname: str) -> W_Module:
-        if modname in self.modules_w:
-            return self.modules_w[modname]
-        self.run_irgen(modname)
-        return self.modules_w[modname]
+        return w_mod
 
     def make_builtins_module(self) -> None:
         w_mod = W_Module(self, 'builtins', '<builtins>')

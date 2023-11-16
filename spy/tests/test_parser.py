@@ -25,15 +25,6 @@ class TestParser:
         with expect_errors(errors):
             self.parse(src)
 
-    def get_funcdef(self, name: str) -> spy.ast.FuncDef:
-        """
-        Search for the spy.ast.FuncDef with the given name in the parsed module
-        """
-        for decl in self.mod.decls:
-            if isinstance(decl, spy.ast.FuncDef) and decl.name == name:
-                return decl
-        raise KeyError(name)
-
     def assert_dump(self, node: spy.ast.Node, expected: str):
         dumped = dump(node, use_colors=False)
         expected = textwrap.dedent(expected)
@@ -155,11 +146,11 @@ class TestParser:
         )
 
     def test_FuncDef_body(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> i32:
             return 42
         """)
-        funcdef = self.get_funcdef('foo')
+        funcdef = mod.get_funcdef('foo')
         expected = """
         FuncDef(
             name='foo',
@@ -175,11 +166,11 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_empty_return(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             return
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Constant(value=None),
@@ -188,11 +179,11 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_GetItem(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             return mylist[0]
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=GetItem(
@@ -204,11 +195,11 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_VarDef(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             x: i32 = 42
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         VarDef(
             name='x',
@@ -239,11 +230,11 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_List(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             return [1, 2, 3]
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=List(
@@ -277,11 +268,11 @@ class TestParser:
         }
         OpClass = binops[op]
         #
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return x {op} 1
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -303,11 +294,11 @@ class TestParser:
         }
         OpClass = unops[op]
         #
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return {op} x
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -319,11 +310,11 @@ class TestParser:
 
     def test_negative_const(self):
         # special case -NUM, so that it's seen as a constant by the rest of the code
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return -123
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Constant(value=-123),
@@ -350,11 +341,11 @@ class TestParser:
         }
         OpClass = cmpops[op]
         #
-        self.parse(f"""
+        mod = self.parse(f"""
         def foo() -> i32:
             return x {op} 1
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
             value={OpClass}(
@@ -375,11 +366,11 @@ class TestParser:
         )
 
     def test_Assign(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             x = 42
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Assign(
             target='x',
@@ -405,11 +396,11 @@ class TestParser:
         )
 
     def test_Call(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> i32:
             return bar(1, 2, 3)
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=Call(
@@ -434,14 +425,14 @@ class TestParser:
         )
 
     def test_If(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> i32:
             if x:
                 return 1
             else:
                 return 2
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         If(
             test=Name(id='x'),
@@ -460,11 +451,11 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_StmtExpr(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             42
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         StmtExpr(
             value=Constant(value=42),
@@ -473,12 +464,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_While(self):
-        self.parse("""
+        mod = self.parse("""
         def foo() -> void:
             while True:
                 pass
         """)
-        stmt = self.get_funcdef('foo').body[0]
+        stmt = mod.get_funcdef('foo').body[0]
         expected = """
         While(
             test=Constant(value=True),
