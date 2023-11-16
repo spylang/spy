@@ -19,7 +19,7 @@ class TestBasic(CompilerTest):
         w_expected_functype = W_FuncType([], B.w_i32)
         #
         # typechecker tests
-        t = self.importer.t
+        t = self.irgen.t
         assert t.global_scope.symbols == {
             'foo': Symbol('foo', 'const', w_expected_functype,
                           loc = ANYTHING,
@@ -92,7 +92,7 @@ class TestBasic(CompilerTest):
         vm = self.vm
         # typechecker tests
         funcdef = self.get_funcdef('foo')
-        w_functype, scope = self.importer.t.get_funcdef_info(funcdef)
+        w_functype, scope = self.irgen.t.get_funcdef_info(funcdef)
         assert scope.symbols == {
             '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope),
             'x': Symbol('x', 'var', B.w_i32, loc=ANYTHING, scope=scope),
@@ -146,7 +146,7 @@ class TestBasic(CompilerTest):
         # typechecker tests
         funcdef = self.get_funcdef('inc')
         w_expected_functype = W_FuncType.make(x=B.w_i32, w_restype=B.w_i32)
-        w_functype, scope = self.importer.t.get_funcdef_info(funcdef)
+        w_functype, scope = self.irgen.t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
             '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope),

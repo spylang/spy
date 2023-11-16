@@ -4,13 +4,14 @@ from contextlib import contextmanager
 import pytest
 import py.path
 import spy.ast
-from spy.compiler import Compiler, Importer
+from spy.compiler import Compiler
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import ZigToolchain
 from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+
 
 Backend = Literal['interp', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -109,11 +110,11 @@ class CompilerTest:
         """
         modname = 'test'
         self.write_file(f'{modname}.spy', src)
-        self.importer = self.vm.run_importer(modname)
+        self.irgen = self.vm.run_irgen(modname)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
-            interp_mod = InterpModuleWrapper(self.vm, self.importer.w_mod)
+            interp_mod = InterpModuleWrapper(self.vm, self.irgen.w_mod)
             return interp_mod
         elif self.backend == 'C':
             compiler = Compiler(self.vm, modname, self.builddir)
@@ -127,7 +128,7 @@ class CompilerTest:
         """
         Search for the spy.ast.FuncDef with the given name in the parsed module
         """
-        for decl in self.importer.mod.decls:
+        for decl in self.irgen.mod.decls:
             if isinstance(decl, spy.ast.FuncDef) and decl.name == name:
                 return decl
         raise KeyError(name)
