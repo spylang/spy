@@ -4,7 +4,7 @@ from spy.vm.object import W_Object, spytype, W_Type
 from spy.vm.varstorage import VarStorage
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.function import W_UserFunction
+    from spy.vm.function import W_UserFunc
 
 
 @spytype('module')
@@ -29,10 +29,10 @@ class W_Module(W_Object):
         assert w_obj is not None
         return w_obj
 
-    def getattr_userfunc(self, attr: str) -> 'W_UserFunction':
-        from spy.vm.function import W_UserFunction
+    def getattr_userfunc(self, attr: str) -> 'W_UserFunc':
+        from spy.vm.function import W_UserFunc
         w_obj = self.getattr(attr)
-        assert isinstance(w_obj, W_UserFunction)
+        assert isinstance(w_obj, W_UserFunc)
         return w_obj
 
     def keys(self) -> Iterable[FQN]:
@@ -49,12 +49,12 @@ class W_Module(W_Object):
         """
         Pretty print
         """
-        from spy.vm.function import W_UserFunction
+        from spy.vm.function import W_UserFunc
         print(f'Module {self.name}:')
         for attr, w_obj in self.items_w():
             print(f'    {attr}: {w_obj}')
 
         print()
         for attr, w_obj in self.items_w():
-            if isinstance(w_obj, W_UserFunction):
+            if isinstance(w_obj, W_UserFunc):
                 w_obj.w_code.pp()

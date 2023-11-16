@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
-from spy.vm.function import W_UserFunction, W_BuiltinFunction, W_FunctionType
+from spy.vm.function import W_UserFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm import helpers
@@ -70,13 +70,13 @@ class CModuleWriter:
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
-            if isinstance(w_obj, W_UserFunction):
+            if isinstance(w_obj, W_UserFunc):
                 self.emit_function(fqn, w_obj)
             else:
                 self.emit_variable(fqn, w_obj)
         return self.out.build()
 
-    def emit_function(self, fqn: FQN, w_func: W_UserFunction) -> None:
+    def emit_function(self, fqn: FQN, w_func: W_UserFunc) -> None:
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
 
@@ -95,15 +95,16 @@ class CFuncWriter:
     cmod: CModuleWriter
     out: TextBuilder
     fqn: FQN
-    w_func: W_UserFunction
+    w_func: W_UserFunc
     tmp_vars: dict[str, C_Type]
     stack: list[c_expr.Expr]
+    labels: dict[str, int]
 
     def __init__(self,
                  ctx: Context,
                  cmod: CModuleWriter,
                  fqn: FQN,
-                 w_func: W_UserFunction) -> None:
+                 w_func: W_UserFunc) -> None:
         self.ctx = ctx
         self.cmod = cmod
         self.out = cmod.out
@@ -112,6 +113,15 @@ class CFuncWriter:
         self.tmp_vars = {}
         self.stack = []
         self.next_op_index = 0
+        self.labels = {}
+        self.init_labels()
+
+    def init_labels(self) -> None:
+        for pc, op in enumerate(self.w_func.w_code.body):
+            if op.name == 'label':
+                l = op.args[0]
+                assert l not in self.labels, f'duplicate label: {l}'
+                self.labels[l] = pc
 
     def ppc(self) -> None:
         """
@@ -207,6 +217,12 @@ class CFuncWriter:
         spyline = lineno
         cline = self.out.lineno
         self.out.wl(f'#line SPY_LINE({spyline}, {cline})')
+
+    def emit_op_label(self, name: str) -> None:
+        raise AssertionError(
+            "emit_op_label should never be called. "
+            "You should .consume() the label op when "
+            "it is expected")
 
     def emit_op_load_const(self, w_obj: W_Object) -> None:
         # XXX we need to share code with 'emit_variable'
@@ -320,12 +336,12 @@ class CFuncWriter:
 
     def emit_op_call_global(self, fqn: FQN, argcount: int) -> None:
         w_functype = self.ctx.vm.lookup_global_type(fqn)
-        assert isinstance(w_functype, W_FunctionType)
+        assert isinstance(w_functype, W_FuncType)
         self._emit_op_call(fqn.c_name, argcount, w_functype)
 
-    def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FunctionType) -> None:
+    def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FuncType) -> None:
         arglist = self._pop_args(argcount)
-        assert isinstance(w_functype, W_FunctionType)
+        assert isinstance(w_functype, W_FuncType)
         w_restype = w_functype.w_restype
         c_restype = self.ctx.w2c(w_restype)
         #
@@ -364,84 +380,121 @@ class CFuncWriter:
     ## which is WAY easier to read by humans, which simplifies a lot the
     ## debugging.
 
-    def emit_op_mark_if_then(self, IF: int, END: int) -> None:
+    def emit_op_mark_if_then(self, IF: str) -> None:
         """
         CodeGen._do_exec_If_then emits the following:
 
-             mark_if_then IF, END
+             mark_if_then IF
              <eval cond>
-        IF:  br_if_not END
+        IF:
+             br_if THEN ENDIF ENDIF
+        THEN:
              <then body>
-        END: <rest of the program>
+        ENDIF:
+             <rest of the program>
         """
-        while self.next_op_index < IF:
+        pc_if = self.labels[IF]
+        while self.next_op_index < pc_if:
             self.advance_and_emit()
-        #
-        self.consume('br_if_not', END)
+        # IF:
+        self.consume('label', IF)
+        op_br_if = self.consume('br_if', ...)
+        THEN, ELSE, ENDIF = op_br_if.args
+        assert ELSE == ENDIF, 'mark_if_then, but this seems if_then_else'
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
-        #
+        # THEN:
+        self.consume('label', THEN)
         with self.out.indent():
-            while self.next_op_index < END:
+            pc_endif = self.labels[ENDIF]
+            while self.next_op_index < pc_endif:
                 self.advance_and_emit()
         self.out.wl('}')
+        # ENDIF:
+        self.consume('label', ENDIF)
 
-    def emit_op_mark_if_then_else(self, IF: int, ELSE: int, END: int) -> None:
+    def emit_op_mark_if_then_else(self, IF: str) -> None:
         """
         CodeGen._do_exec_If_then_else emits the following:
 
-              mark_if_then_else IF, ELSE, END
-              <eval cond>
-        IF:   br_if_not ELSE
-              <then body>
-              br END
-        ELSE: <else body>
-        END:  <rest of the program>
+             mark_if_then_else IF
+             <eval cond>
+        IF:
+             br_if THEN ELSE ENDIF
+        THEN:
+             <then body>
+             br ENDIF
+        ELSE:
+             <else body>
+        ENDIF:
+             <rest of the program>
         """
-        while self.next_op_index < IF:
+        pc_if = self.labels[IF]
+        while self.next_op_index < pc_if:
             self.advance_and_emit()
+        # IF:
+        self.consume('label', IF)
+        op_br_if = self.consume('br_if', ...)
+        THEN, ELSE, ENDIF = op_br_if.args
+        assert ELSE != ENDIF, 'mark_if_then_else, but this seems if_then'
         cond = self.pop()
         self.out.wl(f'if ({cond.str()}) ' + '{')
-        self.consume('br_if_not', ELSE)
         #
-        # emit the 'then'
+        # THEN:
+        self.consume('label', THEN)
         with self.out.indent():
             # note: we go up to ELSE-1 because we do NOT want to emit the 'br'
-            while self.next_op_index < ELSE - 1:
+            pc_else = self.labels[ELSE]
+            while self.next_op_index < pc_else - 1:
                 self.advance_and_emit()
-        self.consume('br', END)
-        # emit the 'else'
+        self.consume('br', ENDIF)
+        # ELSE:
+        self.consume('label', ELSE)
         self.out.wl('} else {')
         with self.out.indent():
-            while self.next_op_index < END:
+            pc_endif = self.labels[ENDIF]
+            while self.next_op_index < pc_endif:
                 self.advance_and_emit()
         self.out.wl('}')
+        # ENDIF:
+        self.consume('label', ENDIF)
 
-    def emit_op_mark_while(self, IF: int, LOOP: int) -> None:
+    def emit_op_mark_while(self, WHILE: str, IF: str, END: str) -> None:
         """
         CodeGen.do_exec_While emits the following:
 
-               mark_while IF LOOP
-        START: <eval cond>
-        IF:    br_if_not END
-               <body>
-        LOOP:  br START
-        END:   <rest of the program>
+            mark_while WHILE IF END
+        WHILE:
+            <eval cond>
+        IF:
+            br_while_not END
+            <body>
+            br WHILE
+        END:
+            <rest of the program>
         """
         self.out.wl('while(1) {')
         with self.out.indent():
-            # <eval cond>
-            while self.next_op_index < IF:
+            # WHILE:
+            self.consume('label', WHILE)
+            pc_if = self.labels[IF]
+            while self.next_op_index < pc_if:
                 self.advance_and_emit()
             #
-            self.consume('br_if_not', ...)
+            # IF:
+            self.consume('label', IF)
+            self.consume('br_while_not', END)
             cond = self.pop()
             not_cond = c_expr.UnaryOp('!', cond)
             self.out.wl(f'if ({not_cond.str()})')
             self.out.wl('    break;')
             #
             # <body>
-            while self.next_op_index < LOOP:
+            pc_end = self.labels[END]
+            while self.next_op_index < pc_end - 1:
                 self.advance_and_emit()
-            self.consume('br', ...)
+            self.consume('br', WHILE)
+            #
+            # END:
+            self.consume('label', END)
         self.out.wl('}')

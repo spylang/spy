@@ -5,8 +5,8 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.function import (W_FunctionType, W_Function, W_UserFunction,
-                             W_BuiltinFunction)
+from spy.vm.function import (W_FuncType, W_Func, W_UserFunc,
+                             W_BuiltinFunc)
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
@@ -23,9 +23,9 @@ class Builtins:
     w_True = W_bool._w_singleton_True
     w_False = W_bool._w_singleton_False
 
-    w_abs = W_BuiltinFunction(
+    w_abs = W_BuiltinFunc(
         fqn = FQN('builtins::abs'),
-        w_functype = W_FunctionType.make(x=w_i32, w_restype=w_i32),
+        w_functype = W_FuncType.make(x=w_i32, w_restype=w_i32),
     )
 
     @classmethod
@@ -161,16 +161,16 @@ class SPyVM:
         # be "compatible", but we don't have this notion yet
         return self.dynamic_type(w_arg) is w_type
 
-    def call_function(self, w_func: W_Function, args_w: list[W_Object]) -> W_Object:
+    def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
         assert len(w_functype.params) == len(args_w)
         for param, w_arg in zip(w_functype.params, args_w):
             assert self.is_compatible_type(w_arg, param.w_type)
         #
-        if isinstance(w_func, W_UserFunction):
+        if isinstance(w_func, W_UserFunc):
             frame = Frame(self, w_func.w_code)
             return frame.run(args_w)
-        elif isinstance(w_func, W_BuiltinFunction):
+        elif isinstance(w_func, W_BuiltinFunc):
             return w_func.spy_call(self, args_w)
         else:
             assert False

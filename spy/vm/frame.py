@@ -23,7 +23,7 @@ from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
-from spy.vm.function import W_Function
+from spy.vm.function import W_Func
 from spy.vm import helpers
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -35,6 +35,7 @@ class Frame:
     pc: int  # program counter
     stack: list[W_Object]
     locals: VarStorage
+    labels: dict[str, int] # name -> pc
 
     def __init__(self, vm: 'SPyVM', w_code: W_Object) -> None:
         assert isinstance(w_code, W_CodeObject)
@@ -44,6 +45,18 @@ class Frame:
                                  w_code.locals_w_types)
         self.pc = 0
         self.stack = []
+        self.labels = {}
+        self.init_labels()
+
+    def init_labels(self) -> None:
+        for pc, op in enumerate(self.w_code.body):
+            if op.name == 'label':
+                l = op.args[0]
+                assert l not in self.labels, f'duplicate label: {l}'
+                self.labels[l] = pc
+
+    def jump(self, LABEL: str) -> None:
+        self.pc = self.labels[LABEL]
 
     def push(self, w_value: W_Object) -> None:
         assert isinstance(w_value, W_Object)
@@ -83,19 +96,22 @@ class Frame:
     def op_abort(self, message: str) -> None:
         raise SPyRuntimeAbort(message)
 
+    def op_label(self, name: str) -> None:
+        assert self.labels[name] == self.pc
+
     def op_line(self, lineno: int) -> None:
         pass
 
-    def op_mark_if_then(self, IF: int, END: int) -> None:
-        assert self.w_code.body[IF].match('br_if_not', END)
+    def op_mark_if_then(self, IF: str) -> None:
+        pc_if = self.labels[IF]
+        assert self.w_code.body[pc_if + 1].match('br_if', ...)
+    op_mark_if_then_else = op_mark_if_then
 
-    def op_mark_if_then_else(self, IF: int, ELSE: int, END: int) -> None:
-        assert self.w_code.body[IF].match('br_if_not', ELSE)
-        assert self.w_code.body[ELSE-1].match('br', END)
-
-    def op_mark_while(self, IF: int, LOOP: int) -> None:
-        assert self.w_code.body[IF].match('br_if_not', ...)
-        assert self.w_code.body[LOOP].match('br', ...)
+    def op_mark_while(self, WHILE: str, IF: str, END: str) -> None:
+        pc_if = self.labels[IF]
+        pc_end = self.labels[END]
+        assert self.w_code.body[pc_if + 1].match('br_while_not', ...)
+        assert self.w_code.body[pc_end - 1].match('br', WHILE)
 
     def op_pop_and_discard(self) -> None:
         self.pop()
@@ -167,10 +183,10 @@ class Frame:
 
     def op_call_global(self, fqn: FQN, argcount: int) -> None:
         w_func = self.vm.lookup_global(fqn)
-        assert isinstance(w_func, W_Function)
+        assert isinstance(w_func, W_Func)
         return self._op_call(w_func, argcount)
 
-    def _op_call(self, w_func: W_Function, argcount: int) -> None:
+    def _op_call(self, w_func: W_Func, argcount: int) -> None:
         args_w = self._pop_args(argcount)
         w_res = self.vm.call_function(w_func, args_w)
         self.push(w_res)
@@ -181,11 +197,19 @@ class Frame:
         w_res = helper_func(self.vm, *args_w)
         self.push(w_res)
 
-    def op_br(self, target: int) -> None:
-        self.pc = target - 1 # because run() does pc += 1
+    def op_br(self, TARGET: str) -> None:
+        self.jump(TARGET)
 
-    def op_br_if_not(self, target: int) -> None:
+    def op_br_if(self, THEN: str, ELSE: str, ENDIF: str) -> None:
+        w_cond = self.pop()
+        assert isinstance(w_cond, W_bool)
+        if self.vm.is_True(w_cond):
+            self.jump(THEN)
+        else:
+            self.jump(ELSE)
+
+    def op_br_while_not(self, END: str) -> None:
         w_cond = self.pop()
         assert isinstance(w_cond, W_bool)
         if self.vm.is_False(w_cond):
-            self.pc = target - 1 # because run() does pc += 1
+            self.jump(END)

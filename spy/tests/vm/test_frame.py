@@ -6,7 +6,7 @@ from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.frame import Frame
 from spy.vm.codeobject import OpCode, W_CodeObject
-from spy.vm.function import W_FunctionType
+from spy.vm.function import W_FuncType
 from spy.vm.module import W_Module
 
 class TestFrame:
@@ -14,7 +14,7 @@ class TestFrame:
     def test_simple_eval(self):
         vm = SPyVM()
         w_42 = vm.wrap(42)
-        w_functype = W_FunctionType.make(w_restype=B.w_i32)
+        w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_42),
@@ -28,7 +28,7 @@ class TestFrame:
         vm = SPyVM()
         w_100 = vm.wrap(100)
         w_1 = vm.wrap(1)
-        w_functype = W_FunctionType.make(w_restype=B.w_i32)
+        w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_100),
@@ -45,7 +45,7 @@ class TestFrame:
         vm = SPyVM()
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
-        w_functype = W_FunctionType.make(w_restype=B.w_i32)
+        w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.body = [
             OpCode('load_const', w_50),
@@ -60,7 +60,7 @@ class TestFrame:
 
     def test_uninitialized_locals(self):
         vm = SPyVM()
-        w_functype = W_FunctionType.make(w_restype=B.w_i32)
+        w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_i32)
         code.body = [
@@ -75,7 +75,7 @@ class TestFrame:
     def test_locals(self):
         vm = SPyVM()
         w_100 = vm.wrap(100)
-        w_functype = W_FunctionType.make(w_restype=B.w_i32)
+        w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_i32)
         code.body = [
@@ -92,7 +92,7 @@ class TestFrame:
         vm = SPyVM()
         w_mod = W_Module(vm, 'mymod')
         vm.register_module(w_mod)
-        w_functype = W_FunctionType.make(w_restype=B.w_i32)
+        w_functype = W_FuncType.make(w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
 
         mymod_a = FQN('mymod::a')
@@ -117,7 +117,7 @@ class TestFrame:
 
     def test_params(self):
         vm = SPyVM()
-        w_functype = W_FunctionType.make(a=B.w_i32, b=B.w_i32, w_restype=B.w_i32)
+        w_functype = W_FuncType.make(a=B.w_i32, b=B.w_i32, w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_i32)
         code.declare_local('b', B.w_i32)
@@ -135,18 +135,22 @@ class TestFrame:
         result = vm.unwrap(w_result)
         assert result == 42
 
-    def test_br_if_not(self):
+    def test_br_if(self):
         vm = SPyVM()
-        w_functype = W_FunctionType.make(a=B.w_bool, w_restype=B.w_i32)
+        w_functype = W_FuncType.make(a=B.w_bool, w_restype=B.w_i32)
         code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
         code.declare_local('a', B.w_bool)
         code.body = [
-            OpCode('load_local', 'a'),           # 0
-            OpCode('br_if_not', 4),              # 1
-            OpCode('load_const', vm.wrap(100)),  # 2
-            OpCode('return'),                    # 3
-            OpCode('load_const', vm.wrap(200)),  # 4
-            OpCode('return'),                    # 5
+            OpCode('load_local', 'a'),
+            OpCode('br_if', 'then_0', 'else_0', 'endif_0'),
+            OpCode('label', 'then_0'),
+            OpCode('load_const', vm.wrap(100)),
+            OpCode('return'),
+            OpCode('label', 'else_0'),
+            OpCode('load_const', vm.wrap(200)),
+            OpCode('return'),
+            OpCode('label', 'endif_0'),
+            OpCode('abort', 'unreachable'),
         ]
         frame1 = Frame(vm, code)
         w_result = frame1.run([B.w_True])

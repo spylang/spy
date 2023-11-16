@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-import typing
+from typing import TYPE_CHECKING, Any
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @dataclass
@@ -15,7 +15,7 @@ class FuncParam:
 
 
 @dataclass(repr=False)
-class W_FunctionType(W_Type):
+class W_FuncType(W_Type):
     params: list[FuncParam]
     w_restype: W_Type
 
@@ -26,16 +26,43 @@ class W_FunctionType(W_Type):
         self.params = params
         self.w_restype = w_restype
         sig = self._str_sig()
-        super().__init__(f'def{sig}', W_Function)
+        super().__init__(f'def{sig}', W_Func)
 
     @classmethod
-    def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FunctionType':
+    def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FuncType':
         """
-        Small helper to make it easier to build W_FunctionType, especially in
+        Small helper to make it easier to build W_FuncType, especially in
         tests
         """
         params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
         return cls(params, w_restype)
+
+    @classmethod
+    def parse(cls, s: str) -> 'W_FuncType':
+        """
+        Quick & dirty function to parse function types.
+
+        It's meant to be used in tests, it's not robust at all, especially in
+        case of wrong inputs. It supports only builtin types.
+        """
+        from spy.vm.vm import Builtins as B
+        def parse_type(s: str) -> Any:
+            return getattr(B, f'w_{s}')
+
+        args, res = map(str.strip, s.split('->'))
+        assert args.startswith('def(')
+        assert args.endswith(')')
+        kwargs = {}
+        arglist = args[4:-1].split(',')
+        for arg in arglist:
+            if arg == '':
+                continue
+            argname, argtype = map(str.strip, arg.split(':'))
+            kwargs[argname] = parse_type(argtype)
+        #
+        w_restype = parse_type(res)
+        return cls.make(w_restype=w_restype, **kwargs)
+
 
     def _str_sig(self) -> str:
         params = [f'{p.name}: {p.w_type.name}' for p in self.params]
@@ -44,10 +71,11 @@ class W_FunctionType(W_Type):
         return f'({str_params}) -> {resname}'
 
 
-class W_Function(W_Object):
+
+class W_Func(W_Object):
 
     @property
-    def w_functype(self) -> W_FunctionType:
+    def w_functype(self) -> W_FuncType:
         raise NotImplementedError
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
@@ -57,7 +85,7 @@ class W_Function(W_Object):
         raise NotImplementedError
 
 
-class W_UserFunction(W_Function):
+class W_UserFunc(W_Func):
     w_code: W_CodeObject
 
     def __init__(self, w_code: W_CodeObject) -> None:
@@ -67,15 +95,15 @@ class W_UserFunction(W_Function):
         return f"<spy function '{self.w_code.fqn}'>"
 
     @property
-    def w_functype(self) -> W_FunctionType:
+    def w_functype(self) -> W_FuncType:
         return self.w_code.w_functype
 
 
-class W_BuiltinFunction(W_Function):
+class W_BuiltinFunc(W_Func):
     fqn: FQN
-    _w_functype: W_FunctionType
+    _w_functype: W_FuncType
 
-    def __init__(self, fqn: FQN, w_functype: W_FunctionType) -> None:
+    def __init__(self, fqn: FQN, w_functype: W_FuncType) -> None:
         self.fqn = fqn
         self._w_functype = w_functype
 
@@ -83,7 +111,7 @@ class W_BuiltinFunction(W_Function):
         return f"<spy function '{self.fqn}' (builtin)>"
 
     @property
-    def w_functype(self) -> W_FunctionType:
+    def w_functype(self) -> W_FuncType:
         return self._w_functype
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:

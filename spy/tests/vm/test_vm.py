@@ -3,7 +3,7 @@ import pytest
 from spy.vm.vm import SPyVM, Builtins as B, FQN
 from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.function import W_BuiltinFunction
+from spy.vm.function import W_BuiltinFunc
 
 class TestVM:
 
