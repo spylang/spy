@@ -11,11 +11,13 @@ if TYPE_CHECKING:
 class W_Module(W_Object):
     vm: 'SPyVM'
     name: str
+    filepath: str
     _frozen: bool
 
-    def __init__(self, vm: 'SPyVM', name: str) -> None:
+    def __init__(self, vm: 'SPyVM', name: str, filepath: str) -> None:
         self.vm = vm
         self.name = name
+        self.filepath = filepath
 
     def __repr__(self) -> str:
         return f'<spy module {self.name}>'

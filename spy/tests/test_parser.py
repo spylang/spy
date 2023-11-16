@@ -2,18 +2,37 @@ from typing import Any
 import textwrap
 import pytest
 import spy.ast
+from spy.parser import Parser
 from spy.ast_dump import dump
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, expect_errors
 
-class TestParser(CompilerTest):
+@pytest.mark.usefixtures('init')
+class TestParser:
 
     @pytest.fixture
-    def compiler_backend(self, request):
+    def init(self, tmpdir):
+        self.tmpdir = tmpdir
+
+    def parse(self, src: str) -> spy.ast.Module:
+        f = self.tmpdir.join('test.spy')
+        src = textwrap.dedent(src)
+        f.write(src)
+        parser = Parser(src, str(f))
+        self.mod = parser.parse()
+        return self.mod
+
+    def expect_errors(self, src: str, *, errors: list[str]):
+        with expect_errors(errors):
+            self.parse(src)
+
+    def get_funcdef(self, name: str) -> spy.ast.FuncDef:
         """
-        The parser tests don't need a backend. By overrinding the compiler_backend
-        fixture here, we make sure that each test run only once.
+        Search for the spy.ast.FuncDef with the given name in the parsed module
         """
-        return 'no-backend'
+        for decl in self.mod.decls:
+            if isinstance(decl, spy.ast.FuncDef) and decl.name == name:
+                return decl
+        raise KeyError(name)
 
     def assert_dump(self, node: spy.ast.Node, expected: str):
         dumped = dump(node, use_colors=False)
@@ -353,7 +372,6 @@ class TestParser(CompilerTest):
                 return 1 == 2 == 3
             """,
             errors = ["not implemented yet: chained comparisons"],
-            stepname = 'parse',
         )
 
     def test_Assign(self):
@@ -413,7 +431,6 @@ class TestParser(CompilerTest):
                 return Bar(1, 2, x=3)
             """,
             errors = ["not implemented yet: keyword arguments"],
-            stepname = 'parse',
         )
 
     def test_If(self):

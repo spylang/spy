@@ -7,7 +7,7 @@ class TestModule:
 
     def test_add(self):
         vm = SPyVM()
-        w_mod = W_Module(vm, 'mymod')
+        w_mod = W_Module(vm, 'mymod', 'mymod.spy')
         vm.register_module(w_mod)
         #
         fqn_a = FQN('mymod::a')

@@ -1,3 +1,4 @@
+import py
 from typing import Any, Optional
 from dataclasses import dataclass
 import fixedint
@@ -45,27 +46,40 @@ class SPyVM:
     globals_types: dict[FQN, W_Type]
     globals_w: dict[FQN, W_Object]
     modules_w: dict[str, W_Module]
+    path: list[str]
 
     def __init__(self) -> None:
         self.ll = libspy.LLSPyInstance(libspy.LLMOD)
         self.globals_types = {}
         self.globals_w = {}
         self.modules_w = {}
+        self.path = []
         self.make_builtins_module()
 
+    def run_importer(self, modname: str) -> Any:
+        """
+        Same as import_, but return the importer. Useful for tests.
+        """
+        from spy.compiler import Importer
+        assert modname not in self.modules_w
+        # XXX for now we assume that we find the module as a single file in
+        # the only vm.path entry. Eventually we will need a proper import
+        # mechanism and support for packages
+        assert self.path, 'vm.path not set'
+        file_spy = py.path.local(self.path[0]).join(f'{modname}.spy')
+        importer = Importer(self, file_spy)
+        w_mod = importer.irgen()
+        self.modules_w[modname] = w_mod
+        return importer
+
     def import_(self, modname: str) -> W_Module:
-        assert False, "WIP"
-        import py
-        from spy.compiler import CompilerPipeline
         if modname in self.modules_w:
             return self.modules_w[modname]
-        #
-        file_spy = py.path.local(f'{modname}.spy')
-        compiler = CompilerPipeline(self, file_spy, builddir=None)
-        return compiler.irgen()
+        self.run_importer(modname)
+        return self.modules_w[modname]
 
     def make_builtins_module(self) -> None:
-        w_mod = W_Module(self, 'builtins')
+        w_mod = W_Module(self, 'builtins', '<builtins>')
         self.register_module(w_mod)
         for attr, w_obj in Builtins.__dict__.items():
             if not isinstance(w_obj, W_Object):

@@ -14,19 +14,19 @@ from spy.vm.vm import SPyVM, Builtins as B
 
 class WasmModuleWrapper:
     vm: SPyVM
-    w_mod: W_Module
+    modname: str
     ll: LLSPyInstance
 
-    def __init__(self, vm: SPyVM, w_mod: W_Module, f: py.path.local) -> None:
+    def __init__(self, vm: SPyVM, modname: str, f: py.path.local) -> None:
         self.vm = vm
-        self.w_mod = w_mod
+        self.modname = modname
         self.ll = LLSPyInstance.from_file(f)
 
     def __repr__(self) -> str:
         return f"<WasmModuleWrapper 'self.ll.name'>"
 
     def __getattr__(self, attr: str) -> Any:
-        fqn = FQN(modname=self.w_mod.name, attr=attr)
+        fqn = FQN(modname=self.modname, attr=attr)
         wasm_obj = self.ll.get_export(fqn.c_name)
         if isinstance(wasm_obj, wasmtime.Func):
             return self.read_function(fqn)

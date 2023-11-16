@@ -1,9 +1,10 @@
 from typing import Any, Literal, Optional
 import textwrap
+from contextlib import contextmanager
 import pytest
 import py.path
 import spy.ast
-from spy.compiler import CompilerPipeline
+from spy.compiler import Compiler, Importer
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import ZigToolchain
@@ -29,7 +30,8 @@ def params_with_marks(params):
     This makes it possible to use 'pytest -m aaa' to run ONLY the tests which
     uses the param 'aaa'.
     """
-    return [pytest.param(name, marks=getattr(pytest.mark, name)) for name in params]
+    return [pytest.param(name, marks=getattr(pytest.mark, name))
+            for name in params]
 
 def skip_backends(*backends_to_skip: Backend, reason=''):
     """
@@ -46,7 +48,7 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
             @skip_backends('C', reason='FIXME')
             def test_something(self):
                 ...
-    """
+2    """
     for b in backends_to_skip:
         if b not in ALL_BACKENDS:
             pytest.fail(f'Invalid backend passed to @skip_backends: {b}')
@@ -72,7 +74,6 @@ class CompilerTest:
     tmpdir: Any
     backend: Backend
     vm: SPyVM
-    compiler: CompilerPipeline
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
@@ -84,11 +85,7 @@ class CompilerTest:
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
         self.backend = compiler_backend
         self.vm = SPyVM()
-        self.compiler = None  # type: ignore
-
-    def new_compiler(self, src: str):
-        srcfile = self.write_file('test.spy', src)
-        self.compiler = CompilerPipeline(self.vm, srcfile, self.builddir)
+        self.vm.path.append(str(self.tmpdir))
 
     def write_file(self, filename: str, src: str) -> Any:
         """
@@ -101,10 +98,6 @@ class CompilerTest:
         srcfile.write(src)
         return srcfile
 
-    def parse(self, src: str) -> spy.ast.Module:
-        self.new_compiler(src)
-        return self.compiler.parse()
-
     def compile(self, src: str) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
@@ -114,16 +107,18 @@ class CompilerTest:
         backend: the IR code is not compiled and function are executed by the
         VM.
         """
-        self.new_compiler(src)
+        modname = 'test'
+        self.write_file(f'{modname}.spy', src)
+        self.importer = self.vm.run_importer(modname)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
-            w_mod = self.compiler.irgen()
-            interp_mod = InterpModuleWrapper(self.vm, w_mod)
+            interp_mod = InterpModuleWrapper(self.vm, self.importer.w_mod)
             return interp_mod
         elif self.backend == 'C':
-            file_wasm = self.compiler.cbuild()
-            return WasmModuleWrapper(self.vm, self.compiler.w_mod, file_wasm)
+            compiler = Compiler(self.vm, modname, self.builddir)
+            file_wasm = compiler.cbuild()
+            return WasmModuleWrapper(self.vm, modname, file_wasm)
         else:
             assert False, f'Unknown backend: {self.backend}'
 
@@ -132,42 +127,47 @@ class CompilerTest:
         """
         Search for the spy.ast.FuncDef with the given name in the parsed module
         """
-        for decl in self.compiler.mod.decls:
+        for decl in self.importer.mod.decls:
             if isinstance(decl, spy.ast.FuncDef) and decl.name == name:
                 return decl
         raise KeyError(name)
 
-    def expect_errors(self, src: str, *,
-                      errors: list[str],
-                      stepname: str = 'irgen') -> SPyCompileError:
+    def expect_errors(self, src: str, *, errors: list[str]):
         """
         Expect that compilation fails, and check that the expected errors are
         reported
         """
-        self.new_compiler(src)
-        meth = getattr(self.compiler, stepname)
-        with pytest.raises(SPyCompileError) as exc:
-            meth()
-        err = exc.value
-        self.assert_messages(err, errors=errors)
-        return err
+        modname = 'test'
+        srcfile = self.write_file(f'{modname}.spy', src)
+        with expect_errors(errors):
+            self.vm.import_(modname)
 
-    def assert_messages(self, err: SPyCompileError, *, errors: list[str]) -> None:
-        """
-        Check whether all the given messages are present in the error, either as
+
+
+@contextmanager
+def expect_errors(errors: list[str]) -> Any:
+    """
+    Similar to pytest.raises but:
+
+      - expect a SPyCompileError
+      - check that the given messages are present in the error, either as
         the main message or in the annotations.
-        """
-        all_messages = [err.message] + [ann.message for ann in err.annotations]
-        for expected in errors:
-            if expected not in all_messages:
-                print('Error match failed!')
-                print('The following error message was expected but not found:')
-                print(f'  - {expected}')
-                print()
-                print('Captured error')
-                formatted_error = err.format(use_colors=True)
-                print(textwrap.indent(formatted_error, '    '))
-                pytest.fail(f'Error message not found: {expected}')
+    """
+    with pytest.raises(SPyCompileError) as exc:
+        yield
+
+    err = exc.value
+    all_messages = [err.message] + [ann.message for ann in err.annotations]
+    for expected in errors:
+        if expected not in all_messages:
+            print('Error match failed!')
+            print('The following error message was expected but not found:')
+            print(f'  - {expected}')
+            print()
+            print('Captured error')
+            formatted_error = err.format(use_colors=True)
+            print(textwrap.indent(formatted_error, '    '))
+            pytest.fail(f'Error message not found: {expected}')
 
 
 
