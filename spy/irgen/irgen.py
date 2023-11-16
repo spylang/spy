@@ -38,24 +38,12 @@ class IRGenerator:
         self.t = None       # type: ignore
         self.modgen = None  # type: ignore
         self.w_mod = None   # type: ignore
-        #
-
-    def parse(self) -> spy.ast.Module:
-        assert self.parser is None, 'parse() already called'
-        self.parser = Parser.from_filename(str(self.file_spy))
-        self.mod = self.parser.parse()
-        return self.mod
-
-    def typecheck(self) -> spy.ast.Module:
-        assert self.t is None, 'typecheck() already called'
-        self.parse()
-        self.t = TypeChecker(self.vm, self.mod)
-        self.t.check_everything()
-        return self.mod
 
     def make_w_mod(self) -> W_Module:
-        assert self.modgen is None, 'irgen() already called'
-        self.typecheck()
+        self.parser = Parser.from_filename(str(self.file_spy))
+        self.mod = self.parser.parse()
+        self.t = TypeChecker(self.vm, self.mod)
+        self.t.check_everything()
         self.modgen = ModuleGen(self.vm, self.t, self.modname, self.mod,
                                 self.file_spy)
         self.w_mod = self.modgen.make_w_mod()
