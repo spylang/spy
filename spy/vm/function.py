@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+from spy.ast import Color
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
@@ -16,10 +17,12 @@ class FuncParam:
 
 @dataclass(repr=False)
 class W_FuncType(W_Type):
+    color: Color
     params: list[FuncParam]
     w_restype: W_Type
 
-    def __init__(self, params: list[FuncParam], w_restype: W_Type) -> None:
+    def __init__(self, params: list[FuncParam], w_restype: W_Type,
+                 *, color: Color = 'red') -> None:
         # sanity check
         if params:
             assert isinstance(params[0], FuncParam)
@@ -29,13 +32,18 @@ class W_FuncType(W_Type):
         super().__init__(f'def{sig}', W_Func)
 
     @classmethod
-    def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FuncType':
+    def make(cls,
+             *,
+             w_restype: W_Type,
+             color: Color = 'red',
+             **kwargs: W_Type
+             ) -> 'W_FuncType':
         """
         Small helper to make it easier to build W_FuncType, especially in
         tests
         """
         params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
-        return cls(params, w_restype)
+        return cls(params, w_restype, color=color)
 
     @classmethod
     def parse(cls, s: str) -> 'W_FuncType':

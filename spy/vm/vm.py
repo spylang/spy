@@ -164,7 +164,8 @@ class SPyVM:
     def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
         # XXX: this check is wrong: we should define better what it means to
         # be "compatible", but we don't have this notion yet
-        return self.dynamic_type(w_arg) is w_type
+        return (w_type is Builtins.w_object or
+                self.dynamic_type(w_arg) is w_type)
 
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype

@@ -173,12 +173,14 @@ class TypeChecker:
             for arg in funcdef.args
         ]
         w_return_type = self.resolve_type(funcdef.return_type, scope)
-        w_functype = W_FuncType(params, w_return_type)
+        w_functype = W_FuncType(params, w_return_type, color=funcdef.color)
         scope.declare(funcdef.name, 'const', w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
     def check_FuncDef(self, funcdef: spy.ast.FuncDef,
                       outer_scope: SymTable) -> None:
+        if funcdef.color == 'blue':
+            return
         local_scope = SymTable(funcdef.name, parent=outer_scope)
         self.funcdef_scopes[funcdef] = local_scope
         w_functype = self.funcdef_types[funcdef]

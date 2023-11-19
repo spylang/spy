@@ -8,6 +8,7 @@ from spy.location import Loc
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
+Color = Literal["red", "blue"]
 
 @extend(py_ast.AST)
 class AST:
@@ -108,6 +109,7 @@ class FuncArg(Node):
 @dataclass(eq=False)
 class FuncDef(Decl):
     loc: Loc
+    color: Color
     name: str
     args: list[FuncArg]
     return_type: 'Expr'

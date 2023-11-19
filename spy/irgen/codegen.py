@@ -11,7 +11,7 @@ from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FuncType
 from spy.util import magic_dispatch
 
-class CodeGen:
+class LegacyCodeGen:
     """
     Compile the body of spy.ast.FuncDef into a W_CodeObject
     """

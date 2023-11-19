@@ -2,11 +2,12 @@ import py
 import spy.ast
 from spy.fqn import FQN
 from spy.irgen.typechecker import TypeChecker
-from spy.irgen.codegen import CodeGen
+from spy.irgen.codegen import LegacyCodeGen
+from spy.irgen.codegen2 import CodeGen
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
-from spy.vm.function import W_FuncType, W_UserFunc
+from spy.vm.function import W_FuncType, W_UserFunc, W_Func
 
 
 class ModuleGen:
@@ -51,9 +52,13 @@ class ModuleGen:
                 self.vm.add_global(fqn, w_type, w_const)
         return self.w_mod
 
-    def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_UserFunc:
-        w_functype, scope = self.t.get_funcdef_info(funcdef)
-        codegen = CodeGen(self.vm, self.t, self.modname, funcdef)
-        w_code = codegen.make_w_code()
-        w_func = W_UserFunc(w_code)
-        return w_func
+    def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Func:
+        if funcdef.color == 'blue':
+            codegen = CodeGen(self.vm, self.t, funcdef)
+            w_code = codegen.make_w_code()
+            return W_UserFunc(w_code) # XXX: should it be W_BlueFunc?
+        else:
+            w_functype, scope = self.t.get_funcdef_info(funcdef)
+            codegen = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
+            w_code = codegen.make_w_code()
+            return W_UserFunc(w_code)
