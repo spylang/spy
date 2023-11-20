@@ -117,8 +117,7 @@ class W_CodeObject(W_Object):
         """
         color = ColorFormatter(use_colors=True)
         name = color.set('green', self.name)
-        #sig = color.set('red', self.w_functype.name)
-        print(f'Disassembly of code {name}: {sig}')
+        print(f'Disassembly of code {name}:')
         for name, w_type in self.locals_w_types.items():
             name = color.set('green', name)
             typename = color.set('red', w_type.name)

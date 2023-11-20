@@ -82,6 +82,7 @@ class W_FuncType(W_Type):
 
 
 class W_Func(W_Object):
+    w_functype: W_FuncType
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
@@ -92,7 +93,6 @@ class W_Func(W_Object):
 
 class W_UserFunc(W_Func):
     fqn: FQN
-    w_functype: W_FuncType
     w_code: W_CodeObject
 
     def __init__(self, fqn: FQN, w_functype: W_FuncType,

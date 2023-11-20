@@ -53,7 +53,7 @@ class DopplerInterpreter:
         """
         self.run_range(0, len(self.code.body))
         return W_UserFunc(
-            self.outname,
+            FQN(modname='doppler', attr=self.outname), # XXX
             self.w_func.w_functype,
             self.code_out)
 
