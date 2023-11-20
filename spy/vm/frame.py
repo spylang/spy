@@ -23,7 +23,7 @@ from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
-from spy.vm.function import W_Func
+from spy.vm.function import W_Func, W_UserFunc
 from spy.vm import helpers
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -31,18 +31,20 @@ if TYPE_CHECKING:
 
 class Frame:
     vm: 'SPyVM'
+    w_func: W_UserFunc
     w_code: W_CodeObject
     pc: int  # program counter
     stack: list[W_Object]
     locals: VarStorage
     labels: dict[str, int] # name -> pc
 
-    def __init__(self, vm: 'SPyVM', w_code: W_Object) -> None:
-        assert isinstance(w_code, W_CodeObject)
+    def __init__(self, vm: 'SPyVM', w_func: W_UserFunc) -> None:
+        assert isinstance(w_func, W_UserFunc)
         self.vm = vm
-        self.w_code = w_code
-        self.locals = VarStorage(vm, f"'{w_code.fqn} locals'",
-                                 w_code.locals_w_types)
+        self.w_func = w_func
+        self.w_code = w_func.w_code
+        self.locals = VarStorage(vm, f"'{self.w_code.name} locals'",
+                                 self.w_code.locals_w_types)
         self.pc = 0
         self.stack = []
         self.labels = {}
@@ -66,7 +68,7 @@ class Frame:
         return self.stack.pop()
 
     def init_arguments(self, args_w: list[W_Object]) -> None:
-        params = self.w_code.w_functype.params
+        params = self.w_func.w_functype.params
         assert len(args_w) == len(params)
         for param, w_arg in zip(params, args_w):
             self.locals.set(param.name, w_arg)
@@ -82,7 +84,7 @@ class Frame:
                 w_result = self.pop()
                 assert self.vm.is_compatible_type(
                     w_result,
-                    self.w_code.w_functype.w_restype)
+                    self.w_func.w_functype.w_restype)
                 return w_result
             else:
                 meth_name = f'op_{op.name}'

@@ -3,7 +3,6 @@ from typing import Any, Optional
 import textwrap
 import re
 from dataclasses import dataclass
-from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, spytype
 from spy.textbuilder import ColorFormatter
 from spy.util import print_diff
@@ -91,27 +90,22 @@ class OpCode:
 
 @spytype('CodeObject')
 class W_CodeObject(W_Object):
-    fqn: FQN
-    w_functype: 'W_FuncType'
+    name: str
     filename: str
     lineno: int
     body: list[OpCode]
     locals_w_types: dict[str, W_Type]
 
-    def __init__(self, fqn: FQN, *, w_functype: 'W_FuncType',
+    def __init__(self, name: str, *,
                  filename: str = '', lineno: int = -1) -> None:
-        # XXX this might be wrong? The fqn should be attached to the function,
-        # not to the code object. With closures/generic, we could have the
-        # same code object in multiple modules, I think?
-        self.fqn = fqn
-        self.w_functype = w_functype
+        self.name = name
         self.filename = filename
         self.lineno = lineno
         self.body = []
         self.locals_w_types = {}
 
     def __repr__(self) -> str:
-        return f'<spy CodeObject {self.fqn}>'
+        return f'<spy CodeObject {self.name}>'
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_w_types
@@ -122,8 +116,8 @@ class W_CodeObject(W_Object):
         Pretty print
         """
         color = ColorFormatter(use_colors=True)
-        name = color.set('green', self.fqn.fullname)
-        sig = color.set('red', self.w_functype.name)
+        name = color.set('green', self.name)
+        #sig = color.set('red', self.w_functype.name)
         print(f'Disassembly of code {name}: {sig}')
         for name, w_type in self.locals_w_types.items():
             name = color.set('green', name)

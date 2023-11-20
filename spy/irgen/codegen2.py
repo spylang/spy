@@ -25,13 +25,8 @@ class CodeGen:
         self.vm = vm
         self.t = t
         self.funcdef = funcdef
-        w_functype = t.funcdef_types[funcdef]
-        # XXX fix me:
-        #   - FQN should not be attached to code objects
-        #   - w_functype should not belong to code objects
         self.w_code = W_CodeObject(
-            FQN(modname='xxx', attr=funcdef.name),
-            w_functype=w_functype,
+            funcdef.name,
             filename=self.funcdef.loc.filename,
             lineno=self.funcdef.loc.line_start)
         self.last_lineno = -1

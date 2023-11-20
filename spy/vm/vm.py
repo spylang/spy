@@ -174,7 +174,7 @@ class SPyVM:
             assert self.is_compatible_type(w_arg, param.w_type)
         #
         if isinstance(w_func, W_UserFunc):
-            frame = Frame(self, w_func.w_code)
+            frame = Frame(self, w_func)
             return frame.run(args_w)
         elif isinstance(w_func, W_BuiltinFunc):
             return w_func.spy_call(self, args_w)

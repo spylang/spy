@@ -5,6 +5,7 @@ from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FuncType, W_UserFunc, FuncParam
 from spy.vm.varstorage import VarStorage
 from spy.vm.module import W_Module
+from spy.tests.support import make_func
 
 
 class TestFunction:
@@ -28,18 +29,16 @@ class TestFunction:
 
     def test_simple_function(self):
         vm = SPyVM()
-        w_functype = W_FuncType.parse('def() -> i32')
-        w_code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
-        w_code.body = [
-            OpCode('load_const', vm.wrap(42)),
-            OpCode('return'),
-        ]
-        #
-        w_func = W_UserFunc(w_code)
+        w_func = make_func(
+            'def() -> i32',
+            body = [
+                OpCode('load_const', vm.wrap(42)),
+                OpCode('return'),
+            ]
+        )
         assert repr(w_func) == "<spy function 'test::fn'>"
-        #
         w_t = vm.dynamic_type(w_func)
-        assert w_t is w_functype
+        assert w_t == W_FuncType.make(w_restype=B.w_i32)
 
     def test_make_and_call_function(self):
         vm = SPyVM()
@@ -48,32 +47,29 @@ class TestFunction:
         vm.add_global(FQN('mymod::a'),
                       B.w_i32,
                       vm.wrap(10))
-        #
-        w_functype = W_FuncType.parse('def() -> i32')
-        w_code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
-        w_code.body = [
-            OpCode('load_global', FQN('mymod::a')),
-            OpCode('return'),
-        ]
-        #
-        w_fn = W_UserFunc(w_code)
-        w_result = vm.call_function(w_fn, [])
+        w_func = make_func(
+            'def() -> i32',
+            body = [
+                OpCode('load_global', FQN('mymod::a')),
+                OpCode('return'),
+            ]
+        )
+        w_result = vm.call_function(w_func, [])
         assert vm.unwrap(w_result) == 10
 
     def test_call_function_with_arguments(self):
         vm = SPyVM()
         w_mod = W_Module(vm, 'mymod', 'mymod.spy')
-        w_functype = W_FuncType.parse('def(a: i32, b: i32) -> i32')
-        w_code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
-        w_code.declare_local('a', B.w_i32)
-        w_code.declare_local('b', B.w_i32)
-        w_code.body = [
-            OpCode('load_local', 'a'),
-            OpCode('load_local', 'b'),
-            OpCode('i32_sub'),
-            OpCode('return'),
-        ]
-        #
-        w_fn = W_UserFunc(w_code)
-        w_result = vm.call_function(w_fn, [vm.wrap(100), vm.wrap(80)])
+        w_func = make_func(
+            'def(a: i32, b: i32) -> i32',
+            body = [
+                OpCode('load_local', 'a'),
+                OpCode('load_local', 'b'),
+                OpCode('i32_sub'),
+                OpCode('return'),
+            ]
+        )
+        w_func.w_code.declare_local('a', B.w_i32)
+        w_func.w_code.declare_local('b', B.w_i32)
+        w_result = vm.call_function(w_func, [vm.wrap(100), vm.wrap(80)])
         assert vm.unwrap(w_result) == 20

@@ -9,8 +9,11 @@ from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import ZigToolchain
 from spy.errors import SPyCompileError
+from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+from spy.vm.codeobject import OpCode, W_CodeObject
+from spy.vm.function import W_UserFunc, W_FuncType
 
 
 Backend = Literal['interp', 'C']
@@ -181,3 +184,11 @@ class CTest:
         test_wasm = self.builddir.join('test.wasm')
         self.toolchain.c2wasm(test_c, test_wasm, exports=exports)
         return test_wasm
+
+
+def make_func(sig: str, body: list[OpCode]) -> W_UserFunc:
+    w_functype = W_FuncType.parse(sig)
+    code = W_CodeObject('fn')
+    code.body = body
+    w_func = W_UserFunc(FQN('test::fn'), w_functype, code)
+    return w_func

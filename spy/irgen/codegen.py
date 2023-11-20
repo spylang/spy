@@ -19,6 +19,7 @@ class LegacyCodeGen:
     t: TypeChecker
     modname: str
     funcdef: spy.ast.FuncDef
+    w_functype: W_FuncType
     scope: SymTable
     w_code: W_CodeObject
     last_lineno: int
@@ -33,10 +34,10 @@ class LegacyCodeGen:
         self.modname = modname
         self.funcdef = funcdef
         w_functype, scope = t.get_funcdef_info(funcdef)
+        self.w_functype = w_functype
         self.scope = scope
         self.w_code = W_CodeObject(
-            self.fqn(funcdef.name),
-            w_functype=w_functype,
+            funcdef.name,
             filename=self.funcdef.loc.filename,
             lineno=self.funcdef.loc.line_start)
         self.last_lineno = -1
@@ -76,7 +77,7 @@ class LegacyCodeGen:
         # emit an implicit return (if the return type is void) or an abort (in
         # all other cases)
         loc = self.funcdef.loc.make_end_loc()
-        if self.w_code.w_functype.w_restype is B.w_void:
+        if self.w_functype.w_restype is B.w_void:
             self.emit(loc, 'load_const', B.w_None)
             self.emit(loc, 'return')
         else:

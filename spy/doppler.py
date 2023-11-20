@@ -20,10 +20,10 @@ class DopplerInterpreter:
     def __init__(self, vm: SPyVM, w_func: W_UserFunc):
         self.vm = vm
         self.w_func = w_func
+        self.outname = w_func.w_code.name + '#doppler' # XXX?
         self.code = w_func.w_code
         self.code_out = W_CodeObject(
-            FQN('doppler::test'),
-            w_functype = w_func.w_functype,
+            self.outname,
             filename = w_func.w_code.filename,
             lineno = w_func.w_code.lineno)
 
@@ -52,7 +52,10 @@ class DopplerInterpreter:
         Do abstract interpretation of the whole code
         """
         self.run_range(0, len(self.code.body))
-        return W_UserFunc(self.code_out)
+        return W_UserFunc(
+            self.outname,
+            self.w_func.w_functype,
+            self.code_out)
 
     def run_range(self, pc_start: int, pc_end: int) -> None:
         """
