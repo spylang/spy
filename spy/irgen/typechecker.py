@@ -160,8 +160,13 @@ class TypeChecker:
     def check_Module(self, mod: spy.ast.Module, scope: SymTable) -> None:
         for decl in mod.decls:
             self.declare(decl, scope)
-        for decl in mod.decls:
-            self.check(decl, scope)
+
+        # XXX we don't want to check INSIDE functions now (it will be done by
+        # the doppler interpreter). This whole file needs a BIG refactoring
+        # and/or should die.
+
+        ## for decl in mod.decls:
+        ##     self.check(decl, scope)
 
     def declare_FuncDef(self, funcdef: spy.ast.FuncDef,
                         scope: SymTable) -> None:

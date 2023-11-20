@@ -55,13 +55,12 @@ class ModuleGen:
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Func:
         w_functype = self.t.funcdef_types[funcdef]
         fqn = FQN(modname=self.modname, attr=funcdef.name)
-        if funcdef.color == 'blue':
-            codegen = CodeGen(self.vm, self.t, funcdef)
-            w_code = codegen.make_w_code()
-            # XXX: should it be W_BlueFunc?
-            return W_UserFunc(fqn, w_functype, w_code)
-        else:
-            w_functype, scope = self.t.get_funcdef_info(funcdef)
-            codegen2 = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
-            w_code = codegen2.make_w_code()
-            return W_UserFunc(fqn, w_functype, w_code)
+        codegen = CodeGen(self.vm, self.t, funcdef)
+        w_code = codegen.make_w_code()
+
+        ## w_functype, scope = self.t.get_funcdef_info(funcdef)
+        ## codegen2 = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
+        ## w_code = codegen2.make_w_code()
+
+        # XXX: should we use W_BlueFunc if funcdef.color == 'blue'?
+        return W_UserFunc(fqn, w_functype, w_code)
