@@ -3,7 +3,14 @@ from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestBasic(CompilerTest):
 
-    def test_import(self):
+    # hack hack hack
+    _legacy = False
+
+    @pytest.fixture
+    def legacy(self):
+        self._legacy = True
+
+    def test_import(self, legacy):
         mod = self.compile("""
         from builtins import abs as my_abs
 
@@ -13,7 +20,7 @@ class TestBasic(CompilerTest):
         #
         assert mod.foo(-20) == 20
 
-    def test_import_errors(self):
+    def test_import_errors(self, legacy):
         self.expect_errors(
             """
             from builtins import aaa
@@ -34,7 +41,7 @@ class TestBasic(CompilerTest):
         )
 
     @skip_backends("C")
-    def test_two_modules(self):
+    def test_two_modules(self, legacy):
         self.write_file(
             "delta.spy",
             """
@@ -51,8 +58,8 @@ class TestBasic(CompilerTest):
                 return x + get_delta()
             """)
 
-        w_delta = self.vm.import_('delta')
-        w_main = self.vm.import_('main')
+        w_delta = self.vm.import_('delta', legacy=self._legacy)
+        w_main = self.vm.import_('main', legacy=self._legacy)
         if self.backend == 'interp':
             from spy.backend.interp import InterpModuleWrapper
             delta = InterpModuleWrapper(self.vm, w_delta)

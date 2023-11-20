@@ -24,7 +24,7 @@ class TestTypechecker:
         parser = Parser(src, str(f))
         self.mod = parser.parse()
         t = TypeChecker(self.vm, self.mod)
-        t.check_everything()
+        t.check_everything(legacy=True)
         return t
 
     def test_simple(self):

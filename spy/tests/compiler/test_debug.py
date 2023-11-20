@@ -7,6 +7,8 @@ from spy.tests.support import CompilerTest, skip_backends, no_backend
 class TestDebug(CompilerTest):
 
     def test_debug_info(self):
+        self._legacy = True
+
         mod = self.compile(
         """
         def foo(a: i32, b: i32) -> i32:   # line 2

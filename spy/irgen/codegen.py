@@ -29,7 +29,7 @@ class LegacyCodeGen:
                  t: TypeChecker,
                  modname: str,
                  funcdef: spy.ast.FuncDef) -> None:
-        assert False, 'This should never be called and it will be deleted soon'
+        #assert False, 'This should never be called and it will be deleted soon'
         self.vm = vm
         self.t = t
         self.modname = modname

@@ -25,12 +25,14 @@ class ModuleGen:
                  modname: str,
                  mod: spy.ast.Module,
                  file_spy: py.path.local,
+                 legacy,
                  ) -> None:
         self.vm = vm
         self.t = t
         self.modname = modname
         self.mod = mod
         self.file_spy = file_spy
+        self.legacy = legacy # XXX kill me
 
     def make_w_mod(self) -> W_Module:
         self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
@@ -55,12 +57,15 @@ class ModuleGen:
     def make_w_func(self, funcdef: spy.ast.FuncDef) -> W_Func:
         w_functype = self.t.funcdef_types[funcdef]
         fqn = FQN(modname=self.modname, attr=funcdef.name)
-        codegen = CodeGen(self.vm, self.t, funcdef)
-        w_code = codegen.make_w_code()
-
-        ## w_functype, scope = self.t.get_funcdef_info(funcdef)
-        ## codegen2 = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
-        ## w_code = codegen2.make_w_code()
-
-        # XXX: should we use W_BlueFunc if funcdef.color == 'blue'?
-        return W_UserFunc(fqn, w_functype, w_code)
+        if funcdef.color == 'blue' or not self.legacy:
+            codegen = CodeGen(self.vm, self.t, funcdef)
+            w_code = codegen.make_w_code()
+            # XXX: should it be W_BlueFunc?
+            return W_UserFunc(fqn, w_functype, w_code)
+        else:
+            w_functype, scope = self.t.get_funcdef_info(funcdef)
+            codegen2 = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
+            w_code = codegen2.make_w_code()
+            ## codegen = CodeGen(self.vm, self.t, funcdef)
+            ## w_code = codegen.make_w_code()
+            return W_UserFunc(fqn, w_functype, w_code)

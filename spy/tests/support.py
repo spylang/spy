@@ -113,7 +113,7 @@ class CompilerTest:
         """
         modname = 'test'
         self.write_file(f'{modname}.spy', src)
-        self.w_mod = self.vm.import_(modname)
+        self.w_mod = self.vm.import_(modname, legacy=self._legacy)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
@@ -134,7 +134,7 @@ class CompilerTest:
         modname = 'test'
         srcfile = self.write_file(f'{modname}.spy', src)
         with expect_errors(errors):
-            self.vm.import_(modname)
+            self.vm.import_(modname, legacy=self._legacy)
 
 
 

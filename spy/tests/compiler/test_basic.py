@@ -9,7 +9,14 @@ from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestBasic(CompilerTest):
 
-    def test_simple(self):
+    # hack hack hack
+    _legacy = False
+
+    @pytest.fixture
+    def legacy(self):
+        self._legacy = True
+
+    def test_simple(self, legacy):
         mod = self.compile(
         """
         def foo() -> i32:
@@ -18,7 +25,7 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 42
 
     @no_backend
-    def test_resolve_type_errors(self, monkeypatch):
+    def test_resolve_type_errors(self, monkeypatch, legacy):
         self.expect_errors(
             """
             def foo() -> MyList[i32]:
@@ -50,7 +57,7 @@ class TestBasic(CompilerTest):
             ])
 
     @no_backend
-    def test_wrong_return_type(self):
+    def test_wrong_return_type(self, legacy):
         self.expect_errors(
             """
             def foo() -> str:
@@ -62,7 +69,7 @@ class TestBasic(CompilerTest):
                 'expected `str` because of return type',
             ])
 
-    def test_local_variables(self):
+    def test_local_variables(self, legacy):
         mod = self.compile(
         """
         def foo() -> i32:
@@ -72,7 +79,7 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 42
 
     @no_backend
-    def test_declare_variable_errors(self):
+    def test_declare_variable_errors(self, legacy):
         self.expect_errors(
             """
             def foo() -> i32:
@@ -106,7 +113,7 @@ class TestBasic(CompilerTest):
                 'not found in this scope',
             ])
 
-    def test_function_arguments(self):
+    def test_function_arguments(self, legacy):
         mod = self.compile(
         """
         def inc(x: i32) -> i32:
@@ -114,7 +121,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
-    def test_assign(self):
+    def test_assign(self, legacy):
         mod = self.compile(
         """
         def inc(x: i32) -> i32:
@@ -125,7 +132,7 @@ class TestBasic(CompilerTest):
         assert mod.inc(100) == 101
 
     @no_backend
-    def test_assign_errors(self):
+    def test_assign_errors(self, legacy):
         self.expect_errors(
             """
             def foo() -> void:
@@ -147,7 +154,7 @@ class TestBasic(CompilerTest):
                 'expected `str` because of type declaration',
             ])
 
-    def test_global_variables(self):
+    def test_global_variables(self, legacy):
         mod = self.compile(
         """
         x: i32 = 42
@@ -163,21 +170,21 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
-    def test_i32_add(self):
+    def test_i32_add(self, legacy):
         mod = self.compile("""
         def add(x: i32, y: i32) -> i32:
             return x + y
         """)
         assert mod.add(1, 2) == 3
 
-    def test_i32_mul(self):
+    def test_i32_mul(self, legacy):
         mod = self.compile("""
         def mul(x: i32, y: i32) -> i32:
             return x * y
         """)
         assert mod.mul(3, 4) == 12
 
-    def test_void_return(self):
+    def test_void_return(self, legacy):
         mod = self.compile("""
         x: i32 = 0
         def foo() -> void:
@@ -195,7 +202,7 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
-    def test_implicit_return(self):
+    def test_implicit_return(self, legacy):
         mod = self.compile("""
         x: i32 = 0
         def implicit_return_void() -> void:
@@ -217,7 +224,7 @@ class TestBasic(CompilerTest):
 
 
     @no_backend
-    def test_BinOp_error(self):
+    def test_BinOp_error(self, legacy):
         self.expect_errors(
             f"""
             def bar(a: i32, b: str) -> void:
@@ -230,7 +237,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    def test_function_call(self):
+    def test_function_call(self, legacy):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:
             return x*100 + y*10 + z
@@ -242,7 +249,7 @@ class TestBasic(CompilerTest):
         assert mod.bar(4) == 456
 
     @no_backend
-    def test_function_call_errors(self):
+    def test_function_call_errors(self, legacy):
         self.expect_errors(
             f"""
             inc: i32 = 0
@@ -298,7 +305,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    def test_StmtExpr(self):
+    def test_StmtExpr(self, legacy):
         mod = self.compile("""
         x: i32 = 0
         def inc() -> void:
@@ -311,7 +318,7 @@ class TestBasic(CompilerTest):
         mod.foo()
         assert mod.x == 2
 
-    def test_True_False(self):
+    def test_True_False(self, legacy):
         mod = self.compile("""
         def get_True() -> bool:
             return True
@@ -322,7 +329,7 @@ class TestBasic(CompilerTest):
         assert mod.get_True() is True
         assert mod.get_False() is False
 
-    def test_CompareOp(self):
+    def test_CompareOp(self, legacy):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
         def cmp_neq(x: i32, y: i32) -> bool: return x != y
@@ -354,7 +361,7 @@ class TestBasic(CompilerTest):
         assert mod.cmp_gte(6, 5) is True
 
     @no_backend
-    def test_CompareOp_error(self):
+    def test_CompareOp_error(self, legacy):
         self.expect_errors(
             f"""
             def foo(a: i32, b: str) -> bool:
@@ -367,7 +374,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    def test_if_stmt(self):
+    def test_if_stmt(self, legacy):
         mod = self.compile("""
         a: i32 = 0
         b: i32 = 0
@@ -412,7 +419,7 @@ class TestBasic(CompilerTest):
         assert mod.b == 200
         assert mod.c == 300
 
-    def test_while(self):
+    def test_while(self, legacy):
         mod = self.compile("""
         def factorial(n: i32) -> i32:
             res: i32 = 1
@@ -427,7 +434,7 @@ class TestBasic(CompilerTest):
         assert mod.factorial(5) == 120
 
     @no_backend
-    def test_if_while_errors(self):
+    def test_if_while_errors(self, legacy):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a
         # bool
@@ -460,7 +467,7 @@ class TestBasic(CompilerTest):
 
     @pytest.mark.xfail(reason='FIXME')
     @no_backend
-    def test_getitem_errors(self):
+    def test_getitem_errors(self, legacy):
         self.expect_errors(
             f"""
             def foo(a: str, i: bool) -> void:
@@ -484,7 +491,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    def test_builtin_function(self):
+    def test_builtin_function(self, legacy):
         mod = self.compile("""
         def foo(x: i32) -> i32:
             return abs(x)
@@ -493,7 +500,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
-    def test_resolve_name(self):
+    def test_resolve_name(self, legacy):
         mod = self.compile("""
         from builtins import i32 as my_int
 

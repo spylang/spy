@@ -37,8 +37,15 @@ class TypeChecker:
     # public API
     # ================
 
-    def check_everything(self) -> None:
-        self.check_Module(self.mod, self.global_scope)
+    def check_everything(self, legacy: bool) -> None:
+        self.legacy = legacy
+        if legacy:
+            self.check_Module(self.mod, self.global_scope)
+        else:
+            # This is a hack, only for the non-legacy codegen. Eventually,
+            # this whole file should be deleted.
+            for decl in self.mod.decls:
+                self.declare(decl, self.global_scope)
 
     def get_expr_type(self, expr: spy.ast.Expr) -> W_Type:
         """
@@ -160,13 +167,8 @@ class TypeChecker:
     def check_Module(self, mod: spy.ast.Module, scope: SymTable) -> None:
         for decl in mod.decls:
             self.declare(decl, scope)
-
-        # XXX we don't want to check INSIDE functions now (it will be done by
-        # the doppler interpreter). This whole file needs a BIG refactoring
-        # and/or should die.
-
-        ## for decl in mod.decls:
-        ##     self.check(decl, scope)
+        for decl in mod.decls:
+            self.check(decl, scope)
 
     def declare_FuncDef(self, funcdef: spy.ast.FuncDef,
                         scope: SymTable) -> None:
