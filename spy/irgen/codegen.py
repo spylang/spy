@@ -48,6 +48,10 @@ class LegacyCodeGen:
         return FQN(modname=self.modname, attr=attr)
 
     def add_local_variables(self) -> None:
+        # XXX: w_code.declare_local is a relict of the old way of doing
+        # locals. It's useless in the 'interp' backend but it's still used by
+        # the C backend. Eventually, the C backend should be adapted and this
+        # function should be killed.
         for sym in self.scope.symbols.values():
             if sym.name == '@return':
                 continue
@@ -70,6 +74,16 @@ class LegacyCodeGen:
         return [f'{stem}_{n}' for stem in stems]
 
     def make_w_code(self) -> W_CodeObject:
+        # prologue: declare args and pops them from stack
+        for sym in self.scope.symbols.values():
+            if sym.name == '@return':
+                continue
+            self.emit(sym.loc, 'load_const', sym.w_type)
+            self.emit(sym.loc, 'declare_local', sym.name)
+        for arg in self.funcdef.args:
+            self.emit(arg.loc, 'store_local', arg.name)
+        self.w_code.mark_end_prologue()
+        #
         for stmt in self.funcdef.body:
             self.exec_stmt(stmt)
         #

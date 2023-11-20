@@ -67,11 +67,12 @@ class TestFrame:
         w_func = make_func(
             'def() -> i32',
             body = [
+                OpCode('load_const', B.w_i32),
+                OpCode('declare_local', 'a'),
                 OpCode('load_local', 'a'),
                 OpCode('return'),
             ]
         )
-        w_func.w_code.declare_local('a', B.w_i32)
         frame = Frame(vm, w_func)
         with pytest.raises(SPyRuntimeError,
                            match='read from uninitialized local'):
@@ -83,13 +84,14 @@ class TestFrame:
         w_func = make_func(
             'def() -> i32',
             body = [
+                OpCode('load_const', B.w_i32),
+                OpCode('declare_local', 'a'),
                 OpCode('load_const', w_100),
                 OpCode('store_local', 'a'),
                 OpCode('load_local', 'a'),
                 OpCode('return'),
             ]
         )
-        w_func.w_code.declare_local('a', B.w_i32)
         frame = Frame(vm, w_func)
         w_result = frame.run([])
         assert w_result is w_100
@@ -125,14 +127,19 @@ class TestFrame:
         w_func = make_func(
             'def(a: i32, b: i32) -> i32',
             body = [
+                OpCode('load_const', B.w_i32),
+                OpCode('declare_local', 'a'),
+                OpCode('store_local', 'a'),
+                OpCode('load_const', B.w_i32),
+                OpCode('declare_local', 'b'),
+                OpCode('store_local', 'b'),
+                #
                 OpCode('load_local', 'a'),
                 OpCode('load_local', 'b'),
                 OpCode('i32_sub'),
                 OpCode('return'),
             ]
         )
-        w_func.w_code.declare_local('a', B.w_i32)
-        w_func.w_code.declare_local('b', B.w_i32)
         w_50 = vm.wrap(50)
         w_8 = vm.wrap(8)
         frame = Frame(vm, w_func)
@@ -143,8 +150,12 @@ class TestFrame:
     def test_br_if(self):
         vm = SPyVM()
         w_func = make_func(
-            'def(a: i32) -> i32',
+            'def(a: bool) -> i32',
             body = [
+                OpCode('load_const', B.w_bool),
+                OpCode('declare_local', 'a'),
+                OpCode('store_local', 'a'),
+                #
                 OpCode('load_local', 'a'),
                 OpCode('br_if', 'then_0', 'else_0', 'endif_0'),
                 OpCode('label', 'then_0'),
@@ -157,7 +168,6 @@ class TestFrame:
                 OpCode('abort', 'unreachable'),
             ]
         )
-        w_func.w_code.declare_local('a', B.w_bool)
         frame1 = Frame(vm, w_func)
         w_result = frame1.run([B.w_True])
         result = vm.unwrap(w_result)

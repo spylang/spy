@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Literal
+from typing import Optional, Literal, Iterator
 import pprint
 import ast as py_ast
 from dataclasses import dataclass
@@ -78,6 +78,21 @@ class Node:
         """
         import spy.ast_dump
         spy.ast_dump.pprint(self, copy_to_clipboard=True)
+
+    def walk(self, cls=None) -> Iterator['Node']:
+        if cls is None or isinstance(self, cls):
+            yield self
+
+        for f in self.__dataclass_fields__.values():
+            child = getattr(self, f.name)
+            if isinstance(child, list):
+                lst = child
+            else:
+                lst = [child]
+            #
+            for item in lst:
+                if isinstance(item, Node):
+                    yield from item.walk(cls)
 
 
 @dataclass(eq=False)

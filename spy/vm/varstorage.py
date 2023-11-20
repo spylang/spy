@@ -10,16 +10,19 @@ class VarStorage:
     types_w: dict[str, W_Type]
     values_w: dict[str, Optional[W_Object]]
 
-    def __init__(self, vm: 'SPyVM', name: str, types_w: dict[str, W_Type]) -> None:
+    def __init__(self, vm: 'SPyVM', name: str) -> None:
         self.vm = vm
         self.name = name
-        self.types_w = types_w
+        self.types_w = {}
         self.values_w = {}
-        for varname, w_type in types_w.items():
-            self.values_w[varname] = None # uninitialized
 
     def __repr__(self) -> str:
         return f'<VarStorage {self.name}>'
+
+    def declare(self, name: str, w_type: W_Type) -> None:
+        assert name not in self.types_w, f'variable already declared: {name}'
+        self.types_w[name] = w_type
+        self.values_w[name] = None # uninitialized
 
     def set(self, name: str, w_value: W_Object) -> None:
         # the invariant is that the produced bytecode should be type safe and

@@ -8,6 +8,25 @@ from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FuncType
 from spy.util import magic_dispatch
 
+class LocalVarsComputer:
+
+    def __init__(self, funcdef):
+        self.funcdef = funcdef
+        self.locals = set()
+
+    def add(self, name):
+        self.locals.add(name)
+
+    def compute(self):
+        for arg in self.funcdef.args:
+            self.add(arg.name)
+        #
+        for stmt in self.funcdef.walk(spy.ast.Stmt):
+            if isinstance(stmt, spy.ast.Assign):
+                import pdb;pdb.set_trace()
+        #
+        return self.locals
+
 class CodeGen:
     """
     Compile the body of spy.ast.FuncDef into a W_CodeObject
@@ -30,11 +49,21 @@ class CodeGen:
             filename=self.funcdef.loc.filename,
             lineno=self.funcdef.loc.line_start)
         self.last_lineno = -1
+        self.local_vars = LocalVarsComputer(funcdef).compute()
 
     def make_w_code(self) -> W_CodeObject:
+        # prologue: declare args and pops them from stack
+        for arg in self.funcdef.args:
+            self.gen_expr(arg.type)
+            self.emit(arg.loc, 'declare_local', arg.name)
+            self.emit(arg.loc, 'store_local', arg.name)
+        self.w_code.mark_end_prologue()
+        #
+        # main body
         for stmt in self.funcdef.body:
             self.gen_stmt(stmt)
         #
+        # epilogue
         loc = self.funcdef.loc.make_end_loc()
         self.emit(loc, 'load_const', B.w_None)
         self.emit(loc, 'return')
@@ -85,7 +114,8 @@ class CodeGen:
         self.emit(const.loc, 'load_const', w_const)
 
     def gen_expr_Name(self, expr: spy.ast.Name) -> None:
-        # XXX we assume that it's a local but it's wrong
         varname = expr.id
-        self.w_code.declare_local('x', B.w_object) # XXX
-        self.emit(expr.loc, 'load_local', varname)
+        if varname in self.local_vars:
+            self.emit(expr.loc, 'load_local', varname)
+        else:
+            self.emit(expr.loc, 'load_nonlocal', varname)

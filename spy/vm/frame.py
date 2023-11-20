@@ -43,8 +43,7 @@ class Frame:
         self.vm = vm
         self.w_func = w_func
         self.w_code = w_func.w_code
-        self.locals = VarStorage(vm, f"'{self.w_code.name} locals'",
-                                 self.w_code.locals_w_types)
+        self.locals = VarStorage(vm, f"'{self.w_code.name} locals'")
         self.pc = 0
         self.stack = []
         self.labels = {}
@@ -68,10 +67,8 @@ class Frame:
         return self.stack.pop()
 
     def init_arguments(self, args_w: list[W_Object]) -> None:
-        params = self.w_func.w_functype.params
-        assert len(args_w) == len(params)
-        for param, w_arg in zip(params, args_w):
-            self.locals.set(param.name, w_arg)
+        for w_arg in reversed(args_w):
+            self.push(w_arg)
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
@@ -159,6 +156,11 @@ class Frame:
     def op_i32_gte(self) -> None:
         self._exec_op_i32_binop(lambda a, b: a >= b)
 
+    def op_declare_local(self, varname: str) -> None:
+        w_type = self.pop()
+        assert isinstance(w_type, W_Type) # this should be a proper error
+        self.locals.declare(varname, w_type)
+
     def op_load_local(self, varname: str) -> None:
         w_value = self.locals.get(varname)
         self.push(w_value)
@@ -168,6 +170,13 @@ class Frame:
         self.locals.set(varname, w_value)
 
     def op_load_global(self, fqn: FQN) -> None:
+        w_value = self.vm.lookup_global(fqn)
+        assert w_value is not None
+        self.push(w_value)
+
+    def op_load_nonlocal(self, varname: str) -> None:
+        # XXX for now we assume it's a builtin
+        fqn = FQN(modname='builtins', attr=varname)
         w_value = self.vm.lookup_global(fqn)
         assert w_value is not None
         self.push(w_value)

@@ -146,12 +146,14 @@ class SPyVM:
             return W_str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
-        raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")
+        raise Exception(f"Cannot wrap interp-level objects " +
+                        f"of type {value.__class__.__name__}")
 
     def unwrap(self, w_value: W_Object) -> Any:
         """
-        Useful for tests: magic funtion which wraps the given app-level w_ object
-        into the most appropriate inter-level object. Opposite of wrap().
+        Useful for tests: magic funtion which wraps the given app-level w_
+        object into the most appropriate inter-level object. Opposite of
+        wrap().
         """
         assert isinstance(w_value, W_Object)
         return w_value.spy_unwrap(self)

@@ -27,11 +27,14 @@ ALL_OPCODES = [
     'mark_if_then',
     'mark_if_then_else',
     'mark_while',
+    'declare_local',
     'load_const',
     'load_local',
-    'load_global',
+    'load_global', # XXX kill?
+    'load_nonlocal',
     'store_local',
-    'store_global',
+    'store_global', # XXX kill?
+    'load_nonlocal',
     'call_global',
     'call_helper',
     'i32_add',
@@ -95,6 +98,7 @@ class W_CodeObject(W_Object):
     lineno: int
     body: list[OpCode]
     locals_w_types: dict[str, W_Type]
+    end_prologue: int
 
     def __init__(self, name: str, *,
                  filename: str = '', lineno: int = -1) -> None:
@@ -102,14 +106,21 @@ class W_CodeObject(W_Object):
         self.filename = filename
         self.lineno = lineno
         self.body = []
-        self.locals_w_types = {}
+        self.locals_w_types = {} # XXX kill this eventually
+        self.end_prologue = -1
 
     def __repr__(self) -> str:
         return f'<spy CodeObject {self.name}>'
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
+        """
+        XXX kill this eventually. See also codegen.add_local_variables
+        """
         assert name not in self.locals_w_types
         self.locals_w_types[name] = w_type
+
+    def mark_end_prologue(self):
+        self.end_prologue = len(self.body)
 
     def pp(self) -> None:
         """

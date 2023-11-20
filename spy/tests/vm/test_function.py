@@ -63,13 +63,18 @@ class TestFunction:
         w_func = make_func(
             'def(a: i32, b: i32) -> i32',
             body = [
+                OpCode('load_const', B.w_i32),
+                OpCode('declare_local', 'a'),
+                OpCode('store_local', 'a'),
+                OpCode('load_const', B.w_i32),
+                OpCode('declare_local', 'b'),
+                OpCode('store_local', 'b'),
+                #
                 OpCode('load_local', 'a'),
                 OpCode('load_local', 'b'),
                 OpCode('i32_sub'),
                 OpCode('return'),
             ]
         )
-        w_func.w_code.declare_local('a', B.w_i32)
-        w_func.w_code.declare_local('b', B.w_i32)
         w_result = vm.call_function(w_func, [vm.wrap(100), vm.wrap(80)])
         assert vm.unwrap(w_result) == 20

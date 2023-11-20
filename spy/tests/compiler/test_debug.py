@@ -18,7 +18,7 @@ class TestDebug(CompilerTest):
             w_func = w_mod.getattr_userfunc('foo')
             w_code = w_func.w_code
             assert w_code.lineno == 2
-            assert w_code.body == [
+            assert w_code.body[w_code.end_prologue:] == [
                 OpCode('line', 3),
                 OpCode('load_local', 'a'),
                 OpCode('line', 4),
