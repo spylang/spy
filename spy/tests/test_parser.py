@@ -42,6 +42,7 @@ class TestParser:
             filename='{tmpdir}/test.spy',
             decls=[
                 FuncDef(
+                    color='red',
                     name='foo',
                     args=[],
                     return_type=Name(id='void'),
@@ -64,6 +65,7 @@ class TestParser:
             filename='{tmpdir}/test.spy',
             decls=[
                 FuncDef(
+                    color='red',
                     name='foo',
                     args=[
                         FuncArg(
@@ -153,6 +155,29 @@ class TestParser:
         funcdef = mod.get_funcdef('foo')
         expected = """
         FuncDef(
+            color='red',
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_blue_FuncDef(self):
+        mod = self.parse("""
+        @blue
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='blue',
             name='foo',
             args=[],
             return_type=Name(id='i32'),
