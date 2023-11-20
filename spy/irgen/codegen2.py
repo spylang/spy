@@ -88,3 +88,9 @@ class CodeGen:
     def gen_expr_Constant(self, const: spy.ast.Constant) -> None:
         w_const = self.t.get_w_const(const)
         self.emit(const.loc, 'load_const', w_const)
+
+    def gen_expr_Name(self, expr: spy.ast.Name) -> None:
+        # XXX we assume that it's a local but it's wrong
+        varname = expr.id
+        self.w_code.declare_local('x', B.w_object) # XXX
+        self.emit(expr.loc, 'load_local', varname)
