@@ -59,6 +59,6 @@ class ModuleGen:
             return W_UserFunc(w_code) # XXX: should it be W_BlueFunc?
         else:
             w_functype, scope = self.t.get_funcdef_info(funcdef)
-            codegen = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
-            w_code = codegen.make_w_code()
+            codegen2 = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
+            w_code = codegen2.make_w_code()
             return W_UserFunc(w_code)

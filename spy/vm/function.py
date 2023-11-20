@@ -28,6 +28,7 @@ class W_FuncType(W_Type):
             assert isinstance(params[0], FuncParam)
         self.params = params
         self.w_restype = w_restype
+        self.color = color
         sig = self._str_sig()
         super().__init__(f'def{sig}', W_Func)
 
