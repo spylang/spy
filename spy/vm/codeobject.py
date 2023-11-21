@@ -35,6 +35,7 @@ ALL_OPCODES = [
     'load_nonlocal',
     'store_local',
     'store_global', # XXX kill?
+    'add_global',   # same as store_global, but also declares it
     'load_nonlocal',
     'call_global',
     'call_helper',

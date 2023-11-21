@@ -199,6 +199,10 @@ class Frame:
         w_value = self.pop()
         self.vm.store_global(fqn, w_value)
 
+    def op_add_global(self, op: OpCode, fqn: FQN) -> None:
+        w_value = self.pop()
+        self.vm.add_global(fqn, None, w_value)
+
     def _pop_args(self, argcount: int) -> list[W_Object]:
         args_w = []
         for i in range(argcount):

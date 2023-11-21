@@ -47,7 +47,8 @@ class CodeGen:
     def __init__(self,
                  vm: SPyVM,
                  t: TypeChecker,
-                 funcdef: spy.ast.FuncDef) -> None:
+                 funcdef: spy.ast.FuncDef
+                 ) -> None:
         self.vm = vm
         self.t = t
         self.funcdef = funcdef
@@ -113,7 +114,7 @@ class CodeGen:
 
     # ====== statements ======
 
-    def gen_stmt_FuncDef(self, funcdef: spy.ast.FuncDef) -> None:
+    def gen_eval_FuncDef(self, funcdef: spy.ast.FuncDef) -> None:
         assert self.funcdef.color == 'blue', (
             'closures are allowed only in @blue functions'
         )
@@ -131,6 +132,9 @@ class CodeGen:
         #
         self.emit(funcdef.loc, 'load_const', w_code)
         self.emit(funcdef.loc, 'make_function')
+
+    def gen_stmt_FuncDef(self, funcdef: spy.ast.FuncDef) -> None:
+        self.gen_eval_FuncDef(funcdef)
         self.emit(funcdef.loc, 'store_local', funcdef.name)
 
     def gen_stmt_Return(self, ret: spy.ast.Return) -> None:
