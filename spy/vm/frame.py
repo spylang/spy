@@ -18,10 +18,11 @@ codegen, so the point of the assert()s is mostly to catch bugs in it.
 
 from typing import TYPE_CHECKING, Any
 from spy.fqn import FQN
-from spy.errors import SPyRuntimeAbort
+from spy.location import Loc
+from spy.errors import SPyRuntimeAbort, SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.codeobject import W_CodeObject
+from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.varstorage import VarStorage
 from spy.vm.function import W_Func, W_UserFunc
 from spy.vm import helpers
@@ -70,6 +71,21 @@ class Frame:
         for w_arg in reversed(args_w):
             self.push(w_arg)
 
+    def typecheck_local(self, got_loc: Loc, varname: str,
+                        w_got: W_Object) -> None:
+        w_type = self.locals.types_w[varname]
+        if self.vm.is_compatible_type(w_got, w_type):
+            return
+        err = SPyTypeError('mismatched types')
+        got = self.vm.dynamic_type(w_got).name
+        exp = w_type.name
+        exp_loc = self.locals.locs[varname]
+        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
+        if varname == '@return':
+            because = 'because of return type'
+            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
+        raise err
+
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
         while True:
@@ -79,43 +95,41 @@ class Frame:
                 n = len(self.stack)
                 assert n == 1, f'Wrong stack size upon return: {n}'
                 w_result = self.pop()
-                assert self.vm.is_compatible_type(
-                    w_result,
-                    self.w_func.w_functype.w_restype)
+                self.typecheck_local(op.loc, '@return', w_result)
                 return w_result
             else:
                 meth_name = f'op_{op.name}'
                 meth = getattr(self, meth_name, None)
                 if meth is None:
                     raise NotImplementedError(meth_name)
-                meth(*op.args)
+                meth(op, *op.args)
                 self.pc += 1
                 assert self.pc < len(self.w_code.body), 'no return?'
 
-    def op_abort(self, message: str) -> None:
+    def op_abort(self, op: OpCode, message: str) -> None:
         raise SPyRuntimeAbort(message)
 
-    def op_label(self, name: str) -> None:
+    def op_label(self, op: OpCode, name: str) -> None:
         assert self.labels[name] == self.pc
 
-    def op_line(self, lineno: int) -> None:
+    def op_line(self, op: OpCode, lineno: int) -> None:
         pass
 
-    def op_mark_if_then(self, IF: str) -> None:
+    def op_mark_if_then(self, op: OpCode, IF: str) -> None:
         pc_if = self.labels[IF]
         assert self.w_code.body[pc_if + 1].match('br_if', ...)
     op_mark_if_then_else = op_mark_if_then
 
-    def op_mark_while(self, WHILE: str, IF: str, END: str) -> None:
+    def op_mark_while(self, op: OpCode, WHILE: str, IF: str, END: str) -> None:
         pc_if = self.labels[IF]
         pc_end = self.labels[END]
         assert self.w_code.body[pc_if + 1].match('br_while_not', ...)
         assert self.w_code.body[pc_end - 1].match('br', WHILE)
 
-    def op_pop_and_discard(self) -> None:
+    def op_pop_and_discard(self, op: OpCode) -> None:
         self.pop()
 
-    def op_load_const(self, w_const: W_Object) -> None:
+    def op_load_const(self, op: OpCode, w_const: W_Object) -> None:
         self.push(w_const)
 
     def _exec_op_i32_binop(self, func: Any) -> None:
@@ -129,59 +143,59 @@ class Frame:
         w_c = self.vm.wrap(c)
         self.push(w_c)
 
-    def op_i32_add(self) -> None:
+    def op_i32_add(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a + b)
 
-    def op_i32_sub(self) -> None:
+    def op_i32_sub(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a - b)
 
-    def op_i32_mul(self) -> None:
+    def op_i32_mul(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a * b)
 
-    def op_i32_eq(self) -> None:
+    def op_i32_eq(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a == b)
 
-    def op_i32_neq(self) -> None:
+    def op_i32_neq(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a != b)
 
-    def op_i32_lt(self) -> None:
+    def op_i32_lt(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a < b)
 
-    def op_i32_lte(self) -> None:
+    def op_i32_lte(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a <= b)
 
-    def op_i32_gt(self) -> None:
+    def op_i32_gt(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a > b)
 
-    def op_i32_gte(self) -> None:
+    def op_i32_gte(self, op: OpCode) -> None:
         self._exec_op_i32_binop(lambda a, b: a >= b)
 
-    def op_declare_local(self, varname: str) -> None:
+    def op_declare_local(self, op: OpCode, varname: str) -> None:
         w_type = self.pop()
         assert isinstance(w_type, W_Type) # this should be a proper error
-        self.locals.declare(varname, w_type)
+        self.locals.declare(op.loc, varname, w_type)
 
-    def op_load_local(self, varname: str) -> None:
+    def op_load_local(self, op: OpCode, varname: str) -> None:
         w_value = self.locals.get(varname)
         self.push(w_value)
 
-    def op_store_local(self, varname: str) -> None:
+    def op_store_local(self, op: OpCode, varname: str) -> None:
         w_value = self.pop()
         self.locals.set(varname, w_value)
 
-    def op_load_global(self, fqn: FQN) -> None:
+    def op_load_global(self, op: OpCode, fqn: FQN) -> None:
         w_value = self.vm.lookup_global(fqn)
         assert w_value is not None
         self.push(w_value)
 
-    def op_load_nonlocal(self, varname: str) -> None:
+    def op_load_nonlocal(self, op: OpCode, varname: str) -> None:
         # XXX for now we assume it's a builtin
         fqn = FQN(modname='builtins', attr=varname)
         w_value = self.vm.lookup_global(fqn)
         assert w_value is not None
         self.push(w_value)
 
-    def op_store_global(self, fqn: FQN) -> None:
+    def op_store_global(self, op: OpCode, fqn: FQN) -> None:
         w_value = self.pop()
         self.vm.store_global(fqn, w_value)
 
@@ -192,7 +206,7 @@ class Frame:
         args_w.reverse()
         return args_w
 
-    def op_call_global(self, fqn: FQN, argcount: int) -> None:
+    def op_call_global(self, op: OpCode, fqn: FQN, argcount: int) -> None:
         w_func = self.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Func)
         return self._op_call(w_func, argcount)
@@ -202,16 +216,16 @@ class Frame:
         w_res = self.vm.call_function(w_func, args_w)
         self.push(w_res)
 
-    def op_call_helper(self, funcname: str, argcount: int) -> None:
+    def op_call_helper(self, op: OpCode, funcname: str, argcount: int) -> None:
         helper_func = helpers.get(funcname)
         args_w = self._pop_args(argcount)
         w_res = helper_func(self.vm, *args_w)
         self.push(w_res)
 
-    def op_br(self, TARGET: str) -> None:
+    def op_br(self, op: OpCode, TARGET: str) -> None:
         self.jump(TARGET)
 
-    def op_br_if(self, THEN: str, ELSE: str, ENDIF: str) -> None:
+    def op_br_if(self, op: OpCode, THEN: str, ELSE: str, ENDIF: str) -> None:
         w_cond = self.pop()
         assert isinstance(w_cond, W_bool)
         if self.vm.is_True(w_cond):
@@ -219,7 +233,7 @@ class Frame:
         else:
             self.jump(ELSE)
 
-    def op_br_while_not(self, END: str) -> None:
+    def op_br_while_not(self, op: OpCode, END: str) -> None:
         w_cond = self.pop()
         assert isinstance(w_cond, W_bool)
         if self.vm.is_False(w_cond):

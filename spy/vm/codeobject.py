@@ -3,6 +3,7 @@ from typing import Any, Optional
 import textwrap
 import re
 from dataclasses import dataclass
+from spy.location import Loc
 from spy.vm.object import W_Object, W_Type, spytype
 from spy.textbuilder import ColorFormatter
 from spy.util import print_diff
@@ -56,9 +57,11 @@ ALL_OPCODES = [
 @dataclass
 class OpCode:
     name: str
+    loc: Optional[Loc]
     args: tuple
 
-    def __init__(self, name: str, *args: Any) -> None:
+    def __init__(self, name: str, *args: Any,
+                 loc: Optional[Loc] = None) -> None:
         """
         A generic opcode.
 
@@ -68,6 +71,7 @@ class OpCode:
         if name not in ALL_OPCODES:
             raise ValueError(f'Invalid opcode: {name}')
         self.name = name
+        self.loc = loc
         self.args = args
 
     def __repr__(self) -> str:

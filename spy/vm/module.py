@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Optional, Iterable
 from spy.fqn import FQN
 from spy.vm.object import W_Object, spytype, W_Type
-from spy.vm.varstorage import VarStorage
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.function import W_UserFunc

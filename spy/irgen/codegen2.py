@@ -53,6 +53,10 @@ class CodeGen:
 
     def make_w_code(self) -> W_CodeObject:
         # prologue: declare args and pops them from stack
+        rtype = self.funcdef.return_type
+        self.gen_expr(rtype)
+        self.emit(rtype.loc, 'declare_local', '@return')
+        #
         for arg in self.funcdef.args:
             self.gen_expr(arg.type)
             self.emit(arg.loc, 'declare_local', arg.name)
@@ -80,7 +84,7 @@ class CodeGen:
             self.w_code.body.append(op)
             self.last_lineno = loc.line_start
         #
-        op = OpCode(name, *args)
+        op = OpCode(name, *args, loc=loc)
         self.w_code.body.append(op)
         return op
 

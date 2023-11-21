@@ -1,11 +1,9 @@
 import pytest
 from spy.fqn import FQN
 from spy.errors import SPyRuntimeAbort
-from spy.irgen.symtable import Symbol
 from spy.vm.vm import Builtins as B
-from spy.vm.function import W_FuncType
-from spy.util import ANYTHING
-from spy.tests.support import CompilerTest, skip_backends, no_backend
+from spy.tests.support import (CompilerTest, skip_backends, no_backend,
+                               expect_errors)
 
 class TestBasic(CompilerTest):
 
@@ -56,18 +54,20 @@ class TestBasic(CompilerTest):
                 'I_am_not_a_type is not a type'
             ])
 
-    @no_backend
-    def test_wrong_return_type(self, legacy):
-        self.expect_errors(
-            """
-            def foo() -> str:
-                return 42
-            """,
-            errors = [
+    def test_wrong_return_type(self):
+        mod = self.compile("""
+        def foo() -> str:
+            return 42
+        """)
+
+        with expect_errors([
                 'mismatched types',
                 'expected `str`, got `i32`',
-                'expected `str` because of return type',
-            ])
+                'expected `str` because of return type']) as exc:
+            mod.foo()
+
+        print()
+        print(exc.value.format(use_colors=True))
 
     def test_local_variables(self, legacy):
         mod = self.compile(

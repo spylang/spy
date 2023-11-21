@@ -148,7 +148,7 @@ def expect_errors(errors: list[str]) -> Any:
         the main message or in the annotations.
     """
     with pytest.raises(SPyCompileError) as exc:
-        yield
+        yield exc
 
     err = exc.value
     all_messages = [err.message] + [ann.message for ann in err.annotations]
