@@ -52,6 +52,9 @@ ALL_OPCODES = [
     'br_if',
     'br_while_not',
     'label',
+    'dup',
+    'make_func_type',
+    'make_function',
 ]
 
 @dataclass

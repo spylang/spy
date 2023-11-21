@@ -57,7 +57,7 @@ class Parser:
         mod = spy.ast.Module(filename=self.filename, decls=[])
         for py_stmt in py_mod.body:
             if isinstance(py_stmt, py_ast.FunctionDef):
-                funcdef = self.from_py_FuncionDef(py_stmt)
+                funcdef = self.from_py_stmt_FunctionDef(py_stmt)
                 mod.decls.append(funcdef)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef = self.from_py_stmt_AnnAssign(py_stmt)
@@ -72,9 +72,9 @@ class Parser:
         #
         return mod
 
-    def from_py_FuncionDef(self,
-                           py_funcdef: py_ast.FunctionDef
-                           ) -> spy.ast.FuncDef:
+    def from_py_stmt_FunctionDef(self,
+                                 py_funcdef: py_ast.FunctionDef
+                                 ) -> spy.ast.FuncDef:
         color: spy.ast.Color = 'red'
         for deco in py_funcdef.decorator_list:
             if (isinstance(deco, py_ast.Name) and deco.id == 'blue'):

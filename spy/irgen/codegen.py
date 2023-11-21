@@ -21,9 +21,16 @@ class LocalVarsComputer:
         for arg in self.funcdef.args:
             self.add(arg.name)
         #
+        # XXX this is horribly wrong, because it takes into consideration also
+        # the stmts inside inner funcs
         for stmt in self.funcdef.walk(spy.ast.Stmt):
             if isinstance(stmt, spy.ast.Assign):
                 import pdb;pdb.set_trace()
+
+        for inner in self.funcdef.walk(spy.ast.FuncDef):
+            if inner is self.funcdef:
+                continue
+            self.add(inner.name)
         #
         return self.locals
 
@@ -105,6 +112,26 @@ class CodeGen:
         magic_dispatch(self, 'gen_expr', expr)
 
     # ====== statements ======
+
+    def gen_stmt_FuncDef(self, funcdef: spy.ast.FuncDef) -> None:
+        assert self.funcdef.color == 'blue', (
+            'closures are allowed only in @blue functions'
+        )
+        inner_codegen = CodeGen(self.vm, self.t, funcdef)
+        w_code = inner_codegen.make_w_code()
+
+        argnames = []
+        for arg in funcdef.args:
+            argnames.append(arg.name)
+            self.gen_expr(arg.type)
+        self.gen_expr(funcdef.return_type)
+        self.emit(funcdef.loc, 'make_func_type', tuple(argnames))
+        self.emit(funcdef.loc, 'dup')
+        self.emit(funcdef.loc, 'declare_local', funcdef.name)
+        #
+        self.emit(funcdef.loc, 'load_const', w_code)
+        self.emit(funcdef.loc, 'make_function')
+        self.emit(funcdef.loc, 'store_local', funcdef.name)
 
     def gen_stmt_Return(self, ret: spy.ast.Return) -> None:
         assert ret.value is not None
