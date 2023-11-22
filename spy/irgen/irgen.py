@@ -19,7 +19,7 @@ def make_w_mod_from_file(vm: SPyVM, f: py.path.local, legacy: bool) -> W_Module:
     t: Any # just to silence mypy
     if legacy:
         t = TypeChecker(vm, mod)
-        t.check_everything(legacy)
+        t.check_everything()
     else:
         t = None
     modgen = ModuleGen(vm, t, modname, mod, f, legacy)

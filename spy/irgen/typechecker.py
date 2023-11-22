@@ -37,15 +37,8 @@ class TypeChecker:
     # public API
     # ================
 
-    def check_everything(self, legacy: bool) -> None:
-        self.legacy = legacy
-        if legacy:
-            self.check_Module(self.mod, self.global_scope)
-        else:
-            # This is a hack, only for the non-legacy codegen. Eventually,
-            # this whole file should be deleted.
-            for decl in self.mod.decls:
-                self.declare(decl, self.global_scope)
+    def check_everything(self) -> None:
+        self.check_Module(self.mod, self.global_scope)
 
     def get_expr_type(self, expr: spy.ast.Expr) -> W_Type:
         """
