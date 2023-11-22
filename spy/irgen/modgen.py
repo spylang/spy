@@ -8,7 +8,7 @@ from spy.irgen.codegen import CodeGen
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
-from spy.vm.function import W_FuncType, W_UserFunc, W_Func
+from spy.vm.function import W_FuncType, W_UserFunc
 
 
 class ModuleGen:
@@ -103,12 +103,13 @@ class ModuleGen:
                 w_const = self.t.get_w_const(decl.vardef.value)
                 self.vm.add_global(fqn, w_type, w_const)
 
-    def make_w_func_legacy(self, funcdef: spy.ast.FuncDef) -> W_Func:
+    def make_w_func_legacy(self, funcdef: spy.ast.FuncDef) -> W_UserFunc:
         assert self.legacy
         assert funcdef.color == 'red'
         w_functype = self.t.funcdef_types[funcdef]
         fqn = FQN(modname=self.modname, attr=funcdef.name)
         w_functype, scope = self.t.get_funcdef_info(funcdef)
-        codegen2 = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
-        w_code = codegen2.make_w_code()
-        return W_UserFunc(fqn, w_functype, w_code)
+        codegen = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
+        w_code = codegen.make_w_code()
+        w_func = W_UserFunc(fqn, w_functype, w_code)
+        return w_func
