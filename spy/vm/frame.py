@@ -266,7 +266,11 @@ class Frame:
         n = len(argnames)
         w_restype = self.pop()
         argtypes_w = self._pop_args(n)
-        d = dict(zip(argnames, argtypes_w))
+
+        assert isinstance(w_restype, W_Type)
+        for w_argtype in argtypes_w:
+            assert isinstance(w_argtype, W_Type)
+        d: Any = dict(zip(argnames, argtypes_w))
         w_functype = W_FuncType.make(
             w_restype = w_restype,
             color='red', # XXX is this correct?
@@ -276,6 +280,8 @@ class Frame:
     def op_make_function(self, op: OpCode) -> None:
         w_code = self.pop()
         w_functype = self.pop()
+        assert isinstance(w_code, W_CodeObject)
+        assert isinstance(w_functype, W_FuncType)
         # XXX this FQN is wrong
         fqn = FQN(modname=f'{self.w_code.name}<inner>', attr=w_code.name)
         w_func = W_UserFunc(fqn, w_functype, w_code)

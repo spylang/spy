@@ -56,7 +56,7 @@ class SPyVM:
         self.path = []
         self.make_builtins_module()
 
-    def import_(self, modname: str, *, legacy=False) -> W_Module:
+    def import_(self, modname: str, *, legacy: bool = False) -> W_Module:
         # XXX eventually we should kill "legacy"
         from spy.irgen.irgen import make_w_mod_from_file
         if modname in self.modules_w:
@@ -86,7 +86,11 @@ class SPyVM:
         assert w_mod.name not in self.modules_w
         self.modules_w[w_mod.name] = w_mod
 
-    def add_global(self, name: FQN, w_type: W_Type, w_value: W_Object) -> None:
+    def add_global(self,
+                   name: FQN,
+                   w_type: Optional[W_Type],
+                   w_value: W_Object
+                   ) -> None:
         assert name.modname in self.modules_w
         assert name not in self.globals_w
         assert name not in self.globals_types

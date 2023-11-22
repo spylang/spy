@@ -9,15 +9,17 @@ from spy.vm.function import W_FuncType
 from spy.util import magic_dispatch
 
 class LocalVarsComputer:
+    funcdef: spy.ast.FuncDef
+    locals: set[str]
 
-    def __init__(self, funcdef):
+    def __init__(self, funcdef: spy.ast.FuncDef) -> None:
         self.funcdef = funcdef
         self.locals = set()
 
-    def add(self, name):
+    def add(self, name: str) -> None:
         self.locals.add(name)
 
-    def compute(self):
+    def compute(self) -> set[str]:
         for arg in self.funcdef.args:
             self.add(arg.name)
         #
@@ -28,6 +30,7 @@ class LocalVarsComputer:
                 import pdb;pdb.set_trace()
 
         for inner in self.funcdef.walk(spy.ast.FuncDef):
+            assert isinstance(inner, spy.ast.FuncDef)
             if inner is self.funcdef:
                 continue
             self.add(inner.name)
