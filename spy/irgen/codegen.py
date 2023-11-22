@@ -1,7 +1,10 @@
+from typing import NoReturn
+from types import NoneType
 import spy.ast
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.irgen.typechecker import TypeChecker
+from spy.errors import SPyCompileError
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
@@ -42,18 +45,15 @@ class CodeGen:
     Compile the body of spy.ast.FuncDef into a W_CodeObject
     """
     vm: SPyVM
-    t: TypeChecker # XXX we use it only for get_w_const
     funcdef: spy.ast.FuncDef
     w_code: W_CodeObject
     last_lineno: int
 
     def __init__(self,
                  vm: SPyVM,
-                 t: TypeChecker,
                  funcdef: spy.ast.FuncDef
                  ) -> None:
         self.vm = vm
-        self.t = t
         self.funcdef = funcdef
         self.w_code = W_CodeObject.from_funcdef(funcdef)
         self.last_lineno = -1
@@ -82,6 +82,9 @@ class CodeGen:
         self.w_code.body.append(op)
         return op
 
+    def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
+        raise SPyCompileError.simple(primary, secondary, loc)
+
     def gen_stmt(self, stmt: spy.ast.Stmt) -> None:
         """
         Compile a statement.
@@ -104,7 +107,7 @@ class CodeGen:
         assert self.funcdef.color == 'blue', (
             'closures are allowed only in @blue functions'
         )
-        inner_codegen = CodeGen(self.vm, self.t, funcdef)
+        inner_codegen = CodeGen(self.vm, funcdef)
         w_code = inner_codegen.make_w_code()
 
         argnames = []
@@ -131,7 +134,19 @@ class CodeGen:
     # ====== expressions ======
 
     def gen_expr_Constant(self, const: spy.ast.Constant) -> None:
-        w_const = self.t.get_w_const(const)
+        # according to _ast.pyi, the type of const.value can be one of the
+        # following:
+        #     None, str, bytes, bool, int, float, complex, Ellipsis
+        w_const = None
+        T = type(const.value)
+        if T in (int, bool, str, NoneType):
+            w_const = self.vm.wrap(const.value)
+        elif T in (bytes, float, complex, Ellipsis):
+            self.error(f'unsupported literal: {const.value!r}',
+                       f'this is not supported yet', const.loc)
+        else:
+            assert False, f'Unexpected literal: {const.value}'
+        #
         self.emit(const.loc, 'load_const', w_const)
 
     def gen_expr_Name(self, expr: spy.ast.Name) -> None:

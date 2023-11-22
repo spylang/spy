@@ -61,7 +61,7 @@ class ModuleGen:
             return_type = spy.ast.Name(loc=loc, id='object'),
             body = []
         )
-        self.codegen = CodeGen(self.vm, self.t, modinit_funcdef)
+        self.codegen = CodeGen(self.vm, modinit_funcdef)
         for decl in self.mod.decls:
             if isinstance(decl, spy.ast.FuncDef):
                 self.gen_FuncDef(decl)
