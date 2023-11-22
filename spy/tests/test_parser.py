@@ -522,7 +522,7 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_walk(self):
-        def isclass(x, name):
+        def isclass(x: Any, name: str) -> bool:
             return x.__class__.__name__ == name
 
         mod = self.parse("""
@@ -530,7 +530,7 @@ class TestParser:
             if True:
                 x = y + 1
         """)
-        nodes = list(mod.walk())
+        nodes: list[Any] = list(mod.walk())
         assert isclass(nodes[0], 'Module')
         assert isclass(nodes[1], 'FuncDef')
         assert isclass(nodes[2], 'Name') and nodes[2].id == 'void'
@@ -543,9 +543,9 @@ class TestParser:
         assert len(nodes) == 9
         #
         nodes2 = list(mod.walk(spy.ast.Stmt))
-        expected = [node for node in nodes if isinstance(node, spy.ast.Stmt)]
-        assert nodes2 == expected
+        expected2 = [node for node in nodes if isinstance(node, spy.ast.Stmt)]
+        assert nodes2 == expected2
         #
         nodes3 = list(mod.walk(spy.ast.Expr))
-        expected = [node for node in nodes if isinstance(node, spy.ast.Expr)]
-        assert nodes3 == expected
+        expected3 = [node for node in nodes if isinstance(node, spy.ast.Expr)]
+        assert nodes3 == expected3
