@@ -19,6 +19,7 @@ class ModuleGen:
     modname: str
     mod: spy.ast.Module
     t: TypeChecker
+    legacy: bool # XXX kill me
 
     def __init__(self,
                  vm: SPyVM,
@@ -26,7 +27,7 @@ class ModuleGen:
                  modname: str,
                  mod: spy.ast.Module,
                  file_spy: py.path.local,
-                 legacy,
+                 legacy: bool,
                  ) -> None:
         self.vm = vm
         self.t = t
@@ -47,7 +48,7 @@ class ModuleGen:
         self.vm.call_function(w_INIT, [])
         return self.w_mod
 
-    def gen_INIT(self):
+    def gen_INIT(self) -> W_UserFunc:
         """
         Synthesize the @blue __INIT__ function, which populates the module
         """
@@ -86,7 +87,7 @@ class ModuleGen:
 
     # ===== legacy stuff, to kill eventually =====
 
-    def make_w_mod_legacy(self) -> W_Module:
+    def make_w_mod_legacy(self) -> None:
         for decl in self.mod.decls:
             if isinstance(decl, spy.ast.FuncDef):
                 fqn = FQN(modname=self.modname, attr=decl.name)

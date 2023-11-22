@@ -23,10 +23,12 @@ class DopplerInterpreter:
         self.outname = w_func.w_code.name + '#doppler' # XXX?
         self.code = w_func.w_code
         self.code_out = W_CodeObject(
-            self.outname,
+            name = self.outname,
             filename = w_func.w_code.filename,
-            lineno = w_func.w_code.lineno)
-
+            lineno = w_func.w_code.lineno,
+            retloc = w_func.w_code.retloc,
+            arglocs = w_func.w_code.arglocs
+        )
         self.typestack_w = []
         ## self.blueframe = Frame(w_func)
         ## self.label_maps = []

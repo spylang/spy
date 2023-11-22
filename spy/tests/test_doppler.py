@@ -1,7 +1,7 @@
 import pytest
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
-from spy.vm.codeobject import OpCode, W_CodeObject
+from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode
 from spy.vm.object import W_i32
 from spy.vm.function import W_FuncType, W_UserFunc
 from spy.doppler import DopplerInterpreter
