@@ -14,7 +14,7 @@ class TestBasic(CompilerTest):
     def legacy(self):
         self._legacy = True
 
-    def test_simple(self, legacy):
+    def test_simple(self):
         mod = self.compile(
         """
         def foo() -> i32:

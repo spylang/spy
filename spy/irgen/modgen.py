@@ -67,8 +67,6 @@ class ModuleGen:
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 self.gen_GlobalVarDef(decl)
         # epilogue
-        self.codegen.emit(loc, 'load_const', B.w_void)
-        self.codegen.emit(loc, 'declare_local', '@return')
         self.codegen.emit(loc, 'load_const', B.w_None)
         self.codegen.emit(loc, 'return')
         #
@@ -91,6 +89,7 @@ class ModuleGen:
     def make_w_mod_legacy(self) -> W_Module:
         for decl in self.mod.decls:
             if isinstance(decl, spy.ast.FuncDef):
+                fqn = FQN(modname=self.modname, attr=decl.name)
                 w_type = self.t.global_scope.lookup_type(decl.name)
                 assert w_type is not None
                 w_func = self.make_w_func_legacy(decl)

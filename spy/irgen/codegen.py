@@ -52,30 +52,13 @@ class CodeGen:
         self.vm = vm
         self.t = t
         self.funcdef = funcdef
-        self.w_code = W_CodeObject(
-            funcdef.name,
-            filename=self.funcdef.loc.filename,
-            lineno=self.funcdef.loc.line_start)
+        self.w_code = W_CodeObject.from_funcdef(funcdef)
         self.last_lineno = -1
         self.local_vars = LocalVarsComputer(funcdef).compute()
 
     def make_w_code(self) -> W_CodeObject:
-        # prologue: declare args and pops them from stack
-        rtype = self.funcdef.return_type
-        self.gen_expr(rtype)
-        self.emit(rtype.loc, 'declare_local', '@return')
-        #
-        for arg in self.funcdef.args:
-            self.gen_expr(arg.type)
-            self.emit(arg.loc, 'declare_local', arg.name)
-            self.emit(arg.loc, 'store_local', arg.name)
-        self.w_code.mark_end_prologue()
-        #
-        # main body
         for stmt in self.funcdef.body:
             self.gen_stmt(stmt)
-        #
-        # epilogue
         loc = self.funcdef.loc.make_end_loc()
         self.emit(loc, 'load_const', B.w_None)
         self.emit(loc, 'return')

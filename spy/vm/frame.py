@@ -50,6 +50,9 @@ class Frame:
         self.labels = {}
         self.init_labels()
 
+    def __repr__(self):
+        return f'<Frame for {self.w_func.fqn}>'
+
     def init_labels(self) -> None:
         for pc, op in enumerate(self.w_code.body):
             if op.name == 'label':
@@ -68,8 +71,19 @@ class Frame:
         return self.stack.pop()
 
     def init_arguments(self, args_w: list[W_Object]) -> None:
-        for w_arg in reversed(args_w):
-            self.push(w_arg)
+        """
+        - declare the local vars for the arguments and @return
+        - store the arguments in args_w in the appropriate local var
+        """
+        w_functype = self.w_func.w_functype
+        self.locals.declare(self.w_code.retloc, '@return', w_functype.w_restype)
+        #
+        params = self.w_func.w_functype.params
+        arglocs = self.w_code.arglocs
+        assert len(arglocs) == len(params) == len(args_w)
+        for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
+            self.locals.declare(loc, param.name, param.w_type)
+            self.locals.set(param.name, w_arg)
 
     def typecheck_local(self, got_loc: Loc, varname: str,
                         w_got: W_Object) -> None:

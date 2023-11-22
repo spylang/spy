@@ -62,13 +62,6 @@ class TestFunction:
         w_func = make_func(
             'def(a: i32, b: i32) -> i32',
             body = [
-                OpCode('load_const', B.w_i32),
-                OpCode('declare_local', 'a'),
-                OpCode('store_local', 'a'),
-                OpCode('load_const', B.w_i32),
-                OpCode('declare_local', 'b'),
-                OpCode('store_local', 'b'),
-                #
                 OpCode('load_local', 'a'),
                 OpCode('load_local', 'b'),
                 OpCode('i32_sub'),

@@ -52,7 +52,7 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
             @skip_backends('C', reason='FIXME')
             def test_something(self):
                 ...
-2    """
+    """
     for b in backends_to_skip:
         if b not in ALL_BACKENDS:
             pytest.fail(f'Invalid backend passed to @skip_backends: {b}')
@@ -120,6 +120,10 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
+
+            if not self._legacy:
+                pytest.skip("C backend only works with legacy")
+
             compiler = Compiler(self.vm, modname, self.builddir)
             file_wasm = compiler.cbuild()
             return WasmModuleWrapper(self.vm, modname, file_wasm)
@@ -188,7 +192,7 @@ class CTest:
 
 def make_func(sig: str, body: list[OpCode]) -> W_UserFunc:
     w_functype = W_FuncType.parse(sig)
-    code = W_CodeObject('fn')
+    code = W_CodeObject.for_tests('fn', len(w_functype.params))
     code.body = body
     w_func = W_UserFunc(FQN('test::fn'), w_functype, code)
     return w_func

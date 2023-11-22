@@ -3,6 +3,7 @@ from typing import Any, Optional
 import textwrap
 import re
 from dataclasses import dataclass
+import spy.ast
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type, spytype
 from spy.textbuilder import ColorFormatter
@@ -108,14 +109,43 @@ class W_CodeObject(W_Object):
     locals_w_types: dict[str, W_Type]
     end_prologue: int
 
-    def __init__(self, name: str, *,
-                 filename: str = '', lineno: int = -1) -> None:
+    def __init__(self, *,
+                 name: str,
+                 filename: str,
+                 lineno: int,
+                 retloc: Loc,
+                 arglocs = list[Loc],
+                 ) -> None:
         self.name = name
         self.filename = filename
         self.lineno = lineno
+        self.retloc = retloc
+        self.arglocs = arglocs
         self.body = []
         self.locals_w_types = {} # XXX kill this eventually
-        self.end_prologue = -1
+        self.end_prologue = -1   # XXX kill this eventually
+
+    @classmethod
+    def from_funcdef(cls, funcdef: spy.ast.FuncDef) -> 'W_CodeObject':
+        retloc = funcdef.return_type.loc
+        arglocs = [arg.loc for arg in funcdef.args]
+        return cls(
+            name = funcdef.name,
+            filename = funcdef.loc.filename,
+            lineno = funcdef.loc.line_start,
+            retloc = retloc,
+            arglocs = arglocs
+        )
+
+    @classmethod
+    def for_tests(cls, name: str, n_args: int) -> 'W_CodeObject':
+        return cls(
+            name = name,
+            filename = '',
+            lineno = -1,
+            retloc = Loc.fake(),
+            arglocs = [Loc.fake()] * n_args
+        )
 
     def __repr__(self) -> str:
         return f'<spy CodeObject {self.name}>'

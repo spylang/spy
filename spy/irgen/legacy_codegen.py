@@ -37,10 +37,7 @@ class LegacyCodeGen:
         w_functype, scope = t.get_funcdef_info(funcdef)
         self.w_functype = w_functype
         self.scope = scope
-        self.w_code = W_CodeObject(
-            funcdef.name,
-            filename=self.funcdef.loc.filename,
-            lineno=self.funcdef.loc.line_start)
+        self.w_code = W_CodeObject.from_funcdef(funcdef)
         self.last_lineno = -1
         self.label_counter = 0
         self.add_local_variables()
@@ -75,14 +72,16 @@ class LegacyCodeGen:
         return [f'{stem}_{n}' for stem in stems]
 
     def make_w_code(self) -> W_CodeObject:
-        # prologue: declare args and pops them from stack
+        # XXX eventually we need to kill the prologue, declare_local will be
+        # optimized away by the doppler interpreter.
+        #
+        # prologue: declare local variables
+        argnames = [arg.name for arg in self.funcdef.args]
         for sym in self.scope.symbols.values():
-            if sym.name == '@return':
+            if sym.name == '@return' or sym.name in argnames:
                 continue
             self.emit(sym.loc, 'load_const', sym.w_type)
             self.emit(sym.loc, 'declare_local', sym.name)
-        for arg in self.funcdef.args:
-            self.emit(arg.loc, 'store_local', arg.name)
         self.w_code.mark_end_prologue()
         #
         for stmt in self.funcdef.body:
