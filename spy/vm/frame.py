@@ -35,7 +35,10 @@ class Frame:
     w_func: W_UserFunc
     w_code: W_CodeObject
     pc: int  # program counter
-    stack: list[W_Object]
+    # for every w_value on the stack, we keep track of the Loc which generated
+    # it. There are probably more efficient ways of doing it, but for now this
+    # should be good enough
+    stack: list[tuple[Loc, W_Object]]
     locals: VarStorage
     labels: dict[str, int] # name -> pc
 
@@ -63,12 +66,55 @@ class Frame:
     def jump(self, LABEL: str) -> None:
         self.pc = self.labels[LABEL]
 
-    def push(self, w_value: W_Object) -> None:
+    def push(self, loc: Loc, w_value: W_Object) -> None:
+        assert isinstance(loc, Loc)
         assert isinstance(w_value, W_Object)
-        self.stack.append(w_value)
+        self.stack.append((loc, w_value))
+
+    def poploc(self) -> tuple[Loc, W_Object]:
+        """
+        pop a (loc, w_value) tuple from the stack
+        """
+        return self.stack.pop()
 
     def pop(self) -> W_Object:
-        return self.stack.pop()
+        """
+        like poploc(), but return only the w_value
+        """
+        loc, w_val = self.poploc()
+        return w_val
+
+    def popn(self, n: int) -> list[W_Object]:
+        """
+        pop() the specified amount of items from the stack
+        """
+        args_w = []
+        for i in range(n):
+            args_w.append(self.pop())
+        args_w.reverse()
+        return args_w
+
+    def pop_type(self) -> W_Type:
+        """
+        Same as pop(), but raise a SPyTypeError if the returned value is not a
+        type.
+        """
+        loc, w_val = self.poploc()
+        if isinstance(w_val, W_Type):
+            return w_val
+        w_valtype = self.vm.dynamic_type(w_val)
+        msg = f'expected `type`, got `{w_valtype.name}`'
+        raise SPyTypeError.simple(msg, "expected `type`", loc)
+
+    def popn_type(self, n: int) -> list[W_Type]:
+        """
+        Combination of popn() and pop_type().
+        """
+        args_w = []
+        for i in range(n):
+            args_w.append(self.pop_type())
+        args_w.reverse()
+        return args_w
 
     def init_arguments(self, args_w: list[W_Object]) -> None:
         """
@@ -144,9 +190,9 @@ class Frame:
         self.pop()
 
     def op_load_const(self, op: OpCode, w_const: W_Object) -> None:
-        self.push(w_const)
+        self.push(op.loc, w_const)
 
-    def _exec_op_i32_binop(self, func: Any) -> None:
+    def _exec_op_i32_binop(self, op: OpCode, func: Any) -> None:
         w_b = self.pop()
         w_a = self.pop()
         assert isinstance(w_a, W_i32)
@@ -155,34 +201,34 @@ class Frame:
         b = self.vm.unwrap(w_b)
         c = func(a, b)
         w_c = self.vm.wrap(c)
-        self.push(w_c)
+        self.push(op.loc, w_c)
 
     def op_i32_add(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a + b)
+        self._exec_op_i32_binop(op, lambda a, b: a + b)
 
     def op_i32_sub(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a - b)
+        self._exec_op_i32_binop(op, lambda a, b: a - b)
 
     def op_i32_mul(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a * b)
+        self._exec_op_i32_binop(op, lambda a, b: a * b)
 
     def op_i32_eq(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a == b)
+        self._exec_op_i32_binop(op, lambda a, b: a == b)
 
     def op_i32_neq(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a != b)
+        self._exec_op_i32_binop(op, lambda a, b: a != b)
 
     def op_i32_lt(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a < b)
+        self._exec_op_i32_binop(op, lambda a, b: a < b)
 
     def op_i32_lte(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a <= b)
+        self._exec_op_i32_binop(op, lambda a, b: a <= b)
 
     def op_i32_gt(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a > b)
+        self._exec_op_i32_binop(op, lambda a, b: a > b)
 
     def op_i32_gte(self, op: OpCode) -> None:
-        self._exec_op_i32_binop(lambda a, b: a >= b)
+        self._exec_op_i32_binop(op, lambda a, b: a >= b)
 
     def op_declare_local(self, op: OpCode, varname: str) -> None:
         w_type = self.pop()
@@ -191,7 +237,7 @@ class Frame:
 
     def op_load_local(self, op: OpCode, varname: str) -> None:
         w_value = self.locals.get(varname)
-        self.push(w_value)
+        self.push(op.loc, w_value)
 
     def op_store_local(self, op: OpCode, varname: str) -> None:
         w_value = self.pop()
@@ -200,14 +246,14 @@ class Frame:
     def op_load_global(self, op: OpCode, fqn: FQN) -> None:
         w_value = self.vm.lookup_global(fqn)
         assert w_value is not None
-        self.push(w_value)
+        self.push(op.loc, w_value)
 
     def op_load_nonlocal(self, op: OpCode, varname: str) -> None:
         # XXX for now we assume it's a builtin
         fqn = FQN(modname='builtins', attr=varname)
         w_value = self.vm.lookup_global(fqn)
         assert w_value is not None
-        self.push(w_value)
+        self.push(op.loc, w_value)
 
     def op_store_global(self, op: OpCode, fqn: FQN) -> None:
         w_value = self.pop()
@@ -217,28 +263,18 @@ class Frame:
         w_value = self.pop()
         self.vm.add_global(fqn, None, w_value)
 
-    def _pop_args(self, argcount: int) -> list[W_Object]:
-        args_w = []
-        for i in range(argcount):
-            args_w.append(self.pop())
-        args_w.reverse()
-        return args_w
-
     def op_call_global(self, op: OpCode, fqn: FQN, argcount: int) -> None:
         w_func = self.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Func)
-        return self._op_call(w_func, argcount)
-
-    def _op_call(self, w_func: W_Func, argcount: int) -> None:
-        args_w = self._pop_args(argcount)
+        args_w = self.popn(argcount)
         w_res = self.vm.call_function(w_func, args_w)
-        self.push(w_res)
+        self.push(op.loc, w_res)
 
     def op_call_helper(self, op: OpCode, funcname: str, argcount: int) -> None:
         helper_func = helpers.get(funcname)
-        args_w = self._pop_args(argcount)
+        args_w = self.popn(argcount)
         w_res = helper_func(self.vm, *args_w)
-        self.push(w_res)
+        self.push(op.loc, w_res)
 
     def op_br(self, op: OpCode, TARGET: str) -> None:
         self.jump(TARGET)
@@ -258,24 +294,20 @@ class Frame:
             self.jump(END)
 
     def op_dup(self, op: OpCode) -> None:
-        w_value = self.pop()
-        self.push(w_value)
-        self.push(w_value)
+        loc, w_value = self.poploc()
+        self.push(loc, w_value)
+        self.push(loc, w_value)
 
     def op_make_func_type(self, op: OpCode, argnames: tuple[str, ...]) -> None:
         n = len(argnames)
-        w_restype = self.pop()
-        argtypes_w = self._pop_args(n)
-
-        assert isinstance(w_restype, W_Type)
-        for w_argtype in argtypes_w:
-            assert isinstance(w_argtype, W_Type)
-        d: Any = dict(zip(argnames, argtypes_w))
+        w_restype = self.pop_type()
+        argtypes_w = self.popn_type(n)
+        d = dict(zip(argnames, argtypes_w))
         w_functype = W_FuncType.make(
             w_restype = w_restype,
             color='red', # XXX is this correct?
             **d)
-        self.push(w_functype)
+        self.push(op.loc, w_functype)
 
     def op_make_function(self, op: OpCode) -> None:
         w_code = self.pop()
@@ -285,4 +317,4 @@ class Frame:
         # XXX this FQN is wrong
         fqn = FQN(modname=f'{self.w_code.name}<inner>', attr=w_code.name)
         w_func = W_UserFunc(fqn, w_functype, w_code)
-        self.push(w_func)
+        self.push(op.loc, w_func)

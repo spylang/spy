@@ -33,15 +33,6 @@ class TestBasic(CompilerTest):
     def test_resolve_type_errors(self, monkeypatch, legacy):
         self.expect_errors(
             """
-            def foo() -> MyList[i32]:
-                return 42
-            """,
-            errors = [
-                'only simple types are supported for now'
-            ])
-
-        self.expect_errors(
-            """
             def foo() -> aaa:
                 return 42
             """,
@@ -49,16 +40,26 @@ class TestBasic(CompilerTest):
                 'unknown type `aaa`'
             ])
 
-        self.vm.add_global(FQN('builtins::I_am_not_a_type'),
-                           B.w_i32,
-                           self.vm.wrap(42))
+    def test_wrong_functype_restype(self):
         self.expect_errors(
             """
-            def foo() -> I_am_not_a_type:
+            def foo() -> 'hello':
                 return 42
             """,
             errors = [
-                'I_am_not_a_type is not a type'
+                'expected `type`, got `str`',
+                'expected `type`',
+            ])
+
+    def test_wrong_functype_argtype(self):
+        self.expect_errors(
+            """
+            def foo(x: "hello") -> i32:
+                return 42
+            """,
+            errors = [
+                'expected `type`, got `str`',
+                'expected `type`',
             ])
 
     def test_wrong_return_type(self):
