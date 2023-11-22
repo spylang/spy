@@ -57,7 +57,7 @@ class Parser:
         mod = spy.ast.Module(filename=self.filename, decls=[])
         for py_stmt in py_mod.body:
             if isinstance(py_stmt, py_ast.FunctionDef):
-                funcdef = self.from_py_FuncionDef(py_stmt)
+                funcdef = self.from_py_stmt_FunctionDef(py_stmt)
                 mod.decls.append(funcdef)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef = self.from_py_stmt_AnnAssign(py_stmt)
@@ -72,18 +72,29 @@ class Parser:
         #
         return mod
 
-    def from_py_FuncionDef(self, py_funcdef: py_ast.FunctionDef) -> spy.ast.FuncDef:
-        if py_funcdef.decorator_list:
-            loc = py_funcdef.decorator_list[0].loc
-            self.error('decorators are not supported yet',
-                       'this is not supported', loc)
+    def from_py_stmt_FunctionDef(self,
+                                 py_funcdef: py_ast.FunctionDef
+                                 ) -> spy.ast.FuncDef:
+        color: spy.ast.Color = 'red'
+        for deco in py_funcdef.decorator_list:
+            if (isinstance(deco, py_ast.Name) and deco.id == 'blue'):
+                # @blue is special-cased
+                color = 'blue'
+            else:
+                # other decorators are not supported:
+                self.error('decorators are not supported yet',
+                           'this is not supported', deco.loc)
         #
         loc = py_funcdef.loc
         name = py_funcdef.name
-        args = self.from_py_arguments(py_funcdef.args)
+        args = self.from_py_arguments(color, py_funcdef.args)
         #
         py_returns = py_funcdef.returns
-        if py_returns is None:
+        if py_returns:
+            return_type = self.from_py_expr(py_returns)
+        elif color == 'blue':
+            return_type = spy.ast.Name(py_funcdef.loc, 'object')
+        else:
             # create a loc which points to the 'def foo' part. This is a bit
             # wrong, ideally we would like it to point to the END of the
             # argument list, but it's not a very high priority by now
@@ -93,10 +104,10 @@ class Parser:
             )
             self.error('missing return type', '', func_loc)
         #
-        return_type = self.from_py_expr(py_returns)
         body = self.from_py_body(py_funcdef.body)
         return spy.ast.FuncDef(
             loc = py_funcdef.loc,
+            color = color,
             name = py_funcdef.name,
             args = args,
             return_type = return_type,
@@ -104,7 +115,9 @@ class Parser:
         )
 
     def from_py_arguments(self,
-                          py_args: py_ast.arguments) -> list[spy.ast.FuncArg]:
+                          color: spy.ast.Color,
+                          py_args: py_ast.arguments
+                          ) -> list[spy.ast.FuncArg]:
         if py_args.vararg:
             self.error('*args is not supported yet',
                        'this is not supported', py_args.vararg.loc)
@@ -122,17 +135,24 @@ class Parser:
                        'this is not supported', py_args.kwonlyargs[0].loc)
         assert not py_args.kw_defaults
         #
-        return [self.from_py_arg(py_arg) for py_arg in py_args.args]
+        return [self.from_py_arg(color, py_arg) for py_arg in py_args.args]
 
-    def from_py_arg(self, py_arg: py_ast.arg) -> spy.ast.FuncArg:
-        if py_arg.annotation is None:
+    def from_py_arg(self,
+                    color: spy.ast.Color,
+                    py_arg: py_ast.arg
+                    ) -> spy.ast.FuncArg:
+        if py_arg.annotation:
+            spy_type = self.from_py_expr(py_arg.annotation)
+        elif color == 'blue':
+            spy_type = spy.ast.Name(py_arg.loc, 'object')
+        else:
             self.error(f"missing type for argument '{py_arg.arg}'",
                        'type is missing here', py_arg.loc)
         #
         return spy.ast.FuncArg(
             loc = py_arg.loc,
             name = py_arg.arg,
-            type = self.from_py_expr(py_arg.annotation),
+            type = spy_type,
         )
 
     def from_py_ImportFrom(self,

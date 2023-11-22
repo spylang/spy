@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+from spy.ast import Color
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
@@ -16,26 +17,34 @@ class FuncParam:
 
 @dataclass(repr=False)
 class W_FuncType(W_Type):
+    color: Color
     params: list[FuncParam]
     w_restype: W_Type
 
-    def __init__(self, params: list[FuncParam], w_restype: W_Type) -> None:
+    def __init__(self, params: list[FuncParam], w_restype: W_Type,
+                 *, color: Color = 'red') -> None:
         # sanity check
         if params:
             assert isinstance(params[0], FuncParam)
         self.params = params
         self.w_restype = w_restype
+        self.color = color
         sig = self._str_sig()
         super().__init__(f'def{sig}', W_Func)
 
     @classmethod
-    def make(cls, *, w_restype: W_Type, **kwargs: W_Type) -> 'W_FuncType':
+    def make(cls,
+             *,
+             w_restype: W_Type,
+             color: Color = 'red',
+             **kwargs: W_Type
+             ) -> 'W_FuncType':
         """
         Small helper to make it easier to build W_FuncType, especially in
         tests
         """
         params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
-        return cls(params, w_restype)
+        return cls(params, w_restype, color=color)
 
     @classmethod
     def parse(cls, s: str) -> 'W_FuncType':
@@ -63,7 +72,6 @@ class W_FuncType(W_Type):
         w_restype = parse_type(res)
         return cls.make(w_restype=w_restype, **kwargs)
 
-
     def _str_sig(self) -> str:
         params = [f'{p.name}: {p.w_type.name}' for p in self.params]
         str_params = ', '.join(params)
@@ -73,10 +81,7 @@ class W_FuncType(W_Type):
 
 
 class W_Func(W_Object):
-
-    @property
-    def w_functype(self) -> W_FuncType:
-        raise NotImplementedError
+    w_functype: W_FuncType
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
@@ -86,33 +91,28 @@ class W_Func(W_Object):
 
 
 class W_UserFunc(W_Func):
+    fqn: FQN
     w_code: W_CodeObject
 
-    def __init__(self, w_code: W_CodeObject) -> None:
+    def __init__(self, fqn: FQN, w_functype: W_FuncType,
+                 w_code: W_CodeObject) -> None:
+        self.fqn = fqn
+        self.w_functype = w_functype
         self.w_code = w_code
 
     def __repr__(self) -> str:
-        return f"<spy function '{self.w_code.fqn}'>"
-
-    @property
-    def w_functype(self) -> W_FuncType:
-        return self.w_code.w_functype
+        return f"<spy function '{self.fqn}'>"
 
 
 class W_BuiltinFunc(W_Func):
     fqn: FQN
-    _w_functype: W_FuncType
 
     def __init__(self, fqn: FQN, w_functype: W_FuncType) -> None:
         self.fqn = fqn
-        self._w_functype = w_functype
+        self.w_functype = w_functype
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"
-
-    @property
-    def w_functype(self) -> W_FuncType:
-        return self._w_functype
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         # XXX we need a way to automatically generate unwrapping code for

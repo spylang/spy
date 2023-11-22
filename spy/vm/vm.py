@@ -56,7 +56,8 @@ class SPyVM:
         self.path = []
         self.make_builtins_module()
 
-    def import_(self, modname: str) -> W_Module:
+    def import_(self, modname: str, *, legacy: bool = False) -> W_Module:
+        # XXX eventually we should kill "legacy"
         from spy.irgen.irgen import make_w_mod_from_file
         if modname in self.modules_w:
             return self.modules_w[modname]
@@ -65,7 +66,7 @@ class SPyVM:
         # mechanism and support for packages
         assert self.path, 'vm.path not set'
         file_spy = py.path.local(self.path[0]).join(f'{modname}.spy')
-        w_mod = make_w_mod_from_file(self, file_spy)
+        w_mod = make_w_mod_from_file(self, file_spy, legacy=legacy)
         self.modules_w[modname] = w_mod
         return w_mod
 
@@ -85,7 +86,11 @@ class SPyVM:
         assert w_mod.name not in self.modules_w
         self.modules_w[w_mod.name] = w_mod
 
-    def add_global(self, name: FQN, w_type: W_Type, w_value: W_Object) -> None:
+    def add_global(self,
+                   name: FQN,
+                   w_type: Optional[W_Type],
+                   w_value: W_Object
+                   ) -> None:
         assert name.modname in self.modules_w
         assert name not in self.globals_w
         assert name not in self.globals_types
@@ -146,12 +151,14 @@ class SPyVM:
             return W_str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
-        raise Exception(f"Cannot wrap interp-level objects of type {value.__class__.__name__}")
+        raise Exception(f"Cannot wrap interp-level objects " +
+                        f"of type {value.__class__.__name__}")
 
     def unwrap(self, w_value: W_Object) -> Any:
         """
-        Useful for tests: magic funtion which wraps the given app-level w_ object
-        into the most appropriate inter-level object. Opposite of wrap().
+        Useful for tests: magic funtion which wraps the given app-level w_
+        object into the most appropriate inter-level object. Opposite of
+        wrap().
         """
         assert isinstance(w_value, W_Object)
         return w_value.spy_unwrap(self)
@@ -164,7 +171,8 @@ class SPyVM:
     def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
         # XXX: this check is wrong: we should define better what it means to
         # be "compatible", but we don't have this notion yet
-        return self.dynamic_type(w_arg) is w_type
+        return (w_type is Builtins.w_object or
+                self.dynamic_type(w_arg) is w_type)
 
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
@@ -173,7 +181,7 @@ class SPyVM:
             assert self.is_compatible_type(w_arg, param.w_type)
         #
         if isinstance(w_func, W_UserFunc):
-            frame = Frame(self, w_func.w_code)
+            frame = Frame(self, w_func)
             return frame.run(args_w)
         elif isinstance(w_func, W_BuiltinFunc):
             return w_func.spy_call(self, args_w)

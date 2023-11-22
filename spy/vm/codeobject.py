@@ -3,7 +3,8 @@ from typing import Any, Optional
 import textwrap
 import re
 from dataclasses import dataclass
-from spy.fqn import FQN
+import spy.ast
+from spy.location import Loc
 from spy.vm.object import W_Object, W_Type, spytype
 from spy.textbuilder import ColorFormatter
 from spy.util import print_diff
@@ -28,11 +29,15 @@ ALL_OPCODES = [
     'mark_if_then',
     'mark_if_then_else',
     'mark_while',
+    'declare_local',
     'load_const',
     'load_local',
-    'load_global',
+    'load_global', # XXX kill?
+    'load_nonlocal',
     'store_local',
-    'store_global',
+    'store_global', # XXX kill?
+    'add_global',   # same as store_global, but also declares it
+    'load_nonlocal',
     'call_global',
     'call_helper',
     'i32_add',
@@ -49,14 +54,18 @@ ALL_OPCODES = [
     'br_if',
     'br_while_not',
     'label',
+    'dup',
+    'make_func_type',
+    'make_function',
 ]
 
 @dataclass
 class OpCode:
     name: str
+    loc: Loc
     args: tuple
 
-    def __init__(self, name: str, *args: Any) -> None:
+    def __init__(self, name: str, loc: Loc, *args: Any) -> None:
         """
         A generic opcode.
 
@@ -66,6 +75,7 @@ class OpCode:
         if name not in ALL_OPCODES:
             raise ValueError(f'Invalid opcode: {name}')
         self.name = name
+        self.loc = loc
         self.args = args
 
     def __repr__(self) -> str:
@@ -89,42 +99,80 @@ class OpCode:
         return OpCode(self.name, *self.args)
 
 
+def OpCodeWithFakeLoc(name: str, *args: Any) -> OpCode:
+    """
+    Same as OpCode, but uses a fake loc. Useful for tests.
+    """
+    return OpCode(name, Loc.fake(), *args)
+
+
 @spytype('CodeObject')
 class W_CodeObject(W_Object):
-    fqn: FQN
-    w_functype: 'W_FuncType'
+    name: str
     filename: str
     lineno: int
     body: list[OpCode]
     locals_w_types: dict[str, W_Type]
+    end_prologue: int
 
-    def __init__(self, fqn: FQN, *, w_functype: 'W_FuncType',
-                 filename: str = '', lineno: int = -1) -> None:
-        # XXX this might be wrong? The fqn should be attached to the function,
-        # not to the code object. With closures/generic, we could have the
-        # same code object in multiple modules, I think?
-        self.fqn = fqn
-        self.w_functype = w_functype
+    def __init__(self, *,
+                 name: str,
+                 filename: str,
+                 lineno: int,
+                 retloc: Loc,
+                 arglocs: list[Loc],
+                 ) -> None:
+        self.name = name
         self.filename = filename
         self.lineno = lineno
+        self.retloc = retloc
+        self.arglocs = arglocs
         self.body = []
-        self.locals_w_types = {}
+        self.locals_w_types = {} # XXX kill this eventually
+        self.end_prologue = -1   # XXX kill this eventually
+
+    @classmethod
+    def from_funcdef(cls, funcdef: spy.ast.FuncDef) -> 'W_CodeObject':
+        retloc = funcdef.return_type.loc
+        arglocs = [arg.loc for arg in funcdef.args]
+        return cls(
+            name = funcdef.name,
+            filename = funcdef.loc.filename,
+            lineno = funcdef.loc.line_start,
+            retloc = retloc,
+            arglocs = arglocs
+        )
+
+    @classmethod
+    def for_tests(cls, name: str, n_args: int) -> 'W_CodeObject':
+        return cls(
+            name = name,
+            filename = '',
+            lineno = -1,
+            retloc = Loc.fake(),
+            arglocs = [Loc.fake()] * n_args
+        )
 
     def __repr__(self) -> str:
-        return f'<spy CodeObject {self.fqn}>'
+        return f'<spy CodeObject {self.name}>'
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
+        """
+        XXX kill this eventually. See also codegen.add_local_variables
+        """
         assert name not in self.locals_w_types
         self.locals_w_types[name] = w_type
+
+    def mark_end_prologue(self) -> None:
+        self.end_prologue = len(self.body)
 
     def pp(self) -> None:
         """
         Pretty print
         """
         color = ColorFormatter(use_colors=True)
-        name = color.set('green', self.fqn.fullname)
-        sig = color.set('red', self.w_functype.name)
-        print(f'Disassembly of code {name}: {sig}')
+        name = color.set('green', self.name)
+        print(f'Disassembly of code {name}:')
         for name, w_type in self.locals_w_types.items():
             name = color.set('green', name)
             typename = color.set('red', w_type.name)
@@ -160,7 +208,7 @@ class W_CodeObject(W_Object):
             elif op.name == 'abort':
                 args = repr(args)
             #
-            lines.append((f'    {op.name:<15} {args}'))
+            lines.append(f'    {op.name:<15} {args}'.strip())
         return '\n'.join(lines)
 
 

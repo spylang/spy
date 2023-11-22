@@ -42,6 +42,7 @@ class TestParser:
             filename='{tmpdir}/test.spy',
             decls=[
                 FuncDef(
+                    color='red',
                     name='foo',
                     args=[],
                     return_type=Name(id='void'),
@@ -64,6 +65,7 @@ class TestParser:
             filename='{tmpdir}/test.spy',
             decls=[
                 FuncDef(
+                    color='red',
                     name='foo',
                     args=[
                         FuncArg(
@@ -153,6 +155,29 @@ class TestParser:
         funcdef = mod.get_funcdef('foo')
         expected = """
         FuncDef(
+            color='red',
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_blue_FuncDef(self):
+        mod = self.parse("""
+        @blue
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='blue',
             name='foo',
             args=[],
             return_type=Name(id='i32'),
@@ -495,3 +520,32 @@ class TestParser:
         )
         """
         self.assert_dump(mod, expected)
+
+    def test_walk(self):
+        def isclass(x: Any, name: str) -> bool:
+            return x.__class__.__name__ == name
+
+        mod = self.parse("""
+        def foo() -> void:
+            if True:
+                x = y + 1
+        """)
+        nodes: list[Any] = list(mod.walk())
+        assert isclass(nodes[0], 'Module')
+        assert isclass(nodes[1], 'FuncDef')
+        assert isclass(nodes[2], 'Name') and nodes[2].id == 'void'
+        assert isclass(nodes[3], 'If')
+        assert isclass(nodes[4], 'Constant') and nodes[4].value is True
+        assert isclass(nodes[5], 'Assign') and nodes[5].target == 'x'
+        assert isclass(nodes[6], 'Add')
+        assert isclass(nodes[7], 'Name') and nodes[7].id == 'y'
+        assert isclass(nodes[8], 'Constant') and nodes[8].value == 1
+        assert len(nodes) == 9
+        #
+        nodes2 = list(mod.walk(spy.ast.Stmt))
+        expected2 = [node for node in nodes if isinstance(node, spy.ast.Stmt)]
+        assert nodes2 == expected2
+        #
+        nodes3 = list(mod.walk(spy.ast.Expr))
+        expected3 = [node for node in nodes if isinstance(node, spy.ast.Expr)]
+        assert nodes3 == expected3

@@ -189,8 +189,8 @@ class CFuncWriter:
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
             self.emit_local_vars()
-            # emit the body
-            self.next_op_index = 0
+            # emit the body (and skip the prologue)
+            self.next_op_index = self.w_func.w_code.end_prologue
             while op := self.advance():
                 self.emit_op(op)
             assert self.stack == []

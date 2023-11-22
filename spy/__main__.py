@@ -49,7 +49,7 @@ def do_main(filename: Path, pyparse: bool, parse: bool, dis: bool,
     builddir = filename.parent
     vm = SPyVM()
     vm.path.append(str(builddir))
-    w_mod = vm.import_(modname)
+    w_mod = vm.import_(modname, legacy=True) # XXX
     if dis:
         w_mod.pp()
         return

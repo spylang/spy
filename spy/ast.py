@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Literal
+from typing import Optional, Literal, Iterator
 import pprint
 import ast as py_ast
 from dataclasses import dataclass
@@ -8,6 +8,7 @@ from spy.location import Loc
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
+Color = Literal["red", "blue"]
 
 @extend(py_ast.AST)
 class AST:
@@ -78,6 +79,21 @@ class Node:
         import spy.ast_dump
         spy.ast_dump.pprint(self, copy_to_clipboard=True)
 
+    def walk(self, cls: Optional[type] = None) -> Iterator['Node']:
+        if cls is None or isinstance(self, cls):
+            yield self
+
+        for f in self.__dataclass_fields__.values():
+            child = getattr(self, f.name)
+            if isinstance(child, list):
+                lst = child
+            else:
+                lst = [child]
+            #
+            for item in lst:
+                if isinstance(item, Node):
+                    yield from item.walk(cls)
+
 
 @dataclass(eq=False)
 class Module(Node):
@@ -108,6 +124,7 @@ class FuncArg(Node):
 @dataclass(eq=False)
 class FuncDef(Decl):
     loc: Loc
+    color: Color
     name: str
     args: list[FuncArg]
     return_type: 'Expr'

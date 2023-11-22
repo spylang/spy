@@ -9,8 +9,11 @@ from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import ZigToolchain
 from spy.errors import SPyCompileError
+from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+from spy.vm.codeobject import OpCode, W_CodeObject
+from spy.vm.function import W_UserFunc, W_FuncType
 
 
 Backend = Literal['interp', 'C']
@@ -49,7 +52,7 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
             @skip_backends('C', reason='FIXME')
             def test_something(self):
                 ...
-2    """
+    """
     for b in backends_to_skip:
         if b not in ALL_BACKENDS:
             pytest.fail(f'Invalid backend passed to @skip_backends: {b}')
@@ -75,6 +78,13 @@ class CompilerTest:
     tmpdir: Any
     backend: Backend
     vm: SPyVM
+
+    # hack hack hack
+    _legacy = False
+
+    @pytest.fixture
+    def legacy(self):
+        self._legacy = True
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
@@ -110,13 +120,17 @@ class CompilerTest:
         """
         modname = 'test'
         self.write_file(f'{modname}.spy', src)
-        self.w_mod = self.vm.import_(modname)
+        self.w_mod = self.vm.import_(modname, legacy=self._legacy)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
+
+            if not self._legacy:
+                pytest.skip("C backend only works with legacy")
+
             compiler = Compiler(self.vm, modname, self.builddir)
             file_wasm = compiler.cbuild()
             return WasmModuleWrapper(self.vm, modname, file_wasm)
@@ -131,7 +145,7 @@ class CompilerTest:
         modname = 'test'
         srcfile = self.write_file(f'{modname}.spy', src)
         with expect_errors(errors):
-            self.vm.import_(modname)
+            self.vm.import_(modname, legacy=self._legacy)
 
 
 
@@ -145,7 +159,7 @@ def expect_errors(errors: list[str]) -> Any:
         the main message or in the annotations.
     """
     with pytest.raises(SPyCompileError) as exc:
-        yield
+        yield exc
 
     err = exc.value
     all_messages = [err.message] + [ann.message for ann in err.annotations]
@@ -181,3 +195,11 @@ class CTest:
         test_wasm = self.builddir.join('test.wasm')
         self.toolchain.c2wasm(test_c, test_wasm, exports=exports)
         return test_wasm
+
+
+def make_func(sig: str, body: list[OpCode]) -> W_UserFunc:
+    w_functype = W_FuncType.parse(sig)
+    code = W_CodeObject.for_tests('fn', len(w_functype.params))
+    code.body = body
+    w_func = W_UserFunc(FQN('test::fn'), w_functype, code)
+    return w_func

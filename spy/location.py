@@ -12,6 +12,13 @@ class Loc:
     col_start: int
     col_end: int
 
+    @classmethod
+    def fake(cls) -> 'Loc':
+        """
+        For tests
+        """
+        return Loc('<fake>', 1, 1, 1, 1)
+
     def replace(self, **kwargs: int) -> 'Loc':
         return dataclasses.replace(self, **kwargs)
 

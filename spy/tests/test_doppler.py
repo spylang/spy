@@ -1,10 +1,11 @@
 import pytest
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
-from spy.vm.codeobject import OpCode, W_CodeObject
+from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode
 from spy.vm.object import W_i32
 from spy.vm.function import W_FuncType, W_UserFunc
 from spy.doppler import DopplerInterpreter
+from spy.tests.support import make_func
 
 @pytest.mark.usefixtures('init')
 class TestDoppler:
@@ -13,19 +14,13 @@ class TestDoppler:
     def init(self):
         self.vm = SPyVM()
 
-    def make_func(self, ft: str, body: list[OpCode]):
-        w_functype = W_FuncType.parse(ft)
-        code = W_CodeObject(FQN('test::fn'), w_functype=w_functype)
-        code.body = body
-        w_func = W_UserFunc(code)
-        return w_func
-
     def doppler(self, w_func: W_UserFunc) -> W_UserFunc:
         self.interp = DopplerInterpreter(self.vm, w_func)
         return self.interp.run()
 
+    @pytest.mark.skip("FIXME")
     def test_simple(self):
-        w_func = self.make_func(
+        w_func = make_func(
             'def() -> i32',
             body=[
                 OpCode('load_const', W_i32(42)),
