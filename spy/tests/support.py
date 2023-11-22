@@ -79,6 +79,13 @@ class CompilerTest:
     backend: Backend
     vm: SPyVM
 
+    # hack hack hack
+    _legacy = False
+
+    @pytest.fixture
+    def legacy(self):
+        self._legacy = True
+
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
         return request.param

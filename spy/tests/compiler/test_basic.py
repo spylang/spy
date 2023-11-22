@@ -7,13 +7,6 @@ from spy.tests.support import (CompilerTest, skip_backends, no_backend,
 
 class TestBasic(CompilerTest):
 
-    # hack hack hack
-    _legacy = False
-
-    @pytest.fixture
-    def legacy(self):
-        self._legacy = True
-
     def test_simple(self):
         mod = self.compile(
         """
