@@ -79,7 +79,7 @@ class Node:
         import spy.ast_dump
         spy.ast_dump.pprint(self, copy_to_clipboard=True)
 
-    def walk(self, cls=None) -> Iterator['Node']:
+    def walk(self, cls: Optional[type] = None) -> Iterator['Node']:
         if cls is None or isinstance(self, cls):
             yield self
 

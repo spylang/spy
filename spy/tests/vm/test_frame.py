@@ -5,7 +5,7 @@ from spy.errors import SPyRuntimeError
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.frame import Frame
-from spy.vm.codeobject import OpCode, W_CodeObject
+from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode
 from spy.vm.function import W_FuncType
 from spy.vm.module import W_Module
 from spy.tests.support import make_func

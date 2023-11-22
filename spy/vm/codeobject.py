@@ -62,11 +62,10 @@ ALL_OPCODES = [
 @dataclass
 class OpCode:
     name: str
-    loc: Optional[Loc]
+    loc: Loc
     args: tuple
 
-    def __init__(self, name: str, *args: Any,
-                 loc: Optional[Loc] = None) -> None:
+    def __init__(self, name: str, loc: Loc, *args: Any) -> None:
         """
         A generic opcode.
 
@@ -100,6 +99,13 @@ class OpCode:
         return OpCode(self.name, *self.args)
 
 
+def OpCodeWithFakeLoc(name: str, *args: Any) -> OpCode:
+    """
+    Same as OpCode, but uses a fake loc. Useful for tests.
+    """
+    return OpCode(name, Loc.fake(), *args)
+
+
 @spytype('CodeObject')
 class W_CodeObject(W_Object):
     name: str
@@ -114,7 +120,7 @@ class W_CodeObject(W_Object):
                  filename: str,
                  lineno: int,
                  retloc: Loc,
-                 arglocs = list[Loc],
+                 arglocs: list[Loc],
                  ) -> None:
         self.name = name
         self.filename = filename
@@ -157,7 +163,7 @@ class W_CodeObject(W_Object):
         assert name not in self.locals_w_types
         self.locals_w_types[name] = w_type
 
-    def mark_end_prologue(self):
+    def mark_end_prologue(self) -> None:
         self.end_prologue = len(self.body)
 
     def pp(self) -> None:
@@ -202,7 +208,7 @@ class W_CodeObject(W_Object):
             elif op.name == 'abort':
                 args = repr(args)
             #
-            lines.append((f'    {op.name:<15} {args}'))
+            lines.append(f'    {op.name:<15} {args}'.strip())
         return '\n'.join(lines)
 
 

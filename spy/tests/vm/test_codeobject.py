@@ -1,5 +1,5 @@
 import pytest
-from spy.vm.codeobject import OpCode
+from spy.vm.codeobject import OpCodeWithFakeLoc as OpCode
 
 class TestOpCode:
 

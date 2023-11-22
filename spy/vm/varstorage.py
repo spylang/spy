@@ -10,6 +10,7 @@ class VarStorage:
     name: str
     types_w: dict[str, W_Type]
     values_w: dict[str, Optional[W_Object]]
+    locs: dict[str, Loc]
 
     def __init__(self, vm: 'SPyVM', name: str) -> None:
         self.vm = vm

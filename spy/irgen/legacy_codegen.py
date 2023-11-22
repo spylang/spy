@@ -126,17 +126,17 @@ class LegacyCodeGen:
         assert isinstance(loc, Loc)
         if self.last_lineno != loc.line_start:
             # emit a 'line' opcode
-            op = OpCode('line', loc.line_start)
+            op = OpCode('line', loc, loc.line_start)
             self.w_code.body.append(op)
             self.last_lineno = loc.line_start
         #
         label = self.get_label()
-        op = OpCode(name, *args)
+        op = OpCode(name, loc, *args)
         self.w_code.body.append(op)
         return label, op
 
-    def emit_label(self, name: str) -> None:
-        op = OpCode('label', name)
+    def emit_label(self, name: str, loc: Loc) -> None:
+        op = OpCode('label', loc, name)
         self.w_code.body.append(op)
 
     def get_label(self) -> int:
@@ -223,25 +223,27 @@ class LegacyCodeGen:
         has_else  = len(if_node.else_body) > 0
         if has_else:
             self.emit(if_node.loc, 'mark_if_then_else', IF)
+            endif_loc = if_node.else_body[-1].loc
         else:
             self.emit(if_node.loc, 'mark_if_then', IF)
             ELSE = ENDIF
+            endif_loc = if_node.then_body[-1].loc
         self.eval_expr(if_node.test) # <eval cond>
         # IF:
-        self.emit_label(IF)
+        self.emit_label(IF, if_node.loc)
         self.emit(if_node.loc, 'br_if', THEN, ELSE, ENDIF)
         # THEN:
-        self.emit_label(THEN)
+        self.emit_label(THEN, if_node.then_body[0].loc)
         for stmt in if_node.then_body:
             self.exec_stmt(stmt)
         if has_else:
             self.emit(if_node.else_body[0].loc, 'br', ENDIF)
             # ELSE:
-            self.emit_label(ELSE)
+            self.emit_label(ELSE, if_node.else_body[0].loc)
             for stmt in if_node.else_body:
                 self.exec_stmt(stmt)
         # ENDIF:
-        self.emit_label(ENDIF)
+        self.emit_label(ENDIF, endif_loc)
 
     def do_exec_While(self, while_node: spy.ast.While) -> None:
         """
@@ -258,16 +260,16 @@ class LegacyCodeGen:
         WHILE, IF, END = self.new_labels('while', 'while_if', 'while_end')
         self.emit(while_node.loc, 'mark_while', WHILE, IF, END)
         # WHILE:
-        self.emit_label(WHILE)
+        self.emit_label(WHILE, while_node.loc)
         self.eval_expr(while_node.test)
         # IF:
-        self.emit_label(IF)
+        self.emit_label(IF, while_node.test.loc)
         self.emit(while_node.test.loc, 'br_while_not', END)
         for stmt in while_node.body:
             self.exec_stmt(stmt)
         self.emit(while_node.loc, 'br', WHILE)
         # END:
-        self.emit_label(END)
+        self.emit_label(END, while_node.body[-1].loc)
 
     # ====== expressions ======
 

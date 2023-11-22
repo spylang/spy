@@ -50,7 +50,7 @@ class Frame:
         self.labels = {}
         self.init_labels()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Frame for {self.w_func.fqn}>'
 
     def init_labels(self) -> None:

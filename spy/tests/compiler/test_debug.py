@@ -20,17 +20,17 @@ class TestDebug(CompilerTest):
             w_func = w_mod.getattr_userfunc('foo')
             w_code = w_func.w_code
             assert w_code.lineno == 2
-            assert w_code.body == [
-                OpCode('line', 3),
-                OpCode('load_local', 'a'),
-                OpCode('line', 4),
-                OpCode('load_local', 'b'),
-                OpCode('line', 3),
-                OpCode('i32_add'),
-                OpCode('return'),
-                OpCode('line', 4),
-                OpCode('abort', 'reached the end of the function without a `return`')
-            ]
+            assert w_code.equals("""
+            line 3
+            load_local a
+            line 4
+            load_local b
+            line 3
+            i32_add
+            return
+            line 4
+            abort 'reached the end of the function without a `return`'
+            """)
         elif self.backend == 'C':
             # XXX write a test, but how?
             pass

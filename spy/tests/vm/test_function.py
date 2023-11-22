@@ -1,11 +1,10 @@
 import pytest
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM, Builtins as B
-from spy.vm.codeobject import W_CodeObject, OpCode
+from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode
 from spy.vm.function import W_FuncType, W_UserFunc, FuncParam
 from spy.vm.module import W_Module
 from spy.tests.support import make_func
-
 
 class TestFunction:
 

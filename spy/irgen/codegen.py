@@ -71,11 +71,11 @@ class CodeGen:
         assert isinstance(loc, Loc)
         if self.last_lineno != loc.line_start:
             # emit a 'line' opcode
-            op = OpCode('line', loc.line_start)
+            op = OpCode('line', loc, loc.line_start)
             self.w_code.body.append(op)
             self.last_lineno = loc.line_start
         #
-        op = OpCode(name, *args, loc=loc)
+        op = OpCode(name, loc, *args)
         self.w_code.body.append(op)
         return op
 
