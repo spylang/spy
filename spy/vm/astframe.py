@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 from types import NoneType
-import spy.ast
+from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import SPyRuntimeAbort, SPyTypeError
@@ -22,7 +22,7 @@ class Return(Exception):
 class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
-    funcdef: spy.ast.FuncDef
+    funcdef: ast.FuncDef
     locals: VarStorage
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
@@ -60,22 +60,22 @@ class ASTFrame:
             self.locals.declare(loc, param.name, param.w_type)
             self.locals.set(param.name, w_arg)
 
-    def exec_stmt(self, stmt: spy.ast.Stmt) -> None:
+    def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, 'exec_stmt', stmt)
 
-    def eval_expr(self, expr: spy.ast.Expr) -> W_Object:
+    def eval_expr(self, expr: ast.Expr) -> W_Object:
         return magic_dispatch(self, 'eval_expr', expr)
 
     # ==== statements ====
 
-    def exec_stmt_Return(self, stmt: spy.ast.Return) -> None:
+    def exec_stmt_Return(self, stmt: ast.Return) -> None:
         w_value = self.eval_expr(stmt.value)
         # XXX typecheck?
         raise Return(w_value)
 
     # ==== expressions ====
 
-    def eval_expr_Constant(self, const: spy.ast.Constant) -> W_Object:
+    def eval_expr_Constant(self, const: ast.Constant) -> W_Object:
         # according to _ast.pyi, the type of const.value can be one of the
         # following:
         #     None, str, bytes, bool, int, float, complex, Ellipsis
@@ -87,3 +87,14 @@ class ASTFrame:
                        f'this is not supported yet', const.loc)
         else:
             assert False, f'Unexpected literal: {const.value}'
+
+    def eval_expr_Name(self, name: ast.Name) -> W_Object:
+        # XXX typecheck?
+        if name.scope == 'local':
+            return self.locals.get(name.id)
+        else:
+            # XXX for now we assume it's a builtin
+            fqn = FQN(modname='builtins', attr=name.id)
+            w_value = self.vm.lookup_global(fqn)
+            assert w_value is not None
+            return w_value

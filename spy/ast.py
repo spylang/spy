@@ -2,7 +2,7 @@ import typing
 from typing import Optional, Literal, Iterator
 import pprint
 import ast as py_ast
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import extend
@@ -116,14 +116,14 @@ class Decl(Node):
 
 @dataclass(eq=False)
 class FuncArg(Node):
-    loc: Loc
+    loc: Loc = field(repr=False)
     name: str
     type: 'Expr'
 
 
 @dataclass(eq=False)
 class FuncDef(Decl):
-    loc: Loc
+    loc: Loc = field(repr=False)
     color: Color
     name: str
     args: list[FuncArg]
@@ -142,7 +142,7 @@ class GlobalVarDef(Decl):
 
 @dataclass(eq=False)
 class Import(Decl):
-    loc: Loc
+    loc: Loc = field(repr=False)
     loc_asname: Loc
     fqn: FQN
     asname: str
@@ -151,7 +151,7 @@ class Import(Decl):
 
 @dataclass(eq=False)
 class Expr(Node):
-    loc: Loc
+    loc: Loc = field(repr=False)
 
 @dataclass(eq=False)
 class Name(Expr):
@@ -315,7 +315,7 @@ class NotIn(CompareOp):
 
 @dataclass(eq=False)
 class Stmt(Node):
-    loc: Loc
+    loc: Loc = field(repr=False)
 
 @dataclass(eq=False)
 class Pass(Stmt):
@@ -340,7 +340,7 @@ class StmtExpr(Stmt):
 
 @dataclass(eq=False)
 class Assign(Stmt):
-    target_loc: Loc
+    target_loc: Loc = field(repr=False)
     target: str
     value: Expr
 

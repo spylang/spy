@@ -1,7 +1,7 @@
 from typing import Any, Literal, Optional
 import textwrap
 import pytest
-from spy.vm.vm import SPyVM
+from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.function import W_FuncType, W_UserFunc
 from spy.backend.interp import InterpModuleWrapper
 
@@ -45,6 +45,17 @@ class TestBlueMod:
             return x
         """)
         assert mod.foo(53) == 53
+
+    def test_load_global(self):
+        mod = self.import_("""
+        @blue
+        def foo():
+            return i32
+        """)
+        w_mod = mod.w_mod
+        w_foo = w_mod.getattr('foo')
+        w_res = self.vm.call_function(w_foo, [])
+        assert w_res is B.w_i32
 
     def test_make_function(self):
         mod = self.import_("""
