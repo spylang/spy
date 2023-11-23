@@ -73,6 +73,29 @@ class ASTFrame:
         # XXX typecheck?
         raise Return(w_value)
 
+    def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        from spy.irgen.codegen import LocalVarsComputer
+        LocalVarsComputer(funcdef).compute() # XXX we need ScopeAnalyzer
+        w_func = self.eval_FuncDef(funcdef)
+        self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
+        self.locals.set(funcdef.name, w_func)
+
+    def eval_FuncDef(self, funcdef: ast.FuncDef) -> W_ASTFunc:
+        # evaluate the functype
+        d = {}
+        for arg in funcdef.args:
+            d[arg.name] = self.eval_expr(arg.type)
+        w_restype = self.eval_expr(funcdef.return_type)
+        w_functype = W_FuncType.make(
+            color = funcdef.color,
+            w_restype = w_restype,
+            **d)
+        #
+        fqn = FQN(modname='???', attr=funcdef.name)
+        return W_ASTFunc(fqn, w_functype, funcdef)
+
+
+
     # ==== expressions ====
 
     def eval_expr_Constant(self, const: ast.Constant) -> W_Object:
