@@ -4,8 +4,13 @@ import ast as py_ast
 import spy.ast
 from spy.textbuilder import TextBuilder, ColorFormatter
 
-def dump(node: Any, *, use_colors: bool = True) -> str:
+def dump(node: Any,
+         *,
+         use_colors: bool = True,
+         fields_to_ignore = (),
+         ) -> str:
     dumper = Dumper(use_colors=use_colors)
+    dumper.fields_to_ignore += fields_to_ignore
     dumper.dump_anything(node)
     return dumper.build()
 

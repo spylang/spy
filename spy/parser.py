@@ -58,7 +58,8 @@ class Parser:
         for py_stmt in py_mod.body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
-                mod.decls.append(funcdef)
+                globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
+                mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef = self.from_py_stmt_AnnAssign(py_stmt)
                 globvar = spy.ast.GlobalVarDef(vardef)

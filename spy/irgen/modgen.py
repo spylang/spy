@@ -65,8 +65,8 @@ class ModuleGen:
         # it into an AST function
         self.codegen = CodeGen(self.vm, modinit_funcdef)
         for decl in self.mod.decls:
-            if isinstance(decl, spy.ast.FuncDef):
-                self.gen_FuncDef(decl)
+            if isinstance(decl, spy.ast.GlobalFuncDef):
+                self.gen_FuncDef(decl.funcdef)
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 self.gen_GlobalVarDef(decl)
         # epilogue
@@ -91,11 +91,12 @@ class ModuleGen:
 
     def make_w_mod_legacy(self) -> None:
         for decl in self.mod.decls:
-            if isinstance(decl, spy.ast.FuncDef):
-                fqn = FQN(modname=self.modname, attr=decl.name)
-                w_type = self.t.global_scope.lookup_type(decl.name)
+            if isinstance(decl, spy.ast.GlobalFuncDef):
+                name = decl.funcdef.name
+                fqn = FQN(modname=self.modname, attr=name)
+                w_type = self.t.global_scope.lookup_type(name)
                 assert w_type is not None
-                w_func = self.make_w_func_legacy(decl)
+                w_func = self.make_w_func_legacy(decl.funcdef)
                 self.vm.add_global(fqn, w_type, w_func)
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 assert isinstance(decl.vardef.value, spy.ast.Constant)

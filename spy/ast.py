@@ -105,8 +105,8 @@ class Module(Node):
         Search for the FuncDef with the given name.
         """
         for decl in self.decls:
-            if isinstance(decl, FuncDef) and decl.name == name:
-                return decl
+            if isinstance(decl, GlobalFuncDef) and decl.funcdef.name == name:
+                return decl.funcdef
         raise KeyError(name)
 
 
@@ -115,20 +115,9 @@ class Decl(Node):
 
 
 @dataclass(eq=False)
-class FuncArg(Node):
+class GlobalFuncDef(Decl):
     loc: Loc = field(repr=False)
-    name: str
-    type: 'Expr'
-
-
-@dataclass(eq=False)
-class FuncDef(Decl):
-    loc: Loc = field(repr=False)
-    color: Color
-    name: str
-    args: list[FuncArg]
-    return_type: 'Expr'
-    body: list['Stmt']
+    funcdef: 'FuncDef'
 
 
 @dataclass(eq=False)
@@ -157,7 +146,6 @@ class Expr(Node):
 class Name(Expr):
     id: str
     scope: str = 'unknown' # local, nonlocal, global
-
 
 @dataclass(eq=False)
 class Constant(Expr):
@@ -316,6 +304,21 @@ class NotIn(CompareOp):
 @dataclass(eq=False)
 class Stmt(Node):
     loc: Loc = field(repr=False)
+
+@dataclass(eq=False)
+class FuncArg(Node):
+    loc: Loc = field(repr=False)
+    name: str
+    type: 'Expr'
+
+@dataclass(eq=False)
+class FuncDef(Stmt):
+    loc: Loc = field(repr=False)
+    color: Color
+    name: str
+    args: list[FuncArg]
+    return_type: 'Expr'
+    body: list['Stmt']
 
 @dataclass(eq=False)
 class Pass(Stmt):
