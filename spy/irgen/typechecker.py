@@ -175,7 +175,7 @@ class TypeChecker:
         ]
         w_return_type = self.resolve_type(funcdef.return_type, scope)
         w_functype = W_FuncType(params, w_return_type, color=funcdef.color)
-        scope.declare(funcdef.name, 'const', w_functype, funcdef.loc)
+        scope.declare_legacy(funcdef.name, 'const', w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
     def check_GlobalFuncDef(self, decl: spy.ast.GlobalFuncDef,
@@ -188,11 +188,11 @@ class TypeChecker:
         w_functype = self.funcdef_types[funcdef]
         #
         # add function arguments to the local scope
-        local_scope.declare('@return', 'var', w_functype.w_restype,
+        local_scope.declare_legacy('@return', 'var', w_functype.w_restype,
                             funcdef.return_type.loc)
         assert len(funcdef.args) == len(w_functype.params)
         for arg_node, param in zip(funcdef.args, w_functype.params):
-            local_scope.declare(param.name, 'var', param.w_type, arg_node.loc)
+            local_scope.declare_legacy(param.name, 'var', param.w_type, arg_node.loc)
         #
         for stmt in funcdef.body:
             self.check_stmt(stmt, local_scope)
@@ -220,7 +220,7 @@ class TypeChecker:
     def declare_Import(self, imp: spy.ast.Import, scope: SymTable) -> None:
         w_type = self.vm.lookup_global_type(imp.fqn)
         if w_type is not None:
-            scope.declare(imp.asname, 'const', w_type, imp.loc, fqn=imp.fqn)
+            scope.declare_legacy(imp.asname, 'const', w_type, imp.loc, fqn=imp.fqn)
             return
         #
         err = SPyImportError(f'cannot import `{imp.fqn.spy_name}`')
@@ -260,7 +260,7 @@ class TypeChecker:
             raise err
         #
         w_declared_type = self.resolve_type(vardef.type, scope)
-        scope.declare(vardef.name, 'var', w_declared_type, vardef.loc)
+        scope.declare_legacy(vardef.name, 'var', w_declared_type, vardef.loc)
         #
         assert vardef.value is not None, 'TODO'
         w_type = self.check_expr(vardef.value, scope)

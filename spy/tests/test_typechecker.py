@@ -35,9 +35,10 @@ class TestTypechecker:
         """)
         w_expected_functype = W_FuncType.parse('def() -> i32')
         assert t.global_scope.symbols == {
-            'foo': Symbol('foo', 'const', w_expected_functype,
+            'foo': Symbol('foo', 'const',
                           loc = ANYTHING,
-                          scope = t.global_scope)
+                          scope = t.global_scope,
+                          w_type = w_expected_functype)
         }
         #
         funcdef = self.mod.get_funcdef('foo')
@@ -45,7 +46,8 @@ class TestTypechecker:
         w_functype, scope = t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope)
+            '@return': Symbol('@return', 'var', loc=ANYTHING, scope=scope,
+                              w_type=B.w_i32)
         }
 
     def test_local_variables(self):
@@ -59,8 +61,9 @@ class TestTypechecker:
         funcdef = self.mod.get_funcdef('foo')
         w_functype, scope = t.get_funcdef_info(funcdef)
         assert scope.symbols == {
-            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING, scope=scope),
-            'x': Symbol('x', 'var', B.w_i32, loc=ANYTHING, scope=scope),
+            '@return': Symbol('@return', 'var', loc=ANYTHING, scope=scope,
+                              w_type=B.w_i32),
+            'x': Symbol('x', 'var', loc=ANYTHING, scope=scope, w_type=B.w_i32)
         }
 
     def test_function_arguments(self):
@@ -74,7 +77,7 @@ class TestTypechecker:
         w_functype, scope = t.get_funcdef_info(funcdef)
         assert w_functype == w_expected_functype
         assert scope.symbols == {
-            '@return': Symbol('@return', 'var', B.w_i32, loc=ANYTHING,
-                              scope=scope),
-            'x': Symbol('x', 'var', B.w_i32, loc=ANYTHING, scope=scope),
+            '@return': Symbol('@return', 'var', loc=ANYTHING,
+                              scope=scope, w_type=B.w_i32),
+            'x': Symbol('x', 'var', loc=ANYTHING, scope=scope, w_type=B.w_i32),
         }

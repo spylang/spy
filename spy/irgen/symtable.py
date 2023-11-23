@@ -18,11 +18,14 @@ class SymbolAlreadyDeclaredError(Exception):
 class Symbol:
     name: str
     qualifier: Qualifier
-    w_type: W_Type
     _: KW_ONLY
     loc: Loc           # where the symbol is defined, in the source code
     scope: 'SymTable'  # the scope where the symbol lives in
     fqn: Optional[FQN] = None
+    #
+    # only for legacy, will be killed soon
+    w_type: Optional[W_Type] = None
+
 
 
 class SymTable:
@@ -47,7 +50,8 @@ class SymTable:
         builtins_mod = vm.modules_w['builtins']
         for fqn, w_obj in builtins_mod.items_w():
             w_type = vm.dynamic_type(w_obj)
-            res.declare(fqn.attr, 'const', w_type, loc, fqn=fqn)
+            # XXX kill declare_legacy and use declare
+            res.declare_legacy(fqn.attr, 'const', w_type, loc, fqn=fqn)
         return res
 
     def __repr__(self) -> str:
@@ -59,16 +63,27 @@ class SymTable:
             assert name == sym.name
             print(f'    {name}: {sym.w_type.name}')
 
-    def declare(self, name: str, qualifier: Qualifier, w_type: W_Type,
-                loc: Loc, fqn: Optional[FQN] = None) -> Symbol:
+    def declare(self, name: str, qualifier: Qualifier, loc: Loc,
+                fqn: Optional[FQN] = None) -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
         self.symbols[name] = s = Symbol(name = name,
                                         qualifier = qualifier,
-                                        w_type = w_type,
                                         loc = loc,
                                         scope = self,
                                         fqn = fqn)
+        return s
+
+    def declare_legacy(self, name: str, qualifier: Qualifier, w_type: W_Type,
+                       loc: Loc, fqn: Optional[FQN] = None) -> Symbol:
+        if name in self.symbols:
+            raise SymbolAlreadyDeclaredError(name)
+        self.symbols[name] = s = Symbol(name = name,
+                                        qualifier = qualifier,
+                                        loc = loc,
+                                        scope = self,
+                                        fqn = fqn,
+                                        w_type = w_type)
         return s
 
     def lookup(self, name: str) -> Optional[Symbol]:
