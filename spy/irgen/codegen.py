@@ -38,11 +38,19 @@ class LocalVarsComputer:
                 continue
             self.add(inner.name)
         #
+
+        # hack hack hack, we need a proper ScopeAnalyzer
+        for name in self.funcdef.walk(spy.ast.Name):
+            if name.id in self.locals:
+                name.scope = 'local'
+
         return self.locals
 
 class CodeGen:
     """
     Compile the body of spy.ast.FuncDef into a W_CodeObject
+
+    XXX this should be killed
     """
     vm: SPyVM
     funcdef: spy.ast.FuncDef
@@ -107,9 +115,6 @@ class CodeGen:
         assert self.funcdef.color == 'blue', (
             'closures are allowed only in @blue functions'
         )
-        inner_codegen = CodeGen(self.vm, funcdef)
-        w_code = inner_codegen.make_w_code()
-
         argnames = []
         for arg in funcdef.args:
             argnames.append(arg.name)
@@ -119,8 +124,9 @@ class CodeGen:
         self.emit(funcdef.loc, 'dup')
         self.emit(funcdef.loc, 'declare_local', funcdef.name)
         #
-        self.emit(funcdef.loc, 'load_const', w_code)
-        self.emit(funcdef.loc, 'make_function')
+        LocalVarsComputer(funcdef).compute()
+        self.emit(funcdef.loc, 'load_const', funcdef)
+        self.emit(funcdef.loc, 'make_function_ast')
 
     def gen_stmt_FuncDef(self, funcdef: spy.ast.FuncDef) -> None:
         self.gen_eval_FuncDef(funcdef)

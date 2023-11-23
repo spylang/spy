@@ -57,6 +57,7 @@ ALL_OPCODES = [
     'dup',
     'make_func_type',
     'make_function',
+    'make_function_ast',
 ]
 
 @dataclass

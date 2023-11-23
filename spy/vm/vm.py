@@ -6,11 +6,12 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.function import (W_FuncType, W_Func, W_UserFunc,
+from spy.vm.function import (W_FuncType, W_Func, W_UserFunc, W_ASTFunc,
                              W_BuiltinFunc)
 from spy.vm.module import W_Module
 from spy.vm.codeobject import W_CodeObject
 from spy.vm.frame import Frame
+from spy.vm.astframe import ASTFrame
 
 
 class Builtins:
@@ -182,6 +183,9 @@ class SPyVM:
         #
         if isinstance(w_func, W_UserFunc):
             frame = Frame(self, w_func)
+            return frame.run(args_w)
+        elif isinstance(w_func, W_ASTFunc):
+            frame = ASTFrame(self, w_func)
             return frame.run(args_w)
         elif isinstance(w_func, W_BuiltinFunc):
             return w_func.spy_call(self, args_w)

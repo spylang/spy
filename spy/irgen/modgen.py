@@ -61,6 +61,8 @@ class ModuleGen:
             return_type = spy.ast.Name(loc=loc, id='object'),
             body = []
         )
+        # we still use the old codegen to emit the __INIT__, we need to turn
+        # it into an AST function
         self.codegen = CodeGen(self.vm, modinit_funcdef)
         for decl in self.mod.decls:
             if isinstance(decl, spy.ast.FuncDef):

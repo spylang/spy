@@ -156,6 +156,7 @@ class Expr(Node):
 @dataclass(eq=False)
 class Name(Expr):
     id: str
+    scope: str = 'unknown' # local, nonlocal, global
 
 
 @dataclass(eq=False)

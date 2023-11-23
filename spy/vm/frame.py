@@ -24,7 +24,7 @@ from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.varstorage import VarStorage
-from spy.vm.function import W_Func, W_UserFunc, W_FuncType
+from spy.vm.function import W_Func, W_UserFunc, W_FuncType, W_ASTFunc
 from spy.vm import helpers
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -67,8 +67,9 @@ class Frame:
         self.pc = self.labels[LABEL]
 
     def push(self, loc: Loc, w_value: W_Object) -> None:
+        import spy.ast
         assert isinstance(loc, Loc)
-        assert isinstance(w_value, W_Object)
+        assert isinstance(w_value, (W_Object, spy.ast.FuncDef)) #XXX
         self.stack.append((loc, w_value))
 
     def poploc(self) -> tuple[Loc, W_Object]:
@@ -317,4 +318,15 @@ class Frame:
         # XXX this FQN is wrong
         fqn = FQN(modname=f'{self.w_code.name}<inner>', attr=w_code.name)
         w_func = W_UserFunc(fqn, w_functype, w_code)
+        self.push(op.loc, w_func)
+
+    def op_make_function_ast(self, op: OpCode) -> None:
+        import spy.ast
+        funcdef = self.pop()
+        w_functype = self.pop()
+        assert isinstance(funcdef, spy.ast.FuncDef)
+        assert isinstance(w_functype, W_FuncType)
+        # XXX this FQN is wrong
+        fqn = FQN(modname=f'{self.w_code.name}<inner>', attr=funcdef.name)
+        w_func = W_ASTFunc(fqn, w_functype, funcdef)
         self.push(op.loc, w_func)
