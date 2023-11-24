@@ -134,6 +134,7 @@ class ASTFrame:
         if name.scope == 'local':
             return self.locals.get(name.id)
         else:
+            assert name.scope == 'outer'
             # XXX for now we assume it's a builtin
             fqn = FQN(modname='builtins', attr=name.id)
             w_value = self.vm.lookup_global(fqn)

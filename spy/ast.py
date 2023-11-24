@@ -9,6 +9,7 @@ from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
 Color = Literal["red", "blue"]
+Scope = Literal["local", "outer", "unknown"]
 
 @extend(py_ast.AST)
 class AST:
@@ -166,7 +167,7 @@ class Expr(Node):
 @dataclass(eq=False)
 class Name(Expr):
     id: str
-    scope: str = 'unknown' # local, nonlocal, global
+    scope: Scope = 'unknown'
 
 @dataclass(eq=False)
 class Constant(Expr):

@@ -55,7 +55,8 @@ class SymTable:
         for fqn, w_obj in builtins_mod.items_w():
             w_type = vm.dynamic_type(w_obj)
             # XXX kill declare_legacy and use declare
-            res.declare_legacy(fqn.attr, 'const', w_type, loc, fqn=fqn)
+            res.declare_legacy(fqn.attr, 'const', w_type, loc, fqn=fqn,
+                               color='blue')
         return res
 
     def __repr__(self) -> str:
@@ -91,11 +92,12 @@ class SymTable:
         return s
 
     def declare_legacy(self, name: str, qualifier: Qualifier, w_type: W_Type,
-                       loc: Loc, fqn: Optional[FQN] = None) -> Symbol:
+                       loc: Loc, fqn: Optional[FQN] = None,
+                       color: Color = 'red') -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
         self.symbols[name] = s = Symbol(name = name,
-                                        color = 'red',
+                                        color = color,
                                         qualifier = qualifier,
                                         loc = loc,
                                         scope = self,

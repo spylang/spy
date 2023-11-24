@@ -104,4 +104,4 @@ class ScopeAnalyzer:
         if sym.scope is scope:
             name.scope = 'local'
         else:
-            name.scope = 'nonlocal'
+            name.scope = 'outer'
