@@ -240,15 +240,15 @@ class TestParser:
     def test_unsupported_literal(self):
         # Eventually this test should be killed, when we support all the
         # literals
+        src = """
+        def foo() -> i32:
+            return 42j
+        """
         self.expect_errors(
-            """
-            def foo() -> i32:
-                return 42j
-            """,
-            errors = [
-                'unsupported literal: 42j',
-                'this is not supported yet',
-            ])
+            src,
+            'unsupported literal: 42j',
+            ('this is not supported yet', "42j"),
+        )
 
     def test_GetItem(self):
         mod = self.parse("""
@@ -429,12 +429,14 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_CompareOp_chained(self):
+        src = """
+        def foo() -> i32:
+            return 1 == 2 == 3
+        """
         self.expect_errors(
-            """
-            def foo() -> i32:
-                return 1 == 2 == 3
-            """,
-            errors = ["not implemented yet: chained comparisons"],
+            src,
+            "not implemented yet: chained comparisons",
+            ("this is not supported", "3"),
         )
 
     def test_Assign(self):
@@ -451,20 +453,26 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    def test_Assign_unsupported(self):
+    def test_Assign_unsupported_1(self):
+        src = """
+        def foo() -> void:
+            a = b = 1
+        """
         self.expect_errors(
-            """
-            def foo() -> void:
-                a = b = 1
-            """,
-            errors = ["not implemented yet: assign to multiple targets"]
+            src,
+            "not implemented yet: assign to multiple targets",
+            ("this is not supported", "a = b = 1"),
         )
+
+    def test_Assign_unsupported_2(self):
+        src = """
+        def foo() -> void:
+            a, b = 1, 2
+        """
         self.expect_errors(
-            """
-            def foo() -> void:
-                a, b = 1, 2
-            """,
-            errors = ["not implemented yet: assign to complex expressions"]
+            src,
+            "not implemented yet: assign to complex expressions",
+            ("this is not supported", "a, b"),
         )
 
     def test_Call(self):
@@ -488,12 +496,14 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Call_errors(self):
+        src = """
+        def foo() -> i32:
+            return Bar(1, 2, x=3)
+        """
         self.expect_errors(
-            """
-            def foo() -> i32:
-                return Bar(1, 2, x=3)
-            """,
-            errors = ["not implemented yet: keyword arguments"],
+            src,
+            "not implemented yet: keyword arguments",
+            ("this is not supported", "x=3"),
         )
 
     def test_If(self):
