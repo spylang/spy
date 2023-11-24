@@ -1,5 +1,7 @@
 import textwrap
 import pytest
+from spy import ast
+from spy.ast_dump import dump
 from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import Symbol, Color
@@ -42,6 +44,13 @@ class TestScopeAnalyzer:
     def expect_errors(self, src: str, *, errors: list[str]):
         with expect_errors(errors):
             self.analyze(src)
+
+    def assert_dump(self, node: ast.Node, expected: str):
+        dumped = dump(node, use_colors=False)
+        expected = textwrap.dedent(expected)
+        if '{tmpdir}' in expected:
+            expected = expected.format(tmpdir=self.tmpdir)
+        assert dumped.strip() == expected.strip()
 
     def test_global(self):
         scopes = self.analyze("""
@@ -101,3 +110,33 @@ class TestScopeAnalyzer:
                 'this is the new declaration',
                 'this is the previous declaration',
             ])
+
+    def test_fix_Names(self):
+        scopes = self.analyze("""
+        x: i32 = 0
+        def foo(y: i32) -> i32:
+            return x + y
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='red',
+            name='foo',
+            args=[
+                FuncArg(
+                    name='y',
+                    type=Name(id='i32', scope='nonlocal'),
+                ),
+            ],
+            return_type=Name(id='i32', scope='nonlocal'),
+            body=[
+                Return(
+                    value=Add(
+                        left=Name(id='x', scope='nonlocal'),
+                        right=Name(id='y', scope='local'),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)

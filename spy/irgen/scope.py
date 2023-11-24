@@ -42,9 +42,9 @@ class ScopeAnalyzer:
 
     def analyze(self) -> None:
         for decl in self.mod.decls:
-            self.visit(decl, self.mod_scope)
-        ## for decl in mod.decls:
-        ##     self.check(decl, scope)
+            self.declare(decl, self.mod_scope)
+        for decl in self.mod.decls:
+            self.set_scope(decl, self.mod_scope)
 
     def by_module(self) -> SymTable:
         return self.mod_scope
@@ -54,33 +54,51 @@ class ScopeAnalyzer:
 
     # =====
 
-    def visit(self, node: ast.Node, scope: SymTable) -> None:
-        return magic_dispatch(self, 'visit', node, scope)
+    def declare(self, node: ast.Node, scope: SymTable) -> None:
+        return node.visit('declare', self, scope)
+
+    def set_scope(self, node: ast.Node, scope: SymTable) -> None:
+        return node.visit('set_scope', self, scope)
 
     # ====
 
-    def visit_GlobalFuncDef(self, decl: ast.GlobalFuncDef,
-                            scope: SymTable) -> None:
-        self.visit(decl.funcdef, scope)
-
-    def visit_GlobalVarDef(self, decl: ast.GlobalVarDef,
+    def declare_GlobalVarDef(self, decl: ast.GlobalVarDef,
                            scope: SymTable) -> None:
         scope.declare(decl.vardef.name, 'blue', decl.loc)
 
-    def visit_FuncDef(self, funcdef: ast.FuncDef, scope: SymTable) -> None:
-        scope.declare(funcdef.name, 'blue', funcdef.loc)
-        inner_scope = SymTable(funcdef.name, parent=scope)
+    def declare_VarDef(self, vardef: ast.VarDef, scope: SymTable) -> None:
+        scope.declare(vardef.name, 'red', vardef.loc)
+
+    def declare_FuncDef(self, funcdef: ast.FuncDef,
+                        outer_scope: SymTable) -> None:
+        outer_scope.declare(funcdef.name, 'blue', funcdef.loc)
+        inner_scope = SymTable(funcdef.name, parent=outer_scope)
         self.funcdef_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
             inner_scope.declare(arg.name, 'red', arg.loc)
         for stmt in funcdef.body:
-            self.visit(stmt, inner_scope)
+            self.declare(stmt, inner_scope)
 
-    def visit_VarDef(self, vardef: ast.VarDef, scope: SymTable) -> None:
-        scope.declare(vardef.name, 'red', vardef.loc)
-
-    def visit_Assign(self, assign: ast.Assign, scope: SymTable) -> None:
+    def declare_Assign(self, assign: ast.Assign, scope: SymTable) -> None:
         scope.declare(assign.target, 'red', assign.loc)
 
-    def visit_Pass(self, node: ast.Pass, scope: SymTable) -> None:
-        pass
+    # ===
+
+    def set_scope_FuncDef(self, funcdef: ast.FuncDef,
+                          outer_scope: SymTable) -> None:
+        inner_scope = self.by_funcdef(funcdef)
+        # the TYPES of the arguments are evaluated in the outer scope
+        self.set_scope(funcdef.return_type, outer_scope)
+        for arg in funcdef.args:
+            self.set_scope(arg, outer_scope)
+        #
+        # the statements of the function are evaluated in the inner scope
+        for stmt in funcdef.body:
+            self.set_scope(stmt, inner_scope)
+
+    def set_scope_Name(self, name: ast.Name, scope: SymTable) -> None:
+        sym = scope.lookup(name.id)
+        if sym.scope is scope:
+            name.scope = 'local'
+        else:
+            name.scope = 'nonlocal'

@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Literal, Iterator
+from typing import Optional, Literal, Iterator, Any
 import pprint
 import ast as py_ast
 from dataclasses import dataclass, field
@@ -82,18 +82,39 @@ class Node:
     def walk(self, cls: Optional[type] = None) -> Iterator['Node']:
         if cls is None or isinstance(self, cls):
             yield self
+        for node in self.get_children():
+            yield from node.walk(cls)
 
+    def get_children(self) -> Iterator['Node']:
         for f in self.__dataclass_fields__.values():
-            child = getattr(self, f.name)
-            if isinstance(child, list):
-                lst = child
-            else:
-                lst = [child]
-            #
-            for item in lst:
-                if isinstance(item, Node):
-                    yield from item.walk(cls)
+            value = getattr(self, f.name)
+            if isinstance(value, Node):
+                yield value
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, Node):
+                        yield item
 
+    def visit(self, prefix: str, visitor: Any, *args: Any):
+        """
+        Generic visitor algorithm.
+
+        For each node of class Foo, we try to locate and call a method called
+        {prefix}_Foo on the visitor object:
+
+          - if it exists, it is called. It is responsibility of the method to
+            visit its children, if wanted
+
+          - if it doesn't exist, we recurively visit its children
+        """
+        cls = self.__class__.__name__
+        methname = f'{prefix}_{cls}'
+        meth = getattr(visitor, methname, None)
+        if meth:
+            meth(self, *args)
+        else:
+            for node in self.get_children():
+                node.visit(prefix, visitor, *args)
 
 @dataclass(eq=False)
 class Module(Node):

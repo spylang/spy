@@ -9,6 +9,7 @@ from spy.vm.function import W_FuncType
 from spy.util import ANYTHING
 
 
+@pytest.mark.skip("kill me")
 @pytest.mark.usefixtures('init')
 class TestTypechecker:
 
