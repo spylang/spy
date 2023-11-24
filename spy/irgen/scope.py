@@ -98,6 +98,9 @@ class ScopeAnalyzer:
 
     def set_scope_Name(self, name: ast.Name, scope: SymTable) -> None:
         sym = scope.lookup(name.id)
+        # if the sym is None it means that the variable has not been
+        # declared. This should have been caught during the declare_* phase.
+        assert sym is not None
         if sym.scope is scope:
             name.scope = 'local'
         else:

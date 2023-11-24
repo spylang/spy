@@ -95,7 +95,7 @@ class Node:
                     if isinstance(item, Node):
                         yield item
 
-    def visit(self, prefix: str, visitor: Any, *args: Any):
+    def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
         Generic visitor algorithm.
 

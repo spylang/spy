@@ -26,13 +26,13 @@ class TestSymtable:
         assert t.lookup('I-dont-exist') is None
         #
         with pytest.raises(SPyScopeError):
-            t.declare('a', 'var', LOC)
+            t.declare('a', 'red', LOC)
 
     def test_nested_scope_lookup(self):
         glob = SymTable('<globals>', parent=None)
         loc = SymTable('loc', parent=glob)
-        sym_a = glob.declare('a', 'var', LOC)
-        sym_b = loc.declare('b', 'const', LOC)
+        sym_a = glob.declare('a', 'red', LOC)
+        sym_b = loc.declare('b', 'red', LOC)
         #
         assert glob.lookup('a') is sym_a
         assert glob.lookup('b') is None
@@ -45,7 +45,7 @@ class TestSymtable:
         sym = scope.lookup('i32')
         assert sym is not None
         assert sym.name == 'i32'
-        assert sym.qualifier == 'const'
+        assert sym.color == 'blue'
         #
         sym = scope.lookup('True')
         assert sym is not None
