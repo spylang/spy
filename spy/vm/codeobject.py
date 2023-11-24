@@ -3,7 +3,7 @@ from typing import Any, Optional
 import textwrap
 import re
 from dataclasses import dataclass
-import spy.ast
+from spy import ast
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type, spytype
 from spy.textbuilder import ColorFormatter
@@ -133,7 +133,7 @@ class W_CodeObject(W_Object):
         self.end_prologue = -1   # XXX kill this eventually
 
     @classmethod
-    def from_funcdef(cls, funcdef: spy.ast.FuncDef) -> 'W_CodeObject':
+    def from_funcdef(cls, funcdef: ast.FuncDef) -> 'W_CodeObject':
         retloc = funcdef.return_type.loc
         arglocs = [arg.loc for arg in funcdef.args]
         return cls(

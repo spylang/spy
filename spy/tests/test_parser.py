@@ -1,7 +1,7 @@
 from typing import Any
 import textwrap
 import pytest
-import spy.ast
+from spy import ast
 from spy.parser import Parser
 from spy.ast_dump import dump
 from spy.tests.support import CompilerTest, expect_errors
@@ -13,7 +13,7 @@ class TestParser:
     def init(self, tmpdir):
         self.tmpdir = tmpdir
 
-    def parse(self, src: str) -> spy.ast.Module:
+    def parse(self, src: str) -> ast.Module:
         f = self.tmpdir.join('test.spy')
         src = textwrap.dedent(src)
         f.write(src)
@@ -25,7 +25,7 @@ class TestParser:
         with expect_errors(errors):
             self.parse(src)
 
-    def assert_dump(self, node: spy.ast.Node, expected: str):
+    def assert_dump(self, node: ast.Node, expected: str):
         dumped = dump(node, use_colors=False, fields_to_ignore=('scope',))
         expected = textwrap.dedent(expected)
         if '{tmpdir}' in expected:
@@ -560,12 +560,12 @@ class TestParser:
         assert isclass(nodes[9], 'Constant') and nodes[9].value == 1
         assert len(nodes) == 10
         #
-        nodes2 = list(mod.walk(spy.ast.Stmt))
-        expected2 = [node for node in nodes if isinstance(node, spy.ast.Stmt)]
+        nodes2 = list(mod.walk(ast.Stmt))
+        expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
         assert nodes2 == expected2
         #
-        nodes3 = list(mod.walk(spy.ast.Expr))
-        expected3 = [node for node in nodes if isinstance(node, spy.ast.Expr)]
+        nodes3 = list(mod.walk(ast.Expr))
+        expected3 = [node for node in nodes if isinstance(node, ast.Expr)]
         assert nodes3 == expected3
 
     def test_inner_FuncDef(self):
