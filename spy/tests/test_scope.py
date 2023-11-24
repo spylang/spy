@@ -6,7 +6,7 @@ from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import Symbol, Color
 from spy.vm.vm import SPyVM, Builtins as B
-from spy.tests.support import expect_errors
+from spy.tests.support import expect_errors, MatchAnnotation
 
 class MatchSymbol:
     """
@@ -41,8 +41,8 @@ class TestScopeAnalyzer:
         scopes.analyze()
         return scopes
 
-    def expect_errors(self, src: str, *, errors: list[str]):
-        with expect_errors(errors):
+    def expect_errors(self, src: str, main: str, *anns: MatchAnnotation):
+        with expect_errors(main, *anns):
             self.analyze(src)
 
     def assert_dump(self, node: ast.Node, expected: str):
@@ -86,30 +86,30 @@ class TestScopeAnalyzer:
         }
 
     def test_cannot_redeclare(self):
+        src = """
+        def foo() -> i32:
+            x: i32 = 1
+            x: i32 = 2
+        """
         self.expect_errors(
-            """
-            def foo() -> i32:
-                x: i32 = 1
-                x: i32 = 2
-            """,
-            errors = [
-                'variable `x` already declared',
-                'this is the new declaration',
-                'this is the previous declaration',
-            ])
+            src,
+            'variable `x` already declared',
+            ('this is the new declaration', "x: i32 = 2"),
+            ('this is the previous declaration', "x: i32 = 1"),
+        )
 
     def test_no_shadowing(self):
+        src = """
+        x: i32 = 1
+        def foo() -> i32:
+            x: i32 = 2
+        """
         self.expect_errors(
-            """
-            x: i32 = 1
-            def foo() -> i32:
-                x: i32 = 2
-            """,
-            errors = [
-                'variable `x` shadows a name declared in an outer scope',
-                'this is the new declaration',
-                'this is the previous declaration',
-            ])
+            src,
+            'variable `x` shadows a name declared in an outer scope',
+            ('this is the new declaration', "x: i32 = 2"),
+            ('this is the previous declaration', "x: i32 = 1"),
+        )
 
     def test_fix_Names(self):
         scopes = self.analyze("""
