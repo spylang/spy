@@ -5,7 +5,7 @@ import ast as py_ast
 import spy.ast
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.errors import SPyCompileError, SPyParseError
+from spy.errors import SPyError, SPyParseError
 from spy.util import magic_dispatch
 
 class Parser:
@@ -52,7 +52,7 @@ class Parser:
         if reason is None:
             reason = node.__class__.__name__
         self.error(f'not implemented yet: {reason}',
-                   'this is not yet supported by SPy', node.loc)
+                   'this is not supported', node.loc)
 
     def from_py_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
         mod = spy.ast.Module(filename=self.filename, decls=[])

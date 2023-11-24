@@ -21,12 +21,25 @@ class Annotation:
     message: str
     loc: Loc
 
+    def get_src(self) -> str:
+        """
+        Return the piece of source code pointed by the annotation.
+        """
+        loc = self.loc
+        filename = loc.filename
+        assert loc.line_start == loc.line_end, 'multi-line not supported'
+        line = loc.line_start
+        a = loc.col_start
+        b = loc.col_end
+        srcline = linecache.getline(filename, line)
+        return srcline[a:b]
+
 
 class ErrorFormatter:
-    err: 'SPyCompileError'
+    err: 'SPyError'
     lines: list[str]
 
-    def __init__(self, err: 'SPyCompileError', use_colors: bool) -> None:
+    def __init__(self, err: 'SPyError', use_colors: bool) -> None:
         self.err = err
         self.color = ColorFormatter(use_colors)
         # add "custom colors" to ColorFormatter, so that we can do
@@ -66,7 +79,7 @@ class ErrorFormatter:
         return line + ' ' + message
 
 
-class SPyCompileError(Exception):
+class SPyError(Exception):
     message: str
     annotations: list[Annotation]
 
@@ -76,7 +89,7 @@ class SPyCompileError(Exception):
         super().__init__(message)
 
     @classmethod
-    def simple(cls, primary: str, secondary: str, loc: Loc) -> 'SPyCompileError':
+    def simple(cls, primary: str, secondary: str, loc: Loc) -> 'SPyError':
         err = cls(primary)
         err.add('error', secondary, loc)
         return err
@@ -95,19 +108,19 @@ class SPyCompileError(Exception):
         return fmt.build()
 
 
-class SPyParseError(SPyCompileError):
+class SPyParseError(SPyError):
     pass
 
 
-class SPyTypeError(SPyCompileError):
+class SPyTypeError(SPyError):
     pass
 
 
-class SPyImportError(SPyCompileError):
+class SPyImportError(SPyError):
     pass
 
 
-class SPyScopeError(SPyCompileError):
+class SPyScopeError(SPyError):
     """
     Raised if a variable declaration redeclares or shadows a name, see
     symtable.py

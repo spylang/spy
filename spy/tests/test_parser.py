@@ -4,7 +4,7 @@ import pytest
 from spy import ast
 from spy.parser import Parser
 from spy.ast_dump import dump
-from spy.tests.support import CompilerTest, expect_errors
+from spy.tests.support import CompilerTest, expect_errors, MatchAnnotation
 
 @pytest.mark.usefixtures('init')
 class TestParser:
@@ -21,8 +21,8 @@ class TestParser:
         self.mod = parser.parse()
         return self.mod
 
-    def expect_errors(self, src: str, *, errors: list[str]):
-        with expect_errors(errors):
+    def expect_errors(self, src: str, main: str, *anns: MatchAnnotation):
+        with expect_errors(main, *anns):
             self.parse(src)
 
     def assert_dump(self, node: ast.Node, expected: str):
@@ -91,64 +91,94 @@ class TestParser:
         """
         self.assert_dump(mod, expected)
 
-    def test_FuncDef_errors(self):
-        self.expect_errors(
-            """
-            def foo():
-                pass
+    def test_FuncDef_errors_1(self):
+        src = """
+        def foo():
+            pass
 
-            """,
-            errors = ["missing return type"],
-        )
+        """
         self.expect_errors(
-            """
-            def foo(*args) -> void:
-                pass
-            """,
-            errors = ["*args is not supported yet"]
+            src,
+            "missing return type",
+            ("", "def foo"),
         )
+
+    def test_FuncDef_errors_2(self):
+        src = """
+        def foo(*args) -> void:
+            pass
+        """
         self.expect_errors(
-            """
-            def foo(**kwargs) -> void:
-                pass
-            """,
-            errors = ["**kwargs is not supported yet"]
+            src,
+            "*args is not supported yet",
+            ("this is not supported", "args"),
         )
+
+    def test_FuncDef_errors_3(self):
+        src = """
+        def foo(**kwargs) -> void:
+            pass
+        """
         self.expect_errors(
-            """
-            def foo(a: i32 = 42) -> void:
-                pass
-            """,
-            errors = ["default arguments are not supported yet"]
+            src,
+            "**kwargs is not supported yet",
+            ("this is not supported", "kwargs"),
         )
+
+    def test_FuncDef_errors_4(self):
+        src = """
+        def foo(a: i32 = 42) -> void:
+            pass
+        """
         self.expect_errors(
-            """
-            def foo(a: i32, /, b: i32) -> void:
-                pass
-            """,
-            errors = ["positional-only arguments are not supported yet"]
+            src,
+            "default arguments are not supported yet",
+            ("this is not supported", "42"),
         )
+
+    def test_FuncDef_errors_5(self):
+        src = """
+        def foo(a: i32, /, b: i32) -> void:
+            pass
+        """
         self.expect_errors(
-            """
-            def foo(a: i32, *, b: i32) -> void:
-                pass
-            """,
-            errors = ["keyword-only arguments are not supported yet"]
+            src,
+            "positional-only arguments are not supported yet",
+            ("this is not supported", "a: i32"),
         )
+
+    def test_FuncDef_errors_6(self):
+        src = """
+        def foo(a: i32, *, b: i32) -> void:
+            pass
+        """
         self.expect_errors(
-            """
-            def foo(a, b) -> void:
-                pass
-            """,
-            errors = ["missing type for argument 'a'"]
+            src,
+            "keyword-only arguments are not supported yet",
+            ("this is not supported", "b: i32"),
         )
+
+    def test_FuncDef_errors_7(self):
+        src = """
+        def foo(a, b) -> void:
+            pass
+        """
         self.expect_errors(
-            """
-            @mydecorator
-            def foo() -> void:
-                pass
-            """,
-            errors = ["decorators are not supported yet"]
+            src,
+            "missing type for argument 'a'",
+            ("type is missing here", "a"),
+        )
+
+    def test_FuncDef_errors_8(self):
+        src = """
+        @mydecorator
+        def foo() -> void:
+            pass
+        """
+        self.expect_errors(
+            src,
+            "decorators are not supported yet",
+            ("this is not supported", "mydecorator"),
         )
 
     def test_FuncDef_body(self):
@@ -210,15 +240,15 @@ class TestParser:
     def test_unsupported_literal(self):
         # Eventually this test should be killed, when we support all the
         # literals
+        src = """
+        def foo() -> i32:
+            return 42j
+        """
         self.expect_errors(
-            """
-            def foo() -> i32:
-                return 42j
-            """,
-            errors = [
-                'unsupported literal: 42j',
-                'this is not supported yet',
-            ])
+            src,
+            'unsupported literal: 42j',
+            ('this is not supported yet', "42j"),
+        )
 
     def test_GetItem(self):
         mod = self.parse("""
@@ -399,12 +429,14 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_CompareOp_chained(self):
+        src = """
+        def foo() -> i32:
+            return 1 == 2 == 3
+        """
         self.expect_errors(
-            """
-            def foo() -> i32:
-                return 1 == 2 == 3
-            """,
-            errors = ["not implemented yet: chained comparisons"],
+            src,
+            "not implemented yet: chained comparisons",
+            ("this is not supported", "3"),
         )
 
     def test_Assign(self):
@@ -421,20 +453,26 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    def test_Assign_unsupported(self):
+    def test_Assign_unsupported_1(self):
+        src = """
+        def foo() -> void:
+            a = b = 1
+        """
         self.expect_errors(
-            """
-            def foo() -> void:
-                a = b = 1
-            """,
-            errors = ["not implemented yet: assign to multiple targets"]
+            src,
+            "not implemented yet: assign to multiple targets",
+            ("this is not supported", "a = b = 1"),
         )
+
+    def test_Assign_unsupported_2(self):
+        src = """
+        def foo() -> void:
+            a, b = 1, 2
+        """
         self.expect_errors(
-            """
-            def foo() -> void:
-                a, b = 1, 2
-            """,
-            errors = ["not implemented yet: assign to complex expressions"]
+            src,
+            "not implemented yet: assign to complex expressions",
+            ("this is not supported", "a, b"),
         )
 
     def test_Call(self):
@@ -458,12 +496,14 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Call_errors(self):
+        src = """
+        def foo() -> i32:
+            return Bar(1, 2, x=3)
+        """
         self.expect_errors(
-            """
-            def foo() -> i32:
-                return Bar(1, 2, x=3)
-            """,
-            errors = ["not implemented yet: keyword arguments"],
+            src,
+            "not implemented yet: keyword arguments",
+            ("this is not supported", "x=3"),
         )
 
     def test_If(self):

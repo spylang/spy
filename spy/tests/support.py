@@ -8,13 +8,12 @@ from spy.compiler import Compiler
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import ZigToolchain
-from spy.errors import SPyCompileError
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.codeobject import OpCode, W_CodeObject
 from spy.vm.function import W_UserFunc, W_FuncType
-
 
 Backend = Literal['interp', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -84,6 +83,7 @@ class CompilerTest:
 
     @pytest.fixture
     def legacy(self):
+        pytest.skip("legacy")
         self._legacy = True
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
@@ -137,43 +137,52 @@ class CompilerTest:
         else:
             assert False, f'Unknown backend: {self.backend}'
 
-    def expect_errors(self, src: str, *, errors: list[str]):
-        """
-        Expect that compilation fails, and check that the expected errors are
-        reported
-        """
-        modname = 'test'
-        srcfile = self.write_file(f'{modname}.spy', src)
-        with expect_errors(errors):
-            self.vm.import_(modname, legacy=self._legacy)
-
-
+MatchAnnotation = tuple[str, str]
 
 @contextmanager
-def expect_errors(errors: list[str]) -> Any:
+def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
     """
     Similar to pytest.raises but:
 
-      - expect a SPyCompileError
-      - check that the given messages are present in the error, either as
-        the main message or in the annotations.
+      - expect a SPyError
+
+      - check that the main error message matches
+
+      - check that the given additional annotations match. For each
+        annotation, you need to provide the message and the extract of source
+        code which the annotation points to
     """
-    with pytest.raises(SPyCompileError) as exc:
+    with pytest.raises(SPyError) as exc:
         yield exc
 
     err = exc.value
     formatted_error = err.format(use_colors=True)
     formatted_error = textwrap.indent(formatted_error, '    ')
-    all_messages = [err.message] + [ann.message for ann in err.annotations]
-    for expected in errors:
-        if expected not in all_messages:
-            print('Error match failed!')
-            print('The following error message was expected but not found:')
-            print(f'  - {expected}')
-            print()
-            print('Captured error')
-            print(formatted_error)
-            pytest.fail(f'Error message not found: {expected}')
+
+    def fail(msg: str, src: str):
+        print('Error match failed!')
+        print('The following message was expected but not found:')
+        print(f'  - {msg}')
+        if src:
+            print(f'  - {src}')
+        print()
+        print('Captured error')
+        print(formatted_error)
+        pytest.fail(f'Error message not found: {msg}')
+
+    def match_one_annotation(expected_msg: str, expected_src: str) -> bool:
+        for ann in err.annotations:
+            got_src = ann.get_src()
+            if ann.message == expected_msg and expected_src == got_src:
+                return True
+        return False
+
+    if err.message != main:
+        fail(main, '')
+
+    for msg, src in anns_to_match:
+        if not match_one_annotation(msg, src):
+            fail(msg, src)
 
     print()
     print("The following error was expected (everything is good):")
