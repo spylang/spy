@@ -60,22 +60,7 @@ class ASTFrame:
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
             self.locals.declare(loc, param.name, param.w_type)
-            self.locals.set(param.name, w_arg)
-
-    def typecheck_local(self, got_loc: Loc, varname: str,
-                        w_got: W_Object) -> None:
-        w_type = self.locals.types_w[varname]
-        if self.vm.is_compatible_type(w_got, w_type):
-            return
-        err = SPyTypeError('mismatched types')
-        got = self.vm.dynamic_type(w_got).name
-        exp = w_type.name
-        exp_loc = self.locals.locs[varname]
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
-        if varname == '@return':
-            because = 'because of return type'
-            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-        raise err
+            self.locals.set(loc, param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, 'exec_stmt', stmt)
@@ -95,7 +80,7 @@ class ASTFrame:
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
         w_value = self.eval_expr(stmt.value)
-        self.typecheck_local(stmt.loc, '@return', w_value)
+        self.locals.typecheck(stmt.loc, '@return', w_value)
         raise Return(w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
@@ -115,15 +100,14 @@ class ASTFrame:
         #
         # store it in the locals
         self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
-        self.locals.set(funcdef.name, w_func)
+        self.locals.set(funcdef.loc, funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
-        # XXX typecheck?
         w_type = self.eval_expr(vardef.type)
         w_value = self.eval_expr(vardef.value)
-        self.locals.declare(vardef.loc, vardef.name, w_type)
-        self.locals.set(vardef.name, w_value)
+        self.locals.declare(vardef.type.loc, vardef.name, w_type)
+        self.locals.set(vardef.value.loc, vardef.name, w_value)
 
     # ==== expressions ====
 

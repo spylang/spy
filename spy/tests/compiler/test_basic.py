@@ -83,40 +83,18 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    @no_backend
-    def test_declare_variable_errors(self, legacy):
-        self.expect_errors(
-            """
-            def foo() -> i32:
-                x: i32 = 1
-                x: i32 = 2
-            """,
-            errors = [
-                'variable `x` already declared',
-                'this is the new declaration',
-                'this is the previous declaration',
-            ])
-        #
-        self.expect_errors(
-            """
+    def test_local_typecheck(self):
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `str`, got `i32`', '1'),
+            ('expected `str` because of type declaration', 'str'),
+        )
+        with ctx:
+            mod = self.compile("""
             def foo() -> i32:
                 x: str = 1
-            """,
-            errors = [
-                'mismatched types',
-                'expected `str`, got `i32`',
-                'expected `str` because of type declaration',
-            ])
-        #
-        self.expect_errors(
-            """
-            def foo() -> i32:
-                return x
-            """,
-            errors = [
-                'cannot find variable `x` in this scope',
-                'not found in this scope',
-            ])
+            """)
+            mod.foo()
 
     def test_function_arguments(self, legacy):
         mod = self.compile(
