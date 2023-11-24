@@ -5,7 +5,7 @@ import ast as py_ast
 import spy.ast
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.errors import SPyCompileError, SPyParseError
+from spy.errors import SPyError, SPyParseError
 from spy.util import magic_dispatch
 
 class Parser:

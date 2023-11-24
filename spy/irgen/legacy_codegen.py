@@ -4,7 +4,7 @@ from spy.location import Loc
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
 from spy.irgen import multiop
-from spy.errors import SPyCompileError
+from spy.errors import SPyError
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
@@ -360,7 +360,7 @@ class LegacyCodeGen:
             # XXX there is no test for this at the moment because we don't
             # have higher order functions, so it's impossible to reach this
             # branch
-            err = SPyCompileError('indirect calls not supported')
+            err = SPyError('indirect calls not supported')
             raise err
         for expr in call.args:
             self.eval_expr(expr)

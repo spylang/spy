@@ -2,7 +2,7 @@ from typing import Annotated, Any, no_type_check
 from pathlib import Path
 import typer
 import py.path
-from spy.errors import SPyCompileError
+from spy.errors import SPyError
 from spy.parser import Parser
 from spy.compiler import Compiler
 from spy.vm.vm import SPyVM
@@ -30,7 +30,7 @@ def main(filename: Path,
          ) -> None:
     try:
         do_main(filename, pyparse, parse, dis, cwrite, g)
-    except SPyCompileError as e:
+    except SPyError as e:
         print(e.format(use_colors=True))
 
 def do_main(filename: Path, pyparse: bool, parse: bool, dis: bool,

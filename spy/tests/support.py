@@ -8,7 +8,7 @@ from spy.compiler import Compiler
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import ZigToolchain
-from spy.errors import SPyCompileError
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
@@ -154,11 +154,11 @@ def expect_errors(errors: list[str]) -> Any:
     """
     Similar to pytest.raises but:
 
-      - expect a SPyCompileError
+      - expect a SPyError
       - check that the given messages are present in the error, either as
         the main message or in the annotations.
     """
-    with pytest.raises(SPyCompileError) as exc:
+    with pytest.raises(SPyError) as exc:
         yield exc
 
     err = exc.value
