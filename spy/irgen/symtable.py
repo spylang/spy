@@ -1,6 +1,6 @@
 from typing import Optional, Literal
 from dataclasses import dataclass, KW_ONLY
-import spy.ast
+from spy.ast import Color
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.vm import SPyVM, Builtins as B
@@ -17,13 +17,14 @@ class SymbolAlreadyDeclaredError(Exception):
 @dataclass
 class Symbol:
     name: str
-    qualifier: Qualifier
+    color: Color
     _: KW_ONLY
     loc: Loc           # where the symbol is defined, in the source code
     scope: 'SymTable'  # the scope where the symbol lives in
     fqn: Optional[FQN] = None
     #
     # only for legacy, will be killed soon
+    qualifier: Optional[Qualifier] = None
     w_type: Optional[W_Type] = None
 
 
@@ -40,7 +41,7 @@ class SymTable:
 
     @classmethod
     def from_builtins(cls, vm: SPyVM) -> 'SymTable':
-        res = cls('<builtins>', parent=None)
+        res = cls('builtins', parent=None)
         loc = Loc(filename='<builtins>',
                   line_start=0,
                   line_end=0,
@@ -58,17 +59,17 @@ class SymTable:
         return f'<SymTable {self.name}>'
 
     def pp(self) -> None:
-        print(f'<symbol table for {self.name}>')
+        print(f"<symbol table '{self.name}'>")
         for name, sym in self.symbols.items():
             assert name == sym.name
-            print(f'    {name}: {sym.w_type.name}')
+            print(f'    {name}: {sym.color}')
 
-    def declare(self, name: str, qualifier: Qualifier, loc: Loc,
+    def declare(self, name: str, color: Color, loc: Loc,
                 fqn: Optional[FQN] = None) -> Symbol:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
         self.symbols[name] = s = Symbol(name = name,
-                                        qualifier = qualifier,
+                                        color = color,
                                         loc = loc,
                                         scope = self,
                                         fqn = fqn)
@@ -79,6 +80,7 @@ class SymTable:
         if name in self.symbols:
             raise SymbolAlreadyDeclaredError(name)
         self.symbols[name] = s = Symbol(name = name,
+                                        color = 'red',
                                         qualifier = qualifier,
                                         loc = loc,
                                         scope = self,
