@@ -66,6 +66,14 @@ class ASTFrame:
     def eval_expr(self, expr: ast.Expr) -> W_Object:
         return magic_dispatch(self, 'eval_expr', expr)
 
+    def eval_expr_type(self, expr: ast.Expr) -> W_Type:
+        w_val = self.eval_expr(expr)
+        if isinstance(w_val, W_Type):
+            return w_val
+        w_valtype = self.vm.dynamic_type(w_val)
+        msg = f'expected `type`, got `{w_valtype.name}`'
+        raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
+
     # ==== statements ====
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
@@ -84,8 +92,8 @@ class ASTFrame:
         # evaluate the functype
         d = {}
         for arg in funcdef.args:
-            d[arg.name] = self.eval_expr(arg.type)
-        w_restype = self.eval_expr(funcdef.return_type)
+            d[arg.name] = self.eval_expr_type(arg.type)
+        w_restype = self.eval_expr_type(funcdef.return_type)
         w_functype = W_FuncType.make(
             color = funcdef.color,
             w_restype = w_restype,
