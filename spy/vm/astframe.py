@@ -60,6 +60,21 @@ class ASTFrame:
             self.locals.declare(loc, param.name, param.w_type)
             self.locals.set(param.name, w_arg)
 
+    def typecheck_local(self, got_loc: Loc, varname: str,
+                        w_got: W_Object) -> None:
+        w_type = self.locals.types_w[varname]
+        if self.vm.is_compatible_type(w_got, w_type):
+            return
+        err = SPyTypeError('mismatched types')
+        got = self.vm.dynamic_type(w_got).name
+        exp = w_type.name
+        exp_loc = self.locals.locs[varname]
+        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
+        if varname == '@return':
+            because = 'because of return type'
+            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
+        raise err
+
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, 'exec_stmt', stmt)
 
@@ -78,7 +93,7 @@ class ASTFrame:
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
         w_value = self.eval_expr(stmt.value)
-        # XXX typecheck?
+        self.typecheck_local(stmt.loc, '@return', w_value)
         raise Return(w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
