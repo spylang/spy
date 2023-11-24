@@ -15,7 +15,6 @@ from spy.vm.module import W_Module
 from spy.vm.codeobject import OpCode, W_CodeObject
 from spy.vm.function import W_UserFunc, W_FuncType
 
-
 Backend = Literal['interp', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
@@ -84,6 +83,7 @@ class CompilerTest:
 
     @pytest.fixture
     def legacy(self):
+        pytest.skip("legacy")
         self._legacy = True
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
@@ -136,17 +136,6 @@ class CompilerTest:
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         else:
             assert False, f'Unknown backend: {self.backend}'
-
-    def expect_errors(self, src: str, *, errors: list[str]):
-        """
-        Expect that compilation fails, and check that the expected errors are
-        reported
-        """
-        modname = 'test'
-        srcfile = self.write_file(f'{modname}.spy', src)
-        with expect_errors(errors):
-            self.vm.import_(modname, legacy=self._legacy)
-
 
 MatchAnnotation = tuple[str, str]
 

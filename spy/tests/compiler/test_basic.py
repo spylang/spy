@@ -27,36 +27,38 @@ class TestBasic(CompilerTest):
             ])
 
     def test_wrong_functype_restype(self):
-        self.expect_errors(
-            """
+        ctx = expect_errors(
+            'expected `type`, got `str`',
+            ('expected `type`', "'hello'")
+        )
+        with ctx:
+            self.compile("""
             def foo() -> 'hello':
                 return 42
-            """,
-            errors = [
-                'expected `type`, got `str`',
-                'expected `type`',
-            ])
+            """)
 
     def test_wrong_functype_argtype(self):
-        self.expect_errors(
-            """
-            def foo(x: "hello") -> i32:
+        ctx = expect_errors(
+            'expected `type`, got `str`',
+            ('expected `type`', "'hello'"),
+        )
+        with ctx:
+            self.compile("""
+            def foo(x: 'hello') -> i32:
                 return 42
-            """,
-            errors = [
-                'expected `type`, got `str`',
-                'expected `type`',
-            ])
+            """)
 
     def test_wrong_return_type(self):
-        mod = self.compile("""
-        def foo() -> str:
-            return 42
-        """)
-        with expect_errors([
-                'mismatched types',
-                'expected `str`, got `i32`',
-                'expected `str` because of return type']) as exc:
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `str`, got `i32`', "return 42"),
+            ('expected `str` because of return type', "str"),
+        )
+        with ctx:
+            mod = self.compile("""
+            def foo() -> str:
+                return 42
+            """)
             mod.foo()
 
     def test_local_variables(self, legacy):
