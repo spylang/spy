@@ -2,6 +2,7 @@ import py
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
+from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.legacy_codegen import LegacyCodeGen
 from spy.vm.vm import SPyVM, Builtins as B
@@ -18,11 +19,13 @@ class ModuleGen:
     vm: SPyVM
     modname: str
     mod: ast.Module
+    scopes: ScopeAnalyzer
     t: TypeChecker
     legacy: bool # XXX kill me
 
     def __init__(self,
                  vm: SPyVM,
+                 scopes: ScopeAnalyzer,
                  t: TypeChecker,
                  modname: str,
                  mod: ast.Module,
@@ -30,6 +33,7 @@ class ModuleGen:
                  legacy: bool,
                  ) -> None:
         self.vm = vm
+        self.scopes = scopes
         self.t = t
         self.modname = modname
         self.mod = mod

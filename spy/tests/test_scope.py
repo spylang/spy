@@ -16,7 +16,7 @@ class MatchSymbol:
         self.name = name
         self.color = color
 
-    def __eq__(self, sym: Symbol) -> bool:
+    def __eq__(self, sym: object) -> bool:
         if not isinstance(sym, Symbol):
             return NotImplemented
         return (self.name == sym.name and

@@ -99,8 +99,6 @@ class ASTFrame:
         raise Return(w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        from spy.irgen.codegen import LocalVarsComputer
-        LocalVarsComputer(funcdef).compute() # XXX we need ScopeAnalyzer
         w_func = self.eval_FuncDef(funcdef)
         self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
         self.locals.set(funcdef.name, w_func)
@@ -131,6 +129,7 @@ class ASTFrame:
         return self.vm.wrap(const.value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_Object:
+        assert name.scope != 'unknown', 'bug in the ScopeAnalyzer?'
         # XXX typecheck?
         if name.scope == 'local':
             return self.locals.get(name.id)
