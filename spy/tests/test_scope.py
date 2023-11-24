@@ -140,3 +140,36 @@ class TestScopeAnalyzer:
         )
         """
         self.assert_dump(funcdef, expected)
+
+    def test_inner_funcdef(self):
+        scopes = self.analyze("""
+        def foo() -> void:
+            x: i32 = 0
+            def bar(y: i32) -> i32:
+                return x + y
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        funcdef_bar = funcdef.body[1]
+        assert isinstance(funcdef_bar, ast.FuncDef)
+        expected = """
+        FuncDef(
+            color='red',
+            name='bar',
+            args=[
+                FuncArg(
+                    name='y',
+                    type=Name(id='i32', scope='nonlocal'),
+                ),
+            ],
+            return_type=Name(id='i32', scope='nonlocal'),
+            body=[
+                Return(
+                    value=Add(
+                        left=Name(id='x', scope='nonlocal'),
+                        right=Name(id='y', scope='local'),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef_bar, expected)
