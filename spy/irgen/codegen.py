@@ -41,6 +41,7 @@ class LocalVarsComputer:
 
         # hack hack hack, we need a proper ScopeAnalyzer
         for name in self.funcdef.walk(spy.ast.Name):
+            assert isinstance(name, spy.ast.Name)
             if name.id in self.locals:
                 name.scope = 'local'
 

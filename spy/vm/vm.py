@@ -185,8 +185,8 @@ class SPyVM:
             frame = Frame(self, w_func)
             return frame.run(args_w)
         elif isinstance(w_func, W_ASTFunc):
-            frame = ASTFrame(self, w_func)
-            return frame.run(args_w)
+            frame2 = ASTFrame(self, w_func)
+            return frame2.run(args_w)
         elif isinstance(w_func, W_BuiltinFunc):
             return w_func.spy_call(self, args_w)
         else:

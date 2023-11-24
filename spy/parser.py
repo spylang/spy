@@ -272,7 +272,7 @@ class Parser:
             self.error(f'unsupported literal: {py_node.value!r}',
                        f'this is not supported yet', py_node.loc)
         else:
-            assert False, f'Unexpected literal: {const.value}'
+            assert False, f'Unexpected literal: {py_node.value}'
 
 
     def from_py_expr_Subscript(self, py_node: py_ast.Subscript) -> spy.ast.GetItem:

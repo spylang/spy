@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 class Return(Exception):
-    def __init__(self, w_value):
+    w_value: W_Object
+
+    def __init__(self, w_value: W_Object) -> None:
         self.w_value = w_value
 
 
