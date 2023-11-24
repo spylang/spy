@@ -53,15 +53,11 @@ class TestBasic(CompilerTest):
         def foo() -> str:
             return 42
         """)
-
         with expect_errors([
                 'mismatched types',
                 'expected `str`, got `i32`',
                 'expected `str` because of return type']) as exc:
             mod.foo()
-
-        print()
-        print(exc.value.format(use_colors=True))
 
     def test_local_variables(self, legacy):
         mod = self.compile(
