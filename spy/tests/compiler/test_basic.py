@@ -96,7 +96,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    def test_function_arguments(self, legacy):
+    def test_function_arguments(self):
         mod = self.compile(
         """
         def inc(x: i32) -> i32:

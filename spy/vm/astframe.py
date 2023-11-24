@@ -119,7 +119,6 @@ class ASTFrame:
         return self.vm.wrap(const.value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_Object:
-        # XXX typecheck?
         if name.scope == 'local':
             return self.locals.get(name.id)
         elif name.scope == 'outer':
@@ -135,3 +134,17 @@ class ASTFrame:
             assert False, "bug in the ScopeAnalyzer?"
         else:
             assert False, f"Invalid value for scope: {name.scope}"
+
+    def eval_expr_Add(self, op: ast.Add) -> W_Object:
+        from spy.vm.vm import Builtins as B
+        # XXX we should use the static types
+        w_l = self.eval_expr(op.left)
+        w_r = self.eval_expr(op.right)
+        w_ltype = self.vm.dynamic_type(w_l)
+        w_rtype = self.vm.dynamic_type(w_r)
+        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+            l = self.vm.unwrap(w_l)
+            r = self.vm.unwrap(w_r)
+            return self.vm.wrap(l + r)
+        #
+        assert False, 'WIP'
