@@ -3,7 +3,7 @@ from types import NoneType
 from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.errors import SPyRuntimeAbort, SPyTypeError
+from spy.errors import SPyRuntimeAbort, SPyTypeError, SPyNameError
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
@@ -129,14 +129,19 @@ class ASTFrame:
         return self.vm.wrap(const.value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_Object:
-        assert name.scope != 'unknown', 'bug in the ScopeAnalyzer?'
         # XXX typecheck?
         if name.scope == 'local':
             return self.locals.get(name.id)
-        else:
-            assert name.scope == 'outer'
+        elif name.scope == 'outer':
             # XXX for now we assume it's a builtin
             fqn = FQN(modname='builtins', attr=name.id)
             w_value = self.vm.lookup_global(fqn)
             assert w_value is not None
             return w_value
+        elif name.scope == 'non-declared':
+            msg = f"name `{name.id}` is not defined"
+            raise SPyNameError.simple(msg, "not found in this scope", name.loc)
+        elif name.scope == "unknown":
+            assert False, "bug in the ScopeAnalyzer?"
+        else:
+            assert False, f"Invalid value for scope: {name.scope}"

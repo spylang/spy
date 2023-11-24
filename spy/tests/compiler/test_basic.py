@@ -15,16 +15,29 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    @no_backend
-    def test_resolve_type_errors(self, monkeypatch, legacy):
-        self.expect_errors(
+    def test_NameError(self):
+        ctx = expect_errors(
+            'name `x` is not defined',
+            ('not found in this scope', 'x')
+        )
+        with ctx:
+            mod = self.compile(
             """
+            def foo() -> i32:
+                return x
+            """)
+            mod.foo()
+
+    def test_resolve_type_errors(self):
+        ctx = expect_errors(
+            'name `aaa` is not defined',
+            ('not found in this scope', 'aaa')
+        )
+        with ctx:
+            mod = self.compile("""
             def foo() -> aaa:
                 return 42
-            """,
-            errors = [
-                'unknown type `aaa`'
-            ])
+            """)
 
     def test_wrong_functype_restype(self):
         ctx = expect_errors(

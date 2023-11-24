@@ -98,10 +98,11 @@ class ScopeAnalyzer:
 
     def set_scope_Name(self, name: ast.Name, scope: SymTable) -> None:
         sym = scope.lookup(name.id)
-        # if the sym is None it means that the variable has not been
-        # declared. This should have been caught during the declare_* phase.
-        assert sym is not None
-        if sym.scope is scope:
+        if sym is None:
+            # in theory we could emit an error already here, but we want to be
+            # able to delay the error until the code is actually executed
+            name.scope = 'non-declared'
+        elif sym.scope is scope:
             name.scope = 'local'
         else:
             name.scope = 'outer'
