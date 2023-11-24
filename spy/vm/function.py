@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-import spy.ast
+from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
@@ -107,10 +107,10 @@ class W_UserFunc(W_Func):
 
 class W_ASTFunc(W_Func):
     fqn: FQN
-    funcdef: spy.ast.FuncDef
+    funcdef: ast.FuncDef
 
     def __init__(self, fqn: FQN, w_functype: W_FuncType,
-                 funcdef: spy.ast.FuncDef) -> None:
+                 funcdef: ast.FuncDef) -> None:
         self.fqn = fqn
         self.w_functype = w_functype
         self.funcdef = funcdef

@@ -1,7 +1,7 @@
 import pytest
 import spy.ast
 from spy.location import Loc
-from spy.irgen.symtable import SymTable, SymbolAlreadyDeclaredError
+from spy.irgen.symtable import SymTable, SPyScopeError
 from spy.vm.vm import SPyVM, Builtins as B
 
 LOC = Loc('<fake loc>', 0, 0, 0, 0)
@@ -17,23 +17,22 @@ class TestSymtable:
 
     def test_basic(self):
         t = SymTable('<globals>', parent=None)
-        sym = t.declare('a', 'var', B.w_i32, LOC)
+        sym = t.declare('a', 'red', LOC)
         assert sym.name == 'a'
-        assert sym.qualifier == 'var'
-        assert sym.w_type == B.w_i32
+        assert sym.color == 'red'
         assert sym.scope is t
         #
         assert t.lookup('a') is sym
         assert t.lookup('I-dont-exist') is None
         #
-        with pytest.raises(SymbolAlreadyDeclaredError):
-            t.declare('a', 'var', B.w_i32, LOC)
+        with pytest.raises(SPyScopeError):
+            t.declare('a', 'red', LOC)
 
     def test_nested_scope_lookup(self):
         glob = SymTable('<globals>', parent=None)
         loc = SymTable('loc', parent=glob)
-        sym_a = glob.declare('a', 'var', B.w_i32, LOC)
-        sym_b = loc.declare('b', 'const', B.w_i32, LOC)
+        sym_a = glob.declare('a', 'red', LOC)
+        sym_b = loc.declare('b', 'red', LOC)
         #
         assert glob.lookup('a') is sym_a
         assert glob.lookup('b') is None
@@ -46,10 +45,8 @@ class TestSymtable:
         sym = scope.lookup('i32')
         assert sym is not None
         assert sym.name == 'i32'
-        assert sym.qualifier == 'const'
-        assert sym.w_type is B.w_type
+        assert sym.color == 'blue'
         #
         sym = scope.lookup('True')
         assert sym is not None
         assert sym.name == 'True'
-        assert sym.w_type is B.w_bool
