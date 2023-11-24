@@ -57,11 +57,13 @@ class CodeGen:
     funcdef: spy.ast.FuncDef
     w_code: W_CodeObject
     last_lineno: int
+    local_vars: set[str]
 
     def __init__(self,
                  vm: SPyVM,
                  funcdef: spy.ast.FuncDef
                  ) -> None:
+        assert False, "this should not be called"
         self.vm = vm
         self.funcdef = funcdef
         self.w_code = W_CodeObject.from_funcdef(funcdef)
