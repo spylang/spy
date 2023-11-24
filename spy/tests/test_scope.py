@@ -84,6 +84,7 @@ class TestScopeAnalyzer:
             'y': MatchSymbol('y', 'red'),
             'z': MatchSymbol('z', 'red'),
         }
+        assert funcdef.locals == {'x', 'y', 'z'}
 
     def test_cannot_redeclare(self):
         src = """
@@ -137,6 +138,7 @@ class TestScopeAnalyzer:
                     ),
                 ),
             ],
+            locals={'y'},
         )
         """
         self.assert_dump(funcdef, expected)
@@ -149,8 +151,11 @@ class TestScopeAnalyzer:
                 return x + y
         """)
         funcdef = self.mod.get_funcdef('foo')
+        assert funcdef.locals == {'x', 'bar'}
+        #
         funcdef_bar = funcdef.body[1]
         assert isinstance(funcdef_bar, ast.FuncDef)
+        assert funcdef_bar.locals == {'y'}
         expected = """
         FuncDef(
             color='red',
@@ -170,6 +175,7 @@ class TestScopeAnalyzer:
                     ),
                 ),
             ],
+            locals={'y'},
         )
         """
         self.assert_dump(funcdef_bar, expected)

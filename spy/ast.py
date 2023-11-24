@@ -341,6 +341,7 @@ class FuncDef(Stmt):
     args: list[FuncArg]
     return_type: 'Expr'
     body: list['Stmt']
+    locals: set[str] = field(repr=False, default_factory=set)
 
 @dataclass(eq=False)
 class Pass(Stmt):

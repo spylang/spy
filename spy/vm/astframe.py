@@ -99,11 +99,6 @@ class ASTFrame:
         raise Return(w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        w_func = self.eval_FuncDef(funcdef)
-        self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
-        self.locals.set(funcdef.name, w_func)
-
-    def eval_FuncDef(self, funcdef: ast.FuncDef) -> W_ASTFunc:
         # evaluate the functype
         d = {}
         for arg in funcdef.args:
@@ -114,10 +109,21 @@ class ASTFrame:
             w_restype = w_restype,
             **d)
         #
+        # create the w_func
         fqn = FQN(modname='???', attr=funcdef.name)
-        return W_ASTFunc(fqn, w_functype, funcdef)
+        w_func = W_ASTFunc(fqn, w_functype, funcdef)
+        #
+        # store it in the locals
+        self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
+        self.locals.set(funcdef.name, w_func)
 
-
+    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
+        # XXX typecheck?
+        w_type = self.eval_expr(vardef.type)
+        w_value = self.eval_expr(vardef.value)
+        self.locals.declare(vardef.loc, vardef.name, w_type)
+        self.locals.set(vardef.name, w_value)
 
     # ==== expressions ====
 

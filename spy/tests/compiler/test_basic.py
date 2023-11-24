@@ -74,7 +74,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    def test_local_variables(self, legacy):
+    def test_local_variables(self):
         mod = self.compile(
         """
         def foo() -> i32:
