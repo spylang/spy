@@ -84,7 +84,10 @@ class ScopeAnalyzer:
             self.declare(stmt, inner_scope)
 
     def declare_Assign(self, assign: ast.Assign, scope: SymTable) -> None:
-        scope.declare(assign.target, 'red', assign.loc)
+        # if it's the first assignment, declare a new variable
+        name = assign.target
+        if name not in scope.symbols:
+            scope.declare(assign.target, 'red', assign.loc)
 
     # ===
 

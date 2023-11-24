@@ -86,6 +86,19 @@ class TestScopeAnalyzer:
         }
         assert funcdef.locals == {'x', 'y', 'z'}
 
+    def test_assign_does_not_redeclare(self):
+        scopes = self.analyze("""
+        def foo() -> void:
+            x: i32 = 0
+            x = 1
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.symbols == {
+            'x': MatchSymbol('x', 'red'),
+        }
+        assert funcdef.locals == {'x'}
+
     def test_cannot_redeclare(self):
         src = """
         def foo() -> i32:

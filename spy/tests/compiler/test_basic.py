@@ -104,13 +104,14 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
-    def test_assign(self, legacy):
+    def test_assign(self):
         mod = self.compile(
         """
         def inc(x: i32) -> i32:
-            res: i32 = 0
-            res = x + 1
-            return res
+            a: i32 = 0
+            b = 1 # implicit declaration
+            a = x + b
+            return a
         """)
         assert mod.inc(100) == 101
 

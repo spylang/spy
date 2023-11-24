@@ -109,6 +109,16 @@ class ASTFrame:
         self.locals.declare(vardef.type.loc, vardef.name, w_type)
         self.locals.set(vardef.value.loc, vardef.name, w_value)
 
+    def exec_stmt_Assign(self, assign: ast.Assign) -> None:
+        name = assign.target
+        assert name in self.funcdef.locals, 'XXX implement assig to outer'
+        w_value = self.eval_expr(assign.value)
+        if name not in self.locals.types_w:
+            # first assignment, implicit declaration
+            w_type = self.vm.dynamic_type(w_value) # XXX should be static type
+            self.locals.declare(assign.loc, name, w_type)
+        self.locals.set(assign.value.loc, assign.target, w_value)
+
     # ==== expressions ====
 
     def eval_expr_Constant(self, const: ast.Constant) -> W_Object:
