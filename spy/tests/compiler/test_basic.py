@@ -16,20 +16,6 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 42
 
     @no_backend
-    def test_unsupported_literal(self):
-        # Eventually this test should be killed, when we support all the
-        # literals
-        self.expect_errors(
-            """
-            def foo() -> i32:
-                return 42j
-            """,
-            errors = [
-                'unsupported literal: 42j',
-                'this is not supported yet',
-            ])
-
-    @no_backend
     def test_resolve_type_errors(self, monkeypatch, legacy):
         self.expect_errors(
             """

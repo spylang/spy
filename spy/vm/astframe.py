@@ -99,17 +99,11 @@ class ASTFrame:
     # ==== expressions ====
 
     def eval_expr_Constant(self, const: ast.Constant) -> W_Object:
-        # according to _ast.pyi, the type of const.value can be one of the
-        # following:
-        #     None, str, bytes, bool, int, float, complex, Ellipsis
+        # unsupported literals are rejected directly by the parser, see
+        # Parser.from_py_expr_Constant
         T = type(const.value)
-        if T in (int, bool, str, NoneType):
-            return self.vm.wrap(const.value)
-        elif T in (bytes, float, complex, Ellipsis):
-            self.error(f'unsupported literal: {const.value!r}',
-                       f'this is not supported yet', const.loc)
-        else:
-            assert False, f'Unexpected literal: {const.value}'
+        assert T in (int, bool, str, NoneType)
+        return self.vm.wrap(const.value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_Object:
         # XXX typecheck?

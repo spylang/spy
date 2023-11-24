@@ -1,4 +1,5 @@
 from typing import Optional, NoReturn, Any
+from types import NoneType
 import textwrap
 import ast as py_ast
 import spy.ast
@@ -258,9 +259,21 @@ class Parser:
     def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Name:
         return spy.ast.Name(py_node.loc, py_node.id)
 
-    def from_py_expr_Constant(self, py_node: py_ast.Constant) -> spy.ast.Constant:
+    def from_py_expr_Constant(self,
+                              py_node: py_ast.Constant) -> spy.ast.Constant:
+        # according to _ast.pyi, the type of const.value can be one of the
+        # following:
+        #     None, str, bytes, bool, int, float, complex, Ellipsis
         assert py_node.kind is None  # I don't know what is 'kind' here
-        return spy.ast.Constant(py_node.loc, py_node.value)
+        T = type(py_node.value)
+        if T in (int, bool, str, NoneType):
+            return spy.ast.Constant(py_node.loc, py_node.value)
+        elif T in (bytes, float, complex, Ellipsis):
+            self.error(f'unsupported literal: {py_node.value!r}',
+                       f'this is not supported yet', py_node.loc)
+        else:
+            assert False, f'Unexpected literal: {const.value}'
+
 
     def from_py_expr_Subscript(self, py_node: py_ast.Subscript) -> spy.ast.GetItem:
         value = self.from_py_expr(py_node.value)
