@@ -1,10 +1,10 @@
 import textwrap
 import pytest
-
 from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import Symbol, Color
 from spy.vm.vm import SPyVM, Builtins as B
+from spy.tests.support import expect_errors
 
 class MatchSymbol:
     """
@@ -39,6 +39,10 @@ class TestScopeAnalyzer:
         scopes.analyze()
         return scopes
 
+    def expect_errors(self, src: str, *, errors: list[str]):
+        with expect_errors(errors):
+            self.analyze(src)
+
     def test_global(self):
         scopes = self.analyze("""
         x: i32 = 0
@@ -71,3 +75,29 @@ class TestScopeAnalyzer:
             'y': MatchSymbol('y', 'red'),
             'z': MatchSymbol('z', 'red'),
         }
+
+    def test_cannot_redeclare(self):
+        self.expect_errors(
+            """
+            def foo() -> i32:
+                x: i32 = 1
+                x: i32 = 2
+            """,
+            errors = [
+                'variable `x` already declared',
+                'this is the new declaration',
+                'this is the previous declaration',
+            ])
+
+    def test_no_shadowing(self):
+        self.expect_errors(
+            """
+            x: i32 = 1
+            def foo() -> i32:
+                x: i32 = 2
+            """,
+            errors = [
+                'variable `x` shadows a name declared in an outer scope',
+                'this is the new declaration',
+                'this is the previous declaration',
+            ])

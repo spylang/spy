@@ -161,11 +161,9 @@ def expect_errors(errors: list[str]) -> Any:
     with pytest.raises(SPyCompileError) as exc:
         yield exc
 
-    print()
-    print("=== Expected error ===")
-    print(exc.value.format(use_colors=True))
-
     err = exc.value
+    formatted_error = err.format(use_colors=True)
+    formatted_error = textwrap.indent(formatted_error, '    ')
     all_messages = [err.message] + [ann.message for ann in err.annotations]
     for expected in errors:
         if expected not in all_messages:
@@ -174,10 +172,12 @@ def expect_errors(errors: list[str]) -> Any:
             print(f'  - {expected}')
             print()
             print('Captured error')
-            formatted_error = err.format(use_colors=True)
-            print(textwrap.indent(formatted_error, '    '))
+            print(formatted_error)
             pytest.fail(f'Error message not found: {expected}')
 
+    print()
+    print("The following error was expected (everything is good):")
+    print(formatted_error)
 
 
 @pytest.mark.usefixtures('init')

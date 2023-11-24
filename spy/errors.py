@@ -107,6 +107,12 @@ class SPyImportError(SPyCompileError):
     pass
 
 
+class SPyScopeError(SPyCompileError):
+    """
+    Raised if a variable declaration redeclares or shadows a name, see
+    symtable.py
+    """
+
 # ======
 
 class SPyRuntimeError(Exception):

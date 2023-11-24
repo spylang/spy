@@ -1,7 +1,7 @@
 import pytest
 import spy.ast
 from spy.location import Loc
-from spy.irgen.symtable import SymTable, SymbolAlreadyDeclaredError
+from spy.irgen.symtable import SymTable, SPyScopeError
 from spy.vm.vm import SPyVM, Builtins as B
 
 LOC = Loc('<fake loc>', 0, 0, 0, 0)
@@ -17,15 +17,15 @@ class TestSymtable:
 
     def test_basic(self):
         t = SymTable('<globals>', parent=None)
-        sym = t.declare('a', 'var', LOC)
+        sym = t.declare('a', 'red', LOC)
         assert sym.name == 'a'
-        assert sym.qualifier == 'var'
+        assert sym.color == 'red'
         assert sym.scope is t
         #
         assert t.lookup('a') is sym
         assert t.lookup('I-dont-exist') is None
         #
-        with pytest.raises(SymbolAlreadyDeclaredError):
+        with pytest.raises(SPyScopeError):
             t.declare('a', 'var', LOC)
 
     def test_nested_scope_lookup(self):

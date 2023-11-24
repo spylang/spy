@@ -3,6 +3,7 @@ from dataclasses import dataclass, KW_ONLY
 from spy.ast import Color
 from spy.fqn import FQN
 from spy.location import Loc
+from spy.errors import SPyScopeError
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.object import W_Type, W_Object
 
@@ -11,6 +12,8 @@ Qualifier = Literal['var', 'const']
 class SymbolAlreadyDeclaredError(Exception):
     """
     A symbol is being redeclared
+
+    XXX kill me
     """
 
 
@@ -66,8 +69,20 @@ class SymTable:
 
     def declare(self, name: str, color: Color, loc: Loc,
                 fqn: Optional[FQN] = None) -> Symbol:
-        if name in self.symbols:
-            raise SymbolAlreadyDeclaredError(name)
+        prev_sym = self.lookup(name)
+        if prev_sym:
+            if prev_sym.scope is self:
+                # re-declaration
+                msg = f'variable `{name}` already declared'
+            else:
+                # shadowing
+                msg = (f'variable `{name}` shadows a name declared ' +
+                       "in an outer scope")
+            err = SPyScopeError(msg)
+            err.add('error', 'this is the new declaration', loc)
+            err.add('note', 'this is the previous declaration', prev_sym.loc)
+            raise err
+
         self.symbols[name] = s = Symbol(name = name,
                                         color = color,
                                         loc = loc,
