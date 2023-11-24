@@ -163,8 +163,9 @@ class TypeChecker:
         for decl in mod.decls:
             self.check(decl, scope)
 
-    def declare_FuncDef(self, funcdef: spy.ast.FuncDef,
-                        scope: SymTable) -> None:
+    def declare_GlobalFuncDef(self, decl: spy.ast.GlobalFuncDef,
+                              scope: SymTable) -> None:
+        funcdef = decl.funcdef
         params = [
             FuncParam(
                 name = arg.name,
@@ -177,8 +178,9 @@ class TypeChecker:
         scope.declare(funcdef.name, 'const', w_functype, funcdef.loc)
         self.funcdef_types[funcdef] = w_functype
 
-    def check_FuncDef(self, funcdef: spy.ast.FuncDef,
-                      outer_scope: SymTable) -> None:
+    def check_GlobalFuncDef(self, decl: spy.ast.GlobalFuncDef,
+                            outer_scope: SymTable) -> None:
+        funcdef = decl.funcdef
         if funcdef.color == 'blue':
             return
         local_scope = SymTable(funcdef.name, parent=outer_scope)

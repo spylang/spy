@@ -2,7 +2,7 @@ import typing
 from typing import Optional, Literal, Iterator
 import pprint
 import ast as py_ast
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import extend
@@ -105,8 +105,8 @@ class Module(Node):
         Search for the FuncDef with the given name.
         """
         for decl in self.decls:
-            if isinstance(decl, FuncDef) and decl.name == name:
-                return decl
+            if isinstance(decl, GlobalFuncDef) and decl.funcdef.name == name:
+                return decl.funcdef
         raise KeyError(name)
 
 
@@ -115,20 +115,9 @@ class Decl(Node):
 
 
 @dataclass(eq=False)
-class FuncArg(Node):
-    loc: Loc
-    name: str
-    type: 'Expr'
-
-
-@dataclass(eq=False)
-class FuncDef(Decl):
-    loc: Loc
-    color: Color
-    name: str
-    args: list[FuncArg]
-    return_type: 'Expr'
-    body: list['Stmt']
+class GlobalFuncDef(Decl):
+    loc: Loc = field(repr=False)
+    funcdef: 'FuncDef'
 
 
 @dataclass(eq=False)
@@ -142,7 +131,7 @@ class GlobalVarDef(Decl):
 
 @dataclass(eq=False)
 class Import(Decl):
-    loc: Loc
+    loc: Loc = field(repr=False)
     loc_asname: Loc
     fqn: FQN
     asname: str
@@ -151,12 +140,12 @@ class Import(Decl):
 
 @dataclass(eq=False)
 class Expr(Node):
-    loc: Loc
+    loc: Loc = field(repr=False)
 
 @dataclass(eq=False)
 class Name(Expr):
     id: str
-
+    scope: str = 'unknown' # local, nonlocal, global
 
 @dataclass(eq=False)
 class Constant(Expr):
@@ -314,7 +303,22 @@ class NotIn(CompareOp):
 
 @dataclass(eq=False)
 class Stmt(Node):
-    loc: Loc
+    loc: Loc = field(repr=False)
+
+@dataclass(eq=False)
+class FuncArg(Node):
+    loc: Loc = field(repr=False)
+    name: str
+    type: 'Expr'
+
+@dataclass(eq=False)
+class FuncDef(Stmt):
+    loc: Loc = field(repr=False)
+    color: Color
+    name: str
+    args: list[FuncArg]
+    return_type: 'Expr'
+    body: list['Stmt']
 
 @dataclass(eq=False)
 class Pass(Stmt):
@@ -339,7 +343,7 @@ class StmtExpr(Stmt):
 
 @dataclass(eq=False)
 class Assign(Stmt):
-    target_loc: Loc
+    target_loc: Loc = field(repr=False)
     target: str
     value: Expr
 

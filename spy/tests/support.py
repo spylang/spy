@@ -161,6 +161,10 @@ def expect_errors(errors: list[str]) -> Any:
     with pytest.raises(SPyCompileError) as exc:
         yield exc
 
+    print()
+    print("=== Expected error ===")
+    print(exc.value.format(use_colors=True))
+
     err = exc.value
     all_messages = [err.message] + [ann.message for ann in err.annotations]
     for expected in errors:

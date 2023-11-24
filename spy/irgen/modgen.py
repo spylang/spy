@@ -4,11 +4,11 @@ from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.legacy_codegen import LegacyCodeGen
-from spy.irgen.codegen import CodeGen
 from spy.vm.vm import SPyVM, Builtins as B
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
-from spy.vm.function import W_FuncType, W_UserFunc
+from spy.vm.function import W_FuncType, W_UserFunc, W_ASTFunc
+from spy.vm.astframe import ASTFrame
 
 
 class ModuleGen:
@@ -44,16 +44,24 @@ class ModuleGen:
             self.make_w_mod_legacy()
             return self.w_mod
         #
-        w_INIT = self.gen_INIT()
-        self.vm.call_function(w_INIT, [])
+        # Synthesize and execute the __INIT__ function to populate the module
+        modinit_funcdef = self.make_modinit()
+        fqn = FQN(modname=self.modname, attr='__INIT__')
+        w_functype = W_FuncType.parse('def() -> void')
+        w_INIT = W_ASTFunc(fqn, w_functype, modinit_funcdef)
+        frame = ASTFrame(self.vm, w_INIT)
+        #
+        for decl in self.mod.decls:
+            if isinstance(decl, spy.ast.GlobalFuncDef):
+                self.gen_FuncDef(frame, decl.funcdef)
+            elif isinstance(decl, spy.ast.GlobalVarDef):
+                self.gen_GlobalVarDef(decl)
+        #
         return self.w_mod
 
-    def gen_INIT(self) -> W_UserFunc:
-        """
-        Synthesize the @blue __INIT__ function, which populates the module
-        """
+    def make_modinit(self) -> spy.ast.FuncDef:
         loc = Loc(str(self.file_spy), 1, 1, 1, 1)
-        modinit_funcdef = spy.ast.FuncDef(
+        return spy.ast.FuncDef(
             loc = loc,
             color = 'blue',
             name = f'__INIT__',
@@ -61,25 +69,12 @@ class ModuleGen:
             return_type = spy.ast.Name(loc=loc, id='object'),
             body = []
         )
-        self.codegen = CodeGen(self.vm, modinit_funcdef)
-        for decl in self.mod.decls:
-            if isinstance(decl, spy.ast.FuncDef):
-                self.gen_FuncDef(decl)
-            elif isinstance(decl, spy.ast.GlobalVarDef):
-                self.gen_GlobalVarDef(decl)
-        # epilogue
-        self.codegen.emit(loc, 'load_const', B.w_None)
-        self.codegen.emit(loc, 'return')
-        #
-        fqn = FQN(modname=self.modname, attr='__INIT__')
-        w_functype = W_FuncType.parse('def() -> void')
-        w_func = W_UserFunc(fqn, w_functype, self.codegen.w_code)
-        return w_func
 
-    def gen_FuncDef(self, funcdef: spy.ast.FuncDef) -> None:
+    def gen_FuncDef(self, frame: ASTFrame, funcdef: spy.ast.FuncDef) -> None:
         fqn = FQN(modname=self.modname, attr=funcdef.name)
-        self.codegen.gen_eval_FuncDef(funcdef)
-        self.codegen.emit(funcdef.loc, 'add_global', fqn)
+        frame.exec_stmt_FuncDef(funcdef)
+        w_func = frame.locals.get(funcdef.name)
+        self.vm.add_global(fqn, None, w_func)
 
     def gen_GlobalVarDef(self, vardef: spy.ast.GlobalVarDef) -> None:
         import pdb;pdb.set_trace()
@@ -89,11 +84,12 @@ class ModuleGen:
 
     def make_w_mod_legacy(self) -> None:
         for decl in self.mod.decls:
-            if isinstance(decl, spy.ast.FuncDef):
-                fqn = FQN(modname=self.modname, attr=decl.name)
-                w_type = self.t.global_scope.lookup_type(decl.name)
+            if isinstance(decl, spy.ast.GlobalFuncDef):
+                name = decl.funcdef.name
+                fqn = FQN(modname=self.modname, attr=name)
+                w_type = self.t.global_scope.lookup_type(name)
                 assert w_type is not None
-                w_func = self.make_w_func_legacy(decl)
+                w_func = self.make_w_func_legacy(decl.funcdef)
                 self.vm.add_global(fqn, w_type, w_func)
             elif isinstance(decl, spy.ast.GlobalVarDef):
                 assert isinstance(decl.vardef.value, spy.ast.Constant)

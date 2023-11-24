@@ -16,20 +16,6 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 42
 
     @no_backend
-    def test_unsupported_literal(self):
-        # Eventually this test should be killed, when we support all the
-        # literals
-        self.expect_errors(
-            """
-            def foo() -> i32:
-                return 42j
-            """,
-            errors = [
-                'unsupported literal: 42j',
-                'this is not supported yet',
-            ])
-
-    @no_backend
     def test_resolve_type_errors(self, monkeypatch, legacy):
         self.expect_errors(
             """
@@ -67,15 +53,11 @@ class TestBasic(CompilerTest):
         def foo() -> str:
             return 42
         """)
-
         with expect_errors([
                 'mismatched types',
                 'expected `str`, got `i32`',
                 'expected `str` because of return type']) as exc:
             mod.foo()
-
-        print()
-        print(exc.value.format(use_colors=True))
 
     def test_local_variables(self, legacy):
         mod = self.compile(

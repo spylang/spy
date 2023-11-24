@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+import spy.ast
 from spy.ast import Color
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
@@ -102,6 +103,20 @@ class W_UserFunc(W_Func):
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}'>"
+
+
+class W_ASTFunc(W_Func):
+    fqn: FQN
+    funcdef: spy.ast.FuncDef
+
+    def __init__(self, fqn: FQN, w_functype: W_FuncType,
+                 funcdef: spy.ast.FuncDef) -> None:
+        self.fqn = fqn
+        self.w_functype = w_functype
+        self.funcdef = funcdef
+
+    def __repr__(self) -> str:
+        return f"<spy function '{self.fqn}' (AST)>"
 
 
 class W_BuiltinFunc(W_Func):

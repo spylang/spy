@@ -26,7 +26,7 @@ class TestParser:
             self.parse(src)
 
     def assert_dump(self, node: spy.ast.Node, expected: str):
-        dumped = dump(node, use_colors=False)
+        dumped = dump(node, use_colors=False, fields_to_ignore=('scope',))
         expected = textwrap.dedent(expected)
         if '{tmpdir}' in expected:
             expected = expected.format(tmpdir=self.tmpdir)
@@ -41,14 +41,16 @@ class TestParser:
         Module(
             filename='{tmpdir}/test.spy',
             decls=[
-                FuncDef(
-                    color='red',
-                    name='foo',
-                    args=[],
-                    return_type=Name(id='void'),
-                    body=[
-                        Pass(),
-                    ],
+                GlobalFuncDef(
+                    funcdef=FuncDef(
+                        color='red',
+                        name='foo',
+                        args=[],
+                        return_type=Name(id='void'),
+                        body=[
+                            Pass(),
+                        ],
+                    ),
                 ),
             ],
         )
@@ -64,23 +66,25 @@ class TestParser:
         Module(
             filename='{tmpdir}/test.spy',
             decls=[
-                FuncDef(
-                    color='red',
-                    name='foo',
-                    args=[
-                        FuncArg(
-                            name='a',
-                            type=Name(id='i32'),
-                        ),
-                        FuncArg(
-                            name='b',
-                            type=Name(id='float'),
-                        ),
-                    ],
-                    return_type=Name(id='void'),
-                    body=[
-                        Pass(),
-                    ],
+                GlobalFuncDef(
+                    funcdef=FuncDef(
+                        color='red',
+                        name='foo',
+                        args=[
+                            FuncArg(
+                                name='a',
+                                type=Name(id='i32'),
+                            ),
+                            FuncArg(
+                                name='b',
+                                type=Name(id='float'),
+                            ),
+                        ],
+                        return_type=Name(id='void'),
+                        body=[
+                            Pass(),
+                        ],
+                    ),
                 ),
             ],
         )
@@ -202,6 +206,19 @@ class TestParser:
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_unsupported_literal(self):
+        # Eventually this test should be killed, when we support all the
+        # literals
+        self.expect_errors(
+            """
+            def foo() -> i32:
+                return 42j
+            """,
+            errors = [
+                'unsupported literal: 42j',
+                'this is not supported yet',
+            ])
 
     def test_GetItem(self):
         mod = self.parse("""
@@ -532,15 +549,16 @@ class TestParser:
         """)
         nodes: list[Any] = list(mod.walk())
         assert isclass(nodes[0], 'Module')
-        assert isclass(nodes[1], 'FuncDef')
-        assert isclass(nodes[2], 'Name') and nodes[2].id == 'void'
-        assert isclass(nodes[3], 'If')
-        assert isclass(nodes[4], 'Constant') and nodes[4].value is True
-        assert isclass(nodes[5], 'Assign') and nodes[5].target == 'x'
-        assert isclass(nodes[6], 'Add')
-        assert isclass(nodes[7], 'Name') and nodes[7].id == 'y'
-        assert isclass(nodes[8], 'Constant') and nodes[8].value == 1
-        assert len(nodes) == 9
+        assert isclass(nodes[1], 'GlobalFuncDef')
+        assert isclass(nodes[2], 'FuncDef')
+        assert isclass(nodes[3], 'Name') and nodes[3].id == 'void'
+        assert isclass(nodes[4], 'If')
+        assert isclass(nodes[5], 'Constant') and nodes[5].value is True
+        assert isclass(nodes[6], 'Assign') and nodes[6].target == 'x'
+        assert isclass(nodes[7], 'Add')
+        assert isclass(nodes[8], 'Name') and nodes[8].id == 'y'
+        assert isclass(nodes[9], 'Constant') and nodes[9].value == 1
+        assert len(nodes) == 10
         #
         nodes2 = list(mod.walk(spy.ast.Stmt))
         expected2 = [node for node in nodes if isinstance(node, spy.ast.Stmt)]
@@ -549,3 +567,38 @@ class TestParser:
         nodes3 = list(mod.walk(spy.ast.Expr))
         expected3 = [node for node in nodes if isinstance(node, spy.ast.Expr)]
         assert nodes3 == expected3
+
+    def test_inner_FuncDef(self):
+        mod = self.parse("""
+        @blue
+        def foo():
+            def bar() -> void:
+                pass
+        """)
+        expected = """
+        Module(
+            filename='{tmpdir}/test.spy',
+            decls=[
+                GlobalFuncDef(
+                    funcdef=FuncDef(
+                        color='blue',
+                        name='foo',
+                        args=[],
+                        return_type=Name(id='object'),
+                        body=[
+                            FuncDef(
+                                color='red',
+                                name='bar',
+                                args=[],
+                                return_type=Name(id='void'),
+                                body=[
+                                    Pass(),
+                                ],
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)

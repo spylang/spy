@@ -1,8 +1,8 @@
 from typing import Any, Literal, Optional
 import textwrap
 import pytest
-from spy.vm.vm import SPyVM
-from spy.vm.function import W_FuncType, W_UserFunc
+from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.function import W_FuncType, W_UserFunc, W_ASTFunc
 from spy.backend.interp import InterpModuleWrapper
 
 @pytest.mark.usefixtures('init')
@@ -46,6 +46,17 @@ class TestBlueMod:
         """)
         assert mod.foo(53) == 53
 
+    def test_load_global(self):
+        mod = self.import_("""
+        @blue
+        def foo():
+            return i32
+        """)
+        w_mod = mod.w_mod
+        w_foo = w_mod.getattr('foo')
+        w_res = self.vm.call_function(w_foo, [])
+        assert w_res is B.w_i32
+
     def test_make_function(self):
         mod = self.import_("""
         @blue
@@ -55,9 +66,9 @@ class TestBlueMod:
             return bar
         """)
         w_mod = mod.w_mod
-        w_foo = w_mod.getattr_userfunc('foo')
+        w_foo = w_mod.getattr('foo')
         w_bar = self.vm.call_function(w_foo, [])
-        assert isinstance(w_bar, W_UserFunc)
+        assert isinstance(w_bar, W_ASTFunc)
         assert w_bar.w_functype == W_FuncType.parse('def(x: i32) -> i32')
         w_42 = self.vm.wrap(42)
         assert self.vm.call_function(w_bar, [w_42]) is w_42
