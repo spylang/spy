@@ -21,6 +21,19 @@ class Annotation:
     message: str
     loc: Loc
 
+    def get_src(self) -> str:
+        """
+        Return the piece of source code pointed by the annotation.
+        """
+        loc = self.loc
+        filename = loc.filename
+        assert loc.line_start == loc.line_end, 'multi-line not supported'
+        line = loc.line_start
+        a = loc.col_start
+        b = loc.col_end
+        srcline = linecache.getline(filename, line)
+        return srcline[a:b]
+
 
 class ErrorFormatter:
     err: 'SPyError'
