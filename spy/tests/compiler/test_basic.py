@@ -192,20 +192,18 @@ class TestBasic(CompilerTest):
             with pytest.raises(SPyTypeError, match=msg):
                 mod.implicit_return_i32()
 
-
-    @no_backend
-    def test_BinOp_error(self, legacy):
-        self.expect_errors(
-            f"""
-            def bar(a: i32, b: str) -> void:
-                return a + b
-            """,
-            errors = [
-                'cannot do `i32` + `str`',
-                'this is `i32`',
-                'this is `str`',
-            ]
+    def test_BinOp_error(self):
+        ctx = expect_errors(
+            'cannot do `i32` + `str`',
+            ('this is `i32`', 'a'),
+            ('this is `str`', 'b'),
         )
+        with ctx:
+            mod = self.compile("""
+                def bar(a: i32, b: str) -> void:
+                    return a + b
+                """)
+            mod.bar(1, "hello")
 
     def test_function_call(self, legacy):
         mod = self.compile("""

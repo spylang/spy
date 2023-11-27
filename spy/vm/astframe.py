@@ -181,10 +181,13 @@ class ASTFrame:
                 return self.vm.wrap(l + r)
             elif binop.op == '*':
                 return self.vm.wrap(l * r)
-        raise NotImplementedError(
-            f'{binop.op} op between {w_ltype.name} and {w_rtype.name}')
         #
-        assert False, 'WIP'
+        l = w_ltype.name
+        r = w_rtype.name
+        err = SPyTypeError(f'cannot do `{l}` {binop.op} `{r}`')
+        err.add('error', f'this is `{l}`', binop.left.loc)
+        err.add('error', f'this is `{r}`', binop.right.loc)
+        raise err
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
