@@ -17,7 +17,8 @@ def make_w_mod_from_file(vm: SPyVM, f: py.path.local, legacy: bool) -> W_Module:
     parser = Parser.from_filename(str(f))
     mod = parser.parse()
     modname = f.purebasename
-    t: Any # just to silence mypy
+    t: Any      # just to silence mypy
+    scopes: Any # just to silence mypy
     if legacy:
         t = TypeChecker(vm, mod)
         t.check_everything()

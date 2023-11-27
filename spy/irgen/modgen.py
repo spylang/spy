@@ -82,8 +82,9 @@ class ModuleGen:
         self.vm.add_global(fqn, None, w_func)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, vardef: ast.VarDef) -> None:
+        assert vardef.value is not None, 'WIP?'
         fqn = FQN(modname=self.modname, attr=vardef.name)
-        w_type = frame.eval_expr(vardef.type)
+        w_type = frame.eval_expr_type(vardef.type)
         w_value = frame.eval_expr(vardef.value)
         self.vm.add_global(fqn, w_type, w_value)
 

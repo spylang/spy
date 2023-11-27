@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import spy.ast
 from spy.fqn import FQN
 from spy.location import Loc

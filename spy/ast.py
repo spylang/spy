@@ -9,7 +9,8 @@ from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
 Color = Literal["red", "blue"]
-Scope = Literal["local", "outer", "non-declared", "unknown"]
+Scope = Literal["local", "outer", "module", "builtins",
+                "non-declared", "unknown"]
 
 @extend(py_ast.AST)
 class AST:

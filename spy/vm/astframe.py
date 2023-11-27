@@ -114,7 +114,8 @@ class ASTFrame:
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
-        w_type = self.eval_expr(vardef.type)
+        assert vardef.value is not None, 'WIP?'
+        w_type = self.eval_expr_type(vardef.type)
         w_value = self.eval_expr(vardef.value)
         self.locals.declare(vardef.type.loc, vardef.name, w_type)
         self.locals.set(vardef.value.loc, vardef.name, w_value)
