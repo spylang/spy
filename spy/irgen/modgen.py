@@ -52,14 +52,14 @@ class ModuleGen:
         modinit_funcdef = self.make_modinit()
         fqn = FQN(modname=self.modname, attr='__INIT__')
         w_functype = W_FuncType.parse('def() -> void')
-        w_INIT = W_ASTFunc(fqn, w_functype, modinit_funcdef)
+        w_INIT = W_ASTFunc(fqn, self.modname, w_functype, modinit_funcdef)
         frame = ASTFrame(self.vm, w_INIT)
         #
         for decl in self.mod.decls:
             if isinstance(decl, ast.GlobalFuncDef):
                 self.gen_FuncDef(frame, decl.funcdef)
             elif isinstance(decl, ast.GlobalVarDef):
-                self.gen_GlobalVarDef(decl)
+                self.gen_GlobalVarDef(frame, decl.vardef)
         #
         return self.w_mod
 
@@ -80,9 +80,11 @@ class ModuleGen:
         w_func = frame.locals.get(funcdef.name)
         self.vm.add_global(fqn, None, w_func)
 
-    def gen_GlobalVarDef(self, vardef: ast.GlobalVarDef) -> None:
-        import pdb;pdb.set_trace()
-
+    def gen_GlobalVarDef(self, frame: ASTFrame, vardef: ast.VarDef) -> None:
+        fqn = FQN(modname=self.modname, attr=vardef.name)
+        w_type = frame.eval_expr(vardef.type)
+        w_value = frame.eval_expr(vardef.value)
+        self.vm.add_global(fqn, w_type, w_value)
 
     # ===== legacy stuff, to kill eventually =====
 

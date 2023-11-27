@@ -84,10 +84,12 @@ class ScopeAnalyzer:
             self.declare(stmt, inner_scope)
 
     def declare_Assign(self, assign: ast.Assign, scope: SymTable) -> None:
-        # if it's the first assignment, declare a new variable
+        # if target name does not exist elsewhere, we treat it as an implicit
+        # declaration
         name = assign.target
-        if name not in scope.symbols:
-            scope.declare(assign.target, 'red', assign.loc)
+        sym = scope.lookup(name)
+        if sym is None:
+            scope.declare(name, 'red', assign.loc)
 
     # ===
 
@@ -113,5 +115,9 @@ class ScopeAnalyzer:
             name.scope = 'non-declared'
         elif sym.scope is scope:
             name.scope = 'local'
+        elif sym.scope is self.mod_scope:
+            name.scope = 'module'
+        elif sym.scope is self.builtins_scope:
+            name.scope = 'builtins'
         else:
             name.scope = 'outer'

@@ -107,11 +107,16 @@ class W_UserFunc(W_Func):
 
 class W_ASTFunc(W_Func):
     fqn: FQN
+    modname: str
     funcdef: ast.FuncDef
 
-    def __init__(self, fqn: FQN, w_functype: W_FuncType,
+    def __init__(self,
+                 fqn: FQN,
+                 modname: str,
+                 w_functype: W_FuncType,
                  funcdef: ast.FuncDef) -> None:
         self.fqn = fqn
+        self.modname = modname
         self.w_functype = w_functype
         self.funcdef = funcdef
 

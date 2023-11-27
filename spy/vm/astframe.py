@@ -38,11 +38,21 @@ class ASTFrame:
         return f'<ASTFrame for {self.w_func.fqn}>'
 
     def run(self, args_w: list[W_Object]) -> W_Object:
+        from spy.vm.vm import Builtins as B
         self.init_arguments(args_w)
         try:
             for stmt in self.funcdef.body:
                 self.exec_stmt(stmt)
-            assert False, 'no return?'
+            #
+            # we reached the end of the function. If it's void, we can return
+            # None, else it's an error.
+            if self.w_func.w_functype.w_restype is B.w_void:
+                return B.w_None
+            else:
+                loc = self.w_func.funcdef.loc.make_end_loc()
+                msg = 'reached the end of the function without a `return`'
+                raise SPyRuntimeAbort.simple(msg, 'no return', loc)
+
         except Return as e:
             return e.w_value
 
@@ -96,7 +106,7 @@ class ASTFrame:
         #
         # create the w_func
         fqn = FQN(modname='???', attr=funcdef.name)
-        w_func = W_ASTFunc(fqn, w_functype, funcdef)
+        w_func = W_ASTFunc(fqn, self.w_func.modname, w_functype, funcdef)
         #
         # store it in the locals
         self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
@@ -110,14 +120,22 @@ class ASTFrame:
         self.locals.set(vardef.value.loc, vardef.name, w_value)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
+        # XXX this looks wrong. We need to add an AST field to keep track of
+        # which scope we want to assign to. For now we just assume that if
+        # it's not local, it's module.
         name = assign.target
-        assert name in self.funcdef.locals, 'XXX implement assig to outer'
         w_value = self.eval_expr(assign.value)
-        if name not in self.locals.types_w:
-            # first assignment, implicit declaration
-            w_type = self.vm.dynamic_type(w_value) # XXX should be static type
-            self.locals.declare(assign.loc, name, w_type)
-        self.locals.set(assign.value.loc, assign.target, w_value)
+        if name in self.funcdef.locals:
+            if name not in self.locals.types_w:
+                # first assignment, implicit declaration
+                w_type = self.vm.dynamic_type(w_value) # XXX static type?
+                self.locals.declare(assign.loc, name, w_type)
+            self.locals.set(assign.value.loc, assign.target, w_value)
+        else:
+            # we assume it's module-level.
+            # XXX we should check that this global is red/non-constant
+            fqn = FQN(modname=self.w_func.modname, attr=name)
+            self.vm.store_global(fqn, w_value)
 
     # ==== expressions ====
 
@@ -131,8 +149,12 @@ class ASTFrame:
     def eval_expr_Name(self, name: ast.Name) -> W_Object:
         if name.scope == 'local':
             return self.locals.get(name.id)
-        elif name.scope == 'outer':
-            # XXX for now we assume it's a builtin
+        elif name.scope == 'module':
+            fqn = FQN(modname=self.w_func.modname, attr=name.id)
+            w_value = self.vm.lookup_global(fqn)
+            assert w_value is not None
+            return w_value
+        elif name.scope == 'builtins':
             fqn = FQN(modname='builtins', attr=name.id)
             w_value = self.vm.lookup_global(fqn)
             assert w_value is not None

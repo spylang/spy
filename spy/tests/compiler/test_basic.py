@@ -124,7 +124,7 @@ class TestBasic(CompilerTest):
             """)
         assert mod.foo() == 42
 
-    def test_global_variables(self, legacy):
+    def test_global_variables(self):
         mod = self.compile(
         """
         x: i32 = 42
