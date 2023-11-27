@@ -145,16 +145,24 @@ class ASTFrame:
         else:
             assert False, f"Invalid value for scope: {name.scope}"
 
-    def eval_expr_Add(self, op: ast.Add) -> W_Object:
+    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_Object:
         from spy.vm.vm import Builtins as B
         # XXX we should use the static types
-        w_l = self.eval_expr(op.left)
-        w_r = self.eval_expr(op.right)
+        w_l = self.eval_expr(binop.left)
+        w_r = self.eval_expr(binop.right)
         w_ltype = self.vm.dynamic_type(w_l)
         w_rtype = self.vm.dynamic_type(w_r)
         if w_ltype is B.w_i32 and w_rtype is B.w_i32:
             l = self.vm.unwrap(w_l)
             r = self.vm.unwrap(w_r)
-            return self.vm.wrap(l + r)
+            if binop.op == '+':
+                return self.vm.wrap(l + r)
+            elif binop.op == '*':
+                return self.vm.wrap(l * r)
+        raise NotImplementedError(
+            f'{binop.op} op between {w_ltype.name} and {w_rtype.name}')
         #
         assert False, 'WIP'
+
+    eval_expr_Add = eval_expr_BinOp
+    eval_expr_Mul = eval_expr_BinOp

@@ -140,14 +140,14 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
-    def test_i32_add(self, legacy):
+    def test_i32_add(self):
         mod = self.compile("""
         def add(x: i32, y: i32) -> i32:
             return x + y
         """)
         assert mod.add(1, 2) == 3
 
-    def test_i32_mul(self, legacy):
+    def test_i32_mul(self):
         mod = self.compile("""
         def mul(x: i32, y: i32) -> i32:
             return x * y
