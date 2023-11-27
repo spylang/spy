@@ -1,6 +1,6 @@
 import pytest
 from spy.fqn import FQN
-from spy.errors import SPyRuntimeAbort
+from spy.errors import SPyTypeError
 from spy.vm.vm import Builtins as B
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors)
@@ -154,7 +154,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
-    def test_void_return(self, legacy):
+    def test_void_return(self):
         mod = self.compile("""
         x: i32 = 0
         def foo() -> void:
@@ -172,7 +172,7 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
-    def test_implicit_return(self, legacy):
+    def test_implicit_return(self):
         mod = self.compile("""
         x: i32 = 0
         def implicit_return_void() -> void:
@@ -189,7 +189,7 @@ class TestBasic(CompilerTest):
         if self.backend != 'C':
             # we don't support the opcode abort() in the C backend for now
             msg = 'reached the end of the function without a `return`'
-            with pytest.raises(SPyRuntimeAbort, match=msg):
+            with pytest.raises(SPyTypeError, match=msg):
                 mod.implicit_return_i32()
 
 

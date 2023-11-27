@@ -51,7 +51,7 @@ class ASTFrame:
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()
                 msg = 'reached the end of the function without a `return`'
-                raise SPyRuntimeAbort.simple(msg, 'no return', loc)
+                raise SPyTypeError.simple(msg, 'no return', loc)
 
         except Return as e:
             return e.w_value
