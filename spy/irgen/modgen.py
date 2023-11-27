@@ -3,7 +3,6 @@ from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
-from spy.irgen.legacy_codegen import LegacyCodeGen
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm.module import W_Module
@@ -30,7 +29,6 @@ class ModuleGen:
                  ) -> None:
         self.vm = vm
         self.scopes = scopes
-        self.t = t
         self.modname = modname
         self.mod = mod
         self.file_spy = file_spy
@@ -77,33 +75,3 @@ class ModuleGen:
         w_type = frame.eval_expr_type(vardef.type)
         w_value = frame.eval_expr_object(vardef.value)
         self.vm.add_global(fqn, w_type, w_value)
-
-    # ===== legacy stuff, to kill eventually =====
-
-    def make_w_mod_legacy(self) -> None:
-        for decl in self.mod.decls:
-            if isinstance(decl, ast.GlobalFuncDef):
-                name = decl.funcdef.name
-                fqn = FQN(modname=self.modname, attr=name)
-                w_type = self.t.global_scope.lookup_type(name)
-                assert w_type is not None
-                w_func = self.make_w_func_legacy(decl.funcdef)
-                self.vm.add_global(fqn, w_type, w_func)
-            elif isinstance(decl, ast.GlobalVarDef):
-                assert isinstance(decl.vardef.value, ast.Constant)
-                fqn = FQN(modname=self.modname, attr=decl.vardef.name)
-                w_type = self.t.global_scope.lookup_type(decl.vardef.name)
-                assert w_type is not None
-                w_const = self.t.get_w_const(decl.vardef.value)
-                self.vm.add_global(fqn, w_type, w_const)
-
-    def make_w_func_legacy(self, funcdef: ast.FuncDef) -> W_UserFunc:
-        assert self.legacy
-        assert funcdef.color == 'red'
-        w_functype = self.t.funcdef_types[funcdef]
-        fqn = FQN(modname=self.modname, attr=funcdef.name)
-        w_functype, scope = self.t.get_funcdef_info(funcdef)
-        codegen = LegacyCodeGen(self.vm, self.t, self.modname, funcdef)
-        w_code = codegen.make_w_code()
-        w_func = W_UserFunc(fqn, w_functype, w_code)
-        return w_func

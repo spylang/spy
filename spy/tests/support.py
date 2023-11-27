@@ -79,12 +79,9 @@ class CompilerTest:
     vm: SPyVM
 
     # <hack hack hack>
-    _legacy = False
-
     @pytest.fixture
     def legacy(self):
         pytest.skip("legacy")
-        self._legacy = True
 
     def expect_errors(self, src: str, errors: list[str]):
         raise NotImplementedError("KILL ME")
@@ -125,17 +122,14 @@ class CompilerTest:
         """
         modname = 'test'
         self.write_file(f'{modname}.spy', src)
-        self.w_mod = self.vm.import_(modname, legacy=self._legacy)
+        self.w_mod = self.vm.import_(modname)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
-
-            if not self._legacy:
-                pytest.skip("C backend only works with legacy")
-
+            pytest.skip("C backend is skipped for now")
             compiler = Compiler(self.vm, modname, self.builddir)
             file_wasm = compiler.cbuild()
             return WasmModuleWrapper(self.vm, modname, file_wasm)

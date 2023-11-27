@@ -18,5 +18,5 @@ def make_w_mod_from_file(vm: SPyVM, f: py.path.local) -> W_Module:
     modname = f.purebasename
     scopes = ScopeAnalyzer(vm, modname, mod)
     scopes.analyze()
-    modgen = ModuleGen(vm, scopes, modname, mod, f, legacy)
+    modgen = ModuleGen(vm, scopes, modname, mod, f)
     return modgen.make_w_mod()

@@ -38,8 +38,7 @@ class SPyVM:
         self.path = []
         self.make_builtins_module()
 
-    def import_(self, modname: str, *, legacy: bool = False) -> W_Module:
-        # XXX eventually we should kill "legacy"
+    def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file
         if modname in self.modules_w:
             return self.modules_w[modname]
@@ -48,7 +47,7 @@ class SPyVM:
         # mechanism and support for packages
         assert self.path, 'vm.path not set'
         file_spy = py.path.local(self.path[0]).join(f'{modname}.spy')
-        w_mod = make_w_mod_from_file(self, file_spy, legacy=legacy)
+        w_mod = make_w_mod_from_file(self, file_spy)
         self.modules_w[modname] = w_mod
         return w_mod
 
