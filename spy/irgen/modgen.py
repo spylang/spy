@@ -3,7 +3,6 @@ from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
-from spy.irgen.typechecker import TypeChecker
 from spy.irgen.legacy_codegen import LegacyCodeGen
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
@@ -21,17 +20,13 @@ class ModuleGen:
     modname: str
     mod: ast.Module
     scopes: ScopeAnalyzer
-    t: TypeChecker
-    legacy: bool # XXX kill me
 
     def __init__(self,
                  vm: SPyVM,
                  scopes: ScopeAnalyzer,
-                 t: TypeChecker,
                  modname: str,
                  mod: ast.Module,
                  file_spy: py.path.local,
-                 legacy: bool,
                  ) -> None:
         self.vm = vm
         self.scopes = scopes
@@ -39,15 +34,10 @@ class ModuleGen:
         self.modname = modname
         self.mod = mod
         self.file_spy = file_spy
-        self.legacy = legacy # XXX kill me
 
     def make_w_mod(self) -> W_Module:
         self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
         self.vm.register_module(self.w_mod)
-        if self.legacy:
-            # XXX kill me
-            self.make_w_mod_legacy()
-            return self.w_mod
         #
         # Synthesize and execute the __INIT__ function to populate the module
         modinit_funcdef = self.make_modinit()

@@ -1,5 +1,7 @@
 # mypy: ignore-errors
 
+assert False, 'no longer used, kill me eventually'
+
 from typing import NoReturn, Optional
 from types import NoneType
 import spy.ast
