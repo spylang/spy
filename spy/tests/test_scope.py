@@ -140,14 +140,14 @@ class TestScopeAnalyzer:
             args=[
                 FuncArg(
                     name='y',
-                    type=Name(id='i32', scope='outer'),
+                    type=Name(id='i32', scope='builtins'),
                 ),
             ],
-            return_type=Name(id='i32', scope='outer'),
+            return_type=Name(id='i32', scope='builtins'),
             body=[
                 Return(
                     value=Add(
-                        left=Name(id='x', scope='outer'),
+                        left=Name(id='x', scope='module'),
                         right=Name(id='y', scope='local'),
                     ),
                 ),
@@ -177,10 +177,10 @@ class TestScopeAnalyzer:
             args=[
                 FuncArg(
                     name='y',
-                    type=Name(id='i32', scope='outer'),
+                    type=Name(id='i32', scope='builtins'),
                 ),
             ],
-            return_type=Name(id='i32', scope='outer'),
+            return_type=Name(id='i32', scope='builtins'),
             body=[
                 Return(
                     value=Add(
