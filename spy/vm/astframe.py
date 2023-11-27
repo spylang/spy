@@ -29,6 +29,16 @@ class LocalVar:
     w_val: Optional[W_Object]  # None means "uninitialized"
 
 
+@dataclass
+class FrameVal:
+    """
+    Small wrapper around W_Object which also keeps track of its static type.
+    The naming convention is to call them fv_*.
+    """
+    w_static_type: W_Type
+    w_val: W_Object
+
+
 class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
@@ -54,12 +64,12 @@ class ASTFrame:
         v = self.locals[name]
         v.w_val = w_val
 
-    def load_local(self, name: str) -> W_Object:
+    def load_local(self, name: str) -> FrameVal:
         assert name in self.locals
         v = self.locals[name]
         if v.w_val is None:
             raise SPyRuntimeError('read from uninitialized local')
-        return v.w_val
+        return FrameVal(v.w_type, v.w_val)
 
     def typecheck_local(self, got_loc: Loc, name: str, w_got: W_Object) -> None:
         assert name in self.locals
@@ -115,23 +125,27 @@ class ASTFrame:
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, 'exec_stmt', stmt)
 
-    def eval_expr(self, expr: ast.Expr) -> W_Object:
+    def eval_expr(self, expr: ast.Expr) -> FrameVal:
         return magic_dispatch(self, 'eval_expr', expr)
 
+    def eval_expr_object(self, expr: ast.Expr) -> W_Object:
+        fv = self.eval_expr(expr)
+        return fv.w_val
+
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
-        w_val = self.eval_expr(expr)
-        if isinstance(w_val, W_Type):
-            return w_val
-        w_valtype = self.vm.dynamic_type(w_val)
+        fv = self.eval_expr(expr)
+        if isinstance(fv.w_val, W_Type):
+            return fv.w_val
+        w_valtype = self.vm.dynamic_type(fv.w_val)
         msg = f'expected `type`, got `{w_valtype.name}`'
         raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
 
     # ==== statements ====
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
-        w_value = self.eval_expr(stmt.value)
-        self.typecheck_local(stmt.loc, '@return', w_value)
-        raise Return(w_value)
+        fv = self.eval_expr(stmt.value)
+        self.typecheck_local(stmt.loc, '@return', fv.w_val)
+        raise Return(fv.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
@@ -156,7 +170,7 @@ class ASTFrame:
         assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
         assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
-        w_value = self.eval_expr(vardef.value)
+        w_value = self.eval_expr_object(vardef.value)
         self.declare_local(vardef.type.loc, vardef.name, w_type)
         self.store_local(vardef.value.loc, vardef.name, w_value)
 
@@ -165,11 +179,15 @@ class ASTFrame:
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
         name = assign.target
-        w_value = self.eval_expr(assign.value)
+        w_value = self.eval_expr_object(assign.value)
         if name in self.funcdef.locals:
+            # NOTE: we are consciously forgetting the STATIC type here. In the
+            # interpreter, what we care about is that the dynamic type is
+            # correct. It is the job of the doppler transformer to insert a
+            # downcast if necessary.
             if name not in self.locals:
                 # first assignment, implicit declaration
-                w_type = self.vm.dynamic_type(w_value) # XXX static type?
+                w_type = self.vm.dynamic_type(w_value)
                 self.declare_local(assign.loc, name, w_type)
             self.store_local(assign.value.loc, assign.target, w_value)
         else:
@@ -180,26 +198,29 @@ class ASTFrame:
 
     # ==== expressions ====
 
-    def eval_expr_Constant(self, const: ast.Constant) -> W_Object:
+    def eval_expr_Constant(self, const: ast.Constant) -> FrameVal:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
-        return self.vm.wrap(const.value)
+        w_val = self.vm.wrap(const.value)
+        w_type = self.vm.dynamic_type(w_val)
+        return FrameVal(w_type, w_val)
 
-    def eval_expr_Name(self, name: ast.Name) -> W_Object:
+    def eval_expr_Name(self, name: ast.Name) -> FrameVal:
         if name.scope == 'local':
             return self.load_local(name.id)
-        elif name.scope == 'module':
-            fqn = FQN(modname=self.w_func.modname, attr=name.id)
+        elif name.scope in ('module', 'builtins'):
+            if name.scope == 'builtins':
+                fqn = FQN(modname='builtins', attr=name.id)
+            else:
+                fqn = FQN(modname=self.w_func.modname, attr=name.id)
             w_value = self.vm.lookup_global(fqn)
             assert w_value is not None
-            return w_value
-        elif name.scope == 'builtins':
-            fqn = FQN(modname='builtins', attr=name.id)
-            w_value = self.vm.lookup_global(fqn)
-            assert w_value is not None
-            return w_value
+            # XXX this is wrong: we should keep track of the static type of
+            # FQNs :(
+            w_type = self.vm.dynamic_type(w_value)
+            return FrameVal(w_type, w_value)
         elif name.scope == 'non-declared':
             msg = f"name `{name.id}` is not defined"
             raise SPyNameError.simple(msg, "not found in this scope", name.loc)
@@ -208,26 +229,27 @@ class ASTFrame:
         else:
             assert False, f"Invalid value for scope: {name.scope}"
 
-    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_Object:
+    def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         from spy.vm.builtins import B
-        # XXX we should use the static types
-        w_l = self.eval_expr(binop.left)
-        w_r = self.eval_expr(binop.right)
-        w_ltype = self.vm.dynamic_type(w_l)
-        w_rtype = self.vm.dynamic_type(w_r)
+        fv_l = self.eval_expr(binop.left)
+        fv_r = self.eval_expr(binop.right)
+        # NOTE: we do the dispatch based on the STATIC types of the operands,
+        # not the dynamic ones.
+        w_ltype = fv_l.w_static_type
+        w_rtype = fv_r.w_static_type
         if w_ltype is B.w_i32 and w_rtype is B.w_i32:
-            l = self.vm.unwrap(w_l)
-            r = self.vm.unwrap(w_r)
+            l = self.vm.unwrap(fv_l.w_val)
+            r = self.vm.unwrap(fv_r.w_val)
             if binop.op == '+':
-                return self.vm.wrap(l + r)
+                return FrameVal(B.w_i32, self.vm.wrap(l + r))
             elif binop.op == '*':
-                return self.vm.wrap(l * r)
+                return FrameVal(B.w_i32, self.vm.wrap(l * r))
         #
-        l = w_ltype.name
-        r = w_rtype.name
-        err = SPyTypeError(f'cannot do `{l}` {binop.op} `{r}`')
-        err.add('error', f'this is `{l}`', binop.left.loc)
-        err.add('error', f'this is `{r}`', binop.right.loc)
+        lt = w_ltype.name
+        rt = w_rtype.name
+        err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
+        err.add('error', f'this is `{lt}`', binop.left.loc)
+        err.add('error', f'this is `{rt}`', binop.right.loc)
         raise err
 
     eval_expr_Add = eval_expr_BinOp

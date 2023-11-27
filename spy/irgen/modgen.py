@@ -78,14 +78,14 @@ class ModuleGen:
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
         fqn = FQN(modname=self.modname, attr=funcdef.name)
         frame.exec_stmt_FuncDef(funcdef)
-        w_func = frame.load_local(funcdef.name)
-        self.vm.add_global(fqn, None, w_func)
+        fv = frame.load_local(funcdef.name)
+        self.vm.add_global(fqn, None, fv.w_val)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, vardef: ast.VarDef) -> None:
         assert vardef.value is not None, 'WIP?'
         fqn = FQN(modname=self.modname, attr=vardef.name)
         w_type = frame.eval_expr_type(vardef.type)
-        w_value = frame.eval_expr(vardef.value)
+        w_value = frame.eval_expr_object(vardef.value)
         self.vm.add_global(fqn, w_type, w_value)
 
     # ===== legacy stuff, to kill eventually =====
