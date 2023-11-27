@@ -130,7 +130,7 @@ class Frame:
         assert len(arglocs) == len(params) == len(args_w)
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
             self.locals.declare(loc, param.name, param.w_type)
-            self.locals.set(param.name, w_arg)
+            self.locals.set(loc, param.name, w_arg)
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
@@ -141,7 +141,7 @@ class Frame:
                 n = len(self.stack)
                 assert n == 1, f'Wrong stack size upon return: {n}'
                 w_result = self.pop()
-                self.locals.typecheck('@return', op.loc, w_result)
+                self.locals.typecheck(op.loc, '@return', w_result)
                 return w_result
             else:
                 meth_name = f'op_{op.name}'
@@ -227,7 +227,7 @@ class Frame:
 
     def op_store_local(self, op: OpCode, varname: str) -> None:
         w_value = self.pop()
-        self.locals.set(varname, w_value)
+        self.locals.set(None, varname, w_value)
 
     def op_load_global(self, op: OpCode, fqn: FQN) -> None:
         w_value = self.vm.lookup_global(fqn)
