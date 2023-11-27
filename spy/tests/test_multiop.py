@@ -1,5 +1,5 @@
 from spy.irgen.multiop import MultiOp
-from spy.vm.vm import Builtins as B
+from spy.vm.builtins import B
 
 def test_simple():
     myadd = MultiOp('myadd', 2)

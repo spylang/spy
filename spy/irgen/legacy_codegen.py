@@ -5,7 +5,8 @@ from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import SymTable
 from spy.irgen import multiop
 from spy.errors import SPyError
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.object import W_Object
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_FuncType

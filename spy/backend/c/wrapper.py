@@ -9,7 +9,8 @@ from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.module import W_Module
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 
 
 class WasmModuleWrapper:

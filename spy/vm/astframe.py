@@ -4,6 +4,7 @@ from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import SPyRuntimeAbort, SPyTypeError, SPyNameError
+from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
@@ -38,7 +39,6 @@ class ASTFrame:
         return f'<ASTFrame for {self.w_func.fqn}>'
 
     def run(self, args_w: list[W_Object]) -> W_Object:
-        from spy.vm.vm import Builtins as B
         self.init_arguments(args_w)
         try:
             for stmt in self.funcdef.body:
@@ -168,7 +168,7 @@ class ASTFrame:
             assert False, f"Invalid value for scope: {name.scope}"
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_Object:
-        from spy.vm.vm import Builtins as B
+        from spy.vm.builtins import B
         # XXX we should use the static types
         w_l = self.eval_expr(binop.left)
         w_r = self.eval_expr(binop.right)

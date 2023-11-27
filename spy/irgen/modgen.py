@@ -5,7 +5,8 @@ from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.legacy_codegen import LegacyCodeGen
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType, W_UserFunc, W_ASTFunc

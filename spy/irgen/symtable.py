@@ -4,7 +4,8 @@ from spy.ast import Color
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import SPyScopeError
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.object import W_Type, W_Object
 
 Qualifier = Literal['var', 'const']

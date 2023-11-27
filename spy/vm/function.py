@@ -55,7 +55,7 @@ class W_FuncType(W_Type):
         It's meant to be used in tests, it's not robust at all, especially in
         case of wrong inputs. It supports only builtin types.
         """
-        from spy.vm.vm import Builtins as B
+        from spy.vm.builtins import B
         def parse_type(s: str) -> Any:
             return getattr(B, f'w_{s}')
 

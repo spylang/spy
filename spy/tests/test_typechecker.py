@@ -4,7 +4,8 @@ import pytest
 from spy.parser import Parser
 from spy.irgen.typechecker import TypeChecker
 from spy.irgen.symtable import Symbol
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.function import W_FuncType
 from spy.util import ANYTHING
 

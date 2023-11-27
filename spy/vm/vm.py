@@ -6,6 +6,7 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
+from spy.vm.builtins import B
 from spy.vm.function import (W_FuncType, W_Func, W_UserFunc, W_ASTFunc,
                              W_BuiltinFunc)
 from spy.vm.module import W_Module
@@ -14,26 +15,6 @@ from spy.vm.frame import Frame
 from spy.vm.astframe import ASTFrame
 
 
-class Builtins:
-    w_object = W_Object._w
-    w_type = W_Type._w
-    w_i32 = W_i32._w
-    w_bool = W_bool._w
-    w_void = W_void._w
-    w_str = W_str._w
-    w_None = W_void._w_singleton
-    w_True = W_bool._w_singleton_True
-    w_False = W_bool._w_singleton_False
-
-    w_abs = W_BuiltinFunc(
-        fqn = FQN('builtins::abs'),
-        w_functype = W_FuncType.make(x=w_i32, w_restype=w_i32),
-    )
-
-    @classmethod
-    def lookup(cls, name: str) -> Optional[W_Object]:
-        attr = 'w_' + name
-        return getattr(cls, attr, None)
 
 
 class SPyVM:
@@ -74,7 +55,7 @@ class SPyVM:
     def make_builtins_module(self) -> None:
         w_mod = W_Module(self, 'builtins', '<builtins>')
         self.register_module(w_mod)
-        for attr, w_obj in Builtins.__dict__.items():
+        for attr, w_obj in B.__dict__.items():
             if not isinstance(w_obj, W_Object):
                 continue
             assert attr.startswith('w_')
@@ -121,17 +102,17 @@ class SPyVM:
         assert isinstance(w_super, W_Type)
         assert isinstance(w_sub, W_Type)
         w_class = w_sub
-        while w_class is not Builtins.w_None:
+        while w_class is not B.w_None:
             if w_class is w_super:
                 return True
             w_class = w_class.w_base  # type:ignore
         return False
 
     def is_True(self, w_obj: W_bool) -> bool:
-        return w_obj is Builtins.w_True
+        return w_obj is B.w_True
 
     def is_False(self, w_obj: W_bool) -> bool:
-        return w_obj is Builtins.w_False
+        return w_obj is B.w_False
 
     def wrap(self, value: Any) -> W_Object:
         """
@@ -140,14 +121,14 @@ class SPyVM:
         """
         T = type(value)
         if value is None:
-            return Builtins.w_None
+            return B.w_None
         elif T in (int, fixedint.Int32):
             return W_i32(value)
         elif T is bool:
             if value:
-                return Builtins.w_True
+                return B.w_True
             else:
-                return Builtins.w_False
+                return B.w_False
         elif T is str:
             return W_str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
@@ -172,8 +153,7 @@ class SPyVM:
     def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
         # XXX: this check is wrong: we should define better what it means to
         # be "compatible", but we don't have this notion yet
-        return (w_type is Builtins.w_object or
-                self.dynamic_type(w_arg) is w_type)
+        return w_type is B.w_object or self.dynamic_type(w_arg) is w_type
 
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype

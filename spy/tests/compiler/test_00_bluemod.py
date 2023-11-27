@@ -1,7 +1,8 @@
 from typing import Any, Literal, Optional
 import textwrap
 import pytest
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.function import W_FuncType, W_UserFunc, W_ASTFunc
 from spy.backend.interp import InterpModuleWrapper
 

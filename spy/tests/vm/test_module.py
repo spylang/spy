@@ -1,6 +1,7 @@
 import pytest
 from spy.fqn import FQN
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.module import W_Module
 
 class TestModule:
