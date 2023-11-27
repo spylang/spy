@@ -115,28 +115,14 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
-    @no_backend
-    def test_assign_errors(self, legacy):
-        self.expect_errors(
+    def test_implicit_declaration(self):
+        mod = self.compile(
             """
-            def foo() -> void:
+            def foo() -> i32:
                 x = 42
-            """,
-            errors = [
-                'variable `x` is not declared',
-                'hint: to declare a new variable, you can use: `x: i32 = ...`',
-            ])
-        #
-        self.expect_errors(
-            """
-            def foo(x: str) -> void:
-                x = 42
-            """,
-            errors = [
-                'mismatched types',
-                'expected `str`, got `i32`',
-                'expected `str` because of type declaration',
-            ])
+                return x
+            """)
+        assert mod.foo() == 42
 
     def test_global_variables(self, legacy):
         mod = self.compile(
