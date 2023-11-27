@@ -44,7 +44,7 @@ class ScopeAnalyzer:
         for decl in self.mod.decls:
             self.declare(decl, self.mod_scope)
         for decl in self.mod.decls:
-            self.set_scope(decl, self.mod_scope)
+            self.fix(decl, self.mod_scope)
 
     def by_module(self) -> SymTable:
         return self.mod_scope
@@ -57,8 +57,12 @@ class ScopeAnalyzer:
     def declare(self, node: ast.Node, scope: SymTable) -> None:
         return node.visit('declare', self, scope)
 
-    def set_scope(self, node: ast.Node, scope: SymTable) -> None:
-        return node.visit('set_scope', self, scope)
+    def fix(self, node: ast.Node, scope: SymTable) -> None:
+        """
+        Update the AST nodes with the relevant info gathered during the
+        analysis. In particular, set Name.scope and FuncDef.locals.
+        """
+        return node.visit('fix', self, scope)
 
     # ====
 
@@ -80,28 +84,40 @@ class ScopeAnalyzer:
             self.declare(stmt, inner_scope)
 
     def declare_Assign(self, assign: ast.Assign, scope: SymTable) -> None:
-        scope.declare(assign.target, 'red', assign.loc)
+        # if target name does not exist elsewhere, we treat it as an implicit
+        # declaration
+        name = assign.target
+        sym = scope.lookup(name)
+        if sym is None:
+            scope.declare(name, 'red', assign.loc)
 
     # ===
 
-    def set_scope_FuncDef(self, funcdef: ast.FuncDef,
+    def fix_FuncDef(self, funcdef: ast.FuncDef,
                           outer_scope: SymTable) -> None:
         inner_scope = self.by_funcdef(funcdef)
         # the TYPES of the arguments are evaluated in the outer scope
-        self.set_scope(funcdef.return_type, outer_scope)
+        self.fix(funcdef.return_type, outer_scope)
         for arg in funcdef.args:
-            self.set_scope(arg, outer_scope)
+            self.fix(arg, outer_scope)
         #
         # the statements of the function are evaluated in the inner scope
         for stmt in funcdef.body:
-            self.set_scope(stmt, inner_scope)
+            self.fix(stmt, inner_scope)
+        #
+        funcdef.locals = set(inner_scope.symbols.keys())
 
-    def set_scope_Name(self, name: ast.Name, scope: SymTable) -> None:
+    def fix_Name(self, name: ast.Name, scope: SymTable) -> None:
         sym = scope.lookup(name.id)
-        # if the sym is None it means that the variable has not been
-        # declared. This should have been caught during the declare_* phase.
-        assert sym is not None
-        if sym.scope is scope:
+        if sym is None:
+            # in theory we could emit an error already here, but we want to be
+            # able to delay the error until the code is actually executed
+            name.scope = 'non-declared'
+        elif sym.scope is scope:
             name.scope = 'local'
+        elif sym.scope is self.mod_scope:
+            name.scope = 'module'
+        elif sym.scope is self.builtins_scope:
+            name.scope = 'builtins'
         else:
             name.scope = 'outer'

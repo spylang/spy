@@ -55,7 +55,7 @@ class W_FuncType(W_Type):
         It's meant to be used in tests, it's not robust at all, especially in
         case of wrong inputs. It supports only builtin types.
         """
-        from spy.vm.vm import Builtins as B
+        from spy.vm.builtins import B
         def parse_type(s: str) -> Any:
             return getattr(B, f'w_{s}')
 
@@ -107,11 +107,16 @@ class W_UserFunc(W_Func):
 
 class W_ASTFunc(W_Func):
     fqn: FQN
+    modname: str
     funcdef: ast.FuncDef
 
-    def __init__(self, fqn: FQN, w_functype: W_FuncType,
+    def __init__(self,
+                 fqn: FQN,
+                 modname: str,
+                 w_functype: W_FuncType,
                  funcdef: ast.FuncDef) -> None:
         self.fqn = fqn
+        self.modname = modname
         self.w_functype = w_functype
         self.funcdef = funcdef
 

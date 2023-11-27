@@ -1,7 +1,7 @@
 import typing
 import spy.ast
 from spy.irgen import multiop
-from spy.vm.vm import Builtins as B
+from spy.vm.builtins import B
 if typing.TYPE_CHECKING:
     from spy.irgen.legacy_codegen import LegacyCodeGen
 

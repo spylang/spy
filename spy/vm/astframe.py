@@ -3,7 +3,8 @@ from types import NoneType
 from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.errors import SPyRuntimeAbort, SPyTypeError
+from spy.errors import SPyRuntimeAbort, SPyTypeError, SPyNameError
+from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
@@ -42,7 +43,16 @@ class ASTFrame:
         try:
             for stmt in self.funcdef.body:
                 self.exec_stmt(stmt)
-            assert False, 'no return?'
+            #
+            # we reached the end of the function. If it's void, we can return
+            # None, else it's an error.
+            if self.w_func.w_functype.w_restype is B.w_void:
+                return B.w_None
+            else:
+                loc = self.w_func.funcdef.loc.make_end_loc()
+                msg = 'reached the end of the function without a `return`'
+                raise SPyTypeError.simple(msg, 'no return', loc)
+
         except Return as e:
             return e.w_value
 
@@ -60,22 +70,7 @@ class ASTFrame:
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
             self.locals.declare(loc, param.name, param.w_type)
-            self.locals.set(param.name, w_arg)
-
-    def typecheck_local(self, got_loc: Loc, varname: str,
-                        w_got: W_Object) -> None:
-        w_type = self.locals.types_w[varname]
-        if self.vm.is_compatible_type(w_got, w_type):
-            return
-        err = SPyTypeError('mismatched types')
-        got = self.vm.dynamic_type(w_got).name
-        exp = w_type.name
-        exp_loc = self.locals.locs[varname]
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
-        if varname == '@return':
-            because = 'because of return type'
-            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-        raise err
+            self.locals.set(loc, param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, 'exec_stmt', stmt)
@@ -95,15 +90,10 @@ class ASTFrame:
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
         w_value = self.eval_expr(stmt.value)
-        self.typecheck_local(stmt.loc, '@return', w_value)
+        self.locals.typecheck(stmt.loc, '@return', w_value)
         raise Return(w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        w_func = self.eval_FuncDef(funcdef)
-        self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
-        self.locals.set(funcdef.name, w_func)
-
-    def eval_FuncDef(self, funcdef: ast.FuncDef) -> W_ASTFunc:
         # evaluate the functype
         d = {}
         for arg in funcdef.args:
@@ -114,10 +104,38 @@ class ASTFrame:
             w_restype = w_restype,
             **d)
         #
+        # create the w_func
         fqn = FQN(modname='???', attr=funcdef.name)
-        return W_ASTFunc(fqn, w_functype, funcdef)
+        w_func = W_ASTFunc(fqn, self.w_func.modname, w_functype, funcdef)
+        #
+        # store it in the locals
+        self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
+        self.locals.set(funcdef.loc, funcdef.name, w_func)
 
+    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
+        w_type = self.eval_expr(vardef.type)
+        w_value = self.eval_expr(vardef.value)
+        self.locals.declare(vardef.type.loc, vardef.name, w_type)
+        self.locals.set(vardef.value.loc, vardef.name, w_value)
 
+    def exec_stmt_Assign(self, assign: ast.Assign) -> None:
+        # XXX this looks wrong. We need to add an AST field to keep track of
+        # which scope we want to assign to. For now we just assume that if
+        # it's not local, it's module.
+        name = assign.target
+        w_value = self.eval_expr(assign.value)
+        if name in self.funcdef.locals:
+            if name not in self.locals.types_w:
+                # first assignment, implicit declaration
+                w_type = self.vm.dynamic_type(w_value) # XXX static type?
+                self.locals.declare(assign.loc, name, w_type)
+            self.locals.set(assign.value.loc, assign.target, w_value)
+        else:
+            # we assume it's module-level.
+            # XXX we should check that this global is red/non-constant
+            fqn = FQN(modname=self.w_func.modname, attr=name)
+            self.vm.store_global(fqn, w_value)
 
     # ==== expressions ====
 
@@ -129,14 +147,47 @@ class ASTFrame:
         return self.vm.wrap(const.value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_Object:
-        assert name.scope != 'unknown', 'bug in the ScopeAnalyzer?'
-        # XXX typecheck?
         if name.scope == 'local':
             return self.locals.get(name.id)
-        else:
-            assert name.scope == 'outer'
-            # XXX for now we assume it's a builtin
+        elif name.scope == 'module':
+            fqn = FQN(modname=self.w_func.modname, attr=name.id)
+            w_value = self.vm.lookup_global(fqn)
+            assert w_value is not None
+            return w_value
+        elif name.scope == 'builtins':
             fqn = FQN(modname='builtins', attr=name.id)
             w_value = self.vm.lookup_global(fqn)
             assert w_value is not None
             return w_value
+        elif name.scope == 'non-declared':
+            msg = f"name `{name.id}` is not defined"
+            raise SPyNameError.simple(msg, "not found in this scope", name.loc)
+        elif name.scope == "unknown":
+            assert False, "bug in the ScopeAnalyzer?"
+        else:
+            assert False, f"Invalid value for scope: {name.scope}"
+
+    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_Object:
+        from spy.vm.builtins import B
+        # XXX we should use the static types
+        w_l = self.eval_expr(binop.left)
+        w_r = self.eval_expr(binop.right)
+        w_ltype = self.vm.dynamic_type(w_l)
+        w_rtype = self.vm.dynamic_type(w_r)
+        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+            l = self.vm.unwrap(w_l)
+            r = self.vm.unwrap(w_r)
+            if binop.op == '+':
+                return self.vm.wrap(l + r)
+            elif binop.op == '*':
+                return self.vm.wrap(l * r)
+        #
+        l = w_ltype.name
+        r = w_rtype.name
+        err = SPyTypeError(f'cannot do `{l}` {binop.op} `{r}`')
+        err.add('error', f'this is `{l}`', binop.left.loc)
+        err.add('error', f'this is `{r}`', binop.right.loc)
+        raise err
+
+    eval_expr_Add = eval_expr_BinOp
+    eval_expr_Mul = eval_expr_BinOp

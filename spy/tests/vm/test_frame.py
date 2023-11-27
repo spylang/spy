@@ -2,7 +2,8 @@ import pytest
 from typing import Optional
 from spy.fqn import FQN
 from spy.errors import SPyRuntimeError
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.object import W_Object
 from spy.vm.frame import Frame
 from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode

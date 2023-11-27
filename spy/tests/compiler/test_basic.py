@@ -1,7 +1,7 @@
 import pytest
 from spy.fqn import FQN
-from spy.errors import SPyRuntimeAbort
-from spy.vm.vm import Builtins as B
+from spy.errors import SPyTypeError
+from spy.vm.builtins import B
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors)
 
@@ -15,16 +15,29 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    @no_backend
-    def test_resolve_type_errors(self, monkeypatch, legacy):
-        self.expect_errors(
+    def test_NameError(self):
+        ctx = expect_errors(
+            'name `x` is not defined',
+            ('not found in this scope', 'x')
+        )
+        with ctx:
+            mod = self.compile(
             """
+            def foo() -> i32:
+                return x
+            """)
+            mod.foo()
+
+    def test_resolve_type_errors(self):
+        ctx = expect_errors(
+            'name `aaa` is not defined',
+            ('not found in this scope', 'aaa')
+        )
+        with ctx:
+            mod = self.compile("""
             def foo() -> aaa:
                 return 42
-            """,
-            errors = [
-                'unknown type `aaa`'
-            ])
+            """)
 
     def test_wrong_functype_restype(self):
         ctx = expect_errors(
@@ -61,7 +74,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    def test_local_variables(self, legacy):
+    def test_local_variables(self):
         mod = self.compile(
         """
         def foo() -> i32:
@@ -70,42 +83,20 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    @no_backend
-    def test_declare_variable_errors(self, legacy):
-        self.expect_errors(
-            """
-            def foo() -> i32:
-                x: i32 = 1
-                x: i32 = 2
-            """,
-            errors = [
-                'variable `x` already declared',
-                'this is the new declaration',
-                'this is the previous declaration',
-            ])
-        #
-        self.expect_errors(
-            """
+    def test_local_typecheck(self):
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `str`, got `i32`', '1'),
+            ('expected `str` because of type declaration', 'str'),
+        )
+        with ctx:
+            mod = self.compile("""
             def foo() -> i32:
                 x: str = 1
-            """,
-            errors = [
-                'mismatched types',
-                'expected `str`, got `i32`',
-                'expected `str` because of type declaration',
-            ])
-        #
-        self.expect_errors(
-            """
-            def foo() -> i32:
-                return x
-            """,
-            errors = [
-                'cannot find variable `x` in this scope',
-                'not found in this scope',
-            ])
+            """)
+            mod.foo()
 
-    def test_function_arguments(self, legacy):
+    def test_function_arguments(self):
         mod = self.compile(
         """
         def inc(x: i32) -> i32:
@@ -113,40 +104,27 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
-    def test_assign(self, legacy):
+    def test_assign(self):
         mod = self.compile(
         """
         def inc(x: i32) -> i32:
-            res: i32 = 0
-            res = x + 1
-            return res
+            a: i32 = 0
+            b = 1 # implicit declaration
+            a = x + b
+            return a
         """)
         assert mod.inc(100) == 101
 
-    @no_backend
-    def test_assign_errors(self, legacy):
-        self.expect_errors(
+    def test_implicit_declaration(self):
+        mod = self.compile(
             """
-            def foo() -> void:
+            def foo() -> i32:
                 x = 42
-            """,
-            errors = [
-                'variable `x` is not declared',
-                'hint: to declare a new variable, you can use: `x: i32 = ...`',
-            ])
-        #
-        self.expect_errors(
-            """
-            def foo(x: str) -> void:
-                x = 42
-            """,
-            errors = [
-                'mismatched types',
-                'expected `str`, got `i32`',
-                'expected `str` because of type declaration',
-            ])
+                return x
+            """)
+        assert mod.foo() == 42
 
-    def test_global_variables(self, legacy):
+    def test_global_variables(self):
         mod = self.compile(
         """
         x: i32 = 42
@@ -162,21 +140,21 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
-    def test_i32_add(self, legacy):
+    def test_i32_add(self):
         mod = self.compile("""
         def add(x: i32, y: i32) -> i32:
             return x + y
         """)
         assert mod.add(1, 2) == 3
 
-    def test_i32_mul(self, legacy):
+    def test_i32_mul(self):
         mod = self.compile("""
         def mul(x: i32, y: i32) -> i32:
             return x * y
         """)
         assert mod.mul(3, 4) == 12
 
-    def test_void_return(self, legacy):
+    def test_void_return(self):
         mod = self.compile("""
         x: i32 = 0
         def foo() -> void:
@@ -194,7 +172,7 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
-    def test_implicit_return(self, legacy):
+    def test_implicit_return(self):
         mod = self.compile("""
         x: i32 = 0
         def implicit_return_void() -> void:
@@ -211,23 +189,21 @@ class TestBasic(CompilerTest):
         if self.backend != 'C':
             # we don't support the opcode abort() in the C backend for now
             msg = 'reached the end of the function without a `return`'
-            with pytest.raises(SPyRuntimeAbort, match=msg):
+            with pytest.raises(SPyTypeError, match=msg):
                 mod.implicit_return_i32()
 
-
-    @no_backend
-    def test_BinOp_error(self, legacy):
-        self.expect_errors(
-            f"""
-            def bar(a: i32, b: str) -> void:
-                return a + b
-            """,
-            errors = [
-                'cannot do `i32` + `str`',
-                'this is `i32`',
-                'this is `str`',
-            ]
+    def test_BinOp_error(self):
+        ctx = expect_errors(
+            'cannot do `i32` + `str`',
+            ('this is `i32`', 'a'),
+            ('this is `str`', 'b'),
         )
+        with ctx:
+            mod = self.compile("""
+                def bar(a: i32, b: str) -> void:
+                    return a + b
+                """)
+            mod.bar(1, "hello")
 
     def test_function_call(self, legacy):
         mod = self.compile("""

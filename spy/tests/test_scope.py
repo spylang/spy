@@ -5,7 +5,8 @@ from spy.ast_dump import dump
 from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import Symbol, Color
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.tests.support import expect_errors, MatchAnnotation
 
 class MatchSymbol:
@@ -84,6 +85,20 @@ class TestScopeAnalyzer:
             'y': MatchSymbol('y', 'red'),
             'z': MatchSymbol('z', 'red'),
         }
+        assert funcdef.locals == {'x', 'y', 'z'}
+
+    def test_assign_does_not_redeclare(self):
+        scopes = self.analyze("""
+        def foo() -> void:
+            x: i32 = 0
+            x = 1
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.symbols == {
+            'x': MatchSymbol('x', 'red'),
+        }
+        assert funcdef.locals == {'x'}
 
     def test_cannot_redeclare(self):
         src = """
@@ -125,18 +140,19 @@ class TestScopeAnalyzer:
             args=[
                 FuncArg(
                     name='y',
-                    type=Name(id='i32', scope='outer'),
+                    type=Name(id='i32', scope='builtins'),
                 ),
             ],
-            return_type=Name(id='i32', scope='outer'),
+            return_type=Name(id='i32', scope='builtins'),
             body=[
                 Return(
                     value=Add(
-                        left=Name(id='x', scope='outer'),
+                        left=Name(id='x', scope='module'),
                         right=Name(id='y', scope='local'),
                     ),
                 ),
             ],
+            locals={'y'},
         )
         """
         self.assert_dump(funcdef, expected)
@@ -149,8 +165,11 @@ class TestScopeAnalyzer:
                 return x + y
         """)
         funcdef = self.mod.get_funcdef('foo')
+        assert funcdef.locals == {'x', 'bar'}
+        #
         funcdef_bar = funcdef.body[1]
         assert isinstance(funcdef_bar, ast.FuncDef)
+        assert funcdef_bar.locals == {'y'}
         expected = """
         FuncDef(
             color='red',
@@ -158,10 +177,10 @@ class TestScopeAnalyzer:
             args=[
                 FuncArg(
                     name='y',
-                    type=Name(id='i32', scope='outer'),
+                    type=Name(id='i32', scope='builtins'),
                 ),
             ],
-            return_type=Name(id='i32', scope='outer'),
+            return_type=Name(id='i32', scope='builtins'),
             body=[
                 Return(
                     value=Add(
@@ -170,6 +189,7 @@ class TestScopeAnalyzer:
                     ),
                 ),
             ],
+            locals={'y'},
         )
         """
         self.assert_dump(funcdef_bar, expected)

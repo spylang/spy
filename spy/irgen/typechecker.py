@@ -5,7 +5,8 @@ from spy.location import Loc
 from spy.errors import SPyTypeError, SPyImportError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
 from spy.irgen import multiop
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FuncType, FuncParam
 from spy.util import magic_dispatch

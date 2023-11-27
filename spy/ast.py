@@ -9,7 +9,7 @@ from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
 Color = Literal["red", "blue"]
-Scope = Literal["local", "outer", "unknown"]
+Scope = Literal["local", "outer", "non-declared", "unknown"]
 
 @extend(py_ast.AST)
 class AST:
@@ -341,6 +341,7 @@ class FuncDef(Stmt):
     args: list[FuncArg]
     return_type: 'Expr'
     body: list['Stmt']
+    locals: set[str] = field(repr=False, default_factory=set)
 
 @dataclass(eq=False)
 class Pass(Stmt):

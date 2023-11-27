@@ -7,7 +7,8 @@ from spy.vm.str import W_str
 from spy.vm.module import W_Module
 from spy.vm.function import W_UserFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.codeobject import OpCode
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 from spy.vm import helpers
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function

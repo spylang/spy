@@ -126,6 +126,11 @@ class SPyScopeError(SPyError):
     symtable.py
     """
 
+class SPyNameError(SPyError):
+    """
+    Raised if we try to access a variable which is not defined
+    """
+
 # ======
 
 class SPyRuntimeError(Exception):

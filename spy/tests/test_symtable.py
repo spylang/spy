@@ -2,7 +2,8 @@ import pytest
 import spy.ast
 from spy.location import Loc
 from spy.irgen.symtable import SymTable, SPyScopeError
-from spy.vm.vm import SPyVM, Builtins as B
+from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
 
 LOC = Loc('<fake loc>', 0, 0, 0, 0)
 

@@ -130,22 +130,7 @@ class Frame:
         assert len(arglocs) == len(params) == len(args_w)
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
             self.locals.declare(loc, param.name, param.w_type)
-            self.locals.set(param.name, w_arg)
-
-    def typecheck_local(self, got_loc: Loc, varname: str,
-                        w_got: W_Object) -> None:
-        w_type = self.locals.types_w[varname]
-        if self.vm.is_compatible_type(w_got, w_type):
-            return
-        err = SPyTypeError('mismatched types')
-        got = self.vm.dynamic_type(w_got).name
-        exp = w_type.name
-        exp_loc = self.locals.locs[varname]
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
-        if varname == '@return':
-            because = 'because of return type'
-            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-        raise err
+            self.locals.set(loc, param.name, w_arg)
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
@@ -156,7 +141,7 @@ class Frame:
                 n = len(self.stack)
                 assert n == 1, f'Wrong stack size upon return: {n}'
                 w_result = self.pop()
-                self.typecheck_local(op.loc, '@return', w_result)
+                self.locals.typecheck(op.loc, '@return', w_result)
                 return w_result
             else:
                 meth_name = f'op_{op.name}'
@@ -242,7 +227,7 @@ class Frame:
 
     def op_store_local(self, op: OpCode, varname: str) -> None:
         w_value = self.pop()
-        self.locals.set(varname, w_value)
+        self.locals.set(None, varname, w_value)
 
     def op_load_global(self, op: OpCode, fqn: FQN) -> None:
         w_value = self.vm.lookup_global(fqn)
