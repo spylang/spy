@@ -1,3 +1,5 @@
+# XXX kill me with the rest of legacy stuff
+
 from typing import Optional, TYPE_CHECKING
 from spy.location import Loc
 from spy.errors import SPyRuntimeError, SPyTypeError

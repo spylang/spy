@@ -1,14 +1,15 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 from types import NoneType
+from dataclasses import dataclass
 from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.errors import SPyRuntimeAbort, SPyTypeError, SPyNameError
+from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
+                        SPyRuntimeError)
 from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.varstorage import VarStorage
 from spy.vm.function import W_Func, W_UserFunc, W_FuncType, W_ASTFunc
 from spy.vm import helpers
 from spy.util import magic_dispatch
@@ -21,22 +22,61 @@ class Return(Exception):
     def __init__(self, w_value: W_Object) -> None:
         self.w_value = w_value
 
+@dataclass
+class LocalVar:
+    loc: Loc                   # location of the declaration
+    w_type: W_Type             # static type of the variable
+    w_val: Optional[W_Object]  # None means "uninitialized"
+
 
 class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
-    locals: VarStorage
+    locals: dict[str, LocalVar]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
-        self.locals = VarStorage(vm, f"'{self.funcdef.name} locals'")
+        self.locals = {}
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
+
+    def declare_local(self, loc: Loc, name: str, w_type: W_Type) -> None:
+        assert name not in self.locals, f'variable already declared: {name}'
+        self.locals[name] = LocalVar(loc, w_type, None)
+
+    def store_local(self, loc: Loc, name: str, w_val: W_Object) -> None:
+        self.typecheck_local(loc, name, w_val)
+        v = self.locals[name]
+        v.w_val = w_val
+
+    def load_local(self, name: str) -> W_Object:
+        assert name in self.locals
+        v = self.locals[name]
+        if v.w_val is None:
+            raise SPyRuntimeError('read from uninitialized local')
+        return v.w_val
+
+    def typecheck_local(self, got_loc: Loc, name: str, w_got: W_Object) -> None:
+        assert name in self.locals
+        v = self.locals[name]
+        if self.vm.is_compatible_type(w_got, v.w_type):
+            return
+        err = SPyTypeError('mismatched types')
+        got = self.vm.dynamic_type(w_got).name
+        exp = v.w_type.name
+        exp_loc = v.loc
+        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
+        if name == '@return':
+            because = 'because of return type'
+        else:
+            because = 'because of type declaration'
+        err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
+        raise err
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
@@ -63,14 +103,14 @@ class ASTFrame:
         """
         w_functype = self.w_func.w_functype
         # XXX do we need it?
-        self.locals.declare(self.funcdef.return_type.loc,
-                            '@return', w_functype.w_restype)
+        self.declare_local(self.funcdef.return_type.loc,
+                           '@return', w_functype.w_restype)
         #
         params = self.w_func.w_functype.params
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
-            self.locals.declare(loc, param.name, param.w_type)
-            self.locals.set(loc, param.name, w_arg)
+            self.declare_local(loc, param.name, param.w_type)
+            self.store_local(loc, param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, 'exec_stmt', stmt)
@@ -90,7 +130,7 @@ class ASTFrame:
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
         w_value = self.eval_expr(stmt.value)
-        self.locals.typecheck(stmt.loc, '@return', w_value)
+        self.typecheck_local(stmt.loc, '@return', w_value)
         raise Return(w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
@@ -109,16 +149,16 @@ class ASTFrame:
         w_func = W_ASTFunc(fqn, self.w_func.modname, w_functype, funcdef)
         #
         # store it in the locals
-        self.locals.declare(funcdef.loc, funcdef.name, w_func.w_functype)
-        self.locals.set(funcdef.loc, funcdef.name, w_func)
+        self.declare_local(funcdef.loc, funcdef.name, w_func.w_functype)
+        self.store_local(funcdef.loc, funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
         assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
         w_value = self.eval_expr(vardef.value)
-        self.locals.declare(vardef.type.loc, vardef.name, w_type)
-        self.locals.set(vardef.value.loc, vardef.name, w_value)
+        self.declare_local(vardef.type.loc, vardef.name, w_type)
+        self.store_local(vardef.value.loc, vardef.name, w_value)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         # XXX this looks wrong. We need to add an AST field to keep track of
@@ -127,11 +167,11 @@ class ASTFrame:
         name = assign.target
         w_value = self.eval_expr(assign.value)
         if name in self.funcdef.locals:
-            if name not in self.locals.types_w:
+            if name not in self.locals:
                 # first assignment, implicit declaration
                 w_type = self.vm.dynamic_type(w_value) # XXX static type?
-                self.locals.declare(assign.loc, name, w_type)
-            self.locals.set(assign.value.loc, assign.target, w_value)
+                self.declare_local(assign.loc, name, w_type)
+            self.store_local(assign.value.loc, assign.target, w_value)
         else:
             # we assume it's module-level.
             # XXX we should check that this global is red/non-constant
@@ -149,7 +189,7 @@ class ASTFrame:
 
     def eval_expr_Name(self, name: ast.Name) -> W_Object:
         if name.scope == 'local':
-            return self.locals.get(name.id)
+            return self.load_local(name.id)
         elif name.scope == 'module':
             fqn = FQN(modname=self.w_func.modname, attr=name.id)
             w_value = self.vm.lookup_global(fqn)
