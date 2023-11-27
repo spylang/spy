@@ -260,53 +260,50 @@ class TestBasic(CompilerTest):
             """)
             mod.bar()
 
-    @no_backend
-    def test_function_call_errors(self, legacy):
-        self.expect_errors(
-            f"""
+    def test_function_call_missing_args(self):
+        ctx = expect_errors(
+            'this function takes 1 argument but 0 arguments were supplied',
+            ('1 argument missing', 'inc'),
+            #('function defined here', 'def inc(x: i32) -> i32'),
+        )
+        with ctx:
+            mod = self.compile("""
             def inc(x: i32) -> i32:
                 return x+1
             def bar() -> void:
                 return inc()
-            """,
-            errors = [
-                'this function takes 1 argument but 0 arguments were supplied',
-                '1 argument missing',
-                'function defined here',
-            ]
-        )
+            """)
+            mod.bar()
 
-    @no_backend
-    def test_function_call_errors(self, legacy):
-        self.expect_errors(
-            f"""
+    def test_function_call_extra_args(self):
+        ctx = expect_errors(
+            'this function takes 1 argument but 3 arguments were supplied',
+            ('2 extra arguments', '2, 3'),
+            #('function defined here', 'def inc(x: i32) -> i32'),
+        )
+        with ctx:
+            mod = self.compile("""
             def inc(x: i32) -> i32:
                 return x+1
             def bar() -> void:
                 return inc(1, 2, 3)
-            """,
-            errors = [
-                'this function takes 1 argument but 3 arguments were supplied',
-                '2 extra arguments',
-                'function defined here',
-            ]
-        )
+            """)
+            mod.bar()
 
-    @no_backend
-    def test_function_call_errors(self, legacy):
-        self.expect_errors(
-            f"""
+    def test_function_call_type_mismatch(self):
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `i32`, got `str`', 's'),
+            #('function defined here', 'def inc(x: i32) -> i32'),
+        )
+        with ctx:
+            mod = self.compile("""
             def inc(x: i32) -> i32:
                 return x+1
             def bar(s: str) -> i32:
                 return inc(s)
-            """,
-            errors = [
-                'mismatched types',
-                'expected `i32`, got `str`',
-                'function defined here'
-            ]
-        )
+            """)
+            mod.bar("hello")
 
     def test_StmtExpr(self, legacy):
         mod = self.compile("""
