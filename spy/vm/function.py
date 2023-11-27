@@ -73,6 +73,10 @@ class W_FuncType(W_Type):
         w_restype = parse_type(res)
         return cls.make(w_restype=w_restype, **kwargs)
 
+    @property
+    def arity(self):
+        return len(self.params)
+
     def _str_sig(self) -> str:
         params = [f'{p.name}: {p.w_type.name}' for p in self.params]
         str_params = ', '.join(params)

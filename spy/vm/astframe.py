@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, NoReturn
 from types import NoneType
 from dataclasses import dataclass
 from spy import ast
@@ -223,3 +223,28 @@ class ASTFrame:
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
+
+    def eval_expr_Call(self, call: ast.Call) -> FrameVal:
+        fv_func = self.eval_expr(call.func)
+        w_func = fv_func.w_val
+        w_functype = fv_func.w_static_type
+
+        if not isinstance(w_functype, W_FuncType):
+            sym = None # ???
+            self._call_error_non_callable(call, sym, w_functype)
+
+
+        args_w = [self.eval_expr_object(arg) for arg in call.args]
+        w_res = self.vm.call_function(w_func, args_w)
+        # the static type of w_res depends on the static type of fv_func
+        assert self.vm.is_compatible_type(w_res, w_functype.w_restype)
+        return FrameVal(w_functype.w_restype, w_res)
+
+    def _call_error_non_callable(self, call: ast.Call,
+                                 loc: Optional[Loc],
+                                 w_type: W_Type) -> NoReturn:
+        err = SPyTypeError(f'cannot call objects of type `{w_type.name}`')
+        err.add('error', 'this is not a function', call.func.loc)
+        if loc:
+            err.add('note', 'variable defined here', loc)
+        raise err

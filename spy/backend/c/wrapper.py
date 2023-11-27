@@ -78,7 +78,7 @@ class WasmFuncWrapper:
 
     def from_py_args(self, py_args: Any) -> Any:
         a = len(py_args)
-        b = len(self.w_functype.params)
+        b = self.w_functype.arity
         if a != b:
             raise TypeError(f'{self.c_name}: expected {b} arguments, got {a}')
         #

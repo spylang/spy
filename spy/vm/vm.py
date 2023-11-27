@@ -156,7 +156,7 @@ class SPyVM:
 
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
-        assert len(w_functype.params) == len(args_w)
+        assert w_functype.arity == len(args_w)
         for param, w_arg in zip(w_functype.params, args_w):
             assert self.is_compatible_type(w_arg, param.w_type)
         #

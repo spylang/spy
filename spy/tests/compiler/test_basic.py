@@ -232,7 +232,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    def test_function_call(self, legacy):
+    def test_function_call(self):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:
             return x*100 + y*10 + z
@@ -243,21 +243,25 @@ class TestBasic(CompilerTest):
         assert mod.foo(1, 2, 3) == 123
         assert mod.bar(4) == 456
 
-    @no_backend
-    def test_function_call_errors(self, legacy):
-        self.expect_errors(
-            f"""
+    def test_cannot_call_non_functions(self):
+        # it would be nice to report also the location where 'inc' is defined,
+        # but we don't carry around this information for now. There is room
+        # for improvement
+        ctx = expect_errors(
+            'cannot call objects of type `i32`',
+            ('this is not a function', 'inc'),
+            #('variable defined here', 'inc: i32 = 0'),
+        )
+        with ctx:
+            mod = self.compile("""
             inc: i32 = 0
             def bar() -> void:
                 return inc(0)
-            """,
-            errors = [
-                'cannot call objects of type `i32`',
-                'this is not a function',
-                'variable defined here'
-            ]
-        )
-        #
+            """)
+            mod.bar()
+
+    @no_backend
+    def test_function_call_errors(self, legacy):
         self.expect_errors(
             f"""
             def inc(x: i32) -> i32:
@@ -271,7 +275,9 @@ class TestBasic(CompilerTest):
                 'function defined here',
             ]
         )
-        #
+
+    @no_backend
+    def test_function_call_errors(self, legacy):
         self.expect_errors(
             f"""
             def inc(x: i32) -> i32:
@@ -285,7 +291,9 @@ class TestBasic(CompilerTest):
                 'function defined here',
             ]
         )
-        #
+
+    @no_backend
+    def test_function_call_errors(self, legacy):
         self.expect_errors(
             f"""
             def inc(x: i32) -> i32:
