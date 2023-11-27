@@ -96,6 +96,16 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
+    def test_local_upcast_and_downcast(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            x: i32 = 1
+            # this works, but will insert a downcast in the compiled code
+            y: object = x
+            return y
+        """)
+        assert mod.foo() == 1
+
     def test_function_arguments(self):
         mod = self.compile(
         """
@@ -204,6 +214,23 @@ class TestBasic(CompilerTest):
                     return a + b
                 """)
             mod.bar(1, "hello")
+
+    def test_BinOp_is_dispatched_with_static_types(self):
+        # this fails because the static type of 'x' is object, even if its
+        # dynamic type is i32
+        ctx = expect_errors(
+            'cannot do `object` + `i32`',
+            ('this is `object`', 'a'),
+            ('this is `i32`', 'b'),
+        )
+        with ctx:
+            mod = self.compile("""
+            def foo() -> i32:
+                a: object = 1
+                b: i32 = 2
+                return a + b
+            """)
+            mod.foo()
 
     def test_function_call(self, legacy):
         mod = self.compile("""
