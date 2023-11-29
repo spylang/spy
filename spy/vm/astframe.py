@@ -12,6 +12,7 @@ from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_Func, W_UserFunc, W_FuncType, W_ASTFunc
 from spy.vm import helpers
+from spy.vm.typechecker import TypeChecker
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -21,12 +22,6 @@ class Return(Exception):
 
     def __init__(self, w_value: W_Object) -> None:
         self.w_value = w_value
-
-@dataclass
-class LocalVar:
-    loc: Loc                   # location of the declaration
-    w_type: W_Type             # static type of the variable
-    w_val: Optional[W_Object]  # None means "uninitialized"
 
 
 @dataclass
@@ -43,7 +38,7 @@ class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
-    locals: dict[str, LocalVar]
+    locals: dict[str, Optional[W_Object]]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
@@ -51,42 +46,27 @@ class ASTFrame:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.locals = {}
+        self.t = TypeChecker(vm)
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
 
     def declare_local(self, loc: Loc, name: str, w_type: W_Type) -> None:
         assert name not in self.locals, f'variable already declared: {name}'
-        self.locals[name] = LocalVar(loc, w_type, None)
+        self.t.declare_local(loc, name, w_type)
+        self.locals[name] = None
 
     def store_local(self, loc: Loc, name: str, w_val: W_Object) -> None:
-        self.typecheck_local(loc, name, w_val)
-        v = self.locals[name]
-        v.w_val = w_val
+        self.t.typecheck_local(loc, name, w_val)
+        self.locals[name] = w_val
 
     def load_local(self, name: str) -> FrameVal:
         assert name in self.locals
-        v = self.locals[name]
-        if v.w_val is None:
+        w_obj = self.locals[name]
+        if w_obj is None:
             raise SPyRuntimeError('read from uninitialized local')
-        return FrameVal(v.w_type, v.w_val)
-
-    def typecheck_local(self, got_loc: Loc, name: str, w_got: W_Object) -> None:
-        assert name in self.locals
-        v = self.locals[name]
-        if self.vm.is_compatible_type(w_got, v.w_type):
-            return
-        err = SPyTypeError('mismatched types')
-        got = self.vm.dynamic_type(w_got).name
-        exp = v.w_type.name
-        exp_loc = v.loc
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
-        if name == '@return':
-            because = 'because of return type'
-        else:
-            because = 'because of type declaration'
-        err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-        raise err
+        w_type = self.t.locals_types_w[name] # XXX
+        return FrameVal(w_type, w_obj)
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
@@ -144,7 +124,7 @@ class ASTFrame:
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
         fv = self.eval_expr(stmt.value)
-        self.typecheck_local(stmt.loc, '@return', fv.w_val)
+        self.t.typecheck_local(stmt.loc, '@return', fv.w_val)
         raise Return(fv.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
@@ -170,8 +150,8 @@ class ASTFrame:
         assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
         assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
-        w_value = self.eval_expr_object(vardef.value)
         self.declare_local(vardef.type.loc, vardef.name, w_type)
+        w_value = self.eval_expr_object(vardef.value)
         self.store_local(vardef.value.loc, vardef.name, w_value)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
