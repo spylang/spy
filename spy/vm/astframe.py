@@ -211,12 +211,10 @@ class ASTFrame:
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         from spy.vm.builtins import B
+        w_ltype = self.t.check_expr(binop.left)
+        w_rtype = self.t.check_expr(binop.right)
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
-        # NOTE: we do the dispatch based on the STATIC types of the operands,
-        # not the dynamic ones.
-        w_ltype = fv_l.w_static_type
-        w_rtype = fv_r.w_static_type
         if w_ltype is B.w_i32 and w_rtype is B.w_i32:
             l = self.vm.unwrap(fv_l.w_val)
             r = self.vm.unwrap(fv_r.w_val)
