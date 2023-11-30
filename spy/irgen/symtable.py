@@ -1,10 +1,11 @@
-from typing import Optional, Literal
+from typing import Optional, Literal, TYPE_CHECKING
 from dataclasses import dataclass, KW_ONLY
 from spy.ast import Color
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import SPyScopeError
-from spy.vm.vm import SPyVM
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 @dataclass
 class Symbol:
@@ -27,7 +28,7 @@ class SymTable:
         self.symbols = {}
 
     @classmethod
-    def from_builtins(cls, vm: SPyVM) -> 'SymTable':
+    def from_builtins(cls, vm: 'SPyVM') -> 'SymTable':
         res = cls('builtins', parent=None)
         loc = Loc(filename='<builtins>',
                   line_start=0,

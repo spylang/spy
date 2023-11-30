@@ -211,7 +211,7 @@ class CTest:
 
 def make_func(sig: str, body: list[OpCode]) -> W_UserFunc:
     w_functype = W_FuncType.parse(sig)
-    code = W_CodeObject.for_tests('fn', len(w_functype.params))
+    code = W_CodeObject.for_tests('fn', w_functype.arity)
     code.body = body
     w_func = W_UserFunc(FQN('test::fn'), w_functype, code)
     return w_func

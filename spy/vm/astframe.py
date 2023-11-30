@@ -1,16 +1,16 @@
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, NoReturn
 from types import NoneType
 from dataclasses import dataclass
 from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
-                        SPyRuntimeError)
+                        SPyRuntimeError, maybe_plural)
 from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_Func, W_UserFunc, W_FuncType, W_ASTFunc
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
 from spy.vm import helpers
 from spy.vm.typechecker import TypeChecker
 from spy.util import magic_dispatch
@@ -223,3 +223,12 @@ class ASTFrame:
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
+
+    def eval_expr_Call(self, call: ast.Call) -> FrameVal:
+        w_restype = self.t.check_expr_Call(call)
+        fv_func = self.eval_expr(call.func)
+        w_func = fv_func.w_value
+        assert isinstance(w_func, W_Func)
+        args_w = [self.eval_expr_object(arg) for arg in call.args]
+        w_res = self.vm.call_function(w_func, args_w)
+        return FrameVal(w_restype, w_res)

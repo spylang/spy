@@ -150,13 +150,18 @@ class SPyVM:
         return w_value.value
 
     def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
-        # XXX: this check is wrong: we should define better what it means to
-        # be "compatible", but we don't have this notion yet
+        # XXX kill this
         return w_type is B.w_object or self.dynamic_type(w_arg) is w_type
+
+    def can_assign_from_to(self, w_from: W_Type, w_to: W_Type) -> bool:
+        # XXX: this check is wrong: e.g., it should be possible to convert
+        # between floats and integers even if one is not a subclass of the
+        # other
+        return self.issubclass(w_from, w_to)
 
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
-        assert len(w_functype.params) == len(args_w)
+        assert w_functype.arity == len(args_w)
         for param, w_arg in zip(w_functype.params, args_w):
             assert self.is_compatible_type(w_arg, param.w_type)
         #
