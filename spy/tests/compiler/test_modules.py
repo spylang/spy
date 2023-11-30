@@ -1,3 +1,6 @@
+# mypy: ignore-errors
+# ^^^ remove this line when we re-enable these tests
+
 import pytest
 from spy.tests.support import CompilerTest, skip_backends, no_backend
 
@@ -33,7 +36,6 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    @skip_backends("C")
     def test_two_modules(self, legacy):
         self.write_file(
             "delta.spy",

@@ -1,5 +1,7 @@
 # mypy: ignore-errors
 
+assert False, 'no longer used, kill me'
+
 import spy.ast
 from spy.fqn import FQN
 from spy.location import Loc

@@ -12,6 +12,7 @@ from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_Func, W_UserFunc, W_FuncType, W_ASTFunc
 from spy.vm import helpers
+from spy.vm.typechecker import TypeChecker
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -22,12 +23,6 @@ class Return(Exception):
     def __init__(self, w_value: W_Object) -> None:
         self.w_value = w_value
 
-@dataclass
-class LocalVar:
-    loc: Loc                   # location of the declaration
-    w_type: W_Type             # static type of the variable
-    w_val: Optional[W_Object]  # None means "uninitialized"
-
 
 @dataclass
 class FrameVal:
@@ -36,14 +31,14 @@ class FrameVal:
     The naming convention is to call them fv_*.
     """
     w_static_type: W_Type
-    w_val: W_Object
+    w_value: W_Object
 
 
 class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
-    locals: dict[str, LocalVar]
+    locals: dict[str, Optional[W_Object]]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
@@ -51,42 +46,26 @@ class ASTFrame:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.locals = {}
+        self.t = TypeChecker(vm, self.w_func.modname)
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
 
     def declare_local(self, loc: Loc, name: str, w_type: W_Type) -> None:
         assert name not in self.locals, f'variable already declared: {name}'
-        self.locals[name] = LocalVar(loc, w_type, None)
+        self.t.declare_local(loc, name, w_type)
+        self.locals[name] = None
 
-    def store_local(self, loc: Loc, name: str, w_val: W_Object) -> None:
-        self.typecheck_local(loc, name, w_val)
-        v = self.locals[name]
-        v.w_val = w_val
+    def store_local(self, loc: Loc, name: str, w_value: W_Object) -> None:
+        self.t.typecheck_local(loc, name, w_value)
+        self.locals[name] = w_value
 
-    def load_local(self, name: str) -> FrameVal:
+    def load_local(self, name: str) -> W_Object:
         assert name in self.locals
-        v = self.locals[name]
-        if v.w_val is None:
+        w_obj = self.locals[name]
+        if w_obj is None:
             raise SPyRuntimeError('read from uninitialized local')
-        return FrameVal(v.w_type, v.w_val)
-
-    def typecheck_local(self, got_loc: Loc, name: str, w_got: W_Object) -> None:
-        assert name in self.locals
-        v = self.locals[name]
-        if self.vm.is_compatible_type(w_got, v.w_type):
-            return
-        err = SPyTypeError('mismatched types')
-        got = self.vm.dynamic_type(w_got).name
-        exp = v.w_type.name
-        exp_loc = v.loc
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
-        if name == '@return':
-            because = 'because of return type'
-        else:
-            because = 'because of type declaration'
-        err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-        raise err
+        return w_obj
 
     def run(self, args_w: list[W_Object]) -> W_Object:
         self.init_arguments(args_w)
@@ -126,17 +105,24 @@ class ASTFrame:
         return magic_dispatch(self, 'exec_stmt', stmt)
 
     def eval_expr(self, expr: ast.Expr) -> FrameVal:
+        """
+        Typecheck and eval the given expr.
+
+        Every concrete implementation of this MUST call the corresponding
+        self.t.check_*
+        """
         return magic_dispatch(self, 'eval_expr', expr)
 
     def eval_expr_object(self, expr: ast.Expr) -> W_Object:
         fv = self.eval_expr(expr)
-        return fv.w_val
+        return fv.w_value
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         fv = self.eval_expr(expr)
-        if isinstance(fv.w_val, W_Type):
-            return fv.w_val
-        w_valtype = self.vm.dynamic_type(fv.w_val)
+        if isinstance(fv.w_value, W_Type):
+            assert fv.w_static_type is B.w_type
+            return fv.w_value
+        w_valtype = self.vm.dynamic_type(fv.w_value)
         msg = f'expected `type`, got `{w_valtype.name}`'
         raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
 
@@ -144,8 +130,8 @@ class ASTFrame:
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
         fv = self.eval_expr(stmt.value)
-        self.typecheck_local(stmt.loc, '@return', fv.w_val)
-        raise Return(fv.w_val)
+        self.t.typecheck_local(stmt.loc, '@return', fv.w_value)
+        raise Return(fv.w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
@@ -170,8 +156,8 @@ class ASTFrame:
         assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
         assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
-        w_value = self.eval_expr_object(vardef.value)
         self.declare_local(vardef.type.loc, vardef.name, w_type)
+        w_value = self.eval_expr_object(vardef.value)
         self.store_local(vardef.value.loc, vardef.name, w_value)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
@@ -179,22 +165,17 @@ class ASTFrame:
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
         name = assign.target
-        w_value = self.eval_expr_object(assign.value)
+        fv = self.eval_expr(assign.value)
         if name in self.funcdef.locals:
-            # NOTE: we are consciously forgetting the STATIC type here. In the
-            # interpreter, what we care about is that the dynamic type is
-            # correct. It is the job of the doppler transformer to insert a
-            # downcast if necessary.
             if name not in self.locals:
                 # first assignment, implicit declaration
-                w_type = self.vm.dynamic_type(w_value)
-                self.declare_local(assign.loc, name, w_type)
-            self.store_local(assign.value.loc, assign.target, w_value)
+                self.declare_local(assign.loc, name, fv.w_static_type)
+            self.store_local(assign.value.loc, assign.target, fv.w_value)
         else:
             # we assume it's module-level.
             # XXX we should check that this global is red/non-constant
             fqn = FQN(modname=self.w_func.modname, attr=name)
-            self.vm.store_global(fqn, w_value)
+            self.vm.store_global(fqn, fv.w_value)
 
     # ==== expressions ====
 
@@ -203,54 +184,42 @@ class ASTFrame:
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
-        w_val = self.vm.wrap(const.value)
-        w_type = self.vm.dynamic_type(w_val)
-        return FrameVal(w_type, w_val)
+        w_type = self.t.check_expr_Constant(const)
+        w_value = self.vm.wrap(const.value)
+        return FrameVal(w_type, w_value)
 
     def eval_expr_Name(self, name: ast.Name) -> FrameVal:
+        w_type = self.t.check_expr_Name(name)
         if name.scope == 'local':
-            return self.load_local(name.id)
+            w_value = self.load_local(name.id)
+            return FrameVal(w_type, w_value)
         elif name.scope in ('module', 'builtins'):
             if name.scope == 'builtins':
                 fqn = FQN(modname='builtins', attr=name.id)
             else:
                 fqn = FQN(modname=self.w_func.modname, attr=name.id)
-            w_value = self.vm.lookup_global(fqn)
-            assert w_value is not None
-            # XXX this is wrong: we should keep track of the static type of
-            # FQNs :(
-            w_type = self.vm.dynamic_type(w_value)
-            return FrameVal(w_type, w_value)
-        elif name.scope == 'non-declared':
-            msg = f"name `{name.id}` is not defined"
-            raise SPyNameError.simple(msg, "not found in this scope", name.loc)
-        elif name.scope == "unknown":
-            assert False, "bug in the ScopeAnalyzer?"
+            w_value2 = self.vm.lookup_global(fqn)
+            assert w_value2 is not None, \
+                f'{fqn} not found. Bug in the ScopeAnalyzer?'
+            return FrameVal(w_type, w_value2)
         else:
-            assert False, f"Invalid value for scope: {name.scope}"
+            assert False, f'Invalid scope {name.scope}. Bug in the TypeChecker?'
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
-        from spy.vm.builtins import B
+        self.t.check_expr_BinOp(binop)
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
-        # NOTE: we do the dispatch based on the STATIC types of the operands,
-        # not the dynamic ones.
         w_ltype = fv_l.w_static_type
         w_rtype = fv_r.w_static_type
         if w_ltype is B.w_i32 and w_rtype is B.w_i32:
-            l = self.vm.unwrap(fv_l.w_val)
-            r = self.vm.unwrap(fv_r.w_val)
+            l = self.vm.unwrap(fv_l.w_value)
+            r = self.vm.unwrap(fv_r.w_value)
             if binop.op == '+':
                 return FrameVal(B.w_i32, self.vm.wrap(l + r))
             elif binop.op == '*':
                 return FrameVal(B.w_i32, self.vm.wrap(l * r))
         #
-        lt = w_ltype.name
-        rt = w_rtype.name
-        err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
-        err.add('error', f'this is `{lt}`', binop.left.loc)
-        err.add('error', f'this is `{rt}`', binop.right.loc)
-        raise err
+        assert False, 'Unsupported binop, bug in the typechecker'
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
