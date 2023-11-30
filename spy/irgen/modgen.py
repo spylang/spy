@@ -66,8 +66,8 @@ class ModuleGen:
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
         fqn = FQN(modname=self.modname, attr=funcdef.name)
         frame.exec_stmt_FuncDef(funcdef)
-        fv = frame.load_local(funcdef.name)
-        self.vm.add_global(fqn, None, fv.w_val)
+        w_func = frame.load_local(funcdef.name)
+        self.vm.add_global(fqn, None, w_func)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, vardef: ast.VarDef) -> None:
         assert vardef.value is not None, 'WIP?'
