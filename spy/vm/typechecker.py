@@ -89,3 +89,16 @@ class TypeChecker:
         elif T is NoneType:
             return B.w_void
         assert False
+
+    def check_expr_BinOp(self, binop: ast.BinOp) -> W_Type:
+        w_ltype = self.check_expr(binop.left)
+        w_rtype = self.check_expr(binop.right)
+        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+            return B.w_i32
+        #
+        lt = w_ltype.name
+        rt = w_rtype.name
+        err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
+        err.add('error', f'this is `{lt}`', binop.left.loc)
+        err.add('error', f'this is `{rt}`', binop.right.loc)
+        raise err

@@ -105,6 +105,12 @@ class ASTFrame:
         return magic_dispatch(self, 'exec_stmt', stmt)
 
     def eval_expr(self, expr: ast.Expr) -> FrameVal:
+        """
+        Typecheck and eval the given expr.
+
+        Every concrete implementation of this MUST call the corresponding
+        self.t.check_*
+        """
         return magic_dispatch(self, 'eval_expr', expr)
 
     def eval_expr_object(self, expr: ast.Expr) -> W_Object:
@@ -198,6 +204,7 @@ class ASTFrame:
             assert False, f'Invalid scope {name.scope}. Bug in the TypeChecker?'
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
+        self.t.check_expr_BinOp(binop)
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
         w_ltype = fv_l.w_static_type
@@ -210,12 +217,7 @@ class ASTFrame:
             elif binop.op == '*':
                 return FrameVal(B.w_i32, self.vm.wrap(l * r))
         #
-        lt = w_ltype.name
-        rt = w_rtype.name
-        err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
-        err.add('error', f'this is `{lt}`', binop.left.loc)
-        err.add('error', f'this is `{rt}`', binop.right.loc)
-        raise err
+        assert False, 'Unsupported binop, bug in the typechecker'
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
