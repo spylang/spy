@@ -10,7 +10,7 @@ from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_Func, W_UserFunc, W_FuncType, W_ASTFunc
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
 from spy.vm import helpers
 from spy.vm.typechecker import TypeChecker
 from spy.util import magic_dispatch
@@ -225,87 +225,10 @@ class ASTFrame:
     eval_expr_Mul = eval_expr_BinOp
 
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
+        w_restype = self.t.check_expr_Call(call)
         fv_func = self.eval_expr(call.func)
-        w_func = fv_func.w_val
-        w_functype = fv_func.w_static_type
-        decl_loc = None # XXX find the loc where the function is defined
-        if not isinstance(w_functype, W_FuncType):
-            self._call_error_non_callable(call, decl_loc, w_functype)
-
+        w_func = fv_func.w_value
+        assert isinstance(w_func, W_Func)
         args_w = [self.eval_expr_object(arg) for arg in call.args]
-        got_nargs = len(args_w)
-        exp_nargs = w_functype.arity
-        if got_nargs != exp_nargs:
-            self._call_error_wrong_argcount(call, decl_loc,
-                                            got_nargs, exp_nargs)
-
-        for (arg, param, w_arg) in zip(call.args,
-                                       w_functype.params,
-                                       args_w,
-                                       strict=True):
-            if not self.vm.is_compatible_type(w_arg, param.w_type):
-                w_arg_type = self.vm.dynamic_type(w_arg)
-                self._call_error_type_mismatch(call,
-                                               decl_loc,
-                                               arg.loc,
-                                               w_exp_type = param.w_type,
-                                               w_got_type = w_arg_type)
-
-
         w_res = self.vm.call_function(w_func, args_w)
-        # the static type of w_res depends on the static type of fv_func
-        assert self.vm.is_compatible_type(w_res, w_functype.w_restype)
-        return FrameVal(w_functype.w_restype, w_res)
-
-    def _call_error_non_callable(self, call: ast.Call,
-                                 decl_loc: Optional[Loc],
-                                 w_type: W_Type) -> NoReturn:
-        err = SPyTypeError(f'cannot call objects of type `{w_type.name}`')
-        err.add('error', 'this is not a function', call.func.loc)
-        if decl_loc:
-            err.add('note', 'variable defined here', decl_loc)
-        raise err
-
-    def _call_error_wrong_argcount(self, call: ast.Call,
-                                   decl_loc: Optional[Loc],
-                                   got: int, exp: int) -> NoReturn:
-        assert got != exp
-        takes = maybe_plural(exp, f'takes {exp} argument')
-        supplied = maybe_plural(got,
-                                f'1 argument was supplied',
-                                f'{got} arguments were supplied')
-        err = SPyTypeError(f'this function {takes} but {supplied}')
-        #
-        if got < exp:
-            diff = exp - got
-            arguments = maybe_plural(diff, 'argument')
-            err.add('error', f'{diff} {arguments} missing', call.func.loc)
-        else:
-            diff = got - exp
-            arguments = maybe_plural(diff, 'argument')
-            first_extra_arg = call.args[exp]
-            last_extra_arg = call.args[-1]
-            # XXX this assumes that all the arguments are on the same line
-            loc = first_extra_arg.loc.replace(
-                col_end = last_extra_arg.loc.col_end
-            )
-            err.add('error', f'{diff} extra {arguments}', loc)
-        #
-        if decl_loc:
-            err.add('note', 'function defined here', decl_loc)
-        raise err
-
-    def _call_error_type_mismatch(self,
-                                  call: ast.Call,
-                                  decl_loc: Optional[Loc],
-                                  arg_loc: Loc,
-                                  w_exp_type: W_Type,
-                                  w_got_type: W_Type
-                                  ) -> NoReturn:
-        err = SPyTypeError('mismatched types')
-        exp = w_exp_type.name
-        got = w_got_type.name
-        err.add('error', f'expected `{exp}`, got `{got}`', arg_loc)
-        if decl_loc:
-            err.add('note', 'function defined here', decl_loc)
-        raise err
+        return FrameVal(w_restype, w_res)

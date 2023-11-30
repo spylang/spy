@@ -74,7 +74,7 @@ class W_FuncType(W_Type):
         return cls.make(w_restype=w_restype, **kwargs)
 
     @property
-    def arity(self):
+    def arity(self) -> int:
         return len(self.params)
 
     def _str_sig(self) -> str:
