@@ -198,8 +198,10 @@ class ASTFrame:
                 fqn = FQN(modname='builtins', attr=name.id)
             else:
                 fqn = FQN(modname=self.w_func.modname, attr=name.id)
-            w_value = self.vm.lookup_global(fqn)
-            return FrameVal(w_type, w_value)
+            w_value2 = self.vm.lookup_global(fqn)
+            assert w_value2 is not None, \
+                f'{fqn} not found. Bug in the ScopeAnalyzer?'
+            return FrameVal(w_type, w_value2)
         else:
             assert False, f'Invalid scope {name.scope}. Bug in the TypeChecker?'
 
