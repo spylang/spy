@@ -1,3 +1,4 @@
+from typing import Any
 import textwrap
 import pytest
 from spy import ast
@@ -13,15 +14,17 @@ class MatchSymbol:
     """
     Helper class which compares equals to Symbol if the specified fields match
     """
-    def __init__(self, name: str, color: Color):
+    def __init__(self, name: str, color: Color, level: int = 0):
         self.name = name
         self.color = color
+        self.level = level
 
     def __eq__(self, sym: object) -> bool:
         if not isinstance(sym, Symbol):
             return NotImplemented
         return (self.name == sym.name and
-                self.color == sym.color)
+                self.color == sym.color and
+                self.level == sym.level)
 
 
 @pytest.mark.usefixtures('init')
@@ -46,13 +49,6 @@ class TestScopeAnalyzer:
         with expect_errors(main, *anns):
             self.analyze(src)
 
-    def assert_dump(self, node: ast.Node, expected: str):
-        dumped = dump(node, use_colors=False)
-        expected = textwrap.dedent(expected)
-        if '{tmpdir}' in expected:
-            expected = expected.format(tmpdir=self.tmpdir)
-        assert dumped.strip() == expected.strip()
-
     def test_global(self):
         scopes = self.analyze("""
         x: i32 = 0
@@ -69,8 +65,8 @@ class TestScopeAnalyzer:
             'foo': MatchSymbol('foo', 'blue'),
             'bar': MatchSymbol('bar', 'blue'),
             # captured
-            'i32': MatchSymbol('i32', 'blue'),
-            'void': MatchSymbol('void', 'blue'),
+            'i32': MatchSymbol('i32', 'blue', level=1),
+            'void': MatchSymbol('void', 'blue', level=1),
         }
 
     def test_funcargs_and_locals(self):
@@ -87,7 +83,7 @@ class TestScopeAnalyzer:
             'y': MatchSymbol('y', 'red'),
             'z': MatchSymbol('z', 'red'),
             # captured
-            'i32': MatchSymbol('i32', 'blue'),
+            'i32': MatchSymbol('i32', 'blue', level=1),
         }
         assert funcdef.symtable is scope
 
@@ -101,7 +97,7 @@ class TestScopeAnalyzer:
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
-            'i32': MatchSymbol('i32', 'blue'),
+            'i32': MatchSymbol('i32', 'blue', level=2),
         }
 
     def test_cannot_redeclare(self):
@@ -131,7 +127,7 @@ class TestScopeAnalyzer:
         )
 
     def test_inner_funcdef(self):
-        self.analyze("""
+        scopes = self.analyze("""
         def foo() -> void:
             x: i32 = 0
             def bar(y: i32) -> i32:
@@ -141,12 +137,12 @@ class TestScopeAnalyzer:
         assert foodef.symtable._symbols == {
             'x': MatchSymbol('x', 'red'),
             'bar': MatchSymbol('bar', 'blue'),
-            'i32': MatchSymbol('i32', 'blue'),
+            'i32': MatchSymbol('i32', 'blue', level=2),
         }
         #
         bardef = foodef.body[1]
         assert isinstance(bardef, ast.FuncDef)
         assert bardef.symtable._symbols == {
             'y': MatchSymbol('y', 'red'),
-            'x': MatchSymbol('x', 'red'),
+            'x': MatchSymbol('x', 'red', level=1),
         }

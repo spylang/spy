@@ -59,14 +59,16 @@ class TypeChecker:
         if sym is None:
             msg = f"name `{name.id}` is not defined"
             raise SPyNameError.simple(msg, "not found in this scope", name.loc)
-        elif sym.is_local:
-            return self.locals_types_w[name.id]
-        else:
+        elif sym.fqn:
             # XXX this is wrong: we should keep track of the static type of
             # FQNs. For now, we just look it up and use the dynamic type
             w_value = self.vm.lookup_global(sym.fqn)
             assert w_value is not None
             return self.vm.dynamic_type(w_value)
+        elif sym.is_local:
+            return self.locals_types_w[name.id]
+        else:
+            assert False, 'closures not implemented yet'
 
     def check_expr_Constant(self, const: ast.Constant) -> W_Type:
         T = type(const.value)

@@ -177,9 +177,10 @@ class ASTFrame:
                 # first assignment, implicit declaration
                 self.declare_local(assign.loc, name, fv.w_static_type)
             self.store_local(assign.value.loc, name, fv.w_value)
-        else:
-            assert sym.fqn is not None
+        elif sym.fqn is not None:
             self.vm.store_global(sym.fqn, fv.w_value)
+        else:
+            assert False, 'closures not implemented yet'
 
     # ==== expressions ====
 
@@ -198,12 +199,13 @@ class ASTFrame:
         if sym.is_local:
             w_value = self.load_local(name.id)
             return FrameVal(w_type, w_value)
-        # elif fqn is None and level > 0: XXX
-        else:
+        elif sym.fqn is not None:
             w_value2 = self.vm.lookup_global(sym.fqn)
             assert w_value2 is not None, \
                 f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
             return FrameVal(w_type, w_value2)
+        else:
+            assert False, 'closures not implemented yet'
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         self.t.check_expr_BinOp(binop)

@@ -90,6 +90,11 @@ class ScopeAnalyzer:
         return -1, None
 
     def add_name(self, name: str, color: ast.Color, loc: Loc) -> None:
+        """
+        Add a name to the current scope.
+
+        The level of the new symbol will be 0.
+        """
         level, sym = self.lookup(name)
         if sym:
             if level == 0:
@@ -110,7 +115,7 @@ class ScopeAnalyzer:
         else:
             fqn = None
 
-        sym = Symbol(name, color, loc=loc, fqn=fqn)
+        sym = Symbol(name, color, loc=loc, fqn=fqn, level=0)
         self.scope.add(sym)
 
     # ====
@@ -180,9 +185,8 @@ class ScopeAnalyzer:
         if level in (-1, 0):
             # name already in the symtable, or NameError. Nothing to do here.
             return
-
         # the name was found but in an outer scope. Let's "capture" it.
         assert sym
-        new_sym = sym.replace() #, level=level)
+        new_sym = sym.replace(level=level)
         assert name.id not in self.scope
         self.scope.add(new_sym)

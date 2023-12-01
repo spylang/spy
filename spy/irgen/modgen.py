@@ -56,15 +56,6 @@ class ModuleGen:
 
     def make_modinit(self) -> ast.FuncDef:
         loc = Loc(str(self.file_spy), 1, 1, 1, 1)
-
-        # this is a ugly hack. Normally, the ScopeAnalyzer should analyze the
-        # body of the funcdef to determine what are the names which are used
-        # by the __INIT__ function. However, we don't have an AST to analyze,
-        # since this function is synthetic. As a workaround, we pretend that
-        # *ALL* builtin names are used by __INIT__ and captured by its
-        # symtable.
-        symtable = SymTable.from_builtins(self.vm)
-        symtable.name = '__INIT__'
         return ast.FuncDef(
             loc = loc,
             color = 'blue',
@@ -72,7 +63,7 @@ class ModuleGen:
             args = [],
             return_type = ast.Name(loc=loc, id='object'),
             body = [],
-            symtable = symtable
+            symtable = self.scopes.by_module(),
         )
 
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
