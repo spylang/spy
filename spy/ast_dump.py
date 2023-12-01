@@ -8,14 +8,16 @@ def dump(node: Any,
          *,
          use_colors: bool = True,
          fields_to_ignore: Any = (),
+         hl: Any = None,
          ) -> str:
-    dumper = Dumper(use_colors=use_colors)
+    dumper = Dumper(use_colors=use_colors, highlight=hl)
     dumper.fields_to_ignore += fields_to_ignore
     dumper.dump_anything(node)
     return dumper.build()
 
-def pprint(node: Any, *, copy_to_clipboard: bool = False) -> None:
-    print(dump(node))
+def pprint(node: Any, *, copy_to_clipboard: bool = False,
+           hl: Optional[spy.ast.Node]=None) -> None:
+    print(dump(node, hl=hl))
     if copy_to_clipboard:
         import pyperclip  # type: ignore
         out = dump(node, use_colors=False)
@@ -25,8 +27,12 @@ def pprint(node: Any, *, copy_to_clipboard: bool = False) -> None:
 class Dumper(TextBuilder):
     fields_to_ignore: tuple[str, ...]
 
-    def __init__(self, *, use_colors: bool) -> None:
+    def __init__(self, *,
+                 use_colors: bool,
+                 highlight: Optional[spy.ast.Node] = None,
+                 ) -> None:
         super().__init__(use_colors=use_colors)
+        self.highlight = highlight
         self.fields_to_ignore = ('loc', 'target_loc', 'loc_asname')
 
     def dump_anything(self, obj: Any) -> None:
@@ -61,6 +67,8 @@ class Dumper(TextBuilder):
         is_complex_field = [is_complex(value) for value in values]
         multiline = any(is_complex_field)
         #
+        if node is self.highlight:
+            color = 'red'
         self.write(name, color=color)
         self.write('(')
         if multiline:

@@ -45,9 +45,9 @@ class AST:
                 py_node._loc = loc
 
     @typing.no_type_check
-    def pp(self) -> None:
+    def pp(self, *, hl=None) -> None:
         import spy.ast_dump
-        spy.ast_dump.pprint(self)
+        spy.ast_dump.pprint(self, hl=hl)
 
 del AST
 
@@ -68,9 +68,9 @@ del AST
 @dataclass(eq=False)
 class Node:
 
-    def pp(self) -> None:
+    def pp(self, hl: Any=None) -> None:
         import spy.ast_dump
-        spy.ast_dump.pprint(self)
+        spy.ast_dump.pprint(self, hl=hl)
 
     @typing.no_type_check
     def ppc(self) -> None:
