@@ -51,7 +51,7 @@ class SymTable:
 
     def declare(self, name: str, color: Color, loc: Loc,
                 fqn: Optional[FQN] = None) -> Symbol:
-        prev_sym = self.lookup(name)
+        prev_sym = self._lookup(name)
         if prev_sym:
             if prev_sym.scope is self:
                 # re-declaration
@@ -72,11 +72,11 @@ class SymTable:
                                         fqn = fqn)
         return s
 
-    def lookup(self, name: str) -> Optional[Symbol]:
+    def _lookup(self, name: str) -> Optional[Symbol]:
         if name in self.symbols:
             # found in the local scope
             return self.symbols[name]
         elif self.parent is not None:
-            return self.parent.lookup(name)
+            return self.parent._lookup(name)
         else:
             return None # not found

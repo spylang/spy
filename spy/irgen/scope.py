@@ -1,3 +1,4 @@
+from typing import Optional
 from spy import ast
 from spy.errors import SPyTypeError, SPyImportError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
@@ -27,6 +28,7 @@ class ScopeAnalyzer:
     """
     vm: SPyVM
     mod: ast.Module
+    stack: list[SymTable]
     funcdef_scopes: dict[ast.FuncDef, SymTable]
 
     def __init__(self, vm: SPyVM, modname: str, mod: ast.Module) -> None:
@@ -34,17 +36,25 @@ class ScopeAnalyzer:
         self.mod = mod
         self.builtins_scope = SymTable.from_builtins(vm)
         self.mod_scope = SymTable(modname, parent=self.builtins_scope)
+        self.stack = []
         self.funcdef_scopes = {}
+        self.push_scope(self.builtins_scope)
+        self.push_scope(self.mod_scope)
+
 
     # ===============
     # public API
     # ================
 
     def analyze(self) -> None:
+        assert len(self.stack) == 2 # [builtins, module]
         for decl in self.mod.decls:
-            self.declare(decl, self.mod_scope)
+            self.declare(decl)
+        assert len(self.stack) == 2
+
         for decl in self.mod.decls:
-            self.fix(decl, self.mod_scope)
+            self.fix(decl)
+        assert len(self.stack) == 2
 
     def by_module(self) -> SymTable:
         return self.mod_scope
@@ -54,66 +64,96 @@ class ScopeAnalyzer:
 
     # =====
 
-    def declare(self, node: ast.Node, scope: SymTable) -> None:
-        return node.visit('declare', self, scope)
+    def push_scope(self, scope: SymTable) -> None:
+        self.stack.append(scope)
 
-    def fix(self, node: ast.Node, scope: SymTable) -> None:
+    def pop_scope(self) -> SymTable:
+        return self.stack.pop()
+
+    @property
+    def scope(self) -> SymTable:
         """
-        Update the AST nodes with the relevant info gathered during the
-        analysis. In particular, set Name.scope and FuncDef.locals.
+        Return the currently active scope
         """
-        return node.visit('fix', self, scope)
+        return self.stack[-1]
+
+    def lookup(self, name: str) -> tuple[int, Optional[Symbol]]:
+        """
+        Lookup a name, starting from the innermost scope, towards the outer.
+        """
+        for level, scope in enumerate(reversed(self.stack)):
+            if name in scope.symbols:
+                return level, scope.symbols[name]
+        # not found
+        return -1, None
 
     # ====
 
-    def declare_GlobalVarDef(self, decl: ast.GlobalVarDef,
-                           scope: SymTable) -> None:
-        scope.declare(decl.vardef.name, 'blue', decl.loc)
+    def declare(self, node: ast.Node) -> None:
+        """
+        Visit all the nodes which introduce a new name in the scope, and declare
+        those names.
+        """
+        return node.visit('declare', self)
 
-    def declare_VarDef(self, vardef: ast.VarDef, scope: SymTable) -> None:
-        scope.declare(vardef.name, 'red', vardef.loc)
+    def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        self.scope.declare(decl.vardef.name, 'blue', decl.loc)
 
-    def declare_FuncDef(self, funcdef: ast.FuncDef,
-                        outer_scope: SymTable) -> None:
-        outer_scope.declare(funcdef.name, 'blue', funcdef.loc)
-        inner_scope = SymTable(funcdef.name, parent=outer_scope)
+    def declare_VarDef(self, vardef: ast.VarDef) -> None:
+        self.scope.declare(vardef.name, 'red', vardef.loc)
+
+    def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # declare the func in the "outer" scope
+        self.scope.declare(funcdef.name, 'blue', funcdef.loc)
+        inner_scope = SymTable(funcdef.name, parent=self.scope)
+        self.push_scope(inner_scope)
         self.funcdef_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
             inner_scope.declare(arg.name, 'red', arg.loc)
         for stmt in funcdef.body:
-            self.declare(stmt, inner_scope)
+            self.declare(stmt)
+        self.pop_scope()
 
-    def declare_Assign(self, assign: ast.Assign, scope: SymTable) -> None:
+    def declare_Assign(self, assign: ast.Assign) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
         name = assign.target
-        sym = scope.lookup(name)
+        level, sym = self.lookup(name)
         if sym is None:
-            scope.declare(name, 'red', assign.loc)
+            self.scope.declare(name, 'red', assign.loc)
 
     # ===
 
-    def fix_FuncDef(self, funcdef: ast.FuncDef,
-                          outer_scope: SymTable) -> None:
-        inner_scope = self.by_funcdef(funcdef)
+    def fix(self, node: ast.Node) -> None:
+        """
+        Update the AST nodes with the relevant info gathered during the
+        analysis. In particular, set Name.scope and FuncDef.locals.
+        """
+        return node.visit('fix', self)
+
+    def fix_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # the TYPES of the arguments are evaluated in the outer scope
-        self.fix(funcdef.return_type, outer_scope)
+        self.fix(funcdef.return_type)
         for arg in funcdef.args:
-            self.fix(arg, outer_scope)
+            self.fix(arg)
         #
         # the statements of the function are evaluated in the inner scope
+        inner_scope = self.by_funcdef(funcdef)
+        self.push_scope(inner_scope)
         for stmt in funcdef.body:
-            self.fix(stmt, inner_scope)
+            self.fix(stmt)
+        self.pop_scope()
         #
         funcdef.locals = set(inner_scope.symbols.keys())
 
-    def fix_Name(self, name: ast.Name, scope: SymTable) -> None:
-        sym = scope.lookup(name.id)
+    def fix_Name(self, name: ast.Name) -> None:
+        level, sym = self.lookup(name.id)
+        scope = self.stack[level]
         if sym is None:
             # in theory we could emit an error already here, but we want to be
             # able to delay the error until the code is actually executed
             name.scope = 'non-declared'
-        elif sym.scope is scope:
+        elif level == 0:
             name.scope = 'local'
         elif sym.scope is self.mod_scope:
             name.scope = 'module'

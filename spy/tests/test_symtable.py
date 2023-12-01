@@ -23,8 +23,8 @@ class TestSymtable:
         assert sym.color == 'red'
         assert sym.scope is t
         #
-        assert t.lookup('a') is sym
-        assert t.lookup('I-dont-exist') is None
+        assert t._lookup('a') is sym
+        assert t._lookup('I-dont-exist') is None
         #
         with pytest.raises(SPyScopeError):
             t.declare('a', 'red', LOC)
@@ -35,19 +35,19 @@ class TestSymtable:
         sym_a = glob.declare('a', 'red', LOC)
         sym_b = loc.declare('b', 'red', LOC)
         #
-        assert glob.lookup('a') is sym_a
-        assert glob.lookup('b') is None
+        assert glob._lookup('a') is sym_a
+        assert glob._lookup('b') is None
         #
-        assert loc.lookup('a') is sym_a
-        assert loc.lookup('b') is sym_b
+        assert loc._lookup('a') is sym_a
+        assert loc._lookup('b') is sym_b
 
     def test_from_builtins(self):
         scope = SymTable.from_builtins(self.vm)
-        sym = scope.lookup('i32')
+        sym = scope._lookup('i32')
         assert sym is not None
         assert sym.name == 'i32'
         assert sym.color == 'blue'
         #
-        sym = scope.lookup('True')
+        sym = scope._lookup('True')
         assert sym is not None
         assert sym.name == 'True'
