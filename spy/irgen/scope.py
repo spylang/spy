@@ -155,6 +155,17 @@ class ScopeAnalyzer:
 
     # ===
 
+    def capture_maybe(self, varname: str):
+        level, sym = self.lookup(varname)
+        if level in (-1, 0):
+            # name already in the symtable, or NameError. Nothing to do here.
+            return
+        # the name was found but in an outer scope. Let's "capture" it.
+        assert sym
+        new_sym = sym.replace(level=level)
+        assert varname not in self.scope
+        self.scope.add(new_sym)
+
     def flatten(self, node: ast.Node) -> None:
         """
         Visit all the nodes in the AST and flatten the symtables of all the
@@ -181,12 +192,7 @@ class ScopeAnalyzer:
         funcdef.symtable = inner_scope
 
     def flatten_Name(self, name: ast.Name) -> None:
-        level, sym = self.lookup(name.id)
-        if level in (-1, 0):
-            # name already in the symtable, or NameError. Nothing to do here.
-            return
-        # the name was found but in an outer scope. Let's "capture" it.
-        assert sym
-        new_sym = sym.replace(level=level)
-        assert name.id not in self.scope
-        self.scope.add(new_sym)
+        self.capture_maybe(name.id)
+
+    def flatten_Assign(self, assign: ast.Assign) -> None:
+        self.capture_maybe(assign.target)
