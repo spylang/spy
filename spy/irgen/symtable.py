@@ -27,17 +27,15 @@ class Symbol:
 
 class SymTable:
     name: str  # just for debugging
-    parent: Optional['SymTable']
     _symbols: dict[str, Symbol]
 
-    def __init__(self, name: str, *, parent: Optional['SymTable']) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.parent = parent
         self._symbols = {}
 
     @classmethod
     def from_builtins(cls, vm: 'SPyVM') -> 'SymTable':
-        scope = cls('builtins', parent=None)
+        scope = cls('builtins')
         loc = Loc(filename='<builtins>',
                   line_start=0,
                   line_end=0,

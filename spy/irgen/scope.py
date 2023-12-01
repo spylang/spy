@@ -37,7 +37,7 @@ class ScopeAnalyzer:
         self.vm = vm
         self.mod = mod
         self.builtins_scope = SymTable.from_builtins(vm)
-        self.mod_scope = SymTable(modname, parent=self.builtins_scope)
+        self.mod_scope = SymTable(modname)
         self.stack = []
         self.funcdef_scopes = {}
         self.push_scope(self.builtins_scope)
@@ -132,7 +132,7 @@ class ScopeAnalyzer:
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
         self.add_name(funcdef.name, 'blue', funcdef.loc)
-        inner_scope = SymTable(funcdef.name, parent=self.scope)
+        inner_scope = SymTable(funcdef.name)
         self.push_scope(inner_scope)
         self.funcdef_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
