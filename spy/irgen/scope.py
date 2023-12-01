@@ -1,6 +1,8 @@
 from typing import Optional
 from spy import ast
-from spy.errors import SPyTypeError, SPyImportError, maybe_plural
+from spy.location import Loc
+from spy.fqn import FQN
+from spy.errors import SPyTypeError, SPyImportError, SPyScopeError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
 from spy.irgen import multiop
 from spy.vm.vm import SPyVM
@@ -87,6 +89,30 @@ class ScopeAnalyzer:
         # not found
         return -1, None
 
+    def add_name(self, name: str, color: ast.Color, loc: Loc,
+                 fqn: Optional[FQN] = None) -> Symbol:
+        scope = self.scope
+        prev_sym = scope._lookup(name)
+        if prev_sym:
+            if prev_sym.scope is scope:
+                # re-declaration
+                msg = f'variable `{name}` already declared'
+            else:
+                # shadowing
+                msg = (f'variable `{name}` shadows a name declared ' +
+                       "in an outer scope")
+            err = SPyScopeError(msg)
+            err.add('error', 'this is the new declaration', loc)
+            err.add('note', 'this is the previous declaration', prev_sym.loc)
+            raise err
+
+        scope.symbols[name] = s = Symbol(name = name,
+                                         color = color,
+                                         loc = loc,
+                                         scope = scope,
+                                         fqn = fqn)
+        return s
+
     # ====
 
     def declare(self, node: ast.Node) -> None:
@@ -97,19 +123,19 @@ class ScopeAnalyzer:
         return node.visit('declare', self)
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
-        self.scope.declare(decl.vardef.name, 'blue', decl.loc)
+        self.add_name(decl.vardef.name, 'blue', decl.loc)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
-        self.scope.declare(vardef.name, 'red', vardef.loc)
+        self.add_name(vardef.name, 'red', vardef.loc)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
-        self.scope.declare(funcdef.name, 'blue', funcdef.loc)
+        self.add_name(funcdef.name, 'blue', funcdef.loc)
         inner_scope = SymTable(funcdef.name, parent=self.scope)
         self.push_scope(inner_scope)
         self.funcdef_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            inner_scope.declare(arg.name, 'red', arg.loc)
+            self.add_name(arg.name, 'red', arg.loc)
         for stmt in funcdef.body:
             self.declare(stmt)
         self.pop_scope()
@@ -120,7 +146,7 @@ class ScopeAnalyzer:
         name = assign.target
         level, sym = self.lookup(name)
         if sym is None:
-            self.scope.declare(name, 'red', assign.loc)
+            self.add_name(name, 'red', assign.loc)
 
     # ===
 

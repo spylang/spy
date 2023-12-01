@@ -29,7 +29,7 @@ class SymTable:
 
     @classmethod
     def from_builtins(cls, vm: 'SPyVM') -> 'SymTable':
-        res = cls('builtins', parent=None)
+        scope = cls('builtins', parent=None)
         loc = Loc(filename='<builtins>',
                   line_start=0,
                   line_end=0,
@@ -37,8 +37,9 @@ class SymTable:
                   col_end=0)
         builtins_mod = vm.modules_w['builtins']
         for fqn, w_obj in builtins_mod.items_w():
-            res.declare(fqn.attr, 'blue', loc, fqn=fqn)
-        return res
+            scope.symbols[fqn.attr] = Symbol(fqn.attr, 'blue', loc=loc, fqn=fqn,
+                                             scope=scope)
+        return scope
 
     def __repr__(self) -> str:
         return f'<SymTable {self.name}>'
@@ -48,29 +49,6 @@ class SymTable:
         for name, sym in self.symbols.items():
             assert name == sym.name
             print(f'    {name}: {sym.color}')
-
-    def declare(self, name: str, color: Color, loc: Loc,
-                fqn: Optional[FQN] = None) -> Symbol:
-        prev_sym = self._lookup(name)
-        if prev_sym:
-            if prev_sym.scope is self:
-                # re-declaration
-                msg = f'variable `{name}` already declared'
-            else:
-                # shadowing
-                msg = (f'variable `{name}` shadows a name declared ' +
-                       "in an outer scope")
-            err = SPyScopeError(msg)
-            err.add('error', 'this is the new declaration', loc)
-            err.add('note', 'this is the previous declaration', prev_sym.loc)
-            raise err
-
-        self.symbols[name] = s = Symbol(name = name,
-                                        color = color,
-                                        loc = loc,
-                                        scope = self,
-                                        fqn = fqn)
-        return s
 
     def _lookup(self, name: str) -> Optional[Symbol]:
         if name in self.symbols:

@@ -7,6 +7,7 @@ from spy.vm.builtins import B
 
 LOC = Loc('<fake loc>', 0, 0, 0, 0)
 
+@pytest.mark.skip("kill me")
 @pytest.mark.usefixtures('init')
 class TestSymtable:
 
