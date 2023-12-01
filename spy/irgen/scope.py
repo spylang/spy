@@ -110,8 +110,7 @@ class ScopeAnalyzer:
         else:
             fqn = None
 
-        sym = Symbol(name = name, color = color, loc = loc,
-                     scope = self.scope, fqn = fqn)
+        sym = Symbol(name, color, loc=loc, fqn=fqn)
         self.scope.add(sym)
 
     # ====
@@ -184,6 +183,6 @@ class ScopeAnalyzer:
 
         # the name was found but in an outer scope. Let's "capture" it.
         assert sym
-        new_sym = sym.replace(scope=self.scope) #, level=level)
+        new_sym = sym.replace() #, level=level)
         assert name.id not in self.scope
         self.scope.add(new_sym)

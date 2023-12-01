@@ -14,7 +14,6 @@ class Symbol:
     color: Color
     _: KW_ONLY
     loc: Loc           # where the symbol is defined, in the source code
-    scope: 'SymTable'  # the scope where the symbol lives in
     fqn: Optional[FQN] = None
 
     def replace(self, **kwargs: Any) -> 'Symbol':
@@ -43,8 +42,7 @@ class SymTable:
                   col_end=0)
         builtins_mod = vm.modules_w['builtins']
         for fqn, w_obj in builtins_mod.items_w():
-            scope._symbols[fqn.attr] = Symbol(fqn.attr, 'blue', loc=loc, fqn=fqn,
-                                              scope=scope)
+            scope._symbols[fqn.attr] = Symbol(fqn.attr, 'blue', loc=loc, fqn=fqn)
         return scope
 
     def __repr__(self) -> str:
