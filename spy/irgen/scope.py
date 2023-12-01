@@ -91,26 +91,23 @@ class ScopeAnalyzer:
 
     def add_name(self, name: str, color: ast.Color, loc: Loc,
                  fqn: Optional[FQN] = None) -> Symbol:
-        scope = self.scope
-        prev_sym = scope._lookup(name)
-        if prev_sym:
-            if prev_sym.scope is scope:
-                # re-declaration
+        level, sym = self.lookup(name)
+        if sym:
+            if level == 0:
+                # re-declaration in the same scope
                 msg = f'variable `{name}` already declared'
             else:
-                # shadowing
+                # shadowing a name in an outer scope
                 msg = (f'variable `{name}` shadows a name declared ' +
                        "in an outer scope")
             err = SPyScopeError(msg)
             err.add('error', 'this is the new declaration', loc)
-            err.add('note', 'this is the previous declaration', prev_sym.loc)
+            err.add('note', 'this is the previous declaration', sym.loc)
             raise err
 
-        scope.symbols[name] = s = Symbol(name = name,
-                                         color = color,
-                                         loc = loc,
-                                         scope = scope,
-                                         fqn = fqn)
+        s = Symbol(name = name, color = color, loc = loc,
+                   scope = self.scope, fqn = fqn)
+        self.scope.symbols[name] = s
         return s
 
     # ====

@@ -49,12 +49,3 @@ class SymTable:
         for name, sym in self.symbols.items():
             assert name == sym.name
             print(f'    {name}: {sym.color}')
-
-    def _lookup(self, name: str) -> Optional[Symbol]:
-        if name in self.symbols:
-            # found in the local scope
-            return self.symbols[name]
-        elif self.parent is not None:
-            return self.parent._lookup(name)
-        else:
-            return None # not found
