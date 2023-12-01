@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
@@ -9,6 +9,11 @@ from spy.vm.codeobject import W_CodeObject
 from spy.vm.varstorage import VarStorage
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+# dictionary which contains local vars in an ASTFrame. The type is defined
+# here because it's also used by W_ASTFunc.closure.
+Namespace = dict[str, Optional[W_Object]]
+
 
 @dataclass
 class FuncParam:
@@ -109,6 +114,7 @@ class W_UserFunc(W_Func):
         return f"<spy function '{self.fqn}'>"
 
 
+
 class W_ASTFunc(W_Func):
     fqn: FQN
     modname: str
@@ -116,10 +122,12 @@ class W_ASTFunc(W_Func):
 
     def __init__(self,
                  fqn: FQN,
+                 closure: tuple[Namespace, ...],
                  modname: str,
                  w_functype: W_FuncType,
                  funcdef: ast.FuncDef) -> None:
         self.fqn = fqn
+        self.closure = closure
         self.modname = modname
         self.w_functype = w_functype
         self.funcdef = funcdef

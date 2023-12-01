@@ -10,7 +10,7 @@ from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm import helpers
 from spy.vm.typechecker import TypeChecker
 from spy.util import magic_dispatch
@@ -22,6 +22,7 @@ class Return(Exception):
 
     def __init__(self, w_value: W_Object) -> None:
         self.w_value = w_value
+
 
 
 @dataclass
@@ -38,7 +39,7 @@ class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
-    locals: dict[str, Optional[W_Object]]
+    locals: Namespace
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
@@ -146,7 +147,10 @@ class ASTFrame:
         #
         # create the w_func
         fqn = FQN(modname='???', attr=funcdef.name)
-        w_func = W_ASTFunc(fqn, self.w_func.modname, w_functype, funcdef)
+        # XXX we should capture only the names actually used in the inner func
+        closure = self.w_func.closure + (self.locals,)
+        w_func = W_ASTFunc(fqn, closure, self.w_func.modname, w_functype,
+                           funcdef)
         #
         # store it in the locals
         self.declare_local(funcdef.loc, funcdef.name, w_func.w_functype)
