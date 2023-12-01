@@ -14,14 +14,12 @@ if TYPE_CHECKING:
 
 class TypeChecker:
     vm: 'SPyVM'
-    modname: str
-    function: ast.FuncDef
+    funcef: ast.FuncDef
     locals_loc: dict[str, Loc]
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', modname: str, funcdef: ast.FuncDef):
+    def __init__(self, vm: 'SPyVM', funcdef: ast.FuncDef):
         self.vm = vm
-        self.modname = modname
         self.funcdef = funcdef
         self.locals_loc = {}
         self.locals_types_w = {}

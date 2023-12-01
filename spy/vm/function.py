@@ -117,18 +117,15 @@ class W_UserFunc(W_Func):
 
 class W_ASTFunc(W_Func):
     fqn: FQN
-    modname: str
     funcdef: ast.FuncDef
 
     def __init__(self,
                  fqn: FQN,
                  closure: tuple[Namespace, ...],
-                 modname: str,
                  w_functype: W_FuncType,
                  funcdef: ast.FuncDef) -> None:
         self.fqn = fqn
         self.closure = closure
-        self.modname = modname
         self.w_functype = w_functype
         self.funcdef = funcdef
 

@@ -174,7 +174,6 @@ class ScopeAnalyzer:
             self.flatten(stmt)
         self.pop_scope()
         #
-        #funcdef.locals = set(inner_scope.symbols.keys())
         funcdef.symtable = inner_scope
 
     def flatten_Name(self, name: ast.Name) -> None:

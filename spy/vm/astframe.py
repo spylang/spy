@@ -40,6 +40,7 @@ class ASTFrame:
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
     locals: Namespace
+    t: TypeChecker
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
@@ -47,7 +48,7 @@ class ASTFrame:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.locals = {}
-        self.t = TypeChecker(vm, self.w_func.modname, self.w_func.funcdef)
+        self.t = TypeChecker(vm, self.w_func.funcdef)
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
@@ -149,8 +150,7 @@ class ASTFrame:
         fqn = FQN(modname='???', attr=funcdef.name)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self.locals,)
-        w_func = W_ASTFunc(fqn, closure, self.w_func.modname, w_functype,
-                           funcdef)
+        w_func = W_ASTFunc(fqn, closure, w_functype, funcdef)
         #
         # store it in the locals
         self.declare_local(funcdef.loc, funcdef.name, w_func.w_functype)
