@@ -3,6 +3,7 @@ from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
+from spy.irgen.symtable import SymTable
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm.module import W_Module
@@ -40,8 +41,9 @@ class ModuleGen:
         # Synthesize and execute the __INIT__ function to populate the module
         modinit_funcdef = self.make_modinit()
         fqn = FQN(modname=self.modname, attr='__INIT__')
+        closure = ()
         w_functype = W_FuncType.parse('def() -> void')
-        w_INIT = W_ASTFunc(fqn, self.modname, w_functype, modinit_funcdef)
+        w_INIT = W_ASTFunc(fqn, closure, w_functype, modinit_funcdef)
         frame = ASTFrame(self.vm, w_INIT)
         #
         for decl in self.mod.decls:
@@ -60,7 +62,8 @@ class ModuleGen:
             name = f'__INIT__',
             args = [],
             return_type = ast.Name(loc=loc, id='object'),
-            body = []
+            body = [],
+            symtable = self.scopes.by_module(),
         )
 
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:

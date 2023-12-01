@@ -10,7 +10,7 @@ from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm import helpers
 from spy.vm.typechecker import TypeChecker
 from spy.util import magic_dispatch
@@ -22,6 +22,7 @@ class Return(Exception):
 
     def __init__(self, w_value: W_Object) -> None:
         self.w_value = w_value
+
 
 
 @dataclass
@@ -38,7 +39,8 @@ class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
-    locals: dict[str, Optional[W_Object]]
+    locals: Namespace
+    t: TypeChecker
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
@@ -46,7 +48,7 @@ class ASTFrame:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.locals = {}
-        self.t = TypeChecker(vm, self.w_func.modname)
+        self.t = TypeChecker(vm, self.w_func.funcdef)
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
@@ -146,14 +148,17 @@ class ASTFrame:
         #
         # create the w_func
         fqn = FQN(modname='???', attr=funcdef.name)
-        w_func = W_ASTFunc(fqn, self.w_func.modname, w_functype, funcdef)
+        # XXX we should capture only the names actually used in the inner func
+        closure = self.w_func.closure + (self.locals,)
+        w_func = W_ASTFunc(fqn, closure, w_functype, funcdef)
         #
         # store it in the locals
         self.declare_local(funcdef.loc, funcdef.name, w_func.w_functype)
         self.store_local(funcdef.loc, funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        assert vardef.name in self.funcdef.locals, 'bug in the ScopeAnalyzer?'
+        sym = self.funcdef.symtable.lookup(vardef.name)
+        assert sym.is_local
         assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
         self.declare_local(vardef.type.loc, vardef.name, w_type)
@@ -165,17 +170,17 @@ class ASTFrame:
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
         name = assign.target
+        sym = self.funcdef.symtable.lookup(name)
         fv = self.eval_expr(assign.value)
-        if name in self.funcdef.locals:
+        if sym.is_local:
             if name not in self.locals:
                 # first assignment, implicit declaration
                 self.declare_local(assign.loc, name, fv.w_static_type)
-            self.store_local(assign.value.loc, assign.target, fv.w_value)
+            self.store_local(assign.value.loc, name, fv.w_value)
+        elif sym.fqn is not None:
+            self.vm.store_global(sym.fqn, fv.w_value)
         else:
-            # we assume it's module-level.
-            # XXX we should check that this global is red/non-constant
-            fqn = FQN(modname=self.w_func.modname, attr=name)
-            self.vm.store_global(fqn, fv.w_value)
+            assert False, 'closures not implemented yet'
 
     # ==== expressions ====
 
@@ -190,20 +195,17 @@ class ASTFrame:
 
     def eval_expr_Name(self, name: ast.Name) -> FrameVal:
         w_type = self.t.check_expr_Name(name)
-        if name.scope == 'local':
+        sym = self.w_func.funcdef.symtable.lookup(name.id)
+        if sym.is_local:
             w_value = self.load_local(name.id)
             return FrameVal(w_type, w_value)
-        elif name.scope in ('module', 'builtins'):
-            if name.scope == 'builtins':
-                fqn = FQN(modname='builtins', attr=name.id)
-            else:
-                fqn = FQN(modname=self.w_func.modname, attr=name.id)
-            w_value2 = self.vm.lookup_global(fqn)
+        elif sym.fqn is not None:
+            w_value2 = self.vm.lookup_global(sym.fqn)
             assert w_value2 is not None, \
-                f'{fqn} not found. Bug in the ScopeAnalyzer?'
+                f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
             return FrameVal(w_type, w_value2)
         else:
-            assert False, f'Invalid scope {name.scope}. Bug in the TypeChecker?'
+            assert False, 'closures not implemented yet'
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         self.t.check_expr_BinOp(binop)

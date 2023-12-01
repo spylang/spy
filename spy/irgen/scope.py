@@ -1,5 +1,8 @@
+from typing import Optional
 from spy import ast
-from spy.errors import SPyTypeError, SPyImportError, maybe_plural
+from spy.location import Loc
+from spy.fqn import FQN
+from spy.errors import SPyTypeError, SPyImportError, SPyScopeError, maybe_plural
 from spy.irgen.symtable import SymTable, Symbol
 from spy.irgen import multiop
 from spy.vm.vm import SPyVM
@@ -27,24 +30,33 @@ class ScopeAnalyzer:
     """
     vm: SPyVM
     mod: ast.Module
+    stack: list[SymTable]
     funcdef_scopes: dict[ast.FuncDef, SymTable]
 
     def __init__(self, vm: SPyVM, modname: str, mod: ast.Module) -> None:
         self.vm = vm
         self.mod = mod
         self.builtins_scope = SymTable.from_builtins(vm)
-        self.mod_scope = SymTable(modname, parent=self.builtins_scope)
+        self.mod_scope = SymTable(modname)
+        self.stack = []
         self.funcdef_scopes = {}
+        self.push_scope(self.builtins_scope)
+        self.push_scope(self.mod_scope)
+
 
     # ===============
     # public API
     # ================
 
     def analyze(self) -> None:
+        assert len(self.stack) == 2 # [builtins, module]
         for decl in self.mod.decls:
-            self.declare(decl, self.mod_scope)
+            self.declare(decl)
+        assert len(self.stack) == 2
+
         for decl in self.mod.decls:
-            self.fix(decl, self.mod_scope)
+            self.flatten(decl)
+        assert len(self.stack) == 2
 
     def by_module(self) -> SymTable:
         return self.mod_scope
@@ -54,70 +66,133 @@ class ScopeAnalyzer:
 
     # =====
 
-    def declare(self, node: ast.Node, scope: SymTable) -> None:
-        return node.visit('declare', self, scope)
+    def push_scope(self, scope: SymTable) -> None:
+        self.stack.append(scope)
 
-    def fix(self, node: ast.Node, scope: SymTable) -> None:
+    def pop_scope(self) -> SymTable:
+        return self.stack.pop()
+
+    @property
+    def scope(self) -> SymTable:
         """
-        Update the AST nodes with the relevant info gathered during the
-        analysis. In particular, set Name.scope and FuncDef.locals.
+        Return the currently active scope
         """
-        return node.visit('fix', self, scope)
+        return self.stack[-1]
+
+    def lookup(self, name: str) -> tuple[int, Optional[Symbol]]:
+        """
+        Lookup a name, starting from the innermost scope, towards the outer.
+        """
+        for level, scope in enumerate(reversed(self.stack)):
+            if name in scope:
+                return level, scope.lookup(name)
+        # not found
+        return -1, None
+
+    def add_name(self, name: str, color: ast.Color, loc: Loc) -> None:
+        """
+        Add a name to the current scope.
+
+        The level of the new symbol will be 0.
+        """
+        level, sym = self.lookup(name)
+        if sym:
+            if level == 0:
+                # re-declaration in the same scope
+                msg = f'variable `{name}` already declared'
+            else:
+                # shadowing a name in an outer scope
+                msg = (f'variable `{name}` shadows a name declared ' +
+                       "in an outer scope")
+            err = SPyScopeError(msg)
+            err.add('error', 'this is the new declaration', loc)
+            err.add('note', 'this is the previous declaration', sym.loc)
+            raise err
+
+        if self.scope is self.mod_scope:
+            # this is a module-level global. Let's give it a FQN
+            fqn = FQN(modname=self.mod_scope.name, attr=name)
+        else:
+            fqn = None
+
+        sym = Symbol(name, color, loc=loc, fqn=fqn, level=0)
+        self.scope.add(sym)
 
     # ====
 
-    def declare_GlobalVarDef(self, decl: ast.GlobalVarDef,
-                           scope: SymTable) -> None:
-        scope.declare(decl.vardef.name, 'blue', decl.loc)
+    def declare(self, node: ast.Node) -> None:
+        """
+        Visit all the nodes which introduce a new name in the scope, and declare
+        those names.
+        """
+        return node.visit('declare', self)
 
-    def declare_VarDef(self, vardef: ast.VarDef, scope: SymTable) -> None:
-        scope.declare(vardef.name, 'red', vardef.loc)
+    def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        self.add_name(decl.vardef.name, 'blue', decl.loc)
 
-    def declare_FuncDef(self, funcdef: ast.FuncDef,
-                        outer_scope: SymTable) -> None:
-        outer_scope.declare(funcdef.name, 'blue', funcdef.loc)
-        inner_scope = SymTable(funcdef.name, parent=outer_scope)
+    def declare_VarDef(self, vardef: ast.VarDef) -> None:
+        self.add_name(vardef.name, 'red', vardef.loc)
+
+    def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # declare the func in the "outer" scope
+        self.add_name(funcdef.name, 'blue', funcdef.loc)
+        inner_scope = SymTable(funcdef.name)
+        self.push_scope(inner_scope)
         self.funcdef_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            inner_scope.declare(arg.name, 'red', arg.loc)
+            self.add_name(arg.name, 'red', arg.loc)
         for stmt in funcdef.body:
-            self.declare(stmt, inner_scope)
+            self.declare(stmt)
+        self.pop_scope()
 
-    def declare_Assign(self, assign: ast.Assign, scope: SymTable) -> None:
+    def declare_Assign(self, assign: ast.Assign) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
         name = assign.target
-        sym = scope.lookup(name)
+        level, sym = self.lookup(name)
         if sym is None:
-            scope.declare(name, 'red', assign.loc)
+            self.add_name(name, 'red', assign.loc)
 
     # ===
 
-    def fix_FuncDef(self, funcdef: ast.FuncDef,
-                          outer_scope: SymTable) -> None:
-        inner_scope = self.by_funcdef(funcdef)
+    def capture_maybe(self, varname: str):
+        level, sym = self.lookup(varname)
+        if level in (-1, 0):
+            # name already in the symtable, or NameError. Nothing to do here.
+            return
+        # the name was found but in an outer scope. Let's "capture" it.
+        assert sym
+        new_sym = sym.replace(level=level)
+        assert varname not in self.scope
+        self.scope.add(new_sym)
+
+    def flatten(self, node: ast.Node) -> None:
+        """
+        Visit all the nodes in the AST and flatten the symtables of all the
+        FuncDefs.
+
+        In particular, introduce a symbol for every Name which is used inside
+        a function but defined in some outer scope.
+        """
+        return node.visit('flatten', self)
+
+    def flatten_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # the TYPES of the arguments are evaluated in the outer scope
-        self.fix(funcdef.return_type, outer_scope)
+        self.flatten(funcdef.return_type)
         for arg in funcdef.args:
-            self.fix(arg, outer_scope)
+            self.flatten(arg)
         #
         # the statements of the function are evaluated in the inner scope
+        inner_scope = self.by_funcdef(funcdef)
+        self.push_scope(inner_scope)
         for stmt in funcdef.body:
-            self.fix(stmt, inner_scope)
+            self.flatten(stmt)
+        self.pop_scope()
         #
-        funcdef.locals = set(inner_scope.symbols.keys())
+        funcdef.symtable = inner_scope
 
-    def fix_Name(self, name: ast.Name, scope: SymTable) -> None:
-        sym = scope.lookup(name.id)
-        if sym is None:
-            # in theory we could emit an error already here, but we want to be
-            # able to delay the error until the code is actually executed
-            name.scope = 'non-declared'
-        elif sym.scope is scope:
-            name.scope = 'local'
-        elif sym.scope is self.mod_scope:
-            name.scope = 'module'
-        elif sym.scope is self.builtins_scope:
-            name.scope = 'builtins'
-        else:
-            name.scope = 'outer'
+    def flatten_Name(self, name: ast.Name) -> None:
+        self.capture_maybe(name.id)
+
+    def flatten_Assign(self, assign: ast.Assign) -> None:
+        self.capture_maybe(assign.target)
