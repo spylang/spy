@@ -1,16 +1,14 @@
 import typing
-from typing import Optional, Literal, Iterator, Any
+from typing import Optional, Iterator, Any
 import pprint
 import ast as py_ast
 from dataclasses import dataclass, field
 from spy.fqn import FQN
 from spy.location import Loc
+from spy.irgen.symtable import SymTable, Color
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
-Color = Literal["red", "blue"]
-Scope = Literal["local", "outer", "module", "builtins",
-                "non-declared", "unknown"]
 
 @extend(py_ast.AST)
 class AST:
@@ -168,7 +166,6 @@ class Expr(Node):
 @dataclass(eq=False)
 class Name(Expr):
     id: str
-    scope: Scope = 'unknown'
 
 @dataclass(eq=False)
 class Constant(Expr):
@@ -342,7 +339,7 @@ class FuncDef(Stmt):
     args: list[FuncArg]
     return_type: 'Expr'
     body: list['Stmt']
-    locals: set[str] = field(repr=False, default_factory=set)
+    symtable: Any = field(repr=False, default=None)
 
 @dataclass(eq=False)
 class Pass(Stmt):

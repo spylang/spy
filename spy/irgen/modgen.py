@@ -3,6 +3,7 @@ from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
+from spy.irgen.symtable import SymTable
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm.module import W_Module
@@ -56,13 +57,23 @@ class ModuleGen:
 
     def make_modinit(self) -> ast.FuncDef:
         loc = Loc(str(self.file_spy), 1, 1, 1, 1)
+
+        # this is a ugly hack. Normally, the ScopeAnalyzer should analyze the
+        # body of the funcdef to determine what are the names which are used
+        # by the __INIT__ function. However, we don't have an AST to analyze,
+        # since this function is synthetic. As a workaround, we pretend that
+        # *ALL* builtin names are used by __INIT__ and captured by its
+        # symtable.
+        symtable = SymTable.from_builtins(self.vm)
+        symtable.name = '__INIT__'
         return ast.FuncDef(
             loc = loc,
             color = 'blue',
             name = f'__INIT__',
             args = [],
             return_type = ast.Name(loc=loc, id='object'),
-            body = []
+            body = [],
+            symtable = symtable
         )
 
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:

@@ -15,12 +15,14 @@ if TYPE_CHECKING:
 class TypeChecker:
     vm: 'SPyVM'
     modname: str
+    function: ast.FuncDef
     locals_loc: dict[str, Loc]
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', modname: str):
+    def __init__(self, vm: 'SPyVM', modname: str, funcdef: ast.FuncDef):
         self.vm = vm
         self.modname = modname
+        self.funcdef = funcdef
         self.locals_loc = {}
         self.locals_types_w = {}
 
@@ -54,29 +56,19 @@ class TypeChecker:
         return magic_dispatch(self, 'check_expr', expr)
 
     def check_expr_Name(self, name: ast.Name) -> W_Type:
-        if name.scope == 'local':
-            return self.locals_types_w[name.id]
-        elif name.scope in ('module', 'builtins'):
-            if name.scope == 'builtins':
-                fqn = FQN(modname='builtins', attr=name.id)
-            else:
-                fqn = FQN(modname=self.modname, attr=name.id)
-
-            # XXX this is wrong: we should keep track of the static type of
-            # FQNs. For now, we just look it up and use the dynamic type
-            w_value = self.vm.lookup_global(fqn)
-            assert w_value is not None
-            return self.vm.dynamic_type(w_value)
-        elif name.scope == 'non-declared':
+        varname = name.id
+        sym = self.funcdef.symtable.lookup_maybe(varname)
+        if sym is None:
             msg = f"name `{name.id}` is not defined"
             raise SPyNameError.simple(msg, "not found in this scope", name.loc)
-        elif name.scope == "unknown":
-            assert False, "bug in the ScopeAnalyzer?"
+        elif sym.is_local:
+            return self.locals_types_w[name.id]
         else:
-            assert False, f"Invalid value for scope: {name.scope}"
-
-
-        assert False, 'WIP'
+            # XXX this is wrong: we should keep track of the static type of
+            # FQNs. For now, we just look it up and use the dynamic type
+            w_value = self.vm.lookup_global(sym.fqn)
+            assert w_value is not None
+            return self.vm.dynamic_type(w_value)
 
     def check_expr_Constant(self, const: ast.Constant) -> W_Type:
         T = type(const.value)

@@ -64,10 +64,13 @@ class TestScopeAnalyzer:
             pass
         """)
         scope = scopes.by_module()
-        assert scope.symbols == {
+        assert scope._symbols == {
             'x': MatchSymbol('x', 'blue'),
             'foo': MatchSymbol('foo', 'blue'),
             'bar': MatchSymbol('bar', 'blue'),
+            # captured
+            'i32': MatchSymbol('i32', 'blue'),
+            'void': MatchSymbol('void', 'blue'),
         }
 
     def test_funcargs_and_locals(self):
@@ -80,12 +83,14 @@ class TestScopeAnalyzer:
         scope = scopes.by_funcdef(funcdef)
         assert scope.name == 'foo'
         assert scope.parent == scopes.by_module()
-        assert scope.symbols == {
+        assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
             'z': MatchSymbol('z', 'red'),
+            # captured
+            'i32': MatchSymbol('i32', 'blue'),
         }
-        assert funcdef.locals == {'x', 'y', 'z'}
+        assert funcdef.symtable is scope
 
     def test_assign_does_not_redeclare(self):
         scopes = self.analyze("""
@@ -95,10 +100,10 @@ class TestScopeAnalyzer:
         """)
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
-        assert scope.symbols == {
+        assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
+            'i32': MatchSymbol('i32', 'blue'),
         }
-        assert funcdef.locals == {'x'}
 
     def test_cannot_redeclare(self):
         src = """
@@ -126,70 +131,23 @@ class TestScopeAnalyzer:
             ('this is the previous declaration', "x: i32 = 1"),
         )
 
-    def test_fix_Names(self):
-        scopes = self.analyze("""
-        x: i32 = 0
-        def foo(y: i32) -> i32:
-            return x + y
-        """)
-        funcdef = self.mod.get_funcdef('foo')
-        expected = """
-        FuncDef(
-            color='red',
-            name='foo',
-            args=[
-                FuncArg(
-                    name='y',
-                    type=Name(id='i32', scope='builtins'),
-                ),
-            ],
-            return_type=Name(id='i32', scope='builtins'),
-            body=[
-                Return(
-                    value=Add(
-                        left=Name(id='x', scope='module'),
-                        right=Name(id='y', scope='local'),
-                    ),
-                ),
-            ],
-            locals={'y'},
-        )
-        """
-        self.assert_dump(funcdef, expected)
-
     def test_inner_funcdef(self):
-        scopes = self.analyze("""
+        self.analyze("""
         def foo() -> void:
             x: i32 = 0
             def bar(y: i32) -> i32:
                 return x + y
         """)
-        funcdef = self.mod.get_funcdef('foo')
-        assert funcdef.locals == {'x', 'bar'}
+        foodef = self.mod.get_funcdef('foo')
+        assert foodef.symtable._symbols == {
+            'x': MatchSymbol('x', 'red'),
+            'bar': MatchSymbol('bar', 'blue'),
+            'i32': MatchSymbol('i32', 'blue'),
+        }
         #
-        funcdef_bar = funcdef.body[1]
-        assert isinstance(funcdef_bar, ast.FuncDef)
-        assert funcdef_bar.locals == {'y'}
-        expected = """
-        FuncDef(
-            color='red',
-            name='bar',
-            args=[
-                FuncArg(
-                    name='y',
-                    type=Name(id='i32', scope='builtins'),
-                ),
-            ],
-            return_type=Name(id='i32', scope='builtins'),
-            body=[
-                Return(
-                    value=Add(
-                        left=Name(id='x', scope='outer'),
-                        right=Name(id='y', scope='local'),
-                    ),
-                ),
-            ],
-            locals={'y'},
-        )
-        """
-        self.assert_dump(funcdef_bar, expected)
+        bardef = foodef.body[1]
+        assert isinstance(bardef, ast.FuncDef)
+        assert bardef.symtable._symbols == {
+            'y': MatchSymbol('y', 'red'),
+            'x': MatchSymbol('x', 'red'),
+        }

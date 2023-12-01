@@ -27,7 +27,7 @@ class TestParser:
 
     def assert_dump(self, node: ast.Node, expected: str):
         dumped = dump(node, use_colors=False,
-                      fields_to_ignore=('scope', 'locals'))
+                      fields_to_ignore=('symtable',))
         expected = textwrap.dedent(expected)
         if '{tmpdir}' in expected:
             expected = expected.format(tmpdir=self.tmpdir)

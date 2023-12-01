@@ -55,7 +55,7 @@ class ScopeAnalyzer:
         assert len(self.stack) == 2
 
         for decl in self.mod.decls:
-            self.fix(decl)
+            self.flatten(decl)
         assert len(self.stack) == 2
 
     def by_module(self) -> SymTable:
@@ -84,13 +84,12 @@ class ScopeAnalyzer:
         Lookup a name, starting from the innermost scope, towards the outer.
         """
         for level, scope in enumerate(reversed(self.stack)):
-            if name in scope.symbols:
-                return level, scope.symbols[name]
+            if name in scope:
+                return level, scope.lookup(name)
         # not found
         return -1, None
 
-    def add_name(self, name: str, color: ast.Color, loc: Loc,
-                 fqn: Optional[FQN] = None) -> Symbol:
+    def add_name(self, name: str, color: ast.Color, loc: Loc) -> None:
         level, sym = self.lookup(name)
         if sym:
             if level == 0:
@@ -105,10 +104,15 @@ class ScopeAnalyzer:
             err.add('note', 'this is the previous declaration', sym.loc)
             raise err
 
-        s = Symbol(name = name, color = color, loc = loc,
-                   scope = self.scope, fqn = fqn)
-        self.scope.symbols[name] = s
-        return s
+        if self.scope is self.mod_scope:
+            # this is a module-level global. Let's give it a FQN
+            fqn = FQN(modname=self.mod_scope.name, attr=name)
+        else:
+            fqn = None
+
+        sym = Symbol(name = name, color = color, loc = loc,
+                     scope = self.scope, fqn = fqn)
+        self.scope.add(sym)
 
     # ====
 
@@ -147,40 +151,40 @@ class ScopeAnalyzer:
 
     # ===
 
-    def fix(self, node: ast.Node) -> None:
+    def flatten(self, node: ast.Node) -> None:
         """
-        Update the AST nodes with the relevant info gathered during the
-        analysis. In particular, set Name.scope and FuncDef.locals.
-        """
-        return node.visit('fix', self)
+        Visit all the nodes in the AST and flatten the symtables of all the
+        FuncDefs.
 
-    def fix_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        In particular, introduce a symbol for every Name which is used inside
+        a function but defined in some outer scope.
+        """
+        return node.visit('flatten', self)
+
+    def flatten_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # the TYPES of the arguments are evaluated in the outer scope
-        self.fix(funcdef.return_type)
+        self.flatten(funcdef.return_type)
         for arg in funcdef.args:
-            self.fix(arg)
+            self.flatten(arg)
         #
         # the statements of the function are evaluated in the inner scope
         inner_scope = self.by_funcdef(funcdef)
         self.push_scope(inner_scope)
         for stmt in funcdef.body:
-            self.fix(stmt)
+            self.flatten(stmt)
         self.pop_scope()
         #
-        funcdef.locals = set(inner_scope.symbols.keys())
+        #funcdef.locals = set(inner_scope.symbols.keys())
+        funcdef.symtable = inner_scope
 
-    def fix_Name(self, name: ast.Name) -> None:
+    def flatten_Name(self, name: ast.Name) -> None:
         level, sym = self.lookup(name.id)
-        scope = self.stack[level]
-        if sym is None:
-            # in theory we could emit an error already here, but we want to be
-            # able to delay the error until the code is actually executed
-            name.scope = 'non-declared'
-        elif level == 0:
-            name.scope = 'local'
-        elif sym.scope is self.mod_scope:
-            name.scope = 'module'
-        elif sym.scope is self.builtins_scope:
-            name.scope = 'builtins'
-        else:
-            name.scope = 'outer'
+        if level in (-1, 0):
+            # name already in the symtable, or NameError. Nothing to do here.
+            return
+
+        # the name was found but in an outer scope. Let's "capture" it.
+        assert sym
+        new_sym = sym.replace(scope=self.scope) #, level=level)
+        assert name.id not in self.scope
+        self.scope.add(new_sym)
