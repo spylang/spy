@@ -20,6 +20,18 @@ class Loc:
         """
         return Loc('<fake>', 1, 1, 1, 1)
 
+    @classmethod
+    def combine(cls, start: 'Loc', end: 'Loc') -> 'Loc':
+        """
+        Return a new Loc which spans from 'start' to 'end'
+        """
+        assert start.filename == end.filename
+        l1 = start.line_start
+        c1 = start.col_start
+        l2 = end.line_end
+        c2 = end.col_end
+        return cls(start.filename, l1, l2, c1, c2)
+
     def replace(self, **kwargs: int) -> 'Loc':
         return dataclasses.replace(self, **kwargs)
 

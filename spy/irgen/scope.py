@@ -136,7 +136,8 @@ class ScopeAnalyzer:
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
-        self.add_name(funcdef.name, 'blue', funcdef.loc, funcdef.loc)
+        self.add_name(funcdef.name, 'blue', funcdef.prototype_loc,
+                      funcdef.prototype_loc)
         inner_scope = SymTable(funcdef.name)
         self.push_scope(inner_scope)
         self.funcdef_scopes[funcdef] = inner_scope

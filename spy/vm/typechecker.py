@@ -45,6 +45,15 @@ class TypeChecker:
         err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
         raise err
 
+    def name2sym_maybe(self, expr: ast.Expr) -> Optional[Symbol]:
+        """
+        If expr is an ast.Name, return the corresponding Symbol.
+        Else, return None.
+        """
+        if isinstance(expr, ast.Name):
+            return self.funcdef.symtable.lookup_maybe(expr.id)
+        return None
+
     def check_expr(self, expr: ast.Expr) -> W_Type:
         """
         Compute the STATIC type of the given expression
@@ -98,8 +107,8 @@ class TypeChecker:
     check_expr_Mul = check_expr_BinOp
 
     def check_expr_Call(self, call: ast.Call) -> W_Type:
-        sym = None # XXX find the loc where the function is defined
         w_functype = self.check_expr(call.func)
+        sym = self.name2sym_maybe(call.func)
         if not isinstance(w_functype, W_FuncType):
             self._call_error_non_callable(call, sym, w_functype)
         #
