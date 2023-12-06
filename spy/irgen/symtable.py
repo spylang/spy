@@ -14,7 +14,8 @@ class Symbol:
     name: str
     color: Color
     _: KW_ONLY
-    loc: Loc    # where the symbol is defined, in the source code
+    loc: Loc       # where the symbol is defined, in the source code
+    type_loc: Loc  # loc of the TYPE of the symbols
 
     # level indicates in which scope the symbol resides:
     #   0: this Symbol is defined in the scope corresponding to
@@ -55,7 +56,8 @@ class SymTable:
                   col_end=0)
         builtins_mod = vm.modules_w['builtins']
         for fqn, w_obj in builtins_mod.items_w():
-            sym = Symbol(fqn.attr, 'blue', loc=loc, level=0, fqn=fqn)
+            sym = Symbol(fqn.attr, 'blue', loc=loc, type_loc=loc,
+                         level=0, fqn=fqn)
             scope.add(sym)
         return scope
 

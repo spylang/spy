@@ -82,6 +82,7 @@ class TestScopeAnalyzer:
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
             'z': MatchSymbol('z', 'red'),
+            '@return': MatchSymbol('@return', 'red'),
             # captured
             'i32': MatchSymbol('i32', 'blue', level=1),
         }
@@ -97,6 +98,7 @@ class TestScopeAnalyzer:
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
+            '@return': MatchSymbol('@return', 'red'),
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
 
@@ -137,6 +139,7 @@ class TestScopeAnalyzer:
         assert foodef.symtable._symbols == {
             'x': MatchSymbol('x', 'red'),
             'bar': MatchSymbol('bar', 'blue'),
+            '@return': MatchSymbol('@return', 'red'),
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
         #
@@ -144,5 +147,6 @@ class TestScopeAnalyzer:
         assert isinstance(bardef, ast.FuncDef)
         assert bardef.symtable._symbols == {
             'y': MatchSymbol('y', 'red'),
+            '@return': MatchSymbol('@return', 'red'),
             'x': MatchSymbol('x', 'red', level=1),
         }

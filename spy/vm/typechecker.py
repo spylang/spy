@@ -15,24 +15,22 @@ if TYPE_CHECKING:
 class TypeChecker:
     vm: 'SPyVM'
     funcef: ast.FuncDef
-    locals_loc: dict[str, Loc]
     locals_types_w: dict[str, W_Type]
 
     def __init__(self, vm: 'SPyVM', funcdef: ast.FuncDef):
         self.vm = vm
         self.funcdef = funcdef
-        self.locals_loc = {}
         self.locals_types_w = {}
 
-    def declare_local(self, loc: Loc, name: str, w_type: W_Type) -> None:
-        assert name not in self.locals_loc, f'variable already declared: {name}'
-        self.locals_loc[name] = loc
+    def declare_local(self, name: str, w_type: W_Type) -> None:
+        assert name not in self.locals_types_w, \
+            f'variable already declared: {name}'
         self.locals_types_w[name] = w_type
 
     def typecheck_local(self, got_loc: Loc, name: str, w_got: W_Object) -> None:
-        assert name in self.locals_loc
+        assert name in self.locals_types_w
         w_type = self.locals_types_w[name]
-        loc = self.locals_loc[name]
+        loc = self.funcdef.symtable.lookup(name).type_loc
         if self.vm.is_compatible_type(w_got, w_type):
             return
         err = SPyTypeError('mismatched types')
@@ -46,6 +44,15 @@ class TypeChecker:
             because = 'because of type declaration'
         err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
         raise err
+
+    def name2sym_maybe(self, expr: ast.Expr) -> Optional[Symbol]:
+        """
+        If expr is an ast.Name, return the corresponding Symbol.
+        Else, return None.
+        """
+        if isinstance(expr, ast.Name):
+            return self.funcdef.symtable.lookup_maybe(expr.id)
+        return None
 
     def check_expr(self, expr: ast.Expr) -> W_Type:
         """
@@ -100,8 +107,8 @@ class TypeChecker:
     check_expr_Mul = check_expr_BinOp
 
     def check_expr_Call(self, call: ast.Call) -> W_Type:
-        sym = None # XXX find the loc where the function is defined
         w_functype = self.check_expr(call.func)
+        sym = self.name2sym_maybe(call.func)
         if not isinstance(w_functype, W_FuncType):
             self._call_error_non_callable(call, sym, w_functype)
         #
