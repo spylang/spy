@@ -250,7 +250,7 @@ class TestBasic(CompilerTest):
         ctx = expect_errors(
             'cannot call objects of type `i32`',
             ('this is not a function', 'inc'),
-            #('variable defined here', 'inc: i32 = 0'),
+            ('variable defined here', 'inc: i32 = 0'),
         )
         with ctx:
             mod = self.compile("""
