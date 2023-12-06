@@ -15,24 +15,22 @@ if TYPE_CHECKING:
 class TypeChecker:
     vm: 'SPyVM'
     funcef: ast.FuncDef
-    locals_loc: dict[str, Loc]
     locals_types_w: dict[str, W_Type]
 
     def __init__(self, vm: 'SPyVM', funcdef: ast.FuncDef):
         self.vm = vm
         self.funcdef = funcdef
-        self.locals_loc = {}
         self.locals_types_w = {}
 
-    def declare_local(self, loc: Loc, name: str, w_type: W_Type) -> None:
-        assert name not in self.locals_loc, f'variable already declared: {name}'
-        self.locals_loc[name] = loc
+    def declare_local(self, name: str, w_type: W_Type) -> None:
+        assert name not in self.locals_types_w, \
+            f'variable already declared: {name}'
         self.locals_types_w[name] = w_type
 
     def typecheck_local(self, got_loc: Loc, name: str, w_got: W_Object) -> None:
-        assert name in self.locals_loc
+        assert name in self.locals_types_w
         w_type = self.locals_types_w[name]
-        loc = self.locals_loc[name]
+        loc = self.funcdef.symtable.lookup(name).type_loc
         if self.vm.is_compatible_type(w_got, w_type):
             return
         err = SPyTypeError('mismatched types')

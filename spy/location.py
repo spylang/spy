@@ -1,5 +1,6 @@
 import dataclasses
 from dataclasses import dataclass
+import linecache
 
 @dataclass
 class Loc:
@@ -38,3 +39,13 @@ class Loc:
             return f"<Loc: '{self.filename}'>"
         else:
             return f"<Loc: '{self.filename} {l1}:{c1} {l2}:{c2}'>"
+
+    def pp(self) -> None:
+        """
+        Visualize the piece of code which correspond to this Loc
+        """
+        from spy.errors import ErrorFormatter, Annotation
+        fmt = ErrorFormatter(err=None, use_colors=True) # type: ignore
+        ann = Annotation('note', '', self)
+        fmt.emit_annotation(ann)
+        print(fmt.build())

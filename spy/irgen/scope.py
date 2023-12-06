@@ -89,14 +89,15 @@ class ScopeAnalyzer:
         # not found
         return -1, None
 
-    def add_name(self, name: str, color: ast.Color, loc: Loc) -> None:
+    def add_name(self, name: str, color: ast.Color,
+                 loc: Loc, type_loc: Loc) -> None:
         """
         Add a name to the current scope.
 
         The level of the new symbol will be 0.
         """
         level, sym = self.lookup(name)
-        if sym:
+        if sym and name != '@return':
             if level == 0:
                 # re-declaration in the same scope
                 msg = f'variable `{name}` already declared'
@@ -115,7 +116,7 @@ class ScopeAnalyzer:
         else:
             fqn = None
 
-        sym = Symbol(name, color, loc=loc, fqn=fqn, level=0)
+        sym = Symbol(name, color, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
         self.scope.add(sym)
 
     # ====
@@ -128,19 +129,21 @@ class ScopeAnalyzer:
         return node.visit('declare', self)
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
-        self.add_name(decl.vardef.name, 'blue', decl.loc)
+        self.add_name(decl.vardef.name, 'blue', decl.loc, decl.vardef.type.loc)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
-        self.add_name(vardef.name, 'red', vardef.loc)
+        self.add_name(vardef.name, 'red', vardef.loc, vardef.type.loc)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
-        self.add_name(funcdef.name, 'blue', funcdef.loc)
+        self.add_name(funcdef.name, 'blue', funcdef.loc, funcdef.loc)
         inner_scope = SymTable(funcdef.name)
         self.push_scope(inner_scope)
         self.funcdef_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.add_name(arg.name, 'red', arg.loc)
+            self.add_name(arg.name, 'red', arg.loc, arg.type.loc)
+        self.add_name('@return', 'red', funcdef.return_type.loc,
+                      funcdef.return_type.loc)
         for stmt in funcdef.body:
             self.declare(stmt)
         self.pop_scope()
@@ -151,11 +154,15 @@ class ScopeAnalyzer:
         name = assign.target
         level, sym = self.lookup(name)
         if sym is None:
-            self.add_name(name, 'red', assign.loc)
+            # we don't have an explicit type annotation: we consider the
+            # "value" to be the type_loc, because it's where the type will be
+            # computed from
+            type_loc = assign.value.loc
+            self.add_name(name, 'red', assign.loc, type_loc)
 
     # ===
 
-    def capture_maybe(self, varname: str):
+    def capture_maybe(self, varname: str) -> None:
         level, sym = self.lookup(varname)
         if level in (-1, 0):
             # name already in the symtable, or NameError. Nothing to do here.

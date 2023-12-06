@@ -53,13 +53,13 @@ class ASTFrame:
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
 
-    def declare_local(self, loc: Loc, name: str, w_type: W_Type) -> None:
+    def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals, f'variable already declared: {name}'
-        self.t.declare_local(loc, name, w_type)
+        self.t.declare_local(name, w_type)
         self.locals[name] = None
 
-    def store_local(self, loc: Loc, name: str, w_value: W_Object) -> None:
-        self.t.typecheck_local(loc, name, w_value)
+    def store_local(self, got_loc: Loc, name: str, w_value: W_Object) -> None:
+        self.t.typecheck_local(got_loc, name, w_value)
         self.locals[name] = w_value
 
     def load_local(self, name: str) -> W_Object:
@@ -93,14 +93,12 @@ class ASTFrame:
         - store the arguments in args_w in the appropriate local var
         """
         w_functype = self.w_func.w_functype
-        # XXX do we need it?
-        self.declare_local(self.funcdef.return_type.loc,
-                           '@return', w_functype.w_restype)
+        self.declare_local('@return', w_functype.w_restype)
         #
         params = self.w_func.w_functype.params
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
-            self.declare_local(loc, param.name, param.w_type)
+            self.declare_local(param.name, param.w_type)
             self.store_local(loc, param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
@@ -153,7 +151,7 @@ class ASTFrame:
         w_func = W_ASTFunc(fqn, closure, w_functype, funcdef)
         #
         # store it in the locals
-        self.declare_local(funcdef.loc, funcdef.name, w_func.w_functype)
+        self.declare_local(funcdef.name, w_func.w_functype)
         self.store_local(funcdef.loc, funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
@@ -161,7 +159,7 @@ class ASTFrame:
         assert sym.is_local
         assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.type.loc, vardef.name, w_type)
+        self.declare_local(vardef.name, w_type)
         w_value = self.eval_expr_object(vardef.value)
         self.store_local(vardef.value.loc, vardef.name, w_value)
 
@@ -175,7 +173,7 @@ class ASTFrame:
         if sym.is_local:
             if name not in self.locals:
                 # first assignment, implicit declaration
-                self.declare_local(assign.loc, name, fv.w_static_type)
+                self.declare_local(name, fv.w_static_type)
             self.store_local(assign.value.loc, name, fv.w_value)
         elif sym.fqn is not None:
             self.vm.store_global(sym.fqn, fv.w_value)
