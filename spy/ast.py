@@ -342,7 +342,7 @@ class FuncDef(Stmt):
     symtable: Any = field(repr=False, default=None)
 
     @property
-    def prototype_loc(self):
+    def prototype_loc(self) -> Loc:
         """
         Return the Loc which corresponds to the func prototype, i.e. from the
         'def' until the return type.
