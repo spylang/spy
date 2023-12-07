@@ -418,7 +418,7 @@ class TestBasic(CompilerTest):
         assert mod.b == 200
         assert mod.c == 300
 
-    def test_while(self, legacy):
+    def test_while(self):
         mod = self.compile("""
         def factorial(n: i32) -> i32:
             res: i32 = 1

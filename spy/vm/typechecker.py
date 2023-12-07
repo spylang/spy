@@ -69,6 +69,10 @@ class TypeChecker:
         w_cond_type = self.check_expr(if_node.test)
         self.assert_bool(w_cond_type, if_node.test.loc)
 
+    def check_stmt_While(self, while_node: ast.While) -> None:
+        w_cond_type = self.check_expr(while_node.test)
+        self.assert_bool(w_cond_type, while_node.test.loc)
+
     def check_expr(self, expr: ast.Expr) -> W_Type:
         """
         Compute the STATIC type of the given expression

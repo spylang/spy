@@ -193,6 +193,15 @@ class ASTFrame:
             for stmt in if_node.else_body:
                 self.exec_stmt(stmt)
 
+    def exec_stmt_While(self, while_node: ast.While) -> None:
+        self.t.check_stmt_While(while_node)
+        while True:
+            fv = self.eval_expr(while_node.test)
+            if self.vm.is_False(fv.w_value):
+                break
+            for stmt in while_node.body:
+                self.exec_stmt(stmt)
+
     # ==== expressions ====
 
     def eval_expr_Constant(self, const: ast.Constant) -> FrameVal:
