@@ -54,6 +54,21 @@ class TypeChecker:
             return self.funcdef.symtable.lookup_maybe(expr.id)
         return None
 
+    def assert_bool(self, w_type: W_Type, loc: Loc) -> None:
+        if w_type is not B.w_bool:
+            err = SPyTypeError('mismatched types')
+            err.add('error', f'expected `bool`, got `{w_type.name}`', loc)
+            err.add('note',
+                    f'implicit conversion to `bool` is not implemented yet',
+                    loc)
+            raise err
+
+    # ==========
+
+    def check_stmt_If(self, if_node: ast.If) -> None:
+        w_cond_type = self.check_expr(if_node.test)
+        self.assert_bool(w_cond_type, if_node.test.loc)
+
     def check_expr(self, expr: ast.Expr) -> W_Type:
         """
         Compute the STATIC type of the given expression

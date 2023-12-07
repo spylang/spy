@@ -373,7 +373,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo(1, 'hello')
 
-    def test_if_stmt(self, legacy):
+    def test_if_stmt(self):
         mod = self.compile("""
         a: i32 = 0
         b: i32 = 0

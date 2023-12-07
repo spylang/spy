@@ -183,6 +183,16 @@ class ASTFrame:
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
 
+    def exec_stmt_If(self, if_node: ast.If) -> None:
+        self.t.check_stmt_If(if_node)
+        fv = self.eval_expr(if_node.test)
+        if self.vm.is_True(fv.w_value):
+            for stmt in if_node.then_body:
+                self.exec_stmt(stmt)
+        else:
+            for stmt in if_node.else_body:
+                self.exec_stmt(stmt)
+
     # ==== expressions ====
 
     def eval_expr_Constant(self, const: ast.Constant) -> FrameVal:
