@@ -299,15 +299,13 @@ class TestBasic(CompilerTest):
         with ctx:
             mod = self.compile("""
             def inc(x: i32) -> i32:
-
-
                 return x+1
             def bar(s: str) -> i32:
                 return inc(s)
             """)
             mod.bar("hello")
 
-    def test_StmtExpr(self, legacy):
+    def test_StmtExpr(self):
         mod = self.compile("""
         x: i32 = 0
         def inc() -> void:

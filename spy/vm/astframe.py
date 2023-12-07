@@ -180,6 +180,9 @@ class ASTFrame:
         else:
             assert False, 'closures not implemented yet'
 
+    def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
+        self.eval_expr(stmt.value)
+
     # ==== expressions ====
 
     def eval_expr_Constant(self, const: ast.Constant) -> FrameVal:
