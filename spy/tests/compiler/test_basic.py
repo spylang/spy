@@ -432,37 +432,37 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
-    @no_backend
-    def test_if_while_errors(self, legacy):
+    def test_if_error(self):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a
         # bool
-        self.expect_errors(
-            f"""
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `bool`, got `i32`', 'a'),
+            ('implicit conversion to `bool` is not implemented yet', 'a')
+        )
+        with ctx:
+            mod = self.compile("""
             def foo(a: i32) -> i32:
                 if a:
                     return 1
                 return 2
-            """,
-            errors = [
-                'mismatched types',
-                'expected `bool`, got `i32`',
-                'implicit conversion to `bool` is not implemented yet'
-            ]
+            """)
+            mod.foo(1)
+
+    def test_while_error(self):
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `bool`, got `i32`', 'a'),
+            ('implicit conversion to `bool` is not implemented yet', 'a')
         )
-        #
-        self.expect_errors(
-            f"""
+        with ctx:
+            mod = self.compile("""
             def foo() -> void:
                 while 1:
                     pass
-            """,
-            errors = [
-                'mismatched types',
-                'expected `bool`, got `i32`',
-                'implicit conversion to `bool` is not implemented yet'
-            ]
-        )
+            """)
+            mod.foo()
 
     @pytest.mark.xfail(reason='FIXME')
     @no_backend
