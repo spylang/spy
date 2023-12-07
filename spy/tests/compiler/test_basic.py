@@ -490,7 +490,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    def test_builtin_function(self, legacy):
+    def test_builtin_function(self):
         mod = self.compile("""
         def foo(x: i32) -> i32:
             return abs(x)
