@@ -318,7 +318,7 @@ class TestBasic(CompilerTest):
         mod.foo()
         assert mod.x == 2
 
-    def test_True_False(self, legacy):
+    def test_True_False(self):
         mod = self.compile("""
         def get_True() -> bool:
             return True
@@ -329,7 +329,7 @@ class TestBasic(CompilerTest):
         assert mod.get_True() is True
         assert mod.get_False() is False
 
-    def test_CompareOp(self, legacy):
+    def test_CompareOp(self):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
         def cmp_neq(x: i32, y: i32) -> bool: return x != y
@@ -360,19 +360,18 @@ class TestBasic(CompilerTest):
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
 
-    @no_backend
-    def test_CompareOp_error(self, legacy):
-        self.expect_errors(
-            f"""
+    def test_CompareOp_error(self):
+        ctx = expect_errors(
+            'cannot do `i32` == `str`',
+            ('this is `i32`', 'a'),
+            ('this is `str`', 'b'),
+        )
+        with ctx:
+            mod = self.compile("""
             def foo(a: i32, b: str) -> bool:
                 return a == b
-            """,
-            errors = [
-                'cannot do `i32` == `str`',
-                'this is `i32`',
-                'this is `str`',
-            ]
-        )
+            """)
+            mod.foo(1, 'hello')
 
     def test_if_stmt(self, legacy):
         mod = self.compile("""

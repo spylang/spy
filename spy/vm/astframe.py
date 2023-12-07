@@ -227,6 +227,32 @@ class ASTFrame:
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
 
+    def eval_expr_CompareOp(self, op: ast.CompareOp) -> FrameVal:
+        self.t.check_expr_CompareOp(op)
+        fv_l = self.eval_expr(op.left)
+        fv_r = self.eval_expr(op.right)
+        w_ltype = fv_l.w_static_type
+        w_rtype = fv_r.w_static_type
+        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+            l = self.vm.unwrap(fv_l.w_value)
+            r = self.vm.unwrap(fv_r.w_value)
+            if   op.op == '==': res = (l == r)
+            elif op.op == '!=': res = (l != r)
+            elif op.op == '<':  res = (l <  r)
+            elif op.op == '<=': res = (l <= r)
+            elif op.op == '>':  res = (l >  r)
+            elif op.op == '>=': res = (l >= r)
+            return FrameVal(B.w_bool, self.vm.wrap(res))
+        #
+        assert False, 'Unsupported cmpop, bug in the typechecker'
+
+    eval_expr_Eq = eval_expr_CompareOp
+    eval_expr_NotEq = eval_expr_CompareOp
+    eval_expr_Lt = eval_expr_CompareOp
+    eval_expr_LtE = eval_expr_CompareOp
+    eval_expr_Gt = eval_expr_CompareOp
+    eval_expr_GtE = eval_expr_CompareOp
+
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
         w_restype = self.t.check_expr_Call(call)
         fv_func = self.eval_expr(call.func)

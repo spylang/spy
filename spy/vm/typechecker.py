@@ -106,6 +106,26 @@ class TypeChecker:
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
 
+    def check_expr_CompareOp(self, op: ast.CompareOp) -> W_Type:
+        w_ltype = self.check_expr(op.left)
+        w_rtype = self.check_expr(op.right)
+        if w_ltype != w_rtype:
+            # XXX this is wrong, we need to add support for implicit conversions
+            l = w_ltype.name
+            r = w_rtype.name
+            err = SPyTypeError(f'cannot do `{l}` {op.op} `{r}`')
+            err.add('error', f'this is `{l}`', op.left.loc)
+            err.add('error', f'this is `{r}`', op.right.loc)
+            raise err
+        return B.w_bool
+
+    check_expr_Eq = check_expr_CompareOp
+    check_expr_NotEq = check_expr_CompareOp
+    check_expr_Lt = check_expr_CompareOp
+    check_expr_LtE = check_expr_CompareOp
+    check_expr_Gt = check_expr_CompareOp
+    check_expr_GtE = check_expr_CompareOp
+
     def check_expr_Call(self, call: ast.Call) -> W_Type:
         w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
