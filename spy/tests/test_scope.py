@@ -179,5 +179,5 @@ class TestScopeAnalyzer:
         self.expect_errors(
             src,
             'cannot import `xxx.aaa`',
-            ('module `xxx` does not exist', 'xxx')
+            ('module `xxx` does not exist', 'from xxx import aaa')
         )
