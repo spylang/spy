@@ -54,6 +54,25 @@ class TypeChecker:
             return self.funcdef.symtable.lookup_maybe(expr.id)
         return None
 
+    def assert_bool(self, w_type: W_Type, loc: Loc) -> None:
+        if w_type is not B.w_bool:
+            err = SPyTypeError('mismatched types')
+            err.add('error', f'expected `bool`, got `{w_type.name}`', loc)
+            err.add('note',
+                    f'implicit conversion to `bool` is not implemented yet',
+                    loc)
+            raise err
+
+    # ==========
+
+    def check_stmt_If(self, if_node: ast.If) -> None:
+        w_cond_type = self.check_expr(if_node.test)
+        self.assert_bool(w_cond_type, if_node.test.loc)
+
+    def check_stmt_While(self, while_node: ast.While) -> None:
+        w_cond_type = self.check_expr(while_node.test)
+        self.assert_bool(w_cond_type, while_node.test.loc)
+
     def check_expr(self, expr: ast.Expr) -> W_Type:
         """
         Compute the STATIC type of the given expression
@@ -105,6 +124,26 @@ class TypeChecker:
 
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
+
+    def check_expr_CompareOp(self, op: ast.CompareOp) -> W_Type:
+        w_ltype = self.check_expr(op.left)
+        w_rtype = self.check_expr(op.right)
+        if w_ltype != w_rtype:
+            # XXX this is wrong, we need to add support for implicit conversions
+            l = w_ltype.name
+            r = w_rtype.name
+            err = SPyTypeError(f'cannot do `{l}` {op.op} `{r}`')
+            err.add('error', f'this is `{l}`', op.left.loc)
+            err.add('error', f'this is `{r}`', op.right.loc)
+            raise err
+        return B.w_bool
+
+    check_expr_Eq = check_expr_CompareOp
+    check_expr_NotEq = check_expr_CompareOp
+    check_expr_Lt = check_expr_CompareOp
+    check_expr_LtE = check_expr_CompareOp
+    check_expr_Gt = check_expr_CompareOp
+    check_expr_GtE = check_expr_CompareOp
 
     def check_expr_Call(self, call: ast.Call) -> W_Type:
         w_functype = self.check_expr(call.func)
