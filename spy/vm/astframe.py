@@ -52,7 +52,7 @@ class ASTFrame:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.locals = {}
-        self.t = TypeChecker(vm, self.w_func.funcdef)
+        self.t = TypeChecker(vm, self.w_func)
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
@@ -229,7 +229,9 @@ class ASTFrame:
             w_value = self.load_local(name.id)
             return FrameVal(w_type, w_value)
         else:
-            assert False, 'closures not implemented yet'
+            namespace = self.w_func.closure[sym.level]
+            w_value = namespace[sym.name]
+            return FrameVal(w_type, w_value)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         self.t.check_expr_BinOp(binop)
