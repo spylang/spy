@@ -453,13 +453,13 @@ class TestBasic(CompilerTest):
     def test_while_error(self):
         ctx = expect_errors(
             'mismatched types',
-            ('expected `bool`, got `i32`', 'a'),
-            ('implicit conversion to `bool` is not implemented yet', 'a')
+            ('expected `bool`, got `i32`', '123'),
+            ('implicit conversion to `bool` is not implemented yet', '123')
         )
         with ctx:
             mod = self.compile("""
             def foo() -> void:
-                while 1:
+                while 123:
                     pass
             """)
             mod.foo()
