@@ -499,7 +499,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
-    def test_resolve_name(self, legacy):
+    def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int
 

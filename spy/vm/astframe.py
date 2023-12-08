@@ -216,14 +216,14 @@ class ASTFrame:
     def eval_expr_Name(self, name: ast.Name) -> FrameVal:
         w_type = self.t.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
-        if sym.is_local:
+        if sym.fqn is not None:
+            w_value = self.vm.lookup_global(sym.fqn)
+            assert w_value is not None, \
+                f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
+            return FrameVal(w_type, w_value)
+        elif sym.is_local:
             w_value = self.load_local(name.id)
             return FrameVal(w_type, w_value)
-        elif sym.fqn is not None:
-            w_value2 = self.vm.lookup_global(sym.fqn)
-            assert w_value2 is not None, \
-                f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
-            return FrameVal(w_type, w_value2)
         else:
             assert False, 'closures not implemented yet'
 
