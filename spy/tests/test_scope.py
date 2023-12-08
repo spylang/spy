@@ -1,8 +1,9 @@
-from typing import Any
+from typing import Any, Optional
 import textwrap
 import pytest
 from spy import ast
 from spy.ast_dump import dump
+from spy.fqn import FQN
 from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import Symbol, Color
@@ -10,21 +11,26 @@ from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.tests.support import expect_errors, MatchAnnotation
 
+MISSING = object()
+
 class MatchSymbol:
     """
     Helper class which compares equals to Symbol if the specified fields match
     """
-    def __init__(self, name: str, color: Color, level: int = 0):
+    def __init__(self, name: str, color: Color, level: int = 0,
+                 fqn: Any = MISSING):
         self.name = name
         self.color = color
         self.level = level
+        self.fqn = fqn
 
     def __eq__(self, sym: object) -> bool:
         if not isinstance(sym, Symbol):
             return NotImplemented
         return (self.name == sym.name and
                 self.color == sym.color and
-                self.level == sym.level)
+                self.level == sym.level and
+                (self.fqn is MISSING or self.fqn == sym.fqn))
 
 
 @pytest.mark.usefixtures('init')
@@ -150,3 +156,28 @@ class TestScopeAnalyzer:
             '@return': MatchSymbol('@return', 'red'),
             'x': MatchSymbol('x', 'red', level=1),
         }
+
+    def test_import(self):
+        scopes = self.analyze("""
+        from builtins import i32 as my_int
+        """)
+        scope = scopes.by_module()
+        assert scope._symbols == {
+            'my_int': MatchSymbol('my_int', 'blue', fqn=FQN('builtins::i32')),
+        }
+
+    def test_import_wrong_attribute(self):
+        src = "from builtins import aaa"
+        self.expect_errors(
+            src,
+            'cannot import `builtins.aaa`',
+            ('attribute `aaa` does not exist in module `builtins`', 'aaa')
+        )
+
+    def test_import_wrong_module(self):
+        src = "from xxx import aaa"
+        self.expect_errors(
+            src,
+            'cannot import `xxx.aaa`',
+            ('module `xxx` does not exist', 'from xxx import aaa')
+        )

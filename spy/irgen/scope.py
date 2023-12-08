@@ -2,7 +2,7 @@ from typing import Optional
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
-from spy.errors import SPyTypeError, SPyImportError, SPyScopeError, maybe_plural
+from spy.errors import SPyImportError, SPyScopeError
 from spy.irgen.symtable import SymTable, Symbol
 from spy.irgen import multiop
 from spy.vm.vm import SPyVM
@@ -89,8 +89,14 @@ class ScopeAnalyzer:
         # not found
         return -1, None
 
-    def add_name(self, name: str, color: ast.Color,
-                 loc: Loc, type_loc: Loc) -> None:
+    def add_name(self,
+                 name: str,
+                 color: ast.Color,
+                 loc: Loc,
+                 type_loc: Loc,
+                 *,
+                 fqn: Optional[FQN] = None
+                 ) -> None:
         """
         Add a name to the current scope.
 
@@ -110,11 +116,9 @@ class ScopeAnalyzer:
             err.add('note', 'this is the previous declaration', sym.loc)
             raise err
 
-        if self.scope is self.mod_scope:
+        if fqn is None and self.scope is self.mod_scope:
             # this is a module-level global. Let's give it a FQN
             fqn = FQN(modname=self.mod_scope.name, attr=name)
-        else:
-            fqn = None
 
         sym = Symbol(name, color, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
         self.scope.add(sym)
@@ -127,6 +131,26 @@ class ScopeAnalyzer:
         those names.
         """
         return node.visit('declare', self)
+
+    def declare_Import(self, imp: ast.Import) -> None:
+        w_obj = self.vm.lookup_global(imp.fqn)
+        if w_obj is not None:
+            self.add_name(imp.asname, 'blue', imp.loc, imp.loc, fqn=imp.fqn)
+            return
+        #
+        err = SPyImportError(f'cannot import `{imp.fqn.spy_name}`')
+        if imp.fqn.modname not in self.vm.modules_w:
+            # module not found
+            err.add('error',
+                    f'module `{imp.fqn.modname}` does not exist',
+                    loc=imp.loc)
+        else:
+            # attribute not found
+            err.add('error',
+                    f'attribute `{imp.fqn.attr}` does not exist ' +
+                    f'in module `{imp.fqn.modname}`',
+                    loc=imp.loc_asname)
+        raise err
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         self.add_name(decl.vardef.name, 'blue', decl.loc, decl.vardef.type.loc)

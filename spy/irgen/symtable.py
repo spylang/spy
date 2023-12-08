@@ -62,7 +62,7 @@ class SymTable:
         return scope
 
     def __repr__(self) -> str:
-        return f'<SymTable {self.name}>'
+        return f"<SymTable '{self.name}'>"
 
     def pp(self) -> None:
         color = ColorFormatter(use_colors=True)
