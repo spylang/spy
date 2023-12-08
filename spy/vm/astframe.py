@@ -34,6 +34,10 @@ class FrameVal:
     w_static_type: W_Type
     w_value: W_Object
 
+    @property
+    def w_bool_value(self) -> W_bool:
+        assert isinstance(self.w_value, W_bool)
+        return self.w_value
 
 class ASTFrame:
     vm: 'SPyVM'
@@ -186,7 +190,7 @@ class ASTFrame:
     def exec_stmt_If(self, if_node: ast.If) -> None:
         self.t.check_stmt_If(if_node)
         fv = self.eval_expr(if_node.test)
-        if self.vm.is_True(fv.w_value):
+        if self.vm.is_True(fv.w_bool_value):
             for stmt in if_node.then_body:
                 self.exec_stmt(stmt)
         else:
@@ -197,7 +201,7 @@ class ASTFrame:
         self.t.check_stmt_While(while_node)
         while True:
             fv = self.eval_expr(while_node.test)
-            if self.vm.is_False(fv.w_value):
+            if self.vm.is_False(fv.w_bool_value):
                 break
             for stmt in while_node.body:
                 self.exec_stmt(stmt)
