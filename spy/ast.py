@@ -161,27 +161,58 @@ class Import(Decl):
 
 @dataclass(eq=False)
 class Expr(Node):
+    """
+    Operator precedence table, see
+    https://docs.python.org/3/reference/expressions.html#operator-precedence
+
+    PREC  OPERATOR
+    17    (expr...),  [expr...], {key: value...}, {expr...}
+    16    x[index], x[index:index], x(arguments...), x.attribute
+    15    await x
+    14    **
+    13    +x, -x, ~x
+    12    *, @, /, //, %
+    11    +, -
+    10    <<, >>
+     9    &
+     8    ^
+     7    |
+     6    in, not in, is, is not, <, <=, >, >=, !=, ==
+     5    not x
+     4    and
+     3    or
+     2    if – else
+     1    lambda
+     0    :=
+    """
+    precedence = '<FIX ME>' # should be overriden
     loc: Loc = field(repr=False)
+
 
 @dataclass(eq=False)
 class Name(Expr):
+    precedence = 100 # the highest
     id: str
 
 @dataclass(eq=False)
 class Constant(Expr):
+    precedence = 100 # the highest
     value: object
 
 @dataclass(eq=False)
 class GetItem(Expr):
+    precedence = 16
     value: Expr
     index: Expr
 
 @dataclass(eq=False)
 class List(Expr):
+    precedence = 17
     items: list[Expr]
 
 @dataclass(eq=False)
 class Call(Expr):
+    precedence = 16
     func: Expr
     args: list[Expr]
 
@@ -195,54 +226,67 @@ class BinOp(Expr):
 
 @dataclass(eq=False)
 class Add(BinOp):
+    precedence = 11
     op = '+'
 
 @dataclass(eq=False)
 class Sub(BinOp):
+    precedence = 11
     op = '-'
 
 @dataclass(eq=False)
 class Mul(BinOp):
+    precedence = 12
     op = '*'
 
 @dataclass(eq=False)
 class Div(BinOp):
+    precedence = 12
     op = '/'
 
 @dataclass(eq=False)
 class FloorDiv(BinOp):
+    precedence = 12
     op = '//'
 
 @dataclass(eq=False)
 class Mod(BinOp):
+    precedence = 12
     op = '%'
 
 @dataclass(eq=False)
 class Pow(BinOp):
+    precedence = 14
     op = '**'
 
 @dataclass(eq=False)
 class LShift(BinOp):
+    precedence = 10
     op = '<<'
 
 @dataclass(eq=False)
 class RShift(BinOp):
+    precedence = 10
     op = '>>'
 
 @dataclass(eq=False)
 class BitXor(BinOp):
+    precedence = 8
     op = '^'
 
 @dataclass(eq=False)
 class BitOr(BinOp):
+    precedence = 7
     op = '|'
 
 @dataclass(eq=False)
 class BitAnd(BinOp):
+    precedence = 9
     op = '&'
 
 @dataclass(eq=False)
 class MatMul(BinOp):
+    precedence = 12
     op = '@'
 
 
@@ -255,18 +299,22 @@ class UnaryOp(Expr):
 
 @dataclass(eq=False)
 class UnaryPos(UnaryOp):
+    precedence = 13
     op = '+'
 
 @dataclass(eq=False)
 class UnaryNeg(UnaryOp):
+    precedence = 13
     op = '-'
 
 @dataclass(eq=False)
 class Invert(UnaryOp):
+    precedence = 13
     op = '~'
 
 @dataclass(eq=False)
 class Not(UnaryOp):
+    precedence = 5
     op = 'not'
 
 
@@ -274,6 +322,7 @@ class Not(UnaryOp):
 
 @dataclass(eq=False)
 class CompareOp(Expr):
+    precedence = 6
     op = ''
     left: Expr
     right: Expr

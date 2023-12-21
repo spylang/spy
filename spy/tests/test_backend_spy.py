@@ -47,3 +47,17 @@ class TestSPyBackend:
         def foo(x: i32, y: i32) -> i32:
             return 42
         """)
+
+    def test_expr_precedence(self):
+        mod = self.parse("""
+        def foo() -> void:
+            a = 1 + 2 * 3
+            b = 1 + (2 * 3)
+            c = (1 + 2) * 3
+        """)
+        self.assert_dump(mod, """
+        def foo() -> void:
+            a = 1 + 2 * 3
+            b = 1 + 2 * 3
+            c = (1 + 2) * 3
+        """)

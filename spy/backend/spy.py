@@ -59,6 +59,10 @@ class SPyBackend:
         v = self.gen_expr(ret.value)
         self.wl(f'return {v}')
 
+    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
+        v = self.gen_expr(assign.value)
+        self.wl(f'{assign.target} = {v}')
+
     # expressions
 
     def gen_expr_Constant(self, const: ast.Constant) -> str:
@@ -66,3 +70,17 @@ class SPyBackend:
 
     def gen_expr_Name(self, name: ast.Name) -> str:
         return name.id
+
+    def gen_expr_BinOp(self, binop: ast.BinOp) -> str:
+        l = self.gen_expr(binop.left)
+        r = self.gen_expr(binop.right)
+        if binop.left.precedence < binop.precedence:
+            l = f'({l})'
+        if binop.right.precedence < binop.precedence:
+            r = f'({r})'
+        return f'{l} {binop.op} {r}'
+
+    gen_expr_Add = gen_expr_BinOp
+    gen_expr_Sub = gen_expr_BinOp
+    gen_expr_Mul = gen_expr_BinOp
+    gen_expr_Div = gen_expr_BinOp
