@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_FuncType
+from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.builtins import B
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -14,12 +14,14 @@ if TYPE_CHECKING:
 
 class TypeChecker:
     vm: 'SPyVM'
+    w_func: W_ASTFunc
     funcef: ast.FuncDef
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', funcdef: ast.FuncDef):
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         self.vm = vm
-        self.funcdef = funcdef
+        self.w_func = w_func
+        self.funcdef = w_func.funcdef
         self.locals_types_w = {}
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
@@ -94,7 +96,11 @@ class TypeChecker:
         elif sym.is_local:
             return self.locals_types_w[name.id]
         else:
-            assert False, 'closures not implemented yet'
+            #assert sym.color == 'blue' # XXX this fails?
+            namespace = self.w_func.closure[sym.level]
+            w_value = namespace[sym.name]
+            assert w_value is not None
+            return self.vm.dynamic_type(w_value)
 
     def check_expr_Constant(self, const: ast.Constant) -> W_Type:
         T = type(const.value)

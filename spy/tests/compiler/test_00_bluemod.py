@@ -73,3 +73,19 @@ class TestBlueMod:
         assert w_bar.w_functype == W_FuncType.parse('def(x: i32) -> i32')
         w_42 = self.vm.wrap(42)
         assert self.vm.call_function(w_bar, [w_42]) is w_42
+
+    def test_closure(self):
+        mod = self.import_("""
+        @blue
+        def make_adder(x):
+            def adder(y: i32) -> i32:
+                return x+y
+            return adder
+        """)
+        w_mod = mod.w_mod
+        w_make_adder = w_mod.getattr('make_adder')
+        w_add5 = self.vm.call_function(w_make_adder, [self.vm.wrap(5)])
+        assert isinstance(w_add5, W_ASTFunc)
+        w_42 = self.vm.call_function(w_add5, [self.vm.wrap(37)])
+        res = self.vm.unwrap(w_42)
+        assert res == 42
