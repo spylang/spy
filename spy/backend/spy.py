@@ -25,13 +25,24 @@ class SPyBackend:
         for decl in mod.decls:
             self.emit(decl)
 
+    # declarations
+
     def emit_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.emit(decl.funcdef)
 
+    # statements
+
     def emit_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        self.out.write(f'def {funcdef.name}')
-        self.out.write('()') # XXX
-        self.out.write(' -> ')
+        self.out.write(f'def {funcdef.name}(')
+        # argument list
+        for i, arg in enumerate(funcdef.args):
+            is_last = (i == len(funcdef.args) - 1)
+            self.out.write(f'{arg.name}: ')
+            self.emit(arg.type)
+            if not is_last:
+                self.out.write(', ')
+        # end argument list
+        self.out.write(') -> ')
         self.emit(funcdef.return_type)
         self.out.writeline(':')
         with self.out.indent():
@@ -40,6 +51,15 @@ class SPyBackend:
 
     def emit_Pass(self, stmt: ast.Pass) -> None:
         self.out.writeline('pass')
+
+    def emit_Return(self, ret: ast.Return) -> None:
+        self.out.write('return ')
+        self.emit(ret.value)
+
+    # expressions
+
+    def emit_Constant(self, const: ast.Constant) -> None:
+        self.out.write(repr(const.value))
 
     def emit_Name(self, name: ast.Name) -> None:
         self.out.write(name.id)
