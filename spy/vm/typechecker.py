@@ -99,6 +99,7 @@ class TypeChecker:
             #assert sym.color == 'blue' # XXX this fails?
             namespace = self.w_func.closure[sym.level]
             w_value = namespace[sym.name]
+            assert w_value is not None
             return self.vm.dynamic_type(w_value)
 
     def check_expr_Constant(self, const: ast.Constant) -> W_Type:

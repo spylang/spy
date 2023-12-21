@@ -85,6 +85,7 @@ class TestBlueMod:
         w_mod = mod.w_mod
         w_make_adder = w_mod.getattr('make_adder')
         w_add5 = self.vm.call_function(w_make_adder, [self.vm.wrap(5)])
+        assert isinstance(w_add5, W_ASTFunc)
         w_42 = self.vm.call_function(w_add5, [self.vm.wrap(37)])
         res = self.vm.unwrap(w_42)
         assert res == 42

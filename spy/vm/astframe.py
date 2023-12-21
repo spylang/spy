@@ -231,6 +231,7 @@ class ASTFrame:
         else:
             namespace = self.w_func.closure[sym.level]
             w_value = namespace[sym.name]
+            assert w_value is not None
             return FrameVal(w_type, w_value)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
