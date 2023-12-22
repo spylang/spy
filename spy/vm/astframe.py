@@ -6,6 +6,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
+from spy.irgen.symtable import Symbol
 from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
@@ -158,12 +159,16 @@ class ASTFrame:
         self.declare_local(funcdef.name, w_func.w_functype)
         self.store_local(funcdef.loc, funcdef.name, w_func)
 
-    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+    def declare_VarDef(self, vardef: ast.VarDef) -> Symbol:
         sym = self.funcdef.symtable.lookup(vardef.name)
         assert sym.is_local
-        assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
         self.declare_local(vardef.name, w_type)
+        return sym
+
+    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        self.declare_VarDef(vardef)
+        assert vardef.value is not None, 'WIP?'
         w_value = self.eval_expr_object(vardef.value)
         self.store_local(vardef.value.loc, vardef.name, w_value)
 

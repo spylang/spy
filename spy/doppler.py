@@ -19,7 +19,9 @@ class FuncDoppler:
     def __init__(self, vm: SPyVM, w_func: W_ASTFunc) -> None:
         self.vm = vm
         self.w_func = w_func
+        self.funcdef = w_func.funcdef
         self.blue_frame = ASTFrame(vm, w_func)
+        self.t = self.blue_frame.t
 
     def redshift(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
@@ -53,7 +55,7 @@ class FuncDoppler:
         return magic_dispatch(self, 'shift_stmt', stmt)
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
-        color, w_type = self.blue_frame.t.check_expr(expr)
+        color, w_type = self.t.check_expr(expr)
         if color == 'blue':
             return self.blue_eval(expr)
         return magic_dispatch(self, 'shift_expr', expr)
@@ -64,10 +66,22 @@ class FuncDoppler:
         newvalue = self.shift_expr(ret.value)
         return [ret.replace(value=newvalue)]
 
+    def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
+        sym = self.blue_frame.declare_VarDef(vardef)
+        assert sym.is_local
+        if sym.color == 'red':
+            newvalue = self.shift_expr(vardef.value)
+            return [vardef.replace(value=newvalue)]
+        else:
+            assert False, 'implement me'
+
     # ==== expressions ====
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
         return const
+
+    def shift_expr_Name(self, name: ast.Name) -> ast.Expr:
+        return name
 
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
         l = self.shift_expr(binop.left)

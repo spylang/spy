@@ -56,3 +56,11 @@ class TestSPyBackend:
             b = 1 + 2 * 3
             c = (1 + 2) * 3
         """)
+
+    def test_vardef(self):
+        src = """
+        def foo() -> void:
+            x: i32 = 1
+        """
+        mod = self.parse(src)
+        self.assert_dump(mod, src)

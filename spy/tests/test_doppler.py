@@ -42,3 +42,12 @@ class TestDoppler:
         def foo() -> i32:
             return 3
         """)
+
+    def test_red_vars(self):
+        src = """
+        def foo() -> i32:
+            x: i32 = 1
+            return x
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, src)
