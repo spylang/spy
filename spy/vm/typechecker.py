@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Optional, NoReturn
 from types import NoneType
 from spy import ast
 from spy.fqn import FQN
-from spy.irgen.symtable import Symbol
+from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
@@ -22,6 +22,7 @@ class TypeChecker:
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
+        self.expr_types = {}
         self.locals_types_w = {}
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
@@ -79,7 +80,12 @@ class TypeChecker:
         """
         Compute the STATIC type of the given expression
         """
-        return magic_dispatch(self, 'check_expr', expr)
+        if expr in self.expr_types:
+            return self.expr_types[expr]
+        else:
+            w_type = magic_dispatch(self, 'check_expr', expr)
+            self.expr_types[expr] = w_type
+            return w_type
 
     def check_expr_Name(self, name: ast.Name) -> W_Type:
         varname = name.id
