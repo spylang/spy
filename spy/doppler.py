@@ -22,6 +22,7 @@ class FuncDoppler:
         self.funcdef = w_func.funcdef
         self.blue_frame = ASTFrame(vm, w_func)
         self.t = self.blue_frame.t
+        self.blue_frame.declare_arguments()
 
     def redshift(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef

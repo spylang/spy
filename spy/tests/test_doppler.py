@@ -51,3 +51,11 @@ class TestDoppler:
         """
         w_func = self.redshift(src, 'foo')
         self.assert_dump(w_func, src)
+
+    def test_funcargs(self):
+        src = """
+        def foo(x: i32, y: i32) -> i32:
+            return x + y
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, src)
