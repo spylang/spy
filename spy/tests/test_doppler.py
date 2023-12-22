@@ -2,38 +2,43 @@ import textwrap
 import pytest
 from spy import ast
 from spy.vm.vm import SPyVM
+from spy.vm.function import W_ASTFunc
 from spy.doppler import redshift
-from spy.backend.spy import dump_module
+from spy.backend.spy import dump_function
 from spy.util import print_diff
-from spy.tests.support import parse
 
 @pytest.mark.usefixtures('init')
 class TestDoppler:
 
     @pytest.fixture
     def init(self, tmpdir):
+        # XXX there is a lot of code duplication with CompilerTest
         self.tmpdir = tmpdir
         self.vm = SPyVM()
+        self.vm.path.append(str(self.tmpdir))
 
-    def redshift(self, src: str) -> ast.Module:
-        mod = parse(src, self.tmpdir)
-        newmod = redshift(self.vm, mod)
-        return newmod
+    def redshift(self, src: str, funcname: str) -> W_ASTFunc:
+        f = self.tmpdir.join('test.spy')
+        src = textwrap.dedent(src)
+        f.write(src)
+        w_mod = self.vm.import_('test')
+        w_func = w_mod.getattr(funcname)
+        return redshift(self.vm, w_func)
 
-    def assert_dump(self, mod: ast.Module, expected: str) -> None:
-        got = dump_module(mod).strip()
+    def assert_dump(self, w_func: W_ASTFunc, expected: str) -> None:
+        got = dump_function(w_func).strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, 'expected', 'got')
             pytest.fail('assert_dump failed')
 
-    @pytest.mark.xfail
     def test_simple(self):
-        mod = self.redshift("""
+        src = """
         def foo() -> i32:
             return 1 + 2
-        """)
-        self.assert_dump(mod, """
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, """
         def foo() -> i32:
             return 3
         """)

@@ -194,6 +194,8 @@ class Expr(Node):
     precedence = '<Expr.precedence not set>' # type: int # type: ignore
     loc: Loc = field(repr=False)
 
+    def is_const(self):
+        return isinstance(self, Constant)
 
 @dataclass(eq=False)
 class Name(Expr):

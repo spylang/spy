@@ -1,10 +1,15 @@
 from spy import ast
+from spy.vm.function import W_ASTFunc
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 
 def dump_module(mod: ast.Module) -> str:
     b = SPyBackend()
     return b.dump_module(mod)
+
+def dump_function(w_func: W_ASTFunc) -> str:
+    b = SPyBackend()
+    return b.dump_funcdef(w_func.funcdef)
 
 class SPyBackend:
     """
@@ -21,6 +26,10 @@ class SPyBackend:
     def dump_module(self, mod: ast.Module) -> str:
         for decl in mod.decls:
             self.emit_decl(decl)
+        return self.out.build()
+
+    def dump_funcdef(self, funcdef: ast.FuncDef) -> str:
+        self.emit_stmt(funcdef)
         return self.out.build()
 
     # ==============

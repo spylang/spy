@@ -1,28 +1,79 @@
 from typing import Any, Optional
+from fixedint import FixedInt
 from spy import ast
 from spy.vm.vm import SPyVM
-
-def redshift(vm: SPyVM, mod: ast.Module) -> ast.Module:
-    """
-    Perform a redshift on the whole module
-    """
-    newdecls = []
-    for decl in mod.decls:
-        if isinstance(decl, ast.GlobalFuncDef):
-            funcdef = decl.funcdef
-            funcdef = FuncDefDoppler(funcdef).redshift()
-            decl = decl.replace(funcdef=funcdef)
-        newdecls.append(decl)
-    return mod.replace(decls=newdecls)
+from spy.vm.function import W_ASTFunc
+from spy.vm.astframe import ASTFrame
+from spy.util import magic_dispatch
 
 
-class FuncDefDoppler:
+def redshift(vm: SPyVM, w_func: W_ASTFunc) -> W_ASTFunc:
+    dop = FuncDoppler(vm, w_func)
+    return dop.redshift()
+
+class FuncDoppler:
     """
-    Perform a redshift on a FuncDef
+    Perform a redshift on a W_ASTFunc
     """
 
-    def __init__(self, funcdef: ast.FuncDef) -> None:
-        self.funcdef = funcdef
+    def __init__(self, vm: SPyVM, w_func: W_ASTFunc) -> None:
+        self.vm = vm
+        self.w_func = w_func
+        self.blue_frame = ASTFrame(vm, w_func)
 
-    def redshift(self) -> ast.FuncDef:
-        return self.funcdef # XXX
+    def redshift(self) -> W_ASTFunc:
+        funcdef = self.w_func.funcdef
+        new_body = []
+        for stmt in funcdef.body:
+            new_body += self.shift_stmt(stmt)
+        new_funcdef = funcdef.replace(body=new_body)
+        #
+        new_fqn = self.w_func.fqn # XXX
+        new_closure = ()
+        w_newfunctype = self.w_func.w_functype
+        return W_ASTFunc(
+            fqn = new_fqn,
+            closure = new_closure,
+            w_functype = w_newfunctype,
+            funcdef = new_funcdef)
+
+    def blue_eval(self, expr: ast.Expr) -> ast.Constant:
+        fv = self.blue_frame.eval_expr(expr)
+        # XXX for now we support only primitive contants
+        # XXX we should check the type
+        # XXX we should propagate the static type somehow?
+        value = self.vm.unwrap(fv.w_value)
+        if isinstance(value, FixedInt):
+            value = int(value)
+        return ast.Constant(expr.loc, value)
+
+    # =========
+
+    def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        return magic_dispatch(self, 'shift_stmt', stmt)
+
+    def shift_expr(self, expr: ast.Expr) -> ast.Expr:
+        return magic_dispatch(self, 'shift_expr', expr)
+
+    # ==== statements ====
+
+    def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
+        newvalue = self.shift_expr(ret.value)
+        return [ret.replace(value=newvalue)]
+
+    # ==== expressions ====
+
+    def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
+        return const
+
+    def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
+        # XXX for now we just assume that all BinOps are pure
+        l = self.shift_expr(binop.left)
+        r = self.shift_expr(binop.right)
+        newop = binop.replace(left=l, right=r)
+        if l.is_const() and r.is_const():
+            return self.blue_eval(newop)
+        else:
+            return binop.replace(left=l, right=r)
+
+    shift_expr_Add = shift_expr_BinOp
