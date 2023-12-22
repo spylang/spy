@@ -4,6 +4,7 @@ from spy import ast
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend
 from spy.util import print_diff
+from spy.tests.support import parse
 
 @pytest.mark.usefixtures('init')
 class TestSPyBackend:
@@ -13,12 +14,7 @@ class TestSPyBackend:
         self.tmpdir = tmpdir
 
     def parse(self, src: str) -> ast.Module:
-        f = self.tmpdir.join('test.spy')
-        src = textwrap.dedent(src)
-        f.write(src)
-        parser = Parser(src, str(f))
-        self.mod = parser.parse()
-        return self.mod
+        return parse(src, self.tmpdir)
 
     def assert_dump(self, mod: ast.Module, expected: str) -> None:
         backend = SPyBackend(mod)
