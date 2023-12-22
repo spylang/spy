@@ -2,7 +2,7 @@ import pytest
 import textwrap
 from spy import ast
 from spy.parser import Parser
-from spy.backend.spy import SPyBackend
+from spy.backend.spy import dump_module
 from spy.util import print_diff
 from spy.tests.support import parse
 
@@ -17,8 +17,7 @@ class TestSPyBackend:
         return parse(src, self.tmpdir)
 
     def assert_dump(self, mod: ast.Module, expected: str) -> None:
-        backend = SPyBackend(mod)
-        got = backend.build().strip()
+        got = dump_module(mod).strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, 'expected', 'got')

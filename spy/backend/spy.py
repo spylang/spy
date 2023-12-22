@@ -2,24 +2,28 @@ from spy import ast
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 
+def dump_module(mod: ast.Module) -> str:
+    b = SPyBackend()
+    return b.dump_module(mod)
+
 class SPyBackend:
     """
     SPy backend: convert an AST back to SPy code.
 
     Mostly used for testing.
     """
-    mod: ast.Module
 
-    def __init__(self, mod: ast.Module) -> None:
-        self.mod = mod
+    def __init__(self) -> None:
         self.out = TextBuilder(use_colors=False)
         self.w = self.out.w
         self.wl = self.out.wl
 
-    def build(self) -> str:
-        for decl in self.mod.decls:
+    def dump_module(self, mod: ast.Module) -> str:
+        for decl in mod.decls:
             self.emit_decl(decl)
         return self.out.build()
+
+    # ==============
 
     def emit_decl(self, decl: ast.Decl) -> None:
         magic_dispatch(self, 'emit_decl', decl)

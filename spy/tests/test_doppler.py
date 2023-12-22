@@ -1,37 +1,39 @@
+import textwrap
 import pytest
-from spy.fqn import FQN
+from spy import ast
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
-from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode
-from spy.vm.object import W_i32
-from spy.vm.function import W_FuncType, W_UserFunc
-from spy.doppler import DopplerInterpreter
-from spy.tests.support import make_func
+#from spy.doppler import DopplerInterpreter
+from spy.backend.spy import dump_module
+from spy.util import print_diff
+from spy.tests.support import parse
 
 @pytest.mark.usefixtures('init')
 class TestDoppler:
 
     @pytest.fixture
-    def init(self):
+    def init(self, tmpdir):
+        self.tmpdir = tmpdir
         self.vm = SPyVM()
 
-    def doppler(self, w_func: W_UserFunc) -> W_UserFunc:
-        self.interp = DopplerInterpreter(self.vm, w_func)
-        return self.interp.run()
+    def doppler(self, src: str) -> ast.Module:
+        mod = parse(src, self.tmpdir)
+        # ...
+        return mod
 
-    @pytest.mark.skip("FIXME")
+    def assert_dump(self, mod: ast.Module, expected: str) -> None:
+        got = dump_module(mod).strip()
+        expected = textwrap.dedent(expected).strip()
+        if got != expected:
+            print_diff(expected, got, 'expected', 'got')
+            pytest.fail('assert_dump failed')
+
+    @pytest.mark.xfail
     def test_simple(self):
-        w_func = make_func(
-            'def() -> i32',
-            body=[
-                OpCode('load_const', W_i32(42)),
-                OpCode('return'),
-            ]
-        )
-        w_func2 = self.doppler(w_func)
-        w_res = self.vm.call_function(w_func2, [])
-        assert self.vm.unwrap(w_res) == 42
-        assert w_func2.w_code.equals("""
-        load_const W_i32(42)
-        return
+        mod = self.doppler("""
+        def foo() -> i32:
+            return 1 + 2
+        """)
+        self.assert_dump(mod, """
+        def foo() -> i32:
+            return 3
         """)
