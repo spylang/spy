@@ -2,6 +2,7 @@ import typing
 from typing import Optional, Iterator, Any
 import pprint
 import ast as py_ast
+import dataclasses
 from dataclasses import dataclass, field
 from spy.fqn import FQN
 from spy.location import Loc
@@ -78,6 +79,9 @@ class Node:
         """
         import spy.ast_dump
         spy.ast_dump.pprint(self, copy_to_clipboard=True)
+
+    def replace(self, **kwargs: Any) -> 'Node':
+        return dataclasses.replace(self, **kwargs)
 
     def walk(self, cls: Optional[type] = None) -> Iterator['Node']:
         if cls is None or isinstance(self, cls):

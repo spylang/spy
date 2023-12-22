@@ -2,7 +2,7 @@ import textwrap
 import pytest
 from spy import ast
 from spy.vm.vm import SPyVM
-#from spy.doppler import DopplerInterpreter
+from spy.doppler import redshift
 from spy.backend.spy import dump_module
 from spy.util import print_diff
 from spy.tests.support import parse
@@ -15,10 +15,10 @@ class TestDoppler:
         self.tmpdir = tmpdir
         self.vm = SPyVM()
 
-    def doppler(self, src: str) -> ast.Module:
+    def redshift(self, src: str) -> ast.Module:
         mod = parse(src, self.tmpdir)
-        # ...
-        return mod
+        newmod = redshift(self.vm, mod)
+        return newmod
 
     def assert_dump(self, mod: ast.Module, expected: str) -> None:
         got = dump_module(mod).strip()
@@ -29,7 +29,7 @@ class TestDoppler:
 
     @pytest.mark.xfail
     def test_simple(self):
-        mod = self.doppler("""
+        mod = self.redshift("""
         def foo() -> i32:
             return 1 + 2
         """)
