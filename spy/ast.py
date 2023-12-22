@@ -185,7 +185,9 @@ class Expr(Node):
      1    lambda
      0    :=
     """
-    precedence = '<FIX ME>' # should be overriden
+    # precedence must be overriden by subclasses. The weird type comment is
+    # needed to make mypy happy
+    precedence = '<Expr.precedence not set>' # type: int # type: ignore
     loc: Loc = field(repr=False)
 
 

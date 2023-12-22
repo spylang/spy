@@ -16,7 +16,7 @@ class SPyBackend:
         self.w = self.out.w
         self.wl = self.out.wl
 
-    def build(self):
+    def build(self) -> str:
         for decl in self.mod.decls:
             self.emit_decl(decl)
         return self.out.build()
