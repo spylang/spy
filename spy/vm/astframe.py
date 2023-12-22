@@ -213,12 +213,12 @@ class ASTFrame:
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
-        w_type = self.t.check_expr_Constant(const)
+        color, w_type = self.t.check_expr_Constant(const)
         w_value = self.vm.wrap(const.value)
         return FrameVal(w_type, w_value)
 
     def eval_expr_Name(self, name: ast.Name) -> FrameVal:
-        w_type = self.t.check_expr_Name(name)
+        color, w_type = self.t.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
         if sym.fqn is not None:
             w_value = self.vm.lookup_global(sym.fqn)
@@ -280,7 +280,7 @@ class ASTFrame:
     eval_expr_GtE = eval_expr_CompareOp
 
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
-        w_restype = self.t.check_expr_Call(call)
+        color, w_restype = self.t.check_expr_Call(call)
         fv_func = self.eval_expr(call.func)
         w_func = fv_func.w_value
         assert isinstance(w_func, W_Func)

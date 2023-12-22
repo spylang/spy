@@ -53,6 +53,9 @@ class FuncDoppler:
         return magic_dispatch(self, 'shift_stmt', stmt)
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
+        color, w_type = self.blue_frame.t.check_expr(expr)
+        if color == 'blue':
+            return self.blue_eval(expr)
         return magic_dispatch(self, 'shift_expr', expr)
 
     # ==== statements ====
@@ -67,13 +70,8 @@ class FuncDoppler:
         return const
 
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
-        # XXX for now we just assume that all BinOps are pure
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
-        newop = binop.replace(left=l, right=r)
-        if l.is_const() and r.is_const():
-            return self.blue_eval(newop)
-        else:
-            return binop.replace(left=l, right=r)
+        return binop.replace(left=l, right=r)
 
     shift_expr_Add = shift_expr_BinOp
