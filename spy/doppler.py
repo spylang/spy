@@ -46,7 +46,7 @@ class FuncDoppler:
         # XXX we should check the type
         # XXX we should propagate the static type somehow?
         value = self.vm.unwrap(fv.w_value)
-        if isinstance(value, FixedInt):
+        if isinstance(value, FixedInt): # type: ignore
             value = int(value)
         return ast.Constant(expr.loc, value)
 
@@ -71,6 +71,7 @@ class FuncDoppler:
         sym = self.blue_frame.declare_VarDef(vardef)
         assert sym.is_local
         if sym.color == 'red':
+            assert vardef.value is not None
             newvalue = self.shift_expr(vardef.value)
             return [vardef.replace(value=newvalue)]
         else:

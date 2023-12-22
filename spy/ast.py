@@ -80,7 +80,7 @@ class Node:
         import spy.ast_dump
         spy.ast_dump.pprint(self, copy_to_clipboard=True)
 
-    def replace(self, **kwargs: Any) -> 'Node':
+    def replace(self, **kwargs: Any) -> Any:
         return dataclasses.replace(self, **kwargs)
 
     def walk(self, cls: Optional[type] = None) -> Iterator['Node']:
@@ -194,7 +194,7 @@ class Expr(Node):
     precedence = '<Expr.precedence not set>' # type: int # type: ignore
     loc: Loc = field(repr=False)
 
-    def is_const(self):
+    def is_const(self) -> bool:
         return isinstance(self, Constant)
 
 @dataclass(eq=False)

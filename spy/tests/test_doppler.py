@@ -22,7 +22,7 @@ class TestDoppler:
         src = textwrap.dedent(src)
         f.write(src)
         w_mod = self.vm.import_('test')
-        w_func = w_mod.getattr(funcname)
+        w_func = w_mod.getattr_astfunc(funcname)
         return redshift(self.vm, w_func)
 
     def assert_dump(self, w_func: W_ASTFunc, expected: str) -> None:

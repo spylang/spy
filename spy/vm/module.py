@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.vm.object import W_Object, spytype, W_Type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.function import W_UserFunc
+    from spy.vm.function import W_UserFunc, W_ASTFunc
 
 
 @spytype('module')
@@ -30,10 +30,10 @@ class W_Module(W_Object):
         assert w_obj is not None
         return w_obj
 
-    def getattr_userfunc(self, attr: str) -> 'W_UserFunc':
-        from spy.vm.function import W_UserFunc
+    def getattr_astfunc(self, attr: str) -> 'W_ASTFunc':
+        from spy.vm.function import W_ASTFunc
         w_obj = self.getattr(attr)
-        assert isinstance(w_obj, W_UserFunc)
+        assert isinstance(w_obj, W_ASTFunc)
         return w_obj
 
     def keys(self) -> Iterable[FQN]:

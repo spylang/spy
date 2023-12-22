@@ -26,6 +26,7 @@ class TypeChecker:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcef: ast.FuncDef
+    expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     locals_types_w: dict[str, W_Type]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
@@ -86,7 +87,7 @@ class TypeChecker:
         color, w_cond_type = self.check_expr(while_node.test)
         self.assert_bool(w_cond_type, while_node.test.loc)
 
-    def check_expr(self, expr: ast.Expr) -> W_Type:
+    def check_expr(self, expr: ast.Expr) -> tuple[Color, W_Type]:
         """
         Compute the STATIC type of the given expression
         """
@@ -97,7 +98,7 @@ class TypeChecker:
             self.expr_types[expr] = color, w_type
             return color, w_type
 
-    def check_expr_Name(self, name: ast.Name) -> W_Type:
+    def check_expr_Name(self, name: ast.Name) -> tuple[Color, W_Type]:
         varname = name.id
         sym = self.funcdef.symtable.lookup_maybe(varname)
         if sym is None:
@@ -118,7 +119,7 @@ class TypeChecker:
             assert w_value is not None
             return sym.color, self.vm.dynamic_type(w_value)
 
-    def check_expr_Constant(self, const: ast.Constant) -> W_Type:
+    def check_expr_Constant(self, const: ast.Constant) -> tuple[Color, W_Type]:
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
         if T is int:
@@ -131,7 +132,7 @@ class TypeChecker:
             return 'blue', B.w_void
         assert False
 
-    def check_expr_BinOp(self, binop: ast.BinOp) -> W_Type:
+    def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
         lcolor, w_ltype = self.check_expr(binop.left)
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
@@ -148,7 +149,7 @@ class TypeChecker:
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
 
-    def check_expr_CompareOp(self, op: ast.CompareOp) -> W_Type:
+    def check_expr_CompareOp(self, op: ast.CompareOp) -> tuple[Color, W_Type]:
         lcolor, w_ltype = self.check_expr(op.left)
         rcolor, w_rtype = self.check_expr(op.right)
         color = maybe_blue(lcolor, rcolor)
@@ -169,7 +170,7 @@ class TypeChecker:
     check_expr_Gt = check_expr_CompareOp
     check_expr_GtE = check_expr_CompareOp
 
-    def check_expr_Call(self, call: ast.Call) -> W_Type:
+    def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
         if not isinstance(w_functype, W_FuncType):
