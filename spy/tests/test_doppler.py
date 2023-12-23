@@ -59,3 +59,11 @@ class TestDoppler:
         """
         w_func = self.redshift(src, 'foo')
         self.assert_dump(w_func, src)
+
+    def test_op_between_red_and_blue(self):
+        src = """
+        def foo(x: i32) -> i32:
+            return x + 1
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, src)
