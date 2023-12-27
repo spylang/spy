@@ -2,9 +2,9 @@ from typing import Any
 import textwrap
 import pytest
 from spy import ast
+from spy.parser import Parser
 from spy.ast_dump import dump
-from spy.tests.support import (CompilerTest, expect_errors,
-                               MatchAnnotation, parse)
+from spy.tests.support import CompilerTest, expect_errors, MatchAnnotation
 
 @pytest.mark.usefixtures('init')
 class TestParser:
@@ -14,7 +14,11 @@ class TestParser:
         self.tmpdir = tmpdir
 
     def parse(self, src: str) -> ast.Module:
-        self.mod = parse(src, self.tmpdir)
+        f = self.tmpdir.join('test.spy')
+        src = textwrap.dedent(src)
+        f.write(src)
+        parser = Parser(src, str(f))
+        self.mod = parser.parse()
         return self.mod
 
     def expect_errors(self, src: str, main: str, *anns: MatchAnnotation):

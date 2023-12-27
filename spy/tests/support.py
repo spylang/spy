@@ -5,7 +5,6 @@ import pytest
 import py.path
 from spy import ast
 from spy.compiler import Compiler
-from spy.parser import Parser
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import ZigToolchain
@@ -74,15 +73,6 @@ def no_backend(func):
 
 def only_interp(func):
     return pytest.mark.parametrize('compiler_backend', ['interp'])(func)
-
-
-def parse(src: str, tmpdir: py.path.local,
-          filename: str = 'test.spy') -> ast.Module:
-    f = tmpdir.join(filename)
-    src = textwrap.dedent(src)
-    f.write(src)
-    parser = Parser(src, str(f))
-    return parser.parse()
 
 
 @pytest.mark.usefixtures('init')
