@@ -87,6 +87,9 @@ class SPyBackend:
     def gen_expr_Constant(self, const: ast.Constant) -> str:
         return repr(const.value)
 
+    def gen_expr_FQNConst(self, const: ast.FQNConst) -> str:
+        return f'`{const.fqn}`'
+
     def gen_expr_Name(self, name: ast.Name) -> str:
         return name.id
 

@@ -88,6 +88,14 @@ class SPyVM:
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
         return self.globals_w.get(fqn)
 
+    def reverse_lookup_global(self, w_val: W_Object) -> Optional[FQN]:
+        # XXX we should maintain a reverse-lookup table instead of doing a
+        # linear search
+        for fqn, w_obj in self.globals_w.items():
+            if w_val is w_obj:
+                return fqn
+        return None
+
     def store_global(self, fqn: FQN, w_value: W_Object) -> None:
         w_type = self.globals_types[fqn]
         assert self.is_compatible_type(w_value, w_type)

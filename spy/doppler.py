@@ -1,7 +1,10 @@
 from typing import Any, Optional
+from types import NoneType
 from fixedint import FixedInt
 from spy import ast
 from spy.vm.vm import SPyVM
+from spy.vm.builtins import B
+from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc
 from spy.vm.astframe import ASTFrame
 from spy.util import magic_dispatch
@@ -40,15 +43,24 @@ class FuncDoppler:
             w_functype = w_newfunctype,
             funcdef = new_funcdef)
 
-    def blue_eval(self, expr: ast.Expr) -> ast.Constant:
+    def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         fv = self.blue_frame.eval_expr(expr)
-        # XXX for now we support only primitive contants
         # XXX we should check the type
         # XXX we should propagate the static type somehow?
-        value = self.vm.unwrap(fv.w_value)
-        if isinstance(value, FixedInt): # type: ignore
-            value = int(value)
-        return ast.Constant(expr.loc, value)
+        w_type = fv.w_static_type
+        if w_type in (B.w_i32, B.w_bool, B.w_str, B.w_void):
+            # this is a primitive, we can just use ast.Constant
+            value = self.vm.unwrap(fv.w_value)
+            if isinstance(value, FixedInt): # type: ignore
+                value = int(value)
+            return ast.Constant(expr.loc, value)
+        else:
+            # this is a non-primitive prebuilt constant. For now we support
+            # only objects which has a FQN (e.g., builtin types), but we need
+            # to think about a more general solution
+            fqn = self.vm.reverse_lookup_global(fv.w_value)
+            assert fqn is not None, 'implement me'
+            return ast.FQNConst(expr.loc, fqn)
 
     # =========
 
@@ -68,12 +80,13 @@ class FuncDoppler:
         return [ret.replace(value=newvalue)]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
+        assert vardef.value is not None
         sym = self.blue_frame.declare_VarDef(vardef)
         assert sym.is_local
         if sym.color == 'red':
-            assert vardef.value is not None
             newvalue = self.shift_expr(vardef.value)
-            return [vardef.replace(value=newvalue)]
+            newtype = self.shift_expr(vardef.type)
+            return [vardef.replace(value=newvalue, type=newtype)]
         else:
             assert False, 'implement me'
 
