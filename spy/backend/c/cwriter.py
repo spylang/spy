@@ -1,11 +1,13 @@
 from typing import Optional, Any
+from types import NoneType
 import itertools
 import py.path
+from spy import ast
 from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
-from spy.vm.function import W_UserFunc, W_BuiltinFunc, W_FuncType
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
@@ -13,7 +15,7 @@ from spy.vm import helpers
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import expr as c_expr
-from spy.util import shortrepr
+from spy.util import shortrepr, magic_dispatch
 
 class CModuleWriter:
     ctx: Context
@@ -71,13 +73,13 @@ class CModuleWriter:
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
-            if isinstance(w_obj, W_UserFunc):
+            if isinstance(w_obj, W_ASTFunc):
                 self.emit_function(fqn, w_obj)
             else:
                 self.emit_variable(fqn, w_obj)
         return self.out.build()
 
-    def emit_function(self, fqn: FQN, w_func: W_UserFunc) -> None:
+    def emit_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
 
@@ -96,7 +98,7 @@ class CFuncWriter:
     cmod: CModuleWriter
     out: TextBuilder
     fqn: FQN
-    w_func: W_UserFunc
+    w_func: W_ASTFunc
     tmp_vars: dict[str, C_Type]
     stack: list[c_expr.Expr]
     labels: dict[str, int]
@@ -105,24 +107,12 @@ class CFuncWriter:
                  ctx: Context,
                  cmod: CModuleWriter,
                  fqn: FQN,
-                 w_func: W_UserFunc) -> None:
+                 w_func: W_ASTFunc) -> None:
         self.ctx = ctx
         self.cmod = cmod
         self.out = cmod.out
         self.fqn = fqn
         self.w_func = w_func
-        self.tmp_vars = {}
-        self.stack = []
-        self.next_op_index = 0
-        self.labels = {}
-        self.init_labels()
-
-    def init_labels(self) -> None:
-        for pc, op in enumerate(self.w_func.w_code.body):
-            if op.name == 'label':
-                l = op.args[0]
-                assert l not in self.labels, f'duplicate label: {l}'
-                self.labels[l] = pc
 
     def ppc(self) -> None:
         """
@@ -130,71 +120,24 @@ class CFuncWriter:
         """
         print(self.out.build())
 
-    def ppir(self) -> None:
+    def ppast(self) -> None:
         """
-        Pretty print the IR code
+        Pretty print the AST
         """
-        self.w_func.w_code.pp()
-
-    def push(self, expr: c_expr.Expr) -> None:
-        assert isinstance(expr, c_expr.Expr)
-        self.stack.append(expr)
-
-    def pop(self) -> c_expr.Expr:
-        return self.stack.pop()
-
-    def new_var(self, c_type: C_Type) -> str:
-        n = len(self.tmp_vars)
-        name = f'tmp{n}'
-        self.tmp_vars[name] = c_type
-        return name
-
-    # === methods to control the iteration over the opcodes ===
-
-    def advance(self) -> Optional[OpCode]:
-        """
-        Move to the next op.
-        """
-        i = self.next_op_index
-        if i >= len(self.w_func.w_code.body):
-            return None
-        op = self.w_func.w_code.body[i]
-        self.next_op_index += 1
-        return op
-
-    def advance_and_emit(self) -> OpCode:
-        """
-        Move to the next op and emit it
-        """
-        op = self.advance()
-        assert op is not None
-        self.emit_op(op)
-        return op
-
-    def consume(self, expected_name: str, *args: Any) -> OpCode:
-        """
-        Consume the next op without emitting it.
-        """
-        op = self.advance()
-        assert op, 'Unexpected EOF of body'
-        assert op.match(expected_name, *args)
-        return op
+        self.w_func.funcdef.pp()
 
     def emit(self) -> None:
         """
         Emit the code for the whole function
         """
-        self.emit_op_line(self.w_func.w_code.lineno)
+        #self.emit_op_line(self.w_func.w_code.lineno) # XXX
         c_func = self.ctx.c_function(self.fqn.c_name,
                                      self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
-            self.emit_local_vars()
-            # emit the body (and skip the prologue)
-            self.next_op_index = self.w_func.w_code.end_prologue
-            while op := self.advance():
-                self.emit_op(op)
-            assert self.stack == []
+            #self.emit_local_vars() # XXX
+            for stmt in self.w_func.funcdef.body:
+                self.emit_stmt(stmt)
         self.out.wl('}')
 
     def emit_local_vars(self) -> None:
@@ -206,6 +149,41 @@ class CFuncWriter:
             c_type = self.ctx.w2c(w_type)
             if varname not in param_names:
                 self.out.wl(f'{c_type} {varname};')
+
+    # ==============
+
+    def emit_stmt(self, stmt: ast.Stmt) -> None:
+        magic_dispatch(self, 'emit_stmt', stmt)
+
+    def fmt_expr(self, expr: ast.Expr) -> str:
+        return magic_dispatch(self, 'fmt_expr', expr)
+
+    # ===== statements =====
+
+    def emit_stmt_Return(self, ret: ast.Return) -> None:
+        # XXX should we have a special case for void functions?
+        v = self.fmt_expr(ret.value)
+        self.out.wl(f'return {v};')
+
+    # ===== expressions =====
+
+    def fmt_expr_Constant(self, const: ast.Constant) -> None:
+        # unsupported literals are rejected directly by the parser, see
+        # Parser.from_py_expr_Constant
+        T = type(const.value)
+        assert T in (int, bool, str, NoneType)
+        if T is NoneType:
+            return ""
+        elif T is int:
+            return str(const.value)
+        elif T is bool:
+            return str(const.value).lower()
+        elif T is str:
+            raise NotImplementedError('fix me')
+        else:
+            raise NotImplementedError('WIP')
+
+    # === XXX old code, eventually kill me ===
 
     def emit_op(self, op: OpCode) -> None:
         meth_name = f'emit_op_{op.name}'
@@ -225,23 +203,6 @@ class CFuncWriter:
             "You should .consume() the label op when "
             "it is expected")
 
-    def emit_op_load_const(self, w_obj: W_Object) -> None:
-        # XXX we need to share code with 'emit_variable'
-        w_type = self.ctx.vm.dynamic_type(w_obj)
-        c_type = self.ctx.w2c(w_type)
-        if w_type is B.w_void:
-            self.push(c_expr.Void())
-        elif w_type is B.w_i32:
-            intval = self.ctx.vm.unwrap(w_obj)
-            self.push(c_expr.Literal(str(intval)))
-        elif w_type is B.w_bool:
-            boolval = self.ctx.vm.unwrap(w_obj)
-            self.push(c_expr.Literal(str(boolval).lower()))
-        elif w_type is B.w_str:
-            assert isinstance(w_obj, W_str)
-            self._emit_op_load_str(w_obj)
-        else:
-            raise NotImplementedError('WIP')
 
     def _emit_op_load_str(self, w_obj: W_str) -> None:
         # SPy string literals must be initialized as C globals. We want to
@@ -270,14 +231,6 @@ class CFuncWriter:
         v = f'{v} /* {comment} */'
         res = c_expr.UnaryOp('&', c_expr.Literal(v))
         self.push(res)
-
-    def emit_op_return(self) -> None:
-        expr = self.pop()
-        if expr == c_expr.Void():
-            # special case for void functions
-            self.out.wl('return;')
-        else:
-            self.out.wl(f'return {expr.str()};')
 
     def emit_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now

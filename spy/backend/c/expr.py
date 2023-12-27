@@ -1,4 +1,6 @@
 """
+XXX KILL ME
+
 The goal of this module is to provide a way to create "readable" C
 expressions, without going crazy.
 

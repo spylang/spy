@@ -136,7 +136,7 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
-            pytest.skip("C backend is skipped for now")
+            self.vm.redshift(modname)
             compiler = Compiler(self.vm, modname, self.builddir)
             file_wasm = compiler.cbuild()
             return WasmModuleWrapper(self.vm, modname, file_wasm)
