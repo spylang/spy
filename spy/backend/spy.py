@@ -67,8 +67,8 @@ class SPyBackend:
     def emit_stmt(self, stmt: ast.Stmt) -> None:
         magic_dispatch(self, 'emit_stmt', stmt)
 
-    def gen_expr(self, expr: ast.Expr) -> str:
-        return magic_dispatch(self, 'gen_expr', expr)
+    def fmt_expr(self, expr: ast.Expr) -> str:
+        return magic_dispatch(self, 'fmt_expr', expr)
 
     # declarations
 
@@ -81,40 +81,40 @@ class SPyBackend:
         self.wl('pass')
 
     def emit_stmt_Return(self, ret: ast.Return) -> None:
-        v = self.gen_expr(ret.value)
+        v = self.fmt_expr(ret.value)
         self.wl(f'return {v}')
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        v = self.gen_expr(assign.value)
+        v = self.fmt_expr(assign.value)
         self.wl(f'{assign.target} = {v}')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.value is not None, 'XXX'
-        t = self.gen_expr(vardef.type)
-        v = self.gen_expr(vardef.value)
+        t = self.fmt_expr(vardef.type)
+        v = self.fmt_expr(vardef.value)
         self.wl(f'{vardef.name}: {t} = {v}')
 
     # expressions
 
-    def gen_expr_Constant(self, const: ast.Constant) -> str:
+    def fmt_expr_Constant(self, const: ast.Constant) -> str:
         return repr(const.value)
 
-    def gen_expr_FQNConst(self, const: ast.FQNConst) -> str:
+    def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
         return self.fmt_fqn(const.fqn)
 
-    def gen_expr_Name(self, name: ast.Name) -> str:
+    def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
-    def gen_expr_BinOp(self, binop: ast.BinOp) -> str:
-        l = self.gen_expr(binop.left)
-        r = self.gen_expr(binop.right)
+    def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
+        l = self.fmt_expr(binop.left)
+        r = self.fmt_expr(binop.right)
         if binop.left.precedence < binop.precedence:
             l = f'({l})'
         if binop.right.precedence < binop.precedence:
             r = f'({r})'
         return f'{l} {binop.op} {r}'
 
-    gen_expr_Add = gen_expr_BinOp
-    gen_expr_Sub = gen_expr_BinOp
-    gen_expr_Mul = gen_expr_BinOp
-    gen_expr_Div = gen_expr_BinOp
+    fmt_expr_Add = fmt_expr_BinOp
+    fmt_expr_Sub = fmt_expr_BinOp
+    fmt_expr_Mul = fmt_expr_BinOp
+    fmt_expr_Div = fmt_expr_BinOp
