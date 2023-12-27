@@ -23,10 +23,6 @@ class SPyBackend:
         self.w = self.out.w
         self.wl = self.out.wl
 
-    def dump_funcdef(self, funcdef: ast.FuncDef) -> str:
-        self.emit_stmt(funcdef)
-        return self.out.build()
-
     def dump_w_func(self, w_func: W_ASTFunc) -> str:
         w_functype = w_func.w_functype
         name = w_func.fqn.attr
