@@ -7,7 +7,6 @@ from spy.tests.support import (CompilerTest, skip_backends, no_backend,
 
 class TestBasic(CompilerTest):
 
-    @only_interp
     def test_simple(self):
         mod = self.compile(
         """
@@ -15,6 +14,10 @@ class TestBasic(CompilerTest):
             return 42
         """)
         assert mod.foo() == 42
+        if self.backend == 'interp':
+            assert not mod.foo.w_func.redshifted
+        elif self.backend == 'doppler':
+            assert mod.foo.w_func.redshifted
 
     @only_interp
     def test_NameError(self):

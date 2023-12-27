@@ -132,8 +132,9 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'doppler':
-            # implement me
-            import pdb;pdb.set_trace()
+            self.vm.redshift(modname)
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
+            return interp_mod
         elif self.backend == 'C':
             pytest.skip("C backend is skipped for now")
             compiler = Compiler(self.vm, modname, self.builddir)

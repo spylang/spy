@@ -1,16 +1,18 @@
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 from types import NoneType
 from fixedint import FixedInt
 from spy import ast
-from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc
 from spy.vm.astframe import ASTFrame
 from spy.util import magic_dispatch
 
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
-def redshift(vm: SPyVM, w_func: W_ASTFunc) -> W_ASTFunc:
+
+def redshift(vm: 'SPyVM', w_func: W_ASTFunc) -> W_ASTFunc:
     dop = FuncDoppler(vm, w_func)
     return dop.redshift()
 
@@ -19,7 +21,7 @@ class FuncDoppler:
     Perform a redshift on a W_ASTFunc
     """
 
-    def __init__(self, vm: SPyVM, w_func: W_ASTFunc) -> None:
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
@@ -41,7 +43,8 @@ class FuncDoppler:
             fqn = new_fqn,
             closure = new_closure,
             w_functype = w_newfunctype,
-            funcdef = new_funcdef)
+            funcdef = new_funcdef,
+            redshifted = True)
 
     def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         fv = self.blue_frame.eval_expr(expr)
