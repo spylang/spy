@@ -1,56 +1,50 @@
 import pytest
 import textwrap
-from spy import ast
-from spy.parser import Parser
-from spy.backend.spy import dump_module
+from spy.vm.vm import SPyVM
+from spy.vm.function import W_ASTFunc
+from spy.backend.spy import SPyBackend
 from spy.util import print_diff
-from spy.tests.support import parse
+from spy.tests.support import CompilerTest, only_interp
 
-@pytest.mark.usefixtures('init')
-class TestSPyBackend:
+@only_interp
+class TestSPyBackend(CompilerTest):
 
-    @pytest.fixture
-    def init(self, tmpdir):
-        self.tmpdir = tmpdir
-
-    def parse(self, src: str) -> ast.Module:
-        return parse(src, self.tmpdir)
-
-    def assert_dump(self, mod: ast.Module, expected: str) -> None:
-        got = dump_module(mod).strip()
+    def assert_dump(self, w_func: W_ASTFunc, expected: str) -> None:
+        b = SPyBackend(self.vm)
+        got = b.dump_w_func(w_func).strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, 'expected', 'got')
             pytest.fail('assert_dump failed')
 
     def test_simple(self):
-        mod = self.parse("""
+        mod = self.compile("""
         def foo() -> i32:
             pass
         """)
-        self.assert_dump(mod, """
+        self.assert_dump(mod.foo.w_func, """
         def foo() -> i32:
             pass
         """)
 
     def test_args_and_return(self):
-        mod = self.parse("""
+        mod = self.compile("""
         def foo(x: i32, y: i32) -> i32:
             return 42
         """)
-        self.assert_dump(mod, """
+        self.assert_dump(mod.foo.w_func, """
         def foo(x: i32, y: i32) -> i32:
             return 42
         """)
 
     def test_expr_precedence(self):
-        mod = self.parse("""
+        mod = self.compile("""
         def foo() -> void:
             a = 1 + 2 * 3
             b = 1 + (2 * 3)
             c = (1 + 2) * 3
         """)
-        self.assert_dump(mod, """
+        self.assert_dump(mod.foo.w_func, """
         def foo() -> void:
             a = 1 + 2 * 3
             b = 1 + 2 * 3
@@ -62,5 +56,5 @@ class TestSPyBackend:
         def foo() -> void:
             x: i32 = 1
         """
-        mod = self.parse(src)
-        self.assert_dump(mod, src)
+        mod = self.compile(src)
+        self.assert_dump(mod.foo.w_func, src)

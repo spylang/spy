@@ -1,15 +1,13 @@
+from typing import Literal
 from spy import ast
-from spy.vm.function import W_ASTFunc
+from spy.fqn import FQN
+from spy.vm.vm import SPyVM
+from spy.vm.object import W_Object
+from spy.vm.function import W_ASTFunc, FuncParam
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 
-def dump_module(mod: ast.Module) -> str:
-    b = SPyBackend()
-    return b.dump_module(mod)
-
-def dump_function(w_func: W_ASTFunc) -> str:
-    b = SPyBackend()
-    return b.dump_funcdef(w_func.funcdef)
+FQN_FORMAT = Literal['full', 'short', 'no']
 
 class SPyBackend:
     """
@@ -18,19 +16,48 @@ class SPyBackend:
     Mostly used for testing.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, vm: SPyVM, *, fqn_format: FQN_FORMAT = 'short') -> None:
+        self.vm = vm
+        self.fqn_format = fqn_format
         self.out = TextBuilder(use_colors=False)
         self.w = self.out.w
         self.wl = self.out.wl
 
-    def dump_module(self, mod: ast.Module) -> str:
-        for decl in mod.decls:
-            self.emit_decl(decl)
-        return self.out.build()
-
     def dump_funcdef(self, funcdef: ast.FuncDef) -> str:
         self.emit_stmt(funcdef)
         return self.out.build()
+
+    def dump_w_func(self, w_func: W_ASTFunc) -> str:
+        w_functype = w_func.w_functype
+        name = w_func.fqn.attr
+        params = self.fmt_params(w_functype.params)
+        ret = self.fmt_w_obj(w_functype.w_restype)
+        self.wl(f'def {name}({params}) -> {ret}:')
+        with self.out.indent():
+            for stmt in w_func.funcdef.body:
+                self.emit_stmt(stmt)
+        return self.out.build()
+
+    def fmt_params(self, params: list[FuncParam]) -> str:
+        l = []
+        for p in params:
+            t = self.fmt_w_obj(p.w_type)
+            l.append(f'{p.name}: {t}')
+        return ', '.join(l)
+
+    def fmt_w_obj(self, w_obj: W_Object) -> str:
+        # this assumes that w_obj has a valid FQN
+        fqn = self.vm.reverse_lookup_global(w_obj)
+        assert fqn is not None
+        return self.fmt_fqn(fqn)
+
+    def fmt_fqn(self, fqn: FQN) -> str:
+        if self.fqn_format == 'no':
+            return fqn.attr # don't show the namespace
+        elif self.fqn_format == 'short' and fqn.modname == 'builtins':
+            return fqn.attr # don't show builtins::
+        else:
+            return f'`{fqn}`'
 
     # ==============
 
@@ -49,21 +76,6 @@ class SPyBackend:
         self.emit_stmt(decl.funcdef)
 
     # statements
-
-    def _format_arglist(self, args: list[ast.FuncArg]) -> str:
-        l = []
-        for arg in args:
-            t = self.gen_expr(arg.type)
-            l.append(f'{arg.name}: {t}')
-        return ', '.join(l)
-
-    def emit_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        args = self._format_arglist(funcdef.args)
-        ret = self.gen_expr(funcdef.return_type)
-        self.wl(f'def {funcdef.name}({args}) -> {ret}:')
-        with self.out.indent():
-            for stmt in funcdef.body:
-                self.emit_stmt(stmt)
 
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
         self.wl('pass')
@@ -88,7 +100,7 @@ class SPyBackend:
         return repr(const.value)
 
     def gen_expr_FQNConst(self, const: ast.FQNConst) -> str:
-        return f'`{const.fqn}`'
+        return self.fmt_fqn(const.fqn)
 
     def gen_expr_Name(self, name: ast.Name) -> str:
         return name.id

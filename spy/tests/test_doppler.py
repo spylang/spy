@@ -4,7 +4,7 @@ from spy import ast
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc
 from spy.doppler import redshift
-from spy.backend.spy import dump_function
+from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.util import print_diff
 
 @pytest.mark.usefixtures('init')
@@ -25,8 +25,10 @@ class TestDoppler:
         w_func = w_mod.getattr_astfunc(funcname)
         return redshift(self.vm, w_func)
 
-    def assert_dump(self, w_func: W_ASTFunc, expected: str) -> None:
-        got = dump_function(w_func).strip()
+    def assert_dump(self, w_func: W_ASTFunc, expected: str,
+                    *, fqn_format: FQN_FORMAT='short') -> None:
+        b = SPyBackend(self.vm, fqn_format = fqn_format)
+        got = b.dump_w_func(w_func).strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, 'expected', 'got')
@@ -50,11 +52,7 @@ class TestDoppler:
             return x
         """
         w_func = self.redshift(src, 'foo')
-        self.assert_dump(w_func, """
-        def foo() -> i32:
-            x: `builtins::i32` = 1
-            return x
-        """)
+        self.assert_dump(w_func, src)
 
     def test_funcargs(self):
         src = """
@@ -63,6 +61,18 @@ class TestDoppler:
         """
         w_func = self.redshift(src, 'foo')
         self.assert_dump(w_func, src)
+
+    def test_fqn_format(self):
+        src = """
+        def foo(x: i32) -> void:
+            y: str = 'hello'
+        """
+        w_func = self.redshift(src, 'foo')
+        expected = """
+        def foo(x: `builtins::i32`) -> `builtins::void`:
+            y: `builtins::str` = 'hello'
+        """
+        self.assert_dump(w_func, expected, fqn_format='full')
 
     def test_op_between_red_and_blue(self):
         src = """

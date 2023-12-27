@@ -72,6 +72,9 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
 def no_backend(func):
     return pytest.mark.parametrize('compiler_backend', [''])(func)
 
+def only_interp(func):
+    return pytest.mark.parametrize('compiler_backend', ['interp'])(func)
+
 
 def parse(src: str, tmpdir: py.path.local,
           filename: str = 'test.spy') -> ast.Module:
