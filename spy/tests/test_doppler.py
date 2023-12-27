@@ -1,37 +1,83 @@
+import textwrap
 import pytest
-from spy.fqn import FQN
+from spy import ast
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
-from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode
-from spy.vm.object import W_i32
-from spy.vm.function import W_FuncType, W_UserFunc
-from spy.doppler import DopplerInterpreter
-from spy.tests.support import make_func
+from spy.vm.function import W_ASTFunc
+from spy.doppler import redshift
+from spy.backend.spy import SPyBackend, FQN_FORMAT
+from spy.util import print_diff
 
 @pytest.mark.usefixtures('init')
 class TestDoppler:
 
     @pytest.fixture
-    def init(self):
+    def init(self, tmpdir):
+        # XXX there is a lot of code duplication with CompilerTest
+        self.tmpdir = tmpdir
         self.vm = SPyVM()
+        self.vm.path.append(str(self.tmpdir))
 
-    def doppler(self, w_func: W_UserFunc) -> W_UserFunc:
-        self.interp = DopplerInterpreter(self.vm, w_func)
-        return self.interp.run()
+    def redshift(self, src: str, funcname: str) -> W_ASTFunc:
+        f = self.tmpdir.join('test.spy')
+        src = textwrap.dedent(src)
+        f.write(src)
+        w_mod = self.vm.import_('test')
+        w_func = w_mod.getattr_astfunc(funcname)
+        return redshift(self.vm, w_func)
 
-    @pytest.mark.skip("FIXME")
+    def assert_dump(self, w_func: W_ASTFunc, expected: str,
+                    *, fqn_format: FQN_FORMAT='short') -> None:
+        b = SPyBackend(self.vm, fqn_format = fqn_format)
+        got = b.dump_w_func(w_func).strip()
+        expected = textwrap.dedent(expected).strip()
+        if got != expected:
+            print_diff(expected, got, 'expected', 'got')
+            pytest.fail('assert_dump failed')
+
     def test_simple(self):
-        w_func = make_func(
-            'def() -> i32',
-            body=[
-                OpCode('load_const', W_i32(42)),
-                OpCode('return'),
-            ]
-        )
-        w_func2 = self.doppler(w_func)
-        w_res = self.vm.call_function(w_func2, [])
-        assert self.vm.unwrap(w_res) == 42
-        assert w_func2.w_code.equals("""
-        load_const W_i32(42)
-        return
+        src = """
+        def foo() -> i32:
+            return 1 + 2
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, """
+        def foo() -> i32:
+            return 3
         """)
+
+    def test_red_vars(self):
+        src = """
+        def foo() -> i32:
+            x: i32 = 1
+            return x
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, src)
+
+    def test_funcargs(self):
+        src = """
+        def foo(x: i32, y: i32) -> i32:
+            return x + y
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, src)
+
+    def test_fqn_format(self):
+        src = """
+        def foo(x: i32) -> void:
+            y: str = 'hello'
+        """
+        w_func = self.redshift(src, 'foo')
+        expected = """
+        def foo(x: `builtins::i32`) -> `builtins::void`:
+            y: `builtins::str` = 'hello'
+        """
+        self.assert_dump(w_func, expected, fqn_format='full')
+
+    def test_op_between_red_and_blue(self):
+        src = """
+        def foo(x: i32) -> i32:
+            return x + 1
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, src)

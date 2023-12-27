@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Optional, NoReturn
 from types import NoneType
 from spy import ast
 from spy.fqn import FQN
-from spy.irgen.symtable import Symbol
+from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
@@ -12,16 +12,28 @@ from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+def maybe_blue(*colors: Color) -> Color:
+    """
+    Return 'blue' if all the given colors are blue, else 'red'
+    """
+    if set(colors) == {'blue'}:
+        return 'blue'
+    else:
+        return 'red'
+
+
 class TypeChecker:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcef: ast.FuncDef
+    expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     locals_types_w: dict[str, W_Type]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
+        self.expr_types = {}
         self.locals_types_w = {}
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
@@ -68,20 +80,25 @@ class TypeChecker:
     # ==========
 
     def check_stmt_If(self, if_node: ast.If) -> None:
-        w_cond_type = self.check_expr(if_node.test)
+        color, w_cond_type = self.check_expr(if_node.test)
         self.assert_bool(w_cond_type, if_node.test.loc)
 
     def check_stmt_While(self, while_node: ast.While) -> None:
-        w_cond_type = self.check_expr(while_node.test)
+        color, w_cond_type = self.check_expr(while_node.test)
         self.assert_bool(w_cond_type, while_node.test.loc)
 
-    def check_expr(self, expr: ast.Expr) -> W_Type:
+    def check_expr(self, expr: ast.Expr) -> tuple[Color, W_Type]:
         """
         Compute the STATIC type of the given expression
         """
-        return magic_dispatch(self, 'check_expr', expr)
+        if expr in self.expr_types:
+            return self.expr_types[expr]
+        else:
+            color, w_type = magic_dispatch(self, 'check_expr', expr)
+            self.expr_types[expr] = color, w_type
+            return color, w_type
 
-    def check_expr_Name(self, name: ast.Name) -> W_Type:
+    def check_expr_Name(self, name: ast.Name) -> tuple[Color, W_Type]:
         varname = name.id
         sym = self.funcdef.symtable.lookup_maybe(varname)
         if sym is None:
@@ -92,34 +109,35 @@ class TypeChecker:
             # FQNs. For now, we just look it up and use the dynamic type
             w_value = self.vm.lookup_global(sym.fqn)
             assert w_value is not None
-            return self.vm.dynamic_type(w_value)
+            return sym.color, self.vm.dynamic_type(w_value)
         elif sym.is_local:
-            return self.locals_types_w[name.id]
+            return sym.color, self.locals_types_w[name.id]
         else:
             #assert sym.color == 'blue' # XXX this fails?
             namespace = self.w_func.closure[sym.level]
             w_value = namespace[sym.name]
             assert w_value is not None
-            return self.vm.dynamic_type(w_value)
+            return sym.color, self.vm.dynamic_type(w_value)
 
-    def check_expr_Constant(self, const: ast.Constant) -> W_Type:
+    def check_expr_Constant(self, const: ast.Constant) -> tuple[Color, W_Type]:
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
         if T is int:
-            return B.w_i32
+            return 'blue', B.w_i32
         elif T is bool:
-            return B.w_bool
+            return 'blue', B.w_bool
         elif T is str:
-            return B.w_str
+            return 'blue', B.w_str
         elif T is NoneType:
-            return B.w_void
+            return 'blue', B.w_void
         assert False
 
-    def check_expr_BinOp(self, binop: ast.BinOp) -> W_Type:
-        w_ltype = self.check_expr(binop.left)
-        w_rtype = self.check_expr(binop.right)
+    def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
+        lcolor, w_ltype = self.check_expr(binop.left)
+        rcolor, w_rtype = self.check_expr(binop.right)
+        color = maybe_blue(lcolor, rcolor)
         if w_ltype is B.w_i32 and w_rtype is B.w_i32:
-            return B.w_i32
+            return color, B.w_i32
         #
         lt = w_ltype.name
         rt = w_rtype.name
@@ -131,9 +149,10 @@ class TypeChecker:
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
 
-    def check_expr_CompareOp(self, op: ast.CompareOp) -> W_Type:
-        w_ltype = self.check_expr(op.left)
-        w_rtype = self.check_expr(op.right)
+    def check_expr_CompareOp(self, op: ast.CompareOp) -> tuple[Color, W_Type]:
+        lcolor, w_ltype = self.check_expr(op.left)
+        rcolor, w_rtype = self.check_expr(op.right)
+        color = maybe_blue(lcolor, rcolor)
         if w_ltype != w_rtype:
             # XXX this is wrong, we need to add support for implicit conversions
             l = w_ltype.name
@@ -142,7 +161,7 @@ class TypeChecker:
             err.add('error', f'this is `{l}`', op.left.loc)
             err.add('error', f'this is `{r}`', op.right.loc)
             raise err
-        return B.w_bool
+        return color, B.w_bool
 
     check_expr_Eq = check_expr_CompareOp
     check_expr_NotEq = check_expr_CompareOp
@@ -151,13 +170,13 @@ class TypeChecker:
     check_expr_Gt = check_expr_CompareOp
     check_expr_GtE = check_expr_CompareOp
 
-    def check_expr_Call(self, call: ast.Call) -> W_Type:
-        w_functype = self.check_expr(call.func)
+    def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
+        color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
         if not isinstance(w_functype, W_FuncType):
             self._call_error_non_callable(call, sym, w_functype)
         #
-        argtypes_w = [self.check_expr(arg) for arg in call.args]
+        argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
         got_nargs = len(argtypes_w)
         exp_nargs = len(w_functype.params)
         if got_nargs != exp_nargs:
@@ -170,7 +189,8 @@ class TypeChecker:
                                                w_exp_type = param.w_type,
                                                w_got_type = w_arg_type)
         #
-        return w_functype.w_restype
+        color = 'red' # XXX fix me
+        return color, w_functype.w_restype
 
 
     def _call_error_non_callable(self, call: ast.Call,

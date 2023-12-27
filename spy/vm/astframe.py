@@ -6,6 +6,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
+from spy.irgen.symtable import Symbol
 from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
@@ -74,6 +75,7 @@ class ASTFrame:
         return w_obj
 
     def run(self, args_w: list[W_Object]) -> W_Object:
+        self.declare_arguments()
         self.init_arguments(args_w)
         try:
             for stmt in self.funcdef.body:
@@ -91,18 +93,24 @@ class ASTFrame:
         except Return as e:
             return e.w_value
 
-    def init_arguments(self, args_w: list[W_Object]) -> None:
+    def declare_arguments(self) -> None:
         """
-        - declare the local vars for the arguments and @return
-        - store the arguments in args_w in the appropriate local var
+        Declare the local vars for the arguments and @return
         """
         w_functype = self.w_func.w_functype
         self.declare_local('@return', w_functype.w_restype)
-        #
+        params = self.w_func.w_functype.params
+        for param in params:
+            self.declare_local(param.name, param.w_type)
+
+    def init_arguments(self, args_w: list[W_Object]) -> None:
+        """
+        Store the arguments in args_w in the appropriate local var
+        """
+        w_functype = self.w_func.w_functype
         params = self.w_func.w_functype.params
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
-            self.declare_local(param.name, param.w_type)
             self.store_local(loc, param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
@@ -158,12 +166,16 @@ class ASTFrame:
         self.declare_local(funcdef.name, w_func.w_functype)
         self.store_local(funcdef.loc, funcdef.name, w_func)
 
-    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+    def declare_VarDef(self, vardef: ast.VarDef) -> Symbol:
         sym = self.funcdef.symtable.lookup(vardef.name)
         assert sym.is_local
-        assert vardef.value is not None, 'WIP?'
         w_type = self.eval_expr_type(vardef.type)
         self.declare_local(vardef.name, w_type)
+        return sym
+
+    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        self.declare_VarDef(vardef)
+        assert vardef.value is not None, 'WIP?'
         w_value = self.eval_expr_object(vardef.value)
         self.store_local(vardef.value.loc, vardef.name, w_value)
 
@@ -213,12 +225,12 @@ class ASTFrame:
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
-        w_type = self.t.check_expr_Constant(const)
+        color, w_type = self.t.check_expr_Constant(const)
         w_value = self.vm.wrap(const.value)
         return FrameVal(w_type, w_value)
 
     def eval_expr_Name(self, name: ast.Name) -> FrameVal:
-        w_type = self.t.check_expr_Name(name)
+        color, w_type = self.t.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
         if sym.fqn is not None:
             w_value = self.vm.lookup_global(sym.fqn)
@@ -280,7 +292,7 @@ class ASTFrame:
     eval_expr_GtE = eval_expr_CompareOp
 
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
-        w_restype = self.t.check_expr_Call(call)
+        color, w_restype = self.t.check_expr_Call(call)
         fv_func = self.eval_expr(call.func)
         w_func = fv_func.w_value
         assert isinstance(w_func, W_Func)

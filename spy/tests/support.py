@@ -3,7 +3,7 @@ import textwrap
 from contextlib import contextmanager
 import pytest
 import py.path
-import spy.ast
+from spy import ast
 from spy.compiler import Compiler
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
@@ -70,6 +70,9 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
 
 def no_backend(func):
     return pytest.mark.parametrize('compiler_backend', [''])(func)
+
+def only_interp(func):
+    return pytest.mark.parametrize('compiler_backend', ['interp'])(func)
 
 
 @pytest.mark.usefixtures('init')

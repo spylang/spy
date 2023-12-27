@@ -1,104 +1,106 @@
 from typing import Any, Optional
-from spy.fqn import FQN
+from types import NoneType
+from fixedint import FixedInt
+from spy import ast
 from spy.vm.vm import SPyVM
-from spy.vm.object import W_Type, W_Object
-from spy.vm.codeobject import W_CodeObject, OpCode
-from spy.vm.function import W_UserFunc
+from spy.vm.builtins import B
+from spy.vm.object import W_Object
+from spy.vm.function import W_ASTFunc
+from spy.vm.astframe import ASTFrame
+from spy.util import magic_dispatch
 
-class DopplerInterpreter:
+
+def redshift(vm: SPyVM, w_func: W_ASTFunc) -> W_ASTFunc:
+    dop = FuncDoppler(vm, w_func)
+    return dop.redshift()
+
+class FuncDoppler:
     """
-    Perform typecheck and partial evaluation on the given function object.
-
-    The input bytecode contains blue and red operations. The output bytecode
-    contains only red operations, thus it performs a "red shift"... hence the
-    name :)
-
-    Return a new function object where all blue ops have been evaluated.
+    Perform a redshift on a W_ASTFunc
     """
-    typestack_w: list[W_Type]
 
-    def __init__(self, vm: SPyVM, w_func: W_UserFunc):
+    def __init__(self, vm: SPyVM, w_func: W_ASTFunc) -> None:
         self.vm = vm
         self.w_func = w_func
-        self.outname = w_func.w_code.name + '#doppler' # XXX?
-        self.code = w_func.w_code
-        self.code_out = W_CodeObject(
-            name = self.outname,
-            filename = w_func.w_code.filename,
-            lineno = w_func.w_code.lineno,
-            retloc = w_func.w_code.retloc,
-            arglocs = w_func.w_code.arglocs
-        )
-        self.typestack_w = []
-        ## self.blueframe = Frame(w_func)
-        ## self.label_maps = []
-        ## self.unique_id = 0
+        self.funcdef = w_func.funcdef
+        self.blue_frame = ASTFrame(vm, w_func)
+        self.t = self.blue_frame.t
+        self.blue_frame.declare_arguments()
 
-    def pushtype(self, w_type: W_Type) -> None:
-        self.typestack_w.append(w_type)
+    def redshift(self) -> W_ASTFunc:
+        funcdef = self.w_func.funcdef
+        new_body = []
+        for stmt in funcdef.body:
+            new_body += self.shift_stmt(stmt)
+        new_funcdef = funcdef.replace(body=new_body)
+        #
+        new_fqn = self.w_func.fqn # XXX
+        new_closure = ()
+        w_newfunctype = self.w_func.w_functype
+        return W_ASTFunc(
+            fqn = new_fqn,
+            closure = new_closure,
+            w_functype = w_newfunctype,
+            funcdef = new_funcdef)
 
-    def poptype(self) -> W_Type:
-        return self.typestack_w.pop()
-
-    def emit(self, op: OpCode) -> None:
-        ## if self.label_maps:
-        ##     op = op.relabel(self.label_maps[-1])
-        self.code_out.body.append(op)
-
-    def flush(self) -> None:
-        # XXX implement me
-        pass
-
-    def run(self) -> W_UserFunc:
-        """
-        Do abstract interpretation of the whole code
-        """
-        self.run_range(0, len(self.code.body))
-        return W_UserFunc(
-            FQN(modname='doppler', attr=self.outname), # XXX
-            self.w_func.w_functype,
-            self.code_out)
-
-    def run_range(self, pc_start: int, pc_end: int) -> None:
-        """
-        Do abstract interpretation of the given code range
-        """
-        pc = pc_start
-        while pc < pc_end:
-            pc = self.run_single_op(pc)
-        self.flush()
-
-    def run_single_op(self, pc: int) -> int:
-        """
-        Do abstract interpretation of the op at the given PC.
-
-        Return the PC of the operation to execute next.
-        """
-        op = self.code.body[pc].copy()
-        meth = getattr(self, f'op_{op.name}', self.op_default)
-        pc_next = meth(pc, op, *op.args)
-        if pc_next is None:
-            return pc + 1
+    def blue_eval(self, expr: ast.Expr) -> ast.Expr:
+        fv = self.blue_frame.eval_expr(expr)
+        # XXX we should check the type
+        # XXX we should propagate the static type somehow?
+        w_type = fv.w_static_type
+        if w_type in (B.w_i32, B.w_bool, B.w_str, B.w_void):
+            # this is a primitive, we can just use ast.Constant
+            value = self.vm.unwrap(fv.w_value)
+            if isinstance(value, FixedInt): # type: ignore
+                value = int(value)
+            return ast.Constant(expr.loc, value)
         else:
-            assert type(pc_next) is int
-            return pc_next
+            # this is a non-primitive prebuilt constant. For now we support
+            # only objects which has a FQN (e.g., builtin types), but we need
+            # to think about a more general solution
+            fqn = self.vm.reverse_lookup_global(fv.w_value)
+            assert fqn is not None, 'implement me'
+            return ast.FQNConst(expr.loc, fqn)
 
-    def op_default(self, pc: int, op: OpCode, *args: Any) -> Optional[int]:
-        raise NotImplementedError(f'op_{op.name}')
-        ## if self.is_blue(op):
-        ##     return self.op_blue(pc, op, *args)
-        ## else:
-        ##     return self.op_red(pc, op, *args)
+    # =========
 
-    def op_load_const(self, pc: int, op: OpCode,
-                      w_value: W_Object) -> Any:
-        w_type = self.vm.dynamic_type(w_value)
-        self.pushtype(w_type)
-        self.emit(op)
+    def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        return magic_dispatch(self, 'shift_stmt', stmt)
 
-    def op_return(self, pc: int, op: OpCode) -> Any:
-        w_type = self.poptype()
-        # XXX this should be turned into a proper error
-        # XXX 2: we should use is_compatible_type
-        assert w_type == self.w_func.w_functype.w_restype
-        self.emit(op)
+    def shift_expr(self, expr: ast.Expr) -> ast.Expr:
+        color, w_type = self.t.check_expr(expr)
+        if color == 'blue':
+            return self.blue_eval(expr)
+        return magic_dispatch(self, 'shift_expr', expr)
+
+    # ==== statements ====
+
+    def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
+        newvalue = self.shift_expr(ret.value)
+        return [ret.replace(value=newvalue)]
+
+    def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
+        assert vardef.value is not None
+        sym = self.blue_frame.declare_VarDef(vardef)
+        assert sym.is_local
+        if sym.color == 'red':
+            newvalue = self.shift_expr(vardef.value)
+            newtype = self.shift_expr(vardef.type)
+            return [vardef.replace(value=newvalue, type=newtype)]
+        else:
+            assert False, 'implement me'
+
+    # ==== expressions ====
+
+    def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
+        return const
+
+    def shift_expr_Name(self, name: ast.Name) -> ast.Expr:
+        return name
+
+    def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
+        l = self.shift_expr(binop.left)
+        r = self.shift_expr(binop.right)
+        return binop.replace(left=l, right=r)
+
+    shift_expr_Add = shift_expr_BinOp

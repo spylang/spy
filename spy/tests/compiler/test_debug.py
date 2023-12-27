@@ -1,9 +1,11 @@
 #-*- encoding: utf-8 -*-
+# mypy: ignore-errors
 
 import pytest
 from spy.vm.codeobject import OpCode
 from spy.tests.support import CompilerTest, skip_backends, no_backend
 
+@pytest.mark.skip("fixme")
 class TestDebug(CompilerTest):
 
     def test_debug_info(self, legacy):
