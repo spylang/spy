@@ -15,7 +15,7 @@ from spy.vm.module import W_Module
 from spy.vm.codeobject import OpCode, W_CodeObject
 from spy.vm.function import W_UserFunc, W_FuncType
 
-Backend = Literal['interp', 'C']
+Backend = Literal['interp', 'doppler', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
 def params_with_marks(params):
@@ -131,6 +131,9 @@ class CompilerTest:
         elif self.backend == 'interp':
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
+        elif self.backend == 'doppler':
+            # implement me
+            import pdb;pdb.set_trace()
         elif self.backend == 'C':
             pytest.skip("C backend is skipped for now")
             compiler = Compiler(self.vm, modname, self.builddir)

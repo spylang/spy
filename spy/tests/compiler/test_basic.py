@@ -3,10 +3,11 @@ from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.builtins import B
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
-                               expect_errors)
+                               expect_errors, only_interp)
 
 class TestBasic(CompilerTest):
 
+    @only_interp
     def test_simple(self):
         mod = self.compile(
         """
@@ -15,6 +16,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
+    @only_interp
     def test_NameError(self):
         ctx = expect_errors(
             'name `x` is not defined',
@@ -28,6 +30,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
+    @only_interp
     def test_resolve_type_errors(self):
         ctx = expect_errors(
             'name `aaa` is not defined',
@@ -39,6 +42,7 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
+    @only_interp
     def test_wrong_functype_restype(self):
         ctx = expect_errors(
             'expected `type`, got `str`',
@@ -50,6 +54,7 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
+    @only_interp
     def test_wrong_functype_argtype(self):
         ctx = expect_errors(
             'expected `type`, got `str`',
@@ -61,6 +66,7 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
+    @only_interp
     def test_wrong_return_type(self):
         ctx = expect_errors(
             'mismatched types',
@@ -74,6 +80,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
+    @only_interp
     def test_local_variables(self):
         mod = self.compile(
         """
@@ -83,6 +90,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
+    @only_interp
     def test_local_typecheck(self):
         ctx = expect_errors(
             'mismatched types',
@@ -96,6 +104,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
+    @only_interp
     def test_local_upcast_and_downcast(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -106,6 +115,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 1
 
+    @only_interp
     def test_function_arguments(self):
         mod = self.compile(
         """
@@ -114,6 +124,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
+    @only_interp
     def test_assign(self):
         mod = self.compile(
         """
@@ -125,6 +136,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
+    @only_interp
     def test_implicit_declaration(self):
         mod = self.compile(
             """
@@ -134,6 +146,7 @@ class TestBasic(CompilerTest):
             """)
         assert mod.foo() == 42
 
+    @only_interp
     def test_global_variables(self):
         mod = self.compile(
         """
@@ -150,6 +163,7 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
+    @only_interp
     def test_i32_add(self):
         mod = self.compile("""
         def add(x: i32, y: i32) -> i32:
@@ -157,6 +171,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.add(1, 2) == 3
 
+    @only_interp
     def test_i32_mul(self):
         mod = self.compile("""
         def mul(x: i32, y: i32) -> i32:
@@ -164,6 +179,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
+    @only_interp
     def test_void_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -182,6 +198,7 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
+    @only_interp
     def test_implicit_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -202,6 +219,7 @@ class TestBasic(CompilerTest):
             with pytest.raises(SPyTypeError, match=msg):
                 mod.implicit_return_i32()
 
+    @only_interp
     def test_BinOp_error(self):
         ctx = expect_errors(
             'cannot do `i32` + `str`',
@@ -215,6 +233,7 @@ class TestBasic(CompilerTest):
                 """)
             mod.bar(1, "hello")
 
+    @only_interp
     def test_BinOp_is_dispatched_with_static_types(self):
         # this fails because the static type of 'x' is object, even if its
         # dynamic type is i32
@@ -232,6 +251,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
+    @only_interp
     def test_function_call(self):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:
@@ -243,6 +263,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(1, 2, 3) == 123
         assert mod.bar(4) == 456
 
+    @only_interp
     def test_cannot_call_non_functions(self):
         # it would be nice to report also the location where 'inc' is defined,
         # but we don't carry around this information for now. There is room
@@ -260,6 +281,7 @@ class TestBasic(CompilerTest):
             """)
             mod.bar()
 
+    @only_interp
     def test_function_call_missing_args(self):
         ctx = expect_errors(
             'this function takes 1 argument but 0 arguments were supplied',
@@ -275,6 +297,7 @@ class TestBasic(CompilerTest):
             """)
             mod.bar()
 
+    @only_interp
     def test_function_call_extra_args(self):
         ctx = expect_errors(
             'this function takes 1 argument but 3 arguments were supplied',
@@ -290,6 +313,7 @@ class TestBasic(CompilerTest):
             """)
             mod.bar()
 
+    @only_interp
     def test_function_call_type_mismatch(self):
         ctx = expect_errors(
             'mismatched types',
@@ -305,6 +329,7 @@ class TestBasic(CompilerTest):
             """)
             mod.bar("hello")
 
+    @only_interp
     def test_StmtExpr(self):
         mod = self.compile("""
         x: i32 = 0
@@ -318,6 +343,7 @@ class TestBasic(CompilerTest):
         mod.foo()
         assert mod.x == 2
 
+    @only_interp
     def test_True_False(self):
         mod = self.compile("""
         def get_True() -> bool:
@@ -329,6 +355,7 @@ class TestBasic(CompilerTest):
         assert mod.get_True() is True
         assert mod.get_False() is False
 
+    @only_interp
     def test_CompareOp(self):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
@@ -360,6 +387,7 @@ class TestBasic(CompilerTest):
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
 
+    @only_interp
     def test_CompareOp_error(self):
         ctx = expect_errors(
             'cannot do `i32` == `str`',
@@ -373,6 +401,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo(1, 'hello')
 
+    @only_interp
     def test_if_stmt(self):
         mod = self.compile("""
         a: i32 = 0
@@ -418,6 +447,7 @@ class TestBasic(CompilerTest):
         assert mod.b == 200
         assert mod.c == 300
 
+    @only_interp
     def test_while(self):
         mod = self.compile("""
         def factorial(n: i32) -> i32:
@@ -432,6 +462,7 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
+    @only_interp
     def test_if_error(self):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a
@@ -450,6 +481,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo(1)
 
+    @only_interp
     def test_while_error(self):
         ctx = expect_errors(
             'mismatched types',
@@ -490,6 +522,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
+    @only_interp
     def test_builtin_function(self):
         mod = self.compile("""
         def foo(x: i32) -> i32:
@@ -499,6 +532,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
+    @only_interp
     def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int
