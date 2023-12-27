@@ -132,6 +132,12 @@ class TypeChecker:
             return 'blue', B.w_void
         assert False
 
+    def check_expr_FQNConst(self, const: ast.FQNConst) -> tuple[Color, W_Type]:
+        # XXX: I think that FQNConst should remember what was its static type
+        w_val = self.vm.lookup_global(const.fqn)
+        w_type = self.vm.dynamic_type(w_val)
+        return 'blue', w_type
+
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
         lcolor, w_ltype = self.check_expr(binop.left)
         rcolor, w_rtype = self.check_expr(binop.right)

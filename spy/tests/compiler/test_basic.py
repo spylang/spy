@@ -83,7 +83,6 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    @only_interp
     def test_local_variables(self):
         mod = self.compile(
         """
