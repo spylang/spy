@@ -39,12 +39,13 @@ class FuncDoppler:
         new_fqn = self.w_func.fqn # XXX
         new_closure = ()
         w_newfunctype = self.w_func.w_functype
-        return W_ASTFunc(
+        w_newfunc = W_ASTFunc(
             fqn = new_fqn,
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
-            redshifted = True)
+            locals_types_w = self.t.locals_types_w.copy())
+        return w_newfunc
 
     def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         fv = self.blue_frame.eval_expr(expr)

@@ -122,7 +122,9 @@ class W_ASTFunc(W_Func):
     fqn: FQN
     closure: tuple[Namespace, ...]
     funcdef: ast.FuncDef
-    redshifted: bool
+    # types of local variables: this is non-None IIF the function has been
+    # redshifted.
+    locals_types_w: Optional[dict[str, W_Type]]
 
     def __init__(self,
                  fqn: FQN,
@@ -130,12 +132,17 @@ class W_ASTFunc(W_Func):
                  w_functype: W_FuncType,
                  funcdef: ast.FuncDef,
                  *,
-                 redshifted: bool = False) -> None:
+                 locals_types_w: Optional[dict[str, W_Type]] = None
+                 ) -> None:
         self.fqn = fqn
         self.closure = closure
         self.w_functype = w_functype
         self.funcdef = funcdef
-        self.redshifted = redshifted
+        self.locals_types_w = locals_types_w
+
+    @property
+    def redshifted(self):
+        return self.locals_types_w is not None
 
     def __repr__(self) -> str:
         if self.redshifted:

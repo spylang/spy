@@ -135,19 +135,23 @@ class CFuncWriter:
                                      self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
-            #self.emit_local_vars() # XXX
+            self.emit_local_vars()
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
         self.out.wl('}')
 
     def emit_local_vars(self) -> None:
         """
-        Declare all local variables
+        Declare all local variables.
+
+        We need to declare all of them in advance because C scoping rules are
+        different than SPy scoping rules, so we emit the C declaration when we
+        see e.g. a VarDef.
         """
         param_names = [p.name for p in self.w_func.w_functype.params]
-        for varname, w_type in self.w_func.w_code.locals_w_types.items():
+        for varname, w_type in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_type)
-            if varname not in param_names:
+            if varname != '@return' and varname not in param_names:
                 self.out.wl(f'{c_type} {varname};')
 
     # ==============
@@ -164,6 +168,13 @@ class CFuncWriter:
         # XXX should we have a special case for void functions?
         v = self.fmt_expr(ret.value)
         self.out.wl(f'return {v};')
+
+    def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        assert vardef.value is not None, 'XXX'
+        # we don't need to eval vardef.type, because all local vars have
+        # already been declared
+        v = self.fmt_expr(vardef.value)
+        self.out.wl(f'{vardef.name} = {v};')
 
     # ===== expressions =====
 
@@ -182,6 +193,9 @@ class CFuncWriter:
             raise NotImplementedError('fix me')
         else:
             raise NotImplementedError('WIP')
+
+    def fmt_expr_Name(self, name: ast.Name) -> str:
+        return name.id
 
     # === XXX old code, eventually kill me ===
 
