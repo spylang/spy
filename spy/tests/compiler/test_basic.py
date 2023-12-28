@@ -135,6 +135,22 @@ class TestBasic(CompilerTest):
         assert mod.inc(100) == 101
 
     @only_interp
+    def test_assign_typecheck(self):
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `i32`, got `str`', '"hello"'),
+            ('expected `i32` because of type declaration', "1"),
+        )
+        with ctx:
+            mod = self.compile(
+            """
+            def foo() -> void:
+                a = 1 # implicit declaration
+                a = "hello"
+            """)
+            mod.foo()
+
+    @only_interp
     def test_implicit_declaration(self):
         mod = self.compile(
             """
