@@ -65,8 +65,8 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
-    # XXX it fails with C backend, investigate
-    @skip_backends('C')
+    # XXX the doppler should recognize type errors and act accordingly
+    @skip_backends('C', reason='doppler is buggy')
     def test_wrong_return_type(self):
         ctx = expect_errors(
             'mismatched types',
@@ -89,7 +89,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    @only_interp
+    @skip_backends('C', reason='doppler is buggy')
     def test_local_typecheck(self):
         ctx = expect_errors(
             'mismatched types',
@@ -103,7 +103,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    @only_interp
+    @skip_backends('C', reason='object not supported')
     def test_local_upcast_and_downcast(self):
         mod = self.compile("""
         def foo() -> i32:
