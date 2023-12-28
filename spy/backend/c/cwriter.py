@@ -176,6 +176,14 @@ class CFuncWriter:
         v = self.fmt_expr(vardef.value)
         self.out.wl(f'{vardef.name} = {v};')
 
+    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
+        v = self.fmt_expr(assign.value)
+        sym = self.w_func.funcdef.symtable.lookup(assign.target)
+        if sym.is_local:
+            self.out.wl(f'{assign.target} = {v};')
+        else:
+            assert False, 'implement me'
+
     # ===== expressions =====
 
     def fmt_expr_Constant(self, const: ast.Constant) -> None:
@@ -272,10 +280,6 @@ class CFuncWriter:
 
     def emit_op_load_local(self, varname: str) -> None:
         self.push(c_expr.Literal(varname))
-
-    def emit_op_store_local(self, varname: str) -> None:
-        expr = self.pop()
-        self.out.wl(f'{varname} = {expr.str()};')
 
     def emit_op_load_global(self, fqn: FQN) -> None:
         self.push(c_expr.Literal(fqn.c_name))
