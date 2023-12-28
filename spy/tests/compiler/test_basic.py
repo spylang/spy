@@ -132,7 +132,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
-    @only_interp
+    @skip_backends('doppler', 'C', reason='redshift of implicit declarations')
     def test_implicit_declaration(self):
         mod = self.compile(
             """
@@ -142,7 +142,7 @@ class TestBasic(CompilerTest):
             """)
         assert mod.foo() == 42
 
-    @only_interp
+    @skip_backends('doppler', 'C', reason='redshift of implicit declarations')
     def test_implicit_declaration_typecheck(self):
         ctx = expect_errors(
             'mismatched types',
