@@ -197,6 +197,26 @@ class CFuncWriter:
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
+    def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
+        # XXX this is wrong: here we are using the SPy precedence rules, but C
+        # has slightly different precedence, in particular "&, |, ..." vs "<,
+        # <=, ..."
+        #
+        # Basically, we should have "binop.C_precedence".
+        l = self.fmt_expr(binop.left)
+        r = self.fmt_expr(binop.right)
+        if binop.left.precedence < binop.precedence:
+            l = f'({l})'
+        if binop.right.precedence < binop.precedence:
+            r = f'({r})'
+        return f'{l} {binop.op} {r}'
+
+    fmt_expr_Add = fmt_expr_BinOp
+    fmt_expr_Sub = fmt_expr_BinOp
+    fmt_expr_Mul = fmt_expr_BinOp
+    fmt_expr_Div = fmt_expr_BinOp
+
+
     # === XXX old code, eventually kill me ===
 
     def emit_op(self, op: OpCode) -> None:
@@ -263,36 +283,6 @@ class CFuncWriter:
     def emit_op_store_global(self, fqn: FQN) -> None:
         expr = self.pop()
         self.out.wl(f'{fqn.c_name} = {expr.str()};')
-
-    def _emit_op_binop(self, op: str) -> None:
-        right = self.pop()
-        left = self.pop()
-        expr = c_expr.BinOp(op, left, right)
-        self.push(expr)
-
-    def emit_op_i32_add(self) -> None:
-        self._emit_op_binop('+')
-
-    def emit_op_i32_mul(self) -> None:
-        self._emit_op_binop('*')
-
-    def emit_op_i32_eq(self) -> None:
-        self._emit_op_binop('==')
-
-    def emit_op_i32_neq(self) -> None:
-        self._emit_op_binop('!=')
-
-    def emit_op_i32_lt(self) -> None:
-        self._emit_op_binop('<')
-
-    def emit_op_i32_lte(self) -> None:
-        self._emit_op_binop('<=')
-
-    def emit_op_i32_gt(self) -> None:
-        self._emit_op_binop('>')
-
-    def emit_op_i32_gte(self) -> None:
-        self._emit_op_binop('>=')
 
     def _pop_args(self, argcount: int) -> str:
         args = []

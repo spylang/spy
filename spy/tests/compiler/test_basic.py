@@ -114,7 +114,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 1
 
-    @only_interp
     def test_function_arguments(self):
         mod = self.compile(
         """
