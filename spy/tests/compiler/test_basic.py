@@ -19,7 +19,6 @@ class TestBasic(CompilerTest):
         elif self.backend == 'doppler':
             assert mod.foo.w_func.redshifted
 
-    @only_interp
     def test_NameError(self):
         ctx = expect_errors(
             'name `x` is not defined',
@@ -33,7 +32,6 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    @only_interp
     def test_resolve_type_errors(self):
         ctx = expect_errors(
             'name `aaa` is not defined',
@@ -45,7 +43,6 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
-    @only_interp
     def test_wrong_functype_restype(self):
         ctx = expect_errors(
             'expected `type`, got `str`',
@@ -57,7 +54,6 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
-    @only_interp
     def test_wrong_functype_argtype(self):
         ctx = expect_errors(
             'expected `type`, got `str`',
@@ -69,7 +65,8 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
-    @only_interp
+    # XXX it fails with C backend, investigate
+    @skip_backends('C')
     def test_wrong_return_type(self):
         ctx = expect_errors(
             'mismatched types',
