@@ -14,7 +14,7 @@ from spy.vm.builtins import B
 from spy.vm import helpers
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
-from spy.backend.c import expr as c_expr
+from spy.backend.c import c_ast as C
 from spy.util import shortrepr, magic_dispatch
 
 class CModuleWriter:
@@ -99,9 +99,6 @@ class CFuncWriter:
     out: TextBuilder
     fqn: FQN
     w_func: W_ASTFunc
-    tmp_vars: dict[str, C_Type]
-    stack: list[c_expr.Expr]
-    labels: dict[str, int]
 
     def __init__(self,
                  ctx: Context,
@@ -159,7 +156,7 @@ class CFuncWriter:
     def emit_stmt(self, stmt: ast.Stmt) -> None:
         magic_dispatch(self, 'emit_stmt', stmt)
 
-    def fmt_expr(self, expr: ast.Expr) -> str:
+    def fmt_expr(self, expr: ast.Expr) -> C.Expr:
         return magic_dispatch(self, 'fmt_expr', expr)
 
     # ===== statements =====
@@ -186,38 +183,32 @@ class CFuncWriter:
 
     # ===== expressions =====
 
-    def fmt_expr_Constant(self, const: ast.Constant) -> None:
+    def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
         if T is NoneType:
-            return ""
+            return C.Void()
         elif T is int:
-            return str(const.value)
+            return C.Literal(str(const.value))
         elif T is bool:
-            return str(const.value).lower()
+            return C.Literal(str(const.value).lower())
         elif T is str:
             raise NotImplementedError('fix me')
         else:
             raise NotImplementedError('WIP')
 
-    def fmt_expr_Name(self, name: ast.Name) -> str:
-        return name.id
+    def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
+        return C.Literal(name.id)
 
-    def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
-        # XXX this is wrong: here we are using the SPy precedence rules, but C
-        # has slightly different precedence, in particular "&, |, ..." vs "<,
-        # <=, ..."
-        #
-        # Basically, we should have "binop.C_precedence".
-        l = self.fmt_expr(binop.left)
-        r = self.fmt_expr(binop.right)
-        if binop.left.precedence < binop.precedence:
-            l = f'({l})'
-        if binop.right.precedence < binop.precedence:
-            r = f'({r})'
-        return f'{l} {binop.op} {r}'
+    def _fmt_binary_op(self, op: str, left: ast.Expr, right: ast.Expr) -> C.Expr:
+        l = self.fmt_expr(left)
+        r = self.fmt_expr(right)
+        return C.BinOp(op, l, r)
+
+    def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
+        return self._fmt_binary_op(binop.op, binop.left, binop.right)
 
     fmt_expr_Add = fmt_expr_BinOp
     fmt_expr_Sub = fmt_expr_BinOp

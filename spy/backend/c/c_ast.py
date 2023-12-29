@@ -1,26 +1,6 @@
 """
-XXX KILL ME
-
-The goal of this module is to provide a way to create "readable" C
-expressions, without going crazy.
-
-This is used by CFuncWriter to translated IR stack operations into C
-code. Imagine to have the following:
-    load_const 1
-    load_const 2
-    i32_add
-    load_const 3
-    i32_mul
-
-A trivial way to implement is to use a lot of temporary variables:
-    int32_t tmp1 = 1;
-    int32_t tmp2 = 2;
-    int32_t tmp3 = tmp1 + tmp2;
-    int32_t tmp4 = 3;
-    int32_t tmp5 = tmp3 * tmp4;
-
-The goal is to generate more readable code, such as:
-    (1 + 2) * 3
+Mini AST for C expressions. The goal is to provide a way to create
+"readable" C expressions, without going crazy.
 
 The non-trivial part is to generate the lowest possible number of parenthesis,
 to increase readability.  In order to do that, we create a small AST of nodes
@@ -78,12 +58,15 @@ class Expr:
     def precedence(self) -> int:
         raise NotImplementedError
 
-    def str(self) -> str:
+    def __str__(self) -> str:
         """
         Convert the AST into C code
         """
         raise NotImplementedError
 
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        return f'<{cls}(...)>'
 
 @dataclass
 class Literal(Expr):
@@ -95,7 +78,7 @@ class Literal(Expr):
     def precedence(self) -> int:
         return 100 # supposedly the highest
 
-    def str(self) -> str:
+    def __str__(self) -> str:
         return self.value
 
     @classmethod
@@ -130,7 +113,7 @@ class Void(Expr):
     def precedence(self) -> int:
         return 100
 
-    def str(self) -> str:
+    def __str__(self) -> str:
         raise ValueError('You should never call Void.str(). '
                          'You should special-case your code to '
                          'handle this case specifically')
@@ -158,9 +141,9 @@ class BinOp(Expr):
         assert self.op in self._table, f'Unknown operator {self.op}'
         return self._table[self.op]
 
-    def str(self) -> str:
-        l = self.left.str()
-        r = self.right.str()
+    def __str__(self) -> str:
+        l = str(self.left)
+        r = str(self.right)
         if self.left.precedence() < self.precedence():
             l = f'({l})'
         if self.right.precedence() < self.precedence():
@@ -181,8 +164,8 @@ class UnaryOp(Expr):
         assert self.op in self._table, f'Unknown operator {self.op}'
         return self._table[self.op]
 
-    def str(self) -> str:
-        v = self.value.str()
+    def __str__(self) -> str:
+        v = str(self.value)
         if self.value.precedence() < self.precedence():
             v = f'({v})'
         return f'{self.op}{v}'
