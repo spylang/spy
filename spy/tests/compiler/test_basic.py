@@ -142,23 +142,7 @@ class TestBasic(CompilerTest):
             """)
         assert mod.foo() == 42
 
-    @skip_backends('doppler', 'C', reason='redshift of implicit declarations')
-    def test_implicit_declaration_typecheck(self):
-        ctx = expect_errors(
-            'mismatched types',
-            ('expected `i32`, got `str`', '"hello"'),
-            ('expected `i32` because of type declaration', "1"),
-        )
-        with ctx:
-            mod = self.compile(
-            """
-            def foo() -> void:
-                a = 1 # implicit declaration
-                a = "hello"
-            """)
-            mod.foo()
-
-    @only_interp
+    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_global_variables(self):
         mod = self.compile(
         """

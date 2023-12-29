@@ -95,11 +95,11 @@ class FuncDoppler:
             assert False, 'implement me'
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        if assign.target not in self.t.locals_types_w:
+        sym = self.funcdef.symtable.lookup(assign.target)
+        if sym.is_local and assign.target not in self.t.locals_types_w:
             # XXX fix me
             raise NotImplementedError('redshift of implicit declarations')
-        sym = self.funcdef.symtable.lookup(assign.target)
-        if sym.color == 'red':
+        elif sym.color == 'red':
             newvalue = self.shift_expr(assign.value)
             return [assign.replace(value=newvalue)]
         else:
