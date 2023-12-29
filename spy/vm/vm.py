@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import fixedint
 from spy.fqn import FQN
 from spy import libspy
+from spy.doppler import redshift
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.builtins import B
@@ -50,6 +51,17 @@ class SPyVM:
         w_mod = make_w_mod_from_file(self, file_spy)
         self.modules_w[modname] = w_mod
         return w_mod
+
+    def redshift(self, modname: str) -> None:
+        """
+        Perform a redshift on all W_ASTFunc which exists in the specified module
+        """
+        for fqn, w_func in self.globals_w.items():
+            if fqn.modname == modname and isinstance(w_func, W_ASTFunc):
+                assert not w_func.redshifted, 'redshift already called'
+                w_newfunc = redshift(self, w_func)
+                assert w_newfunc.redshifted
+                self.globals_w[fqn] = w_newfunc
 
     def make_builtins_module(self) -> None:
         w_mod = W_Module(self, 'builtins', '<builtins>')

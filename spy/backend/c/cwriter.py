@@ -1,19 +1,21 @@
 from typing import Optional, Any
+from types import NoneType
 import itertools
 import py.path
+from spy import ast
 from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
-from spy.vm.function import W_UserFunc, W_BuiltinFunc, W_FuncType
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm import helpers
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
-from spy.backend.c import expr as c_expr
-from spy.util import shortrepr
+from spy.backend.c import c_ast as C
+from spy.util import shortrepr, magic_dispatch
 
 class CModuleWriter:
     ctx: Context
@@ -71,13 +73,13 @@ class CModuleWriter:
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
-            if isinstance(w_obj, W_UserFunc):
+            if isinstance(w_obj, W_ASTFunc):
                 self.emit_function(fqn, w_obj)
             else:
                 self.emit_variable(fqn, w_obj)
         return self.out.build()
 
-    def emit_function(self, fqn: FQN, w_func: W_UserFunc) -> None:
+    def emit_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
 
@@ -96,33 +98,18 @@ class CFuncWriter:
     cmod: CModuleWriter
     out: TextBuilder
     fqn: FQN
-    w_func: W_UserFunc
-    tmp_vars: dict[str, C_Type]
-    stack: list[c_expr.Expr]
-    labels: dict[str, int]
+    w_func: W_ASTFunc
 
     def __init__(self,
                  ctx: Context,
                  cmod: CModuleWriter,
                  fqn: FQN,
-                 w_func: W_UserFunc) -> None:
+                 w_func: W_ASTFunc) -> None:
         self.ctx = ctx
         self.cmod = cmod
         self.out = cmod.out
         self.fqn = fqn
         self.w_func = w_func
-        self.tmp_vars = {}
-        self.stack = []
-        self.next_op_index = 0
-        self.labels = {}
-        self.init_labels()
-
-    def init_labels(self) -> None:
-        for pc, op in enumerate(self.w_func.w_code.body):
-            if op.name == 'label':
-                l = op.args[0]
-                assert l not in self.labels, f'duplicate label: {l}'
-                self.labels[l] = pc
 
     def ppc(self) -> None:
         """
@@ -130,82 +117,130 @@ class CFuncWriter:
         """
         print(self.out.build())
 
-    def ppir(self) -> None:
+    def ppast(self) -> None:
         """
-        Pretty print the IR code
+        Pretty print the AST
         """
-        self.w_func.w_code.pp()
-
-    def push(self, expr: c_expr.Expr) -> None:
-        assert isinstance(expr, c_expr.Expr)
-        self.stack.append(expr)
-
-    def pop(self) -> c_expr.Expr:
-        return self.stack.pop()
-
-    def new_var(self, c_type: C_Type) -> str:
-        n = len(self.tmp_vars)
-        name = f'tmp{n}'
-        self.tmp_vars[name] = c_type
-        return name
-
-    # === methods to control the iteration over the opcodes ===
-
-    def advance(self) -> Optional[OpCode]:
-        """
-        Move to the next op.
-        """
-        i = self.next_op_index
-        if i >= len(self.w_func.w_code.body):
-            return None
-        op = self.w_func.w_code.body[i]
-        self.next_op_index += 1
-        return op
-
-    def advance_and_emit(self) -> OpCode:
-        """
-        Move to the next op and emit it
-        """
-        op = self.advance()
-        assert op is not None
-        self.emit_op(op)
-        return op
-
-    def consume(self, expected_name: str, *args: Any) -> OpCode:
-        """
-        Consume the next op without emitting it.
-        """
-        op = self.advance()
-        assert op, 'Unexpected EOF of body'
-        assert op.match(expected_name, *args)
-        return op
+        self.w_func.funcdef.pp()
 
     def emit(self) -> None:
         """
         Emit the code for the whole function
         """
-        self.emit_op_line(self.w_func.w_code.lineno)
+        #self.emit_op_line(self.w_func.w_code.lineno) # XXX
         c_func = self.ctx.c_function(self.fqn.c_name,
                                      self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
         with self.out.indent():
             self.emit_local_vars()
-            # emit the body (and skip the prologue)
-            self.next_op_index = self.w_func.w_code.end_prologue
-            while op := self.advance():
-                self.emit_op(op)
-            assert self.stack == []
+            for stmt in self.w_func.funcdef.body:
+                self.emit_stmt(stmt)
         self.out.wl('}')
 
     def emit_local_vars(self) -> None:
         """
-        Declare all local variables
+        Declare all local variables.
+
+        We need to declare all of them in advance because C scoping rules are
+        different than SPy scoping rules, so we emit the C declaration when we
+        see e.g. a VarDef.
         """
         param_names = [p.name for p in self.w_func.w_functype.params]
-        for varname, w_type in self.w_func.w_code.locals_w_types.items():
+        for varname, w_type in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_type)
-            if varname not in param_names:
+            if varname != '@return' and varname not in param_names:
                 self.out.wl(f'{c_type} {varname};')
+
+    # ==============
+
+    def emit_stmt(self, stmt: ast.Stmt) -> None:
+        magic_dispatch(self, 'emit_stmt', stmt)
+
+    def fmt_expr(self, expr: ast.Expr) -> C.Expr:
+        return magic_dispatch(self, 'fmt_expr', expr)
+
+    # ===== statements =====
+
+    def emit_stmt_Return(self, ret: ast.Return) -> None:
+        # XXX should we have a special case for void functions?
+        v = self.fmt_expr(ret.value)
+        self.out.wl(f'return {v};')
+
+    def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        assert vardef.value is not None, 'XXX'
+        # we don't need to eval vardef.type, because all local vars have
+        # already been declared
+        v = self.fmt_expr(vardef.value)
+        self.out.wl(f'{vardef.name} = {v};')
+
+    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
+        v = self.fmt_expr(assign.value)
+        sym = self.w_func.funcdef.symtable.lookup(assign.target)
+        if sym.is_local:
+            self.out.wl(f'{assign.target} = {v};')
+        else:
+            assert False, 'implement me'
+
+    # ===== expressions =====
+
+    def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
+        # unsupported literals are rejected directly by the parser, see
+        # Parser.from_py_expr_Constant
+        T = type(const.value)
+        assert T in (int, bool, str, NoneType)
+        if T is NoneType:
+            return C.Void()
+        elif T is int:
+            return C.Literal(str(const.value))
+        elif T is bool:
+            return C.Literal(str(const.value).lower())
+        elif T is str:
+            raise NotImplementedError('fix me')
+        else:
+            raise NotImplementedError('WIP')
+
+    def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
+        return C.Literal(name.id)
+
+    def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
+        l = self.fmt_expr(binop.left)
+        r = self.fmt_expr(binop.right)
+        return C.BinOp(op, l, r)
+
+    fmt_expr_Add = fmt_expr_BinOp
+    fmt_expr_Sub = fmt_expr_BinOp
+    fmt_expr_Mul = fmt_expr_BinOp
+    fmt_expr_Div = fmt_expr_BinOp
+
+    def fmt_expr_CompareOp(self, cmpop: ast.CompareOp) -> C.Expr:
+        ops = {
+            ast.Eq: '==',
+            ast.NotEq: '!=',
+            ast.Lt: '<',
+            ast.LtE: '<=',
+            ast.Gt: '>',
+            ast.GtE: '>='
+        }
+        op = ops[cmpop.__class__]
+        l = self.fmt_expr(cmpop.left)
+        r = self.fmt_expr(cmpop.right)
+        return C.BinOp(op, l, r)
+
+    fmt_expr_Eq = fmt_expr_CompareOp
+    fmt_expr_NotEq = fmt_expr_CompareOp
+    fmt_expr_Lt = fmt_expr_CompareOp
+    fmt_expr_LtE = fmt_expr_CompareOp
+    fmt_expr_Gt = fmt_expr_CompareOp
+    fmt_expr_GtE = fmt_expr_CompareOp
+
+    def fmt_expr_Call(self, call: ast.Call) -> str:
+        # XXX this only works for direct calls
+        assert isinstance(call.func, ast.FQNConst)
+        c_name = call.func.fqn.c_name
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        return C.Call(c_name, c_args)
+
+    # === XXX old code, eventually kill me ===
 
     def emit_op(self, op: OpCode) -> None:
         meth_name = f'emit_op_{op.name}'
@@ -225,23 +260,6 @@ class CFuncWriter:
             "You should .consume() the label op when "
             "it is expected")
 
-    def emit_op_load_const(self, w_obj: W_Object) -> None:
-        # XXX we need to share code with 'emit_variable'
-        w_type = self.ctx.vm.dynamic_type(w_obj)
-        c_type = self.ctx.w2c(w_type)
-        if w_type is B.w_void:
-            self.push(c_expr.Void())
-        elif w_type is B.w_i32:
-            intval = self.ctx.vm.unwrap(w_obj)
-            self.push(c_expr.Literal(str(intval)))
-        elif w_type is B.w_bool:
-            boolval = self.ctx.vm.unwrap(w_obj)
-            self.push(c_expr.Literal(str(boolval).lower()))
-        elif w_type is B.w_str:
-            assert isinstance(w_obj, W_str)
-            self._emit_op_load_str(w_obj)
-        else:
-            raise NotImplementedError('WIP')
 
     def _emit_op_load_str(self, w_obj: W_str) -> None:
         # SPy string literals must be initialized as C globals. We want to
@@ -271,24 +289,12 @@ class CFuncWriter:
         res = c_expr.UnaryOp('&', c_expr.Literal(v))
         self.push(res)
 
-    def emit_op_return(self) -> None:
-        expr = self.pop()
-        if expr == c_expr.Void():
-            # special case for void functions
-            self.out.wl('return;')
-        else:
-            self.out.wl(f'return {expr.str()};')
-
     def emit_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now
         pass
 
     def emit_op_load_local(self, varname: str) -> None:
         self.push(c_expr.Literal(varname))
-
-    def emit_op_store_local(self, varname: str) -> None:
-        expr = self.pop()
-        self.out.wl(f'{varname} = {expr.str()};')
 
     def emit_op_load_global(self, fqn: FQN) -> None:
         self.push(c_expr.Literal(fqn.c_name))
@@ -297,36 +303,6 @@ class CFuncWriter:
         expr = self.pop()
         self.out.wl(f'{fqn.c_name} = {expr.str()};')
 
-    def _emit_op_binop(self, op: str) -> None:
-        right = self.pop()
-        left = self.pop()
-        expr = c_expr.BinOp(op, left, right)
-        self.push(expr)
-
-    def emit_op_i32_add(self) -> None:
-        self._emit_op_binop('+')
-
-    def emit_op_i32_mul(self) -> None:
-        self._emit_op_binop('*')
-
-    def emit_op_i32_eq(self) -> None:
-        self._emit_op_binop('==')
-
-    def emit_op_i32_neq(self) -> None:
-        self._emit_op_binop('!=')
-
-    def emit_op_i32_lt(self) -> None:
-        self._emit_op_binop('<')
-
-    def emit_op_i32_lte(self) -> None:
-        self._emit_op_binop('<=')
-
-    def emit_op_i32_gt(self) -> None:
-        self._emit_op_binop('>')
-
-    def emit_op_i32_gte(self) -> None:
-        self._emit_op_binop('>=')
-
     def _pop_args(self, argcount: int) -> str:
         args = []
         for i in range(argcount):
@@ -334,25 +310,6 @@ class CFuncWriter:
         args.reverse()
         arglist = ', '.join(args)
         return arglist
-
-    def emit_op_call_global(self, fqn: FQN, argcount: int) -> None:
-        w_functype = self.ctx.vm.lookup_global_type(fqn)
-        assert isinstance(w_functype, W_FuncType)
-        self._emit_op_call(fqn.c_name, argcount, w_functype)
-
-    def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FuncType) -> None:
-        arglist = self._pop_args(argcount)
-        assert isinstance(w_functype, W_FuncType)
-        w_restype = w_functype.w_restype
-        c_restype = self.ctx.w2c(w_restype)
-        #
-        if w_restype is B.w_void:
-            self.out.wl(f'{llname}({arglist});')
-            self.push(c_expr.Void())
-        else:
-            tmp = self.new_var(c_restype)
-            self.out.wl(f'{c_restype} {tmp} = {llname}({arglist});')
-            self.push(c_expr.Literal(tmp))
 
     def emit_op_call_helper(self, funcname: str, argcount: int) -> None:
         # determine the c_restype by looking at the signature of the helper

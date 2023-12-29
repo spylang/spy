@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.builtins import B
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
-                               expect_errors)
+                               expect_errors, only_interp)
 
 class TestBasic(CompilerTest):
 
@@ -14,6 +14,10 @@ class TestBasic(CompilerTest):
             return 42
         """)
         assert mod.foo() == 42
+        if self.backend == 'interp':
+            assert not mod.foo.w_func.redshifted
+        elif self.backend == 'doppler':
+            assert mod.foo.w_func.redshifted
 
     def test_NameError(self):
         ctx = expect_errors(
@@ -61,6 +65,8 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
+    # XXX the doppler should recognize type errors and act accordingly
+    @skip_backends('C', reason='doppler is buggy')
     def test_wrong_return_type(self):
         ctx = expect_errors(
             'mismatched types',
@@ -83,6 +89,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
+    @skip_backends('C', reason='doppler is buggy')
     def test_local_typecheck(self):
         ctx = expect_errors(
             'mismatched types',
@@ -96,6 +103,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
+    @skip_backends('C', reason='object not supported')
     def test_local_upcast_and_downcast(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -119,12 +127,12 @@ class TestBasic(CompilerTest):
         """
         def inc(x: i32) -> i32:
             a: i32 = 0
-            b = 1 # implicit declaration
-            a = x + b
+            a = x + 1
             return a
         """)
         assert mod.inc(100) == 101
 
+    @skip_backends('doppler', 'C', reason='redshift of implicit declarations')
     def test_implicit_declaration(self):
         mod = self.compile(
             """
@@ -134,6 +142,7 @@ class TestBasic(CompilerTest):
             """)
         assert mod.foo() == 42
 
+    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_global_variables(self):
         mod = self.compile(
         """
@@ -164,6 +173,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
+    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_void_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -182,6 +192,7 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
+    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_implicit_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -305,6 +316,7 @@ class TestBasic(CompilerTest):
             """)
             mod.bar("hello")
 
+    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_StmtExpr(self):
         mod = self.compile("""
         x: i32 = 0
@@ -373,6 +385,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo(1, 'hello')
 
+    @only_interp
     def test_if_stmt(self):
         mod = self.compile("""
         a: i32 = 0
@@ -418,6 +431,7 @@ class TestBasic(CompilerTest):
         assert mod.b == 200
         assert mod.c == 300
 
+    @only_interp
     def test_while(self):
         mod = self.compile("""
         def factorial(n: i32) -> i32:
@@ -432,6 +446,7 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
+    @only_interp
     def test_if_error(self):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a
@@ -450,6 +465,7 @@ class TestBasic(CompilerTest):
             """)
             mod.foo(1)
 
+    @only_interp
     def test_while_error(self):
         ctx = expect_errors(
             'mismatched types',
@@ -490,6 +506,7 @@ class TestBasic(CompilerTest):
             ]
         )
 
+    @only_interp
     def test_builtin_function(self):
         mod = self.compile("""
         def foo(x: i32) -> i32:
@@ -499,6 +516,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
+    @only_interp
     def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int

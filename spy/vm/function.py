@@ -101,6 +101,9 @@ class W_Func(W_Object):
 
 
 class W_UserFunc(W_Func):
+    """
+    XXX kill me
+    """
     fqn: FQN
     w_code: W_CodeObject
 
@@ -117,20 +120,35 @@ class W_UserFunc(W_Func):
 
 class W_ASTFunc(W_Func):
     fqn: FQN
+    closure: tuple[Namespace, ...]
     funcdef: ast.FuncDef
+    # types of local variables: this is non-None IIF the function has been
+    # redshifted.
+    locals_types_w: Optional[dict[str, W_Type]]
 
     def __init__(self,
                  fqn: FQN,
                  closure: tuple[Namespace, ...],
                  w_functype: W_FuncType,
-                 funcdef: ast.FuncDef) -> None:
+                 funcdef: ast.FuncDef,
+                 *,
+                 locals_types_w: Optional[dict[str, W_Type]] = None
+                 ) -> None:
         self.fqn = fqn
         self.closure = closure
         self.w_functype = w_functype
         self.funcdef = funcdef
+        self.locals_types_w = locals_types_w
+
+    @property
+    def redshifted(self):
+        return self.locals_types_w is not None
 
     def __repr__(self) -> str:
-        return f"<spy function '{self.fqn}' (AST)>"
+        if self.redshifted:
+            return f"<spy function '{self.fqn}' (redshifted)>"
+        else:
+            return f"<spy function '{self.fqn}'>"
 
 
 class W_BuiltinFunc(W_Func):

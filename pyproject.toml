@@ -1,5 +1,6 @@
 [tool.pytest.ini_options]
 markers = [
     "interp: mark tests executed with the 'interp' backend",
+    "doppler: mark tests executed with the 'doppler' backend",
     "C: mark tests executed with the 'C' backend",
     ]
