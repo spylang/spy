@@ -173,7 +173,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
-    @only_interp
+    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_void_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -192,7 +192,7 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
-    @only_interp
+    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_implicit_return(self):
         mod = self.compile("""
         x: i32 = 0
@@ -213,7 +213,6 @@ class TestBasic(CompilerTest):
             with pytest.raises(SPyTypeError, match=msg):
                 mod.implicit_return_i32()
 
-    @only_interp
     def test_BinOp_error(self):
         ctx = expect_errors(
             'cannot do `i32` + `str`',
@@ -227,7 +226,6 @@ class TestBasic(CompilerTest):
                 """)
             mod.bar(1, "hello")
 
-    @only_interp
     def test_BinOp_is_dispatched_with_static_types(self):
         # this fails because the static type of 'x' is object, even if its
         # dynamic type is i32
