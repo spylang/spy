@@ -169,3 +169,16 @@ class UnaryOp(Expr):
         if self.value.precedence() < self.precedence():
             v = f'({v})'
         return f'{self.op}{v}'
+
+@dataclass
+class Call(Expr):
+    func: str
+    args: list[Expr]
+
+    def precedence(self) -> int:
+        return 14
+
+    def __str__(self) -> str:
+        args = [str(arg) for arg in self.args]
+        arglist = ', '.join(args)
+        return f'{self.func}({arglist})'

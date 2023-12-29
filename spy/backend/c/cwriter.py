@@ -218,10 +218,9 @@ class CFuncWriter:
     def fmt_expr_Call(self, call: ast.Call) -> str:
         # XXX this only works for direct calls
         assert isinstance(call.func, ast.FQNConst)
-        llname = call.func.fqn.c_name
-        args = [self.fmt_expr(arg) for arg in call.args]
-        arglist = ', '.join(args)
-        return f'{llname}({arglist})'
+        c_name = call.func.fqn.c_name
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        return C.Call(c_name, c_args)
 
     # === XXX old code, eventually kill me ===
 
