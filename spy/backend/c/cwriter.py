@@ -205,7 +205,7 @@ class CFuncWriter:
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         l = self.fmt_expr(binop.left)
         r = self.fmt_expr(binop.right)
-        return C.BinOp(op, l, r)
+        return C.BinOp(binop.op, l, r)
 
     fmt_expr_Add = fmt_expr_BinOp
     fmt_expr_Sub = fmt_expr_BinOp
