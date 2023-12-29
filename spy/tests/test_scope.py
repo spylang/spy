@@ -58,6 +58,7 @@ class TestScopeAnalyzer:
     def test_global(self):
         scopes = self.analyze("""
         x: i32 = 0
+        var y: i32 = 0
 
         def foo() -> void:
             pass
@@ -68,6 +69,7 @@ class TestScopeAnalyzer:
         scope = scopes.by_module()
         assert scope._symbols == {
             'x': MatchSymbol('x', 'blue'),
+            'y': MatchSymbol('y', 'red'),
             'foo': MatchSymbol('foo', 'blue'),
             'bar': MatchSymbol('bar', 'blue'),
             # captured

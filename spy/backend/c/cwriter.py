@@ -177,9 +177,10 @@ class CFuncWriter:
         v = self.fmt_expr(assign.value)
         sym = self.w_func.funcdef.symtable.lookup(assign.target)
         if sym.is_local:
-            self.out.wl(f'{assign.target} = {v};')
+            target = assign.target
         else:
-            assert False, 'implement me'
+            target = sym.fqn.c_name
+        self.out.wl(f'{target} = {v};')
 
     # ===== expressions =====
 
@@ -200,7 +201,11 @@ class CFuncWriter:
             raise NotImplementedError('WIP')
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
-        return C.Literal(name.id)
+        sym = self.w_func.funcdef.symtable.lookup(name.id)
+        if sym.is_local:
+            return C.Literal(name.id)
+        else:
+            return C.Literal(sym.fqn.c_name)
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         l = self.fmt_expr(binop.left)
@@ -298,10 +303,6 @@ class CFuncWriter:
 
     def emit_op_load_global(self, fqn: FQN) -> None:
         self.push(c_expr.Literal(fqn.c_name))
-
-    def emit_op_store_global(self, fqn: FQN) -> None:
-        expr = self.pop()
-        self.out.wl(f'{fqn.c_name} = {expr.str()};')
 
     def _pop_args(self, argcount: int) -> str:
         args = []

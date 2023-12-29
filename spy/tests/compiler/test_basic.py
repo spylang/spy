@@ -142,11 +142,10 @@ class TestBasic(CompilerTest):
             """)
         assert mod.foo() == 42
 
-    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_global_variables(self):
         mod = self.compile(
         """
-        x: i32 = 42
+        var x: i32 = 42
         def get_x() -> i32:
             return x
         def set_x(newval: i32) -> void:
