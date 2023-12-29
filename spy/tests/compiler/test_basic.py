@@ -330,7 +330,6 @@ class TestBasic(CompilerTest):
         mod.foo()
         assert mod.x == 2
 
-    @only_interp
     def test_True_False(self):
         mod = self.compile("""
         def get_True() -> bool:
