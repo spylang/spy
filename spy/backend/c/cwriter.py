@@ -135,6 +135,14 @@ class CFuncWriter:
             self.emit_local_vars()
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
+
+            if self.w_func.w_functype.w_restype is not B.w_void:
+                # this is a non-void function: if we arrive here, it means we
+                # reached the end of the function without a return. Ideally,
+                # we would like to also report an error message, but for now
+                # we just abort.
+                msg = 'reached the end of the function without a `return`'
+                self.out.wl(f'abort(); /* {msg} */')
         self.out.wl('}')
 
     def emit_local_vars(self) -> None:
@@ -162,9 +170,11 @@ class CFuncWriter:
     # ===== statements =====
 
     def emit_stmt_Return(self, ret: ast.Return) -> None:
-        # XXX should we have a special case for void functions?
         v = self.fmt_expr(ret.value)
-        self.out.wl(f'return {v};')
+        if v is C.Void():
+            self.out.wl('return;')
+        else:
+            self.out.wl(f'return {v};')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.value is not None, 'XXX'
@@ -181,6 +191,10 @@ class CFuncWriter:
         else:
             target = sym.fqn.c_name
         self.out.wl(f'{target} = {v};')
+
+    def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
+        v = self.fmt_expr(stmt.value);
+        self.out.wl(f'{v};')
 
     # ===== expressions =====
 

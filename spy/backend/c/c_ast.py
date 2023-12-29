@@ -110,6 +110,9 @@ class Void(Expr):
     As such, we need to special-case it in all the places where it could be
     used.
     """
+    def __new__(cls) -> 'Void':
+        return cls._singleton
+
     def precedence(self) -> int:
         return 100
 
@@ -117,6 +120,8 @@ class Void(Expr):
         raise ValueError('You should never call Void.str(). '
                          'You should special-case your code to '
                          'handle this case specifically')
+
+Void._singleton = object.__new__(Void)
 
 @dataclass
 class BinOp(Expr):

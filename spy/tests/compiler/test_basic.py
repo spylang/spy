@@ -172,10 +172,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
-    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_void_return(self):
         mod = self.compile("""
-        x: i32 = 0
+        var x: i32 = 0
         def foo() -> void:
             x = 1
             return
@@ -191,10 +190,9 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
-    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_implicit_return(self):
         mod = self.compile("""
-        x: i32 = 0
+        var x: i32 = 0
         def implicit_return_void() -> void:
             x = 1
 
@@ -205,9 +203,8 @@ class TestBasic(CompilerTest):
         """)
         mod.implicit_return_void()
         assert mod.x == 1
-
         if self.backend != 'C':
-            # we don't support the opcode abort() in the C backend for now
+            # in the C backend we just abort without reporting an error, for now
             msg = 'reached the end of the function without a `return`'
             with pytest.raises(SPyTypeError, match=msg):
                 mod.implicit_return_i32()
@@ -315,10 +312,9 @@ class TestBasic(CompilerTest):
             """)
             mod.bar("hello")
 
-    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_StmtExpr(self):
         mod = self.compile("""
-        x: i32 = 0
+        var x: i32 = 0
         def inc() -> void:
             x = x + 1
 
