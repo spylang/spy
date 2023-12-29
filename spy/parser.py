@@ -3,6 +3,7 @@ from types import NoneType
 import textwrap
 import ast as py_ast
 import spy.ast
+from spy.magic_py_parse import magic_py_parse
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.errors import SPyError, SPyParseError
@@ -36,7 +37,7 @@ class Parser:
         return Parser(src, filename)
 
     def parse(self) -> spy.ast.Module:
-        py_mod = py_ast.parse(self.src)
+        py_mod = magic_py_parse(self.src)
         assert isinstance(py_mod, py_ast.Module)
         py_mod.compute_all_locs(self.filename)
         return self.from_py_Module(py_mod)

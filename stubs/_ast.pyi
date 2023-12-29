@@ -422,6 +422,9 @@ class Name(expr):
         __match_args__ = ("id", "ctx")
     id: _Identifier
     ctx: expr_context
+    # <spy>
+    is_var: bool
+    # </spy>
 
 class List(expr):
     if sys.version_info >= (3, 10):
