@@ -119,3 +119,6 @@ class FuncDoppler:
         return binop.replace(left=l, right=r)
 
     shift_expr_Add = shift_expr_BinOp
+    shift_expr_Sub = shift_expr_BinOp
+    shift_expr_Mul = shift_expr_BinOp
+    shift_expr_Div = shift_expr_BinOp

@@ -159,7 +159,6 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
-    @only_interp
     def test_i32_add(self):
         mod = self.compile("""
         def add(x: i32, y: i32) -> i32:
@@ -167,7 +166,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.add(1, 2) == 3
 
-    @only_interp
     def test_i32_mul(self):
         mod = self.compile("""
         def mul(x: i32, y: i32) -> i32:
