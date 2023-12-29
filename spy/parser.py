@@ -63,7 +63,7 @@ class Parser:
                 globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
                 mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.AnnAssign):
-                vardef = self.from_py_stmt_AnnAssign(py_stmt)
+                vardef = self.from_py_stmt_AnnAssign(py_stmt, is_global=True)
                 globvar = spy.ast.GlobalVarDef(vardef)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.ImportFrom):
@@ -202,7 +202,10 @@ class Parser:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
 
-    def from_py_stmt_AnnAssign(self, py_node: py_ast.AnnAssign) -> spy.ast.VarDef:
+    def from_py_stmt_AnnAssign(self,
+                               py_node: py_ast.AnnAssign,
+                               is_global: bool = False
+                               ) -> spy.ast.VarDef:
         if not py_node.simple:
             self.error(f"not supported: assignments targets with parentheses",
                        "this is not supported", py_node.target.loc)
@@ -210,8 +213,17 @@ class Parser:
         # non-name target
         assert isinstance(py_node.target, py_ast.Name), 'WTF?'
         assert py_node.value is not None
+
+        # global VarDef are 'const' by default, unless you specify 'var'.
+        # local VarDef are always 'var' (for now?)
+        is_local = not is_global
+        if is_local or py_node.target.is_var:
+            kind = 'var'
+        else:
+            kind = 'const'
         return spy.ast.VarDef(
             loc = py_node.loc,
+            kind = kind,
             name = py_node.target.id,
             type = self.from_py_expr(py_node.annotation),
             value = self.from_py_expr(py_node.value)
