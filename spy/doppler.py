@@ -123,6 +123,18 @@ class FuncDoppler:
     shift_expr_Mul = shift_expr_BinOp
     shift_expr_Div = shift_expr_BinOp
 
+    def shift_expr_CompareOp(self, cmpop: ast.CompareOp) -> ast.Expr:
+        l = self.shift_expr(cmpop.left)
+        r = self.shift_expr(cmpop.right)
+        return cmpop.replace(left=l, right=r)
+
+    shift_expr_Eq = shift_expr_CompareOp
+    shift_expr_NotEq = shift_expr_CompareOp
+    shift_expr_Lt = shift_expr_CompareOp
+    shift_expr_LtE = shift_expr_CompareOp
+    shift_expr_Gt = shift_expr_CompareOp
+    shift_expr_GtE = shift_expr_CompareOp
+
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         # XXX: this assumes that it's a direct call (i.e., call.func is a
         # ast.Name). We probably need to adapt for indirect calls, when we

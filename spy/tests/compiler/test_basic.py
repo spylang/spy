@@ -341,7 +341,6 @@ class TestBasic(CompilerTest):
         assert mod.get_True() is True
         assert mod.get_False() is False
 
-    @only_interp
     def test_CompareOp(self):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
@@ -373,7 +372,6 @@ class TestBasic(CompilerTest):
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
 
-    @only_interp
     def test_CompareOp_error(self):
         ctx = expect_errors(
             'cannot do `i32` == `str`',

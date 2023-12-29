@@ -202,18 +202,36 @@ class CFuncWriter:
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         return C.Literal(name.id)
 
-    def _fmt_binary_op(self, op: str, left: ast.Expr, right: ast.Expr) -> C.Expr:
-        l = self.fmt_expr(left)
-        r = self.fmt_expr(right)
-        return C.BinOp(op, l, r)
-
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
-        return self._fmt_binary_op(binop.op, binop.left, binop.right)
+        l = self.fmt_expr(binop.left)
+        r = self.fmt_expr(binop.right)
+        return C.BinOp(op, l, r)
 
     fmt_expr_Add = fmt_expr_BinOp
     fmt_expr_Sub = fmt_expr_BinOp
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
+
+    def fmt_expr_CompareOp(self, cmpop: ast.CompareOp) -> C.Expr:
+        ops = {
+            ast.Eq: '==',
+            ast.NotEq: '!=',
+            ast.Lt: '<',
+            ast.LtE: '<=',
+            ast.Gt: '>',
+            ast.GtE: '>='
+        }
+        op = ops[cmpop.__class__]
+        l = self.fmt_expr(cmpop.left)
+        r = self.fmt_expr(cmpop.right)
+        return C.BinOp(op, l, r)
+
+    fmt_expr_Eq = fmt_expr_CompareOp
+    fmt_expr_NotEq = fmt_expr_CompareOp
+    fmt_expr_Lt = fmt_expr_CompareOp
+    fmt_expr_LtE = fmt_expr_CompareOp
+    fmt_expr_Gt = fmt_expr_CompareOp
+    fmt_expr_GtE = fmt_expr_CompareOp
 
     def fmt_expr_Call(self, call: ast.Call) -> str:
         # XXX this only works for direct calls
