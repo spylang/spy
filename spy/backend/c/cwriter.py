@@ -135,6 +135,14 @@ class CFuncWriter:
             self.emit_local_vars()
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
+
+            if self.w_func.w_functype.w_restype is not B.w_void:
+                # this is a non-void function: if we arrive here, it means we
+                # reached the end of the function without a return. Ideally,
+                # we would like to also report an error message, but for now
+                # we just abort.
+                msg = 'reached the end of the function without a `return`'
+                self.out.wl(f'abort(); /* {msg} */')
         self.out.wl('}')
 
     def emit_local_vars(self) -> None:
