@@ -172,10 +172,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.mul(3, 4) == 12
 
-    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_void_return(self):
         mod = self.compile("""
-        x: i32 = 0
+        var x: i32 = 0
         def foo() -> void:
             x = 1
             return

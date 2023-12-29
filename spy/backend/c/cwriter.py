@@ -162,9 +162,11 @@ class CFuncWriter:
     # ===== statements =====
 
     def emit_stmt_Return(self, ret: ast.Return) -> None:
-        # XXX should we have a special case for void functions?
         v = self.fmt_expr(ret.value)
-        self.out.wl(f'return {v};')
+        if v is C.Void():
+            self.out.wl('return;')
+        else:
+            self.out.wl(f'return {v};')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.value is not None, 'XXX'
