@@ -224,6 +224,13 @@ class CFuncWriter:
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
 
+    def fmt_expr_Call(self, call: ast.Call) -> str:
+        # XXX this only works for direct calls
+        assert isinstance(call.func, ast.FQNConst)
+        llname = call.func.fqn.c_name
+        args = [self.fmt_expr(arg) for arg in call.args]
+        arglist = ', '.join(args)
+        return f'{llname}({arglist})'
 
     # === XXX old code, eventually kill me ===
 
@@ -295,25 +302,6 @@ class CFuncWriter:
         args.reverse()
         arglist = ', '.join(args)
         return arglist
-
-    def emit_op_call_global(self, fqn: FQN, argcount: int) -> None:
-        w_functype = self.ctx.vm.lookup_global_type(fqn)
-        assert isinstance(w_functype, W_FuncType)
-        self._emit_op_call(fqn.c_name, argcount, w_functype)
-
-    def _emit_op_call(self, llname: str, argcount: int, w_functype: W_FuncType) -> None:
-        arglist = self._pop_args(argcount)
-        assert isinstance(w_functype, W_FuncType)
-        w_restype = w_functype.w_restype
-        c_restype = self.ctx.w2c(w_restype)
-        #
-        if w_restype is B.w_void:
-            self.out.wl(f'{llname}({arglist});')
-            self.push(c_expr.Void())
-        else:
-            tmp = self.new_var(c_restype)
-            self.out.wl(f'{c_restype} {tmp} = {llname}({arglist});')
-            self.push(c_expr.Literal(tmp))
 
     def emit_op_call_helper(self, funcname: str, argcount: int) -> None:
         # determine the c_restype by looking at the signature of the helper

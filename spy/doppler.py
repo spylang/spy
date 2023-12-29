@@ -122,3 +122,11 @@ class FuncDoppler:
     shift_expr_Sub = shift_expr_BinOp
     shift_expr_Mul = shift_expr_BinOp
     shift_expr_Div = shift_expr_BinOp
+
+    def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
+        # XXX: this assumes that it's a direct call (i.e., call.func is a
+        # ast.Name). We probably need to adapt for indirect calls, when we
+        # support them
+        newfunc = self.shift_expr(call.func)
+        newargs = [self.shift_expr(arg) for arg in call.args]
+        return call.replace(func=newfunc, args=newargs)

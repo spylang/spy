@@ -243,7 +243,6 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    @only_interp
     def test_function_call(self):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:
@@ -255,7 +254,6 @@ class TestBasic(CompilerTest):
         assert mod.foo(1, 2, 3) == 123
         assert mod.bar(4) == 456
 
-    @only_interp
     def test_cannot_call_non_functions(self):
         # it would be nice to report also the location where 'inc' is defined,
         # but we don't carry around this information for now. There is room
@@ -273,7 +271,6 @@ class TestBasic(CompilerTest):
             """)
             mod.bar()
 
-    @only_interp
     def test_function_call_missing_args(self):
         ctx = expect_errors(
             'this function takes 1 argument but 0 arguments were supplied',
@@ -289,7 +286,6 @@ class TestBasic(CompilerTest):
             """)
             mod.bar()
 
-    @only_interp
     def test_function_call_extra_args(self):
         ctx = expect_errors(
             'this function takes 1 argument but 3 arguments were supplied',
@@ -305,7 +301,6 @@ class TestBasic(CompilerTest):
             """)
             mod.bar()
 
-    @only_interp
     def test_function_call_type_mismatch(self):
         ctx = expect_errors(
             'mismatched types',
