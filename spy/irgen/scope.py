@@ -153,9 +153,14 @@ class ScopeAnalyzer:
         raise err
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
-        self.add_name(decl.vardef.name, 'blue', decl.loc, decl.vardef.type.loc)
+        if decl.vardef.kind == 'var':
+            color = 'red'
+        else:
+            color = 'blue'
+        self.add_name(decl.vardef.name, color, decl.loc, decl.vardef.type.loc)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
+        assert vardef.kind == 'var'
         self.add_name(vardef.name, 'red', vardef.loc, vardef.type.loc)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:

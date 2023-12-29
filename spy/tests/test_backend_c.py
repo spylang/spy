@@ -5,7 +5,7 @@ This is just a small part of the tests: the majority of the functionality is
 tested by tests/compiler/*.py.
 """
 
-from spy.backend.c.expr import make_table, Literal, BinOp, UnaryOp
+from spy.backend.c.c_ast import make_table, Literal, BinOp, UnaryOp
 
 class TestExpr:
 
@@ -31,7 +31,7 @@ class TestExpr:
             ),
             right = Literal('3')
         )
-        assert expr.str() == '(1 + 2) * 3'
+        assert str(expr) == '(1 + 2) * 3'
 
     def test_BinOp2(self):
         expr = BinOp('*',
@@ -44,7 +44,7 @@ class TestExpr:
                 )
             )
         )
-        assert expr.str() == '1 * (2 + 3 * 4)'
+        assert str(expr) == '1 * (2 + 3 * 4)'
 
     def test_UnaryOp(self):
         expr = UnaryOp('-',
@@ -53,11 +53,11 @@ class TestExpr:
                 right = Literal('2'),
             )
         )
-        assert expr.str() == '-(1 * 2)'
+        assert str(expr) == '-(1 * 2)'
 
     def test_Literal_from_bytes(self):
         def cstr(b: bytes) -> str:
-            return Literal.from_bytes(b).str()
+            return str(Literal.from_bytes(b))
         #
         assert cstr(b'--hello--') == '"--hello--"'
         assert cstr(b'--"hello"--') == r'"--\"hello\"--"'

@@ -275,6 +275,7 @@ class TestParser:
         stmt = mod.get_funcdef('foo').body[0]
         expected = """
         VarDef(
+            kind='var',
             name='x',
             type=Name(id='i32'),
             value=Constant(value=42),
@@ -292,6 +293,28 @@ class TestParser:
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
+                        kind='const',
+                        name='x',
+                        type=Name(id='i32'),
+                        value=Constant(value=42),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
+    def test_global_VarDef_var(self):
+        mod = self.parse("""
+        var x: i32 = 42
+        """)
+        expected = f"""
+        Module(
+            filename='{self.tmpdir}/test.spy',
+            decls=[
+                GlobalVarDef(
+                    vardef=VarDef(
+                        kind='var',
                         name='x',
                         type=Name(id='i32'),
                         value=Constant(value=42),

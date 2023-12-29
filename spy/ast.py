@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Iterator, Any
+from typing import Optional, Iterator, Any, Literal
 import pprint
 import ast as py_ast
 import dataclasses
@@ -10,6 +10,7 @@ from spy.irgen.symtable import SymTable, Color
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
+VarKind = typing.Literal['const', 'var']
 
 @extend(py_ast.AST)
 class AST:
@@ -425,6 +426,7 @@ class Return(Stmt):
 
 @dataclass(eq=False)
 class VarDef(Stmt):
+    kind: VarKind
     name: str
     type: Expr
     value: Optional[Expr]
