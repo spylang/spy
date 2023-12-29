@@ -105,6 +105,10 @@ class FuncDoppler:
         else:
             assert False, 'implement me'
 
+    def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
+        newvalue = self.shift_expr(stmt.value)
+        return [stmt.replace(value=newvalue)]
+
     # ==== expressions ====
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:

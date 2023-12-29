@@ -312,10 +312,9 @@ class TestBasic(CompilerTest):
             """)
             mod.bar("hello")
 
-    @skip_backends('doppler', 'C', reason='red globals not implemented')
     def test_StmtExpr(self):
         mod = self.compile("""
-        x: i32 = 0
+        var x: i32 = 0
         def inc() -> void:
             x = x + 1
 

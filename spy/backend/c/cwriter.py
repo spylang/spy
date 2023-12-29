@@ -192,6 +192,10 @@ class CFuncWriter:
             target = sym.fqn.c_name
         self.out.wl(f'{target} = {v};')
 
+    def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
+        v = self.fmt_expr(stmt.value);
+        self.out.wl(f'{v};')
+
     # ===== expressions =====
 
     def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
