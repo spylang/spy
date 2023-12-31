@@ -455,7 +455,6 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
-    @only_interp
     def test_if_error(self):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a
@@ -474,7 +473,6 @@ class TestBasic(CompilerTest):
             """)
             mod.foo(1)
 
-    @only_interp
     def test_while_error(self):
         ctx = expect_errors(
             'mismatched types',
