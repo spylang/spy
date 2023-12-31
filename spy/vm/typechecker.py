@@ -207,6 +207,25 @@ class TypeChecker:
     check_expr_Gt = check_expr_CompareOp
     check_expr_GtE = check_expr_CompareOp
 
+    def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
+        vcolor, w_vtype = self.check_expr(expr.value)
+        icolor, w_itype = self.check_expr(expr.index)
+        color = maybe_blue(vcolor, icolor)
+        if w_vtype is B.w_str:
+            if w_itype is B.w_i32:
+                return color, B.w_str
+            else:
+                err = SPyTypeError('mismatched types')
+                got = w_itype.name
+                err.add('error', f'expected `i32`, got `{got}`', expr.index.loc)
+                err.add('note', f'this is a `str`', expr.value.loc)
+                raise err
+        else:
+            got = w_vtype.name
+            err = SPyTypeError(f'`{got}` does not support `[]`')
+            err.add('note', f'this is a `{got}`', expr.value.loc)
+            raise err
+
     def check_expr_HelperFunc(self, node: ast.HelperFunc
                               ) -> tuple[Color, W_Type]:
         helper = helpers.get(node.funcname)

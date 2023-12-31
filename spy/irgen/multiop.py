@@ -1,4 +1,6 @@
 """
+XXX KILL ME
+
 Multiple dispatch for compiler operations.
 
 Every MultiOp instance represent an operation which can be emitted by the

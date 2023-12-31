@@ -42,7 +42,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello hello hello '
 
-    def test_str_argument(self, legacy):
+    def test_str_argument(self):
         mod = self.compile(
         """
         def foo(a: str) -> str:
@@ -50,7 +50,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo('hello') == 'hello world'
 
-    def test_getitem(self, legacy):
+    def test_getitem(self):
         mod = self.compile(
         """
         def foo(a: str, i: i32) -> str:
