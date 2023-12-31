@@ -487,31 +487,30 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    @pytest.mark.xfail(reason='FIXME')
-    @no_backend
-    def test_getitem_errors(self, legacy):
-        self.expect_errors(
-            f"""
+    def test_getitem_error_1(self):
+        ctx = expect_errors(
+            'mismatched types',
+            ('expected `i32`, got `bool`', 'i'),
+            ('this is a `str`', 'a'),
+            )
+        with ctx:
+            mod = self.compile(f"""
             def foo(a: str, i: bool) -> void:
                 a[i]
-            """,
-            errors = [
-                'mismatched types',
-                'expected `i32`, got `bool`',
-                'this is a `str`',
-            ]
-        )
-        #
-        self.expect_errors(
-            f"""
+            """)
+            mod.foo("hello", True)
+
+    def test_getitem_error_2(self):
+        ctx = expect_errors(
+            '`bool` does not support `[]`',
+            ('this is a `bool`', 'a'),
+            )
+        with ctx:
+            mod = self.compile(f"""
             def foo(a: bool, i: i32) -> void:
                 a[i]
-            """,
-            errors = [
-                '`bool` does not support `[]`',
-                'this is a `bool`',
-            ]
-        )
+            """)
+            mod.foo(True, 1)
 
     def test_builtin_function(self):
         mod = self.compile("""
