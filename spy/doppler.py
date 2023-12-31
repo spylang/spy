@@ -181,6 +181,17 @@ class FuncDoppler:
     shift_expr_Gt = shift_expr_CompareOp
     shift_expr_GtE = shift_expr_CompareOp
 
+    def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
+        _, w_vtype = self.t.check_expr(op.value)
+        _, w_itype = self.t.check_expr(op.index)
+        argtypes = (w_vtype, w_itype)
+        v = self.shift_expr(op.value)
+        i = self.shift_expr(op.index)
+        if argtypes == (B.w_str, B.w_i32):
+            func = ast.HelperFunc(op.loc, 'StrGetItem')
+            return ast.Call(op.loc, func, [v, i])
+        assert False, 'unsupported getitem'
+
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         # XXX: this assumes that it's a direct call (i.e., call.func is a
         # ast.Name). We probably need to adapt for indirect calls, when we
