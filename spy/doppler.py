@@ -126,6 +126,14 @@ class FuncDoppler:
             else_body = newelse
         )]
 
+    def shift_stmt_While(self, while_node: ast.While) -> list[ast.While]:
+        newtest = self.shift_expr(while_node.test)
+        newbody = self.shift_body(while_node.body)
+        return [while_node.replace(
+            test = newtest,
+            body = newbody
+        )]
+
     # ==== expressions ====
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:

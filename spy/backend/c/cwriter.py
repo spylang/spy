@@ -210,6 +210,14 @@ class CFuncWriter:
         #
         self.out.wl('}')
 
+    def emit_stmt_While(self, while_node: ast.While) -> None:
+        test = self.fmt_expr(while_node.test)
+        self.out.wl(f'while ({test}) ' + '{')
+        with self.out.indent():
+            for stmt in while_node.body:
+                self.emit_stmt(stmt)
+        self.out.wl('}')
+
     # ===== expressions =====
 
     def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
@@ -356,54 +364,3 @@ class CFuncWriter:
 
     def emit_op_pop_and_discard(self) -> None:
         self.pop()
-
-    ## ====== mark operations =====
-    ## These are special ops We use op_mark_* to recognize the various higher
-    ## level patterns which are emitted by the codegen, such as if/then,
-    ## if/then/else, while, and we use these to emit "proper" C code.
-    ##
-    ## Note that this is not strictly necessary: we could easily implement
-    ## ifs and loops using just gotos, but by doing this we generate C code
-    ## which is WAY easier to read by humans, which simplifies a lot the
-    ## debugging.
-
-
-    def emit_op_mark_while(self, WHILE: str, IF: str, END: str) -> None:
-        """
-        CodeGen.do_exec_While emits the following:
-
-            mark_while WHILE IF END
-        WHILE:
-            <eval cond>
-        IF:
-            br_while_not END
-            <body>
-            br WHILE
-        END:
-            <rest of the program>
-        """
-        self.out.wl('while(1) {')
-        with self.out.indent():
-            # WHILE:
-            self.consume('label', WHILE)
-            pc_if = self.labels[IF]
-            while self.next_op_index < pc_if:
-                self.advance_and_emit()
-            #
-            # IF:
-            self.consume('label', IF)
-            self.consume('br_while_not', END)
-            cond = self.pop()
-            not_cond = c_expr.UnaryOp('!', cond)
-            self.out.wl(f'if ({not_cond.str()})')
-            self.out.wl('    break;')
-            #
-            # <body>
-            pc_end = self.labels[END]
-            while self.next_op_index < pc_end - 1:
-                self.advance_and_emit()
-            self.consume('br', WHILE)
-            #
-            # END:
-            self.consume('label', END)
-        self.out.wl('}')
