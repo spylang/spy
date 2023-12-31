@@ -4,6 +4,7 @@ import itertools
 import py.path
 from spy import ast
 from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
@@ -99,6 +100,7 @@ class CFuncWriter:
     out: TextBuilder
     fqn: FQN
     w_func: W_ASTFunc
+    last_emitted_linenos: tuple[int, int]
 
     def __init__(self,
                  ctx: Context,
@@ -110,6 +112,7 @@ class CFuncWriter:
         self.out = cmod.out
         self.fqn = fqn
         self.w_func = w_func
+        self.last_emitted_linenos = (-1, -1) # see emit_lineno_maybe
 
     def ppc(self) -> None:
         """
@@ -127,7 +130,7 @@ class CFuncWriter:
         """
         Emit the code for the whole function
         """
-        #self.emit_op_line(self.w_func.w_code.lineno) # XXX
+        self.emit_lineno(self.w_func.funcdef.loc.line_start)
         c_func = self.ctx.c_function(self.fqn.c_name,
                                      self.w_func.w_functype)
         self.out.wl(c_func.decl() + ' {')
@@ -161,7 +164,34 @@ class CFuncWriter:
 
     # ==============
 
+    def emit_lineno_maybe(self, loc: Loc) -> None:
+        """
+        Emit a #line directive, but only if it's needed.
+        """
+        # line numbers corresponding to the last emitted #line
+        last_spy, last_c = self.last_emitted_linenos
+        #
+        # line numbers as they are understood by the C compiler, i.e. what
+        # goes to debuginfo if we don't emit a new #line
+        cur_c = self.out.lineno
+        cur_spy = last_spy + (cur_c - last_c) - 1
+        #
+        # desired spy line number, i.e. what we would like it to be
+        desired_spy = loc.line_start
+        if desired_spy != cur_spy:
+            # time to emit a new #line directive
+            self.emit_lineno(desired_spy)
+
+    def emit_lineno(self, spyline: int) -> None:
+        """
+        Emit a #line directive, unconditionally
+        """
+        cline = self.out.lineno
+        self.out.wl(f'#line SPY_LINE({spyline}, {cline})')
+        self.last_emitted_linenos = (spyline, cline)
+
     def emit_stmt(self, stmt: ast.Stmt) -> None:
+        self.emit_lineno_maybe(stmt.loc)
         magic_dispatch(self, 'emit_stmt', stmt)
 
     def fmt_expr(self, expr: ast.Expr) -> C.Expr:
@@ -320,11 +350,6 @@ class CFuncWriter:
         if meth is None:
             raise NotImplementedError(meth_name)
         meth(*op.args)
-
-    def emit_op_line(self, lineno: int) -> None:
-        spyline = lineno
-        cline = self.out.lineno
-        self.out.wl(f'#line SPY_LINE({spyline}, {cline})')
 
     def emit_op_label(self, name: str) -> None:
         raise AssertionError(
