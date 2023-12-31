@@ -110,6 +110,30 @@ class FuncDoppler:
         newvalue = self.shift_expr(stmt.value)
         return [stmt.replace(value=newvalue)]
 
+    def shift_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+        newbody = []
+        for stmt in body:
+            newbody += self.shift_stmt(stmt)
+        return newbody
+
+    def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
+        newtest = self.shift_expr(if_node.test)
+        newthen = self.shift_body(if_node.then_body)
+        newelse = self.shift_body(if_node.else_body)
+        return [if_node.replace(
+            test = newtest,
+            then_body = newthen,
+            else_body = newelse
+        )]
+
+    def shift_stmt_While(self, while_node: ast.While) -> list[ast.While]:
+        newtest = self.shift_expr(while_node.test)
+        newbody = self.shift_body(while_node.body)
+        return [while_node.replace(
+            test = newtest,
+            body = newbody
+        )]
+
     # ==== expressions ====
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
