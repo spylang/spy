@@ -25,6 +25,7 @@ def StrAdd(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
     ptr_c = vm.ll.call('spy_StrAdd', w_a.ptr, w_b.ptr)
     return W_str.from_ptr(vm, ptr_c)
 
+@helper('def(s: str, n: i32) -> str')
 def StrMul(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
     assert isinstance(w_a, W_str)
     assert isinstance(w_b, W_i32)

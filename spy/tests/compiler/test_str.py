@@ -33,7 +33,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello world'
 
-    def test_multiply(self, legacy):
+    def test_multiply(self):
         mod = self.compile(
         """
         def foo() -> str:
