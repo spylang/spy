@@ -8,6 +8,7 @@ from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.builtins import B
+from spy.vm import helpers
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -204,6 +205,11 @@ class TypeChecker:
     check_expr_Gt = check_expr_CompareOp
     check_expr_GtE = check_expr_CompareOp
 
+    def check_expr_HelperFunc(self, node: ast.HelperFunc
+                              ) -> tuple[Color, W_Type]:
+        helper = helpers.get(node.funcname)
+        return 'red', helper.w_functype
+
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
@@ -225,7 +231,6 @@ class TypeChecker:
         #
         color = 'red' # XXX fix me
         return color, w_functype.w_restype
-
 
     def _call_error_non_callable(self, call: ast.Call,
                                  sym: Optional[Symbol],

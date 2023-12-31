@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
 from spy.vm.str import W_str
 from spy.vm.object import W_Object, W_i32
+from spy.vm.function import W_FuncType
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -10,6 +11,14 @@ def get(funcname: str) -> Any:
         raise KeyError(f'Cannot find {funcname} in helpers.py')
     return func
 
+def helper(sig: str):
+    w_functype = W_FuncType.parse(sig)
+    def decorator(fn):
+        fn.w_functype = w_functype
+        return fn
+    return decorator
+
+@helper('def(a: str, b: str) -> str')
 def StrAdd(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
     assert isinstance(w_a, W_str)
     assert isinstance(w_b, W_str)

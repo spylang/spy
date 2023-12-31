@@ -302,9 +302,13 @@ class CFuncWriter:
     fmt_expr_GtE = fmt_expr_CompareOp
 
     def fmt_expr_Call(self, call: ast.Call) -> str:
-        # XXX this only works for direct calls
-        assert isinstance(call.func, ast.FQNConst)
-        c_name = call.func.fqn.c_name
+        if isinstance(call.func, ast.FQNConst):
+            c_name = call.func.fqn.c_name
+        elif isinstance(call.func, ast.HelperFunc):
+            c_name = f'spy_{call.func.funcname}'
+        else:
+            assert False, 'indirect calls are not supported yet'
+
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
 
@@ -348,19 +352,6 @@ class CFuncWriter:
         arglist = ', '.join(args)
         return arglist
 
-    def emit_op_call_helper(self, funcname: str, argcount: int) -> None:
-        # determine the c_restype by looking at the signature of the helper
-        helper_func = helpers.get(funcname)
-        pycls = helper_func.__annotations__['return']
-        assert issubclass(pycls, W_Object)
-        w_restype = self.ctx.vm.wrap(pycls)
-        assert isinstance(w_restype, W_Type)
-        c_restype = self.ctx.w2c(w_restype)
-        #
-        arglist = self._pop_args(argcount)
-        tmp = self.new_var(c_restype)
-        self.out.wl(f'{c_restype} {tmp} = spy_{funcname}({arglist});')
-        self.push(c_expr.Literal(tmp))
 
     def emit_op_pop_and_discard(self) -> None:
         self.pop()
