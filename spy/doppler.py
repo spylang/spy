@@ -69,6 +69,7 @@ class FuncDoppler:
     # =========
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        self.t.check_stmt(stmt)
         return magic_dispatch(self, 'shift_stmt', stmt)
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:

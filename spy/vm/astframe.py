@@ -180,6 +180,7 @@ class ASTFrame:
         self.store_local(vardef.value.loc, vardef.name, w_value)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
+        self.t.check_stmt_Assign(assign)
         # XXX this looks wrong. We need to add an AST field to keep track of
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
@@ -192,6 +193,7 @@ class ASTFrame:
                 self.declare_local(name, fv.w_static_type)
             self.store_local(assign.value.loc, name, fv.w_value)
         elif sym.fqn is not None:
+            assert sym.color == 'red'
             self.vm.store_global(sym.fqn, fv.w_value)
         else:
             assert False, 'closures not implemented yet'

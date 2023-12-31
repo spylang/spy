@@ -77,15 +77,8 @@ class TypeChecker:
                     loc)
             raise err
 
-    # ==========
-
-    def check_stmt_If(self, if_node: ast.If) -> None:
-        color, w_cond_type = self.check_expr(if_node.test)
-        self.assert_bool(w_cond_type, if_node.test.loc)
-
-    def check_stmt_While(self, while_node: ast.While) -> None:
-        color, w_cond_type = self.check_expr(while_node.test)
-        self.assert_bool(w_cond_type, while_node.test.loc)
+    def check_stmt(self, stmt: ast.Stmt) -> None:
+        magic_dispatch(self, 'check_stmt', stmt)
 
     def check_expr(self, expr: ast.Expr) -> tuple[Color, W_Type]:
         """
@@ -97,6 +90,39 @@ class TypeChecker:
             color, w_type = magic_dispatch(self, 'check_expr', expr)
             self.expr_types[expr] = color, w_type
             return color, w_type
+
+    # ==== statements ====
+
+    def check_stmt_Return(self, ret: ast.Return) -> None:
+        pass
+
+    def check_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        pass
+
+    def check_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
+        pass
+
+    def check_stmt_If(self, if_node: ast.If) -> None:
+        color, w_cond_type = self.check_expr(if_node.test)
+        self.assert_bool(w_cond_type, if_node.test.loc)
+
+    def check_stmt_While(self, while_node: ast.While) -> None:
+        color, w_cond_type = self.check_expr(while_node.test)
+        self.assert_bool(w_cond_type, while_node.test.loc)
+
+    def check_stmt_Assign(self, assign: ast.Assign) -> None:
+        name = assign.target
+        sym = self.funcdef.symtable.lookup(name)
+        if sym.is_global and sym.color == 'blue':
+            err = SPyTypeError("invalid assignment target")
+            err.add('error', f'{sym.name} is const', assign.target_loc)
+            err.add('note', 'const declared here', sym.loc)
+            err.add('note',
+                    f'help: declare it as variable: `var {sym.name} ...`',
+                    sym.loc)
+            raise err
+
+    # ==== expressions ====
 
     def check_expr_Name(self, name: ast.Name) -> tuple[Color, W_Type]:
         varname = name.id

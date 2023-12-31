@@ -37,6 +37,9 @@ class Symbol:
     def is_local(self) -> bool:
         return self.level == 0
 
+    @property
+    def is_global(self) -> bool:
+        return self.level != 0 and self.fqn is not None
 
 class SymTable:
     name: str  # just for debugging

@@ -158,6 +158,22 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
+    def test_cannot_assign_to_const_globals(self):
+        ctx = expect_errors(
+            'invalid assignment target',
+            ('x is const', 'x'),
+            ('const declared here', 'x: i32 = 42'),
+            ('help: declare it as variable: `var x ...`', 'x: i32 = 42')
+        )
+        with ctx:
+            mod = self.compile(
+            """
+            x: i32 = 42
+            def set_x(newval: i32) -> void:
+                x = newval
+            """)
+            mod.set_x(100)
+
     def test_i32_add(self):
         mod = self.compile("""
         def add(x: i32, y: i32) -> i32:
@@ -383,9 +399,9 @@ class TestBasic(CompilerTest):
     @only_interp
     def test_if_stmt(self):
         mod = self.compile("""
-        a: i32 = 0
-        b: i32 = 0
-        c: i32 = 0
+        var a: i32 = 0
+        var b: i32 = 0
+        var c: i32 = 0
 
         def reset() -> void:
             a = 0
