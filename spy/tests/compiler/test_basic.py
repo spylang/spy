@@ -396,7 +396,6 @@ class TestBasic(CompilerTest):
             """)
             mod.foo(1, 'hello')
 
-    @only_interp
     def test_if_stmt(self):
         mod = self.compile("""
         var a: i32 = 0

@@ -196,6 +196,20 @@ class CFuncWriter:
         v = self.fmt_expr(stmt.value);
         self.out.wl(f'{v};')
 
+    def emit_stmt_If(self, if_node: ast.If) -> None:
+        test = self.fmt_expr(if_node.test)
+        self.out.wl(f'if ({test})' + '{')
+        with self.out.indent():
+            for stmt in if_node.then_body:
+                self.emit_stmt(stmt)
+        #
+        if if_node.else_body:
+            self.out.wl('} else {')
+            for stmt in if_node.else_body:
+                self.emit_stmt(stmt)
+        #
+        self.out.wl('}')
+
     # ===== expressions =====
 
     def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
@@ -353,84 +367,6 @@ class CFuncWriter:
     ## which is WAY easier to read by humans, which simplifies a lot the
     ## debugging.
 
-    def emit_op_mark_if_then(self, IF: str) -> None:
-        """
-        CodeGen._do_exec_If_then emits the following:
-
-             mark_if_then IF
-             <eval cond>
-        IF:
-             br_if THEN ENDIF ENDIF
-        THEN:
-             <then body>
-        ENDIF:
-             <rest of the program>
-        """
-        pc_if = self.labels[IF]
-        while self.next_op_index < pc_if:
-            self.advance_and_emit()
-        # IF:
-        self.consume('label', IF)
-        op_br_if = self.consume('br_if', ...)
-        THEN, ELSE, ENDIF = op_br_if.args
-        assert ELSE == ENDIF, 'mark_if_then, but this seems if_then_else'
-        cond = self.pop()
-        self.out.wl(f'if ({cond.str()}) ' + '{')
-        # THEN:
-        self.consume('label', THEN)
-        with self.out.indent():
-            pc_endif = self.labels[ENDIF]
-            while self.next_op_index < pc_endif:
-                self.advance_and_emit()
-        self.out.wl('}')
-        # ENDIF:
-        self.consume('label', ENDIF)
-
-    def emit_op_mark_if_then_else(self, IF: str) -> None:
-        """
-        CodeGen._do_exec_If_then_else emits the following:
-
-             mark_if_then_else IF
-             <eval cond>
-        IF:
-             br_if THEN ELSE ENDIF
-        THEN:
-             <then body>
-             br ENDIF
-        ELSE:
-             <else body>
-        ENDIF:
-             <rest of the program>
-        """
-        pc_if = self.labels[IF]
-        while self.next_op_index < pc_if:
-            self.advance_and_emit()
-        # IF:
-        self.consume('label', IF)
-        op_br_if = self.consume('br_if', ...)
-        THEN, ELSE, ENDIF = op_br_if.args
-        assert ELSE != ENDIF, 'mark_if_then_else, but this seems if_then'
-        cond = self.pop()
-        self.out.wl(f'if ({cond.str()}) ' + '{')
-        #
-        # THEN:
-        self.consume('label', THEN)
-        with self.out.indent():
-            # note: we go up to ELSE-1 because we do NOT want to emit the 'br'
-            pc_else = self.labels[ELSE]
-            while self.next_op_index < pc_else - 1:
-                self.advance_and_emit()
-        self.consume('br', ENDIF)
-        # ELSE:
-        self.consume('label', ELSE)
-        self.out.wl('} else {')
-        with self.out.indent():
-            pc_endif = self.labels[ENDIF]
-            while self.next_op_index < pc_endif:
-                self.advance_and_emit()
-        self.out.wl('}')
-        # ENDIF:
-        self.consume('label', ENDIF)
 
     def emit_op_mark_while(self, WHILE: str, IF: str, END: str) -> None:
         """
