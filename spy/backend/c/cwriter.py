@@ -232,9 +232,36 @@ class CFuncWriter:
         elif T is bool:
             return C.Literal(str(const.value).lower())
         elif T is str:
-            raise NotImplementedError('fix me')
+            return self._fmt_str_literal(const.value)
         else:
             raise NotImplementedError('WIP')
+
+    def _fmt_str_literal(self, s: str) -> C.Expr:
+        # SPy string literals must be initialized as C globals. We want to
+        # generate the following:
+        #
+        #     // global declarations
+        #     static spy_Str SPY_g_str0 = {5, "hello"};
+        #     ...
+        #     // literal expr
+        #     &SPY_g_str0 /* "hello" */
+        #
+        # Note that in the literal expr we also put a comment showing what is
+        # the content of the literal: hopefully this will make the code more
+        # readable for humans.
+        #
+        # Emit the global decl
+        utf8 = s.encode('utf-8')
+        v = self.cmod.new_global_var('str')  # SPY_g_str0
+        n = len(utf8)
+        lit = C.Literal.from_bytes(utf8)
+        init = '{%d, %s}' % (n, lit)
+        self.cmod.out_globals.wl(f'static spy_Str {v} = {init};')
+        #
+        # shortstr is what we show in the comment, with a length limit
+        comment = shortrepr(utf8.decode('utf-8'), 15)
+        v = f'{v} /* {comment} */'
+        return C.UnaryOp('&', C.Literal(v))
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         sym = self.w_func.funcdef.symtable.lookup(name.id)
@@ -302,33 +329,6 @@ class CFuncWriter:
             "it is expected")
 
 
-    def _emit_op_load_str(self, w_obj: W_str) -> None:
-        # SPy string literals must be initialized as C globals. We want to
-        # generate the following:
-        #
-        #     // global declarations
-        #     static spy_Str SPY_g_str0 = {5, "hello"};
-        #     ...
-        #     // literal expr
-        #     &SPY_g_str0 /* "hello" */
-        #
-        # Note that in the literal expr we also put a comment showing what is
-        # the content of the literal: hopefully this will make the code more
-        # readable for humans.
-        #
-        # Emit the global decl
-        utf8 = w_obj.get_utf8()
-        v = self.cmod.new_global_var('str')  # SPY_g_str0
-        n = len(utf8)
-        lit = c_expr.Literal.from_bytes(utf8)
-        init = '{%d, %s}' % (n, lit.str())
-        self.cmod.out_globals.wl(f'static spy_Str {v} = {init};')
-        #
-        # shortstr is what we show in the comment, with a length limit
-        comment = shortrepr(utf8.decode('utf-8'), 15)
-        v = f'{v} /* {comment} */'
-        res = c_expr.UnaryOp('&', c_expr.Literal(v))
-        self.push(res)
 
     def emit_op_abort(self, msg: str) -> None:
         # XXX we ignore it for now

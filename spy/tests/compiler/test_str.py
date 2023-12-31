@@ -6,7 +6,7 @@ from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestStr(CompilerTest):
 
-    def test_literal(self, legacy):
+    def test_literal(self):
         mod = self.compile(
         """
         def foo() -> str:
@@ -14,7 +14,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello'
 
-    def test_unicode_chars(self, legacy):
+    def test_unicode_chars(self):
         mod = self.compile(
         """
         # -*- encoding: utf-8 -*-
