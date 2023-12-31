@@ -513,7 +513,6 @@ class TestBasic(CompilerTest):
             ]
         )
 
-    @only_interp
     def test_builtin_function(self):
         mod = self.compile("""
         def foo(x: i32) -> i32:
@@ -523,7 +522,6 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
-    @only_interp
     def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int
