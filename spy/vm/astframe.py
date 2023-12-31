@@ -254,19 +254,32 @@ class ASTFrame:
             return FrameVal(w_type, w_value)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
-        self.t.check_expr_BinOp(binop)
+        color, w_restype = self.t.check_expr_BinOp(binop)
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
         w_ltype = fv_l.w_static_type
         w_rtype = fv_r.w_static_type
-        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+        argtypes = (w_ltype, w_rtype)
+        if argtypes == (B.w_i32, B.w_i32):
             l = self.vm.unwrap(fv_l.w_value)
             r = self.vm.unwrap(fv_r.w_value)
             if binop.op == '+':
                 return FrameVal(B.w_i32, self.vm.wrap(l + r))
             elif binop.op == '*':
                 return FrameVal(B.w_i32, self.vm.wrap(l * r))
-        #
+
+        elif binop.op == '+' and argtypes == (B.w_str, B.w_str):
+            return self.call_helper(
+                'StrAdd',
+                [fv_l.w_value, fv_r.w_value],
+                w_restype)
+
+        elif binop.op == '*' and argtypes == (B.w_str, B.w_i32):
+            return self.call_helper(
+                'StrMul',
+                [fv_l.w_value, fv_r.w_value],
+                w_restype)
+
         assert False, 'Unsupported binop, bug in the typechecker'
 
     eval_expr_Add = eval_expr_BinOp
@@ -300,9 +313,37 @@ class ASTFrame:
 
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
         color, w_restype = self.t.check_expr_Call(call)
+        if isinstance(call.func, ast.HelperFunc):
+            # special case CallHelper:
+            args_w = [self.eval_expr_object(arg) for arg in call.args]
+            return self.call_helper(call.func.funcname, args_w, w_restype)
+        #
         fv_func = self.eval_expr(call.func)
         w_func = fv_func.w_value
         assert isinstance(w_func, W_Func)
         args_w = [self.eval_expr_object(arg) for arg in call.args]
         w_res = self.vm.call_function(w_func, args_w)
         return FrameVal(w_restype, w_res)
+
+    def eval_expr_HelperFunc(self, node: ast.HelperFunc) -> FrameVal:
+        # we should special-case a call to HelperFunc in eval_expr_Call
+        assert False, 'should not be called'
+
+    def call_helper(self, funcname: str, args_w: list[W_Object],
+                    w_restype: W_Type) -> FrameVal:
+        helper_func = helpers.get(funcname)
+        w_res = helper_func(self.vm, *args_w)
+        return FrameVal(w_restype, w_res)
+
+    def eval_expr_GetItem(self, op: ast.GetItem) -> FrameVal:
+        color, w_restype = self.t.check_expr_GetItem(op)
+        fv_val = self.eval_expr(op.value)
+        fv_index = self.eval_expr(op.index)
+        argtypes = (fv_val.w_static_type, fv_index.w_static_type)
+        if argtypes == (B.w_str, B.w_i32):
+            return self.call_helper(
+                'StrGetItem',
+                [fv_val.w_value, fv_index.w_value],
+                w_restype)
+
+        assert False, 'unsupported getitem, bug in the typechecker'

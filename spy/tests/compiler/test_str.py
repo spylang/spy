@@ -6,7 +6,7 @@ from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestStr(CompilerTest):
 
-    def test_literal(self, legacy):
+    def test_literal(self):
         mod = self.compile(
         """
         def foo() -> str:
@@ -14,7 +14,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello'
 
-    def test_unicode_chars(self, legacy):
+    def test_unicode_chars(self):
         mod = self.compile(
         """
         # -*- encoding: utf-8 -*-
@@ -23,7 +23,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello àèìòù'
 
-    def test_add(self, legacy):
+    def test_add(self):
         mod = self.compile(
         """
         def foo() -> str:
@@ -33,7 +33,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello world'
 
-    def test_multiply(self, legacy):
+    def test_multiply(self):
         mod = self.compile(
         """
         def foo() -> str:
@@ -42,7 +42,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello hello hello '
 
-    def test_str_argument(self, legacy):
+    def test_str_argument(self):
         mod = self.compile(
         """
         def foo(a: str) -> str:
@@ -50,7 +50,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo('hello') == 'hello world'
 
-    def test_getitem(self, legacy):
+    def test_getitem(self):
         mod = self.compile(
         """
         def foo(a: str, i: i32) -> str:

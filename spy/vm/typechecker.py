@@ -8,6 +8,7 @@ from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.builtins import B
+from spy.vm import helpers
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -168,8 +169,12 @@ class TypeChecker:
         lcolor, w_ltype = self.check_expr(binop.left)
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
-        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+        if w_ltype is w_rtype is B.w_i32:
             return color, B.w_i32
+        if binop.op == '+' and w_ltype is w_rtype is B.w_str:
+            return color, B.w_str
+        if binop.op == '*' and w_ltype is B.w_str and w_rtype is B.w_i32:
+            return color, B.w_str
         #
         lt = w_ltype.name
         rt = w_rtype.name
@@ -202,6 +207,30 @@ class TypeChecker:
     check_expr_Gt = check_expr_CompareOp
     check_expr_GtE = check_expr_CompareOp
 
+    def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
+        vcolor, w_vtype = self.check_expr(expr.value)
+        icolor, w_itype = self.check_expr(expr.index)
+        color = maybe_blue(vcolor, icolor)
+        if w_vtype is B.w_str:
+            if w_itype is B.w_i32:
+                return color, B.w_str
+            else:
+                err = SPyTypeError('mismatched types')
+                got = w_itype.name
+                err.add('error', f'expected `i32`, got `{got}`', expr.index.loc)
+                err.add('note', f'this is a `str`', expr.value.loc)
+                raise err
+        else:
+            got = w_vtype.name
+            err = SPyTypeError(f'`{got}` does not support `[]`')
+            err.add('note', f'this is a `{got}`', expr.value.loc)
+            raise err
+
+    def check_expr_HelperFunc(self, node: ast.HelperFunc
+                              ) -> tuple[Color, W_Type]:
+        helper = helpers.get(node.funcname)
+        return 'red', helper.w_functype
+
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
@@ -223,7 +252,6 @@ class TypeChecker:
         #
         color = 'red' # XXX fix me
         return color, w_functype.w_restype
-
 
     def _call_error_non_callable(self, call: ast.Call,
                                  sym: Optional[Symbol],
