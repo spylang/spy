@@ -168,8 +168,10 @@ class TypeChecker:
         lcolor, w_ltype = self.check_expr(binop.left)
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
-        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+        if w_ltype is w_rtype is B.w_i32:
             return color, B.w_i32
+        if binop.op == '+' and w_ltype is w_rtype is B.w_str:
+            return color, B.w_str
         #
         lt = w_ltype.name
         rt = w_rtype.name

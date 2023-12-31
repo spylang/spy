@@ -23,7 +23,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == 'hello àèìòù'
 
-    def test_add(self, legacy):
+    def test_add(self):
         mod = self.compile(
         """
         def foo() -> str:

@@ -254,12 +254,12 @@ class ASTFrame:
             return FrameVal(w_type, w_value)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
-        self.t.check_expr_BinOp(binop)
+        color, w_restype = self.t.check_expr_BinOp(binop)
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
         w_ltype = fv_l.w_static_type
         w_rtype = fv_r.w_static_type
-        if w_ltype is B.w_i32 and w_rtype is B.w_i32:
+        if w_ltype is w_rtype is B.w_i32:
             l = self.vm.unwrap(fv_l.w_value)
             r = self.vm.unwrap(fv_r.w_value)
             if binop.op == '+':
@@ -267,10 +267,22 @@ class ASTFrame:
             elif binop.op == '*':
                 return FrameVal(B.w_i32, self.vm.wrap(l * r))
         #
+        elif w_ltype is w_rtype is B.w_str and binop.op == '+':
+            return self.call_helper(
+                'StrAdd',
+                [fv_l.w_value, fv_r.w_value],
+                w_restype=w_restype)
         assert False, 'Unsupported binop, bug in the typechecker'
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
+
+    def call_helper(self, funcname: str, args_w: list[W_Object],
+                    *,
+                    w_restype: W_Type):
+        helper_func = helpers.get(funcname)
+        w_res = helper_func(self.vm, *args_w)
+        return FrameVal(w_restype, w_res)
 
     def eval_expr_CompareOp(self, op: ast.CompareOp) -> FrameVal:
         self.t.check_expr_CompareOp(op)
