@@ -219,34 +219,35 @@ class TestBasic(CompilerTest):
                 mod.implicit_return_i32()
 
     def test_BinOp_error(self):
-        ctx = expect_errors(
+        src = """
+        def bar(a: i32, b: str) -> void:
+            return a + b
+
+        def foo() -> void:
+            bar(1, "hello")
+        """
+        errors = expect_errors(
             'cannot do `i32` + `str`',
             ('this is `i32`', 'a'),
             ('this is `str`', 'b'),
         )
-        with ctx:
-            mod = self.compile("""
-                def bar(a: i32, b: str) -> void:
-                    return a + b
-                """)
-            mod.bar(1, "hello")
+        self.compile_raises(src, "foo", errors)
 
     def test_BinOp_is_dispatched_with_static_types(self):
         # this fails because the static type of 'x' is object, even if its
         # dynamic type is i32
-        ctx = expect_errors(
+        src = """
+        def foo() -> i32:
+            a: object = 1
+            b: i32 = 2
+            return a + b
+        """
+        errors = expect_errors(
             'cannot do `object` + `i32`',
             ('this is `object`', 'a'),
             ('this is `i32`', 'b'),
         )
-        with ctx:
-            mod = self.compile("""
-            def foo() -> i32:
-                a: object = 1
-                b: i32 = 2
-                return a + b
-            """)
-            mod.foo()
+        self.compile_raises(src, "foo", errors)
 
     def test_function_call(self):
         mod = self.compile("""
