@@ -233,3 +233,4 @@ class ScopeAnalyzer:
 
     def flatten_Assign(self, assign: ast.Assign) -> None:
         self.capture_maybe(assign.target)
+        self.flatten(assign.value)
