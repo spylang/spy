@@ -481,29 +481,33 @@ class TestBasic(CompilerTest):
         self.compile_raises(src, "foo", errors)
 
     def test_getitem_error_1(self):
-        ctx = expect_errors(
+        src = """
+        def bar(a: str, i: bool) -> void:
+            a[i]
+
+        def foo() -> void:
+            bar("hello", True)
+        """
+        errors = expect_errors(
             'mismatched types',
             ('expected `i32`, got `bool`', 'i'),
             ('this is a `str`', 'a'),
             )
-        with ctx:
-            mod = self.compile(f"""
-            def foo(a: str, i: bool) -> void:
-                a[i]
-            """)
-            mod.foo("hello", True)
+        self.compile_raises(src, "foo", errors)
 
     def test_getitem_error_2(self):
-        ctx = expect_errors(
+        src = """
+        def bar(a: bool, i: i32) -> void:
+            a[i]
+
+        def foo() -> void:
+            bar(True, 1)
+        """
+        errors = expect_errors(
             '`bool` does not support `[]`',
             ('this is a `bool`', 'a'),
             )
-        with ctx:
-            mod = self.compile(f"""
-            def foo(a: bool, i: i32) -> void:
-                a[i]
-            """)
-            mod.foo(True, 1)
+        self.compile_raises(src, "foo", errors)
 
     def test_builtin_function(self):
         mod = self.compile("""
