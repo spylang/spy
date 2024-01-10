@@ -117,6 +117,15 @@ class CompilerTest:
         srcfile.write(src)
         return srcfile
 
+    @property
+    def error_reporting(self) -> None:
+        # ideally for 'doppler' and 'C' we would like to be able to choose
+        # either eager or lazy. For now, we hard-code it to eager.
+        if self.backend == 'interp':
+            return 'lazy'
+        else:
+            return 'eager'
+
     def compile(self, src: str) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
@@ -145,6 +154,35 @@ class CompilerTest:
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         else:
             assert False, f'Unknown backend: {self.backend}'
+
+    def compile_raises(self, src: str, funcname: str, ctx: Any,
+                       *,
+                       error_reporting: Optional[str] = None) -> None:
+        """
+        Compile the given src and run the function with the given funcname.
+
+        The code is expected to contains errors, but depending on the
+        `error_reporting` mode, the error is raised at different times:
+
+          - 'eager': the error is expected to be raised at compile-time
+
+          - 'lazy': the error is expected to be raised at run-time
+
+        `ctx` is a context manager which catches and expects the error, and is
+        supposed to be obtained by calling `expect_errors`.
+        """
+        if error_reporting is None:
+            error_reporting = self.error_reporting
+
+        if error_reporting == 'eager':
+            with ctx:
+                mod = self.compile(src)
+        else:
+            mod = self.compile(src)
+            with ctx:
+                fn = getattr(mod, funcname)
+                fn()
+
 
 MatchAnnotation = tuple[str, str]
 

@@ -42,16 +42,15 @@ class TypeChecker:
             f'variable already declared: {name}'
         self.locals_types_w[name] = w_type
 
-    def typecheck_local(self, got_loc: Loc, name: str, w_got: W_Object) -> None:
+    def typecheck_local(self, got_loc: Loc, name: str, w_got_type: W_Type) -> None:
         assert name in self.locals_types_w
-        w_type = self.locals_types_w[name]
-        loc = self.funcdef.symtable.lookup(name).type_loc
-        if self.vm.is_compatible_type(w_got, w_type):
+        w_exp_type = self.locals_types_w[name]
+        exp_loc = self.funcdef.symtable.lookup(name).type_loc
+        if self.vm.can_assign_from_to(w_got_type, w_exp_type):
             return
         err = SPyTypeError('mismatched types')
-        got = self.vm.dynamic_type(w_got).name
-        exp = w_type.name
-        exp_loc = loc
+        got = w_got_type.name
+        exp = w_exp_type.name
         err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
         if name == '@return':
             because = 'because of return type'
