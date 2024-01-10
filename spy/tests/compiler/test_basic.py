@@ -264,63 +264,59 @@ class TestBasic(CompilerTest):
         # it would be nice to report also the location where 'inc' is defined,
         # but we don't carry around this information for now. There is room
         # for improvement
-        ctx = expect_errors(
+        src = """
+        x: i32 = 0
+        def foo() -> void:
+            return x(0)
+        """
+        errors = expect_errors(
             'cannot call objects of type `i32`',
-            ('this is not a function', 'inc'),
-            ('variable defined here', 'inc: i32 = 0'),
+            ('this is not a function', 'x'),
+            ('variable defined here', 'x: i32 = 0'),
         )
-        with ctx:
-            mod = self.compile("""
-            inc: i32 = 0
-            def bar() -> void:
-                return inc(0)
-            """)
-            mod.bar()
+        self.compile_raises(src, "foo", errors)
 
     def test_function_call_missing_args(self):
-        ctx = expect_errors(
+        src = """
+        def inc(x: i32) -> i32:
+            return x+1
+        def foo() -> void:
+            return inc()
+        """
+        errors = expect_errors(
             'this function takes 1 argument but 0 arguments were supplied',
             ('1 argument missing', 'inc'),
             ('function defined here', 'def inc(x: i32) -> i32'),
         )
-        with ctx:
-            mod = self.compile("""
-            def inc(x: i32) -> i32:
-                return x+1
-            def bar() -> void:
-                return inc()
-            """)
-            mod.bar()
+        self.compile_raises(src, "foo", errors)
 
     def test_function_call_extra_args(self):
-        ctx = expect_errors(
+        src = """
+        def inc(x: i32) -> i32:
+            return x+1
+        def foo() -> void:
+            return inc(1, 2, 3)
+        """
+        errors = expect_errors(
             'this function takes 1 argument but 3 arguments were supplied',
             ('2 extra arguments', '2, 3'),
             ('function defined here', 'def inc(x: i32) -> i32'),
         )
-        with ctx:
-            mod = self.compile("""
-            def inc(x: i32) -> i32:
-                return x+1
-            def bar() -> void:
-                return inc(1, 2, 3)
-            """)
-            mod.bar()
+        self.compile_raises(src, 'foo', errors)
 
     def test_function_call_type_mismatch(self):
-        ctx = expect_errors(
+        src = """
+        def inc(x: i32) -> i32:
+            return x+1
+        def foo() -> i32:
+            return inc("hello")
+        """
+        errors = expect_errors(
             'mismatched types',
-            ('expected `i32`, got `str`', 's'),
+            ('expected `i32`, got `str`', '"hello"'),
             ('function defined here', 'def inc(x: i32) -> i32'),
         )
-        with ctx:
-            mod = self.compile("""
-            def inc(x: i32) -> i32:
-                return x+1
-            def bar(s: str) -> i32:
-                return inc(s)
-            """)
-            mod.bar("hello")
+        self.compile_raises(src, "foo", errors)
 
     def test_StmtExpr(self):
         mod = self.compile("""
