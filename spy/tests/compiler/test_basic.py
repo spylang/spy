@@ -44,26 +44,26 @@ class TestBasic(CompilerTest):
         self.compile_raises(src, 'foo', errors, error_reporting='eager')
 
     def test_wrong_functype_restype(self):
-        ctx = expect_errors(
+        src = """
+        def foo() -> 'hello':
+            return 42
+        """
+        errors = expect_errors(
             'expected `type`, got `str`',
             ('expected `type`', "'hello'")
         )
-        with ctx:
-            self.compile("""
-            def foo() -> 'hello':
-                return 42
-            """)
+        self.compile_raises(src, 'foo', errors, error_reporting='eager')
 
     def test_wrong_functype_argtype(self):
-        ctx = expect_errors(
+        src = """
+        def foo(x: 'hello') -> i32:
+            return 42
+        """
+        errors = expect_errors(
             'expected `type`, got `str`',
             ('expected `type`', "'hello'"),
         )
-        with ctx:
-            self.compile("""
-            def foo(x: 'hello') -> i32:
-                return 42
-            """)
+        self.compile_raises(src, 'foo', errors, error_reporting='eager')
 
     def test_wrong_return_type(self):
         src = """

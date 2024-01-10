@@ -156,6 +156,7 @@ class CompilerTest:
             assert False, f'Unknown backend: {self.backend}'
 
     def compile_raises(self, src: str, funcname: str, ctx: Any,
+                       *,
                        error_reporting: Optional[str] = None) -> None:
         """
         Compile the given src and run the function with the given funcname.
