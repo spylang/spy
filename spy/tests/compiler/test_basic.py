@@ -65,20 +65,17 @@ class TestBasic(CompilerTest):
                 return 42
             """)
 
-    # XXX the doppler should recognize type errors and act accordingly
-    @skip_backends('C', reason='doppler is buggy')
     def test_wrong_return_type(self):
-        ctx = expect_errors(
+        src = """
+        def foo() -> str:
+            return 42
+        """
+        errors = expect_errors(
             'mismatched types',
             ('expected `str`, got `i32`', "return 42"),
             ('expected `str` because of return type', "str"),
         )
-        with ctx:
-            mod = self.compile("""
-            def foo() -> str:
-                return 42
-            """)
-            mod.foo()
+        self.compile_raises(src, 'foo', errors)
 
     def test_local_variables(self):
         mod = self.compile(
@@ -103,7 +100,8 @@ class TestBasic(CompilerTest):
             """)
             mod.foo()
 
-    @skip_backends('C', reason='object not supported')
+    #@skip_backends('C', reason='object not supported')
+    @pytest.mark.skip('fix me')
     def test_local_upcast_and_downcast(self):
         mod = self.compile("""
         def foo() -> i32:

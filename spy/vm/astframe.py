@@ -64,7 +64,9 @@ class ASTFrame:
         self.locals[name] = None
 
     def store_local(self, got_loc: Loc, name: str, w_value: W_Object) -> None:
-        self.t.typecheck_local(got_loc, name, w_value)
+        # XXX: should we do static or dynamic type checking?
+        w_value_type = self.vm.dynamic_type(w_value)
+        self.t.typecheck_local(got_loc, name, w_value_type)
         self.locals[name] = w_value
 
     def load_local(self, name: str) -> W_Object:
@@ -142,7 +144,7 @@ class ASTFrame:
 
     def exec_stmt_Return(self, stmt: ast.Return) -> None:
         fv = self.eval_expr(stmt.value)
-        self.t.typecheck_local(stmt.loc, '@return', fv.w_value)
+        self.t.typecheck_local(stmt.loc, '@return', fv.w_static_type)
         raise Return(fv.w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:

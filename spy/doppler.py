@@ -81,6 +81,8 @@ class FuncDoppler:
     # ==== statements ====
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
+        color, w_type = self.t.check_expr(ret.value)
+        self.t.typecheck_local(ret.loc, '@return', w_type)
         newvalue = self.shift_expr(ret.value)
         return [ret.replace(value=newvalue)]
 
