@@ -102,9 +102,11 @@ class FuncDoppler:
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         sym = self.funcdef.symtable.lookup(assign.target)
         if sym.is_local and assign.target not in self.t.locals_types_w:
-            # XXX fix me
-            raise NotImplementedError('redshift of implicit declarations')
-        elif sym.color == 'red':
+            # implicit declaration
+            color, w_type = self.t.check_expr(assign.value)
+            self.blue_frame.declare_local(assign.target, w_type)
+        #
+        if sym.color == 'red':
             newvalue = self.shift_expr(assign.value)
             return [assign.replace(value=newvalue)]
         else:

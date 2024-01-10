@@ -127,7 +127,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
-    @skip_backends('doppler', 'C', reason='redshift of implicit declarations')
     def test_implicit_declaration(self):
         mod = self.compile(
             """
