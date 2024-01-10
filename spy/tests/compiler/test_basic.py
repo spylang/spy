@@ -374,17 +374,19 @@ class TestBasic(CompilerTest):
         assert mod.cmp_gte(6, 5) is True
 
     def test_CompareOp_error(self):
-        ctx = expect_errors(
+        src = """
+        def bar(a: i32, b: str) -> bool:
+            return a == b
+
+        def foo() -> void:
+            bar(1, "hello")
+        """
+        errors = expect_errors(
             'cannot do `i32` == `str`',
             ('this is `i32`', 'a'),
             ('this is `str`', 'b'),
         )
-        with ctx:
-            mod = self.compile("""
-            def foo(a: i32, b: str) -> bool:
-                return a == b
-            """)
-            mod.foo(1, 'hello')
+        self.compile_raises(src, 'foo', errors)
 
     def test_if_stmt(self):
         mod = self.compile("""
@@ -449,33 +451,34 @@ class TestBasic(CompilerTest):
         # XXX: eventually, we want to introduce the concept of "truth value"
         # and insert automatic conversions but for now the condition must be a
         # bool
-        ctx = expect_errors(
+        src = """
+        def bar(a: i32) -> i32:
+            if a:
+                return 1
+            return 2
+
+        def foo() -> void:
+            bar(1)
+        """
+        errors = expect_errors(
             'mismatched types',
             ('expected `bool`, got `i32`', 'a'),
             ('implicit conversion to `bool` is not implemented yet', 'a')
         )
-        with ctx:
-            mod = self.compile("""
-            def foo(a: i32) -> i32:
-                if a:
-                    return 1
-                return 2
-            """)
-            mod.foo(1)
+        self.compile_raises(src, "foo", errors)
 
     def test_while_error(self):
-        ctx = expect_errors(
+        src = """
+        def foo() -> void:
+            while 123:
+                pass
+        """
+        errors = expect_errors(
             'mismatched types',
             ('expected `bool`, got `i32`', '123'),
             ('implicit conversion to `bool` is not implemented yet', '123')
         )
-        with ctx:
-            mod = self.compile("""
-            def foo() -> void:
-                while 123:
-                    pass
-            """)
-            mod.foo()
+        self.compile_raises(src, "foo", errors)
 
     def test_getitem_error_1(self):
         ctx = expect_errors(
