@@ -86,19 +86,17 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    @skip_backends('C', reason='doppler is buggy')
     def test_local_typecheck(self):
-        ctx = expect_errors(
+        src = """
+        def foo() -> i32:
+            x: str = 1
+        """
+        errors = expect_errors(
             'mismatched types',
             ('expected `str`, got `i32`', '1'),
             ('expected `str` because of type declaration', 'str'),
         )
-        with ctx:
-            mod = self.compile("""
-            def foo() -> i32:
-                x: str = 1
-            """)
-            mod.foo()
+        self.compile_raises(src, "foo", errors)
 
     #@skip_backends('C', reason='object not supported')
     @pytest.mark.skip('fix me')

@@ -91,6 +91,8 @@ class FuncDoppler:
         sym = self.blue_frame.declare_VarDef(vardef)
         assert sym.is_local
         if sym.color == 'red':
+            valuecolor, w_valuetype = self.t.check_expr(vardef.value)
+            self.t.typecheck_local(vardef.value.loc, vardef.name, w_valuetype)
             newvalue = self.shift_expr(vardef.value)
             newtype = self.shift_expr(vardef.type)
             return [vardef.replace(value=newvalue, type=newtype)]
