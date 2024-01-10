@@ -20,17 +20,15 @@ class TestBasic(CompilerTest):
             assert mod.foo.w_func.redshifted
 
     def test_NameError(self):
-        ctx = expect_errors(
+        src = """
+        def foo() -> i32:
+            return x
+        """
+        errors = expect_errors(
             'name `x` is not defined',
             ('not found in this scope', 'x')
         )
-        with ctx:
-            mod = self.compile(
-            """
-            def foo() -> i32:
-                return x
-            """)
-            mod.foo()
+        mod = self.compile_raises(src, 'foo', errors)
 
     def test_resolve_type_errors(self):
         ctx = expect_errors(
@@ -98,7 +96,6 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    #@skip_backends('C', reason='object not supported')
     @pytest.mark.skip('fix me')
     def test_local_upcast_and_downcast(self):
         mod = self.compile("""
