@@ -155,7 +155,8 @@ class CompilerTest:
         else:
             assert False, f'Unknown backend: {self.backend}'
 
-    def compile_raises(self, src: str, funcname: str, ctx: Any) -> None:
+    def compile_raises(self, src: str, funcname: str, ctx: Any,
+                       error_reporting: Optional[str] = None) -> None:
         """
         Compile the given src and run the function with the given funcname.
 
@@ -169,7 +170,10 @@ class CompilerTest:
         `ctx` is a context manager which catches and expects the error, and is
         supposed to be obtained by calling `expect_errors`.
         """
-        if self.error_reporting == 'eager':
+        if error_reporting is None:
+            error_reporting = self.error_reporting
+
+        if error_reporting == 'eager':
             with ctx:
                 mod = self.compile(src)
         else:

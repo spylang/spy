@@ -31,15 +31,17 @@ class TestBasic(CompilerTest):
         mod = self.compile_raises(src, 'foo', errors)
 
     def test_resolve_type_errors(self):
-        ctx = expect_errors(
+        # NOTE: this error is always eager because it doesn't happen when
+        # running the function, but when defining it
+        src = """
+        def foo() -> aaa:
+            return 42
+        """
+        errors = expect_errors(
             'name `aaa` is not defined',
             ('not found in this scope', 'aaa')
         )
-        with ctx:
-            mod = self.compile("""
-            def foo() -> aaa:
-                return 42
-            """)
+        self.compile_raises(src, 'foo', errors, error_reporting='eager')
 
     def test_wrong_functype_restype(self):
         ctx = expect_errors(
