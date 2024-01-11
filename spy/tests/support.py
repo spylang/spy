@@ -107,7 +107,7 @@ class CompilerTest:
         return srcfile
 
     @property
-    def error_reporting(self) -> None:
+    def error_reporting(self) -> str:
         # ideally for 'doppler' and 'C' we would like to be able to choose
         # either eager or lazy. For now, we hard-code it to eager.
         if self.backend == 'interp':

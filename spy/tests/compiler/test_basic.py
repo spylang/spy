@@ -28,7 +28,7 @@ class TestBasic(CompilerTest):
             'name `x` is not defined',
             ('not found in this scope', 'x')
         )
-        mod = self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, 'foo', errors)
 
     def test_resolve_type_errors(self):
         # NOTE: this error is always eager because it doesn't happen when
