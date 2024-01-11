@@ -1,11 +1,7 @@
 import pytest
-from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
-from spy.vm.codeobject import W_CodeObject, OpCodeWithFakeLoc as OpCode
-from spy.vm.function import W_FuncType, W_UserFunc, FuncParam
-from spy.vm.module import W_Module
-from spy.tests.support import make_func
+from spy.vm.function import W_FuncType
 
 class TestFunction:
 
@@ -25,48 +21,3 @@ class TestFunction:
         assert w_ft == W_FuncType.make(x=B.w_str,
                                            y=B.w_i32,
                                            w_restype=B.w_i32)
-
-    def test_simple_function(self):
-        vm = SPyVM()
-        w_func = make_func(
-            'def() -> i32',
-            body = [
-                OpCode('load_const', vm.wrap(42)),
-                OpCode('return'),
-            ]
-        )
-        assert repr(w_func) == "<spy function 'test::fn'>"
-        w_t = vm.dynamic_type(w_func)
-        assert w_t == W_FuncType.make(w_restype=B.w_i32)
-
-    def test_make_and_call_function(self):
-        vm = SPyVM()
-        w_mod = W_Module(vm, 'mymod', 'mymod.spy')
-        vm.register_module(w_mod)
-        vm.add_global(FQN('mymod::a'),
-                      B.w_i32,
-                      vm.wrap(10))
-        w_func = make_func(
-            'def() -> i32',
-            body = [
-                OpCode('load_global', FQN('mymod::a')),
-                OpCode('return'),
-            ]
-        )
-        w_result = vm.call_function(w_func, [])
-        assert vm.unwrap(w_result) == 10
-
-    def test_call_function_with_arguments(self):
-        vm = SPyVM()
-        w_mod = W_Module(vm, 'mymod', 'mymod.spy')
-        w_func = make_func(
-            'def(a: i32, b: i32) -> i32',
-            body = [
-                OpCode('load_local', 'a'),
-                OpCode('load_local', 'b'),
-                OpCode('i32_sub'),
-                OpCode('return'),
-            ]
-        )
-        w_result = vm.call_function(w_func, [vm.wrap(100), vm.wrap(80)])
-        assert vm.unwrap(w_result) == 20

@@ -9,7 +9,6 @@ from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
-from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm import helpers
@@ -341,42 +340,3 @@ class CFuncWriter:
 
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
-
-    # === XXX old code, eventually kill me ===
-
-    def emit_op(self, op: OpCode) -> None:
-        meth_name = f'emit_op_{op.name}'
-        meth = getattr(self, meth_name, None)
-        if meth is None:
-            raise NotImplementedError(meth_name)
-        meth(*op.args)
-
-    def emit_op_label(self, name: str) -> None:
-        raise AssertionError(
-            "emit_op_label should never be called. "
-            "You should .consume() the label op when "
-            "it is expected")
-
-
-
-    def emit_op_abort(self, msg: str) -> None:
-        # XXX we ignore it for now
-        pass
-
-    def emit_op_load_local(self, varname: str) -> None:
-        self.push(c_expr.Literal(varname))
-
-    def emit_op_load_global(self, fqn: FQN) -> None:
-        self.push(c_expr.Literal(fqn.c_name))
-
-    def _pop_args(self, argcount: int) -> str:
-        args = []
-        for i in range(argcount):
-            args.append(self.pop().str())
-        args.reverse()
-        arglist = ', '.join(args)
-        return arglist
-
-
-    def emit_op_pop_and_discard(self) -> None:
-        self.pop()

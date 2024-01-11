@@ -4,7 +4,6 @@ from spy.location import Loc
 from spy.fqn import FQN
 from spy.errors import SPyImportError, SPyScopeError
 from spy.irgen.symtable import SymTable, Symbol
-from spy.irgen import multiop
 from spy.vm.vm import SPyVM
 from spy.util import magic_dispatch
 

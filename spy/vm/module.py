@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.vm.object import W_Object, spytype, W_Type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.function import W_UserFunc, W_ASTFunc
+    from spy.vm.function import W_ASTFunc
 
 
 @spytype('module')
@@ -50,12 +50,6 @@ class W_Module(W_Object):
         """
         Pretty print
         """
-        from spy.vm.function import W_UserFunc
         print(f'Module {self.name}:')
         for attr, w_obj in self.items_w():
             print(f'    {attr}: {w_obj}')
-
-        print()
-        for attr, w_obj in self.items_w():
-            if isinstance(w_obj, W_UserFunc):
-                w_obj.w_code.pp()

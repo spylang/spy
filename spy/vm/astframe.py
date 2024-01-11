@@ -10,7 +10,6 @@ from spy.irgen.symtable import Symbol
 from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.codeobject import W_CodeObject, OpCode
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm import helpers
 from spy.vm.typechecker import TypeChecker

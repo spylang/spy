@@ -8,14 +8,9 @@ from spy.doppler import redshift
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.builtins import B
-from spy.vm.function import (W_FuncType, W_Func, W_UserFunc, W_ASTFunc,
-                             W_BuiltinFunc)
+from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.codeobject import W_CodeObject
-from spy.vm.frame import Frame
 from spy.vm.astframe import ASTFrame
-
-
 
 
 class SPyVM:
@@ -185,10 +180,7 @@ class SPyVM:
         for param, w_arg in zip(w_functype.params, args_w):
             assert self.is_compatible_type(w_arg, param.w_type)
         #
-        if isinstance(w_func, W_UserFunc):
-            frame = Frame(self, w_func)
-            return frame.run(args_w)
-        elif isinstance(w_func, W_ASTFunc):
+        if isinstance(w_func, W_ASTFunc):
             frame2 = ASTFrame(self, w_func)
             return frame2.run(args_w)
         elif isinstance(w_func, W_BuiltinFunc):

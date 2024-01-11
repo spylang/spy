@@ -12,7 +12,7 @@ vice-versa, by using vm.wrap and vm.unwrap.
 from typing import Any
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
-from spy.vm.function import W_Func, W_UserFunc, W_FuncType
+from spy.vm.function import W_Func, W_FuncType
 
 
 class InterpModuleWrapper:
@@ -48,10 +48,6 @@ class InterpFuncWrapper:
         self.vm = vm
         self.w_func = w_func
         self.w_functype = w_func.w_functype
-
-    def dis(self) -> None:
-        assert isinstance(self.w_func, W_UserFunc)
-        self.w_func.w_code.pp()
 
     def __call__(self, *args: Any) -> Any:
         # *args contains python-level objs. We want to wrap them into args_w

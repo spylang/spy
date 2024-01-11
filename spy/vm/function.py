@@ -5,8 +5,6 @@ from spy.ast import Color
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
-from spy.vm.codeobject import W_CodeObject
-from spy.vm.varstorage import VarStorage
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -98,24 +96,6 @@ class W_Func(W_Object):
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         raise NotImplementedError
-
-
-class W_UserFunc(W_Func):
-    """
-    XXX kill me
-    """
-    fqn: FQN
-    w_code: W_CodeObject
-
-    def __init__(self, fqn: FQN, w_functype: W_FuncType,
-                 w_code: W_CodeObject) -> None:
-        self.fqn = fqn
-        self.w_functype = w_functype
-        self.w_code = w_code
-
-    def __repr__(self) -> str:
-        return f"<spy function '{self.fqn}'>"
-
 
 
 class W_ASTFunc(W_Func):
