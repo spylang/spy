@@ -13,7 +13,7 @@ from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.codeobject import OpCode, W_CodeObject
-from spy.vm.function import W_UserFunc, W_FuncType
+from spy.vm.function import W_FuncType
 
 Backend = Literal['interp', 'doppler', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -245,11 +245,3 @@ class CTest:
         test_wasm = self.builddir.join('test.wasm')
         self.toolchain.c2wasm(test_c, test_wasm, exports=exports)
         return test_wasm
-
-
-def make_func(sig: str, body: list[OpCode]) -> W_UserFunc:
-    w_functype = W_FuncType.parse(sig)
-    code = W_CodeObject.for_tests('fn', w_functype.arity)
-    code.body = body
-    w_func = W_UserFunc(FQN('test::fn'), w_functype, code)
-    return w_func

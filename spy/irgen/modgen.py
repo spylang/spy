@@ -8,7 +8,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
-from spy.vm.function import W_FuncType, W_UserFunc, W_ASTFunc
+from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.astframe import ASTFrame
 
 

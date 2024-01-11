@@ -100,24 +100,6 @@ class W_Func(W_Object):
         raise NotImplementedError
 
 
-class W_UserFunc(W_Func):
-    """
-    XXX kill me
-    """
-    fqn: FQN
-    w_code: W_CodeObject
-
-    def __init__(self, fqn: FQN, w_functype: W_FuncType,
-                 w_code: W_CodeObject) -> None:
-        self.fqn = fqn
-        self.w_functype = w_functype
-        self.w_code = w_code
-
-    def __repr__(self) -> str:
-        return f"<spy function '{self.fqn}'>"
-
-
-
 class W_ASTFunc(W_Func):
     fqn: FQN
     closure: tuple[Namespace, ...]
