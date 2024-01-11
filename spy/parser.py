@@ -217,6 +217,7 @@ class Parser:
         # global VarDef are 'const' by default, unless you specify 'var'.
         # local VarDef are always 'var' (for now?)
         is_local = not is_global
+        kind: spy.ast.VarKind
         if is_local or py_node.target.is_var:
             kind = 'var'
         else:

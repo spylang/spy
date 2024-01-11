@@ -1,6 +1,7 @@
 from typing import Optional
 from spy import ast
 from spy.location import Loc
+from spy.irgen.symtable import Color
 from spy.fqn import FQN
 from spy.errors import SPyImportError, SPyScopeError
 from spy.irgen.symtable import SymTable, Symbol
@@ -152,6 +153,7 @@ class ScopeAnalyzer:
         raise err
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        color: Color
         if decl.vardef.kind == 'var':
             color = 'red'
         else:

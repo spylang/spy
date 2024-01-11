@@ -155,6 +155,7 @@ class CFuncWriter:
         different than SPy scoping rules, so we emit the C declaration when we
         see e.g. a VarDef.
         """
+        assert self.w_func.locals_types_w is not None
         param_names = [p.name for p in self.w_func.w_functype.params]
         for varname, w_type in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_type)
@@ -261,6 +262,7 @@ class CFuncWriter:
         elif T is bool:
             return C.Literal(str(const.value).lower())
         elif T is str:
+            assert isinstance(const.value, str)
             return self._fmt_str_literal(const.value)
         else:
             raise NotImplementedError('WIP')
@@ -330,7 +332,7 @@ class CFuncWriter:
     fmt_expr_Gt = fmt_expr_CompareOp
     fmt_expr_GtE = fmt_expr_CompareOp
 
-    def fmt_expr_Call(self, call: ast.Call) -> str:
+    def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         if isinstance(call.func, ast.FQNConst):
             c_name = call.func.fqn.c_name
         elif isinstance(call.func, ast.HelperFunc):
