@@ -12,7 +12,6 @@ from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
-from spy.vm.codeobject import OpCode, W_CodeObject
 from spy.vm.function import W_FuncType
 
 Backend = Literal['interp', 'doppler', 'C']

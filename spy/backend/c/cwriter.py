@@ -9,7 +9,6 @@ from spy.vm.object import W_Type, W_Object, W_i32
 from spy.vm.str import W_str
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
-from spy.vm.codeobject import OpCode
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.vm import helpers

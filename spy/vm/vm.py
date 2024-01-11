@@ -10,10 +10,7 @@ from spy.vm.str import W_str
 from spy.vm.builtins import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.codeobject import W_CodeObject
 from spy.vm.astframe import ASTFrame
-
-
 
 
 class SPyVM:
