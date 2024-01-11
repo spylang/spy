@@ -84,16 +84,6 @@ class CompilerTest:
     backend: Backend
     vm: SPyVM
 
-    # <hack hack hack>
-    @pytest.fixture
-    def legacy(self):
-        pytest.skip("legacy")
-
-    def expect_errors(self, src: str, errors: list[str]):
-        raise NotImplementedError("KILL ME")
-
-    # </hack hack hack>
-
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
         return request.param
