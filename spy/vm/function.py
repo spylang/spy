@@ -5,7 +5,6 @@ from spy.ast import Color
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.module import W_Module
-from spy.vm.varstorage import VarStorage
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
