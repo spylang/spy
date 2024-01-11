@@ -161,6 +161,7 @@ class TypeChecker:
     def check_expr_FQNConst(self, const: ast.FQNConst) -> tuple[Color, W_Type]:
         # XXX: I think that FQNConst should remember what was its static type
         w_val = self.vm.lookup_global(const.fqn)
+        assert w_val is not None
         w_type = self.vm.dynamic_type(w_val)
         return 'blue', w_type
 

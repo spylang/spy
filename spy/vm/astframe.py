@@ -235,6 +235,7 @@ class ASTFrame:
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> FrameVal:
         color, w_type = self.t.check_expr_FQNConst(const)
         w_value = self.vm.lookup_global(const.fqn)
+        assert w_value is not None
         return FrameVal(w_type, w_value)
 
     def eval_expr_Name(self, name: ast.Name) -> FrameVal:
