@@ -121,7 +121,7 @@ class W_ASTFunc(W_Func):
         self.locals_types_w = locals_types_w
 
     @property
-    def redshifted(self):
+    def redshifted(self) -> bool:
         return self.locals_types_w is not None
 
     def __repr__(self) -> str:

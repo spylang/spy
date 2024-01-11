@@ -34,6 +34,7 @@ PREC  CATEGORY         OPERATOR            ASSOCIATIVITY
 
 import re
 from dataclasses import dataclass
+from typing import ClassVar
 
 def make_table(src: str) -> dict[str, int]:
     """
@@ -110,6 +111,9 @@ class Void(Expr):
     As such, we need to special-case it in all the places where it could be
     used.
     """
+
+    _singleton: ClassVar['Void']
+
     def __new__(cls) -> 'Void':
         return cls._singleton
 

@@ -11,9 +11,9 @@ def get(funcname: str) -> Any:
         raise KeyError(f'Cannot find {funcname} in helpers.py')
     return func
 
-def helper(sig: str):
+def helper(sig: str) -> Any:
     w_functype = W_FuncType.parse(sig)
-    def decorator(fn):
+    def decorator(fn: Any) -> Any:
         fn.w_functype = w_functype
         return fn
     return decorator
