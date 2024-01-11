@@ -42,7 +42,7 @@ class LocInfo:
     col_offset: int
     end_col_offset: int
 
-def magic_py_parse(src: str):
+def magic_py_parse(src: str) -> py_ast.Module:
     """
     Like ast.parse, but supports the new "var" syntax. See the module
     docstring for more info.
@@ -52,6 +52,8 @@ def magic_py_parse(src: str):
 
     for node in py_ast.walk(py_mod):
         if isinstance(node, py_ast.Name):
+            assert node.end_lineno is not None
+            assert node.end_col_offset is not None
             loc = LocInfo(node.lineno, node.end_lineno,
                           node.col_offset, node.end_col_offset)
             node.is_var = loc in var_locs
