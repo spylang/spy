@@ -207,11 +207,8 @@ class CFuncWriter:
             self.out.wl(f'return {v};')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        assert vardef.value is not None, 'XXX'
-        # we don't need to eval vardef.type, because all local vars have
-        # already been declared
-        v = self.fmt_expr(vardef.value)
-        self.out.wl(f'{vardef.name} = {v};')
+        # all local vars have already been declared, nothing to do
+        pass
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
         v = self.fmt_expr(assign.value)

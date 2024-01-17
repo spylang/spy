@@ -85,10 +85,8 @@ class SPyBackend:
         self.wl(f'{assign.target} = {v}')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        assert vardef.value is not None, 'XXX'
         t = self.fmt_expr(vardef.type)
-        v = self.fmt_expr(vardef.value)
-        self.wl(f'{vardef.name}: {t} = {v}')
+        self.wl(f'{vardef.name}: {t}')
 
     # expressions
 

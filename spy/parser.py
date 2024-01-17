@@ -63,8 +63,9 @@ class Parser:
                 globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
                 mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.AnnAssign):
-                vardef = self.from_py_stmt_AnnAssign(py_stmt, is_global=True)
-                globvar = spy.ast.GlobalVarDef(vardef)
+                vardef, assign = self.from_py_AnnAssign(py_stmt, is_global=True)
+                assert assign is not None
+                globvar = spy.ast.GlobalVarDef(vardef, assign)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.ImportFrom):
                 importdecls = self.from_py_ImportFrom(py_stmt)
@@ -175,7 +176,18 @@ class Parser:
     # ====== spy.ast.Stmt ======
 
     def from_py_body(self, py_body: list[py_ast.stmt]) -> list[spy.ast.Stmt]:
-        return [self.from_py_stmt(py_stmt) for py_stmt in py_body]
+        body: list[spy.ast.Stmt] = []
+        for py_stmt in py_body:
+            if isinstance(py_stmt, py_ast.AnnAssign):
+                # special case, as it's the stmt wich generates two
+                vardef, assign = self.from_py_AnnAssign(py_stmt)
+                body.append(vardef)
+                if assign:
+                    body.append(assign)
+            else:
+                stmt = self.from_py_stmt(py_stmt)
+                body.append(stmt)
+        return body
 
     def from_py_stmt(self, py_node: py_ast.stmt) -> spy.ast.Stmt:
         return magic_dispatch(self, 'from_py_stmt', py_node)
@@ -202,10 +214,10 @@ class Parser:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
 
-    def from_py_stmt_AnnAssign(self,
-                               py_node: py_ast.AnnAssign,
-                               is_global: bool = False
-                               ) -> spy.ast.VarDef:
+    def from_py_AnnAssign(self,
+                          py_node: py_ast.AnnAssign,
+                          is_global: bool = False
+                          ) -> tuple[spy.ast.VarDef, Optional[spy.ast.Assign]]:
         if not py_node.simple:
             self.error(f"not supported: assignments targets with parentheses",
                        "this is not supported", py_node.target.loc)
@@ -222,13 +234,25 @@ class Parser:
             kind = 'var'
         else:
             kind = 'const'
-        return spy.ast.VarDef(
+
+        vardef = spy.ast.VarDef(
             loc = py_node.loc,
             kind = kind,
             name = py_node.target.id,
             type = self.from_py_expr(py_node.annotation),
-            value = self.from_py_expr(py_node.value)
         )
+
+        if py_node.value is None:
+            assign = None
+        else:
+            assign = spy.ast.Assign(
+                loc = py_node.loc,
+                target_loc = py_node.target.loc,
+                target = py_node.target.id,
+                value = self.from_py_expr(py_node.value)
+            )
+
+        return vardef, assign
 
     def from_py_stmt_Assign(self, py_node: py_ast.Assign) -> spy.ast.Stmt:
         # Assign can be pretty complex: it can have multiple targets, and a

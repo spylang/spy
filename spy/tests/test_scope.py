@@ -151,7 +151,7 @@ class TestScopeAnalyzer:
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
         #
-        bardef = foodef.body[1]
+        bardef = foodef.body[2]
         assert isinstance(bardef, ast.FuncDef)
         assert bardef.symtable._symbols == {
             'y': MatchSymbol('y', 'red'),

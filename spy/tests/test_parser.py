@@ -272,18 +272,24 @@ class TestParser:
         def foo() -> void:
             x: i32 = 42
         """)
-        stmt = mod.get_funcdef('foo').body[0]
-        expected = """
+        vardef, assign = mod.get_funcdef('foo').body[:2]
+        vardef_expected = """
         VarDef(
             kind='var',
             name='x',
             type=Name(id='i32'),
+        )
+        """
+        assign_expected = """
+        Assign(
+            target='x',
             value=Constant(value=42),
         )
         """
-        self.assert_dump(stmt, expected)
+        self.assert_dump(vardef, vardef_expected)
+        self.assert_dump(assign, assign_expected)
 
-    def test_global_VarDef(self):
+    def test_global_VarDef_const(self):
         mod = self.parse("""
         x: i32 = 42
         """)
@@ -296,6 +302,9 @@ class TestParser:
                         kind='const',
                         name='x',
                         type=Name(id='i32'),
+                    ),
+                    assign=Assign(
+                        target='x',
                         value=Constant(value=42),
                     ),
                 ),
@@ -317,6 +326,9 @@ class TestParser:
                         kind='var',
                         name='x',
                         type=Name(id='i32'),
+                    ),
+                    assign=Assign(
+                        target='x',
                         value=Constant(value=42),
                     ),
                 ),

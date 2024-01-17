@@ -149,6 +149,7 @@ class GlobalFuncDef(Decl):
 @dataclass(eq=False)
 class GlobalVarDef(Decl):
     vardef: 'VarDef'
+    assign: 'Assign'
 
     @property
     def loc(self) -> Loc:
@@ -420,7 +421,6 @@ class VarDef(Stmt):
     kind: VarKind
     name: str
     type: Expr
-    value: Optional[Expr]
 
 @dataclass(eq=False)
 class StmtExpr(Stmt):

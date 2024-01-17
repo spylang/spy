@@ -52,9 +52,12 @@ class TestSPyBackend(CompilerTest):
         """)
 
     def test_vardef(self):
-        src = """
+        mod = self.compile("""
         def foo() -> void:
             x: i32 = 1
-        """
-        mod = self.compile(src)
-        self.assert_dump(mod.foo.w_func, src)
+        """)
+        self.assert_dump(mod.foo.w_func, """
+        def foo() -> void:
+            x: i32
+            x = 1
+        """)
