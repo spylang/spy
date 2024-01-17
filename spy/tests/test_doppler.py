@@ -52,7 +52,13 @@ class TestDoppler:
             return x
         """
         w_func = self.redshift(src, 'foo')
-        self.assert_dump(w_func, src)
+        expected = """
+        def foo() -> i32:
+            x: i32
+            x = 1
+            return x
+        """
+        self.assert_dump(w_func, expected)
 
     def test_funcargs(self):
         src = """
@@ -70,7 +76,8 @@ class TestDoppler:
         w_func = self.redshift(src, 'foo')
         expected = """
         def foo(x: `builtins::i32`) -> `builtins::void`:
-            y: `builtins::str` = 'hello'
+            y: `builtins::str`
+            y = 'hello'
         """
         self.assert_dump(w_func, expected, fqn_format='full')
 
