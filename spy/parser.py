@@ -64,6 +64,7 @@ class Parser:
                 mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef, assign = self.from_py_AnnAssign(py_stmt, is_global=True)
+                assert assign is not None
                 globvar = spy.ast.GlobalVarDef(vardef, assign)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.ImportFrom):
@@ -175,13 +176,14 @@ class Parser:
     # ====== spy.ast.Stmt ======
 
     def from_py_body(self, py_body: list[py_ast.stmt]) -> list[spy.ast.Stmt]:
-        body = []
+        body: list[spy.ast.Stmt] = []
         for py_stmt in py_body:
             if isinstance(py_stmt, py_ast.AnnAssign):
                 # special case, as it's the stmt wich generates two
                 vardef, assign = self.from_py_AnnAssign(py_stmt)
                 body.append(vardef)
-                body.append(assign)
+                if assign:
+                    body.append(assign)
             else:
                 stmt = self.from_py_stmt(py_stmt)
                 body.append(stmt)
