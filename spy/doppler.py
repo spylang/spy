@@ -3,7 +3,7 @@ from types import NoneType
 from fixedint import FixedInt
 from spy import ast
 from spy.vm.builtins import B
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc
 from spy.vm.astframe import ASTFrame
 from spy.util import magic_dispatch
@@ -27,7 +27,6 @@ class FuncDoppler:
         self.funcdef = w_func.funcdef
         self.blue_frame = ASTFrame(vm, w_func)
         self.t = self.blue_frame.t
-        self.blue_frame.declare_arguments()
 
     def redshift(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
@@ -81,29 +80,19 @@ class FuncDoppler:
     # ==== statements ====
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
-        color, w_type = self.t.check_expr(ret.value)
-        self.t.typecheck_local(ret.loc, '@return', w_type)
         newvalue = self.shift_expr(ret.value)
         return [ret.replace(value=newvalue)]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        color, w_type = self.t.check_expr(vardef.type)
-        assert color == 'blue' # XXX write a nice error message?
+        ann_color, w_ann_type = self.t.check_expr(vardef.type)
+        assert ann_color == 'blue'
+        assert isinstance(w_ann_type, W_Type)
         self.blue_frame.exec_stmt_VarDef(vardef)
         newtype = self.shift_expr(vardef.type)
         return [vardef.replace(type=newtype)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        color, w_type = self.t.check_expr(assign.value)
         sym = self.funcdef.symtable.lookup(assign.target)
-        if sym.is_local and assign.target not in self.t.locals_types_w:
-            # implicit declaration
-            color, w_type = self.t.check_expr(assign.value)
-            self.blue_frame.declare_local(assign.target, w_type)
-        #
-        if sym.is_local:
-            self.t.typecheck_local(assign.value.loc, assign.target, w_type)
-        #
         if sym.color == 'red':
             newvalue = self.shift_expr(assign.value)
             return [assign.replace(value=newvalue)]
@@ -166,7 +155,7 @@ class FuncDoppler:
             func = ast.HelperFunc(binop.loc, 'StrMul')
             return ast.Call(binop.loc, func, [l, r])
 
-        assert False, "Unsupported binop, but in the typechecker"
+        assert False, "Unsupported binop, bug in the typechecker"
 
     shift_expr_Add = shift_expr_BinOp
     shift_expr_Sub = shift_expr_BinOp

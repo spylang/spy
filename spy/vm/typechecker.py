@@ -36,6 +36,17 @@ class TypeChecker:
         self.funcdef = w_func.funcdef
         self.expr_types = {}
         self.locals_types_w = {}
+        self.declare_arguments()
+
+    def declare_arguments(self) -> None:
+        """
+        Declare the local vars for the arguments and @return
+        """
+        w_functype = self.w_func.w_functype
+        self.declare_local('@return', w_functype.w_restype)
+        params = self.w_func.w_functype.params
+        for param in params:
+            self.declare_local(param.name, param.w_type)
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_types_w, \
@@ -94,10 +105,32 @@ class TypeChecker:
     # ==== statements ====
 
     def check_stmt_Return(self, ret: ast.Return) -> None:
-        pass
+        color, w_type = self.check_expr(ret.value)
+        self.typecheck_local(ret.loc, '@return', w_type)
 
     def check_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        pass
+        """
+        VarDef is type-checked lazily, because the type annotation is evaluated
+        at runtime.
+
+        So, this function does nothing, and astframe calls lazy_check_VarDef
+        after having evaluated the annotation. Similarly for
+        lazy_check_FuncDef.
+        """
+
+    def lazy_check_VarDef(self, vardef: ast.VarDef, w_type: W_Type) -> None:
+        self.declare_local(vardef.name, w_type)
+
+    def check_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        """
+        See check_stmt_VarDef
+        """
+
+    def lazy_check_FuncDef(self, funcdef: ast.FuncDef, w_type: W_Type) -> None:
+        """
+        See check_stmt_VarDef and lazy_check_VarDef
+        """
+        self.declare_local(funcdef.name, w_type)
 
     def check_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         pass
@@ -121,6 +154,14 @@ class TypeChecker:
                     f'help: declare it as variable: `var {sym.name} ...`',
                     sym.loc)
             raise err
+
+        _, w_valuetype = self.check_expr(assign.value)
+
+        if sym.is_local:
+            if name not in self.locals_types_w:
+                # first assignment, implicit declaration
+                self.declare_local(name, w_valuetype)
+            self.typecheck_local(assign.value.loc, assign.target, w_valuetype)
 
     # ==== expressions ====
 

@@ -43,7 +43,7 @@ class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
-    locals: Namespace
+    _locals: Namespace
     t: TypeChecker
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
@@ -51,32 +51,22 @@ class ASTFrame:
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
-        self.locals = {}
+        self._locals = {}
         self.t = TypeChecker(vm, self.w_func)
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
 
-    def declare_local(self, name: str, w_type: W_Type) -> None:
-        assert name not in self.locals, f'variable already declared: {name}'
-        self.t.declare_local(name, w_type)
-        self.locals[name] = None
-
-    def store_local(self, got_loc: Loc, name: str, w_value: W_Object) -> None:
-        # XXX: should we do static or dynamic type checking?
-        w_value_type = self.vm.dynamic_type(w_value)
-        self.t.typecheck_local(got_loc, name, w_value_type)
-        self.locals[name] = w_value
+    def store_local(self, name: str, w_value: W_Object) -> None:
+        self._locals[name] = w_value
 
     def load_local(self, name: str) -> W_Object:
-        assert name in self.locals
-        w_obj = self.locals[name]
+        w_obj = self._locals.get(name)
         if w_obj is None:
             raise SPyRuntimeError('read from uninitialized local')
         return w_obj
 
     def run(self, args_w: list[W_Object]) -> W_Object:
-        self.declare_arguments()
         self.init_arguments(args_w)
         try:
             for stmt in self.funcdef.body:
@@ -94,16 +84,6 @@ class ASTFrame:
         except Return as e:
             return e.w_value
 
-    def declare_arguments(self) -> None:
-        """
-        Declare the local vars for the arguments and @return
-        """
-        w_functype = self.w_func.w_functype
-        self.declare_local('@return', w_functype.w_restype)
-        params = self.w_func.w_functype.params
-        for param in params:
-            self.declare_local(param.name, param.w_type)
-
     def init_arguments(self, args_w: list[W_Object]) -> None:
         """
         Store the arguments in args_w in the appropriate local var
@@ -112,18 +92,21 @@ class ASTFrame:
         params = self.w_func.w_functype.params
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
-            self.store_local(loc, param.name, w_arg)
+            # XXX: we should do a proper typecheck and raise a nice error
+            # here. We don't have any test for it
+            w_got_type = self.vm.dynamic_type(w_arg)
+            assert self.vm.can_assign_from_to(
+                w_got_type,
+                self.t.locals_types_w[param.name]
+            )
+            self.store_local(param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
+        self.t.check_stmt(stmt)
         return magic_dispatch(self, 'exec_stmt', stmt)
 
     def eval_expr(self, expr: ast.Expr) -> FrameVal:
-        """
-        Typecheck and eval the given expr.
-
-        Every concrete implementation of this MUST call the corresponding
-        self.t.check_*
-        """
+        self.t.check_expr(expr)
         return magic_dispatch(self, 'eval_expr', expr)
 
     def eval_expr_object(self, expr: ast.Expr) -> W_Object:
@@ -141,9 +124,8 @@ class ASTFrame:
 
     # ==== statements ====
 
-    def exec_stmt_Return(self, stmt: ast.Return) -> None:
-        fv = self.eval_expr(stmt.value)
-        self.t.typecheck_local(stmt.loc, '@return', fv.w_static_type)
+    def exec_stmt_Return(self, ret: ast.Return) -> None:
+        fv = self.eval_expr(ret.value)
         raise Return(fv.w_value)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
@@ -156,35 +138,28 @@ class ASTFrame:
             color = funcdef.color,
             w_restype = w_restype,
             **d)
+        self.t.lazy_check_FuncDef(funcdef, w_functype)
         #
         # create the w_func
         fqn = FQN(modname='???', attr=funcdef.name)
         # XXX we should capture only the names actually used in the inner func
-        closure = self.w_func.closure + (self.locals,)
+        closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(fqn, closure, w_functype, funcdef)
-        #
-        # store it in the locals
-        self.declare_local(funcdef.name, w_func.w_functype)
-        self.store_local(funcdef.loc, funcdef.name, w_func)
+        self.store_local(funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        self.t.check_expr(vardef.type)
         w_type = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.name, w_type)
+        self.t.lazy_check_VarDef(vardef, w_type)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        self.t.check_stmt_Assign(assign)
-        # XXX this looks wrong. We need to add an AST field to keep track of
+        # XXX this is semi-wrong. We need to add an AST field to keep track of
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
         name = assign.target
         sym = self.funcdef.symtable.lookup(name)
         fv = self.eval_expr(assign.value)
         if sym.is_local:
-            if name not in self.locals:
-                # first assignment, implicit declaration
-                self.declare_local(name, fv.w_static_type)
-            self.store_local(assign.value.loc, name, fv.w_value)
+            self.store_local(name, fv.w_value)
         elif sym.fqn is not None:
             assert sym.color == 'red'
             self.vm.store_global(sym.fqn, fv.w_value)
@@ -195,7 +170,6 @@ class ASTFrame:
         self.eval_expr(stmt.value)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        self.t.check_stmt_If(if_node)
         fv = self.eval_expr(if_node.test)
         if self.vm.is_True(fv.w_bool_value):
             for stmt in if_node.then_body:
@@ -205,7 +179,6 @@ class ASTFrame:
                 self.exec_stmt(stmt)
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
-        self.t.check_stmt_While(while_node)
         while True:
             fv = self.eval_expr(while_node.test)
             if self.vm.is_False(fv.w_bool_value):
