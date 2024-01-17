@@ -87,24 +87,22 @@ class FuncDoppler:
         return [ret.replace(value=newvalue)]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        assert vardef.value is not None
-        sym = self.blue_frame.declare_VarDef(vardef)
-        assert sym.is_local
-        if sym.color == 'red':
-            valuecolor, w_valuetype = self.t.check_expr(vardef.value)
-            self.t.typecheck_local(vardef.value.loc, vardef.name, w_valuetype)
-            newvalue = self.shift_expr(vardef.value)
-            newtype = self.shift_expr(vardef.type)
-            return [vardef.replace(value=newvalue, type=newtype)]
-        else:
-            assert False, 'implement me'
+        color, w_type = self.t.check_expr(vardef.type)
+        assert color == 'blue' # XXX write a nice error message?
+        self.blue_frame.exec_stmt_VarDef(vardef)
+        newtype = self.shift_expr(vardef.type)
+        return [vardef.replace(type=newtype)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
+        color, w_type = self.t.check_expr(assign.value)
         sym = self.funcdef.symtable.lookup(assign.target)
         if sym.is_local and assign.target not in self.t.locals_types_w:
             # implicit declaration
             color, w_type = self.t.check_expr(assign.value)
             self.blue_frame.declare_local(assign.target, w_type)
+        #
+        if sym.is_local:
+            self.t.typecheck_local(assign.value.loc, assign.target, w_type)
         #
         if sym.color == 'red':
             newvalue = self.shift_expr(assign.value)
