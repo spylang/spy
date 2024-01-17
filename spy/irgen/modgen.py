@@ -50,7 +50,7 @@ class ModuleGen:
             if isinstance(decl, ast.GlobalFuncDef):
                 self.gen_FuncDef(frame, decl.funcdef)
             elif isinstance(decl, ast.GlobalVarDef):
-                self.gen_GlobalVarDef(frame, decl.vardef)
+                self.gen_GlobalVarDef(frame, decl)
         #
         return self.w_mod
 
@@ -72,9 +72,10 @@ class ModuleGen:
         w_func = frame.load_local(funcdef.name)
         self.vm.add_global(fqn, None, w_func)
 
-    def gen_GlobalVarDef(self, frame: ASTFrame, vardef: ast.VarDef) -> None:
-        assert vardef.value is not None, 'WIP?'
+    def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
+        vardef = decl.vardef
+        assign = decl.assign
         fqn = FQN(modname=self.modname, attr=vardef.name)
         w_type = frame.eval_expr_type(vardef.type)
-        w_value = frame.eval_expr_object(vardef.value)
+        w_value = frame.eval_expr_object(assign.value)
         self.vm.add_global(fqn, w_type, w_value)

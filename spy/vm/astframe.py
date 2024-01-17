@@ -167,18 +167,10 @@ class ASTFrame:
         self.declare_local(funcdef.name, w_func.w_functype)
         self.store_local(funcdef.loc, funcdef.name, w_func)
 
-    def declare_VarDef(self, vardef: ast.VarDef) -> Symbol:
-        sym = self.funcdef.symtable.lookup(vardef.name)
-        assert sym.is_local
+    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        self.t.check_expr(vardef.type)
         w_type = self.eval_expr_type(vardef.type)
         self.declare_local(vardef.name, w_type)
-        return sym
-
-    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        self.declare_VarDef(vardef)
-        assert vardef.value is not None, 'WIP?'
-        w_value = self.eval_expr_object(vardef.value)
-        self.store_local(vardef.value.loc, vardef.name, w_value)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         self.t.check_stmt_Assign(assign)
