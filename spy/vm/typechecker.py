@@ -9,6 +9,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.builtins import B
 from spy.vm import helpers
+from spy.vm.typeconverter import TypeConverter, DynamicCast
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -28,13 +29,16 @@ class TypeChecker:
     w_func: W_ASTFunc
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
+    expr_conv: dict[ast.Expr, TypeConverter]
     locals_types_w: dict[str, W_Type]
+
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.expr_types = {}
+        self.expr_conv = {}
         self.locals_types_w = {}
         self.declare_arguments()
 
@@ -56,6 +60,12 @@ class TypeChecker:
     def typecheck_local(self, got_loc: Loc, name: str, w_got_type: W_Type) -> None:
         assert name in self.locals_types_w
         w_exp_type = self.locals_types_w[name]
+
+        # XXX we need better logic
+        if w_exp_type is B.w_object:
+            # you can always convert to object
+            return
+
         exp_loc = self.funcdef.symtable.lookup(name).type_loc
         if self.vm.can_assign_from_to(w_got_type, w_exp_type):
             return
@@ -106,6 +116,13 @@ class TypeChecker:
 
     def check_stmt_Return(self, ret: ast.Return) -> None:
         color, w_type = self.check_expr(ret.value)
+
+        # XXX we need better and more generic logic
+        w_target_type = self.locals_types_w['@return']
+        if w_type is B.w_object and w_target_type is not B.w_object:
+            self.expr_conv[ret.value] = DynamicCast(w_target_type)
+            return
+
         self.typecheck_local(ret.loc, '@return', w_type)
 
     def check_stmt_VarDef(self, vardef: ast.VarDef) -> None:

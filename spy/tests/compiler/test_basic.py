@@ -98,16 +98,31 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    @pytest.mark.skip('fix me')
-    def test_local_upcast_and_downcast(self):
+    @skip_backends('C', reason='type <object> not supported')
+    def test_upcast_and_downcast(self):
         mod = self.compile("""
         def foo() -> i32:
             x: i32 = 1
-            # this works, but will insert a downcast in the compiled code
+            # this works, but it will check the type at runtime
             y: object = x
             return y
         """)
         assert mod.foo() == 1
+
+    @skip_backends('C', reason='type <object> not supported')
+    def test_downcast_error(self):
+        # NOTE: we don't check this with expect_errors because this is ALWAYS
+        # a runtime error. The compilation always succeed.
+        mod = self.compile("""
+        def foo() -> str:
+            x: i32 = 1
+            y: object = x
+            return y
+        """)
+        msg = "Invalid cast. Expected `str`, got `i32`"
+        with pytest.raises(SPyTypeError, match=msg):
+            mod.foo()
+
 
     def test_function_arguments(self):
         mod = self.compile(

@@ -13,6 +13,7 @@ from spy.vm.str import W_str
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm import helpers
 from spy.vm.typechecker import TypeChecker
+from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -107,7 +108,15 @@ class ASTFrame:
 
     def eval_expr(self, expr: ast.Expr) -> FrameVal:
         self.t.check_expr(expr)
-        return magic_dispatch(self, 'eval_expr', expr)
+        typeconv = self.t.expr_conv.get(expr)
+        fv = magic_dispatch(self, 'eval_expr', expr)
+        if typeconv is None:
+            return fv
+        else:
+            w_newvalue = typeconv.convert(self.vm, fv.w_value)
+            # XXX: I THINK this should use typeconv.w_type, but I would like
+            # to write a test to be sure
+            return FrameVal(fv.w_static_type, w_newvalue)
 
     def eval_expr_object(self, expr: ast.Expr) -> W_Object:
         fv = self.eval_expr(expr)

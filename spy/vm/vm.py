@@ -5,6 +5,7 @@ import fixedint
 from spy.fqn import FQN
 from spy import libspy
 from spy.doppler import redshift
+from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.builtins import B
@@ -121,6 +122,21 @@ class SPyVM:
                 return True
             w_class = w_class.w_base  # type:ignore
         return False
+
+    def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:
+        w_t1 = self.dynamic_type(w_obj)
+        return self.issubclass(w_t1, w_type)
+
+    def typecheck(self, w_obj: W_Object, w_type: W_Type) -> None:
+        """
+        Like vm.isinstance(), but raise SPyTypeError if the check fails.
+        """
+        w_t1 = self.dynamic_type(w_obj)
+        if not self.issubclass(w_t1, w_type):
+            exp = w_type.name
+            got = w_t1.name
+            msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
+            raise SPyTypeError(msg)
 
     def is_True(self, w_obj: W_bool) -> bool:
         return w_obj is B.w_True
