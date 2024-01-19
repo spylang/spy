@@ -113,10 +113,11 @@ class ASTFrame:
         if typeconv is None:
             return fv
         else:
+            # apply the type converter, if present. Note that the static type
+            # of the expression is the one given by the converter, not the
+            # original one in fv.w_static_type
             w_newvalue = typeconv.convert(self.vm, fv.w_value)
-            # XXX: I THINK this should use typeconv.w_type, but I would like
-            # to write a test to be sure
-            return FrameVal(fv.w_static_type, w_newvalue)
+            return FrameVal(typeconv.w_type, w_newvalue)
 
     def eval_expr_object(self, expr: ast.Expr) -> W_Object:
         fv = self.eval_expr(expr)
