@@ -282,8 +282,10 @@ class TypeChecker:
         color = maybe_blue(vcolor, icolor)
         if w_vtype is B.w_str:
             err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
-            err.add('note', f'this is a `str`', expr.value.loc)
-            raise err
+            if err:
+                err.add('note', f'this is a `str`', expr.value.loc)
+                raise err
+            return color, B.w_str
         else:
             got = w_vtype.name
             err = SPyTypeError(f'`{got}` does not support `[]`')
