@@ -72,7 +72,7 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             'mismatched types',
-            ('expected `str`, got `i32`', "return 42"),
+            ('expected `str`, got `i32`', "42"),
             ('expected `str` because of return type', "str"),
         )
         self.compile_raises(src, 'foo', errors)

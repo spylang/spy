@@ -57,28 +57,50 @@ class TypeChecker:
             f'variable already declared: {name}'
         self.locals_types_w[name] = w_type
 
-    def typecheck_local(self, got_loc: Loc, name: str, w_got_type: W_Type) -> None:
+    def typecheck_local(self, expr: ast.Expr, name: str) -> None:
         assert name in self.locals_types_w
+        got_color, w_got_type = self.check_expr(expr)
         w_exp_type = self.locals_types_w[name]
-
-        # XXX we need better logic
-        if w_exp_type is B.w_object:
-            # you can always convert to object
+        err = self.convert_type_maybe(expr, w_got_type, w_exp_type)
+        if err is None:
             return
-
-        exp_loc = self.funcdef.symtable.lookup(name).type_loc
-        if self.vm.can_assign_from_to(w_got_type, w_exp_type):
-            return
-        err = SPyTypeError('mismatched types')
-        got = w_got_type.name
+        #
+        # we got a SPyTypeError, raise it
         exp = w_exp_type.name
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=got_loc)
+        exp_loc = self.funcdef.symtable.lookup(name).type_loc
         if name == '@return':
             because = 'because of return type'
         else:
             because = 'because of type declaration'
         err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
         raise err
+
+    def convert_type_maybe(self, expr: ast.Expr, w_got: W_Type,
+                           w_exp: W_Type) -> Optional[SPyTypeError]:
+        """
+        Check that the given expr if compatible with the expected type and/or can
+        be converted to it.
+
+        If needed, it registers a type converter for the expr.
+
+        If there is a type mismatch, it returns a SPyTypeError: in that case,
+        it is up to the caller to add extra info and raise the error.
+
+        If the conversion can be made, return None.
+        """
+        if self.vm.issubclass(w_got, w_exp):
+            # nothing to do
+            return None
+        elif self.vm.issubclass(w_exp, w_got):
+            # implicit upcast
+            self.expr_conv[expr] = DynamicCast(w_exp)
+            return None
+        # mismatched types
+        err = SPyTypeError('mismatched types')
+        got = w_got.name
+        exp = w_exp.name
+        err.add('error', f'expected `{exp}`, got `{got}`', loc=expr.loc)
+        return err
 
     def name2sym_maybe(self, expr: ast.Expr) -> Optional[Symbol]:
         """
@@ -115,15 +137,7 @@ class TypeChecker:
     # ==== statements ====
 
     def check_stmt_Return(self, ret: ast.Return) -> None:
-        color, w_type = self.check_expr(ret.value)
-
-        # XXX we need better and more generic logic
-        w_target_type = self.locals_types_w['@return']
-        if w_type is B.w_object and w_target_type is not B.w_object:
-            self.expr_conv[ret.value] = DynamicCast(w_target_type)
-            return
-
-        self.typecheck_local(ret.loc, '@return', w_type)
+        self.typecheck_local(ret.value, '@return')
 
     def check_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         """
@@ -178,7 +192,7 @@ class TypeChecker:
             if name not in self.locals_types_w:
                 # first assignment, implicit declaration
                 self.declare_local(name, w_valuetype)
-            self.typecheck_local(assign.value.loc, assign.target, w_valuetype)
+            self.typecheck_local(assign.value, name)
 
     # ==== expressions ====
 
@@ -303,6 +317,7 @@ class TypeChecker:
         #
         for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
                                                     argtypes_w)):
+            # TODO: kill this!
             if not self.vm.can_assign_from_to(w_arg_type, param.w_type):
                 self._call_error_type_mismatch(call, sym, i,
                                                w_exp_type = param.w_type,
