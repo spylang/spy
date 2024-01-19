@@ -309,11 +309,11 @@ class TypeChecker:
         #
         for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
                                                     argtypes_w)):
-            # TODO: kill this!
-            if not self.vm.can_assign_from_to(w_arg_type, param.w_type):
-                self._call_error_type_mismatch(call, sym, i,
-                                               w_exp_type = param.w_type,
-                                               w_got_type = w_arg_type)
+            err = self.convert_type_maybe(call.args[i], w_arg_type, param.w_type)
+            if err:
+                if sym:
+                    err.add('note', 'function defined here', sym.loc)
+                raise err
         #
         color = 'red' # XXX fix me
         return color, w_functype.w_restype
@@ -352,21 +352,6 @@ class TypeChecker:
             )
             err.add('error', f'{diff} extra {arguments}', loc)
         #
-        if sym:
-            err.add('note', 'function defined here', sym.loc)
-        raise err
-
-    def _call_error_type_mismatch(self,
-                                  call: ast.Call,
-                                  sym: Optional[Symbol],
-                                  i: int,
-                                  w_exp_type: W_Type,
-                                  w_got_type: W_Type
-                                  ) -> NoReturn:
-        err = SPyTypeError('mismatched types')
-        exp = w_exp_type.name
-        got = w_got_type.name
-        err.add('error', f'expected `{exp}`, got `{got}`', call.args[i].loc)
         if sym:
             err.add('note', 'function defined here', sym.loc)
         raise err
