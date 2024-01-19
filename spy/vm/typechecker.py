@@ -75,6 +75,14 @@ class TypeChecker:
         err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
         raise err
 
+    def typecheck_bool(self, expr: ast.Expr) -> None:
+        color, w_type = self.check_expr(expr)
+        err = self.convert_type_maybe(expr, w_type, B.w_bool)
+        if err:
+            msg = 'implicit conversion to `bool` is not implemented yet'
+            err.add('note', msg, expr.loc)
+            raise err
+
     def convert_type_maybe(self, expr: ast.Expr, w_got: W_Type,
                            w_exp: W_Type) -> Optional[SPyTypeError]:
         """
@@ -110,15 +118,6 @@ class TypeChecker:
         if isinstance(expr, ast.Name):
             return self.funcdef.symtable.lookup_maybe(expr.id)
         return None
-
-    def assert_bool(self, w_type: W_Type, loc: Loc) -> None:
-        if w_type is not B.w_bool:
-            err = SPyTypeError('mismatched types')
-            err.add('error', f'expected `bool`, got `{w_type.name}`', loc)
-            err.add('note',
-                    f'implicit conversion to `bool` is not implemented yet',
-                    loc)
-            raise err
 
     def check_stmt(self, stmt: ast.Stmt) -> None:
         magic_dispatch(self, 'check_stmt', stmt)
@@ -167,12 +166,10 @@ class TypeChecker:
         pass
 
     def check_stmt_If(self, if_node: ast.If) -> None:
-        color, w_cond_type = self.check_expr(if_node.test)
-        self.assert_bool(w_cond_type, if_node.test.loc)
+        self.typecheck_bool(if_node.test)
 
     def check_stmt_While(self, while_node: ast.While) -> None:
-        color, w_cond_type = self.check_expr(while_node.test)
-        self.assert_bool(w_cond_type, while_node.test.loc)
+        self.typecheck_bool(while_node.test)
 
     def check_stmt_Assign(self, assign: ast.Assign) -> None:
         name = assign.target
