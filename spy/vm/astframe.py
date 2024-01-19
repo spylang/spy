@@ -13,6 +13,7 @@ from spy.vm.str import W_str
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm import helpers
 from spy.vm.typechecker import TypeChecker
+from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -92,13 +93,10 @@ class ASTFrame:
         params = self.w_func.w_functype.params
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
-            # XXX: we should do a proper typecheck and raise a nice error
-            # here. We don't have any test for it
-            w_got_type = self.vm.dynamic_type(w_arg)
-            assert self.vm.can_assign_from_to(
-                w_got_type,
-                self.t.locals_types_w[param.name]
-            )
+            # we assume that the arguments' types are correct. It's not the
+            # job of astframe to raise SPyTypeError if there is a type
+            # mismatch here, it is the job of vm.call_function
+            assert self.vm.isinstance(w_arg, param.w_type)
             self.store_local(param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
@@ -107,7 +105,16 @@ class ASTFrame:
 
     def eval_expr(self, expr: ast.Expr) -> FrameVal:
         self.t.check_expr(expr)
-        return magic_dispatch(self, 'eval_expr', expr)
+        typeconv = self.t.expr_conv.get(expr)
+        fv = magic_dispatch(self, 'eval_expr', expr)
+        if typeconv is None:
+            return fv
+        else:
+            # apply the type converter, if present. Note that the static type
+            # of the expression is the one given by the converter, not the
+            # original one in fv.w_static_type
+            w_newvalue = typeconv.convert(self.vm, fv.w_value)
+            return FrameVal(typeconv.w_type, w_newvalue)
 
     def eval_expr_object(self, expr: ast.Expr) -> W_Object:
         fv = self.eval_expr(expr)

@@ -3,6 +3,7 @@ import pytest
 from spy.vm.vm import SPyVM
 from spy.vm.builtins import B
 from spy.fqn import FQN
+from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_BuiltinFunc
@@ -147,3 +148,18 @@ class TestVM:
         assert vm.dynamic_type(w_hello) is B.w_str
         assert vm.unwrap(w_hello) == 'hello'
         assert repr(w_hello) == "W_str('hello')"
+
+    def test_call_function(self):
+        vm = SPyVM()
+        w_abs = B.w_abs
+        w_x = vm.wrap(-42)
+        w_y = vm.call_function(w_abs, [w_x])
+        assert vm.unwrap(w_y) == 42
+
+    def test_call_function_TypeError(self):
+        vm = SPyVM()
+        w_abs = B.w_abs
+        w_x = vm.wrap('hello')
+        msg = 'Invalid cast. Expected `i32`, got `str`'
+        with pytest.raises(SPyTypeError, match=msg):
+            vm.call_function(w_abs, [w_x])
