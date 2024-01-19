@@ -184,8 +184,7 @@ class SPyVM:
         w_functype = w_func.w_functype
         assert w_functype.arity == len(args_w)
         for param, w_arg in zip(w_functype.params, args_w):
-            # XXX in theory we should raise a nice SPyTypeError here
-            assert self.isinstance(w_arg, param.w_type)
+            self.typecheck(w_arg, param.w_type)
         #
         if isinstance(w_func, W_ASTFunc):
             frame2 = ASTFrame(self, w_func)
