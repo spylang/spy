@@ -93,13 +93,10 @@ class ASTFrame:
         params = self.w_func.w_functype.params
         arglocs = [arg.loc for arg in self.funcdef.args]
         for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
-            # XXX: we should do a proper typecheck and raise a nice error
-            # here. We don't have any test for it
-            w_got_type = self.vm.dynamic_type(w_arg)
-            assert self.vm.can_assign_from_to(
-                w_got_type,
-                self.t.locals_types_w[param.name]
-            )
+            # we assume that the arguments' types are correct. It's not the
+            # job of astframe to raise SPyTypeError if there is a type
+            # mismatch here, it is the job of vm.call_function
+            assert self.vm.isinstance(w_arg, param.w_type)
             self.store_local(param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:

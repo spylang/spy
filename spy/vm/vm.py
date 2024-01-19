@@ -86,7 +86,7 @@ class SPyVM:
         if w_type is None:
             w_type = self.dynamic_type(w_value)
         else:
-            assert self.is_compatible_type(w_value, w_type)
+            assert self.isinstance(w_value, w_type)
         self.globals_types[name] = w_type
         self.globals_w[name] = w_value
 
@@ -106,7 +106,7 @@ class SPyVM:
 
     def store_global(self, fqn: FQN, w_value: W_Object) -> None:
         w_type = self.globals_types[fqn]
-        assert self.is_compatible_type(w_value, w_type)
+        assert self.isinstance(w_value, w_type)
         self.globals_w[fqn] = w_value
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
@@ -180,21 +180,12 @@ class SPyVM:
             raise Exception('Type mismatch')
         return w_value.value
 
-    def is_compatible_type(self, w_arg: W_Object, w_type: W_Type) -> bool:
-        # XXX kill this
-        return w_type is B.w_object or self.dynamic_type(w_arg) is w_type
-
-    def can_assign_from_to(self, w_from: W_Type, w_to: W_Type) -> bool:
-        # XXX: this check is wrong: e.g., it should be possible to convert
-        # between floats and integers even if one is not a subclass of the
-        # other
-        return self.issubclass(w_from, w_to)
-
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
         assert w_functype.arity == len(args_w)
         for param, w_arg in zip(w_functype.params, args_w):
-            assert self.is_compatible_type(w_arg, param.w_type)
+            # XXX in theory we should raise a nice SPyTypeError here
+            assert self.isinstance(w_arg, param.w_type)
         #
         if isinstance(w_func, W_ASTFunc):
             frame2 = ASTFrame(self, w_func)
