@@ -281,14 +281,9 @@ class TypeChecker:
         icolor, w_itype = self.check_expr(expr.index)
         color = maybe_blue(vcolor, icolor)
         if w_vtype is B.w_str:
-            if w_itype is B.w_i32:
-                return color, B.w_str
-            else:
-                err = SPyTypeError('mismatched types')
-                got = w_itype.name
-                err.add('error', f'expected `i32`, got `{got}`', expr.index.loc)
-                err.add('note', f'this is a `str`', expr.value.loc)
-                raise err
+            err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
+            err.add('note', f'this is a `str`', expr.value.loc)
+            raise err
         else:
             got = w_vtype.name
             err = SPyTypeError(f'`{got}` does not support `[]`')
