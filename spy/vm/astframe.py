@@ -229,8 +229,16 @@ class ASTFrame:
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         color, w_restype = self.t.check_expr_BinOp(binop)
+        opimpl = self.t.expr_opimpl[binop]
+        #
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
+        w_res = opimpl(self.vm, fv_l.w_value, fv_r.w_value)
+        return FrameVal(w_restype, w_res)
+
+        assert False, 'Unsupported binop, bug in the typechecker'
+
+        # XXX kill me
         w_ltype = fv_l.w_static_type
         w_rtype = fv_r.w_static_type
         argtypes = (w_ltype, w_rtype)

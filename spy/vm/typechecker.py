@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, NoReturn
+from typing import TYPE_CHECKING, Optional, NoReturn, Any
 from types import NoneType
 from spy import ast
 from spy.fqn import FQN
@@ -30,6 +30,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, TypeConverter]
+    expr_opimpl: dict[ast.Expr, Any] # XXX
     locals_types_w: dict[str, W_Type]
 
 
@@ -39,6 +40,7 @@ class TypeChecker:
         self.funcdef = w_func.funcdef
         self.expr_types = {}
         self.expr_conv = {}
+        self.expr_opimpl = {}
         self.locals_types_w = {}
         self.declare_arguments()
 
@@ -238,12 +240,23 @@ class TypeChecker:
         lcolor, w_ltype = self.check_expr(binop.left)
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
-        if w_ltype is w_rtype is B.w_i32:
-            return color, B.w_i32
-        if binop.op == '+' and w_ltype is w_rtype is B.w_str:
-            return color, B.w_str
-        if binop.op == '*' and w_ltype is B.w_str and w_rtype is B.w_i32:
-            return color, B.w_str
+
+        opimpl = None
+        if binop.op == '+':
+            opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
+
+        if opimpl is not None:
+            self.expr_opimpl[binop] = opimpl
+            w_restype = opimpl.w_functype.w_restype
+            return color, w_restype
+
+        # XXX kill this and put this logic into ops.py
+        ## if w_ltype is w_rtype is B.w_i32:
+        ##     return color, B.w_i32
+        ## if binop.op == '+' and w_ltype is w_rtype is B.w_str:
+        ##     return color, B.w_str
+        ## if binop.op == '*' and w_ltype is B.w_str and w_rtype is B.w_i32:
+        ##     return color, B.w_str
         #
         lt = w_ltype.name
         rt = w_rtype.name

@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
+from spy.vm.builtins import B
 from spy.vm.str import W_str
-from spy.vm.object import W_Object, W_i32
+from spy.vm.object import W_Object, W_Type, W_i32
 from spy.vm.function import W_FuncType
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -17,6 +18,26 @@ def signature(sig: str) -> Any:
         fn.w_functype = w_functype
         return fn
     return decorator
+
+# ================
+
+# XXX explain me
+
+def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type):
+    if w_ltype is w_rtype is B.w_i32:
+        return i32_add
+
+    return None
+
+@signature('def(a: i32, b: i32) -> i32')
+def i32_add(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
+    a = vm.unwrap(w_a)
+    b = vm.unwrap(w_b)
+    return vm.wrap(a + b)
+
+
+
+# ==================
 
 @signature('def(a: str, b: str) -> str')
 def StrAdd(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
