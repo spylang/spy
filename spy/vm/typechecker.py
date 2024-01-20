@@ -287,7 +287,12 @@ class TypeChecker:
         vcolor, w_vtype = self.check_expr(expr.value)
         icolor, w_itype = self.check_expr(expr.index)
         color = maybe_blue(vcolor, icolor)
-        if w_vtype is B.w_str:
+        opimpl = ops.GETITEM(self.vm, w_vtype, w_itype)
+        if opimpl is ops.str_getitem:
+            # XXX for now this is a special case, to check that `i` can be
+            # converted to `i32`. Ideally, we should use the same mechanism
+            # that we have already for calls
+            self.expr_opimpl[expr] = opimpl
             err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
             if err:
                 err.add('note', f'this is a `str`', expr.value.loc)

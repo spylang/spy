@@ -38,6 +38,11 @@ def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type):
         return str_mul
     return None
 
+def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type):
+    if w_vtype is B.w_str and w_itype is B.w_i32:
+        return str_getitem
+    return None
+
 
 @signature('def(a: i32, b: i32) -> i32')
 def i32_add(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
@@ -69,7 +74,7 @@ def str_mul(vm: 'SPyVM', w_a: W_str, w_b: W_i32) -> W_str:
     return W_str.from_ptr(vm, ptr_c)
 
 @signature('def(s: str, i: i32) -> str')
-def StrGetItem(vm: 'SPyVM', w_s: W_Object, w_i: W_Object) -> W_str:
+def str_getitem(vm: 'SPyVM', w_s: W_str, w_i: W_i32) -> W_str:
     assert isinstance(w_s, W_str)
     assert isinstance(w_i, W_i32)
     ptr_c = vm.ll.call('spy_StrGetItem', w_s.ptr, w_i.value)
