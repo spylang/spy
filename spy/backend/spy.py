@@ -112,3 +112,15 @@ class SPyBackend:
     fmt_expr_Sub = fmt_expr_BinOp
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
+
+    def fmt_expr_Call(self, call: ast.Call) -> str:
+        if isinstance(call.func, ast.HelperFunc):
+            helper2ast = {
+                'i32_add': ast.Add,
+                'i32_mul': ast.Mul,
+            }
+            opclass = helper2ast.get(call.func.funcname)
+            assert len(call.args) == 2
+            binop = opclass(call.loc, call.args[0], call.args[1])
+            return self.fmt_expr_BinOp(binop)
+        raise NotImplementedError('fix me')
