@@ -244,6 +244,8 @@ class TypeChecker:
         opimpl = None
         if binop.op == '+':
             opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
+        elif binop.op == '*':
+            opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
 
         if opimpl is not None:
             self.expr_opimpl[binop] = opimpl
@@ -251,8 +253,6 @@ class TypeChecker:
             return color, w_restype
 
         # XXX kill this and put this logic into ops.py
-        ## if w_ltype is w_rtype is B.w_i32:
-        ##     return color, B.w_i32
         ## if binop.op == '+' and w_ltype is w_rtype is B.w_str:
         ##     return color, B.w_str
         ## if binop.op == '*' and w_ltype is B.w_str and w_rtype is B.w_i32:

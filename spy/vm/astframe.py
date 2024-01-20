@@ -242,15 +242,7 @@ class ASTFrame:
         w_ltype = fv_l.w_static_type
         w_rtype = fv_r.w_static_type
         argtypes = (w_ltype, w_rtype)
-        if argtypes == (B.w_i32, B.w_i32):
-            l = self.vm.unwrap(fv_l.w_value)
-            r = self.vm.unwrap(fv_r.w_value)
-            if binop.op == '+':
-                return FrameVal(B.w_i32, self.vm.wrap(l + r))
-            elif binop.op == '*':
-                return FrameVal(B.w_i32, self.vm.wrap(l * r))
-
-        elif binop.op == '+' and argtypes == (B.w_str, B.w_str):
+        if binop.op == '+' and argtypes == (B.w_str, B.w_str):
             return self.call_helper(
                 'StrAdd',
                 [fv_l.w_value, fv_r.w_value],

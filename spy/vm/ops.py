@@ -26,8 +26,14 @@ def signature(sig: str) -> Any:
 def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type):
     if w_ltype is w_rtype is B.w_i32:
         return i32_add
-
     return None
+
+def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type):
+    if w_ltype is w_rtype is B.w_i32:
+        return i32_mul
+    return None
+
+
 
 @signature('def(a: i32, b: i32) -> i32')
 def i32_add(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
@@ -35,6 +41,11 @@ def i32_add(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
     b = vm.unwrap(w_b)
     return vm.wrap(a + b)
 
+@signature('def(a: i32, b: i32) -> i32')
+def i32_mul(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
+    a = vm.unwrap(w_a)
+    b = vm.unwrap(w_b)
+    return vm.wrap(a * b)
 
 
 # ==================
