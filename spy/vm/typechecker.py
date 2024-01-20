@@ -299,9 +299,11 @@ class TypeChecker:
                 raise err
             return color, B.w_str
         else:
-            got = w_vtype.name
-            err = SPyTypeError(f'`{got}` does not support `[]`')
-            err.add('note', f'this is a `{got}`', expr.value.loc)
+            v = w_vtype.name
+            i = w_itype.name
+            err = SPyTypeError(f'cannot do `{v}`[`{i}`]')
+            err.add('error', f'this is `{v}`', expr.value.loc)
+            err.add('error', f'this is `{i}`', expr.index.loc)
             raise err
 
     def check_expr_HelperFunc(self, node: ast.HelperFunc

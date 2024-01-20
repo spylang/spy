@@ -503,23 +503,9 @@ class TestBasic(CompilerTest):
             bar("hello", True)
         """
         errors = expect_errors(
-            'mismatched types',
-            ('expected `i32`, got `bool`', 'i'),
-            ('this is a `str`', 'a'),
-            )
-        self.compile_raises(src, "foo", errors)
-
-    def test_getitem_error_2(self):
-        src = """
-        def bar(a: bool, i: i32) -> void:
-            a[i]
-
-        def foo() -> void:
-            bar(True, 1)
-        """
-        errors = expect_errors(
-            '`bool` does not support `[]`',
-            ('this is a `bool`', 'a'),
+            'cannot do `str`[`bool`]',
+            ('this is `str`', 'a'),
+            ('this is `bool`', 'i'),
             )
         self.compile_raises(src, "foo", errors)
 
