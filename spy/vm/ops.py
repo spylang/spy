@@ -16,6 +16,7 @@ def signature(sig: str) -> Any:
     w_functype = W_FuncType.parse(sig)
     def decorator(fn: Any) -> Any:
         fn.w_functype = w_functype
+        fn.spy_opname = fn.__name__
         return fn
     return decorator
 
