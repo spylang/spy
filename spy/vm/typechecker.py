@@ -252,12 +252,6 @@ class TypeChecker:
             w_restype = opimpl.w_functype.w_restype
             return color, w_restype
 
-        # XXX kill this and put this logic into ops.py
-        ## if binop.op == '+' and w_ltype is w_rtype is B.w_str:
-        ##     return color, B.w_str
-        ## if binop.op == '*' and w_ltype is B.w_str and w_rtype is B.w_i32:
-        ##     return color, B.w_str
-        #
         lt = w_ltype.name
         rt = w_rtype.name
         err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
