@@ -93,7 +93,7 @@ class W_Type(W_Object):
 
     @property
     def w_base(self) -> W_Object:
-        if self is W_Object._w:
+        if self is W_Object._w or self is w_DynamicType:
             return W_void._w_singleton
         basecls = self.pyclass.__base__
         assert issubclass(basecls, W_Object)
@@ -109,6 +109,41 @@ W_Object._w = W_Type('object', W_Object)
 W_Type._w = W_Type('type', W_Type)
 
 
+# The <dynamic> type
+# ===================
+#
+# <dynamic> is special:
+#
+# - it's not a real type, in the sense that you cannot have an instance whose
+#   type is `dynamic`
+#
+# - every class is considered to be a subclass of <dynamic>
+#
+# - conversion from T to <dynamic> always succeeds (like from T to <object>)
+#
+# - conversion from <dynamic> to T is always possible but it might fail at
+#   runtime (like from <object> to T)
+#
+# From some point of view, <dynamic> is the twin of <object>, because it acts
+# as if it were at the root of the type hierarchy. The biggest difference is
+# how operators are dispatched: operations on <object> almost never succeeds,
+# while operations on <dynamic> are dispatched to the actual dynamic
+# types. For example:
+#
+#    x: object = 1
+#    y: dynamic = 2
+#    z: dynamic = 'hello'
+#
+#    x + 1 # compile-time error: cannot do `<object> + <i32>`
+#    y + 1 # succeeds, but the dispatch is done at runtime
+#    z + 1 # runtime error: cannot do `<i32> + <str>`
+
+w_DynamicType = W_Type('dynamic', W_Object)
+
+
+# Other types
+# ============
+
 def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
@@ -120,10 +155,6 @@ def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
         pyclass._w = metaclass(name, pyclass)
         return pyclass
     return decorator
-
-
-# Other types
-# ============
 
 @spytype('void')
 class W_void(W_Object):

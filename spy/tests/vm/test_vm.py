@@ -32,11 +32,22 @@ class TestVM:
         # <type> is a subclass of <object>
         assert type.__base__ is object
         assert B.w_type.w_base is B.w_object
+        #
+        # the base class of <object> is None
+        assert object.__base__ is None
+        assert B.w_object.w_base is B.w_None
+
+    def test_dynamic(self):
+        vm = SPyVM()
+        assert B.w_dynamic.w_base is B.w_None
+        assert vm.issubclass(B.w_object, B.w_dynamic)
+        assert not vm.issubclass(B.w_dynamic, B.w_object)
 
     def test_W_Type_repr(self):
         vm = SPyVM()
         assert repr(B.w_object) == "<spy type 'object'>"
         assert repr(B.w_type) == "<spy type 'type'>"
+        assert repr(B.w_dynamic) == "<spy type 'dynamic'>"
 
     def test_spytype_decorator(self):
         @spytype('foo')

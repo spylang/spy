@@ -116,6 +116,8 @@ class SPyVM:
     def issubclass(self, w_sub: W_Type, w_super: W_Type) -> bool:
         assert isinstance(w_super, W_Type)
         assert isinstance(w_sub, W_Type)
+        if w_super is B.w_dynamic:
+            return True
         w_class = w_sub
         while w_class is not B.w_None:
             if w_class is w_super:
