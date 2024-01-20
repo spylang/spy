@@ -8,7 +8,7 @@ from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.builtins import B
-from spy.vm import helpers
+from spy.vm import ops
 from spy.vm.typeconverter import TypeConverter, DynamicCast
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -294,8 +294,8 @@ class TypeChecker:
 
     def check_expr_HelperFunc(self, node: ast.HelperFunc
                               ) -> tuple[Color, W_Type]:
-        helper = helpers.get(node.funcname)
-        return 'red', helper.w_functype
+        opimpl = ops.get(node.funcname)
+        return 'red', opimpl.w_functype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)

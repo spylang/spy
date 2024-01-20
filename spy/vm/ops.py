@@ -8,31 +8,31 @@ if TYPE_CHECKING:
 def get(funcname: str) -> Any:
     func = globals().get(funcname)
     if func is None:
-        raise KeyError(f'Cannot find {funcname} in helpers.py')
+        raise KeyError(f'Cannot find {funcname} in spy/vm/ops.py')
     return func
 
-def helper(sig: str) -> Any:
+def signature(sig: str) -> Any:
     w_functype = W_FuncType.parse(sig)
     def decorator(fn: Any) -> Any:
         fn.w_functype = w_functype
         return fn
     return decorator
 
-@helper('def(a: str, b: str) -> str')
+@signature('def(a: str, b: str) -> str')
 def StrAdd(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
     assert isinstance(w_a, W_str)
     assert isinstance(w_b, W_str)
     ptr_c = vm.ll.call('spy_StrAdd', w_a.ptr, w_b.ptr)
     return W_str.from_ptr(vm, ptr_c)
 
-@helper('def(s: str, n: i32) -> str')
+@signature('def(s: str, n: i32) -> str')
 def StrMul(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_str:
     assert isinstance(w_a, W_str)
     assert isinstance(w_b, W_i32)
     ptr_c = vm.ll.call('spy_StrMul', w_a.ptr, w_b.value)
     return W_str.from_ptr(vm, ptr_c)
 
-@helper('def(s: str, i: i32) -> str')
+@signature('def(s: str, i: i32) -> str')
 def StrGetItem(vm: 'SPyVM', w_s: W_Object, w_i: W_Object) -> W_str:
     assert isinstance(w_s, W_str)
     assert isinstance(w_i, W_i32)

@@ -11,7 +11,7 @@ from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
-from spy.vm import helpers
+from spy.vm import ops
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
@@ -305,8 +305,8 @@ class ASTFrame:
 
     def call_helper(self, funcname: str, args_w: list[W_Object],
                     w_restype: W_Type) -> FrameVal:
-        helper_func = helpers.get(funcname)
-        w_res = helper_func(self.vm, *args_w)
+        opimpl = ops.get(funcname)
+        w_res = opimpl(self.vm, *args_w)
         return FrameVal(w_restype, w_res)
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> FrameVal:
