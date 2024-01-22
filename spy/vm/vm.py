@@ -9,9 +9,10 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.builtins import B
+from spy.vm.builtins2 import B2
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm import registry
+from spy.vm.registry import ModuleRegistry
 
 import spy.vm.builtins2 # side effects
 
@@ -35,7 +36,7 @@ class SPyVM:
         self.modules_w = {}
         self.path = []
         self.make_builtins_module()
-        self.make_other_modules()
+        self.make_module_2(B2)
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file
@@ -73,14 +74,21 @@ class SPyVM:
             w_type = self.dynamic_type(w_obj)
             self.add_global(fqn, w_type, w_obj)
 
-    def make_other_modules(self) -> None:
-        for entry in registry.FUNCTIONS:
-            w_func = W_BuiltinFunc(entry.w_functype, entry.fqn, entry.pyfunc)
-            self.add_global(entry.fqn, entry.w_functype, w_func)
-
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
         self.modules_w[w_mod.name] = w_mod
+
+
+    def make_module_2(self, reg: ModuleRegistry) -> None:
+        # XXX kill this if and complains if it's duplicate
+        if reg.modname not in self.modules_w:
+            w_mod = W_Module(self, reg.modname, reg.filepath)
+            self.register_module(w_mod)
+        #
+        for fqn, w_obj in reg.content:
+            w_type = self.dynamic_type(w_obj)
+            self.add_global(fqn, w_type, w_obj)
+
 
     def add_global(self,
                    name: FQN,

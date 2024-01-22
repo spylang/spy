@@ -50,6 +50,7 @@ def i32_add(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
     b = vm.unwrap(w_b)
     return vm.wrap(a + b) # type: ignore
 
+
 @signature('def(a: i32, b: i32) -> i32')
 def i32_mul(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
     a = vm.unwrap(w_a)

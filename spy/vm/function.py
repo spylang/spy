@@ -148,7 +148,6 @@ class W_BuiltinFunc(W_Func):
     Builtin functions are implemented by calling an interp-level function
     (written in Python).
     """
-
     fqn: FQN
     pyfunc: Callable
 
