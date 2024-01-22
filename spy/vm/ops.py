@@ -79,13 +79,3 @@ def str_getitem(vm: 'SPyVM', w_s: W_str, w_i: W_i32) -> W_str:
     assert isinstance(w_i, W_i32)
     ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
     return W_str.from_ptr(vm, ptr_c)
-
-
-# ===================
-# XXX these should go somewhere else
-
-@signature('def(x: i32) -> i32')
-def abs(vm: 'SPyVM', w_x: W_i32) -> W_i32:
-    x = vm.unwrap_i32(w_x)
-    res = vm.ll.call('spy_builtins__abs', x)
-    return vm.wrap(res) # type: ignore
