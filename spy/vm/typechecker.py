@@ -241,15 +241,15 @@ class TypeChecker:
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
 
-        opimpl = None
+        w_opimpl = None
         if binop.op == '+':
-            opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
+            w_opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
         elif binop.op == '*':
-            opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
+            w_opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
 
-        if opimpl is not None:
-            self.expr_opimpl[binop] = opimpl
-            w_restype = opimpl.w_functype.w_restype
+        if w_opimpl is not None:
+            self.expr_opimpl[binop] = w_opimpl
+            w_restype = w_opimpl.w_functype.w_restype
             return color, w_restype
 
         lt = w_ltype.name
