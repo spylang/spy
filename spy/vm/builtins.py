@@ -1,3 +1,12 @@
+"""
+Builtins module.
+
+Note that this contains only the "basic" builtins (i.e., all the primitive types
+and constants which are used everywhere).
+
+There are additional builtins in builtins2.py -- which is super ugly but it's an easy workaround to avoid circular imports
+"""
+
 from typing import Optional
 from spy.fqn import FQN
 from spy.vm.object import w_DynamicType, W_Object, W_Type, W_void, W_i32, W_bool
@@ -15,11 +24,6 @@ class B:
     w_None = W_void._w_singleton
     w_True = W_bool._w_singleton_True
     w_False = W_bool._w_singleton_False
-
-    w_abs = W_BuiltinFunc(
-        fqn = FQN('builtins::abs'),
-        w_functype = W_FuncType.make(x=w_i32, w_restype=w_i32),
-    )
 
     @classmethod
     def lookup(cls, name: str) -> Optional[W_Object]:

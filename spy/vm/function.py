@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
@@ -95,6 +95,13 @@ class W_Func(W_Object):
         return self.w_functype
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+        """
+        Call the function.
+
+        args_w contains the list of wrapped arguments. Note that here we
+        assume that they are of the correct type: end users should use
+        vm.call_function, which is the official API and does typecheck.
+        """
         raise NotImplementedError
 
 
@@ -130,24 +137,29 @@ class W_ASTFunc(W_Func):
         else:
             return f"<spy function '{self.fqn}'>"
 
+    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+        from spy.vm.astframe import ASTFrame
+        frame = ASTFrame(vm, self)
+        return frame.run(args_w)
+
 
 class W_BuiltinFunc(W_Func):
-    fqn: FQN
+    """
+    Builtin functions are implemented by calling an interp-level function
+    (written in Python).
+    """
 
-    def __init__(self, w_functype: W_FuncType, fqn: FQN) -> None:
+    fqn: FQN
+    pyfunc: Callable
+
+    def __init__(self, w_functype: W_FuncType, fqn: FQN,
+                 pyfunc: Callable) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
+        self.pyfunc = pyfunc
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
-        # XXX we need a way to automatically generate unwrapping code for
-        # args_w. For now, let's just hardcode
-        if self.w_functype.name == 'def(x: i32) -> i32':
-            assert len(args_w) == 1
-            arg = vm.unwrap_i32(args_w[0])
-            res = vm.ll.call(self.fqn.c_name, arg)
-            return vm.wrap(res)
-        else:
-            assert False
+        return self.pyfunc(vm, *args_w)
