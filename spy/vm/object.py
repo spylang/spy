@@ -222,3 +222,18 @@ class W_bool(W_Object):
 
 W_bool._w_singleton_True = W_bool._make_singleton(True)
 W_bool._w_singleton_False = W_bool._make_singleton(False)
+
+
+@spytype('NotImplementedType')
+class W_NotImplementedType(W_Object):
+    _w_singleton: ClassVar['W_NotImplementedType']
+
+    def __init__(self) -> None:
+        # this is just a sanity check: we don't want people to be able to
+        # create additional instances
+        raise Exception("You cannot instantiate W_NotImplementedType")
+
+
+W_NotImplementedType._w_singleton = (
+    W_NotImplementedType.__new__(W_NotImplementedType)
+)

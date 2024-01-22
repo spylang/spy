@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_FuncType, W_ASTFunc
+from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.builtins import B
 from spy.vm import ops
 from spy.vm.typeconverter import TypeConverter, DynamicCast
@@ -30,7 +30,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, TypeConverter]
-    expr_opimpl: dict[ast.Expr, Any] # XXX
+    expr_opimpl: dict[ast.Expr, W_Func]
     locals_types_w: dict[str, W_Type]
 
 
@@ -241,15 +241,16 @@ class TypeChecker:
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
 
-        opimpl = None
+        w_opimpl = None
         if binop.op == '+':
-            opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
+            w_opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
         elif binop.op == '*':
-            opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
+            w_opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
 
-        if opimpl is not None:
-            self.expr_opimpl[binop] = opimpl
-            w_restype = opimpl.w_functype.w_restype
+        if w_opimpl is not B.w_NotImplemented:
+            assert isinstance(w_opimpl, W_Func)
+            self.expr_opimpl[binop] = w_opimpl
+            w_restype = w_opimpl.w_functype.w_restype
             return color, w_restype
 
         lt = w_ltype.name
@@ -287,17 +288,19 @@ class TypeChecker:
         vcolor, w_vtype = self.check_expr(expr.value)
         icolor, w_itype = self.check_expr(expr.index)
         color = maybe_blue(vcolor, icolor)
-        opimpl = ops.GETITEM(self.vm, w_vtype, w_itype)
-        if opimpl is ops.str_getitem:
+        w_opimpl = ops.GETITEM(self.vm, w_vtype, w_itype)
+        if w_opimpl is ops.OPS.w_str_getitem:
             # XXX for now this is a special case, to check that `i` can be
             # converted to `i32`. Ideally, we should use the same mechanism
             # that we have already for calls
-            self.expr_opimpl[expr] = opimpl
+            self.expr_opimpl[expr] = ops.OPS.w_str_getitem
             err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
             if err:
                 err.add('note', f'this is a `str`', expr.value.loc)
                 raise err
             return color, B.w_str
+        elif w_opimpl is not B.w_NotImplemented:
+            assert False, 'unexpected opimpl?'
         else:
             v = w_vtype.name
             i = w_itype.name
@@ -305,11 +308,6 @@ class TypeChecker:
             err.add('error', f'this is `{v}`', expr.value.loc)
             err.add('error', f'this is `{i}`', expr.index.loc)
             raise err
-
-    def check_expr_HelperFunc(self, node: ast.HelperFunc
-                              ) -> tuple[Color, W_Type]:
-        opimpl = ops.get(node.funcname)
-        return 'red', opimpl.w_functype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)

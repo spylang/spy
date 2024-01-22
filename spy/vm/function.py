@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
@@ -90,34 +90,42 @@ class W_FuncType(W_Type):
 
 class W_Func(W_Object):
     w_functype: W_FuncType
+    fqn: Optional[FQN]
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+        """
+        Call the function.
+
+        args_w contains the list of wrapped arguments. Note that here we
+        assume that they are of the correct type: end users should use
+        vm.call_function, which is the official API and does typecheck.
+        """
         raise NotImplementedError
 
 
 class W_ASTFunc(W_Func):
     fqn: FQN
-    closure: tuple[Namespace, ...]
     funcdef: ast.FuncDef
+    closure: tuple[Namespace, ...]
     # types of local variables: this is non-None IIF the function has been
     # redshifted.
     locals_types_w: Optional[dict[str, W_Type]]
 
     def __init__(self,
-                 fqn: FQN,
-                 closure: tuple[Namespace, ...],
                  w_functype: W_FuncType,
+                 fqn: FQN,
                  funcdef: ast.FuncDef,
+                 closure: tuple[Namespace, ...],
                  *,
                  locals_types_w: Optional[dict[str, W_Type]] = None
                  ) -> None:
-        self.fqn = fqn
-        self.closure = closure
         self.w_functype = w_functype
+        self.fqn = fqn
         self.funcdef = funcdef
+        self.closure = closure
         self.locals_types_w = locals_types_w
 
     @property
@@ -130,24 +138,28 @@ class W_ASTFunc(W_Func):
         else:
             return f"<spy function '{self.fqn}'>"
 
+    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+        from spy.vm.astframe import ASTFrame
+        frame = ASTFrame(vm, self)
+        return frame.run(args_w)
+
 
 class W_BuiltinFunc(W_Func):
+    """
+    Builtin functions are implemented by calling an interp-level function
+    (written in Python).
+    """
     fqn: FQN
+    pyfunc: Callable
 
-    def __init__(self, fqn: FQN, w_functype: W_FuncType) -> None:
-        self.fqn = fqn
+    def __init__(self, w_functype: W_FuncType, fqn: FQN,
+                 pyfunc: Callable) -> None:
         self.w_functype = w_functype
+        self.fqn = fqn
+        self.pyfunc = pyfunc
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
-        # XXX we need a way to automatically generate unwrapping code for
-        # args_w. For now, let's just hardcode
-        if self.w_functype.name == 'def(x: i32) -> i32':
-            assert len(args_w) == 1
-            arg = vm.unwrap_i32(args_w[0])
-            res = vm.ll.call(self.fqn.c_name, arg)
-            return vm.wrap(res)
-        else:
-            assert False
+        return self.pyfunc(vm, *args_w)

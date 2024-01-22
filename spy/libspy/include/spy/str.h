@@ -22,4 +22,8 @@ WASM_EXPORT(spy_str_mul)(spy_Str *a, int32_t b);
 spy_Str *
 WASM_EXPORT(spy_str_getitem)(spy_Str *s, int32_t i);
 
+#define spy_builtins_ops__str_add spy_str_add
+#define spy_builtins_ops__str_mul spy_str_mul
+#define spy_builtins_ops__str_getitem spy_str_getitem
+
 #endif /* SPY_STR_H */

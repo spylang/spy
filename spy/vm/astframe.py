@@ -151,7 +151,7 @@ class ASTFrame:
         fqn = FQN(modname='???', attr=funcdef.name)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
-        w_func = W_ASTFunc(fqn, closure, w_functype, funcdef)
+        w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.store_local(funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
@@ -229,11 +229,11 @@ class ASTFrame:
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         color, w_restype = self.t.check_expr_BinOp(binop)
-        opimpl = self.t.expr_opimpl[binop]
-        assert opimpl, 'bug in the typechecker'
+        w_opimpl = self.t.expr_opimpl[binop]
+        assert w_opimpl, 'bug in the typechecker'
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
-        w_res = opimpl(self.vm, fv_l.w_value, fv_r.w_value)
+        w_res = self.vm.call_function(w_opimpl, [fv_l.w_value, fv_r.w_value])
         return FrameVal(w_restype, w_res)
 
     eval_expr_Add = eval_expr_BinOp
@@ -267,11 +267,6 @@ class ASTFrame:
 
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
         color, w_restype = self.t.check_expr_Call(call)
-        if isinstance(call.func, ast.HelperFunc):
-            # special case CallHelper:
-            args_w = [self.eval_expr_object(arg) for arg in call.args]
-            return self.call_helper(call.func.funcname, args_w, w_restype)
-        #
         fv_func = self.eval_expr(call.func)
         w_func = fv_func.w_value
         assert isinstance(w_func, W_Func)
@@ -279,20 +274,11 @@ class ASTFrame:
         w_res = self.vm.call_function(w_func, args_w)
         return FrameVal(w_restype, w_res)
 
-    def eval_expr_HelperFunc(self, node: ast.HelperFunc) -> FrameVal:
-        # we should special-case a call to HelperFunc in eval_expr_Call
-        assert False, 'should not be called'
-
-    def call_helper(self, funcname: str, args_w: list[W_Object],
-                    w_restype: W_Type) -> FrameVal:
-        opimpl = ops.get(funcname)
-        w_res = opimpl(self.vm, *args_w)
-        return FrameVal(w_restype, w_res)
-
     def eval_expr_GetItem(self, op: ast.GetItem) -> FrameVal:
         color, w_restype = self.t.check_expr_GetItem(op)
-        opimpl = self.t.expr_opimpl[op]
+        w_opimpl = self.t.expr_opimpl[op]
         fv_val = self.eval_expr(op.value)
         fv_index = self.eval_expr(op.index)
-        w_res = opimpl(self.vm, fv_val.w_value, fv_index.w_value)
+        w_res = self.vm.call_function(w_opimpl,
+                                      [fv_val.w_value, fv_index.w_value])
         return FrameVal(w_restype, w_res)

@@ -39,11 +39,11 @@ class ModuleGen:
         self.vm.register_module(self.w_mod)
         #
         # Synthesize and execute the __INIT__ function to populate the module
-        modinit_funcdef = self.make_modinit()
-        fqn = FQN(modname=self.modname, attr='__INIT__')
-        closure = ()
         w_functype = W_FuncType.parse('def() -> void')
-        w_INIT = W_ASTFunc(fqn, closure, w_functype, modinit_funcdef)
+        fqn = FQN(modname=self.modname, attr='__INIT__')
+        modinit_funcdef = self.make_modinit()
+        closure = ()
+        w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
         frame = ASTFrame(self.vm, w_INIT)
         #
         for decl in self.mod.decls:

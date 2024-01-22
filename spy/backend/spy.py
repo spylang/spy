@@ -114,12 +114,12 @@ class SPyBackend:
     fmt_expr_Div = fmt_expr_BinOp
 
     def fmt_expr_Call(self, call: ast.Call) -> str:
-        if isinstance(call.func, ast.HelperFunc):
-            helper2ast = {
-                'i32_add': ast.Add,
-                'i32_mul': ast.Mul,
+        if isinstance(call.func, ast.FQNConst):
+            fqn2ast = {
+                FQN('builtins.ops::i32_add'): ast.Add,
+                FQN('builtins.ops::i32_mul'): ast.Mul,
             }
-            opclass = helper2ast.get(call.func.funcname)
+            opclass = fqn2ast.get(call.func.fqn)
             assert opclass is not None
             assert len(call.args) == 2
             binop = opclass(call.loc, call.args[0], call.args[1])

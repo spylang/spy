@@ -4,7 +4,7 @@ from fixedint import FixedInt
 from spy import ast
 from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_ASTFunc
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.astframe import ASTFrame
 from spy.util import magic_dispatch
 
@@ -138,8 +138,9 @@ class FuncDoppler:
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
-        opimpl = self.t.expr_opimpl[binop]
-        func = ast.HelperFunc(binop.loc, opimpl.spy_opname) # XXX
+        w_opimpl = self.t.expr_opimpl[binop]
+        assert w_opimpl.fqn is not None
+        func = ast.FQNConst(binop.loc, w_opimpl.fqn)
         return ast.Call(binop.loc, func, [l, r])
 
     shift_expr_Add = shift_expr_BinOp
@@ -162,8 +163,9 @@ class FuncDoppler:
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
-        opimpl = self.t.expr_opimpl[op]
-        func = ast.HelperFunc(op.loc, opimpl.spy_opname) # XXX
+        w_opimpl = self.t.expr_opimpl[op]
+        assert w_opimpl.fqn is not None
+        func = ast.FQNConst(op.loc, w_opimpl.fqn)
         return ast.Call(op.loc, func, [v, i])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:

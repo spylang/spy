@@ -462,17 +462,3 @@ class While(Stmt):
 class FQNConst(Expr):
     precedence = 100 # the highest
     fqn: FQN
-
-
-# XXX maybe this should be turned into PrimitiveFunc or just use FQNConst?
-@dataclass(eq=False)
-class HelperFunc(Expr):
-    """
-    Similar to Name, but refers to helper funcs such as StrAdd, StrMul, etc.
-
-    The difference is that Name can refer only to names which are available in
-    the scope, while HelperFunc represents a sort of "hidden namespace" which
-    is inaccessible to users and special-cased here and there
-    """
-    precedence = 100 # the highest
-    funcname: str
