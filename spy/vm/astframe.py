@@ -229,11 +229,11 @@ class ASTFrame:
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         color, w_restype = self.t.check_expr_BinOp(binop)
-        opimpl = self.t.expr_opimpl[binop]
-        assert opimpl, 'bug in the typechecker'
+        w_opimpl = self.t.expr_opimpl[binop]
+        assert w_opimpl, 'bug in the typechecker'
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
-        w_res = opimpl(self.vm, fv_l.w_value, fv_r.w_value)
+        w_res = self.vm.call_function(w_opimpl, [fv_l.w_value, fv_r.w_value])
         return FrameVal(w_restype, w_res)
 
     eval_expr_Add = eval_expr_BinOp

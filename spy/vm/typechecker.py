@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_FuncType, W_ASTFunc
+from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.builtins import B
 from spy.vm import ops
 from spy.vm.typeconverter import TypeConverter, DynamicCast
@@ -30,7 +30,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, TypeConverter]
-    expr_opimpl: dict[ast.Expr, Any] # XXX
+    expr_opimpl: dict[ast.Expr, W_Func]
     locals_types_w: dict[str, W_Type]
 
 
