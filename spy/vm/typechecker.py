@@ -247,7 +247,8 @@ class TypeChecker:
         elif binop.op == '*':
             w_opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
 
-        if w_opimpl is not None:
+        if w_opimpl is not B.w_NotImplemented:
+            assert isinstance(w_opimpl, W_Func)
             self.expr_opimpl[binop] = w_opimpl
             w_restype = w_opimpl.w_functype.w_restype
             return color, w_restype
@@ -292,13 +293,13 @@ class TypeChecker:
             # XXX for now this is a special case, to check that `i` can be
             # converted to `i32`. Ideally, we should use the same mechanism
             # that we have already for calls
-            self.expr_opimpl[expr] = w_opimpl
+            self.expr_opimpl[expr] = ops.OPS.w_str_getitem
             err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
             if err:
                 err.add('note', f'this is a `str`', expr.value.loc)
                 raise err
             return color, B.w_str
-        elif w_opimpl is not None:
+        elif w_opimpl is not B.w_NotImplemented:
             assert False, 'unexpected opimpl?'
         else:
             v = w_vtype.name

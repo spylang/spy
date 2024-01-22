@@ -19,24 +19,24 @@ OPS = ModuleRegistry('builtins.ops', '<builtins.ops>')
 
 # XXX explain me
 
-def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Func:
+def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     if w_ltype is w_rtype is B.w_i32:
         return OPS.w_i32_add
     elif w_ltype is w_rtype is B.w_str:
         return OPS.w_str_add
-    return None
+    return B.w_NotImplemented
 
-def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Func:
+def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     if w_ltype is w_rtype is B.w_i32:
         return OPS.w_i32_mul
     if w_ltype is B.w_str and w_rtype is B.w_i32:
         return OPS.w_str_mul
-    return None
+    return B.w_NotImplemented
 
-def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Func:
+def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Object:
     if w_vtype is B.w_str and w_itype is B.w_i32:
         return OPS.w_str_getitem
-    return None
+    return B.w_NotImplemented
 
 
 @OPS.primitive('def(a: i32, b: i32) -> i32')
