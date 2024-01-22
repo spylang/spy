@@ -100,24 +100,24 @@ class W_Func(W_Object):
 
 class W_ASTFunc(W_Func):
     fqn: FQN
-    closure: tuple[Namespace, ...]
     funcdef: ast.FuncDef
+    closure: tuple[Namespace, ...]
     # types of local variables: this is non-None IIF the function has been
     # redshifted.
     locals_types_w: Optional[dict[str, W_Type]]
 
     def __init__(self,
-                 fqn: FQN,
-                 closure: tuple[Namespace, ...],
                  w_functype: W_FuncType,
+                 fqn: FQN,
                  funcdef: ast.FuncDef,
+                 closure: tuple[Namespace, ...],
                  *,
                  locals_types_w: Optional[dict[str, W_Type]] = None
                  ) -> None:
-        self.fqn = fqn
-        self.closure = closure
         self.w_functype = w_functype
+        self.fqn = fqn
         self.funcdef = funcdef
+        self.closure = closure
         self.locals_types_w = locals_types_w
 
     @property
@@ -134,9 +134,9 @@ class W_ASTFunc(W_Func):
 class W_BuiltinFunc(W_Func):
     fqn: FQN
 
-    def __init__(self, fqn: FQN, w_functype: W_FuncType) -> None:
-        self.fqn = fqn
+    def __init__(self, w_functype: W_FuncType, fqn: FQN) -> None:
         self.w_functype = w_functype
+        self.fqn = fqn
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"

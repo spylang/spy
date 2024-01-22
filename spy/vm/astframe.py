@@ -151,7 +151,7 @@ class ASTFrame:
         fqn = FQN(modname='???', attr=funcdef.name)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
-        w_func = W_ASTFunc(fqn, closure, w_functype, funcdef)
+        w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.store_local(funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
