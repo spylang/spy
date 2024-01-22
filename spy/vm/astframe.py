@@ -11,7 +11,7 @@ from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
-from spy.vm import helpers
+from spy.vm import ops
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
@@ -229,32 +229,12 @@ class ASTFrame:
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
         color, w_restype = self.t.check_expr_BinOp(binop)
+        opimpl = self.t.expr_opimpl[binop]
+        assert opimpl, 'bug in the typechecker'
         fv_l = self.eval_expr(binop.left)
         fv_r = self.eval_expr(binop.right)
-        w_ltype = fv_l.w_static_type
-        w_rtype = fv_r.w_static_type
-        argtypes = (w_ltype, w_rtype)
-        if argtypes == (B.w_i32, B.w_i32):
-            l = self.vm.unwrap(fv_l.w_value)
-            r = self.vm.unwrap(fv_r.w_value)
-            if binop.op == '+':
-                return FrameVal(B.w_i32, self.vm.wrap(l + r))
-            elif binop.op == '*':
-                return FrameVal(B.w_i32, self.vm.wrap(l * r))
-
-        elif binop.op == '+' and argtypes == (B.w_str, B.w_str):
-            return self.call_helper(
-                'StrAdd',
-                [fv_l.w_value, fv_r.w_value],
-                w_restype)
-
-        elif binop.op == '*' and argtypes == (B.w_str, B.w_i32):
-            return self.call_helper(
-                'StrMul',
-                [fv_l.w_value, fv_r.w_value],
-                w_restype)
-
-        assert False, 'Unsupported binop, bug in the typechecker'
+        w_res = opimpl(self.vm, fv_l.w_value, fv_r.w_value)
+        return FrameVal(w_restype, w_res)
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
@@ -305,19 +285,14 @@ class ASTFrame:
 
     def call_helper(self, funcname: str, args_w: list[W_Object],
                     w_restype: W_Type) -> FrameVal:
-        helper_func = helpers.get(funcname)
-        w_res = helper_func(self.vm, *args_w)
+        opimpl = ops.get(funcname)
+        w_res = opimpl(self.vm, *args_w)
         return FrameVal(w_restype, w_res)
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> FrameVal:
         color, w_restype = self.t.check_expr_GetItem(op)
+        opimpl = self.t.expr_opimpl[op]
         fv_val = self.eval_expr(op.value)
         fv_index = self.eval_expr(op.index)
-        argtypes = (fv_val.w_static_type, fv_index.w_static_type)
-        if argtypes == (B.w_str, B.w_i32):
-            return self.call_helper(
-                'StrGetItem',
-                [fv_val.w_value, fv_index.w_value],
-                w_restype)
-
-        assert False, 'unsupported getitem, bug in the typechecker'
+        w_res = opimpl(self.vm, fv_val.w_value, fv_index.w_value)
+        return FrameVal(w_restype, w_res)

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, NoReturn
+from typing import TYPE_CHECKING, Optional, NoReturn, Any
 from types import NoneType
 from spy import ast
 from spy.fqn import FQN
@@ -8,7 +8,7 @@ from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.builtins import B
-from spy.vm import helpers
+from spy.vm import ops
 from spy.vm.typeconverter import TypeConverter, DynamicCast
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -30,6 +30,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, TypeConverter]
+    expr_opimpl: dict[ast.Expr, Any] # XXX
     locals_types_w: dict[str, W_Type]
 
 
@@ -39,6 +40,7 @@ class TypeChecker:
         self.funcdef = w_func.funcdef
         self.expr_types = {}
         self.expr_conv = {}
+        self.expr_opimpl = {}
         self.locals_types_w = {}
         self.declare_arguments()
 
@@ -238,13 +240,18 @@ class TypeChecker:
         lcolor, w_ltype = self.check_expr(binop.left)
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
-        if w_ltype is w_rtype is B.w_i32:
-            return color, B.w_i32
-        if binop.op == '+' and w_ltype is w_rtype is B.w_str:
-            return color, B.w_str
-        if binop.op == '*' and w_ltype is B.w_str and w_rtype is B.w_i32:
-            return color, B.w_str
-        #
+
+        opimpl = None
+        if binop.op == '+':
+            opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
+        elif binop.op == '*':
+            opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
+
+        if opimpl is not None:
+            self.expr_opimpl[binop] = opimpl
+            w_restype = opimpl.w_functype.w_restype
+            return color, w_restype
+
         lt = w_ltype.name
         rt = w_rtype.name
         err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
@@ -280,22 +287,29 @@ class TypeChecker:
         vcolor, w_vtype = self.check_expr(expr.value)
         icolor, w_itype = self.check_expr(expr.index)
         color = maybe_blue(vcolor, icolor)
-        if w_vtype is B.w_str:
+        opimpl = ops.GETITEM(self.vm, w_vtype, w_itype)
+        if opimpl is ops.str_getitem:
+            # XXX for now this is a special case, to check that `i` can be
+            # converted to `i32`. Ideally, we should use the same mechanism
+            # that we have already for calls
+            self.expr_opimpl[expr] = opimpl
             err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
             if err:
                 err.add('note', f'this is a `str`', expr.value.loc)
                 raise err
             return color, B.w_str
         else:
-            got = w_vtype.name
-            err = SPyTypeError(f'`{got}` does not support `[]`')
-            err.add('note', f'this is a `{got}`', expr.value.loc)
+            v = w_vtype.name
+            i = w_itype.name
+            err = SPyTypeError(f'cannot do `{v}`[`{i}`]')
+            err.add('error', f'this is `{v}`', expr.value.loc)
+            err.add('error', f'this is `{i}`', expr.index.loc)
             raise err
 
     def check_expr_HelperFunc(self, node: ast.HelperFunc
                               ) -> tuple[Color, W_Type]:
-        helper = helpers.get(node.funcname)
-        return 'red', helper.w_functype
+        opimpl = ops.get(node.funcname)
+        return 'red', opimpl.w_functype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)

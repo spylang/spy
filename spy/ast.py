@@ -463,6 +463,8 @@ class FQNConst(Expr):
     precedence = 100 # the highest
     fqn: FQN
 
+
+# XXX maybe this should be turned into PrimitiveFunc or just use FQNConst?
 @dataclass(eq=False)
 class HelperFunc(Expr):
     """

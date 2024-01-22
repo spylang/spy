@@ -49,7 +49,7 @@ class TestLibSPy(CTest):
         spy_Str H = {6, "hello "};
 
         spy_Str *mk_W(void) {
-            spy_Str *s = spy_StrAlloc(5);
+            spy_Str *s = spy_str_alloc(5);
             memcpy((void*)s->utf8, "world", 5);
             return s;
         }
@@ -62,7 +62,7 @@ class TestLibSPy(CTest):
         ptr_W = ll.call('mk_W')
         assert ll.mem.read(ptr_W, 9) == mk_spy_Str(b'world')
         #
-        ptr_HW = ll.call('spy_StrAdd', ptr_H, ptr_W)
+        ptr_HW = ll.call('spy_str_add', ptr_H, ptr_W)
         assert ll.mem.read(ptr_HW, 15) == mk_spy_Str(b'hello world')
 
     def test_debug_log(self):

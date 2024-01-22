@@ -136,26 +136,11 @@ class FuncDoppler:
         return name
 
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
-        _, w_ltype = self.t.check_expr(binop.left)
-        _, w_rtype = self.t.check_expr(binop.right)
-        argtypes = (w_ltype, w_rtype)
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
-
-        # for int ops, we just use the "generic" ast nodes, for now
-        if argtypes == (B.w_i32, B.w_i32):
-            return binop.replace(left=l, right=r)
-
-        # for string ops, we call helpers
-        if binop.op == '+' and argtypes == (B.w_str, B.w_str):
-            func = ast.HelperFunc(binop.loc, 'StrAdd')
-            return ast.Call(binop.loc, func, [l, r])
-
-        if binop.op == '*' and argtypes == (B.w_str, B.w_i32):
-            func = ast.HelperFunc(binop.loc, 'StrMul')
-            return ast.Call(binop.loc, func, [l, r])
-
-        assert False, "Unsupported binop, bug in the typechecker"
+        opimpl = self.t.expr_opimpl[binop]
+        func = ast.HelperFunc(binop.loc, opimpl.spy_opname) # XXX
+        return ast.Call(binop.loc, func, [l, r])
 
     shift_expr_Add = shift_expr_BinOp
     shift_expr_Sub = shift_expr_BinOp
@@ -175,15 +160,11 @@ class FuncDoppler:
     shift_expr_GtE = shift_expr_CompareOp
 
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
-        _, w_vtype = self.t.check_expr(op.value)
-        _, w_itype = self.t.check_expr(op.index)
-        argtypes = (w_vtype, w_itype)
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
-        if argtypes == (B.w_str, B.w_i32):
-            func = ast.HelperFunc(op.loc, 'StrGetItem')
-            return ast.Call(op.loc, func, [v, i])
-        assert False, 'unsupported getitem'
+        opimpl = self.t.expr_opimpl[op]
+        func = ast.HelperFunc(op.loc, opimpl.spy_opname) # XXX
+        return ast.Call(op.loc, func, [v, i])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         # XXX: this assumes that it's a direct call (i.e., call.func is a

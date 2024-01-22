@@ -10,16 +10,16 @@ typedef struct {
 } spy_Str;
 
 spy_Str *
-WASM_EXPORT(spy_StrAlloc)(size_t length);
+WASM_EXPORT(spy_str_alloc)(size_t length);
 
 spy_Str *
-WASM_EXPORT(spy_StrAdd)(spy_Str *a, spy_Str *b);
+WASM_EXPORT(spy_str_add)(spy_Str *a, spy_Str *b);
 
 spy_Str *
-WASM_EXPORT(spy_StrMul)(spy_Str *a, int32_t b);
+WASM_EXPORT(spy_str_mul)(spy_Str *a, int32_t b);
 
 // XXX: should we introduce a separate type Char?
 spy_Str *
-WASM_EXPORT(spy_StrGetItem)(spy_Str *s, int32_t i);
+WASM_EXPORT(spy_str_getitem)(spy_Str *s, int32_t i);
 
 #endif /* SPY_STR_H */

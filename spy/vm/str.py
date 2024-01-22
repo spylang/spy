@@ -13,7 +13,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     """
     utf8 = s.encode('utf-8')
     length = len(utf8)
-    ptr = ll.call('spy_StrAlloc', length)
+    ptr = ll.call('spy_str_alloc', length)
     ll.mem.write(ptr+4, utf8)
     return ptr
 
