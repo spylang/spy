@@ -139,9 +139,7 @@ class FuncDoppler:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
         w_opimpl = self.t.expr_opimpl[binop]
-        # XXX the following is needed only to get the FQN. Maybe we should
-        # move the fqn attribute up to W_Func?
-        assert isinstance(w_opimpl, W_BuiltinFunc)
+        assert w_opimpl.fqn is not None
         func = ast.FQNConst(binop.loc, w_opimpl.fqn)
         return ast.Call(binop.loc, func, [l, r])
 
@@ -166,6 +164,7 @@ class FuncDoppler:
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
         w_opimpl = self.t.expr_opimpl[op]
+        assert w_opimpl.fqn is not None
         func = ast.FQNConst(op.loc, w_opimpl.fqn)
         return ast.Call(op.loc, func, [v, i])
 

@@ -90,6 +90,7 @@ class W_FuncType(W_Type):
 
 class W_Func(W_Object):
     w_functype: W_FuncType
+    fqn: Optional[FQN]
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
