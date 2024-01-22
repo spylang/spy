@@ -9,6 +9,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.builtins import B
+from spy.vm.ops import OPS
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.registry import ModuleRegistry
@@ -34,7 +35,8 @@ class SPyVM:
         self.globals_w = {}
         self.modules_w = {}
         self.path = []
-        self.make_module(B) # builtins
+        self.make_module(B)    # builtins::
+        self.make_module(OPS)  # __ops__::
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file

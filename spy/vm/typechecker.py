@@ -306,11 +306,6 @@ class TypeChecker:
             err.add('error', f'this is `{i}`', expr.index.loc)
             raise err
 
-    def check_expr_HelperFunc(self, node: ast.HelperFunc
-                              ) -> tuple[Color, W_Type]:
-        opimpl = ops.get(node.funcname)
-        return 'red', opimpl.w_functype
-
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)

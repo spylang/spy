@@ -267,26 +267,11 @@ class ASTFrame:
 
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
         color, w_restype = self.t.check_expr_Call(call)
-        if isinstance(call.func, ast.HelperFunc):
-            # special case CallHelper:
-            args_w = [self.eval_expr_object(arg) for arg in call.args]
-            return self.call_helper(call.func.funcname, args_w, w_restype)
-        #
         fv_func = self.eval_expr(call.func)
         w_func = fv_func.w_value
         assert isinstance(w_func, W_Func)
         args_w = [self.eval_expr_object(arg) for arg in call.args]
         w_res = self.vm.call_function(w_func, args_w)
-        return FrameVal(w_restype, w_res)
-
-    def eval_expr_HelperFunc(self, node: ast.HelperFunc) -> FrameVal:
-        # we should special-case a call to HelperFunc in eval_expr_Call
-        assert False, 'should not be called'
-
-    def call_helper(self, funcname: str, args_w: list[W_Object],
-                    w_restype: W_Type) -> FrameVal:
-        opimpl = ops.get(funcname)
-        w_res = opimpl(self.vm, *args_w)
         return FrameVal(w_restype, w_res)
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> FrameVal:

@@ -4,7 +4,7 @@ from fixedint import FixedInt
 from spy import ast
 from spy.vm.builtins import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_ASTFunc
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.astframe import ASTFrame
 from spy.util import magic_dispatch
 
@@ -138,8 +138,11 @@ class FuncDoppler:
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
-        opimpl = self.t.expr_opimpl[binop]
-        func = ast.HelperFunc(binop.loc, opimpl.spy_opname) # XXX
+        w_opimpl = self.t.expr_opimpl[binop]
+        # XXX the following is needed only to get the FQN. Maybe we should
+        # move the fqn attribute up to W_Func?
+        assert isinstance(w_opimpl, W_BuiltinFunc)
+        func = ast.FQNConst(binop.loc, w_opimpl.fqn)
         return ast.Call(binop.loc, func, [l, r])
 
     shift_expr_Add = shift_expr_BinOp

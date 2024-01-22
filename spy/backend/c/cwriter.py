@@ -328,30 +328,21 @@ class CFuncWriter:
     fmt_expr_GtE = fmt_expr_CompareOp
 
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
-        if isinstance(call.func, ast.FQNConst):
-            c_name = call.func.fqn.c_name
-            return self.fmt_call_direct(c_name, call)
-        elif isinstance(call.func, ast.HelperFunc):
-            return self.fmt_call_helper(call.func, call)
-        else:
-            assert False, 'indirect calls are not supported yet'
+        assert isinstance(call.func, ast.FQNConst), \
+            'indirect calls are not supported yet'
 
-    def fmt_call_direct(self, c_name: str, call: ast.Call) -> C.Expr:
-        c_args = [self.fmt_expr(arg) for arg in call.args]
-        return C.Call(c_name, c_args)
-
-    def fmt_call_helper(self, func: ast.HelperFunc, call: ast.Call) -> C.Expr:
-        # some helpers are special-cased and transformed into a C binop
+        # some calls are special-cased and transformed into a C binop
         binops = {
-            'i32_add': '+',
-            'i32_mul': '*',
+            FQN('__ops__::i32_add'): '+',
+            FQN('__ops__::i32_mul'): '*',
         }
-        op = binops.get(func.funcname)
+        op = binops.get(call.func.fqn)
         if op is not None:
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
         # the default case is to call a function with the corresponding name
-        c_name = f'spy_{func.funcname}'
-        return self.fmt_call_direct(c_name, call)
+        c_name = call.func.fqn.c_name
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        return C.Call(c_name, c_args)
