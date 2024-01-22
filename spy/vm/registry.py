@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, TYPE_CHECKING, Any
 from dataclasses import dataclass
 from spy.fqn import FQN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
@@ -14,10 +14,30 @@ class ModuleRegistry:
     filepath: str
     content: list[tuple[FQN, W_Object]]
 
-    def __init__(self, modname: str, filepath: str):
+    def __init__(self, modname: str, filepath: str) -> None:
         self.modname = modname
         self.filepath = filepath
         self.content = []
+
+    if TYPE_CHECKING:
+        def __getattr__(self, attr: str) -> Any:
+            """
+            Workaround for mypy blindness.
+
+            When we do X.add('foo', ...), it becomes available as X.w_foo, but
+            mypy obviously doesn't know. This is a big problem in particular
+            for the B (builtins) module, since we use B.w_i32, B.w_object,
+            etc. everywhere.
+
+            By using this fake __getattr__, mypy will never complain about
+            missing attributes on ModuleRegistry (which is a bit suboptimal,
+            but well...)
+            """
+
+    def add(self, attr: str, w_obj: W_Object) -> None:
+        fqn = FQN(modname=self.modname, attr=attr)
+        setattr(self, f'w_{attr}', w_obj)
+        self.content.append((fqn, w_obj))
 
     def primitive(self, sig: str, name: Optional[str] = None) -> Callable:
         w_functype = W_FuncType.parse(sig)

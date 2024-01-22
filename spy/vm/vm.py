@@ -9,7 +9,6 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.builtins import B
-from spy.vm.builtins2 import B2
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.registry import ModuleRegistry
@@ -35,8 +34,7 @@ class SPyVM:
         self.globals_w = {}
         self.modules_w = {}
         self.path = []
-        self.make_builtins_module()
-        self.make_module_2(B2)
+        self.make_module(B) # builtins
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file
@@ -62,33 +60,16 @@ class SPyVM:
                 assert w_newfunc.redshifted
                 self.globals_w[fqn] = w_newfunc
 
-    def make_builtins_module(self) -> None:
-        w_mod = W_Module(self, 'builtins', '<builtins>')
-        self.register_module(w_mod)
-        for attr, w_obj in B.__dict__.items():
-            if not isinstance(w_obj, W_Object):
-                continue
-            assert attr.startswith('w_')
-            attr = attr[2:]  # remove the w_
-            fqn = FQN(modname='builtins', attr=attr)
-            w_type = self.dynamic_type(w_obj)
-            self.add_global(fqn, w_type, w_obj)
-
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
         self.modules_w[w_mod.name] = w_mod
 
-
-    def make_module_2(self, reg: ModuleRegistry) -> None:
-        # XXX kill this if and complains if it's duplicate
-        if reg.modname not in self.modules_w:
-            w_mod = W_Module(self, reg.modname, reg.filepath)
-            self.register_module(w_mod)
-        #
+    def make_module(self, reg: ModuleRegistry) -> None:
+        w_mod = W_Module(self, reg.modname, reg.filepath)
+        self.register_module(w_mod)
         for fqn, w_obj in reg.content:
             w_type = self.dynamic_type(w_obj)
             self.add_global(fqn, w_type, w_obj)
-
 
     def add_global(self,
                    name: FQN,
