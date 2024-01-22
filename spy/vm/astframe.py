@@ -276,8 +276,9 @@ class ASTFrame:
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> FrameVal:
         color, w_restype = self.t.check_expr_GetItem(op)
-        opimpl = self.t.expr_opimpl[op]
+        w_opimpl = self.t.expr_opimpl[op]
         fv_val = self.eval_expr(op.value)
         fv_index = self.eval_expr(op.index)
-        w_res = opimpl(self.vm, fv_val.w_value, fv_index.w_value)
+        w_res = self.vm.call_function(w_opimpl,
+                                      [fv_val.w_value, fv_index.w_value])
         return FrameVal(w_restype, w_res)

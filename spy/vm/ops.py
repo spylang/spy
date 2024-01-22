@@ -13,7 +13,7 @@ def get(funcname: str) -> Any:
         raise KeyError(f'Cannot find {funcname} in spy/vm/ops.py')
     return func
 
-OPS = ModuleRegistry('__ops__', '<__ops__>')
+OPS = ModuleRegistry('builtins.ops', '<builtins.ops>')
 
 # ================
 
@@ -30,12 +30,12 @@ def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Func:
     if w_ltype is w_rtype is B.w_i32:
         return OPS.w_i32_mul
     if w_ltype is B.w_str and w_rtype is B.w_i32:
-        return OPW.w_str_mul
+        return OPS.w_str_mul
     return None
 
 def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Func:
     if w_vtype is B.w_str and w_itype is B.w_i32:
-        return OPW.w_str_getitem
+        return OPS.w_str_getitem
     return None
 
 

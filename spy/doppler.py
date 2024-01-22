@@ -165,8 +165,8 @@ class FuncDoppler:
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
-        opimpl = self.t.expr_opimpl[op]
-        func = ast.HelperFunc(op.loc, opimpl.spy_opname) # XXX
+        w_opimpl = self.t.expr_opimpl[op]
+        func = ast.FQNConst(op.loc, w_opimpl.fqn)
         return ast.Call(op.loc, func, [v, i])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
