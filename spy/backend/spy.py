@@ -120,6 +120,7 @@ class SPyBackend:
                 'i32_mul': ast.Mul,
             }
             opclass = helper2ast.get(call.func.funcname)
+            assert opclass is not None
             assert len(call.args) == 2
             binop = opclass(call.loc, call.args[0], call.args[1])
             return self.fmt_expr_BinOp(binop)

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 from spy.vm.builtins import B
 from spy.vm.str import W_str
 from spy.vm.object import W_Object, W_Type, W_i32
@@ -24,21 +24,21 @@ def signature(sig: str) -> Any:
 
 # XXX explain me
 
-def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type):
+def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> Any:
     if w_ltype is w_rtype is B.w_i32:
         return i32_add
     elif w_ltype is w_rtype is B.w_str:
         return str_add
     return None
 
-def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type):
+def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> Any:
     if w_ltype is w_rtype is B.w_i32:
         return i32_mul
     if w_ltype is B.w_str and w_rtype is B.w_i32:
         return str_mul
     return None
 
-def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type):
+def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> Any:
     if w_vtype is B.w_str and w_itype is B.w_i32:
         return str_getitem
     return None
@@ -48,13 +48,13 @@ def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type):
 def i32_add(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
     a = vm.unwrap(w_a)
     b = vm.unwrap(w_b)
-    return vm.wrap(a + b)
+    return vm.wrap(a + b) # type: ignore
 
 @signature('def(a: i32, b: i32) -> i32')
 def i32_mul(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
     a = vm.unwrap(w_a)
     b = vm.unwrap(w_b)
-    return vm.wrap(a * b)
+    return vm.wrap(a * b) # type: ignore
 
 
 # ==================
