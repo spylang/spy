@@ -162,14 +162,14 @@ class TestVM:
 
     def test_call_function(self):
         vm = SPyVM()
-        w_abs = vm.lookup_global(FQN('builtins::abs'))
+        w_abs = B.w_abs
         w_x = vm.wrap(-42)
         w_y = vm.call_function(w_abs, [w_x])
         assert vm.unwrap(w_y) == 42
 
     def test_call_function_TypeError(self):
         vm = SPyVM()
-        w_abs = vm.lookup_global(FQN('builtins::abs'))
+        w_abs = B.w_abs
         w_x = vm.wrap('hello')
         msg = 'Invalid cast. Expected `i32`, got `str`'
         with pytest.raises(SPyTypeError, match=msg):
