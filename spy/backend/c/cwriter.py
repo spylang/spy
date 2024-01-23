@@ -305,27 +305,12 @@ class CFuncWriter:
     fmt_expr_Sub = fmt_expr_BinOp
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
-
-    def fmt_expr_CompareOp(self, cmpop: ast.CompareOp) -> C.Expr:
-        ops = {
-            ast.Eq: '==',
-            ast.NotEq: '!=',
-            ast.Lt: '<',
-            ast.LtE: '<=',
-            ast.Gt: '>',
-            ast.GtE: '>='
-        }
-        op = ops[cmpop.__class__]
-        l = self.fmt_expr(cmpop.left)
-        r = self.fmt_expr(cmpop.right)
-        return C.BinOp(op, l, r)
-
-    fmt_expr_Eq = fmt_expr_CompareOp
-    fmt_expr_NotEq = fmt_expr_CompareOp
-    fmt_expr_Lt = fmt_expr_CompareOp
-    fmt_expr_LtE = fmt_expr_CompareOp
-    fmt_expr_Gt = fmt_expr_CompareOp
-    fmt_expr_GtE = fmt_expr_CompareOp
+    fmt_expr_Eq = fmt_expr_BinOp
+    fmt_expr_NotEq = fmt_expr_BinOp
+    fmt_expr_Lt = fmt_expr_BinOp
+    fmt_expr_LtE = fmt_expr_BinOp
+    fmt_expr_Gt = fmt_expr_BinOp
+    fmt_expr_GtE = fmt_expr_BinOp
 
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.func, ast.FQNConst), \
@@ -335,6 +320,12 @@ class CFuncWriter:
         binops = {
             FQN('builtins.ops::i32_add'): '+',
             FQN('builtins.ops::i32_mul'): '*',
+            FQN('builtins.ops::i32_eq') : '==',
+            FQN('builtins.ops::i32_ne') : '!=',
+            FQN('builtins.ops::i32_lt') : '<',
+            FQN('builtins.ops::i32_le') : '<=',
+            FQN('builtins.ops::i32_gt') : '>',
+            FQN('builtins.ops::i32_ge') : '>=',
         }
         op = binops.get(call.func.fqn)
         if op is not None:

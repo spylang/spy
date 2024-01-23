@@ -370,7 +370,7 @@ class TestBasic(CompilerTest):
         #
         assert mod.cmp_neq(5, 5) is False
         assert mod.cmp_neq(5, 6) is True
-        #
+        ## #
         assert mod.cmp_lt(5, 6) is True
         assert mod.cmp_lt(5, 5) is False
         assert mod.cmp_lt(6, 5) is False

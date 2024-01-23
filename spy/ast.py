@@ -235,6 +235,56 @@ class BinOp(Expr):
     right: Expr
 
 @dataclass(eq=False)
+class Eq(BinOp):
+    precedence = 6
+    op = '=='
+
+@dataclass(eq=False)
+class NotEq(BinOp):
+    precedence = 6
+    op = '!='
+
+@dataclass(eq=False)
+class Lt(BinOp):
+    precedence = 6
+    op = '<'
+
+@dataclass(eq=False)
+class LtE(BinOp):
+    precedence = 6
+    op = '<='
+
+@dataclass(eq=False)
+class Gt(BinOp):
+    precedence = 6
+    op = '>'
+
+@dataclass(eq=False)
+class GtE(BinOp):
+    precedence = 6
+    op = '>='
+
+@dataclass(eq=False)
+class Is(BinOp):
+    precedence = 6
+    op = 'is'
+
+@dataclass(eq=False)
+class IsNot(BinOp):
+    precedence = 6
+    op = 'is not'
+
+@dataclass(eq=False)
+class In(BinOp):
+    precedence = 6
+    op = 'in'
+
+@dataclass(eq=False)
+class NotIn(BinOp):
+    precedence = 6
+    op = 'not in'
+
+@dataclass(eq=False)
 class Add(BinOp):
     precedence = 11
     op = '+'
@@ -326,56 +376,6 @@ class Invert(UnaryOp):
 class Not(UnaryOp):
     precedence = 5
     op = 'not'
-
-
-# ====== CompareOp sub-hierarchy ======
-
-@dataclass(eq=False)
-class CompareOp(Expr):
-    precedence = 6
-    op = ''
-    left: Expr
-    right: Expr
-
-@dataclass(eq=False)
-class Eq(CompareOp):
-    op = '=='
-
-@dataclass(eq=False)
-class NotEq(CompareOp):
-    op = '!='
-
-@dataclass(eq=False)
-class Lt(CompareOp):
-    op = '<'
-
-@dataclass(eq=False)
-class LtE(CompareOp):
-    op = '<='
-
-@dataclass(eq=False)
-class Gt(CompareOp):
-    op = '>'
-
-@dataclass(eq=False)
-class GtE(CompareOp):
-    op = '>='
-
-@dataclass(eq=False)
-class Is(CompareOp):
-    op = 'is'
-
-@dataclass(eq=False)
-class IsNot(CompareOp):
-    op = 'is not'
-
-@dataclass(eq=False)
-class In(CompareOp):
-    op = 'in'
-
-@dataclass(eq=False)
-class NotIn(CompareOp):
-    op = 'not in'
 
 
 # ====== Stmt hierarchy ======

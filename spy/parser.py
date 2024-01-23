@@ -359,7 +359,7 @@ class Parser:
         #
         return spy_cls(py_node.loc, value)
 
-    def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.CompareOp:
+    def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.BinOp:
         if len(py_node.comparators) > 1:
             self.unsupported(py_node.comparators[1], 'chained comparisons')
         left = self.from_py_expr(py_node.left)
