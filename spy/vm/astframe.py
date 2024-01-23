@@ -25,21 +25,6 @@ class Return(Exception):
         self.w_value = w_value
 
 
-
-@dataclass
-class FrameVal:
-    """
-    Small wrapper around W_Object which also keeps track of its static type.
-    The naming convention is to call them fv_*.
-    """
-    w_static_type: W_Type
-    w_value: W_Object
-
-    @property
-    def w_bool_value(self) -> W_bool:
-        assert isinstance(self.w_value, W_bool)
-        return self.w_value
-
 class ASTFrame:
     vm: 'SPyVM'
     w_func: W_ASTFunc
@@ -103,37 +88,29 @@ class ASTFrame:
         self.t.check_stmt(stmt)
         return magic_dispatch(self, 'exec_stmt', stmt)
 
-    def eval_expr(self, expr: ast.Expr) -> FrameVal:
+    def eval_expr(self, expr: ast.Expr) -> W_Object:
         self.t.check_expr(expr)
         typeconv = self.t.expr_conv.get(expr)
-        fv = magic_dispatch(self, 'eval_expr', expr)
+        w_val = magic_dispatch(self, 'eval_expr', expr)
         if typeconv is None:
-            return fv
+            return w_val
         else:
-            # apply the type converter, if present. Note that the static type
-            # of the expression is the one given by the converter, not the
-            # original one in fv.w_static_type
-            w_newvalue = typeconv.convert(self.vm, fv.w_value)
-            return FrameVal(typeconv.w_type, w_newvalue)
-
-    def eval_expr_object(self, expr: ast.Expr) -> W_Object:
-        fv = self.eval_expr(expr)
-        return fv.w_value
+            # apply the type converter, if present
+            return typeconv.convert(self.vm, w_val)
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
-        fv = self.eval_expr(expr)
-        if isinstance(fv.w_value, W_Type):
-            assert fv.w_static_type is B.w_type
-            return fv.w_value
-        w_valtype = self.vm.dynamic_type(fv.w_value)
+        w_val = self.eval_expr(expr)
+        if isinstance(w_val, W_Type):
+            return w_val
+        w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.name}`'
         raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
 
     # ==== statements ====
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        fv = self.eval_expr(ret.value)
-        raise Return(fv.w_value)
+        w_val = self.eval_expr(ret.value)
+        raise Return(w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
@@ -164,12 +141,12 @@ class ASTFrame:
         # it's not local, it's module.
         name = assign.target
         sym = self.funcdef.symtable.lookup(name)
-        fv = self.eval_expr(assign.value)
+        w_val = self.eval_expr(assign.value)
         if sym.is_local:
-            self.store_local(name, fv.w_value)
+            self.store_local(name, w_val)
         elif sym.fqn is not None:
             assert sym.color == 'red'
-            self.vm.store_global(sym.fqn, fv.w_value)
+            self.vm.store_global(sym.fqn, w_val)
         else:
             assert False, 'closures not implemented yet'
 
@@ -177,8 +154,8 @@ class ASTFrame:
         self.eval_expr(stmt.value)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        fv = self.eval_expr(if_node.test)
-        if self.vm.is_True(fv.w_bool_value):
+        w_cond = self.eval_expr(if_node.test)
+        if self.vm.is_True(w_cond):
             for stmt in if_node.then_body:
                 self.exec_stmt(stmt)
         else:
@@ -187,54 +164,48 @@ class ASTFrame:
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
-            fv = self.eval_expr(while_node.test)
-            if self.vm.is_False(fv.w_bool_value):
+            w_cond = self.eval_expr(while_node.test)
+            if self.vm.is_False(w_cond):
                 break
             for stmt in while_node.body:
                 self.exec_stmt(stmt)
 
     # ==== expressions ====
 
-    def eval_expr_Constant(self, const: ast.Constant) -> FrameVal:
+    def eval_expr_Constant(self, const: ast.Constant) -> W_Object:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, bool, str, NoneType)
-        color, w_type = self.t.check_expr_Constant(const)
-        w_value = self.vm.wrap(const.value)
-        return FrameVal(w_type, w_value)
+        return self.vm.wrap(const.value)
 
-    def eval_expr_FQNConst(self, const: ast.FQNConst) -> FrameVal:
-        color, w_type = self.t.check_expr_FQNConst(const)
+    def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_Object:
         w_value = self.vm.lookup_global(const.fqn)
         assert w_value is not None
-        return FrameVal(w_type, w_value)
+        return w_value
 
-    def eval_expr_Name(self, name: ast.Name) -> FrameVal:
-        color, w_type = self.t.check_expr_Name(name)
+    def eval_expr_Name(self, name: ast.Name) -> W_Object:
         sym = self.w_func.funcdef.symtable.lookup(name.id)
         if sym.fqn is not None:
             w_value = self.vm.lookup_global(sym.fqn)
             assert w_value is not None, \
                 f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
-            return FrameVal(w_type, w_value)
+            return w_value
         elif sym.is_local:
-            w_value = self.load_local(name.id)
-            return FrameVal(w_type, w_value)
+            return self.load_local(name.id)
         else:
             namespace = self.w_func.closure[sym.level]
             w_value = namespace[sym.name]
             assert w_value is not None
-            return FrameVal(w_type, w_value)
+            return w_value
 
-    def eval_expr_BinOp(self, binop: ast.BinOp) -> FrameVal:
-        color, w_restype = self.t.check_expr_BinOp(binop)
+    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_Object:
         w_opimpl = self.t.expr_opimpl[binop]
         assert w_opimpl, 'bug in the typechecker'
-        fv_l = self.eval_expr(binop.left)
-        fv_r = self.eval_expr(binop.right)
-        w_res = self.vm.call_function(w_opimpl, [fv_l.w_value, fv_r.w_value])
-        return FrameVal(w_restype, w_res)
+        w_l = self.eval_expr(binop.left)
+        w_r = self.eval_expr(binop.right)
+        w_res = self.vm.call_function(w_opimpl, [w_l, w_r])
+        return w_res
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
@@ -245,20 +216,16 @@ class ASTFrame:
     eval_expr_Gt = eval_expr_BinOp
     eval_expr_GtE = eval_expr_BinOp
 
-    def eval_expr_Call(self, call: ast.Call) -> FrameVal:
-        color, w_restype = self.t.check_expr_Call(call)
-        fv_func = self.eval_expr(call.func)
-        w_func = fv_func.w_value
+    def eval_expr_Call(self, call: ast.Call) -> W_Object:
+        w_func = self.eval_expr(call.func)
         assert isinstance(w_func, W_Func)
-        args_w = [self.eval_expr_object(arg) for arg in call.args]
+        args_w = [self.eval_expr(arg) for arg in call.args]
         w_res = self.vm.call_function(w_func, args_w)
-        return FrameVal(w_restype, w_res)
+        return w_res
 
-    def eval_expr_GetItem(self, op: ast.GetItem) -> FrameVal:
-        color, w_restype = self.t.check_expr_GetItem(op)
+    def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
         w_opimpl = self.t.expr_opimpl[op]
-        fv_val = self.eval_expr(op.value)
-        fv_index = self.eval_expr(op.index)
-        w_res = self.vm.call_function(w_opimpl,
-                                      [fv_val.w_value, fv_index.w_value])
-        return FrameVal(w_restype, w_res)
+        w_val = self.eval_expr(op.value)
+        w_i = self.eval_expr(op.index)
+        w_res = self.vm.call_function(w_opimpl, [w_val, w_i])
+        return w_res

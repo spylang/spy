@@ -46,14 +46,11 @@ class FuncDoppler:
             locals_types_w = self.t.locals_types_w.copy())
         return w_newfunc
 
-    def blue_eval(self, expr: ast.Expr) -> ast.Expr:
-        fv = self.blue_frame.eval_expr(expr)
-        # XXX we should check the type
-        # XXX we should propagate the static type somehow?
-        w_type = fv.w_static_type
+    def blue_eval(self, expr: ast.Expr, w_type: W_Type) -> ast.Expr:
+        w_val = self.blue_frame.eval_expr(expr)
         if w_type in (B.w_i32, B.w_bool, B.w_str, B.w_void):
             # this is a primitive, we can just use ast.Constant
-            value = self.vm.unwrap(fv.w_value)
+            value = self.vm.unwrap(w_val)
             if isinstance(value, FixedInt): # type: ignore
                 value = int(value)
             return ast.Constant(expr.loc, value)
@@ -61,7 +58,7 @@ class FuncDoppler:
             # this is a non-primitive prebuilt constant. For now we support
             # only objects which has a FQN (e.g., builtin types), but we need
             # to think about a more general solution
-            fqn = self.vm.reverse_lookup_global(fv.w_value)
+            fqn = self.vm.reverse_lookup_global(w_val)
             assert fqn is not None, 'implement me'
             return ast.FQNConst(expr.loc, fqn)
 
@@ -74,7 +71,7 @@ class FuncDoppler:
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
         color, w_type = self.t.check_expr(expr)
         if color == 'blue':
-            return self.blue_eval(expr)
+            return self.blue_eval(expr, w_type)
         return magic_dispatch(self, 'shift_expr', expr)
 
     # ==== statements ====

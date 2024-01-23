@@ -77,5 +77,5 @@ class ModuleGen:
         assign = decl.assign
         fqn = FQN(modname=self.modname, attr=vardef.name)
         w_type = frame.eval_expr_type(vardef.type)
-        w_value = frame.eval_expr_object(assign.value)
-        self.vm.add_global(fqn, w_type, w_value)
+        w_val = frame.eval_expr(assign.value)
+        self.vm.add_global(fqn, w_type, w_val)

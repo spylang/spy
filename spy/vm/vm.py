@@ -138,10 +138,10 @@ class SPyVM:
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyTypeError(msg)
 
-    def is_True(self, w_obj: W_bool) -> bool:
+    def is_True(self, w_obj: W_Object) -> bool:
         return w_obj is B.w_True
 
-    def is_False(self, w_obj: W_bool) -> bool:
+    def is_False(self, w_obj: W_Object) -> bool:
         return w_obj is B.w_False
 
     def wrap(self, value: Any) -> W_Object:
