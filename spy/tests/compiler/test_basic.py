@@ -359,7 +359,7 @@ class TestBasic(CompilerTest):
     def test_CompareOp(self):
         mod = self.compile("""
         def cmp_eq (x: i32, y: i32) -> bool: return x == y
-        ## def cmp_neq(x: i32, y: i32) -> bool: return x != y
+        def cmp_neq(x: i32, y: i32) -> bool: return x != y
         ## def cmp_lt (x: i32, y: i32) -> bool: return x  < y
         ## def cmp_lte(x: i32, y: i32) -> bool: return x <= y
         ## def cmp_gt (x: i32, y: i32) -> bool: return x  > y
@@ -368,8 +368,8 @@ class TestBasic(CompilerTest):
         assert mod.cmp_eq(5, 5) is True
         assert mod.cmp_eq(5, 6) is False
         #
-        ## assert mod.cmp_neq(5, 5) is False
-        ## assert mod.cmp_neq(5, 6) is True
+        assert mod.cmp_neq(5, 5) is False
+        assert mod.cmp_neq(5, 6) is True
         ## #
         ## assert mod.cmp_lt(5, 6) is True
         ## assert mod.cmp_lt(5, 5) is False
