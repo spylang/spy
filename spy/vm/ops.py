@@ -97,14 +97,29 @@ def i32_eq(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_bool:
 def i32_ne(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_bool:
     return _generic_i32_op(vm, w_a, w_b, lambda a, b: a != b)
 
+@OPS.primitive('def(a: i32, b: i32) -> bool')
+def i32_lt(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_bool:
+    return _generic_i32_op(vm, w_a, w_b, lambda a, b: a < b)
+
+@OPS.primitive('def(a: i32, b: i32) -> bool')
+def i32_le(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_bool:
+    return _generic_i32_op(vm, w_a, w_b, lambda a, b: a <= b)
+
+@OPS.primitive('def(a: i32, b: i32) -> bool')
+def i32_gt(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_bool:
+    return _generic_i32_op(vm, w_a, w_b, lambda a, b: a > b)
+
+@OPS.primitive('def(a: i32, b: i32) -> bool')
+def i32_ge(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_bool:
+    return _generic_i32_op(vm, w_a, w_b, lambda a, b: a >= b)
 
 CMPOPS = {
     (B.w_i32, B.w_i32, '=='): OPS.w_i32_eq,
     (B.w_i32, B.w_i32, '!='): OPS.w_i32_ne,
-    ## (B.w_i32, B.w_i32, '<' ): OPS.w_i32_lt,
-    ## (B.w_i32, B.w_i32, '<='): OPS.w_i32_le,
-    ## (B.w_i32, B.w_i32, '>' ): OPS.w_i32_gt,
-    ## (B.w_i32, B.w_i32, '>='): OPS.w_i32_ge,
+    (B.w_i32, B.w_i32, '<' ): OPS.w_i32_lt,
+    (B.w_i32, B.w_i32, '<='): OPS.w_i32_le,
+    (B.w_i32, B.w_i32, '>' ): OPS.w_i32_gt,
+    (B.w_i32, B.w_i32, '>='): OPS.w_i32_ge,
 }
 
 def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
@@ -113,4 +128,20 @@ def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
 
 def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     key = (w_ltype, w_rtype, '!=')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '<')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+def LE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '<=')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '>')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '>=')
     return CMPOPS.get(key, B.w_NotImplemented)
