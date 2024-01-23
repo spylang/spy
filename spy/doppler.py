@@ -151,7 +151,10 @@ class FuncDoppler:
     def shift_expr_CompareOp(self, cmpop: ast.CompareOp) -> ast.Expr:
         l = self.shift_expr(cmpop.left)
         r = self.shift_expr(cmpop.right)
-        return cmpop.replace(left=l, right=r)
+        w_opimpl = self.t.expr_opimpl[cmpop]
+        assert w_opimpl.fqn is not None
+        func = ast.FQNConst(cmpop.loc, w_opimpl.fqn)
+        return ast.Call(cmpop.loc, func, [l, r])
 
     shift_expr_Eq = shift_expr_CompareOp
     shift_expr_NotEq = shift_expr_CompareOp

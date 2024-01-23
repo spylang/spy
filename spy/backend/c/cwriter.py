@@ -307,18 +307,8 @@ class CFuncWriter:
     fmt_expr_Div = fmt_expr_BinOp
 
     def fmt_expr_CompareOp(self, cmpop: ast.CompareOp) -> C.Expr:
-        ops = {
-            ast.Eq: '==',
-            ast.NotEq: '!=',
-            ast.Lt: '<',
-            ast.LtE: '<=',
-            ast.Gt: '>',
-            ast.GtE: '>='
-        }
-        op = ops[cmpop.__class__]
-        l = self.fmt_expr(cmpop.left)
-        r = self.fmt_expr(cmpop.right)
-        return C.BinOp(op, l, r)
+        raise NotImplementedError(
+            'ast.CompareOp not supported. It should have been redshifted away')
 
     fmt_expr_Eq = fmt_expr_CompareOp
     fmt_expr_NotEq = fmt_expr_CompareOp
@@ -335,6 +325,7 @@ class CFuncWriter:
         binops = {
             FQN('builtins.ops::i32_add'): '+',
             FQN('builtins.ops::i32_mul'): '*',
+            FQN('builtins.ops::i32_eq') : '==',
         }
         op = binops.get(call.func.fqn)
         if op is not None:
