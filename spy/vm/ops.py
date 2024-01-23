@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, Optional
 from spy.vm.builtins import B
 from spy.vm.str import W_str
-from spy.vm.object import W_Object, W_Type, W_i32
+from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.function import W_FuncType, W_Func
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
@@ -52,7 +52,6 @@ def i32_mul(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_i32:
     b = vm.unwrap(w_b)
     return vm.wrap(a * b) # type: ignore
 
-
 # ==================
 
 @OPS.primitive('def(a: str, b: str) -> str')
@@ -75,3 +74,27 @@ def str_getitem(vm: 'SPyVM', w_s: W_str, w_i: W_i32) -> W_str:
     assert isinstance(w_i, W_i32)
     ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
     return W_str.from_ptr(vm, ptr_c)
+
+
+# ==================
+# comparison ops
+
+@OPS.primitive('def(a: i32, b: i32) -> bool')
+def i32_eq(vm: 'SPyVM', w_a: W_i32, w_b: W_i32) -> W_bool:
+    a = vm.unwrap(w_a)
+    b = vm.unwrap(w_b)
+    return vm.wrap(a == b) # type: ignore
+
+
+CMPOPS = {
+    (B.w_i32, B.w_i32, '=='): OPS.w_i32_eq,
+    ## (B.w_i32, B.w_i32, '!='): OPS.w_i32_ne,
+    ## (B.w_i32, B.w_i32, '<' ): OPS.w_i32_lt,
+    ## (B.w_i32, B.w_i32, '<='): OPS.w_i32_le,
+    ## (B.w_i32, B.w_i32, '>' ): OPS.w_i32_gt,
+    ## (B.w_i32, B.w_i32, '>='): OPS.w_i32_ge,
+}
+
+def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '==')
+    return CMPOPS.get(key, B.w_NotImplemented)
