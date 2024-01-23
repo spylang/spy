@@ -238,22 +238,12 @@ class ASTFrame:
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
-
-    def eval_expr_CompareOp(self, op: ast.CompareOp) -> FrameVal:
-        color, w_restype = self.t.check_expr_CompareOp(op)
-        w_opimpl = self.t.expr_opimpl[op]
-        assert w_opimpl, 'bug in the typecheker'
-        fv_l = self.eval_expr(op.left)
-        fv_r = self.eval_expr(op.right)
-        w_res = self.vm.call_function(w_opimpl, [fv_l.w_value, fv_r.w_value])
-        return FrameVal(w_restype, w_res)
-
-    eval_expr_Eq = eval_expr_CompareOp
-    eval_expr_NotEq = eval_expr_CompareOp
-    eval_expr_Lt = eval_expr_CompareOp
-    eval_expr_LtE = eval_expr_CompareOp
-    eval_expr_Gt = eval_expr_CompareOp
-    eval_expr_GtE = eval_expr_CompareOp
+    eval_expr_Eq = eval_expr_BinOp
+    eval_expr_NotEq = eval_expr_BinOp
+    eval_expr_Lt = eval_expr_BinOp
+    eval_expr_LtE = eval_expr_BinOp
+    eval_expr_Gt = eval_expr_BinOp
+    eval_expr_GtE = eval_expr_BinOp
 
     def eval_expr_Call(self, call: ast.Call) -> FrameVal:
         color, w_restype = self.t.check_expr_Call(call)

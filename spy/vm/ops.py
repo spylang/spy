@@ -7,13 +7,26 @@ from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-def get(funcname: str) -> Any:
-    func = globals().get(funcname)
-    if func is None:
-        raise KeyError(f'Cannot find {funcname} in spy/vm/ops.py')
-    return func
-
 OPS = ModuleRegistry('builtins.ops', '<builtins.ops>')
+
+def by_op(op: str) -> Any:
+    """
+    Return the generic operator corresponding to the given symbol.
+
+    E.g., by_op('+') returns ops.ADD.
+    """
+    d = {
+        '+': ADD,
+        '*': MUL,
+        '==': EQ,
+        '!=': NE,
+        '<':  LT,
+        '<=': LE,
+        '>':  GT,
+        '>=': GE,
+        '[]': GETITEM,
+    }
+    return d[op]
 
 # ================
 

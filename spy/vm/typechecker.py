@@ -241,63 +241,30 @@ class TypeChecker:
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
 
-        w_opimpl = None
-        if binop.op == '+':
-            w_opimpl = ops.ADD(self.vm, w_ltype, w_rtype)
-        elif binop.op == '*':
-            w_opimpl = ops.MUL(self.vm, w_ltype, w_rtype)
+        opfn = ops.by_op(binop.op) # e.g., ops.ADD, ops.MUL, etc.
+        w_opimpl = opfn(self.vm, w_ltype, w_rtype)
 
-        if w_opimpl is not B.w_NotImplemented:
-            assert isinstance(w_opimpl, W_Func)
-            self.expr_opimpl[binop] = w_opimpl
-            w_restype = w_opimpl.w_functype.w_restype
-            return color, w_restype
+        if w_opimpl is B.w_NotImplemented:
+            lt = w_ltype.name
+            rt = w_rtype.name
+            err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
+            err.add('error', f'this is `{lt}`', binop.left.loc)
+            err.add('error', f'this is `{rt}`', binop.right.loc)
+            raise err
 
-        lt = w_ltype.name
-        rt = w_rtype.name
-        err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
-        err.add('error', f'this is `{lt}`', binop.left.loc)
-        err.add('error', f'this is `{rt}`', binop.right.loc)
-        raise err
+        assert isinstance(w_opimpl, W_Func)
+        self.expr_opimpl[binop] = w_opimpl
+        w_restype = w_opimpl.w_functype.w_restype
+        return color, w_restype
 
     check_expr_Add = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
-
-    def check_expr_CompareOp(self, op: ast.CompareOp) -> tuple[Color, W_Type]:
-        lcolor, w_ltype = self.check_expr(op.left)
-        rcolor, w_rtype = self.check_expr(op.right)
-        color = maybe_blue(lcolor, rcolor)
-
-        opfn = None
-        if   op.op == '==': opfn = ops.EQ
-        elif op.op == '!=': opfn = ops.NE
-        elif op.op == '<':  opfn = ops.LT
-        elif op.op == '<=': opfn = ops.LE
-        elif op.op == '>':  opfn = ops.GT
-        elif op.op == '>=': opfn = ops.GE
-        else:               assert False
-
-        w_opimpl = opfn(self.vm, w_ltype, w_rtype)
-
-        if w_opimpl is not B.w_NotImplemented:
-            assert isinstance(w_opimpl, W_Func)
-            self.expr_opimpl[op] = w_opimpl
-            w_restype = w_opimpl.w_functype.w_restype
-            return color, w_restype
-
-        lt = w_ltype.name
-        rt = w_rtype.name
-        err = SPyTypeError(f'cannot do `{lt}` {op.op} `{rt}`')
-        err.add('error', f'this is `{lt}`', op.left.loc)
-        err.add('error', f'this is `{rt}`', op.right.loc)
-        raise err
-
-    check_expr_Eq = check_expr_CompareOp
-    check_expr_NotEq = check_expr_CompareOp
-    check_expr_Lt = check_expr_CompareOp
-    check_expr_LtE = check_expr_CompareOp
-    check_expr_Gt = check_expr_CompareOp
-    check_expr_GtE = check_expr_CompareOp
+    check_expr_Eq = check_expr_BinOp
+    check_expr_NotEq = check_expr_BinOp
+    check_expr_Lt = check_expr_BinOp
+    check_expr_LtE = check_expr_BinOp
+    check_expr_Gt = check_expr_BinOp
+    check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
         vcolor, w_vtype = self.check_expr(expr.value)

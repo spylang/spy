@@ -305,17 +305,12 @@ class CFuncWriter:
     fmt_expr_Sub = fmt_expr_BinOp
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
-
-    def fmt_expr_CompareOp(self, cmpop: ast.CompareOp) -> C.Expr:
-        raise NotImplementedError(
-            'ast.CompareOp not supported. It should have been redshifted away')
-
-    fmt_expr_Eq = fmt_expr_CompareOp
-    fmt_expr_NotEq = fmt_expr_CompareOp
-    fmt_expr_Lt = fmt_expr_CompareOp
-    fmt_expr_LtE = fmt_expr_CompareOp
-    fmt_expr_Gt = fmt_expr_CompareOp
-    fmt_expr_GtE = fmt_expr_CompareOp
+    fmt_expr_Eq = fmt_expr_BinOp
+    fmt_expr_NotEq = fmt_expr_BinOp
+    fmt_expr_Lt = fmt_expr_BinOp
+    fmt_expr_LtE = fmt_expr_BinOp
+    fmt_expr_Gt = fmt_expr_BinOp
+    fmt_expr_GtE = fmt_expr_BinOp
 
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.func, ast.FQNConst), \

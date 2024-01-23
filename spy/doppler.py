@@ -147,21 +147,12 @@ class FuncDoppler:
     shift_expr_Sub = shift_expr_BinOp
     shift_expr_Mul = shift_expr_BinOp
     shift_expr_Div = shift_expr_BinOp
-
-    def shift_expr_CompareOp(self, cmpop: ast.CompareOp) -> ast.Expr:
-        l = self.shift_expr(cmpop.left)
-        r = self.shift_expr(cmpop.right)
-        w_opimpl = self.t.expr_opimpl[cmpop]
-        assert w_opimpl.fqn is not None
-        func = ast.FQNConst(cmpop.loc, w_opimpl.fqn)
-        return ast.Call(cmpop.loc, func, [l, r])
-
-    shift_expr_Eq = shift_expr_CompareOp
-    shift_expr_NotEq = shift_expr_CompareOp
-    shift_expr_Lt = shift_expr_CompareOp
-    shift_expr_LtE = shift_expr_CompareOp
-    shift_expr_Gt = shift_expr_CompareOp
-    shift_expr_GtE = shift_expr_CompareOp
+    shift_expr_Eq = shift_expr_BinOp
+    shift_expr_NotEq = shift_expr_BinOp
+    shift_expr_Lt = shift_expr_BinOp
+    shift_expr_LtE = shift_expr_BinOp
+    shift_expr_Gt = shift_expr_BinOp
+    shift_expr_GtE = shift_expr_BinOp
 
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
         v = self.shift_expr(op.value)
