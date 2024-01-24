@@ -55,6 +55,10 @@ class TestMain:
         res, stdout = self.run('--parse', self.foo_spy)
         assert stdout.startswith('Module(')
 
+    def test_redshift(self):
+        res, stdout = self.run('--redshift', self.foo_spy)
+        assert stdout.startswith('def add(x: i32, y: i32) -> i32:')
+
     def test_cwrite(self):
         res, stdout = self.run('--cwrite', self.foo_spy)
         foo_c = self.tmpdir.join('foo.c')
