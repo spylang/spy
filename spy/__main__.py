@@ -2,6 +2,7 @@ from typing import Annotated, Any, no_type_check
 from pathlib import Path
 import typer
 import py.path
+from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
 from spy.compiler import Compiler
@@ -16,7 +17,7 @@ def do_pyparse(filename: str) -> None:
     import ast as py_ast
     with open(filename) as f:
         src = f.read()
-    mod = py_ast.parse(src)
+    mod = magic_py_parse(src)
     mod.pp()
 
 @no_type_check
