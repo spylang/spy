@@ -25,16 +25,15 @@ def do_pyparse(filename: str) -> None:
 def main(filename: Path,
          pyparse: boolopt("dump the Python AST exit") = False,
          parse: boolopt("dump the SPy AST and exit") = False,
-         dis: boolopt("disassemble the SPy IR and exit") = False,
          cwrite: boolopt("create the .c file and exit") = False,
          g: boolopt("generate debug symbols", names=['-g']) = False,
          ) -> None:
     try:
-        do_main(filename, pyparse, parse, dis, cwrite, g)
+        do_main(filename, pyparse, parse, cwrite, g)
     except SPyError as e:
         print(e.format(use_colors=True))
 
-def do_main(filename: Path, pyparse: bool, parse: bool, dis: bool,
+def do_main(filename: Path, pyparse: bool, parse: bool,
             cwrite: bool, debug_symbols: bool) -> None:
     if pyparse:
         do_pyparse(str(filename))
@@ -50,11 +49,9 @@ def do_main(filename: Path, pyparse: bool, parse: bool, dis: bool,
     builddir = filename.parent
     vm = SPyVM()
     vm.path.append(str(builddir))
-    w_mod = vm.import_(modname) #, legacy=True) # XXX
-    if dis:
-        w_mod.pp()
-        return
+    w_mod = vm.import_(modname)
 
+    vm.redshift(modname)
     compiler = Compiler(vm, modname, py.path.local(builddir))
     if cwrite:
         compiler.cwrite()

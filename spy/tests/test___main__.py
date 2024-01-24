@@ -54,3 +54,10 @@ class TestMain:
     def test_parse(self):
         res, stdout = self.run('--parse', self.foo_spy)
         assert stdout.startswith('Module(')
+
+    def test_cwrite(self):
+        res, stdout = self.run('--cwrite', self.foo_spy)
+        foo_c = self.tmpdir.join('foo.c')
+        assert foo_c.exists()
+        csrc = foo_c.read()
+        assert csrc.startswith('#include <spy.h>')
