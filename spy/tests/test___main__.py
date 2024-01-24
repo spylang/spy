@@ -61,3 +61,10 @@ class TestMain:
         assert foo_c.exists()
         csrc = foo_c.read()
         assert csrc.startswith('#include <spy.h>')
+
+    def test_build(self):
+        res, stdout = self.run(self.foo_spy)
+        foo_wasm = self.tmpdir.join('foo.wasm')
+        assert foo_wasm.exists()
+        wasm_bytes = foo_wasm.read_binary()
+        assert wasm_bytes.startswith(b'\0asm')
