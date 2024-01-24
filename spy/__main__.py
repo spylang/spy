@@ -2,10 +2,13 @@ from typing import Annotated, Any, no_type_check
 from pathlib import Path
 import typer
 import py.path
+from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
+from spy.backend.spy import SPyBackend
 from spy.compiler import Compiler
 from spy.vm.vm import SPyVM
+from spy.vm.function import W_ASTFunc
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -16,24 +19,35 @@ def do_pyparse(filename: str) -> None:
     import ast as py_ast
     with open(filename) as f:
         src = f.read()
-    mod = py_ast.parse(src)
+    mod = magic_py_parse(src)
     mod.pp()
+
+def dump_spy_mod(vm: SPyVM, modname: str, pretty_print: bool = True):
+    if pretty_print:
+        fqn_format = 'short'
+    b = SPyBackend(vm, fqn_format=fqn_format)
+    w_mod = vm.modules_w[modname]
+    for fqn, w_obj in w_mod.items_w():
+        if isinstance(w_obj, W_ASTFunc):
+            print(b.dump_w_func(w_obj))
+
+
 
 @no_type_check
 @app.command()
 def main(filename: Path,
          pyparse: boolopt("dump the Python AST exit") = False,
          parse: boolopt("dump the SPy AST and exit") = False,
-         dis: boolopt("disassemble the SPy IR and exit") = False,
+         redshift: boolopt("perform redshift and exit") = False,
          cwrite: boolopt("create the .c file and exit") = False,
          g: boolopt("generate debug symbols", names=['-g']) = False,
          ) -> None:
     try:
-        do_main(filename, pyparse, parse, dis, cwrite, g)
+        do_main(filename, pyparse, parse, redshift, cwrite, g)
     except SPyError as e:
         print(e.format(use_colors=True))
 
-def do_main(filename: Path, pyparse: bool, parse: bool, dis: bool,
+def do_main(filename: Path, pyparse: bool, parse: bool, redshift: bool,
             cwrite: bool, debug_symbols: bool) -> None:
     if pyparse:
         do_pyparse(str(filename))
@@ -49,9 +63,11 @@ def do_main(filename: Path, pyparse: bool, parse: bool, dis: bool,
     builddir = filename.parent
     vm = SPyVM()
     vm.path.append(str(builddir))
-    w_mod = vm.import_(modname) #, legacy=True) # XXX
-    if dis:
-        w_mod.pp()
+    w_mod = vm.import_(modname)
+
+    vm.redshift(modname)
+    if redshift:
+        dump_spy_mod(vm, modname)
         return
 
     compiler = Compiler(vm, modname, py.path.local(builddir))
