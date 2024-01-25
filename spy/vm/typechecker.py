@@ -8,7 +8,7 @@ from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
-from spy.vm.modules.operator import OPS, OP_from_token
+from spy.vm.modules.operator import OPS
 from spy.vm.typeconverter import TypeConverter, DynamicCast
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -241,7 +241,7 @@ class TypeChecker:
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
 
-        w_op = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        w_op = OPS.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
         w_opimpl = self.vm.call_function(w_op, [w_ltype, w_rtype])
 
         if w_opimpl is B.w_NotImplemented:
