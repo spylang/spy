@@ -1,9 +1,7 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
-
 from . import OPS
-
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -30,3 +28,43 @@ def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Object:
     if w_vtype is B.w_str and w_itype is B.w_i32:
         return OPS.w_str_getitem
     return B.w_NotImplemented
+
+
+CMPOPS = {
+    (B.w_i32, B.w_i32, '=='): OPS.w_i32_eq,
+    (B.w_i32, B.w_i32, '!='): OPS.w_i32_ne,
+    (B.w_i32, B.w_i32, '<' ): OPS.w_i32_lt,
+    (B.w_i32, B.w_i32, '<='): OPS.w_i32_le,
+    (B.w_i32, B.w_i32, '>' ): OPS.w_i32_gt,
+    (B.w_i32, B.w_i32, '>='): OPS.w_i32_ge,
+}
+
+@OPS.primitive('def(l: type, r: type) -> dynamic')
+def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '==')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+@OPS.primitive('def(l: type, r: type) -> dynamic')
+def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '!=')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+@OPS.primitive('def(l: type, r: type) -> dynamic')
+def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '<')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+@OPS.primitive('def(l: type, r: type) -> dynamic')
+def LE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '<=')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+@OPS.primitive('def(l: type, r: type) -> dynamic')
+def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '>')
+    return CMPOPS.get(key, B.w_NotImplemented)
+
+@OPS.primitive('def(l: type, r: type) -> dynamic')
+def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    key = (w_ltype, w_rtype, '>=')
+    return CMPOPS.get(key, B.w_NotImplemented)
