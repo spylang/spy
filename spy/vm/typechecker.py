@@ -241,8 +241,8 @@ class TypeChecker:
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
 
-        opfn = ops.by_op(binop.op) # e.g., ops.ADD, ops.MUL, etc.
-        w_opimpl = opfn(self.vm, w_ltype, w_rtype)
+        w_op = ops.by_op(binop.op) # e.g., w_ADD, w_MUL, etc.
+        w_opimpl = self.vm.call_function(w_op, [w_ltype, w_rtype])
 
         if w_opimpl is B.w_NotImplemented:
             lt = w_ltype.name

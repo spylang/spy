@@ -9,22 +9,22 @@ if TYPE_CHECKING:
 
 OPS = ModuleRegistry('builtins.ops', '<builtins.ops>')
 
-def by_op(op: str) -> Any:
+def by_op(op: str) -> W_Func:
     """
     Return the generic operator corresponding to the given symbol.
 
     E.g., by_op('+') returns ops.ADD.
     """
     d = {
-        '+': ADD,
-        '*': MUL,
-        '==': EQ,
-        '!=': NE,
-        '<':  LT,
-        '<=': LE,
-        '>':  GT,
-        '>=': GE,
-        '[]': GETITEM,
+        '+': OPS.w_ADD,
+        '*': OPS.w_MUL,
+        '==': OPS.w_EQ,
+        '!=': OPS.w_NE,
+        '<':  OPS.w_LT,
+        '<=': OPS.w_LE,
+        '>':  OPS.w_GT,
+        '>=': OPS.w_GE,
+        '[]': OPS.w_GETITEM,
     }
     return d[op]
 
@@ -32,6 +32,8 @@ def by_op(op: str) -> Any:
 
 # XXX explain me
 
+# XXX these should be labeled as 'blue'
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     if w_ltype is w_rtype is B.w_i32:
         return OPS.w_i32_add
@@ -39,6 +41,7 @@ def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
         return OPS.w_str_add
     return B.w_NotImplemented
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     if w_ltype is w_rtype is B.w_i32:
         return OPS.w_i32_mul
@@ -46,6 +49,7 @@ def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
         return OPS.w_str_mul
     return B.w_NotImplemented
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Object:
     if w_vtype is B.w_str and w_itype is B.w_i32:
         return OPS.w_str_getitem
@@ -135,26 +139,32 @@ CMPOPS = {
     (B.w_i32, B.w_i32, '>='): OPS.w_i32_ge,
 }
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     key = (w_ltype, w_rtype, '==')
     return CMPOPS.get(key, B.w_NotImplemented)
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     key = (w_ltype, w_rtype, '!=')
     return CMPOPS.get(key, B.w_NotImplemented)
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     key = (w_ltype, w_rtype, '<')
     return CMPOPS.get(key, B.w_NotImplemented)
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def LE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     key = (w_ltype, w_rtype, '<=')
     return CMPOPS.get(key, B.w_NotImplemented)
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     key = (w_ltype, w_rtype, '>')
     return CMPOPS.get(key, B.w_NotImplemented)
 
+@OPS.primitive('def(l: type, r: type) -> dynamic')
 def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     key = (w_ltype, w_rtype, '>=')
     return CMPOPS.get(key, B.w_NotImplemented)
