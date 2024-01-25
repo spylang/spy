@@ -1,3 +1,41 @@
+"""
+SPy `operator` module.
+
+This is a central piece of how SPy works. First, some lexicon:
+
+  - "generic operator", also known as "operator": a blue function which takes
+    two types and return an opimpl
+
+  - "opimpl": a red function which takes two operands and return the result
+
+Basically, this means that the following code:
+
+    c = a + b
+
+Is roughly equivalent to this:
+
+    Ta = STATIC_TYPE(a)
+    Tb = STATIC_TYPE(b)
+    c = operator.ADD(Ta, Tb)(a, b)
+
+The dispatch ALWAYS happens on the static types of operands. So for example,
+if you have the following code:
+
+    a: object = 1
+    b: object = 2
+    a + b
+
+It's a SPyTypeError, because we don't have an opimpl for "object + object".
+
+The exception is the type `dynamic`:
+
+    a: dynamic = 1
+    b: dynamic = 2
+    a + b
+
+In this case, the dispatch will be done on the dynamic type of the operands.
+"""
+
 from spy.vm.function import W_Func
 from spy.vm.registry import ModuleRegistry
 
