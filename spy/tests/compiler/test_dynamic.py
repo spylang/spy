@@ -1,3 +1,4 @@
+import re
 import pytest
 from spy.errors import SPyTypeError
 from spy.vm.b import B
@@ -30,12 +31,22 @@ class TestDynamic(CompilerTest):
         with pytest.raises(SPyTypeError, match=msg):
             mod.foo()
 
-    ## def test_dynamic(self):
-    ##     mod = self.compile("""
-    ##     def get_x() -> dynamic:
-    ##         return 41
+    def test_dynamic_dispatch_ok(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            x: dynamic = 1
+            y: dynamic = 2
+            return x + y
+        """)
+        assert mod.foo() == 3
 
-    ##     def foo() -> i32:
-    ##         return get_x() + 1
-    ##     """)
-    ##     assert mod.foo() == 42
+    def test_dynamic_dispatch_error(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            x: dynamic = 1
+            y: dynamic = 'hello'
+            return x + y
+        """)
+        msg = re.escape('cannot do `i32` + `str`')
+        with pytest.raises(SPyTypeError, match=msg):
+            mod.foo()

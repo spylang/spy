@@ -58,9 +58,10 @@ OPERATOR = OperatorRegistry('operator', '<operator>')
 OP = OPERATOR
 
 # the folloing imports register all the various objects on OP
-from . import opimpl_i32 # side effects
-from . import opimpl_str # side effects
-from . import binop      # side effects
+from . import opimpl_i32     # side effects
+from . import opimpl_str     # side effects
+from . import opimpl_dynamic # side effects
+from . import binop          # side effects
 
 
 # fill the _from_token dict
