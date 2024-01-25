@@ -24,8 +24,15 @@ MM.register('*',  'str', 'i32', OP.w_str_mul)
 MM.register('[]', 'str', 'i32', OP.w_str_getitem)
 
 # dynamic ops
-MM.register('+', 'dynamic', None, OP.w_dynamic_add)
-MM.register('+', None, 'dynamic', OP.w_dynamic_add)
+MM.register_partial('+',  'dynamic', OP.w_dynamic_add)
+MM.register_partial('*',  'dynamic', OP.w_dynamic_mul)
+MM.register_partial('==', 'dynamic', OP.w_dynamic_eq)
+MM.register_partial('!=', 'dynamic', OP.w_dynamic_ne)
+MM.register_partial('<',  'dynamic', OP.w_dynamic_lt)
+MM.register_partial('<=', 'dynamic', OP.w_dynamic_le)
+MM.register_partial('>',  'dynamic', OP.w_dynamic_gt)
+MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
+
 
 # XXX these should be labeled as 'blue'
 @OP.primitive('def(l: type, r: type) -> dynamic')

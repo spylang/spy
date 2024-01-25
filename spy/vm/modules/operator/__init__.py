@@ -53,6 +53,15 @@ class OperatorRegistry(ModuleRegistry):
         """
         return self._from_token[token]
 
+    def to_token(self, w_OP: W_Func) -> str:
+        """
+        Inverse of from_token
+        """
+        for token, w_obj in self._from_token.items():
+            if w_obj is w_OP:
+                return token
+        raise KeyError(w_OP)
+
 
 OPERATOR = OperatorRegistry('operator', '<operator>')
 OP = OPERATOR

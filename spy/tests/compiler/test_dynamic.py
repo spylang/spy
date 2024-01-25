@@ -40,7 +40,7 @@ class TestDynamic(CompilerTest):
         """)
         assert mod.foo() == 3
 
-    def test_dynamic_dispatch_error(self):
+    def test_dynamic_runtime_error(self):
         mod = self.compile("""
         def foo() -> i32:
             x: dynamic = 1
@@ -59,3 +59,37 @@ class TestDynamic(CompilerTest):
             return x + y
         """)
         assert mod.foo() == 3
+
+    def test_other_ops(self):
+        mod = self.compile("""
+        def mul(x: dynamic, y: dynamic) -> dynamic: return x  * y
+        def eq (x: dynamic, y: dynamic) -> dynamic: return x == y
+        def neq(x: dynamic, y: dynamic) -> dynamic: return x != y
+        def lt (x: dynamic, y: dynamic) -> dynamic: return x  < y
+        def lte(x: dynamic, y: dynamic) -> dynamic: return x <= y
+        def gt (x: dynamic, y: dynamic) -> dynamic: return x  > y
+        def gte(x: dynamic, y: dynamic) -> dynamic: return x >= y
+        """)
+        assert mod.mul(5, 6) == 30
+        #
+        assert mod.eq(5, 5) is True
+        assert mod.eq(5, 6) is False
+        #
+        assert mod.neq(5, 5) is False
+        assert mod.neq(5, 6) is True
+        #
+        assert mod.lt(5, 6) is True
+        assert mod.lt(5, 5) is False
+        assert mod.lt(6, 5) is False
+        #
+        assert mod.lte(5, 6) is True
+        assert mod.lte(5, 5) is True
+        assert mod.lte(6, 5) is False
+        #
+        assert mod.gt(5, 6) is False
+        assert mod.gt(5, 5) is False
+        assert mod.gt(6, 5) is True
+        #
+        assert mod.gte(5, 6) is False
+        assert mod.gte(5, 5) is True
+        assert mod.gte(6, 5) is True
