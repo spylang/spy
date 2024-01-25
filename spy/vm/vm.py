@@ -8,13 +8,13 @@ from spy.doppler import redshift
 from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
 from spy.vm.str import W_str
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.vm.ops import OPS
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.registry import ModuleRegistry
 
-import spy.vm.builtins2 # side effects
+import spy.vm.modules.builtins # side effects
 
 class SPyVM:
     """

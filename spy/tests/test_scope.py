@@ -8,7 +8,7 @@ from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import Symbol, Color
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.tests.support import expect_errors, MatchAnnotation
 
 MISSING = object()

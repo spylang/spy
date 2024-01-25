@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType
 

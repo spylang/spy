@@ -2,7 +2,7 @@ from typing import Any, Optional, TYPE_CHECKING
 from types import NoneType
 from fixedint import FixedInt
 from spy import ast
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.astframe import ASTFrame

@@ -1,20 +1,16 @@
 """
-Additional builtins.
+Second half of the `builtins` module.
 
-This is a bit ugly but it has to be separated from builtins.py to avoid
-circular imports
+The first half is in vm/b.py. See its docstring for more details.
 """
 
 from typing import TYPE_CHECKING
-from spy.vm.registry import ModuleRegistry
 from spy.vm.object import W_i32
-from spy.vm.builtins import B
-
+from spy.vm.b import BUILTINS
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-
-@B.primitive('def(x: i32) -> i32')
+@BUILTINS.primitive('def(x: i32) -> i32')
 def abs(vm: 'SPyVM', w_x: W_i32) -> W_i32:
     x = vm.unwrap_i32(w_x)
     res = vm.ll.call('spy_builtins__abs', x)

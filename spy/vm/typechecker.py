@@ -7,7 +7,7 @@ from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.vm import ops
 from spy.vm.typeconverter import TypeConverter, DynamicCast
 from spy.util import magic_dispatch
