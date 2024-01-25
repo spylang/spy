@@ -7,8 +7,8 @@ from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
-from spy.vm.builtins import B
-from spy.vm import ops
+from spy.vm.b import B
+from spy.vm.modules.operator import OP
 from spy.vm.typeconverter import TypeConverter, DynamicCast
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -241,8 +241,8 @@ class TypeChecker:
         rcolor, w_rtype = self.check_expr(binop.right)
         color = maybe_blue(lcolor, rcolor)
 
-        opfn = ops.by_op(binop.op) # e.g., ops.ADD, ops.MUL, etc.
-        w_opimpl = opfn(self.vm, w_ltype, w_rtype)
+        w_op = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        w_opimpl = self.vm.call_function(w_op, [w_ltype, w_rtype])
 
         if w_opimpl is B.w_NotImplemented:
             lt = w_ltype.name
@@ -270,12 +270,12 @@ class TypeChecker:
         vcolor, w_vtype = self.check_expr(expr.value)
         icolor, w_itype = self.check_expr(expr.index)
         color = maybe_blue(vcolor, icolor)
-        w_opimpl = ops.GETITEM(self.vm, w_vtype, w_itype)
-        if w_opimpl is ops.OPS.w_str_getitem:
+        w_opimpl = OP.w_GETITEM.pyfunc(self.vm, w_vtype, w_itype)
+        if w_opimpl is OP.w_str_getitem:
             # XXX for now this is a special case, to check that `i` can be
             # converted to `i32`. Ideally, we should use the same mechanism
             # that we have already for calls
-            self.expr_opimpl[expr] = ops.OPS.w_str_getitem
+            self.expr_opimpl[expr] = OP.w_str_getitem
             err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
             if err:
                 err.add('note', f'this is a `str`', expr.value.loc)

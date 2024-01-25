@@ -1,6 +1,6 @@
 import pytest
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.vm.function import W_FuncType
 
 class TestFunction:

@@ -10,7 +10,7 @@ from spy.vm.str import W_str
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import c_ast as C
@@ -318,14 +318,14 @@ class CFuncWriter:
 
         # some calls are special-cased and transformed into a C binop
         binops = {
-            FQN('builtins.ops::i32_add'): '+',
-            FQN('builtins.ops::i32_mul'): '*',
-            FQN('builtins.ops::i32_eq') : '==',
-            FQN('builtins.ops::i32_ne') : '!=',
-            FQN('builtins.ops::i32_lt') : '<',
-            FQN('builtins.ops::i32_le') : '<=',
-            FQN('builtins.ops::i32_gt') : '>',
-            FQN('builtins.ops::i32_ge') : '>=',
+            FQN('operator::i32_add'): '+',
+            FQN('operator::i32_mul'): '*',
+            FQN('operator::i32_eq') : '==',
+            FQN('operator::i32_ne') : '!=',
+            FQN('operator::i32_lt') : '<',
+            FQN('operator::i32_le') : '<=',
+            FQN('operator::i32_gt') : '>',
+            FQN('operator::i32_ge') : '>=',
         }
         op = binops.get(call.func.fqn)
         if op is not None:

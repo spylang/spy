@@ -1,7 +1,7 @@
 import pytest
 from spy.fqn import FQN
 from spy.errors import SPyTypeError
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors, only_interp)
 

@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import SymTable
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc

@@ -7,11 +7,10 @@ from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
 from spy.irgen.symtable import Symbol
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
-from spy.vm import ops
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch

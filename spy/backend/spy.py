@@ -116,8 +116,8 @@ class SPyBackend:
     def fmt_expr_Call(self, call: ast.Call) -> str:
         if isinstance(call.func, ast.FQNConst):
             fqn2ast = {
-                FQN('builtins.ops::i32_add'): ast.Add,
-                FQN('builtins.ops::i32_mul'): ast.Mul,
+                FQN('operator::i32_add'): ast.Add,
+                FQN('operator::i32_mul'): ast.Mul,
             }
             opclass = fqn2ast.get(call.func.fqn)
             assert opclass is not None

@@ -1,7 +1,7 @@
 import fixedint
 import pytest
 from spy.vm.vm import SPyVM
-from spy.vm.builtins import B
+from spy.vm.b import B
 from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32, W_bool
