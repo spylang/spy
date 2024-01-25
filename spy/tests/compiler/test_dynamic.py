@@ -50,3 +50,12 @@ class TestDynamic(CompilerTest):
         msg = re.escape('cannot do `i32` + `str`')
         with pytest.raises(SPyTypeError, match=msg):
             mod.foo()
+
+    def test_mixed_dispatch(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            x: dynamic = 1
+            y: i32 = 2
+            return x + y
+        """)
+        assert mod.foo() == 3

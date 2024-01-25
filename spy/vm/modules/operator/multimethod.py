@@ -1,5 +1,19 @@
 """
 Poor man's implementation of multimethods.
+
+This uses a super simple logic: we keep a table of ('op', ltype, rtype) and we
+do precise lookups. For now, there is no support for implicit conversions,
+supertypes, etc.
+
+When registering an opimpl, you can specify only one of the two types, leaving
+the other as `None`. During lookup, we first try a precise lookup, and the one
+of the two partial ones, in order.
+
+E.g.:
+    MM.register('+', 'dynamic', None, OP.w_dynamic_add)
+    MM.register('+', None, 'dynamic', OP.w_dynamic_add)
+
+will call w_dynamic_add as long as one of the two operands is 'dynamic'.
 """
 from typing import Optional
 from spy.vm.b import B
@@ -34,5 +48,13 @@ class MultiMethodTable:
         self.impls[key] = w_impl
 
     def lookup(self, op: str, w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
-        key = (op, w_ltype, w_rtype)
-        return self.impls.get(key, B.w_NotImplemented)
+        keys = [
+            (op, w_ltype, w_rtype),  # most precise lookup
+            (op, w_ltype, None),     # less precise ones
+            (op, None,    w_rtype),
+        ]
+        for key in keys:
+            w_opimpl = self.impls.get(key)
+            if w_opimpl:
+                return w_opimpl
+        return B.w_NotImplemented
