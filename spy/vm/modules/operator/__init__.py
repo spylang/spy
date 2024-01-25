@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 OPS = ModuleRegistry('builtins.ops', '<builtins.ops>')
 
-def by_op(op: str) -> W_Func:
+def OP_from_token(op: str) -> W_Func:
     """
     Return the generic operator corresponding to the given symbol.
 
