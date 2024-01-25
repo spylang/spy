@@ -54,7 +54,7 @@ class OperatorRegistry(ModuleRegistry):
         return self._from_token[token]
 
 
-OPERATOR = OperatorRegistry('builtins.ops', '<builtins.ops>')
+OPERATOR = OperatorRegistry('operator', '<operator>')
 OP = OPERATOR
 
 # the folloing imports register all the various objects on OP

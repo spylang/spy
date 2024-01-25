@@ -318,14 +318,14 @@ class CFuncWriter:
 
         # some calls are special-cased and transformed into a C binop
         binops = {
-            FQN('builtins.ops::i32_add'): '+',
-            FQN('builtins.ops::i32_mul'): '*',
-            FQN('builtins.ops::i32_eq') : '==',
-            FQN('builtins.ops::i32_ne') : '!=',
-            FQN('builtins.ops::i32_lt') : '<',
-            FQN('builtins.ops::i32_le') : '<=',
-            FQN('builtins.ops::i32_gt') : '>',
-            FQN('builtins.ops::i32_ge') : '>=',
+            FQN('operator::i32_add'): '+',
+            FQN('operator::i32_mul'): '*',
+            FQN('operator::i32_eq') : '==',
+            FQN('operator::i32_ne') : '!=',
+            FQN('operator::i32_lt') : '<',
+            FQN('operator::i32_le') : '<=',
+            FQN('operator::i32_gt') : '>',
+            FQN('operator::i32_ge') : '>=',
         }
         op = binops.get(call.func.fqn)
         if op is not None:
