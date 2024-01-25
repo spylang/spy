@@ -54,23 +54,24 @@ class OperatorRegistry(ModuleRegistry):
         return self._from_token[token]
 
 
-OPS = OperatorRegistry('builtins.ops', '<builtins.ops>')
+OPERATOR = OperatorRegistry('builtins.ops', '<builtins.ops>')
+OP = OPERATOR
 
-# the folloing imports register all the various objects on OPS
+# the folloing imports register all the various objects on OP
 from . import opimpl_i32 # side effects
 from . import opimpl_str # side effects
 from . import binop      # side effects
 
 
 # fill the _from_token dict
-OPS._from_token.update({
-    '+': OPS.w_ADD,
-    '*': OPS.w_MUL,
-    '==': OPS.w_EQ,
-    '!=': OPS.w_NE,
-    '<':  OPS.w_LT,
-    '<=': OPS.w_LE,
-    '>':  OPS.w_GT,
-    '>=': OPS.w_GE,
-    '[]': OPS.w_GETITEM,
+OP._from_token.update({
+    '+': OP.w_ADD,
+    '*': OP.w_MUL,
+    '==': OP.w_EQ,
+    '!=': OP.w_NE,
+    '<':  OP.w_LT,
+    '<=': OP.w_LE,
+    '>':  OP.w_GT,
+    '>=': OP.w_GE,
+    '[]': OP.w_GETITEM,
 })

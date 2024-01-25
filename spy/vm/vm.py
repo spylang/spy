@@ -14,7 +14,7 @@ from spy.vm.module import W_Module
 from spy.vm.registry import ModuleRegistry
 
 from spy.vm.modules.builtins import BUILTINS
-from spy.vm.modules.operator import OPS
+from spy.vm.modules.operator import OPERATOR
 
 class SPyVM:
     """
@@ -36,7 +36,7 @@ class SPyVM:
         self.modules_w = {}
         self.path = []
         self.make_module(BUILTINS)  # builtins::
-        self.make_module(OPS)       # operator::
+        self.make_module(OPERATOR)  # operator::
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file
