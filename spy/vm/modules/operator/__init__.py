@@ -6,7 +6,7 @@ class OperatorRegistry(ModuleRegistry):
     Like ModuleRegistry, but adds a from_token method.
     """
 
-    _from_token = {}
+    _from_token: dict[str, W_Func] = {}
     def from_token(self, token: str) -> W_Func:
         """
         Return the generic operator corresponding to the given token.
