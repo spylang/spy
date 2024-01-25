@@ -38,13 +38,13 @@ class TestMain:
             return x + y
         """))
 
-    def run(self, *args: Any) -> None:
-        args = [str(arg) for arg in args]
-        print('run: spy %s' % ' '.join(args))
-        res = self.runner.invoke(app, args)
+    def run(self, *args: Any) -> Any:
+        args2 = [str(arg) for arg in args]
+        print('run: spy %s' % ' '.join(args2))
+        res = self.runner.invoke(app, args2)
         print(res.stdout)
         if res.exit_code != 0:
-            raise res.exception
+            raise res.exception  # type: ignore
         return res, decolorize(res.stdout)
 
     def test_pyparse(self):

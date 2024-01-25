@@ -22,10 +22,8 @@ def do_pyparse(filename: str) -> None:
     mod = magic_py_parse(src)
     mod.pp()
 
-def dump_spy_mod(vm: SPyVM, modname: str, pretty_print: bool = True):
-    if pretty_print:
-        fqn_format = 'short'
-    b = SPyBackend(vm, fqn_format=fqn_format)
+def dump_spy_mod(vm: SPyVM, modname: str) -> None:
+    b = SPyBackend(vm, fqn_format='short')
     w_mod = vm.modules_w[modname]
     for fqn, w_obj in w_mod.items_w():
         if isinstance(w_obj, W_ASTFunc):
