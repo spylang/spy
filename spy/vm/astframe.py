@@ -216,6 +216,8 @@ class ASTFrame:
     eval_expr_GtE = eval_expr_BinOp
 
     def eval_expr_Call(self, call: ast.Call) -> W_Object:
+        color, w_functype = self.t.check_expr(call.func)
+        assert color == 'blue', 'indirect calls not supported'
         w_func = self.eval_expr(call.func)
         assert isinstance(w_func, W_Func)
         args_w = [self.eval_expr(arg) for arg in call.args]

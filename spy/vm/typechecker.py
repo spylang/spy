@@ -294,6 +294,10 @@ class TypeChecker:
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
+
+        if w_functype is B.w_dynamic:
+            return color, B.w_dynamic
+
         if not isinstance(w_functype, W_FuncType):
             self._call_error_non_callable(call, sym, w_functype)
         #

@@ -93,3 +93,24 @@ class TestDynamic(CompilerTest):
         assert mod.gte(5, 6) is False
         assert mod.gte(5, 5) is True
         assert mod.gte(6, 5) is True
+
+    def test_call(self):
+        mod = self.compile("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            fn: dynamic = inc;
+            return fn(7)
+        """)
+        assert mod.foo() == 8
+
+    @pytest.mark.xfail("fixme")
+    def test_wrong_call(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            fn: dynamic = 'hello';
+            return fn(7)
+        """)
+        # we would like this to raise an error at runtime
+        mod.foo()
