@@ -57,6 +57,10 @@ class SPyVM:
         """
         for fqn, w_func in self.globals_w.items():
             if fqn.modname == modname and isinstance(w_func, W_ASTFunc):
+                # we don't want to redshift @blue functions
+                if w_func.w_functype.color == 'blue':
+                    continue
+
                 assert not w_func.redshifted, 'redshift already called'
                 w_newfunc = redshift(self, w_func)
                 assert w_newfunc.redshifted
