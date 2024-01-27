@@ -111,12 +111,18 @@ class TestDynamic(CompilerTest):
         """)
         assert mod.foo() == 8
 
-    @pytest.mark.xfail(reason="fixme")
     def test_wrong_call(self):
+        if self.backend == 'doppler':
+            pytest.skip('fixme')
+
         mod = self.compile("""
+        @blue
+        def get_inc() -> dynamic:
+            return 'hello'
+
         def foo() -> i32:
-            fn: dynamic = 'hello';
-            return fn(7)
+            return get_inc()(7)
         """)
-        # we would like this to raise an error at runtime
-        mod.foo()
+        msg = 'cannot call objects of type `str`'
+        with pytest.raises(SPyTypeError, match=msg):
+            mod.foo()

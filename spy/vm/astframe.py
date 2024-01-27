@@ -219,7 +219,18 @@ class ASTFrame:
         color, w_functype = self.t.check_expr(call.func)
         assert color == 'blue', 'indirect calls not supported'
         w_func = self.eval_expr(call.func)
+
+        if w_functype is B.w_dynamic:
+            # if the static type is `dynamic` and thing is not a function,
+            # it's a TypeError
+            if not isinstance(w_func, W_Func):
+                t = self.vm.dynamic_type(w_func)
+                raise SPyTypeError(f'cannot call objects of type `{t.name}`')
+
+        # if the static type is not `dynamic` and the thing is not a function,
+        # it's a bug in the typechecker
         assert isinstance(w_func, W_Func)
+
         args_w = [self.eval_expr(arg) for arg in call.args]
         w_res = self.vm.call_function(w_func, args_w)
         return w_res
