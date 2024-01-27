@@ -529,3 +529,17 @@ class TestBasic(CompilerTest):
         w_functype = mod.foo.w_functype
         assert w_functype.name == 'def(x: i32) -> i32'
         assert mod.foo(1) == 2
+
+    @skip_backends('doppler', 'C', reason='fixme')
+    def test_call_blue_closure(self):
+        mod = self.compile("""
+        @blue
+        def make_adder(x: i32) -> dynamic:
+            def adder(y: i32) -> i32:
+                return x + y
+            return adder
+
+        def foo() -> i32:
+            return make_adder(3)(6)
+        """)
+        mod.foo()

@@ -315,8 +315,10 @@ class TypeChecker:
                     err.add('note', 'function defined here', sym.loc)
                 raise err
         #
-        color = 'red' # XXX fix me
-        return color, w_functype.w_restype
+        # the color of the result depends on the color of the function: if we
+        # call a @blue function, we get a blue result
+        rescolor = w_functype.color
+        return rescolor, w_functype.w_restype
 
     def _call_error_non_callable(self, call: ast.Call,
                                  sym: Optional[Symbol],
