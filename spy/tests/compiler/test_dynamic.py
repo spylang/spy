@@ -94,15 +94,20 @@ class TestDynamic(CompilerTest):
         assert mod.gte(5, 5) is True
         assert mod.gte(6, 5) is True
 
-    @pytest.mark.xfail(reason="fixme")
     def test_call(self):
+        if self.backend == 'doppler':
+            pytest.skip('fixme')
+
         mod = self.compile("""
         def inc(x: i32) -> i32:
             return x + 1
 
+        @blue
+        def get_inc() -> dynamic:
+            return inc
+
         def foo() -> i32:
-            fn: dynamic = inc;
-            return fn(7)
+            return get_inc()(7)
         """)
         assert mod.foo() == 8
 
