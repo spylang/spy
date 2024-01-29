@@ -114,14 +114,22 @@ class SPyBackend:
     fmt_expr_Div = fmt_expr_BinOp
 
     def fmt_expr_Call(self, call: ast.Call) -> str:
-        if isinstance(call.func, ast.FQNConst):
-            fqn2ast = {
-                FQN('operator::i32_add'): ast.Add,
-                FQN('operator::i32_mul'): ast.Mul,
-            }
-            opclass = fqn2ast.get(call.func.fqn)
-            assert opclass is not None
+        if not isinstance(call.func, ast.FQNConst):
+            raise NotImplementedError('fix me')
+
+        # let's see whether it's a special case
+        fqn2ast = {
+            FQN('operator::i32_add'): ast.Add,
+            FQN('operator::i32_mul'): ast.Mul,
+        }
+        opclass = fqn2ast.get(call.func.fqn)
+        if opclass is not None:
             assert len(call.args) == 2
             binop = opclass(call.loc, call.args[0], call.args[1])
             return self.fmt_expr_BinOp(binop)
-        raise NotImplementedError('fix me')
+
+        # standard case
+        name = self.fmt_expr(call.func)
+        arglist = [self.fmt_expr(arg) for arg in call.args]
+        args = ', '.join(arglist)
+        return f'{name}({args})'
