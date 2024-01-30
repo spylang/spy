@@ -296,7 +296,18 @@ class TypeChecker:
         sym = self.name2sym_maybe(call.func)
 
         if w_functype is B.w_dynamic:
-            return color, B.w_dynamic
+            # XXX: how are we supposed to know the color of the result if we
+            # are calling a dynamic expr?
+            # E.g.:
+            #
+            # @blue
+            # def foo(): ...
+            #
+            # @blue
+            # def bar(): ...
+            #     x: dynamic = foo
+            #     x()   # color???
+            return 'red', B.w_dynamic # ???
 
         if not isinstance(w_functype, W_FuncType):
             self._call_error_non_callable(call, sym, w_functype)
