@@ -125,6 +125,18 @@ class SPyBackend:
             for stmt in while_node.body:
                 self.emit_stmt(stmt)
 
+    def emit_stmt_If(self, if_node: ast.If) -> None:
+        test = self.fmt_expr(if_node.test)
+        self.wl(f'if {test}:')
+        with self.out.indent():
+            for stmt in if_node.then_body:
+                self.emit_stmt(stmt)
+        if if_node.else_body:
+            self.wl('else:')
+            with self.out.indent():
+                for stmt in if_node.else_body:
+                    self.emit_stmt(stmt)
+
     # expressions
 
     def fmt_expr_Constant(self, const: ast.Constant) -> str:

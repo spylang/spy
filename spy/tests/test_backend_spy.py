@@ -117,6 +117,19 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_if(self):
+        src = """
+        def foo() -> void:
+            if 1:
+                aaa
+            if 2:
+                bbb
+            else:
+                ccc
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_zz_sanity_check(self):
         """
         This is a hack.

@@ -127,9 +127,9 @@ class CompilerTest:
         backend: the IR code is not compiled and function are executed by the
         VM.
         """
-        self.ALL_COMPILED_SOURCES.add(src)
         self.write_file(f'{modname}.spy', src)
         self.w_mod = self.vm.import_(modname)
+        self.ALL_COMPILED_SOURCES.add(src)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
