@@ -78,6 +78,12 @@ class ModuleGen:
         assign = decl.assign
         fqn = self.vm.get_unique_FQN(modname=self.modname, attr=vardef.name,
                                      is_global=True)
-        w_type = frame.eval_expr_type(vardef.type)
-        w_val = frame.eval_expr(assign.value)
-        self.vm.add_global(fqn, w_type, w_val)
+        if vardef.type is None:
+            # type inference
+            w_val = frame.eval_expr(assign.value)
+            self.vm.add_global(fqn, None, w_val)
+        else:
+            # eval the type and use it in the globals declaration
+            w_type = frame.eval_expr_type(vardef.type)
+            w_val = frame.eval_expr(assign.value)
+            self.vm.add_global(fqn, w_type, w_val)

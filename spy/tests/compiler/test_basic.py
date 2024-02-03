@@ -2,6 +2,7 @@ import pytest
 from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.b import B
+from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors, only_interp)
 
@@ -575,3 +576,17 @@ class TestBasic(CompilerTest):
                                  "True",
                                  "None",
                                  ""])
+
+    def test_global_const_type_inference(self):
+        mod = self.compile(
+        """
+        @blue
+        def INIT_X():
+            return 1 + 2 * 3
+
+        x = INIT_X()
+        """)
+        vm = self.vm
+        assert mod.x == 7
+        w_xtype = self.vm.globals_types[FQN("test::x")]
+        assert w_xtype is B.w_i32

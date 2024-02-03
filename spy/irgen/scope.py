@@ -158,7 +158,12 @@ class ScopeAnalyzer:
             color = 'red'
         else:
             color = 'blue'
-        self.add_name(decl.vardef.name, color, decl.loc, decl.vardef.type.loc)
+
+        if decl.vardef.type is None:
+            typeloc = decl.assign.value.loc
+        else:
+            typeloc = decl.vardef.type.loc
+        self.add_name(decl.vardef.name, color, decl.loc, typeloc)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.kind == 'var'
