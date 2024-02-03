@@ -8,7 +8,7 @@ CFLAGS=-DNDEBUG -O3 \
 
 LDFLAGS=--no-entry --import-memory
 
-OBJECTS=vendored/walloc/walloc.o src/str.o src/builtins.o src/rawbuffer.o
+OBJECTS=vendored/walloc/walloc.o src/str.o src/builtins.o
 
 libspy.wasm: libspy.a
 	zig wasm-ld \
