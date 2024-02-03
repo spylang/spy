@@ -68,6 +68,7 @@ OP = OPERATOR
 
 # the folloing imports register all the various objects on OP
 from . import opimpl_i32     # side effects
+from . import opimpl_f64     # side effects
 from . import opimpl_str     # side effects
 from . import opimpl_dynamic # side effects
 from . import binop          # side effects

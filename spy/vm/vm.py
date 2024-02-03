@@ -218,6 +218,11 @@ class SPyVM:
             raise Exception('Type mismatch')
         return w_value.value
 
+    def unwrap_f64(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_F64):
+            raise Exception('Type mismatch')
+        return w_value.value
+
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
         assert w_functype.arity == len(args_w)
