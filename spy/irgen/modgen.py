@@ -69,6 +69,7 @@ class ModuleGen:
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
         frame.exec_stmt_FuncDef(funcdef)
         w_func = frame.load_local(funcdef.name)
+        assert isinstance(w_func, W_ASTFunc)
         fqn = w_func.fqn
         self.vm.add_global(fqn, None, w_func)
 

@@ -133,7 +133,7 @@ class W_ASTFunc(W_Func):
         return self.locals_types_w is not None
 
     @property
-    def color(self):
+    def color(self) -> Color:
         """
         Just a shortcut
         """

@@ -73,14 +73,13 @@ class SPyVM:
                 break
             self._redshift_some(funcs)
 
-    def _redshift_some(self, funcs) -> None:
+    def _redshift_some(self, funcs: list[tuple[FQN, W_ASTFunc]]) -> None:
         for fqn, w_func in funcs:
-            if isinstance(w_func, W_ASTFunc):
-                assert w_func.color != 'blue'
-                assert not w_func.redshifted
-                w_newfunc = redshift(self, w_func)
-                assert w_newfunc.redshifted
-                self.globals_w[fqn] = w_newfunc
+            assert w_func.color != 'blue'
+            assert not w_func.redshifted
+            w_newfunc = redshift(self, w_func)
+            assert w_newfunc.redshifted
+            self.globals_w[fqn] = w_newfunc
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
