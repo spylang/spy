@@ -4,6 +4,7 @@ import pytest
 from spy import ast
 from spy.parser import Parser
 from spy.ast_dump import dump
+from spy.util import print_diff
 from spy.tests.support import CompilerTest, expect_errors, MatchAnnotation
 
 @pytest.mark.usefixtures('init')
@@ -28,10 +29,13 @@ class TestParser:
     def assert_dump(self, node: ast.Node, expected: str):
         dumped = dump(node, use_colors=False,
                       fields_to_ignore=('symtable',))
-        expected = textwrap.dedent(expected)
+        dumped = dumped.strip()
+        expected = textwrap.dedent(expected).strip()
         if '{tmpdir}' in expected:
             expected = expected.format(tmpdir=self.tmpdir)
-        assert dumped.strip() == expected.strip()
+        if dumped != expected:
+            print_diff(expected, dumped, 'expected', 'got')
+            pytest.fail("assert_dump failed")
 
     def test_Module(self):
         mod = self.parse("""
@@ -327,6 +331,46 @@ class TestParser:
                         name='x',
                         type=Name(id='i32'),
                     ),
+                    assign=Assign(
+                        target='x',
+                        value=Constant(value=42),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
+    def test_global_VarDef_auto_const(self):
+        mod = self.parse("""
+        x = 42
+        """)
+        expected = f"""
+        Module(
+            filename='{self.tmpdir}/test.spy',
+            decls=[
+                GlobalVarDef(
+                    vardef=VarDef(kind='const', name='x', type=None),
+                    assign=Assign(
+                        target='x',
+                        value=Constant(value=42),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
+    def test_global_VarDef_auto_var(self):
+        mod = self.parse("""
+        var x = 42
+        """)
+        expected = f"""
+        Module(
+            filename='{self.tmpdir}/test.spy',
+            decls=[
+                GlobalVarDef(
+                    vardef=VarDef(kind='var', name='x', type=None),
                     assign=Assign(
                         target='x',
                         value=Constant(value=42),
