@@ -17,7 +17,7 @@ all over the place and we need to import it very early.
 
 from spy.vm.registry import ModuleRegistry
 from spy.vm.object import (W_Object, W_Type, w_DynamicType, W_Void, W_I32,
-                           W_Bool, W_NotImplementedType)
+                           W_F64, W_Bool, W_NotImplementedType)
 from spy.vm.str import W_Str
 
 
@@ -29,6 +29,7 @@ B.add('type', W_Type._w)
 B.add('void', W_Void._w)
 B.add('dynamic', w_DynamicType)
 B.add('i32', W_I32._w)
+B.add('f64', W_F64._w)
 B.add('bool', W_Bool._w)
 B.add('str', W_Str._w)
 B.add('None', W_Void._w_singleton)

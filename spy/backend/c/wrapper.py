@@ -97,6 +97,8 @@ class WasmFuncWrapper:
             return None
         elif w_type is B.w_i32:
             return res
+        elif w_type is B.w_f64:
+            return res
         elif w_type is B.w_bool:
             return bool(res)
         elif w_type is B.w_str:

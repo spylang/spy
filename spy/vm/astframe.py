@@ -180,7 +180,7 @@ class ASTFrame:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
-        assert T in (int, bool, str, NoneType)
+        assert T in (int, float, bool, str, NoneType)
         return self.vm.wrap(const.value)
 
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_Object:

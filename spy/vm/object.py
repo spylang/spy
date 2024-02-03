@@ -196,6 +196,21 @@ class W_I32(W_Object):
         return self.value
 
 
+@spytype('f64')
+class W_F64(W_Object):
+    value: float
+
+    def __init__(self, value: float) -> None:
+        assert type(value) is float
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f'W_F64({self.value})'
+
+    def spy_unwrap(self, vm: 'SPyVM') -> float:
+        return self.value
+
+
 @spytype('bool')
 class W_Bool(W_Object):
     value: bool

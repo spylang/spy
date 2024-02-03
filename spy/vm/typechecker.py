@@ -218,9 +218,11 @@ class TypeChecker:
 
     def check_expr_Constant(self, const: ast.Constant) -> tuple[Color, W_Type]:
         T = type(const.value)
-        assert T in (int, bool, str, NoneType)
+        assert T in (int, float, bool, str, NoneType)
         if T is int:
             return 'blue', B.w_i32
+        elif T is float:
+            return 'blue', B.w_f64
         elif T is bool:
             return 'blue', B.w_bool
         elif T is str:
