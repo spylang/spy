@@ -194,6 +194,11 @@ class CFuncWriter:
         magic_dispatch(self, 'emit_stmt', stmt)
 
     def fmt_expr(self, expr: ast.Expr) -> C.Expr:
+        # XXX: here we should probably handle typeconv, if present.
+        # However, we cannot yet write a test for it because:
+        #   - we cannot test DynamicCast because we don't support object
+        #   - we cannot test NumericConv because the expressions are
+        #     automatically converted by the C compiler anyway
         return magic_dispatch(self, 'fmt_expr', expr)
 
     # ===== statements =====
