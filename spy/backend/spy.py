@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from spy import ast
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -150,42 +150,49 @@ class SPyBackend:
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
 
-    def fmt_expr_Call(self, call: ast.Call) -> str:
-        if not isinstance(call.func, ast.FQNConst):
-            raise NotImplementedError('fix me')
 
-        # let's see whether it's a special case
-        fqn2ast = {
-            FQN('operator::i32_add'): ast.Add,
-            FQN('operator::i32_sub'): ast.Sub,
-            FQN('operator::i32_mul'): ast.Mul,
-            FQN('operator::i32_div'): ast.Div,
-            FQN('operator::i32_eq'): ast.Eq,
-            FQN('operator::i32_ne'): ast.NotEq,
-            FQN('operator::i32_lt'): ast.Lt,
-            FQN('operator::i32_le'): ast.LtE,
-            FQN('operator::i32_gt'): ast.Gt,
-            FQN('operator::i32_ge'): ast.GtE,
-            #
-            FQN('operator::f64_add'): ast.Add,
-            FQN('operator::f64_sub'): ast.Sub,
-            FQN('operator::f64_mul'): ast.Mul,
-            FQN('operator::f64_div'): ast.Div,
-            FQN('operator::f64_eq'): ast.Eq,
-            FQN('operator::f64_ne'): ast.NotEq,
-            FQN('operator::f64_lt'): ast.Lt,
-            FQN('operator::f64_le'): ast.LtE,
-            FQN('operator::f64_gt'): ast.Gt,
-            FQN('operator::f64_ge'): ast.GtE,
-        }
-        opclass = fqn2ast.get(call.func.fqn)
-        if opclass is not None:
+    # special cases
+    FQN2BinOp = {
+        FQN('operator::i32_add'): ast.Add,
+        FQN('operator::i32_sub'): ast.Sub,
+        FQN('operator::i32_mul'): ast.Mul,
+        FQN('operator::i32_div'): ast.Div,
+        FQN('operator::i32_eq'): ast.Eq,
+        FQN('operator::i32_ne'): ast.NotEq,
+        FQN('operator::i32_lt'): ast.Lt,
+        FQN('operator::i32_le'): ast.LtE,
+        FQN('operator::i32_gt'): ast.Gt,
+        FQN('operator::i32_ge'): ast.GtE,
+        #
+        FQN('operator::f64_add'): ast.Add,
+        FQN('operator::f64_sub'): ast.Sub,
+        FQN('operator::f64_mul'): ast.Mul,
+        FQN('operator::f64_div'): ast.Div,
+        FQN('operator::f64_eq'): ast.Eq,
+        FQN('operator::f64_ne'): ast.NotEq,
+        FQN('operator::f64_lt'): ast.Lt,
+        FQN('operator::f64_le'): ast.LtE,
+        FQN('operator::f64_gt'): ast.Gt,
+        FQN('operator::f64_ge'): ast.GtE,
+    }
+
+    def get_binop_maybe(self, func: ast.Expr) -> Optional[type[ast.BinOp]]:
+        """
+        Some opimpl are special-cased and turned back into a BinOp
+        """
+        if isinstance(func, ast.FQNConst):
+            return self.FQN2BinOp.get(func.fqn)
+        return None
+
+    def fmt_expr_Call(self, call: ast.Call) -> str:
+        if opclass := self.get_binop_maybe(call.func):
+            # special case
             assert len(call.args) == 2
             binop = opclass(call.loc, call.args[0], call.args[1])
             return self.fmt_expr_BinOp(binop)
-
-        # standard case
-        name = self.fmt_expr(call.func)
-        arglist = [self.fmt_expr(arg) for arg in call.args]
-        args = ', '.join(arglist)
-        return f'{name}({args})'
+        else:
+            # standard case
+            name = self.fmt_expr(call.func)
+            arglist = [self.fmt_expr(arg) for arg in call.args]
+            args = ', '.join(arglist)
+            return f'{name}({args})'

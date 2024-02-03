@@ -98,6 +98,17 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_call(self):
+        src = """
+        def add(x: i32, y: i32) -> i32:
+            return x + y
+
+        def foo() -> i32:
+            return add(x, y)
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_zz_sanity_check(self):
         """
         This is a hack.
