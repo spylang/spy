@@ -95,9 +95,6 @@ class TestDynamic(CompilerTest):
         assert mod.gte(6, 5) is True
 
     def test_call(self):
-        if self.backend == 'doppler':
-            pytest.skip('fixme')
-
         mod = self.compile("""
         def inc(x: i32) -> i32:
             return x + 1
