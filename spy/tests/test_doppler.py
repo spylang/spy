@@ -138,3 +138,30 @@ class TestDoppler:
         def `test::fn#0`(x: i32) -> i32:
             return x * 2
         """)
+
+    def test_binops(self):
+        src = """
+        def foo(i: i32, f: f64) -> void:
+            i + i
+            i - i
+            i * i
+            i / i
+            i == i
+            i != i
+            i < i
+            i <= i
+            i > i
+            i >= i
+            f + f
+            f - f
+            f * f
+            f / f
+            f == f
+            f != f
+            f < f
+            f <= f
+            f > f
+            f >= f
+        """
+        self.redshift(src)
+        self.assert_dump(src)

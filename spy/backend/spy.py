@@ -100,6 +100,10 @@ class SPyBackend:
         t = self.fmt_expr(vardef.type)
         self.wl(f'{vardef.name}: {t}')
 
+    def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
+        v = self.fmt_expr(stmt.value)
+        self.wl(f'{v}')
+
     # expressions
 
     def fmt_expr_Constant(self, const: ast.Constant) -> str:
@@ -132,7 +136,26 @@ class SPyBackend:
         # let's see whether it's a special case
         fqn2ast = {
             FQN('operator::i32_add'): ast.Add,
+            FQN('operator::i32_sub'): ast.Sub,
             FQN('operator::i32_mul'): ast.Mul,
+            FQN('operator::i32_div'): ast.Div,
+            FQN('operator::i32_eq'): ast.Eq,
+            FQN('operator::i32_ne'): ast.NotEq,
+            FQN('operator::i32_lt'): ast.Lt,
+            FQN('operator::i32_le'): ast.LtE,
+            FQN('operator::i32_gt'): ast.Gt,
+            FQN('operator::i32_ge'): ast.GtE,
+            #
+            FQN('operator::f64_add'): ast.Add,
+            FQN('operator::f64_sub'): ast.Sub,
+            FQN('operator::f64_mul'): ast.Mul,
+            FQN('operator::f64_div'): ast.Div,
+            FQN('operator::f64_eq'): ast.Eq,
+            FQN('operator::f64_ne'): ast.NotEq,
+            FQN('operator::f64_lt'): ast.Lt,
+            FQN('operator::f64_le'): ast.LtE,
+            FQN('operator::f64_gt'): ast.Gt,
+            FQN('operator::f64_ge'): ast.GtE,
         }
         opclass = fqn2ast.get(call.func.fqn)
         if opclass is not None:
