@@ -78,7 +78,7 @@ class ModuleGen:
         assign = decl.assign
         fqn = self.vm.get_unique_FQN(modname=self.modname, attr=vardef.name,
                                      is_global=True)
-        if vardef.type is None:
+        if isinstance(vardef.type, ast.Auto):
             # type inference
             w_val = frame.eval_expr(assign.value)
             self.vm.add_global(fqn, None, w_val)
