@@ -16,6 +16,8 @@ class TextBuilder:
     @property
     def lineno(self) -> int:
         """
+        XXX this is broken in presence of nested builders :(
+
         Return the number of the CURRENT line.
 
         The invariant is that if .lineno == N, then .write(), .writeline(),

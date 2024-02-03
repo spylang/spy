@@ -64,30 +64,35 @@ class CModuleWriter:
         // global declarations and definitions
         """)
         self.out_globals = self.out.make_nested_builder()
+        self.out.wl()
         self.out.wb("""
         // content of the module
         """)
-        # XXX we should pre-declare variables and functions
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
             if isinstance(w_obj, W_ASTFunc):
-                if w_obj.color != 'blue':
+                if w_obj.color == 'red':
+                    self.declare_function(fqn, w_obj)
                     self.emit_function(fqn, w_obj)
             else:
-                self.emit_variable(fqn, w_obj)
+                self.declare_variable(fqn, w_obj)
         return self.out.build()
+
+    def declare_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
+        c_func = self.ctx.c_function(fqn.c_name, w_func.w_functype)
+        self.out_globals.wl(c_func.decl() + ';')
 
     def emit_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
 
-    def emit_variable(self, fqn: FQN, w_obj: W_Object) -> None:
+    def declare_variable(self, fqn: FQN, w_obj: W_Object) -> None:
         w_type = self.ctx.vm.dynamic_type(w_obj)
         c_type = self.ctx.w2c(w_type)
         if w_type is B.w_i32:
             intval = self.ctx.vm.unwrap(w_obj)
-            self.out.wl(f'{c_type} {fqn.c_name} = {intval};')
+            self.out_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
         else:
             raise NotImplementedError('WIP')
 

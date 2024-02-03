@@ -20,6 +20,8 @@ class ZigToolchain:
         """
         cmdline = [
             str(self.ZIG), 'cc',
+            '--std=c99',
+            '-Werror=implicit-function-declaration',
 	    '--target=wasm32-freestanding',
 	    '-nostdlib',
             '-shared',
@@ -64,6 +66,8 @@ class ClangToolchain:
         """
         cmdline = [
             'clang',
+            '--std=c99',
+            '-Werror=implicit-function-declaration',
 	    '--target=wasm32',
 	    '-nostdlib',
             '-Wl,--no-entry',
