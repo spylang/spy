@@ -67,15 +67,16 @@ class ModuleGen:
         )
 
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
-        fqn = FQN(modname=self.modname, attr=funcdef.name)
         frame.exec_stmt_FuncDef(funcdef)
         w_func = frame.load_local(funcdef.name)
+        fqn = w_func.fqn
         self.vm.add_global(fqn, None, w_func)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        fqn = FQN(modname=self.modname, attr=vardef.name)
+        fqn = self.vm.get_unique_FQN(modname=self.modname, attr=vardef.name,
+                                     is_global=True)
         w_type = frame.eval_expr_type(vardef.type)
         w_val = frame.eval_expr(assign.value)
         self.vm.add_global(fqn, w_type, w_val)

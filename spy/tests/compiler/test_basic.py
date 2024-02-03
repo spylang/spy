@@ -530,6 +530,19 @@ class TestBasic(CompilerTest):
         assert w_functype.name == 'def(x: i32) -> i32'
         assert mod.foo(1) == 2
 
+    def test_redshift_nonglobal_function(self):
+        mod = self.compile("""
+        @blue
+        def make_inc() -> dynamic:
+            def inc(x: i32) -> i32:
+                return x + 1
+            return inc
+
+        def foo() -> i32:
+            return make_inc()(6)
+        """)
+        assert mod.foo() == 7
+
     @skip_backends('doppler', 'C', reason='fixme')
     def test_call_blue_closure(self):
         mod = self.compile("""

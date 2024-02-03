@@ -124,7 +124,13 @@ class ASTFrame:
         self.t.lazy_check_FuncDef(funcdef, w_functype)
         #
         # create the w_func
-        fqn = FQN(modname='???', attr=funcdef.name)
+
+        # if the current func is __INIT__, then we are creating a module-level
+        # global. Else, it's a closure
+        is_global = self.w_func.fqn.attr == '__INIT__'
+        modname = self.w_func.fqn.modname # the module of the "outer" function
+        fqn = self.vm.get_unique_FQN(modname=modname, attr=funcdef.name,
+                                     is_global=is_global)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)

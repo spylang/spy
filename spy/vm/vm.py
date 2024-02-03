@@ -1,5 +1,6 @@
 import py
-from typing import Any, Optional
+from typing import Any, Optional, Iterable
+import itertools
 from dataclasses import dataclass
 import fixedint
 from spy.fqn import FQN
@@ -27,6 +28,7 @@ class SPyVM:
     globals_types: dict[FQN, W_Type]
     globals_w: dict[FQN, W_Object]
     modules_w: dict[str, W_Module]
+    unique_fqns: set[FQN]
     path: list[str]
 
     def __init__(self) -> None:
@@ -34,6 +36,7 @@ class SPyVM:
         self.globals_types = {}
         self.globals_w = {}
         self.modules_w = {}
+        self.unique_fqns = set()
         self.path = []
         self.make_module(BUILTINS)  # builtins::
         self.make_module(OPERATOR)  # operator::
@@ -51,17 +54,30 @@ class SPyVM:
         self.modules_w[modname] = w_mod
         return w_mod
 
-    def redshift(self, modname: str) -> None:
+    def redshift(self) -> None:
         """
-        Perform a redshift on all W_ASTFunc which exists in the specified module
+        Perform a redshift on all W_ASTFunc.
         """
-        for fqn, w_func in self.globals_w.items():
-            if fqn.modname == modname and isinstance(w_func, W_ASTFunc):
-                # we don't want to redshift @blue functions
-                if w_func.w_functype.color == 'blue':
-                    continue
+        def should_redshift(w_func: W_ASTFunc) -> bool:
+            # we don't want to redshift @blue functions
+            return w_func.color != 'blue' and not w_func.redshifted
 
-                assert not w_func.redshifted, 'redshift already called'
+        def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
+            for fqn, w_func in self.globals_w.items():
+                if isinstance(w_func, W_ASTFunc) and should_redshift(w_func):
+                    yield fqn, w_func
+
+        while True:
+            funcs = list(get_funcs())
+            if not funcs:
+                break
+            self._redshift_some(funcs)
+
+    def _redshift_some(self, funcs) -> None:
+        for fqn, w_func in funcs:
+            if isinstance(w_func, W_ASTFunc):
+                assert w_func.color != 'blue'
+                assert not w_func.redshifted
                 w_newfunc = redshift(self, w_func)
                 assert w_newfunc.redshifted
                 self.globals_w[fqn] = w_newfunc
@@ -77,20 +93,37 @@ class SPyVM:
             w_type = self.dynamic_type(w_obj)
             self.add_global(fqn, w_type, w_obj)
 
+    def get_unique_FQN(self, *, modname: str, attr: str, is_global: bool) -> FQN:
+        # if it's a global, we can create a "plain" FQN (e.g. `test::hello`)
+        # which MUST be unique. If it's a closurwe, we attach a progressive ID
+        # to create an unique FQN (e.g., `test::hello#42`)
+        if is_global:
+            fqn = FQN(modname=modname, attr=attr)
+        else:
+            # XXX this is potentially quadratic if we create tons of
+            # conflicting FQNs, but for now we don't care
+            for n in itertools.count():
+                fqn = FQN(modname=modname, attr=attr, uniq_suffix=str(n))
+                if fqn not in self.unique_fqns:
+                    break
+        assert fqn not in self.unique_fqns
+        self.unique_fqns.add(fqn)
+        return fqn
+
     def add_global(self,
-                   name: FQN,
+                   fqn: FQN,
                    w_type: Optional[W_Type],
                    w_value: W_Object
                    ) -> None:
-        assert name.modname in self.modules_w
-        assert name not in self.globals_w
-        assert name not in self.globals_types
+        assert fqn.modname in self.modules_w
+        assert fqn not in self.globals_w
+        assert fqn not in self.globals_types
         if w_type is None:
             w_type = self.dynamic_type(w_value)
         else:
             assert self.isinstance(w_value, w_type)
-        self.globals_types[name] = w_type
-        self.globals_w[name] = w_value
+        self.globals_types[fqn] = w_type
+        self.globals_w[fqn] = w_value
 
     def lookup_global_type(self, fqn: FQN) -> Optional[W_Type]:
         return self.globals_types.get(fqn)
