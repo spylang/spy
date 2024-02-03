@@ -22,7 +22,9 @@ MM.register('>=', 'i32', 'i32', OP.w_i32_ge)
 
 # f64 ops
 MM.register('+',  'f64', 'f64', OP.w_f64_add)
+MM.register('-',  'f64', 'f64', OP.w_f64_sub)
 MM.register('*',  'f64', 'f64', OP.w_f64_mul)
+MM.register('/',  'f64', 'f64', OP.w_f64_div)
 MM.register('==', 'f64', 'f64', OP.w_f64_eq)
 MM.register('!=', 'f64', 'f64', OP.w_f64_ne)
 MM.register('<' , 'f64', 'f64', OP.w_f64_lt)

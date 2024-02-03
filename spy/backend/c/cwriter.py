@@ -332,7 +332,9 @@ class CFuncWriter:
             FQN('operator::i32_ge') : '>=',
             #
             FQN('operator::f64_add'): '+',
+            FQN('operator::f64_sub'): '-',
             FQN('operator::f64_mul'): '*',
+            FQN('operator::f64_div'): '/',
             FQN('operator::f64_eq') : '==',
             FQN('operator::f64_ne') : '!=',
             FQN('operator::f64_lt') : '<',

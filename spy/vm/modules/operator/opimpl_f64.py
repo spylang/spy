@@ -21,8 +21,16 @@ def f64_add(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a + b)
 
 @OP.primitive('def(a: f64, b: f64) -> f64')
+def f64_sub(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
+    return _f64_op(vm, w_a, w_b, lambda a, b: a - b)
+
+@OP.primitive('def(a: f64, b: f64) -> f64')
 def f64_mul(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a * b)
+
+@OP.primitive('def(a: f64, b: f64) -> f64')
+def f64_div(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
+    return _f64_op(vm, w_a, w_b, lambda a, b: a / b)
 
 @OP.primitive('def(a: f64, b: f64) -> bool')
 def f64_eq(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
