@@ -55,6 +55,14 @@ class TestMain:
         res, stdout = self.run('--parse', self.foo_spy)
         assert stdout.startswith('Module(')
 
+    def test_run(self):
+        self.foo_spy.write(textwrap.dedent("""
+        def main() -> void:
+            print("hello world")
+        """))
+        res, stdout = self.run("--run", self.foo_spy)
+        assert stdout == "hello world\n"
+
     def test_redshift(self):
         res, stdout = self.run('--redshift', self.foo_spy)
         assert stdout.startswith('def add(x: i32, y: i32) -> i32:')
