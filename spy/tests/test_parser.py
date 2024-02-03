@@ -660,7 +660,7 @@ class TestParser:
                         color='blue',
                         name='foo',
                         args=[],
-                        return_type=Name(id='object'),
+                        return_type=Name(id='dynamic'),
                         body=[
                             FuncDef(
                                 color='red',

@@ -97,7 +97,7 @@ class Parser:
         if py_returns:
             return_type = self.from_py_expr(py_returns)
         elif color == 'blue':
-            return_type = spy.ast.Name(py_funcdef.loc, 'object')
+            return_type = spy.ast.Name(py_funcdef.loc, 'dynamic')
         else:
             # create a loc which points to the 'def foo' part. This is a bit
             # wrong, ideally we would like it to point to the END of the
@@ -148,7 +148,7 @@ class Parser:
         if py_arg.annotation:
             spy_type = self.from_py_expr(py_arg.annotation)
         elif color == 'blue':
-            spy_type = spy.ast.Name(py_arg.loc, 'object')
+            spy_type = spy.ast.Name(py_arg.loc, 'dynamic')
         else:
             self.error(f"missing type for argument '{py_arg.arg}'",
                        'type is missing here', py_arg.loc)

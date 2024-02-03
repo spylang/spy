@@ -534,7 +534,7 @@ class TestBasic(CompilerTest):
     def test_redshift_nonglobal_function(self):
         mod = self.compile("""
         @blue
-        def make_inc() -> dynamic:
+        def make_inc():
             def inc(x: i32) -> i32:
                 return x + 1
             return inc
@@ -547,7 +547,7 @@ class TestBasic(CompilerTest):
     def test_call_blue_closure(self):
         mod = self.compile("""
         @blue
-        def make_adder(x: i32) -> dynamic:
+        def make_adder(x: i32):
             def adder(y: i32) -> i32:
                 return x + y
             return adder
