@@ -32,9 +32,29 @@ MM.register('<=', 'f64', 'f64', OP.w_f64_le)
 MM.register('>' , 'f64', 'f64', OP.w_f64_gt)
 MM.register('>=', 'f64', 'f64', OP.w_f64_ge)
 
-# XXX: ideally, we would like to autogenerate all the possible combinations of
-# numeric ops
+# mixed i32/f64 ops: this is still small enough that we can write it manually,
+# but we should consider the idea of generating this table automatically. This
+# will become especially relevant when we add more integer types.
 MM.register('+',  'f64', 'i32', OP.w_f64_add)
+MM.register('+',  'i32', 'f64', OP.w_f64_add)
+MM.register('-',  'f64', 'i32', OP.w_f64_sub)
+MM.register('-',  'i32', 'f64', OP.w_f64_sub)
+MM.register('*',  'f64', 'i32', OP.w_f64_mul)
+MM.register('*',  'i32', 'f64', OP.w_f64_mul)
+MM.register('/',  'f64', 'i32', OP.w_f64_div)
+MM.register('/',  'i32', 'f64', OP.w_f64_div)
+MM.register('==', 'f64', 'i32', OP.w_f64_eq)
+MM.register('==', 'i32', 'f64', OP.w_f64_eq)
+MM.register('!=', 'f64', 'i32', OP.w_f64_ne)
+MM.register('!=', 'i32', 'f64', OP.w_f64_ne)
+MM.register('<' , 'f64', 'i32', OP.w_f64_lt)
+MM.register('<' , 'i32', 'f64', OP.w_f64_lt)
+MM.register('<=', 'f64', 'i32', OP.w_f64_le)
+MM.register('<=', 'i32', 'f64', OP.w_f64_le)
+MM.register('>' , 'f64', 'i32', OP.w_f64_gt)
+MM.register('>' , 'i32', 'f64', OP.w_f64_gt)
+MM.register('>=', 'f64', 'i32', OP.w_f64_ge)
+MM.register('>=', 'i32', 'f64', OP.w_f64_ge)
 
 # str ops
 MM.register('+',  'str', 'str', OP.w_str_add)

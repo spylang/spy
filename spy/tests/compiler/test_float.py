@@ -60,7 +60,10 @@ class TestFloat(CompilerTest):
     def test_implicit_conversion(self):
         mod = self.compile(
         """
-        def add(x: f64, y: i32) -> f64:
-            return x + y
+        def add(x: f64, y: i32) -> f64: return x + y
+        def sub(x: i32, y: f64) -> f64: return x - y
+        def div(x: f64, y: i32) -> f64: return x / y
         """)
         assert mod.add(1.5, 2) == 3.5
+        assert mod.sub(10, 0.5) == 9.5
+        assert mod.div(1.5, 2) == 0.75
