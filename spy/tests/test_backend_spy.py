@@ -62,6 +62,24 @@ class TestSPyBackend(CompilerTest):
             x = 1
         """)
 
+    def test_dont_dump_blue_func(self):
+        """
+        The primary use case for the SPy backend is to show what happens after
+        redshift, so @blue funcs should not be dumped.
+        """
+        mod = self.compile("""
+        @blue
+        def GET_X():
+            return 42
+
+        def foo() -> void:
+            pass
+        """)
+        self.assert_dump("""
+        def foo() -> void:
+            pass
+        """)
+
     def xtest_zz_sanity_check(self):
         """
         This is a hack.

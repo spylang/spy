@@ -105,3 +105,17 @@ class TestDoppler:
         """
         self.redshift(src)
         self.assert_dump(expected)
+
+    def test_blue_call(self):
+        self.redshift("""
+        @blue
+        def ANSWER() -> i32:
+            return 42
+
+        def foo() -> i32:
+            return ANSWER()
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return 42
+        """)
