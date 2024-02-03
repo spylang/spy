@@ -23,6 +23,14 @@ class SPyBackend:
         self.w = self.out.w
         self.wl = self.out.wl
 
+    def dump_mod(self, modname: str) -> str:
+        w_mod = self.vm.modules_w[modname]
+        for fqn, w_obj in w_mod.items_w():
+            if isinstance(w_obj, W_ASTFunc):
+                self.dump_w_func(w_obj)
+                self.out.wl()
+        return self.out.build()
+
     def dump_w_func(self, w_func: W_ASTFunc) -> str:
         w_functype = w_func.w_functype
         name = w_func.fqn.attr
@@ -32,7 +40,6 @@ class SPyBackend:
         with self.out.indent():
             for stmt in w_func.funcdef.body:
                 self.emit_stmt(stmt)
-        return self.out.build()
 
     def fmt_params(self, params: list[FuncParam]) -> str:
         l = []

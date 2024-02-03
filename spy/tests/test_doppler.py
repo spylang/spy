@@ -3,7 +3,6 @@ import pytest
 from spy import ast
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc
-from spy.doppler import redshift
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.util import print_diff
 
@@ -17,18 +16,17 @@ class TestDoppler:
         self.vm = SPyVM()
         self.vm.path.append(str(self.tmpdir))
 
-    def redshift(self, src: str, funcname: str) -> W_ASTFunc:
+    def redshift(self, src: str) -> W_ASTFunc:
         f = self.tmpdir.join('test.spy')
         src = textwrap.dedent(src)
         f.write(src)
         w_mod = self.vm.import_('test')
-        w_func = w_mod.getattr_astfunc(funcname)
-        return redshift(self.vm, w_func)
+        self.vm.redshift()
 
-    def assert_dump(self, w_func: W_ASTFunc, expected: str,
+    def assert_dump(self, expected: str,
                     *, fqn_format: FQN_FORMAT='short') -> None:
         b = SPyBackend(self.vm, fqn_format = fqn_format)
-        got = b.dump_w_func(w_func).strip()
+        got = b.dump_mod('test').strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, 'expected', 'got')
@@ -39,8 +37,8 @@ class TestDoppler:
         def foo() -> i32:
             return 1 + 2
         """
-        w_func = self.redshift(src, 'foo')
-        self.assert_dump(w_func, """
+        self.redshift(src)
+        self.assert_dump("""
         def foo() -> i32:
             return 3
         """)
@@ -51,43 +49,43 @@ class TestDoppler:
             x: i32 = 1
             return x
         """
-        w_func = self.redshift(src, 'foo')
+        self.redshift(src)
         expected = """
         def foo() -> i32:
             x: i32
             x = 1
             return x
         """
-        self.assert_dump(w_func, expected)
+        self.assert_dump(expected)
 
     def test_funcargs(self):
         src = """
         def foo(x: i32, y: i32) -> i32:
             return x + y
         """
-        w_func = self.redshift(src, 'foo')
-        self.assert_dump(w_func, src)
+        self.redshift(src)
+        self.assert_dump(src)
 
     def test_fqn_format(self):
         src = """
         def foo(x: i32) -> void:
             y: str = 'hello'
         """
-        w_func = self.redshift(src, 'foo')
+        self.redshift(src)
         expected = """
         def foo(x: `builtins::i32`) -> `builtins::void`:
             y: `builtins::str`
             y = 'hello'
         """
-        self.assert_dump(w_func, expected, fqn_format='full')
+        self.assert_dump(expected, fqn_format='full')
 
     def test_op_between_red_and_blue(self):
         src = """
         def foo(x: i32) -> i32:
             return x + 1
         """
-        w_func = self.redshift(src, 'foo')
-        self.assert_dump(w_func, src)
+        self.redshift(src)
+        self.assert_dump(src)
 
     def test_dont_redshift_function_calls(self):
         src = """
@@ -97,10 +95,13 @@ class TestDoppler:
         def foo() -> i32:
             return inc(5)
         """
-        w_func = self.redshift(src, 'foo')
+        self.redshift(src)
         expected = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
         def foo() -> i32:
             return `test::inc`(5)
         """
-        w_func = self.redshift(src, 'foo')
-        self.assert_dump(w_func, expected)
+        self.redshift(src)
+        self.assert_dump(expected)
