@@ -196,3 +196,8 @@ class SPyBackend:
             arglist = [self.fmt_expr(arg) for arg in call.args]
             args = ', '.join(arglist)
             return f'{name}({args})'
+
+    def fmt_expr_GetItem(self, getitem: ast.GetItem) -> str:
+        v = self.fmt_expr(getitem.value)
+        i = self.fmt_expr(getitem.index)
+        return f'{v}[{i}]'
