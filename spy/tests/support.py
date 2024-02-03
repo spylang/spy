@@ -115,7 +115,10 @@ class CompilerTest:
         else:
             return 'eager'
 
-    def compile(self, src: str) -> Any:
+    # see test_backend_spy:test_zz_sanity_check for details
+    ALL_COMPILED_SOURCES = set()
+
+    def compile(self, src: str, modname: str = 'test') -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
         tests.
@@ -124,7 +127,7 @@ class CompilerTest:
         backend: the IR code is not compiled and function are executed by the
         VM.
         """
-        modname = 'test'
+        self.ALL_COMPILED_SOURCES.add(src)
         self.write_file(f'{modname}.spy', src)
         self.w_mod = self.vm.import_(modname)
         if self.backend == '':

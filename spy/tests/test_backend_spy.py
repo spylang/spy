@@ -61,3 +61,33 @@ class TestSPyBackend(CompilerTest):
             x: i32
             x = 1
         """)
+
+    def test_zz_sanity_check(self):
+        """
+        This is a hack.
+
+        We want to be sure that the SPy backend is able to format all AST
+        supported AST nodes.
+
+        This is a smoke test to run the SPy backend on ALL SPy sources which
+        were passed to CompilerTest.compile() during the test run.
+
+        It is super-important that this file is run AFTER the tests in
+        tests/compiler, else CompilerTest.ALL_COMPILED_SOURCES would be
+        empty. This is ensured by (another) hack inside tests/conftest.py.
+
+        If this sanity check fails, the proper action to take is to write an
+        unit test for the missing AST node.
+        """
+        b = SPyBackend(self.vm)
+        sources = list(CompilerTest.ALL_COMPILED_SOURCES)
+        for i, src in enumerate(sources):
+            modname = f'test_backend_spy_{i}'
+            mod = self.compile(src, modname=modname)
+            for fqn, w_obj in mod.w_mod.items_w():
+                if isinstance(w_obj, W_ASTFunc):
+                    try:
+                        b.dump_w_func(w_obj)
+                    except NotImplementedError as exc:
+                        print(src)
+                        pytest.fail(str(exc))
