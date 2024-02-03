@@ -328,6 +328,15 @@ class CFuncWriter:
             FQN('operator::i32_le') : '<=',
             FQN('operator::i32_gt') : '>',
             FQN('operator::i32_ge') : '>=',
+            #
+            FQN('operator::f64_add'): '+',
+            FQN('operator::f64_mul'): '*',
+            FQN('operator::f64_eq') : '==',
+            FQN('operator::f64_ne') : '!=',
+            FQN('operator::f64_lt') : '<',
+            FQN('operator::f64_le') : '<=',
+            FQN('operator::f64_gt') : '>',
+            FQN('operator::f64_ge') : '>=',
         }
         op = binops.get(call.func.fqn)
         if op is not None:
