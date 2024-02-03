@@ -59,8 +59,16 @@ class W_FuncType(W_Type):
         case of wrong inputs. It supports only builtin types.
         """
         from spy.vm.b import B
+        from spy.vm.modules.rawbuffer import RAW_BUFFER
+
         def parse_type(s: str) -> Any:
-            return getattr(B, f'w_{s}')
+            # XXX this is a quick hack to support RawBuffer, but we need a
+            # better solution
+            attr = f'w_{s}'
+            for mod in (B, RAW_BUFFER):
+                if hasattr(mod, attr):
+                    return getattr(mod, attr)
+            assert False, f'Cannot find type {s}'
 
         args, res = map(str.strip, s.split('->'))
         assert args.startswith('def(')
