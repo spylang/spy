@@ -3,6 +3,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType
+from spy.vm.modules.rawbuffer import RB
 
 @dataclass
 class C_Type:
@@ -59,6 +60,7 @@ class Context:
         self._d[B.w_f64] = C_Type('double')
         self._d[B.w_bool] = C_Type('bool')
         self._d[B.w_str] = C_Type('spy_Str *')
+        self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer')
 
     def w2c(self, w_type: W_Type) -> C_Type:
         if w_type in self._d:
