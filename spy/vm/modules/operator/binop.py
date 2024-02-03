@@ -10,7 +10,9 @@ MM = MultiMethodTable()
 
 # i32 ops
 MM.register('+',  'i32', 'i32', OP.w_i32_add)
+MM.register('-',  'i32', 'i32', OP.w_i32_sub)
 MM.register('*',  'i32', 'i32', OP.w_i32_mul)
+MM.register('/',  'i32', 'i32', OP.w_i32_div)
 MM.register('==', 'i32', 'i32', OP.w_i32_eq)
 MM.register('!=', 'i32', 'i32', OP.w_i32_ne)
 MM.register('<' , 'i32', 'i32', OP.w_i32_lt)
@@ -50,8 +52,16 @@ def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     return MM.lookup('+', w_ltype, w_rtype)
 
 @OP.primitive('def(l: type, r: type) -> dynamic')
+def SUB(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    return MM.lookup('-', w_ltype, w_rtype)
+
+@OP.primitive('def(l: type, r: type) -> dynamic')
 def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     return MM.lookup('*', w_ltype, w_rtype)
+
+@OP.primitive('def(l: type, r: type) -> dynamic')
+def DIV(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    return MM.lookup('/', w_ltype, w_rtype)
 
 @OP.primitive('def(l: type, r: type) -> dynamic')
 def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:

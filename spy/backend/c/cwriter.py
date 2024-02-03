@@ -321,7 +321,9 @@ class CFuncWriter:
         # some calls are special-cased and transformed into a C binop
         binops = {
             FQN('operator::i32_add'): '+',
+            FQN('operator::i32_sub'): '-',
             FQN('operator::i32_mul'): '*',
+            FQN('operator::i32_div'): '/', # XXX: floor division or int division?
             FQN('operator::i32_eq') : '==',
             FQN('operator::i32_ne') : '!=',
             FQN('operator::i32_lt') : '<',

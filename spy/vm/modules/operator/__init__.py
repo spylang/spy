@@ -77,7 +77,9 @@ from . import binop          # side effects
 # fill the _from_token dict
 OP._from_token.update({
     '+': OP.w_ADD,
+    '-': OP.w_SUB,
     '*': OP.w_MUL,
+    '/': OP.w_DIV,
     '==': OP.w_EQ,
     '!=': OP.w_NE,
     '<':  OP.w_LT,

@@ -260,7 +260,9 @@ class TypeChecker:
         return color, w_restype
 
     check_expr_Add = check_expr_BinOp
+    check_expr_Sub = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
+    check_expr_Div = check_expr_BinOp
     check_expr_Eq = check_expr_BinOp
     check_expr_NotEq = check_expr_BinOp
     check_expr_Lt = check_expr_BinOp
