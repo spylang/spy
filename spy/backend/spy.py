@@ -85,6 +85,20 @@ class SPyBackend:
 
     # statements
 
+    def emit_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        name = funcdef.name
+        paramlist = []
+        for funcarg in funcdef.args:
+            n = funcarg.name
+            t = self.fmt_expr(funcarg.type)
+            paramlist.append(f'{n}: {t}')
+        params = ', '.join(paramlist)
+        ret = self.fmt_expr(funcdef.return_type)
+        self.wl(f'def {name}({params}) -> {ret}:')
+        with self.out.indent():
+            for stmt in funcdef.body:
+                self.emit_stmt(stmt)
+
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
         self.wl('pass')
 
