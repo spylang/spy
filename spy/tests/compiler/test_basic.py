@@ -181,18 +181,12 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "set_x", errors)
 
-    def test_i32_add(self):
+    def test_i32_BinOp(self):
         mod = self.compile("""
-        def add(x: i32, y: i32) -> i32:
-            return x + y
+        def add(x: i32, y: i32) -> i32: return x + y
+        def mul(x: i32, y: i32) -> i32: return x * y
         """)
         assert mod.add(1, 2) == 3
-
-    def test_i32_mul(self):
-        mod = self.compile("""
-        def mul(x: i32, y: i32) -> i32:
-            return x * y
-        """)
         assert mod.mul(3, 4) == 12
 
     def test_void_return(self):
