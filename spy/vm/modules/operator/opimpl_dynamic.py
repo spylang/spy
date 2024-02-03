@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any
 from spy.errors import SPyTypeError
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type, W_i32, W_bool
+from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func
 from . import OP
 if TYPE_CHECKING:

@@ -16,9 +16,9 @@ all over the place and we need to import it very early.
 """
 
 from spy.vm.registry import ModuleRegistry
-from spy.vm.object import (W_Object, W_Type, w_DynamicType, W_void, W_i32,
-                           W_bool, W_NotImplementedType)
-from spy.vm.str import W_str
+from spy.vm.object import (W_Object, W_Type, w_DynamicType, W_Void, W_I32,
+                           W_Bool, W_NotImplementedType)
+from spy.vm.str import W_Str
 
 
 BUILTINS = ModuleRegistry('builtins', '<builtins>')
@@ -26,12 +26,12 @@ B = BUILTINS
 
 B.add('object', W_Object._w)
 B.add('type', W_Type._w)
-B.add('void', W_void._w)
+B.add('void', W_Void._w)
 B.add('dynamic', w_DynamicType)
-B.add('i32', W_i32._w)
-B.add('bool', W_bool._w)
-B.add('str', W_str._w)
-B.add('None', W_void._w_singleton)
-B.add('True', W_bool._w_singleton_True)
-B.add('False', W_bool._w_singleton_False)
+B.add('i32', W_I32._w)
+B.add('bool', W_Bool._w)
+B.add('str', W_Str._w)
+B.add('None', W_Void._w_singleton)
+B.add('True', W_Bool._w_singleton_True)
+B.add('False', W_Bool._w_singleton_False)
 B.add('NotImplemented', W_NotImplementedType._w_singleton)

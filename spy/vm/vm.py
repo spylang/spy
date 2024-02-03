@@ -7,8 +7,8 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, W_void, W_i32, W_bool
-from spy.vm.str import W_str
+from spy.vm.object import W_Object, W_Type, W_I32
+from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
@@ -189,14 +189,14 @@ class SPyVM:
         if value is None:
             return B.w_None
         elif T in (int, fixedint.Int32):
-            return W_i32(value)
+            return W_I32(value)
         elif T is bool:
             if value:
                 return B.w_True
             else:
                 return B.w_False
         elif T is str:
-            return W_str(self, value)
+            return W_Str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
         raise Exception(f"Cannot wrap interp-level objects " +
@@ -212,7 +212,7 @@ class SPyVM:
         return w_value.spy_unwrap(self)
 
     def unwrap_i32(self, w_value: W_Object) -> Any:
-        if not isinstance(w_value, W_i32):
+        if not isinstance(w_value, W_I32):
             raise Exception('Type mismatch')
         return w_value.value
 

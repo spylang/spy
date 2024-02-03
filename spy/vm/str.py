@@ -18,7 +18,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     return ptr
 
 @spytype('str')
-class W_str(W_Object):
+class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.
 
@@ -38,8 +38,8 @@ class W_str(W_Object):
         self.ptr = ptr
 
     @staticmethod
-    def from_ptr(vm: 'SPyVM', ptr: int) -> 'W_str':
-        w_res = W_str.__new__(W_str)
+    def from_ptr(vm: 'SPyVM', ptr: int) -> 'W_Str':
+        w_res = W_Str.__new__(W_Str)
         w_res.vm = vm
         w_res.ptr = ptr
         return w_res
@@ -57,7 +57,7 @@ class W_str(W_Object):
 
     def __repr__(self) -> str:
         s = self._as_str()
-        return f'W_str({s!r})'
+        return f'W_Str({s!r})'
 
     def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()

@@ -4,8 +4,8 @@ from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32, W_bool
-from spy.vm.str import W_str
+from spy.vm.object import W_Object, W_Type, spytype, W_Void, W_I32, W_Bool
+from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
 
@@ -68,7 +68,7 @@ class TestVM:
         class W_B(W_A):
             pass
         #
-        w_None = W_void._w_singleton
+        w_None = W_Void._w_singleton
         assert W_Object._w.w_base is w_None
         assert W_A._w.w_base is W_Object._w
         assert W_B._w.w_base is W_A._w
@@ -108,19 +108,19 @@ class TestVM:
     def test_w_None(self):
         vm = SPyVM()
         w_None = B.w_None
-        assert isinstance(w_None, W_void)
+        assert isinstance(w_None, W_Void)
         assert vm.dynamic_type(w_None).name == 'void'
         assert repr(w_None) == '<spy None>'
         #
         assert vm.wrap(None) is w_None
 
-    def test_W_i32(self):
+    def test_W_I32(self):
         vm = SPyVM()
         w_x = vm.wrap(123)
         w_y = vm.wrap(fixedint.Int32(456))
-        assert isinstance(w_x, W_i32)
+        assert isinstance(w_x, W_I32)
         assert vm.dynamic_type(w_x) is B.w_i32
-        assert repr(w_x) == 'W_i32(123)'
+        assert repr(w_x) == 'W_I32(123)'
         assert repr(B.w_i32) == "<spy type 'i32'>"
         #
         x = vm.unwrap(w_x)
@@ -135,12 +135,12 @@ class TestVM:
         z = vm.unwrap(w_z)
         assert z == -1
 
-    def test_W_bool(self):
+    def test_W_Bool(self):
         vm = SPyVM()
         w_True = vm.wrap(True)
         w_False = vm.wrap(False)
-        assert isinstance(w_True, W_bool)
-        assert isinstance(w_False, W_bool)
+        assert isinstance(w_True, W_Bool)
+        assert isinstance(w_False, W_Bool)
         #
         # w_True and w_False are singletons
         assert vm.wrap(True) is w_True
@@ -149,17 +149,17 @@ class TestVM:
         assert vm.unwrap(w_False) is False
         #
         assert vm.dynamic_type(w_True) is B.w_bool
-        assert repr(w_True) == 'W_bool(True)'
-        assert repr(w_False) == 'W_bool(False)'
+        assert repr(w_True) == 'W_Bool(True)'
+        assert repr(w_False) == 'W_Bool(False)'
         assert repr(B.w_bool) == "<spy type 'bool'>"
 
-    def test_W_str(self):
+    def test_W_Str(self):
         vm = SPyVM()
         w_hello = vm.wrap('hello')
-        assert isinstance(w_hello, W_str)
+        assert isinstance(w_hello, W_Str)
         assert vm.dynamic_type(w_hello) is B.w_str
         assert vm.unwrap(w_hello) == 'hello'
-        assert repr(w_hello) == "W_str('hello')"
+        assert repr(w_hello) == "W_Str('hello')"
 
     def test_call_function(self):
         vm = SPyVM()

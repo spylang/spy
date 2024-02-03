@@ -16,7 +16,7 @@ avoid confusion:
 In interp-level code, variables and fields which contains references to
 app-level objects are always prefixed with w_, which stans for "wrapped":
 e.g., the app-level SPy object `100` is represented by the interp-level
-instance `W_i32(100)`, which is a wrapper around the interp-level object `100`.
+instance `W_I32(100)`, which is a wrapper around the interp-level object `100`.
 
 =================
 SPy object model
@@ -94,7 +94,7 @@ class W_Type(W_Object):
     @property
     def w_base(self) -> W_Object:
         if self is W_Object._w or self is w_DynamicType:
-            return W_void._w_singleton
+            return W_Void._w_singleton
         basecls = self.pyclass.__base__
         assert issubclass(basecls, W_Object)
         return basecls._w
@@ -157,7 +157,7 @@ def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
     return decorator
 
 @spytype('void')
-class W_void(W_Object):
+class W_Void(W_Object):
     """
     Equivalent of Python's NoneType.
 
@@ -165,12 +165,12 @@ class W_void(W_Object):
     which is w_None.
     """
 
-    _w_singleton: ClassVar['W_void']
+    _w_singleton: ClassVar['W_Void']
 
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_void
-        raise Exception("You cannot instantiate W_void")
+        # create additional instances of W_Void
+        raise Exception("You cannot instantiate W_Void")
 
     def __repr__(self) -> str:
         return '<spy None>'
@@ -178,11 +178,11 @@ class W_void(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> None:
         return None
 
-W_void._w_singleton = W_void.__new__(W_void)
+W_Void._w_singleton = W_Void.__new__(W_Void)
 
 
 @spytype('i32')
-class W_i32(W_Object):
+class W_I32(W_Object):
     value: fixedint.Int32
 
     def __init__(self, value: int | fixedint.Int32) -> None:
@@ -190,38 +190,38 @@ class W_i32(W_Object):
         self.value = fixedint.Int32(value)
 
     def __repr__(self) -> str:
-        return f'W_i32({self.value})'
+        return f'W_I32({self.value})'
 
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
         return self.value
 
 
 @spytype('bool')
-class W_bool(W_Object):
+class W_Bool(W_Object):
     value: bool
     #
-    _w_singleton_True: ClassVar['W_bool']
-    _w_singleton_False: ClassVar['W_bool']
+    _w_singleton_True: ClassVar['W_Bool']
+    _w_singleton_False: ClassVar['W_Bool']
 
     def __init__(self, value: bool) -> None:
         # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_bool
-        raise Exception("You cannot instantiate W_bool. Use vm.wrap().")
+        # create additional instances of W_Bool
+        raise Exception("You cannot instantiate W_Bool. Use vm.wrap().")
 
     @staticmethod
-    def _make_singleton(value: bool) -> 'W_bool':
-        w_obj = W_bool.__new__(W_bool)
+    def _make_singleton(value: bool) -> 'W_Bool':
+        w_obj = W_Bool.__new__(W_Bool)
         w_obj.value = value
         return w_obj
 
     def __repr__(self) -> str:
-        return f'W_bool({self.value})'
+        return f'W_Bool({self.value})'
 
     def spy_unwrap(self, vm: 'SPyVM') -> bool:
         return self.value
 
-W_bool._w_singleton_True = W_bool._make_singleton(True)
-W_bool._w_singleton_False = W_bool._make_singleton(False)
+W_Bool._w_singleton_True = W_Bool._make_singleton(True)
+W_Bool._w_singleton_False = W_Bool._make_singleton(False)
 
 
 @spytype('NotImplementedType')
