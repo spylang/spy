@@ -109,9 +109,6 @@ class TestDynamic(CompilerTest):
         assert mod.foo() == 8
 
     def test_wrong_call(self):
-        if self.backend == 'doppler':
-            pytest.skip('fixme')
-
         mod = self.compile("""
         @blue
         def get_inc() -> dynamic:

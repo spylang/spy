@@ -48,8 +48,9 @@ class FuncDoppler:
             locals_types_w = self.t.locals_types_w.copy())
         return w_newfunc
 
-    def blue_eval(self, expr: ast.Expr, w_type: W_Type) -> ast.Expr:
+    def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         w_val = self.blue_frame.eval_expr(expr)
+        w_type = self.vm.dynamic_type(w_val)
         if w_type in (B.w_i32, B.w_bool, B.w_str, B.w_void):
             # this is a primitive, we can just use ast.Constant
             value = self.vm.unwrap(w_val)
@@ -81,7 +82,7 @@ class FuncDoppler:
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
         color, w_type = self.t.check_expr(expr)
         if color == 'blue':
-            return self.blue_eval(expr, w_type)
+            return self.blue_eval(expr)
         return magic_dispatch(self, 'shift_expr', expr)
 
     # ==== statements ====
