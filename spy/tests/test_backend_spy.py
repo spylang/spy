@@ -80,7 +80,16 @@ class TestSPyBackend(CompilerTest):
             pass
         """)
 
-    def xtest_zz_sanity_check(self):
+    def test_while(self):
+        src = """
+        def foo() -> void:
+            while 1:
+                pass
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
+    def test_zz_sanity_check(self):
         """
         This is a hack.
 

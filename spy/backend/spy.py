@@ -104,6 +104,13 @@ class SPyBackend:
         v = self.fmt_expr(stmt.value)
         self.wl(f'{v}')
 
+    def emit_stmt_While(self, while_node: ast.While) -> None:
+        test = self.fmt_expr(while_node.test)
+        self.wl(f'while {test}:')
+        with self.out.indent():
+            for stmt in while_node.body:
+                self.emit_stmt(stmt)
+
     # expressions
 
     def fmt_expr_Constant(self, const: ast.Constant) -> str:
