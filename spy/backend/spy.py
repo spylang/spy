@@ -32,8 +32,13 @@ class SPyBackend:
         return self.out.build()
 
     def dump_w_func(self, w_func: W_ASTFunc) -> str:
+        fqn = w_func.fqn
+        if fqn.uniq_suffix == '':
+            # this is a global function, we can just use its name
+            name = fqn.attr
+        else:
+            name = self.fmt_fqn(fqn)
         w_functype = w_func.w_functype
-        name = w_func.fqn.attr
         params = self.fmt_params(w_functype.params)
         ret = self.fmt_w_obj(w_functype.w_restype)
         self.wl(f'def {name}({params}) -> {ret}:')

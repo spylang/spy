@@ -119,3 +119,22 @@ class TestDoppler:
         def foo() -> i32:
             return 42
         """)
+
+    def test_call_blue_closure(self):
+        self.redshift("""
+        @blue
+        def make_fn():
+            def fn(x: i32) -> i32:
+                return x * 2
+            return fn
+
+        def foo() -> i32:
+            return make_fn()(21)
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return `test::fn#0`(21)
+
+        def `test::fn#0`(x: i32) -> i32:
+            return x * 2
+        """)
