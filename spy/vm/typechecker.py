@@ -210,11 +210,11 @@ class TypeChecker:
         elif sym.is_local:
             return sym.color, self.locals_types_w[name.id]
         else:
-            #assert sym.color == 'blue' # XXX this fails?
+            # closed-over variables are always blue
             namespace = self.w_func.closure[sym.level]
             w_value = namespace[sym.name]
             assert w_value is not None
-            return sym.color, self.vm.dynamic_type(w_value)
+            return 'blue', self.vm.dynamic_type(w_value)
 
     def check_expr_Constant(self, const: ast.Constant) -> tuple[Color, W_Type]:
         T = type(const.value)

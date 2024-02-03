@@ -543,7 +543,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 7
 
-    @skip_backends('doppler', 'C', reason='fixme')
     def test_call_blue_closure(self):
         mod = self.compile("""
         @blue
