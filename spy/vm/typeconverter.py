@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from dataclasses import dataclass
 from spy.vm.object import W_Object, W_Type
+from spy.vm.b import B
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -30,3 +31,19 @@ class DynamicCast(TypeConverter):
     def convert(self, vm: 'SPyVM', w_obj: W_Object) -> W_Object:
         vm.typecheck(w_obj, self.w_type)
         return w_obj
+
+@dataclass
+class NumericConv(TypeConverter):
+    """
+    Convert between numeric types.
+
+    At the moment, the only supported conversion is i32->f64, and it's
+    hard-coded
+    """
+    w_fromtype: W_Type
+
+    def convert(self, vm: 'SPyVM', w_obj: W_Object) -> W_Object:
+        assert self.w_type is B.w_f64
+        assert self.w_fromtype is B.w_i32
+        val = vm.unwrap_i32(w_obj)
+        return vm.wrap(float(val))

@@ -32,6 +32,10 @@ MM.register('<=', 'f64', 'f64', OP.w_f64_le)
 MM.register('>' , 'f64', 'f64', OP.w_f64_gt)
 MM.register('>=', 'f64', 'f64', OP.w_f64_ge)
 
+# XXX: ideally, we would like to autogenerate all the possible combinations of
+# numeric ops
+MM.register('+',  'f64', 'i32', OP.w_f64_add)
+
 # str ops
 MM.register('+',  'str', 'str', OP.w_str_add)
 MM.register('*',  'str', 'i32', OP.w_str_mul)

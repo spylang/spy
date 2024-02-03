@@ -56,3 +56,11 @@ class TestFloat(CompilerTest):
         assert mod.cmp_gte(5.1, 6.2) is False
         assert mod.cmp_gte(5.1, 5.1) is True
         assert mod.cmp_gte(6.2, 5.1) is True
+
+    def test_implicit_conversion(self):
+        mod = self.compile(
+        """
+        def add(x: f64, y: i32) -> f64:
+            return x + y
+        """)
+        assert mod.add(1.5, 2) == 3.5
