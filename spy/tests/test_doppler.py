@@ -16,7 +16,7 @@ class TestDoppler:
         self.vm = SPyVM()
         self.vm.path.append(str(self.tmpdir))
 
-    def redshift(self, src: str) -> W_ASTFunc:
+    def redshift(self, src: str) -> None:
         f = self.tmpdir.join('test.spy')
         src = textwrap.dedent(src)
         f.write(src)

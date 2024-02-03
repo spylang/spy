@@ -116,7 +116,7 @@ class CompilerTest:
             return 'eager'
 
     # see test_backend_spy:test_zz_sanity_check for details
-    ALL_COMPILED_SOURCES = set()
+    ALL_COMPILED_SOURCES: set[str] = set()
 
     def compile(self, src: str, modname: str = 'test') -> Any:
         """
