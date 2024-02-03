@@ -556,3 +556,22 @@ class TestBasic(CompilerTest):
             return make_adder(3)(6)
         """)
         mod.foo()
+
+    @skip_backends("C", reason="implement me")
+    def test_print(self, capsys):
+        mod = self.compile("""
+        def foo() -> void:
+            print("hello world")
+            print(42)
+            print(12.3)
+            print(True)
+            print(None)
+        """)
+        mod.foo()
+        out, err = capsys.readouterr()
+        assert out == '\n'.join(["hello world",
+                                 "42",
+                                 "12.3",
+                                 "True",
+                                 "None",
+                                 ""])
