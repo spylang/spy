@@ -9,37 +9,39 @@
 // them
 
 typedef struct {
-    char *buf;
+    size_t length;
+    const char buf[];
 } spy_RawBuffer;
 
-static inline spy_RawBuffer
-spy_rawbuffer__rb_alloc(size_t size) {
-    spy_RawBuffer rb;
-    rb.buf = (char *)spy_GcAlloc(size).p;
+static inline spy_RawBuffer *
+spy_rawbuffer__rb_alloc(size_t length) {
+    size_t size = sizeof(spy_RawBuffer) + length;
+    spy_RawBuffer *rb = (spy_RawBuffer *)spy_GcAlloc(size).p;
+    rb->length = length;
     return rb;
 }
 
 static inline void
-spy_rawbuffer__rb_set_i32(spy_RawBuffer rb, int32_t offset, int32_t val) {
-    int32_t *p = (int32_t *)(rb.buf + offset);
+spy_rawbuffer__rb_set_i32(spy_RawBuffer *rb, int32_t offset, int32_t val) {
+    int32_t *p = (int32_t *)(rb->buf + offset);
     *p = val;
 }
 
 static inline int32_t
-spy_rawbuffer__rb_get_i32(spy_RawBuffer rb, int32_t offset) {
-    int32_t *p = (int32_t *)(rb.buf + offset);
+spy_rawbuffer__rb_get_i32(spy_RawBuffer *rb, int32_t offset) {
+    int32_t *p = (int32_t *)(rb->buf + offset);
     return *p;
 }
 
 static inline void
-spy_rawbuffer__rb_set_f64(spy_RawBuffer rb, int32_t offset, double val) {
-    double *p = (double *)(rb.buf + offset);
+spy_rawbuffer__rb_set_f64(spy_RawBuffer *rb, int32_t offset, double val) {
+    double *p = (double *)(rb->buf + offset);
     *p = val;
 }
 
 static inline double
-spy_rawbuffer__rb_get_f64(spy_RawBuffer rb, int32_t offset) {
-    double *p = (double *)(rb.buf + offset);
+spy_rawbuffer__rb_get_f64(spy_RawBuffer *rb, int32_t offset) {
+    double *p = (double *)(rb->buf + offset);
     return *p;
 }
 

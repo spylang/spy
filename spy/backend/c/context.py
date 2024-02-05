@@ -60,7 +60,7 @@ class Context:
         self._d[B.w_f64] = C_Type('double')
         self._d[B.w_bool] = C_Type('bool')
         self._d[B.w_str] = C_Type('spy_Str *')
-        self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer')
+        self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer *')
 
     def w2c(self, w_type: W_Type) -> C_Type:
         if w_type in self._d:
