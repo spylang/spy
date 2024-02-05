@@ -11,7 +11,7 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-
+from spy.vm.modules.rawbuffer import RB
 
 class WasmModuleWrapper:
     vm: SPyVM
@@ -107,5 +107,11 @@ class WasmFuncWrapper:
             length = self.ll.mem.read_i32(addr)
             utf8 = self.ll.mem.read(addr + 4, length)
             return utf8.decode('utf-8')
+        elif w_type is RB.w_RawBuffer:
+            # res is a  spy_RawBuffer*
+            addr = res
+            length = self.ll.mem.read_i32(addr)
+            buf = self.ll.mem.read(addr + 4, length)
+            return buf
         else:
             assert False, f"Don't know how to read {w_type} from WASM"

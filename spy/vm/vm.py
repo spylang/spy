@@ -16,6 +16,7 @@ from spy.vm.registry import ModuleRegistry
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
+from spy.vm.modules.rawbuffer import RAW_BUFFER
 
 class SPyVM:
     """
@@ -38,8 +39,9 @@ class SPyVM:
         self.modules_w = {}
         self.unique_fqns = set()
         self.path = []
-        self.make_module(BUILTINS)  # builtins::
-        self.make_module(OPERATOR)  # operator::
+        self.make_module(BUILTINS)   # builtins::
+        self.make_module(OPERATOR)   # operator::
+        self.make_module(RAW_BUFFER) # rawbuffer::
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file
