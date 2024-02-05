@@ -25,12 +25,7 @@ def do_pyparse(filename: str) -> None:
 
 def dump_spy_mod(vm: SPyVM, modname: str) -> None:
     b = SPyBackend(vm, fqn_format='short')
-    w_mod = vm.modules_w[modname]
-    for fqn, w_obj in w_mod.items_w():
-        if isinstance(w_obj, W_ASTFunc):
-            print(b.dump_w_func(w_obj))
-
-
+    print(b.dump_mod(modname))
 
 @no_type_check
 @app.command()

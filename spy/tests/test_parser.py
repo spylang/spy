@@ -350,7 +350,11 @@ class TestParser:
             filename='{self.tmpdir}/test.spy',
             decls=[
                 GlobalVarDef(
-                    vardef=VarDef(kind='const', name='x', type=None),
+                    vardef=VarDef(
+                        kind='const',
+                        name='x',
+                        type=Auto(),
+                    ),
                     assign=Assign(
                         target='x',
                         value=Constant(value=42),
@@ -370,7 +374,11 @@ class TestParser:
             filename='{self.tmpdir}/test.spy',
             decls=[
                 GlobalVarDef(
-                    vardef=VarDef(kind='var', name='x', type=None),
+                    vardef=VarDef(
+                        kind='var',
+                        name='x',
+                        type=Auto(),
+                    ),
                     assign=Assign(
                         target='x',
                         value=Constant(value=42),

@@ -205,6 +205,10 @@ class Name(Expr):
     id: str
 
 @dataclass(eq=False)
+class Auto(Expr):
+    precedence = 100 # the highest
+
+@dataclass(eq=False)
 class Constant(Expr):
     precedence = 100 # the highest
     value: object

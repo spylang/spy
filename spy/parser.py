@@ -222,11 +222,14 @@ class Parser:
     def from_py_global_Assign(self, py_node: py_ast.Assign
                               ) -> tuple[spy.ast.VarDef, spy.ast.Assign]:
         assign = self.from_py_stmt_Assign(py_node)
-        kind = 'const'
-        if py_node.targets[0].is_var:
+        assert isinstance(assign, spy.ast.Assign)
+        kind: spy.ast.VarKind = 'const'
+        if py_node.targets[0].is_var:  # type: ignore
             kind = 'var'
-        vardef = spy.ast.VarDef(loc=py_node.loc, kind=kind,
-                                name=assign.target, type=None)
+        vardef = spy.ast.VarDef(loc=py_node.loc,
+                                kind=kind,
+                                name=assign.target,
+                                type=spy.ast.Auto(loc=py_node.loc))
         return vardef, assign
 
     def from_py_AnnAssign(self,

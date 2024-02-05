@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from spy import ast
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -23,16 +23,28 @@ class SPyBackend:
         self.w = self.out.w
         self.wl = self.out.wl
 
-    def dump_w_func(self, w_func: W_ASTFunc) -> str:
+    def dump_mod(self, modname: str) -> str:
+        w_mod = self.vm.modules_w[modname]
+        for fqn, w_obj in w_mod.items_w():
+            if isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red':
+                self.dump_w_func(w_obj)
+                self.out.wl()
+        return self.out.build()
+
+    def dump_w_func(self, w_func: W_ASTFunc) -> None:
+        fqn = w_func.fqn
+        if fqn.uniq_suffix == '':
+            # this is a global function, we can just use its name
+            name = fqn.attr
+        else:
+            name = self.fmt_fqn(fqn)
         w_functype = w_func.w_functype
-        name = w_func.fqn.attr
         params = self.fmt_params(w_functype.params)
         ret = self.fmt_w_obj(w_functype.w_restype)
         self.wl(f'def {name}({params}) -> {ret}:')
         with self.out.indent():
             for stmt in w_func.funcdef.body:
                 self.emit_stmt(stmt)
-        return self.out.build()
 
     def fmt_params(self, params: list[FuncParam]) -> str:
         l = []
@@ -73,6 +85,20 @@ class SPyBackend:
 
     # statements
 
+    def emit_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        name = funcdef.name
+        paramlist = []
+        for funcarg in funcdef.args:
+            n = funcarg.name
+            t = self.fmt_expr(funcarg.type)
+            paramlist.append(f'{n}: {t}')
+        params = ', '.join(paramlist)
+        ret = self.fmt_expr(funcdef.return_type)
+        self.wl(f'def {name}({params}) -> {ret}:')
+        with self.out.indent():
+            for stmt in funcdef.body:
+                self.emit_stmt(stmt)
+
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
         self.wl('pass')
 
@@ -87,6 +113,29 @@ class SPyBackend:
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         t = self.fmt_expr(vardef.type)
         self.wl(f'{vardef.name}: {t}')
+
+    def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
+        v = self.fmt_expr(stmt.value)
+        self.wl(f'{v}')
+
+    def emit_stmt_While(self, while_node: ast.While) -> None:
+        test = self.fmt_expr(while_node.test)
+        self.wl(f'while {test}:')
+        with self.out.indent():
+            for stmt in while_node.body:
+                self.emit_stmt(stmt)
+
+    def emit_stmt_If(self, if_node: ast.If) -> None:
+        test = self.fmt_expr(if_node.test)
+        self.wl(f'if {test}:')
+        with self.out.indent():
+            for stmt in if_node.then_body:
+                self.emit_stmt(stmt)
+        if if_node.else_body:
+            self.wl('else:')
+            with self.out.indent():
+                for stmt in if_node.else_body:
+                    self.emit_stmt(stmt)
 
     # expressions
 
@@ -112,24 +161,60 @@ class SPyBackend:
     fmt_expr_Sub = fmt_expr_BinOp
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
+    fmt_expr_Eq = fmt_expr_BinOp
+    fmt_expr_NotEq = fmt_expr_BinOp
+    fmt_expr_Lt = fmt_expr_BinOp
+    fmt_expr_LtE = fmt_expr_BinOp
+    fmt_expr_Gt = fmt_expr_BinOp
+    fmt_expr_GtE = fmt_expr_BinOp
+
+    # special cases
+    FQN2BinOp = {
+        FQN('operator::i32_add'): ast.Add,
+        FQN('operator::i32_sub'): ast.Sub,
+        FQN('operator::i32_mul'): ast.Mul,
+        FQN('operator::i32_div'): ast.Div,
+        FQN('operator::i32_eq'): ast.Eq,
+        FQN('operator::i32_ne'): ast.NotEq,
+        FQN('operator::i32_lt'): ast.Lt,
+        FQN('operator::i32_le'): ast.LtE,
+        FQN('operator::i32_gt'): ast.Gt,
+        FQN('operator::i32_ge'): ast.GtE,
+        #
+        FQN('operator::f64_add'): ast.Add,
+        FQN('operator::f64_sub'): ast.Sub,
+        FQN('operator::f64_mul'): ast.Mul,
+        FQN('operator::f64_div'): ast.Div,
+        FQN('operator::f64_eq'): ast.Eq,
+        FQN('operator::f64_ne'): ast.NotEq,
+        FQN('operator::f64_lt'): ast.Lt,
+        FQN('operator::f64_le'): ast.LtE,
+        FQN('operator::f64_gt'): ast.Gt,
+        FQN('operator::f64_ge'): ast.GtE,
+    }
+
+    def get_binop_maybe(self, func: ast.Expr) -> Optional[type[ast.BinOp]]:
+        """
+        Some opimpl are special-cased and turned back into a BinOp
+        """
+        if isinstance(func, ast.FQNConst):
+            return self.FQN2BinOp.get(func.fqn)
+        return None
 
     def fmt_expr_Call(self, call: ast.Call) -> str:
-        if not isinstance(call.func, ast.FQNConst):
-            raise NotImplementedError('fix me')
-
-        # let's see whether it's a special case
-        fqn2ast = {
-            FQN('operator::i32_add'): ast.Add,
-            FQN('operator::i32_mul'): ast.Mul,
-        }
-        opclass = fqn2ast.get(call.func.fqn)
-        if opclass is not None:
+        if opclass := self.get_binop_maybe(call.func):
+            # special case
             assert len(call.args) == 2
             binop = opclass(call.loc, call.args[0], call.args[1])
             return self.fmt_expr_BinOp(binop)
+        else:
+            # standard case
+            name = self.fmt_expr(call.func)
+            arglist = [self.fmt_expr(arg) for arg in call.args]
+            args = ', '.join(arglist)
+            return f'{name}({args})'
 
-        # standard case
-        name = self.fmt_expr(call.func)
-        arglist = [self.fmt_expr(arg) for arg in call.args]
-        args = ', '.join(arglist)
-        return f'{name}({args})'
+    def fmt_expr_GetItem(self, getitem: ast.GetItem) -> str:
+        v = self.fmt_expr(getitem.value)
+        i = self.fmt_expr(getitem.index)
+        return f'{v}[{i}]'
