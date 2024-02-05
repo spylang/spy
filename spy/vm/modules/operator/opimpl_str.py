@@ -26,14 +26,14 @@ def str_eq(vm: 'SPyVM', w_a: W_Str, w_b: W_Str) -> W_Bool:
     assert isinstance(w_a, W_Str)
     assert isinstance(w_b, W_Str)
     res = vm.ll.call('spy_str_eq', w_a.ptr, w_b.ptr)
-    return vm.wrap(bool(res))
+    return vm.wrap(bool(res))  # type: ignore
 
 @OP.primitive('def(a: str, b: str) -> bool')
 def str_ne(vm: 'SPyVM', w_a: W_Str, w_b: W_Str) -> W_Bool:
     assert isinstance(w_a, W_Str)
     assert isinstance(w_b, W_Str)
     res = vm.ll.call('spy_str_eq', w_a.ptr, w_b.ptr)
-    return vm.wrap(bool(not res))
+    return vm.wrap(bool(not res))  # type: ignore
 
 @OP.primitive('def(s: str, i: i32) -> str')
 def str_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
