@@ -7,7 +7,7 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, W_I32
+from spy.vm.object import W_Object, W_Type, W_I32, W_F64
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
@@ -190,6 +190,8 @@ class SPyVM:
             return B.w_None
         elif T in (int, fixedint.Int32):
             return W_I32(value)
+        elif T is float:
+            return W_F64(value)
         elif T is bool:
             if value:
                 return B.w_True
@@ -213,6 +215,11 @@ class SPyVM:
 
     def unwrap_i32(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_I32):
+            raise Exception('Type mismatch')
+        return w_value.value
+
+    def unwrap_f64(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_F64):
             raise Exception('Type mismatch')
         return w_value.value
 

@@ -68,6 +68,7 @@ OP = OPERATOR
 
 # the folloing imports register all the various objects on OP
 from . import opimpl_i32     # side effects
+from . import opimpl_f64     # side effects
 from . import opimpl_str     # side effects
 from . import opimpl_dynamic # side effects
 from . import binop          # side effects
@@ -76,7 +77,9 @@ from . import binop          # side effects
 # fill the _from_token dict
 OP._from_token.update({
     '+': OP.w_ADD,
+    '-': OP.w_SUB,
     '*': OP.w_MUL,
+    '/': OP.w_DIV,
     '==': OP.w_EQ,
     '!=': OP.w_NE,
     '<':  OP.w_LT,

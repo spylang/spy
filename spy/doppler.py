@@ -51,7 +51,7 @@ class FuncDoppler:
     def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         w_val = self.blue_frame.eval_expr(expr)
         w_type = self.vm.dynamic_type(w_val)
-        if w_type in (B.w_i32, B.w_bool, B.w_str, B.w_void):
+        if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_str, B.w_void):
             # this is a primitive, we can just use ast.Constant
             value = self.vm.unwrap(w_val)
             if isinstance(value, FixedInt): # type: ignore

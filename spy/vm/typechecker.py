@@ -9,7 +9,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
-from spy.vm.typeconverter import TypeConverter, DynamicCast
+from spy.vm.typeconverter import TypeConverter, DynamicCast, NumericConv
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -104,6 +104,10 @@ class TypeChecker:
         elif self.vm.issubclass(w_exp, w_got):
             # implicit upcast
             self.expr_conv[expr] = DynamicCast(w_exp)
+            return None
+        elif w_got is B.w_i32 and w_exp is B.w_f64:
+            # numeric conversion
+            self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
             return None
         # mismatched types
         err = SPyTypeError('mismatched types')
@@ -218,9 +222,11 @@ class TypeChecker:
 
     def check_expr_Constant(self, const: ast.Constant) -> tuple[Color, W_Type]:
         T = type(const.value)
-        assert T in (int, bool, str, NoneType)
+        assert T in (int, float, bool, str, NoneType)
         if T is int:
             return 'blue', B.w_i32
+        elif T is float:
+            return 'blue', B.w_f64
         elif T is bool:
             return 'blue', B.w_bool
         elif T is str:
@@ -253,18 +259,45 @@ class TypeChecker:
             raise err
 
         assert isinstance(w_opimpl, W_Func)
+        self.opimpl_check_args(w_opimpl, binop, [binop.left, binop.right])
         self.expr_opimpl[binop] = w_opimpl
         w_restype = w_opimpl.w_functype.w_restype
         return color, w_restype
 
     check_expr_Add = check_expr_BinOp
+    check_expr_Sub = check_expr_BinOp
     check_expr_Mul = check_expr_BinOp
+    check_expr_Div = check_expr_BinOp
     check_expr_Eq = check_expr_BinOp
     check_expr_NotEq = check_expr_BinOp
     check_expr_Lt = check_expr_BinOp
     check_expr_LtE = check_expr_BinOp
     check_expr_Gt = check_expr_BinOp
     check_expr_GtE = check_expr_BinOp
+
+    def opimpl_check_args(self, w_opimpl: W_Func, op: ast.Expr,
+                          args: list[ast.Expr]) -> None:
+        """
+        Check that arg types that we are passing to the opimpl, and insert
+        appropriate type conversions if needed.
+
+        Note: this is very similar to check_call & co: the difference is
+        that if here we find mistake in the signature (e.g. wrong argcount
+        or type mismatch) we treat it as an internal error instead of an
+        user error.
+
+        Maybe we could reduce a bit the code duplication in the future.
+        """
+        w_functype = w_opimpl.w_functype
+        argtypes_w = [self.check_expr(arg)[1] for arg in args]
+        got_nargs = len(argtypes_w)
+        exp_nargs = len(w_functype.params)
+        assert got_nargs == exp_nargs, 'wrong opimpl?'
+
+        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
+                                                    argtypes_w)):
+            err = self.convert_type_maybe(args[i], w_arg_type, param.w_type)
+            assert not err, 'wrong opimpl?'
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
         vcolor, w_vtype = self.check_expr(expr.value)

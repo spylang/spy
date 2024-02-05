@@ -68,7 +68,7 @@ class WasmFuncWrapper:
         self.w_functype = w_functype
 
     def py2wasm(self, pyval: Any, w_type: W_Type) -> Any:
-        if w_type is B.w_i32:
+        if w_type in (B.w_i32, B.w_f64):
             return pyval
         elif w_type is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
@@ -96,6 +96,8 @@ class WasmFuncWrapper:
             assert res is None
             return None
         elif w_type is B.w_i32:
+            return res
+        elif w_type is B.w_f64:
             return res
         elif w_type is B.w_bool:
             return bool(res)

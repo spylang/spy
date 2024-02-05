@@ -21,8 +21,17 @@ def i32_add(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a + b)
 
 @OP.primitive('def(a: i32, b: i32) -> i32')
+def i32_sub(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a - b)
+
+@OP.primitive('def(a: i32, b: i32) -> i32')
 def i32_mul(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a * b)
+
+# XXX: should we do floor division or float division?
+@OP.primitive('def(a: i32, b: i32) -> i32')
+def i32_div(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a // b)
 
 @OP.primitive('def(a: i32, b: i32) -> bool')
 def i32_eq(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:

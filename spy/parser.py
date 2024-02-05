@@ -304,7 +304,7 @@ class Parser:
         #     None, str, bytes, bool, int, float, complex, Ellipsis
         assert py_node.kind is None  # I don't know what is 'kind' here
         T = type(py_node.value)
-        if T in (int, bool, str, NoneType):
+        if T in (int, float, bool, str, NoneType):
             return spy.ast.Constant(py_node.loc, py_node.value)
         elif T in (bytes, float, complex, Ellipsis):
             self.error(f'unsupported literal: {py_node.value!r}',

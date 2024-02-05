@@ -194,6 +194,11 @@ class CFuncWriter:
         magic_dispatch(self, 'emit_stmt', stmt)
 
     def fmt_expr(self, expr: ast.Expr) -> C.Expr:
+        # XXX: here we should probably handle typeconv, if present.
+        # However, we cannot yet write a test for it because:
+        #   - we cannot test DynamicCast because we don't support object
+        #   - we cannot test NumericConv because the expressions are
+        #     automatically converted by the C compiler anyway
         return magic_dispatch(self, 'fmt_expr', expr)
 
     # ===== statements =====
@@ -250,10 +255,12 @@ class CFuncWriter:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
-        assert T in (int, bool, str, NoneType)
+        assert T in (int, float, bool, str, NoneType)
         if T is NoneType:
             return C.Void()
         elif T is int:
+            return C.Literal(str(const.value))
+        elif T is float:
             return C.Literal(str(const.value))
         elif T is bool:
             return C.Literal(str(const.value).lower())
@@ -319,13 +326,26 @@ class CFuncWriter:
         # some calls are special-cased and transformed into a C binop
         binops = {
             FQN('operator::i32_add'): '+',
+            FQN('operator::i32_sub'): '-',
             FQN('operator::i32_mul'): '*',
+            FQN('operator::i32_div'): '/', # XXX: floor division or int division?
             FQN('operator::i32_eq') : '==',
             FQN('operator::i32_ne') : '!=',
             FQN('operator::i32_lt') : '<',
             FQN('operator::i32_le') : '<=',
             FQN('operator::i32_gt') : '>',
             FQN('operator::i32_ge') : '>=',
+            #
+            FQN('operator::f64_add'): '+',
+            FQN('operator::f64_sub'): '-',
+            FQN('operator::f64_mul'): '*',
+            FQN('operator::f64_div'): '/',
+            FQN('operator::f64_eq') : '==',
+            FQN('operator::f64_ne') : '!=',
+            FQN('operator::f64_lt') : '<',
+            FQN('operator::f64_le') : '<=',
+            FQN('operator::f64_gt') : '>',
+            FQN('operator::f64_ge') : '>=',
         }
         op = binops.get(call.func.fqn)
         if op is not None:
