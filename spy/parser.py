@@ -67,6 +67,10 @@ class Parser:
                 assert assign is not None
                 globvar = spy.ast.GlobalVarDef(vardef, assign)
                 mod.decls.append(globvar)
+            elif isinstance(py_stmt, py_ast.Assign):
+                vardef, assign = self.from_py_global_Assign(py_stmt)
+                globvar = spy.ast.GlobalVarDef(vardef, assign)
+                mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.ImportFrom):
                 importdecls = self.from_py_ImportFrom(py_stmt)
                 mod.decls += importdecls
@@ -213,6 +217,17 @@ class Parser:
         else:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
+
+
+    def from_py_global_Assign(self, py_node: py_ast.Assign
+                              ) -> tuple[spy.ast.VarDef, spy.ast.Assign]:
+        assign = self.from_py_stmt_Assign(py_node)
+        kind = 'const'
+        if py_node.targets[0].is_var:
+            kind = 'var'
+        vardef = spy.ast.VarDef(loc=py_node.loc, kind=kind,
+                                name=assign.target, type=None)
+        return vardef, assign
 
     def from_py_AnnAssign(self,
                           py_node: py_ast.AnnAssign,
