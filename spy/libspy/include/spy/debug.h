@@ -5,6 +5,7 @@
 
 /***** WASM imports, must be provided by the host *****/
 void spy_debug_log(const char *s);
+void spy_debug_log_i32(const char *s, int32_t n);
 void spy_debug_set_panic_message(const char *s);
 /***** end of WASM imports *****/
 

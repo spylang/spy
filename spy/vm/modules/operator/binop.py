@@ -60,6 +60,8 @@ MM.register('>=', 'i32', 'f64', OP.w_f64_ge)
 MM.register('+',  'str', 'str', OP.w_str_add)
 MM.register('*',  'str', 'i32', OP.w_str_mul)
 MM.register('[]', 'str', 'i32', OP.w_str_getitem)
+MM.register('==', 'str', 'str', OP.w_str_eq)
+MM.register('!=', 'str', 'str', OP.w_str_ne)
 
 # dynamic ops
 MM.register_partial('+',  'dynamic', OP.w_dynamic_add)

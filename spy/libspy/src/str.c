@@ -30,6 +30,12 @@ spy_str_mul(spy_Str *a, int32_t b) {
     return res;
 }
 
+bool
+spy_str_eq(spy_Str *a, spy_Str *b) {
+    if (a->length != b->length)
+        return false;
+    return memcmp(a->utf8, b->utf8, a->length) == 0;
+}
 
 spy_Str *
 spy_str_getitem(spy_Str *s, int32_t i) {

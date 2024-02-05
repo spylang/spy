@@ -18,7 +18,10 @@ static void _Noreturn abort(void) {
     __builtin_trap();
 }
 
-// these are defied in walloc.c
+// this is defined in libc.c. We cannot use __builtin_memcmp :(
+int memcmp(const void *s1, const void *s2, size_t n);
+
+// these are defined in walloc.c
 void *malloc(size_t size);
 void free(void *p);
 

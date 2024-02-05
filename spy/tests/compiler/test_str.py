@@ -63,3 +63,17 @@ class TestStr(CompilerTest):
             mod.foo('ABCDE', 5)
         with pytest.raises(SPyPanicError, match="string index out of bound"):
             mod.foo('ABCDE', -6)
+
+    def test_compare(self):
+        mod = self.compile(
+        """
+        def eq(a: str, b: str) -> bool:
+            return a == b
+
+        def ne(a: str, b: str) -> bool:
+            return a != b
+        """)
+        assert mod.eq("aaa", "aaa")
+        assert not mod.eq("aaa", "bbb")
+        assert mod.ne("aaa", "bbb")
+        assert not mod.ne("aaa", "aaa")

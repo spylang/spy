@@ -18,14 +18,23 @@ class LibSPyHost(HostModule):
         self.log = []
         self.panic_message = None
 
+    def _read_str(self, ptr: int) -> str:
+        # ptr is const char*
+        ba = self.ll.mem.read_cstr(ptr)
+        return ba.decode('utf-8')
+
     # ========== WASM imports ==========
 
     def env_spy_debug_log(self, ptr: int) -> None:
-        # ptr is const char*
-        ba = self.ll.mem.read_cstr(ptr)
-        s = ba.decode('utf-8')
+        s = self._read_str(ptr)
         self.log.append(s)
         print('[log]', s)
+
+    def env_spy_debug_log_i32(self, ptr: int, n: int) -> None:
+        s = self._read_str(ptr)
+        msg = f'{s} {n}'
+        self.log.append(msg)
+        print('[log]', msg)
 
     def env_spy_debug_set_panic_message(self, ptr: int) -> None:
         # ptr is const char*
