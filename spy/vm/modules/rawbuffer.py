@@ -7,6 +7,7 @@ import struct
 from spy.vm.b import B
 from spy.vm.function import W_Func
 from spy.vm.object import W_Type, W_Object, spytype, W_I32, W_F64, W_Void
+from spy.vm.str import W_Str
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -26,6 +27,11 @@ RB.add('RawBuffer', W_RawBuffer._w)
 def rb_alloc(vm: 'SPyVM', w_size: W_I32) -> W_RawBuffer:
     size = vm.unwrap_i32(w_size)
     return W_RawBuffer(size)
+
+@RB.primitive('def(rb: RawBuffer) -> str')
+def rb_as_str(vm: 'SPyVM', w_rb: W_RawBuffer) -> W_Str:
+    s = w_rb.buf.decode('latin-1')
+    return vm.wrap(s)
 
 @RB.primitive('def(rb: RawBuffer, offset: i32, val: i32) -> void')
 def rb_set_i32(vm: 'SPyVM', w_rb: W_RawBuffer,
