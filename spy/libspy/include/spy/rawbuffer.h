@@ -31,5 +31,17 @@ spy_rawbuffer__rb_get_i32(spy_RawBuffer rb, int32_t offset) {
     return *p;
 }
 
+static inline void
+spy_rawbuffer__rb_set_f64(spy_RawBuffer rb, int32_t offset, double val) {
+    double *p = (double *)(rb.buf + offset);
+    *p = val;
+}
+
+static inline double
+spy_rawbuffer__rb_get_f64(spy_RawBuffer rb, int32_t offset) {
+    double *p = (double *)(rb.buf + offset);
+    return *p;
+}
+
 
 #endif /* SPY_RAW_BUFFER_H */
