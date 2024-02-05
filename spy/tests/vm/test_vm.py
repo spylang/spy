@@ -7,6 +7,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, spytype, W_void, W_i32, W_bool
 from spy.vm.str import W_str
 from spy.vm.function import W_BuiltinFunc
+from spy.vm.module import W_Module
 
 class TestVM:
 
@@ -174,3 +175,21 @@ class TestVM:
         msg = 'Invalid cast. Expected `i32`, got `str`'
         with pytest.raises(SPyTypeError, match=msg):
             vm.call_function(w_abs, [w_x])
+
+    def test_get_unique_FQN(self):
+        vm = SPyVM()
+        w_mod = W_Module(vm, "test", "...")
+        vm.register_module(w_mod)
+        #
+        a = vm.get_unique_FQN(modname="test", attr="a", is_global=True)
+        assert a == FQN("test::a")
+        #
+        with pytest.raises(AssertionError):
+            vm.get_unique_FQN(modname="test", attr="a", is_global=True)
+        #
+        b0 = vm.get_unique_FQN(modname="test", attr="b", is_global=False)
+        assert b0 == FQN("test::b", uniq_suffix="0")
+        assert str(b0) == "test::b#0"
+        b1 = vm.get_unique_FQN(modname="test", attr="b", is_global=False)
+        assert b1 == FQN("test::b", uniq_suffix='1')
+        assert str(b1) == "test::b#1"

@@ -132,6 +132,13 @@ class W_ASTFunc(W_Func):
     def redshifted(self) -> bool:
         return self.locals_types_w is not None
 
+    @property
+    def color(self) -> Color:
+        """
+        Just a shortcut
+        """
+        return self.w_functype.color
+
     def __repr__(self) -> str:
         if self.redshifted:
             return f"<spy function '{self.fqn}' (redshifted)>"

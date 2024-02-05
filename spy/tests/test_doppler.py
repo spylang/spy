@@ -88,3 +88,19 @@ class TestDoppler:
         """
         w_func = self.redshift(src, 'foo')
         self.assert_dump(w_func, src)
+
+    def test_dont_redshift_function_calls(self):
+        src = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            return inc(5)
+        """
+        w_func = self.redshift(src, 'foo')
+        expected = """
+        def foo() -> i32:
+            return `test::inc`(5)
+        """
+        w_func = self.redshift(src, 'foo')
+        self.assert_dump(w_func, expected)

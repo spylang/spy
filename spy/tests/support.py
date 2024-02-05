@@ -133,11 +133,11 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'doppler':
-            self.vm.redshift(modname)
+            self.vm.redshift()
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
-            self.vm.redshift(modname)
+            self.vm.redshift()
             compiler = Compiler(self.vm, modname, self.builddir)
             file_wasm = compiler.cbuild()
             return WasmModuleWrapper(self.vm, modname, file_wasm)

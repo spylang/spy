@@ -8,16 +8,34 @@ class FQN:
     formated as 'modname::attr', where 'modname' can be composed of multiple
     parts separated by dots (e.g. 'a.b.c').
 
-    NOTE: this is not part of the Node hierarchy
+    In some cases we might want to generate two FQN with the same
+    'modname::attr' part, but we still want them to be unique. In those cases,
+    we attach an uniq_suffix to them, and the FQN is formatted as
+    'modname::attr#suffix', e.g. 'test::foo#42'.
+
+    This hapens for example with closures:
+
+    @blue
+    def make_fn(T):
+        def fn(x: T) -> T:
+            return ...
+        return fn
+
+    fn_i32 = make_fn(i32)  # fqn is 'test::foo#1'
+    fn_f64 = make_fn(f64)  # fqn is 'test::foo#2'
+
+    See also SPy.get_unique_FQN().
     """
     modname: str
     attr: str
+    uniq_suffix: str
 
     def __init__(self,
                  fullname: Optional[str] = None,
                  *,
                  modname: Optional[str] = None,
-                 attr: Optional[str] = None
+                 attr: Optional[str] = None,
+                 uniq_suffix: str = '',
                  ) -> None:
         if fullname is None:
             assert modname is not None
@@ -30,6 +48,7 @@ class FQN:
         #
         self.modname = modname
         self.attr = attr
+        self.uniq_suffix = uniq_suffix
 
     def __repr__(self) -> str:
         return f"FQN({self.fullname!r})"
@@ -47,12 +66,18 @@ class FQN:
 
     @property
     def fullname(self) -> str:
-        return f'{self.modname}::{self.attr}'
+        fn = f'{self.modname}::{self.attr}'
+        if self.uniq_suffix != '':
+            fn += '#' + self.uniq_suffix
+        return fn
 
     @property
     def c_name(self) -> str:
         modname = self.modname.replace('.', '_')
-        return f'spy_{modname}__{self.attr}'
+        cn = f'spy_{modname}__{self.attr}'
+        if self.uniq_suffix != '':
+            cn += '__' + self.uniq_suffix
+        return cn
 
     @property
     def spy_name(self) -> str:

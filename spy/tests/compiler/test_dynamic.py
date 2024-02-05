@@ -93,3 +93,30 @@ class TestDynamic(CompilerTest):
         assert mod.gte(5, 6) is False
         assert mod.gte(5, 5) is True
         assert mod.gte(6, 5) is True
+
+    def test_call(self):
+        mod = self.compile("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        @blue
+        def get_inc() -> dynamic:
+            return inc
+
+        def foo() -> i32:
+            return get_inc()(7)
+        """)
+        assert mod.foo() == 8
+
+    def test_wrong_call(self):
+        mod = self.compile("""
+        @blue
+        def get_inc() -> dynamic:
+            return 'hello'
+
+        def foo() -> i32:
+            return get_inc()(7)
+        """)
+        msg = 'cannot call objects of type `str`'
+        with pytest.raises(SPyTypeError, match=msg):
+            mod.foo()

@@ -63,7 +63,7 @@ def do_main(filename: Path, pyparse: bool, parse: bool, redshift: bool,
     vm.path.append(str(builddir))
     w_mod = vm.import_(modname)
 
-    vm.redshift(modname)
+    vm.redshift()
     if redshift:
         dump_spy_mod(vm, modname)
         return

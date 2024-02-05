@@ -210,11 +210,11 @@ class TypeChecker:
         elif sym.is_local:
             return sym.color, self.locals_types_w[name.id]
         else:
-            #assert sym.color == 'blue' # XXX this fails?
+            # closed-over variables are always blue
             namespace = self.w_func.closure[sym.level]
             w_value = namespace[sym.name]
             assert w_value is not None
-            return sym.color, self.vm.dynamic_type(w_value)
+            return 'blue', self.vm.dynamic_type(w_value)
 
     def check_expr_Constant(self, const: ast.Constant) -> tuple[Color, W_Type]:
         T = type(const.value)
@@ -294,6 +294,21 @@ class TypeChecker:
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
+
+        if w_functype is B.w_dynamic:
+            # XXX: how are we supposed to know the color of the result if we
+            # are calling a dynamic expr?
+            # E.g.:
+            #
+            # @blue
+            # def foo(): ...
+            #
+            # @blue
+            # def bar(): ...
+            #     x: dynamic = foo
+            #     x()   # color???
+            return 'red', B.w_dynamic # ???
+
         if not isinstance(w_functype, W_FuncType):
             self._call_error_non_callable(call, sym, w_functype)
         #
@@ -311,8 +326,10 @@ class TypeChecker:
                     err.add('note', 'function defined here', sym.loc)
                 raise err
         #
-        color = 'red' # XXX fix me
-        return color, w_functype.w_restype
+        # the color of the result depends on the color of the function: if we
+        # call a @blue function, we get a blue result
+        rescolor = w_functype.color
+        return rescolor, w_functype.w_restype
 
     def _call_error_non_callable(self, call: ast.Call,
                                  sym: Optional[Symbol],

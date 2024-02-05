@@ -18,6 +18,7 @@ def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
         l = w_ltype.name
         r = w_rtype.name
         raise SPyTypeError(f'cannot do `{l}` {token} `{r}`')
+    assert isinstance(w_opimpl, W_Func)
     return vm.call_function(w_opimpl, [w_a, w_b])
 
 

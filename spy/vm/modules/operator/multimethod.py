@@ -47,7 +47,7 @@ class MultiMethodTable:
         assert key not in self.impls
         self.impls[key] = w_impl
 
-    def register_partial(self, op: str, atype: str, w_impl: W_Object):
+    def register_partial(self, op: str, atype: str, w_impl: W_Object) -> None:
         self.register(op, atype, None, w_impl)
         self.register(op, None, atype, w_impl)
 

@@ -124,7 +124,13 @@ class ASTFrame:
         self.t.lazy_check_FuncDef(funcdef, w_functype)
         #
         # create the w_func
-        fqn = FQN(modname='???', attr=funcdef.name)
+
+        # if the current func is __INIT__, then we are creating a module-level
+        # global. Else, it's a closure
+        is_global = self.w_func.fqn.attr == '__INIT__'
+        modname = self.w_func.fqn.modname # the module of the "outer" function
+        fqn = self.vm.get_unique_FQN(modname=modname, attr=funcdef.name,
+                                     is_global=is_global)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
@@ -216,8 +222,21 @@ class ASTFrame:
     eval_expr_GtE = eval_expr_BinOp
 
     def eval_expr_Call(self, call: ast.Call) -> W_Object:
+        color, w_functype = self.t.check_expr(call.func)
+        assert color == 'blue', 'indirect calls not supported'
         w_func = self.eval_expr(call.func)
+
+        if w_functype is B.w_dynamic:
+            # if the static type is `dynamic` and thing is not a function,
+            # it's a TypeError
+            if not isinstance(w_func, W_Func):
+                t = self.vm.dynamic_type(w_func)
+                raise SPyTypeError(f'cannot call objects of type `{t.name}`')
+
+        # if the static type is not `dynamic` and the thing is not a function,
+        # it's a bug in the typechecker
         assert isinstance(w_func, W_Func)
+
         args_w = [self.eval_expr(arg) for arg in call.args]
         w_res = self.vm.call_function(w_func, args_w)
         return w_res

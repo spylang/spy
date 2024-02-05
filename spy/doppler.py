@@ -36,6 +36,8 @@ class FuncDoppler:
         new_funcdef = funcdef.replace(body=new_body)
         #
         new_fqn = self.w_func.fqn # XXX
+        # all the non-local lookups are redshifted into constants, so the
+        # closure will be empty
         new_closure = ()
         w_newfunctype = self.w_func.w_functype
         w_newfunc = W_ASTFunc(
@@ -46,21 +48,30 @@ class FuncDoppler:
             locals_types_w = self.t.locals_types_w.copy())
         return w_newfunc
 
-    def blue_eval(self, expr: ast.Expr, w_type: W_Type) -> ast.Expr:
+    def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         w_val = self.blue_frame.eval_expr(expr)
+        w_type = self.vm.dynamic_type(w_val)
         if w_type in (B.w_i32, B.w_bool, B.w_str, B.w_void):
             # this is a primitive, we can just use ast.Constant
             value = self.vm.unwrap(w_val)
             if isinstance(value, FixedInt): # type: ignore
                 value = int(value)
             return ast.Constant(expr.loc, value)
-        else:
-            # this is a non-primitive prebuilt constant. For now we support
-            # only objects which has a FQN (e.g., builtin types), but we need
-            # to think about a more general solution
-            fqn = self.vm.reverse_lookup_global(w_val)
-            assert fqn is not None, 'implement me'
-            return ast.FQNConst(expr.loc, fqn)
+
+        # this is a non-primitive prebuilt constant. If it doesn't have an FQN
+        # yet, we need to assign it one. For now we know how to do it only for
+        # non-global functions
+        fqn = self.vm.reverse_lookup_global(w_val)
+        if fqn is None:
+            if isinstance(w_val, W_ASTFunc):
+                # it's a closure, let's assign it an FQN and add it to the globals
+                fqn = w_val.fqn
+                self.vm.add_global(fqn, None, w_val)
+            else:
+                assert False, 'implement me'
+
+        assert fqn is not None
+        return ast.FQNConst(expr.loc, fqn)
 
     # =========
 
@@ -71,7 +82,7 @@ class FuncDoppler:
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
         color, w_type = self.t.check_expr(expr)
         if color == 'blue':
-            return self.blue_eval(expr, w_type)
+            return self.blue_eval(expr)
         return magic_dispatch(self, 'shift_expr', expr)
 
     # ==== statements ====

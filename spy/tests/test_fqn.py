@@ -41,3 +41,11 @@ def test_hash_eq():
 def test_c_name():
     a = FQN("a.b.c::xxx")
     assert a.c_name == "spy_a_b_c__xxx"
+
+def test_uniq_suffix():
+    a = FQN("aaa::bbb", uniq_suffix='0')
+    assert str(a) == "aaa::bbb#0"
+    assert a.c_name == "spy_aaa__bbb__0"
+    b = FQN(modname="aaa", attr="bbb", uniq_suffix='i32')
+    assert str(b) == "aaa::bbb#i32"
+    assert b.c_name == "spy_aaa__bbb__i32"

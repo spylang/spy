@@ -73,7 +73,8 @@ class CModuleWriter:
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
             if isinstance(w_obj, W_ASTFunc):
-                self.emit_function(fqn, w_obj)
+                if w_obj.color != 'blue':
+                    self.emit_function(fqn, w_obj)
             else:
                 self.emit_variable(fqn, w_obj)
         return self.out.build()
