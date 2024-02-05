@@ -21,17 +21,15 @@ class W_RawBuffer(W_Object):
     def __init__(self, size: int) -> None:
         self.buf = bytearray(size)
 
+    def spy_unwrap(self, vm: 'SPyVM') -> bytearray:
+        return self.buf
+
 RB.add('RawBuffer', W_RawBuffer._w)
 
 @RB.primitive('def(size: i32) -> RawBuffer')
 def rb_alloc(vm: 'SPyVM', w_size: W_I32) -> W_RawBuffer:
     size = vm.unwrap_i32(w_size)
     return W_RawBuffer(size)
-
-@RB.primitive('def(rb: RawBuffer) -> str')
-def rb_as_str(vm: 'SPyVM', w_rb: W_RawBuffer) -> W_Str:
-    s = w_rb.buf.decode('latin-1')
-    return vm.wrap(s)
 
 @RB.primitive('def(rb: RawBuffer, offset: i32, val: i32) -> void')
 def rb_set_i32(vm: 'SPyVM', w_rb: W_RawBuffer,
