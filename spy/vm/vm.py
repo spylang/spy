@@ -168,7 +168,7 @@ class SPyVM:
         Like vm.isinstance(), but raise SPyTypeError if the check fails.
         """
         w_t1 = self.dynamic_type(w_obj)
-        if not self.issubclass(w_t1, w_type):
+        if w_t1 != w_type and not self.issubclass(w_t1, w_type):
             exp = w_type.name
             got = w_t1.name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"

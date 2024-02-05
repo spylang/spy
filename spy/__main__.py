@@ -7,8 +7,9 @@ from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend
 from spy.compiler import Compiler
+from spy.vm.b import B
 from spy.vm.vm import SPyVM
-from spy.vm.function import W_ASTFunc
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -34,6 +35,7 @@ def dump_spy_mod(vm: SPyVM, modname: str) -> None:
 @no_type_check
 @app.command()
 def main(filename: Path,
+         run: boolopt("run the file") = False,
          pyparse: boolopt("dump the Python AST exit") = False,
          parse: boolopt("dump the SPy AST and exit") = False,
          redshift: boolopt("perform redshift and exit") = False,
@@ -41,11 +43,12 @@ def main(filename: Path,
          g: boolopt("generate debug symbols", names=['-g']) = False,
          ) -> None:
     try:
-        do_main(filename, pyparse, parse, redshift, cwrite, g)
+        do_main(filename, run, pyparse, parse, redshift, cwrite, g)
     except SPyError as e:
         print(e.format(use_colors=True))
 
-def do_main(filename: Path, pyparse: bool, parse: bool, redshift: bool,
+def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
+            redshift: bool,
             cwrite: bool, debug_symbols: bool) -> None:
     if pyparse:
         do_pyparse(str(filename))
@@ -62,6 +65,16 @@ def do_main(filename: Path, pyparse: bool, parse: bool, redshift: bool,
     vm = SPyVM()
     vm.path.append(str(builddir))
     w_mod = vm.import_(modname)
+
+    if run:
+        w_main_functype = W_FuncType.parse('def() -> void')
+        w_main = w_mod.getattr('main')
+        vm.typecheck(w_main, w_main_functype)
+        assert isinstance(w_main, W_Func)
+        w_res = vm.call_function(w_main, [])
+        if w_res is not B.w_None:
+            B.w_print.pyfunc(vm, w_res)
+        return
 
     vm.redshift()
     if redshift:
