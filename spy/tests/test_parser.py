@@ -666,6 +666,26 @@ class TestParser:
         """
         self.assert_dump(mod, expected)
 
+    def test_import(self):
+        mod = self.parse("""
+        import aaa
+        import bbb as BBB
+        import ccc, ddd as DDD
+        """)
+        #
+        expected = """
+        Module(
+            filename='{tmpdir}/test.spy',
+            decls=[
+                Import(fqn=FQN('aaa::'), asname='aaa'),
+                Import(fqn=FQN('bbb::'), asname='BBB'),
+                Import(fqn=FQN('ccc::'), asname='ccc'),
+                Import(fqn=FQN('ddd::'), asname='DDD'),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
     def test_walk(self):
         def isclass(x: Any, name: str) -> bool:
             return x.__class__.__name__ == name

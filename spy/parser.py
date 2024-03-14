@@ -74,6 +74,9 @@ class Parser:
             elif isinstance(py_stmt, py_ast.ImportFrom):
                 importdecls = self.from_py_ImportFrom(py_stmt)
                 mod.decls += importdecls
+            elif isinstance(py_stmt, py_ast.Import):
+                importdecls = self.from_py_Import(py_stmt)
+                mod.decls += importdecls
             else:
                 msg = 'only function and variable definitions are allowed at global scope'
                 self.error(msg, 'this is not allowed here', py_stmt.loc)
@@ -168,6 +171,19 @@ class Parser:
         res = []
         for py_alias in py_imp.names:
             fqn = FQN(modname=py_imp.module, attr=py_alias.name)
+            asname = py_alias.asname or py_alias.name
+            res.append(spy.ast.Import(
+                loc = py_imp.loc,
+                loc_asname = py_alias.loc,
+                fqn = fqn,
+                asname = asname
+            ))
+        return res
+
+    def from_py_Import(self, py_imp: py_ast.Import) -> list[spy.ast.Import]:
+        res = []
+        for py_alias in py_imp.names:
+            fqn = FQN(modname=py_alias.name, attr="")
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
