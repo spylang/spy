@@ -25,6 +25,7 @@ def do_pyparse(filename: str) -> None:
 
 def dump_spy_mod(vm: SPyVM, modname: str) -> None:
     b = SPyBackend(vm, fqn_format='short')
+    #b = SPyBackend(vm, fqn_format='full')
     print(b.dump_mod(modname))
 
 @no_type_check
