@@ -750,3 +750,19 @@ class TestParser:
         )
         """
         self.assert_dump(mod, expected)
+
+    def test_GetAttr(self):
+        mod = self.parse("""
+        def foo() -> void:
+            a.b
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        StmtExpr(
+            value=GetAttr(
+                value=Name(id='a'),
+                attr='b',
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)

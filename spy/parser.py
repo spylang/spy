@@ -352,6 +352,12 @@ class Parser:
         index = self.from_py_expr(py_node.slice)
         return spy.ast.GetItem(py_node.loc, value, index)
 
+    def from_py_expr_Attribute(self,
+                               py_node: py_ast.Attribute) -> spy.ast.GetAttr:
+        value = self.from_py_expr(py_node.value)
+        attr = py_node.attr
+        return spy.ast.GetAttr(py_node.loc, value, attr)
+
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
         items = [self.from_py_expr(py_item) for py_item in py_node.elts]
         return spy.ast.List(py_node.loc, items)
