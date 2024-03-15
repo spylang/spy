@@ -250,6 +250,11 @@ class ASTFrame:
         return w_res
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_Object:
+        # this is suboptimal, but good enough for now: ideally, we would like
+        # to support two cases:
+        #
+        #   1. "generic" impls, which are called with [w_val, w_attr]
+        #   2. "specialized" impls, which are called with only [w_val]
         w_opimpl = self.t.expr_opimpl[op]
         w_val = self.eval_expr(op.value)
         w_attr = self.vm.wrap(op.attr)
