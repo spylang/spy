@@ -611,3 +611,17 @@ class TestBasic(CompilerTest):
             ('this is `object`', 'x'),
             )
         self.compile_raises(src, "foo", errors)
+
+    def test___INIT__(self):
+        mod = self.compile(
+        """
+        def get_x() -> i32:
+            return x
+
+        @blue
+        def __INIT__(mod):
+            mod.x = 42
+        """)
+        vm = self.vm
+        assert mod.x == 42
+        assert mod.get_x() == 42
