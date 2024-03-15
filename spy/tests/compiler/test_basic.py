@@ -591,7 +591,6 @@ class TestBasic(CompilerTest):
         w_xtype = self.vm.globals_types[FQN("test::x")]
         assert w_xtype is B.w_i32
 
-    @pytest.mark.skip("fixme")
     def test_module_getattr(self):
         mod = self.compile("""
         import builtins

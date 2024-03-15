@@ -71,7 +71,9 @@ from . import opimpl_i32     # side effects
 from . import opimpl_f64     # side effects
 from . import opimpl_str     # side effects
 from . import opimpl_dynamic # side effects
+from . import opimpl_misc    # side effects
 from . import binop          # side effects
+from . import unaryop        # side effects
 
 
 # fill the _from_token dict

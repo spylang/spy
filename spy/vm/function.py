@@ -64,6 +64,12 @@ class W_FuncType(W_Type):
         def parse_type(s: str) -> Any:
             # XXX this is a quick hack to support RawBuffer, but we need a
             # better solution
+
+            # hack hack hack
+            if s == 'module':
+                from spy.vm.module import W_Module
+                return W_Module._w
+
             attr = f'w_{s}'
             for mod in (B, RAW_BUFFER):
                 if hasattr(mod, attr):

@@ -248,3 +248,10 @@ class ASTFrame:
         w_i = self.eval_expr(op.index)
         w_res = self.vm.call_function(w_opimpl, [w_val, w_i])
         return w_res
+
+    def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_Object:
+        w_opimpl = self.t.expr_opimpl[op]
+        w_val = self.eval_expr(op.value)
+        w_attr = self.vm.wrap(op.attr)
+        w_res = self.vm.call_function(w_opimpl, [w_val, w_attr])
+        return w_res

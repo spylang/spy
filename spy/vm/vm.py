@@ -130,7 +130,10 @@ class SPyVM:
         return self.globals_types.get(fqn)
 
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
-        return self.globals_w.get(fqn)
+        if fqn.is_module():
+            return self.modules_w.get(fqn.modname)
+        else:
+            return self.globals_w.get(fqn)
 
     def reverse_lookup_global(self, w_val: W_Object) -> Optional[FQN]:
         # XXX we should maintain a reverse-lookup table instead of doing a
@@ -224,6 +227,11 @@ class SPyVM:
         if not isinstance(w_value, W_F64):
             raise Exception('Type mismatch')
         return w_value.value
+
+    def unwrap_str(self, w_value: W_Object) -> str:
+        if not isinstance(w_value, W_Str):
+            raise Exception('Type mismatch')
+        return self.unwrap(w_value) # type: ignore
 
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
