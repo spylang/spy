@@ -328,7 +328,10 @@ class TypeChecker:
         color, w_vtype = self.check_expr(expr.value)
         w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, expr.attr)
         if w_opimpl is B.w_NotImplemented:
-            XXX # raise SPyTypeError
+            v = w_vtype.name
+            err = SPyTypeError(f"type `{v}` has no attribute '{expr.attr}'")
+            err.add('error', f'this is `{v}`', expr.value.loc)
+            raise err
         else:
             self.expr_opimpl[expr] = w_opimpl
             return color, w_opimpl.w_functype.w_restype
