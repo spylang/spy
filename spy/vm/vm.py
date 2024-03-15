@@ -16,6 +16,7 @@ from spy.vm.registry import ModuleRegistry
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
+from spy.vm.modules.types import TYPES
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 
 class SPyVM:
@@ -41,6 +42,7 @@ class SPyVM:
         self.path = []
         self.make_module(BUILTINS)   # builtins::
         self.make_module(OPERATOR)   # operator::
+        self.make_module(TYPES)      # types::
         self.make_module(RAW_BUFFER) # rawbuffer::
 
     def import_(self, modname: str) -> W_Module:

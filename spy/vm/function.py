@@ -56,22 +56,17 @@ class W_FuncType(W_Type):
         Quick & dirty function to parse function types.
 
         It's meant to be used in tests, it's not robust at all, especially in
-        case of wrong inputs. It supports only builtin types.
+        case of wrong inputs.
         """
         from spy.vm.b import B
+        from spy.vm.modules.types import TYPES
         from spy.vm.modules.rawbuffer import RAW_BUFFER
 
         def parse_type(s: str) -> Any:
-            # XXX this is a quick hack to support RawBuffer, but we need a
-            # better solution
-
-            # hack hack hack
-            if s == 'module':
-                from spy.vm.module import W_Module
-                return W_Module._w
-
+            # XXX this is a quick hack to support `module` and `RawBuffer`,
+            # but we need a better solution
             attr = f'w_{s}'
-            for mod in (B, RAW_BUFFER):
+            for mod in (B, TYPES, RAW_BUFFER):
                 if hasattr(mod, attr):
                     return getattr(mod, attr)
             assert False, f'Cannot find type {s}'
