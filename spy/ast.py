@@ -230,6 +230,12 @@ class Call(Expr):
     func: Expr
     args: list[Expr]
 
+@dataclass(eq=False)
+class GetAttr(Expr):
+    precedence = 16
+    value: Expr
+    attr: str
+
 # ====== BinOp sub-hierarchy ======
 
 @dataclass(eq=False)

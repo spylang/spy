@@ -218,3 +218,7 @@ class SPyBackend:
         v = self.fmt_expr(getitem.value)
         i = self.fmt_expr(getitem.index)
         return f'{v}[{i}]'
+
+    def fmt_expr_GetAttr(self, node: ast.GetAttr) -> str:
+        v = self.fmt_expr(node.value)
+        return f'{v}.{node.attr}'

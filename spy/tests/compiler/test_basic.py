@@ -590,3 +590,24 @@ class TestBasic(CompilerTest):
         assert mod.x == 7
         w_xtype = self.vm.globals_types[FQN("test::x")]
         assert w_xtype is B.w_i32
+
+    def test_getattr_module(self):
+        mod = self.compile("""
+        import builtins
+
+        def foo() -> builtins.i32:
+            return 42
+        """)
+        assert mod.foo() == 42
+
+    def test_getattr_error(self):
+        src = """
+        def foo() -> void:
+            x: object = 1
+            x.foo
+        """
+        errors = expect_errors(
+            "type `object` has no attribute 'foo'",
+            ('this is `object`', 'x'),
+            )
+        self.compile_raises(src, "foo", errors)

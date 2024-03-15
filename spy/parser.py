@@ -74,6 +74,9 @@ class Parser:
             elif isinstance(py_stmt, py_ast.ImportFrom):
                 importdecls = self.from_py_ImportFrom(py_stmt)
                 mod.decls += importdecls
+            elif isinstance(py_stmt, py_ast.Import):
+                importdecls = self.from_py_Import(py_stmt)
+                mod.decls += importdecls
             else:
                 msg = 'only function and variable definitions are allowed at global scope'
                 self.error(msg, 'this is not allowed here', py_stmt.loc)
@@ -168,6 +171,19 @@ class Parser:
         res = []
         for py_alias in py_imp.names:
             fqn = FQN(modname=py_imp.module, attr=py_alias.name)
+            asname = py_alias.asname or py_alias.name
+            res.append(spy.ast.Import(
+                loc = py_imp.loc,
+                loc_asname = py_alias.loc,
+                fqn = fqn,
+                asname = asname
+            ))
+        return res
+
+    def from_py_Import(self, py_imp: py_ast.Import) -> list[spy.ast.Import]:
+        res = []
+        for py_alias in py_imp.names:
+            fqn = FQN(modname=py_alias.name, attr="")
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
@@ -335,6 +351,12 @@ class Parser:
         value = self.from_py_expr(py_node.value)
         index = self.from_py_expr(py_node.slice)
         return spy.ast.GetItem(py_node.loc, value, index)
+
+    def from_py_expr_Attribute(self,
+                               py_node: py_ast.Attribute) -> spy.ast.GetAttr:
+        value = self.from_py_expr(py_node.value)
+        attr = py_node.attr
+        return spy.ast.GetAttr(py_node.loc, value, attr)
 
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
         items = [self.from_py_expr(py_item) for py_item in py_node.elts]

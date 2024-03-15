@@ -114,7 +114,3 @@ def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
 @OP.primitive('def(l: type, r: type) -> dynamic')
 def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
     return MM.lookup('>=', w_ltype, w_rtype)
-
-@OP.primitive('def(l: type, r: type) -> dynamic')
-def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Object:
-    return MM.lookup('[]', w_vtype, w_itype)

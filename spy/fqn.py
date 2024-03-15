@@ -64,6 +64,12 @@ class FQN:
     def __hash__(self) -> int:
         return hash(self.fullname)
 
+    def is_module(self) -> bool:
+        return self.attr == ""
+
+    def is_object(self) -> bool:
+        return self.attr != ""
+
     @property
     def fullname(self) -> str:
         fn = f'{self.modname}::{self.attr}'

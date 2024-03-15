@@ -324,6 +324,18 @@ class TypeChecker:
             err.add('error', f'this is `{i}`', expr.index.loc)
             raise err
 
+    def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
+        color, w_vtype = self.check_expr(expr.value)
+        w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, expr.attr)
+        if w_opimpl is B.w_NotImplemented:
+            v = w_vtype.name
+            err = SPyTypeError(f"type `{v}` has no attribute '{expr.attr}'")
+            err.add('error', f'this is `{v}`', expr.value.loc)
+            raise err
+        else:
+            self.expr_opimpl[expr] = w_opimpl
+            return color, w_opimpl.w_functype.w_restype
+
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
