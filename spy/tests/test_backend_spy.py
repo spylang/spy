@@ -117,6 +117,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_getattr(self):
+        src = """
+        def foo() -> void:
+            return x.foo
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_if(self):
         src = """
         def foo() -> void:
