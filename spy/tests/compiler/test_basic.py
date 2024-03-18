@@ -615,11 +615,13 @@ class TestBasic(CompilerTest):
     def test___INIT__(self):
         mod = self.compile(
         """
+        x: i32 = 0
+
         def get_x() -> i32:
             return x
 
         @blue
-        def __INIT__(mod):
+        def __INIT__(mod) -> void: # XXX
             mod.x = 42
         """)
         vm = self.vm

@@ -40,7 +40,7 @@ class ModuleGen:
         #
         # Synthesize and execute the __INIT__ function to populate the module
         w_functype = W_FuncType.parse('def() -> void')
-        fqn = FQN(modname=self.modname, attr='__INIT__')
+        fqn = FQN(modname=self.modname, attr='__INIT0__')
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
@@ -52,6 +52,12 @@ class ModuleGen:
             elif isinstance(decl, ast.GlobalVarDef):
                 self.gen_GlobalVarDef(frame, decl)
         #
+
+        w_init = self.w_mod.getattr_maybe('__INIT__')
+        if w_init is not None:
+            assert w_init.color == 'blue' # XXX raise a proper error message
+            self.vm.call_function(w_init, [self.w_mod])
+
         return self.w_mod
 
     def make_modinit(self) -> ast.FuncDef:
@@ -59,7 +65,7 @@ class ModuleGen:
         return ast.FuncDef(
             loc = loc,
             color = 'blue',
-            name = f'__INIT__',
+            name = f'__INIT0__',
             args = [],
             return_type = ast.Name(loc=loc, id='object'),
             body = [],
