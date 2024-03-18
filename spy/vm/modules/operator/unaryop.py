@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@OP.primitive('def(l: type, r: type) -> dynamic')
+@OP.primitive('def(v: type, i: type) -> dynamic')
 def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Object:
     return MM.lookup('[]', w_vtype, w_itype)
 
@@ -19,4 +19,12 @@ def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Object:
 def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Object:
     if w_type is W_Module._w:
         return OP.w_module_getattr
+    return B.w_NotImplemented
+
+
+@OP.primitive('def(t: type, attr: str, v: type) -> dynamic')
+def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
+            w_vtype: W_Type) -> W_Object:
+    if w_type is W_Module._w:
+        return OP.w_module_setattr
     return B.w_NotImplemented

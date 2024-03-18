@@ -30,7 +30,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, TypeConverter]
-    expr_opimpl: dict[ast.Expr, W_Func]
+    expr_opimpl: dict[ast.Expr, W_Func] # XXX this should be Node, not Expr
     locals_types_w: dict[str, W_Type]
 
 
@@ -196,6 +196,18 @@ class TypeChecker:
                 # first assignment, implicit declaration
                 self.declare_local(name, w_valuetype)
             self.typecheck_local(assign.value, name)
+
+    def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
+        _, w_type = self.check_expr(node.target)
+        _, w_vtype = self.check_expr(node.value)
+
+        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_type, node.attr, w_vtype)
+        if w_opimpl is B.w_NotImplemented:
+            v = w_type.name
+            err = SPyTypeError(f"XXX'")
+            raise err
+        else:
+            self.expr_opimpl[node] = w_opimpl
 
     # ==== expressions ====
 

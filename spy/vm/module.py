@@ -36,6 +36,11 @@ class W_Module(W_Object):
         assert isinstance(w_obj, W_ASTFunc)
         return w_obj
 
+    def setattr(self, attr: str, w_value: W_Object) -> None:
+        # XXX we should raise an exception if the attr doesn't exist
+        fqn = FQN(modname=self.name, attr=attr)
+        self.vm.store_global(fqn, w_value)
+
     def keys(self) -> Iterable[FQN]:
         for fqn in self.vm.globals_w.keys():
             if fqn.modname == self.name:

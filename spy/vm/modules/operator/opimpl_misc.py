@@ -17,3 +17,9 @@ def module_getattr(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Object:
     # the module getattrs are done in blue contexts are redshifted away.
     attr = vm.unwrap_str(w_attr)
     return w_mod.getattr(attr)
+
+@OP.primitive('def(m: module, attr: str, v: object) -> dynamic')
+def module_setattr(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str,
+                   w_value: W_Object) -> W_Object:
+    attr = vm.unwrap_str(w_attr)
+    w_mod.setattr(attr, w_value)

@@ -154,6 +154,13 @@ class ASTFrame:
         else:
             assert False, 'closures not implemented yet'
 
+    def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
+        w_opimpl = self.t.expr_opimpl[node]
+        w_target = self.eval_expr(node.target)
+        w_attr = self.vm.wrap(node.attr)
+        w_value = self.eval_expr(node.value)
+        self.vm.call_function(w_opimpl, [w_target, w_attr, w_value])
+
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
 
