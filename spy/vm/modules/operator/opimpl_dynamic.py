@@ -62,5 +62,9 @@ def dynamic_setattr(vm: 'SPyVM', w_obj: W_Object, w_attr: W_Str,
     w_vtype = vm.dynamic_type(w_value)
     w_opimpl = OP.w_SETATTR.pyfunc(vm, w_otype, w_attr, w_vtype)
     if w_opimpl is B.w_NotImplemented:
-        raise SPyTypeError("cannot do setattr XXX")
+        o = w_otype.name
+        v = w_vtype.name
+        attr = vm.unwrap_str(w_attr)
+        msg = f"type `{o}` does not support assignment to attribute '{attr}'"
+        raise SPyTypeError(msg)
     return vm.call_function(w_opimpl, [w_obj, w_attr, w_value])
