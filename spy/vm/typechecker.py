@@ -198,13 +198,18 @@ class TypeChecker:
             self.typecheck_local(assign.value, name)
 
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
-        _, w_type = self.check_expr(node.target)
+        _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
 
-        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_type, node.attr, w_vtype)
+        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, node.attr, w_vtype)
         if w_opimpl is B.w_NotImplemented:
-            v = w_type.name
-            err = SPyTypeError(f"XXX'")
+            ot = w_otype.name
+            vt = w_vtype.name
+            attr = node.attr
+            err = SPyTypeError(
+                f"type `{ot}` does not support assignment to attribute '{attr}'")
+            err.add('error', f'this is `{ot}`', node.target.loc)
+            err.add('error', f'this is `{vt}`', node.value.loc)
             raise err
         else:
             self.expr_opimpl[node] = w_opimpl

@@ -627,3 +627,17 @@ class TestBasic(CompilerTest):
         vm = self.vm
         assert mod.x == 42
         assert mod.get_x() == 42
+
+    def test_setattr_error(self):
+        src = """
+        def foo() -> void:
+            s: str = "hello"
+            s.x = 42
+
+        """
+        errors = expect_errors(
+            "type `str` does not support assignment to attribute 'x'",
+            ("this is `str`", 's'),
+            ("this is `i32`", '42'),
+        )
+        self.compile_raises(src, "foo", errors)
