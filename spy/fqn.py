@@ -24,7 +24,7 @@ class FQN:
     fn_i32 = make_fn(i32)  # fqn is 'test::foo#1'
     fn_f64 = make_fn(f64)  # fqn is 'test::foo#2'
 
-    See also SPy.get_unique_FQN().
+    See also SPyVM.get_unique_FQN().
     """
     modname: str
     attr: str

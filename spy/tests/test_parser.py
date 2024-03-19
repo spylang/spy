@@ -766,3 +766,18 @@ class TestParser:
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_SetAttr(self):
+        mod = self.parse("""
+        def foo() -> void:
+            a.b = 42
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        SetAttr(
+            target=Name(id='a'),
+            attr='b',
+            value=Constant(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)

@@ -120,3 +120,29 @@ class TestDynamic(CompilerTest):
         msg = 'cannot call objects of type `str`'
         with pytest.raises(SPyTypeError, match=msg):
             mod.foo()
+
+    def test_setattr(self):
+        mod = self.compile(
+        """
+        x: i32 = 0
+
+        @blue
+        def __INIT__(mod: dynamic):
+            mod.x = 42
+        """)
+        vm = self.vm
+        assert mod.x == 42
+
+    def test_wrong_setattr(self):
+        if self.backend == 'doppler':
+            pytest.skip("fixme")
+
+        mod = self.compile(
+        """
+        def foo() -> void:
+            obj: dynamic = "hello"
+            obj.x = 42
+        """)
+        msg = "type `str` does not support assignment to attribute 'x'"
+        with pytest.raises(SPyTypeError, match=msg):
+            mod.foo()

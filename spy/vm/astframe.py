@@ -58,7 +58,7 @@ class ASTFrame:
             #
             # we reached the end of the function. If it's void, we can return
             # None, else it's an error.
-            if self.w_func.w_functype.w_restype is B.w_void:
+            if self.w_func.w_functype.w_restype in (B.w_void, B.w_dynamic):
                 return B.w_None
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()
@@ -124,9 +124,9 @@ class ASTFrame:
         #
         # create the w_func
 
-        # if the current func is __INIT__, then we are creating a module-level
+        # if the current func is '@module', then we are creating a module-level
         # global. Else, it's a closure
-        is_global = self.w_func.fqn.attr == '__INIT__'
+        is_global = self.w_func.fqn.attr == '@module'
         modname = self.w_func.fqn.modname # the module of the "outer" function
         fqn = self.vm.get_unique_FQN(modname=modname, attr=funcdef.name,
                                      is_global=is_global)
@@ -153,6 +153,13 @@ class ASTFrame:
             self.vm.store_global(sym.fqn, w_val)
         else:
             assert False, 'closures not implemented yet'
+
+    def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
+        w_opimpl = self.t.opimpl[node]
+        w_target = self.eval_expr(node.target)
+        w_attr = self.vm.wrap(node.attr)
+        w_value = self.eval_expr(node.value)
+        self.vm.call_function(w_opimpl, [w_target, w_attr, w_value])
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
@@ -204,7 +211,7 @@ class ASTFrame:
             return w_value
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_Object:
-        w_opimpl = self.t.expr_opimpl[binop]
+        w_opimpl = self.t.opimpl[binop]
         assert w_opimpl, 'bug in the typechecker'
         w_l = self.eval_expr(binop.left)
         w_r = self.eval_expr(binop.right)
@@ -243,7 +250,7 @@ class ASTFrame:
         return w_res
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
-        w_opimpl = self.t.expr_opimpl[op]
+        w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_i = self.eval_expr(op.index)
         w_res = self.vm.call_function(w_opimpl, [w_val, w_i])
@@ -255,7 +262,7 @@ class ASTFrame:
         #
         #   1. "generic" impls, which are called with [w_val, w_attr]
         #   2. "specialized" impls, which are called with only [w_val]
-        w_opimpl = self.t.expr_opimpl[op]
+        w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_attr = self.vm.wrap(op.attr)
         w_res = self.vm.call_function(w_opimpl, [w_val, w_attr])

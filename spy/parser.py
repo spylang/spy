@@ -291,18 +291,27 @@ class Parser:
     def from_py_stmt_Assign(self, py_node: py_ast.Assign) -> spy.ast.Stmt:
         # Assign can be pretty complex: it can have multiple targets, and a
         # target can be a Tuple or List in case of unpacking. For now, we
-        # support only the very simple case of single assign to a Name.
+        # support only simple cases
         if len(py_node.targets) != 1:
             self.unsupported(py_node, 'assign to multiple targets')
         py_target = py_node.targets[0]
-        if not isinstance(py_target, py_ast.Name):
+        if isinstance(py_target, py_ast.Name):
+            return spy.ast.Assign(
+                loc = py_node.loc,
+                target_loc = py_target.loc,
+                target = py_target.id,
+                value = self.from_py_expr(py_node.value)
+            )
+        elif isinstance(py_target, py_ast.Attribute):
+            return spy.ast.SetAttr(
+                loc = py_node.loc,
+                target_loc = py_target.value.loc,
+                target = self.from_py_expr(py_target.value),
+                attr = py_target.attr,
+                value = self.from_py_expr(py_node.value)
+            )
+        else:
             self.unsupported(py_target, 'assign to complex expressions')
-        return spy.ast.Assign(
-            loc = py_node.loc,
-            target_loc = py_target.loc,
-            target = py_target.id,
-            value = self.from_py_expr(py_node.value)
-        )
 
     def from_py_stmt_If(self, py_node: py_ast.If) -> spy.ast.If:
         return spy.ast.If(

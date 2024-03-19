@@ -611,3 +611,45 @@ class TestBasic(CompilerTest):
             ('this is `object`', 'x'),
             )
         self.compile_raises(src, "foo", errors)
+
+    def test___INIT__(self):
+        mod = self.compile(
+        """
+        x: i32 = 0
+
+        def get_x() -> i32:
+            return x
+
+        @blue
+        def __INIT__(mod):
+            mod.x = 42
+        """)
+        vm = self.vm
+        assert mod.x == 42
+        assert mod.get_x() == 42
+
+    def test_wrong__INIT__(self):
+        # NOTE: this error is always eager because it happens at import time
+        src = """
+        def __INIT__(mod: dynamic) -> void:
+            pass
+        """
+        errors = expect_errors(
+            "the __INIT__ function must be @blue",
+            ("function defined here", "def __INIT__(mod: dynamic) -> void")
+        )
+        self.compile_raises(src, "", errors, error_reporting="eager")
+
+    def test_setattr_error(self):
+        src = """
+        def foo() -> void:
+            s: str = "hello"
+            s.x = 42
+
+        """
+        errors = expect_errors(
+            "type `str` does not support assignment to attribute 'x'",
+            ("this is `str`", 's'),
+            ("this is `i32`", '42'),
+        )
+        self.compile_raises(src, "foo", errors)

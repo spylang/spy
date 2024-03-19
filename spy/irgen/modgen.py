@@ -4,6 +4,7 @@ from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import SymTable
+from spy.errors import SPyTypeError
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.module import W_Module
@@ -38,9 +39,9 @@ class ModuleGen:
         self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
         self.vm.register_module(self.w_mod)
         #
-        # Synthesize and execute the __INIT__ function to populate the module
+        # Synthesize and execute the fake '@module' function to populate the mod
         w_functype = W_FuncType.parse('def() -> void')
-        fqn = FQN(modname=self.modname, attr='__INIT__')
+        fqn = FQN(modname=self.modname, attr='@module')
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
@@ -52,6 +53,13 @@ class ModuleGen:
             elif isinstance(decl, ast.GlobalVarDef):
                 self.gen_GlobalVarDef(frame, decl)
         #
+        # call the __INIT__, if present
+        w_init = self.w_mod.getattr_maybe('__INIT__')
+        if w_init is not None:
+            assert isinstance(w_init, W_ASTFunc)
+            assert w_init.color == "blue"
+            self.vm.call_function(w_init, [self.w_mod])
+        #
         return self.w_mod
 
     def make_modinit(self) -> ast.FuncDef:
@@ -59,7 +67,7 @@ class ModuleGen:
         return ast.FuncDef(
             loc = loc,
             color = 'blue',
-            name = f'__INIT__',
+            name = f'@module',
             args = [],
             return_type = ast.Name(loc=loc, id='object'),
             body = [],
@@ -67,6 +75,11 @@ class ModuleGen:
         )
 
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
+        # sanity check: if it's the global __INIT__, it must be @blue
+        if funcdef.name == '__INIT__' and funcdef.color != 'blue':
+            err = SPyTypeError("the __INIT__ function must be @blue")
+            err.add("error", "function defined here", funcdef.prototype_loc)
+            raise err
         frame.exec_stmt_FuncDef(funcdef)
         w_func = frame.load_local(funcdef.name)
         assert isinstance(w_func, W_ASTFunc)
