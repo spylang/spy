@@ -56,6 +56,7 @@ class ModuleGen:
         # call the __INIT__, if present
         w_init = self.w_mod.getattr_maybe('__INIT__')
         if w_init is not None:
+            assert isinstance(w_init, W_ASTFunc)
             assert w_init.color == "blue"
             self.vm.call_function(w_init, [self.w_mod])
         #
