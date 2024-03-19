@@ -628,6 +628,18 @@ class TestBasic(CompilerTest):
         assert mod.x == 42
         assert mod.get_x() == 42
 
+    def test_wrong__INIT__(self):
+        # NOTE: this error is always eager because it happens at import time
+        src = """
+        def __INIT__(mod: dynamic) -> void:
+            pass
+        """
+        errors = expect_errors(
+            "the __INIT__ function must be @blue",
+            ("function defined here", "def __INIT__(mod: dynamic) -> void")
+        )
+        self.compile_raises(src, "", errors, error_reporting="eager")
+
     def test_setattr_error(self):
         src = """
         def foo() -> void:

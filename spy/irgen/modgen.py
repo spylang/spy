@@ -4,6 +4,7 @@ from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import SymTable
+from spy.errors import SPyTypeError
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.module import W_Module
@@ -52,12 +53,12 @@ class ModuleGen:
             elif isinstance(decl, ast.GlobalVarDef):
                 self.gen_GlobalVarDef(frame, decl)
         #
-
+        # call the __INIT__, if present
         w_init = self.w_mod.getattr_maybe('__INIT__')
         if w_init is not None:
-            assert w_init.color == 'blue' # XXX raise a proper error message
+            assert w_init.color == "blue"
             self.vm.call_function(w_init, [self.w_mod])
-
+        #
         return self.w_mod
 
     def make_modinit(self) -> ast.FuncDef:
@@ -73,6 +74,11 @@ class ModuleGen:
         )
 
     def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
+        # sanity check: if it's the global __INIT__, it must be @blue
+        if funcdef.name == '__INIT__' and funcdef.color != 'blue':
+            err = SPyTypeError("the __INIT__ function must be @blue")
+            err.add("error", "function defined here", funcdef.prototype_loc)
+            raise err
         frame.exec_stmt_FuncDef(funcdef)
         w_func = frame.load_local(funcdef.name)
         assert isinstance(w_func, W_ASTFunc)
