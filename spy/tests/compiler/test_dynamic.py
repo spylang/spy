@@ -127,7 +127,7 @@ class TestDynamic(CompilerTest):
         x: i32 = 0
 
         @blue
-        def __INIT__(mod: dynamic) -> void:
+        def __INIT__(mod: dynamic):
             mod.x = 42
         """)
         vm = self.vm
