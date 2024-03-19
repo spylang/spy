@@ -124,9 +124,9 @@ class ASTFrame:
         #
         # create the w_func
 
-        # if the current func is __INIT__, then we are creating a module-level
+        # if the current func is '@module', then we are creating a module-level
         # global. Else, it's a closure
-        is_global = self.w_func.fqn.attr == '__INIT0__'
+        is_global = self.w_func.fqn.attr == '@module'
         modname = self.w_func.fqn.modname # the module of the "outer" function
         fqn = self.vm.get_unique_FQN(modname=modname, attr=funcdef.name,
                                      is_global=is_global)

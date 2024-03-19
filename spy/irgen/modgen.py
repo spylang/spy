@@ -39,9 +39,9 @@ class ModuleGen:
         self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
         self.vm.register_module(self.w_mod)
         #
-        # Synthesize and execute the __INIT__ function to populate the module
+        # Synthesize and execute the fake '@module' function to populate the mod
         w_functype = W_FuncType.parse('def() -> void')
-        fqn = FQN(modname=self.modname, attr='__INIT0__')
+        fqn = FQN(modname=self.modname, attr='@module')
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
@@ -66,7 +66,7 @@ class ModuleGen:
         return ast.FuncDef(
             loc = loc,
             color = 'blue',
-            name = f'__INIT0__',
+            name = f'@module',
             args = [],
             return_type = ast.Name(loc=loc, id='object'),
             body = [],
