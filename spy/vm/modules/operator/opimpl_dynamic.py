@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any
 from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
+from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from . import OP
 if TYPE_CHECKING:
@@ -53,3 +54,13 @@ def dynamic_gt(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_Object:
 @OP.primitive('def(a: dynamic, b: dynamic) -> dynamic')
 def dynamic_ge(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_Object:
     return _dynamic_op(vm, OP.w_GE, w_a, w_b)
+
+@OP.primitive('def(o: dynamic, attr: str, v: dynamic) -> dynamic')
+def dynamic_setattr(vm: 'SPyVM', w_obj: W_Object, w_attr: W_Str,
+                    w_value: W_Object) -> W_Object:
+    w_otype = vm.dynamic_type(w_obj)
+    w_vtype = vm.dynamic_type(w_value)
+    w_opimpl = OP.w_SETATTR.pyfunc(vm, w_otype, w_attr, w_vtype)
+    if w_opimpl is B.w_NotImplemented:
+        raise SPyTypeError("cannot do setattr XXX")
+    return vm.call_function(w_opimpl, [w_obj, w_attr, w_value])

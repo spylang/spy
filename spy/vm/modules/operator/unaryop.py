@@ -27,4 +27,6 @@ def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
             w_vtype: W_Type) -> W_Object:
     if w_type is W_Module._w:
         return OP.w_module_setattr
+    elif w_type is B.w_dynamic:
+        return OP.w_dynamic_setattr
     return B.w_NotImplemented

@@ -120,3 +120,16 @@ class TestDynamic(CompilerTest):
         msg = 'cannot call objects of type `str`'
         with pytest.raises(SPyTypeError, match=msg):
             mod.foo()
+
+
+    def test_setattr(self):
+        mod = self.compile(
+        """
+        x: i32 = 0
+
+        @blue
+        def __INIT__(mod: dynamic) -> void:
+            mod.x = 42
+        """)
+        vm = self.vm
+        assert mod.x == 42
