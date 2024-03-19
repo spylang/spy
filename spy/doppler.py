@@ -146,7 +146,7 @@ class FuncDoppler:
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
-        w_opimpl = self.t.expr_opimpl[binop]
+        w_opimpl = self.t.opimpl[binop]
         assert w_opimpl.fqn is not None
         func = ast.FQNConst(binop.loc, w_opimpl.fqn)
         return ast.Call(binop.loc, func, [l, r])
@@ -165,7 +165,7 @@ class FuncDoppler:
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
-        w_opimpl = self.t.expr_opimpl[op]
+        w_opimpl = self.t.opimpl[op]
         assert w_opimpl.fqn is not None
         func = ast.FQNConst(op.loc, w_opimpl.fqn)
         return ast.Call(op.loc, func, [v, i])

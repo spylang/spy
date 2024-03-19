@@ -30,7 +30,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, TypeConverter]
-    expr_opimpl: dict[ast.Expr, W_Func] # XXX this should be Node, not Expr
+    opimpl: dict[ast.Node, W_Func]
     locals_types_w: dict[str, W_Type]
 
 
@@ -40,7 +40,7 @@ class TypeChecker:
         self.funcdef = w_func.funcdef
         self.expr_types = {}
         self.expr_conv = {}
-        self.expr_opimpl = {}
+        self.opimpl = {}
         self.locals_types_w = {}
         self.declare_arguments()
 
@@ -212,7 +212,7 @@ class TypeChecker:
             err.add('error', f'this is `{vt}`', node.value.loc)
             raise err
         else:
-            self.expr_opimpl[node] = w_opimpl
+            self.opimpl[node] = w_opimpl
 
     # ==== expressions ====
 
@@ -277,7 +277,7 @@ class TypeChecker:
 
         assert isinstance(w_opimpl, W_Func)
         self.opimpl_check_args(w_opimpl, binop, [binop.left, binop.right])
-        self.expr_opimpl[binop] = w_opimpl
+        self.opimpl[binop] = w_opimpl
         w_restype = w_opimpl.w_functype.w_restype
         return color, w_restype
 
@@ -325,7 +325,7 @@ class TypeChecker:
             # XXX for now this is a special case, to check that `i` can be
             # converted to `i32`. Ideally, we should use the same mechanism
             # that we have already for calls
-            self.expr_opimpl[expr] = OP.w_str_getitem
+            self.opimpl[expr] = OP.w_str_getitem
             err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
             if err:
                 err.add('note', f'this is a `str`', expr.value.loc)
@@ -350,7 +350,7 @@ class TypeChecker:
             err.add('error', f'this is `{v}`', expr.value.loc)
             raise err
         else:
-            self.expr_opimpl[expr] = w_opimpl
+            self.opimpl[expr] = w_opimpl
             return color, w_opimpl.w_functype.w_restype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
