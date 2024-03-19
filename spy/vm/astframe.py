@@ -58,7 +58,7 @@ class ASTFrame:
             #
             # we reached the end of the function. If it's void, we can return
             # None, else it's an error.
-            if self.w_func.w_functype.w_restype is B.w_void:
+            if self.w_func.w_functype.w_restype in (B.w_void, B.w_dynamic):
                 return B.w_None
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()

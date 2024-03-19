@@ -621,7 +621,7 @@ class TestBasic(CompilerTest):
             return x
 
         @blue
-        def __INIT__(mod) -> void: # XXX
+        def __INIT__(mod):
             mod.x = 42
         """)
         vm = self.vm
