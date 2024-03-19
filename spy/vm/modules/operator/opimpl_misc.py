@@ -23,3 +23,4 @@ def module_setattr(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str,
                    w_value: W_Object) -> W_Object:
     attr = vm.unwrap_str(w_attr)
     w_mod.setattr(attr, w_value)
+    return B.w_None

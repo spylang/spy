@@ -446,7 +446,7 @@ class Assign(Stmt):
     value: Expr
 
 @dataclass(eq=False)
-class SetAttr(Expr):
+class SetAttr(Stmt):
     target_loc: Loc = field(repr=False)
     target: Expr
     attr: str
