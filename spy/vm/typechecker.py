@@ -351,7 +351,8 @@ class TypeChecker:
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
-        w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, expr.attr)
+        w_attr = self.vm.wrap(expr.attr)
+        w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, w_attr)
         if w_opimpl is B.w_NotImplemented:
             v = w_vtype.name
             err = SPyTypeError(f"type `{v}` has no attribute '{expr.attr}'")

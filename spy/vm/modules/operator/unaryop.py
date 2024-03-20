@@ -20,6 +20,9 @@ def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Object:
 def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Object:
     if w_type is W_Module._w:
         return OP.w_module_getattr
+    elif isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
+        w_opimpl = vm.call_function(w_type.w_getattr, [w_type, w_attr])
+        return w_opimpl
     return B.w_NotImplemented
 
 

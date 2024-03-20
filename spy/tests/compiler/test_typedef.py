@@ -48,7 +48,6 @@ class TestTypeDef(CompilerTest):
             MyInt.__getattr__ = __getattr__
             return MyInt
         """)
-
         w_makeMyInt = mod.makeMyInt.w_func
         w_MyInt = self.vm.call_function(w_makeMyInt, [])
         assert isinstance(w_MyInt, W_TypeDef)
@@ -57,3 +56,32 @@ class TestTypeDef(CompilerTest):
         assert w_getattr.fqn == FQN("test::__getattr__#0")
         w_res = self.vm.call_function(w_getattr, [B.w_None])
         assert w_res is B.w_NotImplemented
+
+    def test_getattr(self):
+        mod = self.compile("""
+        from types import makeTypeDef
+
+        @blue
+        def makeMyInt():
+            MyInt = makeTypeDef('MyInt', i32)
+
+            def getattr_double(self: MyInt, attr: str) -> i32:
+                i: i32 = self
+                return i * 2
+
+            @blue
+            def __getattr__(self, attr):
+                if attr == "double":
+                    return getattr_double
+                return NotImplemented
+
+            MyInt.__getattr__ = __getattr__
+            return MyInt
+
+        MyInt = makeMyInt()
+
+        def foo(x: i32) -> i32:
+            y: MyInt = x
+            return y.double
+        """)
+        assert mod.foo(10) == 20

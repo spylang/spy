@@ -16,7 +16,7 @@ from spy.vm.registry import ModuleRegistry
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
-from spy.vm.modules.types import TYPES
+from spy.vm.modules.types import TYPES, W_TypeDef
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 
 class SPyVM:
@@ -159,6 +159,8 @@ class SPyVM:
         assert isinstance(w_sub, W_Type)
         if w_super is B.w_dynamic:
             return True
+        if isinstance(w_super, W_TypeDef):
+            w_super = w_super.w_origintype
         w_class = w_sub
         while w_class is not B.w_None:
             if w_class is w_super:
