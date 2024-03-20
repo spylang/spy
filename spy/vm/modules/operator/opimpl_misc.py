@@ -24,3 +24,9 @@ def module_setattr(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str,
     attr = vm.unwrap_str(w_attr)
     w_mod.setattr(attr, w_value)
     return B.w_None
+
+
+@OP.primitive('def(obj: object, attr: str, v: object) -> dynamic')
+def generic_setattr(vm: 'SPyVM', w_obj: W_Object, w_attr: W_Str,
+                    w_value: W_Object) -> W_Object:
+    return w_obj.spy_setattr(vm, w_attr, w_value)
