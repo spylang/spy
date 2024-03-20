@@ -8,7 +8,6 @@ from spy.vm.modules.types import W_TypeDef
 from spy.tests.support import (CompilerTest, skip_backends,  expect_errors,
                                only_interp)
 
-@skip_backends("C", reason="implement me")
 class TestTypeDef(CompilerTest):
 
     def test_cast_from_and_to(self):
@@ -30,14 +29,11 @@ class TestTypeDef(CompilerTest):
         assert mod.foo() == 42
         assert mod.bar() == 43
 
-    #@only_interp
+    @only_interp
     def test_metaclass_setattr(self):
         """
         Test that we can succesfully set attributes on the typedef itself
         """
-        if self.backend != 'interp':
-            pytest.skip()
-
         mod = self.compile("""
         from types import makeTypeDef
 

@@ -10,6 +10,7 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
+from spy.vm.modules.types import TYPES
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import c_ast as C
@@ -89,10 +90,15 @@ class CModuleWriter:
 
     def declare_variable(self, fqn: FQN, w_obj: W_Object) -> None:
         w_type = self.ctx.vm.dynamic_type(w_obj)
-        c_type = self.ctx.w2c(w_type)
         if w_type is B.w_i32:
             intval = self.ctx.vm.unwrap(w_obj)
+            c_type = self.ctx.w2c(w_type)
             self.out_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
+        elif w_type is TYPES.w_TypeDef:
+            # XXX: for now, we just ignore global TypeDefs, since they are not
+            # needed. But in general, we need a way to emit prebuilt
+            # constants.
+            pass
         else:
             raise NotImplementedError('WIP')
 
