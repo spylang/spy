@@ -10,6 +10,7 @@ from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
 from spy.vm.typeconverter import TypeConverter, DynamicCast, NumericConv
+from spy.vm.modules.types import W_Typedef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -109,6 +110,13 @@ class TypeChecker:
             # numeric conversion
             self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
             return None
+        elif isinstance(w_exp, W_Typedef) and w_exp.w_origintype is w_got:
+            # conversion from the origin type to its Typedef, nothing to do
+            return None
+        elif isinstance(w_got, W_Typedef) and w_got.w_origintype is w_exp:
+            # conversion from a Typedef to its origin type, nothing to do
+            return None
+
         # mismatched types
         err = SPyTypeError('mismatched types')
         got = w_got.name
