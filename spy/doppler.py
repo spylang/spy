@@ -170,6 +170,14 @@ class FuncDoppler:
         func = ast.FQNConst(op.loc, w_opimpl.fqn)
         return ast.Call(op.loc, func, [v, i])
 
+    def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
+        v = self.shift_expr(op.value)
+        v_attr = ast.Constant(op.loc, value=op.attr)
+        w_opimpl = self.t.opimpl[op]
+        assert w_opimpl.fqn is not None
+        func = ast.FQNConst(op.loc, w_opimpl.fqn)
+        return ast.Call(op.loc, func, [v, v_attr])
+
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         # XXX: this assumes that it's a direct call (i.e., call.func is a
         # ast.Name). We probably need to adapt for indirect calls, when we

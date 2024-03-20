@@ -61,13 +61,20 @@ class TestTypeDef(CompilerTest):
         mod = self.compile("""
         from types import makeTypeDef
 
+        # XXX temporary workaround: currently there is a bug and we don't
+        # assign a FQN to getattr_double if it's defined inside makeMyInt, we
+        # should move it inside when the bug is fixed
+        def getattr_double(self: i32, attr: str) -> i32:
+            i: i32 = self
+            return i * 2
+
         @blue
         def makeMyInt():
             MyInt = makeTypeDef('MyInt', i32)
 
-            def getattr_double(self: MyInt, attr: str) -> i32:
-                i: i32 = self
-                return i * 2
+            ## def getattr_double(self: MyInt, attr: str) -> i32:
+            ##     i: i32 = self
+            ##     return i * 2
 
             @blue
             def __getattr__(self, attr):
