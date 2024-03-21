@@ -203,7 +203,8 @@ class TypeChecker:
         _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
 
-        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, node.attr, w_vtype)
+        w_attr = self.vm.wrap(node.attr)
+        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, w_attr, w_vtype)
         if w_opimpl is B.w_NotImplemented:
             ot = w_otype.name
             vt = w_vtype.name

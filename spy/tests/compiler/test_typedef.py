@@ -85,3 +85,46 @@ class TestTypeDef(CompilerTest):
             return y.double
         """)
         assert mod.foo(10) == 20
+
+    def test_setattr(self):
+        mod = self.compile("""
+        from types import makeTypeDef
+        from rawbuffer import RawBuffer, rb_alloc, rb_get_i32, rb_set_i32
+
+        @blue
+        def makeBox():
+            Box = makeTypeDef('Box', RawBuffer)
+
+            def getattr_x(self: Box, attr: str) -> i32:
+                buf: RawBuffer = self
+                return rb_get_i32(buf, 0)
+
+            def setattr_x(self: Box, attr: str, value: i32) -> void:
+                buf: RawBuffer = self
+                rb_set_i32(buf, 0, value)
+
+            @blue
+            def __getattr__(self, attr):
+                if attr == "x":
+                    return getattr_x
+                return NotImplemented
+
+            @blue
+            def __setattr__(self, attr, vtype):
+                if attr == "x":
+                    return setattr_x
+                return NotImplemented
+
+            Box.__getattr__ = __getattr__
+            Box.__setattr__ = __setattr__
+            return Box
+
+        Box = makeBox()
+
+        def foo(value: i32) -> i32:
+            buf: RawBuffer = rb_alloc(4)
+            b: Box = buf
+            b.x = value
+            return b.x
+        """)
+        assert mod.foo(10) == 10

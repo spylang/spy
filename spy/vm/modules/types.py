@@ -26,11 +26,13 @@ class W_TypeDef(W_Type):
     """
     w_origintype: W_Type
     w_getattr: W_Func
+    w_setattr = W_Func
 
     def __init__(self, name: str, w_origintype: W_Type) -> None:
         super().__init__(name, w_origintype.pyclass)
         self.w_origintype = w_origintype
         self.w_getattr = None
+        self.w_setattr = None
 
     def __repr__(self) -> str:
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
@@ -40,6 +42,9 @@ class W_TypeDef(W_Type):
         attr = vm.unwrap_str(w_attr)
         if attr == '__getattr__':
             self.w_getattr = w_val
+            return
+        elif attr == '__setattr__':
+            self.w_setattr = w_val
             return
         raise Exception(f"invalid attribute: {attr}") # XXX better error
 
