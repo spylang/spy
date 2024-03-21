@@ -159,8 +159,12 @@ class SPyVM:
         assert isinstance(w_sub, W_Type)
         if w_super is B.w_dynamic:
             return True
+        #
+        if isinstance(w_sub, W_TypeDef):
+            w_sub = w_sub.w_origintype
         if isinstance(w_super, W_TypeDef):
             w_super = w_super.w_origintype
+        #
         w_class = w_sub
         while w_class is not B.w_None:
             if w_class is w_super:

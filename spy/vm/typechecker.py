@@ -110,12 +110,6 @@ class TypeChecker:
             # numeric conversion
             self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
             return None
-        elif isinstance(w_exp, W_TypeDef) and w_exp.w_origintype is w_got:
-            # conversion from the origin type to its TypeDef, nothing to do
-            return None
-        elif isinstance(w_got, W_TypeDef) and w_got.w_origintype is w_exp:
-            # conversion from a TypeDef to its origin type, nothing to do
-            return None
 
         # mismatched types
         err = SPyTypeError('mismatched types')
