@@ -118,6 +118,16 @@ class FuncDoppler:
         else:
             assert False, 'implement me'
 
+    def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
+        v_target = self.shift_expr(node.target)
+        v_attr = ast.Constant(node.loc, value=node.attr)
+        v_value = self.shift_expr(node.value)
+        w_opimpl = self.t.opimpl[node]
+        assert w_opimpl.fqn is not None
+        func = self.make_const(node.loc, w_opimpl)
+        call = ast.Call(node.loc, func, [v_target, v_attr, v_value])
+        return [ast.StmtExpr(node.loc, call)]
+
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
         newvalue = self.shift_expr(stmt.value)
         return [stmt.replace(value=newvalue)]
