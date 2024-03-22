@@ -4,6 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType
 from spy.vm.modules.rawbuffer import RB
+from spy.vm.modules.types import W_TypeDef
 
 @dataclass
 class C_Type:
@@ -63,6 +64,8 @@ class Context:
         self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer *')
 
     def w2c(self, w_type: W_Type) -> C_Type:
+        if isinstance(w_type, W_TypeDef):
+            w_type = w_type.w_origintype
         if w_type in self._d:
             return self._d[w_type]
         raise NotImplementedError(f'Cannot translate type {w_type} to C')

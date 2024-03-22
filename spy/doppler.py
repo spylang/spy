@@ -2,6 +2,7 @@ from typing import Any, Optional, TYPE_CHECKING
 from types import NoneType
 from fixedint import FixedInt
 from spy import ast
+from spy.location import Loc
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
@@ -50,13 +51,23 @@ class FuncDoppler:
 
     def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         w_val = self.blue_frame.eval_expr(expr)
+        return self.make_const(expr.loc, w_val)
+
+    def make_const(self, loc: Loc, w_val: W_Object) -> ast.Expr:
+        """
+        Create an AST node to represent a constant of the given w_val.
+
+        For primitive types, it's easy, we can just reuse ast.Constant.
+        For non primitive types, we assign an unique FQN to the w_val, and we
+        return ast.FQNConst.
+        """
         w_type = self.vm.dynamic_type(w_val)
         if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_str, B.w_void):
             # this is a primitive, we can just use ast.Constant
             value = self.vm.unwrap(w_val)
             if isinstance(value, FixedInt): # type: ignore
                 value = int(value)
-            return ast.Constant(expr.loc, value)
+            return ast.Constant(loc, value)
 
         # this is a non-primitive prebuilt constant. If it doesn't have an FQN
         # yet, we need to assign it one. For now we know how to do it only for
@@ -64,14 +75,14 @@ class FuncDoppler:
         fqn = self.vm.reverse_lookup_global(w_val)
         if fqn is None:
             if isinstance(w_val, W_ASTFunc):
-                # it's a closure, let's assign it an FQN and add it to the globals
+                # it's a closure, let's assign it an FQN and add to the globals
                 fqn = w_val.fqn
                 self.vm.add_global(fqn, None, w_val)
             else:
                 assert False, 'implement me'
 
         assert fqn is not None
-        return ast.FQNConst(expr.loc, fqn)
+        return ast.FQNConst(loc, fqn)
 
     # =========
 
@@ -106,6 +117,16 @@ class FuncDoppler:
             return [assign.replace(value=newvalue)]
         else:
             assert False, 'implement me'
+
+    def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
+        v_target = self.shift_expr(node.target)
+        v_attr = ast.Constant(node.loc, value=node.attr)
+        v_value = self.shift_expr(node.value)
+        w_opimpl = self.t.opimpl[node]
+        assert w_opimpl.fqn is not None
+        func = self.make_const(node.loc, w_opimpl)
+        call = ast.Call(node.loc, func, [v_target, v_attr, v_value])
+        return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
         newvalue = self.shift_expr(stmt.value)
@@ -148,7 +169,7 @@ class FuncDoppler:
         r = self.shift_expr(binop.right)
         w_opimpl = self.t.opimpl[binop]
         assert w_opimpl.fqn is not None
-        func = ast.FQNConst(binop.loc, w_opimpl.fqn)
+        func = self.make_const(binop.loc, w_opimpl)
         return ast.Call(binop.loc, func, [l, r])
 
     shift_expr_Add = shift_expr_BinOp
@@ -167,8 +188,16 @@ class FuncDoppler:
         i = self.shift_expr(op.index)
         w_opimpl = self.t.opimpl[op]
         assert w_opimpl.fqn is not None
-        func = ast.FQNConst(op.loc, w_opimpl.fqn)
+        func = self.make_const(op.loc, w_opimpl)
         return ast.Call(op.loc, func, [v, i])
+
+    def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
+        v = self.shift_expr(op.value)
+        v_attr = ast.Constant(op.loc, value=op.attr)
+        w_opimpl = self.t.opimpl[op]
+        assert w_opimpl.fqn is not None
+        func = self.make_const(op.loc, w_opimpl)
+        return ast.Call(op.loc, func, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         # XXX: this assumes that it's a direct call (i.e., call.func is a

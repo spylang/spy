@@ -10,6 +10,7 @@ from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
 from spy.vm.typeconverter import TypeConverter, DynamicCast, NumericConv
+from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -109,6 +110,7 @@ class TypeChecker:
             # numeric conversion
             self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
             return None
+
         # mismatched types
         err = SPyTypeError('mismatched types')
         got = w_got.name
@@ -201,7 +203,8 @@ class TypeChecker:
         _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
 
-        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, node.attr, w_vtype)
+        w_attr = self.vm.wrap(node.attr)
+        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, w_attr, w_vtype)
         if w_opimpl is B.w_NotImplemented:
             ot = w_otype.name
             vt = w_vtype.name
@@ -343,7 +346,8 @@ class TypeChecker:
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
-        w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, expr.attr)
+        w_attr = self.vm.wrap(expr.attr)
+        w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, w_attr)
         if w_opimpl is B.w_NotImplemented:
             v = w_vtype.name
             err = SPyTypeError(f"type `{v}` has no attribute '{expr.attr}'")
