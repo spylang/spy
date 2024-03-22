@@ -6,11 +6,11 @@ from spy.vm.str import W_Str
 from spy.vm.registry import ModuleRegistry
 from spy.tests.support import CompilerTest
 
-class TestOperator(CompilerTest):
+class TestOperatorSingle(CompilerTest):
 
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
-    def test_getattr(self):
+    def test_getattr_setattr_custom(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
@@ -19,6 +19,7 @@ class TestOperator(CompilerTest):
             def getattr_impl(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
                 attr = vm.unwrap_str(w_attr)
                 return vm.wrap(attr.upper() + '--42')
+
 
         EXT.add('MyClass', W_MyClass._w)
 
@@ -41,3 +42,4 @@ class TestOperator(CompilerTest):
         """)
 
         res = mod.foo()
+        assert res == 'HELLO--42'
