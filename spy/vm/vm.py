@@ -160,6 +160,10 @@ class SPyVM:
         if w_super is B.w_dynamic:
             return True
         #
+        # XXX: these are needed to support automatic conversion from/to a
+        # TypeDef and its origin type. For now it's fine, but eventually we
+        # want to allow only explicit conversions. See
+        # TestTypeDef.test_cast_from_to.
         if isinstance(w_sub, W_TypeDef):
             w_sub = w_sub.w_origintype
         if isinstance(w_super, W_TypeDef):

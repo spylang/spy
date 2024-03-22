@@ -18,13 +18,21 @@ class TestTypeDef(CompilerTest):
         from types import makeTypeDef
         MyInt = makeTypeDef('MyInt', i32)
 
+        # this should go away and become MyInt.cast_from
+        def MyInt_cast_from(x: i32) -> MyInt:
+            return x
+
+        # same as above
+        def MyInt_cast_to(x: MyInt) -> i32:
+            return x
+
         def foo() -> MyInt:
-            x: MyInt = 42 # i32 -> MyInt
+            x: MyInt = MyInt_cast_from(42)
             return x
 
         def bar() -> i32:
-            x: MyInt = 43 # i32 -> MyInt
-            return x      # MyInt -> i32
+            x: MyInt = MyInt_cast_from(43)
+            return MyInt_cast_to(x)
         """)
         assert mod.foo() == 42
         assert mod.bar() == 43
