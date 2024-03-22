@@ -65,6 +65,24 @@ class TestTypeDef(CompilerTest):
         w_res = self.vm.call_function(w_getattr, [B.w_None])
         assert w_res is B.w_NotImplemented
 
+    @only_interp
+    def test_metaclass_getattr(self):
+        """
+        Test that we can succesfully get attributes on the typedef itself
+        """
+        mod = self.compile("""
+        from types import makeTypeDef
+
+        @blue
+        def foo():
+            MyInt = makeTypeDef('MyInt', i32)
+            MyInt.__getattr__ = 42
+            return MyInt.__getattr__
+        """)
+        w_foo = mod.foo.w_func
+        w_res = self.vm.call_function(w_foo, [])
+        assert self.vm.unwrap(w_res) == 42
+
     def test_getattr(self):
         mod = self.compile("""
         from types import makeTypeDef

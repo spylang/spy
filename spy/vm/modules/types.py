@@ -38,6 +38,14 @@ class W_TypeDef(W_Type):
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
         return r
 
+    def spy_getattr(self, vm: 'SPyVM', w_attr: str) -> W_Object:
+        attr = vm.unwrap_str(w_attr)
+        if attr == '__getattr__':
+            return self.w_getattr
+        elif attr == '__setattr__':
+            return self.w_setattr
+        raise Exception(f"invalid attribute: {attr}") # XXX better error
+
     def spy_setattr(self, vm: 'SPyVM', w_attr: str, w_val: W_Object) -> W_Object:
         attr = vm.unwrap_str(w_attr)
         if attr == '__getattr__':

@@ -23,7 +23,7 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Object:
     elif w_type is B.w_dynamic:
         raise NotImplementedError("implement me")
     elif w_type is W_TypeDef._w:
-        raise NotImplementedError("implement me")
+        return OP.w_generic_getattr
     elif isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
         w_opimpl = vm.call_function(w_type.w_getattr, [w_type, w_attr])
         return w_opimpl
