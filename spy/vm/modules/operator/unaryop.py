@@ -3,6 +3,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.module import W_Module
 from spy.vm.str import W_Str
+from spy.vm.function import W_Func
 from spy.vm.modules.types import W_TypeDef
 
 from . import OP
@@ -25,7 +26,9 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Object:
     elif w_type is W_TypeDef._w:
         return OP.w_generic_getattr
     elif isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
-        w_opimpl = vm.call_function(w_type.w_getattr, [w_type, w_attr])
+        w_getattr = w_type.w_getattr
+        assert isinstance(w_getattr, W_Func)
+        w_opimpl = vm.call_function(w_getattr, [w_type, w_attr])
         return w_opimpl
     return B.w_NotImplemented
 
@@ -40,6 +43,8 @@ def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
     elif w_type is W_TypeDef._w:
         return OP.w_generic_setattr
     elif isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
-        w_opimpl = vm.call_function(w_type.w_setattr, [w_type, w_attr, w_vtype])
+        w_setattr = w_type.w_setattr
+        assert isinstance(w_setattr, W_Func)
+        w_opimpl = vm.call_function(w_setattr, [w_type, w_attr, w_vtype])
         return w_opimpl
     return B.w_NotImplemented
