@@ -48,6 +48,7 @@ import fixedint
 from typing import TYPE_CHECKING, ClassVar, Type, Any
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.str import W_Str
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
@@ -74,6 +75,12 @@ class W_Object:
         py_type = self.__class__.__name__
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
                         f"(inter-level type: {py_type})")
+
+
+    # ==== impls for single-dispatch operators ====
+
+    def getattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str') -> 'W_Object':
+        raise NotImplementedError
 
 
 class W_Type(W_Object):

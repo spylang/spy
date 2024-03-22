@@ -43,7 +43,7 @@ class W_TypeDef(W_Type):
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
         return r
 
-    def spy_getattr(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
+    def getattr_impl(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
         attr = vm.unwrap_str(w_attr)
         if attr == '__getattr__':
             return self.w_getattr
