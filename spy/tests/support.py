@@ -76,6 +76,11 @@ def only_interp(func):
 def only_C(func):
     return pytest.mark.parametrize('compiler_backend', ['C'])(func)
 
+def no_C(func):
+    return pytest.mark.parametrize('compiler_backend',
+                                   ['interp', 'doppler'])(func)
+
+
 
 @pytest.mark.usefixtures('init')
 class CompilerTest:

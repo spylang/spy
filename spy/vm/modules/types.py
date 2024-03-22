@@ -51,7 +51,7 @@ class W_TypeDef(W_Type):
             return self.w_setattr
         raise Exception(f"invalid attribute: {attr}") # XXX better error
 
-    def spy_setattr(self, vm: 'SPyVM', w_attr: W_Str, w_val: W_Object) -> None:
+    def setattr_impl(self, vm: 'SPyVM', w_attr: W_Str, w_val: W_Object) -> None:
         attr = vm.unwrap_str(w_attr)
         if attr == '__getattr__':
             self.w_getattr = w_val

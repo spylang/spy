@@ -34,6 +34,11 @@ class W_Module(W_Object):
         attr = vm.unwrap_str(w_attr)
         return self.getattr(attr)
 
+    def setattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str',
+                     w_val: 'W_Object') -> None:
+        attr = vm.unwrap_str(w_attr)
+        self.setattr(attr, w_val)
+
     # ==== public interp-level API ====
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:

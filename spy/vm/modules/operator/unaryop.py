@@ -35,15 +35,14 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Object:
 @OP.primitive('def(t: type, attr: str, v: type) -> dynamic')
 def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
             w_vtype: W_Type) -> W_Object:
-    if w_type is W_Module._w:
-        return OP.w_module_setattr
-    elif w_type is B.w_dynamic:
+    if w_type is B.w_dynamic:
         return OP.w_dynamic_setattr
-    elif w_type is W_TypeDef._w:
-        return OP.w_generic_setattr
     elif isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
         w_setattr = w_type.w_setattr
         assert isinstance(w_setattr, W_Func)
         w_opimpl = vm.call_function(w_setattr, [w_type, w_attr, w_vtype])
         return w_opimpl
+    elif w_type.pyclass.setattr_impl is not W_Object.setattr_impl:
+        return OP.w_generic_setattr
+
     return B.w_NotImplemented

@@ -8,19 +8,11 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@OP.primitive('def(m: module, attr: str, v: object) -> dynamic')
-def module_setattr(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str,
-                   w_value: W_Object) -> W_Object:
-    attr = vm.unwrap_str(w_attr)
-    w_mod.setattr(attr, w_value)
-    return B.w_None
-
-
 @OP.primitive('def(obj: object, attr: str) -> dynamic')
 def generic_getattr(vm: 'SPyVM', w_obj: W_Object, w_attr: W_Str) -> W_Object:
     return w_obj.getattr_impl(vm, w_attr)
 
-@OP.primitive('def(obj: object, attr: str, v: object) -> dynamic')
+@OP.primitive('def(obj: object, attr: str, v: object) -> void')
 def generic_setattr(vm: 'SPyVM', w_obj: W_Object, w_attr: W_Str,
-                    w_value: W_Object) -> W_Object:
-    return w_obj.spy_setattr(vm, w_attr, w_value)
+                    w_value: W_Object) -> None:
+    w_obj.setattr_impl(vm, w_attr, w_value)

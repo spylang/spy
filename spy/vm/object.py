@@ -82,6 +82,10 @@ class W_Object:
     def getattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str') -> 'W_Object':
         raise NotImplementedError
 
+    def setattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str',
+                     w_val: 'W_Object') -> None:
+        raise NotImplementedError
+
 
 class W_Type(W_Object):
     """
