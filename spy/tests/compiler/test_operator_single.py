@@ -22,14 +22,14 @@ class TestOperatorSingle(CompilerTest):
             def __init__(self):
                 self.x = 0
 
-            def getattr_impl(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
+            def opimpl_getattr(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
                 attr = vm.unwrap_str(w_attr)
                 if attr == 'x':
                     return vm.wrap(self.x)
                 return vm.wrap(attr.upper() + '--42')
 
-            def setattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str',
-                             w_val: 'W_Object') -> None:
+            def opimpl_setattr(self, vm: 'SPyVM', w_attr: 'W_Str',
+                               w_val: 'W_Object') -> None:
                 attr = vm.unwrap_str(w_attr)
                 if attr == 'x':
                     self.x = vm.unwrap_i32(w_val)

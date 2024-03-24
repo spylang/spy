@@ -24,7 +24,7 @@ class W_Module(W_Object):
 
     # ==== operator impls =====
 
-    def getattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str') -> W_Object:
+    def opimpl_getattr(self, vm: 'SPyVM', w_attr: 'W_Str') -> W_Object:
         # XXX this is wrong: ideally, we should create a new subtype for each
         # module, where every member has its own static type.
         #
@@ -34,8 +34,8 @@ class W_Module(W_Object):
         attr = vm.unwrap_str(w_attr)
         return self.getattr(attr)
 
-    def setattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str',
-                     w_val: 'W_Object') -> None:
+    def opimpl_setattr(self, vm: 'SPyVM', w_attr: 'W_Str',
+                       w_val: 'W_Object') -> None:
         attr = vm.unwrap_str(w_attr)
         self.setattr(attr, w_val)
 

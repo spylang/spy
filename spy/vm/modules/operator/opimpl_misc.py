@@ -10,9 +10,9 @@ if TYPE_CHECKING:
 
 @OP.primitive('def(obj: object, attr: str) -> dynamic')
 def generic_getattr(vm: 'SPyVM', w_obj: W_Object, w_attr: W_Str) -> W_Object:
-    return w_obj.getattr_impl(vm, w_attr)
+    return w_obj.opimpl_getattr(vm, w_attr)
 
 @OP.primitive('def(obj: object, attr: str, v: object) -> void')
 def generic_setattr(vm: 'SPyVM', w_obj: W_Object, w_attr: W_Str,
                     w_value: W_Object) -> None:
-    w_obj.setattr_impl(vm, w_attr, w_value)
+    w_obj.opimpl_setattr(vm, w_attr, w_value)

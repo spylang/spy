@@ -77,14 +77,63 @@ class W_Object:
                         f"(inter-level type: {py_type})")
 
 
-    # ==== impls for single-dispatch operators ====
+    # ==== OPERATOR SUPPORT ====
+    #
+    # operators are the central concept which drives the semantic of SPy
+    # objects. Operators are @blue functions which receive the *types* of the
+    # operands, and return an "opimpl", which is a red function which
+    # performn the actual operation on the *values*.
+    #
+    # For example, consider the following expression:
+    #     return obj.a
+    #
+    # In normal Python,  this roughly maps to the following:
+    #     return type(obj).__getattribute__(obj, 'a')
+    #
+    # In SPy, it maps to the following:
+    #     opimpl = operator.GETATTR(static_type(obj), 'a')
+    #     return opimpl(obj, 'a')
+    #
+    # Subclasses of W_Object have two different options to implement their own
+    # semantics for the operators:
+    #
+    #   1. The can implement the operator itself, by overriding op_GETATTR:
+    #      this must be a *static method* on the class, and must return an
+    #      opimpl.
+    #
+    #   2. For convenience, subclasses can also decide to implement
+    #      opimpl_getattr: in this case, the default logic for op_GETATTR is
+    #      to simply return that opimpl.
+    #
+    # The actual logic for the SPy VM resides in the 'operator' module (see
+    # spy/vm/modules/operator).
 
-    def getattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str') -> 'W_Object':
-        raise NotImplementedError
+    @classmethod
+    def has_meth_overriden(cls, name: str) -> bool:
+        default_meth = getattr(W_Object, name, None)
+        meth = getattr(cls, name, None)
+        if default_meth is None or meth is None:
+            raise ValueError(f'Invalid method name: {name}')
+        if default_meth is meth:
+            return False
+        return True
 
-    def setattr_impl(self, vm: 'SPyVM', w_attr: 'W_Str',
-                     w_val: 'W_Object') -> None:
-        raise NotImplementedError
+    @staticmethod
+    def op_GETATTR(vm: 'SPyVM', w_type: 'W_Type',
+                   w_attr: 'W_Str') -> 'W_Object':
+        raise NotImplementedError('this should never be called')
+
+    def opimpl_getattr(self, vm: 'SPyVM', w_attr: 'W_Str') -> 'W_Object':
+        raise NotImplementedError('this should never be called')
+
+    @staticmethod
+    def op_SETATTR(vm: 'SPyVM', w_type: 'W_Type', w_attr: 'W_Str',
+                   w_vtype: 'W_Type') -> 'W_Object':
+        raise NotImplementedError('this should never be called')
+
+    def opimpl_setattr(self, vm: 'SPyVM', w_attr: 'W_Str',
+                       w_val: 'W_Object') -> None:
+        raise NotImplementedError('this should never be called')
 
 
 class W_Type(W_Object):
