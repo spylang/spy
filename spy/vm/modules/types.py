@@ -43,7 +43,7 @@ class W_TypeDef(W_Type):
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
         return r
 
-    def spy_getattr(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
+    def opimpl_getattr(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
         attr = vm.unwrap_str(w_attr)
         if attr == '__getattr__':
             return self.w_getattr
@@ -51,7 +51,8 @@ class W_TypeDef(W_Type):
             return self.w_setattr
         raise Exception(f"invalid attribute: {attr}") # XXX better error
 
-    def spy_setattr(self, vm: 'SPyVM', w_attr: W_Str, w_val: W_Object) -> None:
+    def opimpl_setattr(self, vm: 'SPyVM', w_attr: W_Str,
+                       w_val: W_Object) -> None:
         attr = vm.unwrap_str(w_attr)
         if attr == '__getattr__':
             self.w_getattr = w_val

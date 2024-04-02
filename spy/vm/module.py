@@ -4,6 +4,7 @@ from spy.vm.object import W_Object, spytype, W_Type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.function import W_ASTFunc
+    from spy.vm.str import W_Str
 
 
 @spytype('module')
@@ -20,6 +21,25 @@ class W_Module(W_Object):
 
     def __repr__(self) -> str:
         return f'<spy module {self.name}>'
+
+    # ==== operator impls =====
+
+    def opimpl_getattr(self, vm: 'SPyVM', w_attr: 'W_Str') -> W_Object:
+        # XXX this is wrong: ideally, we should create a new subtype for each
+        # module, where every member has its own static type.
+        #
+        # For now, we just use dynamic, which is good enough for now, since
+        # all the module getattrs are done in blue contexts are redshifted
+        # away.
+        attr = vm.unwrap_str(w_attr)
+        return self.getattr(attr)
+
+    def opimpl_setattr(self, vm: 'SPyVM', w_attr: 'W_Str',
+                       w_val: 'W_Object') -> None:
+        attr = vm.unwrap_str(w_attr)
+        self.setattr(attr, w_val)
+
+    # ==== public interp-level API ====
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:
         fqn = FQN(modname=self.name, attr=attr)

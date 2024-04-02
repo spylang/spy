@@ -76,6 +76,11 @@ def only_interp(func):
 def only_C(func):
     return pytest.mark.parametrize('compiler_backend', ['C'])(func)
 
+def no_C(func):
+    return pytest.mark.parametrize('compiler_backend',
+                                   ['interp', 'doppler'])(func)
+
+
 
 @pytest.mark.usefixtures('init')
 class CompilerTest:
@@ -116,6 +121,7 @@ class CompilerTest:
             return 'eager'
 
     # see test_backend_spy:test_zz_sanity_check for details
+    SKIP_SPY_BACKEND_SANITY_CHECK = False
     ALL_COMPILED_SOURCES: set[str] = set()
 
     def compile(self, src: str, modname: str = 'test') -> Any:
@@ -129,7 +135,8 @@ class CompilerTest:
         """
         self.write_file(f'{modname}.spy', src)
         self.w_mod = self.vm.import_(modname)
-        self.ALL_COMPILED_SOURCES.add(src)
+        if not self.SKIP_SPY_BACKEND_SANITY_CHECK:
+            self.ALL_COMPILED_SOURCES.add(src)
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
         elif self.backend == 'interp':
