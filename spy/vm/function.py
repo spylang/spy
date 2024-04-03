@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, W_Dynamic
 from spy.vm.module import W_Module
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -182,14 +182,24 @@ class W_BuiltinFunc(W_Func):
         return self.pyfunc(vm, *args_w)
 
 
-def spy_builtin(fqn: FQN):
-    def to_spy_FuncParam(p: Any) -> FuncParam:
-        pyclass = p.annotation
-        if not issubclass(pyclass, W_Object):
-            raise ValueError(f"Invalid param: '{p}'")
-        return FuncParam(p.name, pyclass._w)
+def spy_builtin(fqn: FQN) -> Callable:
+    from spy.vm.b import B
 
-    def decorator(fn):
+    def to_spy_FuncParam(p: Any) -> FuncParam:
+        if p.name.startswith('w_'):
+            name = p.name[2:]
+        else:
+            name = p.name
+        #
+        pyclass = p.annotation
+        if pyclass is W_Dynamic:
+            return FuncParam(name, B.w_dynamic)
+        elif issubclass(pyclass, W_Object):
+            return FuncParam(name, pyclass._w)
+        else:
+            raise ValueError(f"Invalid param: '{p}'")
+
+    def decorator(fn: Callable) -> Callable:
         sig = inspect.signature(fn)
         params = list(sig.parameters.values())
         if len(params) == 0:
@@ -201,11 +211,16 @@ def spy_builtin(fqn: FQN):
             raise ValueError(msg)
 
         func_params = [to_spy_FuncParam(p) for p in params[1:]]
-        if not issubclass(sig.return_annotation, W_Object):
-            raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
-        w_restype = sig.return_annotation._w
-        w_functype = W_FuncType(func_params, w_restype)
 
+        ret = sig.return_annotation
+        if ret is W_Dynamic:
+            w_restype = B.w_dynamic
+        elif issubclass(ret, W_Object):
+            w_restype = ret._w
+        else:
+            raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
+
+        w_functype = W_FuncType(func_params, w_restype)
         fn._w = W_BuiltinFunc(w_functype, fqn, fn)
         fn.w_functype = w_functype
         return fn

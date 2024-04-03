@@ -1,7 +1,7 @@
 import pytest
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.w import W_FuncType, W_I32, W_BuiltinFunc
+from spy.vm.w import W_FuncType, W_I32, W_BuiltinFunc, W_Dynamic
 from spy.fqn import FQN
 from spy.vm.function import W_FuncType, spy_builtin
 
@@ -64,3 +64,10 @@ class TestFunction:
             @spy_builtin(FQN('test::foo'))
             def foo(vm: 'SPyVM') -> int:
                 pass
+
+    def test_spy_builtin_dynamic(self):
+        vm = SPyVM()
+        @spy_builtin(FQN('test::foo'))
+        def foo(vm: 'SPyVM', w_x: W_Dynamic) -> W_Dynamic:
+            pass
+        assert foo.w_functype.name == 'def(x: dynamic) -> dynamic'
