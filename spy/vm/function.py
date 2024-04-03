@@ -183,8 +183,6 @@ class W_BuiltinFunc(W_Func):
 
 
 def spy_builtin(fqn: FQN):
-    from spy.vm.vm import SPyVM
-
     def to_spy_FuncParam(p: Any) -> FuncParam:
         pyclass = p.annotation
         if not issubclass(pyclass, W_Object):
@@ -198,7 +196,7 @@ def spy_builtin(fqn: FQN):
             msg = (f"The first param should be 'vm: SPyVM'. Got nothing")
             raise ValueError(msg)
         if (params[0].name != 'vm' or
-            params[0].annotation not in (SPyVM, 'SPyVM')):
+            params[0].annotation != 'SPyVM'):
             msg = (f"The first param should be 'vm: SPyVM'. Got '{params[0]}'")
             raise ValueError(msg)
 

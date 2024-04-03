@@ -6,5 +6,3 @@ from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.object import W_Bool, W_F64, W_I32, W_Object, W_Type, W_Void
 from spy.vm.str import W_Str
-from spy.vm.modules.types import W_TypeDef
-from spy.vm.modules.rawbuffer import W_RawBuffer
