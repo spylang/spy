@@ -37,7 +37,7 @@ class TestOperatorSingle(CompilerTest):
                     def opimpl(vm: 'SPyVM', w_obj: W_MyClass,
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
-                        return vm.wrap(attr.upper() + '--42')
+                        return vm.wrap(attr.upper() + '--42')  # type: ignore
                 return vm.wrap(opimpl)
 
             @staticmethod
