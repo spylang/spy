@@ -5,7 +5,7 @@ SPy `types` module.
 from typing import TYPE_CHECKING
 from spy.vm.module import W_Module
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, spytype
+from spy.vm.object import W_Type, W_Object, spytype, W_Dynamic, W_Void
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.registry import ModuleRegistry
@@ -43,23 +43,49 @@ class W_TypeDef(W_Type):
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
         return r
 
-    def opimpl_getattr(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
+    @staticmethod
+    def op_GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
         attr = vm.unwrap_str(w_attr)
         if attr == '__getattr__':
-            return self.w_getattr
+            return TYPES.w_typedef_get_getattr
         elif attr == '__setattr__':
-            return self.w_setattr
-        raise Exception(f"invalid attribute: {attr}") # XXX better error
-
-    def opimpl_setattr(self, vm: 'SPyVM', w_attr: W_Str,
-                       w_val: W_Object) -> None:
-        attr = vm.unwrap_str(w_attr)
-        if attr == '__getattr__':
-            self.w_getattr = w_val
-        elif attr == '__setattr__':
-            self.w_setattr = w_val
+            return TYPES.w_typedef_get_setattr
         else:
-            raise Exception(f"invalid attribute: {attr}") # XXX better error
+            return B.w_NotImplemented
+
+    @staticmethod
+    def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
+                   w_vtype: W_Type) -> W_Dynamic:
+        attr = vm.unwrap_str(w_attr)
+        if attr == '__getattr__':
+            return TYPES.w_typedef_set_getattr
+        elif attr == '__setattr__':
+            return TYPES.w_typedef_set_setattr
+        else:
+            return B.w_NotImplemented
+
+
+@TYPES.builtin
+def typedef_set_getattr(vm: 'SPyVM', w_self: W_TypeDef, w_attr: W_Str,
+                        w_val: W_Dynamic) -> W_Void:
+    w_self.w_getattr = w_val
+    return B.w_None
+
+@TYPES.builtin
+def typedef_set_setattr(vm: 'SPyVM', w_self: W_TypeDef, w_attr: W_Str,
+                        w_val: W_Dynamic) -> W_Void:
+    w_self.w_setattr = w_val
+    return B.w_None
+
+@TYPES.builtin
+def typedef_get_getattr(vm: 'SPyVM', w_self: W_TypeDef,
+                        w_attr: W_Str) -> W_Dynamic:
+    return w_self.w_getattr
+
+@TYPES.builtin
+def typedef_get_setattr(vm: 'SPyVM', w_self: W_TypeDef,
+                        w_attr: W_Str) -> W_Dynamic:
+    return w_self.w_setattr
 
 
 TYPES.add('TypeDef', W_TypeDef._w)

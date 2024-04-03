@@ -1,10 +1,14 @@
 from typing import TYPE_CHECKING, Optional, Iterable
 from spy.fqn import FQN
-from spy.vm.object import W_Object, spytype, W_Type
+from spy.vm.b import B
+from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_Void
+from spy.vm.str import W_Str
+from spy.vm.function import W_ASTFunc, spy_builtin
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.function import W_ASTFunc
-    from spy.vm.str import W_Str
+
+
 
 
 @spytype('module')
@@ -24,20 +28,33 @@ class W_Module(W_Object):
 
     # ==== operator impls =====
 
-    def opimpl_getattr(self, vm: 'SPyVM', w_attr: 'W_Str') -> W_Object:
-        # XXX this is wrong: ideally, we should create a new subtype for each
-        # module, where every member has its own static type.
-        #
-        # For now, we just use dynamic, which is good enough for now, since
-        # all the module getattrs are done in blue contexts are redshifted
-        # away.
-        attr = vm.unwrap_str(w_attr)
-        return self.getattr(attr)
+    @staticmethod
+    def op_GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
+        """
+        XXX this is wrong: ideally, we should create a new subtype for each
+        module, where every member has its own static type.
 
-    def opimpl_setattr(self, vm: 'SPyVM', w_attr: 'W_Str',
-                       w_val: 'W_Object') -> None:
-        attr = vm.unwrap_str(w_attr)
-        self.setattr(attr, w_val)
+        For now, we just use dynamic, which is good enough for now, since
+        all the module getattrs are done in blue contexts are redshifted
+        away.
+        """
+        @spy_builtin(FQN('builtins::module_getattr'))
+        def opimpl(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
+            attr = vm.unwrap_str(w_attr)
+            return w_mod.getattr(attr)
+        return vm.wrap(opimpl)
+
+
+    @staticmethod
+    def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
+                   w_vtype: W_Type) -> W_Dynamic:
+        @spy_builtin(FQN('builtins::module_setattr'))
+        def opimpl(vm: 'SPyVM', w_mod: W_Module, w_attr:
+                   W_Str, w_val: W_Dynamic) -> W_Void:
+            attr = vm.unwrap_str(w_attr)
+            w_mod.setattr(attr, w_val)
+            return B.w_None
+        return vm.wrap(opimpl)
 
     # ==== public interp-level API ====
 

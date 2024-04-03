@@ -5,7 +5,6 @@ from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType
-from spy.vm.module import W_Module
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

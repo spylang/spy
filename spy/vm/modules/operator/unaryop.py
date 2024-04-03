@@ -24,8 +24,6 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
         raise NotImplementedError("implement me")
     elif pyclass.has_meth_overriden('op_GETATTR'):
         return pyclass.op_GETATTR(vm, w_type, w_attr)
-    elif pyclass.has_meth_overriden('opimpl_getattr'):
-        return OP.w_generic_getattr
 
     # XXX refactor
     if isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
@@ -45,8 +43,6 @@ def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
         return OP.w_dynamic_setattr
     elif pyclass.has_meth_overriden('op_SETATTR'):
         return pyclass.op_SETATTR(vm, w_type, w_attr, w_vtype)
-    elif pyclass.has_meth_overriden('opimpl_setattr'):
-        return OP.w_generic_setattr
 
     # XXX refactor
     if isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
