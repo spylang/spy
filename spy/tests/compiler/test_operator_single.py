@@ -1,8 +1,9 @@
 import pytest
 from spy.fqn import FQN
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, W_Dynamic, spytype
-from spy.vm.str import W_Str
+from spy.vm.object import spytype
+from spy.vm.function import spy_builtin
+from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -22,19 +23,37 @@ class TestOperatorSingle(CompilerTest):
             def __init__(self):
                 self.x = 0
 
-            def opimpl_getattr(self, vm: 'SPyVM', w_attr: W_Str) -> W_Object:
+            @staticmethod
+            def op_GETATTR(vm: 'SPyVM', w_type: W_Type,
+                           w_attr: W_Str) -> W_Dynamic:
                 attr = vm.unwrap_str(w_attr)
                 if attr == 'x':
-                    return vm.wrap(self.x)
-                return vm.wrap(attr.upper() + '--42')
-
-            def opimpl_setattr(self, vm: 'SPyVM', w_attr: 'W_Str',
-                               w_val: 'W_Object') -> None:
-                attr = vm.unwrap_str(w_attr)
-                if attr == 'x':
-                    self.x = vm.unwrap_i32(w_val)
+                    @spy_builtin(FQN('ext::getx'))
+                    def opimpl(vm: 'SPyVM', w_obj: W_MyClass,
+                                    w_attr: W_Str) -> W_I32:
+                        return vm.wrap(w_obj.x)  # type: ignore
                 else:
-                    raise NotImplementedError
+                    @spy_builtin(FQN('ext::getany'))
+                    def opimpl(vm: 'SPyVM', w_obj: W_MyClass,
+                                      w_attr: W_Str) -> W_Str:
+                        attr = vm.unwrap_str(w_attr)
+                        return vm.wrap(attr.upper() + '--42')
+                return vm.wrap(opimpl)
+
+            @staticmethod
+            def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
+                           w_vtype: W_Type) -> W_Dynamic:
+                attr = vm.unwrap_str(w_attr)
+                if attr == 'x':
+                    @spy_builtin(FQN('ext::setx'))
+                    def opimpl(vm: 'SPyVM', w_obj: W_MyClass,
+                               w_attr: W_Str, w_val: W_I32) -> W_Void:
+                        w_obj.x = vm.unwrap_i32(w_val)
+                        return B.w_None
+                    return vm.wrap(opimpl)
+                else:
+                    return B.w_NotImplemented
+
 
         EXT.add('MyClass', W_MyClass._w)
 
