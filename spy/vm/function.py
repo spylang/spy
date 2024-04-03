@@ -60,16 +60,11 @@ class W_FuncType(W_Type):
         case of wrong inputs.
         """
         from spy.vm.b import B
-        from spy.vm.modules.types import TYPES
-        from spy.vm.modules.rawbuffer import RAW_BUFFER
 
         def parse_type(s: str) -> Any:
-            # XXX this is a quick hack to support `module` and `RawBuffer`,
-            # but we need a better solution
             attr = f'w_{s}'
-            for mod in (B, TYPES, RAW_BUFFER):
-                if hasattr(mod, attr):
-                    return getattr(mod, attr)
+            if hasattr(B, attr):
+                return getattr(B, attr)
             assert False, f'Cannot find type {s}'
 
         args, res = map(str.strip, s.split('->'))
