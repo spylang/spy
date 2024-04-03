@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import inspect
 from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
@@ -179,3 +180,27 @@ class W_BuiltinFunc(W_Func):
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         return self.pyfunc(vm, *args_w)
+
+
+def spy_builtin(fqn: FQN):
+    from spy.vm.vm import SPyVM
+
+    def to_w_type(pyclass: Any) -> W_Type:
+        assert issubclass(pyclass, W_Object)
+        return pyclass._w
+
+    def decorator(fn):
+        sig = inspect.signature(fn)
+        params = list(sig.parameters.values())
+        assert params[0].name == 'vm'
+        assert params[0].annotation in (SPyVM, 'SPyVM')
+        func_params = [FuncParam(p.name, to_w_type(p.annotation))
+                       for p in params[1:]]
+        w_restype = to_w_type(sig.return_annotation)
+        w_functype = W_FuncType(func_params, w_restype)
+
+        fn._w = W_BuiltinFunc(w_functype, fqn, fn)
+        fn.w_functype = w_functype
+        return fn
+
+    return decorator

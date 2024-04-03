@@ -1,7 +1,9 @@
 import pytest
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.function import W_FuncType
+from spy.vm.w import W_FuncType, W_I32, W_BuiltinFunc
+from spy.fqn import FQN
+from spy.vm.function import W_FuncType, spy_builtin
 
 class TestFunction:
 
@@ -21,3 +23,21 @@ class TestFunction:
         assert w_ft == W_FuncType.make(x=B.w_str,
                                            y=B.w_i32,
                                            w_restype=B.w_i32)
+
+
+    def test_spy_builtin(self):
+        vm = SPyVM()
+
+        @spy_builtin(FQN('test::foo'))
+        def foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
+            x = vm.unwrap_i32(w_x)
+            return vm.wrap(x*2)
+
+        w_x = foo(vm, vm.wrap(21))
+        assert vm.unwrap_i32(w_x) == 42
+
+        w_foo = vm.wrap(foo)
+        assert isinstance(w_foo, W_BuiltinFunc)
+        assert w_foo.fqn == FQN('test::foo')
+        w_y = vm.call_function(w_foo, [vm.wrap(10)])
+        assert vm.unwrap_i32(w_y) == 20
