@@ -94,16 +94,9 @@ class W_Object:
     #     opimpl = operator.GETATTR(static_type(obj), 'a')
     #     return opimpl(obj, 'a')
     #
-    # Subclasses of W_Object have two different options to implement their own
-    # semantics for the operators:
-    #
-    #   1. The can implement the operator itself, by overriding op_GETATTR:
-    #      this must be a *static method* on the class, and must return an
-    #      opimpl.
-    #
-    #   2. For convenience, subclasses can also decide to implement
-    #      opimpl_getattr: in this case, the default logic for op_GETATTR is
-    #      to simply return that opimpl.
+    # Subclasses of W_Object can implement their own operator by overriding
+    # the various op_GETATTR & co.  These must be *static methods* on the
+    # class, and must return an opimpl.
     #
     # The actual logic for the SPy VM resides in the 'operator' module (see
     # spy/vm/modules/operator).
@@ -123,16 +116,9 @@ class W_Object:
                    w_attr: 'W_Str') -> 'W_Object':
         raise NotImplementedError('this should never be called')
 
-    def opimpl_getattr(self, vm: 'SPyVM', w_attr: 'W_Str') -> 'W_Object':
-        raise NotImplementedError('this should never be called')
-
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', w_type: 'W_Type', w_attr: 'W_Str',
                    w_vtype: 'W_Type') -> 'W_Object':
-        raise NotImplementedError('this should never be called')
-
-    def opimpl_setattr(self, vm: 'SPyVM', w_attr: 'W_Str',
-                       w_val: 'W_Object') -> None:
         raise NotImplementedError('this should never be called')
 
 
