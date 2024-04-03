@@ -224,8 +224,8 @@ def spy_builtin(fqn: FQN) -> Callable:
             raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
 
         w_functype = W_FuncType(func_params, w_restype)
-        fn._w = W_BuiltinFunc(w_functype, fqn, fn)
-        fn.w_functype = w_functype
+        fn._w = W_BuiltinFunc(w_functype, fqn, fn)  # type: ignore
+        fn.w_functype = w_functype  # type: ignore
         return fn
 
     return decorator

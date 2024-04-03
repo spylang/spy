@@ -44,7 +44,7 @@ class ModuleRegistry:
         fqn = FQN(modname=self.modname, attr=attr)
         # apply the @spy_builtin decorator to pyfunc
         spy_builtin(fqn)(pyfunc)
-        w_func = pyfunc._w
+        w_func = pyfunc._w  # type: ignore
         setattr(self, f'w_{attr}', w_func)
         self.content.append((fqn, w_func))
         return pyfunc
