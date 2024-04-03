@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
-from spy.vm.object import W_Object, W_Type, W_Dynamic
+from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType
 from spy.vm.module import W_Module
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -183,7 +183,11 @@ class W_BuiltinFunc(W_Func):
 
 
 def spy_builtin(fqn: FQN) -> Callable:
-    from spy.vm.b import B
+    # this is B.w_dynamic (we cannot use B due to circular imports)
+    B_w_dynamic = w_DynamicType
+
+    def is_W_class(x: Any) -> bool:
+        return isinstance(x, type) and issubclass(x, W_Object)
 
     def to_spy_FuncParam(p: Any) -> FuncParam:
         if p.name.startswith('w_'):
@@ -193,7 +197,7 @@ def spy_builtin(fqn: FQN) -> Callable:
         #
         pyclass = p.annotation
         if pyclass is W_Dynamic:
-            return FuncParam(name, B.w_dynamic)
+            return FuncParam(name, B_w_dynamic)
         elif issubclass(pyclass, W_Object):
             return FuncParam(name, pyclass._w)
         else:
@@ -211,11 +215,10 @@ def spy_builtin(fqn: FQN) -> Callable:
             raise ValueError(msg)
 
         func_params = [to_spy_FuncParam(p) for p in params[1:]]
-
         ret = sig.return_annotation
         if ret is W_Dynamic:
-            w_restype = B.w_dynamic
-        elif issubclass(ret, W_Object):
+            w_restype = B_w_dynamic
+        elif is_W_class(ret):
             w_restype = ret._w
         else:
             raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
