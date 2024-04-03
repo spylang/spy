@@ -39,19 +39,6 @@ class ModuleRegistry:
         setattr(self, f'w_{attr}', w_obj)
         self.content.append((fqn, w_obj))
 
-    def primitive(self, sig: str, name: Optional[str] = None) -> Callable:
-        w_functype = W_FuncType.parse(sig)
-
-        def decorator(pyfunc: Callable) -> Callable:
-            attr = name or pyfunc.__name__
-            fqn = FQN(modname=self.modname, attr=attr)
-            w_func = W_BuiltinFunc(w_functype, fqn, pyfunc)
-            setattr(self, f'w_{attr}', w_func)
-            self.content.append((fqn, w_func))
-            return pyfunc
-
-        return decorator
-
     def builtin(self, pyfunc: Callable) -> Callable:
         attr = pyfunc.__name__
         fqn = FQN(modname=self.modname, attr=attr)
