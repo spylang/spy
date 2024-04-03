@@ -16,42 +16,42 @@ def _f64_op(vm: 'SPyVM', w_a: W_Object, w_b: W_Object, fn: Any) -> Any:
     res = fn(a, b)
     return vm.wrap(res)
 
-@OP.primitive('def(a: f64, b: f64) -> f64')
+@OP.builtin
 def f64_add(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a + b)
 
-@OP.primitive('def(a: f64, b: f64) -> f64')
+@OP.builtin
 def f64_sub(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a - b)
 
-@OP.primitive('def(a: f64, b: f64) -> f64')
+@OP.builtin
 def f64_mul(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a * b)
 
-@OP.primitive('def(a: f64, b: f64) -> f64')
+@OP.builtin
 def f64_div(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a / b)
 
-@OP.primitive('def(a: f64, b: f64) -> bool')
+@OP.builtin
 def f64_eq(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a == b)
 
-@OP.primitive('def(a: f64, b: f64) -> bool')
+@OP.builtin
 def f64_ne(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a != b)
 
-@OP.primitive('def(a: f64, b: f64) -> bool')
+@OP.builtin
 def f64_lt(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a < b)
 
-@OP.primitive('def(a: f64, b: f64) -> bool')
+@OP.builtin
 def f64_le(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a <= b)
 
-@OP.primitive('def(a: f64, b: f64) -> bool')
+@OP.builtin
 def f64_gt(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a > b)
 
-@OP.primitive('def(a: f64, b: f64) -> bool')
+@OP.builtin
 def f64_ge(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a >= b)
