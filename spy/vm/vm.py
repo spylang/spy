@@ -2,6 +2,7 @@ import py
 from typing import Any, Optional, Iterable
 import itertools
 from dataclasses import dataclass
+from types import FunctionType
 import fixedint
 from spy.fqn import FQN
 from spy import libspy
@@ -217,6 +218,8 @@ class SPyVM:
         elif T is str:
             return W_Str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
+            return value._w
+        elif isinstance(value, FunctionType) and hasattr(value, '_w'):
             return value._w
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")

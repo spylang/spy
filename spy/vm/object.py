@@ -45,7 +45,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
 import fixedint
-from typing import TYPE_CHECKING, ClassVar, Type, Any
+from typing import TYPE_CHECKING, ClassVar, Type, Any, Annotated
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.str import W_Str
@@ -197,8 +197,15 @@ W_Type._w = W_Type('type', W_Type)
 #    x + 1 # compile-time error: cannot do `<object> + <i32>`
 #    y + 1 # succeeds, but the dispatch is done at runtime
 #    z + 1 # runtime error: cannot do `<i32> + <str>`
+#
+# Since it's a compile-time only concept, it doesn't have a corresponding
+# W_Dynamic interp-level class. However, we still provide W_Dynamic as an
+# annotated version of W_Object: from the mypy static typing point of view,
+# it's equivalent to W_Object, but it is recognized by @spy_builtin to
+# generate the "correct" w_functype signature.
 
-w_DynamicType = W_Type('dynamic', W_Object)
+w_DynamicType = W_Type('dynamic', W_Object) # this is B.w_dynamic
+W_Dynamic = Annotated[W_Object, 'W_Dynamic']
 
 
 # Other types

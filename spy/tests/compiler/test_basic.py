@@ -265,6 +265,17 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    @pytest.mark.skip(reason="the result of op.ADD should be blue but it's red")
+    def test_explicit_BinOp(self):
+        mod = self.compile("""
+        import operator as op
+
+        def foo(x: i32, y: i32) -> i32:
+            return op.ADD(i32, i32)(x, y)
+        """)
+        assert mod.foo(3, 5) == 8
+
+
     def test_function_call(self):
         mod = self.compile("""
         def foo(x: i32, y: i32, z: i32) -> i32:

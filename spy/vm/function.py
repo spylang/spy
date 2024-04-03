@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+import inspect
 from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType
 from spy.vm.module import W_Module
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -59,16 +60,11 @@ class W_FuncType(W_Type):
         case of wrong inputs.
         """
         from spy.vm.b import B
-        from spy.vm.modules.types import TYPES
-        from spy.vm.modules.rawbuffer import RAW_BUFFER
 
         def parse_type(s: str) -> Any:
-            # XXX this is a quick hack to support `module` and `RawBuffer`,
-            # but we need a better solution
             attr = f'w_{s}'
-            for mod in (B, TYPES, RAW_BUFFER):
-                if hasattr(mod, attr):
-                    return getattr(mod, attr)
+            if hasattr(B, attr):
+                return getattr(B, attr)
             assert False, f'Cannot find type {s}'
 
         args, res = map(str.strip, s.split('->'))
@@ -179,3 +175,52 @@ class W_BuiltinFunc(W_Func):
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         return self.pyfunc(vm, *args_w)
+
+
+def spy_builtin(fqn: FQN) -> Callable:
+    # this is B.w_dynamic (we cannot use B due to circular imports)
+    B_w_dynamic = w_DynamicType
+
+    def is_W_class(x: Any) -> bool:
+        return isinstance(x, type) and issubclass(x, W_Object)
+
+    def to_spy_FuncParam(p: Any) -> FuncParam:
+        if p.name.startswith('w_'):
+            name = p.name[2:]
+        else:
+            name = p.name
+        #
+        pyclass = p.annotation
+        if pyclass is W_Dynamic:
+            return FuncParam(name, B_w_dynamic)
+        elif issubclass(pyclass, W_Object):
+            return FuncParam(name, pyclass._w)
+        else:
+            raise ValueError(f"Invalid param: '{p}'")
+
+    def decorator(fn: Callable) -> Callable:
+        sig = inspect.signature(fn)
+        params = list(sig.parameters.values())
+        if len(params) == 0:
+            msg = (f"The first param should be 'vm: SPyVM'. Got nothing")
+            raise ValueError(msg)
+        if (params[0].name != 'vm' or
+            params[0].annotation != 'SPyVM'):
+            msg = (f"The first param should be 'vm: SPyVM'. Got '{params[0]}'")
+            raise ValueError(msg)
+
+        func_params = [to_spy_FuncParam(p) for p in params[1:]]
+        ret = sig.return_annotation
+        if ret is W_Dynamic:
+            w_restype = B_w_dynamic
+        elif is_W_class(ret):
+            w_restype = ret._w
+        else:
+            raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
+
+        w_functype = W_FuncType(func_params, w_restype)
+        fn._w = W_BuiltinFunc(w_functype, fqn, fn)  # type: ignore
+        fn.w_functype = w_functype  # type: ignore
+        return fn
+
+    return decorator

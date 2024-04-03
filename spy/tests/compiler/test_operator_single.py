@@ -1,7 +1,7 @@
 import pytest
 from spy.fqn import FQN
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, spytype
+from spy.vm.object import W_Type, W_Object, W_Dynamic, spytype
 from spy.vm.str import W_Str
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
@@ -38,8 +38,8 @@ class TestOperatorSingle(CompilerTest):
 
         EXT.add('MyClass', W_MyClass._w)
 
-        @EXT.primitive('def() -> dynamic')
-        def make(vm: 'SPyVM') -> W_Object:
+        @EXT.builtin
+        def make(vm: 'SPyVM') -> W_Dynamic:
             return W_MyClass()  # type: ignore
         # ========== /EXT module for this test =========
 

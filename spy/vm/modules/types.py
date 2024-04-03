@@ -64,7 +64,7 @@ class W_TypeDef(W_Type):
 
 TYPES.add('TypeDef', W_TypeDef._w)
 
-@TYPES.primitive('def(name: str, t: type) -> TypeDef')
+@TYPES.builtin
 def makeTypeDef(vm: 'SPyVM', w_name: W_Str, w_origintype: W_Type) -> W_TypeDef:
     name = vm.unwrap_str(w_name)
     return W_TypeDef(name, w_origintype)
