@@ -41,3 +41,26 @@ class TestFunction:
         assert w_foo.fqn == FQN('test::foo')
         w_y = vm.call_function(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
+
+    def test_spy_builtin_errors(self):
+        with pytest.raises(ValueError,
+                           match="The first param should be 'vm: SPyVM'."):
+            @spy_builtin(FQN('test::foo'))
+            def foo() -> W_I32:
+                pass
+
+        with pytest.raises(ValueError,
+                           match="The first param should be 'vm: SPyVM'."):
+            @spy_builtin(FQN('test::foo'))
+            def foo(w_x: W_I32) -> W_I32:
+                pass
+
+        with pytest.raises(ValueError, match="Invalid param: 'x: int'"):
+            @spy_builtin(FQN('test::foo'))
+            def foo(vm: 'SPyVM', x: int) -> W_I32:
+                pass
+
+        with pytest.raises(ValueError, match="Invalid return type"):
+            @spy_builtin(FQN('test::foo'))
+            def foo(vm: 'SPyVM') -> int:
+                pass
