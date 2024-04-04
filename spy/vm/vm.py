@@ -8,7 +8,7 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, W_I32, W_F64
+from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
@@ -255,3 +255,13 @@ class SPyVM:
             self.typecheck(w_arg, param.w_type)
         #
         return w_func.spy_call(self, args_w)
+
+    def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
+        w_ta = self.dynamic_type(w_a)
+        w_tb = self.dynamic_type(w_b)
+        w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
+        if w_opimpl is B.w_NotImplemented:
+            # XXX: the logic to produce a good error message should be in a
+            # single place
+            raise SPyTypeError("Cannot do ==")
+        return self.call_function(w_opimpl, [w_a, w_b])
