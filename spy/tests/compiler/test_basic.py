@@ -4,7 +4,7 @@ from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
-                               expect_errors, only_interp)
+                               expect_errors, only_interp, no_C)
 
 class TestBasic(CompilerTest):
 
@@ -665,7 +665,7 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    @skip_backends("C", reason="implement me")
+    @no_C
     def test_blue_is_memoized(self, capsys):
         mod = self.compile("""
         @blue
