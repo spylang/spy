@@ -193,3 +193,12 @@ class TestVM:
         b1 = vm.get_unique_FQN(modname="test", attr="b", is_global=False)
         assert b1 == FQN("test::b", uniq_suffix='1')
         assert str(b1) == "test::b#1"
+
+    def test_eq(self):
+        vm = SPyVM()
+        w_a = vm.wrap(1)
+        w_b = vm.wrap(1)
+        w_c = vm.wrap(2)
+        assert vm.is_True(vm.eq(w_a, w_a))
+        assert vm.is_True(vm.eq(w_a, w_b))
+        assert vm.is_False(vm.eq(w_a, w_c))

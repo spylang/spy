@@ -4,7 +4,7 @@ from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
-                               expect_errors, only_interp)
+                               expect_errors, only_interp, no_C)
 
 class TestBasic(CompilerTest):
 
@@ -664,3 +664,18 @@ class TestBasic(CompilerTest):
             ("this is `i32`", '42'),
         )
         self.compile_raises(src, "foo", errors)
+
+    @no_C
+    def test_blue_is_memoized(self, capsys):
+        mod = self.compile("""
+        @blue
+        def foo(x: i32) -> i32:
+            print(x)
+            return x
+        """)
+        assert mod.foo(1) == 1
+        assert mod.foo(1) == 1 # this should be cached
+        assert mod.foo(2) == 2
+
+        out, err = capsys.readouterr()
+        assert out == '1\n2\n'

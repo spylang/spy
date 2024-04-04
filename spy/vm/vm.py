@@ -8,12 +8,13 @@ from spy.fqn import FQN
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, W_I32, W_F64
+from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.registry import ModuleRegistry
+from spy.vm.bluecache import BlueCache
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
@@ -33,6 +34,7 @@ class SPyVM:
     modules_w: dict[str, W_Module]
     unique_fqns: set[FQN]
     path: list[str]
+    bluecache: BlueCache
 
     def __init__(self) -> None:
         self.ll = libspy.LLSPyInstance(libspy.LLMOD)
@@ -41,6 +43,7 @@ class SPyVM:
         self.modules_w = {}
         self.unique_fqns = set()
         self.path = []
+        self.bluecache = BlueCache(self)
         self.make_module(BUILTINS)   # builtins::
         self.make_module(OPERATOR)   # operator::
         self.make_module(TYPES)      # types::
@@ -249,9 +252,34 @@ class SPyVM:
         return self.unwrap(w_value) # type: ignore
 
     def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
+        if w_func.color == 'blue':
+            # for blue functions, we memoize the result
+            w_result = self.bluecache.lookup(w_func, args_w)
+            if w_result is not None:
+                return w_result
+            w_result = self._call_func(w_func, args_w)
+            self.bluecache.record(w_func, args_w, w_result)
+            return w_result
+        else:
+            # for red functions, we just call them
+            return self._call_func(w_func, args_w)
+
+    def _call_func(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
         assert w_functype.arity == len(args_w)
         for param, w_arg in zip(w_functype.params, args_w):
             self.typecheck(w_arg, param.w_type)
-        #
         return w_func.spy_call(self, args_w)
+
+    def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
+        w_ta = self.dynamic_type(w_a)
+        w_tb = self.dynamic_type(w_b)
+        w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
+        if w_opimpl is B.w_NotImplemented:
+            # XXX: the logic to produce a good error message should be in a
+            # single place
+            raise SPyTypeError("Cannot do ==")
+        assert isinstance(w_opimpl, W_Func)
+        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        assert isinstance(w_res, W_Bool)
+        return w_res
