@@ -664,3 +664,18 @@ class TestBasic(CompilerTest):
             ("this is `i32`", '42'),
         )
         self.compile_raises(src, "foo", errors)
+
+    @skip_backends("C", reason="implement me")
+    def test_blue_is_memoized(self, capsys):
+        mod = self.compile("""
+        @blue
+        def foo(x: i32) -> i32:
+            print(x)
+            return x
+        """)
+        assert mod.foo(1) == 1
+        assert mod.foo(1) == 1 # this should be cached
+        assert mod.foo(2) == 2
+
+        out, err = capsys.readouterr()
+        assert out == '1\n2\n'

@@ -96,6 +96,13 @@ class W_Func(W_Object):
     w_functype: W_FuncType
     fqn: Optional[FQN]
 
+    @property
+    def color(self) -> Color:
+        """
+        Just a shortcut
+        """
+        return self.w_functype.color
+
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
 
@@ -136,18 +143,14 @@ class W_ASTFunc(W_Func):
     def redshifted(self) -> bool:
         return self.locals_types_w is not None
 
-    @property
-    def color(self) -> Color:
-        """
-        Just a shortcut
-        """
-        return self.w_functype.color
-
     def __repr__(self) -> str:
         if self.redshifted:
-            return f"<spy function '{self.fqn}' (redshifted)>"
+            extra = ' (redshifted)'
+        elif self.color == 'blue':
+            extra = ' (blue)'
         else:
-            return f"<spy function '{self.fqn}'>"
+            extra = ''
+        return f"<spy function '{self.fqn}'{extra}>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
