@@ -70,6 +70,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
     member = pyclass.__spy_members__[attr]
     W_Class = pyclass
     W_Value = member.w_type.pyclass
+    field = member.field # the interp-level name of the attr (e.g, 'w_x')
 
     # XXX FQN is wrong because it uses the type name as the modname. We
     # need to rethink how FQNs are computed
@@ -80,7 +81,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
         @no_type_check
         @spy_builtin(fqn)
         def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_Value:
-            return getattr(w_obj, attr)
+            return getattr(w_obj, field)
 
         return vm.wrap(opimpl_get)
 
@@ -91,7 +92,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
         @spy_builtin(fqn)
         def opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
                        w_val: W_Value) -> W_Void:
-            setattr(w_obj, attr, w_val)
+            setattr(w_obj, field, w_val)
 
         return vm.wrap(opimpl_set)
 

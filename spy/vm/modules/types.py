@@ -2,10 +2,10 @@
 SPy `types` module.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 from spy.vm.module import W_Module
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, spytype, W_Dynamic, W_Void
+from spy.vm.object import W_Type, W_Object, spytype, W_Dynamic, W_Void, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.registry import ModuleRegistry
@@ -30,8 +30,8 @@ class W_TypeDef(W_Type):
     __getattr__ and __setattr__
     """
     w_origintype: W_Type
-    w_getattr: W_Object
-    w_setattr: W_Object
+    w_getattr: Annotated[W_Dynamic, Member('__getattr__')]
+    w_setattr: Annotated[W_Dynamic, Member('__setattr__')]
 
     def __init__(self, name: str, w_origintype: W_Type) -> None:
         super().__init__(name, w_origintype.pyclass)
@@ -42,51 +42,6 @@ class W_TypeDef(W_Type):
     def __repr__(self) -> str:
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
         return r
-
-    @staticmethod
-    def op_GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
-        attr = vm.unwrap_str(w_attr)
-        if attr == '__getattr__':
-            return TYPES.w_typedef_get_getattr
-        elif attr == '__setattr__':
-            return TYPES.w_typedef_get_setattr
-        else:
-            return B.w_NotImplemented
-
-    @staticmethod
-    def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
-                   w_vtype: W_Type) -> W_Dynamic:
-        attr = vm.unwrap_str(w_attr)
-        if attr == '__getattr__':
-            return TYPES.w_typedef_set_getattr
-        elif attr == '__setattr__':
-            return TYPES.w_typedef_set_setattr
-        else:
-            return B.w_NotImplemented
-
-
-@TYPES.builtin
-def typedef_set_getattr(vm: 'SPyVM', w_self: W_TypeDef, w_attr: W_Str,
-                        w_val: W_Dynamic) -> W_Void:
-    w_self.w_getattr = w_val
-    return B.w_None
-
-@TYPES.builtin
-def typedef_set_setattr(vm: 'SPyVM', w_self: W_TypeDef, w_attr: W_Str,
-                        w_val: W_Dynamic) -> W_Void:
-    w_self.w_setattr = w_val
-    return B.w_None
-
-@TYPES.builtin
-def typedef_get_getattr(vm: 'SPyVM', w_self: W_TypeDef,
-                        w_attr: W_Str) -> W_Dynamic:
-    return w_self.w_getattr
-
-@TYPES.builtin
-def typedef_get_setattr(vm: 'SPyVM', w_self: W_TypeDef,
-                        w_attr: W_Str) -> W_Dynamic:
-    return w_self.w_setattr
-
 
 TYPES.add('TypeDef', W_TypeDef._w)
 
