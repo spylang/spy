@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Optional, Iterable
-from spy.fqn import FQN
+from spy.fqn import QN, FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_Void
 from spy.vm.str import W_Str
@@ -38,7 +38,7 @@ class W_Module(W_Object):
         all the module getattrs are done in blue contexts are redshifted
         away.
         """
-        @spy_builtin(FQN('builtins::module_getattr'))
+        @spy_builtin(QN('builtins::module_getattr'))
         def opimpl(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
             attr = vm.unwrap_str(w_attr)
             return w_mod.getattr(attr)
@@ -48,7 +48,7 @@ class W_Module(W_Object):
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
                    w_vtype: W_Type) -> W_Dynamic:
-        @spy_builtin(FQN('builtins::module_setattr'))
+        @spy_builtin(QN('builtins::module_setattr'))
         def opimpl(vm: 'SPyVM', w_mod: W_Module, w_attr:
                    W_Str, w_val: W_Dynamic) -> W_Void:
             attr = vm.unwrap_str(w_attr)
@@ -75,7 +75,7 @@ class W_Module(W_Object):
 
     def setattr(self, attr: str, w_value: W_Object) -> None:
         # XXX we should raise an exception if the attr doesn't exist
-        fqn = FQN(modname=self.name, attr=attr)
+        fqn = FQN.make_global(modname=self.name, attr=attr)
         self.vm.store_global(fqn, w_value)
 
     def keys(self) -> Iterable[FQN]:
