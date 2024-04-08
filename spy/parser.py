@@ -170,7 +170,7 @@ class Parser:
                            py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:
         res = []
         for py_alias in py_imp.names:
-            fqn = FQN(modname=py_imp.module, attr=py_alias.name)
+            fqn = FQN.make(modname=py_imp.module, attr=py_alias.name, suffix="")
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
@@ -183,7 +183,7 @@ class Parser:
     def from_py_Import(self, py_imp: py_ast.Import) -> list[spy.ast.Import]:
         res = []
         for py_alias in py_imp.names:
-            fqn = FQN(modname=py_alias.name, attr="")
+            fqn = FQN.make_global(modname=py_alias.name, attr="")
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,

@@ -59,7 +59,7 @@ class W_Module(W_Object):
     # ==== public interp-level API ====
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:
-        fqn = FQN.make(modname=self.name, attr=attr, suffix="")
+        fqn = FQN.make_global(modname=self.name, attr=attr)
         return self.vm.lookup_global(fqn)
 
     def getattr(self, attr: str) -> W_Object:

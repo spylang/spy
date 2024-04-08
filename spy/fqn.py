@@ -90,6 +90,16 @@ class FQN:
         obj.suffix = suffix
         return obj
 
+    @classmethod
+    def make_global(cls, modname: str, attr: str) -> 'FQN':
+        """
+        Return the FQN corresponding to a global name.
+
+        Until we have generics, global names are supposed to be unique, so we
+        can just use suffix=""
+        """
+        return cls.make(modname, attr, suffix="")
+
     @property
     def fullname(self) -> str:
         s = f'{self.modname}::{self.attr}'

@@ -116,6 +116,7 @@ class SPyVM:
         # conflicting FQNs, but for now we don't care
         for n in itertools.count():
             if is_global and n == 0:
+                # this needs to be kept in sync with FQN.make_global()
                 suffix = ""
             else:
                 suffix = str(n)
