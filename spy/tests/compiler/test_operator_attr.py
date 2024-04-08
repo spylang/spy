@@ -9,7 +9,7 @@ from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
 
 @no_C
-class TestOperatorSingle(CompilerTest):
+class TestAttrOp(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
     def test_member(self):
