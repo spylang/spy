@@ -102,20 +102,27 @@ class SPyVM:
             self.add_global(fqn, w_type, w_obj)
 
     def get_FQN(self, qn: QN, *, is_global: bool) -> FQN:
-        # XXX write better
-        # if it's a global, we first try to create a "plain" FQN (i.e. without
-        # suffix, e.g. `test::hello`) which MUST be unique. If it's a
-        # closurwe, we always attach a progressive ID (e.g. `test::hello#42`)
-        if is_global:
-            # XXX what happens if we try to add the same global twice?
-            fqn = FQN.make(modname=qn.modname, attr=qn.attr, suffix="")
-        else:
-            # XXX this is potentially quadratic if we create tons of
-            # conflicting FQNs, but for now we don't care
-            for n in itertools.count():
-                fqn = FQN(modname=modname, attr=attr, suffix=str(n))
-                if fqn not in self.unique_fqns:
-                    break
+        """
+        Get an unique FQN from a QN.
+
+        The algorithm is simple: to compute an unique suffix, we just
+        increment a numeric counter.
+
+        is_global is needed only for cosmetic reasons: until we implement
+        generics, global functions are always unique anyway, so we can just
+        use an empty suffix and have a better name in the resulting C source.
+        """
+        # XXX this is potentially quadratic if we create tons of
+        # conflicting FQNs, but for now we don't care
+        for n in itertools.count():
+            if is_global and n == 0:
+                suffix = ""
+            else:
+                suffix = str(n)
+            fqn = FQN.make(modname=qn.modname, attr=qn.attr, suffix=suffix)
+            if fqn not in self.unique_fqns:
+                break
+
         assert fqn not in self.unique_fqns
         self.unique_fqns.add(fqn)
         return fqn
