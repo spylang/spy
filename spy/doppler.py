@@ -36,13 +36,13 @@ class FuncDoppler:
             new_body += self.shift_stmt(stmt)
         new_funcdef = funcdef.replace(body=new_body)
         #
-        new_fqn = self.w_func.fqn # XXX
+        new_qn = self.w_func.qn
         # all the non-local lookups are redshifted into constants, so the
         # closure will be empty
         new_closure = ()
         w_newfunctype = self.w_func.w_functype
         w_newfunc = W_ASTFunc(
-            fqn = new_fqn,
+            qn = new_qn,
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
@@ -76,7 +76,7 @@ class FuncDoppler:
         if fqn is None:
             if isinstance(w_val, W_ASTFunc):
                 # it's a closure, let's assign it an FQN and add to the globals
-                fqn = w_val.fqn
+                fqn = self.vm.get_FQN(w_val.qn, is_global=False)
                 self.vm.add_global(fqn, None, w_val)
             else:
                 assert False, 'implement me'
@@ -168,7 +168,6 @@ class FuncDoppler:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
         w_opimpl = self.t.opimpl[binop]
-        assert w_opimpl.fqn is not None
         func = self.make_const(binop.loc, w_opimpl)
         return ast.Call(binop.loc, func, [l, r])
 

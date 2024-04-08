@@ -171,7 +171,7 @@ class TestSPyBackend(CompilerTest):
             for fqn, w_obj in mod.w_mod.items_w():
                 if isinstance(w_obj, W_ASTFunc):
                     try:
-                        b.dump_w_func(w_obj)
+                        b.dump_w_func(fqn, w_obj)
                     except NotImplementedError as exc:
                         print(src)
                         pytest.fail(str(exc))
