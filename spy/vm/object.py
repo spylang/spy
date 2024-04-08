@@ -154,8 +154,9 @@ class W_Type(W_Object):
         return self.pyclass
 
 W_Object._w = W_Type('object', W_Object)
+W_Object.__spy_members__ = {}
 W_Type._w = W_Type('type', W_Type)
-
+W_Type.__spy_members__ = {}
 
 # The <dynamic> type
 # ===================
