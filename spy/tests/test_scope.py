@@ -165,7 +165,8 @@ class TestScopeAnalyzer:
         """)
         scope = scopes.by_module()
         assert scope._symbols == {
-            'my_int': MatchSymbol('my_int', 'blue', fqn=FQN('builtins::i32')),
+            'my_int': MatchSymbol('my_int', 'blue',
+                                  fqn=FQN.parse('builtins::i32')),
         }
 
     def test_import_wrong_attribute(self):

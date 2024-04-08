@@ -62,3 +62,14 @@ def test_FQN_hash_eq():
 def test_FQN_c_name_dotted():
     a = FQN.make("a.b.c", "xxx", suffix="0")
     assert a.c_name == "spy_a_b_c__xxx__0"
+
+def test_FQN_parse():
+    fqn = FQN.parse("aaa::bbb")
+    assert fqn.modname == "aaa"
+    assert fqn.attr == "bbb"
+    assert fqn.suffix == ""
+    #
+    fqn = FQN.parse("aaa::bbb#0")
+    assert fqn.modname == "aaa"
+    assert fqn.attr == "bbb"
+    assert fqn.suffix == "0"

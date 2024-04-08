@@ -100,6 +100,19 @@ class FQN:
         """
         return cls.make(modname, attr, suffix="")
 
+    @classmethod
+    def parse(cls, s: str) -> 'FQN':
+        if '#' in s:
+            assert s.count('#') == 1
+            qn, suffix = s.split('#')
+        else:
+            qn = s
+            suffix = ""
+        #
+        assert qn.count('::') == 1
+        modname, attr = qn.split('::')
+        return FQN.make(modname=modname, attr=attr, suffix=suffix)
+
     @property
     def fullname(self) -> str:
         s = f'{self.modname}::{self.attr}'
