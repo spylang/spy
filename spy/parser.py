@@ -170,6 +170,7 @@ class Parser:
                            py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:
         res = []
         for py_alias in py_imp.names:
+            assert py_imp.module is not None
             fqn = FQN.make(modname=py_imp.module, attr=py_alias.name, suffix="")
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(

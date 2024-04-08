@@ -39,7 +39,7 @@ class ASTFrame:
         self.t = TypeChecker(vm, self.w_func)
 
     def __repr__(self) -> str:
-        return f'<ASTFrame for {self.w_func.fqn}>'
+        return f'<ASTFrame for {self.w_func.qn}>'
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         self._locals[name] = w_value

@@ -78,7 +78,7 @@ class FQN:
     attr: str
     suffix: str
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         raise ValueError("You cannot instantiate an FQN directly. "
                          "Please use vm.get_FQN()")
 
