@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING
+from spy.fqn import FQN
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type, W_Dynamic
+from spy.vm.object import W_Object, W_Type, W_Dynamic, W_Void
 from spy.vm.module import W_Module
 from spy.vm.str import W_Str
-from spy.vm.function import W_Func
+from spy.vm.function import W_Func, spy_builtin
 from spy.vm.modules.types import W_TypeDef
 
 from . import OP
@@ -19,9 +20,25 @@ def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Dynamic:
 
 @OP.builtin
 def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
+    attr = vm.unwrap_str(w_attr)
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         raise NotImplementedError("implement me")
+    elif attr in pyclass.__spy_members__:
+
+        member = pyclass.__spy_members__[attr]
+        W_Class = pyclass
+        W_Value = member.w_type.pyclass
+
+        # XXX this is wrong because it uses the type name as the modname. We
+        # need to rethink how FQNs are computed
+        fqn = FQN(modname=w_type.name, attr=f"__get_{attr}__")
+        @spy_builtin(fqn)
+        def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_Value:
+            return getattr(w_obj, attr)
+
+        return vm.wrap(opimpl_get)
+
     elif pyclass.has_meth_overriden('op_GETATTR'):
         return pyclass.op_GETATTR(vm, w_type, w_attr)
 
@@ -35,12 +52,30 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
     return B.w_NotImplemented
 
 
+
 @OP.builtin
 def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
             w_vtype: W_Type) -> W_Dynamic:
+    attr = vm.unwrap_str(w_attr)
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         return OP.w_dynamic_setattr
+    elif attr in pyclass.__spy_members__:
+
+        member = pyclass.__spy_members__[attr]
+        W_Class = pyclass
+        W_Value = member.w_type.pyclass
+
+        # XXX this is wrong because it uses the type name as the modname. We
+        # need to rethink how FQNs are computed
+        fqn = FQN(modname=w_type.name, attr=f"__set_{attr}__")
+        @spy_builtin(fqn)
+        def opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
+                       w_val: W_Value) -> W_Void:
+            setattr(w_obj, attr, w_val)
+
+        return vm.wrap(opimpl_set)
+
     elif pyclass.has_meth_overriden('op_SETATTR'):
         return pyclass.op_SETATTR(vm, w_type, w_attr, w_vtype)
 

@@ -222,8 +222,13 @@ class SPyVM:
             return W_Str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
-        elif isinstance(value, FunctionType) and hasattr(value, '_w'):
-            return value._w
+        elif isinstance(value, FunctionType):
+            if hasattr(value, '_w'):
+                return value._w
+            else:
+                raise Exception(
+                    f"Cannot wrap interp-level function {value.__name__}. "
+                    f"Did you forget `@spy_builtin`?")
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")
 

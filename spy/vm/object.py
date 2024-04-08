@@ -45,7 +45,8 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
 import fixedint
-from typing import TYPE_CHECKING, ClassVar, Type, Any, Annotated
+import typing
+from typing import TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.str import W_Str
@@ -58,7 +59,8 @@ class W_Object:
     The root of SPy object hierarchy
     """
 
-    _w: ClassVar['W_Type']  # set later
+    _w: ClassVar['W_Type']                         # set later by @spytype
+    __spy_members__: ClassVar['dict[str, Member]'] # set later by @spytype
 
     def __repr__(self) -> str:
         typename = self._w.name
@@ -197,6 +199,35 @@ W_Dynamic = Annotated[W_Object, 'W_Dynamic']
 # Other types
 # ============
 
+class Member:
+    """
+    Represent a property of a W_ class. Use it like this:
+
+    @spytype('MyClass')
+    class W_MyClass(W_Object):
+        w_x: Annotated[W_I32, Member('x')]
+
+    This will add an app-level attribute "x" to the class, corresponding to
+    the interp-level attribute "w_x".
+    """
+    name: str
+    field: str      # set later by @spytype
+    w_type: W_Type  # set later by @spytype
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+def _get_member_maybe(t: Any) -> Optional[Member]:
+    """
+    Return the Member instance found in the annotation metadata, if any.
+    """
+    for meta in getattr(t, '__metadata__', []):
+        if isinstance(meta, Member):
+            return meta
+    return None
+
+
 def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
@@ -206,6 +237,15 @@ def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
     """
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         pyclass._w = metaclass(name, pyclass)
+        # setup __spy_members__
+        pyclass.__spy_members__ = {}
+        for field, t in pyclass.__annotations__.items():
+            member = _get_member_maybe(t)
+            if member is not None:
+                member.field = field
+                member.w_type = typing.get_args(t)[0]._w
+                pyclass.__spy_members__[member.name] = member
+
         return pyclass
     return decorator
 
