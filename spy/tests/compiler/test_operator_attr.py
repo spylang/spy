@@ -1,5 +1,5 @@
 import pytest
-from spy.fqn import FQN
+from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.function import spy_builtin
@@ -58,12 +58,12 @@ class TestAttrOp(CompilerTest):
                            w_attr: W_Str) -> W_Dynamic:
                 attr = vm.unwrap_str(w_attr)
                 if attr == 'x':
-                    @spy_builtin(FQN('ext::getx'))
+                    @spy_builtin(QN('ext::getx'))
                     def opimpl(vm: 'SPyVM', w_obj: W_MyClass,
                                     w_attr: W_Str) -> W_I32:
                         return vm.wrap(w_obj.x)  # type: ignore
                 else:
-                    @spy_builtin(FQN('ext::getany'))
+                    @spy_builtin(QN('ext::getany'))
                     def opimpl(vm: 'SPyVM', w_obj: W_MyClass,
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
@@ -75,7 +75,7 @@ class TestAttrOp(CompilerTest):
                            w_vtype: W_Type) -> W_Dynamic:
                 attr = vm.unwrap_str(w_attr)
                 if attr == 'x':
-                    @spy_builtin(FQN('ext::setx'))
+                    @spy_builtin(QN('ext::setx'))
                     def opimpl(vm: 'SPyVM', w_obj: W_MyClass,
                                w_attr: W_Str, w_val: W_I32) -> W_Void:
                         w_obj.x = vm.unwrap_i32(w_val)
