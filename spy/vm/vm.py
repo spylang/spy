@@ -4,7 +4,7 @@ import itertools
 from dataclasses import dataclass
 from types import FunctionType
 import fixedint
-from spy.fqn import FQN
+from spy.fqn import QN, FQN
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
@@ -96,21 +96,24 @@ class SPyVM:
     def make_module(self, reg: ModuleRegistry) -> None:
         w_mod = W_Module(self, reg.modname, reg.filepath)
         self.register_module(w_mod)
-        for fqn, w_obj in reg.content:
+        for qn, w_obj in reg.content:
+            fqn = self.get_FQN(qn, is_global=True)
             w_type = self.dynamic_type(w_obj)
             self.add_global(fqn, w_type, w_obj)
 
-    def get_unique_FQN(self, *, modname: str, attr: str, is_global: bool) -> FQN:
-        # if it's a global, we can create a "plain" FQN (e.g. `test::hello`)
-        # which MUST be unique. If it's a closurwe, we attach a progressive ID
-        # to create an unique FQN (e.g., `test::hello#42`)
+    def get_FQN(self, qn: QN, *, is_global: bool) -> FQN:
+        # XXX write better
+        # if it's a global, we first try to create a "plain" FQN (i.e. without
+        # suffix, e.g. `test::hello`) which MUST be unique. If it's a
+        # closurwe, we always attach a progressive ID (e.g. `test::hello#42`)
         if is_global:
-            fqn = FQN(modname=modname, attr=attr)
+            # XXX what happens if we try to add the same global twice?
+            fqn = FQN.make(modname=qn.modname, attr=qn.attr, suffix="")
         else:
             # XXX this is potentially quadratic if we create tons of
             # conflicting FQNs, but for now we don't care
             for n in itertools.count():
-                fqn = FQN(modname=modname, attr=attr, uniq_suffix=str(n))
+                fqn = FQN(modname=modname, attr=attr, suffix=str(n))
                 if fqn not in self.unique_fqns:
                     break
         assert fqn not in self.unique_fqns
@@ -122,6 +125,7 @@ class SPyVM:
                    w_type: Optional[W_Type],
                    w_value: W_Object
                    ) -> None:
+        assert isinstance(fqn, FQN)
         assert fqn.modname in self.modules_w
         assert fqn not in self.globals_w
         assert fqn not in self.globals_types
@@ -133,9 +137,11 @@ class SPyVM:
         self.globals_w[fqn] = w_value
 
     def lookup_global_type(self, fqn: FQN) -> Optional[W_Type]:
+        assert isinstance(fqn, FQN)
         return self.globals_types.get(fqn)
 
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
+        assert isinstance(fqn, FQN)
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
@@ -150,6 +156,7 @@ class SPyVM:
         return None
 
     def store_global(self, fqn: FQN, w_value: W_Object) -> None:
+        assert isinstance(fqn, FQN)
         w_type = self.globals_types[fqn]
         assert self.isinstance(w_value, w_type)
         self.globals_w[fqn] = w_value

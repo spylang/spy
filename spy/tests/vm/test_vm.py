@@ -177,6 +177,9 @@ class TestVM:
             vm.call_function(w_abs, [w_x])
 
     def test_get_unique_FQN(self):
+        import pdb;pdb.set_trace()
+        XXX
+
         vm = SPyVM()
         w_mod = W_Module(vm, "test", "...")
         vm.register_module(w_mod)

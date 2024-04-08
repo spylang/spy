@@ -1,6 +1,6 @@
 from typing import Callable, Optional, TYPE_CHECKING, Any
 from dataclasses import dataclass
-from spy.fqn import FQN
+from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc, spy_builtin
 from spy.vm.object import W_Object
 
@@ -12,7 +12,7 @@ class ModuleRegistry:
     """
     modname: str
     filepath: str
-    content: list[tuple[FQN, W_Object]]
+    content: list[tuple[QN, W_Object]]
 
     def __init__(self, modname: str, filepath: str) -> None:
         self.modname = modname
@@ -35,16 +35,16 @@ class ModuleRegistry:
             """
 
     def add(self, attr: str, w_obj: W_Object) -> None:
-        fqn = FQN(modname=self.modname, attr=attr)
+        qn = QN(modname=self.modname, attr=attr)
         setattr(self, f'w_{attr}', w_obj)
-        self.content.append((fqn, w_obj))
+        self.content.append((qn, w_obj))
 
     def builtin(self, pyfunc: Callable) -> Callable:
         attr = pyfunc.__name__
-        fqn = FQN(modname=self.modname, attr=attr)
+        qn = QN(modname=self.modname, attr=attr)
         # apply the @spy_builtin decorator to pyfunc
-        spy_builtin(fqn)(pyfunc)
+        spy_builtin(qn)(pyfunc)
         w_func = pyfunc._w  # type: ignore
         setattr(self, f'w_{attr}', w_func)
-        self.content.append((fqn, w_func))
+        self.content.append((qn, w_func))
         return pyfunc
