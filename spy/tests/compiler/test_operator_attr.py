@@ -1,7 +1,7 @@
 import pytest
 from spy.fqn import FQN
 from spy.vm.b import B
-from spy.vm.object import spytype
+from spy.vm.object import spytype, Member, Annotated
 from spy.vm.function import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
 from spy.vm.registry import ModuleRegistry
@@ -9,9 +9,39 @@ from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
 
 @no_C
-class TestOperatorSingle(CompilerTest):
-
+class TestAttrOp(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
+
+    def test_member(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext', '<ext>')
+
+        @spytype('MyClass')
+        class W_MyClass(W_Object):
+            w_x: Annotated[W_I32, Member('x')]
+
+            def __init__(self) -> None:
+                self.w_x = W_I32(0)
+
+        EXT.add('MyClass', W_MyClass._w)
+
+        @EXT.builtin
+        def make(vm: 'SPyVM') -> W_MyClass:
+            return W_MyClass()
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import make, MyClass
+
+        @blue
+        def foo():
+            obj: MyClass = make()
+            obj.x = 123
+            return obj.x
+        """)
+        x = mod.foo()
+        assert x == 123
+
 
     def test_getattr_setattr_custom(self):
         # ========== EXT module for this test ==========
@@ -20,7 +50,7 @@ class TestOperatorSingle(CompilerTest):
         @spytype('MyClass')
         class W_MyClass(W_Object):
 
-            def __init__(self):
+            def __init__(self) -> None:
                 self.x = 0
 
             @staticmethod
@@ -58,7 +88,7 @@ class TestOperatorSingle(CompilerTest):
         EXT.add('MyClass', W_MyClass._w)
 
         @EXT.builtin
-        def make(vm: 'SPyVM') -> W_Dynamic:
+        def make(vm: 'SPyVM') -> W_MyClass:
             return W_MyClass()  # type: ignore
         # ========== /EXT module for this test =========
 
