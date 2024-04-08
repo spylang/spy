@@ -181,12 +181,10 @@ class TestVM:
         w_mod = W_Module(vm, "test", "...")
         vm.register_module(w_mod)
         #
-        # the first global is "plain" (suffix=="")
         a = vm.get_FQN(QN("test::a"), is_global=True)
         assert a.fullname == "test::a"
-        # but if we add a conflicting global, we need to add a suffix
-        a1 = vm.get_FQN(QN("test::a"), is_global=True)
-        assert a1.fullname == "test::a#1"
+        with pytest.raises(AssertionError):
+            vm.get_FQN(QN("test::a"), is_global=True)
         #
         # for non-globals, we always put a suffix
         b0 = vm.get_FQN(QN("test::b"), is_global=False)

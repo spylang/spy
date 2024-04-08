@@ -105,25 +105,22 @@ class SPyVM:
         """
         Get an unique FQN from a QN.
 
-        The algorithm is simple: to compute an unique suffix, we just
-        increment a numeric counter.
+        Module-level names are considered "global": their FQN will get an
+        empty suffix and must be unique. It is an error to try to "get_FQN()"
+        the same global twice.
 
-        is_global is needed only for cosmetic reasons: until we implement
-        generics, global functions are always unique anyway, so we can just
-        use an empty suffix and have a better name in the resulting C source.
+        For non globals (e.g., closures) the algorithm is simple: to compute
+        an unique suffix, we just increment a numeric counter.
         """
-        # XXX this is potentially quadratic if we create tons of
-        # conflicting FQNs, but for now we don't care
-        for n in itertools.count():
-            if is_global and n == 0:
-                # this needs to be kept in sync with FQN.make_global()
-                suffix = ""
-            else:
-                suffix = str(n)
-            fqn = FQN.make(modname=qn.modname, attr=qn.attr, suffix=suffix)
-            if fqn not in self.unique_fqns:
-                break
-
+        if is_global:
+            fqn = FQN.make_global(modname=qn.modname, attr=qn.attr)
+        else:
+            # XXX this is potentially quadratic if we create tons of
+            # conflicting FQNs, but for now we don't care
+            for n in itertools.count():
+                fqn = FQN.make(modname=qn.modname, attr=qn.attr, suffix=str(n))
+                if fqn not in self.unique_fqns:
+                    break
         assert fqn not in self.unique_fqns
         self.unique_fqns.add(fqn)
         return fqn
