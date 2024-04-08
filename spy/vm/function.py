@@ -117,7 +117,7 @@ class W_Func(W_Object):
 
 
 class W_ASTFunc(W_Func):
-    fqn: FQN
+    qn: QN
     funcdef: ast.FuncDef
     closure: tuple[Namespace, ...]
     # types of local variables: this is non-None IIF the function has been
@@ -126,14 +126,14 @@ class W_ASTFunc(W_Func):
 
     def __init__(self,
                  w_functype: W_FuncType,
-                 fqn: FQN,
+                 qn: QN,
                  funcdef: ast.FuncDef,
                  closure: tuple[Namespace, ...],
                  *,
                  locals_types_w: Optional[dict[str, W_Type]] = None
                  ) -> None:
         self.w_functype = w_functype
-        self.fqn = fqn
+        self.qn = qn
         self.funcdef = funcdef
         self.closure = closure
         self.locals_types_w = locals_types_w
@@ -149,7 +149,7 @@ class W_ASTFunc(W_Func):
             extra = ' (blue)'
         else:
             extra = ''
-        return f"<spy function '{self.fqn}'{extra}>"
+        return f"<spy function '{self.qn}'{extra}>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame

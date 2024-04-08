@@ -68,12 +68,6 @@ class QN:
     def __hash__(self) -> int:
         return hash(self.fullname)
 
-    def is_module(self) -> bool:
-        return self.attr == ""
-
-    def is_object(self) -> bool:
-        return self.attr != ""
-
     @property
     def fullname(self) -> str:
         return f'{self.modname}::{self.attr}'
@@ -128,3 +122,9 @@ class FQN:
     @property
     def spy_name(self) -> str:
         return f'{self.modname}.{self.attr}'
+
+    def is_module(self) -> bool:
+        return self.attr == ""
+
+    def is_object(self) -> bool:
+        return self.attr != ""

@@ -118,7 +118,12 @@ class ScopeAnalyzer:
 
         if fqn is None and self.scope is self.mod_scope:
             # this is a module-level global. Let's give it a FQN
-            fqn = FQN(modname=self.mod_scope.name, attr=name)
+            #
+            # XXX this is not completely correct: in theory, it's up to the VM
+            # to compute the FQN: here we assume that it will use suffix=""
+            # for this module-level global, which is true for now, but it
+            # might not be in the future.
+            fqn = FQN.make(modname=self.mod_scope.name, attr=name, suffix="")
 
         sym = Symbol(name, color, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
         self.scope.add(sym)
