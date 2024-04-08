@@ -20,7 +20,7 @@ class TestAttrOp(CompilerTest):
         class W_MyClass(W_Object):
             w_x: Annotated[W_I32, Member('x')]
 
-            def __init__(self):
+            def __init__(self) -> None:
                 self.w_x = W_I32(0)
 
         EXT.add('MyClass', W_MyClass._w)
@@ -50,7 +50,7 @@ class TestAttrOp(CompilerTest):
         @spytype('MyClass')
         class W_MyClass(W_Object):
 
-            def __init__(self):
+            def __init__(self) -> None:
                 self.x = 0
 
             @staticmethod
@@ -88,7 +88,7 @@ class TestAttrOp(CompilerTest):
         EXT.add('MyClass', W_MyClass._w)
 
         @EXT.builtin
-        def make(vm: 'SPyVM') -> W_Dynamic:
+        def make(vm: 'SPyVM') -> W_MyClass:
             return W_MyClass()  # type: ignore
         # ========== /EXT module for this test =========
 

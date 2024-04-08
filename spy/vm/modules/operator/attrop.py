@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, no_type_check
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_Dynamic, W_Void
@@ -76,17 +76,23 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
 
     if kind == 'get':
         fqn = FQN(modname=w_type.name, attr=f"__get_{attr}__")
+
+        @no_type_check
         @spy_builtin(fqn)
         def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_Value:
             return getattr(w_obj, attr)
+
         return vm.wrap(opimpl_get)
 
     elif kind == 'set':
         fqn = FQN(modname=w_type.name, attr=f"__set_{attr}__")
+
+        @no_type_check
         @spy_builtin(fqn)
         def opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
                        w_val: W_Value) -> W_Void:
             setattr(w_obj, attr, w_val)
+
         return vm.wrap(opimpl_set)
 
     else:
