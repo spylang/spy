@@ -123,7 +123,6 @@ class FuncDoppler:
         v_attr = ast.Constant(node.loc, value=node.attr)
         v_value = self.shift_expr(node.value)
         w_opimpl = self.t.opimpl[node]
-        assert w_opimpl.fqn is not None
         func = self.make_const(node.loc, w_opimpl)
         call = ast.Call(node.loc, func, [v_target, v_attr, v_value])
         return [ast.StmtExpr(node.loc, call)]
@@ -186,7 +185,6 @@ class FuncDoppler:
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
         w_opimpl = self.t.opimpl[op]
-        assert w_opimpl.fqn is not None
         func = self.make_const(op.loc, w_opimpl)
         return ast.Call(op.loc, func, [v, i])
 
@@ -194,7 +192,6 @@ class FuncDoppler:
         v = self.shift_expr(op.value)
         v_attr = ast.Constant(op.loc, value=op.attr)
         w_opimpl = self.t.opimpl[op]
-        assert w_opimpl.fqn is not None
         func = self.make_const(op.loc, w_opimpl)
         return ast.Call(op.loc, func, [v, v_attr])
 
