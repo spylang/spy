@@ -1,13 +1,24 @@
 """
 (Fully) Qualified Names in SPy.
 
-A Qualified Name (QN) identifies a function or a class inside a namespace.
+A Qualified Name (QN) locates a function or class inside the source code: it
+consists of two parts:
 
-A Fully Qualified Name (FQN) identifies an *unique* named object inside the
-current VM.
+  - module name or `modname`, which is the unique name of the module (possibly
+    dotted)
 
-The difference between QNs and FQNs becomes apparent for example with
-closures:
+  - attribute name of `attr`, which is the name of the function or class
+    inside the module.
+
+In case of closures and generics, you can have multiple objects with the same
+QN. To uniquely identify an object inside a live VM, we use a Fully Qualified
+Name, or FQN.  If needed, the uniqueness is guaranteed by appending a suffix.
+
+A QN is usually formatted as `modname::attr`: e.g., `a.b.c::foo`.
+An FQN is usually formatted as `modname::attr#suffix`, e.g. `a.b.c::foo#0`.
+The suffix "" (empty string) is special cased and not shown at all.
+
+The following example explains the difference between QNs and FQNs:
 
 @blue
 def make_fn(T):
@@ -19,15 +30,7 @@ def make_fn(T):
 fn_i32 = make_fn(i32)  # QN is 'test::fn', FQN is 'test::fn#1'
 fn_f64 = make_fn(f64)  # QN is 'test::fn', FQN is 'test::fn#2'
 
-Note that the QN is a property of the object, while the FQN basically
-identifies a global symbol.
-
-QN are formated as 'modname::attr', where 'modname' can be composed of
-multiple parts separated by dots (e.g. 'a.b.c').
-
-FQNs are formatted as 'modname::attr#suffix'.
-
-See also SPyVM.get_unique_FQN().
+See also SPyVM.get_FQN().
 """
 
 from typing import Optional, Any
