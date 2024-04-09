@@ -136,10 +136,31 @@ class FQN:
 
     @property
     def c_name(self) -> str:
+        """
+        Return the C name for the corresponding FQN.
+
+        We need to do a bit of mangling:
+
+          - the modname part can be dotted: we replace '.' with '_'. Note that
+            this is potentially unsafe, because e.g. `a.b.c` and `a.b_c` would
+            result in the same C name.  This is not ideal but we will solve it
+            only if it becomes an actual issue in practice.
+
+          - for separating modname and attr, we use a '$'. Strictly speaking,
+            using a '$' in C identifiers is not supported by the standard, but
+            in reality it is supported by GCC, clang and MSVC. Again, we will
+            think of a different approach if it becomes an actual issue.
+
+        So e.g., the following FQN:
+            a.b.c::foo
+
+        Becomes:
+            spy_a_b_c$foo
+        """
         modname = self.modname.replace('.', '_')
-        cn = f'spy_{modname}__{self.attr}'
+        cn = f'spy_{modname}${self.attr}'
         if self.suffix != '':
-            cn += '__' + self.suffix
+            cn += '$' + self.suffix
         return cn
 
     @property

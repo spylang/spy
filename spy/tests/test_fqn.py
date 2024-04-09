@@ -48,10 +48,10 @@ def test_FQN():
 def test_FQN_str():
     a = FQN.make("aaa", "bbb", suffix='0')
     assert str(a) == "aaa::bbb#0"
-    assert a.c_name == "spy_aaa__bbb__0"
+    assert a.c_name == "spy_aaa$bbb$0"
     b = FQN.make("aaa", "bbb", suffix='')
     assert str(b) == "aaa::bbb"
-    assert b.c_name == "spy_aaa__bbb"
+    assert b.c_name == "spy_aaa$bbb"
 
 def test_FQN_hash_eq():
     a = FQN.make("aaa", "bbb", suffix="0")
@@ -61,7 +61,7 @@ def test_FQN_hash_eq():
 
 def test_FQN_c_name_dotted():
     a = FQN.make("a.b.c", "xxx", suffix="0")
-    assert a.c_name == "spy_a_b_c__xxx__0"
+    assert a.c_name == "spy_a_b_c$xxx$0"
 
 def test_FQN_parse():
     fqn = FQN.parse("aaa::bbb")

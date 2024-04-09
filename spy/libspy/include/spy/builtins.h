@@ -4,6 +4,6 @@
 #include "spy.h"
 
 int32_t
-WASM_EXPORT(spy_builtins__abs)(int32_t x);
+WASM_EXPORT(spy_builtins$abs)(int32_t x);
 
 #endif /* SPY_BUILTIS_H */

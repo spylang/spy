@@ -17,7 +17,7 @@ PY_PRINT = print  # type: ignore
 @BUILTINS.builtin
 def abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
-    res = vm.ll.call('spy_builtins__abs', x)
+    res = vm.ll.call('spy_builtins$abs', x)
     return vm.wrap(res) # type: ignore
 
 @BUILTINS.builtin
