@@ -34,10 +34,3 @@ def str_ne(vm: 'SPyVM', w_a: W_Str, w_b: W_Str) -> W_Bool:
     assert isinstance(w_b, W_Str)
     res = vm.ll.call('spy_str_eq', w_a.ptr, w_b.ptr)
     return vm.wrap(bool(not res))  # type: ignore
-
-@OP.builtin
-def str_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
-    assert isinstance(w_s, W_Str)
-    assert isinstance(w_i, W_I32)
-    ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
-    return W_Str.from_ptr(vm, ptr_c)

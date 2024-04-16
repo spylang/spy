@@ -12,14 +12,7 @@ from .binop import MM
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-
 OpKind = Literal['get', 'set']
-
-
-@OP.builtin
-def GETITEM(vm: 'SPyVM', w_vtype: W_Type, w_itype: W_Type) -> W_Dynamic:
-    return MM.lookup('[]', w_vtype, w_itype)
-
 
 @OP.builtin
 def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:

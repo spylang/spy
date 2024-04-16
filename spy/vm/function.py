@@ -94,6 +94,7 @@ class W_FuncType(W_Type):
 
 class W_Func(W_Object):
     w_functype: W_FuncType
+    qn: QN
 
     @property
     def color(self) -> Color:
@@ -117,7 +118,6 @@ class W_Func(W_Object):
 
 
 class W_ASTFunc(W_Func):
-    qn: QN
     funcdef: ast.FuncDef
     closure: tuple[Namespace, ...]
     # types of local variables: this is non-None IIF the function has been
@@ -162,7 +162,6 @@ class W_BuiltinFunc(W_Func):
     Builtin functions are implemented by calling an interp-level function
     (written in Python).
     """
-    qn: QN
     pyfunc: Callable
 
     def __init__(self, w_functype: W_FuncType, qn: QN,

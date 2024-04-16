@@ -73,6 +73,7 @@ from . import opimpl_str     # side effects
 from . import opimpl_dynamic # side effects
 from . import binop          # side effects
 from . import attrop         # side effects
+from . import itemop         # side effects
 
 
 # fill the _from_token dict

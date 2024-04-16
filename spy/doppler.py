@@ -78,6 +78,10 @@ class FuncDoppler:
                 # it's a closure, let's assign it an FQN and add to the globals
                 fqn = self.vm.get_FQN(w_val.qn, is_global=False)
                 self.vm.add_global(fqn, None, w_val)
+            elif isinstance(w_val, W_BuiltinFunc):
+                # builtin functions MUST be unique
+                fqn = self.vm.get_FQN(w_val.qn, is_global=True)
+                self.vm.add_global(fqn, None, w_val)
             else:
                 assert False, 'implement me'
 

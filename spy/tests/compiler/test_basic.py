@@ -509,15 +509,15 @@ class TestBasic(CompilerTest):
 
     def test_getitem_error_1(self):
         src = """
-        def bar(a: str, i: bool) -> void:
+        def bar(a: i32, i: bool) -> void:
             a[i]
 
         def foo() -> void:
-            bar("hello", True)
+            bar(42, True)
         """
         errors = expect_errors(
-            'cannot do `str`[`bool`]',
-            ('this is `str`', 'a'),
+            'cannot do `i32`[`bool`]',
+            ('this is `i32`', 'a'),
             ('this is `bool`', 'i'),
             )
         self.compile_raises(src, "foo", errors)

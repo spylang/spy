@@ -115,14 +115,18 @@ class W_Object:
 
     @staticmethod
     def op_GETATTR(vm: 'SPyVM', w_type: 'W_Type',
-                   w_attr: 'W_Str') -> 'W_Object':
+                   w_attr: 'W_Str') -> 'W_Dynamic':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', w_type: 'W_Type', w_attr: 'W_Str',
-                   w_vtype: 'W_Type') -> 'W_Object':
+                   w_vtype: 'W_Type') -> 'W_Dynamic':
         raise NotImplementedError('this should never be called')
 
+    @staticmethod
+    def op_GETITEM(vm: 'SPyVM', w_type: 'W_Type',
+                   w_vtype: 'W_Type') -> 'W_Dynamic':
+        raise NotImplementedError('this should never be called')
 
 class W_Type(W_Object):
     """

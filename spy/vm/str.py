@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING, Any
 from spy.llwasm import LLWasmInstance
-from spy.vm.object import W_Object, spytype
+from spy.fqn import QN
+from spy.vm.object import W_Object, W_Type, W_Dynamic, spytype, W_I32
+from spy.vm.function import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -61,3 +63,13 @@ class W_Str(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()
+
+    @staticmethod
+    def op_GETITEM(vm: 'SPyVM', w_type: W_Type, w_vtype: W_Type) -> W_Dynamic:
+        @spy_builtin(QN('operator::str_getitem'))
+        def str_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
+            assert isinstance(w_s, W_Str)
+            assert isinstance(w_i, W_I32)
+            ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
+            return W_Str.from_ptr(vm, ptr_c)
+        return vm.wrap(str_getitem)
