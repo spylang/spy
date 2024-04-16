@@ -27,13 +27,12 @@ class SPyBackend:
         w_mod = self.vm.modules_w[modname]
         for fqn, w_obj in w_mod.items_w():
             if isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red':
-                self.dump_w_func(w_obj)
+                self.dump_w_func(fqn, w_obj)
                 self.out.wl()
         return self.out.build()
 
-    def dump_w_func(self, w_func: W_ASTFunc) -> None:
-        fqn = w_func.fqn
-        if fqn.uniq_suffix == '':
+    def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
+        if fqn.suffix == '':
             # this is a global function, we can just use its name
             name = fqn.attr
         else:
@@ -175,27 +174,27 @@ class SPyBackend:
 
     # special cases
     FQN2BinOp = {
-        FQN('operator::i32_add'): ast.Add,
-        FQN('operator::i32_sub'): ast.Sub,
-        FQN('operator::i32_mul'): ast.Mul,
-        FQN('operator::i32_div'): ast.Div,
-        FQN('operator::i32_eq'): ast.Eq,
-        FQN('operator::i32_ne'): ast.NotEq,
-        FQN('operator::i32_lt'): ast.Lt,
-        FQN('operator::i32_le'): ast.LtE,
-        FQN('operator::i32_gt'): ast.Gt,
-        FQN('operator::i32_ge'): ast.GtE,
+        FQN.parse('operator::i32_add'): ast.Add,
+        FQN.parse('operator::i32_sub'): ast.Sub,
+        FQN.parse('operator::i32_mul'): ast.Mul,
+        FQN.parse('operator::i32_div'): ast.Div,
+        FQN.parse('operator::i32_eq'): ast.Eq,
+        FQN.parse('operator::i32_ne'): ast.NotEq,
+        FQN.parse('operator::i32_lt'): ast.Lt,
+        FQN.parse('operator::i32_le'): ast.LtE,
+        FQN.parse('operator::i32_gt'): ast.Gt,
+        FQN.parse('operator::i32_ge'): ast.GtE,
         #
-        FQN('operator::f64_add'): ast.Add,
-        FQN('operator::f64_sub'): ast.Sub,
-        FQN('operator::f64_mul'): ast.Mul,
-        FQN('operator::f64_div'): ast.Div,
-        FQN('operator::f64_eq'): ast.Eq,
-        FQN('operator::f64_ne'): ast.NotEq,
-        FQN('operator::f64_lt'): ast.Lt,
-        FQN('operator::f64_le'): ast.LtE,
-        FQN('operator::f64_gt'): ast.Gt,
-        FQN('operator::f64_ge'): ast.GtE,
+        FQN.parse('operator::f64_add'): ast.Add,
+        FQN.parse('operator::f64_sub'): ast.Sub,
+        FQN.parse('operator::f64_mul'): ast.Mul,
+        FQN.parse('operator::f64_div'): ast.Div,
+        FQN.parse('operator::f64_eq'): ast.Eq,
+        FQN.parse('operator::f64_ne'): ast.NotEq,
+        FQN.parse('operator::f64_lt'): ast.Lt,
+        FQN.parse('operator::f64_le'): ast.LtE,
+        FQN.parse('operator::f64_gt'): ast.Gt,
+        FQN.parse('operator::f64_ge'): ast.GtE,
     }
 
     def get_binop_maybe(self, func: ast.Expr) -> Optional[type[ast.BinOp]]:

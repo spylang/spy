@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Literal, no_type_check
-from spy.fqn import FQN
+from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_Dynamic, W_Void
 from spy.vm.module import W_Module
@@ -72,24 +72,20 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
     W_Value = member.w_type.pyclass
     field = member.field # the interp-level name of the attr (e.g, 'w_x')
 
-    # XXX FQN is wrong because it uses the type name as the modname. We
-    # need to rethink how FQNs are computed
+    # XXX QNs are slightly wrong because they uses the type name as the
+    # modname. We need to rethink how QNs are computed
 
     if kind == 'get':
-        fqn = FQN(modname=w_type.name, attr=f"__get_{attr}__")
-
         @no_type_check
-        @spy_builtin(fqn)
+        @spy_builtin(QN(modname=w_type.name, attr=f"__get_{attr}__"))
         def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_Value:
             return getattr(w_obj, field)
 
         return vm.wrap(opimpl_get)
 
     elif kind == 'set':
-        fqn = FQN(modname=w_type.name, attr=f"__set_{attr}__")
-
         @no_type_check
-        @spy_builtin(fqn)
+        @spy_builtin(QN(modname=w_type.name, attr=f"__set_{attr}__"))
         def opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
                        w_val: W_Value) -> W_Void:
             setattr(w_obj, field, w_val)

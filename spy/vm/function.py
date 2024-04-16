@@ -3,7 +3,7 @@ import inspect
 from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
-from spy.fqn import FQN
+from spy.fqn import QN, FQN
 from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -94,7 +94,6 @@ class W_FuncType(W_Type):
 
 class W_Func(W_Object):
     w_functype: W_FuncType
-    fqn: Optional[FQN]
 
     @property
     def color(self) -> Color:
@@ -118,7 +117,7 @@ class W_Func(W_Object):
 
 
 class W_ASTFunc(W_Func):
-    fqn: FQN
+    qn: QN
     funcdef: ast.FuncDef
     closure: tuple[Namespace, ...]
     # types of local variables: this is non-None IIF the function has been
@@ -127,14 +126,14 @@ class W_ASTFunc(W_Func):
 
     def __init__(self,
                  w_functype: W_FuncType,
-                 fqn: FQN,
+                 qn: QN,
                  funcdef: ast.FuncDef,
                  closure: tuple[Namespace, ...],
                  *,
                  locals_types_w: Optional[dict[str, W_Type]] = None
                  ) -> None:
         self.w_functype = w_functype
-        self.fqn = fqn
+        self.qn = qn
         self.funcdef = funcdef
         self.closure = closure
         self.locals_types_w = locals_types_w
@@ -150,7 +149,7 @@ class W_ASTFunc(W_Func):
             extra = ' (blue)'
         else:
             extra = ''
-        return f"<spy function '{self.fqn}'{extra}>"
+        return f"<spy function '{self.qn}'{extra}>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
@@ -163,23 +162,23 @@ class W_BuiltinFunc(W_Func):
     Builtin functions are implemented by calling an interp-level function
     (written in Python).
     """
-    fqn: FQN
+    qn: QN
     pyfunc: Callable
 
-    def __init__(self, w_functype: W_FuncType, fqn: FQN,
+    def __init__(self, w_functype: W_FuncType, qn: QN,
                  pyfunc: Callable) -> None:
         self.w_functype = w_functype
-        self.fqn = fqn
+        self.qn = qn
         self.pyfunc = pyfunc
 
     def __repr__(self) -> str:
-        return f"<spy function '{self.fqn}' (builtin)>"
+        return f"<spy function '{self.qn}' (builtin)>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
         return self.pyfunc(vm, *args_w)
 
 
-def spy_builtin(fqn: FQN) -> Callable:
+def spy_builtin(qn: QN) -> Callable:
     # this is B.w_dynamic (we cannot use B due to circular imports)
     B_w_dynamic = w_DynamicType
 
@@ -221,7 +220,7 @@ def spy_builtin(fqn: FQN) -> Callable:
             raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
 
         w_functype = W_FuncType(func_params, w_restype)
-        fn._w = W_BuiltinFunc(w_functype, fqn, fn)  # type: ignore
+        fn._w = W_BuiltinFunc(w_functype, qn, fn)  # type: ignore
         fn.w_functype = w_functype  # type: ignore
         return fn
 

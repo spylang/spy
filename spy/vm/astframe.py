@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Any, Optional, NoReturn
 from types import NoneType
 from dataclasses import dataclass
 from spy import ast
-from spy.fqn import FQN
+from spy.fqn import FQN, QN
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
@@ -39,7 +39,7 @@ class ASTFrame:
         self.t = TypeChecker(vm, self.w_func)
 
     def __repr__(self) -> str:
-        return f'<ASTFrame for {self.w_func.fqn}>'
+        return f'<ASTFrame for {self.w_func.qn}>'
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         self._locals[name] = w_value
@@ -123,16 +123,11 @@ class ASTFrame:
         self.t.lazy_check_FuncDef(funcdef, w_functype)
         #
         # create the w_func
-
-        # if the current func is '@module', then we are creating a module-level
-        # global. Else, it's a closure
-        is_global = self.w_func.fqn.attr == '@module'
-        modname = self.w_func.fqn.modname # the module of the "outer" function
-        fqn = self.vm.get_unique_FQN(modname=modname, attr=funcdef.name,
-                                     is_global=is_global)
+        modname = self.w_func.qn.modname # the module of the "outer" function
+        qn = QN(modname=modname, attr=funcdef.name)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
-        w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
+        w_func = W_ASTFunc(w_functype, qn, funcdef, closure)
         self.store_local(funcdef.name, w_func)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:

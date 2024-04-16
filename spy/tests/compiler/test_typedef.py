@@ -1,7 +1,7 @@
 import re
 import pytest
 from spy.errors import SPyTypeError
-from spy.fqn import FQN
+from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.types import W_TypeDef
@@ -61,7 +61,7 @@ class TestTypeDef(CompilerTest):
         assert isinstance(w_MyInt, W_TypeDef)
         w_getattr = w_MyInt.w_getattr
         assert isinstance(w_getattr, W_ASTFunc)
-        assert w_getattr.fqn == FQN("test::__getattr__#0")
+        assert w_getattr.qn == QN("test::__getattr__")
         w_res = self.vm.call_function(w_getattr, [B.w_None])
         assert w_res is B.w_NotImplemented
 

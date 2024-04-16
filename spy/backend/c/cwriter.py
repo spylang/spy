@@ -330,35 +330,37 @@ class CFuncWriter:
     fmt_expr_Gt = fmt_expr_BinOp
     fmt_expr_GtE = fmt_expr_BinOp
 
+
+    FQN2BinOp = {
+        FQN.parse('operator::i32_add'): '+',
+        FQN.parse('operator::i32_sub'): '-',
+        FQN.parse('operator::i32_mul'): '*',
+        FQN.parse('operator::i32_div'): '/', # XXX: floor or int division?
+        FQN.parse('operator::i32_eq') : '==',
+        FQN.parse('operator::i32_ne') : '!=',
+        FQN.parse('operator::i32_lt') : '<',
+        FQN.parse('operator::i32_le') : '<=',
+        FQN.parse('operator::i32_gt') : '>',
+        FQN.parse('operator::i32_ge') : '>=',
+        #
+        FQN.parse('operator::f64_add'): '+',
+        FQN.parse('operator::f64_sub'): '-',
+        FQN.parse('operator::f64_mul'): '*',
+        FQN.parse('operator::f64_div'): '/',
+        FQN.parse('operator::f64_eq') : '==',
+        FQN.parse('operator::f64_ne') : '!=',
+        FQN.parse('operator::f64_lt') : '<',
+        FQN.parse('operator::f64_le') : '<=',
+        FQN.parse('operator::f64_gt') : '>',
+        FQN.parse('operator::f64_ge') : '>=',
+    }
+
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.func, ast.FQNConst), \
             'indirect calls are not supported yet'
 
         # some calls are special-cased and transformed into a C binop
-        binops = {
-            FQN('operator::i32_add'): '+',
-            FQN('operator::i32_sub'): '-',
-            FQN('operator::i32_mul'): '*',
-            FQN('operator::i32_div'): '/', # XXX: floor division or int division?
-            FQN('operator::i32_eq') : '==',
-            FQN('operator::i32_ne') : '!=',
-            FQN('operator::i32_lt') : '<',
-            FQN('operator::i32_le') : '<=',
-            FQN('operator::i32_gt') : '>',
-            FQN('operator::i32_ge') : '>=',
-            #
-            FQN('operator::f64_add'): '+',
-            FQN('operator::f64_sub'): '-',
-            FQN('operator::f64_mul'): '*',
-            FQN('operator::f64_div'): '/',
-            FQN('operator::f64_eq') : '==',
-            FQN('operator::f64_ne') : '!=',
-            FQN('operator::f64_lt') : '<',
-            FQN('operator::f64_le') : '<=',
-            FQN('operator::f64_gt') : '>',
-            FQN('operator::f64_ge') : '>=',
-        }
-        op = binops.get(call.func.fqn)
+        op = self.FQN2BinOp.get(call.func.fqn)
         if op is not None:
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]

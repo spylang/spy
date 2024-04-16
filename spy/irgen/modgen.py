@@ -1,7 +1,7 @@
 import py
 from spy import ast
 from spy.location import Loc
-from spy.fqn import FQN
+from spy.fqn import QN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import SymTable
 from spy.errors import SPyTypeError
@@ -41,10 +41,10 @@ class ModuleGen:
         #
         # Synthesize and execute the fake '@module' function to populate the mod
         w_functype = W_FuncType.parse('def() -> void')
-        fqn = FQN(modname=self.modname, attr='@module')
+        qn = QN(modname=self.modname, attr='@module')
         modinit_funcdef = self.make_modinit()
         closure = ()
-        w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
+        w_INIT = W_ASTFunc(w_functype, qn, modinit_funcdef, closure)
         frame = ASTFrame(self.vm, w_INIT)
         #
         for decl in self.mod.decls:
@@ -83,14 +83,14 @@ class ModuleGen:
         frame.exec_stmt_FuncDef(funcdef)
         w_func = frame.load_local(funcdef.name)
         assert isinstance(w_func, W_ASTFunc)
-        fqn = w_func.fqn
+        fqn = self.vm.get_FQN(w_func.qn, is_global=True)
         self.vm.add_global(fqn, None, w_func)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        fqn = self.vm.get_unique_FQN(modname=self.modname, attr=vardef.name,
-                                     is_global=True)
+        fqn = self.vm.get_FQN(QN(modname=self.modname, attr=vardef.name),
+                              is_global=True)
         if isinstance(vardef.type, ast.Auto):
             # type inference
             w_val = frame.eval_expr(assign.value)

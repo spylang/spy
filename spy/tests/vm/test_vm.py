@@ -2,7 +2,7 @@ import fixedint
 import pytest
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.fqn import FQN
+from spy.fqn import QN, FQN
 from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, spytype, W_Void, W_I32, W_Bool
 from spy.vm.str import W_Str
@@ -176,23 +176,21 @@ class TestVM:
         with pytest.raises(SPyTypeError, match=msg):
             vm.call_function(w_abs, [w_x])
 
-    def test_get_unique_FQN(self):
+    def test_get_FQN(self):
         vm = SPyVM()
         w_mod = W_Module(vm, "test", "...")
         vm.register_module(w_mod)
         #
-        a = vm.get_unique_FQN(modname="test", attr="a", is_global=True)
-        assert a == FQN("test::a")
-        #
+        a = vm.get_FQN(QN("test::a"), is_global=True)
+        assert a.fullname == "test::a"
         with pytest.raises(AssertionError):
-            vm.get_unique_FQN(modname="test", attr="a", is_global=True)
+            vm.get_FQN(QN("test::a"), is_global=True)
         #
-        b0 = vm.get_unique_FQN(modname="test", attr="b", is_global=False)
-        assert b0 == FQN("test::b", uniq_suffix="0")
-        assert str(b0) == "test::b#0"
-        b1 = vm.get_unique_FQN(modname="test", attr="b", is_global=False)
-        assert b1 == FQN("test::b", uniq_suffix='1')
-        assert str(b1) == "test::b#1"
+        # for non-globals, we always put a suffix
+        b0 = vm.get_FQN(QN("test::b"), is_global=False)
+        assert b0.fullname == "test::b#0"
+        b1 = vm.get_FQN(QN("test::b"), is_global=False)
+        assert b1.fullname == "test::b#1"
 
     def test_eq(self):
         vm = SPyVM()

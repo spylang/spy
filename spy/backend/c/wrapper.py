@@ -28,7 +28,7 @@ class WasmModuleWrapper:
         return f"<WasmModuleWrapper 'self.ll.name'>"
 
     def __getattr__(self, attr: str) -> Any:
-        fqn = FQN(modname=self.modname, attr=attr)
+        fqn = FQN.make_global(modname=self.modname, attr=attr)
         wasm_obj = self.ll.get_export(fqn.c_name)
         if isinstance(wasm_obj, wasmtime.Func):
             return self.read_function(fqn)
