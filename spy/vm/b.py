@@ -19,7 +19,7 @@ from spy.vm.registry import ModuleRegistry
 from spy.vm.object import (W_Object, W_Type, w_DynamicType, W_Void, W_I32,
                            W_F64, W_Bool, W_NotImplementedType)
 from spy.vm.str import W_Str
-from spy.vm.list import W_GenericList
+from spy.vm.list import W_ListFactory
 
 
 BUILTINS = ModuleRegistry('builtins', '<builtins>')
@@ -33,7 +33,7 @@ B.add('i32', W_I32._w)
 B.add('f64', W_F64._w)
 B.add('bool', W_Bool._w)
 B.add('str', W_Str._w)
-B.add('list', W_GenericList._w)
+B.add('list', W_ListFactory())
 B.add('None', W_Void._w_singleton)
 B.add('True', W_Bool._w_singleton_True)
 B.add('False', W_Bool._w_singleton_False)

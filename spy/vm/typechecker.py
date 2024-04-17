@@ -336,7 +336,9 @@ class TypeChecker:
                 raise err
             return color, B.w_str
         elif w_opimpl is not B.w_NotImplemented:
-            assert False, 'unexpected opimpl?'
+            # this should be merged with the 'then' above
+            self.opimpl[expr] = w_opimpl
+            return color, w_opimpl.w_functype.w_restype
         else:
             v = w_vtype.name
             i = w_itype.name
