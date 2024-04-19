@@ -6,6 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
+from spy.vm.list import make_W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
@@ -437,3 +438,19 @@ class TypeChecker:
         if sym:
             err.add('note', 'function defined here', sym.loc)
         raise err
+
+    def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
+        w_itemtype = None
+        color = 'blue'
+        for item in listop.items:
+            c1, w_t1 = self.check_expr(item)
+            color = maybe_blue(color, c1)
+            if w_itemtype is None:
+                w_itemtype = w_t1
+            elif w_itemtype is not w_t1:
+                # XXX write it better and write a test
+                err = SPyTypeError("conflicting item types")
+                raise err
+        #
+        w_listype = make_W_List(self.vm, w_itemtype)
+        return color, w_listype

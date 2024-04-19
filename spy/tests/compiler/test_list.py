@@ -18,3 +18,13 @@ class TestList(CompilerTest):
         w_list_i32 = self.vm.call_function(w_foo, [])
         assert isinstance(w_list_i32, W_Type)
         assert w_list_i32.name == 'list[i32]'
+
+    def test_literal(self):
+        mod = self.compile(
+        """
+        def foo() -> list[i32]:
+            x: list[i32] = [1, 2, 3]
+            return x
+        """)
+        x = mod.foo()
+        assert x == [1, 2, 3]

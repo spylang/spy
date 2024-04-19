@@ -262,3 +262,8 @@ class ASTFrame:
         w_attr = self.vm.wrap(op.attr)
         w_res = self.vm.call_function(w_opimpl, [w_val, w_attr])
         return w_res
+
+    def eval_expr_List(self, op: ast.List) -> W_Object:
+        color, w_listtype = self.t.check_expr(op)
+        items_w = [self.eval_expr(item) for item in op.items]
+        return w_listtype.pyclass(items_w)

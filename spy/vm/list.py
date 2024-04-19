@@ -18,12 +18,29 @@ class W_ListFactory(W_Object):
         return vm.wrap(opimpl)
 
 
+# XXX this should be marked as '@interp_blue' and cached automatically by the
+# VM
+CACHE = {}
+
 def make_W_List(vm: 'SPyVM', w_t: W_Type) -> W_Type:
+    key = (vm, w_t)
+    if key in CACHE:
+        return CACHE[key]
+
     tname = w_t.name
     name = f'list[{tname}]'
 
     @spytype(name)
     class W_List(W_Object):
-        pass
+        items_w: list[W_Object]
 
-    return vm.wrap(W_List)
+        def __init__(self, items_w: list[W_Object]):
+            # XXX typecheck?
+            self.items_w = items_w
+
+        def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
+            return [vm.unwrap(w_item) for w_item in self.items_w]
+
+    w_result = vm.wrap(W_List)
+    CACHE[key] = w_result
+    return w_result
