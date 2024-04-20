@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 from spy.fqn import QN
-from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic
+from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_I32
 from spy.vm.function import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -22,12 +22,13 @@ class W_ListFactory(W_Object):
 # VM
 CACHE = {}
 
-def make_W_List(vm: 'SPyVM', w_t: W_Type) -> W_Type:
-    key = (vm, w_t)
+def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
+    T = w_T.pyclass
+    key = (vm, w_T)
     if key in CACHE:
         return CACHE[key]
 
-    tname = w_t.name
+    tname = w_T.name
     name = f'list[{tname}]'
 
     @spytype(name)
@@ -40,6 +41,16 @@ def make_W_List(vm: 'SPyVM', w_t: W_Type) -> W_Type:
 
         def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
             return [vm.unwrap(w_item) for w_item in self.items_w]
+
+        @staticmethod
+        def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
+                       w_itype: W_Type) -> W_Dynamic:
+            @spy_builtin(QN('operator::list_getitem'))
+            def list_getitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32) -> T:
+                i = vm.unwrap_i32(w_i)
+                # XXX bound check?
+                return w_list.items_w[i]
+            return vm.wrap(list_getitem)
 
     w_result = vm.wrap(W_List)
     CACHE[key] = w_result

@@ -441,7 +441,7 @@ class TypeChecker:
 
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
         w_itemtype = None
-        color = 'blue'
+        color = 'red' # XXX should be blue?
         for item in listop.items:
             c1, w_t1 = self.check_expr(item)
             color = maybe_blue(color, c1)

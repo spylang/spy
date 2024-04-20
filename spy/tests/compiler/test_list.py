@@ -2,9 +2,9 @@
 
 import pytest
 from spy.vm.object import W_Type
-from spy.tests.support import CompilerTest, no_C
+from spy.tests.support import CompilerTest, only_interp
 
-@no_C
+@only_interp
 class TestList(CompilerTest):
 
     def test_generic_type(self):
@@ -28,3 +28,13 @@ class TestList(CompilerTest):
         """)
         x = mod.foo()
         assert x == [1, 2, 3]
+
+    def test_getitem(self):
+        mod = self.compile(
+        """
+        def foo(i: i32) -> str:
+            x: list[str] = ["foo", "bar", "baz"]
+            return x[i]
+        """)
+        assert mod.foo(0) == "foo"
+        assert mod.foo(1) == "bar"
