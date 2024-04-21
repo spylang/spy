@@ -42,7 +42,7 @@ class TestList(CompilerTest):
     def test_setitem(self):
         mod = self.compile(
         """
-        def foo(i: i32) -> i32:
+        def foo(i: i32) -> list[i32]:
             x: list[i32] = [0, 1, 2]
             x[i] = x[i] + 10
             return x

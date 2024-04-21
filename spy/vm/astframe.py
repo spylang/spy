@@ -156,6 +156,13 @@ class ASTFrame:
         w_value = self.eval_expr(node.value)
         self.vm.call_function(w_opimpl, [w_target, w_attr, w_value])
 
+    def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
+        w_opimpl = self.t.opimpl[node]
+        w_target = self.eval_expr(node.target)
+        w_index = self.eval_expr(node.index)
+        w_value = self.eval_expr(node.value)
+        self.vm.call_function(w_opimpl, [w_target, w_index, w_value])
+
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
 

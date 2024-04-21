@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 from spy.fqn import QN
-from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_I32
+from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void
 from spy.vm.function import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -46,11 +46,26 @@ def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
         def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
                        w_itype: W_Type) -> W_Dynamic:
             @spy_builtin(QN('operator::list_getitem'))
-            def list_getitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32) -> T:
+            def getitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 return w_list.items_w[i]
-            return vm.wrap(list_getitem)
+            return vm.wrap(getitem)
+
+        @staticmethod
+        def op_SETITEM(vm: 'SPyVM', w_listtype: W_Type, w_itype: W_Type,
+                       w_vtype: W_Type) -> W_Dynamic:
+            from spy.vm.b import B
+
+            @spy_builtin(QN('operator::list_setitem'))
+            def setitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32,
+                        w_v: T) -> W_Void:
+                assert isinstance(w_v, T)
+                i = vm.unwrap_i32(w_i)
+                # XXX bound check?
+                w_list.items_w[i] = w_v
+                return B.w_None
+            return vm.wrap(setitem)
 
     w_result = vm.wrap(W_List)
     CACHE[key] = w_result
