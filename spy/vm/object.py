@@ -128,6 +128,12 @@ class W_Object:
                    w_vtype: 'W_Type') -> 'W_Dynamic':
         raise NotImplementedError('this should never be called')
 
+    @staticmethod
+    def op_SETITEM(vm: 'SPyVM', w_type: 'W_Type', w_itype: 'W_Type',
+                   w_vtype: 'W_Type') -> 'W_Dynamic':
+        raise NotImplementedError('this should never be called')
+
+
 class W_Type(W_Object):
     """
     The default metaclass for SPy types.

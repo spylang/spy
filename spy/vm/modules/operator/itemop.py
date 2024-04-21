@@ -14,3 +14,12 @@ def GETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type) -> W_Dynamic:
         return pyclass.op_GETITEM(vm, w_type, w_itype)
 
     return B.w_NotImplemented
+
+@OP.builtin
+def SETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type,
+            w_vtype: W_Type) -> W_Dynamic:
+    pyclass = w_type.pyclass
+    if pyclass.has_meth_overriden('op_SETITEM'):
+        return pyclass.op_SETITEM(vm, w_type, w_itype, w_vtype)
+
+    return B.w_NotImplemented

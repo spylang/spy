@@ -218,6 +218,19 @@ class TypeChecker:
         else:
             self.opimpl[node] = w_opimpl
 
+    def check_stmt_SetItem(self, node: ast.SetItem) -> None:
+        _, w_otype = self.check_expr(node.target)
+        _, w_itype = self.check_expr(node.index)
+        _, w_vtype = self.check_expr(node.value)
+
+        w_opimpl = OP.w_SETITEM.pyfunc(self.vm, w_otype, w_itype, w_vtype)
+        if w_opimpl is B.w_NotImplemented:
+            # XXX better error and write a test
+            err = SPyTypeError("setitem not implemented")
+            raise err
+        else:
+            self.opimpl[node] = w_opimpl
+
     # ==== expressions ====
 
     def check_expr_Name(self, name: ast.Name) -> tuple[Color, W_Type]:
