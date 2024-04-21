@@ -271,6 +271,21 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_SetItem(self):
+        mod = self.parse("""
+        def foo() -> void:
+            mylist[0] = 42
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        SetItem(
+            target=Name(id='mylist'),
+            index=Constant(value=0),
+            value=Constant(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_VarDef(self):
         mod = self.parse("""
         def foo() -> void:

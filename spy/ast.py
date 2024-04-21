@@ -453,6 +453,13 @@ class SetAttr(Stmt):
     value: Expr
 
 @dataclass(eq=False)
+class SetItem(Stmt):
+    target_loc: Loc = field(repr=False)
+    target: Expr
+    index: Expr
+    value: Expr
+
+@dataclass(eq=False)
 class If(Stmt):
     test: Expr
     then_body: list[Stmt]
