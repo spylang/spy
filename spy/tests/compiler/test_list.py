@@ -38,3 +38,14 @@ class TestList(CompilerTest):
         """)
         assert mod.foo(0) == "foo"
         assert mod.foo(1) == "bar"
+
+    def test_setitem(self):
+        mod = self.compile(
+        """
+        def foo(i: i32) -> i32:
+            x: list[i32] = [0, 1, 2]
+            x[i] = x[i] + 10
+            return x
+        """)
+        assert mod.foo(0) == [10, 1, 2]
+        assert mod.foo(1) == [0, 11, 2]
