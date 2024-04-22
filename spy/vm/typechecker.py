@@ -364,21 +364,26 @@ class TypeChecker:
         operates on an AST node (and thus has more Loc info for better
         diagnostics).
 
+        Ideally, in case of user-defined opimpls, we would like to show
+        diagnostic with locations, but we don't have it at the moment.
+
         Maybe we could reduce a bit the code duplication in the future.
         """
         w_functype = w_opimpl.w_functype
         argtypes_w = [self.check_expr(arg)[1] for arg in args]
-        got_nargs = len(argtypes_w)
-        exp_nargs = len(w_functype.params)
-        if got_nargs != exp_nargs:
-            # XXX write a test
+        #
+        # check number of arguments
+        got = len(argtypes_w)
+        exp = len(w_functype.params)
+        if got != exp:
             takes = maybe_plural(exp, f'takes {exp} argument')
             supplied = maybe_plural(got,
                                     f'1 argument was supplied',
                                     f'{got} arguments were supplied')
             err = SPyTypeError(f'this function {takes} but {supplied}')
             raise err
-
+        #
+        # check types
         for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
                                                     argtypes_w)):
             err = self.convert_type_maybe(args[i], w_arg_type, param.w_type)
