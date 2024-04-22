@@ -314,19 +314,7 @@ class TypeChecker:
         icolor, w_itype = self.check_expr(expr.index)
         color = maybe_blue(vcolor, icolor)
         w_opimpl = OP.w_GETITEM.pyfunc(self.vm, w_vtype, w_itype)
-        if (isinstance(w_opimpl, W_Func) and
-            w_opimpl.qn == QN('operator::str_getitem')):
-            # XXX for now this is a special case, to check that `i` can be
-            # converted to `i32`. Ideally, we should use the same mechanism
-            # that we have already for calls
-            self.opimpl[expr] = w_opimpl
-            err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
-            if err:
-                err.add('note', f'this is a `str`', expr.value.loc)
-                raise err
-            return color, B.w_str
-        elif w_opimpl is not B.w_NotImplemented:
-            # this should be merged with the 'then' above
+        if w_opimpl is not B.w_NotImplemented:
             self.opimpl_typecheck(w_opimpl, expr, [expr.value, expr.index])
             self.opimpl[expr] = w_opimpl
             return color, w_opimpl.w_functype.w_restype
