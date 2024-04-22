@@ -67,19 +67,24 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
         return pytest.mark.parametrize('compiler_backend', new_backends)(func)
     return decorator
 
+def parametrize_compiler_backend(params, func):
+    deco = pytest.mark.parametrize(
+        'compiler_backend',
+        params_with_marks(params)
+    )
+    return deco(func)
+
 def no_backend(func):
-    return pytest.mark.parametrize('compiler_backend', [''])(func)
+    return parametrize_compiler_backend([''], func)
 
 def only_interp(func):
-    return pytest.mark.parametrize('compiler_backend', ['interp'])(func)
+    return parametrize_compiler_backend(['interp'], func)
 
 def only_C(func):
-    return pytest.mark.parametrize('compiler_backend', ['C'])(func)
+    return parametrize_compiler_backend(['C'], func)
 
 def no_C(func):
-    return pytest.mark.parametrize('compiler_backend',
-                                   ['interp', 'doppler'])(func)
-
+    return parametrize_compiler_backend(['interp', 'doppler'], func)
 
 
 @pytest.mark.usefixtures('init')
