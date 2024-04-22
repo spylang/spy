@@ -293,7 +293,7 @@ class TypeChecker:
             raise err
 
         assert isinstance(w_opimpl, W_Func)
-        self.opimpl_check_args(w_opimpl, binop, [binop.left, binop.right])
+        self.opimpl_typecheck(w_opimpl, binop, [binop.left, binop.right])
         self.opimpl[binop] = w_opimpl
         w_restype = w_opimpl.w_functype.w_restype
         return color, w_restype
@@ -308,30 +308,6 @@ class TypeChecker:
     check_expr_LtE = check_expr_BinOp
     check_expr_Gt = check_expr_BinOp
     check_expr_GtE = check_expr_BinOp
-
-    def opimpl_check_args(self, w_opimpl: W_Func, op: ast.Expr,
-                          args: list[ast.Expr]) -> None:
-        """
-        Check that arg types that we are passing to the opimpl, and insert
-        appropriate type conversions if needed.
-
-        Note: this is very similar to check_call & co: the difference is
-        that if here we find mistake in the signature (e.g. wrong argcount
-        or type mismatch) we treat it as an internal error instead of an
-        user error.
-
-        Maybe we could reduce a bit the code duplication in the future.
-        """
-        w_functype = w_opimpl.w_functype
-        argtypes_w = [self.check_expr(arg)[1] for arg in args]
-        got_nargs = len(argtypes_w)
-        exp_nargs = len(w_functype.params)
-        assert got_nargs == exp_nargs, 'wrong opimpl?'
-
-        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
-                                                    argtypes_w)):
-            err = self.convert_type_maybe(args[i], w_arg_type, param.w_type)
-            assert not err, 'wrong opimpl?'
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
         vcolor, w_vtype = self.check_expr(expr.value)
@@ -351,6 +327,7 @@ class TypeChecker:
             return color, B.w_str
         elif w_opimpl is not B.w_NotImplemented:
             # this should be merged with the 'then' above
+            self.opimpl_typecheck(w_opimpl, expr, [expr.value, expr.index])
             self.opimpl[expr] = w_opimpl
             return color, w_opimpl.w_functype.w_restype
         else:
@@ -374,7 +351,44 @@ class TypeChecker:
             self.opimpl[expr] = w_opimpl
             return color, w_opimpl.w_functype.w_restype
 
+
+
+    def opimpl_typecheck(self, w_opimpl: W_Func, op: ast.Expr,
+                         args: list[ast.Expr]) -> None:
+        """
+        Check that arg types that we are passing to the opimpl, and insert
+        appropriate type conversions if needed.
+
+        Note: this is very similar to check_expr_Call: the difference is that
+        here we operate on a concrete object w_opimpl, while check_expr_Call
+        operates on an AST node (and thus has more Loc info for better
+        diagnostics).
+
+        Maybe we could reduce a bit the code duplication in the future.
+        """
+        w_functype = w_opimpl.w_functype
+        argtypes_w = [self.check_expr(arg)[1] for arg in args]
+        got_nargs = len(argtypes_w)
+        exp_nargs = len(w_functype.params)
+        if got_nargs != exp_nargs:
+            # XXX write a test
+            takes = maybe_plural(exp, f'takes {exp} argument')
+            supplied = maybe_plural(got,
+                                    f'1 argument was supplied',
+                                    f'{got} arguments were supplied')
+            err = SPyTypeError(f'this function {takes} but {supplied}')
+            raise err
+
+        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
+                                                    argtypes_w)):
+            err = self.convert_type_maybe(args[i], w_arg_type, param.w_type)
+            if err:
+                raise err
+
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
+        """
+        See also opimpl_typecheck
+        """
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
 
