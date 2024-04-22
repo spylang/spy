@@ -6,6 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
+from spy.vm.list import make_W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
@@ -217,6 +218,19 @@ class TypeChecker:
         else:
             self.opimpl[node] = w_opimpl
 
+    def check_stmt_SetItem(self, node: ast.SetItem) -> None:
+        _, w_otype = self.check_expr(node.target)
+        _, w_itype = self.check_expr(node.index)
+        _, w_vtype = self.check_expr(node.value)
+
+        w_opimpl = OP.w_SETITEM.pyfunc(self.vm, w_otype, w_itype, w_vtype)
+        if w_opimpl is B.w_NotImplemented:
+            # XXX better error and write a test
+            err = SPyTypeError("setitem not implemented")
+            raise err
+        else:
+            self.opimpl[node] = w_opimpl
+
     # ==== expressions ====
 
     def check_expr_Name(self, name: ast.Name) -> tuple[Color, W_Type]:
@@ -336,7 +350,9 @@ class TypeChecker:
                 raise err
             return color, B.w_str
         elif w_opimpl is not B.w_NotImplemented:
-            assert False, 'unexpected opimpl?'
+            # this should be merged with the 'then' above
+            self.opimpl[expr] = w_opimpl
+            return color, w_opimpl.w_functype.w_restype
         else:
             v = w_vtype.name
             i = w_itype.name
@@ -435,3 +451,19 @@ class TypeChecker:
         if sym:
             err.add('note', 'function defined here', sym.loc)
         raise err
+
+    def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
+        w_itemtype = None
+        color = 'red' # XXX should be blue?
+        for item in listop.items:
+            c1, w_t1 = self.check_expr(item)
+            color = maybe_blue(color, c1)
+            if w_itemtype is None:
+                w_itemtype = w_t1
+            elif w_itemtype is not w_t1:
+                # XXX write it better and write a test
+                err = SPyTypeError("conflicting item types")
+                raise err
+        #
+        w_listype = make_W_List(self.vm, w_itemtype)
+        return color, w_listype
