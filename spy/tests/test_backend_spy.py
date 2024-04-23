@@ -117,6 +117,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_setitem(self):
+        src = """
+        def foo() -> void:
+            x[i] = 0
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_getattr(self):
         src = """
         def foo() -> void:
@@ -142,6 +150,14 @@ class TestSPyBackend(CompilerTest):
                 bbb
             else:
                 ccc
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
+    def test_list_literal(self):
+        src = """
+        def foo() -> list[i32]:
+            return [1, 2, 3]
         """
         self.compile(src)
         self.assert_dump(src)

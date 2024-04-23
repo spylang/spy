@@ -2,8 +2,9 @@ from typing import Literal, Optional
 from spy import ast
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, FuncParam
+from spy.vm.list import W_BaseList
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 
@@ -53,6 +54,11 @@ class SPyBackend:
         return ', '.join(l)
 
     def fmt_w_obj(self, w_obj: W_Object) -> str:
+        if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_BaseList):
+            # this is a ugly special case for now, we need to find a better
+            # solution
+            return w_obj.name
+        #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
         assert fqn is not None
@@ -113,6 +119,12 @@ class SPyBackend:
         t = self.fmt_expr(node.target)
         v = self.fmt_expr(node.value)
         self.wl(f'{t}.{node.attr} = {v}')
+
+    def emit_stmt_SetItem(self, node: ast.SetItem) -> None:
+        t = self.fmt_expr(node.target)
+        i = self.fmt_expr(node.index)
+        v = self.fmt_expr(node.value)
+        self.wl(f'{t}[i] = {v}')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         t = self.fmt_expr(vardef.type)
@@ -226,3 +238,8 @@ class SPyBackend:
     def fmt_expr_GetAttr(self, node: ast.GetAttr) -> str:
         v = self.fmt_expr(node.value)
         return f'{v}.{node.attr}'
+
+    def fmt_expr_List(self, node: ast.List) -> str:
+        itemlist = [self.fmt_expr(it) for it in node.items]
+        items = ', '.join(itemlist)
+        return f'[{items}]'
