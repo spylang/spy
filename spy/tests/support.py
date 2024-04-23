@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, no_type_check
 import textwrap
 from contextlib import contextmanager
 import pytest
@@ -67,6 +67,7 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
         return pytest.mark.parametrize('compiler_backend', new_backends)(func)
     return decorator
 
+@no_type_check
 def parametrize_compiler_backend(params, func):
     deco = pytest.mark.parametrize(
         'compiler_backend',

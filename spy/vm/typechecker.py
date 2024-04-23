@@ -357,6 +357,7 @@ class TypeChecker:
 
         Maybe we could reduce a bit the code duplication in the future.
         """
+        err: Optional[SPyTypeError] = None
         w_functype = w_opimpl.w_functype
         argtypes_w = [self.check_expr(arg)[1] for arg in args]
         #
