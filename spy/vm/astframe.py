@@ -10,6 +10,7 @@ from spy.irgen.symtable import Symbol
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
+from spy.vm.list import W_BaseList
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
@@ -273,4 +274,5 @@ class ASTFrame:
     def eval_expr_List(self, op: ast.List) -> W_Object:
         color, w_listtype = self.t.check_expr(op)
         items_w = [self.eval_expr(item) for item in op.items]
-        return w_listtype.pyclass(items_w)
+        assert issubclass(w_listtype.pyclass, W_BaseList)
+        return w_listtype.pyclass(items_w) # type: ignore

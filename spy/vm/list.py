@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, no_type_check
 from spy.fqn import QN
 from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void
 from spy.vm.function import spy_builtin
@@ -22,7 +22,7 @@ class W_BaseList(W_Object):
 
 # XXX this should be marked as '@interp_blue' and cached automatically by the
 # VM
-CACHE = {}
+CACHE: dict[Any, W_Type] = {}
 
 def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
     T = w_T.pyclass
@@ -47,6 +47,7 @@ def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
                        w_itype: W_Type) -> W_Dynamic:
+            @no_type_check
             @spy_builtin(QN('operator::list_getitem'))
             def getitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
@@ -59,6 +60,7 @@ def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
                        w_vtype: W_Type) -> W_Dynamic:
             from spy.vm.b import B
 
+            @no_type_check
             @spy_builtin(QN('operator::list_setitem'))
             def setitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32,
                         w_v: T) -> W_Void:
@@ -70,5 +72,6 @@ def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
             return vm.wrap(setitem)
 
     w_result = vm.wrap(W_List)
+    assert isinstance(w_result, W_Type)
     CACHE[key] = w_result
     return w_result

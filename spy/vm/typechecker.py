@@ -454,7 +454,7 @@ class TypeChecker:
 
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
         w_itemtype = None
-        color = 'red' # XXX should be blue?
+        color: Color = 'red' # XXX should be blue?
         for item in listop.items:
             c1, w_t1 = self.check_expr(item)
             color = maybe_blue(color, c1)
@@ -465,5 +465,7 @@ class TypeChecker:
                 err = SPyTypeError("conflicting item types")
                 raise err
         #
+        # XXX we need to handle empty lists
+        assert w_itemtype is not None
         w_listype = make_W_List(self.vm, w_itemtype)
         return color, w_listype
