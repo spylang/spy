@@ -9,7 +9,7 @@ from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
 
 @no_C
-class TestAttrOp(CompilerTest):
+class TestOp(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
     def test_opimpl_type_mismatch(self):
