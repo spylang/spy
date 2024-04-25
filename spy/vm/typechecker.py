@@ -345,10 +345,11 @@ class TypeChecker:
             color = maybe_blue(color, c1)
 
         # step 2: call OP() and get w_opimpl
-        w_opimpl = w_OP.pyfunc(self.vm, *argtypes_w)
+        w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
 
         # step 3: check that we can call the returned w_opimpl
         self.opimpl_typecheck(w_opimpl, args, argtypes_w, errmsg=errmsg)
+        assert isinstance(w_opimpl, W_Func)
         self.opimpl[node] = w_opimpl
         return color, w_opimpl.w_functype.w_restype
 
