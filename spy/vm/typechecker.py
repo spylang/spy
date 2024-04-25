@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, NoReturn, Any
+from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence
 from types import NoneType
 from spy import ast
 from spy.fqn import QN, FQN
@@ -347,7 +347,7 @@ class TypeChecker:
 
     def opimpl_typecheck(self,
                          w_opimpl: W_Object,
-                         args: list[ast.Expr],
+                         args: Sequence[ast.Expr | None],
                          argtypes_w: list[W_Type],
                          *,
                          errmsg: str,
@@ -395,11 +395,13 @@ class TypeChecker:
         # check types
         assert len(args) == got
         for i in range(got):
+            arg = args[i]
+            w_argtype = argtypes_w[i]
             w_exp_type = w_functype.params[i].w_type
-            if args[i] is None:
-                assert argtypes_w[i] == w_exp_type
+            if arg is None:
+                assert w_argtype == w_exp_type
             else:
-                err = self.convert_type_maybe(args[i], argtypes_w[i], w_exp_type)
+                err = self.convert_type_maybe(arg, w_argtype, w_exp_type)
                 if err:
                     raise err
 
