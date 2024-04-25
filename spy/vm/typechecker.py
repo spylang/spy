@@ -203,33 +203,25 @@ class TypeChecker:
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
-
         w_attr = self.vm.wrap(node.attr)
         w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, w_attr, w_vtype)
-        if w_opimpl is B.w_NotImplemented:
-            ot = w_otype.name
-            vt = w_vtype.name
-            attr = node.attr
-            err = SPyTypeError(
-                f"type `{ot}` does not support assignment to attribute '{attr}'")
-            err.add('error', f'this is `{ot}`', node.target.loc)
-            err.add('error', f'this is `{vt}`', node.value.loc)
-            raise err
-        else:
-            self.opimpl[node] = w_opimpl
+        errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
+                  node.attr)
+        self.opimpl_typecheck(
+            w_opimpl,
+            [node.target, None, node.value],
+            [w_otype, B.w_str, w_vtype],
+            errmsg = errmsg
+        )
+        self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
-        _, w_otype = self.check_expr(node.target)
-        _, w_itype = self.check_expr(node.index)
-        _, w_vtype = self.check_expr(node.value)
-
-        w_opimpl = OP.w_SETITEM.pyfunc(self.vm, w_otype, w_itype, w_vtype)
-        if w_opimpl is B.w_NotImplemented:
-            # XXX better error and write a test
-            err = SPyTypeError("setitem not implemented")
-            raise err
-        else:
-            self.opimpl[node] = w_opimpl
+        self.OP_dispatch(
+            OP.w_SETITEM,
+            node,
+            [node.target, node.index, node.value],
+            errmsg = "cannot do `{0}[`{1}`] = ..."
+        )
 
     # ==== expressions ====
 
