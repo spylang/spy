@@ -308,14 +308,14 @@ class TypeChecker:
         color, w_vtype = self.check_expr(expr.value)
         w_attr = self.vm.wrap(expr.attr)
         w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, w_attr)
-        if w_opimpl is B.w_NotImplemented:
-            v = w_vtype.name
-            err = SPyTypeError(f"type `{v}` has no attribute '{expr.attr}'")
-            err.add('error', f'this is `{v}`', expr.value.loc)
-            raise err
-        else:
-            self.opimpl[expr] = w_opimpl
-            return color, w_opimpl.w_functype.w_restype
+        self.opimpl_typecheck(
+            w_opimpl,
+            [expr.value, None],
+            [w_vtype, B.w_str],
+            errmsg = "type `{0}` has no attribute '%s'" % expr.attr
+        )
+        self.opimpl[expr] = w_opimpl
+        return color, w_opimpl.w_functype.w_restype
 
     def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
                     *, errmsg: str) -> tuple[Color, W_Type]:
@@ -381,8 +381,9 @@ class TypeChecker:
             errmsg = errmsg.format(*typenames)
             err = SPyTypeError(errmsg)
             for arg, w_argtype in zip(args, argtypes_w):
-                t = w_argtype.name
-                err.add('error', f'this is `{t}`', arg.loc)
+                if arg is not None:
+                    t = w_argtype.name
+                    err.add('error', f'this is `{t}`', arg.loc)
             raise err
 
         assert isinstance(w_opimpl, W_Func)
@@ -403,9 +404,12 @@ class TypeChecker:
         assert len(args) == got
         for i in range(got):
             w_exp_type = w_functype.params[i].w_type
-            err = self.convert_type_maybe(args[i], argtypes_w[i], w_exp_type)
-            if err:
-                raise err
+            if args[i] is None:
+                assert argtypes_w[i] == w_exp_type
+            else:
+                err = self.convert_type_maybe(args[i], argtypes_w[i], w_exp_type)
+                if err:
+                    raise err
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         """
