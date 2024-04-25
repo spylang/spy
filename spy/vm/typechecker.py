@@ -277,26 +277,13 @@ class TypeChecker:
         return 'blue', w_type
 
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
-        lcolor, w_ltype = self.check_expr(binop.left)
-        rcolor, w_rtype = self.check_expr(binop.right)
-        color = maybe_blue(lcolor, rcolor)
-
-        w_op = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        w_opimpl = self.vm.call_function(w_op, [w_ltype, w_rtype])
-
-        if w_opimpl is B.w_NotImplemented:
-            lt = w_ltype.name
-            rt = w_rtype.name
-            err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
-            err.add('error', f'this is `{lt}`', binop.left.loc)
-            err.add('error', f'this is `{rt}`', binop.right.loc)
-            raise err
-
-        assert isinstance(w_opimpl, W_Func)
-        self.opimpl_typecheck(w_opimpl, binop, [binop.left, binop.right])
-        self.opimpl[binop] = w_opimpl
-        w_restype = w_opimpl.w_functype.w_restype
-        return color, w_restype
+        w_OP = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        return self.OP_dispatch(
+            w_OP,
+            binop,
+            [binop.left, binop.right],
+            errmsg = 'cannot do `{0}` %s `{1}`' % binop.op
+        )
 
     check_expr_Add = check_expr_BinOp
     check_expr_Sub = check_expr_BinOp
@@ -310,21 +297,12 @@ class TypeChecker:
     check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        vcolor, w_vtype = self.check_expr(expr.value)
-        icolor, w_itype = self.check_expr(expr.index)
-        color = maybe_blue(vcolor, icolor)
-        w_opimpl = OP.w_GETITEM.pyfunc(self.vm, w_vtype, w_itype)
-        if w_opimpl is not B.w_NotImplemented:
-            self.opimpl_typecheck(w_opimpl, expr, [expr.value, expr.index])
-            self.opimpl[expr] = w_opimpl
-            return color, w_opimpl.w_functype.w_restype
-        else:
-            v = w_vtype.name
-            i = w_itype.name
-            err = SPyTypeError(f'cannot do `{v}`[`{i}`]')
-            err.add('error', f'this is `{v}`', expr.value.loc)
-            err.add('error', f'this is `{i}`', expr.index.loc)
-            raise err
+        return self.OP_dispatch(
+            OP.w_GETITEM,
+            expr,
+            [expr.value, expr.index],
+            errmsg = 'cannot do `{0}`[`{1}`]'
+        )
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
@@ -339,12 +317,50 @@ class TypeChecker:
             self.opimpl[expr] = w_opimpl
             return color, w_opimpl.w_functype.w_restype
 
-
-
-    def opimpl_typecheck(self, w_opimpl: W_Func, op: ast.Expr,
-                         args: list[ast.Expr]) -> None:
+    def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
+                    *, errmsg: str) -> tuple[Color, W_Type]:
         """
-        Check that arg types that we are passing to the opimpl, and insert
+        Resolve and typecheck an operator call.
+
+        It does the following:
+
+          - typecheck the args and compute their type
+          - call OP and get the opimpl
+          - raise SPyTypeError if the opimpl is NotImplemented
+          - check that the returned opimpl is compatible with the type of the
+            args
+          - record the opimpl for the given node
+
+        Note that this works only for "regular" operators which operate only
+        on argtypes. In particular, GETATTR and SETATTR needs to be handled
+        differently, because they also take a VALUE (the attribute, as a
+        string) instead of a TYPE.
+        """
+        # step 1: determine the arguments to pass to OP()
+        argtypes_w = []
+        color: Color = 'blue'
+        for arg in args:
+            c1, w_argtype = self.check_expr(arg)
+            argtypes_w.append(w_argtype)
+            color = maybe_blue(color, c1)
+
+        # step 2: call OP() and get w_opimpl
+        w_opimpl = w_OP.pyfunc(self.vm, *argtypes_w)
+
+        # step 3: check that we can call the returned w_opimpl
+        self.opimpl_typecheck(w_opimpl, args, argtypes_w, errmsg=errmsg)
+        self.opimpl[node] = w_opimpl
+        return color, w_opimpl.w_functype.w_restype
+
+    def opimpl_typecheck(self,
+                         w_opimpl: W_Object,
+                         args: list[ast.Expr],
+                         argtypes_w: list[W_Type],
+                         *,
+                         errmsg: str,
+                         ) -> None:
+        """
+        Check the arg types that we are passing to the opimpl, and insert
         appropriate type conversions if needed.
 
         Note: this is very similar to check_expr_Call: the difference is that
@@ -358,8 +374,18 @@ class TypeChecker:
         Maybe we could reduce a bit the code duplication in the future.
         """
         err: Optional[SPyTypeError] = None
+
+        if w_opimpl is B.w_NotImplemented:
+            typenames = [w_t.name for w_t in argtypes_w]
+            errmsg = errmsg.format(*typenames)
+            err = SPyTypeError(errmsg)
+            for arg, w_argtype in zip(args, argtypes_w):
+                t = w_argtype.name
+                err.add('error', f'this is `{t}`', arg.loc)
+            raise err
+
+        assert isinstance(w_opimpl, W_Func)
         w_functype = w_opimpl.w_functype
-        argtypes_w = [self.check_expr(arg)[1] for arg in args]
         #
         # check number of arguments
         got = len(argtypes_w)
@@ -373,9 +399,10 @@ class TypeChecker:
             raise err
         #
         # check types
-        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
-                                                    argtypes_w)):
-            err = self.convert_type_maybe(args[i], w_arg_type, param.w_type)
+        assert len(args) == got
+        for i in range(got):
+            w_exp_type = w_functype.params[i].w_type
+            err = self.convert_type_maybe(args[i], argtypes_w[i], w_exp_type)
             if err:
                 raise err
 
