@@ -411,6 +411,8 @@ class TypeChecker:
         """
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
+        call_loc = call.func.loc
+        def_loc = sym.loc if sym else None
 
         if w_functype is B.w_dynamic:
             # XXX: how are we supposed to know the color of the result if we
@@ -427,20 +429,51 @@ class TypeChecker:
             return 'red', B.w_dynamic # ???
 
         if not isinstance(w_functype, W_FuncType):
-            self._call_error_non_callable(call, sym, w_functype)
+            self._call_error_non_callable(w_functype,
+                                          def_loc=def_loc,
+                                          call_loc=call_loc)
         #
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
+
+        self.call_typecheck(
+            w_functype,
+            argtypes_w,
+            def_loc = def_loc,
+            call_loc = call_loc,
+            argnodes = call.args)
+
+        # the color of the result depends on the color of the function: if we
+        # call a @blue function, we get a blue result
+        rescolor = w_functype.color
+        return rescolor, w_functype.w_restype
+
+
+    def call_typecheck(self,
+                       w_functype: W_FuncType,
+                       argtypes_w: Sequence[W_Type],
+                       *,
+                       def_loc: Optional[Loc],
+                       call_loc: Optional[Loc],
+                       argnodes: Sequence[ast.Expr],
+                       ):
         got_nargs = len(argtypes_w)
         exp_nargs = len(w_functype.params)
         if got_nargs != exp_nargs:
-            self._call_error_wrong_argcount(call, sym, got_nargs, exp_nargs)
+            self._call_error_wrong_argcount(
+                got_nargs,
+                exp_nargs,
+                def_loc = def_loc,
+                call_loc = call_loc,
+                argnodes = argnodes)
         #
+        assert len(argnodes) == len(argtypes_w)
         for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
                                                     argtypes_w)):
-            err = self.convert_type_maybe(call.args[i], w_arg_type, param.w_type)
+            arg_expr = argnodes[i]
+            err = self.convert_type_maybe(arg_expr, w_arg_type, param.w_type)
             if err:
-                if sym:
-                    err.add('note', 'function defined here', sym.loc)
+                if def_loc:
+                    err.add('note', 'function defined here', def_loc)
                 raise err
         #
         # the color of the result depends on the color of the function: if we
@@ -448,18 +481,24 @@ class TypeChecker:
         rescolor = w_functype.color
         return rescolor, w_functype.w_restype
 
-    def _call_error_non_callable(self, call: ast.Call,
-                                 sym: Optional[Symbol],
-                                 w_type: W_Type) -> NoReturn:
+    def _call_error_non_callable(self,
+                                 w_type: W_Type,
+                                 def_loc: Optional[Loc],
+                                 call_loc: Optional[Loc],
+                                 ) -> NoReturn:
         err = SPyTypeError(f'cannot call objects of type `{w_type.name}`')
-        err.add('error', 'this is not a function', call.func.loc)
-        if sym:
-            err.add('note', 'variable defined here', sym.loc)
+        if call_loc:
+            err.add('error', 'this is not a function', call_loc)
+        if def_loc:
+            err.add('note', 'variable defined here', def_loc)
         raise err
 
-    def _call_error_wrong_argcount(self, call: ast.Call,
-                                   sym: Optional[Symbol],
-                                   got: int, exp: int) -> NoReturn:
+    def _call_error_wrong_argcount(self, got: int, exp: int,
+                                   *,
+                                   def_loc: Optional[Loc],
+                                   call_loc: Optional[Loc],
+                                   argnodes: Sequence[ast.Expr],
+                                   ) -> NoReturn:
         assert got != exp
         takes = maybe_plural(exp, f'takes {exp} argument')
         supplied = maybe_plural(got,
@@ -467,23 +506,27 @@ class TypeChecker:
                                 f'{got} arguments were supplied')
         err = SPyTypeError(f'this function {takes} but {supplied}')
         #
-        if got < exp:
-            diff = exp - got
-            arguments = maybe_plural(diff, 'argument')
-            err.add('error', f'{diff} {arguments} missing', call.func.loc)
-        else:
-            diff = got - exp
-            arguments = maybe_plural(diff, 'argument')
-            first_extra_arg = call.args[exp]
-            last_extra_arg = call.args[-1]
-            # XXX this assumes that all the arguments are on the same line
-            loc = first_extra_arg.loc.replace(
-                col_end = last_extra_arg.loc.col_end
-            )
-            err.add('error', f'{diff} extra {arguments}', loc)
+        # if we know the call_loc, we can add more detailed errors
+
+        if call_loc:
+            assert argnodes is not None
+            if got < exp:
+                diff = exp - got
+                arguments = maybe_plural(diff, 'argument')
+                err.add('error', f'{diff} {arguments} missing', call_loc)
+            else:
+                diff = got - exp
+                arguments = maybe_plural(diff, 'argument')
+                first_extra_arg = argnodes[exp]
+                last_extra_arg = argnodes[-1]
+                # XXX this assumes that all the arguments are on the same line
+                loc = first_extra_arg.loc.replace(
+                    col_end = last_extra_arg.loc.col_end
+                )
+                err.add('error', f'{diff} extra {arguments}', loc)
         #
-        if sym:
-            err.add('note', 'function defined here', sym.loc)
+        if def_loc:
+            err.add('note', 'function defined here', def_loc)
         raise err
 
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
