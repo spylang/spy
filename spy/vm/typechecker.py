@@ -87,7 +87,7 @@ class TypeChecker:
             err.add('note', msg, expr.loc)
             raise err
 
-    def convert_type_maybe(self, expr: ast.Expr, w_got: W_Type,
+    def convert_type_maybe(self, expr: Optional[ast.Expr], w_got: W_Type,
                            w_exp: W_Type) -> Optional[SPyTypeError]:
         """
         Check that the given expr if compatible with the expected type and/or can
@@ -103,7 +103,11 @@ class TypeChecker:
         if self.vm.issubclass(w_got, w_exp):
             # nothing to do
             return None
-        elif self.vm.issubclass(w_exp, w_got):
+
+        # if there is something to do, we MUST have an expr
+        assert expr is not None
+
+        if self.vm.issubclass(w_exp, w_got):
             # implicit upcast
             self.expr_conv[expr] = DynamicCast(w_exp)
             return None
@@ -376,7 +380,7 @@ class TypeChecker:
             w_functype,
             argtypes_w,
             def_loc = None, # would be nice to find it somehow
-            call_loc = node.loc,
+            call_loc = node.loc, # type: ignore
             argnodes = args)
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
@@ -421,15 +425,14 @@ class TypeChecker:
         rescolor = w_functype.color
         return rescolor, w_functype.w_restype
 
-
     def call_typecheck(self,
                        w_functype: W_FuncType,
                        argtypes_w: Sequence[W_Type],
                        *,
                        def_loc: Optional[Loc],
                        call_loc: Optional[Loc],
-                       argnodes: Sequence[ast.Expr],
-                       ):
+                       argnodes: Sequence[ast.Expr | None],
+                       ) -> None:
         got_nargs = len(argtypes_w)
         exp_nargs = len(w_functype.params)
         if got_nargs != exp_nargs:
@@ -449,11 +452,6 @@ class TypeChecker:
                 if def_loc:
                     err.add('note', 'function defined here', def_loc)
                 raise err
-        #
-        # the color of the result depends on the color of the function: if we
-        # call a @blue function, we get a blue result
-        rescolor = w_functype.color
-        return rescolor, w_functype.w_restype
 
     def _call_error_non_callable(self,
                                  w_type: W_Type,
@@ -471,7 +469,7 @@ class TypeChecker:
                                    *,
                                    def_loc: Optional[Loc],
                                    call_loc: Optional[Loc],
-                                   argnodes: Sequence[ast.Expr],
+                                   argnodes: Sequence[ast.Expr | None],
                                    ) -> NoReturn:
         assert got != exp
         takes = maybe_plural(exp, f'takes {exp} argument')
@@ -493,6 +491,8 @@ class TypeChecker:
                 arguments = maybe_plural(diff, 'argument')
                 first_extra_arg = argnodes[exp]
                 last_extra_arg = argnodes[-1]
+                assert first_extra_arg is not None
+                assert last_extra_arg is not None
                 # XXX this assumes that all the arguments are on the same line
                 loc = first_extra_arg.loc.replace(
                     col_end = last_extra_arg.loc.col_end
