@@ -209,6 +209,7 @@ class TypeChecker:
                   node.attr)
         self.opimpl_typecheck(
             w_opimpl,
+            node,
             [node.target, None, node.value],
             [w_otype, B.w_str, w_vtype],
             errmsg = errmsg
@@ -302,6 +303,7 @@ class TypeChecker:
         w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, w_attr)
         self.opimpl_typecheck(
             w_opimpl,
+            expr,
             [expr.value, None],
             [w_vtype, B.w_str],
             errmsg = "type `{0}` has no attribute '%s'" % expr.attr
@@ -340,13 +342,14 @@ class TypeChecker:
         w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
 
         # step 3: check that we can call the returned w_opimpl
-        self.opimpl_typecheck(w_opimpl, args, argtypes_w, errmsg=errmsg)
+        self.opimpl_typecheck(w_opimpl, node, args, argtypes_w, errmsg=errmsg)
         assert isinstance(w_opimpl, W_Func)
         self.opimpl[node] = w_opimpl
         return color, w_opimpl.w_functype.w_restype
 
     def opimpl_typecheck(self,
                          w_opimpl: W_Object,
+                         node: ast.Node,
                          args: Sequence[ast.Expr | None],
                          argtypes_w: list[W_Type],
                          *,
@@ -355,19 +358,7 @@ class TypeChecker:
         """
         Check the arg types that we are passing to the opimpl, and insert
         appropriate type conversions if needed.
-
-        Note: this is very similar to check_expr_Call: the difference is that
-        here we operate on a concrete object w_opimpl, while check_expr_Call
-        operates on an AST node (and thus has more Loc info for better
-        diagnostics).
-
-        Ideally, in case of user-defined opimpls, we would like to show
-        diagnostic with locations, but we don't have it at the moment.
-
-        Maybe we could reduce a bit the code duplication in the future.
         """
-        err: Optional[SPyTypeError] = None
-
         if w_opimpl is B.w_NotImplemented:
             typenames = [w_t.name for w_t in argtypes_w]
             errmsg = errmsg.format(*typenames)
@@ -380,30 +371,13 @@ class TypeChecker:
 
         assert isinstance(w_opimpl, W_Func)
         w_functype = w_opimpl.w_functype
-        #
-        # check number of arguments
-        got = len(argtypes_w)
-        exp = len(w_functype.params)
-        if got != exp:
-            takes = maybe_plural(exp, f'takes {exp} argument')
-            supplied = maybe_plural(got,
-                                    f'1 argument was supplied',
-                                    f'{got} arguments were supplied')
-            err = SPyTypeError(f'this function {takes} but {supplied}')
-            raise err
-        #
-        # check types
-        assert len(args) == got
-        for i in range(got):
-            arg = args[i]
-            w_argtype = argtypes_w[i]
-            w_exp_type = w_functype.params[i].w_type
-            if arg is None:
-                assert w_argtype == w_exp_type
-            else:
-                err = self.convert_type_maybe(arg, w_argtype, w_exp_type)
-                if err:
-                    raise err
+
+        self.call_typecheck(
+            w_functype,
+            argtypes_w,
+            def_loc = None, # would be nice to find it somehow
+            call_loc = node.loc,
+            argnodes = args)
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         """
