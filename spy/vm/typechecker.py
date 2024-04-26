@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, NoReturn, Any
+from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence
 from types import NoneType
 from spy import ast
 from spy.fqn import QN, FQN
@@ -87,13 +87,22 @@ class TypeChecker:
             err.add('note', msg, expr.loc)
             raise err
 
-    def convert_type_maybe(self, expr: ast.Expr, w_got: W_Type,
+    def convert_type_maybe(self, expr: Optional[ast.Expr], w_got: W_Type,
                            w_exp: W_Type) -> Optional[SPyTypeError]:
         """
-        Check that the given expr if compatible with the expected type and/or can
+        Check that the given type if compatible with the expected type and/or can
         be converted to it.
 
-        If needed, it registers a type converter for the expr.
+        We have two cases, depending whether `expr` is None or not:
+
+        1. `expr is not None`: this is the standard case, and the type comes
+           from a user expression: in this case, automatic conversion is
+           allowed
+
+        2. `expr is None`: this happens only for a few builtin operators
+           (e.g. the `attr` value in GETATTR/SETATTR): in this case, the types
+           must match without conversions. It is an internal error to do
+           otherwise.
 
         If there is a type mismatch, it returns a SPyTypeError: in that case,
         it is up to the caller to add extra info and raise the error.
@@ -103,7 +112,12 @@ class TypeChecker:
         if self.vm.issubclass(w_got, w_exp):
             # nothing to do
             return None
-        elif self.vm.issubclass(w_exp, w_got):
+
+        # the types don't match and/or we need a conversion (see point 2 above)
+        assert expr is not None
+
+        # try to see whether we can apply a type conversion
+        if self.vm.issubclass(w_exp, w_got):
             # implicit upcast
             self.expr_conv[expr] = DynamicCast(w_exp)
             return None
@@ -203,33 +217,26 @@ class TypeChecker:
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
-
         w_attr = self.vm.wrap(node.attr)
         w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, w_attr, w_vtype)
-        if w_opimpl is B.w_NotImplemented:
-            ot = w_otype.name
-            vt = w_vtype.name
-            attr = node.attr
-            err = SPyTypeError(
-                f"type `{ot}` does not support assignment to attribute '{attr}'")
-            err.add('error', f'this is `{ot}`', node.target.loc)
-            err.add('error', f'this is `{vt}`', node.value.loc)
-            raise err
-        else:
-            self.opimpl[node] = w_opimpl
+        errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
+                  node.attr)
+        self.opimpl_typecheck(
+            w_opimpl,
+            node,
+            [node.target, None, node.value],
+            [w_otype, B.w_str, w_vtype],
+            errmsg = errmsg
+        )
+        self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
-        _, w_otype = self.check_expr(node.target)
-        _, w_itype = self.check_expr(node.index)
-        _, w_vtype = self.check_expr(node.value)
-
-        w_opimpl = OP.w_SETITEM.pyfunc(self.vm, w_otype, w_itype, w_vtype)
-        if w_opimpl is B.w_NotImplemented:
-            # XXX better error and write a test
-            err = SPyTypeError("setitem not implemented")
-            raise err
-        else:
-            self.opimpl[node] = w_opimpl
+        self.OP_dispatch(
+            OP.w_SETITEM,
+            node,
+            [node.target, node.index, node.value],
+            errmsg = "cannot do `{0}[`{1}`] = ..."
+        )
 
     # ==== expressions ====
 
@@ -277,26 +284,13 @@ class TypeChecker:
         return 'blue', w_type
 
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
-        lcolor, w_ltype = self.check_expr(binop.left)
-        rcolor, w_rtype = self.check_expr(binop.right)
-        color = maybe_blue(lcolor, rcolor)
-
-        w_op = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        w_opimpl = self.vm.call_function(w_op, [w_ltype, w_rtype])
-
-        if w_opimpl is B.w_NotImplemented:
-            lt = w_ltype.name
-            rt = w_rtype.name
-            err = SPyTypeError(f'cannot do `{lt}` {binop.op} `{rt}`')
-            err.add('error', f'this is `{lt}`', binop.left.loc)
-            err.add('error', f'this is `{rt}`', binop.right.loc)
-            raise err
-
-        assert isinstance(w_opimpl, W_Func)
-        self.opimpl_check_args(w_opimpl, binop, [binop.left, binop.right])
-        self.opimpl[binop] = w_opimpl
-        w_restype = w_opimpl.w_functype.w_restype
-        return color, w_restype
+        w_OP = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        return self.OP_dispatch(
+            w_OP,
+            binop,
+            [binop.left, binop.right],
+            errmsg = 'cannot do `{0}` %s `{1}`' % binop.op
+        )
 
     check_expr_Add = check_expr_BinOp
     check_expr_Sub = check_expr_BinOp
@@ -309,74 +303,104 @@ class TypeChecker:
     check_expr_Gt = check_expr_BinOp
     check_expr_GtE = check_expr_BinOp
 
-    def opimpl_check_args(self, w_opimpl: W_Func, op: ast.Expr,
-                          args: list[ast.Expr]) -> None:
-        """
-        Check that arg types that we are passing to the opimpl, and insert
-        appropriate type conversions if needed.
-
-        Note: this is very similar to check_call & co: the difference is
-        that if here we find mistake in the signature (e.g. wrong argcount
-        or type mismatch) we treat it as an internal error instead of an
-        user error.
-
-        Maybe we could reduce a bit the code duplication in the future.
-        """
-        w_functype = w_opimpl.w_functype
-        argtypes_w = [self.check_expr(arg)[1] for arg in args]
-        got_nargs = len(argtypes_w)
-        exp_nargs = len(w_functype.params)
-        assert got_nargs == exp_nargs, 'wrong opimpl?'
-
-        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
-                                                    argtypes_w)):
-            err = self.convert_type_maybe(args[i], w_arg_type, param.w_type)
-            assert not err, 'wrong opimpl?'
-
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        vcolor, w_vtype = self.check_expr(expr.value)
-        icolor, w_itype = self.check_expr(expr.index)
-        color = maybe_blue(vcolor, icolor)
-        w_opimpl = OP.w_GETITEM.pyfunc(self.vm, w_vtype, w_itype)
-        if (isinstance(w_opimpl, W_Func) and
-            w_opimpl.qn == QN('operator::str_getitem')):
-            # XXX for now this is a special case, to check that `i` can be
-            # converted to `i32`. Ideally, we should use the same mechanism
-            # that we have already for calls
-            self.opimpl[expr] = w_opimpl
-            err = self.convert_type_maybe(expr.index, w_itype, B.w_i32)
-            if err:
-                err.add('note', f'this is a `str`', expr.value.loc)
-                raise err
-            return color, B.w_str
-        elif w_opimpl is not B.w_NotImplemented:
-            # this should be merged with the 'then' above
-            self.opimpl[expr] = w_opimpl
-            return color, w_opimpl.w_functype.w_restype
-        else:
-            v = w_vtype.name
-            i = w_itype.name
-            err = SPyTypeError(f'cannot do `{v}`[`{i}`]')
-            err.add('error', f'this is `{v}`', expr.value.loc)
-            err.add('error', f'this is `{i}`', expr.index.loc)
-            raise err
+        return self.OP_dispatch(
+            OP.w_GETITEM,
+            expr,
+            [expr.value, expr.index],
+            errmsg = 'cannot do `{0}`[`{1}`]'
+        )
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
         w_attr = self.vm.wrap(expr.attr)
         w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, w_attr)
+        self.opimpl_typecheck(
+            w_opimpl,
+            expr,
+            [expr.value, None],
+            [w_vtype, B.w_str],
+            errmsg = "type `{0}` has no attribute '%s'" % expr.attr
+        )
+        self.opimpl[expr] = w_opimpl
+        return color, w_opimpl.w_functype.w_restype
+
+    def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
+                    *, errmsg: str) -> tuple[Color, W_Type]:
+        """
+        Resolve and typecheck an operator call.
+
+        It does the following:
+
+          - typecheck the args and compute their type
+          - call OP and get the opimpl
+          - raise SPyTypeError if the opimpl is NotImplemented
+          - check that the returned opimpl is compatible with the type of the
+            args
+          - record the opimpl for the given node
+
+        Note that this works only for "regular" operators which operate only
+        on argtypes. In particular, GETATTR and SETATTR needs to be handled
+        differently, because they also take a VALUE (the attribute, as a
+        string) instead of a TYPE.
+        """
+        # step 1: determine the arguments to pass to OP()
+        argtypes_w = []
+        color: Color = 'blue'
+        for arg in args:
+            c1, w_argtype = self.check_expr(arg)
+            argtypes_w.append(w_argtype)
+            color = maybe_blue(color, c1)
+
+        # step 2: call OP() and get w_opimpl
+        w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
+
+        # step 3: check that we can call the returned w_opimpl
+        self.opimpl_typecheck(w_opimpl, node, args, argtypes_w, errmsg=errmsg)
+        assert isinstance(w_opimpl, W_Func)
+        self.opimpl[node] = w_opimpl
+        return color, w_opimpl.w_functype.w_restype
+
+    def opimpl_typecheck(self,
+                         w_opimpl: W_Object,
+                         node: ast.Node,
+                         args: Sequence[ast.Expr | None],
+                         argtypes_w: list[W_Type],
+                         *,
+                         errmsg: str,
+                         ) -> None:
+        """
+        Check the arg types that we are passing to the opimpl, and insert
+        appropriate type conversions if needed.
+        """
         if w_opimpl is B.w_NotImplemented:
-            v = w_vtype.name
-            err = SPyTypeError(f"type `{v}` has no attribute '{expr.attr}'")
-            err.add('error', f'this is `{v}`', expr.value.loc)
+            typenames = [w_t.name for w_t in argtypes_w]
+            errmsg = errmsg.format(*typenames)
+            err = SPyTypeError(errmsg)
+            for arg, w_argtype in zip(args, argtypes_w):
+                if arg is not None:
+                    t = w_argtype.name
+                    err.add('error', f'this is `{t}`', arg.loc)
             raise err
-        else:
-            self.opimpl[expr] = w_opimpl
-            return color, w_opimpl.w_functype.w_restype
+
+        assert isinstance(w_opimpl, W_Func)
+        w_functype = w_opimpl.w_functype
+
+        self.call_typecheck(
+            w_functype,
+            argtypes_w,
+            def_loc = None, # would be nice to find it somehow
+            call_loc = node.loc, # type: ignore
+            argnodes = args)
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
+        """
+        See also opimpl_typecheck
+        """
         color, w_functype = self.check_expr(call.func)
         sym = self.name2sym_maybe(call.func)
+        call_loc = call.func.loc
+        def_loc = sym.loc if sym else None
 
         if w_functype is B.w_dynamic:
             # XXX: how are we supposed to know the color of the result if we
@@ -393,39 +417,70 @@ class TypeChecker:
             return 'red', B.w_dynamic # ???
 
         if not isinstance(w_functype, W_FuncType):
-            self._call_error_non_callable(call, sym, w_functype)
+            self._call_error_non_callable(w_functype,
+                                          def_loc=def_loc,
+                                          call_loc=call_loc)
         #
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-        got_nargs = len(argtypes_w)
-        exp_nargs = len(w_functype.params)
-        if got_nargs != exp_nargs:
-            self._call_error_wrong_argcount(call, sym, got_nargs, exp_nargs)
-        #
-        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
-                                                    argtypes_w)):
-            err = self.convert_type_maybe(call.args[i], w_arg_type, param.w_type)
-            if err:
-                if sym:
-                    err.add('note', 'function defined here', sym.loc)
-                raise err
-        #
+
+        self.call_typecheck(
+            w_functype,
+            argtypes_w,
+            def_loc = def_loc,
+            call_loc = call_loc,
+            argnodes = call.args)
+
         # the color of the result depends on the color of the function: if we
         # call a @blue function, we get a blue result
         rescolor = w_functype.color
         return rescolor, w_functype.w_restype
 
-    def _call_error_non_callable(self, call: ast.Call,
-                                 sym: Optional[Symbol],
-                                 w_type: W_Type) -> NoReturn:
+    def call_typecheck(self,
+                       w_functype: W_FuncType,
+                       argtypes_w: Sequence[W_Type],
+                       *,
+                       def_loc: Optional[Loc],
+                       call_loc: Optional[Loc],
+                       argnodes: Sequence[ast.Expr | None],
+                       ) -> None:
+        got_nargs = len(argtypes_w)
+        exp_nargs = len(w_functype.params)
+        if got_nargs != exp_nargs:
+            self._call_error_wrong_argcount(
+                got_nargs,
+                exp_nargs,
+                def_loc = def_loc,
+                call_loc = call_loc,
+                argnodes = argnodes)
+        #
+        assert len(argnodes) == len(argtypes_w)
+        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
+                                                    argtypes_w)):
+            arg_expr = argnodes[i]
+            err = self.convert_type_maybe(arg_expr, w_arg_type, param.w_type)
+            if err:
+                if def_loc:
+                    err.add('note', 'function defined here', def_loc)
+                raise err
+
+    def _call_error_non_callable(self,
+                                 w_type: W_Type,
+                                 def_loc: Optional[Loc],
+                                 call_loc: Optional[Loc],
+                                 ) -> NoReturn:
         err = SPyTypeError(f'cannot call objects of type `{w_type.name}`')
-        err.add('error', 'this is not a function', call.func.loc)
-        if sym:
-            err.add('note', 'variable defined here', sym.loc)
+        if call_loc:
+            err.add('error', 'this is not a function', call_loc)
+        if def_loc:
+            err.add('note', 'variable defined here', def_loc)
         raise err
 
-    def _call_error_wrong_argcount(self, call: ast.Call,
-                                   sym: Optional[Symbol],
-                                   got: int, exp: int) -> NoReturn:
+    def _call_error_wrong_argcount(self, got: int, exp: int,
+                                   *,
+                                   def_loc: Optional[Loc],
+                                   call_loc: Optional[Loc],
+                                   argnodes: Sequence[ast.Expr | None],
+                                   ) -> NoReturn:
         assert got != exp
         takes = maybe_plural(exp, f'takes {exp} argument')
         supplied = maybe_plural(got,
@@ -433,23 +488,29 @@ class TypeChecker:
                                 f'{got} arguments were supplied')
         err = SPyTypeError(f'this function {takes} but {supplied}')
         #
-        if got < exp:
-            diff = exp - got
-            arguments = maybe_plural(diff, 'argument')
-            err.add('error', f'{diff} {arguments} missing', call.func.loc)
-        else:
-            diff = got - exp
-            arguments = maybe_plural(diff, 'argument')
-            first_extra_arg = call.args[exp]
-            last_extra_arg = call.args[-1]
-            # XXX this assumes that all the arguments are on the same line
-            loc = first_extra_arg.loc.replace(
-                col_end = last_extra_arg.loc.col_end
-            )
-            err.add('error', f'{diff} extra {arguments}', loc)
+        # if we know the call_loc, we can add more detailed errors
+
+        if call_loc:
+            assert argnodes is not None
+            if got < exp:
+                diff = exp - got
+                arguments = maybe_plural(diff, 'argument')
+                err.add('error', f'{diff} {arguments} missing', call_loc)
+            else:
+                diff = got - exp
+                arguments = maybe_plural(diff, 'argument')
+                first_extra_arg = argnodes[exp]
+                last_extra_arg = argnodes[-1]
+                assert first_extra_arg is not None
+                assert last_extra_arg is not None
+                # XXX this assumes that all the arguments are on the same line
+                loc = first_extra_arg.loc.replace(
+                    col_end = last_extra_arg.loc.col_end
+                )
+                err.add('error', f'{diff} extra {arguments}', loc)
         #
-        if sym:
-            err.add('note', 'function defined here', sym.loc)
+        if def_loc:
+            err.add('note', 'function defined here', def_loc)
         raise err
 
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
