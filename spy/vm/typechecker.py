@@ -90,10 +90,19 @@ class TypeChecker:
     def convert_type_maybe(self, expr: Optional[ast.Expr], w_got: W_Type,
                            w_exp: W_Type) -> Optional[SPyTypeError]:
         """
-        Check that the given expr if compatible with the expected type and/or can
+        Check that the given type if compatible with the expected type and/or can
         be converted to it.
 
-        If needed, it registers a type converter for the expr.
+        We have two cases, depending whether `expr` is None or not:
+
+        1. `expr is not None`: this is the standard case, and the type comes
+           from a user expression: in this case, automatic conversion is
+           allowed
+
+        2. `expr is None`: this happens only for a few builtin operators
+           (e.g. the `attr` value in GETATTR/SETATTR): in this case, the types
+           must match without conversions. It is an internal error to do
+           otherwise.
 
         If there is a type mismatch, it returns a SPyTypeError: in that case,
         it is up to the caller to add extra info and raise the error.
@@ -104,9 +113,10 @@ class TypeChecker:
             # nothing to do
             return None
 
-        # if there is something to do, we MUST have an expr
+        # the types don't match and/or we need a conversion (see point 2 above)
         assert expr is not None
 
+        # try to see whether we can apply a type conversion
         if self.vm.issubclass(w_exp, w_got):
             # implicit upcast
             self.expr_conv[expr] = DynamicCast(w_exp)
