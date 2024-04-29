@@ -400,10 +400,19 @@ class TypeChecker:
             errmsg = errmsg.format(*typenames)
             err = SPyTypeError(errmsg)
             if dispatch == 'single':
+                # for single dispatch ops, NotImplemented means that the
+                # target doesn't support this operation: so we just report its
+                # type and possibly its definition
                 assert args[0] is not None
+                target = args[0]
                 t = argtypes_w[0].name
-                err.add('error', f'this is `{t}`', args[0].loc)
-            else:
+                err.add('error', f'this is `{t}`', target.loc)
+                sym = self.name2sym_maybe(target)
+                if sym:
+                    err.add('note', f'`{target.id}` defined here', sym.loc)
+            else:x
+                # for multi dispatch ops, all operands are equally important
+                # for finding the opimpl: we report all of them
                 for arg, w_argtype in zip(args, argtypes_w):
                     if arg is not None:
                         t = w_argtype.name
