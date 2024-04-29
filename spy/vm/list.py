@@ -13,7 +13,8 @@ class W_ListFactory(W_Object):
 
         @spy_builtin(QN('operator::ListFactory_getitem'))
         def opimpl(vm: 'SPyVM', w_self: W_ListFactory, w_i: W_Type) -> W_Type:
-            return make_W_List(vm, w_i)
+            pyclass = make_W_List(vm, w_i)
+            return vm.wrap(pyclass)
 
         return vm.wrap(opimpl)
 
@@ -24,9 +25,13 @@ class W_BaseList(W_Object):
 # VM
 CACHE: dict[Any, W_Type] = {}
 
-def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
+def make_W_List(vm_cache: 'SPyVM', w_T: W_Type) -> W_Type:
+    # well-known specialized lists exist independently of the VM
+    if w_T in (W_Type, W_I32):
+        vm_cache = None
+
     T = w_T.pyclass
-    key = (vm, w_T)
+    key = (vm_cache, w_T)
     if key in CACHE:
         return CACHE[key]
 
@@ -71,7 +76,9 @@ def make_W_List(vm: 'SPyVM', w_T: W_Type) -> W_Type:
                 return B.w_None
             return vm.wrap(setitem)
 
-    w_result = vm.wrap(W_List)
-    assert isinstance(w_result, W_Type)
-    CACHE[key] = w_result
-    return w_result
+    W_List.__name__ = f'W_List[{T.__name__}]'
+    CACHE[key] = W_List
+    return W_List
+
+
+W_List__W_Type = make_W_List(None, W_Type._w)

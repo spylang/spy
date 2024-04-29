@@ -18,6 +18,7 @@ class TestList(CompilerTest):
         w_list_i32 = self.vm.call_function(w_foo, [])
         assert isinstance(w_list_i32, W_Type)
         assert w_list_i32.name == 'list[i32]'
+        assert w_list_i32.pyclass.__name__ == 'W_List[W_I32]'
 
     def test_literal(self):
         mod = self.compile(

@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.list import make_W_List
+from spy.vm.list import make_W_List, W_List__W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
@@ -463,9 +463,7 @@ class TypeChecker:
     def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_otype = self.check_expr(call.func)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-
-        w_List_of_Type = make_W_List(self.vm, B.w_type)
-        w_argtypes = w_List_of_Type.pyclass(argtypes_w) # type: ignore
+        w_argtypes = W_List__W_Type(argtypes_w) # type: ignore
         w_opimpl = self.vm.call_function(OP.w_CALL, [w_otype, w_argtypes])
         newargs = [call.func] + call.args
         errmsg = 'cannot call objects of type `{0}`'
@@ -571,5 +569,5 @@ class TypeChecker:
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None
-        w_listype = make_W_List(self.vm, w_itemtype)
-        return color, w_listype
+        w_listtype = self.vm.wrap(make_W_List(self.vm, w_itemtype))
+        return color, w_listtype
