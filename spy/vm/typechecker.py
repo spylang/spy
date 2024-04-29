@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence
+from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence, Literal
 from types import NoneType
 from spy import ast
 from spy.fqn import QN, FQN
@@ -15,6 +15,15 @@ from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+# DispatchKind is a property of an OPERATOR and can be:
+#
+#   - 'single' if the opimpl depends only on the type of the first operand
+#     (e.g., CALL, GETATTR, etc.)
+#
+#   - 'multi' is the opimpl depends on the types of all operands (e.g., all
+#     binary operators)
+DispatchKind = Literal['single', 'multi']
 
 def maybe_blue(*colors: Color) -> Color:
     """
@@ -226,6 +235,7 @@ class TypeChecker:
             node,
             [node.target, None, node.value],
             [w_otype, B.w_str, w_vtype],
+            dispatch = 'single',
             errmsg = errmsg
         )
         self.opimpl[node] = w_opimpl
@@ -235,6 +245,7 @@ class TypeChecker:
             OP.w_SETITEM,
             node,
             [node.target, node.index, node.value],
+            dispatch = 'single',
             errmsg = "cannot do `{0}[`{1}`] = ..."
         )
 
@@ -289,6 +300,7 @@ class TypeChecker:
             w_OP,
             binop,
             [binop.left, binop.right],
+            dispatch = 'multi',
             errmsg = 'cannot do `{0}` %s `{1}`' % binop.op
         )
 
@@ -308,7 +320,8 @@ class TypeChecker:
             OP.w_GETITEM,
             expr,
             [expr.value, expr.index],
-            errmsg = 'cannot do `{0}`[`{1}`]'
+            dispatch = 'single',
+            errmsg = 'cannot do `{0}`[...]'
         )
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
@@ -320,13 +333,17 @@ class TypeChecker:
             expr,
             [expr.value, None],
             [w_vtype, B.w_str],
+            dispatch = 'single',
             errmsg = "type `{0}` has no attribute '%s'" % expr.attr
         )
         self.opimpl[expr] = w_opimpl
         return color, w_opimpl.w_functype.w_restype
 
     def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
-                    *, errmsg: str) -> tuple[Color, W_Type]:
+                    *,
+                    dispatch: DispatchKind,
+                    errmsg: str
+                    ) -> tuple[Color, W_Type]:
         """
         Resolve and typecheck an operator call.
 
@@ -356,7 +373,8 @@ class TypeChecker:
         w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
 
         # step 3: check that we can call the returned w_opimpl
-        self.opimpl_typecheck(w_opimpl, node, args, argtypes_w, errmsg=errmsg)
+        self.opimpl_typecheck(w_opimpl, node, args, argtypes_w,
+                              dispatch=dispatch, errmsg=errmsg)
         assert isinstance(w_opimpl, W_Func)
         self.opimpl[node] = w_opimpl
         return color, w_opimpl.w_functype.w_restype
@@ -367,20 +385,28 @@ class TypeChecker:
                          args: Sequence[ast.Expr | None],
                          argtypes_w: list[W_Type],
                          *,
+                         dispatch: DispatchKind,
                          errmsg: str,
                          ) -> None:
         """
         Check the arg types that we are passing to the opimpl, and insert
         appropriate type conversions if needed.
+
+        `dispatch` is used only for diagnostics: if it's 'single' we will
+        report the type of the first operand, else of all operands.
         """
         if w_opimpl is B.w_NotImplemented:
             typenames = [w_t.name for w_t in argtypes_w]
             errmsg = errmsg.format(*typenames)
             err = SPyTypeError(errmsg)
-            for arg, w_argtype in zip(args, argtypes_w):
-                if arg is not None:
-                    t = w_argtype.name
-                    err.add('error', f'this is `{t}`', arg.loc)
+            if dispatch == 'single':
+                t = argtypes_w[0].name
+                err.add('error', f'this is `{t}`', args[0].loc)
+            else:
+                for arg, w_argtype in zip(args, argtypes_w):
+                    if arg is not None:
+                        t = w_argtype.name
+                        err.add('error', f'this is `{t}`', arg.loc)
             raise err
 
         assert isinstance(w_opimpl, W_Func)
@@ -394,15 +420,8 @@ class TypeChecker:
             argnodes = args)
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
-        """
-        See also opimpl_typecheck
-        """
-        color, w_functype = self.check_expr(call.func)
-        sym = self.name2sym_maybe(call.func)
-        call_loc = call.func.loc
-        def_loc = sym.loc if sym else None
-
-        if w_functype is B.w_dynamic:
+        color, w_otype = self.check_expr(call.func)
+        if w_otype is B.w_dynamic:
             # XXX: how are we supposed to know the color of the result if we
             # are calling a dynamic expr?
             # E.g.:
@@ -415,25 +434,46 @@ class TypeChecker:
             #     x: dynamic = foo
             #     x()   # color???
             return 'red', B.w_dynamic # ???
+        elif isinstance(w_otype, W_FuncType):
+            # direct call to a function, let's typecheck it directly
+            return self._check_expr_call_func(call)
+        else:
+            # generic call to an arbitrary object, try to use op.CALL
+            return self._check_expr_call_generic(call)
 
-        if not isinstance(w_functype, W_FuncType):
-            self._call_error_non_callable(w_functype,
-                                          def_loc=def_loc,
-                                          call_loc=call_loc)
-        #
+    def _check_expr_call_func(self, call: ast.Call) -> tuple[Color, W_Type]:
+        color, w_functype = self.check_expr(call.func)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-
+        call_loc = call.func.loc
+        sym = self.name2sym_maybe(call.func)
+        def_loc = sym.loc if sym else None
         self.call_typecheck(
             w_functype,
             argtypes_w,
             def_loc = def_loc,
             call_loc = call_loc,
             argnodes = call.args)
-
-        # the color of the result depends on the color of the function: if we
-        # call a @blue function, we get a blue result
+        # the color of the result depends on the color of the function: if
+        # we call a @blue function, we get a blue result
         rescolor = w_functype.color
         return rescolor, w_functype.w_restype
+
+    def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
+        color, w_otype = self.check_expr(call.func)
+        argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
+
+        w_List_of_Type = make_W_List(self.vm, B.w_type)
+        w_argtypes = w_List_of_Type.pyclass(argtypes_w)
+        w_opimpl = self.vm.call_function(OP.w_CALL, [w_otype, w_argtypes])
+        newargs = [call.func] + call.args
+        errmsg = 'cannot call objects of type `{0}`'
+        self.opimpl_typecheck(w_opimpl, call, newargs,
+                              [w_otype] + argtypes_w,
+                              dispatch='single',
+                              errmsg=errmsg)
+        assert isinstance(w_opimpl, W_Func)
+        self.opimpl[call] = w_opimpl
+        return color, w_opimpl.w_functype.w_restype
 
     def call_typecheck(self,
                        w_functype: W_FuncType,
@@ -463,6 +503,7 @@ class TypeChecker:
                     err.add('note', 'function defined here', def_loc)
                 raise err
 
+    # XXX kill me when we have restored the proper diagnostics
     def _call_error_non_callable(self,
                                  w_type: W_Type,
                                  def_loc: Optional[Loc],
