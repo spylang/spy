@@ -27,12 +27,12 @@ class TestCallOp(CompilerTest):
 
             @staticmethod
             def op_CALL(vm: 'SPyVM', w_type: W_Type,
-                        w_argtypes: W_BaseList) -> W_Dynamic:
+                        w_argtypes: W_Dynamic) -> W_Dynamic:
                 @spy_builtin(QN('ext::call'))
                 def call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
-                    return vm.wrap(res)
+                    return vm.wrap(res) # type: ignore
                 return vm.wrap(call)
 
         EXT.add('Adder', W_Adder._w)

@@ -135,7 +135,7 @@ class W_Object:
 
     @staticmethod
     def op_CALL(vm: 'SPyVM', w_type: 'W_Type',
-                w_argtypes: 'W_Object') -> 'W_Dynamic':
+                w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
         raise NotImplementedError('this should never be called')
 
 

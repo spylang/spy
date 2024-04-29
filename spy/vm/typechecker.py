@@ -400,6 +400,7 @@ class TypeChecker:
             errmsg = errmsg.format(*typenames)
             err = SPyTypeError(errmsg)
             if dispatch == 'single':
+                assert args[0] is not None
                 t = argtypes_w[0].name
                 err.add('error', f'this is `{t}`', args[0].loc)
             else:
@@ -443,6 +444,7 @@ class TypeChecker:
 
     def _check_expr_call_func(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_functype = self.check_expr(call.func)
+        assert isinstance(w_functype, W_FuncType)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
         call_loc = call.func.loc
         sym = self.name2sym_maybe(call.func)
@@ -463,7 +465,7 @@ class TypeChecker:
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
 
         w_List_of_Type = make_W_List(self.vm, B.w_type)
-        w_argtypes = w_List_of_Type.pyclass(argtypes_w)
+        w_argtypes = w_List_of_Type.pyclass(argtypes_w) # type: ignore
         w_opimpl = self.vm.call_function(OP.w_CALL, [w_otype, w_argtypes])
         newargs = [call.func] + call.args
         errmsg = 'cannot call objects of type `{0}`'
