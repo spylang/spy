@@ -512,19 +512,6 @@ class TypeChecker:
                     err.add('note', 'function defined here', def_loc)
                 raise err
 
-    # XXX kill me when we have restored the proper diagnostics
-    def _call_error_non_callable(self,
-                                 w_type: W_Type,
-                                 def_loc: Optional[Loc],
-                                 call_loc: Optional[Loc],
-                                 ) -> NoReturn:
-        err = SPyTypeError(f'cannot call objects of type `{w_type.name}`')
-        if call_loc:
-            err.add('error', 'this is not a function', call_loc)
-        if def_loc:
-            err.add('note', 'variable defined here', def_loc)
-        raise err
-
     def _call_error_wrong_argcount(self, got: int, exp: int,
                                    *,
                                    def_loc: Optional[Loc],
@@ -539,7 +526,6 @@ class TypeChecker:
         err = SPyTypeError(f'this function {takes} but {supplied}')
         #
         # if we know the call_loc, we can add more detailed errors
-
         if call_loc:
             assert argnodes is not None
             if got < exp:
