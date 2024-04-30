@@ -410,7 +410,7 @@ class TypeChecker:
                 sym = self.name2sym_maybe(target)
                 if sym:
                     err.add('note', f'`{target.id}` defined here', sym.loc)
-            else:x
+            else:
                 # for multi dispatch ops, all operands are equally important
                 # for finding the opimpl: we report all of them
                 for arg, w_argtype in zip(args, argtypes_w):
