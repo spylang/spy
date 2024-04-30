@@ -1,0 +1,53 @@
+#4414886654598415780
+
+import pytest
+from spy.fqn import QN
+from spy.vm.b import B
+from spy.vm.object import spytype, Member, Annotated
+from spy.vm.function import spy_builtin
+from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
+from spy.vm.list import W_BaseList
+from spy.vm.registry import ModuleRegistry
+from spy.vm.vm import SPyVM
+from spy.tests.support import CompilerTest, no_C
+
+@no_C
+class TestCallOp(CompilerTest):
+    SKIP_SPY_BACKEND_SANITY_CHECK = True
+
+    def test_call_instance(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext', '<ext>')
+
+        @spytype('Adder')
+        class W_Adder(W_Object):
+
+            def __init__(self, x: int) -> None:
+                self.x = x
+
+            @staticmethod
+            def op_CALL(vm: 'SPyVM', w_type: W_Type,
+                        w_argtypes: W_Dynamic) -> W_Dynamic:
+                @spy_builtin(QN('ext::call'))
+                def call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
+                    y = vm.unwrap_i32(w_y)
+                    res = w_obj.x + y
+                    return vm.wrap(res) # type: ignore
+                return vm.wrap(call)
+
+        EXT.add('Adder', W_Adder._w)
+
+        @EXT.builtin
+        def make(vm: 'SPyVM', w_x: W_I32) -> W_Adder:
+            return W_Adder(vm.unwrap_i32(w_x))
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import make, Adder
+
+        def foo(x: i32, y: i32) -> i32:
+            obj: Adder = make(x)
+            return obj(y)
+        """)
+        x = mod.foo(5, 7)
+        assert x == 12

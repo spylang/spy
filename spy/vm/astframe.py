@@ -6,7 +6,7 @@ from spy.fqn import FQN, QN
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
-from spy.irgen.symtable import Symbol
+from spy.irgen.symtable import Symbol, Color
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
@@ -234,6 +234,21 @@ class ASTFrame:
 
     def eval_expr_Call(self, call: ast.Call) -> W_Object:
         color, w_functype = self.t.check_expr(call.func)
+        if call in self.t.opimpl:
+            return self._eval_call_opimpl(call, color, w_functype)
+        else:
+            return self._eval_call_func(call, color, w_functype)
+
+    def _eval_call_opimpl(self, call: ast.Call, color: Color,
+                          w_functype: W_Type) -> W_Object:
+        w_opimpl = self.t.opimpl[call]
+        w_target = self.eval_expr(call.func)
+        args_w = [self.eval_expr(arg) for arg in call.args]
+        w_res = self.vm.call_function(w_opimpl, [w_target] + args_w)
+        return w_res
+
+    def _eval_call_func(self, call: ast.Call, color: Color,
+                        w_functype: W_Type) -> W_Object:
         assert color == 'blue', 'indirect calls not supported'
         w_func = self.eval_expr(call.func)
 

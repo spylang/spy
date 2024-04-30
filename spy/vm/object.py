@@ -133,6 +133,11 @@ class W_Object:
                    w_vtype: 'W_Type') -> 'W_Dynamic':
         raise NotImplementedError('this should never be called')
 
+    @staticmethod
+    def op_CALL(vm: 'SPyVM', w_type: 'W_Type',
+                w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
+        raise NotImplementedError('this should never be called')
+
 
 class W_Type(W_Object):
     """
