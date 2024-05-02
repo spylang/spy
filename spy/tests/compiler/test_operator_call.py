@@ -82,6 +82,7 @@ class TestCallOp(CompilerTest):
         mod = self.compile("""
         from ext import Point
 
+        @blue
         def foo(x: i32, y: i32) -> i32:
             p = Point(x, y)
             return p.x * 10 + p.y
