@@ -178,6 +178,23 @@ class W_BuiltinFunc(W_Func):
 
 
 def spy_builtin(qn: QN) -> Callable:
+    """
+    Decorator to make an interp-level function wrappable by the VM.
+
+    Example of usage:
+
+        @spy_builtin(QN("foo::hello"))
+        def hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
+            ...
+
+        w_hello = vm.wrap(hello)
+        assert isinstance(w_hello, W_BuiltinFunc)
+        assert w_hello.qn == QN("foo::hello")
+
+    The w_functype of the wrapped function is automatically computed by
+    inspectng the signature of the interp-level function. The first parameter
+    MUST be 'vm'.
+    """
     # this is B.w_dynamic (we cannot use B due to circular imports)
     B_w_dynamic = w_DynamicType
 
