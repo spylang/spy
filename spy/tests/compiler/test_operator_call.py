@@ -51,3 +51,40 @@ class TestCallOp(CompilerTest):
         """)
         x = mod.foo(5, 7)
         assert x == 12
+
+    def test_call_type(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext', '<ext>')
+
+        @spytype('Point')
+        class W_Point(W_Object):
+            w_x: Annotated[W_I32, Member('x')]
+            w_y: Annotated[W_I32, Member('y')]
+
+            def __init__(self, w_x: W_I32, w_y: W_I32) -> None:
+                self.w_x = w_x
+                self.w_y = w_y
+
+            # XXX I don't like to be forced to write op_NEW here: spytype has
+            # all the information needed to syntethize one.
+            @staticmethod
+            def op_NEW(vm: 'SPyVM') -> W_Dynamic:
+                @spy_builtin(QN('ext::new'))
+                def new(vm: 'SPyVM', w_cls: W_Type,
+                        w_x: W_I32, w_y: W_I32) -> W_Point:
+                    return W_Point(w_x, w_y)
+                return vm.wrap(new)
+
+        EXT.add('Point', W_Point._w)
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import Point
+
+        def foo(x: i32, y: i32) -> i32:
+            p = Point(x, y)
+            return p.x * 10 + p.y
+        """)
+        res = mod.foo(3, 6)
+        assert res == 36

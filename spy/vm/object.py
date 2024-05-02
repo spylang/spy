@@ -244,7 +244,26 @@ def _get_member_maybe(t: Any) -> Optional[Member]:
     return None
 
 
-def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
+def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
+    """
+    XXX write docs
+    """
+    metaname = f'Meta_{name}'
+
+    class W_MetaType(W_Type):
+        __name__ = f'W_{metaname}'
+        __qualname__ = __name__
+
+        @staticmethod
+        def op_CALL(vm: 'SPyVM', w_type: 'W_Type',
+                    w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
+            return pyclass.op_NEW(vm)
+
+    W_MetaType._w = W_Type(metaname, W_MetaType)
+    return W_MetaType
+
+
+def spytype(name: str) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
 
@@ -252,7 +271,9 @@ def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
     W_Type and attaches it to the W_* class.
     """
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-        pyclass._w = metaclass(name, pyclass)
+        W_MetaClass = make_metaclass(name, pyclass)
+
+        pyclass._w = W_MetaClass(name, pyclass)
         # setup __spy_members__
         pyclass.__spy_members__ = {}
         for field, t in pyclass.__annotations__.items():
