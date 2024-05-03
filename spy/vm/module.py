@@ -3,7 +3,8 @@ from spy.fqn import QN, FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_Void
 from spy.vm.str import W_Str
-from spy.vm.function import W_ASTFunc, spy_builtin
+from spy.vm.function import W_ASTFunc
+from spy.vm.sig import spy_builtin
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

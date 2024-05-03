@@ -3,6 +3,8 @@ libspy.wasm
 *.o
 tmp/
 tmp_*
+all.sh
+comp.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
