@@ -262,7 +262,7 @@ def _get_member_maybe(t: Any) -> Optional[Member]:
 
 def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
-    Synthetize an app-level metaclass for the corresponding interp-level
+    Synthesize an app-level metaclass for the corresponding interp-level
     pyclass.
 
     Example:
@@ -288,7 +288,7 @@ def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
        of the metaclass. In particular, `op_meta_CALL` is used to create
        app-level instances of w_Foo.
 
-    2. by using `spy_new`, which automatically syntethize an appropriare
+    2. by using `spy_new`, which automatically synthesize an appropriare
        op_meta_CALL. This is just for convenience.
     """
     metaname = f'Meta_{name}'
@@ -300,7 +300,7 @@ def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
     if hasattr(pyclass, 'meta_op_CALL'):
         W_MetaType.op_CALL = pyclass.meta_op_CALL
     elif hasattr(pyclass, 'spy_new'):
-        W_MetaType.op_CALL = syntethize_meta_op_CALL(pyclass)
+        W_MetaType.op_CALL = synthesize_meta_op_CALL(pyclass)
 
     W_MetaType._w = W_Type(metaname, W_MetaType)
     return W_MetaType
@@ -315,7 +315,7 @@ def fix_annotations(fn: Any, types: dict[str, type]) -> None:
             newT = types[T]
             fn.__annotations__[key] = newT
 
-def syntethize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
+def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     """
     Given a pyclass which implements spy_new, create an op_CALL for the
     corresponding metaclass. Example:
