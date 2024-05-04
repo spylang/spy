@@ -65,10 +65,9 @@ class TestCallOp(CompilerTest):
                 self.w_x = w_x
                 self.w_y = w_y
 
-            # XXX I don't like to be forced to write op_NEW here: spytype has
-            # all the information needed to syntethize one.
             @staticmethod
-            def op_NEW(vm: 'SPyVM') -> W_Dynamic:
+            def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
+                             w_argtypes: W_Dynamic) -> W_Dynamic:
                 @spy_builtin(QN('ext::new'))
                 def new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:

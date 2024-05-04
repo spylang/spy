@@ -100,8 +100,23 @@ class W_Object:
     # the various op_GETATTR & co.  These must be *static methods* on the
     # class, and must return an opimpl.
     #
+    #
     # The actual logic for the SPy VM resides in the 'operator' module (see
     # spy/vm/modules/operator).
+    #
+    # For convenience, pyclasses can also implement meta_op_*: these will be
+    # automatically used as operators for their applevel metaclass:
+    # strictly-speaking this is not necessary, because one could just write a
+    # metaclass manually with all the needed operators, but this makes it much
+    # easier. For example:
+    #
+    #    @spytype('Foo')
+    #    class W_Foo(W_Object):
+    #        @staticmethod
+    #        def meta_op_CALL(...): ...
+    #
+    # Here spytype will automatically create the metaclass W_Meta_Foo, and it
+    # will assign W_Meta_Foo.op_CALL = W_Foo.meta_op_CALL
 
     @classmethod
     def has_meth_overriden(cls, name: str) -> bool:
@@ -254,10 +269,8 @@ def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
         __name__ = f'W_{metaname}'
         __qualname__ = __name__
 
-        @staticmethod
-        def op_CALL(vm: 'SPyVM', w_type: 'W_Type',
-                    w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
-            return pyclass.op_NEW(vm)
+    if hasattr(pyclass, 'meta_op_CALL'):
+        W_MetaType.op_CALL = pyclass.meta_op_CALL
 
     W_MetaType._w = W_Type(metaname, W_MetaType)
     return W_MetaType
