@@ -262,7 +262,34 @@ def _get_member_maybe(t: Any) -> Optional[Member]:
 
 def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
-    XXX write docs
+    Synthetize an app-level metaclass for the corresponding interp-level
+    pyclass.
+
+    Example:
+
+    @spytype('Foo')
+    class W_Foo(W_Object):
+        pass
+
+    this automatically creates:
+
+    class W_Meta_Foo(W_Type):
+        ...
+
+    The relationship between Foo and Meta_Foo is the following:
+
+    w_Foo = vm.wrap(W_Foo)
+    w_Meta_Foo = vm.wrap(W_Meta_Foo)
+    assert vm.dynamic_type(w_Foo) is w_Meta_Foo
+
+    W_Foo can customize the behavior of the metaclass in various ways:
+
+    1. by using `op_meta_*` operators: these automatically becomes operators
+       of the metaclass. In particular, `op_meta_CALL` is used to create
+       app-level instances of w_Foo.
+
+    2. by using `spy_new`, which automatically syntethize an appropriare
+       op_meta_CALL. This is just for convenience.
     """
     metaname = f'Meta_{name}'
 

@@ -7,7 +7,7 @@ from spy.vm.object import W_Object, W_Type, W_Void
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-# XXX document
+# we cannot import B due to circular imports, let's fake it
 B_w_Void = W_Void._w
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
