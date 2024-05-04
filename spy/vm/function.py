@@ -3,9 +3,12 @@ from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
 from spy.fqn import QN
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, W_Void
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+# XXX document
+B_w_Void = W_Void._w
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
@@ -173,7 +176,7 @@ class W_BuiltinFunc(W_Func):
         return f"<spy function '{self.qn}' (builtin)>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
-        return self.pyfunc(vm, *args_w)
-
-
-# =======
+        w_res = self.pyfunc(vm, *args_w)
+        if w_res is None and self.w_functype.w_restype is B_w_Void:
+            return vm.wrap(None)
+        return w_res
