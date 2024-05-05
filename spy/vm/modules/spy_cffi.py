@@ -2,7 +2,8 @@ from typing import TYPE_CHECKING
 import struct
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
-from spy.vm.w import W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str
+from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
+                      W_Dynamic)
 from spy.vm.list import make_W_List
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
@@ -27,32 +28,34 @@ class W_Field(W_Object):
 
 W_List__W_Field = make_W_List(None, W_Field._w) # XXX
 
-@spytype('StructType')
-class W_StructType(W_Type):
-    w_name: Annotated[W_Str, Member('name')]
-    w_fields: Annotated[W_List__W_Field, Member('fields')]
+from spy.vm.modules.rawbuffer import RB, W_RawBuffer, rb_alloc
 
-    @staticmethod
-    def spy_new(vm: 'SPyVM', w_cls: W_Type,
-                w_name: W_Str,
-                w_fields: W_List__W_Field
-                ) -> 'W_StructType':
-        name = vm.unwrap_str(w_name)
+@CFFI.builtin
+def new_StructType(vm: 'SPyVM', w_name: W_Str,
+                   w_fields: W_List__W_Field) -> W_Type:
 
-        class W_StructObject(W_Object):
-            __qualname__ = f'W_{name}'
-        W_StructObject.__name__ = f'W_{name}'
+    name = vm.unwrap_str(w_name)
+    size = 8 # XXX compute size
 
-        w_st = W_StructType(name, W_StructObject)
-        w_st.w_name = w_name
-        w_st.w_fields = w_fields
-        W_StructObject._w = w_st
+    @spytype(name)
+    class W_StructObject(W_Object):
+        w_rb: W_RawBuffer
 
-        return w_st
+        def __init__(self, w_rb: W_RawBuffer) -> None:
+            self.w_rb = w_rb
 
+        @staticmethod
+        def spy_new(vm: 'SPyVM', w_cls: W_Type) -> f'W_{name}':
+            w_rb = rb_alloc(vm, vm.wrap(size))
+            return W_StructObject(w_rb)
+
+
+    W_StructObject.__name__ = f'W_{name}'
+    W_StructObject.__qualname__ = f'W_{name}'
+
+    return vm.wrap(W_StructObject)
 
 
 
 
 CFFI.add('Field', W_Field._w)
-CFFI.add('StructType', W_StructType._w)

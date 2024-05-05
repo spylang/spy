@@ -23,13 +23,13 @@ class TestSPyCFFI(CompilerTest):
         assert w_f.w_type is B.w_i32
 
     @no_C
-    def test_struct(self):
+    def test_StructType(self):
         mod = self.compile(
         """
-        from spy_cffi import StructType, Field
+        from spy_cffi import new_StructType, Field
 
-        def make_Point() -> StructType:
-            return StructType('Point', [
+        def make_Point() -> type:
+            return new_StructType('Point', [
                 Field('x', 0, i32),
                 Field('y', 4, i32),
             ])
@@ -39,5 +39,25 @@ class TestSPyCFFI(CompilerTest):
         assert pyclass.__qualname__ == 'W_Point'
         #
         w_Point = self.vm.wrap(pyclass)
-        w_meta = self.vm.dynamic_type(w_Point)
-        assert w_meta is CFFI.w_StructType
+        assert repr(w_Point) == "<spy type 'Point'>"
+
+    @no_C
+    def test_StructObject(self):
+        mod = self.compile(
+        """
+        from spy_cffi import new_StructType, Field
+
+        def make_Point() -> type:
+            return new_StructType('Point', [
+                Field('x', 0, i32),
+                Field('y', 4, i32),
+            ])
+
+        Point = make_Point()
+
+        def foo() -> Point:
+            p = Point()
+            return p
+        """)
+        w_point = mod.foo()
+        import pdb;pdb.set_trace()
