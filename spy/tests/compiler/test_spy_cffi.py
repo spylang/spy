@@ -35,6 +35,8 @@ class TestSPyCFFI(CompilerTest):
             ])
         """)
         pyclass = mod.make_Point()
+        XXX
+        import pdb;pdb.set_trace()
         assert pyclass.__name__ == 'W_Point'
         assert pyclass.__qualname__ == 'W_Point'
         #
