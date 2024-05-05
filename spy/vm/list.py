@@ -27,8 +27,11 @@ CACHE: dict[Any, W_Type] = {}
 
 def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
     # well-known specialized lists exist independently of the VM
-    if w_T in (W_Type, W_I32):
-        vm_cache = None
+    ## if w_T in (W_Type, W_I32):
+    ##     vm_cache = None
+
+    vm_cache = None #XXX
+
 
     T = w_T.pyclass
     key = (vm_cache, w_T)

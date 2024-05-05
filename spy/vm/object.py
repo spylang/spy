@@ -358,7 +358,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
 
     return meta_op_CALL
 
-def spytype(name: str) -> Any:
+def spytype(name: str, metaclass=None) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
 
@@ -366,7 +366,10 @@ def spytype(name: str) -> Any:
     W_Type and attaches it to the W_* class.
     """
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-        W_MetaClass = make_metaclass(name, pyclass)
+        if metaclass:
+            W_MetaClass = metaclass
+        else:
+            W_MetaClass = make_metaclass(name, pyclass)
 
         pyclass._w = W_MetaClass(name, pyclass)
         # setup __spy_members__
