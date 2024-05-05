@@ -1,7 +1,8 @@
 from typing import Callable, Optional, TYPE_CHECKING, Any
 from dataclasses import dataclass
 from spy.fqn import QN
-from spy.vm.function import W_FuncType, W_BuiltinFunc, spy_builtin
+from spy.vm.function import W_FuncType, W_BuiltinFunc
+from spy.vm.sig import spy_builtin
 from spy.vm.object import W_Object
 
 class ModuleRegistry:

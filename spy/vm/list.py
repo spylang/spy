@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, no_type_check
 from spy.fqn import QN
 from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void
-from spy.vm.function import spy_builtin
+from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

@@ -4,7 +4,8 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_Dynamic, W_Void
 from spy.vm.module import W_Module
 from spy.vm.str import W_Str
-from spy.vm.function import W_Func, spy_builtin
+from spy.vm.function import W_Func
+from spy.vm.sig import spy_builtin
 from spy.vm.modules.types import W_TypeDef
 
 from . import OP

@@ -47,6 +47,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 import fixedint
 import typing
 from typing import TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional
+from spy.fqn import QN
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.str import W_Str
@@ -100,8 +101,23 @@ class W_Object:
     # the various op_GETATTR & co.  These must be *static methods* on the
     # class, and must return an opimpl.
     #
+    #
     # The actual logic for the SPy VM resides in the 'operator' module (see
     # spy/vm/modules/operator).
+    #
+    # For convenience, pyclasses can also implement meta_op_*: these will be
+    # automatically used as operators for their applevel metaclass:
+    # strictly-speaking this is not necessary, because one could just write a
+    # metaclass manually with all the needed operators, but this makes it much
+    # easier. For example:
+    #
+    #    @spytype('Foo')
+    #    class W_Foo(W_Object):
+    #        @staticmethod
+    #        def meta_op_CALL(...): ...
+    #
+    # Here spytype will automatically create the metaclass W_Meta_Foo, and it
+    # will assign W_Meta_Foo.op_CALL = W_Foo.meta_op_CALL
 
     @classmethod
     def has_meth_overriden(cls, name: str) -> bool:
@@ -244,7 +260,105 @@ def _get_member_maybe(t: Any) -> Optional[Member]:
     return None
 
 
-def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
+def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
+    """
+    Synthesize an app-level metaclass for the corresponding interp-level
+    pyclass.
+
+    Example:
+
+    @spytype('Foo')
+    class W_Foo(W_Object):
+        pass
+
+    this automatically creates:
+
+    class W_Meta_Foo(W_Type):
+        ...
+
+    The relationship between Foo and Meta_Foo is the following:
+
+    w_Foo = vm.wrap(W_Foo)
+    w_Meta_Foo = vm.wrap(W_Meta_Foo)
+    assert vm.dynamic_type(w_Foo) is w_Meta_Foo
+
+    W_Foo can customize the behavior of the metaclass in various ways:
+
+    1. by using `op_meta_*` operators: these automatically becomes operators
+       of the metaclass. In particular, `op_meta_CALL` is used to create
+       app-level instances of w_Foo.
+
+    2. by using `spy_new`, which automatically synthesize an appropriare
+       op_meta_CALL. This is just for convenience.
+    """
+    metaname = f'Meta_{name}'
+
+    class W_MetaType(W_Type):
+        __name__ = f'W_{metaname}'
+        __qualname__ = __name__
+
+    if hasattr(pyclass, 'meta_op_CALL'):
+        W_MetaType.op_CALL = pyclass.meta_op_CALL
+    elif hasattr(pyclass, 'spy_new'):
+        W_MetaType.op_CALL = synthesize_meta_op_CALL(pyclass)
+
+    W_MetaType._w = W_Type(metaname, W_MetaType)
+    return W_MetaType
+
+def fix_annotations(fn: Any, types: dict[str, type]) -> None:
+    """
+    Substitute lazy annotations expressed as strings with their "real"
+    corresponding type.
+    """
+    for key, T in fn.__annotations__.items():
+        if isinstance(T, str) and T in types:
+            newT = types[T]
+            fn.__annotations__[key] = newT
+
+def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
+    """
+    Given a pyclass which implements spy_new, create an op_CALL for the
+    corresponding metaclass. Example:
+
+    class W_Foo(W_Object):
+        @staticmethod
+        def spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
+            ...
+
+    This function creates an op_CALL method which will be put on W_Meta_Foo.
+    W_Meta_Foo.op_CALL returns W_Foo.spy_new as the opimpl.
+
+    Ideally, we would like to be able to write this:
+
+    class W_Foo(W_Object):
+        @staticmethod
+        @spy_builtin(QN("xxx::new"))
+        def spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
+            ...
+
+    But we cannot because spy_builtin is unable to understand the annotation
+    'W_Foo' expressed as a string. A lot of the logic here is basically a
+    workaround for this.
+
+    Inside, we call fix_annotations to replace 'W_Foo' with the actual
+    W_Foo. Once we have done that, we can manually apply @spy_builtin and
+    finally vm.wrap() it.
+    """
+
+    from spy.vm.sig import spy_builtin
+    spy_new = pyclass.spy_new
+
+    def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
+                     w_argtypes: W_Dynamic) -> W_Dynamic:
+        fix_annotations(spy_new, {pyclass.__name__: pyclass})
+        qn = QN(modname='ext', attr='new') # XXX what modname should we use?
+        # manually apply the @spy_builtin decorator to the spy_new function
+        spy_builtin(qn)(spy_new)
+        return vm.wrap(spy_new)
+
+    return meta_op_CALL
+
+def spytype(name: str) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
 
@@ -252,7 +366,9 @@ def spytype(name: str, metaclass: Type[W_Type] = W_Type) -> Any:
     W_Type and attaches it to the W_* class.
     """
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-        pyclass._w = metaclass(name, pyclass)
+        W_MetaClass = make_metaclass(name, pyclass)
+
+        pyclass._w = W_MetaClass(name, pyclass)
         # setup __spy_members__
         pyclass.__spy_members__ = {}
         for field, t in pyclass.__annotations__.items():

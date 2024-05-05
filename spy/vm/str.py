@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Any
 from spy.llwasm import LLWasmInstance
 from spy.fqn import QN
 from spy.vm.object import W_Object, W_Type, W_Dynamic, spytype, W_I32
-from spy.vm.function import spy_builtin
+from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

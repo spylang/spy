@@ -470,7 +470,7 @@ class TypeChecker:
         return rescolor, w_functype.w_restype
 
     def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
-        color, w_otype = self.check_expr(call.func)
+        _, w_otype = self.check_expr(call.func)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
         w_argtypes = W_List__W_Type(argtypes_w) # type: ignore
         w_opimpl = self.vm.call_function(OP.w_CALL, [w_otype, w_argtypes])
@@ -482,7 +482,9 @@ class TypeChecker:
                               errmsg=errmsg)
         assert isinstance(w_opimpl, W_Func)
         self.opimpl[call] = w_opimpl
-        return color, w_opimpl.w_functype.w_restype
+        # XXX I'm not sure that the color is correct here. We need to think
+        # more.
+        return w_opimpl.w_functype.color, w_opimpl.w_functype.w_restype
 
     def call_typecheck(self,
                        w_functype: W_FuncType,

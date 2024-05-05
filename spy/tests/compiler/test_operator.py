@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
-from spy.vm.function import spy_builtin
+from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM

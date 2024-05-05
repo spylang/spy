@@ -1,12 +1,14 @@
 from dataclasses import dataclass
-import inspect
 from typing import TYPE_CHECKING, Any, Optional, Callable
 from spy import ast
 from spy.ast import Color
-from spy.fqn import QN, FQN
-from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType
+from spy.fqn import QN
+from spy.vm.object import W_Object, W_Type, W_Void
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+# we cannot import B due to circular imports, let's fake it
+B_w_Void = W_Void._w
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
@@ -174,53 +176,7 @@ class W_BuiltinFunc(W_Func):
         return f"<spy function '{self.qn}' (builtin)>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
-        return self.pyfunc(vm, *args_w)
-
-
-def spy_builtin(qn: QN) -> Callable:
-    # this is B.w_dynamic (we cannot use B due to circular imports)
-    B_w_dynamic = w_DynamicType
-
-    def is_W_class(x: Any) -> bool:
-        return isinstance(x, type) and issubclass(x, W_Object)
-
-    def to_spy_FuncParam(p: Any) -> FuncParam:
-        if p.name.startswith('w_'):
-            name = p.name[2:]
-        else:
-            name = p.name
-        #
-        pyclass = p.annotation
-        if pyclass is W_Dynamic:
-            return FuncParam(name, B_w_dynamic)
-        elif issubclass(pyclass, W_Object):
-            return FuncParam(name, pyclass._w)
-        else:
-            raise ValueError(f"Invalid param: '{p}'")
-
-    def decorator(fn: Callable) -> Callable:
-        sig = inspect.signature(fn)
-        params = list(sig.parameters.values())
-        if len(params) == 0:
-            msg = (f"The first param should be 'vm: SPyVM'. Got nothing")
-            raise ValueError(msg)
-        if (params[0].name != 'vm' or
-            params[0].annotation != 'SPyVM'):
-            msg = (f"The first param should be 'vm: SPyVM'. Got '{params[0]}'")
-            raise ValueError(msg)
-
-        func_params = [to_spy_FuncParam(p) for p in params[1:]]
-        ret = sig.return_annotation
-        if ret is W_Dynamic:
-            w_restype = B_w_dynamic
-        elif is_W_class(ret):
-            w_restype = ret._w
-        else:
-            raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
-
-        w_functype = W_FuncType(func_params, w_restype)
-        fn._w = W_BuiltinFunc(w_functype, qn, fn)  # type: ignore
-        fn.w_functype = w_functype  # type: ignore
-        return fn
-
-    return decorator
+        w_res = self.pyfunc(vm, *args_w)
+        if w_res is None and self.w_functype.w_restype is B_w_Void:
+            return vm.wrap(None)
+        return w_res

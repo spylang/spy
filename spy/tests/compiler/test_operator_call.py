@@ -4,7 +4,7 @@ import pytest
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
-from spy.vm.function import spy_builtin
+from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
 from spy.vm.list import W_BaseList
 from spy.vm.registry import ModuleRegistry
@@ -51,3 +51,73 @@ class TestCallOp(CompilerTest):
         """)
         x = mod.foo(5, 7)
         assert x == 12
+
+    def test_call_type(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext', '<ext>')
+
+        @spytype('Point')
+        class W_Point(W_Object):
+            w_x: Annotated[W_I32, Member('x')]
+            w_y: Annotated[W_I32, Member('y')]
+
+            def __init__(self, w_x: W_I32, w_y: W_I32) -> None:
+                self.w_x = w_x
+                self.w_y = w_y
+
+            @staticmethod
+            def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
+                             w_argtypes: W_Dynamic) -> W_Dynamic:
+                @spy_builtin(QN('ext::new'))
+                def new(vm: 'SPyVM', w_cls: W_Type,
+                        w_x: W_I32, w_y: W_I32) -> W_Point:
+                    return W_Point(w_x, w_y)
+                return vm.wrap(new)
+
+        EXT.add('Point', W_Point._w)
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import Point
+
+        @blue
+        def foo(x: i32, y: i32) -> i32:
+            p = Point(x, y)
+            return p.x * 10 + p.y
+        """)
+        res = mod.foo(3, 6)
+        assert res == 36
+
+    def test_spy_new(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext', '<ext>')
+
+        @spytype('Point')
+        class W_Point(W_Object):
+            w_x: Annotated[W_I32, Member('x')]
+            w_y: Annotated[W_I32, Member('y')]
+
+            def __init__(self, w_x: W_I32, w_y: W_I32) -> None:
+                self.w_x = w_x
+                self.w_y = w_y
+
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type,
+                        w_x: W_I32, w_y: W_I32) -> 'W_Point':
+                return W_Point(w_x, w_y)
+
+        EXT.add('Point', W_Point._w)
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import Point
+
+        @blue
+        def foo(x: i32, y: i32) -> i32:
+            p = Point(x, y)
+            return p.x * 10 + p.y
+        """)
+        res = mod.foo(3, 6)
+        assert res == 36
