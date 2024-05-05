@@ -54,4 +54,8 @@ class InterpFuncWrapper:
         # *and to call the func, and unwrap the result
         args_w = [self.vm.wrap(arg) for arg in args]
         w_res = self.vm.call_function(self.w_func, args_w)
-        return self.vm.unwrap(w_res)
+        if w_res.has_meth_overriden('spy_unwrap'):
+            return self.vm.unwrap(w_res)
+        else:
+            # just return the w_res so that tests can inspect it
+            return w_res
