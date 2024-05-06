@@ -10,6 +10,7 @@ from spy.vm.function import W_Func
 from spy.vm.list import make_W_List
 from spy.vm.registry import ModuleRegistry
 
+from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.rawbuffer import (RB, W_RawBuffer, rb_alloc, rb_get_i32,
                                       rb_set_i32)
 
@@ -45,34 +46,6 @@ class W_Field(W_Object):
 W_List__W_Field = make_W_List(None, W_Field._w) # XXX
 
 
-
-## @CFFI.builtin
-## def new_StructType(vm: 'SPyVM', w_name: W_Str,
-##                    w_fields: W_List__W_Field) -> W_Type:
-
-##     name = vm.unwrap_str(w_name)
-##     size = 8 # XXX compute size
-
-##     @spytype(name)
-##     class W_StructObject(W_Object):
-##         w_rb: W_RawBuffer
-
-##         def __init__(self, w_rb: W_RawBuffer) -> None:
-##             self.w_rb = w_rb
-
-##         @staticmethod
-##         def spy_new(vm: 'SPyVM', w_cls: W_Type) -> f'W_{name}':
-##             w_rb = rb_alloc(vm, vm.wrap(size))
-##             return W_StructObject(w_rb)
-
-
-##     W_StructObject.__name__ = f'W_{name}'
-##     W_StructObject.__qualname__ = f'W_{name}'
-
-##     return vm.wrap(W_StructObject)
-
-
-from spy.vm.modules.types import W_TypeDef
 
 @CFFI.builtin
 def new_StructType(vm: 'SPyVM', w_name: W_Str,
