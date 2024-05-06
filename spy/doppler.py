@@ -167,6 +167,10 @@ class FuncDoppler:
     def shift_expr_Name(self, name: ast.Name) -> ast.Expr:
         return name
 
+    def shift_expr_List(self, lst: ast.List) -> ast.Expr:
+        items = [self.shift_expr(item) for item in lst.items]
+        return ast.List(lst.loc, items)
+
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)

@@ -165,3 +165,14 @@ class TestDoppler:
         """
         self.redshift(src)
         self.assert_dump(src)
+
+    def test_list(self):
+        src = """
+        def foo() -> dynamic:
+            return [1, 2, 3+4]
+        """
+        self.redshift(src)
+        self.assert_dump("""
+        def foo() -> dynamic:
+            return [1, 2, 7]
+        """)
