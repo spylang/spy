@@ -43,12 +43,25 @@ class TestSPyCFFI(CompilerTest):
     def test_StructObject(self):
         mod = self.compile(
         """
+        from rawbuffer import rb_get_i32, RawBuffer
         from spy_cffi import new_StructType, Field
 
+        @blue
+        def Field_GET(self: Field):
+            T = self.type
+            def getter(obj: RawBuffer, attr: str) -> T:
+                return rb_get_i32(obj, self.offset)
+            return getter
+
+        @blue
+        def newField(name, offset, T) -> Field:
+            return Field(name, offset, T, Field_GET)
+
+        @blue
         def make_Point() -> type:
             return new_StructType('Point', [
-                Field('x', 0, i32),
-                Field('y', 4, i32),
+                newField('x', 0, i32),
+                newField('y', 4, i32),
             ])
 
         Point = make_Point()

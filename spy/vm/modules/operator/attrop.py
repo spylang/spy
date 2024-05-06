@@ -35,7 +35,9 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
 
     if isinstance(w_type, W_TypeDef) and attr in w_type.__spy_descriptors__:
         w_descr = w_type.__spy_descriptors__[attr]
-        w_opimpl = w_descr.op_GET(vm, w_type, w_attr)
+        #w_opimpl = w_descr.op_GET(vm, w_type, w_attr)
+        assert w_descr.w_get.color == 'blue'
+        w_opimpl = vm.call_function(w_descr.w_get, [w_descr])
         return w_opimpl
 
     return B.w_NotImplemented

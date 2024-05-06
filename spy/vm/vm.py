@@ -291,6 +291,15 @@ class SPyVM:
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
+        # XXX hack hack hack (HORROR)
+        def compare_by_id(w_obj):
+            return self.dynamic_type(w_obj).name in ('type', 'Field')
+
+        if compare_by_id(w_a) and compare_by_id(w_b):
+            return self.wrap(w_a is w_b)
+        # /hack hack hack
+
+
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
