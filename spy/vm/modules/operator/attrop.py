@@ -27,10 +27,15 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
         return pyclass.op_GETATTR(vm, w_type, w_attr)
 
     # XXX refactor
-    if isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
+    if isinstance(w_type, W_TypeDef) and w_type.w_getattr is not B.w_NotImplemented:
         w_getattr = w_type.w_getattr
         assert isinstance(w_getattr, W_Func)
         w_opimpl = vm.call_function(w_getattr, [w_type, w_attr])
+        return w_opimpl
+
+    if isinstance(w_type, W_TypeDef) and attr in w_type.__spy_descriptors__:
+        w_descr = w_type.__spy_descriptors__[attr]
+        w_opimpl = w_descr.op_GET(vm, w_type, w_attr)
         return w_opimpl
 
     return B.w_NotImplemented
@@ -49,10 +54,15 @@ def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
         return pyclass.op_SETATTR(vm, w_type, w_attr, w_vtype)
 
     # XXX refactor
-    if isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
+    if isinstance(w_type, W_TypeDef) and w_type.w_setattr is not B.w_NotImplemented:
         w_setattr = w_type.w_setattr
         assert isinstance(w_setattr, W_Func)
         w_opimpl = vm.call_function(w_setattr, [w_type, w_attr, w_vtype])
+        return w_opimpl
+
+    if isinstance(w_type, W_TypeDef) and attr in w_type.__spy_descriptors__:
+        w_descr = w_type.__spy_descriptors__[attr]
+        w_opimpl = w_descr.op_SET(vm, w_type, w_attr, w_vtype)
         return w_opimpl
 
     return B.w_NotImplemented

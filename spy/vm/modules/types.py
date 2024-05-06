@@ -8,6 +8,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object, spytype, W_Dynamic, W_Void, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
+from spy.vm.list import W_BaseList
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -33,11 +34,20 @@ class W_TypeDef(W_Type):
     w_getattr: Annotated[W_Dynamic, Member('__getattr__')]
     w_setattr: Annotated[W_Dynamic, Member('__setattr__')]
 
-    def __init__(self, name: str, w_origintype: W_Type) -> None:
+    def __init__(self, vm: 'SPyVM', name: str, w_origintype: W_Type,
+                 w_descriptors: W_Dynamic) -> None:
         super().__init__(name, w_origintype.pyclass)
         self.w_origintype = w_origintype
         self.w_getattr = B.w_NotImplemented
         self.w_setattr = B.w_NotImplemented
+        self.w_descriptors = w_descriptors
+        self.__spy_descriptors__ = {}
+        #
+        assert isinstance(w_descriptors, W_BaseList)
+        for w_descr in w_descriptors.items_w:
+            name = vm.unwrap_str(w_descr.w_name)
+            self.__spy_descriptors__[name] = w_descr
+
 
     def __repr__(self) -> str:
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
@@ -46,6 +56,7 @@ class W_TypeDef(W_Type):
 TYPES.add('TypeDef', W_TypeDef._w)
 
 @TYPES.builtin
-def makeTypeDef(vm: 'SPyVM', w_name: W_Str, w_origintype: W_Type) -> W_TypeDef:
+def makeTypeDef(vm: 'SPyVM', w_name: W_Str, w_origintype: W_Type,
+                w_descriptors: W_Dynamic) -> W_TypeDef:
     name = vm.unwrap_str(w_name)
-    return W_TypeDef(name, w_origintype)
+    return W_TypeDef(vm, name, w_origintype, w_descriptors)

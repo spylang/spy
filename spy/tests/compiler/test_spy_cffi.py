@@ -33,15 +33,11 @@ class TestSPyCFFI(CompilerTest):
                 Field('x', 0, i32),
                 Field('y', 4, i32),
             ])
+
+        Point = make_Point()
         """)
-        pyclass = mod.make_Point()
-        XXX
-        import pdb;pdb.set_trace()
-        assert pyclass.__name__ == 'W_Point'
-        assert pyclass.__qualname__ == 'W_Point'
-        #
-        w_Point = self.vm.wrap(pyclass)
-        assert repr(w_Point) == "<spy type 'Point'>"
+        w_Point = mod.w_mod.getattr('Point')
+        assert repr(w_Point) == "<spy type 'Point' (typedef of 'RawBuffer')>"
 
     @no_C
     def test_StructObject(self):
@@ -57,9 +53,18 @@ class TestSPyCFFI(CompilerTest):
 
         Point = make_Point()
 
-        def foo() -> Point:
-            p = Point()
+        def setter() -> Point:
+            p: Point = Point()
+            p.x = 0xDDCCBBAA
+            p.y = 0x44332211
             return p
+
+        def getter() -> i32:
+            p: Point = Point()
+            p.x = 30
+            p.y = 12
+            return p.x + p.y
         """)
-        w_point = mod.foo()
-        import pdb;pdb.set_trace()
+        buf = mod.setter()
+        assert buf == bytearray(b'\xAA\xBB\xCC\xDD\x11\x22\x33\x44')
+        assert mod.getter() == 42

@@ -8,6 +8,10 @@ from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
 from spy.vm.sig import spy_builtin
 from spy.vm.list import make_W_List
 from spy.vm.registry import ModuleRegistry
+
+from spy.vm.modules.rawbuffer import (RB, W_RawBuffer, rb_alloc, rb_get_i32,
+                                      rb_set_i32)
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -28,9 +32,34 @@ class W_Field(W_Object):
         w_field.w_type = w_type
         return w_field
 
+    def op_GET(self, vm: 'SPyVM', w_T: W_Type, w_attr: W_Str) -> W_Dynamic:
+        T = w_T.pyclass
+        R = self.w_type.pyclass
+        w_offset = self.w_offset
+
+        @spy_builtin(QN("xxx::get"))
+        def opimpl(vm: 'SPyVM', w_obj: T, w_attr: W_Str) -> R:
+            return rb_get_i32(vm, w_obj, w_offset)
+
+        return vm.wrap(opimpl)
+
+    def op_SET(self, vm: 'SPyVM', w_T: W_Type, w_attr: W_Str,
+               w_V: W_Type) -> W_Dynamic:
+        assert w_V is self.w_type
+        T = w_T.pyclass
+        V = w_V.pyclass
+        w_offset = self.w_offset
+
+        @spy_builtin(QN("xxx::get"))
+        def opimpl(vm: 'SPyVM', w_obj: T, w_attr: W_Str, w_val: V) -> None:
+            rb_set_i32(vm, w_obj, w_offset, w_val)
+
+        return vm.wrap(opimpl)
+
+
 W_List__W_Field = make_W_List(None, W_Field._w) # XXX
 
-from spy.vm.modules.rawbuffer import RB, W_RawBuffer, rb_alloc
+
 
 ## @CFFI.builtin
 ## def new_StructType(vm: 'SPyVM', w_name: W_Str,
@@ -98,7 +127,7 @@ def new_StructType(vm: 'SPyVM', w_name: W_Str,
 
             return vm.wrap(new)
 
-    w_result = W_StructType(name, RB.w_RawBuffer)
+    w_result = W_StructType(vm, name, RB.w_RawBuffer, w_fields)
     return w_result
 
 CFFI.add('Field', W_Field._w)
