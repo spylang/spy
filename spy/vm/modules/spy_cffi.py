@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 SPY_CFFI = CFFI = ModuleRegistry('spy_cffi', '<spy_cffi>')
 
+CACHE = {}
+
 @spytype('Field')
 class W_Field(W_Object):
     w_name: Annotated[W_Str, Member('name')]
@@ -33,28 +35,42 @@ class W_Field(W_Object):
         return w_field
 
     def op_GET(self, vm: 'SPyVM', w_T: W_Type, w_attr: W_Str) -> W_Dynamic:
+        key = (vm, id(self), 'get')
+        if key in CACHE:
+            return CACHE[key]
+
         T = w_T.pyclass
         R = self.w_type.pyclass
         w_offset = self.w_offset
+        name = vm.unwrap_str(self.w_name)
 
-        @spy_builtin(QN("xxx::get"))
+        @spy_builtin(QN(f"spy_cffi::get_{name}"))
         def opimpl(vm: 'SPyVM', w_obj: T, w_attr: W_Str) -> R:
             return rb_get_i32(vm, w_obj, w_offset)
 
-        return vm.wrap(opimpl)
+        w_opimpl = vm.wrap(opimpl)
+        CACHE[key] = w_opimpl
+        return w_opimpl
 
     def op_SET(self, vm: 'SPyVM', w_T: W_Type, w_attr: W_Str,
                w_V: W_Type) -> W_Dynamic:
+        key = (vm, id(self), 'set')
+        if key in CACHE:
+            return CACHE[key]
+
         assert w_V is self.w_type
         T = w_T.pyclass
         V = w_V.pyclass
         w_offset = self.w_offset
+        name = vm.unwrap_str(self.w_name)
 
-        @spy_builtin(QN("xxx::get"))
+        @spy_builtin(QN(f"spy_cffi::set_{name}"))
         def opimpl(vm: 'SPyVM', w_obj: T, w_attr: W_Str, w_val: V) -> None:
             rb_set_i32(vm, w_obj, w_offset, w_val)
 
-        return vm.wrap(opimpl)
+        w_opimpl = vm.wrap(opimpl)
+        CACHE[key] = w_opimpl
+        return w_opimpl
 
 
 W_List__W_Field = make_W_List(None, W_Field._w) # XXX
