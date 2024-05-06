@@ -117,24 +117,7 @@ def new_StructType(vm: 'SPyVM', w_name: W_Str,
     name = vm.unwrap_str(w_name)
     size = 8 # XXX compute size
 
-    ## class W_StructObject(W_Object):
-    ##     w_rb: W_RawBuffer
-
-    ##     def __init__(self, w_rb: W_RawBuffer) -> None:
-    ##         self.w_rb = w_rb
-
-    ##     @staticmethod
-    ##     def spy_new(vm: 'SPyVM', w_cls: W_Type) -> f'W_{name}':
-    ##         w_rb = rb_alloc(vm, vm.wrap(size))
-    ##         return W_StructObject(w_rb)
-
-
-    ## W_StructObject.__name__ = f'W_{name}'
-    ## W_StructObject.__qualname__ = f'W_{name}'
-
-    ## return vm.wrap(W_StructObject)
-
-    @spytype('MetaPoint') # ???
+    @spytype(f'Meta_{name}')
     class W_StructType(W_TypeDef):
 
         @staticmethod
