@@ -1,8 +1,8 @@
+# use ./make.sh -O3 to enable optimizations
+
 LIBSPY="/home/antocuni/anaconda/spy/spy/libspy"
 
-#OPT="-O3"
-
-emcc ${OPT} \
+emcc $1 \
     -I ${LIBSPY}/include/ \
     demo.c \
     ${LIBSPY}/src/jsffi/jsffi.c \
