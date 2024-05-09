@@ -65,7 +65,7 @@ def demo_highlevel() -> void:
     #console.log(window.document)
     console.log("hello SPy")
     div = document.getElementById("out")
-    console.log(div)
+    div.innerText = "Hello HTML from SPy"
 
 def main() -> void:
     #demo_lowlevel()

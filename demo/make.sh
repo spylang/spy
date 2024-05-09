@@ -1,6 +1,8 @@
 LIBSPY="/home/antocuni/anaconda/spy/spy/libspy"
 
-emcc \
+#OPT="-O3"
+
+emcc ${OPT} \
     -I ${LIBSPY}/include/ \
     demo.c \
     ${LIBSPY}/src/jsffi/jsffi.c \
