@@ -1,0 +1,10 @@
+# -*- mode: python -*-
+
+import jsffi
+from jsffi import get_GlobalThis, get_Console
+
+def main() -> void:
+    jsffi.init()
+    jsffi.debug("hello world")
+    window = get_GlobalThis()
+    console = get_Console()
