@@ -1,14 +1,21 @@
 # -*- mode: python -*-
 
-from jsffi import (
-    init as js_init,
-    debug as js_debug,
-    get_GlobalThis,
-    get_Console,
-    js_string,
-    js_call_method_1,
-    js_getattr,
-    js_setattr)
+from jsffi import init as js_init, get_GlobalThis, get_Console
+
+def main() -> void:
+    # initialization
+    js_init()
+    window = get_GlobalThis()
+    console = get_Console()
+    document = window.document
+    #
+    # real code
+    console.log("Hello SPy")
+    div = document.getElementById("out")
+    div.innerText = "Hello HTML from SPy"
+
+
+
 
 # Currently JsRef is implemented as a builtin, but ideally we should be able
 # to implement it like this:
@@ -28,45 +35,3 @@ from jsffi import (
 ##         #            ^    ^     ^
 ##         #           blue blue  red
 ##         return js_getattr(self, attr)
-
-
-
-def demo_lowlevel() -> void:
-    js_init()
-    js_debug("hello world")
-    window = get_GlobalThis()
-    console = get_Console()
-
-    js_msg = js_string("hello from SPy")
-    js_call_method_1(console, "log", js_msg)
-
-    document = js_getattr(window, "document")
-    #js_call_method_1(console, "log", document)
-
-    div = js_call_method_1(
-        document,
-        "getElementById",
-        js_string("out")
-    )
-    js_call_method_1(console, "log", div)
-
-    js_setattr(
-        div,
-        "innerText",
-        js_string("hello HTML from SPy")
-    )
-
-def demo_highlevel() -> void:
-    js_init()
-    window = get_GlobalThis()
-    console = get_Console()
-    document = window.document
-    #js_call_method_1(console, "log", window.document)
-    #console.log(window.document)
-    console.log("hello SPy")
-    div = document.getElementById("out")
-    div.innerText = "Hello HTML from SPy"
-
-def main() -> void:
-    #demo_lowlevel()
-    demo_highlevel()

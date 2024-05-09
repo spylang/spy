@@ -1,0 +1,37 @@
+# -*- mode: python -*-
+
+from jsffi import (
+    init as js_init,
+    debug as js_debug,
+    get_GlobalThis,
+    get_Console,
+    js_string,
+    js_call_method_1,
+    js_getattr,
+    js_setattr)
+
+
+def main() -> void:
+    js_init()
+    js_debug("hello world")
+    window = get_GlobalThis()
+    console = get_Console()
+
+    js_msg = js_string("hello from SPy")
+    js_call_method_1(console, "log", js_msg)
+
+    document = js_getattr(window, "document")
+    #js_call_method_1(console, "log", document)
+
+    div = js_call_method_1(
+        document,
+        "getElementById",
+        js_string("out")
+    )
+    js_call_method_1(console, "log", div)
+
+    js_setattr(
+        div,
+        "innerText",
+        js_string("hello HTML from SPy")
+    )
