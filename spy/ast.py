@@ -231,6 +231,13 @@ class Call(Expr):
     args: list[Expr]
 
 @dataclass(eq=False)
+class CallMethod(Expr):
+    precedence = 16 # XXX?
+    target: Expr
+    method: str
+    args: list[Expr]
+
+@dataclass(eq=False)
 class GetAttr(Expr):
     precedence = 16
     value: Expr
