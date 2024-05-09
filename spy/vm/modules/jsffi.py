@@ -39,3 +39,12 @@ def get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
 @JSFFI.builtin
 def get_Console(vm: 'SPyVM') -> W_JsRef:
     pass
+
+@JSFFI.builtin
+def js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
+    pass
+
+@JSFFI.builtin
+def call_method_1(vm: 'SPyVM', w_target: W_JsRef,
+                  name: W_Str, arg0: W_JsRef) -> W_JsRef:
+    pass
