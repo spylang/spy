@@ -31,6 +31,15 @@ class W_JsRef(W_Object):
         return vm.wrap(opimpl)
 
     @staticmethod
+    def op_SETATTR(vm: 'SPyVM', w_type: 'W_Type', w_attr: 'W_Str',
+                   w_vtype: 'W_Type') -> 'W_Dynamic':
+        @spy_builtin(QN('jsffi::setattr'))
+        def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str,
+                   w_val: W_JsRef) -> None:
+            js_setattr(vm, w_self, w_attr, w_val)
+        return vm.wrap(opimpl)
+
+    @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', w_type: 'W_Type', w_method: 'W_Str',
                        w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
 
