@@ -10,17 +10,15 @@ from spy.vm.list import make_W_List, W_List__W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
-from spy.vm.typeconverter import TypeConverter, DynamicCast, NumericConv
+from spy.vm.modules.jsffi import JSFFI
+from spy.vm.typeconverter import (TypeConverter, DynamicCast, NumericConv,
+                                  JsRefConv)
 from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 # DispatchKind is a property of an OPERATOR and can be:
-#
-#   - 'single' if the opimpl depends only on the type of the first operand
-#     (e.g., CALL, GETATTR, etc.)
-#
 #   - 'multi' is the opimpl depends on the types of all operands (e.g., all
 #     binary operators)
 DispatchKind = Literal['single', 'multi']
@@ -133,6 +131,10 @@ class TypeChecker:
         elif w_got is B.w_i32 and w_exp is B.w_f64:
             # numeric conversion
             self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
+            return None
+        elif w_exp is JSFFI.w_JsRef and w_got is B.w_str:
+            self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
+                                             w_fromtype=w_got)
             return None
 
         # mismatched types

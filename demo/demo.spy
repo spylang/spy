@@ -62,6 +62,7 @@ def demo_highlevel() -> void:
     console = get_Console()
     #js_call_method_1(console, "log", window.document)
     console.log(window.document)
+    console.log("hello SPy")
 
 
 def main() -> void:
