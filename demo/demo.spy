@@ -60,10 +60,12 @@ def demo_highlevel() -> void:
     js_init()
     window = get_GlobalThis()
     console = get_Console()
+    document = window.document
     #js_call_method_1(console, "log", window.document)
-    console.log(window.document)
+    #console.log(window.document)
     console.log("hello SPy")
-
+    div = document.getElementById("out")
+    console.log(div)
 
 def main() -> void:
     #demo_lowlevel()
