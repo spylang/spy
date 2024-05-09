@@ -7,13 +7,28 @@ typedef struct {
 } JsRef;
 */
 
-EM_JS(JsRef, jsffi_debug, (const char *ptr), {
+JsRef jsffi_GLOBALTHIS = {0};
+JsRef jsffi_CONSOLE = {1};
+
+JsRef spy_jsffi$get_GlobalThis(void) {
+    return jsffi_GLOBALTHIS;
+}
+
+JsRef spy_jsffi$get_Console(void) {
+    return jsffi_CONSOLE;
+}
+
+EM_JS(JsRef, _jsffi_debug, (const char *ptr), {
     let s = UTF8ToString(ptr);
     console.log(s);
 });
 
+void spy_jsffi$debug(spy_Str *s) {
+    _jsffi_debug(s->utf8);
+}
 
-EM_JS(void, jsffi_init, (), {
+
+EM_JS(void, spy_jsffi$init, (void), {
     let jsffi = {
         objects: {}
     };
@@ -63,12 +78,10 @@ EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
     target[name] = val;
 });
 
-JsRef jsffi_GLOBALTHIS = {0};
-JsRef jsffi_CONSOLE = {1};
 
 EMSCRIPTEN_KEEPALIVE
 int foo() {
-  jsffi_init();
+  spy_jsffi$init();
   JsRef js_msg = jsffi_string("hello from c");
   jsffi_call_method_1(
       jsffi_CONSOLE,

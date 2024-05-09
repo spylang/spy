@@ -17,7 +17,25 @@ if TYPE_CHECKING:
 
 JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 
+@spytype('JsRef')
+class W_JsRef(W_Object):
+    pass
+
+JSFFI.add('JsRef', W_JsRef._w)
+
 @JSFFI.builtin
 def debug(vm: 'SPyVM', w_str: W_Str) -> None:
     s = vm.unwrap_str(w_str)
     print('[JSFFI debug]', s)
+
+@JSFFI.builtin
+def init(vm: 'SPyVM') -> None:
+    pass
+
+@JSFFI.builtin
+def get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
+    pass
+
+@JSFFI.builtin
+def get_Console(vm: 'SPyVM') -> W_JsRef:
+    pass
