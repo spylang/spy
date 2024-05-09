@@ -33,13 +33,12 @@ class W_JsRef(W_Object):
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', w_type: 'W_Type', w_method: 'W_Str',
                        w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
-        method = vm.unwrap_str(w_method)
-        key = ('call_method_1', method)
-        if key in CACHE:
-            return CACHE[key]
 
         argtypes_w = vm.unwrap(w_argtypes)
         if len(argtypes_w) == 1:
+            key = 'call_method_1'
+            if key in CACHE:
+                return CACHE[key]
 
             @spy_builtin(QN('jsffi::call_method_1'))
             def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
