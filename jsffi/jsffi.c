@@ -32,22 +32,58 @@ EM_JS(JsRef, jsffi_string, (const char *ptr), {
     return jsffi.to_jsref(UTF8ToString(ptr));
 });
 
-EM_JS(void, jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_arg0), {
+EM_JS(JsRef, jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_arg0), {
     let target = jsffi.from_jsref(c_target);
     let name = UTF8ToString(c_name);
     let arg0 = jsffi.from_jsref(c_arg0);
-    target[name].call(target, arg0);
+    let res = target[name].call(target, arg0);
+    return jsffi.to_jsref(res);
 });
 
+EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name];
+    return jsffi.to_jsref(res);
+});
 
-/* EM_JS(void, call_alert, (), { */
-/*   console.log("hello world"); */
-/* }); */
+EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let val = jsffi.from_jsref(c_val);
+    target[name] = val;
+});
 
-int main() {
+JsRef jsffi_GLOBALTHIS = {0};
+JsRef jsffi_CONSOLE = {1};
+
+EMSCRIPTEN_KEEPALIVE
+int foo() {
   jsffi_init();
-  JsRef js_console = {1};
   JsRef js_msg = jsffi_string("hello from c");
-  jsffi_call_method_1(js_console, "log", js_msg);
+  jsffi_call_method_1(
+      jsffi_CONSOLE,
+      "log",
+      js_msg);
+
+  JsRef js_document = jsffi_getattr(
+      jsffi_GLOBALTHIS,
+      "document"
+  );
+
+  JsRef js_div = jsffi_call_method_1(
+      js_document,
+      "getElementById",
+      jsffi_string("out")
+  );
+
+  jsffi_setattr(
+      js_div,
+      "innerText",
+      jsffi_string("hello HTML from C")
+  );
+
+  //jsffi_call_method_1(jsffi_CONSOLE, "log", js_div);
+
   return 0;
 }
