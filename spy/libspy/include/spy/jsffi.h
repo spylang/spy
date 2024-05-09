@@ -47,4 +47,9 @@ static inline JsRef spy_jsffi$js_getattr(JsRef target, spy_Str *name) {
     return jsffi_getattr(target, name->utf8);
 }
 
+static inline void spy_jsffi$js_setattr(
+                                 JsRef target, spy_Str *name, JsRef val) {
+    jsffi_setattr(target, name->utf8, val);
+}
+
 #endif /* SPY_JSFFI_H */
