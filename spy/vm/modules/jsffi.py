@@ -45,6 +45,10 @@ def js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
     pass
 
 @JSFFI.builtin
-def call_method_1(vm: 'SPyVM', w_target: W_JsRef,
-                  name: W_Str, arg0: W_JsRef) -> W_JsRef:
+def js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
+                     name: W_Str, arg0: W_JsRef) -> W_JsRef:
+    pass
+
+@JSFFI.builtin
+def js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
     pass

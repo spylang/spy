@@ -68,7 +68,7 @@ EM_JS(JsRef, _jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_
     return jsffi.to_jsref(res);
 });
 
-JsRef spy_jsffi$call_method_1(JsRef target, spy_Str *name, JsRef arg0) {
+JsRef spy_jsffi$js_call_method_1(JsRef target, spy_Str *name, JsRef arg0) {
     return _jsffi_call_method_1(target, name->utf8, arg0);
 }
 
@@ -78,6 +78,10 @@ EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
     let res = target[name];
     return jsffi.to_jsref(res);
 });
+
+JsRef spy_jsffi$js_getattr(JsRef target, spy_Str *name) {
+    return jsffi_getattr(target, name->utf8);
+}
 
 EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
     let target = jsffi.from_jsref(c_target);
