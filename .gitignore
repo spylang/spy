@@ -6,6 +6,10 @@ tmp_*
 all.sh
 comp.sh
 
+demo/demo.c
+demo/demo.js
+demo/demo.wasm
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
