@@ -21,6 +21,7 @@ from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.types import TYPES, W_TypeDef
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.spy_cffi import SPY_CFFI
+from spy.vm.modules.jsffi import JSFFI
 
 class SPyVM:
     """
@@ -50,6 +51,7 @@ class SPyVM:
         self.make_module(TYPES)      # types::
         self.make_module(RAW_BUFFER) # rawbuffer::
         self.make_module(SPY_CFFI)   # spy_cffi::
+        self.make_module(JSFFI)      # jsffi::
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file

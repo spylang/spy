@@ -4,6 +4,12 @@ typedef struct {
     int id;
 } JsRef;
 
+EM_JS(JsRef, jsffi_debug, (const char *ptr), {
+    let s = UTF8ToString(ptr);
+    console.log(s);
+});
+
+
 EM_JS(void, jsffi_init, (), {
     let jsffi = {
         objects: {}
