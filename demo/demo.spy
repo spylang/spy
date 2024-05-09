@@ -1,10 +1,14 @@
 # -*- mode: python -*-
 
 import jsffi
-from jsffi import get_GlobalThis, get_Console
+from jsffi import (get_GlobalThis, get_Console, js_string,
+                   call_method_1)
 
 def main() -> void:
     jsffi.init()
     jsffi.debug("hello world")
     window = get_GlobalThis()
     console = get_Console()
+
+    js_msg = js_string("hello from SPy")
+    call_method_1(console, "log", js_msg)

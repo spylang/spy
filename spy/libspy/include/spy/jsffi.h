@@ -13,4 +13,7 @@ void spy_jsffi$init(void);
 JsRef spy_jsffi$get_GlobalThis(void);
 JsRef spy_jsffi$get_Console(void);
 
+JsRef spy_jsffi$js_string(spy_Str *s);
+JsRef spy_jsffi$call_method_1(JsRef target, spy_Str *name, JsRef arg0);
+
 #endif /* SPY_JSFFI_H */
