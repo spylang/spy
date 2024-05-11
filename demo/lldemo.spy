@@ -6,11 +6,15 @@ from jsffi import (
     get_GlobalThis,
     get_Console,
     js_string,
-    #js_wrap_func,
+    js_wrap_func,
     js_call_method_1,
     js_getattr,
     js_setattr)
 
+
+def onclick() -> void:
+    console = get_Console()
+    js_call_method_1(console, "log", js_string("onclick!"))
 
 def main() -> void:
     js_init()
@@ -35,4 +39,16 @@ def main() -> void:
         div_title,
         "innerText",
         js_string("hello HTML from SPy (lldemo)")
+    )
+
+    btn = js_call_method_1(
+        document,
+        "getElementById",
+        js_string("btn")
+    )
+
+    js_setattr(
+        btn,
+        "onclick",
+        js_wrap_func(onclick)
     )

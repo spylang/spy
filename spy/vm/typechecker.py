@@ -136,6 +136,8 @@ class TypeChecker:
             self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
                                              w_fromtype=w_got)
             return None
+        elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
+            import pdb;pdb.set_trace()
 
         # mismatched types
         err = SPyTypeError('mismatched types')
@@ -171,6 +173,9 @@ class TypeChecker:
 
     def check_stmt_Return(self, ret: ast.Return) -> None:
         self.typecheck_local(ret.value, '@return')
+
+    def check_stmt_Pass(self, stmt: ast.Pass) -> None:
+        pass
 
     def check_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         """

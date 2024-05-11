@@ -41,6 +41,10 @@ static inline JsRef spy_jsffi$js_string(spy_Str *s) {
     return jsffi_string(s->utf8);
 }
 
+static inline JsRef spy_jsffi$js_wrap_func(em_callback_func fn) {
+    return jsffi_wrap_func(fn);
+}
+
 static inline JsRef spy_jsffi$js_call_method_1(
                                  JsRef target, spy_Str *name, JsRef arg0) {
     return jsffi_call_method_1(target, name->utf8, arg0);
