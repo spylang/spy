@@ -7,7 +7,7 @@ spy_builtins$abs(int32_t x) {
     return x;
 }
 
-#ifdef SPY_NATIVE
+#ifndef SPY_WASM
 #include <stdio.h>
 
 void spy_builtins$print_i32(int32_t x) {
