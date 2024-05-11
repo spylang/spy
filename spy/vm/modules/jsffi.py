@@ -33,7 +33,9 @@ class W_JsRef(W_Object):
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', w_type: 'W_Type', w_attr: 'W_Str',
                    w_vtype: 'W_Type') -> 'W_Dynamic':
-        @spy_builtin(QN('jsffi::setattr'))
+        # this is a horrible hack (see also cwriter.fmt_expr_Call)
+        attr = vm.unwrap_str(w_attr)
+        @spy_builtin(QN(f'jsffi::setattr_{attr}'))
         def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str,
                    w_val: W_JsRef) -> None:
             js_setattr(vm, w_self, w_attr, w_val)

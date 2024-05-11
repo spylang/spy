@@ -402,7 +402,8 @@ class CFuncWriter:
             c_attr = C.Literal(f'"{attr}"')
             return C.Call(c_name, [c_obj, c_attr])
 
-        if call.func.fqn == FQN.parse("jsffi::setattr"):
+        # horrible hack (see also jsffi.W_JsRef.op_SETATTR)
+        if str(call.func.fqn).startswith("jsffi::setattr_"):
             # XXX explain
             c_name = "jsffi_setattr"
             c_obj = self.fmt_expr(call.args[0])

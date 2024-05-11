@@ -2,17 +2,29 @@
 
 from jsffi import init as js_init, get_GlobalThis, get_Console
 
+def onclick() -> void:
+    console = get_Console()
+    console.log("onclick")
+
 def main() -> void:
     # initialization
     js_init()
     window = get_GlobalThis()
     console = get_Console()
+
     document = window.document
     #
     # real code
-    console.log("Hello SPy")
-    div = document.getElementById("out")
-    div.innerText = "Hello HTML from SPy"
+    console.log("Hello SPy 2")
+    div_title = document.getElementById("title")
+    console.log(div_title)
+    div_message = document.getElementById("message")
+    btn = document.getElementById("btn")
+    #
+    div_title.innerText = "Hello HTML from SPy"
+    btn.onclick = onclick
+
+
 
 
 
