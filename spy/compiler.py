@@ -2,7 +2,8 @@ import os
 from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
-from spy.cbuild import ZigToolchain, ClangToolchain, EmscriptenToolchain
+from spy.cbuild import (ZigToolchain, ClangToolchain, EmscriptenToolchain,
+                        NativeToolchain)
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
@@ -63,7 +64,7 @@ class Compiler:
         elif toolchain_type == "emscripten":
             toolchain = EmscriptenToolchain()
         elif toolchain_type == "native":
-            raise NotImplementedError("TODO")
+            toolchain = NativeToolchain()
         else:
             assert False
         exports = [fqn.c_name for fqn in self.w_mod.keys()]

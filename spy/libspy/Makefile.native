@@ -1,0 +1,24 @@
+# makefile to build libspy with the emcc
+
+CFLAGS=-DNDEBUG -O3 \
+		-fvisibility=hidden \
+		 -Iinclude/ \
+
+LDFLAGS=
+
+OBJECTS=src/str.o src/builtins.o
+
+build/native/libspy.a: $(OBJECTS)
+	mkdir -p build/native
+	ar rcs build/native/libspy.a $(OBJECTS)
+
+%.o: %.c
+	cc $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f *.a
+	rm -f `find -name '*.o'`
+	rm -rf build
+
+clean-o:
+	rm -f `find -name '*.o'`

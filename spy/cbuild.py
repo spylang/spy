@@ -155,3 +155,39 @@ class EmscriptenToolchain:
         #
         subprocess.check_call(cmdline)
         return file_js
+
+
+class NativeToolchain:
+
+    # XXX this should be renamed?
+    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
+               exports: Optional[list[str]] = None,
+               debug_symbols: bool = False,
+               ) -> py.path.local:
+
+        file_exe = file_wasm.new(ext='')
+
+        cmdline = [
+            'cc',
+            '--std=c99',
+            '-Werror=implicit-function-declaration',
+	    '-o', str(file_exe),
+	    str(file_c)
+        ]
+        if debug_symbols:
+            cmdline += ['-g', '-O0']
+        else:
+            cmdline += ['-O3']
+        #
+        # make sure that libspy is available
+
+        # hack hack hack
+        LIBSPY = spy.libspy.LIBSPY_A.join('..')
+        LIBSPY_A = LIBSPY.join('build', 'native', 'libspy.a')
+        cmdline += [
+            '-I', str(spy.libspy.INCLUDE),
+            LIBSPY_A,
+        ]
+        #
+        subprocess.check_call(cmdline)
+        return file_js

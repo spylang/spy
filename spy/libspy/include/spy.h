@@ -6,19 +6,33 @@
 
 typedef __SIZE_TYPE__ size_t;
 
-#define WASM_EXPORT(name) \
+#if defined(__linux__)
+#  define SPY_NATIVE
+#elif defined(__EMSCRIPTEN__)
+#  define SPY_EMCC
+#else
+#  define SPY_WASM
+#endif
+
+#if defined(SPY_NATIVE)
+#  define WASM_EXPORT(name) name
+# else
+#  define WASM_EXPORT(name) \
     __attribute__((export_name(#name))) \
     name
+#endif
 
+#ifdef SPY_WASM
 static inline void *memcpy(void *dest, const void *src, size_t n) {
     return __builtin_memcpy(dest, src, n);
 }
 
-// emscripten defines its own abort()
-#ifndef __EMSCRIPTEN__
 static void _Noreturn abort(void) {
     __builtin_trap();
 }
+#else
+#  include <stdlib.h>
+#  include <string.h>
 #endif
 
 // this is defined in libc.c. We cannot use __builtin_memcmp :(
