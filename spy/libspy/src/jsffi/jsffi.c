@@ -60,35 +60,3 @@ EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
     let val = jsffi.from_jsref(c_val);
     target[name] = val;
 });
-
-
-EMSCRIPTEN_KEEPALIVE
-int foo() {
-  jsffi_init();
-  JsRef js_msg = jsffi_string("hello from c");
-  jsffi_call_method_1(
-      jsffi_CONSOLE,
-      "log",
-      js_msg);
-
-  JsRef js_document = jsffi_getattr(
-      jsffi_GLOBALTHIS,
-      "document"
-  );
-
-  JsRef js_div = jsffi_call_method_1(
-      js_document,
-      "getElementById",
-      jsffi_string("out")
-  );
-
-  jsffi_setattr(
-      js_div,
-      "innerText",
-      jsffi_string("hello HTML from C")
-  );
-
-  //jsffi_call_method_1(jsffi_CONSOLE, "log", js_div);
-
-  return 0;
-}
