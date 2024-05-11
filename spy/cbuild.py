@@ -187,6 +187,7 @@ class NativeToolchain:
         cmdline += [
             '-I', str(spy.libspy.INCLUDE),
             LIBSPY_A,
+            LIBSPY.join('src', 'emcompat.c'),
         ]
         #
         subprocess.check_call(cmdline)
