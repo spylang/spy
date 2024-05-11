@@ -114,6 +114,9 @@ class FuncDoppler:
         newvalue = self.shift_expr(ret.value)
         return [ret.replace(value=newvalue)]
 
+    def shift_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
+        return [stmt]
+
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
         ann_color, w_ann_type = self.t.check_expr(vardef.type)
         assert ann_color == 'blue'

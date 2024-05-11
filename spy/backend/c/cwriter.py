@@ -7,7 +7,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.object import W_Type, W_Object
 from spy.vm.module import W_Module
-from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.types import TYPES
@@ -225,6 +225,9 @@ class CFuncWriter:
 
     # ===== statements =====
 
+    def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
+        pass
+
     def emit_stmt_Return(self, ret: ast.Return) -> None:
         v = self.fmt_expr(ret.value)
         if v is C.Void():
@@ -318,6 +321,11 @@ class CFuncWriter:
         comment = shortrepr(utf8.decode('utf-8'), 15)
         v = f'{v} /* {comment} */'
         return C.UnaryOp('&', C.Literal(v))
+
+    def fmt_expr_FQNConst(self, const: ast.FQNConst) -> C.Expr:
+        w_obj = self.ctx.vm.lookup_global(const.fqn)
+        assert isinstance(w_obj, W_Func)
+        return C.Literal(const.fqn.c_name)
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         sym = self.w_func.funcdef.symtable.lookup(name.id)

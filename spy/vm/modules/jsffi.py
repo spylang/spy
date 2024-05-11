@@ -6,7 +6,7 @@ from spy.vm.object import spytype, Member, Annotated
 from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
                       W_Dynamic)
 from spy.vm.sig import spy_builtin
-from spy.vm.function import W_Func
+from spy.vm.function import W_Func, W_FuncType
 from spy.vm.list import make_W_List
 from spy.vm.registry import ModuleRegistry
 
@@ -84,6 +84,10 @@ def get_Console(vm: 'SPyVM') -> W_JsRef:
 
 @JSFFI.builtin
 def js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
+    pass
+
+@JSFFI.builtin
+def js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
     pass
 
 @JSFFI.builtin
