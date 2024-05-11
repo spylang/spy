@@ -2,7 +2,9 @@
 #define SPY_JSFFI_H
 
 #include <stddef.h>
+#include "emscripten.h"
 #include "spy.h"
+
 
 typedef struct {
     int id;
@@ -12,6 +14,7 @@ typedef struct {
 JsRef jsffi_debug(const char *ptr);
 void jsffi_init(void);
 JsRef jsffi_string(const char *ptr);
+JsRef jsffi_wrap_func(em_callback_func cfunc);
 JsRef jsffi_call_method_1(JsRef c_target, const char *c_name, JsRef c_arg0);
 JsRef jsffi_getattr(JsRef c_target, const char *c_name);
 void jsffi_setattr(JsRef c_target, const char *c_name, JsRef c_val);

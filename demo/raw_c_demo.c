@@ -10,12 +10,6 @@ void onclick() {
     printf("onclick!\n");
 }
 
-EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), {
-    let func = () => {
-        dynCall("v", cfunc);
-    };
-    return jsffi.to_jsref(func);
-});
 
 EMSCRIPTEN_KEEPALIVE
 int main(void) {
