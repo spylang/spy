@@ -4,6 +4,7 @@ from spy import ast
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type
 from spy.vm.b import B
+from spy.vm.function import W_FuncType
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -62,11 +63,19 @@ class JsRefConv(TypeConverter):
         raise NotImplementedError('only C backend so far')
 
     def redshift(self, vm: 'SPyVM', expr: ast.Expr) -> ast.Expr:
-        assert self.w_fromtype is B.w_str
-        func = ast.FQNConst(
-            loc = expr.loc,
-            fqn = FQN.parse('jsffi::js_string')
-        )
+        if self.w_fromtype is B.w_str:
+            func = ast.FQNConst(
+                loc = expr.loc,
+                fqn = FQN.parse('jsffi::js_string')
+            )
+        elif self.w_fromtype == W_FuncType.parse('def() -> void'):
+            func = ast.FQNConst(
+                loc = expr.loc,
+                fqn = FQN.parse('jsffi::js_wrap_func')
+            )
+        else:
+            assert False
+
         return ast.Call(
             loc = expr.loc,
             func = func,
