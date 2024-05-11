@@ -80,8 +80,9 @@ class W_Str(W_Object):
         argtypes_w = vm.unwrap(w_argtypes)
         if argtypes_w == [W_I32]:
             @spy_builtin(QN('builtins::int2str'))
-            def opimpl(vm: 'SPyVM', w_cls: W_Type, w_s: W_I32) -> W_Str:
-                import pdb;pdb.set_trace()
+            def opimpl(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Str:
+                x = vm.unwrap_i32(w_x)
+                return vm.wrap(str(x))
             return vm.wrap(opimpl)
         else:
             return B.w_NotImplemented
