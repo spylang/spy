@@ -15,20 +15,10 @@ def main() -> void:
     js_init()
     window = get_GlobalThis()
     console = get_Console()
-
     document = window.document
     #
     # real code
-    console.log("Hello SPy 2")
-
-    ## a = "hello"
-    ## b = "123"
-    ## console.log(a)
-    ## console.log(b)
-    ## c = a+b
-    ## console.log("a+b")
-    ## console.log(c)
-
+    console.log("Hello SPy")
     div_title = document.getElementById("title")
     console.log(div_title)
     div_message = document.getElementById("message")
