@@ -74,7 +74,10 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
 
     if run:
         w_main_functype = W_FuncType.parse('def() -> void')
-        w_main = w_mod.getattr('main')
+        w_main = w_mod.getattr_maybe('main')
+        if w_main is None:
+            print('Cannot find function main()')
+            return
         vm.typecheck(w_main, w_main_functype)
         assert isinstance(w_main, W_Func)
         w_res = vm.call_function(w_main, [])
