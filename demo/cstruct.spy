@@ -1,0 +1,66 @@
+# -*- mode: python -*-
+
+from rawbuffer import rb_get_i32, RawBuffer, rb_set_i32
+from spy_cffi import new_StructType, Field
+
+# Ideal syntax, not implemented by now
+
+## class Field:
+##     T: type
+##     offset: i32
+
+##     @blue
+##     def __GET__(self):
+##         def opimpl(obj: RawBuffer) -> T:
+##             # rb_get is translated into a direct memory read
+##             return rb_get[T](obj, self.offset)
+##         return opimpl
+
+##     @blue
+##     def __SET__(self):
+##         def opimpl(obj: RawBuffer, val: T) -> void:
+##             # rb_get is translated into a direct memory read
+##             return rb_set[T](obj, self.offset, val)
+##         return opimpl
+
+
+## class Point(metaclass=Struct):
+##     x = Field(i32, 0)
+##     y = Field(i32, 4)
+
+
+# Workaround
+
+@blue
+def Field_GET(self: Field):
+    T = self.type
+    def opimpl_get(obj: RawBuffer, attr: str) -> T:
+        return rb_get_i32(obj, self.offset)
+    return opimpl_get
+
+@blue
+def Field_SET(self: Field):
+    T = self.type
+    def opimpl_set(obj: RawBuffer, attr: str, val: T) -> void:
+        rb_set_i32(obj, self.offset, val)
+    return opimpl_set
+
+
+@blue
+def newField(name, offset, T) -> Field:
+    return Field(name, offset, T, Field_GET, Field_SET)
+
+@blue
+def make_Point() -> type:
+    return new_StructType('Point', [
+        newField('x', 0, i32),
+        newField('y', 4, i32),
+    ])
+
+Point = make_Point()
+
+def foo() -> i32:
+    p: Point = Point()
+    p.x = 42
+    p.y = 43
+    return p.x
