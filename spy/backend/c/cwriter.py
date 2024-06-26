@@ -398,7 +398,7 @@ class CFuncWriter:
             c_args = [C.Literal(str(w_cls.BUF_SIZE))]
             return C.Call(c_name, c_args)
 
-        if call.func.fqn == FQN.parse("jsffi::getattr"):
+        if str(call.func.fqn).startswith("jsffi::getattr_"):
             # XXX explain
             c_name = "jsffi_getattr"
             attr = call.args[1].value
