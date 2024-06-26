@@ -190,4 +190,4 @@ class NativeToolchain:
         ]
         #
         subprocess.check_call(cmdline)
-        return file_js
+        return file_exe
