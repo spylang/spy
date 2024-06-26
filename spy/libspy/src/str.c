@@ -54,8 +54,9 @@ spy_str_getitem(spy_Str *s, int32_t i) {
     return res;
 }
 
-#include <stdio.h>
+#ifdef SPY_WASM
 
+// hacky implementation
 spy_Str *
 spy_builtins$int2str(int32_t x) {
     char buf[1024];
@@ -70,3 +71,21 @@ spy_builtins$int2str(int32_t x) {
     outbuf[0] = buf[0];
     return res;
 }
+
+#else
+
+#include <stdio.h>
+#include <string.h>
+
+spy_Str *
+spy_builtins$int2str(int32_t x) {
+    char buf[1024];
+    snprintf(buf, 1024, "%d", x);
+    size_t length = strlen(buf);
+
+    spy_Str *res = spy_str_alloc(length);
+    char *outbuf = (char*)res->utf8;
+    memcpy(outbuf, buf, length);
+    return res;
+}
+#endif
