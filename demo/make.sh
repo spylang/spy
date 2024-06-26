@@ -10,6 +10,13 @@ emcc $1 \
     -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$dynCall' \
     -o raw_c_demo.js
 
+emcc $1 \
+    -I ${LIBSPY}/include/ \
+    lldemo.c \
+    ${LIBSPY}/src/jsffi/jsffi.c \
+    -sEXPORTED_FUNCTIONS="['_main']" \
+    -o lldemo.js
+
 
 emcc $1 \
     -I ${LIBSPY}/include/ \
