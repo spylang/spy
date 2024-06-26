@@ -80,12 +80,14 @@ class CModuleWriter:
                 self.declare_variable(fqn, w_obj)
 
         # XXX
-        self.out.wb("""
-            int main(void) {
-                spy_demo$main();
-                return 0;
-            }
-        """)
+        fqn_main = FQN.make(modname=self.w_mod.name, attr='main', suffix="")
+        if fqn_main in self.ctx.vm.globals_w:
+            self.out.wb(f"""
+                int main(void) {{
+                    {fqn_main.c_name}();
+                    return 0;
+                }}
+            """)
         return self.out.build()
 
     def declare_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
