@@ -9,6 +9,12 @@ comp.sh
 demo/demo.c
 demo/demo.js
 demo/demo.wasm
+demo/raw_c_demo.js
+demo/raw_c_demo.wasm
+demo/favicon.ico
+demo/lldemo.js
+demo/lldemo.wasm
+demo/lldemo.c
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
