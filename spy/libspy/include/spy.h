@@ -14,9 +14,12 @@ static inline void *memcpy(void *dest, const void *src, size_t n) {
     return __builtin_memcpy(dest, src, n);
 }
 
+// emscripten defines its own abort()
+#ifndef __EMSCRIPTEN__
 static void _Noreturn abort(void) {
     __builtin_trap();
 }
+#endif
 
 // this is defined in libc.c. We cannot use __builtin_memcmp :(
 int memcmp(const void *s1, const void *s2, size_t n);
