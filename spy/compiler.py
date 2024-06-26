@@ -1,12 +1,19 @@
 import os
+from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
-from spy.cbuild import ZigToolchain, ClangToolchain
+from spy.cbuild import ZigToolchain, ClangToolchain, EmscriptenToolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
 DUMP_C = False
 DUMP_WASM = False
+
+class ToolchainType(str, Enum):
+    zig = "zig"
+    clang = "clang"
+    emscripten = "emscripten"
+    native = "native"
 
 class Compiler:
     """
@@ -41,13 +48,24 @@ class Compiler:
         #
         return self.file_c
 
-    def cbuild(self, *, debug_symbols: bool=False) -> py.path.local:
+    def cbuild(self, *,
+               debug_symbols: bool = False,
+               toolchain_type: ToolchainType = "zig",
+               ) -> py.path.local:
         """
         Build the .c file into a .wasm file
         """
         file_c = self.cwrite()
-        toolchain = ZigToolchain()
-        #toolchain = ClangToolchain()
+        if toolchain_type == "zig":
+            toolchain = ZigToolchain()
+        elif toolchain_type == "clang":
+            toolchain = ClangToolchain()
+        elif toolchain_type == "emscripten":
+            toolchain = EmscriptenToolchain()
+        elif toolchain_type == "native":
+            raise NotImplementedError("TODO")
+        else:
+            assert False
         exports = [fqn.c_name for fqn in self.w_mod.keys()]
         file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                      exports=exports,
