@@ -295,7 +295,9 @@ class SPyVM:
     def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
         # XXX hack hack hack (HORROR)
         def compare_by_id(w_obj):
-            return self.dynamic_type(w_obj).name in ('type', 'Field')
+            #return self.dynamic_type(w_obj).name in ('type', 'Field')
+            return isinstance(w_obj, W_Type) or \
+                self.dynamic_type(w_obj).name == 'Field'
 
         if compare_by_id(w_a) and compare_by_id(w_b):
             return self.wrap(w_a is w_b)

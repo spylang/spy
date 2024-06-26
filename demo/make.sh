@@ -9,7 +9,7 @@ CFLAGS="
   ${LIBSPY}/src/str.c
   -sEXPORTED_FUNCTIONS="['_main']"
   -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='\$dynCall'
-  emcompat.c
+  ${LIBSPY}/src/emcompat.c
 "
 
 
