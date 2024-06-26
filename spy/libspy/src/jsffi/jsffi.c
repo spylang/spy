@@ -1,8 +1,11 @@
 #include <emscripten.h>
+#include "spy.h"
 
+/*
 typedef struct {
     int id;
 } JsRef;
+*/
 
 EM_JS(JsRef, jsffi_debug, (const char *ptr), {
     let s = UTF8ToString(ptr);

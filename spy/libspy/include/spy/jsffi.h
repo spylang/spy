@@ -8,7 +8,10 @@ typedef struct {
     int id;
 } JsRef;
 
+JsRef jsffi_debug(const char *ptr);
 
-#define spy_jsffi$debug jsffi_debug
+static void spy_jsffi$debug(spy_Str *s) {
+    jsffi_debug(s->utf8);
+}
 
 #endif /* SPY_JSFFI_H */
