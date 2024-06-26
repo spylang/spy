@@ -28,6 +28,9 @@
 #include "spy/gc.h"
 #include "spy/rawbuffer.h"
 #include "spy/debug.h"
+
+#ifdef __EMSCRIPTEN__
 #include "spy/jsffi.h"
+#endif
 
 #endif /* SPY_H */

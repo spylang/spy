@@ -11,13 +11,13 @@ typedef struct {
 } JsRef;
 
 // jsffi C interface
-JsRef jsffi_debug(const char *ptr);
-void jsffi_init(void);
-JsRef jsffi_string(const char *ptr);
-JsRef jsffi_wrap_func(em_callback_func cfunc);
-JsRef jsffi_call_method_1(JsRef c_target, const char *c_name, JsRef c_arg0);
-JsRef jsffi_getattr(JsRef c_target, const char *c_name);
-void jsffi_setattr(JsRef c_target, const char *c_name, JsRef c_val);
+JsRef WASM_EXPORT(jsffi_debug)(const char *ptr);
+void WASM_EXPORT(jsffi_init)(void);
+JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
+JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
+JsRef WASM_EXPORT(jsffi_call_method_1)(JsRef c_target, const char *c_name, JsRef c_arg0);
+JsRef WASM_EXPORT(jsffi_getattr)(JsRef c_target, const char *c_name);
+void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, JsRef c_val);
 
 
 // SPy JSFFI module
