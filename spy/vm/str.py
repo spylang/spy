@@ -19,6 +19,8 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     ll.mem.write(ptr+4, utf8)
     return ptr
 
+
+
 @spytype('str')
 class W_Str(W_Object):
     """
@@ -79,10 +81,12 @@ class W_Str(W_Object):
         from spy.vm.b import B
         argtypes_w = vm.unwrap(w_argtypes)
         if argtypes_w == [W_I32]:
-            @spy_builtin(QN('builtins::int2str'))
-            def opimpl(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Str:
-                x = vm.unwrap_i32(w_x)
-                return vm.wrap(str(x))
-            return vm.wrap(opimpl)
+            return vm.wrap(int2str)
         else:
             return B.w_NotImplemented
+
+
+@spy_builtin(QN('builtins::int2str'))
+def int2str(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Str:
+    x = vm.unwrap_i32(w_x)
+    return vm.wrap(str(x))
