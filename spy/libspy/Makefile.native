@@ -1,8 +1,12 @@
 # makefile to build libspy with the emcc
 
-CFLAGS=-DNDEBUG -O3 \
+# CFLAGS=-DNDEBUG -O3 \
+# 		-fvisibility=hidden \
+# 		 -Iinclude/ \
+
+CFLAGS=-O0 -g \
 		-fvisibility=hidden \
-		 -Iinclude/ \
+		-Iinclude/ \
 
 LDFLAGS=
 

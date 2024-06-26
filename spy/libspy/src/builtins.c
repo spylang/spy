@@ -15,6 +15,9 @@ void spy_builtins$print_i32(int32_t x) {
 }
 
 void spy_builtins$print_str(spy_Str *s) {
-    printf("print_str not implemented\n");
+    // I'm sure there is a better way but I'm offline and can't search :)
+    for(int i=0; i < s->length; i++)
+        printf("%c", s->utf8[i]);
+    printf("\n");
 }
 #endif
