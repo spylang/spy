@@ -28,5 +28,6 @@
 #include "spy/gc.h"
 #include "spy/rawbuffer.h"
 #include "spy/debug.h"
+#include "spy/jsffi.h"
 
 #endif /* SPY_H */
