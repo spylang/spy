@@ -568,7 +568,7 @@ class TestBasic(CompilerTest):
         """)
         mod.foo()
 
-    @skip_backends("C", reason="implement me")
+    @skip_backends("C", "doppler", reason="implement me")
     def test_print(self, capsys):
         mod = self.compile("""
         def foo() -> void:
