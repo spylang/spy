@@ -95,3 +95,14 @@ class TestMain:
         assert status == 0
         # NOTE: getstatusoutput automatically strips the trailing \n
         assert out == 'hello world'
+
+    def test_build_emscripten(self):
+        res, stdout = self.run("--toolchain", "emscripten", self.main_spy)
+        main_js = self.tmpdir.join('main.js')
+        main_wasm = self.tmpdir.join('main.wasm')
+        assert main_js.exists()
+        assert main_wasm.exists()
+        status, out = getstatusoutput(f'node {main_js}')
+        assert status == 0
+        # NOTE: getstatusoutput automatically strips the trailing \n
+        assert out == 'hello world'
