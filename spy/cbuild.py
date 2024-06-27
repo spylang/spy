@@ -182,7 +182,8 @@ class NativeToolchain:
         # make sure that libspy is available
 
         # hack hack hack
-        LIBSPY = spy.libspy.LIBSPY_A.join('..')
+        # XXX fix this before merging the PR!
+        LIBSPY = spy.libspy.LIBSPY_A.join('..', '..', '..')
         LIBSPY_A = LIBSPY.join('build', 'native', 'libspy.a')
         cmdline += [
             '-I', str(spy.libspy.INCLUDE),

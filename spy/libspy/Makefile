@@ -7,23 +7,56 @@
 #
 # (*) the actual triplet for "native" depends on your system, of course
 
-SRCS = vendored/walloc/walloc.c src/libc.c src/str.c src/builtins.c
+SRCS = src/str.c src/builtins.c
 
+CFLAGS := \
+	-DNDEBUG -O3 \
+	-fvisibility=hidden \
+	-Iinclude
+
+# uncomment to enable debugging
+#CFLAGS := $(CFLAGS) -O0 -g
+
+# ------- no target specified -------
 ifeq ($(TARGET),)
 	.DEFAULT_GOAL := all
+
+# ---------- wasm32 target ----------
 else ifeq ($(TARGET), wasm32)
+	CC := zig cc
+	LD := zig wasm-ld
+	AR := zig ar
+
 	CFLAGS := \
-		-DNDEBUG -O3 \
-		-fvisibility=hidden \
-		--target=wasm32-freestanding -nostdlib -Iinclude/ \
-		-mmultivalue -Xclang -target-abi -Xclang experimental-mv \
+		$(CFLAGS) \
+		--target=wasm32-freestanding \
+		-nostdlib  \
+		-mmultivalue \
+		-Xclang -target-abi \
+		-Xclang experimental-mv \
 		-mbulk-memory
 
 	LDFLAGS := \
 		--no-entry \
 		--import-memory
 
-	.DEFAULT_GOAL = build/wasm32/libspy.wasm
+	SRCS := \
+		$(SRCS) \
+		vendored/walloc/walloc.c \
+		src/libc.c
+
+	.DEFAULT_GOAL := build/wasm32/libspy.wasm
+
+# ---------- native target ----------
+else ifeq ($(TARGET), native)
+	CC := cc
+	LD := ld
+	AR := ar
+
+	.DEFAULT_GOAL := build/native/libspy.a
+
+
+# ---------- invalid target ---------
 else
 	.DEFAULT_GOAL := usage
 endif
@@ -33,10 +66,11 @@ OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 all:
 	make TARGET=wasm32
+	make TARGET=native
 
 build/wasm32/libspy.wasm: build/$(TARGET)/libspy.a
-	zig wasm-ld \
-		--no-entry	 \
+	$(LD) \
+		--no-entry \
 		--import-undefined \
 		--whole-archive \
 		build/$(TARGET)/libspy.a \
@@ -46,11 +80,11 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 build/$(TARGET)/libspy.a: $(OBJS)
-	zig ar rcs $@ $(OBJS)
+	$(AR) rcs $@ $(OBJS)
 
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	mkdir -p $(dir $@)
-	zig cc $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf build
