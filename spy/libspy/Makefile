@@ -47,6 +47,20 @@ else ifeq ($(TARGET), wasm32)
 
 	.DEFAULT_GOAL := build/wasm32/libspy.wasm
 
+# -------- emscripten target --------
+else ifeq ($(TARGET), emscripten)
+	CC := emcc
+	AR := emar
+
+	CFLAGS := \
+		$(CFLAGS) \
+		-mmultivalue \
+		-Xclang -target-abi \
+		-Xclang experimental-mv \
+		-mbulk-memory
+
+	.DEFAULT_GOAL = build/emscripten/libspy.a
+
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
 	CC := cc
@@ -66,6 +80,7 @@ OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 all:
 	make TARGET=wasm32
+	make TARGET=emscripten
 	make TARGET=native
 
 build/wasm32/libspy.wasm: build/$(TARGET)/libspy.a
