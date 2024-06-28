@@ -263,3 +263,10 @@ class CTest:
         test_wasm = self.builddir.join('test.wasm')
         self.toolchain.c2wasm(test_c, test_wasm, exports=exports)
         return test_wasm
+
+    def compile_exe(self, src: str) -> py.path.local:
+        test_c = self.write(src)
+        ext = self.toolchain.EXE_FILENAME_EXT
+        test_exe = self.builddir.join(f'test.{ext}')
+        self.toolchain.c2exe(test_c, test_exe)
+        return test_exe

@@ -16,21 +16,23 @@ def get_toolchain(toolchain: str) -> 'Toolchain':
 
 class Toolchain:
 
+    TARGET = '' # 'wasm', 'native', 'emscripten'
+
     @property
     def CC(self):
         raise NotImplementedError
 
     @property
     def CFLAGS(self):
+        libspy_a = spy.libspy.BUILD.join(self.TARGET, 'libspy.a')
         return [
             '-O3',
             '--std=c99',
             '-Werror=implicit-function-declaration',
             #'-Werror',
             '-I', str(spy.libspy.INCLUDE),
-            str(spy.libspy.LIBSPY_A),
+            str(libspy_a),
         ]
-
 
     @property
     def WASM_CFLAGS(self):
@@ -61,8 +63,29 @@ class Toolchain:
         subprocess.check_call(cmdline)
         return file_wasm
 
+    def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
+              debug_symbols: bool = False,
+               ) -> py.path.local:
+        cmdline = self.CC + self.CFLAGS
+        cmdline += [
+	    '-o', str(file_exe),
+	    str(file_c)
+        ]
+        if debug_symbols:
+            cmdline += ['-g', '-O0']
+
+        cmdline += [
+            spy.ROOT.join('libspy', 'src', 'emcompat.c'), # XXX
+        ]
+        #
+        subprocess.check_call(cmdline)
+        return file_exe
+
+
 
 class ZigToolchain(Toolchain):
+
+    TARGET = 'wasm32'
 
     def __init__(self) -> None:
         import ziglang  # type: ignore
@@ -85,6 +108,8 @@ class ZigToolchain(Toolchain):
 
 class ClangToolchain(Toolchain):
 
+    TARGET = 'wasm32'
+
     @property
     def CC(self):
         return ['clang']
@@ -96,6 +121,16 @@ class ClangToolchain(Toolchain):
 	    '-nostdlib',
             '-Wl,--no-entry',
         ]
+
+
+class NativeToolchain(Toolchain):
+
+    TARGET = 'native'
+    EXE_FILENAME_EXT = ''
+
+    @property
+    def CC(self):
+        return ['cc']
 
 
 class EmscriptenToolchain:
@@ -154,41 +189,3 @@ class EmscriptenToolchain:
         #
         subprocess.check_call(cmdline)
         return file_js
-
-
-class NativeToolchain:
-
-    # XXX this should be renamed?
-    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
-               exports: Optional[list[str]] = None,
-               debug_symbols: bool = False,
-               ) -> py.path.local:
-
-        file_exe = file_wasm.new(ext='')
-
-        cmdline = [
-            'cc',
-            '--std=c99',
-            '-Werror=implicit-function-declaration',
-	    '-o', str(file_exe),
-	    str(file_c)
-        ]
-        if debug_symbols:
-            cmdline += ['-g', '-O0']
-        else:
-            cmdline += ['-O3']
-        #
-        # make sure that libspy is available
-
-        # hack hack hack
-        # XXX fix this before merging the PR!
-        LIBSPY = spy.libspy.LIBSPY_A.join('..', '..', '..')
-        LIBSPY_A = LIBSPY.join('build', 'native', 'libspy.a')
-        cmdline += [
-            '-I', str(spy.libspy.INCLUDE),
-            LIBSPY_A,
-            LIBSPY.join('src', 'emcompat.c'),
-        ]
-        #
-        subprocess.check_call(cmdline)
-        return file_exe

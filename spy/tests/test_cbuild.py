@@ -1,3 +1,4 @@
+from subprocess import getstatusoutput
 import pytest
 from spy.llwasm import LLWasmInstance
 from spy.cbuild import get_toolchain
@@ -16,3 +17,18 @@ class TestToolchain(CTest):
         test_wasm = self.compile(src, exports=['add'])
         ll = LLWasmInstance.from_file(test_wasm)
         assert ll.call('add', 4, 8) == 12
+
+    @pytest.mark.parametrize("toolchain", ["native"])
+    def test_c2exe(self, toolchain):
+        self.toolchain = get_toolchain(toolchain)
+        src = r"""
+        #include <stdio.h>
+        int main(void) {
+            printf("hello world\n");
+        }
+        """
+        test_exe = self.compile_exe(src)
+        if toolchain == 'native':
+            status, out = getstatusoutput(str(test_exe))
+        assert status == 0
+        assert out == 'hello world'
