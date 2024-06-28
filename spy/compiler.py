@@ -2,8 +2,7 @@ import os
 from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
-from spy.cbuild import (ZigToolchain, ClangToolchain, EmscriptenToolchain,
-                        NativeToolchain)
+from spy.cbuild import get_toolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
@@ -57,24 +56,18 @@ class Compiler:
         Build the .c file into a .wasm file
         """
         file_c = self.cwrite()
-        if toolchain_type == "zig":
-            toolchain = ZigToolchain()
-        elif toolchain_type == "clang":
-            toolchain = ClangToolchain()
-        elif toolchain_type == "emscripten":
-            toolchain = EmscriptenToolchain()
-        elif toolchain_type == "native":
-            toolchain = NativeToolchain()
+        toolchain = get_toolchain(toolchain_type)
+        if toolchain.TARGET == 'wasm32':
+            exports = [fqn.c_name for fqn in self.w_mod.keys()]
+            file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
+                                         exports=exports,
+                                         debug_symbols=debug_symbols)
+            if DUMP_WASM:
+                print()
+                print(f'---- {self.file_wasm} ----')
+                os.system(f'wasm2wat {file_wasm}')
+            return file_wasm
         else:
-            assert False
-        exports = [fqn.c_name for fqn in self.w_mod.keys()]
-        file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
-                                     exports=exports,
-                                     debug_symbols=debug_symbols)
-        #
-        if DUMP_WASM:
-            print()
-            print(f'---- {self.file_wasm} ----')
-            os.system(f'wasm2wat {file_wasm}')
-        #
-        return file_wasm
+            file_exe = self.file_wasm.new(ext=toolchain.EXE_FILENAME_EXT)
+            toolchain.c2exe(file_c, file_exe, debug_symbols=debug_symbols)
+            return file_exe

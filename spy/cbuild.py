@@ -12,6 +12,8 @@ def get_toolchain(toolchain: str) -> 'Toolchain':
         return EmscriptenToolchain()
     elif toolchain == 'native':
         return NativeToolchain()
+    else:
+        raise ValueError(f"Unknown toolchain: {toolchain}")
 
 
 class Toolchain:
