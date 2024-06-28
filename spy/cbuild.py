@@ -137,59 +137,37 @@ class NativeToolchain(Toolchain):
         return ['cc']
 
 
-class EmscriptenToolchain:
+class EmscriptenToolchain(Toolchain):
+
+    TARGET = 'emscripten'
+    EXE_FILENAME_EXT = 'js'
 
     def __init__(self) -> None:
         self.EMCC = py.path.local.sysfind('emcc')
         if self.EMCC is None:
             raise ValueError('Cannot find the emcc executable')
 
-    # XXX this should be renamed?
-    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
-               exports: Optional[list[str]] = None,
-               debug_symbols: bool = False,
-               ) -> py.path.local:
+    @property
+    def CC(self):
+        return [str(self.EMCC)]
 
-        file_js = file_wasm.new(ext='.js')
-
-        cmdline = [
-            self.EMCC,
-            '--std=c99',
-            '-Werror=implicit-function-declaration',
-	    '-o', str(file_js),
+    def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
+              debug_symbols: bool = False,
+              ) -> py.path.local:
+        cmdline = self.CC + self.CFLAGS + self.WASM_CFLAGS
+        cmdline += [
+	    '-o', str(file_exe),
 	    str(file_c)
         ]
         if debug_symbols:
             cmdline += ['-g', '-O0']
-        else:
-            cmdline += ['-O3']
-        #
-        # for multivalue support
-        cmdline += [
-            '-mmultivalue',
-            '-Xclang', '-target-abi',
-            '-Xclang', 'experimental-mv'
-        ]
-        # make sure that libspy is available
 
-        # hack hack hack
-        # XXX fix this before merging the PR!
-        LIBSPY = spy.libspy.LIBSPY_A.join('..', '..', '..')
-        LIBSPY_A = LIBSPY.join('build', 'emscripten', 'libspy.a')
-        cmdline += [
-            '-I', str(spy.libspy.INCLUDE),
-            LIBSPY_A,
-            LIBSPY.join('src', 'emcompat.c'),
-        ]
-        #
-        if exports:
-            # TODO
-            pass
+        cmdline += self.LDFLAGS
 
         cmdline += [
             "-sEXPORTED_FUNCTIONS=['_main']",
             "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$dynCall'"
         ]
-        #
+        print(' '.join(cmdline))
         subprocess.check_call(cmdline)
-        return file_js
+        return file_exe

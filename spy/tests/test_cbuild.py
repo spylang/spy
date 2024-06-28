@@ -18,7 +18,7 @@ class TestToolchain(CTest):
         ll = LLWasmInstance.from_file(test_wasm)
         assert ll.call('add', 4, 8) == 12
 
-    @pytest.mark.parametrize("toolchain", ["native"])
+    @pytest.mark.parametrize("toolchain", ["native", "emscripten"])
     def test_c2exe(self, toolchain):
         self.toolchain = get_toolchain(toolchain)
         src = r"""
@@ -32,5 +32,7 @@ class TestToolchain(CTest):
         test_exe = self.compile_exe(src)
         if toolchain == 'native':
             status, out = getstatusoutput(str(test_exe))
+        elif toolchain == 'emscripten':
+            status, out = getstatusoutput(f"node {test_exe}")
         assert status == 0
         assert out == 'hello world\nhello debug'
