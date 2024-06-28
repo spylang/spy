@@ -23,12 +23,14 @@ class TestToolchain(CTest):
         self.toolchain = get_toolchain(toolchain)
         src = r"""
         #include <stdio.h>
+        #include "spy.h"
         int main(void) {
             printf("hello world\n");
+            spy_debug_log("hello debug");
         }
         """
         test_exe = self.compile_exe(src)
         if toolchain == 'native':
             status, out = getstatusoutput(str(test_exe))
         assert status == 0
-        assert out == 'hello world'
+        assert out == 'hello world\nhello debug'

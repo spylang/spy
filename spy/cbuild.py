@@ -31,7 +31,6 @@ class Toolchain:
             '-Werror=implicit-function-declaration',
             #'-Werror',
             '-I', str(spy.libspy.INCLUDE),
-            str(libspy_a),
         ]
 
     @property
@@ -41,6 +40,11 @@ class Toolchain:
             '-Xclang', '-target-abi',
             '-Xclang', 'experimental-mv'
         ]
+
+    @property
+    def LDFLAGS(self):
+        libspy_dir = spy.libspy.BUILD.join(self.TARGET)
+        return ['-L', str(libspy_dir), '-lspy']
 
     def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
                exports: Optional[list[str]] = None,
@@ -56,6 +60,8 @@ class Toolchain:
         ]
         if debug_symbols:
             cmdline += ['-g', '-O0']
+
+        cmdline += self.LDFLAGS
         if exports:
             for name in exports:
                 cmdline.append(f'-Wl,--export={name}')
@@ -65,7 +71,7 @@ class Toolchain:
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               debug_symbols: bool = False,
-               ) -> py.path.local:
+              ) -> py.path.local:
         cmdline = self.CC + self.CFLAGS
         cmdline += [
 	    '-o', str(file_exe),
@@ -74,10 +80,8 @@ class Toolchain:
         if debug_symbols:
             cmdline += ['-g', '-O0']
 
-        cmdline += [
-            spy.ROOT.join('libspy', 'src', 'emcompat.c'), # XXX
-        ]
-        #
+        cmdline += self.LDFLAGS
+        print(' '.join(cmdline))
         subprocess.check_call(cmdline)
         return file_exe
 
