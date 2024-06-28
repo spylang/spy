@@ -3,7 +3,30 @@ import subprocess
 import py.path
 import spy.libspy
 
-class ZigToolchain:
+def get_toolchain(toolchain: str) -> 'Toolchain':
+    if toolchain == 'zig':
+        return ZigToolchain()
+    elif toolchain == 'clang':
+        return ClangToolchain()
+    elif toolchain == 'emscripten':
+        return EmscriptenToolchain()
+    elif toolchain == 'native':
+        return NativeToolchain()
+
+
+class Toolchain:
+
+    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
+               exports: Optional[list[str]] = None,
+               debug_symbols: bool = False,
+               ) -> py.path.local:
+        """
+        Compile the C code to WASM.
+        """
+        raise NotImplementedError
+
+
+class ZigToolchain(Toolchain):
 
     def __init__(self) -> None:
         import ziglang  # type: ignore

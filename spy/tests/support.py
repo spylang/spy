@@ -251,12 +251,15 @@ class CTest:
         self.toolchain = ZigToolchain()
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
 
-
-    def compile(self, src: str, *,
-                exports: Optional[list[str]] = None) -> py.path.local:
+    def write(self, src: str) -> py.path.local:
         src = textwrap.dedent(src)
         test_c = self.tmpdir.join('test.c')
         test_c.write(src)
+        return test_c
+
+    def compile(self, src: str, *,
+                exports: Optional[list[str]] = None) -> py.path.local:
+        test_c = self.write(src)
         test_wasm = self.builddir.join('test.wasm')
         self.toolchain.c2wasm(test_c, test_wasm, exports=exports)
         return test_wasm
