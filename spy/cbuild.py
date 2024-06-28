@@ -16,14 +16,50 @@ def get_toolchain(toolchain: str) -> 'Toolchain':
 
 class Toolchain:
 
+    @property
+    def CC(self):
+        raise NotImplementedError
+
+    @property
+    def CFLAGS(self):
+        return [
+            '-O3',
+            '--std=c99',
+            '-Werror=implicit-function-declaration',
+            #'-Werror',
+            '-I', str(spy.libspy.INCLUDE),
+            str(spy.libspy.LIBSPY_A),
+        ]
+
+
+    @property
+    def WASM_CFLAGS(self):
+        return [
+            '-mmultivalue',
+            '-Xclang', '-target-abi',
+            '-Xclang', 'experimental-mv'
+        ]
+
     def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
                exports: Optional[list[str]] = None,
                debug_symbols: bool = False,
                ) -> py.path.local:
         """
-        Compile the C code to WASM.
+        Compile the C code to WASM, using zig cc
         """
-        raise NotImplementedError
+        cmdline = self.CC + self.CFLAGS + self.WASM_CFLAGS
+        cmdline += [
+	    '-o', str(file_wasm),
+	    str(file_c)
+        ]
+        if debug_symbols:
+            cmdline += ['-g', '-O0']
+        if exports:
+            for name in exports:
+                cmdline.append(f'-Wl,--export={name}')
+        #
+        subprocess.check_call(cmdline)
+        return file_wasm
 
 
 class ZigToolchain(Toolchain):
@@ -34,93 +70,32 @@ class ZigToolchain(Toolchain):
         if not self.ZIG.check(exists=True):
             raise ValueError('Cannot find the zig executable; try pip install ziglang')
 
-    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
-               exports: Optional[list[str]] = None,
-               debug_symbols: bool = False,
-               ) -> py.path.local:
-        """
-        Compile the C code to WASM, using zig cc
-        """
-        cmdline = [
-            str(self.ZIG), 'cc',
-            '--std=c99',
-            '-Werror=implicit-function-declaration',
+    @property
+    def CC(self):
+        return [str(self.ZIG), 'cc']
+
+    @property
+    def WASM_CFLAGS(self):
+        return super().WASM_CFLAGS + [
 	    '--target=wasm32-freestanding',
 	    '-nostdlib',
             '-shared',
-#            '-Werror',
-	    '-o', str(file_wasm),
-	    str(file_c)
         ]
-        if debug_symbols:
-            cmdline += ['-g', '-O0']
-        else:
-            cmdline += ['-O3']
-        #
-        # for multivalue support
-        cmdline += [
-            '-mmultivalue',
-            '-Xclang', '-target-abi',
-            '-Xclang', 'experimental-mv'
-        ]
-        # make sure that libspy is available
-        cmdline += [
-            '-I', str(spy.libspy.INCLUDE),
-            str(spy.libspy.LIBSPY_A),
-        ]
-        #
-        if exports:
-            for name in exports:
-                cmdline.append(f'-Wl,--export={name}')
-        #
-        subprocess.check_call(cmdline)
-        return file_wasm
 
 
+class ClangToolchain(Toolchain):
 
-class ClangToolchain:
+    @property
+    def CC(self):
+        return ['clang']
 
-    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
-               exports: Optional[list[str]] = None,
-               debug_symbols: bool = False,
-               ) -> py.path.local:
-        """
-        Compile the C code to WASM, using clang directly
-        """
-        cmdline = [
-            'clang',
-            '--std=c99',
-            '-Werror=implicit-function-declaration',
+    @property
+    def WASM_CFLAGS(self):
+        return super().WASM_CFLAGS + [
 	    '--target=wasm32',
 	    '-nostdlib',
             '-Wl,--no-entry',
-#            '-Werror',
-	    '-o', str(file_wasm),
-	    str(file_c)
         ]
-        if debug_symbols:
-            cmdline += ['-g', '-O0']
-        else:
-            cmdline += ['-O3']
-        #
-        # for multivalue support
-        cmdline += [
-            '-mmultivalue',
-            '-Xclang', '-target-abi',
-            '-Xclang', 'experimental-mv'
-        ]
-        # make sure that libspy is available
-        cmdline += [
-            '-I', str(spy.libspy.INCLUDE),
-            str(spy.libspy.LIBSPY_A),
-        ]
-        #
-        if exports:
-            for name in exports:
-                cmdline.append(f'-Wl,--export={name}')
-        #
-        subprocess.check_call(cmdline)
-        return file_wasm
 
 
 class EmscriptenToolchain:
