@@ -53,7 +53,7 @@ class Compiler:
                toolchain_type: ToolchainType = "zig",
                ) -> py.path.local:
         """
-        Build the .c file into a .wasm file
+        Build the .c file into a .wasm file or an executable
         """
         file_c = self.cwrite()
         toolchain = get_toolchain(toolchain_type)

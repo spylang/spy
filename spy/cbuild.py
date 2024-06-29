@@ -48,44 +48,68 @@ class Toolchain:
         libspy_dir = spy.libspy.BUILD.join(self.TARGET)
         return ['-L', str(libspy_dir), '-lspy']
 
+    def cc(self,
+           file_c: py.path.local,
+           file_out: py.path.local,
+           *,
+           debug_symbols: bool = False,
+           EXTRA_CFLAGS: Optional[list[str]] = None,
+           EXTRA_LDFLAGS: Optional[list[str]] = None,
+           ) -> py.path.local:
+
+        EXTRA_CFLAGS = EXTRA_CFLAGS or []
+        EXTRA_LDFLAGS = EXTRA_LDFLAGS or []
+        cmdline = self.CC + self.CFLAGS + EXTRA_CFLAGS
+        if debug_symbols:
+            cmdline += ['-g', '-O0']
+        cmdline += [
+            '-o', str(file_out),
+            str(file_c)
+        ]
+        cmdline += self.LDFLAGS + EXTRA_LDFLAGS
+        proc = subprocess.run(cmdline,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT)
+        if proc.returncode != 0:
+            lines = ["Compilation failed!"]
+            lines.append(' '.join(cmdline))
+            lines.append('')
+            lines.append(proc.stdout.decode('utf-8'))
+            msg = '\n'.join(lines)
+            raise Exception(msg)
+        return file_out
+
+
     def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
                exports: Optional[list[str]] = None,
                debug_symbols: bool = False,
                ) -> py.path.local:
         """
-        Compile the C code to WASM, using zig cc
+        Compile the C code to WASM.
         """
-        cmdline = self.CC + self.CFLAGS + self.WASM_CFLAGS
-        cmdline += [
-	    '-o', str(file_wasm),
-	    str(file_c)
-        ]
-        if debug_symbols:
-            cmdline += ['-g', '-O0']
-
-        cmdline += self.LDFLAGS
+        EXTRA_LDFLAGS = []
         if exports:
             for name in exports:
-                cmdline.append(f'-Wl,--export={name}')
-        #
-        subprocess.check_call(cmdline)
-        return file_wasm
+                EXTRA_LDFLAGS.append(f'-Wl,--export={name}')
+        return self.cc(
+            file_c,
+            file_wasm,
+            debug_symbols=debug_symbols,
+            EXTRA_CFLAGS=self.WASM_CFLAGS,
+            EXTRA_LDFLAGS=EXTRA_LDFLAGS
+        )
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               debug_symbols: bool = False,
               ) -> py.path.local:
-        cmdline = self.CC + self.CFLAGS
-        cmdline += [
-	    '-o', str(file_exe),
-	    str(file_c)
-        ]
-        if debug_symbols:
-            cmdline += ['-g', '-O0']
-
-        cmdline += self.LDFLAGS
-        print(' '.join(cmdline))
-        subprocess.check_call(cmdline)
-        return file_exe
+        """
+        Compile the C code to an executable
+        """
+        return self.cc(
+            file_c,
+            file_exe,
+            debug_symbols=debug_symbols
+        )
 
 
 
@@ -153,23 +177,20 @@ class EmscriptenToolchain(Toolchain):
     def CC(self):
         return [str(self.EMCC)]
 
-    def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
-              debug_symbols: bool = False,
-              ) -> py.path.local:
-        cmdline = self.CC + self.CFLAGS + self.WASM_CFLAGS
-        cmdline += [
-	    '-o', str(file_exe),
-	    str(file_c)
-        ]
-        if debug_symbols:
-            cmdline += ['-g', '-O0']
-
-        cmdline += self.LDFLAGS
-
-        cmdline += [
+    @property
+    def LDFLAGS(self):
+        return super().LDFLAGS + [
             "-sEXPORTED_FUNCTIONS=['_main']",
             "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$dynCall'"
         ]
-        print(' '.join(cmdline))
-        subprocess.check_call(cmdline)
-        return file_exe
+
+    def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
+              debug_symbols: bool = False,
+              ) -> py.path.local:
+
+        return self.cc(
+            file_c,
+            file_exe,
+            debug_symbols=debug_symbols,
+            EXTRA_CFLAGS=self.WASM_CFLAGS,
+        )
