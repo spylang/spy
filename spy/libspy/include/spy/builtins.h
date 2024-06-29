@@ -10,7 +10,7 @@ WASM_EXPORT(spy_builtins$abs)(int32_t x);
 int32_t
 WASM_EXPORT(spy_builtins$abs)(int32_t x);
 
-#ifndef SPY_WASM
+#ifndef SPY_TARGET_WASM32
 void spy_builtins$print_i32(int32_t x);
 void spy_builtins$print_str(spy_Str *s);
 #endif

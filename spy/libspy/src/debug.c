@@ -1,6 +1,6 @@
 #include "spy.h"
 
-#if !defined(SPY_WASM)
+#if !defined(SPY_TARGET_WASM32)
 
 #include <stdio.h>
 #include <stdint.h>
@@ -17,4 +17,4 @@ void spy_debug_set_panic_message(const char *s) {
     printf("PANIC: %s\n", s);
 }
 
-#endif /* !defined(SPY_WASM) */
+#endif /* !defined(SPY_TARGET_WASM32) */

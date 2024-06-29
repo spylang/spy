@@ -7,14 +7,14 @@
 typedef __SIZE_TYPE__ size_t;
 
 #if defined(__linux__)
-#  define SPY_NATIVE
+#  define SPY_TARGET_NATIVE
 #elif defined(__EMSCRIPTEN__)
-#  define SPY_EMCC
+#  define SPY_TARGET_EMSCRIPTEN
 #else
-#  define SPY_WASM
+#  define SPY_TARGET_WASM32
 #endif
 
-#if defined(SPY_NATIVE)
+#if defined(SPY_TARGET_NATIVE)
 #  define WASM_EXPORT(name) name
 # else
 #  define WASM_EXPORT(name) \
@@ -22,7 +22,7 @@ typedef __SIZE_TYPE__ size_t;
     name
 #endif
 
-#ifdef SPY_WASM
+#ifdef SPY_TARGET_WASM32
 static inline void *memcpy(void *dest, const void *src, size_t n) {
     return __builtin_memcpy(dest, src, n);
 }
