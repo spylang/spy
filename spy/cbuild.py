@@ -19,13 +19,14 @@ def get_toolchain(toolchain: str) -> 'Toolchain':
 class Toolchain:
 
     TARGET = '' # 'wasm', 'native', 'emscripten'
+    EXE_FILENAME_EXT = ''
 
     @property
-    def CC(self):
+    def CC(self) -> list[str]:
         raise NotImplementedError
 
     @property
-    def CFLAGS(self):
+    def CFLAGS(self) -> list[str]:
         libspy_a = spy.libspy.BUILD.join(self.TARGET, 'libspy.a')
         return [
             '-O3',
@@ -36,7 +37,7 @@ class Toolchain:
         ]
 
     @property
-    def WASM_CFLAGS(self):
+    def WASM_CFLAGS(self) -> list[str]:
         return [
             '-mmultivalue',
             '-Xclang', '-target-abi',
@@ -44,7 +45,7 @@ class Toolchain:
         ]
 
     @property
-    def LDFLAGS(self):
+    def LDFLAGS(self) -> list[str]:
         libspy_dir = spy.libspy.BUILD.join(self.TARGET)
         return ['-L', str(libspy_dir), '-lspy']
 
@@ -124,11 +125,11 @@ class ZigToolchain(Toolchain):
             raise ValueError('Cannot find the zig executable; try pip install ziglang')
 
     @property
-    def CC(self):
+    def CC(self) -> list[str]:
         return [str(self.ZIG), 'cc']
 
     @property
-    def WASM_CFLAGS(self):
+    def WASM_CFLAGS(self) -> list[str]:
         return super().WASM_CFLAGS + [
 	    '--target=wasm32-freestanding',
 	    '-nostdlib',
@@ -141,11 +142,11 @@ class ClangToolchain(Toolchain):
     TARGET = 'wasm32'
 
     @property
-    def CC(self):
+    def CC(self) -> list[str]:
         return ['clang']
 
     @property
-    def WASM_CFLAGS(self):
+    def WASM_CFLAGS(self) -> list[str]:
         return super().WASM_CFLAGS + [
 	    '--target=wasm32',
 	    '-nostdlib',
@@ -159,7 +160,7 @@ class NativeToolchain(Toolchain):
     EXE_FILENAME_EXT = ''
 
     @property
-    def CC(self):
+    def CC(self) -> list[str]:
         return ['cc']
 
 
@@ -174,11 +175,11 @@ class EmscriptenToolchain(Toolchain):
             raise ValueError('Cannot find the emcc executable')
 
     @property
-    def CC(self):
+    def CC(self) -> list[str]:
         return [str(self.EMCC)]
 
     @property
-    def LDFLAGS(self):
+    def LDFLAGS(self) -> list[str]:
         return super().LDFLAGS + [
             "-sEXPORTED_FUNCTIONS=['_main']",
             "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$dynCall'"

@@ -7,7 +7,7 @@ from spy import ast
 from spy.compiler import Compiler
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
-from spy.cbuild import ZigToolchain
+from spy.cbuild import Toolchain, ZigToolchain
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -244,6 +244,7 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
 @pytest.mark.usefixtures('init')
 class CTest:
     tmpdir: Any
+    toolchain: Toolchain
 
     @pytest.fixture
     def init(self, tmpdir):

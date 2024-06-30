@@ -50,7 +50,7 @@ class Compiler:
 
     def cbuild(self, *,
                debug_symbols: bool = False,
-               toolchain_type: ToolchainType = "zig",
+               toolchain_type: ToolchainType = ToolchainType.zig,
                ) -> py.path.local:
         """
         Build the .c file into a .wasm file or an executable

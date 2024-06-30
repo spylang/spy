@@ -208,13 +208,14 @@ class FuncDoppler:
         # XXX: this assumes that it's a direct call (i.e., call.func is a
         # ast.Name). We probably need to adapt for indirect calls, when we
         # support them
-        def isprint(node):
+        def isprint(node: ast.Node) -> bool:
             return (isinstance(node, ast.FQNConst) and
                     node.fqn == FQN.parse('builtins::print'))
         newfunc = self.shift_expr(call.func)
         newargs = [self.shift_expr(arg) for arg in call.args]
         # hack hack
         if isprint(newfunc):
+            assert isinstance(newfunc, ast.FQNConst)
             color, w_type = self.t.check_expr(newargs[0])
             if w_type is B.w_i32:
                 newfunc.fqn = FQN.parse('builtins::print_i32')

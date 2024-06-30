@@ -13,7 +13,7 @@ from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
-def opt(T, help: str, names: tuple[str, ...]=()) -> Any:
+def opt(T: type, help: str, names: tuple[str, ...]=()) -> Any:
     return Annotated[T, typer.Option(*names, help=help)]
 
 def boolopt(help: str, names: tuple[str, ...]=()) -> Any:
