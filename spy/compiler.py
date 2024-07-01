@@ -1,12 +1,19 @@
 import os
+from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
-from spy.cbuild import ZigToolchain, ClangToolchain
+from spy.cbuild import get_toolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
 DUMP_C = False
 DUMP_WASM = False
+
+class ToolchainType(str, Enum):
+    zig = "zig"
+    clang = "clang"
+    emscripten = "emscripten"
+    native = "native"
 
 class Compiler:
     """
@@ -41,21 +48,26 @@ class Compiler:
         #
         return self.file_c
 
-    def cbuild(self, *, debug_symbols: bool=False) -> py.path.local:
+    def cbuild(self, *,
+               debug_symbols: bool = False,
+               toolchain_type: ToolchainType = ToolchainType.zig,
+               ) -> py.path.local:
         """
-        Build the .c file into a .wasm file
+        Build the .c file into a .wasm file or an executable
         """
         file_c = self.cwrite()
-        toolchain = ZigToolchain()
-        #toolchain = ClangToolchain()
-        exports = [fqn.c_name for fqn in self.w_mod.keys()]
-        file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
-                                     exports=exports,
-                                     debug_symbols=debug_symbols)
-        #
-        if DUMP_WASM:
-            print()
-            print(f'---- {self.file_wasm} ----')
-            os.system(f'wasm2wat {file_wasm}')
-        #
-        return file_wasm
+        toolchain = get_toolchain(toolchain_type)
+        if toolchain.TARGET == 'wasm32':
+            exports = [fqn.c_name for fqn in self.w_mod.keys()]
+            file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
+                                         exports=exports,
+                                         debug_symbols=debug_symbols)
+            if DUMP_WASM:
+                print()
+                print(f'---- {self.file_wasm} ----')
+                os.system(f'wasm2wat {file_wasm}')
+            return file_wasm
+        else:
+            file_exe = self.file_wasm.new(ext=toolchain.EXE_FILENAME_EXT)
+            toolchain.c2exe(file_c, file_exe, debug_symbols=debug_symbols)
+            return file_exe

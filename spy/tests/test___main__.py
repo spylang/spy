@@ -1,6 +1,7 @@
 from typing import Any
 import re
 import textwrap
+from subprocess import getstatusoutput
 import pytest
 from typer.testing import CliRunner
 from spy.__main__ import app
@@ -36,6 +37,15 @@ class TestMain:
         self.foo_spy.write(textwrap.dedent("""
         def add(x: i32, y: i32) -> i32:
             return x + y
+        """))
+        self.main_spy = tmpdir.join('main.spy')
+        self.main_spy.write(textwrap.dedent("""
+        def main() -> void:
+            print("hello world")
+            print(42)
+            print(12.3)
+            print(True)
+            print(None)
         """))
 
     def run(self, *args: Any) -> Any:
@@ -74,9 +84,34 @@ class TestMain:
         csrc = foo_c.read()
         assert csrc.startswith('#include <spy.h>')
 
-    def test_build(self):
+    def test_build_wasm(self):
         res, stdout = self.run(self.foo_spy)
         foo_wasm = self.tmpdir.join('foo.wasm')
         assert foo_wasm.exists()
         wasm_bytes = foo_wasm.read_binary()
         assert wasm_bytes.startswith(b'\0asm')
+
+    @pytest.mark.parametrize('toolchain', ['native', 'emscripten'])
+    def test_build(self, toolchain):
+        res, stdout = self.run("--toolchain", toolchain, self.main_spy)
+        if toolchain == 'native':
+            main_exe = self.tmpdir.join('main')
+            assert main_exe.exists()
+            cmd = str(main_exe)
+        else:
+            main_js = self.tmpdir.join('main.js')
+            main_wasm = self.tmpdir.join('main.wasm')
+            assert main_js.exists()
+            assert main_wasm.exists()
+            cmd = f'node {main_js}'
+        status, out = getstatusoutput(cmd)
+        assert status == 0
+        # NOTE: getstatusoutput automatically strips the trailing \n
+        # NOTE: float formatting is done by printf and it's different than
+        # the one that we get by Python in interp-mode. Too bad for now.
+        assert out == '\n'.join(["hello world",
+                                 "42",
+                                 "12.300000",
+                                 "True",
+                                 "None",
+                                 ])

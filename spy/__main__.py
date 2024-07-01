@@ -6,15 +6,19 @@ from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend
-from spy.compiler import Compiler
+from spy.compiler import Compiler, ToolchainType
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
+def opt(T: type, help: str, names: tuple[str, ...]=()) -> Any:
+    return Annotated[T, typer.Option(*names, help=help)]
+
 def boolopt(help: str, names: tuple[str, ...]=()) -> Any:
-    return Annotated[bool, typer.Option(*names, help=help)]
+    return opt(bool, help, names)
+
 
 def do_pyparse(filename: str) -> None:
     import ast as py_ast
@@ -37,15 +41,21 @@ def main(filename: Path,
          redshift: boolopt("perform redshift and exit") = False,
          cwrite: boolopt("create the .c file and exit") = False,
          g: boolopt("generate debug symbols", names=['-g']) = False,
+         toolchain: opt(
+             ToolchainType,
+             "which compiler to use",
+             names=['--toolchain', '-t']
+         ) = "zig",
          ) -> None:
     try:
-        do_main(filename, run, pyparse, parse, redshift, cwrite, g)
+        do_main(filename, run, pyparse, parse, redshift, cwrite, g, toolchain)
     except SPyError as e:
         print(e.format(use_colors=True))
 
 def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             redshift: bool,
-            cwrite: bool, debug_symbols: bool) -> None:
+            cwrite: bool, debug_symbols: bool,
+            toolchain: ToolchainType) -> None:
     if pyparse:
         do_pyparse(str(filename))
         return
@@ -64,7 +74,10 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
 
     if run:
         w_main_functype = W_FuncType.parse('def() -> void')
-        w_main = w_mod.getattr('main')
+        w_main = w_mod.getattr_maybe('main')
+        if w_main is None:
+            print('Cannot find function main()')
+            return
         vm.typecheck(w_main, w_main_functype)
         assert isinstance(w_main, W_Func)
         w_res = vm.call_function(w_main, [])
@@ -81,7 +94,8 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
     if cwrite:
         compiler.cwrite()
     else:
-        compiler.cbuild(debug_symbols=debug_symbols)
+        compiler.cbuild(debug_symbols=debug_symbols,
+                        toolchain_type=toolchain)
 
 if __name__ == '__main__':
     app()
