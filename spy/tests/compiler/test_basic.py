@@ -568,7 +568,9 @@ class TestBasic(CompilerTest):
         """)
         mod.foo()
 
-    @skip_backends("C", "doppler", reason="implement me")
+    # we cannot do I/O in our internal tests. See also
+    # test___main__::test_build_native for a similar test
+    @skip_backends("C", reason="no I/O for wasm32")
     def test_print(self, capsys):
         mod = self.compile("""
         def foo() -> void:

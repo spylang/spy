@@ -188,6 +188,6 @@ class Call(Expr):
         return 14
 
     def __str__(self) -> str:
-        args = [str(arg) for arg in self.args]
+        args = [str(arg) for arg in self.args if not isinstance(arg, Void)]
         arglist = ', '.join(args)
         return f'{self.func}({arglist})'

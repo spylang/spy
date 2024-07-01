@@ -42,6 +42,10 @@ class TestMain:
         self.main_spy.write(textwrap.dedent("""
         def main() -> void:
             print("hello world")
+            print(42)
+            print(12.3)
+            print(True)
+            print(None)
         """))
 
     def run(self, *args: Any) -> Any:
@@ -87,22 +91,27 @@ class TestMain:
         wasm_bytes = foo_wasm.read_binary()
         assert wasm_bytes.startswith(b'\0asm')
 
-    def test_build_native(self):
-        res, stdout = self.run("--toolchain", "native", self.main_spy)
-        main_exe = self.tmpdir.join('main')
-        assert main_exe.exists()
-        status, out = getstatusoutput(str(main_exe))
+    @pytest.mark.parametrize('toolchain', ['native', 'emscripten'])
+    def test_build(self, toolchain):
+        res, stdout = self.run("--toolchain", toolchain, self.main_spy)
+        if toolchain == 'native':
+            main_exe = self.tmpdir.join('main')
+            assert main_exe.exists()
+            cmd = str(main_exe)
+        else:
+            main_js = self.tmpdir.join('main.js')
+            main_wasm = self.tmpdir.join('main.wasm')
+            assert main_js.exists()
+            assert main_wasm.exists()
+            cmd = f'node {main_js}'
+        status, out = getstatusoutput(cmd)
         assert status == 0
         # NOTE: getstatusoutput automatically strips the trailing \n
-        assert out == 'hello world'
-
-    def test_build_emscripten(self):
-        res, stdout = self.run("--toolchain", "emscripten", self.main_spy)
-        main_js = self.tmpdir.join('main.js')
-        main_wasm = self.tmpdir.join('main.wasm')
-        assert main_js.exists()
-        assert main_wasm.exists()
-        status, out = getstatusoutput(f'node {main_js}')
-        assert status == 0
-        # NOTE: getstatusoutput automatically strips the trailing \n
-        assert out == 'hello world'
+        # NOTE: float formatting is done by printf and it's different than
+        # the one that we get by Python in interp-mode. Too bad for now.
+        assert out == '\n'.join(["hello world",
+                                 "42",
+                                 "12.300000",
+                                 "True",
+                                 "None",
+                                 ])

@@ -219,6 +219,12 @@ class FuncDoppler:
             color, w_type = self.t.check_expr(newargs[0])
             if w_type is B.w_i32:
                 newfunc.fqn = FQN.parse('builtins::print_i32')
+            elif w_type is B.w_f64:
+                newfunc.fqn = FQN.parse('builtins::print_f64')
+            elif w_type is B.w_bool:
+                newfunc.fqn = FQN.parse('builtins::print_bool')
+            elif w_type is B.w_void:
+                newfunc.fqn = FQN.parse('builtins::print_void')
             elif w_type is B.w_str:
                 newfunc.fqn = FQN.parse('builtins::print_str')
             else:

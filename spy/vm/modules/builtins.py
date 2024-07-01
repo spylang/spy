@@ -32,3 +32,24 @@ def print(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
     else:
         PY_PRINT(w_x)
     return B.w_None
+
+
+@BUILTINS.builtin
+def print_i32(vm: 'SPyVM', w_x: W_I32) -> W_Void:
+    PY_PRINT(vm.unwrap(w_x))
+
+@BUILTINS.builtin
+def print_f64(vm: 'SPyVM', w_x: W_F64) -> W_Void:
+    PY_PRINT(vm.unwrap(w_x))
+
+@BUILTINS.builtin
+def print_bool(vm: 'SPyVM', w_x: W_Bool) -> W_Void:
+    PY_PRINT(vm.unwrap(w_x))
+
+@BUILTINS.builtin
+def print_void(vm: 'SPyVM', w_x: W_Void) -> W_Void:
+    PY_PRINT(vm.unwrap(w_x))
+
+@BUILTINS.builtin
+def print_str(vm: 'SPyVM', w_x: W_Str) -> W_Void:
+    PY_PRINT(vm.unwrap(w_x))
