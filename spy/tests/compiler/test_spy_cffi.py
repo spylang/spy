@@ -39,7 +39,6 @@ class TestSPyCFFI(CompilerTest):
         w_Point = mod.w_mod.getattr('Point')
         assert repr(w_Point) == "<spy type 'Point' (typedef of 'RawBuffer')>"
 
-    @no_C
     def test_StructObject(self):
         mod = self.compile(
         """

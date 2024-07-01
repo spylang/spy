@@ -46,6 +46,7 @@ class W_Field(W_Object):
 W_List__W_Field = make_W_List(None, W_Field._w) # XXX
 
 
+opimpl_new_CACHE = {}
 
 @CFFI.builtin
 def new_StructType(vm: 'SPyVM', w_name: W_Str,
@@ -60,13 +61,20 @@ def new_StructType(vm: 'SPyVM', w_name: W_Str,
         @staticmethod
         def op_CALL(vm: 'SPyVM', w_type: W_Type,
                     w_argtypes: W_Dynamic) -> W_Dynamic:
+            # XXX this is a horrible hack to "forward" the size to the C
+            # backend
+            qn = QN(f"spy_cffi::new_{size}")
+            opimpl = opimpl_new_CACHE.get(qn)
+            if opimpl:
+                return vm.wrap(opimpl)
 
-            @spy_builtin(QN("xxx::new")) # XXX
-            def new(vm: 'SPyVM', w_class: W_Type) -> W_RawBuffer:
+            @spy_builtin(qn)
+            def opimpl_new(vm: 'SPyVM', w_class: W_Type) -> W_RawBuffer:
                 w_rb = rb_alloc(vm, vm.wrap(size))
                 return w_rb
 
-            return vm.wrap(new)
+            opimpl_new_CACHE[qn] = opimpl_new
+            return vm.wrap(opimpl_new)
 
     w_result = W_StructType(vm, name, RB.w_RawBuffer, w_fields)
     return w_result
