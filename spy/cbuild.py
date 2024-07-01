@@ -196,9 +196,25 @@ class EmscriptenToolchain(Toolchain):
 
     @property
     def LDFLAGS(self) -> list[str]:
+        # XXX I don't really understand what's going on here. We have two
+        # problems, and two workarounds:
+        #
+        # 1. In theory, jsffi.o is already included in libffi.a, but I
+        #    *think* that for some reason emscripten decides that the functions
+        #    jsffi_* are unused and it removes them. However, if I manually
+        #    pass jsffi.o to emcc, they are kept.
+        #
+        # 2. If I just pass jsffi.o, I get "UTF8ToString not defined". I need
+        #    to manually export it to make sure it's included. I don't really
+        #    know why.
+        jsffi_o = spy.libspy.BUILD.join('emscripten', 'src', 'jsffi', 'jsffi.o')
+
         return super().LDFLAGS + [
             "-sEXPORTED_FUNCTIONS=['_main']",
-            "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$dynCall'"
+            "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$dynCall'",
+
+            str(jsffi_o),                               # workaround 1
+            "-sEXPORTED_RUNTIME_METHODS=UTF8ToString",  # workaround 2
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
