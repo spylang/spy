@@ -2,9 +2,13 @@
 
 from jsffi import init as js_init, get_GlobalThis, get_Console
 
+var counter: i32 = 0
+
 def onclick() -> void:
     console = get_Console()
-    console.log("onclick")
+    #console.log("onclick ") # + str(counter))
+    console.log(str(counter))
+    counter = counter + 1
 
 def main() -> void:
     # initialization
@@ -16,6 +20,15 @@ def main() -> void:
     #
     # real code
     console.log("Hello SPy 2")
+
+    ## a = "hello"
+    ## b = "123"
+    ## console.log(a)
+    ## console.log(b)
+    ## c = a+b
+    ## console.log("a+b")
+    ## console.log(c)
+
     div_title = document.getElementById("title")
     console.log(div_title)
     div_message = document.getElementById("message")
