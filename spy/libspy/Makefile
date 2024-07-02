@@ -57,7 +57,7 @@ else ifeq ($(TARGET), emscripten)
 
 	SRCS := \
 		$(SRCS) \
-		../../../../jsffi/jsffi.c
+		src/jsffi/jsffi.c
 
 	.DEFAULT_GOAL = build/emscripten/libspy.a
 
