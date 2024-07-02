@@ -9,7 +9,7 @@ class TestSig:
 
     def test_functype_from_sig(self):
         def foo(vm: 'SPyVM', w_x: W_I32) -> W_Str:
-            pass
+            return W_Str(vm, 'this is never called')
         w_functype = functype_from_sig(foo)
         assert w_functype == W_FuncType.parse('def(x: i32) -> str')
 
@@ -69,5 +69,6 @@ class TestSig:
         assert foo(vm) is None
         #
         w_foo = vm.wrap(foo)
+        assert isinstance(w_foo, W_BuiltinFunc)
         w_res = vm.call_function(w_foo, [])
         assert w_res is B.w_None
