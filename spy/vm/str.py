@@ -73,3 +73,15 @@ class W_Str(W_Object):
             ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
             return W_Str.from_ptr(vm, ptr_c)
         return vm.wrap(str_getitem)
+
+    def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
+                     w_argtypes: W_Dynamic) -> W_Dynamic:
+        from spy.vm.b import B
+        argtypes_w = vm.unwrap(w_argtypes)
+        if argtypes_w == [W_I32]:
+            @spy_builtin(QN('builtins::int2str'))
+            def opimpl(vm: 'SPyVM', w_cls: W_Type, w_s: W_I32) -> W_Str:
+                import pdb;pdb.set_trace()
+            return vm.wrap(opimpl)
+        else:
+            return B.w_NotImplemented

@@ -376,6 +376,11 @@ class CFuncWriter:
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
+        if call.func.fqn == FQN.parse("builtins::int2str"):
+            c_name = call.func.fqn.c_name
+            c_arg = self.fmt_expr(call.args[1])
+            return C.Call(c_name, [c_arg])
+
         # the default case is to call a function with the corresponding name
         c_name = call.func.fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
