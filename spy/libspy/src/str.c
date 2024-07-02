@@ -53,3 +53,20 @@ spy_str_getitem(spy_Str *s, int32_t i) {
     buf[0] = s->utf8[i];
     return res;
 }
+
+#include <stdio.h>
+
+spy_Str *
+spy_builtins$int2str(int32_t x) {
+    char buf[1024];
+    size_t length = 0;
+    if (x < 10) {
+        buf[0] = '0' + x;
+        length = 1;
+    }
+
+    spy_Str *res = spy_str_alloc(length);
+    char *outbuf = (char*)res->utf8;
+    outbuf[0] = buf[0];
+    return res;
+}
