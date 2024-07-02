@@ -52,28 +52,28 @@ opimpl_new_CACHE = {}
 def new_StructType(vm: 'SPyVM', w_name: W_Str,
                    w_fields: W_List__W_Field) -> W_Type:
 
+    KEY = object() # unique ID for cache
     name = vm.unwrap_str(w_name)
-    size = 8 # XXX compute size
+    SIZE = 8 # XXX compute size
 
     @spytype(f'Meta_{name}')
     class W_StructType(W_TypeDef):
 
+        BUF_SIZE = SIZE
+
         @staticmethod
         def op_CALL(vm: 'SPyVM', w_type: W_Type,
                     w_argtypes: W_Dynamic) -> W_Dynamic:
-            # XXX this is a horrible hack to "forward" the size to the C
-            # backend
-            qn = QN(f"spy_cffi::new_{size}")
-            opimpl = opimpl_new_CACHE.get(qn)
+            opimpl = opimpl_new_CACHE.get(KEY)
             if opimpl:
                 return vm.wrap(opimpl)
 
-            @spy_builtin(qn)
+            @spy_builtin(QN(f"spy_cffi::new"))
             def opimpl_new(vm: 'SPyVM', w_class: W_Type) -> W_RawBuffer:
-                w_rb = rb_alloc(vm, vm.wrap(size))
+                w_rb = rb_alloc(vm, vm.wrap(SIZE))
                 return w_rb
 
-            opimpl_new_CACHE[qn] = opimpl_new
+            opimpl_new_CACHE[KEY] = opimpl_new
             return vm.wrap(opimpl_new)
 
     w_result = W_StructType(vm, name, RB.w_RawBuffer, w_fields)

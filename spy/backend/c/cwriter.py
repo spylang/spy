@@ -382,6 +382,14 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[1])
             return C.Call(c_name, [c_arg])
 
+        # another special case
+        if call.func.fqn == FQN.parse("spy_cffi::new"):
+            # XXX explain
+            w_cls = self.ctx.vm.lookup_global(call.args[0].fqn)
+            c_name = call.func.fqn.c_name
+            c_args = [C.Literal(str(w_cls.BUF_SIZE))]
+            return C.Call(c_name, c_args)
+
         # the default case is to call a function with the corresponding name
         c_name = call.func.fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]

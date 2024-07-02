@@ -45,5 +45,10 @@ spy_rawbuffer$rb_get_f64(spy_RawBuffer *rb, int32_t offset) {
     return *p;
 }
 
+// in theory this should go to spy_cffi.h, but too bad for now
+static inline spy_RawBuffer *
+spy_spy_cffi$new(size_t size) {
+    return spy_rawbuffer$rb_alloc(size);
+}
 
 #endif /* SPY_RAW_BUFFER_H */
