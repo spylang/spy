@@ -409,6 +409,7 @@ class TypeChecker:
                 err.add('error', f'this is `{t}`', target.loc)
                 sym = self.name2sym_maybe(target)
                 if sym:
+                    assert isinstance(target, ast.Name)
                     err.add('note', f'`{target.id}` defined here', sym.loc)
             else:
                 # for multi dispatch ops, all operands are equally important
@@ -567,4 +568,5 @@ class TypeChecker:
         # XXX we need to handle empty lists
         assert w_itemtype is not None
         w_listtype = self.vm.wrap(make_W_List(self.vm, w_itemtype))
+        assert isinstance(w_listtype, W_Type)
         return color, w_listtype
