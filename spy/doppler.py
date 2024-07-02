@@ -211,22 +211,31 @@ class FuncDoppler:
         def isprint(node: ast.Node) -> bool:
             return (isinstance(node, ast.FQNConst) and
                     node.fqn == FQN.parse('builtins::print'))
-        newfunc = self.shift_expr(call.func)
-        newargs = [self.shift_expr(arg) for arg in call.args]
-        # hack hack
-        if isprint(newfunc):
-            assert isinstance(newfunc, ast.FQNConst)
-            color, w_type = self.t.check_expr(newargs[0])
-            if w_type is B.w_i32:
-                newfunc.fqn = FQN.parse('builtins::print_i32')
-            elif w_type is B.w_f64:
-                newfunc.fqn = FQN.parse('builtins::print_f64')
-            elif w_type is B.w_bool:
-                newfunc.fqn = FQN.parse('builtins::print_bool')
-            elif w_type is B.w_void:
-                newfunc.fqn = FQN.parse('builtins::print_void')
-            elif w_type is B.w_str:
-                newfunc.fqn = FQN.parse('builtins::print_str')
-            else:
-                assert False
-        return call.replace(func=newfunc, args=newargs)
+
+        if call in self.t.opimpl:
+            # XXX write a test for this
+            w_opimpl = self.t.opimpl[call]
+            func = self.make_const(call.loc, w_opimpl)
+            arg0 = self.shift_expr(call.func)
+            newargs = [arg0] + [self.shift_expr(arg) for arg in call.args]
+            return ast.Call(call.loc, func, newargs)
+        else:
+            newfunc = self.shift_expr(call.func)
+            newargs = [self.shift_expr(arg) for arg in call.args]
+            # hack hack
+            if isprint(newfunc):
+                assert isinstance(newfunc, ast.FQNConst)
+                color, w_type = self.t.check_expr(newargs[0])
+                if w_type is B.w_i32:
+                    newfunc.fqn = FQN.parse('builtins::print_i32')
+                elif w_type is B.w_f64:
+                    newfunc.fqn = FQN.parse('builtins::print_f64')
+                elif w_type is B.w_bool:
+                    newfunc.fqn = FQN.parse('builtins::print_bool')
+                elif w_type is B.w_void:
+                    newfunc.fqn = FQN.parse('builtins::print_void')
+                elif w_type is B.w_str:
+                    newfunc.fqn = FQN.parse('builtins::print_str')
+                else:
+                    assert False
+            return call.replace(func=newfunc, args=newargs)
