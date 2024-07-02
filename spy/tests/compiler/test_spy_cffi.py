@@ -4,25 +4,26 @@ import struct
 import pytest
 from spy.vm.b import B
 from spy.vm.modules.spy_cffi import CFFI
-from spy.tests.support import CompilerTest, skip_backends, no_backend, no_C
+from spy.tests.support import (CompilerTest, skip_backends, no_backend, no_C,
+                               only_interp)
 
 class TestSPyCFFI(CompilerTest):
 
-    @no_C
+    @only_interp
     def test_field(self):
         mod = self.compile(
         """
         from spy_cffi import Field
 
         def foo() -> Field:
-            return Field('x', 8, i32)
+            return Field('x', 8, i32, None, None)
         """)
         w_f = mod.foo()
         assert self.vm.unwrap(w_f.w_name) == 'x'
         assert self.vm.unwrap(w_f.w_offset) == 8
         assert w_f.w_type is B.w_i32
 
-    @no_C
+    @only_interp
     def test_StructType(self):
         mod = self.compile(
         """
@@ -30,8 +31,8 @@ class TestSPyCFFI(CompilerTest):
 
         def make_Point() -> type:
             return new_StructType('Point', [
-                Field('x', 0, i32),
-                Field('y', 4, i32),
+                Field('x', 0, i32, None, None),
+                Field('y', 4, i32, None, None),
             ])
 
         Point = make_Point()
