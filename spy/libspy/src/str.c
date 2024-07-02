@@ -54,7 +54,7 @@ spy_str_getitem(spy_Str *s, int32_t i) {
     return res;
 }
 
-#ifdef SPY_WASM
+#ifdef SPY_TARGET_WASM32
 
 // hacky implementation
 spy_Str *
