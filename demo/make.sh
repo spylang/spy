@@ -6,8 +6,10 @@ CFLAGS="
   $1
   -I ${LIBSPY}/include/
   ${LIBSPY}/src/jsffi/jsffi.c
+  ${LIBSPY}/src/str.c
   -sEXPORTED_FUNCTIONS="['_main']"
   -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='\$dynCall'
+  emcompat.c
 "
 
 
