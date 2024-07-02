@@ -16,7 +16,7 @@ class TestTypeDef(CompilerTest):
         # explicit way, e.g. TypeDef.cast or something like that.
         mod = self.compile("""
         from types import makeTypeDef
-        MyInt = makeTypeDef('MyInt', i32)
+        MyInt = makeTypeDef('MyInt', i32, [])
 
         # this should go away and become MyInt.cast_from
         def MyInt_cast_from(x: i32) -> MyInt:
@@ -47,7 +47,7 @@ class TestTypeDef(CompilerTest):
 
         @blue
         def makeMyInt():
-            MyInt = makeTypeDef('MyInt', i32)
+            MyInt = makeTypeDef('MyInt', i32, [])
 
             @blue
             def __getattr__(attr):
@@ -75,7 +75,7 @@ class TestTypeDef(CompilerTest):
 
         @blue
         def foo():
-            MyInt = makeTypeDef('MyInt', i32)
+            MyInt = makeTypeDef('MyInt', i32, [])
             MyInt.__getattr__ = 42
             return MyInt.__getattr__
         """)
@@ -89,7 +89,7 @@ class TestTypeDef(CompilerTest):
 
         @blue
         def makeMyInt():
-            MyInt = makeTypeDef('MyInt', i32)
+            MyInt = makeTypeDef('MyInt', i32, [])
 
             def getattr_double(self: MyInt, attr: str) -> i32:
                 i: i32 = self
@@ -119,7 +119,7 @@ class TestTypeDef(CompilerTest):
 
         @blue
         def makeBox():
-            Box = makeTypeDef('Box', RawBuffer)
+            Box = makeTypeDef('Box', RawBuffer, [])
 
             def getattr_x(self: Box, attr: str) -> i32:
                 buf: RawBuffer = self

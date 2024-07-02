@@ -595,8 +595,9 @@ class TypeChecker:
                 err = SPyTypeError("conflicting item types")
                 raise err
         #
-        # XXX we need to handle empty lists
-        assert w_itemtype is not None
+        if w_itemtype is None:
+            # empty list
+            w_itemtype = B.w_void
         w_listtype = self.vm.wrap(make_W_List(self.vm, w_itemtype))
         assert isinstance(w_listtype, W_Type)
         return color, w_listtype
