@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, no_type_check
+from typing import TYPE_CHECKING, Any, no_type_check, Optional
 from spy.fqn import QN
 from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void
 from spy.vm.sig import spy_builtin
@@ -14,7 +14,7 @@ class W_ListFactory(W_Object):
         @spy_builtin(QN('operator::ListFactory_getitem'))
         def opimpl(vm: 'SPyVM', w_self: W_ListFactory, w_i: W_Type) -> W_Type:
             pyclass = make_W_List(vm, w_i)
-            return vm.wrap(pyclass)
+            return vm.wrap(pyclass)  # type: ignore
 
         return vm.wrap(opimpl)
 
@@ -25,7 +25,7 @@ class W_BaseList(W_Object):
 # VM
 CACHE: dict[Any, W_Type] = {}
 
-def make_W_List(vm_cache: 'SPyVM', w_T: W_Type) -> W_Type:
+def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
     # well-known specialized lists exist independently of the VM
     if w_T in (W_Type, W_I32):
         vm_cache = None
@@ -77,8 +77,8 @@ def make_W_List(vm_cache: 'SPyVM', w_T: W_Type) -> W_Type:
             return vm.wrap(setitem)
 
     W_List.__name__ = f'W_List[{T.__name__}]'
-    CACHE[key] = W_List
-    return W_List
+    CACHE[key] = W_List  # type: ignore
+    return W_List        # type: ignore
 
 
 W_List__W_Type = make_W_List(None, W_Type._w)

@@ -298,9 +298,9 @@ def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
         __qualname__ = __name__
 
     if hasattr(pyclass, 'meta_op_CALL'):
-        W_MetaType.op_CALL = pyclass.meta_op_CALL
+        W_MetaType.op_CALL = pyclass.meta_op_CALL  # type: ignore
     elif hasattr(pyclass, 'spy_new'):
-        W_MetaType.op_CALL = synthesize_meta_op_CALL(pyclass)
+        W_MetaType.op_CALL = synthesize_meta_op_CALL(pyclass)  # type: ignore
 
     W_MetaType._w = W_Type(metaname, W_MetaType)
     return W_MetaType
@@ -344,8 +344,8 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     W_Foo. Once we have done that, we can manually apply @spy_builtin and
     finally vm.wrap() it.
     """
-
     from spy.vm.sig import spy_builtin
+    assert hasattr(pyclass, 'spy_new')
     spy_new = pyclass.spy_new
 
     def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
