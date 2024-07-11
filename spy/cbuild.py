@@ -198,6 +198,7 @@ class EmscriptenToolchain(Toolchain):
     def LDFLAGS(self) -> list[str]:
         return super().LDFLAGS + [
             "-sEXPORTED_FUNCTIONS=['_main']",
+            "-sWASM_BIGINT",
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
