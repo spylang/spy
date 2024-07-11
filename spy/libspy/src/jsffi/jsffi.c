@@ -1,9 +1,9 @@
 #include <emscripten.h>
 #include "spy.h"
 
-JsRef jsffi_GLOBALTHIS = {0};
-JsRef jsffi_CONSOLE = {1};
-
+// see the corresponding comment in jsffi.h
+void jsffi_force_include(void) {
+}
 
 EM_JS(JsRef, jsffi_debug, (const char *ptr), {
     let s = UTF8ToString(ptr);

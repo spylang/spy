@@ -59,4 +59,25 @@ static inline void spy_jsffi$js_setattr(
     jsffi_setattr(target, name->utf8, val);
 }
 
+
+/* This is a workaround for an emscripten bug/limitation which triggers in the
+   following case:
+
+   1. you have jsffi.c which contains only EM_JS functions
+
+   2. you put jsffi.o into libspy.a
+
+   3. you have main.c and you try to link main.o and libspy.a
+
+   In this case, emscripten is unable to understand that it must include
+   jsffi.o the final executable, and you get undefined symbols.
+
+   The workaround is to make sure that we have a reference to at least ONE
+   symbol which is non-EM_JS in main.c, and this is done by the following
+   lines:
+*/
+
+void jsffi_force_include(void);
+void* _jsffi_force_include __attribute__((weak)) = jsffi_force_include;
+
 #endif /* SPY_JSFFI_H */
