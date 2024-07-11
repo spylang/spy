@@ -38,12 +38,9 @@ EM_JS(JsRef, jsffi_string, (const char *ptr), {
     return jsffi.to_jsref(UTF8ToString(ptr));
 });
 
-EM_JS_DEPS(jsffi_wrap_func_deps, "$dynCall");
+EM_JS_DEPS(jsffi_wrap_func_deps, "$wasmTable");
 EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), {
-    let func = () => {
-        dynCall("v", cfunc);
-    };
-    return jsffi.to_jsref(func);
+    return jsffi.to_jsref(wasmTable.get(cfunc));
 });
 
 EM_JS(JsRef, jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_arg0), {
