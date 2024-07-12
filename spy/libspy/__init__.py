@@ -4,6 +4,7 @@ import spy
 from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
 #from spy.vm.str import ll_spy_Str_read
 
+SRC = spy.ROOT.join('libspy', 'src')
 INCLUDE = spy.ROOT.join('libspy', 'include')
 BUILD = spy.ROOT.join('libspy', 'build')
 LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'libspy.wasm')

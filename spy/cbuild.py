@@ -183,7 +183,7 @@ class NativeToolchain(Toolchain):
 class EmscriptenToolchain(Toolchain):
 
     TARGET = 'emscripten'
-    EXE_FILENAME_EXT = 'js'
+    EXE_FILENAME_EXT = 'mjs'
 
     def __init__(self) -> None:
         self.EMCC = py.path.local.sysfind('emcc')
@@ -196,9 +196,11 @@ class EmscriptenToolchain(Toolchain):
 
     @property
     def LDFLAGS(self) -> list[str]:
+        post_js = spy.libspy.SRC.join('emscripten_post.js')
         return super().LDFLAGS + [
             "-sEXPORTED_FUNCTIONS=['_main']",
             "-sWASM_BIGINT",
+            f"--extern-post-js={post_js}",
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
