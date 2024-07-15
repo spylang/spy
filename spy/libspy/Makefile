@@ -1,7 +1,7 @@
 # Supported targets and compilers:
 #
 #   TARGET      TRIPLET                     COMPILER
-#   wasm32      wasm32-freestanding         zig cc
+#   wasi        wasm32-wasi-musl            zig cc
 #   emscripten  wasm32-unknown-emscripten   emcc
 #   native      x86_64-pc-linux-gnu (*)     cc
 #
@@ -21,17 +21,16 @@ CFLAGS := \
 ifeq ($(TARGET),)
 	.DEFAULT_GOAL := all
 
-# ---------- wasm32 target ----------
-else ifeq ($(TARGET), wasm32)
+# ---------- wasi target ----------
+else ifeq ($(TARGET), wasi)
 	CC := zig cc
 	LD := zig wasm-ld
 	AR := zig ar
 
 	CFLAGS := \
 		$(CFLAGS) \
-		-DSPY_TARGET_WASM32 \
-		--target=wasm32-freestanding \
-		-nostdlib  \
+		-DSPY_TARGET_WASI \
+		--target=wasm32-wasi-musl \
 		-mmultivalue \
 		-Xclang -target-abi \
 		-Xclang experimental-mv \
@@ -41,12 +40,7 @@ else ifeq ($(TARGET), wasm32)
 		--no-entry \
 		--import-memory
 
-	SRCS := \
-		$(SRCS) \
-		vendored/walloc/walloc.c \
-		src/libc.c
-
-	.DEFAULT_GOAL := build/wasm32/libspy.wasm
+	.DEFAULT_GOAL := build/wasi/libspy.wasm
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
@@ -85,15 +79,18 @@ BUILD_DIR := build/$(TARGET)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 all:
-	make TARGET=wasm32
+	make TARGET=wasi
 	make TARGET=emscripten
 	make TARGET=native
 
-build/wasm32/libspy.wasm: build/$(TARGET)/libspy.a
-	$(LD) \
-		--no-entry \
-		--import-undefined \
-		--whole-archive \
+# XXX: ideally, we would like to pass -Wl,--import-undefined to the linker,
+# but it's not currently supported by zig 0.13.0:
+# https://github.com/ziglang/zig/issues/20636
+build/wasi/libspy.wasm: build/$(TARGET)/libspy.a
+	$(CC) \
+		--target=wasm32-wasi-musl \
+		-mexec-model=reactor \
+		-Wl,--whole-archive \
 		build/$(TARGET)/libspy.a \
 		-o $@
 
@@ -111,4 +108,4 @@ clean:
 	rm -rf build
 
 usage:
-	@echo "Usage: make TARGET=[wasm32|emscripten|native]"
+	@echo "Usage: make TARGET=[wasi|emscripten|native]"

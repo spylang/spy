@@ -90,10 +90,25 @@ class LLWasmInstance:
 
     def __init__(self, llmod: LLWasmModule,
                  hostmods: list[HostModule]=[]) -> None:
+        # XXX hostmods is ignored
         self.llmod = llmod
         self.store = wt.Store(ENGINE)
-        imports = link(self.store, llmod, hostmods)
-        self.instance = wt.Instance(self.store, self.llmod.mod, imports)
+
+        wasi_config = wt.WasiConfig()
+        # eventually, we want to support argv, with either:
+        #    wasi_config.argv = [...]
+        #    wasi_config.inherit_argv()
+        wasi_config.inherit_stdin()
+        wasi_config.inherit_stdout()
+        wasi_config.inherit_stderr()
+        self.store.set_wasi(wasi_config)
+
+        linker = wt.Linker(ENGINE)
+        linker.define_wasi()
+        self.instance = linker.instantiate(self.store, self.llmod.mod)
+
+        #imports = link(self.store, llmod, hostmods)
+        #self.instance = wt.Instance(self.store, self.llmod.mod, imports)
         memory = self.instance.exports(self.store).get('memory')
         assert isinstance(memory, wt.Memory)
         self.mem = LLWasmMemory(self.store, memory)

@@ -18,7 +18,7 @@ def get_toolchain(toolchain: str) -> 'Toolchain':
 
 class Toolchain:
 
-    TARGET = '' # 'wasm', 'native', 'emscripten'
+    TARGET = '' # 'wasi', 'native', 'emscripten'
     EXE_FILENAME_EXT = ''
 
     @property
@@ -117,7 +117,7 @@ class Toolchain:
 
 class ZigToolchain(Toolchain):
 
-    TARGET = 'wasm32'
+    TARGET = 'wasi'
 
     def __init__(self) -> None:
         import ziglang  # type: ignore
@@ -131,10 +131,22 @@ class ZigToolchain(Toolchain):
 
     @property
     def WASM_CFLAGS(self) -> list[str]:
+        # XXX all of this is very messy.
+        #
+        # For WASI we have two "exec-model":
+        #   - "command": for standalone executables (this is the
+        #     default)
+        #   - "reactor": for staticaly-linked WASM modules which are called
+        #     from the outside.
+        #
+        # For our tests, we need "reactor", WHICH FOR NOW IS HARCODED HERE.
+        #
+        # More info:
+        #  https://clang.llvm.org/docs/ClangCommandLineReference.html#webassembly-driver
+        # https://clang.llvm.org/docs/ClangCommandLineReference.html#webassembly-driver
         return super().WASM_CFLAGS + [
-	    '--target=wasm32-freestanding',
-	    '-nostdlib',
-            '-shared',
+	    '--target=wasm32-wasi-musl',
+            '-mexec-model=reactor',
         ]
 
 

@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <string.h>
 #include "spy.h"
 
 spy_Str *

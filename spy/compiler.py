@@ -57,7 +57,7 @@ class Compiler:
         """
         file_c = self.cwrite()
         toolchain = get_toolchain(toolchain_type)
-        if toolchain.TARGET == 'wasm32':
+        if toolchain.TARGET == 'wasi':
             exports = [fqn.c_name for fqn in self.w_mod.keys()]
             file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                          exports=exports,

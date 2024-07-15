@@ -6,7 +6,7 @@ from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
 
 INCLUDE = spy.ROOT.join('libspy', 'include')
 BUILD = spy.ROOT.join('libspy', 'build')
-LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasm32', 'libspy.wasm')
+LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'libspy.wasm')
 
 LLMOD = LLWasmModule(LIBSPY_WASM)
 
