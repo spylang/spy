@@ -32,7 +32,7 @@ class Toolchain:
             '-DSPY_TARGET_' + self.TARGET.upper(),
             # XXX We don't want -O3 for tests, but we need to make it possible
             # to enable it from the cmdline
-            #'-O3',
+            '-O3',
             '--std=c99',
             '-Werror=implicit-function-declaration',
             #'-Werror',
