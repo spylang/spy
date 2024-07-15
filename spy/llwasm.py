@@ -41,15 +41,22 @@ class HostModule:
     ll: 'LLWasmInstance' # this attribute is set by LLWasmInstance.__init__
 
 
-def link(store: wt.Store, llmod: LLWasmModule,
-         hostmods: list[HostModule]) -> list[wt.Func]:
+def get_linker(
+        store: wt.Store,
+        llmod: LLWasmModule,
+        *,
+        wasi_config: Optional[wt.WasiConfig] = None,
+        hostmods: Optional[list[HostModule]] = None,
+    ) -> wt.Linker:
     """
-    Perform the linking between a given llmod and the given HostModules.
+    Setup a Linker which can be used to instantiate llmod.
 
-    All the WASM imports expected by llmod are searched inside the
-    HostModules. Return a list of imports which can be used to instantiate a
-    wt.Instance.
+    If wasi_config is supplied, the module will be linked agains WASI.
+
+    The remaining non-wasi imports expected by llmod are searched inside the
+    HostModules.
     """
+    hostmods = hostmods or []
     def find_meth(imp: Any) -> Any:
         methname = f'{imp.module}_{imp.name}'
         for hostmod in hostmods:
@@ -78,8 +85,28 @@ def link(store: wt.Store, llmod: LLWasmModule,
         wasmfunc = wt.Func(store, functype, meth)
         return wasmfunc
 
-    imports = [get_wasmfunc(imp) for imp in llmod.mod.imports]
-    return imports
+    linker = wt.Linker(store.engine)
+    if wasi_config:
+        store.set_wasi(wasi_config)
+        linker.define_wasi()
+
+    for imp in llmod.mod.imports:
+        if imp.module.startswith('wasi_'):
+            continue
+        func = get_wasmfunc(imp)
+        linker.define(store, imp.module, imp.name, func)
+
+    return linker
+
+def get_wasi_config() -> wt.WasiConfig:
+    wasi_config = wt.WasiConfig()
+    # eventually, we want to support argv, with either:
+    #    wasi_config.argv = [...]
+    #    wasi_config.inherit_argv()
+    wasi_config.inherit_stdin()
+    wasi_config.inherit_stdout()
+    wasi_config.inherit_stderr()
+    return wasi_config
 
 
 class LLWasmInstance:
@@ -90,25 +117,15 @@ class LLWasmInstance:
 
     def __init__(self, llmod: LLWasmModule,
                  hostmods: list[HostModule]=[]) -> None:
-        # XXX hostmods is ignored
         self.llmod = llmod
         self.store = wt.Store(ENGINE)
-
-        wasi_config = wt.WasiConfig()
-        # eventually, we want to support argv, with either:
-        #    wasi_config.argv = [...]
-        #    wasi_config.inherit_argv()
-        wasi_config.inherit_stdin()
-        wasi_config.inherit_stdout()
-        wasi_config.inherit_stderr()
-        self.store.set_wasi(wasi_config)
-
-        linker = wt.Linker(ENGINE)
-        linker.define_wasi()
+        linker = get_linker(
+            self.store,
+            self.llmod,
+            wasi_config = get_wasi_config(),
+            hostmods = hostmods
+        )
         self.instance = linker.instantiate(self.store, self.llmod.mod)
-
-        #imports = link(self.store, llmod, hostmods)
-        #self.instance = wt.Instance(self.store, self.llmod.mod, imports)
         memory = self.instance.exports(self.store).get('memory')
         assert isinstance(memory, wt.Memory)
         self.mem = LLWasmMemory(self.store, memory)

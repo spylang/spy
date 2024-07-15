@@ -83,9 +83,6 @@ all:
 	make TARGET=emscripten
 	make TARGET=native
 
-# XXX: ideally, we would like to pass -Wl,--import-undefined to the linker,
-# but it's not currently supported by zig 0.13.0:
-# https://github.com/ziglang/zig/issues/20636
 build/wasi/libspy.wasm: build/$(TARGET)/libspy.a
 	$(CC) \
 		--target=wasm32-wasi-musl \

@@ -92,10 +92,11 @@ class TestLLWasm(CTest):
     def test_HostModule(self):
         src = r"""
         #include <stdint.h>
-        // WASM imports
-        int32_t add(int32_t x, int32_t y);
-        int32_t square(int32_t x);
-        void record(int32_t x);
+        #include "spy.h"
+
+        int32_t WASM_IMPORT(add)(int32_t x, int32_t y);
+        int32_t WASM_IMPORT(square)(int32_t x);
+        void WASM_IMPORT(record)(int32_t x);
 
         int32_t compute(void) {
             record(100);
