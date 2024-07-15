@@ -88,7 +88,7 @@ class TestLibSPy(CTest):
             spy_panic("don't panic!");
         }
         """
-        test_wasm = self.compile(src, exports=['crash', 'spy_panic_message'])
+        test_wasm = self.compile(src, exports=['crash'])
         ll = LLSPyInstance.from_file(test_wasm)
         with pytest.raises(SPyPanicError, match="don't panic!"):
             ll.call('crash')
