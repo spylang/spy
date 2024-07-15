@@ -30,7 +30,9 @@ class Toolchain:
         libspy_a = spy.libspy.BUILD.join(self.TARGET, 'libspy.a')
         return [
             '-DSPY_TARGET_' + self.TARGET.upper(),
-            '-O3',
+            # XXX We don't want -O3 for tests, but we need to make it possible
+            # to enable it from the cmdline
+            #'-O3',
             '--std=c99',
             '-Werror=implicit-function-declaration',
             #'-Werror',
