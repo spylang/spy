@@ -154,7 +154,7 @@ class ZigToolchain(Toolchain):
 
 class ClangToolchain(Toolchain):
 
-    TARGET = 'wasm32'
+    TARGET = 'wasi'
 
     @property
     def CC(self) -> list[str]:
@@ -163,9 +163,7 @@ class ClangToolchain(Toolchain):
     @property
     def WASM_CFLAGS(self) -> list[str]:
         return super().WASM_CFLAGS + [
-	    '--target=wasm32',
-	    '-nostdlib',
-            '-Wl,--no-entry',
+	    '-mexec-model=reactor',
         ]
 
 
