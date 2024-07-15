@@ -5,6 +5,8 @@ from spy.backend.c.cwriter import CModuleWriter
 from spy.cbuild import get_toolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+from spy.vm.function import W_ASTFunc
+from spy.vm.object import W_I32
 
 DUMP_C = False
 DUMP_WASM = False
@@ -58,7 +60,17 @@ class Compiler:
         file_c = self.cwrite()
         toolchain = get_toolchain(toolchain_type)
         if toolchain.TARGET == 'wasi':
-            exports = [fqn.c_name for fqn in self.w_mod.keys()]
+            # ok, this logic is wrong: we cannot know which names we want to
+            # export by simply looking at their type: for example, in case of
+            # variables we want to export "red variables" but we don't want to
+            # export "blue variabes" (I guess?). For now, let's just include
+            # red functions and integers
+            exports = [
+                fqn.c_name
+                for fqn, w_obj in self.w_mod.items_w()
+                if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
+                    isinstance(w_obj, W_I32))
+            ]
             file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                          exports=exports,
                                          debug_symbols=debug_symbols)
