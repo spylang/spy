@@ -29,7 +29,7 @@
 #include "spy/rawbuffer.h"
 #include "spy/debug.h"
 
-#ifdef __EMSCRIPTEN__
+#ifdef SPY_TARGET_EMSCRIPTEN
 #include "spy/jsffi.h"
 #endif
 
