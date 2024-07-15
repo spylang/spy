@@ -34,3 +34,8 @@ void spy_builtins$print_str(spy_Str *s) {
         printf("%c", s->utf8[i]);
     printf("\n");
 }
+
+void spy_flush(void) {
+    fflush(stdout);
+    fflush(stderr);
+}

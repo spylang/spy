@@ -10,15 +10,24 @@ WASM_EXPORT(spy_builtins$abs)(int32_t x);
 int32_t
 WASM_EXPORT(spy_builtins$abs)(int32_t x);
 
-/*
-#ifndef SPY_TARGET_WASM32
-void spy_builtins$print_i32(int32_t x);
-void spy_builtins$print_f64(double x);
-void spy_builtins$print_bool(bool x);
-void spy_builtins$print_void(void);
-void spy_builtins$print_str(spy_Str *s);
+void
+WASM_EXPORT(spy_builtins$print_i32)(int32_t x);
 
-#endif
-*/
+void
+WASM_EXPORT(spy_builtins$print_f64)(double x);
+
+void
+WASM_EXPORT(spy_builtins$print_bool)(bool x);
+
+void
+WASM_EXPORT(spy_builtins$print_void)(void);
+
+void
+WASM_EXPORT(spy_builtins$print_str)(spy_Str *s);
+
+// spy_flush is not a builtin, but we need it to flush stdout/stderr from
+// wastime, see e.g. test_basic.test_print
+void
+WASM_EXPORT(spy_flush)(void);
 
 #endif /* SPY_BUILTINS_H */

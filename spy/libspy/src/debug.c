@@ -1,9 +1,8 @@
 #include "spy.h"
-
-#if !defined(SPY_TARGET_WASI)
-
 #include <stdio.h>
 #include <stdint.h>
+
+#if !defined(SPY_TARGET_WASI)
 
 void spy_debug_log(const char *s) {
     printf("%s\n", s);
