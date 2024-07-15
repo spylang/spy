@@ -29,6 +29,7 @@ else ifeq ($(TARGET), wasm32)
 
 	CFLAGS := \
 		$(CFLAGS) \
+		-DSPY_TARGET_WASM32 \
 		--target=wasm32-freestanding \
 		-nostdlib  \
 		-mmultivalue \
@@ -54,6 +55,7 @@ else ifeq ($(TARGET), emscripten)
 
 	CFLAGS := \
 		$(CFLAGS) \
+		-DSPY_TARGET_EMSCRIPTEN \
 		-mmultivalue \
 		-Xclang -target-abi \
 		-Xclang experimental-mv \
@@ -66,6 +68,10 @@ else ifeq ($(TARGET), native)
 	CC := cc
 	LD := ld
 	AR := ar
+
+	CFLAGS := \
+		$(CFLAGS) \
+		-DSPY_TARGET_NATIVE
 
 	.DEFAULT_GOAL := build/native/libspy.a
 

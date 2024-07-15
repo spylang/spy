@@ -6,13 +6,10 @@
 
 typedef __SIZE_TYPE__ size_t;
 
-#if defined(__linux__)
-#  define SPY_TARGET_NATIVE
-#elif defined(__EMSCRIPTEN__)
-#  define SPY_TARGET_EMSCRIPTEN
-#else
-#  define SPY_TARGET_WASM32
+#if defined(SPY_TARGET_WASM32) + defined(SPY_TARGET_EMSCRIPTEN) + defined(SPY_TARGET_NATIVE) == 0
+#  error "You must define one and exactly one of the SPY_TARGET_* macros"
 #endif
+
 
 #if defined(SPY_TARGET_NATIVE)
 #  define WASM_EXPORT(name) name

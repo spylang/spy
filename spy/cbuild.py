@@ -29,6 +29,7 @@ class Toolchain:
     def CFLAGS(self) -> list[str]:
         libspy_a = spy.libspy.BUILD.join(self.TARGET, 'libspy.a')
         return [
+            '-DSPY_TARGET_' + self.TARGET.upper(),
             '-O3',
             '--std=c99',
             '-Werror=implicit-function-declaration',
