@@ -54,29 +54,8 @@ spy_str_getitem(spy_Str *s, int32_t i) {
     return res;
 }
 
-#ifdef SPY_TARGET_WASM32
-
-// hacky implementation
-spy_Str *
-spy_builtins$int2str(int32_t x) {
-    char buf[1024];
-    size_t length = 0;
-    if (x < 10) {
-        buf[0] = '0' + x;
-        length = 1;
-    }
-
-    spy_Str *res = spy_str_alloc(length);
-    char *outbuf = (char*)res->utf8;
-    outbuf[0] = buf[0];
-    return res;
-}
-
-#else
-
-#include <stdio.h>
-#include <string.h>
-
+// XXX probably it would be better to implement it directly, instead of
+// bringing in all the code needed to support sprintf()
 spy_Str *
 spy_builtins$int2str(int32_t x) {
     char buf[1024];
@@ -88,4 +67,3 @@ spy_builtins$int2str(int32_t x) {
     memcpy(outbuf, buf, length);
     return res;
 }
-#endif
