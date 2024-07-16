@@ -4,6 +4,7 @@ from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
+from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
@@ -205,38 +206,37 @@ class FuncDoppler:
         return ast.Call(op.loc, func, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
-        def isprint(node: ast.Node) -> bool:
-            return (isinstance(node, ast.FQNConst) and
-                    node.fqn == FQN.parse('builtins::print'))
-
         if call in self.t.opimpl:
             w_opimpl = self.t.opimpl[call]
-            func = self.make_const(call.loc, w_opimpl)
-            arg0 = self.shift_expr(call.func)
-            newargs = [arg0] + [self.shift_expr(arg) for arg in call.args]
-            return ast.Call(call.loc, func, newargs)
+            newfunc = self.make_const(call.loc, w_opimpl)
+            extra_args = [self.shift_expr(call.func)]
         else:
             newfunc = self.shift_expr(call.func)
-            newargs = [self.shift_expr(arg) for arg in call.args]
-
-            # sanity check: the redshift MUST have produced a cibst. If it
+            # sanity check: the redshift MUST have produced a const. If it
             # didn't, the C backend won't be able to compile the call.
             assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
+            extra_args = []
 
-            # hack hack
-            if isprint(newfunc):
-                assert isinstance(newfunc, ast.FQNConst)
-                color, w_type = self.t.check_expr(newargs[0])
-                if w_type is B.w_i32:
-                    newfunc.fqn = FQN.parse('builtins::print_i32')
-                elif w_type is B.w_f64:
-                    newfunc.fqn = FQN.parse('builtins::print_f64')
-                elif w_type is B.w_bool:
-                    newfunc.fqn = FQN.parse('builtins::print_bool')
-                elif w_type is B.w_void:
-                    newfunc.fqn = FQN.parse('builtins::print_void')
-                elif w_type is B.w_str:
-                    newfunc.fqn = FQN.parse('builtins::print_str')
-                else:
-                    assert False
-            return call.replace(func=newfunc, args=newargs)
+        newargs = extra_args + [self.shift_expr(arg) for arg in call.args]
+        newop = ast.Call(call.loc, newfunc, newargs)
+        return self.specialize_print_maybe(newop)
+
+    def specialize_print_maybe(self, call: ast.Call) -> ast.Expr:
+        """
+        This is a temporary hack. We specialize print() based on the type
+        of its first argument
+        """
+        if not (isinstance(call.func, ast.FQNConst) and
+                call.func.fqn == FQN.parse('builtins::print')):
+            return call
+
+        assert len(call.args) == 1
+        color, w_type = self.t.check_expr(call.args[0])
+        t = w_type.name
+        if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
+            fqn = FQN.parse(f'builtins::print_{t}')
+        else:
+            raise SPyTypeError(f"Invalid type for print(): {t}")
+
+        newfunc = call.func.replace(fqn=fqn)
+        return call.replace(func=newfunc)
