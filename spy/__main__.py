@@ -41,6 +41,7 @@ def main(filename: Path,
          redshift: boolopt("perform redshift and exit") = False,
          cwrite: boolopt("create the .c file and exit") = False,
          g: boolopt("generate debug symbols", names=['-g']) = False,
+         O: opt(int, "optimization level", names=['-O']) = 0,
          toolchain: opt(
              ToolchainType,
              "which compiler to use",
@@ -48,13 +49,15 @@ def main(filename: Path,
          ) = "zig",
          ) -> None:
     try:
-        do_main(filename, run, pyparse, parse, redshift, cwrite, g, toolchain)
+        do_main(filename, run, pyparse, parse, redshift, cwrite, g, O, toolchain)
     except SPyError as e:
         print(e.format(use_colors=True))
 
 def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             redshift: bool,
-            cwrite: bool, debug_symbols: bool,
+            cwrite: bool,
+            debug_symbols: bool,
+            opt_level: int,
             toolchain: ToolchainType) -> None:
     if pyparse:
         do_pyparse(str(filename))
@@ -94,8 +97,11 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
     if cwrite:
         compiler.cwrite()
     else:
-        compiler.cbuild(debug_symbols=debug_symbols,
-                        toolchain_type=toolchain)
+        compiler.cbuild(
+            opt_level=opt_level,
+            debug_symbols=debug_symbols,
+            toolchain_type=toolchain
+        )
 
 if __name__ == '__main__':
     app()

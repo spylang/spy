@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "spy.h"
 
 int32_t
@@ -7,8 +8,6 @@ spy_builtins$abs(int32_t x) {
     return x;
 }
 
-#ifndef SPY_TARGET_WASM32
-#include <stdio.h>
 
 void spy_builtins$print_i32(int32_t x) {
     printf("%d\n", x);
@@ -35,4 +34,8 @@ void spy_builtins$print_str(spy_Str *s) {
         printf("%c", s->utf8[i]);
     printf("\n");
 }
-#endif
+
+void spy_flush(void) {
+    fflush(stdout);
+    fflush(stderr);
+}

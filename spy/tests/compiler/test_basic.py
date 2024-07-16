@@ -568,10 +568,7 @@ class TestBasic(CompilerTest):
         """)
         mod.foo()
 
-    # we cannot do I/O in our internal tests. See also
-    # test___main__::test_build_native for a similar test
-    @skip_backends("C", reason="no I/O for wasm32")
-    def test_print(self, capsys):
+    def test_print(self, capfd):
         mod = self.compile("""
         def foo() -> void:
             print("hello world")
@@ -581,10 +578,17 @@ class TestBasic(CompilerTest):
             print(None)
         """)
         mod.foo()
-        out, err = capsys.readouterr()
+        if self.backend == 'C':
+            # NOTE: float formatting is done by printf and it's different than
+            # the one that we get by Python in interp-mode. Too bad for now.
+            s_123 = "12.300000"
+            mod.ll.call('spy_flush')
+        else:
+            s_123 = "12.3"
+        out, err = capfd.readouterr()
         assert out == '\n'.join(["hello world",
                                  "42",
-                                 "12.3",
+                                 s_123,
                                  "True",
                                  "None",
                                  ""])

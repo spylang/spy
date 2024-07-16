@@ -42,10 +42,6 @@ class TestMain:
         self.main_spy.write(textwrap.dedent("""
         def main() -> void:
             print("hello world")
-            print(42)
-            print(12.3)
-            print(True)
-            print(None)
         """))
 
     def run(self, *args: Any) -> Any:
@@ -104,14 +100,8 @@ class TestMain:
             assert main_js.exists()
             assert main_wasm.exists()
             cmd = f'node {main_js}'
+
+        # NOTE: getstatusoutput automatically strips the trailing \n
         status, out = getstatusoutput(cmd)
         assert status == 0
-        # NOTE: getstatusoutput automatically strips the trailing \n
-        # NOTE: float formatting is done by printf and it's different than
-        # the one that we get by Python in interp-mode. Too bad for now.
-        assert out == '\n'.join(["hello world",
-                                 "42",
-                                 "12.300000",
-                                 "True",
-                                 "None",
-                                 ])
+        assert out == "hello world"

@@ -24,7 +24,9 @@ class TestLLWasm(CTest):
         """
         test_wasm = self.compile(src, exports=['add', 'x', 'y'])
         ll = LLWasmInstance.from_file(test_wasm)
-        assert ll.all_exports() == ['memory', 'add', 'x', 'y']
+        exports = ll.all_exports()
+        exports.sort()
+        assert exports == ['_initialize', 'add', 'memory', 'x', 'y']
 
     def test_read_global(self):
         src = r"""
@@ -92,10 +94,11 @@ class TestLLWasm(CTest):
     def test_HostModule(self):
         src = r"""
         #include <stdint.h>
-        // WASM imports
-        int32_t add(int32_t x, int32_t y);
-        int32_t square(int32_t x);
-        void record(int32_t x);
+        #include "spy.h"
+
+        int32_t WASM_IMPORT(add)(int32_t x, int32_t y);
+        int32_t WASM_IMPORT(square)(int32_t x);
+        void WASM_IMPORT(record)(int32_t x);
 
         int32_t compute(void) {
             record(100);

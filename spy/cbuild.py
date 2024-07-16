@@ -18,7 +18,7 @@ def get_toolchain(toolchain: str) -> 'Toolchain':
 
 class Toolchain:
 
-    TARGET = '' # 'wasm', 'native', 'emscripten'
+    TARGET = '' # 'wasi', 'native', 'emscripten'
     EXE_FILENAME_EXT = ''
 
     @property
@@ -29,7 +29,7 @@ class Toolchain:
     def CFLAGS(self) -> list[str]:
         libspy_a = spy.libspy.BUILD.join(self.TARGET, 'libspy.a')
         return [
-            '-O3',
+            '-DSPY_TARGET_' + self.TARGET.upper(),
             '--std=c99',
             '-Werror=implicit-function-declaration',
             #'-Werror',
@@ -53,21 +53,23 @@ class Toolchain:
            file_c: py.path.local,
            file_out: py.path.local,
            *,
+           opt_level: int = 0,
            debug_symbols: bool = False,
            EXTRA_CFLAGS: Optional[list[str]] = None,
            EXTRA_LDFLAGS: Optional[list[str]] = None,
            ) -> py.path.local:
-
         EXTRA_CFLAGS = EXTRA_CFLAGS or []
         EXTRA_LDFLAGS = EXTRA_LDFLAGS or []
         cmdline = self.CC + self.CFLAGS + EXTRA_CFLAGS
+        cmdline += [f'-O{opt_level}']
         if debug_symbols:
-            cmdline += ['-g', '-O0']
+            cmdline += ['-g']
         cmdline += [
             '-o', str(file_out),
             str(file_c)
         ]
         cmdline += self.LDFLAGS + EXTRA_LDFLAGS
+        #print(' '.join(cmdline))
         proc = subprocess.run(cmdline,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
@@ -83,6 +85,7 @@ class Toolchain:
 
     def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
                exports: Optional[list[str]] = None,
+               opt_level: int = 0,
                debug_symbols: bool = False,
                ) -> py.path.local:
         """
@@ -95,12 +98,14 @@ class Toolchain:
         return self.cc(
             file_c,
             file_wasm,
+            opt_level=opt_level,
             debug_symbols=debug_symbols,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
             EXTRA_LDFLAGS=EXTRA_LDFLAGS
         )
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
+              opt_level: int = 0,
               debug_symbols: bool = False,
               ) -> py.path.local:
         """
@@ -109,6 +114,7 @@ class Toolchain:
         return self.cc(
             file_c,
             file_exe,
+            opt_level=opt_level,
             debug_symbols=debug_symbols
         )
 
@@ -116,7 +122,7 @@ class Toolchain:
 
 class ZigToolchain(Toolchain):
 
-    TARGET = 'wasm32'
+    TARGET = 'wasi'
 
     def __init__(self) -> None:
         import ziglang  # type: ignore
@@ -130,16 +136,28 @@ class ZigToolchain(Toolchain):
 
     @property
     def WASM_CFLAGS(self) -> list[str]:
+        # XXX all of this is very messy.
+        #
+        # For WASI we have two "exec-model":
+        #   - "command": for standalone executables (this is the
+        #     default)
+        #   - "reactor": for staticaly-linked WASM modules which are called
+        #     from the outside.
+        #
+        # For our tests, we need "reactor", WHICH FOR NOW IS HARCODED HERE.
+        #
+        # More info:
+        #  https://clang.llvm.org/docs/ClangCommandLineReference.html#webassembly-driver
+        # https://clang.llvm.org/docs/ClangCommandLineReference.html#webassembly-driver
         return super().WASM_CFLAGS + [
-	    '--target=wasm32-freestanding',
-	    '-nostdlib',
-            '-shared',
+	    '--target=wasm32-wasi-musl',
+            '-mexec-model=reactor',
         ]
 
 
 class ClangToolchain(Toolchain):
 
-    TARGET = 'wasm32'
+    TARGET = 'wasi'
 
     @property
     def CC(self) -> list[str]:
@@ -148,9 +166,7 @@ class ClangToolchain(Toolchain):
     @property
     def WASM_CFLAGS(self) -> list[str]:
         return super().WASM_CFLAGS + [
-	    '--target=wasm32',
-	    '-nostdlib',
-            '-Wl,--no-entry',
+	    '-mexec-model=reactor',
         ]
 
 
@@ -186,12 +202,14 @@ class EmscriptenToolchain(Toolchain):
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
+              opt_level: int = 0,
               debug_symbols: bool = False,
               ) -> py.path.local:
 
         return self.cc(
             file_c,
             file_exe,
+            opt_level=opt_level,
             debug_symbols=debug_symbols,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
         )
