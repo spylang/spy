@@ -19,6 +19,8 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     ll.mem.write(ptr+4, utf8)
     return ptr
 
+
+
 @spytype('str')
 class W_Str(W_Object):
     """
@@ -73,3 +75,19 @@ class W_Str(W_Object):
             ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
             return W_Str.from_ptr(vm, ptr_c)
         return vm.wrap(str_getitem)
+
+    @staticmethod
+    def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
+                     w_argtypes: W_Dynamic) -> W_Dynamic:
+        from spy.vm.b import B
+        argtypes_w = vm.unwrap(w_argtypes)
+        if argtypes_w == [W_I32]:
+            return vm.wrap(int2str)
+        else:
+            return B.w_NotImplemented
+
+
+@spy_builtin(QN('builtins::int2str'))
+def int2str(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Str:
+    x = vm.unwrap_i32(w_x)
+    return vm.wrap(str(x))  # type: ignore

@@ -1,5 +1,3 @@
-#4414886654598415780
-
 import pytest
 from spy.fqn import QN
 from spy.vm.b import B
@@ -51,6 +49,8 @@ class TestCallOp(CompilerTest):
         """)
         x = mod.foo(5, 7)
         assert x == 12
+
+
 
     def test_call_type(self):
         # ========== EXT module for this test ==========
