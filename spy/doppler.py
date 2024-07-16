@@ -205,15 +205,11 @@ class FuncDoppler:
         return ast.Call(op.loc, func, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
-        # XXX: this assumes that it's a direct call (i.e., call.func is a
-        # ast.Name). We probably need to adapt for indirect calls, when we
-        # support them
         def isprint(node: ast.Node) -> bool:
             return (isinstance(node, ast.FQNConst) and
                     node.fqn == FQN.parse('builtins::print'))
 
         if call in self.t.opimpl:
-            # XXX write a test for this
             w_opimpl = self.t.opimpl[call]
             func = self.make_const(call.loc, w_opimpl)
             arg0 = self.shift_expr(call.func)
@@ -222,6 +218,11 @@ class FuncDoppler:
         else:
             newfunc = self.shift_expr(call.func)
             newargs = [self.shift_expr(arg) for arg in call.args]
+
+            # sanity check: the redshift MUST have produced a cibst. If it
+            # didn't, the C backend won't be able to compile the call.
+            assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
+
             # hack hack
             if isprint(newfunc):
                 assert isinstance(newfunc, ast.FQNConst)
