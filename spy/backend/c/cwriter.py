@@ -394,6 +394,15 @@ class CFuncWriter:
             c_attr = C.Literal(f'"{attr}"')
             return C.Call(c_name, [c_obj, c_attr])
 
+        if call.func.fqn == FQN.parse("jsffi::call_method_1"):
+            # XXX explain
+            c_name = "jsffi_call_method_1"
+            c_obj = self.fmt_expr(call.args[0])
+            attr = call.args[1].value
+            c_attr = C.Literal(f'"{attr}"')
+            c_arg = self.fmt_expr(call.args[2])
+            return C.Call(c_name, [c_obj, c_attr, c_arg])
+
         # the default case is to call a function with the corresponding name
         c_name = call.func.fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
