@@ -76,6 +76,7 @@ class W_Str(W_Object):
             return W_Str.from_ptr(vm, ptr_c)
         return vm.wrap(str_getitem)
 
+    @staticmethod
     def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
                      w_argtypes: W_Dynamic) -> W_Dynamic:
         from spy.vm.b import B
@@ -89,4 +90,4 @@ class W_Str(W_Object):
 @spy_builtin(QN('builtins::int2str'))
 def int2str(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Str:
     x = vm.unwrap_i32(w_x)
-    return vm.wrap(str(x))
+    return vm.wrap(str(x))  # type: ignore
