@@ -58,6 +58,7 @@ def get_linker(
     """
     hostmods = hostmods or []
     def find_meth(imp: Any) -> Any:
+        assert hostmods is not None
         methname = f'{imp.module}_{imp.name}'
         for hostmod in hostmods:
             meth = getattr(hostmod, methname, None)
@@ -94,7 +95,7 @@ def get_linker(
         if imp.module.startswith('wasi_'):
             continue
         func = get_wasmfunc(imp)
-        linker.define(store, imp.module, imp.name, func)
+        linker.define(store, imp.module, imp.name, func)  # type: ignore
 
     return linker
 
