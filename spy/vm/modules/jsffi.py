@@ -28,6 +28,21 @@ class W_JsRef(W_Object):
             return js_getattr(vm, w_self, w_attr)
         return vm.wrap(opimpl)
 
+    @staticmethod
+    def op_CALL_METHOD(vm: 'SPyVM', w_type: 'W_Type', w_method: 'W_Str',
+                       w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
+        argtypes_w = vm.unwrap(w_argtypes)
+        if len(argtypes_w) == 1:
+
+            @spy_builtin(QN('jsffi::call_method_1'))
+            def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
+                       w_arg: W_JsRef) -> W_JsRef:
+                return js_call_method_1(w_self, w_method, w_arg)
+            return vm.wrap(opimpl)
+
+        else:
+            raise Exception("unsupported number of arguments for CALL_METHOD")
+
 
 
 JSFFI.add('JsRef', W_JsRef._w)

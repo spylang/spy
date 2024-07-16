@@ -1,8 +1,14 @@
 # -*- mode: python -*-
 
-import jsffi
-from jsffi import (get_GlobalThis, get_Console, js_string,
-                   js_call_method_1, js_getattr, js_setattr)
+from jsffi import (
+    init as js_init,
+    debug as js_debug,
+    get_GlobalThis,
+    get_Console,
+    js_string,
+    js_call_method_1,
+    js_getattr,
+    js_setattr)
 
 # Currently JsRef is implemented as a builtin, but ideally we should be able
 # to implement it like this:
@@ -26,8 +32,8 @@ from jsffi import (get_GlobalThis, get_Console, js_string,
 
 
 def demo_lowlevel() -> void:
-    jsffi.init()
-    jsffi.debug("hello world")
+    js_init()
+    js_debug("hello world")
     window = get_GlobalThis()
     console = get_Console()
 
@@ -51,10 +57,11 @@ def demo_lowlevel() -> void:
     )
 
 def demo_highlevel() -> void:
-    jsffi.init()
+    js_init()
     window = get_GlobalThis()
     console = get_Console()
-    js_call_method_1(console, "log", window.document)
+    #js_call_method_1(console, "log", window.document)
+    console.log(window.document)
 
 
 def main() -> void:
