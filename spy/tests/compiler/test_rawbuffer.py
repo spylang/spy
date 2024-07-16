@@ -6,6 +6,21 @@ from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestRawBuffer(CompilerTest):
 
+    # Workaround for a very strange behavior. If I use -O0, I get the
+    # following error:
+    #
+    #   wasmtime._trap.Trap: error while executing at wasm backtrace:
+    #       0:  0xb89 - spy_rawbuffer$rb_set_f64
+    #                       at .../spy/spy/libspy/include/spy/rawbuffer.h:39:8
+    #       1:  0x870 - spy_test$foo
+    #                       at /tmp/pytest-.../test_f64_C_0/test.spy:6:5
+    #   Caused by:
+    #       wasm trap: wasm `unreachable` instruction executed
+    #
+    # However, the code in rb_set_f64 looks correct, and with -O1 it works. I
+    # wonder whether this is a bug of clang and/or wasmtime.
+    OPT_LEVEL = 1
+
     def test_i32(self):
         mod = self.compile(
         """

@@ -94,6 +94,8 @@ class CompilerTest:
     backend: Backend
     vm: SPyVM
 
+    OPT_LEVEL = 0
+
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
         return request.param
@@ -130,7 +132,7 @@ class CompilerTest:
     SKIP_SPY_BACKEND_SANITY_CHECK = False
     ALL_COMPILED_SOURCES: set[str] = set()
 
-    def compile(self, src: str, modname: str = 'test') -> Any:
+    def compile(self, src: str, modname: str = 'test', *, opt_level=0) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
         tests.
@@ -155,7 +157,7 @@ class CompilerTest:
         elif self.backend == 'C':
             self.vm.redshift()
             compiler = Compiler(self.vm, modname, self.builddir)
-            file_wasm = compiler.cbuild()
+            file_wasm = compiler.cbuild(opt_level=self.OPT_LEVEL)
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         else:
             assert False, f'Unknown backend: {self.backend}'

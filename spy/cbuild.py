@@ -30,9 +30,6 @@ class Toolchain:
         libspy_a = spy.libspy.BUILD.join(self.TARGET, 'libspy.a')
         return [
             '-DSPY_TARGET_' + self.TARGET.upper(),
-            # XXX We don't want -O3 for tests, but we need to make it possible
-            # to enable it from the cmdline
-            '-O3',
             '--std=c99',
             '-Werror=implicit-function-declaration',
             #'-Werror',
@@ -56,21 +53,23 @@ class Toolchain:
            file_c: py.path.local,
            file_out: py.path.local,
            *,
+           opt_level: int = 0,
            debug_symbols: bool = False,
            EXTRA_CFLAGS: Optional[list[str]] = None,
            EXTRA_LDFLAGS: Optional[list[str]] = None,
            ) -> py.path.local:
-
         EXTRA_CFLAGS = EXTRA_CFLAGS or []
         EXTRA_LDFLAGS = EXTRA_LDFLAGS or []
         cmdline = self.CC + self.CFLAGS + EXTRA_CFLAGS
+        cmdline += [f'-O{opt_level}']
         if debug_symbols:
-            cmdline += ['-g', '-O0']
+            cmdline += ['-g']
         cmdline += [
             '-o', str(file_out),
             str(file_c)
         ]
         cmdline += self.LDFLAGS + EXTRA_LDFLAGS
+        #print(' '.join(cmdline))
         proc = subprocess.run(cmdline,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
@@ -86,6 +85,7 @@ class Toolchain:
 
     def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
                exports: Optional[list[str]] = None,
+               opt_level: int = 0,
                debug_symbols: bool = False,
                ) -> py.path.local:
         """
@@ -98,12 +98,14 @@ class Toolchain:
         return self.cc(
             file_c,
             file_wasm,
+            opt_level=opt_level,
             debug_symbols=debug_symbols,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
             EXTRA_LDFLAGS=EXTRA_LDFLAGS
         )
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
+              opt_level: int = 0,
               debug_symbols: bool = False,
               ) -> py.path.local:
         """
@@ -112,6 +114,7 @@ class Toolchain:
         return self.cc(
             file_c,
             file_exe,
+            opt_level=opt_level,
             debug_symbols=debug_symbols
         )
 
@@ -199,12 +202,14 @@ class EmscriptenToolchain(Toolchain):
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
+              opt_level: int = 0,
               debug_symbols: bool = False,
               ) -> py.path.local:
 
         return self.cc(
             file_c,
             file_exe,
+            opt_level=opt_level,
             debug_symbols=debug_symbols,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
         )

@@ -51,6 +51,7 @@ class Compiler:
         return self.file_c
 
     def cbuild(self, *,
+               opt_level: int = 0,
                debug_symbols: bool = False,
                toolchain_type: ToolchainType = ToolchainType.zig,
                ) -> py.path.local:
@@ -73,6 +74,7 @@ class Compiler:
             ]
             file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                          exports=exports,
+                                         opt_level=opt_level,
                                          debug_symbols=debug_symbols)
             if DUMP_WASM:
                 print()
@@ -81,5 +83,7 @@ class Compiler:
             return file_wasm
         else:
             file_exe = self.file_wasm.new(ext=toolchain.EXE_FILENAME_EXT)
-            toolchain.c2exe(file_c, file_exe, debug_symbols=debug_symbols)
+            toolchain.c2exe(file_c, file_exe,
+                            opt_level=opt_level,
+                            debug_symbols=debug_symbols)
             return file_exe

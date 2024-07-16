@@ -24,7 +24,9 @@ class TestLLWasm(CTest):
         """
         test_wasm = self.compile(src, exports=['add', 'x', 'y'])
         ll = LLWasmInstance.from_file(test_wasm)
-        assert ll.all_exports() == ['memory', '_initialize', 'add', 'x', 'y']
+        exports = ll.all_exports()
+        exports.sort()
+        assert exports == ['_initialize', 'add', 'memory', 'x', 'y']
 
     def test_read_global(self):
         src = r"""
