@@ -232,7 +232,7 @@ class Call(Expr):
 
 @dataclass(eq=False)
 class CallMethod(Expr):
-    precedence = 16 # XXX?
+    precedence = 17 # higher than GetAttr
     target: Expr
     method: str
     args: list[Expr]

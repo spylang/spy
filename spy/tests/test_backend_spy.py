@@ -109,6 +109,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_callmethod(self):
+        src = """
+        def foo() -> i32:
+            return x.bar(1, 2, 3)
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_getitem(self):
         src = """
         def foo() -> void:
