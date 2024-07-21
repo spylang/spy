@@ -267,6 +267,14 @@ class ASTFrame:
         w_res = self.vm.call_function(w_func, args_w)
         return w_res
 
+    def eval_expr_CallMethod(self, cm: ast.CallMethod) -> W_Object:
+        w_opimpl = self.t.opimpl[cm]
+        w_target = self.eval_expr(cm.target)
+        w_method = self.vm.wrap(cm.method)
+        arg_w = [self.eval_expr(arg) for arg in cm.args]
+        w_res = self.vm.call_function(w_opimpl, [w_target, w_method] + arg_w)
+        return w_res
+
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)

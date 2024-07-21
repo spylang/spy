@@ -51,7 +51,6 @@ class TestCallOp(CompilerTest):
         assert x == 12
 
 
-
     def test_call_type(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
@@ -121,3 +120,56 @@ class TestCallOp(CompilerTest):
         """)
         res = mod.foo(3, 6)
         assert res == 36
+
+
+    def test_call_method(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext', '<ext>')
+
+        @spytype('Calc')
+        class W_Calc(W_Object):
+
+            def __init__(self, x: int) -> None:
+                self.x = x
+
+            @staticmethod
+            def op_CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
+                               w_argtypes: W_Dynamic) -> W_Dynamic:
+
+                meth = vm.unwrap_str(w_method)
+                if meth == 'add':
+                    @spy_builtin(QN('ext::meth_add'))
+                    def opimpl(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
+                               w_arg: W_I32) -> W_I32:
+                        y = vm.unwrap_i32(w_arg)
+                        return vm.wrap(w_self.x + y)
+                    return vm.wrap(opimpl)
+
+                elif meth == 'sub':
+                    @spy_builtin(QN('ext::meth_sub'))
+                    def opimpl(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
+                               w_arg: W_I32) -> W_I32:
+                        y = vm.unwrap_i32(w_arg)
+                        return vm.wrap(w_self.x - y)
+                    return vm.wrap(opimpl)
+
+                else:
+                    return B.w_NotImplemented
+
+        EXT.add('Calc', W_Calc._w)
+
+        @EXT.builtin
+        def make(vm: 'SPyVM', w_x: W_I32) -> W_Calc:
+            return W_Calc(vm.unwrap_i32(w_x))
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import make, Calc
+
+        def foo(x: i32, y: i32, z: i32) -> i32:
+            obj: Calc = make(x)
+            return obj.add(y) * 10 + obj.sub(z)
+        """)
+        x = mod.foo(5, 1, 2)
+        assert x == 63
