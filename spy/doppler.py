@@ -242,7 +242,6 @@ class FuncDoppler:
         return call.replace(func=newfunc)
 
     def shift_expr_CallMethod(self, cm: ast.CallMethod) -> ast.Expr:
-        # XXX write a test for this
         assert cm in self.t.opimpl
         w_opimpl = self.t.opimpl[cm]
         v_func = self.make_const(cm.loc, w_opimpl)
