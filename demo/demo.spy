@@ -4,7 +4,28 @@ import jsffi
 from jsffi import (get_GlobalThis, get_Console, js_string,
                    js_call_method_1, js_getattr, js_setattr)
 
-def main() -> void:
+# Currently JsRef is implemented as a builtin, but ideally we should be able
+# to implement it like this:
+#
+## class JsRef:
+##
+##     @staticmethod
+##     @blue
+##     def __GETATTR__(cls, attr):
+##         def opimpl(self: JsRef) -> JsRef:
+##             return js_getattr(self, attr)
+##         return opimpl
+##
+##     # equivalent to above, but with syntax sugare
+##     @staticmethod
+##     def __GETATTR__[cls, attr](self: JsRef) -> JsRef:
+##         #            ^    ^     ^
+##         #           blue blue  red
+##         return js_getattr(self, attr)
+
+
+
+def demo_lowlevel() -> void:
     jsffi.init()
     jsffi.debug("hello world")
     window = get_GlobalThis()
@@ -28,3 +49,14 @@ def main() -> void:
         "innerText",
         js_string("hello HTML from SPy")
     )
+
+def demo_highlevel() -> void:
+    jsffi.init()
+    window = get_GlobalThis()
+    console = get_Console()
+    js_call_method_1(console, "log", window.document)
+
+
+def main() -> void:
+    #demo_lowlevel()
+    demo_highlevel()

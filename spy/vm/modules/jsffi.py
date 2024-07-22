@@ -19,7 +19,16 @@ JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 
 @spytype('JsRef')
 class W_JsRef(W_Object):
-    pass
+
+    @staticmethod
+    def op_GETATTR(vm: 'SPyVM', w_type: 'W_Type',
+                   w_attr: 'W_Str') -> 'W_Dynamic':
+        @spy_builtin(QN('jsffi::getattr'))
+        def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str) -> W_JsRef:
+            return js_getattr(vm, w_self, w_attr)
+        return vm.wrap(opimpl)
+
+
 
 JSFFI.add('JsRef', W_JsRef._w)
 
