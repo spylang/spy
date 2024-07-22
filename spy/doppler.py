@@ -240,3 +240,13 @@ class FuncDoppler:
 
         newfunc = call.func.replace(fqn=fqn)
         return call.replace(func=newfunc)
+
+    def shift_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
+        assert op in self.t.opimpl
+        w_opimpl = self.t.opimpl[op]
+        v_func = self.make_const(op.loc, w_opimpl)
+        v_target = self.shift_expr(op.target)
+        v_method = ast.Constant(op.loc, value=op.method)
+        newargs_v = [v_target, v_method] + \
+            [self.shift_expr(arg) for arg in op.args]
+        return ast.Call(op.loc, v_func, newargs_v)

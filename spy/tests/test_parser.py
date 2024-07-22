@@ -609,6 +609,26 @@ class TestParser:
             ("this is not supported", "x=3"),
         )
 
+    def test_CallMethod(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            return a.b(1, 2)
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        Return(
+            value=CallMethod(
+                target=Name(id='a'),
+                method='b',
+                args=[
+                    Constant(value=1),
+                    Constant(value=2),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_If(self):
         mod = self.parse("""
         def foo() -> i32:

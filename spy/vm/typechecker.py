@@ -552,6 +552,27 @@ class TypeChecker:
             err.add('note', 'function defined here', def_loc)
         raise err
 
+    def check_expr_CallMethod(self, op: ast.CallMethod) -> tuple[Color, W_Type]:
+        _, w_otype = self.check_expr(op.target)
+        w_method = self.vm.wrap(op.method)
+        argtypes_w = [self.check_expr(arg)[1] for arg in op.args]
+        w_argtypes = W_List__W_Type(argtypes_w) # type: ignore
+        w_opimpl = self.vm.call_function(OP.w_CALL_METHOD,
+                                         [w_otype, w_method, w_argtypes])
+        w_method = self.vm.wrap(op.method)
+        m = ast.Constant(op.loc, value=w_method)
+        newargs = [op.target, m] + op.args
+        errmsg = 'cannot call methods on type `{0}`'
+        self.opimpl_typecheck(w_opimpl, op, newargs,
+                              [w_otype, B.w_str] + argtypes_w,
+                              dispatch='single',
+                              errmsg=errmsg)
+        assert isinstance(w_opimpl, W_Func)
+        self.opimpl[op] = w_opimpl
+        # XXX I'm not sure that the color is correct here. We need to think
+        # more.
+        return w_opimpl.w_functype.color, w_opimpl.w_functype.w_restype
+
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
         w_itemtype = None
         color: Color = 'red' # XXX should be blue?
