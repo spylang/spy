@@ -5,10 +5,10 @@ from jsffi import init as js_init, get_GlobalThis, get_Console
 var counter: i32 = 0
 
 def onclick() -> void:
-    console = get_Console()
-    #console.log("onclick ") # + str(counter))
-    console.log(str(counter))
     counter = counter + 1
+    window = get_GlobalThis()
+    message = window.document.getElementById("message")
+    message.innerText = "onclick " + str(counter)
 
 def main() -> void:
     # initialization

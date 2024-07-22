@@ -394,7 +394,7 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[1])
             return C.Call(c_name, [c_arg])
 
-        if call.func.fqn == FQN.parse("jsffi::getattr"):
+        if str(call.func.fqn).startswith("jsffi::getattr_"):
             # XXX explain
             c_name = "jsffi_getattr"
             attr = call.args[1].value
