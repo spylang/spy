@@ -428,7 +428,8 @@ class Parser:
         assert spy_cls is not None, f'Unkown operator: {opname}'
         return spy_cls(py_node.loc, left, right)
 
-    def from_py_expr_Call(self, py_node: py_ast.Call) -> spy.ast.Call:
+    def from_py_expr_Call(self, py_node: py_ast.Call
+                          ) -> spy.ast.Call|spy.ast.CallMethod:
         if py_node.keywords:
             self.unsupported(py_node.keywords[0], 'keyword arguments')
         func = self.from_py_expr(py_node.func)

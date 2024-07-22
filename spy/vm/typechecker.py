@@ -560,7 +560,8 @@ class TypeChecker:
         w_opimpl = self.vm.call_function(OP.w_CALL_METHOD,
                                          [w_otype, w_method, w_argtypes])
         w_method = self.vm.wrap(op.method)
-        newargs = [op.target, w_method] + op.args
+        m = ast.Constant(op.loc, value=w_method)
+        newargs = [op.target, m] + op.args
         errmsg = 'cannot call methods on type `{0}`'
         self.opimpl_typecheck(w_opimpl, op, newargs,
                               [w_otype, B.w_str] + argtypes_w,

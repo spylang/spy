@@ -142,7 +142,7 @@ class TestCallOp(CompilerTest):
                     def opimpl(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
                                w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
-                        return vm.wrap(w_self.x + y)
+                        return vm.wrap(w_self.x + y)  # type: ignore
                     return vm.wrap(opimpl)
 
                 elif meth == 'sub':
@@ -150,7 +150,7 @@ class TestCallOp(CompilerTest):
                     def opimpl(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
                                w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
-                        return vm.wrap(w_self.x - y)
+                        return vm.wrap(w_self.x - y)  # type: ignore
                     return vm.wrap(opimpl)
 
                 else:
