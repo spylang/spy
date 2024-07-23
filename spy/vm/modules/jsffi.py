@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 
+CACHE = {}
+
 @spytype('JsRef')
 class W_JsRef(W_Object):
 
@@ -31,6 +33,11 @@ class W_JsRef(W_Object):
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', w_type: 'W_Type', w_method: 'W_Str',
                        w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
+        method = vm.unwrap_str(w_method)
+        key = ('call_method_1', method)
+        if key in CACHE:
+            return CACHE[key]
+
         argtypes_w = vm.unwrap(w_argtypes)
         if len(argtypes_w) == 1:
 
@@ -38,7 +45,10 @@ class W_JsRef(W_Object):
             def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
                        w_arg: W_JsRef) -> W_JsRef:
                 return js_call_method_1(w_self, w_method, w_arg)
-            return vm.wrap(opimpl)
+
+            w_res = vm.wrap(opimpl)
+            CACHE[key] = w_res
+            return w_res
 
         else:
             raise Exception("unsupported number of arguments for CALL_METHOD")
