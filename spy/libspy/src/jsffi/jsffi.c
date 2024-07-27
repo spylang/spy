@@ -1,6 +1,8 @@
 #include <emscripten.h>
 #include "spy.h"
 
+EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable");
+
 // see the corresponding comment in jsffi.h
 void jsffi_force_include(void) {
 }
@@ -38,7 +40,6 @@ EM_JS(JsRef, jsffi_string, (const char *ptr), {
     return jsffi.to_jsref(UTF8ToString(ptr));
 });
 
-EM_JS_DEPS(jsffi_wrap_func_deps, "$wasmTable");
 EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), {
     return jsffi.to_jsref(wasmTable.get(cfunc));
 });

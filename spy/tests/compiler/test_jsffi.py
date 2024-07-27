@@ -15,3 +15,16 @@ class TestJsFFI(CompilerTest):
         """)
         out = exe.run()
         assert out == 'hello\n'
+
+    def test_console_log(self):
+        exe = self.compile(
+        """
+        from jsffi import init as js_init, get_Console
+
+        def main() -> void:
+            js_init()
+            console = get_Console()
+            console.log('hello')
+        """)
+        out = exe.run()
+        assert out == 'hello\n'
