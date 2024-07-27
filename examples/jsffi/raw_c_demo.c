@@ -2,9 +2,6 @@
 #include <emscripten.h>
 #include "spy.h"
 
-extern JsRef jsffi_GLOBALTHIS;
-extern JsRef jsffi_CONSOLE;
-
 EMSCRIPTEN_KEEPALIVE
 void onclick() {
     printf("onclick!\n");
@@ -14,6 +11,9 @@ void onclick() {
 EMSCRIPTEN_KEEPALIVE
 int main(void) {
   jsffi_init();
+  JsRef jsffi_GLOBALTHIS = spy_jsffi$get_GlobalThis();
+  JsRef jsffi_CONSOLE = spy_jsffi$get_Console();
+
   JsRef js_msg = jsffi_string("hello from c 2");
   jsffi_call_method_1(
       jsffi_CONSOLE,

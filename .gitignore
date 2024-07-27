@@ -6,15 +6,15 @@ tmp_*
 all.sh
 comp.sh
 
-demo/demo.c
-demo/demo.js
-demo/demo.wasm
-demo/raw_c_demo.js
-demo/raw_c_demo.wasm
-demo/favicon.ico
-demo/lldemo.js
-demo/lldemo.wasm
-demo/lldemo.c
+examples/jsffi/demo.c
+examples/jsffi/demo.mjs
+examples/jsffi/demo.wasm
+examples/jsffi/raw_c_demo.js
+examples/jsffi/raw_c_demo.wasm
+examples/jsffi/favicon.ico
+examples/jsffi/lldemo.mjs
+examples/jsffi/lldemo.wasm
+examples/jsffi/lldemo.c
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
