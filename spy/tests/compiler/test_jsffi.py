@@ -25,9 +25,10 @@ class TestJsFFI(CompilerTest):
             js_init()
             console = get_Console()
             console.log('hello from console.log')
+            console.log(42)
         """)
         out = exe.run()
-        assert out == 'hello from console.log\n'
+        assert out == 'hello from console.log\n42\n'
 
     def test_setattr(self):
         exe = self.compile(

@@ -136,7 +136,7 @@ class TypeChecker:
             # numeric conversion
             self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
             return None
-        elif w_exp is JSFFI.w_JsRef and w_got is B.w_str:
+        elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
             self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
                                              w_fromtype=w_got)
             return None

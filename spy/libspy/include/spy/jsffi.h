@@ -14,6 +14,7 @@ typedef struct {
 JsRef WASM_EXPORT(jsffi_debug)(const char *ptr);
 void WASM_EXPORT(jsffi_init)(void);
 JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
+JsRef WASM_EXPORT(jsffi_i32)(int32_t x);
 JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
 JsRef WASM_EXPORT(jsffi_call_method_1)(JsRef c_target, const char *c_name, JsRef c_arg0);
 JsRef WASM_EXPORT(jsffi_getattr)(JsRef c_target, const char *c_name);
@@ -39,6 +40,10 @@ static inline JsRef spy_jsffi$get_Console(void) {
 
 static inline JsRef spy_jsffi$js_string(spy_Str *s) {
     return jsffi_string(s->utf8);
+}
+
+static inline JsRef spy_jsffi$js_i32(int32_t x) {
+    return jsffi_i32(x);
 }
 
 static inline JsRef spy_jsffi$js_wrap_func(em_callback_func fn) {

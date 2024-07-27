@@ -40,6 +40,10 @@ EM_JS(JsRef, jsffi_string, (const char *ptr), {
     return jsffi.to_jsref(UTF8ToString(ptr));
 });
 
+EM_JS(JsRef, jsffi_i32, (int32_t x), {
+    return jsffi.to_jsref(x);
+});
+
 EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), {
     return jsffi.to_jsref(wasmTable.get(cfunc));
 });

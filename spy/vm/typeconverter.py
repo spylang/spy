@@ -64,20 +64,19 @@ class JsRefConv(TypeConverter):
 
     def redshift(self, vm: 'SPyVM', expr: ast.Expr) -> ast.Expr:
         if self.w_fromtype is B.w_str:
-            func = ast.FQNConst(
-                loc = expr.loc,
-                fqn = FQN.parse('jsffi::js_string')
-            )
+            f = 'jsffi::js_string'
+        elif self.w_fromtype is B.w_i32:
+            f = 'jsffi::js_i32'
         elif self.w_fromtype == W_FuncType.parse('def() -> void'):
-            func = ast.FQNConst(
-                loc = expr.loc,
-                fqn = FQN.parse('jsffi::js_wrap_func')
-            )
+            f = 'jsffi::js_wrap_func'
         else:
             assert False
 
         return ast.Call(
             loc = expr.loc,
-            func = func,
+            func = ast.FQNConst(
+                loc = expr.loc,
+                fqn = FQN.parse(f)
+            ),
             args = [expr]
         )
