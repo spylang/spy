@@ -28,3 +28,18 @@ class TestJsFFI(CompilerTest):
         """)
         out = exe.run()
         assert out == 'hello\n'
+
+    def test_setattr(self):
+        exe = self.compile(
+        """
+        from jsffi import init as js_init, get_Console, get_GlobalThis
+
+        def main() -> void:
+            js_init()
+            globalThis = get_GlobalThis()
+            console = get_Console()
+            globalThis.xxx = "hello"
+            console.log(globalThis.xxx)
+        """)
+        out = exe.run()
+        assert out == 'hello\n'
