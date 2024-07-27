@@ -60,7 +60,8 @@ class W_JsRef(W_Object):
                        w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
 
         argtypes_w = vm.unwrap(w_argtypes)
-        if len(argtypes_w) == 1:
+        n = len(argtypes_w)
+        if n == 1:
             key = 'call_method_1'
             if key in CACHE:
                 return CACHE[key]
@@ -75,7 +76,9 @@ class W_JsRef(W_Object):
             return w_res
 
         else:
-            raise Exception("unsupported number of arguments for CALL_METHOD")
+            raise Exception(
+                f"unsupported number of arguments for CALL_METHOD: {n}"
+            )
 
 
 

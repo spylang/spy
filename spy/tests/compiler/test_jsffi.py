@@ -11,10 +11,10 @@ class TestJsFFI(CompilerTest):
         exe = self.compile(
         """
         def main() -> void:
-            print('hello')
+            print('hello from print')
         """)
         out = exe.run()
-        assert out == 'hello\n'
+        assert out == 'hello from print\n'
 
     def test_console_log(self):
         exe = self.compile(
@@ -24,10 +24,10 @@ class TestJsFFI(CompilerTest):
         def main() -> void:
             js_init()
             console = get_Console()
-            console.log('hello')
+            console.log('hello from console.log')
         """)
         out = exe.run()
-        assert out == 'hello\n'
+        assert out == 'hello from console.log\n'
 
     def test_setattr(self):
         exe = self.compile(
@@ -38,8 +38,24 @@ class TestJsFFI(CompilerTest):
             js_init()
             globalThis = get_GlobalThis()
             console = get_Console()
-            globalThis.xxx = "hello"
+            globalThis.xxx = "hello from attribute"
             console.log(globalThis.xxx)
         """)
         out = exe.run()
-        assert out == 'hello\n'
+        assert out == 'hello from attribute\n'
+
+    def test_callback(self):
+        exe = self.compile(
+        """
+        from jsffi import init as js_init, get_GlobalThis
+
+        def say_hello() -> void:
+            print("hello from callback")
+
+        def main() -> void:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.setTimeout(say_hello) # XXX allow 2 params and pass 0
+        """)
+        out = exe.run()
+        assert out == 'hello from callback\n'
