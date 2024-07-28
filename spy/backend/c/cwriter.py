@@ -425,7 +425,6 @@ class CFuncWriter:
             return C.Call(c_name, [c_arg])
 
         if str(call.func.fqn).startswith("jsffi::getattr_"):
-            # XXX explain
             c_name = "jsffi_getattr"
             attr = call.args[1].value
             c_obj = self.fmt_expr(call.args[0])
@@ -434,7 +433,6 @@ class CFuncWriter:
 
         # horrible hack (see also jsffi.W_JsRef.op_SETATTR)
         if str(call.func.fqn).startswith("jsffi::setattr_"):
-            # XXX explain
             c_name = "jsffi_setattr"
             c_obj = self.fmt_expr(call.args[0])
             attr = call.args[1].value
@@ -443,7 +441,6 @@ class CFuncWriter:
             return C.Call(c_name, [c_obj, c_attr, c_value])
 
         if call.func.fqn == FQN.parse("jsffi::call_method_1"):
-            # XXX explain
             c_name = "jsffi_call_method_1"
             c_obj = self.fmt_expr(call.args[0])
             attr = call.args[1].value
