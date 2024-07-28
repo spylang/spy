@@ -20,6 +20,7 @@ from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.types import TYPES, W_TypeDef
 from spy.vm.modules.rawbuffer import RAW_BUFFER
+from spy.vm.modules.jsffi import JSFFI
 
 class SPyVM:
     """
@@ -48,6 +49,7 @@ class SPyVM:
         self.make_module(OPERATOR)   # operator::
         self.make_module(TYPES)      # types::
         self.make_module(RAW_BUFFER) # rawbuffer::
+        self.make_module(JSFFI)      # jsffi::
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file
@@ -289,6 +291,15 @@ class SPyVM:
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
+        # FIXME: we need a proper/more general way to implement comparisons
+        # <hack hack hack>
+        def compare_by_id(w_obj):
+            return isinstance(w_obj, W_Type)
+
+        if compare_by_id(w_a) and compare_by_id(w_b):
+            return self.wrap(w_a is w_b)
+        # </hack hack hack>
+
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])

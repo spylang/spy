@@ -1,6 +1,7 @@
 from typing import Any, Literal, Optional, no_type_check
 import textwrap
 from contextlib import contextmanager
+import subprocess
 import pytest
 import py.path
 from spy import ast
@@ -84,6 +85,9 @@ def only_interp(func):
 def only_C(func):
     return parametrize_compiler_backend(['C'], func)
 
+def only_emscripten(func):
+    return parametrize_compiler_backend(['emscripten'], func)
+
 def no_C(func):
     return parametrize_compiler_backend(['interp', 'doppler'], func)
 
@@ -159,6 +163,12 @@ class CompilerTest:
             compiler = Compiler(self.vm, modname, self.builddir)
             file_wasm = compiler.cbuild(opt_level=self.OPT_LEVEL)
             return WasmModuleWrapper(self.vm, modname, file_wasm)
+        elif self.backend == 'emscripten':
+            self.vm.redshift()
+            compiler = Compiler(self.vm, modname, self.builddir)
+            file_js = compiler.cbuild(opt_level=self.OPT_LEVEL,
+                                      toolchain_type = 'emscripten')
+            return ExeWrapper(file_js)
         else:
             assert False, f'Unknown backend: {self.backend}'
 
@@ -242,6 +252,19 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
     print("The following error was expected (everything is good):")
     print(formatted_error)
 
+
+class ExeWrapper:
+
+    def __init__(self, f):
+        self.f = f
+
+    def run(self, *args):
+        if self.f.ext == '.mjs':
+            # run with node
+            out = subprocess.check_output(['node', self.f] + list(args))
+            return out.decode('utf-8')
+        else:
+            raise NotImplementedError
 
 @pytest.mark.usefixtures('init')
 class CTest:

@@ -7,6 +7,7 @@ from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend
 from spy.compiler import Compiler, ToolchainType
+from spy.cbuild import get_toolchain
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
@@ -95,7 +96,8 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
 
     compiler = Compiler(vm, modname, py.path.local(builddir))
     if cwrite:
-        compiler.cwrite()
+        t = get_toolchain(toolchain)
+        compiler.cwrite(t.TARGET)
     else:
         compiler.cbuild(
             opt_level=opt_level,

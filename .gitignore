@@ -6,6 +6,16 @@ tmp_*
 all.sh
 comp.sh
 
+examples/jsffi/demo.c
+examples/jsffi/demo.mjs
+examples/jsffi/demo.wasm
+examples/jsffi/raw_c_demo.js
+examples/jsffi/raw_c_demo.wasm
+examples/jsffi/favicon.ico
+examples/jsffi/lldemo.mjs
+examples/jsffi/lldemo.wasm
+examples/jsffi/lldemo.c
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

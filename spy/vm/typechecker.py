@@ -10,7 +10,9 @@ from spy.vm.list import make_W_List, W_List__W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
-from spy.vm.typeconverter import TypeConverter, DynamicCast, NumericConv
+from spy.vm.modules.jsffi import JSFFI
+from spy.vm.typeconverter import (TypeConverter, DynamicCast, NumericConv,
+                                  JsRefConv)
 from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -134,6 +136,15 @@ class TypeChecker:
             # numeric conversion
             self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
             return None
+        elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
+            self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
+                                             w_fromtype=w_got)
+            return None
+        elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
+            assert w_got == W_FuncType.parse('def() -> void')
+            self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
+                                             w_fromtype=w_got)
+            return None
 
         # mismatched types
         err = SPyTypeError('mismatched types')
@@ -169,6 +180,9 @@ class TypeChecker:
 
     def check_stmt_Return(self, ret: ast.Return) -> None:
         self.typecheck_local(ret.value, '@return')
+
+    def check_stmt_Pass(self, stmt: ast.Pass) -> None:
+        pass
 
     def check_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         """

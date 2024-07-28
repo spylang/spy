@@ -35,12 +35,13 @@ class Compiler:
         self.file_c = builddir.join(f'{basename}.c')
         self.file_wasm = builddir.join(f'{basename}.wasm')
 
-    def cwrite(self) -> py.path.local:
+    def cwrite(self, target) -> py.path.local:
         """
         Convert the W_Module into a .c file
         """
         file_spy = py.path.local(self.w_mod.filepath)
-        self.cwriter = CModuleWriter(self.vm, self.w_mod, file_spy, self.file_c)
+        self.cwriter = CModuleWriter(self.vm, self.w_mod, file_spy, self.file_c,
+                                     target)
         self.cwriter.write_c_source()
         #
         if DUMP_C:
@@ -58,8 +59,8 @@ class Compiler:
         """
         Build the .c file into a .wasm file or an executable
         """
-        file_c = self.cwrite()
         toolchain = get_toolchain(toolchain_type)
+        file_c = self.cwrite(toolchain.TARGET)
         if toolchain.TARGET == 'wasi':
             # ok, this logic is wrong: we cannot know which names we want to
             # export by simply looking at their type: for example, in case of

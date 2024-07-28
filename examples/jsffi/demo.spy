@@ -1,0 +1,52 @@
+# -*- mode: python -*-
+
+from jsffi import init as js_init, get_GlobalThis, get_Console
+
+var counter: i32 = 0
+
+def onclick() -> void:
+    counter = counter + 1
+    window = get_GlobalThis()
+    message = window.document.getElementById("message")
+    message.innerText = "onclick " + str(counter)
+
+def main() -> void:
+    # initialization
+    js_init()
+    window = get_GlobalThis()
+    console = get_Console()
+    document = window.document
+    #
+    # real code
+    console.log("Hello SPy")
+    div_title = document.getElementById("title")
+    console.log(div_title)
+    div_message = document.getElementById("message")
+    btn = document.getElementById("btn")
+    #
+    div_title.innerText = "Hello HTML from SPy"
+    btn.onclick = onclick
+
+
+
+
+
+
+# Currently JsRef is implemented as a builtin, but ideally we should be able
+# to implement it like this:
+#
+## class JsRef:
+##
+##     @staticmethod
+##     @blue
+##     def __GETATTR__(cls, attr):
+##         def opimpl(self: JsRef) -> JsRef:
+##             return js_getattr(self, attr)
+##         return opimpl
+##
+##     # equivalent to above, but with syntax sugare
+##     @staticmethod
+##     def __GETATTR__[cls, attr](self: JsRef) -> JsRef:
+##         #            ^    ^     ^
+##         #           blue blue  red
+##         return js_getattr(self, attr)

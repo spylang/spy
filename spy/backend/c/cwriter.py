@@ -7,7 +7,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.object import W_Type, W_Object
 from spy.vm.module import W_Module
-from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.types import TYPES
@@ -21,17 +21,21 @@ class CModuleWriter:
     w_mod: W_Module
     spyfile: py.path.local
     cfile: py.path.local
+    target: str
     out: TextBuilder          # main builder
+    out_warnings: TextBuilder # nested builder
     out_globals: TextBuilder  # nested builder for global declarations
     global_vars: set[str]
 
     def __init__(self, vm: SPyVM, w_mod: W_Module,
                  spyfile: py.path.local,
-                 cfile: py.path.local) -> None:
+                 cfile: py.path.local,
+                 target: str) -> None:
         self.ctx = Context(vm)
         self.w_mod = w_mod
         self.spyfile = spyfile
         self.cfile = cfile
+        self.target = target
         self.out = TextBuilder(use_colors=False)
         self.out_globals = None  # type: ignore
         self.global_vars = set()
@@ -64,6 +68,7 @@ class CModuleWriter:
 
         // global declarations and definitions
         """)
+        self.out_warnings = self.out.make_nested_builder()
         self.out_globals = self.out.make_nested_builder()
         self.out.wl()
         self.out.wb("""
@@ -90,6 +95,11 @@ class CModuleWriter:
                 }}
             """)
         return self.out.build()
+
+    def emit_jsffi_error(self):
+        err = '#error "jsffi is available only for emscripten targets"'
+        if err not in self.out_warnings.lines:
+            self.out_warnings.wl(err)
 
     def declare_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         c_func = self.ctx.c_function(fqn.c_name, w_func.w_functype)
@@ -225,6 +235,9 @@ class CFuncWriter:
 
     # ===== statements =====
 
+    def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
+        pass
+
     def emit_stmt_Return(self, ret: ast.Return) -> None:
         v = self.fmt_expr(ret.value)
         if v is C.Void():
@@ -319,6 +332,11 @@ class CFuncWriter:
         v = f'{v} /* {comment} */'
         return C.UnaryOp('&', C.Literal(v))
 
+    def fmt_expr_FQNConst(self, const: ast.FQNConst) -> C.Expr:
+        w_obj = self.ctx.vm.lookup_global(const.fqn)
+        assert isinstance(w_obj, W_Func)
+        return C.Literal(const.fqn.c_name)
+
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         sym = self.w_func.funcdef.symtable.lookup(name.id)
         if sym.is_local:
@@ -377,6 +395,26 @@ class CFuncWriter:
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
+        if call.func.fqn.modname == "jsffi" and self.cmod.target != 'emscripten':
+            self.cmod.emit_jsffi_error()
+
+        # FIXME: many of the following special-cases are needed because the
+        # signature of the opimpl doesn't match the needed signature of the
+        # corresponding C function. E.g.:
+        #
+        #   - int2str: the first param is the 'str' type but we remove it
+        #
+        #   - jsffi::getattr: the current sig for GETATTR does not pass the
+        #     attribute name, but we want it as a C literal. The hack is to
+        #     pass it as part of the builtin name (e.g.,
+        #     jsffi::getattr_document) and parse it. Same for jsffi::setattr
+        #
+        #   - jsffi::call_method_1: the method name is a W_Str but we want a C
+        #     literal, so we hack it
+        #
+        # I think we need a more general way so that OPERATORs can have more
+        # control on which arguments are passed to opimpls.
+
         if call.func.fqn == FQN.parse("builtins::int2str"):
             # special case: remove the first param (this is the 'str' type)
             arg0 = call.args[0]
@@ -385,6 +423,30 @@ class CFuncWriter:
             c_name = call.func.fqn.c_name
             c_arg = self.fmt_expr(call.args[1])
             return C.Call(c_name, [c_arg])
+
+        if str(call.func.fqn).startswith("jsffi::getattr_"):
+            c_name = "jsffi_getattr"
+            attr = call.args[1].value
+            c_obj = self.fmt_expr(call.args[0])
+            c_attr = C.Literal(f'"{attr}"')
+            return C.Call(c_name, [c_obj, c_attr])
+
+        # horrible hack (see also jsffi.W_JsRef.op_SETATTR)
+        if str(call.func.fqn).startswith("jsffi::setattr_"):
+            c_name = "jsffi_setattr"
+            c_obj = self.fmt_expr(call.args[0])
+            attr = call.args[1].value
+            c_attr = C.Literal(f'"{attr}"')
+            c_value = self.fmt_expr(call.args[2])
+            return C.Call(c_name, [c_obj, c_attr, c_value])
+
+        if call.func.fqn == FQN.parse("jsffi::call_method_1"):
+            c_name = "jsffi_call_method_1"
+            c_obj = self.fmt_expr(call.args[0])
+            attr = call.args[1].value
+            c_attr = C.Literal(f'"{attr}"')
+            c_arg = self.fmt_expr(call.args[2])
+            return C.Call(c_name, [c_obj, c_attr, c_arg])
 
         # the default case is to call a function with the corresponding name
         c_name = call.func.fqn.c_name

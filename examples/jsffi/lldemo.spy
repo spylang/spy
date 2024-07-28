@@ -1,0 +1,54 @@
+# -*- mode: python -*-
+
+from jsffi import (
+    init as js_init,
+    debug as js_debug,
+    get_GlobalThis,
+    get_Console,
+    js_string,
+    js_wrap_func,
+    js_call_method_1,
+    js_getattr,
+    js_setattr)
+
+
+def onclick() -> void:
+    console = get_Console()
+    js_call_method_1(console, "log", js_string("onclick!"))
+
+def main() -> void:
+    js_init()
+    js_debug("hello world")
+    window = get_GlobalThis()
+    console = get_Console()
+
+    js_msg = js_string("hello from SPy (lldemo)")
+    js_call_method_1(console, "log", js_msg)
+
+    document = js_getattr(window, "document")
+    #js_call_method_1(console, "log", document)
+
+    div_title = js_call_method_1(
+        document,
+        "getElementById",
+        js_string("title")
+    )
+    js_call_method_1(console, "log", div_title)
+
+    js_setattr(
+        div_title,
+        "innerText",
+        js_string("hello HTML from SPy (lldemo)")
+    )
+
+    btn = js_call_method_1(
+        document,
+        "getElementById",
+        js_string("btn")
+    )
+
+    js_setattr(
+        btn,
+        "onclick",
+        js_wrap_func(onclick)
+    )

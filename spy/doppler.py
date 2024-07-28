@@ -9,6 +9,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.astframe import ASTFrame
+from spy.vm.typeconverter import JsRefConv
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:
@@ -98,15 +99,23 @@ class FuncDoppler:
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
         color, w_type = self.t.check_expr(expr)
+        conv = self.t.expr_conv.get(expr)
         if color == 'blue':
-            return self.blue_eval(expr)
-        return magic_dispatch(self, 'shift_expr', expr)
+            if not conv or conv.color == 'blue':
+                return self.blue_eval(expr)
+        res = magic_dispatch(self, 'shift_expr', expr)
+        if conv and isinstance(conv, JsRefConv):
+            res = conv.redshift(self.vm, res)
+        return res
 
     # ==== statements ====
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         newvalue = self.shift_expr(ret.value)
         return [ret.replace(value=newvalue)]
+
+    def shift_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
+        return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
         ann_color, w_ann_type = self.t.check_expr(vardef.type)

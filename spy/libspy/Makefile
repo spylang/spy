@@ -55,6 +55,10 @@ else ifeq ($(TARGET), emscripten)
 		-Xclang experimental-mv \
 		-mbulk-memory
 
+	SRCS := \
+		$(SRCS) \
+		src/jsffi/jsffi.c
+
 	.DEFAULT_GOAL = build/emscripten/libspy.a
 
 # ---------- native target ----------

@@ -95,7 +95,7 @@ class TestMain:
             assert main_exe.exists()
             cmd = str(main_exe)
         else:
-            main_js = self.tmpdir.join('main.js')
+            main_js = self.tmpdir.join('main.mjs')
             main_wasm = self.tmpdir.join('main.wasm')
             assert main_js.exists()
             assert main_wasm.exists()
