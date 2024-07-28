@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 
+# FIXME: calls to op_* should be blue and automatically cached by the
+# VM. However, this is not the case so far and we need to do it by ourselves.
 CACHE = {}
 
 @spytype('JsRef')

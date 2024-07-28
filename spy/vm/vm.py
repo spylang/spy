@@ -291,13 +291,14 @@ class SPyVM:
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
-        # XXX hack hack hack (HORROR)
+        # FIXME: we need a proper/more general way to implement comparisons
+        # <hack hack hack>
         def compare_by_id(w_obj):
             return isinstance(w_obj, W_Type)
 
         if compare_by_id(w_a) and compare_by_id(w_b):
             return self.wrap(w_a is w_b)
-        # /hack hack hack
+        # </hack hack hack>
 
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
