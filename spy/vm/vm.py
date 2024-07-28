@@ -221,7 +221,9 @@ class SPyVM:
         into the most appropriate app-level W_* object.
         """
         T = type(value)
-        if value is None:
+        if isinstance(value, W_Object):
+            return value
+        elif value is None:
             return B.w_None
         elif T in (int, fixedint.Int32):
             return W_I32(value)

@@ -694,3 +694,19 @@ class TestBasic(CompilerTest):
         assert mod.foo(0) == '0'
         assert mod.foo(9) == '9'
         assert mod.foo(123) == '123'
+
+    @no_C
+    def test_generic_equality(self):
+        mod = self.compile("""
+        @blue
+        def type_eq(x: type, y: type) -> bool:
+            return x == y
+
+        @blue
+        def type_ne(x: type, y: type) -> bool:
+            return x != y
+        """)
+        assert mod.type_eq(B.w_i32, B.w_i32) == True
+        assert mod.type_eq(B.w_i32, B.w_str) == False
+        assert mod.type_ne(B.w_i32, B.w_i32) == False
+        assert mod.type_ne(B.w_i32, B.w_str) == True
