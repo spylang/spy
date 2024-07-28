@@ -21,17 +21,21 @@ class CModuleWriter:
     w_mod: W_Module
     spyfile: py.path.local
     cfile: py.path.local
+    target: str
     out: TextBuilder          # main builder
+    out_warnings: TextBuilder # nested builder
     out_globals: TextBuilder  # nested builder for global declarations
     global_vars: set[str]
 
     def __init__(self, vm: SPyVM, w_mod: W_Module,
                  spyfile: py.path.local,
-                 cfile: py.path.local) -> None:
+                 cfile: py.path.local,
+                 target: str) -> None:
         self.ctx = Context(vm)
         self.w_mod = w_mod
         self.spyfile = spyfile
         self.cfile = cfile
+        self.target = target
         self.out = TextBuilder(use_colors=False)
         self.out_globals = None  # type: ignore
         self.global_vars = set()
@@ -64,6 +68,7 @@ class CModuleWriter:
 
         // global declarations and definitions
         """)
+        self.out_warnings = self.out.make_nested_builder()
         self.out_globals = self.out.make_nested_builder()
         self.out.wl()
         self.out.wb("""
@@ -90,6 +95,11 @@ class CModuleWriter:
                 }}
             """)
         return self.out.build()
+
+    def emit_jsffi_error(self):
+        err = '#error "jsffi is available only for emscripten targets"'
+        if err not in self.out_warnings.lines:
+            self.out_warnings.wl(err)
 
     def declare_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         c_func = self.ctx.c_function(fqn.c_name, w_func.w_functype)
@@ -384,6 +394,9 @@ class CFuncWriter:
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
+
+        if call.func.fqn.modname == "jsffi" and self.cmod.target != 'emscripten':
+            self.cmod.emit_jsffi_error()
 
         # FIXME: many of the following special-cases are needed because the
         # signature of the opimpl doesn't match the needed signature of the

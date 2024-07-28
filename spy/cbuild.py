@@ -32,6 +32,7 @@ class Toolchain:
             '-DSPY_TARGET_' + self.TARGET.upper(),
             '--std=c99',
             '-Werror=implicit-function-declaration',
+            '-Wfatal-errors',
             #'-Werror',
             '-I', str(spy.libspy.INCLUDE),
         ]
