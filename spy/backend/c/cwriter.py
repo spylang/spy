@@ -385,6 +385,23 @@ class CFuncWriter:
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
+        # FIXME: many of the following special-cases are needed because the
+        # signature of the opimpl doesn't match the needed signature of the
+        # corresponding C function. E.g.:
+        #
+        #   - int2str: the first param is the 'str' type but we remove it
+        #
+        #   - jsffi::getattr: the current sig for GETATTR does not pass the
+        #     attribute name, but we want it as a C literal. The hack is to
+        #     pass it as part of the builtin name (e.g.,
+        #     jsffi::getattr_document) and parse it. Same for jsffi::setattr
+        #
+        #   - jsffi::call_method_1: the method name is a W_Str but we want a C
+        #     literal, so we hack it
+        #
+        # I think we need a more general way so that OPERATORs can have more
+        # control on which arguments are passed to opimpls.
+
         if call.func.fqn == FQN.parse("builtins::int2str"):
             # special case: remove the first param (this is the 'str' type)
             arg0 = call.args[0]
