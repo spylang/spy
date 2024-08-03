@@ -696,7 +696,7 @@ class TestBasic(CompilerTest):
         assert mod.foo(123) == '123'
 
     @no_C
-    def test_generic_equality(self):
+    def test_eq_reference_types(self):
         mod = self.compile("""
         @blue
         def type_eq(x: type, y: type) -> bool:

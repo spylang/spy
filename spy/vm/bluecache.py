@@ -39,6 +39,6 @@ class BlueCache:
         if len(args1_w) != len(args2_w):
             return False
         for w_a, w_b in zip(args1_w, args2_w):
-            if self.vm.is_False(self.vm.eq(w_a, w_b)):
+            if self.vm.is_False(self.vm.universal_eq(w_a, w_b)):
                 return False
         return True

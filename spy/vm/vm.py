@@ -8,7 +8,7 @@ from spy.fqn import QN, FQN
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool
+from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
@@ -292,16 +292,7 @@ class SPyVM:
             self.typecheck(w_arg, param.w_type)
         return w_func.spy_call(self, args_w)
 
-    def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
-        # FIXME: we need a proper/more general way to implement comparisons
-        # <hack hack hack>
-        def compare_by_id(w_obj):
-            return isinstance(w_obj, W_Type)
-
-        if compare_by_id(w_a) and compare_by_id(w_b):
-            return self.wrap(w_a is w_b)
-        # </hack hack hack>
-
+    def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
@@ -309,6 +300,50 @@ class SPyVM:
             # XXX: the logic to produce a good error message should be in a
             # single place
             raise SPyTypeError("Cannot do ==")
+        assert isinstance(w_opimpl, W_Func)
+        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        assert isinstance(w_res, W_Bool)
+        return w_res
+
+    def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        """
+        Same as eq, but return False instead of TypeError in case the types are
+        incompatible.
+
+        This is meant to be useful e.g. for caching, where you want to be able
+        to compare arbitrary objects, possibly of unrelated types.
+
+        It's easier to understand the difference with some examples:
+
+        a: i32 = 42
+        b: str = 'hello'
+        a == b                # TypeError
+
+        c: object = 42
+        d: object = 'hello'
+        op.universal_eq(c, d) # False
+        c == d                # unclear (see below)
+
+        e: dynamic = 42
+        f: dynamic = 'hello'
+        op.universal_eq(e, f) # False
+        e == f                # unclear (see below)
+
+        What is the semantics for "c == d" and "e == f" is to be
+        decided. There are two options:
+
+          1. to the same as all the other operators: the token "==" always
+             corresponds to vm.eq and thus will raise TypeError
+
+          2. treat "==" as a special case and declare that in case of
+             object/dynamic, it corresponds to vm.universal_eq instead of
+             vm.eq. This is probably closer to the Python behavior.
+        """
+        w_ta = self.dynamic_type(w_a)
+        w_tb = self.dynamic_type(w_b)
+        w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
+        if w_opimpl is B.w_NotImplemented:
+            return B.w_False
         assert isinstance(w_opimpl, W_Func)
         w_res = self.call_function(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
