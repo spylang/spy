@@ -8,7 +8,7 @@ from spy.fqn import QN, FQN
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool
+from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
@@ -221,7 +221,9 @@ class SPyVM:
         into the most appropriate app-level W_* object.
         """
         T = type(value)
-        if value is None:
+        if isinstance(value, W_Object):
+            return value
+        elif value is None:
             return B.w_None
         elif T in (int, fixedint.Int32):
             return W_I32(value)
@@ -290,16 +292,7 @@ class SPyVM:
             self.typecheck(w_arg, param.w_type)
         return w_func.spy_call(self, args_w)
 
-    def eq(self, w_a: W_Object, w_b: W_Object) -> W_Bool:
-        # FIXME: we need a proper/more general way to implement comparisons
-        # <hack hack hack>
-        def compare_by_id(w_obj):
-            return isinstance(w_obj, W_Type)
-
-        if compare_by_id(w_a) and compare_by_id(w_b):
-            return self.wrap(w_a is w_b)
-        # </hack hack hack>
-
+    def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
@@ -311,3 +304,50 @@ class SPyVM:
         w_res = self.call_function(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
+
+    def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        """
+        Same as eq, but return False instead of TypeError in case the types are
+        incompatible.
+
+        This is meant to be useful e.g. for caching, where you want to be able
+        to compare arbitrary objects, possibly of unrelated types.
+
+        It's easier to understand the difference with some examples:
+
+        a: i32 = 42
+        b: str = 'hello'
+        a == b                # TypeError: cannot do `i32` == `str`
+
+        c: object = 42
+        d: object = 'hello'
+        c == d                # TypeError: cannot do `object` == `object`
+        op.universal_eq(c, d) # False
+
+
+        e: dynamic = 42
+        f: dynamic = 'hello'
+        e == f                # False, `dynamic` == `dynamic` => universal_eq
+        op.universal_eq(e, f) # False
+
+        Normally, the token "==" corresponds to op.EQ, so comparisons between
+        unrelated types raises a TypeError. This means that `i32` == `str` is
+        a compile-time error, which is what you would expect from a statically
+        typed language.
+
+        However, we treat "`dynamic` == `dynamic`" as a special case, and use
+        op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
+        in Python, where "42 == 'hello'` is possible and returns False.
+        """
+        w_ta = self.dynamic_type(w_a)
+        w_tb = self.dynamic_type(w_b)
+        w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
+        if w_opimpl is B.w_NotImplemented:
+            return B.w_False
+        assert isinstance(w_opimpl, W_Func)
+        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        assert isinstance(w_res, W_Bool)
+        return w_res
+
+    def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        return self.universal_eq(w_a, w_b).not_(self)

@@ -33,11 +33,12 @@ def dynamic_mul(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
 
 @OP.builtin
 def dynamic_eq(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
-    return _dynamic_op(vm, OP.w_EQ, w_a, w_b)
+    # NOTE: == between dynamic uses UNIVERSAL_EQ
+    return _dynamic_op(vm, OP.w_UNIVERSAL_EQ, w_a, w_b)
 
 @OP.builtin
 def dynamic_ne(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
-    return _dynamic_op(vm, OP.w_NE, w_a, w_b)
+    return _dynamic_op(vm, OP.w_UNIVERSAL_NE, w_a, w_b)
 
 @OP.builtin
 def dynamic_lt(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:

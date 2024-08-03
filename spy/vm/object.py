@@ -63,6 +63,12 @@ class W_Object:
     _w: ClassVar['W_Type']                         # set later by @spytype
     __spy_members__: ClassVar['dict[str, Member]'] # set later by @spytype
 
+    # Storage category:
+    #   - 'value': compares by value, don't have an identity, 'is' is
+    #     forbidden. E.g., i32, f64, str.
+    #   - 'reference': compare by identity
+    __spy_storage_category__ = 'value'
+
     def __repr__(self) -> str:
         typename = self._w.name
         addr = f'0x{id(self):x}'
@@ -169,6 +175,7 @@ class W_Type(W_Object):
 
     name: str
     pyclass: Type[W_Object]
+    __spy_storage_category__ = 'reference'
 
     def __init__(self, name: str, pyclass: Type[W_Object]):
         assert issubclass(pyclass, W_Object)
@@ -188,6 +195,9 @@ class W_Type(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> Type[W_Object]:
         return self.pyclass
+
+    def is_reference_type(self, vm: 'SPyVM') -> bool:
+        return self.pyclass.__spy_storage_category__ == 'reference'
 
 W_Object._w = W_Type('object', W_Object)
 W_Object.__spy_members__ = {}
@@ -464,6 +474,12 @@ class W_Bool(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> bool:
         return self.value
+
+    def not_(self, vm: 'SPyVM') -> 'W_Bool':
+        if self.value:
+            return W_Bool._w_singleton_False
+        else:
+            return W_Bool._w_singleton_True
 
 W_Bool._w_singleton_True = W_Bool._make_singleton(True)
 W_Bool._w_singleton_False = W_Bool._make_singleton(False)
