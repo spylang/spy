@@ -1,6 +1,7 @@
 import inspect
 from typing import TYPE_CHECKING, Any, Callable
 from spy.fqn import QN
+from spy.ast import Color
 from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType, W_Void
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ def to_spy_FuncParam(p: Any) -> FuncParam:
         raise ValueError(f"Invalid param: '{p}'")
 
 
-def functype_from_sig(fn: Callable) -> W_FuncType:
+def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
     if len(params) == 0:
@@ -51,10 +52,10 @@ def functype_from_sig(fn: Callable) -> W_FuncType:
     else:
         raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
 
-    return W_FuncType(func_params, w_restype)
+    return W_FuncType(func_params, w_restype, color=color)
 
 
-def spy_builtin(qn: QN) -> Callable:
+def spy_builtin(qn: QN, color: Color = 'red') -> Callable:
     """
     Decorator to make an interp-level function wrappable by the VM.
 
@@ -73,7 +74,7 @@ def spy_builtin(qn: QN) -> Callable:
     MUST be 'vm'.
     """
     def decorator(fn: Callable) -> Callable:
-        w_functype = functype_from_sig(fn)
+        w_functype = functype_from_sig(fn, color)
         fn._w = W_BuiltinFunc(w_functype, qn, fn)  # type: ignore
         fn.w_functype = w_functype  # type: ignore
         return fn

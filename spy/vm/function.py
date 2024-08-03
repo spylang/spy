@@ -35,8 +35,16 @@ class W_FuncType(W_Type):
         self.params = params
         self.w_restype = w_restype
         self.color = color
-        sig = self._str_sig()
-        super().__init__(f'def{sig}', W_Func)
+        super().__init__(self._str_sig(), W_Func)
+
+    def _str_sig(self) -> str:
+        params = [f'{p.name}: {p.w_type.name}' for p in self.params]
+        str_params = ', '.join(params)
+        resname = self.w_restype.name
+        s = f'def({str_params}) -> {resname}'
+        if self.color == 'blue':
+            s = f'@blue {s}'
+        return s
 
     @classmethod
     def make(cls,
@@ -85,12 +93,6 @@ class W_FuncType(W_Type):
     @property
     def arity(self) -> int:
         return len(self.params)
-
-    def _str_sig(self) -> str:
-        params = [f'{p.name}: {p.w_type.name}' for p in self.params]
-        str_params = ', '.join(params)
-        resname = self.w_restype.name
-        return f'({str_params}) -> {resname}'
 
 
 
