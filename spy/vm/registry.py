@@ -2,7 +2,7 @@ from typing import Callable, Optional, TYPE_CHECKING, Any
 from dataclasses import dataclass
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
-from spy.vm.sig import spy_builtin
+from spy.vm.sig import spy_builtin, SPyBuiltin
 from spy.vm.object import W_Object
 
 class ModuleRegistry:
@@ -40,12 +40,12 @@ class ModuleRegistry:
         setattr(self, f'w_{attr}', w_obj)
         self.content.append((qn, w_obj))
 
-    def builtin(self, pyfunc: Callable) -> Callable:
+    def builtin(self, pyfunc: Callable) -> SPyBuiltin:
         attr = pyfunc.__name__
         qn = QN(modname=self.modname, attr=attr)
         # apply the @spy_builtin decorator to pyfunc
-        spy_builtin(qn)(pyfunc)
-        w_func = pyfunc._w  # type: ignore
+        spyfunc = spy_builtin(qn)(pyfunc)
+        w_func = spyfunc._w
         setattr(self, f'w_{attr}', w_func)
         self.content.append((qn, w_func))
-        return pyfunc
+        return spyfunc

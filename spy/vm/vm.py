@@ -11,6 +11,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
+from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.registry import ModuleRegistry
@@ -238,13 +239,12 @@ class SPyVM:
             return W_Str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
+        elif isinstance(value, SPyBuiltin):
+            return value._w
         elif isinstance(value, FunctionType):
-            if hasattr(value, '_w'):
-                return value._w
-            else:
-                raise Exception(
-                    f"Cannot wrap interp-level function {value.__name__}. "
-                    f"Did you forget `@spy_builtin`?")
+            raise Exception(
+                f"Cannot wrap interp-level function {value.__name__}. "
+                f"Did you forget `@spy_builtin`?")
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")
 

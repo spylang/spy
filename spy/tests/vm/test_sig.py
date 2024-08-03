@@ -66,7 +66,7 @@ class TestSig:
         def foo(vm: 'SPyVM') -> None:
             pass
         assert foo.w_functype.name == 'def() -> void'
-        assert foo(vm) is None
+        assert foo(vm) is B.w_None
         #
         w_foo = vm.wrap(foo)
         assert isinstance(w_foo, W_BuiltinFunc)
@@ -88,5 +88,5 @@ class TestSig:
         assert w_x is w_y
 
         # FIXME
-        ## w_z = foo(vm, vm.wrap(21))
-        ## assert w_z is w_x
+        w_z = foo(vm, vm.wrap(21))
+        assert w_z is w_x

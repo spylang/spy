@@ -72,10 +72,29 @@ def spy_builtin(qn: QN, color: Color = 'red') -> Callable:
     The w_functype of the wrapped function is automatically computed by
     inspectng the signature of the interp-level function. The first parameter
     MUST be 'vm'.
+
+    Note that the decorated object is no longer the original function, but an
+    instance of SPyBuiltin: among the other things, this ensures that blue
+    calls are correctly cached.
     """
-    def decorator(fn: Callable) -> Callable:
-        w_functype = functype_from_sig(fn, color)
-        fn._w = W_BuiltinFunc(w_functype, qn, fn)  # type: ignore
-        fn.w_functype = w_functype  # type: ignore
-        return fn
+    def decorator(fn: Callable) -> SPyBuiltin:
+        return SPyBuiltin(fn, qn, color)
     return decorator
+
+
+class SPyBuiltin:
+    fn: Callable
+    _w: W_BuiltinFunc
+
+    def __init__(self, fn: Callable, qn: QN, color: Color) -> None:
+        self.fn = fn
+        w_functype = functype_from_sig(fn, color)
+        self._w = W_BuiltinFunc(w_functype, qn, fn)
+
+    @property
+    def w_functype(self) -> W_FuncType:
+        return self._w.w_functype
+
+    def __call__(self, vm: 'SPyVM', *args: W_Object) -> W_Object:
+        args_w = list(args)
+        return vm.call_function(self._w, args_w)
