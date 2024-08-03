@@ -103,6 +103,14 @@ def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('!=', w_ltype, w_rtype)
 
 @OP.builtin
+def UNIVERSAL_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+    return OP.w_object_universal_eq
+
+@OP.builtin
+def UNIVERSAL_NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+    return OP.w_object_universal_ne
+
+@OP.builtin
 def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('<', w_ltype, w_rtype)
 

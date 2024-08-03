@@ -475,6 +475,12 @@ class W_Bool(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> bool:
         return self.value
 
+    def not_(self, vm: 'SPyVM') -> 'W_Bool':
+        if self.value:
+            return W_Bool._w_singleton_False
+        else:
+            return W_Bool._w_singleton_True
+
 W_Bool._w_singleton_True = W_Bool._make_singleton(True)
 W_Bool._w_singleton_False = W_Bool._make_singleton(False)
 

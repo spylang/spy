@@ -710,3 +710,42 @@ class TestBasic(CompilerTest):
         assert mod.type_eq(B.w_i32, B.w_str) == False
         assert mod.type_ne(B.w_i32, B.w_i32) == False
         assert mod.type_ne(B.w_i32, B.w_str) == True
+
+    @skip_backends('doppler', 'C', reason='we need lazy errors')
+    def test_equality(self):
+        mod = self.compile("""
+        def eq_with_conversion(x: i32, y: f64) -> bool:
+            return x == y
+
+        def eq_wrong_types(x: i32, y: str) -> bool:
+            return x == y
+
+        def eq_objects(x: object, y: object) -> bool:
+            return x == y
+
+        def eq_dynamic(x: dynamic, y: dynamic) -> bool:
+            return x == y
+
+        def ne_dynamic(x: dynamic, y: dynamic) -> bool:
+            return x != y
+
+        """)
+        assert mod.eq_with_conversion(1, 1.0) == True
+        assert mod.eq_with_conversion(1, 2.0) == False
+        #
+        msg = "cannot do `i32` == `str`"
+        with pytest.raises(SPyTypeError, match=msg):
+            mod.eq_wrong_types(1, 'hello')
+        #
+        msg = "cannot do `object` == `object`"
+        with pytest.raises(SPyTypeError, match=msg):
+            mod.eq_objects(1, 2)
+        #
+        # `dynamic` == `dynamic` uses universal equality, so comparison
+        # between different types is permitted
+        assert mod.eq_dynamic(1, 1) == True
+        assert mod.eq_dynamic(1, 2) == False
+        assert mod.eq_dynamic(1, 'str') == False
+        assert mod.ne_dynamic(1, 1) == False
+        assert mod.ne_dynamic(1, 2) == True
+        assert mod.ne_dynamic(1, 'str') == True

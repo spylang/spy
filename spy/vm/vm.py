@@ -317,27 +317,27 @@ class SPyVM:
 
         a: i32 = 42
         b: str = 'hello'
-        a == b                # TypeError
+        a == b                # TypeError: cannot do `i32` == `str`
 
         c: object = 42
         d: object = 'hello'
+        c == d                # TypeError: cannot do `object` == `object`
         op.universal_eq(c, d) # False
-        c == d                # unclear (see below)
+
 
         e: dynamic = 42
         f: dynamic = 'hello'
+        e == f                # False, `dynamic` == `dynamic` => universal_eq
         op.universal_eq(e, f) # False
-        e == f                # unclear (see below)
 
-        What is the semantics for "c == d" and "e == f" is to be
-        decided. There are two options:
+        Normally, the token "==" corresponds to op.EQ, so comparisons between
+        unrelated types raises a TypeError. This means that `i32` == `str` is
+        a compile-time error, which is what you would expect from a statically
+        typed language.
 
-          1. to the same as all the other operators: the token "==" always
-             corresponds to vm.eq and thus will raise TypeError
-
-          2. treat "==" as a special case and declare that in case of
-             object/dynamic, it corresponds to vm.universal_eq instead of
-             vm.eq. This is probably closer to the Python behavior.
+        However, we treat "`dynamic` == `dynamic`" as a special case, and use
+        op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
+        in Python, where "42 == 'hello'` is possible and returns False.
         """
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
@@ -348,3 +348,6 @@ class SPyVM:
         w_res = self.call_function(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
+
+    def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        return self.universal_eq(w_a, w_b).not_(self)

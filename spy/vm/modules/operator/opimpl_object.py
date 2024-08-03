@@ -13,3 +13,11 @@ def object_is(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_Bool:
 @OP.builtin
 def object_isnot(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_Bool:
     return vm.wrap(w_a is not w_b)
+
+@OP.builtin
+def object_universal_eq(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_Bool:
+    return vm.universal_eq(w_a, w_b)
+
+@OP.builtin
+def object_universal_ne(vm: 'SPyVM', w_a: W_Object, w_b: W_Object) -> W_Bool:
+    return vm.universal_ne(w_a, w_b)
