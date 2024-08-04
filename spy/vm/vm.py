@@ -195,6 +195,16 @@ class SPyVM:
             w_class = w_class.w_base  # type:ignore
         return False
 
+    def union_type(self, w_t1: W_Type, w_t2: W_Type) -> W_Type:
+        """
+        Find the most precise common superclass of w_t1 and w_t2
+        """
+        if self.issubclass(w_t1, w_t2):
+            return w_t2
+        if self.issubclass(w_t2, w_t1):
+            return w_t1
+        return self.union_type(w_t1.w_base, w_t2.w_base)
+
     def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:
         w_t1 = self.dynamic_type(w_obj)
         return self.issubclass(w_t1, w_type)
