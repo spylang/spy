@@ -4,6 +4,8 @@ import pytest
 from spy.vm.object import W_Type
 from spy.tests.support import CompilerTest, only_interp
 
+# Eventually we want to remove the @only_interp, but for now the C backend
+# doesn't support lists
 @only_interp
 class TestList(CompilerTest):
 

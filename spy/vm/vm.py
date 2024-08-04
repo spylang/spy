@@ -355,6 +355,9 @@ class SPyVM:
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
         if w_opimpl is B.w_NotImplemented:
+            # sanity check: EQ between objects of the same type should always
+            # be possible. If it's not, it means that we forgot to implement it
+            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
             return B.w_False
         assert isinstance(w_opimpl, W_Func)
         w_res = self.call_function(w_opimpl, [w_a, w_b])

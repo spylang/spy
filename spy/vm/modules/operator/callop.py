@@ -18,7 +18,7 @@ def CALL(vm: 'SPyVM', w_type: W_Type, w_argtypes: W_Object) -> W_Dynamic:
         return pyclass.op_CALL(vm, w_type, w_argtypes)
     return B.w_NotImplemented
 
-@OP.builtin
+@OP.builtin(color='blue')
 def CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
                 w_argtypes: W_Object) -> W_Dynamic:
     pyclass = w_type.pyclass

@@ -65,8 +65,8 @@ class W_JsRef(W_Object):
         n = len(argtypes_w)
         if n == 1:
             key = 'call_method_1'
-            if key in CACHE:
-                return CACHE[key]
+            ## if key in CACHE:
+            ##     return CACHE[key]
 
             @spy_builtin(QN('jsffi::call_method_1'))
             def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
