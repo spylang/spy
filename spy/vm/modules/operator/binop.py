@@ -89,19 +89,28 @@ def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
 def DIV(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('/', w_ltype, w_rtype)
 
+def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
+    """
+    We can use 'is' to implement 'eq' if:
+      1. the two types have a common ancestor
+      2. the common ancestor must be a reference type
+    """
+    w_common = vm.union_type(w_ltype, w_rtype)
+    return w_common is not B.w_object and w_common.is_reference_type(vm)
+
 @OP.builtin(color='blue')
 def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     pyclass = w_ltype.pyclass
     if pyclass.has_meth_overriden('op_EQ'):
         return pyclass.op_EQ(vm, w_ltype, w_rtype)
-    elif w_ltype is w_rtype and w_ltype.is_reference_type(vm):
+    elif can_use_reference_eq(vm, w_ltype, w_rtype):
         return OP.w_object_is
     else:
         return MM.lookup('==', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
 def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
-    if w_ltype is w_rtype and w_ltype.is_reference_type(vm):
+    if can_use_reference_eq(vm, w_ltype, w_rtype):
         return OP.w_object_isnot
     return MM.lookup('!=', w_ltype, w_rtype)
 

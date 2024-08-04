@@ -318,6 +318,19 @@ class SPyVM:
         assert isinstance(w_res, W_Bool)
         return w_res
 
+    def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        w_ta = self.dynamic_type(w_a)
+        w_tb = self.dynamic_type(w_b)
+        w_opimpl = self.call_function(OPERATOR.w_NE, [w_ta, w_tb])
+        if w_opimpl is B.w_NotImplemented:
+            # XXX: the logic to produce a good error message should be in a
+            # single place
+            raise SPyTypeError("Cannot do !=")
+        assert isinstance(w_opimpl, W_Func)
+        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        assert isinstance(w_res, W_Bool)
+        return w_res
+
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
         Same as eq, but return False instead of TypeError in case the types are

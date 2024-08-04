@@ -224,3 +224,10 @@ class TestVM:
         assert vm.is_True(vm.eq(w_a, w_a))
         assert vm.is_True(vm.eq(w_a, w_b))
         assert vm.is_False(vm.eq(w_a, w_c))
+
+    def test_eq_reference_types(self):
+        vm = SPyVM()
+        assert vm.is_True(vm.eq(B.w_i32, B.w_i32))
+        assert vm.is_False(vm.eq(B.w_i32, B.w_str))
+        assert vm.is_True(vm.ne(B.w_i32, B.w_str))
+        assert vm.is_False(vm.ne(B.w_i32, B.w_i32))
