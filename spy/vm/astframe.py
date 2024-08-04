@@ -258,14 +258,27 @@ class ASTFrame:
             if not isinstance(w_func, W_Func):
                 t = self.vm.dynamic_type(w_func)
                 raise SPyTypeError(f'cannot call objects of type `{t.name}`')
+        else:
+            # if the static type is not `dynamic` and the thing is not a
+            # function, it's a bug in the typechecker
+            assert isinstance(w_func, W_Func)
 
-        # if the static type is not `dynamic` and the thing is not a function,
-        # it's a bug in the typechecker
-        assert isinstance(w_func, W_Func)
+        if w_func is B.w_STATIC_TYPE:
+            return self._eval_STATIC_TYPE(call)
+        else:
+            args_w = [self.eval_expr(arg) for arg in call.args]
+            w_res = self.vm.call_function(w_func, args_w)
+            return w_res
 
-        args_w = [self.eval_expr(arg) for arg in call.args]
-        w_res = self.vm.call_function(w_func, args_w)
-        return w_res
+    def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
+        assert len(call.args) == 1
+        arg = call.args[0]
+        if isinstance(arg, ast.Name):
+            _, w_argtype = self.t.check_expr(arg)
+            return w_argtype
+        msg = 'STATIC_TYPE works only on simple expressions'
+        OP = arg.__class__.__name__
+        raise SPyTypeError.simple(msg, f'{OP} not allowed here', arg.loc)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         w_opimpl = self.t.opimpl[op]
