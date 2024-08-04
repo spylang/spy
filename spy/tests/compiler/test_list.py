@@ -89,3 +89,13 @@ class TestList(CompilerTest):
         assert mod.cmp_i32(3) == False
         assert mod.cmp_types(B.w_str) == True
         assert mod.cmp_types(B.w_i32) == False
+
+    def test_interp_repr(self):
+        mod = self.compile(
+        """
+        def foo() -> list[i32]:
+            return [1, 2]
+        """)
+        w_foo = mod.foo.w_func
+        w_l = self.vm.call_function(w_foo, [])
+        assert repr(w_l) == 'W_List[W_I32]([W_I32(1), W_I32(2)])'

@@ -48,6 +48,10 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
             # XXX typecheck?
             self.items_w = items_w
 
+        def __repr__(self):
+            cls = self.__class__.__name__
+            return f'{cls}({self.items_w})'
+
         def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
             return [vm.unwrap(w_item) for w_item in self.items_w]
 
