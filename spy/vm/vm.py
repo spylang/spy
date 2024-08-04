@@ -210,6 +210,9 @@ class SPyVM:
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyTypeError(msg)
 
+    def is_type(self, w_obj: W_Object) -> bool:
+        return self.isinstance(w_obj, B.w_type)
+
     def is_True(self, w_obj: W_Object) -> bool:
         return w_obj is B.w_True
 
@@ -324,7 +327,6 @@ class SPyVM:
         c == d                # TypeError: cannot do `object` == `object`
         op.universal_eq(c, d) # False
 
-
         e: dynamic = 42
         f: dynamic = 'hello'
         e == f                # False, `dynamic` == `dynamic` => universal_eq
@@ -339,6 +341,16 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
+        # Avoid infinite recursion:
+        #   1. vm.universal_eq(a, t) calls op.UNIVERSAL_EQ(type(a), type(b))
+        #   2. UNIVERSAL_EQ is a blue function and thus uses BlueCache.lookup
+        #   3. BlueCache.lookup calls vm.universal_eq on the types
+        #   4. vm.universal_eq(ta, tb) calls UNIVERSAL_EQ(type(ta), type(tb))
+        #   5  ...
+        # By special-casing vm.universal_eq(type, type), we break the recursion
+        if self.is_type(w_a) and self.is_type(w_b):
+            return self.wrap(w_a is w_b)
+
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])

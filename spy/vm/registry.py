@@ -1,5 +1,6 @@
 from typing import Callable, Optional, TYPE_CHECKING, Any
 from dataclasses import dataclass
+from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
 from spy.vm.sig import spy_builtin, SPyBuiltin
@@ -40,12 +41,31 @@ class ModuleRegistry:
         setattr(self, f'w_{attr}', w_obj)
         self.content.append((qn, w_obj))
 
-    def builtin(self, pyfunc: Callable) -> SPyBuiltin:
-        attr = pyfunc.__name__
-        qn = QN(modname=self.modname, attr=attr)
-        # apply the @spy_builtin decorator to pyfunc
-        spyfunc = spy_builtin(qn)(pyfunc)
-        w_func = spyfunc._w
-        setattr(self, f'w_{attr}', w_func)
-        self.content.append((qn, w_func))
-        return spyfunc
+    def builtin(self,
+                pyfunc: Callable = None,
+                *,
+                color: Color = 'red') -> Any:
+        """
+        Register a builtin function on the module. We support two different
+        syntaxes:
+
+        @MOD.builtin
+        def foo(): ...
+
+        @MOD.builtin(color='...')
+        def foo(): ...
+        """
+        def decorator(pyfunc: Callable) -> SPyBuiltin:
+            attr = pyfunc.__name__
+            qn = QN(modname=self.modname, attr=attr)
+            # apply the @spy_builtin decorator to pyfunc
+            spyfunc = spy_builtin(qn, color=color)(pyfunc)
+            w_func = spyfunc._w
+            setattr(self, f'w_{attr}', w_func)
+            self.content.append((qn, w_func))
+            return spyfunc
+
+        if pyfunc is None:
+            return decorator
+        else:
+            return decorator(pyfunc)

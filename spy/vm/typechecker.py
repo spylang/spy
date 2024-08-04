@@ -384,6 +384,7 @@ class TypeChecker:
             color = maybe_blue(color, c1)
 
         # step 2: call OP() and get w_opimpl
+        assert w_OP.color == 'blue'
         w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
 
         # step 3: check that we can call the returned w_opimpl

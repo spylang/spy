@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@OP.builtin
+@OP.builtin(color='blue')
 def GETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type) -> W_Dynamic:
     pyclass = w_type.pyclass
     if pyclass.has_meth_overriden('op_GETITEM'):
@@ -15,7 +15,7 @@ def GETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type) -> W_Dynamic:
 
     return B.w_NotImplemented
 
-@OP.builtin
+@OP.builtin(color='blue')
 def SETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type,
             w_vtype: W_Type) -> W_Dynamic:
     pyclass = w_type.pyclass

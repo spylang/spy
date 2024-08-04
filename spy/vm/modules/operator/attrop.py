@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 OpKind = Literal['get', 'set']
 
+# TODO: add color=blue, but also double-check what happens with jsffi cache
 @OP.builtin
 def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
     attr = vm.unwrap_str(w_attr)

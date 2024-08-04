@@ -73,55 +73,54 @@ MM.register_partial('>',  'dynamic', OP.w_dynamic_gt)
 MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 
-# XXX these should be labeled as 'blue'
-@OP.builtin
+@OP.builtin(color='blue')
 def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('+', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def SUB(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('-', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('*', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def DIV(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('/', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     if w_ltype is w_rtype and w_ltype.is_reference_type(vm):
         return OP.w_object_is
     return MM.lookup('==', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     if w_ltype is w_rtype and w_ltype.is_reference_type(vm):
         return OP.w_object_isnot
     return MM.lookup('!=', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def UNIVERSAL_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return OP.w_object_universal_eq
 
-@OP.builtin
+@OP.builtin(color='blue')
 def UNIVERSAL_NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return OP.w_object_universal_ne
 
-@OP.builtin
+@OP.builtin(color='blue')
 def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('<', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def LE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('<=', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('>', w_ltype, w_rtype)
 
-@OP.builtin
+@OP.builtin(color='blue')
 def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
     return MM.lookup('>=', w_ltype, w_rtype)
