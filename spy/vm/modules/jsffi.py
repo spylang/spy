@@ -64,24 +64,16 @@ class W_JsRef(W_Object):
         argtypes_w = vm.unwrap(w_argtypes)
         n = len(argtypes_w)
         if n == 1:
-            key = 'call_method_1'
-            ## if key in CACHE:
-            ##     return CACHE[key]
-
-            @spy_builtin(QN('jsffi::call_method_1'))
-            def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
-                       w_arg: W_JsRef) -> W_JsRef:
-                return js_call_method_1(w_self, w_method, w_arg)
-
-            w_res = vm.wrap(opimpl)
-            CACHE[key] = w_res
-            return w_res
-
+            return JSFFI.w_call_method_1
         else:
             raise Exception(
                 f"unsupported number of arguments for CALL_METHOD: {n}"
             )
 
+@JSFFI.builtin
+def call_method_1(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
+                  w_arg: W_JsRef) -> W_JsRef:
+    return js_call_method_1(w_self, w_method, w_arg)
 
 
 JSFFI.add('JsRef', W_JsRef._w)
