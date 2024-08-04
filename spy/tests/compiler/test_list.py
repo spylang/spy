@@ -3,7 +3,7 @@
 import pytest
 from spy.vm.b import B
 from spy.vm.object import W_Type
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, only_interp, no_C
 
 # Eventually we want to remove the @only_interp, but for now the C backend
 # doesn't support lists
@@ -22,6 +22,23 @@ class TestList(CompilerTest):
         assert isinstance(w_list_i32, W_Type)
         assert w_list_i32.name == 'list[i32]'
         assert w_list_i32.pyclass.__name__ == 'W_List[W_I32]'
+
+    def test_generalize_literal(self):
+        mod = self.compile(
+        """
+        def foo() -> type:
+            x = [i32, f64, str]
+            return STATIC_TYPE(x)
+
+        def bar() -> type:
+            x = [i32, f64, 'hello']
+            return STATIC_TYPE(x)
+        """)
+        # our machinery unwraps types, let's wrap it again
+        w_t1 = self.vm.wrap(mod.foo())
+        assert w_t1.name == 'list[type]'
+        w_t2 = self.vm.wrap(mod.bar())
+        assert w_t2.name == 'list[object]'
 
     def test_literal(self):
         mod = self.compile(
