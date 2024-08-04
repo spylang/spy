@@ -91,9 +91,13 @@ def DIV(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
 
 @OP.builtin(color='blue')
 def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
-    if w_ltype is w_rtype and w_ltype.is_reference_type(vm):
+    pyclass = w_ltype.pyclass
+    if pyclass.has_meth_overriden('op_EQ'):
+        return pyclass.op_EQ(vm, w_ltype, w_rtype)
+    elif w_ltype is w_rtype and w_ltype.is_reference_type(vm):
         return OP.w_object_is
-    return MM.lookup('==', w_ltype, w_rtype)
+    else:
+        return MM.lookup('==', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
 def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:

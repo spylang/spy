@@ -136,6 +136,10 @@ class W_Object:
         return True
 
     @staticmethod
+    def op_EQ(vm: 'SPyVM', w_tself: 'W_Type', w_tother: 'W_Type') -> 'W_Dynamic':
+        raise NotImplementedError('this should never be called')
+
+    @staticmethod
     def op_GETATTR(vm: 'SPyVM', w_type: 'W_Type',
                    w_attr: 'W_Str') -> 'W_Dynamic':
         raise NotImplementedError('this should never be called')

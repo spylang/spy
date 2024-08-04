@@ -1,6 +1,7 @@
 #-*- encoding: utf-8 -*-
 
 import pytest
+from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.tests.support import CompilerTest, only_interp
 
@@ -52,3 +53,24 @@ class TestList(CompilerTest):
         """)
         assert mod.foo(0) == [10, 1, 2]
         assert mod.foo(1) == [0, 11, 2]
+
+    def test_eq(self):
+        mod = self.compile(
+        """
+        A: list[i32] = [0, 1, 2]
+        ## B: list[type] = [i32, f64, str]
+
+        def cmp_i32(x: i32) -> bool:
+            c: list[i32] = [0, 1, x]
+            return A == c
+
+        ## def cmp_types(x: type) -> bool:
+        ##     c: list[type] = [i32, f64, x]
+        ##     return B == c
+
+        """)
+        assert mod.cmp_i32(2) == True
+        assert mod.cmp_i32(3) == False
+        # WIP: this fails because we cannot type the literal [i32, f64, ...]
+        ## assert mod.cmp_types(B.w_str) == True
+        ## assert mod.cmp_types(B.w_i32) == False
