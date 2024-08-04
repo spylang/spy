@@ -241,7 +241,8 @@ class TypeChecker:
         _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
         w_attr = self.vm.wrap(node.attr)
-        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, w_attr, w_vtype)
+        w_opimpl = self.vm.call_function(OP.w_SETATTR,
+                                         [w_otype, w_attr, w_vtype])
         errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
                   node.attr)
         self.opimpl_typecheck(
@@ -341,7 +342,7 @@ class TypeChecker:
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
         w_attr = self.vm.wrap(expr.attr)
-        w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, w_attr)
+        w_opimpl = self.vm.call_function(OP.w_GETATTR, [w_vtype, w_attr])
         self.opimpl_typecheck(
             w_opimpl,
             expr,

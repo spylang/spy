@@ -39,11 +39,13 @@ class TestJsFFI(CompilerTest):
             js_init()
             globalThis = get_GlobalThis()
             console = get_Console()
-            globalThis.xxx = "hello from attribute"
+            globalThis.xxx = "hello 1"
+            console.log(globalThis.xxx)
+            globalThis.xxx = "hello 2"
             console.log(globalThis.xxx)
         """)
         out = exe.run()
-        assert out == 'hello from attribute\n'
+        assert out == 'hello 1\nhello 2\n'
 
     def test_callback(self):
         exe = self.compile(
