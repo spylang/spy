@@ -55,7 +55,7 @@ class ErrorFormatter:
 
     def emit_message(self, level: Level, message: str) -> None:
         prefix = self.color.set(level, level)
-        message = self.color.set('white', message)
+        message = self.color.set('default', message)
         self.w(f'{prefix}: {message}')
 
     def emit_annotation(self, ann: Annotation) -> None:
