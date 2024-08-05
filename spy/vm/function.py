@@ -172,13 +172,15 @@ class W_BuiltinFunc(W_Func):
                  pyfunc: Callable) -> None:
         self.w_functype = w_functype
         self.qn = qn
-        self.pyfunc = pyfunc
+        # _pyfunc should NEVER be called directly, because it bypasses the
+        # bluecache
+        self._pyfunc = pyfunc
 
     def __repr__(self) -> str:
         return f"<spy function '{self.qn}' (builtin)>"
 
     def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
-        w_res = self.pyfunc(vm, *args_w)
+        w_res = self._pyfunc(vm, *args_w)
         if w_res is None and self.w_functype.w_restype is B_w_Void:
             return vm.wrap(None)
         return w_res

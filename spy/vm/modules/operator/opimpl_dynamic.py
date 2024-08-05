@@ -61,7 +61,7 @@ def dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
                     w_value: W_Dynamic) -> W_Dynamic:
     w_otype = vm.dynamic_type(w_obj)
     w_vtype = vm.dynamic_type(w_value)
-    w_opimpl = OP.w_SETATTR.pyfunc(vm, w_otype, w_attr, w_vtype)
+    w_opimpl = vm.call_function(OP.w_SETATTR, [w_otype, w_attr, w_vtype])
     if w_opimpl is B.w_NotImplemented:
         o = w_otype.name
         v = w_vtype.name
