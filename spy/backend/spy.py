@@ -4,7 +4,7 @@ from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, FuncParam
-from spy.vm.list import W_BaseList
+from spy.vm.list import W_List
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 
@@ -54,7 +54,7 @@ class SPyBackend:
         return ', '.join(l)
 
     def fmt_w_obj(self, w_obj: W_Object) -> str:
-        if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_BaseList):
+        if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_List):
             # this is a ugly special case for now, we need to find a better
             # solution
             return w_obj.name
