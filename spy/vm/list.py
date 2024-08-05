@@ -30,7 +30,8 @@ CACHE: dict[Any, W_Type] = {}
 def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
     # well-known specialized lists exist independently of the VM
     if w_T in (W_Type, W_I32):
-        import pdb;pdb.set_trace()
+        # FIXME
+        assert False, 'we never enter this, but we are supposed to'
         vm_cache = None
 
     T = w_T.pyclass
