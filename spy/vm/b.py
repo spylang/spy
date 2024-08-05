@@ -33,7 +33,7 @@ B.add('i32', W_I32._w)
 B.add('f64', W_F64._w)
 B.add('bool', W_Bool._w)
 B.add('str', W_Str._w)
-B.add('list', W_List()) # XXX we want to move op_GETITEM to the metatype
+B.add('list', W_List._w)
 B.add('None', W_Void._w_singleton)
 B.add('True', W_Bool._w_singleton_True)
 B.add('False', W_Bool._w_singleton_False)

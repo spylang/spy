@@ -9,21 +9,23 @@ if TYPE_CHECKING:
 @spytype('list')
 class W_List(W_Object):
     """
-    Base class for all list types
+    The 'list' object.
     """
     __spy_storage_category__ = 'reference'
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', w_type: W_Type, w_vtype: W_Type) -> W_Dynamic:
+    def meta_op_GETITEM(vm: 'SPyVM', w_type: W_Type,
+                        w_vtype: W_Type) -> W_Dynamic:
         return vm.wrap(make_list_type)
 
 
 @spy_builtin(QN('__spy__::make_list_type'), color='blue')
-def make_list_type(vm: 'SPyVM', w_self: W_List, w_T: W_Type) -> W_Type:
+def make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
     """
     from spy.vm.b import B
+    assert w_list is B.w_list
     if w_T is B.w_type:
         return vm.wrap(W_List__W_Type)
     pyclass = _make_W_List(w_T)
