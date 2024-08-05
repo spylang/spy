@@ -22,6 +22,7 @@ class W_ListFactory(W_Object):
 class W_BaseList(W_Object):
     pass
 
+# FIXME
 # XXX this should be marked as '@interp_blue' and cached automatically by the
 # VM
 CACHE: dict[Any, W_Type] = {}
