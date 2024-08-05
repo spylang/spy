@@ -3,6 +3,7 @@
 import pytest
 from spy.vm.b import B
 from spy.vm.object import W_Type
+from spy.vm.list import W_List__W_Type
 from spy.tests.support import CompilerTest, only_interp, no_C
 
 # Eventually we want to remove the @only_interp, but for now the C backend
@@ -22,6 +23,21 @@ class TestList(CompilerTest):
         assert isinstance(w_list_i32, W_Type)
         assert w_list_i32.name == 'list[i32]'
         assert w_list_i32.pyclass.__name__ == 'W_List[W_I32]'
+
+    def test_cached_generic(self):
+        mod = self.compile(
+        """
+        @blue
+        def make_list(T: type):
+            return list[T]
+        """)
+        w_make_list = mod.make_list.w_func
+        w_list_type = self.vm.call_function(w_make_list, [B.w_type])
+        assert w_list_type.pyclass is W_List__W_Type
+        #
+        w_list_f64a = self.vm.call_function(w_make_list, [B.w_f64])
+        w_list_f64b = self.vm.call_function(w_make_list, [B.w_f64])
+        assert w_list_f64a is w_list_f64b
 
     def test_generalize_literal(self):
         mod = self.compile(
