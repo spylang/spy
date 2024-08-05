@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, no_type_check, Optional
 from spy.fqn import QN
-from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void
+from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
+                           W_Bool)
 from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -21,6 +22,7 @@ class W_ListFactory(W_Object):
 class W_BaseList(W_Object):
     pass
 
+# FIXME
 # XXX this should be marked as '@interp_blue' and cached automatically by the
 # VM
 CACHE: dict[Any, W_Type] = {}
@@ -28,6 +30,8 @@ CACHE: dict[Any, W_Type] = {}
 def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
     # well-known specialized lists exist independently of the VM
     if w_T in (W_Type, W_I32):
+        # FIXME
+        assert False, 'we never enter this, but we are supposed to'
         vm_cache = None
 
     T = w_T.pyclass
@@ -45,6 +49,10 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
         def __init__(self, items_w: list[W_Object]):
             # XXX typecheck?
             self.items_w = items_w
+
+        def __repr__(self):
+            cls = self.__class__.__name__
+            return f'{cls}({self.items_w})'
 
         def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
             return [vm.unwrap(w_item) for w_item in self.items_w]
@@ -76,7 +84,32 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
                 return B.w_None
             return vm.wrap(setitem)
 
-    W_List.__name__ = f'W_List[{T.__name__}]'
+        @staticmethod
+        def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+            from spy.vm.b import B
+            assert w_ltype.pyclass is W_List
+
+            @no_type_check
+            @spy_builtin(QN('operator::list_eq'))
+            def eq(vm: 'SPyVM', w_l1: W_List, w_l2: W_List) -> W_Bool:
+                items1_w = w_l1.items_w
+                items2_w = w_l2.items_w
+                if len(items1_w) != len(items2_w):
+                    return B.w_False
+                for w_1, w_2 in zip(items1_w, items2_w):
+                    if vm.is_False(vm.eq(w_1, w_2)):
+                        return B.w_False
+                return B.w_True
+
+            if w_ltype is w_rtype:
+                return vm.wrap(eq)
+            else:
+                return B.w_NotImplemented
+
+
+    name = f'W_List[{T.__name__}]'
+    W_List.__name__ = name
+    W_List.__qualname__ = name
     CACHE[key] = W_List  # type: ignore
     return W_List        # type: ignore
 

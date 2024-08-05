@@ -88,6 +88,7 @@ class TextBuilder:
 
 
 class ColorFormatter:
+    default = '00'
     black = '30'
     darkred = '31'
     darkgreen = '32'

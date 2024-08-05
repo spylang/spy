@@ -5,7 +5,8 @@ The first half is in vm/b.py. See its docstring for more details.
 """
 
 from typing import TYPE_CHECKING, Any
-from spy.vm.object import W_I32, W_F64, W_Bool, W_Dynamic, W_Void
+from spy.vm.object import (W_I32, W_F64, W_Bool, W_Dynamic, W_Void, W_Object,
+                           W_Type)
 from spy.vm.str import W_Str
 from spy.vm.b import BUILTINS, B
 
@@ -13,6 +14,12 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 PY_PRINT = print  # type: ignore
+
+@BUILTINS.builtin(color='blue')
+def STATIC_TYPE(vm: 'SPyVM', w_expr: W_Object) -> W_Type:
+    msg = ("STATIC_TYPE should never be called at runtime. "
+           "It's special-cased by ASTFrame")
+    raise NotImplementedError(msg)
 
 @BUILTINS.builtin
 def abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:

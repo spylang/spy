@@ -93,6 +93,30 @@ class TestVM:
         assert vm.issubclass(w_b, w_a)
         assert not vm.issubclass(w_a, w_b)
 
+    def test_union_type(self):
+        @spytype('A')
+        class W_A(W_Object):
+            pass
+        #
+        @spytype('B')
+        class W_B(W_A):
+            pass
+        #
+        @spytype('C')
+        class W_C(W_A):
+            pass
+        vm = SPyVM()
+        w_a = W_A._w
+        w_b = W_B._w
+        w_c = W_C._w
+        #
+        assert vm.union_type(w_a, w_a) is w_a
+        assert vm.union_type(w_b, w_b) is w_b
+        assert vm.union_type(w_a, w_b) is w_a
+        assert vm.union_type(w_b, w_a) is w_a
+        assert vm.union_type(w_b, w_c) is w_a
+        assert vm.union_type(w_b, B.w_i32) is B.w_object
+
     def test_wrap_unwrap_types(self):
         vm = SPyVM()
         assert vm.wrap(W_Object) is B.w_object
@@ -200,3 +224,10 @@ class TestVM:
         assert vm.is_True(vm.eq(w_a, w_a))
         assert vm.is_True(vm.eq(w_a, w_b))
         assert vm.is_False(vm.eq(w_a, w_c))
+
+    def test_eq_reference_types(self):
+        vm = SPyVM()
+        assert vm.is_True(vm.eq(B.w_i32, B.w_i32))
+        assert vm.is_False(vm.eq(B.w_i32, B.w_str))
+        assert vm.is_True(vm.ne(B.w_i32, B.w_str))
+        assert vm.is_False(vm.ne(B.w_i32, B.w_i32))

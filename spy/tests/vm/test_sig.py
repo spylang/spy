@@ -10,7 +10,7 @@ class TestSig:
     def test_functype_from_sig(self):
         def foo(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             return W_Str(vm, 'this is never called')
-        w_functype = functype_from_sig(foo)
+        w_functype = functype_from_sig(foo, 'red')
         assert w_functype == W_FuncType.parse('def(x: i32) -> str')
 
     def test_spy_builtin(self):
@@ -66,9 +66,27 @@ class TestSig:
         def foo(vm: 'SPyVM') -> None:
             pass
         assert foo.w_functype.name == 'def() -> void'
-        assert foo(vm) is None
+        assert foo(vm) is B.w_None
         #
         w_foo = vm.wrap(foo)
         assert isinstance(w_foo, W_BuiltinFunc)
         w_res = vm.call_function(w_foo, [])
         assert w_res is B.w_None
+
+    def test_blue(self):
+        vm = SPyVM()
+
+        @spy_builtin(QN('test::foo'), color='blue')
+        def foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
+            x = vm.unwrap_i32(w_x)
+            return vm.wrap(x*2)  # type: ignore
+
+        assert foo.w_functype.name == '@blue def(x: i32) -> i32'
+        w_foo = vm.wrap(foo)
+        w_x = vm.call_function(w_foo, [vm.wrap(21)])
+        w_y = vm.call_function(w_foo, [vm.wrap(21)])
+        assert w_x is w_y
+
+        # FIXME
+        w_z = foo(vm, vm.wrap(21))
+        assert w_z is w_x

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 OpKind = Literal['get', 'set']
 
-@OP.builtin
+@OP.builtin(color='blue')
 def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
     attr = vm.unwrap_str(w_attr)
     pyclass = w_type.pyclass
@@ -36,7 +36,7 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
     return B.w_NotImplemented
 
 
-@OP.builtin
+@OP.builtin(color='blue')
 def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
             w_vtype: W_Type) -> W_Dynamic:
     attr = vm.unwrap_str(w_attr)

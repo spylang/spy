@@ -136,6 +136,10 @@ class W_Object:
         return True
 
     @staticmethod
+    def op_EQ(vm: 'SPyVM', w_tself: 'W_Type', w_tother: 'W_Type') -> 'W_Dynamic':
+        raise NotImplementedError('this should never be called')
+
+    @staticmethod
     def op_GETATTR(vm: 'SPyVM', w_type: 'W_Type',
                    w_attr: 'W_Str') -> 'W_Dynamic':
         raise NotImplementedError('this should never be called')
@@ -368,8 +372,8 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
         fix_annotations(spy_new, {pyclass.__name__: pyclass})
         qn = QN(modname='ext', attr='new') # XXX what modname should we use?
         # manually apply the @spy_builtin decorator to the spy_new function
-        spy_builtin(qn)(spy_new)
-        return vm.wrap(spy_new)
+        spyfunc = spy_builtin(qn)(spy_new)
+        return vm.wrap(spyfunc)
 
     return meta_op_CALL
 

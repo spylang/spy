@@ -11,6 +11,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
+from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.registry import ModuleRegistry
@@ -194,6 +195,16 @@ class SPyVM:
             w_class = w_class.w_base  # type:ignore
         return False
 
+    def union_type(self, w_t1: W_Type, w_t2: W_Type) -> W_Type:
+        """
+        Find the most precise common superclass of w_t1 and w_t2
+        """
+        if self.issubclass(w_t1, w_t2):
+            return w_t2
+        if self.issubclass(w_t2, w_t1):
+            return w_t1
+        return self.union_type(w_t1.w_base, w_t2.w_base)
+
     def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:
         w_t1 = self.dynamic_type(w_obj)
         return self.issubclass(w_t1, w_type)
@@ -208,6 +219,9 @@ class SPyVM:
             got = w_t1.name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyTypeError(msg)
+
+    def is_type(self, w_obj: W_Object) -> bool:
+        return self.isinstance(w_obj, B.w_type)
 
     def is_True(self, w_obj: W_Object) -> bool:
         return w_obj is B.w_True
@@ -238,13 +252,12 @@ class SPyVM:
             return W_Str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
+        elif isinstance(value, SPyBuiltin):
+            return value._w
         elif isinstance(value, FunctionType):
-            if hasattr(value, '_w'):
-                return value._w
-            else:
-                raise Exception(
-                    f"Cannot wrap interp-level function {value.__name__}. "
-                    f"Did you forget `@spy_builtin`?")
+            raise Exception(
+                f"Cannot wrap interp-level function {value.__name__}. "
+                f"Did you forget `@spy_builtin`?")
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")
 
@@ -305,6 +318,19 @@ class SPyVM:
         assert isinstance(w_res, W_Bool)
         return w_res
 
+    def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        w_ta = self.dynamic_type(w_a)
+        w_tb = self.dynamic_type(w_b)
+        w_opimpl = self.call_function(OPERATOR.w_NE, [w_ta, w_tb])
+        if w_opimpl is B.w_NotImplemented:
+            # XXX: the logic to produce a good error message should be in a
+            # single place
+            raise SPyTypeError("Cannot do !=")
+        assert isinstance(w_opimpl, W_Func)
+        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        assert isinstance(w_res, W_Bool)
+        return w_res
+
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
         Same as eq, but return False instead of TypeError in case the types are
@@ -324,7 +350,6 @@ class SPyVM:
         c == d                # TypeError: cannot do `object` == `object`
         op.universal_eq(c, d) # False
 
-
         e: dynamic = 42
         f: dynamic = 'hello'
         e == f                # False, `dynamic` == `dynamic` => universal_eq
@@ -339,10 +364,23 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
+        # Avoid infinite recursion:
+        #   1. vm.universal_eq(a, t) calls op.UNIVERSAL_EQ(type(a), type(b))
+        #   2. UNIVERSAL_EQ is a blue function and thus uses BlueCache.lookup
+        #   3. BlueCache.lookup calls vm.universal_eq on the types
+        #   4. vm.universal_eq(ta, tb) calls UNIVERSAL_EQ(type(ta), type(tb))
+        #   5  ...
+        # By special-casing vm.universal_eq(type, type), we break the recursion
+        if self.is_type(w_a) and self.is_type(w_b):
+            return self.wrap(w_a is w_b)
+
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
         if w_opimpl is B.w_NotImplemented:
+            # sanity check: EQ between objects of the same type should always
+            # be possible. If it's not, it means that we forgot to implement it
+            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
             return B.w_False
         assert isinstance(w_opimpl, W_Func)
         w_res = self.call_function(w_opimpl, [w_a, w_b])

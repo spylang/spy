@@ -241,7 +241,8 @@ class TypeChecker:
         _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
         w_attr = self.vm.wrap(node.attr)
-        w_opimpl = OP.w_SETATTR.pyfunc(self.vm, w_otype, w_attr, w_vtype)
+        w_opimpl = self.vm.call_function(OP.w_SETATTR,
+                                         [w_otype, w_attr, w_vtype])
         errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
                   node.attr)
         self.opimpl_typecheck(
@@ -341,7 +342,7 @@ class TypeChecker:
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
         w_attr = self.vm.wrap(expr.attr)
-        w_opimpl = OP.w_GETATTR.pyfunc(self.vm, w_vtype, w_attr)
+        w_opimpl = self.vm.call_function(OP.w_GETATTR, [w_vtype, w_attr])
         self.opimpl_typecheck(
             w_opimpl,
             expr,
@@ -384,6 +385,7 @@ class TypeChecker:
             color = maybe_blue(color, c1)
 
         # step 2: call OP() and get w_opimpl
+        assert w_OP.color == 'blue', f'{w_OP.qn} is not blue'
         w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
 
         # step 3: check that we can call the returned w_opimpl
@@ -590,15 +592,13 @@ class TypeChecker:
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
         w_itemtype = None
         color: Color = 'red' # XXX should be blue?
+
         for item in listop.items:
             c1, w_t1 = self.check_expr(item)
             color = maybe_blue(color, c1)
             if w_itemtype is None:
                 w_itemtype = w_t1
-            elif w_itemtype is not w_t1:
-                # XXX write it better and write a test
-                err = SPyTypeError("conflicting item types")
-                raise err
+            w_itemtype = self.vm.union_type(w_itemtype, w_t1)
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None

@@ -17,10 +17,6 @@ if TYPE_CHECKING:
 
 JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 
-# FIXME: calls to op_* should be blue and automatically cached by the
-# VM. However, this is not the case so far and we need to do it by ourselves.
-CACHE = {}
-
 @spytype('JsRef')
 class W_JsRef(W_Object):
 
@@ -29,59 +25,40 @@ class W_JsRef(W_Object):
                    w_attr: 'W_Str') -> 'W_Dynamic':
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         attr = vm.unwrap_str(w_attr)
-        key = ('getattr', attr)
-        if key in CACHE:
-            return CACHE[key]
 
         @spy_builtin(QN(f'jsffi::getattr_{attr}'))
         def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str) -> W_JsRef:
             return js_getattr(vm, w_self, w_attr)
-        w_res = vm.wrap(opimpl)
-        CACHE[key] = w_res
-        return w_res
+        return vm.wrap(opimpl)
 
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', w_type: 'W_Type', w_attr: 'W_Str',
                    w_vtype: 'W_Type') -> 'W_Dynamic':
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         attr = vm.unwrap_str(w_attr)
-        key = ('setattr', attr)
-        if key in CACHE:
-            return CACHE[key]
 
         @spy_builtin(QN(f'jsffi::setattr_{attr}'))
         def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str,
                    w_val: W_JsRef) -> None:
             js_setattr(vm, w_self, w_attr, w_val)
-        w_res = vm.wrap(opimpl)
-        CACHE[key] = w_res
-        return w_res
+        return vm.wrap(opimpl)
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', w_type: 'W_Type', w_method: 'W_Str',
                        w_argtypes: 'W_Dynamic') -> 'W_Dynamic':
-
         argtypes_w = vm.unwrap(w_argtypes)
         n = len(argtypes_w)
         if n == 1:
-            key = 'call_method_1'
-            if key in CACHE:
-                return CACHE[key]
-
-            @spy_builtin(QN('jsffi::call_method_1'))
-            def opimpl(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
-                       w_arg: W_JsRef) -> W_JsRef:
-                return js_call_method_1(w_self, w_method, w_arg)
-
-            w_res = vm.wrap(opimpl)
-            CACHE[key] = w_res
-            return w_res
-
+            return JSFFI.w_call_method_1
         else:
             raise Exception(
                 f"unsupported number of arguments for CALL_METHOD: {n}"
             )
 
+@JSFFI.builtin
+def call_method_1(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
+                  w_arg: W_JsRef) -> W_JsRef:
+    return js_call_method_1(w_self, w_method, w_arg)
 
 
 JSFFI.add('JsRef', W_JsRef._w)

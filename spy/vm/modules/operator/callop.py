@@ -8,7 +8,7 @@ from .binop import MM
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-@OP.builtin
+@OP.builtin(color='blue')
 def CALL(vm: 'SPyVM', w_type: W_Type, w_argtypes: W_Object) -> W_Dynamic:
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
@@ -17,7 +17,7 @@ def CALL(vm: 'SPyVM', w_type: W_Type, w_argtypes: W_Object) -> W_Dynamic:
         return pyclass.op_CALL(vm, w_type, w_argtypes)
     return B.w_NotImplemented
 
-@OP.builtin
+@OP.builtin(color='blue')
 def CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
                 w_argtypes: W_Object) -> W_Dynamic:
     pyclass = w_type.pyclass

@@ -1,6 +1,7 @@
 import inspect
 from typing import TYPE_CHECKING, Any, Callable
 from spy.fqn import QN
+from spy.ast import Color
 from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType, W_Void
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ def to_spy_FuncParam(p: Any) -> FuncParam:
         raise ValueError(f"Invalid param: '{p}'")
 
 
-def functype_from_sig(fn: Callable) -> W_FuncType:
+def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
     if len(params) == 0:
@@ -51,10 +52,10 @@ def functype_from_sig(fn: Callable) -> W_FuncType:
     else:
         raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
 
-    return W_FuncType(func_params, w_restype)
+    return W_FuncType(func_params, w_restype, color=color)
 
 
-def spy_builtin(qn: QN) -> Callable:
+def spy_builtin(qn: QN, color: Color = 'red') -> Callable:
     """
     Decorator to make an interp-level function wrappable by the VM.
 
@@ -71,10 +72,29 @@ def spy_builtin(qn: QN) -> Callable:
     The w_functype of the wrapped function is automatically computed by
     inspectng the signature of the interp-level function. The first parameter
     MUST be 'vm'.
+
+    Note that the decorated object is no longer the original function, but an
+    instance of SPyBuiltin: among the other things, this ensures that blue
+    calls are correctly cached.
     """
-    def decorator(fn: Callable) -> Callable:
-        w_functype = functype_from_sig(fn)
-        fn._w = W_BuiltinFunc(w_functype, qn, fn)  # type: ignore
-        fn.w_functype = w_functype  # type: ignore
-        return fn
+    def decorator(fn: Callable) -> SPyBuiltin:
+        return SPyBuiltin(fn, qn, color)
     return decorator
+
+
+class SPyBuiltin:
+    fn: Callable
+    _w: W_BuiltinFunc
+
+    def __init__(self, fn: Callable, qn: QN, color: Color) -> None:
+        self.fn = fn
+        w_functype = functype_from_sig(fn, color)
+        self._w = W_BuiltinFunc(w_functype, qn, fn)
+
+    @property
+    def w_functype(self) -> W_FuncType:
+        return self._w.w_functype
+
+    def __call__(self, vm: 'SPyVM', *args: W_Object) -> W_Object:
+        args_w = list(args)
+        return vm.call_function(self._w, args_w)
