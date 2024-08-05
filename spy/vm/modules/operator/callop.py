@@ -8,8 +8,7 @@ from .binop import MM
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-# TODO: add color=blue, but also double-check what happens with jsffi cache
-@OP.builtin
+@OP.builtin(color='blue')
 def CALL(vm: 'SPyVM', w_type: W_Type, w_argtypes: W_Object) -> W_Dynamic:
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
