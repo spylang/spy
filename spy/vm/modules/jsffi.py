@@ -7,7 +7,6 @@ from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
                       W_Dynamic)
 from spy.vm.sig import spy_builtin
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.list import make_W_List
 from spy.vm.registry import ModuleRegistry
 
 from spy.vm.modules.types import W_TypeDef

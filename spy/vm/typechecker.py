@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.list import make_W_List, W_List__W_Type
+from spy.vm.list import W_List__W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
@@ -602,6 +602,5 @@ class TypeChecker:
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None
-        w_listtype = self.vm.wrap(make_W_List(self.vm, w_itemtype))
-        assert isinstance(w_listtype, W_Type)
+        w_listtype = self.vm.make_list_type(w_itemtype)
         return color, w_listtype

@@ -8,41 +8,40 @@ if TYPE_CHECKING:
 
 @spytype('ListFactory')
 class W_ListFactory(W_Object):
+    __spy_storage_category__ = 'reference'
 
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', w_type: W_Type, w_vtype: W_Type) -> W_Dynamic:
+        return vm.wrap(make_list_type)
 
-        @spy_builtin(QN('operator::ListFactory_getitem'))
-        def opimpl(vm: 'SPyVM', w_self: W_ListFactory, w_i: W_Type) -> W_Type:
-            pyclass = make_W_List(vm, w_i)
-            return vm.wrap(pyclass)  # type: ignore
 
-        return vm.wrap(opimpl)
+
+@spy_builtin(QN('__spy__::make_list_type'), color='blue')
+def make_list_type(vm: 'SPyVM', w_self: W_ListFactory, w_T: W_Type) -> W_Type:
+    """
+    Create a concrete W_List class specialized for W_Type.
+    """
+    from spy.vm.b import B
+    if w_T is B.w_type:
+        return vm.wrap(W_List__W_Type)
+    pyclass = _make_W_List(w_T)
+    return vm.wrap(pyclass)  # type: ignore
 
 class W_BaseList(W_Object):
     pass
 
-# FIXME
-# XXX this should be marked as '@interp_blue' and cached automatically by the
-# VM
-CACHE: dict[Any, W_Type] = {}
 
-def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
-    # well-known specialized lists exist independently of the VM
-    if w_T in (W_Type, W_I32):
-        # FIXME
-        assert False, 'we never enter this, but we are supposed to'
-        vm_cache = None
-
+def _make_W_List(w_T: W_Type) -> W_Type:
+    """
+    DON'T CALL THIS DIRECTLY!
+    You should call make_list_type instead, which knows how to deal with
+    "well-known lists".
+    """
     T = w_T.pyclass
-    key = (vm_cache, w_T)
-    if key in CACHE:
-        return CACHE[key]
+    app_name = f'list[{w_T.name}]'        # e.g. list[i32]
+    interp_name = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
 
-    tname = w_T.name
-    name = f'list[{tname}]'
-
-    @spytype(name)
+    @spytype(app_name)
     class W_List(W_BaseList):
         items_w: list[W_Object]
 
@@ -106,12 +105,9 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
             else:
                 return B.w_NotImplemented
 
-
-    name = f'W_List[{T.__name__}]'
-    W_List.__name__ = name
-    W_List.__qualname__ = name
-    CACHE[key] = W_List  # type: ignore
+    W_List.__name__ = W_List.__qualname__ = interp_name
     return W_List        # type: ignore
 
 
-W_List__W_Type = make_W_List(None, W_Type._w)
+# well-known list types
+W_List__W_Type = _make_W_List(W_Type._w)
