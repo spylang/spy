@@ -7,9 +7,21 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @spytype('list')
-class W_List(W_Object):
+class W_List(W_Type):
     """
-    The 'list' object.
+    The 'list' type.
+
+    It has two purposes:
+
+      - it's the base type for all lists
+
+      - by implementing meta_op_GETITEM, it can be used to create
+       _specialized_ list types, e.g. `list[i32]`.
+
+    In other words, `list[i32]` inherits from `list`.
+
+    The specialized types are created by calling the builtin make_list_type:
+    see its docstring for details.
     """
     __spy_storage_category__ = 'reference'
 
@@ -23,6 +35,18 @@ class W_List(W_Object):
 def make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
+
+    Given a type T, it is always safe to call make_list_type(T) multiple
+    types, and it is guaranteed to get always the same type.
+
+    It is worth noting that to achieve that, we have two layers of caching:
+
+      - some "well known" specialized lists are createt in advance and
+        independently of the `vm`, because they are needed elsewhere. For
+        example, W_List__W_Type.  There is special logic to ensure that we
+        reuse them instead of recreating.
+
+      - for general types, we rely on the fact that `make_list_type` is blue.
     """
     from spy.vm.b import B
     assert w_list is B.w_list
