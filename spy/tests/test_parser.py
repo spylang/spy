@@ -423,6 +423,25 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Tuple(self):
+        mod = self.parse("""
+        def foo() -> void:
+            return 1, 2, 3
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        Return(
+            value=Tuple(
+                items=[
+                    Constant(value=1),
+                    Constant(value=2),
+                    Constant(value=3),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_BinOp(self, op):
         # map the operator to the spy.ast class name

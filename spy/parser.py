@@ -380,6 +380,10 @@ class Parser:
         items = [self.from_py_expr(py_item) for py_item in py_node.elts]
         return spy.ast.List(py_node.loc, items)
 
+    def from_py_expr_Tuple(self, py_node: py_ast.Tuple) -> spy.ast.Tuple:
+        items = [self.from_py_expr(py_item) for py_item in py_node.elts]
+        return spy.ast.Tuple(py_node.loc, items)
+
     def from_py_expr_BinOp(self, py_node: py_ast.BinOp) -> spy.ast.BinOp:
         left = self.from_py_expr(py_node.left)
         right = self.from_py_expr(py_node.right)

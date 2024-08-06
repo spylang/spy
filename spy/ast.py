@@ -225,6 +225,11 @@ class List(Expr):
     items: list[Expr]
 
 @dataclass(eq=False)
+class Tuple(Expr):
+    precedence = 17
+    items: list[Expr]
+
+@dataclass(eq=False)
 class Call(Expr):
     precedence = 16
     func: Expr
