@@ -33,6 +33,7 @@ class TestList(CompilerTest):
         """)
         w_make_list = mod.make_list.w_func
         w_list_type = self.vm.call_function(w_make_list, [B.w_type])
+        assert isinstance(w_list_type, W_Type)
         assert w_list_type.pyclass is W_List__W_Type
         #
         w_list_f64a = self.vm.call_function(w_make_list, [B.w_f64])
@@ -52,8 +53,10 @@ class TestList(CompilerTest):
         """)
         # our machinery unwraps types, let's wrap it again
         w_t1 = self.vm.wrap(mod.foo())
+        assert isinstance(w_t1, W_Type)
         assert w_t1.name == 'list[type]'
         w_t2 = self.vm.wrap(mod.bar())
+        assert isinstance(w_t2, W_Type)
         assert w_t2.name == 'list[object]'
 
     def test_literal(self):

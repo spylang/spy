@@ -82,7 +82,7 @@ class TestSig:
             return vm.wrap(x*2)  # type: ignore
 
         assert foo.w_functype.name == '@blue def(x: i32) -> i32'
-        w_foo = vm.wrap(foo)
+        w_foo: W_Func = vm.wrap(foo)  # type: ignore
         w_x = vm.call_function(w_foo, [vm.wrap(21)])
         w_y = vm.call_function(w_foo, [vm.wrap(21)])
         assert w_x is w_y
