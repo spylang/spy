@@ -6,44 +6,68 @@ from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-@spytype('ListFactory')
-class W_ListFactory(W_Object):
+@spytype('list')
+class W_List(W_Type):
+    """
+    The 'list' type.
+
+    It has two purposes:
+
+      - it's the base type for all lists
+
+      - by implementing meta_op_GETITEM, it can be used to create
+       _specialized_ list types, e.g. `list[i32]`.
+
+    In other words, `list[i32]` inherits from `list`.
+
+    The specialized types are created by calling the builtin make_list_type:
+    see its docstring for details.
+    """
+    __spy_storage_category__ = 'reference'
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', w_type: W_Type, w_vtype: W_Type) -> W_Dynamic:
+    def meta_op_GETITEM(vm: 'SPyVM', w_type: W_Type,
+                        w_vtype: W_Type) -> W_Dynamic:
+        return vm.wrap(make_list_type)
 
-        @spy_builtin(QN('operator::ListFactory_getitem'))
-        def opimpl(vm: 'SPyVM', w_self: W_ListFactory, w_i: W_Type) -> W_Type:
-            pyclass = make_W_List(vm, w_i)
-            return vm.wrap(pyclass)  # type: ignore
 
-        return vm.wrap(opimpl)
+@spy_builtin(QN('__spy__::make_list_type'), color='blue')
+def make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
+    """
+    Create a concrete W_List class specialized for W_Type.
 
-class W_BaseList(W_Object):
-    pass
+    Given a type T, it is always safe to call make_list_type(T) multiple
+    types, and it is guaranteed to get always the same type.
 
-# FIXME
-# XXX this should be marked as '@interp_blue' and cached automatically by the
-# VM
-CACHE: dict[Any, W_Type] = {}
+    It is worth noting that to achieve that, we have two layers of caching:
 
-def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
-    # well-known specialized lists exist independently of the VM
-    if w_T in (W_Type, W_I32):
-        # FIXME
-        assert False, 'we never enter this, but we are supposed to'
-        vm_cache = None
+      - some "well known" specialized lists are createt in advance and
+        independently of the `vm`, because they are needed elsewhere. For
+        example, W_List__W_Type.  There is special logic to ensure that we
+        reuse them instead of recreating.
 
+      - for general types, we rely on the fact that `make_list_type` is blue.
+    """
+    from spy.vm.b import B
+    assert w_list is B.w_list
+    if w_T is B.w_type:
+        return vm.wrap(W_List__W_Type)
+    pyclass = _make_W_List(w_T)
+    return vm.wrap(pyclass)  # type: ignore
+
+
+def _make_W_List(w_T: W_Type) -> W_Type:
+    """
+    DON'T CALL THIS DIRECTLY!
+    You should call make_list_type instead, which knows how to deal with
+    "well-known lists".
+    """
     T = w_T.pyclass
-    key = (vm_cache, w_T)
-    if key in CACHE:
-        return CACHE[key]
+    app_name = f'list[{w_T.name}]'        # e.g. list[i32]
+    interp_name = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
 
-    tname = w_T.name
-    name = f'list[{tname}]'
-
-    @spytype(name)
-    class W_List(W_BaseList):
+    @spytype(app_name)
+    class W_MyList(W_List):
         items_w: list[W_Object]
 
         def __init__(self, items_w: list[W_Object]):
@@ -62,7 +86,7 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
                        w_itype: W_Type) -> W_Dynamic:
             @no_type_check
             @spy_builtin(QN('operator::list_getitem'))
-            def getitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32) -> T:
+            def getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 return w_list.items_w[i]
@@ -75,7 +99,7 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
 
             @no_type_check
             @spy_builtin(QN('operator::list_setitem'))
-            def setitem(vm: 'SPyVM', w_list: W_List, w_i: W_I32,
+            def setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
                         w_v: T) -> W_Void:
                 assert isinstance(w_v, T)
                 i = vm.unwrap_i32(w_i)
@@ -87,11 +111,11 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
         @staticmethod
         def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
             from spy.vm.b import B
-            assert w_ltype.pyclass is W_List
+            assert w_ltype.pyclass is W_MyList
 
             @no_type_check
             @spy_builtin(QN('operator::list_eq'))
-            def eq(vm: 'SPyVM', w_l1: W_List, w_l2: W_List) -> W_Bool:
+            def eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
                 items2_w = w_l2.items_w
                 if len(items1_w) != len(items2_w):
@@ -106,12 +130,9 @@ def make_W_List(vm_cache: Optional['SPyVM'], w_T: W_Type) -> W_Type:
             else:
                 return B.w_NotImplemented
 
-
-    name = f'W_List[{T.__name__}]'
-    W_List.__name__ = name
-    W_List.__qualname__ = name
-    CACHE[key] = W_List  # type: ignore
-    return W_List        # type: ignore
+    W_MyList.__name__ = W_MyList.__qualname__ = interp_name
+    return W_MyList        # type: ignore
 
 
-W_List__W_Type = make_W_List(None, W_Type._w)
+# well-known list types
+W_List__W_Type = _make_W_List(W_Type._w)

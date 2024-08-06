@@ -321,6 +321,9 @@ def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
     elif hasattr(pyclass, 'spy_new'):
         W_MetaType.op_CALL = synthesize_meta_op_CALL(pyclass)  # type: ignore
 
+    if hasattr(pyclass, 'meta_op_GETITEM'):
+        W_MetaType.op_GETITEM = pyclass.meta_op_GETITEM  # type: ignore
+
     W_MetaType._w = W_Type(metaname, W_MetaType)
     return W_MetaType
 

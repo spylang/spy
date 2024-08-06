@@ -306,6 +306,9 @@ class SPyVM:
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        # FIXME: we need a more structured way of implementing operators
+        # inside the vm, and possibly share the code with typechecker and
+        # ASTFrame. See also vm.ne and vm.getitem
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
@@ -319,6 +322,9 @@ class SPyVM:
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
+        # FIXME: we need a more structured way of implementing operators
+        # inside the vm, and possibly share the code with typechecker and
+        # ASTFrame. See also vm.ne and vm.getitem
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_NE, [w_ta, w_tb])
@@ -330,6 +336,19 @@ class SPyVM:
         w_res = self.call_function(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
+
+    def getitem(self, w_obj: W_Dynamic, w_i: W_Dynamic) -> W_Dynamic:
+        # FIXME: we need a more structured way of implementing operators
+        # inside the vm, and possibly share the code with typechecker and
+        # ASTFrame. See also vm.ne and vm.getitem
+        w_tobj = self.dynamic_type(w_obj)
+        w_ti = self.dynamic_type(w_i)
+        w_opimpl = self.call_function(OPERATOR.w_GETITEM, [w_tobj, w_ti])
+        if w_opimpl is B.w_NotImplemented:
+            # XXX see also eq and ne
+            raise SPyTypeError("Cannot do []")
+        assert isinstance(w_opimpl, W_Func)
+        return self.call_function(w_opimpl, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -389,3 +408,6 @@ class SPyVM:
 
     def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         return self.universal_eq(w_a, w_b).not_(self)
+
+    def make_list_type(self, w_T: W_Type) -> W_Type:
+        return self.getitem(B.w_list, w_T)
