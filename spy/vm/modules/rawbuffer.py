@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 RAW_BUFFER = RB = ModuleRegistry('rawbuffer', '<rawbuffer>')
 
-@spytype('RawBuffer')
+@RB.spytype('RawBuffer')
 class W_RawBuffer(W_Object):
     buf: bytearray
 
@@ -23,7 +23,6 @@ class W_RawBuffer(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> bytearray:
         return self.buf
 
-RB.add('RawBuffer', W_RawBuffer._w)
 
 @RB.builtin
 def rb_alloc(vm: 'SPyVM', w_size: W_I32) -> W_RawBuffer:

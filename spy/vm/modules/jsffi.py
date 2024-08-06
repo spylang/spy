@@ -8,7 +8,6 @@ from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
 from spy.vm.sig import spy_builtin
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.registry import ModuleRegistry
-
 from spy.vm.modules.types import W_TypeDef
 
 if TYPE_CHECKING:
@@ -16,7 +15,7 @@ if TYPE_CHECKING:
 
 JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 
-@spytype('JsRef')
+@JSFFI.spytype('JsRef')
 class W_JsRef(W_Object):
 
     @staticmethod
@@ -58,9 +57,6 @@ class W_JsRef(W_Object):
 def call_method_1(vm: 'SPyVM', w_self: W_JsRef, w_method: W_Str,
                   w_arg: W_JsRef) -> W_JsRef:
     return js_call_method_1(w_self, w_method, w_arg)
-
-
-JSFFI.add('JsRef', W_JsRef._w)
 
 @JSFFI.builtin
 def debug(vm: 'SPyVM', w_str: W_Str) -> None:
