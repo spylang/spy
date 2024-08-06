@@ -319,6 +319,19 @@ class Parser:
                 index = self.from_py_expr(py_target.slice),
                 value = self.from_py_expr(py_node.value)
             )
+        elif isinstance(py_target, py_ast.Tuple):
+            targets = []
+            target_locs = []
+            for item in py_target.elts:
+                assert isinstance(item, py_ast.Name)
+                targets.append(item.id)
+                target_locs.append(item.loc)
+            return spy.ast.UnpackAssign(
+                loc = py_node.loc,
+                target_locs = target_locs,
+                targets = targets,
+                value = self.from_py_expr(py_node.value)
+            )
         else:
             self.unsupported(py_target, 'assign to complex expressions')
 
@@ -379,6 +392,10 @@ class Parser:
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
         items = [self.from_py_expr(py_item) for py_item in py_node.elts]
         return spy.ast.List(py_node.loc, items)
+
+    def from_py_expr_Tuple(self, py_node: py_ast.Tuple) -> spy.ast.Tuple:
+        items = [self.from_py_expr(py_item) for py_item in py_node.elts]
+        return spy.ast.Tuple(py_node.loc, items)
 
     def from_py_expr_BinOp(self, py_node: py_ast.BinOp) -> spy.ast.BinOp:
         left = self.from_py_expr(py_node.left)

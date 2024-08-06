@@ -33,7 +33,8 @@ class Dumper(TextBuilder):
                  ) -> None:
         super().__init__(use_colors=use_colors)
         self.highlight = highlight
-        self.fields_to_ignore = ('loc', 'target_loc', 'loc_asname')
+        self.fields_to_ignore = ('loc', 'target_loc', 'target_locs',
+                                 'loc_asname')
 
     def dump_anything(self, obj: Any) -> None:
         if isinstance(obj, spy.ast.Node):

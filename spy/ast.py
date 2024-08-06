@@ -225,6 +225,11 @@ class List(Expr):
     items: list[Expr]
 
 @dataclass(eq=False)
+class Tuple(Expr):
+    precedence = 17
+    items: list[Expr]
+
+@dataclass(eq=False)
 class Call(Expr):
     precedence = 16
     func: Expr
@@ -451,6 +456,17 @@ class Assign(Stmt):
     target_loc: Loc = field(repr=False)
     target: str
     value: Expr
+
+@dataclass(eq=False)
+class UnpackAssign(Stmt):
+    target_locs: list[Loc] = field(repr=False)
+    targets: list[str]
+    value: Expr
+
+    @property
+    def targlocs(self) -> list[tuple[str, Loc]]:
+        return list(zip(self.targets, self.target_locs))
+
 
 @dataclass(eq=False)
 class SetAttr(Stmt):

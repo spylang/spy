@@ -217,25 +217,49 @@ class TypeChecker:
     def check_stmt_While(self, while_node: ast.While) -> None:
         self.typecheck_bool(while_node.test)
 
-    def check_stmt_Assign(self, assign: ast.Assign) -> None:
-        name = assign.target
-        sym = self.funcdef.symtable.lookup(name)
+    def _check_assign(self, target: str, target_loc: Loc,
+                      expr: ast.Expr) -> None:
+        sym = self.funcdef.symtable.lookup(target)
         if sym.is_global and sym.color == 'blue':
             err = SPyTypeError("invalid assignment target")
-            err.add('error', f'{sym.name} is const', assign.target_loc)
+            err.add('error', f'{sym.name} is const', target_loc)
             err.add('note', 'const declared here', sym.loc)
             err.add('note',
                     f'help: declare it as variable: `var {sym.name} ...`',
                     sym.loc)
             raise err
 
-        _, w_valuetype = self.check_expr(assign.value)
-
         if sym.is_local:
-            if name not in self.locals_types_w:
+            if target not in self.locals_types_w:
                 # first assignment, implicit declaration
-                self.declare_local(name, w_valuetype)
-            self.typecheck_local(assign.value, name)
+                _, w_valuetype = self.check_expr(expr)
+                self.declare_local(target, w_valuetype)
+            self.typecheck_local(expr, target)
+
+    def check_stmt_Assign(self, assign: ast.Assign) -> None:
+        _, w_valuetype = self.check_expr(assign.value)
+        self._check_assign(assign.target, assign.target_loc, assign.value)
+
+    def check_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        _, w_valuetype = self.check_expr(unpack.value)
+        if w_valuetype is not B.w_tuple:
+            t = w_valuetype.name
+            err = SPyTypeError(f'`{t}` does not support unpacking')
+            err.add('error', f'this is `{t}`', unpack.value.loc)
+            raise err
+
+        for i, (target, target_loc) in enumerate(unpack.targlocs):
+            # we need an expression which has the type of each individual item
+            # of the tuple. The easiest way is to synthetize a GetItem
+            expr = ast.GetItem(
+                loc = unpack.value.loc,
+                value = unpack.value,
+                index = ast.Constant(
+                    loc = unpack.value.loc,
+                    value = i
+                )
+            )
+            self._check_assign(target, target_loc, expr)
 
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         _, w_otype = self.check_expr(node.target)
@@ -606,3 +630,10 @@ class TypeChecker:
         assert w_itemtype is not None
         w_listtype = self.vm.make_list_type(w_itemtype)
         return color, w_listtype
+
+    def check_expr_Tuple(self, tupleop: ast.Tuple) -> tuple[Color, W_Type]:
+        color: Color = 'blue'
+        for item in tupleop.items:
+            c1, w_t1 = self.check_expr(item)
+            color = maybe_blue(color, c1)
+        return color, B.w_tuple

@@ -11,6 +11,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm.list import W_List
+from spy.vm.tuple import W_Tuple
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
@@ -136,19 +137,34 @@ class ASTFrame:
         self.t.lazy_check_VarDef(vardef, w_type)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
+        w_val = self.eval_expr(assign.value)
+        self._exec_assign(assign.target, w_val)
+
+    def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        w_tup = self.eval_expr(unpack.value)
+        assert isinstance(w_tup, W_Tuple)
+        exp = len(unpack.targets)
+        got = len(w_tup.items_w)
+        if exp != got:
+            raise SPyRuntimeError(
+                f"Wrong number of values to unpack: expected {exp}, got {got}"
+            )
+        for target, w_val in zip(unpack.targets, w_tup.items_w):
+            self._exec_assign(target, w_val)
+
+    def _exec_assign(self, target: str, w_val: W_Object) -> None:
         # XXX this is semi-wrong. We need to add an AST field to keep track of
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
-        name = assign.target
-        sym = self.funcdef.symtable.lookup(name)
-        w_val = self.eval_expr(assign.value)
+        sym = self.funcdef.symtable.lookup(target)
         if sym.is_local:
-            self.store_local(name, w_val)
+            self.store_local(target, w_val)
         elif sym.fqn is not None:
             assert sym.color == 'red'
             self.vm.store_global(sym.fqn, w_val)
         else:
             assert False, 'closures not implemented yet'
+
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         w_opimpl = self.t.opimpl[node]
@@ -312,3 +328,9 @@ class ASTFrame:
         items_w = [self.eval_expr(item) for item in op.items]
         assert issubclass(w_listtype.pyclass, W_List)
         return w_listtype.pyclass(items_w) # type: ignore
+
+    def eval_expr_Tuple(self, op: ast.Tuple) -> W_Object:
+        color, w_tupletype = self.t.check_expr(op)
+        assert w_tupletype is B.w_tuple
+        items_w = [self.eval_expr(item) for item in op.items]
+        return W_Tuple(items_w)

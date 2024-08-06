@@ -250,3 +250,8 @@ class SPyBackend:
         itemlist = [self.fmt_expr(it) for it in node.items]
         items = ', '.join(itemlist)
         return f'[{items}]'
+
+    def fmt_expr_Tuple(self, node: ast.Tuple) -> str:
+        itemlist = [self.fmt_expr(it) for it in node.items]
+        items = ', '.join(itemlist)
+        return f'({items})'

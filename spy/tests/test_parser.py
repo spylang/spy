@@ -423,6 +423,25 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Tuple(self):
+        mod = self.parse("""
+        def foo() -> void:
+            return 1, 2, 3
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        Return(
+            value=Tuple(
+                items=[
+                    Constant(value=1),
+                    Constant(value=2),
+                    Constant(value=3),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_BinOp(self, op):
         # map the operator to the spy.ast class name
@@ -570,13 +589,31 @@ class TestParser:
     def test_Assign_unsupported_2(self):
         src = """
         def foo() -> void:
-            a, b = 1, 2
+            [a, b] = 1, 2
         """
         self.expect_errors(
             src,
             "not implemented yet: assign to complex expressions",
-            ("this is not supported", "a, b"),
+            ("this is not supported", "[a, b]"),
         )
+
+    def test_UnpackAssign(self):
+        mod = self.parse("""
+        def foo() -> void:
+            a, b, c = x
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        UnpackAssign(
+            targets=[
+                'a',
+                'b',
+                'c',
+            ],
+            value=Name(id='x'),
+        )
+        """
+        self.assert_dump(stmt, expected)
 
     def test_Call(self):
         mod = self.parse("""
