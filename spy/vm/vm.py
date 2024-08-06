@@ -398,7 +398,7 @@ class SPyVM:
         #   5  ...
         # By special-casing vm.universal_eq(type, type), we break the recursion
         if self.is_type(w_a) and self.is_type(w_b):
-            return self.wrap(w_a is w_b)
+            return self.wrap(w_a is w_b)  # type: ignore
 
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
@@ -417,4 +417,6 @@ class SPyVM:
         return self.universal_eq(w_a, w_b).not_(self)
 
     def make_list_type(self, w_T: W_Type) -> W_Type:
-        return self.getitem(B.w_list, w_T)
+        w_res = self.getitem(B.w_list, w_T)
+        assert isinstance(w_res, W_Type)
+        return w_res
