@@ -180,16 +180,24 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def declare_Assign(self, assign: ast.Assign) -> None:
+        self._declare_target_maybe(assign.target, assign.target_loc,
+                                   assign.value)
+
+    def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        for target, loc in unpack.targlocs:
+            self._declare_target_maybe(target, loc, unpack.value)
+
+    def _declare_target_maybe(self, target: str, target_loc: Loc,
+                              value: ast.Expr) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
-        name = assign.target
-        level, sym = self.lookup(name)
+        level, sym = self.lookup(target)
         if sym is None:
             # we don't have an explicit type annotation: we consider the
             # "value" to be the type_loc, because it's where the type will be
             # computed from
-            type_loc = assign.value.loc
-            self.add_name(name, 'red', assign.loc, type_loc)
+            type_loc = value.loc
+            self.add_name(target, 'red', target_loc, type_loc)
 
     # ===
 

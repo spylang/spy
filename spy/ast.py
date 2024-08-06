@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Iterator, Any, Literal
+from typing import Optional, Iterator, Any, Literal, Sequence
 import pprint
 import ast as py_ast
 import dataclasses
@@ -459,8 +459,14 @@ class Assign(Stmt):
 
 @dataclass(eq=False)
 class UnpackAssign(Stmt):
+    target_locs: list[Loc] = field(repr=False)
     targets: list[str]
     value: Expr
+
+    @property
+    def targlocs(self) -> Sequence[tuple[str, Loc]]:
+        return zip(self.targets, self.target_locs)
+
 
 @dataclass(eq=False)
 class SetAttr(Stmt):

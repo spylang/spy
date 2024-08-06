@@ -28,10 +28,10 @@ class TestTuple(CompilerTest):
         y = mod.foo(2)
         assert y == 'hello'
 
-    def xtest_unpacking(self):
+    def test_unpacking(self):
         mod = self.compile(
         """
-        def make_tuple() -> dynamic:
+        def make_tuple() -> tuple:
             return 1, 2, 'hello'
 
         def foo() -> i32:

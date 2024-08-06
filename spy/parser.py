@@ -321,11 +321,14 @@ class Parser:
             )
         elif isinstance(py_target, py_ast.Tuple):
             targets = []
+            target_locs = []
             for item in py_target.elts:
                 assert isinstance(item, py_ast.Name)
                 targets.append(item.id)
+                target_locs.append(item.loc)
             return spy.ast.UnpackAssign(
                 loc = py_node.loc,
+                target_locs = target_locs,
                 targets = targets,
                 value = self.from_py_expr(py_node.value)
             )

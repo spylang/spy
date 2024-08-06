@@ -137,19 +137,29 @@ class ASTFrame:
         self.t.lazy_check_VarDef(vardef, w_type)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
+        w_val = self.eval_expr(assign.value)
+        self._exec_assign(assign.target, w_val)
+
+    def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        w_tup = self.eval_expr(unpack.value)
+        assert isinstance(w_tup, W_Tuple)
+        assert len(w_tup.items_w) == len(unpack.targets) # XXX proper error
+        for target, w_val in zip(unpack.targets, w_tup.items_w):
+            self._exec_assign(target, w_val)
+
+    def _exec_assign(self, target: str, w_val: W_Object) -> None:
         # XXX this is semi-wrong. We need to add an AST field to keep track of
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
-        name = assign.target
-        sym = self.funcdef.symtable.lookup(name)
-        w_val = self.eval_expr(assign.value)
+        sym = self.funcdef.symtable.lookup(target)
         if sym.is_local:
-            self.store_local(name, w_val)
+            self.store_local(target, w_val)
         elif sym.fqn is not None:
             assert sym.color == 'red'
             self.vm.store_global(sym.fqn, w_val)
         else:
             assert False, 'closures not implemented yet'
+
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         w_opimpl = self.t.opimpl[node]
