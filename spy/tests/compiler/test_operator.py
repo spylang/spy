@@ -16,7 +16,7 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('MyClass')
+        @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
 
             @staticmethod
@@ -30,8 +30,6 @@ class TestOp(CompilerTest):
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
                 return vm.wrap(getitem)
-
-        EXT.add('MyClass', W_MyClass._w)
 
         # ========== /EXT module for this test =========
 
