@@ -203,6 +203,13 @@ class SPyVM:
             return w_t2
         if self.issubclass(w_t2, w_t1):
             return w_t1
+        #
+        # w_base is either a type or B.w_None. Ideally, we would like to write:
+        #     assert w_t1.w_base is not B.w_None
+        # but in that case mypy cannot deduct that w_base IS actually a type.
+        # The workaround is to check with isinstance
+        assert isinstance(w_t1.w_base, W_Type)
+        assert isinstance(w_t2.w_base, W_Type)
         return self.union_type(w_t1.w_base, w_t2.w_base)
 
     def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:

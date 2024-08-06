@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from dataclasses import dataclass
 from spy import ast
 from spy.fqn import FQN
@@ -13,7 +13,8 @@ class TypeConverter:
     """
     Base class to represent a type conversion step.
     """
-    w_type: W_Type # the desired type after the conversion
+    color: ClassVar[str] = None # type: ignore # must be set by subclasses
+    w_type: W_Type              # the desired type after the conversion
 
     def convert(self, vm: 'SPyVM', w_obj: W_Object) -> W_Object:
         """
