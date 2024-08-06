@@ -68,4 +68,5 @@ def dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
         attr = vm.unwrap_str(w_attr)
         msg = f"type `{o}` does not support assignment to attribute '{attr}'"
         raise SPyTypeError(msg)
+    assert isinstance(w_opimpl, W_Func)
     return vm.call_function(w_opimpl, [w_obj, w_attr, w_value])

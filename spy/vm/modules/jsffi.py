@@ -69,34 +69,34 @@ def debug(vm: 'SPyVM', w_str: W_Str) -> None:
 
 @JSFFI.builtin
 def init(vm: 'SPyVM') -> None:
-    pass
+    raise NotImplementedError
 
 @JSFFI.builtin
 def get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
-    pass
+    raise NotImplementedError
 
 @JSFFI.builtin
 def get_Console(vm: 'SPyVM') -> W_JsRef:
-    pass
+    raise NotImplementedError
 
 @JSFFI.builtin
 def js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
-    pass
+    raise NotImplementedError
 
 @JSFFI.builtin
 def js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
-    pass
+    raise NotImplementedError
 
 @JSFFI.builtin
 def js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
                      name: W_Str, arg0: W_JsRef) -> W_JsRef:
-    pass
+    raise NotImplementedError
 
 @JSFFI.builtin
 def js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
-    pass
+    raise NotImplementedError
 
 @JSFFI.builtin
 def js_setattr(vm: 'SPyVM', w_target: W_JsRef,
                name: W_Str, val: W_JsRef) -> None:
-    pass
+    raise NotImplementedError

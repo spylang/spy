@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @spytype('list')
-class W_List(W_Type):
+class W_List(W_Object):
     """
     The 'list' type.
 
@@ -51,7 +51,7 @@ def make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     from spy.vm.b import B
     assert w_list is B.w_list
     if w_T is B.w_type:
-        return vm.wrap(W_List__W_Type)
+        return vm.wrap(W_List__W_Type)  # type: ignore
     pyclass = _make_W_List(w_T)
     return vm.wrap(pyclass)  # type: ignore
 
@@ -70,11 +70,11 @@ def _make_W_List(w_T: W_Type) -> W_Type:
     class W_MyList(W_List):
         items_w: list[W_Object]
 
-        def __init__(self, items_w: list[W_Object]):
+        def __init__(self, items_w: list[W_Object]) -> None:
             # XXX typecheck?
             self.items_w = items_w
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             cls = self.__class__.__name__
             return f'{cls}({self.items_w})'
 
