@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Iterator, Any, Literal, Sequence
+from typing import Optional, Iterator, Any, Literal
 import pprint
 import ast as py_ast
 import dataclasses
@@ -464,8 +464,8 @@ class UnpackAssign(Stmt):
     value: Expr
 
     @property
-    def targlocs(self) -> Sequence[tuple[str, Loc]]:
-        return zip(self.targets, self.target_locs)
+    def targlocs(self) -> list[tuple[str, Loc]]:
+        return list(zip(self.targets, self.target_locs))
 
 
 @dataclass(eq=False)
