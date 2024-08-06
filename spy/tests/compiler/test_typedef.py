@@ -15,8 +15,8 @@ class TestTypeDef(CompilerTest):
         # origin type because it's simpler, but eventually we want a more
         # explicit way, e.g. TypeDef.cast or something like that.
         mod = self.compile("""
-        from types import makeTypeDef
-        MyInt = makeTypeDef('MyInt', i32)
+        from types import TypeDef
+        MyInt = TypeDef('MyInt', i32)
 
         # this should go away and become MyInt.cast_from
         def MyInt_cast_from(x: i32) -> MyInt:
@@ -43,11 +43,11 @@ class TestTypeDef(CompilerTest):
         Test that we can succesfully set attributes on the typedef itself
         """
         mod = self.compile("""
-        from types import makeTypeDef
+        from types import TypeDef
 
         @blue
         def makeMyInt():
-            MyInt = makeTypeDef('MyInt', i32)
+            MyInt = TypeDef('MyInt', i32)
 
             @blue
             def __getattr__(attr):
@@ -71,11 +71,11 @@ class TestTypeDef(CompilerTest):
         Test that we can succesfully get attributes on the typedef itself
         """
         mod = self.compile("""
-        from types import makeTypeDef
+        from types import TypeDef
 
         @blue
         def foo():
-            MyInt = makeTypeDef('MyInt', i32)
+            MyInt = TypeDef('MyInt', i32)
             MyInt.__getattr__ = 42
             return MyInt.__getattr__
         """)
@@ -85,11 +85,11 @@ class TestTypeDef(CompilerTest):
 
     def test_getattr(self):
         mod = self.compile("""
-        from types import makeTypeDef
+        from types import TypeDef
 
         @blue
         def makeMyInt():
-            MyInt = makeTypeDef('MyInt', i32)
+            MyInt = TypeDef('MyInt', i32)
 
             def getattr_double(self: MyInt, attr: str) -> i32:
                 i: i32 = self
@@ -114,12 +114,12 @@ class TestTypeDef(CompilerTest):
 
     def test_setattr(self):
         mod = self.compile("""
-        from types import makeTypeDef
+        from types import TypeDef
         from rawbuffer import RawBuffer, rb_alloc, rb_get_i32, rb_set_i32
 
         @blue
         def makeBox():
-            Box = makeTypeDef('Box', RawBuffer)
+            Box = TypeDef('Box', RawBuffer)
 
             def getattr_x(self: Box, attr: str) -> i32:
                 buf: RawBuffer = self

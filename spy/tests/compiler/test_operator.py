@@ -16,8 +16,12 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('MyClass')
+        @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
+
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+                return W_MyClass()
 
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
@@ -26,21 +30,14 @@ class TestOp(CompilerTest):
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
                 return vm.wrap(getitem)
-
-        EXT.add('MyClass', W_MyClass._w)
-
-        @EXT.builtin
-        def make(vm: 'SPyVM') -> W_MyClass:
-            return W_MyClass()
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
-
         src = """
-        from ext import make, MyClass
+        from ext import MyClass
 
         def foo() -> i32:
-            obj: MyClass = make()
+            obj = MyClass()
             return obj['hello']
         """
         errors = expect_errors(
@@ -53,8 +50,12 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('MyClass')
+        @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
+
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+                return W_MyClass()
 
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
@@ -63,20 +64,14 @@ class TestOp(CompilerTest):
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_Void:
                     return B.w_None
                 return vm.wrap(getitem)
-
-        EXT.add('MyClass', W_MyClass._w)
-
-        @EXT.builtin
-        def make(vm: 'SPyVM') -> W_MyClass:
-            return W_MyClass()
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
         src = """
-        from ext import make, MyClass
+        from ext import MyClass
 
         def foo() -> i32:
-            obj: MyClass = make()
+            obj = MyClass()
             return obj[0]
         """
         errors = expect_errors(

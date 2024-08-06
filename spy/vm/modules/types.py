@@ -17,7 +17,7 @@ TYPES = ModuleRegistry('types', '<types>')
 TYPES.add('module', W_Module._w)
 
 
-@spytype('TypeDef')
+@TYPES.spytype('TypeDef')
 class W_TypeDef(W_Type):
     """
     A TypeDef is a purely static alias for another type (called "origin
@@ -39,13 +39,12 @@ class W_TypeDef(W_Type):
         self.w_getattr = B.w_NotImplemented
         self.w_setattr = B.w_NotImplemented
 
+    @staticmethod
+    def spy_new(vm: 'SPyVM', w_cls: W_Type, w_name: W_Str,
+                w_origintype: W_Type) -> 'W_TypeDef':
+        name = vm.unwrap_str(w_name)
+        return W_TypeDef(name, w_origintype)
+
     def __repr__(self) -> str:
         r = f"<spy type '{self.name}' (typedef of '{self.w_origintype.name}')>"
         return r
-
-TYPES.add('TypeDef', W_TypeDef._w)
-
-@TYPES.builtin
-def makeTypeDef(vm: 'SPyVM', w_name: W_Str, w_origintype: W_Type) -> W_TypeDef:
-    name = vm.unwrap_str(w_name)
-    return W_TypeDef(name, w_origintype)

@@ -1,10 +1,10 @@
-from typing import Callable, Optional, TYPE_CHECKING, Any
+from typing import Callable, Optional, TYPE_CHECKING, Any, Type
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
 from spy.vm.sig import spy_builtin, SPyBuiltin
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, spytype
 
 class ModuleRegistry:
     """
@@ -40,6 +40,27 @@ class ModuleRegistry:
         qn = QN(modname=self.modname, attr=attr)
         setattr(self, f'w_{attr}', w_obj)
         self.content.append((qn, w_obj))
+
+    def spytype(self, name: str) -> Callable:
+        """
+        Register a type on the module.
+
+        In practice:
+            @MOD.spytype('Foo')
+            class W_Foo(W_Object):
+                ...
+
+        is equivalent to:
+            @spytype('Foo')
+            class W_Foo(W_Object):
+                ...
+            MOD.add('Foo', W_Foo._w)
+        """
+        def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
+            W_class = spytype(name)(pyclass)
+            self.add(name, W_class._w)
+            return W_class
+        return decorator
 
     def builtin(self,
                 pyfunc: Optional[Callable] = None,

@@ -16,11 +16,15 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('Adder')
+        @EXT.spytype('Adder')
         class W_Adder(W_Object):
 
             def __init__(self, x: int) -> None:
                 self.x = x
+
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Adder':
+                return W_Adder(vm.unwrap_i32(w_x))
 
             @staticmethod
             def op_CALL(vm: 'SPyVM', w_type: W_Type,
@@ -31,19 +35,13 @@ class TestCallOp(CompilerTest):
                     res = w_obj.x + y
                     return vm.wrap(res) # type: ignore
                 return vm.wrap(call)
-
-        EXT.add('Adder', W_Adder._w)
-
-        @EXT.builtin
-        def make(vm: 'SPyVM', w_x: W_I32) -> W_Adder:
-            return W_Adder(vm.unwrap_i32(w_x))
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
-        from ext import make, Adder
+        from ext import Adder
 
         def foo(x: i32, y: i32) -> i32:
-            obj: Adder = make(x)
+            obj = Adder(x)
             return obj(y)
         """)
         x = mod.foo(5, 7)
@@ -54,7 +52,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('Point')
+        @EXT.spytype('Point')
         class W_Point(W_Object):
             w_x: Annotated[W_I32, Member('x')]
             w_y: Annotated[W_I32, Member('y')]
@@ -71,9 +69,6 @@ class TestCallOp(CompilerTest):
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
                 return vm.wrap(new)
-
-        EXT.add('Point', W_Point._w)
-
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -91,7 +86,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('Point')
+        @EXT.spytype('Point')
         class W_Point(W_Object):
             w_x: Annotated[W_I32, Member('x')]
             w_y: Annotated[W_I32, Member('y')]
@@ -104,9 +99,6 @@ class TestCallOp(CompilerTest):
             def spy_new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> 'W_Point':
                 return W_Point(w_x, w_y)
-
-        EXT.add('Point', W_Point._w)
-
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -125,11 +117,15 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('Calc')
+        @EXT.spytype('Calc')
         class W_Calc(W_Object):
 
             def __init__(self, x: int) -> None:
                 self.x = x
+
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Calc':
+                return W_Calc(vm.unwrap_i32(w_x))
 
             @staticmethod
             def op_CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
@@ -154,20 +150,14 @@ class TestCallOp(CompilerTest):
 
                 else:
                     return B.w_NotImplemented
-
-        EXT.add('Calc', W_Calc._w)
-
-        @EXT.builtin
-        def make(vm: 'SPyVM', w_x: W_I32) -> W_Calc:
-            return W_Calc(vm.unwrap_i32(w_x))
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
         mod = self.compile("""
-        from ext import make, Calc
+        from ext import Calc
 
         def foo(x: i32, y: i32, z: i32) -> i32:
-            obj: Calc = make(x)
+            obj = Calc(x)
             return obj.add(y) * 10 + obj.sub(z)
         """)
         x = mod.foo(5, 1, 2)

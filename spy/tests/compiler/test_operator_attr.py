@@ -16,26 +16,24 @@ class TestAttrOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('MyClass')
+        @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
             w_x: Annotated[W_I32, Member('x')]
 
             def __init__(self) -> None:
                 self.w_x = W_I32(0)
 
-        EXT.add('MyClass', W_MyClass._w)
-
-        @EXT.builtin
-        def make(vm: 'SPyVM') -> W_MyClass:
-            return W_MyClass()
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+                return W_MyClass()
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
-        from ext import make, MyClass
+        from ext import MyClass
 
         @blue
         def foo():
-            obj: MyClass = make()
+            obj =  MyClass()
             obj.x = 123
             return obj.x
         """)
@@ -47,11 +45,15 @@ class TestAttrOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 
-        @spytype('MyClass')
+        @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
 
             def __init__(self) -> None:
                 self.x = 0
+
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+                return W_MyClass()
 
             @staticmethod
             def op_GETATTR(vm: 'SPyVM', w_type: W_Type,
@@ -83,32 +85,25 @@ class TestAttrOp(CompilerTest):
                     return vm.wrap(opimpl)
                 else:
                     return B.w_NotImplemented
-
-
-        EXT.add('MyClass', W_MyClass._w)
-
-        @EXT.builtin
-        def make(vm: 'SPyVM') -> W_MyClass:
-            return W_MyClass()  # type: ignore
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
         mod = self.compile("""
-        from ext import make, MyClass
+        from ext import MyClass
 
         @blue
         def get_hello():
-            obj: MyClass = make()
+            obj = MyClass()
             return obj.hello
 
         @blue
         def get_x():
-            obj: MyClass = make()
+            obj = MyClass()
             return obj.x
 
         @blue
         def set_get_x():
-            obj: MyClass = make()
+            obj = MyClass()
             obj.x = 123
             return obj.x
         """)
