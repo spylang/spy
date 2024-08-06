@@ -46,7 +46,8 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import fixedint
 import typing
-from typing import TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional
+from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
+                    Union)
 from spy.fqn import QN
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -186,12 +187,14 @@ class W_Type(W_Object):
         self.name = name
         self.pyclass = pyclass
 
+    # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
-    def w_base(self) -> W_Object:
+    def w_base(self) -> Union['W_Type', 'W_Void']:
         if self is W_Object._w or self is w_DynamicType:
-            return W_Void._w_singleton
+            return W_Void._w_singleton  # this is B.w_None
         basecls = self.pyclass.__base__
         assert issubclass(basecls, W_Object)
+        assert isinstance(basecls._w, W_Type)
         return basecls._w
 
     def __repr__(self) -> str:

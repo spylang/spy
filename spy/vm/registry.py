@@ -42,7 +42,7 @@ class ModuleRegistry:
         self.content.append((qn, w_obj))
 
     def builtin(self,
-                pyfunc: Callable = None,
+                pyfunc: Optional[Callable] = None,
                 *,
                 color: Color = 'red') -> Any:
         """

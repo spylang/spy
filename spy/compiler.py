@@ -35,7 +35,7 @@ class Compiler:
         self.file_c = builddir.join(f'{basename}.c')
         self.file_wasm = builddir.join(f'{basename}.wasm')
 
-    def cwrite(self, target) -> py.path.local:
+    def cwrite(self, target: str) -> py.path.local:
         """
         Convert the W_Module into a .c file
         """

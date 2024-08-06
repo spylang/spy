@@ -253,6 +253,7 @@ class TypeChecker:
             dispatch = 'single',
             errmsg = errmsg
         )
+        assert isinstance(w_opimpl, W_Func)
         self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
@@ -351,6 +352,7 @@ class TypeChecker:
             dispatch = 'single',
             errmsg = "type `{0}` has no attribute '%s'" % expr.attr
         )
+        assert isinstance(w_opimpl, W_Func)
         self.opimpl[expr] = w_opimpl
         return color, w_opimpl.w_functype.w_restype
 
