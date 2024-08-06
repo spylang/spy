@@ -242,7 +242,11 @@ class TypeChecker:
 
     def check_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         _, w_valuetype = self.check_expr(unpack.value)
-        assert w_valuetype is B.w_tuple # XXX better error
+        if w_valuetype is not B.w_tuple:
+            t = w_valuetype.name
+            err = SPyTypeError(f'`{t}` does not support unpacking')
+            err.add('error', f'this is `{t}`', unpack.value.loc)
+            raise err
 
         for i, (target, target_loc) in enumerate(unpack.targlocs):
             # we need an expression which has the type of each individual item

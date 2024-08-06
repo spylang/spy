@@ -1,7 +1,7 @@
 import pytest
 from spy.errors import SPyRuntimeError
 from spy.vm.b import B
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, only_interp, expect_errors
 
 # Eventually we want to remove the @only_interp, but for now the C backend
 # doesn't support lists
@@ -54,3 +54,14 @@ class TestTuple(CompilerTest):
         msg = "Wrong number of values to unpack: expected 3, got 2"
         with pytest.raises(SPyRuntimeError, match=msg):
             mod.foo()
+
+    def test_unpacking_wrong_type(self):
+        src = """
+        def foo() -> void:
+            a, b, c = 42
+        """
+        errors = expect_errors(
+            '`i32` does not support unpacking',
+            ('this is `i32`', '42'),
+        )
+        self.compile_raises(src, 'foo', errors)
