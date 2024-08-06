@@ -11,6 +11,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm.list import W_List
+from spy.vm.tuple import W_Tuple
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
@@ -312,3 +313,9 @@ class ASTFrame:
         items_w = [self.eval_expr(item) for item in op.items]
         assert issubclass(w_listtype.pyclass, W_List)
         return w_listtype.pyclass(items_w) # type: ignore
+
+    def eval_expr_Tuple(self, op: ast.Tuple) -> W_Object:
+        color, w_tupletype = self.t.check_expr(op)
+        assert w_tupletype is B.w_tuple
+        items_w = [self.eval_expr(item) for item in op.items]
+        return W_Tuple(items_w)

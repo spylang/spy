@@ -606,3 +606,10 @@ class TypeChecker:
         assert w_itemtype is not None
         w_listtype = self.vm.make_list_type(w_itemtype)
         return color, w_listtype
+
+    def check_expr_Tuple(self, tupleop: ast.Tuple) -> tuple[Color, W_Type]:
+        color: Color = 'blue'
+        for item in tupleop.items:
+            c1, w_t1 = self.check_expr(item)
+            color = maybe_blue(color, c1)
+        return color, B.w_tuple
