@@ -96,7 +96,7 @@ class CModuleWriter:
             """)
         return self.out.build()
 
-    def emit_jsffi_error(self):
+    def emit_jsffi_error(self) -> None:
         err = '#error "jsffi is available only for emscripten targets"'
         if err not in self.out_warnings.lines:
             self.out_warnings.wl(err)
@@ -425,6 +425,7 @@ class CFuncWriter:
             return C.Call(c_name, [c_arg])
 
         if str(call.func.fqn).startswith("jsffi::getattr_"):
+            assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_getattr"
             attr = call.args[1].value
             c_obj = self.fmt_expr(call.args[0])
@@ -433,6 +434,7 @@ class CFuncWriter:
 
         # horrible hack (see also jsffi.W_JsRef.op_SETATTR)
         if str(call.func.fqn).startswith("jsffi::setattr_"):
+            assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_setattr"
             c_obj = self.fmt_expr(call.args[0])
             attr = call.args[1].value
@@ -441,6 +443,7 @@ class CFuncWriter:
             return C.Call(c_name, [c_obj, c_attr, c_value])
 
         if call.func.fqn == FQN.parse("jsffi::call_method_1"):
+            assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_call_method_1"
             c_obj = self.fmt_expr(call.args[0])
             attr = call.args[1].value
