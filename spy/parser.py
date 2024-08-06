@@ -319,6 +319,16 @@ class Parser:
                 index = self.from_py_expr(py_target.slice),
                 value = self.from_py_expr(py_node.value)
             )
+        elif isinstance(py_target, py_ast.Tuple):
+            targets = []
+            for item in py_target.elts:
+                assert isinstance(item, py_ast.Name)
+                targets.append(item.id)
+            return spy.ast.UnpackAssign(
+                loc = py_node.loc,
+                targets = targets,
+                value = self.from_py_expr(py_node.value)
+            )
         else:
             self.unsupported(py_target, 'assign to complex expressions')
 

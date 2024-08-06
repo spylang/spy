@@ -458,6 +458,11 @@ class Assign(Stmt):
     value: Expr
 
 @dataclass(eq=False)
+class UnpackAssign(Stmt):
+    targets: list[str]
+    value: Expr
+
+@dataclass(eq=False)
 class SetAttr(Stmt):
     target_loc: Loc = field(repr=False)
     target: Expr

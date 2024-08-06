@@ -15,3 +15,16 @@ class TestTuple(CompilerTest):
         """)
         tup = mod.foo()
         assert tup == (1, 2, 'hello')
+
+    def test_unpacking(self):
+        mod = self.compile(
+        """
+        def make_tuple() -> dynamic:
+            return 1, 2, 'hello'
+
+        def foo() -> i32:
+            a, b, c = make_tuple()
+            return a + b
+        """)
+        x = mod.foo()
+        assert x == 3
