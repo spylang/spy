@@ -143,7 +143,12 @@ class ASTFrame:
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         w_tup = self.eval_expr(unpack.value)
         assert isinstance(w_tup, W_Tuple)
-        assert len(w_tup.items_w) == len(unpack.targets) # XXX proper error
+        exp = len(unpack.targets)
+        got = len(w_tup.items_w)
+        if exp != got:
+            raise SPyRuntimeError(
+                f"Wrong number of values to unpack: expected {exp}, got {got}"
+            )
         for target, w_val in zip(unpack.targets, w_tup.items_w):
             self._exec_assign(target, w_val)
 

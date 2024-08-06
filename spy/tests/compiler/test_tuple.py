@@ -1,4 +1,5 @@
 import pytest
+from spy.errors import SPyRuntimeError
 from spy.vm.b import B
 from spy.tests.support import CompilerTest, only_interp
 
@@ -40,3 +41,16 @@ class TestTuple(CompilerTest):
         """)
         x = mod.foo()
         assert x == 3
+
+    def test_unpacking_wrong_number(self):
+        mod = self.compile(
+        """
+        def make_tuple() -> tuple:
+            return 1, 2
+
+        def foo() -> void:
+            a, b, c = make_tuple()
+        """)
+        msg = "Wrong number of values to unpack: expected 3, got 2"
+        with pytest.raises(SPyRuntimeError, match=msg):
+            mod.foo()
