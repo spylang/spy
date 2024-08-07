@@ -12,14 +12,14 @@ class W_OpImpl(W_Object):
     def __init__(self, w_func: Optional[W_Func]) -> None:
         self._w_func = w_func
 
-    def __repr__(self):
-        if self.is_null():
+    def __repr__(self) -> str:
+        if self._w_func is None:
             return f"<spy OpImpl NULL>"
         else:
             qn = self._w_func.qn
             return f"<spy OpImpl {qn}>"
 
-    def is_null(self):
+    def is_null(self) -> bool:
         return self._w_func is None
 
     @property
