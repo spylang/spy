@@ -6,6 +6,7 @@ from spy.vm.module import W_Module
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.sig import spy_builtin
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.modules.types import W_TypeDef
 
 from . import OP
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 OpKind = Literal['get', 'set']
 
 @OP.builtin(color='blue')
-def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
+def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_OpImpl:
     attr = vm.unwrap_str(w_attr)
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
@@ -30,19 +31,21 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_Dynamic:
     if isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
         w_getattr = w_type.w_getattr
         assert isinstance(w_getattr, W_Func)
-        w_opimpl = vm.call_function(w_getattr, [w_type, w_attr])
-        return w_opimpl
+        w_func = vm.call_function(w_getattr, [w_type, w_attr])
+        # XXX: ideally, we should be able to return directly an W_OpImpl from
+        # applevel
+        return W_OpImpl(w_func)
 
-    return B.w_NotImplemented
+    return W_OpImpl.NULL
 
 
 @OP.builtin(color='blue')
 def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
-            w_vtype: W_Type) -> W_Dynamic:
+            w_vtype: W_Type) -> W_OpImpl:
     attr = vm.unwrap_str(w_attr)
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
-        return OP.w_dynamic_setattr
+        return W_OpImpl(OP.w_dynamic_setattr)
     elif attr in pyclass.__spy_members__:
         return opimpl_member('set', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_SETATTR'):
@@ -52,14 +55,14 @@ def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
     if isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
         w_setattr = w_type.w_setattr
         assert isinstance(w_setattr, W_Func)
-        w_opimpl = vm.call_function(w_setattr, [w_type, w_attr, w_vtype])
-        return w_opimpl
+        w_func = vm.call_function(w_setattr, [w_type, w_attr, w_vtype])
+        return W_OpImpl(w_func)
 
-    return B.w_NotImplemented
+    return W_OpImpl.NULL
 
 
 def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
-                  attr: str) -> W_Dynamic:
+                  attr: str) -> W_OpImpl:
     pyclass = w_type.pyclass
     member = pyclass.__spy_members__[attr]
     W_Class = pyclass
@@ -75,7 +78,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
         def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_Value:
             return getattr(w_obj, field)
 
-        return vm.wrap(opimpl_get)
+        return W_OpImpl(vm.wrap(opimpl_get))
 
     elif kind == 'set':
         @no_type_check
@@ -84,7 +87,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
                        w_val: W_Value) -> W_Void:
             setattr(w_obj, field, w_val)
 
-        return vm.wrap(opimpl_set)
+        return W_OpImpl(vm.wrap(opimpl_set))
 
     else:
         assert False, f'Invalid OpKind: {kind}'

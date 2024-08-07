@@ -138,7 +138,7 @@ class FuncDoppler:
         v_attr = ast.Constant(node.loc, value=node.attr)
         v_value = self.shift_expr(node.value)
         w_opimpl = self.t.opimpl[node]
-        func = self.make_const(node.loc, w_opimpl)
+        func = self.make_const(node.loc, w_opimpl.w_func)
         call = ast.Call(node.loc, func, [v_target, v_attr, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
@@ -186,7 +186,7 @@ class FuncDoppler:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
         w_opimpl = self.t.opimpl[binop]
-        func = self.make_const(binop.loc, w_opimpl)
+        func = self.make_const(binop.loc, w_opimpl.w_func)
         return ast.Call(binop.loc, func, [l, r])
 
     shift_expr_Add = shift_expr_BinOp
@@ -204,20 +204,20 @@ class FuncDoppler:
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
         w_opimpl = self.t.opimpl[op]
-        func = self.make_const(op.loc, w_opimpl)
+        func = self.make_const(op.loc, w_opimpl.w_func)
         return ast.Call(op.loc, func, [v, i])
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
         v = self.shift_expr(op.value)
         v_attr = ast.Constant(op.loc, value=op.attr)
         w_opimpl = self.t.opimpl[op]
-        func = self.make_const(op.loc, w_opimpl)
+        func = self.make_const(op.loc, w_opimpl.w_func)
         return ast.Call(op.loc, func, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         if call in self.t.opimpl:
             w_opimpl = self.t.opimpl[call]
-            newfunc = self.make_const(call.loc, w_opimpl)
+            newfunc = self.make_const(call.loc, w_opimpl.w_func)
             extra_args = [self.shift_expr(call.func)]
         else:
             newfunc = self.shift_expr(call.func)
@@ -253,7 +253,7 @@ class FuncDoppler:
     def shift_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
         assert op in self.t.opimpl
         w_opimpl = self.t.opimpl[op]
-        v_func = self.make_const(op.loc, w_opimpl)
+        v_func = self.make_const(op.loc, w_opimpl.w_func)
         v_target = self.shift_expr(op.target)
         v_method = ast.Constant(op.loc, value=op.method)
         newargs_v = [v_target, v_method] + \

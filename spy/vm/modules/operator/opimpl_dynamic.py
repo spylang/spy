@@ -4,6 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Dynamic, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
+from spy.vm.opimpl import W_OpImpl
 from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -14,13 +15,13 @@ def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
     w_ltype = vm.dynamic_type(w_a)
     w_rtype = vm.dynamic_type(w_b)
     w_opimpl = vm.call_function(w_op, [w_ltype, w_rtype])
-    if w_opimpl is B.w_NotImplemented:
+    assert isinstance(w_opimpl, W_OpImpl)
+    if w_opimpl.is_null():
         token = OP.to_token(w_op)
         l = w_ltype.name
         r = w_rtype.name
         raise SPyTypeError(f'cannot do `{l}` {token} `{r}`')
-    assert isinstance(w_opimpl, W_Func)
-    return vm.call_function(w_opimpl, [w_a, w_b])
+    return vm.call_function(w_opimpl.w_func, [w_a, w_b])
 
 
 @OP.builtin
@@ -62,11 +63,11 @@ def dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
     w_otype = vm.dynamic_type(w_obj)
     w_vtype = vm.dynamic_type(w_value)
     w_opimpl = vm.call_function(OP.w_SETATTR, [w_otype, w_attr, w_vtype])
-    if w_opimpl is B.w_NotImplemented:
+    assert isinstance(w_opimpl, W_OpImpl)
+    if w_opimpl.is_null():
         o = w_otype.name
         v = w_vtype.name
         attr = vm.unwrap_str(w_attr)
         msg = f"type `{o}` does not support assignment to attribute '{attr}'"
         raise SPyTypeError(msg)
-    assert isinstance(w_opimpl, W_Func)
-    return vm.call_function(w_opimpl, [w_obj, w_attr, w_value])
+    return vm.call_function(w_opimpl.w_func, [w_obj, w_attr, w_value])

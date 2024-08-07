@@ -5,6 +5,7 @@ from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
 from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.opimpl import W_OpImpl
 
 class Meta_W_List(type):
     """
@@ -35,8 +36,6 @@ class Meta_W_List(type):
             W_MyList = _make_W_List(itemcls._w)
             self.CACHE[itemcls] = W_MyList
 
-
-
 @spytype('list')
 class W_List(W_Object, metaclass=Meta_W_List):
     """
@@ -65,8 +64,9 @@ class W_List(W_Object, metaclass=Meta_W_List):
 
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', w_type: W_Type,
-                        w_vtype: W_Type) -> W_Dynamic:
-        return vm.wrap(make_list_type)
+                        w_vtype: W_Type) -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        return W_OpImpl(vm.wrap(make_list_type))
 
 
 
@@ -96,6 +96,8 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     You should call make_list_type instead, which knows how to deal with
     prebuilt types.
     """
+    from spy.vm.opimpl import W_OpImpl
+
     T = w_T.pyclass
     app_name = f'list[{w_T.name}]'        # e.g. list[i32]
     interp_name = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
@@ -117,18 +119,18 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
 
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
-                       w_itype: W_Type) -> W_Dynamic:
+                       w_itype: W_Type) -> W_OpImpl:
             @no_type_check
             @spy_builtin(QN('operator::list_getitem'))
             def getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 return w_list.items_w[i]
-            return vm.wrap(getitem)
+            return W_OpImpl(vm.wrap(getitem))
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', w_listtype: W_Type, w_itype: W_Type,
-                       w_vtype: W_Type) -> W_Dynamic:
+                       w_vtype: W_Type) -> W_OpImpl:
             from spy.vm.b import B
 
             @no_type_check
@@ -140,10 +142,10 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 # XXX bound check?
                 w_list.items_w[i] = w_v
                 return B.w_None
-            return vm.wrap(setitem)
+            return W_OpImpl(vm.wrap(setitem))
 
         @staticmethod
-        def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+        def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
             from spy.vm.b import B
             assert w_ltype.pyclass is W_MyList
 
@@ -160,9 +162,9 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 return B.w_True
 
             if w_ltype is w_rtype:
-                return vm.wrap(eq)
+                return W_OpImpl(vm.wrap(eq))
             else:
-                return B.w_NotImplemented
+                return W_OpImpl.NULL
 
     W_MyList.__name__ = W_MyList.__qualname__ = interp_name
     return W_MyList

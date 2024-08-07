@@ -3,6 +3,7 @@ from spy.fqn import QN
 from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
                            W_Bool)
 from spy.vm.sig import spy_builtin
+from spy.vm.opimpl import W_OpImpl
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -28,8 +29,8 @@ class W_Tuple(W_Object):
 
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', w_tupletype: W_Type,
-                   w_itype: W_Type) -> W_Dynamic:
-        return vm.wrap(tuple_getitem)
+                   w_itype: W_Type) -> W_OpImpl:
+        return W_OpImpl(vm.wrap(tuple_getitem))
 
 
 

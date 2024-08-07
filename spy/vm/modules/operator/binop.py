@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Dynamic, W_Type
+from spy.vm.opimpl import W_OpImpl
 from . import OP
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
@@ -74,19 +75,19 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 
 @OP.builtin(color='blue')
-def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('+', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def SUB(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def SUB(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('-', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('*', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def DIV(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def DIV(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('/', w_ltype, w_rtype)
 
 def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
@@ -99,41 +100,41 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     return w_common is not B.w_object and w_common.is_reference_type(vm)
 
 @OP.builtin(color='blue')
-def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     pyclass = w_ltype.pyclass
     if pyclass.has_meth_overriden('op_EQ'):
         return pyclass.op_EQ(vm, w_ltype, w_rtype)
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
-        return OP.w_object_is
+        return W_OpImpl(OP.w_object_is)
     else:
         return MM.lookup('==', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     if can_use_reference_eq(vm, w_ltype, w_rtype):
-        return OP.w_object_isnot
+        return W_OpImpl(OP.w_object_isnot)
     return MM.lookup('!=', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def UNIVERSAL_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
-    return OP.w_object_universal_eq
+def UNIVERSAL_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+    return W_OpImpl(OP.w_object_universal_eq)
 
 @OP.builtin(color='blue')
-def UNIVERSAL_NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
-    return OP.w_object_universal_ne
+def UNIVERSAL_NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+    return W_OpImpl(OP.w_object_universal_ne)
 
 @OP.builtin(color='blue')
-def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('<', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def LE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def LE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('<=', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('>', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
-def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_Dynamic:
+def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     return MM.lookup('>=', w_ltype, w_rtype)

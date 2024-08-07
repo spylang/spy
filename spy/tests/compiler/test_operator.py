@@ -4,6 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
@@ -25,11 +26,11 @@ class TestOp(CompilerTest):
 
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
-                           w_itype: W_Type) -> W_Dynamic:
+                           w_itype: W_Type) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
-                return vm.wrap(getitem)
+                return W_OpImpl(vm.wrap(getitem))
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -59,11 +60,11 @@ class TestOp(CompilerTest):
 
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
-                           w_itype: W_Type) -> W_Dynamic:
+                           w_itype: W_Type) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_Void:
                     return B.w_None
-                return vm.wrap(getitem)
+                return W_OpImpl(vm.wrap(getitem))
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

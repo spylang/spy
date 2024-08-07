@@ -171,14 +171,14 @@ class ASTFrame:
         w_target = self.eval_expr(node.target)
         w_attr = self.vm.wrap(node.attr)
         w_value = self.eval_expr(node.value)
-        self.vm.call_function(w_opimpl, [w_target, w_attr, w_value])
+        self.vm.call_function(w_opimpl.w_func, [w_target, w_attr, w_value])
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
         w_opimpl = self.t.opimpl[node]
         w_target = self.eval_expr(node.target)
         w_index = self.eval_expr(node.index)
         w_value = self.eval_expr(node.value)
-        self.vm.call_function(w_opimpl, [w_target, w_index, w_value])
+        self.vm.call_function(w_opimpl.w_func, [w_target, w_index, w_value])
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
@@ -234,7 +234,7 @@ class ASTFrame:
         assert w_opimpl, 'bug in the typechecker'
         w_l = self.eval_expr(binop.left)
         w_r = self.eval_expr(binop.right)
-        w_res = self.vm.call_function(w_opimpl, [w_l, w_r])
+        w_res = self.vm.call_function(w_opimpl.w_func, [w_l, w_r])
         return w_res
 
     eval_expr_Add = eval_expr_BinOp
@@ -260,7 +260,7 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[call]
         w_target = self.eval_expr(call.func)
         args_w = [self.eval_expr(arg) for arg in call.args]
-        w_res = self.vm.call_function(w_opimpl, [w_target] + args_w)
+        w_res = self.vm.call_function(w_opimpl.w_func, [w_target] + args_w)
         return w_res
 
     def _eval_call_func(self, call: ast.Call, color: Color,
@@ -301,14 +301,15 @@ class ASTFrame:
         w_target = self.eval_expr(op.target)
         w_method = self.vm.wrap(op.method)
         arg_w = [self.eval_expr(arg) for arg in op.args]
-        w_res = self.vm.call_function(w_opimpl, [w_target, w_method] + arg_w)
+        w_res = self.vm.call_function(w_opimpl.w_func,
+                                      [w_target, w_method] + arg_w)
         return w_res
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_i = self.eval_expr(op.index)
-        w_res = self.vm.call_function(w_opimpl, [w_val, w_i])
+        w_res = self.vm.call_function(w_opimpl.w_func, [w_val, w_i])
         return w_res
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_Object:
@@ -320,7 +321,7 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_attr = self.vm.wrap(op.attr)
-        w_res = self.vm.call_function(w_opimpl, [w_val, w_attr])
+        w_res = self.vm.call_function(w_opimpl.w_func, [w_val, w_attr])
         return w_res
 
     def eval_expr_List(self, op: ast.List) -> W_Object:

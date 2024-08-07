@@ -19,6 +19,7 @@ from typing import Optional
 from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
+from spy.vm.opimpl import W_OpImpl
 
 KeyType = tuple[str, Optional[W_Type], Optional[W_Type]]
 
@@ -39,26 +40,26 @@ class MultiMethodTable:
                  op: str,
                  ltype: Optional[str],
                  rtype: Optional[str],
-                 w_impl: W_Object) -> None:
-        assert isinstance(w_impl, W_Func)
+                 w_func: W_Object) -> None:
+        assert isinstance(w_func, W_Func)
         w_ltype = parse_type(ltype)
         w_rtype = parse_type(rtype)
         key = (op, w_ltype, w_rtype)
         assert key not in self.impls
-        self.impls[key] = w_impl
+        self.impls[key] = w_func
 
-    def register_partial(self, op: str, atype: str, w_impl: W_Object) -> None:
-        self.register(op, atype, None, w_impl)
-        self.register(op, None, atype, w_impl)
+    def register_partial(self, op: str, atype: str, w_func: W_Object) -> None:
+        self.register(op, atype, None, w_func)
+        self.register(op, None, atype, w_func)
 
-    def lookup(self, op: str, w_ltype: W_Type, w_rtype: W_Type) -> W_Object:
+    def lookup(self, op: str, w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
             (op, w_ltype, None),     # less precise ones
             (op, None,    w_rtype),
         ]
         for key in keys:
-            w_opimpl = self.impls.get(key)
-            if w_opimpl:
-                return w_opimpl
-        return B.w_NotImplemented
+            w_func = self.impls.get(key)
+            if w_func:
+                return W_OpImpl(w_func)
+        return W_OpImpl(None)
