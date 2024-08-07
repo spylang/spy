@@ -21,8 +21,7 @@ class W_JsRef(W_Object):
 
     # XXX we can use proper types insead of string?
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', w_type: 'W_Type',
-                   w_attr: 'W_Str') -> W_OpImpl:
+    def op_GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_OpImpl:
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         attr = vm.unwrap_str(w_attr)
 
@@ -32,8 +31,8 @@ class W_JsRef(W_Object):
         return W_OpImpl(vm.wrap_func(fn))
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', w_type: 'W_Type', w_attr: 'W_Str',
-                   w_vtype: 'W_Type') -> W_OpImpl:
+    def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
+                   w_vtype: W_Type) -> W_OpImpl:
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         attr = vm.unwrap_str(w_attr)
 
@@ -44,8 +43,8 @@ class W_JsRef(W_Object):
         return W_OpImpl(vm.wrap_func(fn))
 
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', w_type: 'W_Type', w_method: 'W_Str',
-                       w_argtypes: 'W_Dynamic') -> W_OpImpl:
+    def op_CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
+                       w_argtypes: W_Dynamic) -> W_OpImpl:
         argtypes_w = vm.unwrap(w_argtypes)
         n = len(argtypes_w)
         if n == 1:
