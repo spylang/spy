@@ -66,7 +66,7 @@ class W_List(W_Object, metaclass=Meta_W_List):
     def meta_op_GETITEM(vm: 'SPyVM', w_type: W_Type,
                         w_vtype: W_Type) -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
-        return W_OpImpl(vm.wrap(make_list_type))
+        return W_OpImpl(vm.wrap_func(make_list_type))
 
 
 
@@ -126,7 +126,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 return w_list.items_w[i]
-            return W_OpImpl(vm.wrap(getitem))
+            return W_OpImpl(vm.wrap_func(getitem))
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', w_listtype: W_Type, w_itype: W_Type,
@@ -142,7 +142,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 # XXX bound check?
                 w_list.items_w[i] = w_v
                 return B.w_None
-            return W_OpImpl(vm.wrap(setitem))
+            return W_OpImpl(vm.wrap_func(setitem))
 
         @staticmethod
         def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
@@ -162,7 +162,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 return B.w_True
 
             if w_ltype is w_rtype:
-                return W_OpImpl(vm.wrap(eq))
+                return W_OpImpl(vm.wrap_func(eq))
             else:
                 return W_OpImpl.NULL
 

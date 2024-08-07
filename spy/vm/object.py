@@ -52,6 +52,7 @@ from spy.fqn import QN
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.str import W_Str
+    from spy.vm.opimpl import W_OpImpl
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
@@ -380,7 +381,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
         qn = QN(modname='ext', attr='new') # XXX what modname should we use?
         # manually apply the @spy_builtin decorator to the spy_new function
         spyfunc = spy_builtin(qn)(spy_new)
-        return W_OpImpl(vm.wrap(spyfunc))
+        return W_OpImpl(vm.wrap_func(spyfunc))
 
     return meta_op_CALL
 

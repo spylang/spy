@@ -269,6 +269,11 @@ class SPyVM:
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")
 
+    def wrap_func(self, value: Any) -> W_Func:
+        w_func = self.wrap(value)
+        assert isinstance(w_func, W_Func)
+        return w_func
+
     def unwrap(self, w_value: W_Object) -> Any:
         """
         Useful for tests: magic funtion which wraps the given app-level w_
