@@ -17,7 +17,6 @@ JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 @JSFFI.spytype('JsRef')
 class W_JsRef(W_Object):
 
-    # XXX we can use proper types insead of string?
     @staticmethod
     def op_GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_OpImpl:
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
