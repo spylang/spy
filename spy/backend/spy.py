@@ -115,6 +115,11 @@ class SPyBackend:
         v = self.fmt_expr(assign.value)
         self.wl(f'{assign.target} = {v}')
 
+    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        targets = ', '.join(unpack.targets)
+        v = self.fmt_expr(unpack.value)
+        self.wl(f'{targets} = {v}')
+
     def emit_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         t = self.fmt_expr(node.target)
         v = self.fmt_expr(node.value)
