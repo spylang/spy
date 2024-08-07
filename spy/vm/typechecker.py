@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.list import W_List__W_Type
+from spy.vm.list import W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
@@ -17,6 +17,8 @@ from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
@@ -515,7 +517,7 @@ class TypeChecker:
     def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
         _, w_otype = self.check_expr(call.func)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-        w_argtypes = W_List__W_Type(argtypes_w) # type: ignore
+        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
         w_opimpl = self.vm.call_function(OP.w_CALL, [w_otype, w_argtypes])
         newargs = [call.func] + call.args
         errmsg = 'cannot call objects of type `{0}`'
@@ -598,7 +600,7 @@ class TypeChecker:
         _, w_otype = self.check_expr(op.target)
         w_method = self.vm.wrap(op.method)
         argtypes_w = [self.check_expr(arg)[1] for arg in op.args]
-        w_argtypes = W_List__W_Type(argtypes_w) # type: ignore
+        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
         w_opimpl = self.vm.call_function(OP.w_CALL_METHOD,
                                          [w_otype, w_method, w_argtypes])
         w_method = self.vm.wrap(op.method)

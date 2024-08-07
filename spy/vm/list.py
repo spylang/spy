@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, no_type_check, Optional
+from typing import TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar
 from spy.fqn import QN
 from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
                            W_Bool)
@@ -6,8 +6,39 @@ from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+class Meta_W_List(type):
+    """
+    Some magic to be able to do e.g. W_List[W_MyClass].
+
+    W_List[] works only if the result was prebuilt by calling
+    W_List.make_prebuilt(W_MyClass).
+
+    It is guaranteed that make_list_type will use the prebuilt class, in
+    case it exists, i.e.:
+
+        make_list_type(vm, B.w_i32) is vm.wrap(W_List[W_I32])
+    """
+    CACHE: ClassVar[dict[Type[W_Object], 'Type[W_List]']] = {}
+
+    def __getitem__(self, itemcls: Type[W_Object]) -> 'Type[W_List]':
+        if itemcls in self.CACHE:
+            return self.CACHE[itemcls]
+        else:
+            n = itemcls.__name__
+            msg = (f"W_List[{n}] is not available. Make sure to build it by "
+                   f"calling W_List.make_prebuilt({n}) at import time")
+            raise ValueError(msg)
+
+    def make_prebuilt(self, itemcls: Type[W_Object]) -> None:
+        assert issubclass(itemcls, W_Object)
+        if itemcls not in self.CACHE:
+            W_MyList = _make_W_List(itemcls._w)
+            self.CACHE[itemcls] = W_MyList
+
+
+
 @spytype('list')
-class W_List(W_Object):
+class W_List(W_Object, metaclass=Meta_W_List):
     """
     The 'list' type.
 
@@ -25,10 +56,18 @@ class W_List(W_Object):
     """
     __spy_storage_category__ = 'reference'
 
+    @classmethod
+    def make_prebuilt(cls, itemcls: Type[W_Object]) -> None:
+        """
+        Just a shortcut to reach Meta_W_List more easily
+        """
+        type(cls).make_prebuilt(cls, itemcls)
+
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', w_type: W_Type,
                         w_vtype: W_Type) -> W_Dynamic:
         return vm.wrap(make_list_type)
+
 
 
 @spy_builtin(QN('__spy__::make_list_type'), color='blue')
@@ -41,26 +80,21 @@ def make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
 
     It is worth noting that to achieve that, we have two layers of caching:
 
-      - some "well known" specialized lists are createt in advance and
-        independently of the `vm`, because they are needed elsewhere. For
-        example, W_List__W_Type.  There is special logic to ensure that we
-        reuse them instead of recreating.
-
-      - for general types, we rely on the fact that `make_list_type` is blue.
+      - if we have a prebuilt list type, just use that
+      - for other types, we rely on the fact that `make_list_type` is blue.
     """
-    from spy.vm.b import B
-    assert w_list is B.w_list
-    if w_T is B.w_type:
-        return vm.wrap(W_List__W_Type)  # type: ignore
+    assert w_list is W_List._w
+    if w_T.pyclass in Meta_W_List.CACHE:
+        return vm.wrap(Meta_W_List.CACHE[w_T.pyclass])  # type: ignore
     pyclass = _make_W_List(w_T)
     return vm.wrap(pyclass)  # type: ignore
 
 
-def _make_W_List(w_T: W_Type) -> W_Type:
+def _make_W_List(w_T: W_Type) -> Type[W_List]:
     """
     DON'T CALL THIS DIRECTLY!
     You should call make_list_type instead, which knows how to deal with
-    "well-known lists".
+    prebuilt types.
     """
     T = w_T.pyclass
     app_name = f'list[{w_T.name}]'        # e.g. list[i32]
@@ -131,8 +165,4 @@ def _make_W_List(w_T: W_Type) -> W_Type:
                 return B.w_NotImplemented
 
     W_MyList.__name__ = W_MyList.__qualname__ = interp_name
-    return W_MyList        # type: ignore
-
-
-# well-known list types
-W_List__W_Type = _make_W_List(W_Type._w)
+    return W_MyList
