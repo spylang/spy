@@ -4,12 +4,10 @@ from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
-                      W_Dynamic)
+                      W_Dynamic, W_List, W_FuncType, W_OpImpl)
 from spy.vm.sig import spy_builtin
-from spy.vm.function import W_Func, W_FuncType
 from spy.vm.registry import ModuleRegistry
 from spy.vm.modules.types import W_TypeDef
-from spy.vm.opimpl import W_OpImpl
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
