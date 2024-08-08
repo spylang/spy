@@ -8,6 +8,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object, spytype, W_Dynamic, W_Void, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -36,8 +37,8 @@ class W_TypeDef(W_Type):
     def __init__(self, name: str, w_origintype: W_Type) -> None:
         super().__init__(name, w_origintype.pyclass)
         self.w_origintype = w_origintype
-        self.w_getattr = B.w_NotImplemented
-        self.w_setattr = B.w_NotImplemented
+        self.w_getattr = W_OpImpl.NULL
+        self.w_setattr = W_OpImpl.NULL
 
     @staticmethod
     def spy_new(vm: 'SPyVM', w_cls: W_Type, w_name: W_Str,

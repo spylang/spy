@@ -3,6 +3,7 @@ from spy.llwasm import LLWasmInstance
 from spy.fqn import QN
 from spy.vm.object import W_Object, W_Type, W_Dynamic, spytype, W_I32
 from spy.vm.sig import spy_builtin
+from spy.vm.opimpl import W_OpImpl
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -67,24 +68,24 @@ class W_Str(W_Object):
         return self._as_str()
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', w_type: W_Type, w_vtype: W_Type) -> W_Dynamic:
+    def op_GETITEM(vm: 'SPyVM', w_type: W_Type, w_vtype: W_Type) -> W_OpImpl:
         @spy_builtin(QN('operator::str_getitem'))
         def str_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
             assert isinstance(w_s, W_Str)
             assert isinstance(w_i, W_I32)
             ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
             return W_Str.from_ptr(vm, ptr_c)
-        return vm.wrap(str_getitem)
+        return W_OpImpl(vm.wrap_func(str_getitem))
 
     @staticmethod
     def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
-                     w_argtypes: W_Dynamic) -> W_Dynamic:
+                     w_argtypes: W_Dynamic) -> W_OpImpl:
         from spy.vm.b import B
         argtypes_w = vm.unwrap(w_argtypes)
         if argtypes_w == [W_I32]:
-            return vm.wrap(int2str)
+            return W_OpImpl(vm.wrap_func(int2str))
         else:
-            return B.w_NotImplemented
+            return W_OpImpl.NULL
 
 
 @spy_builtin(QN('builtins::int2str'))

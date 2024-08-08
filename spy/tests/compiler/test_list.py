@@ -3,7 +3,7 @@
 import pytest
 from spy.vm.b import B
 from spy.vm.object import W_Type
-from spy.vm.list import W_List__W_Type
+from spy.vm.list import W_List
 from spy.tests.support import CompilerTest, only_interp, no_C
 
 # Eventually we want to remove the @only_interp, but for now the C backend
@@ -34,7 +34,7 @@ class TestList(CompilerTest):
         w_make_list = mod.make_list.w_func
         w_list_type = self.vm.call_function(w_make_list, [B.w_type])
         assert isinstance(w_list_type, W_Type)
-        assert w_list_type.pyclass is W_List__W_Type
+        assert w_list_type.pyclass is W_List[W_Type]
         #
         w_list_f64a = self.vm.call_function(w_make_list, [B.w_f64])
         w_list_f64b = self.vm.call_function(w_make_list, [B.w_f64])

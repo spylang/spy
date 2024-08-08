@@ -14,6 +14,7 @@ from spy.vm.b import B
 from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -268,6 +269,11 @@ class SPyVM:
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")
 
+    def wrap_func(self, value: Any) -> W_Func:
+        w_func = self.wrap(value)
+        assert isinstance(w_func, W_Func)
+        return w_func
+
     def unwrap(self, w_value: W_Object) -> Any:
         """
         Useful for tests: magic funtion which wraps the given app-level w_
@@ -319,12 +325,12 @@ class SPyVM:
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
-        if w_opimpl is B.w_NotImplemented:
+        assert isinstance(w_opimpl, W_OpImpl)
+        if w_opimpl.is_null():
             # XXX: the logic to produce a good error message should be in a
             # single place
             raise SPyTypeError("Cannot do ==")
-        assert isinstance(w_opimpl, W_Func)
-        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        w_res = self.call_function(w_opimpl.w_func, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -335,12 +341,12 @@ class SPyVM:
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_NE, [w_ta, w_tb])
-        if w_opimpl is B.w_NotImplemented:
+        assert isinstance(w_opimpl, W_OpImpl)
+        if w_opimpl.is_null():
             # XXX: the logic to produce a good error message should be in a
             # single place
             raise SPyTypeError("Cannot do !=")
-        assert isinstance(w_opimpl, W_Func)
-        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        w_res = self.call_function(w_opimpl.w_func, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -351,11 +357,11 @@ class SPyVM:
         w_tobj = self.dynamic_type(w_obj)
         w_ti = self.dynamic_type(w_i)
         w_opimpl = self.call_function(OPERATOR.w_GETITEM, [w_tobj, w_ti])
-        if w_opimpl is B.w_NotImplemented:
+        assert isinstance(w_opimpl, W_OpImpl)
+        if w_opimpl.is_null():
             # XXX see also eq and ne
             raise SPyTypeError("Cannot do []")
-        assert isinstance(w_opimpl, W_Func)
-        return self.call_function(w_opimpl, [w_obj, w_i])
+        return self.call_function(w_opimpl.w_func, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -403,13 +409,13 @@ class SPyVM:
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
-        if w_opimpl is B.w_NotImplemented:
+        assert isinstance(w_opimpl, W_OpImpl)
+        if w_opimpl.is_null():
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
             return B.w_False
-        assert isinstance(w_opimpl, W_Func)
-        w_res = self.call_function(w_opimpl, [w_a, w_b])
+        w_res = self.call_function(w_opimpl.w_func, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

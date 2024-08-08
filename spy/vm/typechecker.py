@@ -6,7 +6,8 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.list import W_List__W_Type
+from spy.vm.opimpl import W_OpImpl
+from spy.vm.list import W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP
@@ -17,6 +18,8 @@ from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
@@ -43,7 +46,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, TypeConverter]
-    opimpl: dict[ast.Node, W_Func]
+    opimpl: dict[ast.Node, W_OpImpl]
     locals_types_w: dict[str, W_Type]
 
 
@@ -267,6 +270,7 @@ class TypeChecker:
         w_attr = self.vm.wrap(node.attr)
         w_opimpl = self.vm.call_function(OP.w_SETATTR,
                                          [w_otype, w_attr, w_vtype])
+        assert isinstance(w_opimpl, W_OpImpl)
         errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
                   node.attr)
         self.opimpl_typecheck(
@@ -277,7 +281,6 @@ class TypeChecker:
             dispatch = 'single',
             errmsg = errmsg
         )
-        assert isinstance(w_opimpl, W_Func)
         self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
@@ -368,6 +371,7 @@ class TypeChecker:
         color, w_vtype = self.check_expr(expr.value)
         w_attr = self.vm.wrap(expr.attr)
         w_opimpl = self.vm.call_function(OP.w_GETATTR, [w_vtype, w_attr])
+        assert isinstance(w_opimpl, W_OpImpl)
         self.opimpl_typecheck(
             w_opimpl,
             expr,
@@ -376,9 +380,8 @@ class TypeChecker:
             dispatch = 'single',
             errmsg = "type `{0}` has no attribute '%s'" % expr.attr
         )
-        assert isinstance(w_opimpl, W_Func)
         self.opimpl[expr] = w_opimpl
-        return color, w_opimpl.w_functype.w_restype
+        return color, w_opimpl.w_restype
 
     def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
                     *,
@@ -413,16 +416,17 @@ class TypeChecker:
         # step 2: call OP() and get w_opimpl
         assert w_OP.color == 'blue', f'{w_OP.qn} is not blue'
         w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
+        assert isinstance(w_opimpl, W_OpImpl)
 
         # step 3: check that we can call the returned w_opimpl
         self.opimpl_typecheck(w_opimpl, node, args, argtypes_w,
                               dispatch=dispatch, errmsg=errmsg)
-        assert isinstance(w_opimpl, W_Func)
+        assert isinstance(w_opimpl, W_OpImpl)
         self.opimpl[node] = w_opimpl
-        return color, w_opimpl.w_functype.w_restype
+        return color, w_opimpl.w_func.w_functype.w_restype
 
     def opimpl_typecheck(self,
-                         w_opimpl: W_Object,
+                         w_opimpl: W_OpImpl,
                          node: ast.Node,
                          args: Sequence[ast.Expr | None],
                          argtypes_w: list[W_Type],
@@ -437,7 +441,7 @@ class TypeChecker:
         `dispatch` is used only for diagnostics: if it's 'single' we will
         report the type of the first operand, else of all operands.
         """
-        if w_opimpl is B.w_NotImplemented:
+        if w_opimpl.is_null():
             typenames = [w_t.name for w_t in argtypes_w]
             errmsg = errmsg.format(*typenames)
             err = SPyTypeError(errmsg)
@@ -462,8 +466,7 @@ class TypeChecker:
                         err.add('error', f'this is `{t}`', arg.loc)
             raise err
 
-        assert isinstance(w_opimpl, W_Func)
-        w_functype = w_opimpl.w_functype
+        w_functype = w_opimpl.w_func.w_functype
 
         self.call_typecheck(
             w_functype,
@@ -515,19 +518,20 @@ class TypeChecker:
     def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
         _, w_otype = self.check_expr(call.func)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-        w_argtypes = W_List__W_Type(argtypes_w) # type: ignore
+        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
         w_opimpl = self.vm.call_function(OP.w_CALL, [w_otype, w_argtypes])
+        assert isinstance(w_opimpl, W_OpImpl)
         newargs = [call.func] + call.args
         errmsg = 'cannot call objects of type `{0}`'
         self.opimpl_typecheck(w_opimpl, call, newargs,
                               [w_otype] + argtypes_w,
                               dispatch='single',
                               errmsg=errmsg)
-        assert isinstance(w_opimpl, W_Func)
         self.opimpl[call] = w_opimpl
         # XXX I'm not sure that the color is correct here. We need to think
         # more.
-        return w_opimpl.w_functype.color, w_opimpl.w_functype.w_restype
+        w_functype = w_opimpl.w_func.w_functype
+        return w_functype.color, w_functype.w_restype
 
     def call_typecheck(self,
                        w_functype: W_FuncType,
@@ -598,9 +602,10 @@ class TypeChecker:
         _, w_otype = self.check_expr(op.target)
         w_method = self.vm.wrap(op.method)
         argtypes_w = [self.check_expr(arg)[1] for arg in op.args]
-        w_argtypes = W_List__W_Type(argtypes_w) # type: ignore
+        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
         w_opimpl = self.vm.call_function(OP.w_CALL_METHOD,
                                          [w_otype, w_method, w_argtypes])
+        assert isinstance(w_opimpl, W_OpImpl)
         w_method = self.vm.wrap(op.method)
         m = ast.Constant(op.loc, value=w_method)
         newargs = [op.target, m] + op.args
@@ -609,11 +614,11 @@ class TypeChecker:
                               [w_otype, B.w_str] + argtypes_w,
                               dispatch='single',
                               errmsg=errmsg)
-        assert isinstance(w_opimpl, W_Func)
         self.opimpl[op] = w_opimpl
         # XXX I'm not sure that the color is correct here. We need to think
         # more.
-        return w_opimpl.w_functype.color, w_opimpl.w_functype.w_restype
+        w_functype = w_opimpl.w_func.w_functype
+        return w_functype.color, w_functype.w_restype
 
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
         w_itemtype = None

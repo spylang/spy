@@ -4,6 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -28,13 +29,13 @@ class TestCallOp(CompilerTest):
 
             @staticmethod
             def op_CALL(vm: 'SPyVM', w_type: W_Type,
-                        w_argtypes: W_Dynamic) -> W_Dynamic:
+                        w_argtypes: W_Dynamic) -> W_OpImpl:
                 @spy_builtin(QN('ext::call'))
                 def call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
                     return vm.wrap(res) # type: ignore
-                return vm.wrap(call)
+                return W_OpImpl(vm.wrap_func(call))
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -63,12 +64,12 @@ class TestCallOp(CompilerTest):
 
             @staticmethod
             def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
-                             w_argtypes: W_Dynamic) -> W_Dynamic:
+                             w_argtypes: W_Dynamic) -> W_OpImpl:
                 @spy_builtin(QN('ext::new'))
                 def new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
-                return vm.wrap(new)
+                return W_OpImpl(vm.wrap_func(new))
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -129,24 +130,24 @@ class TestCallOp(CompilerTest):
 
             @staticmethod
             def op_CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
-                               w_argtypes: W_Dynamic) -> W_Dynamic:
+                               w_argtypes: W_Dynamic) -> W_OpImpl:
 
                 meth = vm.unwrap_str(w_method)
                 if meth == 'add':
                     @spy_builtin(QN('ext::meth_add'))
-                    def opimpl(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
+                    def fn(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
                                w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
-                    return vm.wrap(opimpl)
+                    return W_OpImpl(vm.wrap_func(fn))
 
                 elif meth == 'sub':
                     @spy_builtin(QN('ext::meth_sub'))
-                    def opimpl(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
+                    def fn(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
                                w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
-                    return vm.wrap(opimpl)
+                    return W_OpImpl(vm.wrap_func(fn))
 
                 else:
                     return B.w_NotImplemented
