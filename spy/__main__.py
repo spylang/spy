@@ -84,7 +84,7 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             return
         vm.typecheck(w_main, w_main_functype)
         assert isinstance(w_main, W_Func)
-        w_res = vm.call_function(w_main, [])
+        w_res = vm.call(w_main, [])
         assert w_res is B.w_None
         return
 

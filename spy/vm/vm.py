@@ -298,7 +298,7 @@ class SPyVM:
             raise Exception('Type mismatch')
         return self.unwrap(w_value) # type: ignore
 
-    def call_function(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
+    def call(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         if w_func.color == 'blue':
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
@@ -310,6 +310,18 @@ class SPyVM:
         else:
             # for red functions, we just call them
             return self._call_func(w_func, args_w)
+
+    def call_OP(self, w_func: W_Func, args_w: list[W_Object]) -> W_OpImpl:
+        """
+        Like vm.call, but ensures that the result is a W_OpImpl.
+
+        Mostly useful to call OPERATORs.
+        """
+        w_opimpl = self.call(w_func, args_w)
+        # XXX maybe this should be a TypeError instead? What happens if we
+        # don't return an OpImpl from an user-defined OPERATOR?
+        assert isinstance(w_opimpl, W_OpImpl)
+        return w_opimpl
 
     def _call_func(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
@@ -324,13 +336,12 @@ class SPyVM:
         # ASTFrame. See also vm.ne and vm.getitem
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
-        w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.call_OP(OPERATOR.w_EQ, [w_ta, w_tb])
         if w_opimpl.is_null():
             # XXX: the logic to produce a good error message should be in a
             # single place
             raise SPyTypeError("Cannot do ==")
-        w_res = self.call_function(w_opimpl.w_func, [w_a, w_b])
+        w_res = self.call(w_opimpl.w_func, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -340,13 +351,12 @@ class SPyVM:
         # ASTFrame. See also vm.ne and vm.getitem
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
-        w_opimpl = self.call_function(OPERATOR.w_NE, [w_ta, w_tb])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.call_OP(OPERATOR.w_NE, [w_ta, w_tb])
         if w_opimpl.is_null():
             # XXX: the logic to produce a good error message should be in a
             # single place
             raise SPyTypeError("Cannot do !=")
-        w_res = self.call_function(w_opimpl.w_func, [w_a, w_b])
+        w_res = self.call(w_opimpl.w_func, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -356,12 +366,11 @@ class SPyVM:
         # ASTFrame. See also vm.ne and vm.getitem
         w_tobj = self.dynamic_type(w_obj)
         w_ti = self.dynamic_type(w_i)
-        w_opimpl = self.call_function(OPERATOR.w_GETITEM, [w_tobj, w_ti])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [w_tobj, w_ti])
         if w_opimpl.is_null():
             # XXX see also eq and ne
             raise SPyTypeError("Cannot do []")
-        return self.call_function(w_opimpl.w_func, [w_obj, w_i])
+        return self.call(w_opimpl.w_func, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -408,14 +417,13 @@ class SPyVM:
 
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
-        w_opimpl = self.call_function(OPERATOR.w_EQ, [w_ta, w_tb])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.call_OP(OPERATOR.w_EQ, [w_ta, w_tb])
         if w_opimpl.is_null():
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
             return B.w_False
-        w_res = self.call_function(w_opimpl.w_func, [w_a, w_b])
+        w_res = self.call(w_opimpl.w_func, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

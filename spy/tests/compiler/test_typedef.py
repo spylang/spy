@@ -57,12 +57,12 @@ class TestTypeDef(CompilerTest):
             return MyInt
         """)
         w_makeMyInt = mod.makeMyInt.w_func
-        w_MyInt = self.vm.call_function(w_makeMyInt, [])
+        w_MyInt = self.vm.call(w_makeMyInt, [])
         assert isinstance(w_MyInt, W_TypeDef)
         w_getattr = w_MyInt.w_getattr
         assert isinstance(w_getattr, W_ASTFunc)
         assert w_getattr.qn == QN("test::__getattr__")
-        w_res = self.vm.call_function(w_getattr, [B.w_None])
+        w_res = self.vm.call(w_getattr, [B.w_None])
         assert w_res is B.w_NotImplemented
 
     @only_interp
@@ -80,7 +80,7 @@ class TestTypeDef(CompilerTest):
             return MyInt.__getattr__
         """)
         w_foo = mod.foo.w_func
-        w_res = self.vm.call_function(w_foo, [])
+        w_res = self.vm.call(w_foo, [])
         assert self.vm.unwrap(w_res) == 42
 
     def test_getattr(self):

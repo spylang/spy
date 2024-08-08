@@ -97,4 +97,4 @@ class SPyBuiltin:
 
     def __call__(self, vm: 'SPyVM', *args: W_Object) -> W_Object:
         args_w = list(args)
-        return vm.call_function(self._w, args_w)
+        return vm.call(self._w, args_w)

@@ -58,7 +58,7 @@ class ModuleGen:
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             assert w_init.color == "blue"
-            self.vm.call_function(w_init, [self.w_mod])
+            self.vm.call(w_init, [self.w_mod])
         #
         return self.w_mod
 

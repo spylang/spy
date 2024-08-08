@@ -31,7 +31,7 @@ def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_OpImpl:
     if isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
         w_getattr = w_type.w_getattr
         assert isinstance(w_getattr, W_Func)
-        w_func = vm.call_function(w_getattr, [w_type, w_attr])
+        w_func = vm.call(w_getattr, [w_type, w_attr])
         assert isinstance(w_func, W_Func)
         # XXX: ideally, we should be able to return directly an W_OpImpl from
         # applevel
@@ -56,7 +56,7 @@ def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
     if isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
         w_setattr = w_type.w_setattr
         assert isinstance(w_setattr, W_Func)
-        w_func = vm.call_function(w_setattr, [w_type, w_attr, w_vtype])
+        w_func = vm.call(w_setattr, [w_type, w_attr, w_vtype])
         assert isinstance(w_func, W_Func)
         return W_OpImpl(w_func)
 

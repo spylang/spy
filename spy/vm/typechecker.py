@@ -268,9 +268,7 @@ class TypeChecker:
         _, w_otype = self.check_expr(node.target)
         _, w_vtype = self.check_expr(node.value)
         w_attr = self.vm.wrap(node.attr)
-        w_opimpl = self.vm.call_function(OP.w_SETATTR,
-                                         [w_otype, w_attr, w_vtype])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.vm.call_OP(OP.w_SETATTR, [w_otype, w_attr, w_vtype])
         errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
                   node.attr)
         self.opimpl_typecheck(
@@ -370,8 +368,7 @@ class TypeChecker:
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
         w_attr = self.vm.wrap(expr.attr)
-        w_opimpl = self.vm.call_function(OP.w_GETATTR, [w_vtype, w_attr])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.vm.call_OP(OP.w_GETATTR, [w_vtype, w_attr])
         self.opimpl_typecheck(
             w_opimpl,
             expr,
@@ -415,15 +412,13 @@ class TypeChecker:
 
         # step 2: call OP() and get w_opimpl
         assert w_OP.color == 'blue', f'{w_OP.qn} is not blue'
-        w_opimpl = self.vm.call_function(w_OP, argtypes_w) # type: ignore
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.vm.call_OP(w_OP, argtypes_w) # type: ignore
 
         # step 3: check that we can call the returned w_opimpl
         self.opimpl_typecheck(w_opimpl, node, args, argtypes_w,
                               dispatch=dispatch, errmsg=errmsg)
-        assert isinstance(w_opimpl, W_OpImpl)
         self.opimpl[node] = w_opimpl
-        return color, w_opimpl.w_func.w_functype.w_restype
+        return color, w_opimpl.w_restype
 
     def opimpl_typecheck(self,
                          w_opimpl: W_OpImpl,
@@ -519,8 +514,7 @@ class TypeChecker:
         _, w_otype = self.check_expr(call.func)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
         w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
-        w_opimpl = self.vm.call_function(OP.w_CALL, [w_otype, w_argtypes])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.vm.call_OP(OP.w_CALL, [w_otype, w_argtypes])
         newargs = [call.func] + call.args
         errmsg = 'cannot call objects of type `{0}`'
         self.opimpl_typecheck(w_opimpl, call, newargs,
@@ -603,9 +597,8 @@ class TypeChecker:
         w_method = self.vm.wrap(op.method)
         argtypes_w = [self.check_expr(arg)[1] for arg in op.args]
         w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
-        w_opimpl = self.vm.call_function(OP.w_CALL_METHOD,
-                                         [w_otype, w_method, w_argtypes])
-        assert isinstance(w_opimpl, W_OpImpl)
+        w_opimpl = self.vm.call_OP(OP.w_CALL_METHOD,
+                                   [w_otype, w_method, w_argtypes])
         w_method = self.vm.wrap(op.method)
         m = ast.Constant(op.loc, value=w_method)
         newargs = [op.target, m] + op.args

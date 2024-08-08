@@ -27,7 +27,7 @@ class TestSig:
         w_foo = vm.wrap(foo)
         assert isinstance(w_foo, W_BuiltinFunc)
         assert w_foo.qn == QN('test::foo')
-        w_y = vm.call_function(w_foo, [vm.wrap(10)])
+        w_y = vm.call(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
 
     def test_spy_builtin_errors(self):
@@ -70,7 +70,7 @@ class TestSig:
         #
         w_foo = vm.wrap(foo)
         assert isinstance(w_foo, W_BuiltinFunc)
-        w_res = vm.call_function(w_foo, [])
+        w_res = vm.call(w_foo, [])
         assert w_res is B.w_None
 
     def test_blue(self):
@@ -83,8 +83,8 @@ class TestSig:
 
         assert foo.w_functype.name == '@blue def(x: i32) -> i32'
         w_foo: W_Func = vm.wrap(foo)  # type: ignore
-        w_x = vm.call_function(w_foo, [vm.wrap(21)])
-        w_y = vm.call_function(w_foo, [vm.wrap(21)])
+        w_x = vm.call(w_foo, [vm.wrap(21)])
+        w_y = vm.call(w_foo, [vm.wrap(21)])
         assert w_x is w_y
 
         # FIXME
