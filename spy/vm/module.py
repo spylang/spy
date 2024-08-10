@@ -44,7 +44,7 @@ class W_Module(W_Object):
         def fn(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
             attr = vm.unwrap_str(w_attr)
             return w_mod.getattr(attr)
-        return W_OpImpl(vm.wrap_func(fn))
+        return W_OpImpl.simple(vm.wrap_func(fn))
 
 
     @staticmethod
@@ -56,7 +56,7 @@ class W_Module(W_Object):
             attr = vm.unwrap_str(w_attr)
             w_mod.setattr(attr, w_val)
             return B.w_None
-        return W_OpImpl(vm.wrap_func(fn))
+        return W_OpImpl.simple(vm.wrap_func(fn))
 
     # ==== public interp-level API ====
 
