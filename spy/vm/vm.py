@@ -14,7 +14,7 @@ from spy.vm.b import B
 from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_AbsVal
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -298,6 +298,9 @@ class SPyVM:
             raise Exception('Type mismatch')
         return self.unwrap(w_value) # type: ignore
 
+    def new_absval(self, name: str, i: int, w_static_type: W_Type) -> W_AbsVal:
+        return W_AbsVal(name, i, w_static_type)
+
     def call(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         if w_func.color == 'blue':
             # for blue functions, we memoize the result
@@ -364,9 +367,10 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        w_tobj = self.dynamic_type(w_obj)
-        w_ti = self.dynamic_type(w_i)
-        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [w_tobj, w_ti])
+        wav_obj = self.new_absval('obj', 0, self.dynamic_type(w_obj))
+        wav_i = self.new_absval('i', 1, self.dynamic_type(w_i))
+
+        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wav_obj, wav_i])
         if w_opimpl.is_null():
             # XXX see also eq and ne
             raise SPyTypeError("Cannot do []")

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Type, W_Dynamic
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_AbsVal
 
 from . import OP
 if TYPE_CHECKING:
@@ -9,10 +9,10 @@ if TYPE_CHECKING:
 
 
 @OP.builtin(color='blue')
-def GETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type) -> W_OpImpl:
-    pyclass = w_type.pyclass
+def GETITEM(vm: 'SPyVM', wav_obj: W_AbsVal, wav_i: W_AbsVal) -> W_OpImpl:
+    pyclass = wav_obj.w_static_type.pyclass
     if pyclass.has_meth_overriden('op_GETITEM'):
-        return pyclass.op_GETITEM(vm, w_type, w_itype)
+        return pyclass.op_GETITEM(vm, wav_obj, wav_i)
 
     return W_OpImpl.NULL
 

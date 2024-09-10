@@ -309,8 +309,7 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_i = self.eval_expr(op.index)
-        w_res = self.vm.call(w_opimpl.w_func, [w_val, w_i])
-        return w_res
+        return w_opimpl.call(self.vm, [w_val, w_i])
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_Object:
         # this is suboptimal, but good enough for now: ideally, we would like

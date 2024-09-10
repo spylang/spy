@@ -4,10 +4,10 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_AbsVal
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.tests.support import CompilerTest, no_C, expect_errors, skip_backends
 
 @no_C
 class TestOp(CompilerTest):
@@ -79,3 +79,48 @@ class TestOp(CompilerTest):
             'this function takes 1 argument but 2 arguments were supplied',
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_AbsVal(self):
+        if self.backend == 'doppler':
+            pytest.skip('FIXME')
+
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext', '<ext>')
+
+        @EXT.spytype('MyClass')
+        class W_MyClass(W_Object):
+
+            def __init__(self, w_x: W_I32):
+                self.w_x = w_x
+
+            @staticmethod
+            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_MyClass':
+                return W_MyClass(w_x)
+
+            @staticmethod
+            def op_GETITEM(vm: 'SPyVM', wav_obj: W_AbsVal,
+                           wav_i: W_AbsVal) -> W_OpImpl:
+                assert isinstance(wav_obj, W_AbsVal)
+                assert isinstance(wav_i, W_AbsVal)
+                # NOTE we are reversing the two!
+                return W_OpImpl.with_vals(EXT.w_sum, [wav_i, wav_obj])
+            op_GETITEM.use_absval = True
+
+        @EXT.builtin
+        def sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
+            assert isinstance(w_i, W_I32)
+            assert isinstance(w_obj, W_MyClass)
+            a = vm.unwrap_i32(w_i)
+            b = vm.unwrap_i32(w_obj.w_x)
+            return vm.wrap(a+b)
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import MyClass
+
+        def foo(a: i32, b: i32) -> i32:
+            obj = MyClass(a)
+            return obj[b]
+        """)
+        assert mod.foo(10, 20) == 30
