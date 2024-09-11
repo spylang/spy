@@ -142,8 +142,8 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', w_type: 'W_Type',
-                   w_attr: 'W_Str') -> 'W_OpImpl':
+    def op_GETATTR(vm: 'SPyVM', wv_obj: 'W_Value',
+                   wv_attr: 'W_Value') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
