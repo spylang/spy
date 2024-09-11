@@ -681,14 +681,14 @@ class TypeChecker:
 # A lot of this code is copied&pasted from TypeChecker for now.
 # The goal is to kill the TypeChecker class eventually
 
-def opimpl_typecheck(
-                     w_opimpl: W_OpImpl,
-                     #node: ast.Node,
-                     args_wav: list[W_AbsVal],
-                     *,
-                     dispatch: DispatchKind,
-                     errmsg: str,
-                     ) -> None:
+def typecheck_opimpl(
+        w_opimpl: W_OpImpl,
+        #node: ast.Node,
+        args_wav: list[W_AbsVal],
+        *,
+        dispatch: DispatchKind,
+        errmsg: str,
+) -> None:
     if w_opimpl.is_null():
         typenames = [wav.w_static_type.name for wav in args_wav]
         errmsg = errmsg.format(*typenames)
@@ -721,10 +721,81 @@ def opimpl_typecheck(
 
     w_functype = w_opimpl.w_func.w_functype
 
+    typecheck_call(
+        w_functype,
+        args_wav)
+        ## def_loc = None, # would be nice to find it somehow
+        ## call_loc = None), # XXX node.loc, # type: ignore
+
+
+def typecheck_call(
+        w_functype: W_FuncType,
+        args_wav: list[W_AbsVal],
+        ## *,
+        ## def_loc: Optional[Loc],
+        ## call_loc: Optional[Loc],
+        ## argnodes: Sequence[ast.Expr | None],
+) -> None:
+    # XXX
+    call_loc = None
+    def_loc = None
+
+    got_nargs = len(args_wav)
+    exp_nargs = len(w_functype.params)
+    if got_nargs != exp_nargs:
+        _call_error_wrong_argcount(
+            got_nargs,
+            exp_nargs,
+            args_wav,
+            def_loc = def_loc,
+            call_loc = call_loc)
+    #
     # XXX re-enable
-    ## call_typecheck(
-    ##     w_functype,
-    ##     args_wav,
-    ##     def_loc = None, # would be nice to find it somehow
-    ##     call_loc = None, # XXX node.loc, # type: ignore
-    ##     argnodes = args)
+    ## assert len(argnodes) == len(argtypes_w)
+    ## for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
+    ##                                             argtypes_w)):
+    ##     arg_expr = argnodes[i]
+    ##     err = self.convert_type_maybe(arg_expr, w_arg_type, param.w_type)
+    ##     if err:
+    ##         if def_loc:
+    ##             err.add('note', 'function defined here', def_loc)
+    ##         raise err
+
+
+def _call_error_wrong_argcount(
+        got: int, exp: int,
+        args_wav: list[W_AbsVal],
+        *,
+        def_loc: Optional[Loc],
+        call_loc: Optional[Loc],
+) -> NoReturn:
+    assert got != exp
+    takes = maybe_plural(exp, f'takes {exp} argument')
+    supplied = maybe_plural(got,
+                            f'1 argument was supplied',
+                            f'{got} arguments were supplied')
+    err = SPyTypeError(f'this function {takes} but {supplied}')
+    #
+    # if we know the call_loc, we can add more detailed errors
+    if call_loc:
+        assert argnodes is not None
+        if got < exp:
+            diff = exp - got
+            arguments = maybe_plural(diff, 'argument')
+            err.add('error', f'{diff} {arguments} missing', call_loc)
+        else:
+            diff = got - exp
+            arguments = maybe_plural(diff, 'argument')
+            first_extra_loc = args_wav[exp].loc
+            last_extra_loc = args_wav[exp].loc
+            assert first_extra_loc is not None
+            assert last_extra_loc is not None
+            # XXX this assumes that all the arguments are on the same line
+            loc = first_extra_loc.replace(
+                col_end = last_extra_loc.col_end
+            )
+            err.add('error', f'{diff} extra {arguments}', loc)
+    #
+    if def_loc:
+        err.add('note', 'function defined here', def_loc)
+    raise err

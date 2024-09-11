@@ -62,8 +62,8 @@ class TestOp(CompilerTest):
             def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
                            w_itype: W_Type) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
-                def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_Void:
-                    return B.w_None
+                def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
+                    return vm.wrap(42)
                 return W_OpImpl.simple(vm.wrap_func(getitem))
         # ========== /EXT module for this test =========
 
