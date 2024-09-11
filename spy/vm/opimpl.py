@@ -94,11 +94,15 @@ class W_Value(W_Object):
         def eq(vm: 'SPyVM', wv1: W_Value, wv2: W_Value) -> W_Bool:
             # note that the prefix is NOT considered for equality, is purely for
             # description
-            if (wv1.i == wv2.i and
-                wv1.w_static_type is wv2.w_static_type):
-                return B.w_True
-            else:
+            if wv1.i != wv2.i:
                 return B.w_False
+            if wv1.w_static_type is not wv2.w_static_type:
+                return B.w_False
+            if (wv1.is_blue() and
+                wv2.is_blue() and
+                vm.is_False(vm.eq(wv1._w_blueval, wv2._w_blueval))):
+                return B.w_False
+            return B.w_True
 
         if w_ltype is w_rtype:
             return W_OpImpl.simple(vm.wrap_func(eq))
