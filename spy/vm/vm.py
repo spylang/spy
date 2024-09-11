@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from types import FunctionType
 import fixedint
 from spy.fqn import QN, FQN
-from spy.location import Loc
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
