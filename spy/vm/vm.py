@@ -299,10 +299,6 @@ class SPyVM:
             raise Exception('Type mismatch')
         return self.unwrap(w_value) # type: ignore
 
-    def new_absval(self, name: str, i: int, w_static_type: W_Type,
-                   loc: Loc) -> W_Value:
-        return W_Value(name, i, w_static_type, loc)
-
     def call(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         if w_func.color == 'blue':
             # for blue functions, we memoize the result
@@ -369,8 +365,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wv_obj = self.new_absval('obj', 0, self.dynamic_type(w_obj), None)
-        wv_i = self.new_absval('i', 1, self.dynamic_type(w_i), None)
+        wv_obj = W_Value('obj', 0, self.dynamic_type(w_obj), None)
+        wv_i = W_Value('i', 1, self.dynamic_type(w_i), None)
 
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wv_obj, wv_i])
         if w_opimpl.is_null():

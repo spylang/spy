@@ -179,6 +179,12 @@ class TypeChecker:
             self.expr_types[expr] = color, w_type
             return color, w_type
 
+    def value_from_check_expr(self, expr: ast.Expr, prefix:
+                              str, i: int) -> tuple[Color, W_Value]:
+        color, w_type = self.check_expr(expr)
+        wv = W_Value(prefix, i, w_type, expr.loc)
+        return color, wv
+
     # ==== statements ====
 
     def check_stmt_Return(self, ret: ast.Return) -> None:
@@ -357,12 +363,10 @@ class TypeChecker:
     check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        c1, w_valtype = self.check_expr(expr.value)
-        c2, w_itype = self.check_expr(expr.index)
+        c1, wv_obj = self.value_from_check_expr(expr.value, 'v', 0)
+        c2, wv_i = self.value_from_check_expr(expr.index, 'i', 1)
         color = maybe_blue(c1, c2)
-        wv_val = self.vm.new_absval('v', 0, w_valtype, expr.value.loc)
-        wv_i = self.vm.new_absval('i', 1, w_itype, expr.index.loc)
-        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wv_val, wv_i])
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wv_obj, wv_i])
         self.opimpl[expr] = w_opimpl
         return color, w_opimpl.w_restype
 
