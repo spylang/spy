@@ -102,7 +102,7 @@ class TestOp(CompilerTest):
                            wv_i: W_Value) -> W_OpImpl:
                 assert isinstance(wv_obj, W_Value)
                 assert isinstance(wv_i, W_Value)
-                # NOTE we are reversing the two!
+                # NOTE we are reversing the two arguments
                 return W_OpImpl.with_values(EXT.w_sum, [wv_i, wv_obj])
 
         @EXT.builtin

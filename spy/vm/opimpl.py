@@ -13,20 +13,24 @@ class W_Value(W_Object):
 
     The naming convention is wv_one and manyvalues_wv.
     """
-    name: str
+    prefix: str
     i: int
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Optional[Loc]
 
-    def __init__(self, name: str, i: int, w_static_type: W_Type,
+    def __init__(self, prefix: str, i: int, w_static_type: W_Type,
                  loc: Optional[Loc]) -> None:
-        self.name = name
+        self.prefix = prefix
         self.i = i
         self.w_static_type = w_static_type
         self.loc = loc
 
+    @property
+    def name(self):
+        return f'{self.prefix}{self.i}'
+
     def __repr__(self):
-        return f'<W_Value {self.name}{self.i}: {self.w_static_type.name}>'
+        return f'<W_Value {self.name}: {self.w_static_type.name}>'
 
     @staticmethod
     def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> 'W_OpImpl':
@@ -36,7 +40,7 @@ class W_Value(W_Object):
         @no_type_check
         @spy_builtin(QN('operator::value_eq'))
         def eq(vm: 'SPyVM', wv1: W_Value, wv2: W_Value) -> W_Bool:
-            # note that the name is NOT considered for equality, is purely for
+            # note that the prefix is NOT considered for equality, is purely for
             # description
             if (wv1.i == wv2.i and
                 wv1.w_static_type is wv2.w_static_type):
@@ -77,9 +81,14 @@ class W_OpImpl(W_Object):
     def __repr__(self) -> str:
         if self._w_func is None:
             return f"<spy OpImpl NULL>"
-        else:
+        elif self._args_wv is None:
             qn = self._w_func.qn
             return f"<spy OpImpl {qn}>"
+        else:
+            qn = self._w_func.qn
+            argnames = [wv.name for wv in self._args_wv]
+            argnames = ', '.join(argnames)
+            return f"<spy OpImpl {qn}({argnames})>"
 
     def is_null(self) -> bool:
         return self._w_func is None
