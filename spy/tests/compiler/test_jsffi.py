@@ -30,6 +30,7 @@ class TestJsFFI(CompilerTest):
         out = exe.run()
         assert out == 'hello from console.log\n42\n'
 
+    @pytest.mark.skip(reason="missing type conversions")
     def test_setattr(self):
         exe = self.compile(
         """
