@@ -181,14 +181,27 @@ class TypeChecker:
 
     def check_many_exprs(self,
                          prefixes: list[str],
-                         exprs: list[ast.Expr]
+                         exprs: list[ast.Expr | str]
                          ) -> tuple[list[Color], list[W_Value]]:
         assert len(prefixes) == len(exprs)
         colors = []
         args_wv = []
+        last_loc = None
         for i, (prefix, expr) in enumerate(zip(prefixes, exprs)):
-            color, w_type = self.check_expr(expr)
-            wv = W_Value(prefix, i, w_type, expr.loc)
+            if isinstance(expr, str):
+                # HACK HACK HACK: we need a loc but we don't have any. We just
+                # use the last_loc. This works only as far as this doesn't
+                # happen at the first iteration, which is good enough in
+                # practice
+                assert last_loc is not None
+                loc = last_loc
+                color = 'blue'
+                wv = W_Value(prefix, i, B.w_str, loc,
+                             w_blueval = self.vm.wrap(expr))
+            else:
+                color, w_type = self.check_expr(expr)
+                wv = W_Value(prefix, i, w_type, expr.loc)
+                last_loc = expr.loc
             colors.append(color)
             args_wv.append(wv)
         return colors, args_wv
@@ -381,13 +394,9 @@ class TypeChecker:
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         colors, args_wv = self.check_many_exprs(
-            ['v'],
-            [expr.value]
+            ['v', 'a'],
+            [expr.value, expr.attr]
         )
-        color = colors[0]
-        wv_attr = W_Value('a', 1, B.w_str, expr.loc,
-                          w_blueval = self.vm.wrap(expr.attr))
-        args_wv.append(wv_attr)
         w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wv)
         self.opimpl[expr] = w_opimpl
         return colors[0], w_opimpl.w_restype
