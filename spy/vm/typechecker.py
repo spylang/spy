@@ -407,10 +407,6 @@ class TypeChecker:
         differently, because they also take a VALUE (the attribute, as a
         string) instead of a TYPE.
         """
-        if w_OP.qn.attr == 'GETITEM':
-            return self.OP_dispatch_newstyle(w_OP, node, args,
-                                             dispatch=dispatch,
-                                             errmsg=errmsg)
         # step 1: determine the arguments to pass to OP()
         argtypes_w = []
         color: Color = 'blue'
@@ -428,39 +424,6 @@ class TypeChecker:
                               dispatch=dispatch, errmsg=errmsg)
         self.opimpl[node] = w_opimpl
         return color, w_opimpl.w_restype
-
-    def OP_dispatch_newstyle(self, w_OP: Any, node: ast.Node,
-                             args: list[ast.Expr],
-                             *,
-                             dispatch: DispatchKind,
-                             errmsg: str
-                             ) -> tuple[Color, W_Type]:
-        # step 1: determine the arguments to pass to OP()
-        args_wv: list[W_Value] = []
-        color: Color = 'blue'
-        for i, arg in enumerate(args):
-            c1, w_argtype = self.check_expr(arg)
-            args_wv.append(self.vm.new_absval('v', i, w_argtype, arg.loc))
-            color = maybe_blue(color, c1)
-
-        # step 2: call OP() and get w_opimpl
-        assert w_OP.color == 'blue', f'{w_OP.qn} is not blue'
-        w_opimpl = self.vm.call_OP(w_OP, args_wv) # type: ignore
-
-        # step 3: check that we can call the returned w_opimpl
-        if w_opimpl._args_wv is None:
-            # XXX this is a temporary hack: in this case, what we want to do
-            # is to create "default" AbsVals and just pass them around. But we
-            # cannot because there are still operators using the old-style
-            # dispatch and they expect argtypes_w.
-            argtypes_w = [wv.w_static_type for wv in args_wv]
-        else:
-            argtypes_w = [wv.w_static_type for wv in w_opimpl._args_wv]
-        self.opimpl_typecheck(w_opimpl, node, args, argtypes_w,
-                              dispatch=dispatch, errmsg=errmsg)
-        self.opimpl[node] = w_opimpl
-        return color, w_opimpl.w_restype
-
 
     def opimpl_typecheck(self,
                          w_opimpl: W_OpImpl,
