@@ -105,23 +105,23 @@ def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     if pyclass.has_meth_overriden('op_EQ'):
         return pyclass.op_EQ(vm, w_ltype, w_rtype)
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
-        return W_OpImpl(OP.w_object_is)
+        return W_OpImpl.simple(OP.w_object_is)
     else:
         return MM.lookup('==', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
 def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
     if can_use_reference_eq(vm, w_ltype, w_rtype):
-        return W_OpImpl(OP.w_object_isnot)
+        return W_OpImpl.simple(OP.w_object_isnot)
     return MM.lookup('!=', w_ltype, w_rtype)
 
 @OP.builtin(color='blue')
 def UNIVERSAL_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return W_OpImpl(OP.w_object_universal_eq)
+    return W_OpImpl.simple(OP.w_object_universal_eq)
 
 @OP.builtin(color='blue')
 def UNIVERSAL_NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return W_OpImpl(OP.w_object_universal_ne)
+    return W_OpImpl.simple(OP.w_object_universal_ne)
 
 @OP.builtin(color='blue')
 def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:

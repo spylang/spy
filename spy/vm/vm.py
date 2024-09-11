@@ -14,7 +14,7 @@ from spy.vm.b import B
 from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -364,9 +364,10 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        w_tobj = self.dynamic_type(w_obj)
-        w_ti = self.dynamic_type(w_i)
-        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [w_tobj, w_ti])
+        wv_obj = W_Value('obj', 0, self.dynamic_type(w_obj), None)
+        wv_i = W_Value('i', 1, self.dynamic_type(w_i), None)
+
+        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wv_obj, wv_i])
         if w_opimpl.is_null():
             # XXX see also eq and ne
             raise SPyTypeError("Cannot do []")

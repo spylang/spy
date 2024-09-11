@@ -71,7 +71,7 @@ class TestAttrOp(CompilerTest):
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
                         return vm.wrap(attr.upper() + '--42')  # type: ignore
-                return W_OpImpl(vm.wrap_func(fn))
+                return W_OpImpl.simple(vm.wrap_func(fn))
 
             @staticmethod
             def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
@@ -83,7 +83,7 @@ class TestAttrOp(CompilerTest):
                                w_attr: W_Str, w_val: W_I32) -> W_Void:
                         w_obj.x = vm.unwrap_i32(w_val)
                         return B.w_None
-                    return W_OpImpl(vm.wrap_func(fn))
+                    return W_OpImpl.simple(vm.wrap_func(fn))
                 else:
                     return W_OpImpl.NULL
         # ========== /EXT module for this test =========

@@ -30,7 +30,7 @@ class W_Tuple(W_Object):
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', w_tupletype: W_Type,
                    w_itype: W_Type) -> W_OpImpl:
-        return W_OpImpl(vm.wrap_func(tuple_getitem))
+        return W_OpImpl.simple(vm.wrap_func(tuple_getitem))
 
 
 

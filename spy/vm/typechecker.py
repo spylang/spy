@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.list import W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
@@ -178,6 +178,12 @@ class TypeChecker:
             color, w_type = magic_dispatch(self, 'check_expr', expr)
             self.expr_types[expr] = color, w_type
             return color, w_type
+
+    def value_from_check_expr(self, expr: ast.Expr, prefix:
+                              str, i: int) -> tuple[Color, W_Value]:
+        color, w_type = self.check_expr(expr)
+        wv = W_Value(prefix, i, w_type, expr.loc)
+        return color, wv
 
     # ==== statements ====
 
@@ -357,13 +363,12 @@ class TypeChecker:
     check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        return self.OP_dispatch(
-            OP.w_GETITEM,
-            expr,
-            [expr.value, expr.index],
-            dispatch = 'single',
-            errmsg = 'cannot do `{0}`[...]'
-        )
+        c1, wv_obj = self.value_from_check_expr(expr.value, 'v', 0)
+        c2, wv_i = self.value_from_check_expr(expr.index, 'i', 1)
+        color = maybe_blue(c1, c2)
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wv_obj, wv_i])
+        self.opimpl[expr] = w_opimpl
+        return color, w_opimpl.w_restype
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
@@ -635,3 +640,154 @@ class TypeChecker:
             c1, w_t1 = self.check_expr(item)
             color = maybe_blue(color, c1)
         return color, B.w_tuple
+
+
+
+
+# ===== NEW STYLE TYPECHECKING =====
+# A lot of this code is copied&pasted from TypeChecker for now.
+# The goal is to kill the TypeChecker class eventually
+
+def typecheck_opimpl(
+        vm: 'SPyVM',
+        w_opimpl: W_OpImpl,
+        #node: ast.Node,
+        orig_args_wv: list[W_Value],
+        *,
+        dispatch: DispatchKind,
+        errmsg: str,
+) -> None:
+    if w_opimpl.is_null():
+        typenames = [wv.w_static_type.name for wv in orig_args_wv]
+        errmsg = errmsg.format(*typenames)
+        err = SPyTypeError(errmsg)
+        if dispatch == 'single':
+            # for single dispatch ops, NotImplemented means that the
+            # target doesn't support this operation: so we just report its
+            # type and possibly its definition
+            #assert args[0] is not None
+            wv_obj = orig_args_wv[0]
+            t = wv_obj.w_static_type.name
+            if wv_obj.loc:
+                err.add('error', f'this is `{t}`', wv_obj.loc)
+
+            ## sym = self.name2sym_maybe(target)
+            ## if sym:
+            ##     assert isinstance(target, ast.Name)
+            ##     err.add('note', f'`{target.id}` defined here', sym.loc)
+
+        else:
+            #XXX fixme
+
+            # for multi dispatch ops, all operands are equally important
+            # for finding the opimpl: we report all of them
+            for arg, w_argtype in zip(args, argtypes_w):
+                if arg is not None:
+                    t = w_argtype.name
+                    err.add('error', f'this is `{t}`', arg.loc)
+        raise err
+
+    w_functype = w_opimpl.w_func.w_functype
+    if w_opimpl.is_simple():
+        # for "simple" opimpls, we just pass the original values
+        args_wv = orig_args_wv
+    else:
+        args_wv = w_opimpl._args_wv
+
+    typecheck_call(
+        vm,
+        w_functype,
+        args_wv)
+        ## def_loc = None, # would be nice to find it somehow
+        ## call_loc = None), # XXX node.loc, # type: ignore
+
+
+def typecheck_call(
+        vm: 'SPyVM',
+        w_functype: W_FuncType,
+        args_wv: list[W_Value],
+        ## *,
+        ## def_loc: Optional[Loc],
+        ## call_loc: Optional[Loc],
+) -> None:
+    # XXX
+    call_loc = None
+    def_loc = None
+
+    got_nargs = len(args_wv)
+    exp_nargs = len(w_functype.params)
+    if got_nargs != exp_nargs:
+        _call_error_wrong_argcount(
+            got_nargs,
+            exp_nargs,
+            args_wv,
+            def_loc = def_loc,
+            call_loc = call_loc)
+    #
+    # check that the types of the arguments are compatible
+    for param, wv_arg in zip(w_functype.params, args_wv):
+        # XXX: we need to find a way to re-enable implicit conversions
+        err = convert_type_maybe(vm, wv_arg, param.w_type)
+        if err:
+            if def_loc:
+                err.add('note', 'function defined here', def_loc)
+            raise err
+
+
+def convert_type_maybe(
+        vm: 'SPyVM',
+        wv_x: W_Type,
+        w_exp: W_Type
+) -> Optional[SPyTypeError]:
+    w_got = wv_x.w_static_type
+    if vm.issubclass(w_got, w_exp):
+        # nothing to do
+        return None
+
+    # XXX IMPLEMENT ME
+    # we need to re-enable implicit conversions
+
+    err = SPyTypeError('mismatched types')
+    got = w_got.name
+    exp = w_exp.name
+    err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
+    return err
+
+
+def _call_error_wrong_argcount(
+        got: int, exp: int,
+        args_wv: list[W_Value],
+        *,
+        def_loc: Optional[Loc],
+        call_loc: Optional[Loc],
+) -> NoReturn:
+    assert got != exp
+    takes = maybe_plural(exp, f'takes {exp} argument')
+    supplied = maybe_plural(got,
+                            f'1 argument was supplied',
+                            f'{got} arguments were supplied')
+    err = SPyTypeError(f'this function {takes} but {supplied}')
+    #
+    # if we know the call_loc, we can add more detailed errors
+    if call_loc:
+        assert argnodes is not None
+        if got < exp:
+            diff = exp - got
+            arguments = maybe_plural(diff, 'argument')
+            err.add('error', f'{diff} {arguments} missing', call_loc)
+        else:
+            diff = got - exp
+            arguments = maybe_plural(diff, 'argument')
+            first_extra_loc = args_wv[exp].loc
+            last_extra_loc = args_wv[exp].loc
+            assert first_extra_loc is not None
+            assert last_extra_loc is not None
+            # XXX this assumes that all the arguments are on the same line
+            loc = first_extra_loc.replace(
+                col_end = last_extra_loc.col_end
+            )
+            err.add('error', f'{diff} extra {arguments}', loc)
+    #
+    if def_loc:
+        err.add('note', 'function defined here', def_loc)
+    raise err

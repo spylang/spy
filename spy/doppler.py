@@ -205,7 +205,8 @@ class FuncDoppler:
         i = self.shift_expr(op.index)
         w_opimpl = self.t.opimpl[op]
         func = self.make_const(op.loc, w_opimpl.w_func)
-        return ast.Call(op.loc, func, [v, i])
+        args = w_opimpl.reorder([v, i])
+        return ast.Call(op.loc, func, args)
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
         v = self.shift_expr(op.value)

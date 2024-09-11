@@ -61,5 +61,5 @@ class MultiMethodTable:
         for key in keys:
             w_func = self.impls.get(key)
             if w_func:
-                return W_OpImpl(w_func)
-        return W_OpImpl(None)
+                return W_OpImpl.simple(w_func)
+        return W_OpImpl.NULL

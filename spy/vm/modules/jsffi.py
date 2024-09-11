@@ -25,7 +25,7 @@ class W_JsRef(W_Object):
         @spy_builtin(QN(f'jsffi::getattr_{attr}'))
         def fn(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str) -> W_JsRef:
             return js_getattr(vm, w_self, w_attr)
-        return W_OpImpl(vm.wrap_func(fn))
+        return W_OpImpl.simple(vm.wrap_func(fn))
 
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
@@ -37,7 +37,7 @@ class W_JsRef(W_Object):
         def fn(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str,
                w_val: W_JsRef) -> None:
             js_setattr(vm, w_self, w_attr, w_val)
-        return W_OpImpl(vm.wrap_func(fn))
+        return W_OpImpl.simple(vm.wrap_func(fn))
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
@@ -45,7 +45,7 @@ class W_JsRef(W_Object):
         argtypes_w = vm.unwrap(w_argtypes)
         n = len(argtypes_w)
         if n == 1:
-            return W_OpImpl(JSFFI.w_call_method_1)
+            return W_OpImpl.simple(JSFFI.w_call_method_1)
         else:
             raise Exception(
                 f"unsupported number of arguments for CALL_METHOD: {n}"
