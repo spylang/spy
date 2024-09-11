@@ -48,17 +48,8 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
     elif pyclass.has_meth_overriden('op_GETATTR'):
         return pyclass.op_GETATTR(vm, wv_obj, wv_attr)
 
-    # XXX refactor
-    if isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
-        XXX
-        w_getattr = w_type.w_getattr
-        assert isinstance(w_getattr, W_Func)
-        w_func = vm.call(w_getattr, [w_type, w_attr])
-        assert isinstance(w_func, W_Func)
-        # XXX: ideally, we should be able to return directly an W_OpImpl from
-        # applevel
-        return W_OpImpl.simple(w_func)
-
+    # until commit fc4ff1b we had special logic for typedef. At some point we
+    # either need to resume it or kill typedef entirely.
     return W_OpImpl.NULL
 
 
@@ -90,15 +81,8 @@ def _get_SETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
     elif pyclass.has_meth_overriden('op_SETATTR'):
         return pyclass.op_SETATTR(vm, wv_obj, wv_attr, wv_v)
 
-    # XXX refactor
-    if isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
-        XXX
-        w_setattr = w_type.w_setattr
-        assert isinstance(w_setattr, W_Func)
-        w_func = vm.call(w_setattr, [w_type, w_attr, w_vtype])
-        assert isinstance(w_func, W_Func)
-        return W_OpImpl.simple(w_func)
-
+    # until commit fc4ff1b we had special logic for typedef. At some point we
+    # either need to resume it or kill typedef entirely.
     return W_OpImpl.NULL
 
 
