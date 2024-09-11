@@ -7,7 +7,7 @@ from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
 from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors, skip_backends
+from spy.tests.support import CompilerTest, no_C, expect_errors
 
 @no_C
 class TestOp(CompilerTest):
@@ -80,7 +80,7 @@ class TestOp(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_AbsVal(self):
+    def test_Values(self):
         if self.backend == 'doppler':
             pytest.skip('FIXME')
 
@@ -98,13 +98,12 @@ class TestOp(CompilerTest):
                 return W_MyClass(w_x)
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wav_obj: W_Value,
-                           wav_i: W_Value) -> W_OpImpl:
-                assert isinstance(wav_obj, W_Value)
-                assert isinstance(wav_i, W_Value)
+            def op_GETITEM(vm: 'SPyVM', wv_obj: W_Value,
+                           wv_i: W_Value) -> W_OpImpl:
+                assert isinstance(wv_obj, W_Value)
+                assert isinstance(wv_i, W_Value)
                 # NOTE we are reversing the two!
-                return W_OpImpl.with_vals(EXT.w_sum, [wav_i, wav_obj])
-            op_GETITEM.use_absval = True
+                return W_OpImpl.with_vals(EXT.w_sum, [wv_i, wv_obj])
 
         @EXT.builtin
         def sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
