@@ -68,7 +68,7 @@ class W_OpImpl(W_Object):
         return w_opimpl
 
     @classmethod
-    def with_vals(cls, w_func: W_Func, args_wv: list[W_Value]) -> 'W_OpImpl':
+    def with_values(cls, w_func: W_Func, args_wv: list[W_Value]) -> 'W_OpImpl':
         w_opimpl = cls.__new__(cls)
         w_opimpl._w_func = w_func
         w_opimpl._args_wv = args_wv

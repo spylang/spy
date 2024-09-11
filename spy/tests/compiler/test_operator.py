@@ -103,7 +103,7 @@ class TestOp(CompilerTest):
                 assert isinstance(wv_obj, W_Value)
                 assert isinstance(wv_i, W_Value)
                 # NOTE we are reversing the two!
-                return W_OpImpl.with_vals(EXT.w_sum, [wv_i, wv_obj])
+                return W_OpImpl.with_values(EXT.w_sum, [wv_i, wv_obj])
 
         @EXT.builtin
         def sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
