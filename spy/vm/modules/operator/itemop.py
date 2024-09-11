@@ -17,6 +17,7 @@ def GETITEM(vm: 'SPyVM', wav_obj: W_AbsVal, wav_i: W_AbsVal) -> W_OpImpl:
         w_opimpl = pyclass.op_GETITEM(vm, wav_obj, wav_i)
 
     typecheck_opimpl(
+        vm,
         w_opimpl,
         [wav_obj, wav_i],
         dispatch = 'single',

@@ -682,6 +682,7 @@ class TypeChecker:
 # The goal is to kill the TypeChecker class eventually
 
 def typecheck_opimpl(
+        vm: 'SPyVM',
         w_opimpl: W_OpImpl,
         #node: ast.Node,
         args_wav: list[W_AbsVal],
@@ -722,6 +723,7 @@ def typecheck_opimpl(
     w_functype = w_opimpl.w_func.w_functype
 
     typecheck_call(
+        vm,
         w_functype,
         args_wav)
         ## def_loc = None, # would be nice to find it somehow
@@ -729,12 +731,12 @@ def typecheck_opimpl(
 
 
 def typecheck_call(
+        vm: 'SPyVM',
         w_functype: W_FuncType,
         args_wav: list[W_AbsVal],
         ## *,
         ## def_loc: Optional[Loc],
         ## call_loc: Optional[Loc],
-        ## argnodes: Sequence[ast.Expr | None],
 ) -> None:
     # XXX
     call_loc = None
@@ -750,16 +752,34 @@ def typecheck_call(
             def_loc = def_loc,
             call_loc = call_loc)
     #
-    # XXX re-enable
-    ## assert len(argnodes) == len(argtypes_w)
-    ## for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
-    ##                                             argtypes_w)):
-    ##     arg_expr = argnodes[i]
-    ##     err = self.convert_type_maybe(arg_expr, w_arg_type, param.w_type)
-    ##     if err:
-    ##         if def_loc:
-    ##             err.add('note', 'function defined here', def_loc)
-    ##         raise err
+    # check that the types of the arguments are compatible
+    for param, wav_arg in zip(w_functype.params, args_wav):
+        # XXX: we need to find a way to re-enable implicit conversions
+        err = convert_type_maybe(vm, wav_arg, param.w_type)
+        if err:
+            if def_loc:
+                err.add('note', 'function defined here', def_loc)
+            raise err
+
+
+def convert_type_maybe(
+        vm: 'SPyVM',
+        wav_x: W_Type,
+        w_exp: W_Type
+) -> Optional[SPyTypeError]:
+    w_got = wav_x.w_static_type
+    if vm.issubclass(w_got, w_exp):
+        # nothing to do
+        return None
+
+    # XXX IMPLEMENT ME
+    # we need to re-enable implicit conversions
+
+    err = SPyTypeError('mismatched types')
+    got = w_got.name
+    exp = w_exp.name
+    err.add('error', f'expected `{exp}`, got `{got}`', loc=wav_x.loc)
+    return err
 
 
 def _call_error_wrong_argcount(
