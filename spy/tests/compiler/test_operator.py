@@ -81,9 +81,6 @@ class TestOp(CompilerTest):
         self.compile_raises(src, "foo", errors)
 
     def test_Values(self):
-        if self.backend == 'doppler':
-            pytest.skip('FIXME')
-
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
 

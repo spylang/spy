@@ -156,6 +156,7 @@ class CompilerTest:
             return interp_mod
         elif self.backend == 'doppler':
             self.vm.redshift()
+            #self.dump_module(modname)
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
@@ -171,6 +172,12 @@ class CompilerTest:
             return ExeWrapper(file_js)
         else:
             assert False, f'Unknown backend: {self.backend}'
+
+    def dump_module(self, modname: str) -> None:
+        from spy.__main__ import dump_spy_mod
+        print()
+        print()
+        dump_spy_mod(self.vm, modname)
 
     def compile_raises(self, src: str, funcname: str, ctx: Any,
                        *,

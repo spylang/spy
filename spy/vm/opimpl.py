@@ -1,10 +1,12 @@
-from typing import Annotated, Optional, ClassVar, no_type_check
+from typing import Annotated, Optional, ClassVar, no_type_check, TypeVar
 from spy import ast
 from spy.fqn import QN
 from spy.location import Loc
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func
 from spy.vm.sig import spy_builtin
+
+T = TypeVar('T')
 
 @spytype('Value')
 class W_Value(W_Object):
@@ -102,9 +104,15 @@ class W_OpImpl(W_Object):
     def w_restype(self) -> W_Type:
         return self.w_func.w_functype.w_restype
 
-    def call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
-        if self._args_wv is not None:
-            args_w = [args_w[wv.i] for wv in self._args_wv]
-        return vm.call(self._w_func, args_w)
+    def reorder(self, args: list[T]) -> list[T]:
+        """
+        If we have a complex W_OpImpl, we want to reorder the given args
+        depending on the order of _args_wv
+        """
+        if self._args_wv is None:
+            return args
+        else:
+            return [args[wv.i] for wv in self._args_wv]
+
 
 W_OpImpl.NULL = W_OpImpl.simple(None)
