@@ -288,13 +288,11 @@ class TypeChecker:
         self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
-        self.OP_dispatch(
-            OP.w_SETITEM,
-            node,
-            [node.target, node.index, node.value],
-            dispatch = 'single',
-            errmsg = "cannot do `{0}[`{1}`] = ..."
-        )
+        _, wv_obj = self.value_from_check_expr(node.target, 't', 0)
+        _, wv_i = self.value_from_check_expr(node.index, 'i', 1)
+        _, wv_v = self.value_from_check_expr(node.value, 'v', 2)
+        w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wv_obj, wv_i, wv_v])
+        self.opimpl[node] = w_opimpl
 
     # ==== expressions ====
 

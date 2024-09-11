@@ -129,8 +129,8 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             return W_OpImpl.simple(vm.wrap_func(getitem))
 
         @staticmethod
-        def op_SETITEM(vm: 'SPyVM', w_listtype: W_Type, w_itype: W_Type,
-                       w_vtype: W_Type) -> W_OpImpl:
+        def op_SETITEM(vm: 'SPyVM', wv_obj: 'W_Value', wv_i: 'W_Value',
+                       wv_v: 'W_Value') -> W_OpImpl:
             from spy.vm.b import B
 
             @no_type_check
