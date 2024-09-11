@@ -685,13 +685,13 @@ def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
         #node: ast.Node,
-        args_wav: list[W_AbsVal],
+        orig_args_wav: list[W_AbsVal],
         *,
         dispatch: DispatchKind,
         errmsg: str,
 ) -> None:
     if w_opimpl.is_null():
-        typenames = [wav.w_static_type.name for wav in args_wav]
+        typenames = [wav.w_static_type.name for wav in orig_args_wav]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':
@@ -699,7 +699,7 @@ def typecheck_opimpl(
             # target doesn't support this operation: so we just report its
             # type and possibly its definition
             #assert args[0] is not None
-            wav_obj = args_wav[0]
+            wav_obj = orig_args_wav[0]
             t = wav_obj.w_static_type.name
             if wav_obj.loc:
                 err.add('error', f'this is `{t}`', wav_obj.loc)
@@ -721,6 +721,11 @@ def typecheck_opimpl(
         raise err
 
     w_functype = w_opimpl.w_func.w_functype
+    if w_opimpl._args_wav is None:
+        # for "simple" opimpls, we just pass the original wavs
+        args_wav = orig_args_wav
+    else:
+        args_wav = w_opimpl._args_wav
 
     typecheck_call(
         vm,
