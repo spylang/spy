@@ -179,11 +179,19 @@ class TypeChecker:
             self.expr_types[expr] = color, w_type
             return color, w_type
 
-    def value_from_check_expr(self, expr: ast.Expr, prefix:
-                              str, i: int) -> tuple[Color, W_Value]:
-        color, w_type = self.check_expr(expr)
-        wv = W_Value(prefix, i, w_type, expr.loc)
-        return color, wv
+    def check_many_exprs(self,
+                         prefixes: list[str],
+                         exprs: list[ast.Expr]
+                         ) -> tuple[list[Color], list[W_Value]]:
+        assert len(prefixes) == len(exprs)
+        colors = []
+        args_wv = []
+        for i, (prefix, expr) in enumerate(zip(prefixes, exprs)):
+            color, w_type = self.check_expr(expr)
+            wv = W_Value(prefix, i, w_type, expr.loc)
+            colors.append(color)
+            args_wv.append(wv)
+        return colors, args_wv
 
     # ==== statements ====
 
@@ -288,10 +296,11 @@ class TypeChecker:
         self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
-        _, wv_obj = self.value_from_check_expr(node.target, 't', 0)
-        _, wv_i = self.value_from_check_expr(node.index, 'i', 1)
-        _, wv_v = self.value_from_check_expr(node.value, 'v', 2)
-        w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wv_obj, wv_i, wv_v])
+        _, args_wv = self.check_many_exprs(
+            ['t', 'i', 'v'],
+            [node.target, node.index, node.value]
+        )
+        w_opimpl = self.vm.call_OP(OP.w_SETITEM, args_wv)
         self.opimpl[node] = w_opimpl
 
     # ==== expressions ====
@@ -361,10 +370,12 @@ class TypeChecker:
     check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        c1, wv_obj = self.value_from_check_expr(expr.value, 'v', 0)
-        c2, wv_i = self.value_from_check_expr(expr.index, 'i', 1)
-        color = maybe_blue(c1, c2)
-        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wv_obj, wv_i])
+        colors, args_wv = self.check_many_exprs(
+            ['v', 'i'],
+            [expr.value, expr.index],
+        )
+        color = maybe_blue(*colors)
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, args_wv)
         self.opimpl[expr] = w_opimpl
         return color, w_opimpl.w_restype
 
