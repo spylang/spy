@@ -426,15 +426,20 @@ class TypeChecker:
         color, w_functype = self.check_expr(call.func)
         assert isinstance(w_functype, W_FuncType)
         argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
+        args_wv = [
+            W_Value('v', i, w_type, arg.loc)
+            for i, (w_type, arg) in enumerate(zip(argtypes_w, call.args))
+        ]
         call_loc = call.func.loc
         sym = self.name2sym_maybe(call.func)
         def_loc = sym.loc if sym else None
-        self.call_typecheck(
+        typecheck_call(
+            self.vm,
             w_functype,
-            argtypes_w,
+            args_wv,
             def_loc = def_loc,
-            call_loc = call_loc,
-            argnodes = call.args)
+            call_loc = call_loc)
+
         # the color of the result depends on the color of the function: if
         # we call a @blue function, we get a blue result
         rescolor = w_functype.color
@@ -614,25 +619,20 @@ def typecheck_opimpl(
     typecheck_call(
         vm,
         w_opimpl,
-        w_opimpl._args_wv)
-        ## def_loc = None, # would be nice to find it somehow
-        ## call_loc = None), # XXX node.loc, # type: ignore
+        w_opimpl._args_wv,
+        def_loc = None, # would be nice to find it somehow
+        call_loc = None) # XXX node.loc, # type: ignore
 
 
 def typecheck_call(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
         args_wv: list[W_Value],
-        ## *,
-        ## def_loc: Optional[Loc],
-        ## call_loc: Optional[Loc],
+        *,
+        def_loc: Optional[Loc],
+        call_loc: Optional[Loc],
 ) -> None:
-    # XXX
-    call_loc = None
-    def_loc = None
-
     w_functype = w_opimpl.w_functype
-
     got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)
     if got_nargs != exp_nargs:
@@ -702,7 +702,6 @@ def _call_error_wrong_argcount(
     #
     # if we know the call_loc, we can add more detailed errors
     if call_loc:
-        assert argnodes is not None
         if got < exp:
             diff = exp - got
             arguments = maybe_plural(diff, 'argument')
@@ -711,7 +710,7 @@ def _call_error_wrong_argcount(
             diff = got - exp
             arguments = maybe_plural(diff, 'argument')
             first_extra_loc = args_wv[exp].loc
-            last_extra_loc = args_wv[exp].loc
+            last_extra_loc = args_wv[-1].loc
             assert first_extra_loc is not None
             assert last_extra_loc is not None
             # XXX this assumes that all the arguments are on the same line
