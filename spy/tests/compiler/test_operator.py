@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
-from spy.vm.opimpl import W_OpImpl, W_AbsVal
+from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors, skip_backends
@@ -98,10 +98,10 @@ class TestOp(CompilerTest):
                 return W_MyClass(w_x)
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wav_obj: W_AbsVal,
-                           wav_i: W_AbsVal) -> W_OpImpl:
-                assert isinstance(wav_obj, W_AbsVal)
-                assert isinstance(wav_i, W_AbsVal)
+            def op_GETITEM(vm: 'SPyVM', wav_obj: W_Value,
+                           wav_i: W_Value) -> W_OpImpl:
+                assert isinstance(wav_obj, W_Value)
+                assert isinstance(wav_i, W_Value)
                 # NOTE we are reversing the two!
                 return W_OpImpl.with_vals(EXT.w_sum, [wav_i, wav_obj])
             op_GETITEM.use_absval = True

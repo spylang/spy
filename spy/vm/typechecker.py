@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.opimpl import W_OpImpl, W_AbsVal
+from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.list import W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
@@ -360,9 +360,9 @@ class TypeChecker:
         c1, w_valtype = self.check_expr(expr.value)
         c2, w_itype = self.check_expr(expr.index)
         color = maybe_blue(c1, c2)
-        wav_val = self.vm.new_absval('v', 0, w_valtype, expr.value.loc)
-        wav_i = self.vm.new_absval('i', 1, w_itype, expr.index.loc)
-        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wav_val, wav_i])
+        wv_val = self.vm.new_absval('v', 0, w_valtype, expr.value.loc)
+        wv_i = self.vm.new_absval('i', 1, w_itype, expr.index.loc)
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wv_val, wv_i])
         self.opimpl[expr] = w_opimpl
         return color, w_opimpl.w_restype
 
@@ -432,26 +432,26 @@ class TypeChecker:
                              errmsg: str
                              ) -> tuple[Color, W_Type]:
         # step 1: determine the arguments to pass to OP()
-        args_wav: list[W_AbsVal] = []
+        args_wv: list[W_Value] = []
         color: Color = 'blue'
         for i, arg in enumerate(args):
             c1, w_argtype = self.check_expr(arg)
-            args_wav.append(self.vm.new_absval('v', i, w_argtype, arg.loc))
+            args_wv.append(self.vm.new_absval('v', i, w_argtype, arg.loc))
             color = maybe_blue(color, c1)
 
         # step 2: call OP() and get w_opimpl
         assert w_OP.color == 'blue', f'{w_OP.qn} is not blue'
-        w_opimpl = self.vm.call_OP(w_OP, args_wav) # type: ignore
+        w_opimpl = self.vm.call_OP(w_OP, args_wv) # type: ignore
 
         # step 3: check that we can call the returned w_opimpl
-        if w_opimpl._args_wav is None:
+        if w_opimpl._args_wv is None:
             # XXX this is a temporary hack: in this case, what we want to do
             # is to create "default" AbsVals and just pass them around. But we
             # cannot because there are still operators using the old-style
             # dispatch and they expect argtypes_w.
-            argtypes_w = [wav.w_static_type for wav in args_wav]
+            argtypes_w = [wv.w_static_type for wv in args_wv]
         else:
-            argtypes_w = [wav.w_static_type for wav in w_opimpl._args_wav]
+            argtypes_w = [wv.w_static_type for wv in w_opimpl._args_wv]
         self.opimpl_typecheck(w_opimpl, node, args, argtypes_w,
                               dispatch=dispatch, errmsg=errmsg)
         self.opimpl[node] = w_opimpl
@@ -685,13 +685,13 @@ def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
         #node: ast.Node,
-        orig_args_wav: list[W_AbsVal],
+        orig_args_wv: list[W_Value],
         *,
         dispatch: DispatchKind,
         errmsg: str,
 ) -> None:
     if w_opimpl.is_null():
-        typenames = [wav.w_static_type.name for wav in orig_args_wav]
+        typenames = [wv.w_static_type.name for wv in orig_args_wv]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':
@@ -699,10 +699,10 @@ def typecheck_opimpl(
             # target doesn't support this operation: so we just report its
             # type and possibly its definition
             #assert args[0] is not None
-            wav_obj = orig_args_wav[0]
-            t = wav_obj.w_static_type.name
-            if wav_obj.loc:
-                err.add('error', f'this is `{t}`', wav_obj.loc)
+            wv_obj = orig_args_wv[0]
+            t = wv_obj.w_static_type.name
+            if wv_obj.loc:
+                err.add('error', f'this is `{t}`', wv_obj.loc)
 
             ## sym = self.name2sym_maybe(target)
             ## if sym:
@@ -721,16 +721,16 @@ def typecheck_opimpl(
         raise err
 
     w_functype = w_opimpl.w_func.w_functype
-    if w_opimpl._args_wav is None:
-        # for "simple" opimpls, we just pass the original wavs
-        args_wav = orig_args_wav
+    if w_opimpl._args_wv is None:
+        # for "simple" opimpls, we just pass the original wvs
+        args_wv = orig_args_wv
     else:
-        args_wav = w_opimpl._args_wav
+        args_wv = w_opimpl._args_wv
 
     typecheck_call(
         vm,
         w_functype,
-        args_wav)
+        args_wv)
         ## def_loc = None, # would be nice to find it somehow
         ## call_loc = None), # XXX node.loc, # type: ignore
 
@@ -738,7 +738,7 @@ def typecheck_opimpl(
 def typecheck_call(
         vm: 'SPyVM',
         w_functype: W_FuncType,
-        args_wav: list[W_AbsVal],
+        args_wv: list[W_Value],
         ## *,
         ## def_loc: Optional[Loc],
         ## call_loc: Optional[Loc],
@@ -747,20 +747,20 @@ def typecheck_call(
     call_loc = None
     def_loc = None
 
-    got_nargs = len(args_wav)
+    got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)
     if got_nargs != exp_nargs:
         _call_error_wrong_argcount(
             got_nargs,
             exp_nargs,
-            args_wav,
+            args_wv,
             def_loc = def_loc,
             call_loc = call_loc)
     #
     # check that the types of the arguments are compatible
-    for param, wav_arg in zip(w_functype.params, args_wav):
+    for param, wv_arg in zip(w_functype.params, args_wv):
         # XXX: we need to find a way to re-enable implicit conversions
-        err = convert_type_maybe(vm, wav_arg, param.w_type)
+        err = convert_type_maybe(vm, wv_arg, param.w_type)
         if err:
             if def_loc:
                 err.add('note', 'function defined here', def_loc)
@@ -769,10 +769,10 @@ def typecheck_call(
 
 def convert_type_maybe(
         vm: 'SPyVM',
-        wav_x: W_Type,
+        wv_x: W_Type,
         w_exp: W_Type
 ) -> Optional[SPyTypeError]:
-    w_got = wav_x.w_static_type
+    w_got = wv_x.w_static_type
     if vm.issubclass(w_got, w_exp):
         # nothing to do
         return None
@@ -783,13 +783,13 @@ def convert_type_maybe(
     err = SPyTypeError('mismatched types')
     got = w_got.name
     exp = w_exp.name
-    err.add('error', f'expected `{exp}`, got `{got}`', loc=wav_x.loc)
+    err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
     return err
 
 
 def _call_error_wrong_argcount(
         got: int, exp: int,
-        args_wav: list[W_AbsVal],
+        args_wv: list[W_Value],
         *,
         def_loc: Optional[Loc],
         call_loc: Optional[Loc],
@@ -811,8 +811,8 @@ def _call_error_wrong_argcount(
         else:
             diff = got - exp
             arguments = maybe_plural(diff, 'argument')
-            first_extra_loc = args_wav[exp].loc
-            last_extra_loc = args_wav[exp].loc
+            first_extra_loc = args_wv[exp].loc
+            last_extra_loc = args_wv[exp].loc
             assert first_extra_loc is not None
             assert last_extra_loc is not None
             # XXX this assumes that all the arguments are on the same line
