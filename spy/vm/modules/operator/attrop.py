@@ -43,7 +43,6 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
     if w_type is B.w_dynamic:
         raise NotImplementedError("implement me")
     elif attr in pyclass.__spy_members__:
-        XXX
         return opimpl_member('get', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_GETATTR'):
         return pyclass.op_GETATTR(vm, wv_obj, wv_attr)
@@ -76,7 +75,6 @@ def _get_SETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
     if w_type is B.w_dynamic:
         return W_OpImpl.simple(OP.w_dynamic_setattr)
     elif attr in pyclass.__spy_members__:
-        XXX
         return opimpl_member('set', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_SETATTR'):
         return pyclass.op_SETATTR(vm, wv_obj, wv_attr, wv_v)

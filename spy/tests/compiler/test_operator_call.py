@@ -49,7 +49,6 @@ class TestCallOp(CompilerTest):
         assert x == 12
 
 
-    @pytest.mark.skip(reason='fix Member')
     def test_call_type(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
@@ -84,7 +83,6 @@ class TestCallOp(CompilerTest):
         res = mod.foo(3, 6)
         assert res == 36
 
-    @pytest.mark.skip(reason='fix Member')
     def test_spy_new(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext', '<ext>')
