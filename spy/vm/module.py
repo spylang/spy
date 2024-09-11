@@ -5,7 +5,7 @@ from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_Void
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc
 from spy.vm.sig import spy_builtin
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_Value
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -31,10 +31,10 @@ class W_Module(W_Object):
     # ==== operator impls =====
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_OpImpl:
+    def op_GETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value) -> W_OpImpl:
         """
-        XXX this is wrong: ideally, we should create a new subtype for each
-        module, where every member has its own static type.
+        Ideally, we should create a new subtype for each module, where every
+        member has its own static type.
 
         For now, we just use dynamic, which is good enough for now, since
         all the module getattrs are done in blue contexts are redshifted

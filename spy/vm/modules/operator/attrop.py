@@ -6,7 +6,7 @@ from spy.vm.module import W_Module
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.sig import spy_builtin
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.modules.types import W_TypeDef
 
 from . import OP
@@ -17,18 +17,38 @@ if TYPE_CHECKING:
 OpKind = Literal['get', 'set']
 
 @OP.builtin(color='blue')
-def GETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str) -> W_OpImpl:
-    attr = vm.unwrap_str(w_attr)
+def GETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opimpl
+    if wv_attr.is_blue() and wv_attr.w_static_type is B.w_str:
+        attr = vm.unwrap_str(wv_attr.w_blueval)
+    else:
+        attr = '<unknown>'
+
+    w_opimpl = _get_GETATTR_opimpl(vm, wv_obj, wv_attr, attr)
+    typecheck_opimpl(
+        vm,
+        w_opimpl,
+        [wv_obj, wv_attr],
+        dispatch = 'single',
+        errmsg = "type `{0}` has no attribute '%s'" % attr
+    )
+    return w_opimpl
+
+def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
+                        attr: str) -> W_OpImpl:
+    w_type = wv_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         raise NotImplementedError("implement me")
     elif attr in pyclass.__spy_members__:
+        XXX
         return opimpl_member('get', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_GETATTR'):
-        return pyclass.op_GETATTR(vm, w_type, w_attr)
+        return pyclass.op_GETATTR(vm, wv_obj, wv_attr)
 
     # XXX refactor
     if isinstance(w_type, W_TypeDef) and w_type.w_getattr is not None:
+        XXX
         w_getattr = w_type.w_getattr
         assert isinstance(w_getattr, W_Func)
         w_func = vm.call(w_getattr, [w_type, w_attr])

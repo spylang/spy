@@ -13,26 +13,48 @@ class W_Value(W_Object):
     """
     A Value represent an operand of an OPERATOR.
 
+    All values have a w_static_type; blue values have also a w_blueval.
+
     The naming convention is wv_one and manyvalues_wv.
     """
     prefix: str
     i: int
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Optional[Loc]
+    _w_blueval: Optional[W_Object]
 
-    def __init__(self, prefix: str, i: int, w_static_type: W_Type,
-                 loc: Optional[Loc]) -> None:
+    def __init__(self,
+                 prefix: str,
+                 i: int,
+                 w_static_type: W_Type,
+                 loc: Optional[Loc],
+                 *,
+                 w_blueval: Optional[W_Object] = None,
+                 ) -> None:
         self.prefix = prefix
         self.i = i
         self.w_static_type = w_static_type
         self.loc = loc
+        self._w_blueval = w_blueval
 
     @property
     def name(self):
         return f'{self.prefix}{self.i}'
 
     def __repr__(self):
-        return f'<W_Value {self.name}: {self.w_static_type.name}>'
+        if self.is_blue():
+            extra = f' = {self._w_blueval}'
+        else:
+            extra = ''
+        return f'<W_Value {self.name}: {self.w_static_type.name}{extra}>'
+
+    def is_blue(self):
+        return self._w_blueval is not None
+
+    @property
+    def w_blueval(self) -> W_Object:
+        assert self._w_blueval is not None
+        return self._w_blueval
 
     @staticmethod
     def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> 'W_OpImpl':

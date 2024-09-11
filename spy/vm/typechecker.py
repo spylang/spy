@@ -380,19 +380,17 @@ class TypeChecker:
         return color, w_opimpl.w_restype
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
-        color, w_vtype = self.check_expr(expr.value)
-        w_attr = self.vm.wrap(expr.attr)
-        w_opimpl = self.vm.call_OP(OP.w_GETATTR, [w_vtype, w_attr])
-        self.opimpl_typecheck(
-            w_opimpl,
-            expr,
-            [expr.value, None],
-            [w_vtype, B.w_str],
-            dispatch = 'single',
-            errmsg = "type `{0}` has no attribute '%s'" % expr.attr
+        colors, args_wv = self.check_many_exprs(
+            ['v'],
+            [expr.value]
         )
+        color = colors[0]
+        wv_attr = W_Value('a', 1, B.w_str, expr.loc,
+                          w_blueval = self.vm.wrap(expr.attr))
+        args_wv.append(wv_attr)
+        w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wv)
         self.opimpl[expr] = w_opimpl
-        return color, w_opimpl.w_restype
+        return colors[0], w_opimpl.w_restype
 
     def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
                     *,
