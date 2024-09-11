@@ -357,13 +357,14 @@ class TypeChecker:
     check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        return self.OP_dispatch(
-            OP.w_GETITEM,
-            expr,
-            [expr.value, expr.index],
-            dispatch = 'single',
-            errmsg = 'cannot do `{0}`[...]'
-        )
+        c1, w_valtype = self.check_expr(expr.value)
+        c2, w_itype = self.check_expr(expr.index)
+        color = maybe_blue(c1, c2)
+        wav_val = self.vm.new_absval('v', 0, w_valtype, expr.value.loc)
+        wav_i = self.vm.new_absval('i', 1, w_itype, expr.index.loc)
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wav_val, wav_i])
+        self.opimpl[expr] = w_opimpl
+        return color, w_opimpl.w_restype
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         color, w_vtype = self.check_expr(expr.value)
@@ -435,7 +436,7 @@ class TypeChecker:
         color: Color = 'blue'
         for i, arg in enumerate(args):
             c1, w_argtype = self.check_expr(arg)
-            args_wav.append(self.vm.new_absval('v', i, w_argtype))
+            args_wav.append(self.vm.new_absval('v', i, w_argtype, arg.loc))
             color = maybe_blue(color, c1)
 
         # step 2: call OP() and get w_opimpl
@@ -672,3 +673,58 @@ class TypeChecker:
             c1, w_t1 = self.check_expr(item)
             color = maybe_blue(color, c1)
         return color, B.w_tuple
+
+
+
+
+# ===== NEW STYLE TYPECHECKING =====
+# A lot of this code is copied&pasted from TypeChecker for now.
+# The goal is to kill the TypeChecker class eventually
+
+def opimpl_typecheck(
+                     w_opimpl: W_OpImpl,
+                     #node: ast.Node,
+                     args_wav: list[W_AbsVal],
+                     *,
+                     dispatch: DispatchKind,
+                     errmsg: str,
+                     ) -> None:
+    if w_opimpl.is_null():
+        typenames = [wav.w_static_type.name for wav in args_wav]
+        errmsg = errmsg.format(*typenames)
+        err = SPyTypeError(errmsg)
+        if dispatch == 'single':
+            # for single dispatch ops, NotImplemented means that the
+            # target doesn't support this operation: so we just report its
+            # type and possibly its definition
+            #assert args[0] is not None
+            wav_obj = args_wav[0]
+            t = wav_obj.w_static_type.name
+            if wav_obj.loc:
+                err.add('error', f'this is `{t}`', wav_obj.loc)
+
+            ## sym = self.name2sym_maybe(target)
+            ## if sym:
+            ##     assert isinstance(target, ast.Name)
+            ##     err.add('note', f'`{target.id}` defined here', sym.loc)
+
+        else:
+            #XXX fixme
+
+            # for multi dispatch ops, all operands are equally important
+            # for finding the opimpl: we report all of them
+            for arg, w_argtype in zip(args, argtypes_w):
+                if arg is not None:
+                    t = w_argtype.name
+                    err.add('error', f'this is `{t}`', arg.loc)
+        raise err
+
+    w_functype = w_opimpl.w_func.w_functype
+
+    # XXX re-enable
+    ## call_typecheck(
+    ##     w_functype,
+    ##     args_wav,
+    ##     def_loc = None, # would be nice to find it somehow
+    ##     call_loc = None, # XXX node.loc, # type: ignore
+    ##     argnodes = args)

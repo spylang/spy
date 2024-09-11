@@ -10,11 +10,20 @@ if TYPE_CHECKING:
 
 @OP.builtin(color='blue')
 def GETITEM(vm: 'SPyVM', wav_obj: W_AbsVal, wav_i: W_AbsVal) -> W_OpImpl:
+    from spy.vm.typechecker import opimpl_typecheck
+    w_opimpl = W_OpImpl.NULL
     pyclass = wav_obj.w_static_type.pyclass
     if pyclass.has_meth_overriden('op_GETITEM'):
-        return pyclass.op_GETITEM(vm, wav_obj, wav_i)
+        w_opimpl = pyclass.op_GETITEM(vm, wav_obj, wav_i)
 
-    return W_OpImpl.NULL
+    opimpl_typecheck(
+        w_opimpl,
+        [wav_obj, wav_i],
+        dispatch = 'single',
+        errmsg = 'cannot do `{0}`[...]'
+    )
+    return w_opimpl
+
 
 @OP.builtin(color='blue')
 def SETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type,

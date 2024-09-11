@@ -1,6 +1,7 @@
 from typing import Annotated, Optional, ClassVar, no_type_check
 from spy import ast
 from spy.fqn import QN
+from spy.location import Loc
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func
 from spy.vm.sig import spy_builtin
@@ -10,11 +11,14 @@ class W_AbsVal(W_Object):
     name: str
     i: int
     w_static_type: Annotated[W_Type, Member('static_type')]
+    loc: Optional[Loc]
 
-    def __init__(self, name: str, i: int, w_static_type: W_Type) -> None:
+    def __init__(self, name: str, i: int, w_static_type: W_Type,
+                 loc: Optional[Loc]) -> None:
         self.name = name
         self.i = i
         self.w_static_type = w_static_type
+        self.loc = loc
 
     def __repr__(self):
         return f'<W_AbsVal {self.name}{self.i}: {self.w_static_type.name}>'
