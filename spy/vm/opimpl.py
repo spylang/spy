@@ -1,4 +1,4 @@
-from typing import Annotated, Optional, ClassVar, no_type_check, TypeVar
+from typing import Annotated, Optional, ClassVar, no_type_check, TypeVar, Any
 from spy import ast
 from spy.fqn import QN
 from spy.location import Loc
@@ -55,6 +55,34 @@ class W_Value(W_Object):
     def w_blueval(self) -> W_Object:
         assert self._w_blueval is not None
         return self._w_blueval
+
+    def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
+        """
+        Ensure that the W_Value is blue and of the expected type.
+        Raise SPyTypeError if not.
+        """
+        from spy.vm.typechecker import convert_type_maybe
+        if not self.is_blue():
+            raise SPyTypeError.simple(
+                'expected blue argument',
+                'this is red',
+                self.loc)
+        err = convert_type_maybe(vm, self, w_expected_type)
+        if err:
+            raise err
+        return self._w_blueval
+
+    def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
+        """
+        Like ensure_blue, but also unwrap.
+        """
+        w_obj = self.blue_ensure(vm, w_expected_type)
+        return vm.unwrap(w_obj)
+
+    def blue_unwrap_str(self, vm: 'SPyVM') -> str:
+        from spy.vm.b import B
+        self.blue_ensure(vm, B.w_str)
+        return vm.unwrap_str(self._w_blueval)
 
     @staticmethod
     def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> 'W_OpImpl':
