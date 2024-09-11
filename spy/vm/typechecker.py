@@ -688,8 +688,8 @@ def typecheck_opimpl(
         raise err
 
     w_functype = w_opimpl.w_func.w_functype
-    if w_opimpl._args_wv is None:
-        # for "simple" opimpls, we just pass the original wvs
+    if w_opimpl.is_simple():
+        # for "simple" opimpls, we just pass the original values
         args_wv = orig_args_wv
     else:
         args_wv = w_opimpl._args_wv

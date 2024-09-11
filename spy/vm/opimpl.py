@@ -95,6 +95,9 @@ class W_OpImpl(W_Object):
     def is_null(self) -> bool:
         return self._w_func is None
 
+    def is_simple(self) -> bool:
+        return self._args_wv is None
+
     @property
     def w_func(self) -> W_Func:
         assert self._w_func is not None
