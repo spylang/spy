@@ -37,6 +37,12 @@ class W_Value(W_Object):
         self.loc = loc
         self._w_blueval = w_blueval
 
+    @classmethod
+    def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object,
+                   prefix: str, i: int) -> 'W_Value':
+        w_type = vm.dynamic_type(w_obj)
+        return W_Value(prefix, i, w_type, None, w_blueval=w_obj)
+
     @property
     def name(self):
         return f'{self.prefix}{self.i}'

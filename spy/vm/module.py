@@ -48,8 +48,8 @@ class W_Module(W_Object):
 
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
-                   w_vtype: W_Type) -> W_OpImpl:
+    def op_SETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
+                   wv_v: W_Value) -> W_OpImpl:
         @spy_builtin(QN('builtins::module_setattr'))
         def fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
                    W_Str, w_val: W_Dynamic) -> W_Void:
