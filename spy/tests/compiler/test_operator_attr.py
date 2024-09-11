@@ -75,9 +75,9 @@ class TestAttrOp(CompilerTest):
                 return W_OpImpl.simple(vm.wrap_func(fn))
 
             @staticmethod
-            def op_SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
-                           w_vtype: W_Type) -> W_OpImpl:
-                attr = vm.unwrap_str(w_attr)
+            def op_SETATTR(vm: 'SPyVM', wv_obj: W_OpImpl, wv_attr: W_Value,
+                           wv_v: W_Value) -> W_OpImpl:
+                attr = wv_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @spy_builtin(QN('ext::setx'))
                     def fn(vm: 'SPyVM', w_obj: W_MyClass,

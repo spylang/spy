@@ -292,20 +292,11 @@ class TypeChecker:
             self._check_assign(target, target_loc, expr)
 
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
-        _, w_otype = self.check_expr(node.target)
-        _, w_vtype = self.check_expr(node.value)
-        w_attr = self.vm.wrap(node.attr)
-        w_opimpl = self.vm.call_OP(OP.w_SETATTR, [w_otype, w_attr, w_vtype])
-        errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
-                  node.attr)
-        self.opimpl_typecheck(
-            w_opimpl,
-            node,
-            [node.target, None, node.value],
-            [w_otype, B.w_str, w_vtype],
-            dispatch = 'single',
-            errmsg = errmsg
+        _, args_wv = self.check_many_exprs(
+            ['t', 'a', 'v'],
+            [node.target, node.attr, node.value]
         )
+        w_opimpl = self.vm.call_OP(OP.w_SETATTR, args_wv)
         self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:

@@ -16,14 +16,16 @@ if TYPE_CHECKING:
 
 OpKind = Literal['get', 'set']
 
+def unwrap_attr_maybe(vm: 'SPyVM', wv_attr: W_Value) -> str:
+    if wv_attr.is_blue() and wv_attr.w_static_type is B.w_str:
+        return vm.unwrap_str(wv_attr.w_blueval)
+    else:
+        return '<unknown>'
+
 @OP.builtin(color='blue')
 def GETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
-    if wv_attr.is_blue() and wv_attr.w_static_type is B.w_str:
-        attr = vm.unwrap_str(wv_attr.w_blueval)
-    else:
-        attr = '<unknown>'
-
+    attr = unwrap_attr_maybe(vm, wv_attr)
     w_opimpl = _get_GETATTR_opimpl(vm, wv_obj, wv_attr, attr)
     typecheck_opimpl(
         vm,
@@ -61,19 +63,36 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
 
 
 @OP.builtin(color='blue')
-def SETATTR(vm: 'SPyVM', w_type: W_Type, w_attr: W_Str,
-            w_vtype: W_Type) -> W_OpImpl:
-    attr = vm.unwrap_str(w_attr)
+def SETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
+            wv_v: W_Value) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opimpl
+    attr = unwrap_attr_maybe(vm, wv_attr)
+    w_opimpl = _get_SETATTR_opimpl(vm, wv_obj, wv_attr, wv_v, attr)
+    errmsg = "type `{0}` does not support assignment to attribute '%s'" % attr
+    typecheck_opimpl(
+        vm,
+        w_opimpl,
+        [wv_obj, wv_attr, wv_v],
+        dispatch = 'single',
+        errmsg = errmsg
+    )
+    return w_opimpl
+
+def _get_SETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
+                        wv_v: W_Value, attr: str) -> W_OpImpl:
+    w_type = wv_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         return W_OpImpl.simple(OP.w_dynamic_setattr)
     elif attr in pyclass.__spy_members__:
+        XXX
         return opimpl_member('set', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_SETATTR'):
-        return pyclass.op_SETATTR(vm, w_type, w_attr, w_vtype)
+        return pyclass.op_SETATTR(vm, wv_obj, wv_attr, wv_v)
 
     # XXX refactor
     if isinstance(w_type, W_TypeDef) and w_type.w_setattr is not None:
+        XXX
         w_setattr = w_type.w_setattr
         assert isinstance(w_setattr, W_Func)
         w_func = vm.call(w_setattr, [w_type, w_attr, w_vtype])
