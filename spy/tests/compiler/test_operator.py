@@ -25,8 +25,8 @@ class TestOp(CompilerTest):
                 return W_MyClass()
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
-                           w_itype: W_Type) -> W_OpImpl:
+            def op_GETITEM(vm: 'SPyVM', wv_obj: W_Value,
+                           wv_i: W_Value) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
@@ -59,8 +59,8 @@ class TestOp(CompilerTest):
                 return W_MyClass()
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
-                           w_itype: W_Type) -> W_OpImpl:
+            def op_GETITEM(vm: 'SPyVM', wv_obj: W_Value,
+                           wv_i: W_Value) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)

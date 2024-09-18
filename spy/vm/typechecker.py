@@ -179,11 +179,37 @@ class TypeChecker:
             self.expr_types[expr] = color, w_type
             return color, w_type
 
-    def value_from_check_expr(self, expr: ast.Expr, prefix:
-                              str, i: int) -> tuple[Color, W_Value]:
-        color, w_type = self.check_expr(expr)
-        wv = W_Value(prefix, i, w_type, expr.loc)
-        return color, wv
+    def check_many_exprs(self,
+                         prefixes: list[str],
+                         exprs: list[ast.Expr | str]
+                         ) -> tuple[list[Color], list[W_Value]]:
+        assert len(prefixes) == len(exprs)
+        colors = []
+        args_wv = []
+        last_loc = None
+        for i, (prefix, expr) in enumerate(zip(prefixes, exprs)):
+            if isinstance(expr, str):
+                # HACK HACK HACK: we need a loc but we don't have any. We just
+                # use the last_loc. This works only as far as this doesn't
+                # happen at the first iteration, which is good enough in
+                # practice.
+                #
+                # Ultimately this happens because astr.GetAttr.attr is of type
+                # 'str'. Probably we should just turn it into a "real" Expr,
+                # so that it will be automatically and transparetly converted
+                # into a W_Value
+                assert last_loc is not None
+                loc = last_loc
+                color = 'blue'
+                wv = W_Value(prefix, i, B.w_str, loc,
+                             w_blueval = self.vm.wrap(expr))
+            else:
+                color, w_type = self.check_expr(expr)
+                wv = W_Value(prefix, i, w_type, expr.loc)
+                last_loc = expr.loc
+            colors.append(color)
+            args_wv.append(wv)
+        return colors, args_wv
 
     # ==== statements ====
 
@@ -271,30 +297,20 @@ class TypeChecker:
             self._check_assign(target, target_loc, expr)
 
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
-        _, w_otype = self.check_expr(node.target)
-        _, w_vtype = self.check_expr(node.value)
-        w_attr = self.vm.wrap(node.attr)
-        w_opimpl = self.vm.call_OP(OP.w_SETATTR, [w_otype, w_attr, w_vtype])
-        errmsg = ("type `{0}` does not support assignment to attribute '%s'" %
-                  node.attr)
-        self.opimpl_typecheck(
-            w_opimpl,
-            node,
-            [node.target, None, node.value],
-            [w_otype, B.w_str, w_vtype],
-            dispatch = 'single',
-            errmsg = errmsg
+        _, args_wv = self.check_many_exprs(
+            ['t', 'a', 'v'],
+            [node.target, node.attr, node.value]
         )
+        w_opimpl = self.vm.call_OP(OP.w_SETATTR, args_wv)
         self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
-        self.OP_dispatch(
-            OP.w_SETITEM,
-            node,
-            [node.target, node.index, node.value],
-            dispatch = 'single',
-            errmsg = "cannot do `{0}[`{1}`] = ..."
+        _, args_wv = self.check_many_exprs(
+            ['t', 'i', 'v'],
+            [node.target, node.index, node.value]
         )
+        w_opimpl = self.vm.call_OP(OP.w_SETITEM, args_wv)
+        self.opimpl[node] = w_opimpl
 
     # ==== expressions ====
 
@@ -363,27 +379,23 @@ class TypeChecker:
     check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        c1, wv_obj = self.value_from_check_expr(expr.value, 'v', 0)
-        c2, wv_i = self.value_from_check_expr(expr.index, 'i', 1)
-        color = maybe_blue(c1, c2)
-        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wv_obj, wv_i])
+        colors, args_wv = self.check_many_exprs(
+            ['v', 'i'],
+            [expr.value, expr.index],
+        )
+        color = maybe_blue(*colors)
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, args_wv)
         self.opimpl[expr] = w_opimpl
         return color, w_opimpl.w_restype
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
-        color, w_vtype = self.check_expr(expr.value)
-        w_attr = self.vm.wrap(expr.attr)
-        w_opimpl = self.vm.call_OP(OP.w_GETATTR, [w_vtype, w_attr])
-        self.opimpl_typecheck(
-            w_opimpl,
-            expr,
-            [expr.value, None],
-            [w_vtype, B.w_str],
-            dispatch = 'single',
-            errmsg = "type `{0}` has no attribute '%s'" % expr.attr
+        colors, args_wv = self.check_many_exprs(
+            ['v', 'a'],
+            [expr.value, expr.attr]
         )
+        w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wv)
         self.opimpl[expr] = w_opimpl
-        return color, w_opimpl.w_restype
+        return colors[0], w_opimpl.w_restype
 
     def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
                     *,

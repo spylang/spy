@@ -27,10 +27,19 @@ def GETITEM(vm: 'SPyVM', wv_obj: W_Value, wv_i: W_Value) -> W_OpImpl:
 
 
 @OP.builtin(color='blue')
-def SETITEM(vm: 'SPyVM', w_type: W_Type, w_itype: W_Type,
-            w_vtype: W_Type) -> W_Dynamic:
-    pyclass = w_type.pyclass
+def SETITEM(vm: 'SPyVM', wv_obj: W_Value, wv_i: W_Value,
+            wv_v: W_Value) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opimpl
+    w_opimpl = W_OpImpl.NULL
+    pyclass = wv_obj.w_static_type.pyclass
     if pyclass.has_meth_overriden('op_SETITEM'):
-        return pyclass.op_SETITEM(vm, w_type, w_itype, w_vtype)
+        w_opimpl = pyclass.op_SETITEM(vm, wv_obj, wv_i, wv_v)
 
-    return W_OpImpl.NULL
+    typecheck_opimpl(
+        vm,
+        w_opimpl,
+        [wv_obj, wv_i, wv_v],
+        dispatch = 'single',
+        errmsg = "cannot do `{0}[`{1}`] = ..."
+    )
+    return w_opimpl

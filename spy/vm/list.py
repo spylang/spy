@@ -5,7 +5,7 @@ from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
 from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpImpl
+    from spy.vm.opimpl import W_OpImpl, W_Value
 
 class Meta_W_List(type):
     """
@@ -63,8 +63,8 @@ class W_List(W_Object, metaclass=Meta_W_List):
         type(cls).make_prebuilt(cls, itemcls)
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', w_type: W_Type,
-                        w_vtype: W_Type) -> 'W_OpImpl':
+    def meta_op_GETITEM(vm: 'SPyVM', wv_obj: 'W_Value',
+                        wv_i: 'W_Value') -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
         return W_OpImpl.simple(vm.wrap_func(make_list_type))
 
@@ -118,8 +118,8 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             return [vm.unwrap(w_item) for w_item in self.items_w]
 
         @staticmethod
-        def op_GETITEM(vm: 'SPyVM', w_listtype: W_Type,
-                       w_itype: W_Type) -> W_OpImpl:
+        def op_GETITEM(vm: 'SPyVM', wv_obj: 'W_Value',
+                       wv_i: 'W_Value') -> W_OpImpl:
             @no_type_check
             @spy_builtin(QN('operator::list_getitem'))
             def getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
@@ -129,8 +129,8 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             return W_OpImpl.simple(vm.wrap_func(getitem))
 
         @staticmethod
-        def op_SETITEM(vm: 'SPyVM', w_listtype: W_Type, w_itype: W_Type,
-                       w_vtype: W_Type) -> W_OpImpl:
+        def op_SETITEM(vm: 'SPyVM', wv_obj: 'W_Value', wv_i: 'W_Value',
+                       wv_v: 'W_Value') -> W_OpImpl:
             from spy.vm.b import B
 
             @no_type_check

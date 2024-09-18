@@ -1,4 +1,4 @@
-from typing import Annotated, Optional, ClassVar, no_type_check, TypeVar
+from typing import Annotated, Optional, ClassVar, no_type_check, TypeVar, Any
 from spy import ast
 from spy.fqn import QN
 from spy.location import Loc
@@ -13,26 +13,82 @@ class W_Value(W_Object):
     """
     A Value represent an operand of an OPERATOR.
 
+    All values have a w_static_type; blue values have also a w_blueval.
+
     The naming convention is wv_one and manyvalues_wv.
     """
     prefix: str
     i: int
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Optional[Loc]
+    _w_blueval: Optional[W_Object]
 
-    def __init__(self, prefix: str, i: int, w_static_type: W_Type,
-                 loc: Optional[Loc]) -> None:
+    def __init__(self,
+                 prefix: str,
+                 i: int,
+                 w_static_type: W_Type,
+                 loc: Optional[Loc],
+                 *,
+                 w_blueval: Optional[W_Object] = None,
+                 ) -> None:
         self.prefix = prefix
         self.i = i
         self.w_static_type = w_static_type
         self.loc = loc
+        self._w_blueval = w_blueval
+
+    @classmethod
+    def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object,
+                   prefix: str, i: int) -> 'W_Value':
+        w_type = vm.dynamic_type(w_obj)
+        return W_Value(prefix, i, w_type, None, w_blueval=w_obj)
 
     @property
     def name(self):
         return f'{self.prefix}{self.i}'
 
     def __repr__(self):
-        return f'<W_Value {self.name}: {self.w_static_type.name}>'
+        if self.is_blue():
+            extra = f' = {self._w_blueval}'
+        else:
+            extra = ''
+        return f'<W_Value {self.name}: {self.w_static_type.name}{extra}>'
+
+    def is_blue(self):
+        return self._w_blueval is not None
+
+    @property
+    def w_blueval(self) -> W_Object:
+        assert self._w_blueval is not None
+        return self._w_blueval
+
+    def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
+        """
+        Ensure that the W_Value is blue and of the expected type.
+        Raise SPyTypeError if not.
+        """
+        from spy.vm.typechecker import convert_type_maybe
+        if not self.is_blue():
+            raise SPyTypeError.simple(
+                'expected blue argument',
+                'this is red',
+                self.loc)
+        err = convert_type_maybe(vm, self, w_expected_type)
+        if err:
+            raise err
+        return self._w_blueval
+
+    def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
+        """
+        Like ensure_blue, but also unwrap.
+        """
+        w_obj = self.blue_ensure(vm, w_expected_type)
+        return vm.unwrap(w_obj)
+
+    def blue_unwrap_str(self, vm: 'SPyVM') -> str:
+        from spy.vm.b import B
+        self.blue_ensure(vm, B.w_str)
+        return vm.unwrap_str(self._w_blueval)
 
     @staticmethod
     def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> 'W_OpImpl':
@@ -44,11 +100,15 @@ class W_Value(W_Object):
         def eq(vm: 'SPyVM', wv1: W_Value, wv2: W_Value) -> W_Bool:
             # note that the prefix is NOT considered for equality, is purely for
             # description
-            if (wv1.i == wv2.i and
-                wv1.w_static_type is wv2.w_static_type):
-                return B.w_True
-            else:
+            if wv1.i != wv2.i:
                 return B.w_False
+            if wv1.w_static_type is not wv2.w_static_type:
+                return B.w_False
+            if (wv1.is_blue() and
+                wv2.is_blue() and
+                vm.is_False(vm.eq(wv1._w_blueval, wv2._w_blueval))):
+                return B.w_False
+            return B.w_True
 
         if w_ltype is w_rtype:
             return W_OpImpl.simple(vm.wrap_func(eq))
