@@ -192,7 +192,12 @@ class TypeChecker:
                 # HACK HACK HACK: we need a loc but we don't have any. We just
                 # use the last_loc. This works only as far as this doesn't
                 # happen at the first iteration, which is good enough in
-                # practice
+                # practice.
+                #
+                # Ultimately this happens because astr.GetAttr.attr is of type
+                # 'str'. Probably we should just turn it into a "real" Expr,
+                # so that it will be automatically and transparetly converted
+                # into a W_Value
                 assert last_loc is not None
                 loc = last_loc
                 color = 'blue'
