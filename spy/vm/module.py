@@ -19,6 +19,7 @@ class W_Module(W_Object):
     name: str
     filepath: str
     _frozen: bool
+    __spy_storage_category__ = 'reference'
 
     def __init__(self, vm: 'SPyVM', name: str, filepath: str) -> None:
         self.vm = vm
