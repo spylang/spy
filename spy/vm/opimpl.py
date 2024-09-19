@@ -1,10 +1,14 @@
-from typing import Annotated, Optional, ClassVar, no_type_check, TypeVar, Any
+from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
+                    TYPE_CHECKING)
 from spy import ast
 from spy.fqn import QN
 from spy.location import Loc
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func
 from spy.vm.sig import spy_builtin
+
+if TYPE_CHECKING:
+    from spy.vm.typeconverter import TypeConverter
 
 T = TypeVar('T')
 
@@ -126,6 +130,7 @@ class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
     _args_wv: Optional[list[W_Value]]
+    _converters: Optional[list[Optional['TypeConverter']]]
 
     def __init__(self, *args) -> None:
         raise NotImplementedError('Please use W_OpImpl.simple()')
@@ -135,6 +140,7 @@ class W_OpImpl(W_Object):
         w_opimpl = cls.__new__(cls)
         w_opimpl._w_func = w_func
         w_opimpl._args_wv = None
+        w_opimpl._converters = None
         return w_opimpl
 
     @classmethod
@@ -142,6 +148,7 @@ class W_OpImpl(W_Object):
         w_opimpl = cls.__new__(cls)
         w_opimpl._w_func = w_func
         w_opimpl._args_wv = args_wv
+        w_opimpl._converters = [None] * len(args_wv)
         return w_opimpl
 
     def __repr__(self) -> str:
@@ -171,6 +178,12 @@ class W_OpImpl(W_Object):
     def w_restype(self) -> W_Type:
         return self.w_func.w_functype.w_restype
 
+    def set_args_wv(self, args_wv):
+        assert self._args_wv is None
+        assert self._converters is None
+        self._args_wv = args_wv[:]
+        self._converters = [None] * len(args_wv)
+
     def reorder(self, args: list[T]) -> list[T]:
         """
         If we have a complex W_OpImpl, we want to reorder the given args
@@ -181,5 +194,13 @@ class W_OpImpl(W_Object):
         else:
             return [args[wv.i] for wv in self._args_wv]
 
+    def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
+        real_args_w = []
+        for wv_arg, conv in zip(self._args_wv, self._converters):
+            w_arg = orig_args_w[wv_arg.i]
+            if conv is not None:
+                w_arg = conv.convert(vm, w_arg)
+            real_args_w.append(w_arg)
+        return vm.call(self.w_func, real_args_w)
 
 W_OpImpl.NULL = W_OpImpl.simple(None)

@@ -659,24 +659,20 @@ def typecheck_opimpl(
                 err.add('error', f'this is `{t}`', wv_arg.loc)
         raise err
 
-    w_functype = w_opimpl.w_func.w_functype
     if w_opimpl.is_simple():
-        # for "simple" opimpls, we just pass the original values
-        args_wv = orig_args_wv
-    else:
-        args_wv = w_opimpl._args_wv
+        w_opimpl.set_args_wv(orig_args_wv)
 
     typecheck_call(
         vm,
-        w_functype,
-        args_wv)
+        w_opimpl,
+        w_opimpl._args_wv)
         ## def_loc = None, # would be nice to find it somehow
         ## call_loc = None), # XXX node.loc, # type: ignore
 
 
 def typecheck_call(
         vm: 'SPyVM',
-        w_functype: W_FuncType,
+        w_opimpl: W_OpImpl,
         args_wv: list[W_Value],
         ## *,
         ## def_loc: Optional[Loc],
@@ -685,6 +681,8 @@ def typecheck_call(
     # XXX
     call_loc = None
     def_loc = None
+
+    w_functype = w_opimpl.w_func.w_functype
 
     got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)
@@ -697,13 +695,12 @@ def typecheck_call(
             call_loc = call_loc)
     #
     # check that the types of the arguments are compatible
-    for param, wv_arg in zip(w_functype.params, args_wv):
-        # XXX: we need to find a way to re-enable implicit conversions
-        err = convert_type_maybe(vm, wv_arg, param.w_type)
-        if err:
-            if def_loc:
-                err.add('note', 'function defined here', def_loc)
-            raise err
+    for i, (param, wv_arg) in enumerate(zip(w_functype.params, args_wv)):
+        conv = convert_type_maybe(vm, wv_arg, param.w_type)
+        w_opimpl._converters[i] = conv # ???
+        ## if def_loc:
+        ##     err.add('note', 'function defined here', def_loc)
+        ##     raise err
 
 
 def convert_type_maybe(
@@ -716,9 +713,29 @@ def convert_type_maybe(
         # nothing to do
         return None
 
-    # XXX IMPLEMENT ME
-    # we need to re-enable implicit conversions
+    # the types don't match and/or we need a conversion (see point 2 above)
 
+    # try to see whether we can apply a type conversion
+    if vm.issubclass(w_exp, w_got):
+        XXX
+        # implicit upcast
+        self.expr_conv[expr] = DynamicCast(w_exp)
+        return None
+    elif w_got is B.w_i32 and w_exp is B.w_f64:
+        return NumericConv(w_type=w_exp, w_fromtype=w_got)
+    elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
+        XXX
+        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
+                                         w_fromtype=w_got)
+        return None
+    elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
+        XXX
+        assert w_got == W_FuncType.parse('def() -> void')
+        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
+                                         w_fromtype=w_got)
+        return None
+
+    # mismatched types
     err = SPyTypeError('mismatched types')
     got = w_got.name
     exp = w_exp.name
