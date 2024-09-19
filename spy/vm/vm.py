@@ -14,7 +14,7 @@ from spy.vm.b import B
 from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_Value, value_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -407,24 +407,23 @@ class SPyVM:
         in Python, where "42 == 'hello'` is possible and returns False.
         """
         # Avoid infinite recursion:
-        #   1. vm.universal_eq(a, t) calls op.UNIVERSAL_EQ(type(a), type(b))
+        #   1. vm.universal_eq(a, t) calls
+        #                    op.UNIVERSAL_EQ(W_Value(a, ...), W_Value(b, ...))
         #   2. UNIVERSAL_EQ is a blue function and thus uses BlueCache.lookup
-        #   3. BlueCache.lookup calls vm.universal_eq on the types
-        #   4. vm.universal_eq(ta, tb) calls UNIVERSAL_EQ(type(ta), type(tb))
+        #   3. BlueCache.lookup calls vm.universal_eq on the W_Value
+        #   4. vm.universal_eq(wv_a, wv_b) calls
+        #                    op.UNIVERSAL_EQ(W_Value(...), W_Value(...))
         #   5  ...
-        # By special-casing vm.universal_eq(type, type), we break the recursion
-        if self.is_type(w_a) and self.is_type(w_b):
-            return self.wrap(w_a is w_b)  # type: ignore
+        # By special-casing vm.universal_eq(W_Value, W_Value), we break the
+        # recursion
+        if isinstance(w_a, W_Value) and isinstance(w_b, W_Value):
+            return value_eq(self, w_a, w_b)
 
-        w_ta = self.dynamic_type(w_a)
-        w_tb = self.dynamic_type(w_b)
-        w_opimpl = self.call_OP(OPERATOR.w_EQ, [w_ta, w_tb])
-        if w_opimpl.is_null():
-            # sanity check: EQ between objects of the same type should always
-            # be possible. If it's not, it means that we forgot to implement it
-            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
-            return B.w_False
-        w_res = self.call(w_opimpl.w_func, [w_a, w_b])
+        wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
+        wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
+        w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
+        assert not w_opimpl.is_null()
+        w_res = self.call(w_opimpl.w_func, [w_a, w_b]) # XXX is this correct?
         assert isinstance(w_res, W_Bool)
         return w_res
 

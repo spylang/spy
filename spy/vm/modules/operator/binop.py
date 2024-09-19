@@ -90,7 +90,7 @@ def MUL(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
 def DIV(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
     return MM.lookup(vm, '/', wv_l, wv_r)
 
-def can_use_reference_eq(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> bool:
+def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     """
     We can use 'is' to implement 'eq' if:
       1. the two types have a common ancestor
@@ -101,9 +101,10 @@ def can_use_reference_eq(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> bool:
 
 @OP.builtin(color='blue')
 def EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    pyclass = w_ltype.pyclass
-    if pyclass.has_meth_overriden('op_EQ'):
-        return pyclass.op_EQ(vm, w_ltype, w_rtype)
+    w_ltype = wv_l.w_static_type
+    w_rtype = wv_r.w_static_type
+    if w_ltype.pyclass.has_meth_overriden('op_EQ'):
+        return w_ltype.pyclass.op_EQ(vm, wv_l, wv_r)
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
         return W_OpImpl.simple(OP.w_object_is)
     else:
@@ -111,6 +112,8 @@ def EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
 
 @OP.builtin(color='blue')
 def NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    w_ltype = wv_l.w_static_type
+    w_rtype = wv_r.w_static_type
     if can_use_reference_eq(vm, w_ltype, w_rtype):
         return W_OpImpl.simple(OP.w_object_isnot)
     return MM.lookup(vm, '!=', wv_l, wv_r)

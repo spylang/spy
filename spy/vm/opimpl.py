@@ -91,29 +91,33 @@ class W_Value(W_Object):
         return vm.unwrap_str(self._w_blueval)
 
     @staticmethod
-    def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> 'W_OpImpl':
-        from spy.vm.b import B
+    def op_EQ(vm: 'SPyVM', wv_l: 'W_Value', wv_r: 'W_Value') -> 'W_OpImpl':
+        w_ltype = wv_l.w_static_type
+        w_rtype = wv_r.w_static_type
         assert w_ltype.pyclass is W_Value
 
-        @no_type_check
-        @spy_builtin(QN('operator::value_eq'))
-        def eq(vm: 'SPyVM', wv1: W_Value, wv2: W_Value) -> W_Bool:
-            # note that the prefix is NOT considered for equality, is purely for
-            # description
-            if wv1.i != wv2.i:
-                return B.w_False
-            if wv1.w_static_type is not wv2.w_static_type:
-                return B.w_False
-            if (wv1.is_blue() and
-                wv2.is_blue() and
-                vm.is_False(vm.eq(wv1._w_blueval, wv2._w_blueval))):
-                return B.w_False
-            return B.w_True
-
         if w_ltype is w_rtype:
-            return W_OpImpl.simple(vm.wrap_func(eq))
+            return W_OpImpl.simple(vm.wrap_func(value_eq))
         else:
             return W_OpImpl.NULL
+
+
+@no_type_check
+@spy_builtin(QN('operator::value_eq'))
+def value_eq(vm: 'SPyVM', wv1: W_Value, wv2: W_Value) -> W_Bool:
+    from spy.vm.b import B
+    # note that the prefix is NOT considered for equality, is purely for
+    # description
+    if wv1.i != wv2.i:
+        return B.w_False
+    if wv1.w_static_type is not wv2.w_static_type:
+        return B.w_False
+    if (wv1.is_blue() and
+        wv2.is_blue() and
+        vm.is_False(vm.eq(wv1._w_blueval, wv2._w_blueval))):
+        return B.w_False
+    return B.w_True
+
 
 
 
