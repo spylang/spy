@@ -4,7 +4,7 @@ from spy import ast
 from spy.fqn import QN
 from spy.location import Loc
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
-from spy.vm.function import W_Func
+from spy.vm.function import W_Func, W_FuncType
 from spy.vm.sig import spy_builtin
 
 if TYPE_CHECKING:
@@ -170,13 +170,12 @@ class W_OpImpl(W_Object):
         return self._args_wv is None
 
     @property
-    def w_func(self) -> W_Func:
-        assert self._w_func is not None
-        return self._w_func
+    def w_functype(self) -> W_FuncType:
+        return self._w_func.w_functype
 
     @property
     def w_restype(self) -> W_Type:
-        return self.w_func.w_functype.w_restype
+        return self._w_func.w_functype.w_restype
 
     def set_args_wv(self, args_wv):
         assert self._args_wv is None
@@ -201,6 +200,6 @@ class W_OpImpl(W_Object):
             if conv is not None:
                 w_arg = conv.convert(vm, w_arg)
             real_args_w.append(w_arg)
-        return vm.call(self.w_func, real_args_w)
+        return vm.call(self._w_func, real_args_w)
 
 W_OpImpl.NULL = W_OpImpl.simple(None)

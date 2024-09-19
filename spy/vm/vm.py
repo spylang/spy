@@ -359,12 +359,8 @@ class SPyVM:
         # ASTFrame. See also vm.ne and vm.getitem
         wv_obj = W_Value('obj', 0, self.dynamic_type(w_obj), None)
         wv_i = W_Value('i', 1, self.dynamic_type(w_i), None)
-
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wv_obj, wv_i])
-        if w_opimpl.is_null():
-            # XXX see also eq and ne
-            raise SPyTypeError("Cannot do []")
-        return self.call(w_opimpl.w_func, [w_obj, w_i])
+        return w_opimpl.call(self, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -424,7 +420,7 @@ class SPyVM:
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
             return B.w_False
 
-        w_res = self.call(w_opimpl.w_func, [w_a, w_b]) # XXX is this correct?
+        w_res = w_opimpl.call(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

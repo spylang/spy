@@ -440,7 +440,7 @@ class TypeChecker:
                         err.add('error', f'this is `{t}`', arg.loc)
             raise err
 
-        w_functype = w_opimpl.w_func.w_functype
+        w_functype = w_opimpl.w_functype
 
         self.call_typecheck(
             w_functype,
@@ -503,7 +503,7 @@ class TypeChecker:
         self.opimpl[call] = w_opimpl
         # XXX I'm not sure that the color is correct here. We need to think
         # more.
-        w_functype = w_opimpl.w_func.w_functype
+        w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
     def call_typecheck(self,
@@ -589,7 +589,7 @@ class TypeChecker:
         self.opimpl[op] = w_opimpl
         # XXX I'm not sure that the color is correct here. We need to think
         # more.
-        w_functype = w_opimpl.w_func.w_functype
+        w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
@@ -682,7 +682,7 @@ def typecheck_call(
     call_loc = None
     def_loc = None
 
-    w_functype = w_opimpl.w_func.w_functype
+    w_functype = w_opimpl.w_functype
 
     got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)

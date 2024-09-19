@@ -65,5 +65,4 @@ def dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
     wv_attr = W_Value.from_w_obj(vm, w_attr, 'a', 1)
     wv_v = W_Value.from_w_obj(vm, w_value, 'v', 2)
     w_opimpl = vm.call_OP(OP.w_SETATTR, [wv_obj, wv_attr, wv_v])
-    args_w = w_opimpl.reorder([w_obj, w_attr, w_value])
-    return vm.call(w_opimpl.w_func, args_w)
+    return w_opimpl.call(vm, [w_obj, w_attr, w_value])
