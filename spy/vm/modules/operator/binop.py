@@ -111,16 +111,28 @@ def EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
                          errmsg='cannot do `{0}` == `{1}`')
         return w_opimpl
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
-        return W_OpImpl.simple(OP.w_object_is)
+        w_opimpl = W_OpImpl.simple(OP.w_object_is)
+        typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+                         dispatch='multi',
+                         errmsg='cannot do `{0}` == `{1}`')
+        return w_opimpl
     else:
         return MM.lookup(vm, '==', wv_l, wv_r)
 
 @OP.builtin(color='blue')
 def NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wv_l.w_static_type
     w_rtype = wv_r.w_static_type
     if can_use_reference_eq(vm, w_ltype, w_rtype):
-        return W_OpImpl.simple(OP.w_object_isnot)
+        # XXX this is silly: currently we NEED to call typecheck_opimpl else
+        # we cannot .call() it later. We need a better API to avoid this
+        # pitfall
+        w_opimpl = W_OpImpl.simple(OP.w_object_isnot)
+        typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+                         dispatch='multi',
+                         errmsg='cannot do `{0}` != `{1}`')
+        return w_opimpl
     return MM.lookup(vm, '!=', wv_l, wv_r)
 
 @OP.builtin(color='blue')

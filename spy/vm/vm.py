@@ -311,13 +311,18 @@ class SPyVM:
             # for red functions, we just call them
             return self._call_func(w_func, args_w)
 
-    def call_OP(self, w_func: W_Func, args_w: list[W_Object]) -> W_OpImpl:
+    def call_OP(self, w_func: W_Func, args_wv: list[W_Value]) -> W_OpImpl:
         """
         Like vm.call, but ensures that the result is a W_OpImpl.
 
         Mostly useful to call OPERATORs.
         """
-        w_opimpl = self.call(w_func, args_w)
+        # XXX operator::CALL is still old-style, so skip the sanity check
+        if w_func.qn != QN('operator::CALL') and w_func.qn != QN('operator::CALL_METHOD'):
+            # sanity check
+            for wv_arg in args_wv:
+                assert isinstance(wv_arg, W_Value)
+        w_opimpl = self.call(w_func, args_wv)
         # XXX maybe this should be a TypeError instead? What happens if we
         # don't return an OpImpl from an user-defined OPERATOR?
         assert isinstance(w_opimpl, W_OpImpl)
@@ -416,8 +421,16 @@ class SPyVM:
 
         wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
         wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
-        w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
-        assert not w_opimpl.is_null()
+        try:
+            w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
+        except SPyTypeError:
+            # sanity check: EQ between objects of the same type should always
+            # be possible. If it's not, it means that we forgot to implement it
+            w_ta = wv_a.w_static_type
+            w_tb = wv_b.w_static_type
+            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
+            return B.w_False
+
         w_res = self.call(w_opimpl.w_func, [w_a, w_b]) # XXX is this correct?
         assert isinstance(w_res, W_Bool)
         return w_res
