@@ -138,9 +138,7 @@ class FuncDoppler:
         v_attr = ast.Constant(node.loc, value=node.attr)
         v_value = self.shift_expr(node.value)
         w_opimpl = self.t.opimpl[node]
-        # XXX this is wrong but there is no failing test
-        func = self.make_const(node.loc, w_opimpl.w_func)
-        call = ast.Call(node.loc, func, [v_target, v_attr, v_value])
+        call = self._call_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
@@ -215,9 +213,7 @@ class FuncDoppler:
         v = self.shift_expr(op.value)
         v_attr = ast.Constant(op.loc, value=op.attr)
         w_opimpl = self.t.opimpl[op]
-        # XXX this is wrong but there is no failing test
-        func = self.make_const(op.loc, w_opimpl.w_func)
-        return ast.Call(op.loc, func, [v, v_attr])
+        return self._call_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         if call in self.t.opimpl:

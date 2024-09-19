@@ -97,13 +97,11 @@ class TestAttrOp(CompilerTest):
             obj = MyClass()
             return obj.hello
 
-        @blue
-        def get_x():
+        def get_x() -> i32:
             obj = MyClass()
             return obj.x
 
-        @blue
-        def set_get_x():
+        def set_get_x() -> i32:
             obj = MyClass()
             obj.x = 123
             return obj.x
