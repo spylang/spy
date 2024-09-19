@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Dynamic, W_Type
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_Value
 from . import OP
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
@@ -75,22 +75,22 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 
 @OP.builtin(color='blue')
-def ADD(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('+', w_ltype, w_rtype)
+def ADD(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '+', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def SUB(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('-', w_ltype, w_rtype)
+def SUB(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '-', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def MUL(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('*', w_ltype, w_rtype)
+def MUL(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '*', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def DIV(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('/', w_ltype, w_rtype)
+def DIV(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '/', wv_l, wv_r)
 
-def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
+def can_use_reference_eq(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> bool:
     """
     We can use 'is' to implement 'eq' if:
       1. the two types have a common ancestor
@@ -100,41 +100,41 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     return w_common is not B.w_object and w_common.is_reference_type(vm)
 
 @OP.builtin(color='blue')
-def EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+def EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
     pyclass = w_ltype.pyclass
     if pyclass.has_meth_overriden('op_EQ'):
         return pyclass.op_EQ(vm, w_ltype, w_rtype)
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
         return W_OpImpl.simple(OP.w_object_is)
     else:
-        return MM.lookup('==', w_ltype, w_rtype)
+        return MM.lookup(vm, '==', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+def NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
     if can_use_reference_eq(vm, w_ltype, w_rtype):
         return W_OpImpl.simple(OP.w_object_isnot)
-    return MM.lookup('!=', w_ltype, w_rtype)
+    return MM.lookup(vm, '!=', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def UNIVERSAL_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+def UNIVERSAL_EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
     return W_OpImpl.simple(OP.w_object_universal_eq)
 
 @OP.builtin(color='blue')
-def UNIVERSAL_NE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+def UNIVERSAL_NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
     return W_OpImpl.simple(OP.w_object_universal_ne)
 
 @OP.builtin(color='blue')
-def LT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('<', w_ltype, w_rtype)
+def LT(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '<', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def LE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('<=', w_ltype, w_rtype)
+def LE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '<=', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def GT(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('>', w_ltype, w_rtype)
+def GT(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '>', wv_l, wv_r)
 
 @OP.builtin(color='blue')
-def GE(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
-    return MM.lookup('>=', w_ltype, w_rtype)
+def GE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    return MM.lookup(vm, '>=', wv_l, wv_r)

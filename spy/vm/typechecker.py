@@ -359,13 +359,14 @@ class TypeChecker:
 
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
         w_OP = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        return self.OP_dispatch(
-            w_OP,
-            binop,
+        colors, args_wv = self.check_many_exprs(
+            ['l', 'r'],
             [binop.left, binop.right],
-            dispatch = 'multi',
-            errmsg = 'cannot do `{0}` %s `{1}`' % binop.op
         )
+        color = maybe_blue(*colors)
+        w_opimpl = self.vm.call_OP(w_OP, args_wv)
+        self.opimpl[binop] = w_opimpl
+        return color, w_opimpl.w_restype
 
     check_expr_Add = check_expr_BinOp
     check_expr_Sub = check_expr_BinOp
@@ -397,45 +398,6 @@ class TypeChecker:
         self.opimpl[expr] = w_opimpl
         return colors[0], w_opimpl.w_restype
 
-    def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
-                    *,
-                    dispatch: DispatchKind,
-                    errmsg: str
-                    ) -> tuple[Color, W_Type]:
-        """
-        Resolve and typecheck an operator call.
-
-        It does the following:
-
-          - typecheck the args and compute their type
-          - call OP and get the opimpl
-          - raise SPyTypeError if the opimpl is NotImplemented
-          - check that the returned opimpl is compatible with the type of the
-            args
-          - record the opimpl for the given node
-
-        Note that this works only for "regular" operators which operate only
-        on argtypes. In particular, GETATTR and SETATTR needs to be handled
-        differently, because they also take a VALUE (the attribute, as a
-        string) instead of a TYPE.
-        """
-        # step 1: determine the arguments to pass to OP()
-        argtypes_w = []
-        color: Color = 'blue'
-        for arg in args:
-            c1, w_argtype = self.check_expr(arg)
-            argtypes_w.append(w_argtype)
-            color = maybe_blue(color, c1)
-
-        # step 2: call OP() and get w_opimpl
-        assert w_OP.color == 'blue', f'{w_OP.qn} is not blue'
-        w_opimpl = self.vm.call_OP(w_OP, argtypes_w) # type: ignore
-
-        # step 3: check that we can call the returned w_opimpl
-        self.opimpl_typecheck(w_opimpl, node, args, argtypes_w,
-                              dispatch=dispatch, errmsg=errmsg)
-        self.opimpl[node] = w_opimpl
-        return color, w_opimpl.w_restype
 
     def opimpl_typecheck(self,
                          w_opimpl: W_OpImpl,
@@ -670,33 +632,31 @@ def typecheck_opimpl(
         errmsg: str,
 ) -> None:
     if w_opimpl.is_null():
+        # this means that we couldn't find an OpImpl for this OPERATOR.
+        # The details of the error message depends on the DispatchKind:
+
+        #  - single dispatch means that the target (argument 0) doesn't
+        #    support this operation, so we report its type and its definition
+        #
+        #  - multi dispatch means that all the types are equally imporant in
+        #    determining whether an operation is supported, so we report all
+        #    of them
         typenames = [wv.w_static_type.name for wv in orig_args_wv]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':
-            # for single dispatch ops, NotImplemented means that the
-            # target doesn't support this operation: so we just report its
-            # type and possibly its definition
-            #assert args[0] is not None
-            wv_obj = orig_args_wv[0]
-            t = wv_obj.w_static_type.name
-            if wv_obj.loc:
-                err.add('error', f'this is `{t}`', wv_obj.loc)
-
+            wv_target = orig_args_wv[0]
+            t = wv_target.w_static_type.name
+            if wv_target.loc:
+                err.add('error', f'this is `{t}`', wv_target.loc)
             ## sym = self.name2sym_maybe(target)
             ## if sym:
             ##     assert isinstance(target, ast.Name)
             ##     err.add('note', f'`{target.id}` defined here', sym.loc)
-
         else:
-            #XXX fixme
-
-            # for multi dispatch ops, all operands are equally important
-            # for finding the opimpl: we report all of them
-            for arg, w_argtype in zip(args, argtypes_w):
-                if arg is not None:
-                    t = w_argtype.name
-                    err.add('error', f'this is `{t}`', arg.loc)
+            for wv_arg in orig_args_wv:
+                t = wv_arg.w_static_type.name
+                err.add('error', f'this is `{t}`', wv_arg.loc)
         raise err
 
     w_functype = w_opimpl.w_func.w_functype
