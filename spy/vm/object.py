@@ -138,7 +138,7 @@ class W_Object:
         return True
 
     @staticmethod
-    def op_EQ(vm: 'SPyVM', w_tself: 'W_Type', w_tother: 'W_Type') -> 'W_OpImpl':
+    def op_EQ(vm: 'SPyVM', wv_a: 'W_Value', wv_b: 'W_Value') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod

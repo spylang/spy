@@ -331,17 +331,11 @@ class SPyVM:
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        # FIXME: we need a more structured way of implementing operators
-        # inside the vm, and possibly share the code with typechecker and
-        # ASTFrame. See also vm.ne and vm.getitem
-        w_ta = self.dynamic_type(w_a)
-        w_tb = self.dynamic_type(w_b)
-        w_opimpl = self.call_OP(OPERATOR.w_EQ, [w_ta, w_tb])
-        if w_opimpl.is_null():
-            # XXX: the logic to produce a good error message should be in a
-            # single place
-            raise SPyTypeError("Cannot do ==")
-        w_res = self.call(w_opimpl.w_func, [w_a, w_b])
+        wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
+        wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
+        w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
+        assert not w_opimpl.is_null()
+        w_res = self.call(w_opimpl.w_func, [w_a, w_b]) # XXX we should reorder?
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -349,6 +343,7 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
+        XXX
         w_ta = self.dynamic_type(w_a)
         w_tb = self.dynamic_type(w_b)
         w_opimpl = self.call_OP(OPERATOR.w_NE, [w_ta, w_tb])

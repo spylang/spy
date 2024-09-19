@@ -101,10 +101,15 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
 
 @OP.builtin(color='blue')
 def EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wv_l.w_static_type
     w_rtype = wv_r.w_static_type
     if w_ltype.pyclass.has_meth_overriden('op_EQ'):
-        return w_ltype.pyclass.op_EQ(vm, wv_l, wv_r)
+        w_opimpl = w_ltype.pyclass.op_EQ(vm, wv_l, wv_r)
+        typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+                         dispatch='multi',
+                         errmsg='cannot do `{0}` == `{1}`')
+        return w_opimpl
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
         return W_OpImpl.simple(OP.w_object_is)
     else:
