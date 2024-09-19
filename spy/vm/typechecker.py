@@ -740,7 +740,7 @@ def convert_type_maybe(
     got = w_got.name
     exp = w_exp.name
     err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
-    return err
+    raise err
 
 
 def _call_error_wrong_argcount(
