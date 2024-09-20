@@ -138,7 +138,7 @@ class FuncDoppler:
         v_attr = ast.Constant(node.loc, value=node.attr)
         v_value = self.shift_expr(node.value)
         w_opimpl = self.t.opimpl[node]
-        call = self._call_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
+        call = self.shift_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
@@ -171,7 +171,7 @@ class FuncDoppler:
 
     # ==== expressions ====
 
-    def _call_opimpl(self, op, w_opimpl, orig_args):
+    def shift_opimpl(self, op, w_opimpl, orig_args):
         func = self.make_const(op.loc, w_opimpl._w_func)
         real_args = w_opimpl.redshift_args(self.vm, orig_args)
         return ast.Call(op.loc, func, real_args)
@@ -190,7 +190,7 @@ class FuncDoppler:
         l = self.shift_expr(binop.left)
         r = self.shift_expr(binop.right)
         w_opimpl = self.t.opimpl[binop]
-        return self._call_opimpl(binop, w_opimpl, [l, r])
+        return self.shift_opimpl(binop, w_opimpl, [l, r])
 
     shift_expr_Add = shift_expr_BinOp
     shift_expr_Sub = shift_expr_BinOp
@@ -207,19 +207,19 @@ class FuncDoppler:
         v = self.shift_expr(op.value)
         i = self.shift_expr(op.index)
         w_opimpl = self.t.opimpl[op]
-        return self._call_opimpl(op, w_opimpl, [v, i])
+        return self.shift_opimpl(op, w_opimpl, [v, i])
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
         v = self.shift_expr(op.value)
         v_attr = ast.Constant(op.loc, value=op.attr)
         w_opimpl = self.t.opimpl[op]
-        return self._call_opimpl(op, w_opimpl, [v, v_attr])
+        return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         if call in self.t.opimpl:
             w_opimpl = self.t.opimpl[call]
             # XXX we should shift all the args?
-            return self._call_opimpl(call, w_opimpl, [call.func] + call.args)
+            return self.shift_opimpl(call, w_opimpl, [call.func] + call.args)
 
         newfunc = self.shift_expr(call.func)
         # sanity check: the redshift MUST have produced a const. If it
@@ -256,4 +256,4 @@ class FuncDoppler:
         v_target = self.shift_expr(op.target)
         v_method = ast.Constant(op.loc, value=op.method)
         newargs_v = [self.shift_expr(arg) for arg in op.args]
-        return self._call_opimpl(op, w_opimpl, [v_target, v_method] + newargs_v)
+        return self.shift_opimpl(op, w_opimpl, [v_target, v_method] + newargs_v)
