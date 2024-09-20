@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
+W_List.make_prebuilt(W_Value)
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
@@ -490,19 +491,16 @@ class TypeChecker:
         return rescolor, w_functype.w_restype
 
     def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
-        _, w_otype = self.check_expr(call.func)
-        argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [w_otype, w_argtypes])
-        newargs = [call.func] + call.args
-        errmsg = 'cannot call objects of type `{0}`'
-        self.opimpl_typecheck(w_opimpl, call, newargs,
-                              [w_otype] + argtypes_w,
-                              dispatch='single',
-                              errmsg=errmsg)
+        n = len(call.args)
+        colors, args_wv = self.check_many_exprs(
+            ['f'] + ['v']*n,
+            [call.func] + call.args
+        )
+        wv_func = args_wv[0]
+        args_wv = args_wv[1:]
+        w_argvalues = W_List[W_Value](args_wv) # type: ignore
+        w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_argvalues])
         self.opimpl[call] = w_opimpl
-        # XXX I'm not sure that the color is correct here. We need to think
-        # more.
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
