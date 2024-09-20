@@ -4,8 +4,11 @@ from spy.fqn import QN
 from spy.vm.object import W_Object, W_Type, W_Dynamic, spytype, W_I32
 from spy.vm.sig import spy_builtin
 from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.list import W_List
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+W_List.make_prebuilt(W_Value)
 
 def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     """
@@ -78,17 +81,21 @@ class W_Str(W_Object):
         return W_OpImpl.simple(vm.wrap_func(str_getitem))
 
     @staticmethod
-    def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
-                     w_argtypes: W_Dynamic) -> W_OpImpl:
+    def meta_op_CALL(vm: 'SPyVM', wv_obj: W_Value,
+                     w_values: W_List[W_Value]) -> W_OpImpl:
         from spy.vm.b import B
-        argtypes_w = vm.unwrap(w_argtypes)
-        if argtypes_w == [W_I32]:
-            return W_OpImpl.simple(vm.wrap_func(int2str))
+        args_wv = w_values.items_w
+        if len(args_wv) == 1 and args_wv[0].w_static_type is B.w_i32:
+            wv_i = args_wv[0]
+            return W_OpImpl.with_values(
+                vm.wrap_func(int2str),
+                [wv_i]
+            )
         else:
             return W_OpImpl.NULL
 
 
 @spy_builtin(QN('builtins::int2str'))
-def int2str(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Str:
-    x = vm.unwrap_i32(w_x)
-    return vm.wrap(str(x))  # type: ignore
+def int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
+    i = vm.unwrap_i32(w_i)
+    return vm.wrap(str(i))  # type: ignore

@@ -415,15 +415,6 @@ class CFuncWriter:
         # I think we need a more general way so that OPERATORs can have more
         # control on which arguments are passed to opimpls.
 
-        if call.func.fqn == FQN.parse("builtins::int2str"):
-            # special case: remove the first param (this is the 'str' type)
-            arg0 = call.args[0]
-            assert (isinstance(arg0, ast.FQNConst) and
-                    arg0.fqn == FQN.parse("builtins::str"))
-            c_name = call.func.fqn.c_name
-            c_arg = self.fmt_expr(call.args[1])
-            return C.Call(c_name, [c_arg])
-
         if str(call.func.fqn).startswith("jsffi::getattr_"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_getattr"
