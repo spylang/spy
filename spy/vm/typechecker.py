@@ -497,9 +497,8 @@ class TypeChecker:
             [call.func] + call.args
         )
         wv_func = args_wv[0]
-        args_wv = args_wv[1:]
-        w_argvalues = W_List[W_Value](args_wv) # type: ignore
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_argvalues])
+        w_values = W_List[W_Value](args_wv[1:]) # type: ignore
+        w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_values])
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
@@ -570,23 +569,19 @@ class TypeChecker:
         raise err
 
     def check_expr_CallMethod(self, op: ast.CallMethod) -> tuple[Color, W_Type]:
-        _, w_otype = self.check_expr(op.target)
-        w_method = self.vm.wrap(op.method)
-        argtypes_w = [self.check_expr(arg)[1] for arg in op.args]
-        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
-        w_opimpl = self.vm.call_OP(OP.w_CALL_METHOD,
-                                   [w_otype, w_method, w_argtypes])
-        w_method = self.vm.wrap(op.method)
-        m = ast.Constant(op.loc, value=w_method)
-        newargs = [op.target, m] + op.args
-        errmsg = 'cannot call methods on type `{0}`'
-        self.opimpl_typecheck(w_opimpl, op, newargs,
-                              [w_otype, B.w_str] + argtypes_w,
-                              dispatch='single',
-                              errmsg=errmsg)
+        n = len(op.args)
+        colors, args_wv = self.check_many_exprs(
+            ['t', 'm'] + ['v']*n,
+            [op.target, op.method] + op.args
+        )
+        wv_obj = args_wv[0]
+        wv_method = args_wv[1]
+        w_values = W_List[W_Value](args_wv[2:])
+        w_opimpl = self.vm.call_OP(
+            OP.w_CALL_METHOD,
+            [wv_obj, wv_method, w_values]
+        )
         self.opimpl[op] = w_opimpl
-        # XXX I'm not sure that the color is correct here. We need to think
-        # more.
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
