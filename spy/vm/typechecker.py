@@ -399,57 +399,6 @@ class TypeChecker:
         self.opimpl[expr] = w_opimpl
         return colors[0], w_opimpl.w_restype
 
-
-    def opimpl_typecheck(self,
-                         w_opimpl: W_OpImpl,
-                         node: ast.Node,
-                         args: Sequence[ast.Expr | None],
-                         argtypes_w: list[W_Type],
-                         *,
-                         dispatch: DispatchKind,
-                         errmsg: str,
-                         ) -> None:
-        """
-        Check the arg types that we are passing to the opimpl, and insert
-        appropriate type conversions if needed.
-
-        `dispatch` is used only for diagnostics: if it's 'single' we will
-        report the type of the first operand, else of all operands.
-        """
-        if w_opimpl.is_null():
-            typenames = [w_t.name for w_t in argtypes_w]
-            errmsg = errmsg.format(*typenames)
-            err = SPyTypeError(errmsg)
-            if dispatch == 'single':
-                # for single dispatch ops, NotImplemented means that the
-                # target doesn't support this operation: so we just report its
-                # type and possibly its definition
-                assert args[0] is not None
-                target = args[0]
-                t = argtypes_w[0].name
-                err.add('error', f'this is `{t}`', target.loc)
-                sym = self.name2sym_maybe(target)
-                if sym:
-                    assert isinstance(target, ast.Name)
-                    err.add('note', f'`{target.id}` defined here', sym.loc)
-            else:
-                # for multi dispatch ops, all operands are equally important
-                # for finding the opimpl: we report all of them
-                for arg, w_argtype in zip(args, argtypes_w):
-                    if arg is not None:
-                        t = w_argtype.name
-                        err.add('error', f'this is `{t}`', arg.loc)
-            raise err
-
-        w_functype = w_opimpl.w_functype
-
-        self.call_typecheck(
-            w_functype,
-            argtypes_w,
-            def_loc = None, # would be nice to find it somehow
-            call_loc = node.loc, # type: ignore
-            argnodes = args)
-
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_otype = self.check_expr(call.func)
         if w_otype is B.w_dynamic:
@@ -624,6 +573,13 @@ def typecheck_opimpl(
         dispatch: DispatchKind,
         errmsg: str,
 ) -> None:
+    """
+    Check the arg types that we are passing to the opimpl, and insert
+    appropriate type conversions if needed.
+
+    `dispatch` is used only for diagnostics: if it's 'single' we will
+    report the type of the first operand, else of all operands.
+    """
     if w_opimpl.is_null():
         # this means that we couldn't find an OpImpl for this OPERATOR.
         # The details of the error message depends on the DispatchKind:
