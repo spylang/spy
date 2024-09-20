@@ -220,7 +220,6 @@ class FuncDoppler:
         newargs = [self.shift_expr(arg) for arg in call.args]
         if call in self.t.opimpl:
             w_opimpl = self.t.opimpl[call]
-            # XXX we should shift all the args?
             return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
         else:
             # sanity check: the redshift MUST have produced a const. If it
