@@ -216,19 +216,18 @@ class FuncDoppler:
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
+        newfunc = self.shift_expr(call.func)
+        newargs = [self.shift_expr(arg) for arg in call.args]
         if call in self.t.opimpl:
             w_opimpl = self.t.opimpl[call]
             # XXX we should shift all the args?
-            return self.shift_opimpl(call, w_opimpl, [call.func] + call.args)
-
-        newfunc = self.shift_expr(call.func)
-        # sanity check: the redshift MUST have produced a const. If it
-        # didn't, the C backend won't be able to compile the call.
-        assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
-        extra_args = []
-        newargs = extra_args + [self.shift_expr(arg) for arg in call.args]
-        newop = ast.Call(call.loc, newfunc, newargs)
-        return self.specialize_print_maybe(newop)
+            return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
+        else:
+            # sanity check: the redshift MUST have produced a const. If it
+            # didn't, the C backend won't be able to compile the call.
+            assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
+            newop = ast.Call(call.loc, newfunc, newargs)
+            return self.specialize_print_maybe(newop)
 
     def specialize_print_maybe(self, call: ast.Call) -> ast.Expr:
         """
