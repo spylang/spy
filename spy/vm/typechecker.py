@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
+W_List.make_prebuilt(W_Value)
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
@@ -398,57 +399,6 @@ class TypeChecker:
         self.opimpl[expr] = w_opimpl
         return colors[0], w_opimpl.w_restype
 
-
-    def opimpl_typecheck(self,
-                         w_opimpl: W_OpImpl,
-                         node: ast.Node,
-                         args: Sequence[ast.Expr | None],
-                         argtypes_w: list[W_Type],
-                         *,
-                         dispatch: DispatchKind,
-                         errmsg: str,
-                         ) -> None:
-        """
-        Check the arg types that we are passing to the opimpl, and insert
-        appropriate type conversions if needed.
-
-        `dispatch` is used only for diagnostics: if it's 'single' we will
-        report the type of the first operand, else of all operands.
-        """
-        if w_opimpl.is_null():
-            typenames = [w_t.name for w_t in argtypes_w]
-            errmsg = errmsg.format(*typenames)
-            err = SPyTypeError(errmsg)
-            if dispatch == 'single':
-                # for single dispatch ops, NotImplemented means that the
-                # target doesn't support this operation: so we just report its
-                # type and possibly its definition
-                assert args[0] is not None
-                target = args[0]
-                t = argtypes_w[0].name
-                err.add('error', f'this is `{t}`', target.loc)
-                sym = self.name2sym_maybe(target)
-                if sym:
-                    assert isinstance(target, ast.Name)
-                    err.add('note', f'`{target.id}` defined here', sym.loc)
-            else:
-                # for multi dispatch ops, all operands are equally important
-                # for finding the opimpl: we report all of them
-                for arg, w_argtype in zip(args, argtypes_w):
-                    if arg is not None:
-                        t = w_argtype.name
-                        err.add('error', f'this is `{t}`', arg.loc)
-            raise err
-
-        w_functype = w_opimpl.w_functype
-
-        self.call_typecheck(
-            w_functype,
-            argtypes_w,
-            def_loc = None, # would be nice to find it somehow
-            call_loc = node.loc, # type: ignore
-            argnodes = args)
-
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         color, w_otype = self.check_expr(call.func)
         if w_otype is B.w_dynamic:
@@ -490,19 +440,15 @@ class TypeChecker:
         return rescolor, w_functype.w_restype
 
     def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
-        _, w_otype = self.check_expr(call.func)
-        argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [w_otype, w_argtypes])
-        newargs = [call.func] + call.args
-        errmsg = 'cannot call objects of type `{0}`'
-        self.opimpl_typecheck(w_opimpl, call, newargs,
-                              [w_otype] + argtypes_w,
-                              dispatch='single',
-                              errmsg=errmsg)
+        n = len(call.args)
+        colors, args_wv = self.check_many_exprs(
+            ['f'] + ['v']*n,
+            [call.func] + call.args
+        )
+        wv_func = args_wv[0]
+        w_values = W_List[W_Value](args_wv[1:]) # type: ignore
+        w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_values])
         self.opimpl[call] = w_opimpl
-        # XXX I'm not sure that the color is correct here. We need to think
-        # more.
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
@@ -572,23 +518,19 @@ class TypeChecker:
         raise err
 
     def check_expr_CallMethod(self, op: ast.CallMethod) -> tuple[Color, W_Type]:
-        _, w_otype = self.check_expr(op.target)
-        w_method = self.vm.wrap(op.method)
-        argtypes_w = [self.check_expr(arg)[1] for arg in op.args]
-        w_argtypes = W_List[W_Type](argtypes_w) # type: ignore
-        w_opimpl = self.vm.call_OP(OP.w_CALL_METHOD,
-                                   [w_otype, w_method, w_argtypes])
-        w_method = self.vm.wrap(op.method)
-        m = ast.Constant(op.loc, value=w_method)
-        newargs = [op.target, m] + op.args
-        errmsg = 'cannot call methods on type `{0}`'
-        self.opimpl_typecheck(w_opimpl, op, newargs,
-                              [w_otype, B.w_str] + argtypes_w,
-                              dispatch='single',
-                              errmsg=errmsg)
+        n = len(op.args)
+        colors, args_wv = self.check_many_exprs(
+            ['t', 'm'] + ['v']*n,
+            [op.target, op.method] + op.args
+        )
+        wv_obj = args_wv[0]
+        wv_method = args_wv[1]
+        w_values = W_List[W_Value](args_wv[2:])
+        w_opimpl = self.vm.call_OP(
+            OP.w_CALL_METHOD,
+            [wv_obj, wv_method, w_values]
+        )
         self.opimpl[op] = w_opimpl
-        # XXX I'm not sure that the color is correct here. We need to think
-        # more.
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
@@ -631,6 +573,13 @@ def typecheck_opimpl(
         dispatch: DispatchKind,
         errmsg: str,
 ) -> None:
+    """
+    Check the arg types that we are passing to the opimpl, and insert
+    appropriate type conversions if needed.
+
+    `dispatch` is used only for diagnostics: if it's 'single' we will
+    report the type of the first operand, else of all operands.
+    """
     if w_opimpl.is_null():
         # this means that we couldn't find an OpImpl for this OPERATOR.
         # The details of the error message depends on the DispatchKind:
@@ -724,16 +673,10 @@ def convert_type_maybe(
     elif w_got is B.w_i32 and w_exp is B.w_f64:
         return NumericConv(w_type=w_exp, w_fromtype=w_got)
     elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-        XXX
-        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                         w_fromtype=w_got)
-        return None
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
     elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-        XXX
         assert w_got == W_FuncType.parse('def() -> void')
-        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                         w_fromtype=w_got)
-        return None
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
 
     # mismatched types
     err = SPyTypeError('mismatched types')

@@ -4,9 +4,10 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
+from spy.vm.list import W_List
 from spy.tests.support import CompilerTest, no_C
 
 @no_C
@@ -129,28 +130,30 @@ class TestCallOp(CompilerTest):
                 return W_Calc(vm.unwrap_i32(w_x))
 
             @staticmethod
-            def op_CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
-                               w_argtypes: W_Dynamic) -> W_OpImpl:
-
-                meth = vm.unwrap_str(w_method)
+            def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_Value, wv_method: W_Str,
+                               w_values: W_List[W_Value]) -> W_OpImpl:
+                meth = wv_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @spy_builtin(QN('ext::meth_add'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
-                               w_arg: W_I32) -> W_I32:
+                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
-                    return W_OpImpl.simple(vm.wrap_func(fn))
+                    return W_OpImpl.with_values(
+                        vm.wrap_func(fn),
+                        [wv_obj] + w_values.items_w
+                    )
 
                 elif meth == 'sub':
                     @spy_builtin(QN('ext::meth_sub'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
-                               w_arg: W_I32) -> W_I32:
+                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
-                    return W_OpImpl.simple(vm.wrap_func(fn))
-
+                    return W_OpImpl.with_values(
+                        vm.wrap_func(fn),
+                        [wv_obj] + w_values.items_w
+                    )
                 else:
-                    return B.w_NotImplemented
+                    return W_OpImpl.NULL
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

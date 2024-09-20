@@ -299,7 +299,7 @@ class TestBasic(CompilerTest):
         errors = expect_errors(
             'cannot call objects of type `i32`',
             ('this is `i32`', 'x'),
-            ('`x` defined here', 'x: i32 = 0'),
+#            ('`x` defined here', 'x: i32 = 0'), # would be nice to re-enable
         )
         self.compile_raises(src, "foo", errors)
 

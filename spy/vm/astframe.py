@@ -260,10 +260,7 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[call]
         w_target = self.eval_expr(call.func)
         args_w = [self.eval_expr(arg) for arg in call.args]
-        # kill this when we migrate op.CALL to new-tyle
-        w_res = self.vm.call(w_opimpl._w_func, [w_target] + args_w)
-        # this is the correct one
-        # w_res = w_opimpl.call(self.vm, [w_target] + args_w)
+        w_res = w_opimpl.call(self.vm, [w_target] + args_w)
         return w_res
 
     def _eval_call_func(self, call: ast.Call, color: Color,
@@ -303,10 +300,8 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[op]
         w_target = self.eval_expr(op.target)
         w_method = self.vm.wrap(op.method)
-        arg_w = [self.eval_expr(arg) for arg in op.args]
-        w_res = self.vm.call(w_opimpl._w_func,
-                                      [w_target, w_method] + arg_w)
-        return w_res
+        args_w = [self.eval_expr(arg) for arg in op.args]
+        return w_opimpl.call(self.vm, [w_target, w_method] + args_w)
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
         w_opimpl = self.t.opimpl[op]

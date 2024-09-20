@@ -25,6 +25,8 @@ class TypeConverter:
         """
         raise NotImplementedError
 
+    def redshift(self, vm: 'SPyVM', expr: ast.Expr) -> ast.Expr:
+        return expr
 
 class DynamicCast(TypeConverter):
     """

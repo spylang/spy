@@ -162,13 +162,13 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CALL(vm: 'SPyVM', w_type: 'W_Type',
-                w_argtypes: 'W_Dynamic') -> 'W_OpImpl':
+    def op_CALL(vm: 'SPyVM', wv_obj: 'W_Value',
+                w_values: 'W_Dynamic') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', w_type: 'W_Type', w_method: 'W_Str',
-                       w_argtypes: 'W_Dynamic') -> 'W_OpImpl':
+    def op_CALL_METHOD(vm: 'SPyVM', wv_obj: 'W_Value', wv_method: 'W_Value',
+                       w_values: 'W_Dynamic') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
 
@@ -370,13 +370,13 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     W_Foo. Once we have done that, we can manually apply @spy_builtin and
     finally vm.wrap() it.
     """
-    from spy.vm.opimpl import W_OpImpl
+    from spy.vm.opimpl import W_OpImpl, W_Value
     from spy.vm.sig import spy_builtin
     assert hasattr(pyclass, 'spy_new')
     spy_new = pyclass.spy_new
 
-    def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
-                     w_argtypes: W_Dynamic) -> W_OpImpl:
+    def meta_op_CALL(vm: 'SPyVM', wv_obj: W_Value,
+                     w_values: W_Dynamic) -> W_OpImpl:
         fix_annotations(spy_new, {pyclass.__name__: pyclass})
         qn = QN(modname='ext', attr='new') # XXX what modname should we use?
         # manually apply the @spy_builtin decorator to the spy_new function

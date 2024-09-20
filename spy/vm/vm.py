@@ -317,11 +317,6 @@ class SPyVM:
 
         Mostly useful to call OPERATORs.
         """
-        # XXX operator::CALL is still old-style, so skip the sanity check
-        if w_func.qn != QN('operator::CALL') and w_func.qn != QN('operator::CALL_METHOD'):
-            # sanity check
-            for wv_arg in args_wv:
-                assert isinstance(wv_arg, W_Value)
         w_opimpl = self.call(w_func, args_wv)
         # XXX maybe this should be a TypeError instead? What happens if we
         # don't return an OpImpl from an user-defined OPERATOR?

@@ -166,6 +166,7 @@ class CompilerTest:
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift()
+            #self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir)
             file_js = compiler.cbuild(opt_level=self.OPT_LEVEL,
                                       toolchain_type = 'emscripten')
@@ -177,7 +178,7 @@ class CompilerTest:
         from spy.__main__ import dump_spy_mod
         print()
         print()
-        dump_spy_mod(self.vm, modname)
+        dump_spy_mod(self.vm, modname, pretty=True)
 
     def compile_raises(self, src: str, funcname: str, ctx: Any,
                        *,
