@@ -145,8 +145,10 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             return W_OpImpl.simple(vm.wrap_func(setitem))
 
         @staticmethod
-        def op_EQ(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+        def op_EQ(vm: 'SPyVM', wv_l: 'W_Value', wv_r: 'W_Value') -> W_OpImpl:
             from spy.vm.b import B
+            w_ltype = wv_l.w_static_type
+            w_rtype = wv_r.w_static_type
             assert w_ltype.pyclass is W_MyList
 
             @no_type_check

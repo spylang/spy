@@ -15,11 +15,13 @@ E.g.:
 
 will call w_dynamic_add as long as one of the two operands is 'dynamic'.
 """
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_Value
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 KeyType = tuple[str, Optional[W_Type], Optional[W_Type]]
 
@@ -52,14 +54,28 @@ class MultiMethodTable:
         self.register(op, atype, None, w_func)
         self.register(op, None, atype, w_func)
 
-    def lookup(self, op: str, w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+    def lookup(self, vm: 'SPyVM', op: str,
+               wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+        from spy.vm.typechecker import typecheck_opimpl
+        w_ltype = wv_l.w_static_type
+        w_rtype = wv_r.w_static_type
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
             (op, w_ltype, None),     # less precise ones
             (op, None,    w_rtype),
         ]
+        w_opimpl = W_OpImpl.NULL
         for key in keys:
             w_func = self.impls.get(key)
             if w_func:
-                return W_OpImpl.simple(w_func)
-        return W_OpImpl.NULL
+                w_opimpl = W_OpImpl.simple(w_func)
+                break
+        #
+        typecheck_opimpl(
+            vm,
+            w_opimpl,
+            [wv_l, wv_r],
+            dispatch = 'multi',
+            errmsg = 'cannot do `{0}` %s `{1}`' % op
+        )
+        return w_opimpl

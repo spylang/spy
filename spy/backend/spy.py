@@ -223,7 +223,8 @@ class SPyBackend:
         return None
 
     def fmt_expr_Call(self, call: ast.Call) -> str:
-        if opclass := self.get_binop_maybe(call.func):
+        opclass = self.get_binop_maybe(call.func)
+        if self.fqn_format == 'short' and opclass:
             # special case
             assert len(call.args) == 2
             binop = opclass(call.loc, call.args[0], call.args[1])

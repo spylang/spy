@@ -359,13 +359,14 @@ class TypeChecker:
 
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
         w_OP = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        return self.OP_dispatch(
-            w_OP,
-            binop,
+        colors, args_wv = self.check_many_exprs(
+            ['l', 'r'],
             [binop.left, binop.right],
-            dispatch = 'multi',
-            errmsg = 'cannot do `{0}` %s `{1}`' % binop.op
         )
+        color = maybe_blue(*colors)
+        w_opimpl = self.vm.call_OP(w_OP, args_wv)
+        self.opimpl[binop] = w_opimpl
+        return color, w_opimpl.w_restype
 
     check_expr_Add = check_expr_BinOp
     check_expr_Sub = check_expr_BinOp
@@ -397,45 +398,6 @@ class TypeChecker:
         self.opimpl[expr] = w_opimpl
         return colors[0], w_opimpl.w_restype
 
-    def OP_dispatch(self, w_OP: Any, node: ast.Node, args: list[ast.Expr],
-                    *,
-                    dispatch: DispatchKind,
-                    errmsg: str
-                    ) -> tuple[Color, W_Type]:
-        """
-        Resolve and typecheck an operator call.
-
-        It does the following:
-
-          - typecheck the args and compute their type
-          - call OP and get the opimpl
-          - raise SPyTypeError if the opimpl is NotImplemented
-          - check that the returned opimpl is compatible with the type of the
-            args
-          - record the opimpl for the given node
-
-        Note that this works only for "regular" operators which operate only
-        on argtypes. In particular, GETATTR and SETATTR needs to be handled
-        differently, because they also take a VALUE (the attribute, as a
-        string) instead of a TYPE.
-        """
-        # step 1: determine the arguments to pass to OP()
-        argtypes_w = []
-        color: Color = 'blue'
-        for arg in args:
-            c1, w_argtype = self.check_expr(arg)
-            argtypes_w.append(w_argtype)
-            color = maybe_blue(color, c1)
-
-        # step 2: call OP() and get w_opimpl
-        assert w_OP.color == 'blue', f'{w_OP.qn} is not blue'
-        w_opimpl = self.vm.call_OP(w_OP, argtypes_w) # type: ignore
-
-        # step 3: check that we can call the returned w_opimpl
-        self.opimpl_typecheck(w_opimpl, node, args, argtypes_w,
-                              dispatch=dispatch, errmsg=errmsg)
-        self.opimpl[node] = w_opimpl
-        return color, w_opimpl.w_restype
 
     def opimpl_typecheck(self,
                          w_opimpl: W_OpImpl,
@@ -478,7 +440,7 @@ class TypeChecker:
                         err.add('error', f'this is `{t}`', arg.loc)
             raise err
 
-        w_functype = w_opimpl.w_func.w_functype
+        w_functype = w_opimpl.w_functype
 
         self.call_typecheck(
             w_functype,
@@ -541,7 +503,7 @@ class TypeChecker:
         self.opimpl[call] = w_opimpl
         # XXX I'm not sure that the color is correct here. We need to think
         # more.
-        w_functype = w_opimpl.w_func.w_functype
+        w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
     def call_typecheck(self,
@@ -627,7 +589,7 @@ class TypeChecker:
         self.opimpl[op] = w_opimpl
         # XXX I'm not sure that the color is correct here. We need to think
         # more.
-        w_functype = w_opimpl.w_func.w_functype
+        w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
     def check_expr_List(self, listop: ast.List) -> tuple[Color, W_Type]:
@@ -670,53 +632,47 @@ def typecheck_opimpl(
         errmsg: str,
 ) -> None:
     if w_opimpl.is_null():
+        # this means that we couldn't find an OpImpl for this OPERATOR.
+        # The details of the error message depends on the DispatchKind:
+
+        #  - single dispatch means that the target (argument 0) doesn't
+        #    support this operation, so we report its type and its definition
+        #
+        #  - multi dispatch means that all the types are equally imporant in
+        #    determining whether an operation is supported, so we report all
+        #    of them
         typenames = [wv.w_static_type.name for wv in orig_args_wv]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':
-            # for single dispatch ops, NotImplemented means that the
-            # target doesn't support this operation: so we just report its
-            # type and possibly its definition
-            #assert args[0] is not None
-            wv_obj = orig_args_wv[0]
-            t = wv_obj.w_static_type.name
-            if wv_obj.loc:
-                err.add('error', f'this is `{t}`', wv_obj.loc)
-
+            wv_target = orig_args_wv[0]
+            t = wv_target.w_static_type.name
+            if wv_target.loc:
+                err.add('error', f'this is `{t}`', wv_target.loc)
             ## sym = self.name2sym_maybe(target)
             ## if sym:
             ##     assert isinstance(target, ast.Name)
             ##     err.add('note', f'`{target.id}` defined here', sym.loc)
-
         else:
-            #XXX fixme
-
-            # for multi dispatch ops, all operands are equally important
-            # for finding the opimpl: we report all of them
-            for arg, w_argtype in zip(args, argtypes_w):
-                if arg is not None:
-                    t = w_argtype.name
-                    err.add('error', f'this is `{t}`', arg.loc)
+            for wv_arg in orig_args_wv:
+                t = wv_arg.w_static_type.name
+                err.add('error', f'this is `{t}`', wv_arg.loc)
         raise err
 
-    w_functype = w_opimpl.w_func.w_functype
     if w_opimpl.is_simple():
-        # for "simple" opimpls, we just pass the original values
-        args_wv = orig_args_wv
-    else:
-        args_wv = w_opimpl._args_wv
+        w_opimpl.set_args_wv(orig_args_wv)
 
     typecheck_call(
         vm,
-        w_functype,
-        args_wv)
+        w_opimpl,
+        w_opimpl._args_wv)
         ## def_loc = None, # would be nice to find it somehow
         ## call_loc = None), # XXX node.loc, # type: ignore
 
 
 def typecheck_call(
         vm: 'SPyVM',
-        w_functype: W_FuncType,
+        w_opimpl: W_OpImpl,
         args_wv: list[W_Value],
         ## *,
         ## def_loc: Optional[Loc],
@@ -725,6 +681,8 @@ def typecheck_call(
     # XXX
     call_loc = None
     def_loc = None
+
+    w_functype = w_opimpl.w_functype
 
     got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)
@@ -737,13 +695,12 @@ def typecheck_call(
             call_loc = call_loc)
     #
     # check that the types of the arguments are compatible
-    for param, wv_arg in zip(w_functype.params, args_wv):
-        # XXX: we need to find a way to re-enable implicit conversions
-        err = convert_type_maybe(vm, wv_arg, param.w_type)
-        if err:
-            if def_loc:
-                err.add('note', 'function defined here', def_loc)
-            raise err
+    for i, (param, wv_arg) in enumerate(zip(w_functype.params, args_wv)):
+        conv = convert_type_maybe(vm, wv_arg, param.w_type)
+        w_opimpl._converters[i] = conv # ???
+        ## if def_loc:
+        ##     err.add('note', 'function defined here', def_loc)
+        ##     raise err
 
 
 def convert_type_maybe(
@@ -756,14 +713,34 @@ def convert_type_maybe(
         # nothing to do
         return None
 
-    # XXX IMPLEMENT ME
-    # we need to re-enable implicit conversions
+    # the types don't match and/or we need a conversion (see point 2 above)
 
+    # try to see whether we can apply a type conversion
+    if vm.issubclass(w_exp, w_got):
+        XXX
+        # implicit upcast
+        self.expr_conv[expr] = DynamicCast(w_exp)
+        return None
+    elif w_got is B.w_i32 and w_exp is B.w_f64:
+        return NumericConv(w_type=w_exp, w_fromtype=w_got)
+    elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
+        XXX
+        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
+                                         w_fromtype=w_got)
+        return None
+    elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
+        XXX
+        assert w_got == W_FuncType.parse('def() -> void')
+        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
+                                         w_fromtype=w_got)
+        return None
+
+    # mismatched types
     err = SPyTypeError('mismatched types')
     got = w_got.name
     exp = w_exp.name
     err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
-    return err
+    raise err
 
 
 def _call_error_wrong_argcount(

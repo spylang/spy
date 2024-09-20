@@ -20,7 +20,6 @@ def opt(T: type, help: str, names: tuple[str, ...]=()) -> Any:
 def boolopt(help: str, names: tuple[str, ...]=()) -> Any:
     return opt(bool, help, names)
 
-
 def do_pyparse(filename: str) -> None:
     import ast as py_ast
     with open(filename) as f:
@@ -28,9 +27,9 @@ def do_pyparse(filename: str) -> None:
     mod = magic_py_parse(src)
     mod.pp()
 
-def dump_spy_mod(vm: SPyVM, modname: str) -> None:
-    b = SPyBackend(vm, fqn_format='short')
-    #b = SPyBackend(vm, fqn_format='full')
+def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
+    fqn_format = 'short' if pretty else 'full'
+    b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
 @no_type_check
@@ -48,9 +47,11 @@ def main(filename: Path,
              "which compiler to use",
              names=['--toolchain', '-t']
          ) = "zig",
+         pretty: boolopt("prettify redshifted modules") = True,
          ) -> None:
     try:
-        do_main(filename, run, pyparse, parse, redshift, cwrite, g, O, toolchain)
+        do_main(filename, run, pyparse, parse, redshift, cwrite, g, O,
+                toolchain, pretty)
     except SPyError as e:
         print(e.format(use_colors=True))
 
@@ -59,7 +60,8 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             cwrite: bool,
             debug_symbols: bool,
             opt_level: int,
-            toolchain: ToolchainType) -> None:
+            toolchain: ToolchainType,
+            pretty: bool) -> None:
     if pyparse:
         do_pyparse(str(filename))
         return
@@ -90,7 +92,7 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
 
     vm.redshift()
     if redshift:
-        dump_spy_mod(vm, modname)
+        dump_spy_mod(vm, modname, pretty)
         return
 
     compiler = Compiler(vm, modname, py.path.local(builddir))

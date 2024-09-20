@@ -12,16 +12,18 @@ if TYPE_CHECKING:
 def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
                 w_a: W_Dynamic, w_b: W_Dynamic,
                 ) -> W_Dynamic:
-    w_ltype = vm.dynamic_type(w_a)
-    w_rtype = vm.dynamic_type(w_b)
-    w_opimpl = vm.call_OP(w_op, [w_ltype, w_rtype])
-    if w_opimpl.is_null():
-        token = OP.to_token(w_op)
-        l = w_ltype.name
-        r = w_rtype.name
-        raise SPyTypeError(f'cannot do `{l}` {token} `{r}`')
-    return vm.call(w_opimpl.w_func, [w_a, w_b])
+    from spy.vm.typechecker import typecheck_opimpl
+    # this looks suspiciously like vm.eq & co., we should unify them
+    token = OP.to_token(w_op)
+    errmsg = 'cannot do `{0}` %s `{1}`' % token
 
+    wv_a = W_Value.from_w_obj(vm, w_a, 'a', 0)
+    wv_b = W_Value.from_w_obj(vm, w_b, 'b', 1)
+    w_opimpl = vm.call_OP(w_op, [wv_a, wv_b])
+    typecheck_opimpl(vm, w_opimpl, [wv_a, wv_b],
+                     dispatch='multi',
+                     errmsg=errmsg)
+    return w_opimpl.call(vm, [w_a, w_b])
 
 @OP.builtin
 def dynamic_add(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
@@ -63,5 +65,4 @@ def dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
     wv_attr = W_Value.from_w_obj(vm, w_attr, 'a', 1)
     wv_v = W_Value.from_w_obj(vm, w_value, 'v', 2)
     w_opimpl = vm.call_OP(OP.w_SETATTR, [wv_obj, wv_attr, wv_v])
-    args_w = w_opimpl.reorder([w_obj, w_attr, w_value])
-    return vm.call(w_opimpl.w_func, args_w)
+    return w_opimpl.call(vm, [w_obj, w_attr, w_value])
