@@ -173,7 +173,14 @@ class FuncDoppler:
 
     def _call_opimpl(self, op, w_opimpl, orig_args):
         func = self.make_const(op.loc, w_opimpl._w_func)
-        new_args = w_opimpl.reorder(orig_args)
+
+        new_args = []
+        for wv_arg, conv in zip(w_opimpl._args_wv, w_opimpl._converters):
+            arg = orig_args[wv_arg.i]
+            if conv is not None:
+                arg = conv.redshift(self.vm, arg)
+            new_args.append(arg)
+
         return ast.Call(op.loc, func, new_args)
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:

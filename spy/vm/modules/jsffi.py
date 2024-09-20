@@ -5,6 +5,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
                       W_Dynamic, W_List, W_FuncType)
+from spy.vm.list import W_List
 from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.sig import spy_builtin
 from spy.vm.registry import ModuleRegistry
@@ -39,10 +40,10 @@ class W_JsRef(W_Object):
         return W_OpImpl.simple(vm.wrap_func(fn))
 
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', w_type: W_Type, w_method: W_Str,
-                       w_argtypes: W_Dynamic) -> W_OpImpl:
-        argtypes_w = vm.unwrap(w_argtypes)
-        n = len(argtypes_w)
+    def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_Value, wv_method: W_Value,
+                       w_values: W_List[W_Value]) -> W_OpImpl:
+        args_wv = w_values.items_w
+        n = len(args_wv)
         if n == 1:
             return W_OpImpl.simple(JSFFI.w_call_method_1)
         else:

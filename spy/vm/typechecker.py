@@ -717,16 +717,10 @@ def convert_type_maybe(
     elif w_got is B.w_i32 and w_exp is B.w_f64:
         return NumericConv(w_type=w_exp, w_fromtype=w_got)
     elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-        XXX
-        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                         w_fromtype=w_got)
-        return None
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
     elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-        XXX
         assert w_got == W_FuncType.parse('def() -> void')
-        self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                         w_fromtype=w_got)
-        return None
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
 
     # mismatched types
     err = SPyTypeError('mismatched types')
