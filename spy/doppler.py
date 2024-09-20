@@ -218,6 +218,7 @@ class FuncDoppler:
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
         if call in self.t.opimpl:
             w_opimpl = self.t.opimpl[call]
+            # XXX we should shift all the args?
             return self._call_opimpl(call, w_opimpl, [call.func] + call.args)
 
         newfunc = self.shift_expr(call.func)
@@ -252,9 +253,7 @@ class FuncDoppler:
     def shift_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
         assert op in self.t.opimpl
         w_opimpl = self.t.opimpl[op]
-        v_func = self.make_const(op.loc, w_opimpl._w_func)
         v_target = self.shift_expr(op.target)
         v_method = ast.Constant(op.loc, value=op.method)
-        newargs_v = [v_target, v_method] + \
-            [self.shift_expr(arg) for arg in op.args]
-        return ast.Call(op.loc, v_func, newargs_v)
+        newargs_v = [self.shift_expr(arg) for arg in op.args]
+        return self._call_opimpl(op, w_opimpl, [v_target, v_method] + newargs_v)

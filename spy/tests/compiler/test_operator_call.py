@@ -135,22 +135,25 @@ class TestCallOp(CompilerTest):
                 meth = wv_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @spy_builtin(QN('ext::meth_add'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
-                               w_arg: W_I32) -> W_I32:
+                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
-                    return W_OpImpl.simple(vm.wrap_func(fn))
+                    return W_OpImpl.with_values(
+                        vm.wrap_func(fn),
+                        [wv_obj] + w_values.items_w
+                    )
 
                 elif meth == 'sub':
                     @spy_builtin(QN('ext::meth_sub'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_method: W_Str,
-                               w_arg: W_I32) -> W_I32:
+                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
-                    return W_OpImpl.simple(vm.wrap_func(fn))
-
+                    return W_OpImpl.with_values(
+                        vm.wrap_func(fn),
+                        [wv_obj] + w_values.items_w
+                    )
                 else:
-                    return B.w_NotImplemented
+                    return W_OpImpl.NULL
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

@@ -300,10 +300,8 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[op]
         w_target = self.eval_expr(op.target)
         w_method = self.vm.wrap(op.method)
-        arg_w = [self.eval_expr(arg) for arg in op.args]
-        w_res = self.vm.call(w_opimpl._w_func,
-                                      [w_target, w_method] + arg_w)
-        return w_res
+        args_w = [self.eval_expr(arg) for arg in op.args]
+        return w_opimpl.call(self.vm, [w_target, w_method] + args_w)
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
         w_opimpl = self.t.opimpl[op]
