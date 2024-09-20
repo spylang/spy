@@ -3,6 +3,7 @@ from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
 from spy import ast
 from spy.fqn import QN
 from spy.location import Loc
+from spy.irgen.symtable import Symbol
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.sig import spy_builtin
@@ -25,6 +26,7 @@ class W_Value(W_Object):
     i: int
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Optional[Loc]
+    sym: Optional[Symbol]
     _w_blueval: Optional[W_Object]
 
     def __init__(self,
@@ -33,12 +35,14 @@ class W_Value(W_Object):
                  w_static_type: W_Type,
                  loc: Optional[Loc],
                  *,
+                 sym: Optional[Symbol] = None,
                  w_blueval: Optional[W_Object] = None,
                  ) -> None:
         self.prefix = prefix
         self.i = i
         self.w_static_type = w_static_type
         self.loc = loc
+        self.sym = sym
         self._w_blueval = w_blueval
 
     @classmethod

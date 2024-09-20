@@ -206,7 +206,8 @@ class TypeChecker:
                              w_blueval = self.vm.wrap(expr))
             else:
                 color, w_type = self.check_expr(expr)
-                wv = W_Value(prefix, i, w_type, expr.loc)
+                wv = W_Value(prefix, i, w_type, expr.loc,
+                             sym=self.name2sym_maybe(expr))
                 last_loc = expr.loc
             colors.append(color)
             args_wv.append(wv)
@@ -598,10 +599,9 @@ def typecheck_opimpl(
             t = wv_target.w_static_type.name
             if wv_target.loc:
                 err.add('error', f'this is `{t}`', wv_target.loc)
-            ## sym = self.name2sym_maybe(target)
-            ## if sym:
-            ##     assert isinstance(target, ast.Name)
-            ##     err.add('note', f'`{target.id}` defined here', sym.loc)
+            if wv_target.sym:
+                sym = wv_target.sym
+                err.add('note', f'`{sym.name}` defined here', sym.loc)
         else:
             for wv_arg in orig_args_wv:
                 t = wv_arg.w_static_type.name
