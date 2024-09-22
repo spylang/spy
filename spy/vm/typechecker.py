@@ -401,20 +401,21 @@ class TypeChecker:
         return colors[0], w_opimpl.w_restype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
-        color, w_otype = self.check_expr(call.func)
-        if w_otype is B.w_dynamic:
-            # XXX: how are we supposed to know the color of the result if we
-            # are calling a dynamic expr?
-            # E.g.:
-            #
-            # @blue
-            # def foo(): ...
-            #
-            # @blue
-            # def bar(): ...
-            #     x: dynamic = foo
-            #     x()   # color???
-            return 'red', B.w_dynamic # ???
+        # XXX: how are we supposed to know the color of the result if we
+        # are calling a dynamic expr?
+        # E.g.:
+        #
+        # @blue
+        # def foo(): ...
+        #
+        # @blue
+        # def bar(): ...
+        #     x: dynamic = foo
+        #     x()   # color???
+        #
+        # So far we always return red, because callop._dynamic_call_opimpl
+        # returns a w_functype of red color. But we need to think whether this
+        # is the real behavior that we want.
 
         n = len(call.args)
         colors, args_wv = self.check_many_exprs(
