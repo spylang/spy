@@ -561,11 +561,13 @@ def typecheck_call(
     #
     # check that the types of the arguments are compatible
     for i, (param, wv_arg) in enumerate(zip(w_functype.params, args_wv)):
-        conv = convert_type_maybe(vm, wv_arg, param.w_type)
-        w_opimpl._converters[i] = conv # ???
-        ## if def_loc:
-        ##     err.add('note', 'function defined here', def_loc)
-        ##     raise err
+        try:
+            conv = convert_type_maybe(vm, wv_arg, param.w_type)
+            w_opimpl._converters[i] = conv
+        except SPyTypeError as err:
+            if def_loc:
+                err.add('note', 'function defined here', def_loc)
+                raise
 
 
 def convert_type_maybe(
