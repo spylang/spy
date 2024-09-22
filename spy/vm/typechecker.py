@@ -522,7 +522,6 @@ def typecheck_opimpl(
 
     if w_opimpl.is_direct_call():
         wv_func = orig_args_wv[0]
-        assert wv_func.sym is not None
     else:
         wv_func = None
 
@@ -541,12 +540,13 @@ def typecheck_call(
         wv_func: W_Value
 ) -> None:
 
-    if wv_func is None:
-        def_loc = None
-        call_loc = None
-    else:
-        def_loc = wv_func.sym.loc
+    call_loc = None
+    def_loc = None
+    if wv_func is not None:
         call_loc = wv_func.loc
+        # not all direct calls targets have a sym (e.g. if we call a builtin)
+        if wv_func.sym is not None:
+            def_loc = wv_func.sym.loc
 
     w_functype = w_opimpl.w_functype
     got_nargs = len(args_wv)
