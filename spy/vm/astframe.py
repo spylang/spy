@@ -253,8 +253,10 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[call]
 
         w_func = self.eval_expr(call.func)
-        args_w = [self.eval_expr(arg) for arg in call.args]
+        if w_func is B.w_STATIC_TYPE:
+            return self._eval_STATIC_TYPE(call)
 
+        args_w = [self.eval_expr(arg) for arg in call.args]
         if not w_opimpl.is_direct_call():
             # special case: we are calling something which implements op_CALL
             return w_opimpl.call(self.vm, [w_func] + args_w)
@@ -273,12 +275,8 @@ class ASTFrame:
             # function, it's a bug in the typechecker
             assert isinstance(w_func, W_Func)
 
-        # XXX: we should move this check BEFORE evaluating the args
-        if w_func is B.w_STATIC_TYPE:
-            return self._eval_STATIC_TYPE(call)
-        else:
-            w_res = self.vm.call(w_func, args_w)
-            return w_res
+        w_res = self.vm.call(w_func, args_w)
+        return w_res
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
         assert len(call.args) == 1
