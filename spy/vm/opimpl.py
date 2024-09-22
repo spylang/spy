@@ -193,17 +193,6 @@ class W_OpImpl(W_Object):
         self._args_wv = args_wv[:]
         self._converters = [None] * len(args_wv)
 
-    # XXX kill me
-    def reorder(self, args: list[T]) -> list[T]:
-        """
-        If we have a complex W_OpImpl, we want to reorder the given args
-        depending on the order of _args_wv
-        """
-        if self._args_wv is None:
-            return args
-        else:
-            return [args[wv.i] for wv in self._args_wv]
-
     def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
         real_args_w = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
