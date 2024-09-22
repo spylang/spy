@@ -193,6 +193,7 @@ class W_OpImpl(W_Object):
         self._args_wv = args_wv[:]
         self._converters = [None] * len(args_wv)
 
+    # XXX kill me
     def reorder(self, args: list[T]) -> list[T]:
         """
         If we have a complex W_OpImpl, we want to reorder the given args

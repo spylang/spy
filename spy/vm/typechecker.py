@@ -416,12 +416,6 @@ class TypeChecker:
             #     x()   # color???
             return 'red', B.w_dynamic # ???
 
-        ## if isinstance(w_otype, W_FuncType):
-        ##     call_loc = call.func.loc
-        ##     sym = self.name2sym_maybe(call.func)
-        ##     def_loc = sym.loc if sym else None
-        ##     ...
-
         n = len(call.args)
         colors, args_wv = self.check_many_exprs(
             ['f'] + ['v']*n,
@@ -484,7 +478,6 @@ class TypeChecker:
 def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
-        #node: ast.Node,
         orig_args_wv: list[W_Value],
         *,
         dispatch: DispatchKind,
@@ -527,22 +520,34 @@ def typecheck_opimpl(
     if w_opimpl.is_simple():
         w_opimpl.set_args_wv(orig_args_wv)
 
+    if w_opimpl.is_direct_call():
+        wv_func = orig_args_wv[0]
+        assert wv_func.sym is not None
+    else:
+        wv_func = None
+
     typecheck_call(
         vm,
         w_opimpl,
         w_opimpl._args_wv,
-        def_loc = None, # would be nice to find it somehow
-        call_loc = None) # XXX node.loc, # type: ignore
-
+        wv_func = wv_func,
+    )
 
 def typecheck_call(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
         args_wv: list[W_Value],
         *,
-        def_loc: Optional[Loc],
-        call_loc: Optional[Loc],
+        wv_func: W_Value
 ) -> None:
+
+    if wv_func is None:
+        def_loc = None
+        call_loc = None
+    else:
+        def_loc = wv_func.sym.loc
+        call_loc = wv_func.loc
+
     w_functype = w_opimpl.w_functype
     got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)

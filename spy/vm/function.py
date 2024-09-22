@@ -150,6 +150,8 @@ class W_DirectCall(W_Func):
     """
     See W_Func.op_CALL.
     """
+    qn = '<direct-call>'
+
     def __init__(self, w_functype):
         self.w_functype = w_functype
 
