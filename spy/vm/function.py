@@ -120,6 +120,39 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
+    def op_CALL(vm: 'SPyVM', wv_func: 'W_Value',
+                w_values: 'W_List[W_Value]') -> 'W_OpImpl':
+        """
+        This is a bit of a hack.
+
+        The correct opimpl for a W_Func object is something which says "please
+        just call it". Ideally, we would like to do something like that:
+
+            w_func = wv_func.blue_unwrap()
+            return W_OpImpl(w_func, ...)
+
+        However, we cannot because at the current moment, wv_func doesn't
+        carry around it's blue value: this is something which needs to be
+        fixed in the typechecker, eventually.
+
+        The workaround is to wrap the functype inside a special W_DirectCall
+        object, which is special cased by ASTFrame.
+        """
+        from spy.vm.opimpl import W_OpImpl
+        w_functype = wv_func.w_static_type
+        return W_OpImpl.with_values(
+            W_DirectCall(w_functype),
+            w_values.items_w
+        )
+
+
+class W_DirectCall(W_Func):
+    """
+    See W_Func.op_CALL.
+    """
+    def __init__(self, w_functype):
+        self.w_functype = w_functype
+
 
 class W_ASTFunc(W_Func):
     funcdef: ast.FuncDef

@@ -5,7 +5,7 @@ from spy.fqn import QN
 from spy.location import Loc
 from spy.irgen.symtable import Symbol
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.sig import spy_builtin
 
 if TYPE_CHECKING:
@@ -172,6 +172,12 @@ class W_OpImpl(W_Object):
 
     def is_simple(self) -> bool:
         return self._args_wv is None
+
+    def is_direct_call(self):
+        """
+        This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
+        """
+        return isinstance(self._w_func, W_DirectCall)
 
     @property
     def w_functype(self) -> W_FuncType:

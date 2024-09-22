@@ -415,37 +415,13 @@ class TypeChecker:
             #     x: dynamic = foo
             #     x()   # color???
             return 'red', B.w_dynamic # ???
-        elif isinstance(w_otype, W_FuncType):
-            # direct call to a function, let's typecheck it directly
-            return self._check_expr_call_func(call)
-        else:
-            # generic call to an arbitrary object, try to use op.CALL
-            return self._check_expr_call_generic(call)
 
-    def _check_expr_call_func(self, call: ast.Call) -> tuple[Color, W_Type]:
-        color, w_functype = self.check_expr(call.func)
-        assert isinstance(w_functype, W_FuncType)
-        argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-        args_wv = [
-            W_Value('v', i, w_type, arg.loc)
-            for i, (w_type, arg) in enumerate(zip(argtypes_w, call.args))
-        ]
-        call_loc = call.func.loc
-        sym = self.name2sym_maybe(call.func)
-        def_loc = sym.loc if sym else None
-        typecheck_call(
-            self.vm,
-            w_functype,
-            args_wv,
-            def_loc = def_loc,
-            call_loc = call_loc)
+        ## if isinstance(w_otype, W_FuncType):
+        ##     call_loc = call.func.loc
+        ##     sym = self.name2sym_maybe(call.func)
+        ##     def_loc = sym.loc if sym else None
+        ##     ...
 
-        # the color of the result depends on the color of the function: if
-        # we call a @blue function, we get a blue result
-        rescolor = w_functype.color
-        return rescolor, w_functype.w_restype
-
-    def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
         n = len(call.args)
         colors, args_wv = self.check_many_exprs(
             ['f'] + ['v']*n,
@@ -457,71 +433,6 @@ class TypeChecker:
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
-
-    def call_typecheck(self,
-                       w_functype: W_FuncType,
-                       argtypes_w: Sequence[W_Type],
-                       *,
-                       def_loc: Optional[Loc],
-                       call_loc: Optional[Loc],
-                       argnodes: Sequence[ast.Expr | None],
-                       ) -> None:
-        got_nargs = len(argtypes_w)
-        exp_nargs = len(w_functype.params)
-        if got_nargs != exp_nargs:
-            self._call_error_wrong_argcount(
-                got_nargs,
-                exp_nargs,
-                def_loc = def_loc,
-                call_loc = call_loc,
-                argnodes = argnodes)
-        #
-        assert len(argnodes) == len(argtypes_w)
-        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
-                                                    argtypes_w)):
-            arg_expr = argnodes[i]
-            err = self.convert_type_maybe(arg_expr, w_arg_type, param.w_type)
-            if err:
-                if def_loc:
-                    err.add('note', 'function defined here', def_loc)
-                raise err
-
-    def _call_error_wrong_argcount(self, got: int, exp: int,
-                                   *,
-                                   def_loc: Optional[Loc],
-                                   call_loc: Optional[Loc],
-                                   argnodes: Sequence[ast.Expr | None],
-                                   ) -> NoReturn:
-        assert got != exp
-        takes = maybe_plural(exp, f'takes {exp} argument')
-        supplied = maybe_plural(got,
-                                f'1 argument was supplied',
-                                f'{got} arguments were supplied')
-        err = SPyTypeError(f'this function {takes} but {supplied}')
-        #
-        # if we know the call_loc, we can add more detailed errors
-        if call_loc:
-            assert argnodes is not None
-            if got < exp:
-                diff = exp - got
-                arguments = maybe_plural(diff, 'argument')
-                err.add('error', f'{diff} {arguments} missing', call_loc)
-            else:
-                diff = got - exp
-                arguments = maybe_plural(diff, 'argument')
-                first_extra_arg = argnodes[exp]
-                last_extra_arg = argnodes[-1]
-                assert first_extra_arg is not None
-                assert last_extra_arg is not None
-                # XXX this assumes that all the arguments are on the same line
-                loc = first_extra_arg.loc.replace(
-                    col_end = last_extra_arg.loc.col_end
-                )
-                err.add('error', f'{diff} extra {arguments}', loc)
-        #
-        if def_loc:
-            err.add('note', 'function defined here', def_loc)
-        raise err
 
     def check_expr_CallMethod(self, op: ast.CallMethod) -> tuple[Color, W_Type]:
         n = len(op.args)
