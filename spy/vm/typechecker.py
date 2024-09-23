@@ -56,6 +56,8 @@ class TypeChecker:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.expr_types = {}
+        # XXX: expr_conv nowadays is used only for typechecking locals. Maybe
+        # we should use a better system?
         self.expr_conv = {}
         self.opimpl = {}
         self.locals_types_w = {}
@@ -80,82 +82,33 @@ class TypeChecker:
         assert name in self.locals_types_w
         got_color, w_got_type = self.check_expr(expr)
         w_exp_type = self.locals_types_w[name]
-        err = self.convert_type_maybe(expr, w_got_type, w_exp_type)
-        if err is None:
-            return
-        #
-        # we got a SPyTypeError, raise it
-        exp = w_exp_type.name
-        exp_loc = self.funcdef.symtable.lookup(name).type_loc
-        if name == '@return':
-            because = 'because of return type'
-        else:
-            because = 'because of type declaration'
-        err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-        raise err
+
+        wv_local = W_Value('v', 0, w_got_type, expr.loc)
+        try:
+            conv = convert_type_maybe(self.vm, wv_local, w_exp_type)
+            if conv is not None:
+                self.expr_conv[expr] = conv
+        except SPyTypeError as err:
+            exp = w_exp_type.name
+            exp_loc = self.funcdef.symtable.lookup(name).type_loc
+            if name == '@return':
+                because = 'because of return type'
+            else:
+                because = 'because of type declaration'
+            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
+            raise
 
     def typecheck_bool(self, expr: ast.Expr) -> None:
-        color, w_type = self.check_expr(expr)
-        err = self.convert_type_maybe(expr, w_type, B.w_bool)
-        if err:
+        color, w_got_type = self.check_expr(expr)
+        wv_cond = W_Value('v', 0, w_got_type, expr.loc)
+        try:
+            conv = convert_type_maybe(self.vm, wv_cond, B.w_bool)
+            if conv is not None:
+                self.expr_conv[expr] = conv
+        except SPyTypeError as err:
             msg = 'implicit conversion to `bool` is not implemented yet'
             err.add('note', msg, expr.loc)
-            raise err
-
-    def convert_type_maybe(self, expr: Optional[ast.Expr], w_got: W_Type,
-                           w_exp: W_Type) -> Optional[SPyTypeError]:
-        """
-        Check that the given type if compatible with the expected type and/or can
-        be converted to it.
-
-        We have two cases, depending whether `expr` is None or not:
-
-        1. `expr is not None`: this is the standard case, and the type comes
-           from a user expression: in this case, automatic conversion is
-           allowed
-
-        2. `expr is None`: this happens only for a few builtin operators
-           (e.g. the `attr` value in GETATTR/SETATTR): in this case, the types
-           must match without conversions. It is an internal error to do
-           otherwise.
-
-        If there is a type mismatch, it returns a SPyTypeError: in that case,
-        it is up to the caller to add extra info and raise the error.
-
-        If the conversion can be made, return None.
-        """
-        if self.vm.issubclass(w_got, w_exp):
-            # nothing to do
-            return None
-
-        # the types don't match and/or we need a conversion (see point 2 above)
-        assert expr is not None
-
-        # try to see whether we can apply a type conversion
-        if self.vm.issubclass(w_exp, w_got):
-            # implicit upcast
-            self.expr_conv[expr] = DynamicCast(w_exp)
-            return None
-        elif w_got is B.w_i32 and w_exp is B.w_f64:
-            # numeric conversion
-            self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
-            return None
-        elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-            self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                             w_fromtype=w_got)
-            return None
-        elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-            assert w_got == W_FuncType.parse('def() -> void')
-            self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                             w_fromtype=w_got)
-            return None
-
-        # mismatched types
-        err = SPyTypeError('mismatched types')
-        got = w_got.name
-        exp = w_exp.name
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=expr.loc)
-        return err
+            raise
 
     def name2sym_maybe(self, expr: ast.Expr) -> Optional[Symbol]:
         """
@@ -401,46 +354,22 @@ class TypeChecker:
         return colors[0], w_opimpl.w_restype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
-        color, w_otype = self.check_expr(call.func)
-        if w_otype is B.w_dynamic:
-            # XXX: how are we supposed to know the color of the result if we
-            # are calling a dynamic expr?
-            # E.g.:
-            #
-            # @blue
-            # def foo(): ...
-            #
-            # @blue
-            # def bar(): ...
-            #     x: dynamic = foo
-            #     x()   # color???
-            return 'red', B.w_dynamic # ???
-        elif isinstance(w_otype, W_FuncType):
-            # direct call to a function, let's typecheck it directly
-            return self._check_expr_call_func(call)
-        else:
-            # generic call to an arbitrary object, try to use op.CALL
-            return self._check_expr_call_generic(call)
+        # XXX: how are we supposed to know the color of the result if we
+        # are calling a dynamic expr?
+        # E.g.:
+        #
+        # @blue
+        # def foo(): ...
+        #
+        # @blue
+        # def bar(): ...
+        #     x: dynamic = foo
+        #     x()   # color???
+        #
+        # So far we always return red, because callop._dynamic_call_opimpl
+        # returns a w_functype of red color. But we need to think whether this
+        # is the real behavior that we want.
 
-    def _check_expr_call_func(self, call: ast.Call) -> tuple[Color, W_Type]:
-        color, w_functype = self.check_expr(call.func)
-        assert isinstance(w_functype, W_FuncType)
-        argtypes_w = [self.check_expr(arg)[1] for arg in call.args]
-        call_loc = call.func.loc
-        sym = self.name2sym_maybe(call.func)
-        def_loc = sym.loc if sym else None
-        self.call_typecheck(
-            w_functype,
-            argtypes_w,
-            def_loc = def_loc,
-            call_loc = call_loc,
-            argnodes = call.args)
-        # the color of the result depends on the color of the function: if
-        # we call a @blue function, we get a blue result
-        rescolor = w_functype.color
-        return rescolor, w_functype.w_restype
-
-    def _check_expr_call_generic(self, call: ast.Call) -> tuple[Color, W_Type]:
         n = len(call.args)
         colors, args_wv = self.check_many_exprs(
             ['f'] + ['v']*n,
@@ -452,71 +381,6 @@ class TypeChecker:
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
-
-    def call_typecheck(self,
-                       w_functype: W_FuncType,
-                       argtypes_w: Sequence[W_Type],
-                       *,
-                       def_loc: Optional[Loc],
-                       call_loc: Optional[Loc],
-                       argnodes: Sequence[ast.Expr | None],
-                       ) -> None:
-        got_nargs = len(argtypes_w)
-        exp_nargs = len(w_functype.params)
-        if got_nargs != exp_nargs:
-            self._call_error_wrong_argcount(
-                got_nargs,
-                exp_nargs,
-                def_loc = def_loc,
-                call_loc = call_loc,
-                argnodes = argnodes)
-        #
-        assert len(argnodes) == len(argtypes_w)
-        for i, (param, w_arg_type) in enumerate(zip(w_functype.params,
-                                                    argtypes_w)):
-            arg_expr = argnodes[i]
-            err = self.convert_type_maybe(arg_expr, w_arg_type, param.w_type)
-            if err:
-                if def_loc:
-                    err.add('note', 'function defined here', def_loc)
-                raise err
-
-    def _call_error_wrong_argcount(self, got: int, exp: int,
-                                   *,
-                                   def_loc: Optional[Loc],
-                                   call_loc: Optional[Loc],
-                                   argnodes: Sequence[ast.Expr | None],
-                                   ) -> NoReturn:
-        assert got != exp
-        takes = maybe_plural(exp, f'takes {exp} argument')
-        supplied = maybe_plural(got,
-                                f'1 argument was supplied',
-                                f'{got} arguments were supplied')
-        err = SPyTypeError(f'this function {takes} but {supplied}')
-        #
-        # if we know the call_loc, we can add more detailed errors
-        if call_loc:
-            assert argnodes is not None
-            if got < exp:
-                diff = exp - got
-                arguments = maybe_plural(diff, 'argument')
-                err.add('error', f'{diff} {arguments} missing', call_loc)
-            else:
-                diff = got - exp
-                arguments = maybe_plural(diff, 'argument')
-                first_extra_arg = argnodes[exp]
-                last_extra_arg = argnodes[-1]
-                assert first_extra_arg is not None
-                assert last_extra_arg is not None
-                # XXX this assumes that all the arguments are on the same line
-                loc = first_extra_arg.loc.replace(
-                    col_end = last_extra_arg.loc.col_end
-                )
-                err.add('error', f'{diff} extra {arguments}', loc)
-        #
-        if def_loc:
-            err.add('note', 'function defined here', def_loc)
-        raise err
 
     def check_expr_CallMethod(self, op: ast.CallMethod) -> tuple[Color, W_Type]:
         n = len(op.args)
@@ -568,7 +432,6 @@ class TypeChecker:
 def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
-        #node: ast.Node,
         orig_args_wv: list[W_Value],
         *,
         dispatch: DispatchKind,
@@ -608,31 +471,23 @@ def typecheck_opimpl(
                 err.add('error', f'this is `{t}`', wv_arg.loc)
         raise err
 
+    # if it's a simple OpImpl, we automatically pass the orig_args_wv in order
     if w_opimpl.is_simple():
         w_opimpl.set_args_wv(orig_args_wv)
+    args_wv = w_opimpl._args_wv
 
-    typecheck_call(
-        vm,
-        w_opimpl,
-        w_opimpl._args_wv)
-        ## def_loc = None, # would be nice to find it somehow
-        ## call_loc = None), # XXX node.loc, # type: ignore
-
-
-def typecheck_call(
-        vm: 'SPyVM',
-        w_opimpl: W_OpImpl,
-        args_wv: list[W_Value],
-        ## *,
-        ## def_loc: Optional[Loc],
-        ## call_loc: Optional[Loc],
-) -> None:
-    # XXX
+    # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
     def_loc = None
+    if w_opimpl.is_direct_call():
+        wv_func = orig_args_wv[0]
+        call_loc = wv_func.loc
+        # not all direct calls targets have a sym (e.g. if we call a builtin)
+        if wv_func.sym is not None:
+            def_loc = wv_func.sym.loc
 
+    # check that the number of arguments match
     w_functype = w_opimpl.w_functype
-
     got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)
     if got_nargs != exp_nargs:
@@ -642,49 +497,16 @@ def typecheck_call(
             args_wv,
             def_loc = def_loc,
             call_loc = call_loc)
-    #
+
     # check that the types of the arguments are compatible
     for i, (param, wv_arg) in enumerate(zip(w_functype.params, args_wv)):
-        conv = convert_type_maybe(vm, wv_arg, param.w_type)
-        w_opimpl._converters[i] = conv # ???
-        ## if def_loc:
-        ##     err.add('note', 'function defined here', def_loc)
-        ##     raise err
-
-
-def convert_type_maybe(
-        vm: 'SPyVM',
-        wv_x: W_Type,
-        w_exp: W_Type
-) -> Optional[SPyTypeError]:
-    w_got = wv_x.w_static_type
-    if vm.issubclass(w_got, w_exp):
-        # nothing to do
-        return None
-
-    # the types don't match and/or we need a conversion (see point 2 above)
-
-    # try to see whether we can apply a type conversion
-    if vm.issubclass(w_exp, w_got):
-        XXX
-        # implicit upcast
-        self.expr_conv[expr] = DynamicCast(w_exp)
-        return None
-    elif w_got is B.w_i32 and w_exp is B.w_f64:
-        return NumericConv(w_type=w_exp, w_fromtype=w_got)
-    elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
-    elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-        assert w_got == W_FuncType.parse('def() -> void')
-        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
-
-    # mismatched types
-    err = SPyTypeError('mismatched types')
-    got = w_got.name
-    exp = w_exp.name
-    err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
-    raise err
-
+        try:
+            conv = convert_type_maybe(vm, wv_arg, param.w_type)
+            w_opimpl._converters[i] = conv
+        except SPyTypeError as err:
+            if def_loc:
+                err.add('note', 'function defined here', def_loc)
+            raise
 
 def _call_error_wrong_argcount(
         got: int, exp: int,
@@ -702,7 +524,6 @@ def _call_error_wrong_argcount(
     #
     # if we know the call_loc, we can add more detailed errors
     if call_loc:
-        assert argnodes is not None
         if got < exp:
             diff = exp - got
             arguments = maybe_plural(diff, 'argument')
@@ -711,7 +532,7 @@ def _call_error_wrong_argcount(
             diff = got - exp
             arguments = maybe_plural(diff, 'argument')
             first_extra_loc = args_wv[exp].loc
-            last_extra_loc = args_wv[exp].loc
+            last_extra_loc = args_wv[-1].loc
             assert first_extra_loc is not None
             assert last_extra_loc is not None
             # XXX this assumes that all the arguments are on the same line
@@ -722,4 +543,43 @@ def _call_error_wrong_argcount(
     #
     if def_loc:
         err.add('note', 'function defined here', def_loc)
+    raise err
+
+def convert_type_maybe(
+        vm: 'SPyVM',
+        wv_x: W_Value,
+        w_exp: W_Type
+) -> Optional[TypeConverter]:
+    """
+    Check whether the given W_Value is compatible with the expected type:
+
+      - return None if it's the same type (no conversion needed)
+
+      - return a TypeConverter if it can be converted
+
+      - raise SPyTypeError if the types are not compatible. In this case,
+        the caller can catch the error, add extra info and re-raise.
+    """
+    w_got = wv_x.w_static_type
+    if vm.issubclass(w_got, w_exp):
+        # nothing to do
+        return None
+
+    # try to see whether we can apply a type conversion
+    if vm.issubclass(w_exp, w_got):
+        # implicit upcast
+        return DynamicCast(w_exp)
+    elif w_got is B.w_i32 and w_exp is B.w_f64:
+        return NumericConv(w_type=w_exp, w_fromtype=w_got)
+    elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
+    elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
+        assert w_got == W_FuncType.parse('def() -> void')
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
+
+    # mismatched types
+    err = SPyTypeError('mismatched types')
+    got = w_got.name
+    exp = w_exp.name
+    err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
     raise err

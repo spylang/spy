@@ -5,7 +5,7 @@ from spy.fqn import QN
 from spy.location import Loc
 from spy.irgen.symtable import Symbol
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.sig import spy_builtin
 
 if TYPE_CHECKING:
@@ -173,6 +173,12 @@ class W_OpImpl(W_Object):
     def is_simple(self) -> bool:
         return self._args_wv is None
 
+    def is_direct_call(self):
+        """
+        This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
+        """
+        return isinstance(self._w_func, W_DirectCall)
+
     @property
     def w_functype(self) -> W_FuncType:
         return self._w_func.w_functype
@@ -187,16 +193,6 @@ class W_OpImpl(W_Object):
         self._args_wv = args_wv[:]
         self._converters = [None] * len(args_wv)
 
-    def reorder(self, args: list[T]) -> list[T]:
-        """
-        If we have a complex W_OpImpl, we want to reorder the given args
-        depending on the order of _args_wv
-        """
-        if self._args_wv is None:
-            return args
-        else:
-            return [args[wv.i] for wv in self._args_wv]
-
     def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
         real_args_w = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
@@ -204,7 +200,12 @@ class W_OpImpl(W_Object):
             if conv is not None:
                 w_arg = conv.convert(vm, w_arg)
             real_args_w.append(w_arg)
-        return vm.call(self._w_func, real_args_w)
+        #
+        if self.is_direct_call():
+            w_func = orig_args_w[0]
+            return vm.call(w_func, real_args_w)
+        else:
+            return vm.call(self._w_func, real_args_w)
 
     def redshift_args(self, vm: 'SPyVM',
                       orig_args: list[ast.Expr]) -> list[ast.Expr]:
