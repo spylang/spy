@@ -318,8 +318,6 @@ class SPyVM:
         Mostly useful to call OPERATORs.
         """
         w_opimpl = self.call(w_func, args_wv)
-        # XXX maybe this should be a TypeError instead? What happens if we
-        # don't return an OpImpl from an user-defined OPERATOR?
         assert isinstance(w_opimpl, W_OpImpl)
         return w_opimpl
 

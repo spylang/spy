@@ -508,6 +508,9 @@ def typecheck_opimpl(
                 err.add('note', 'function defined here', def_loc)
             raise
 
+    # everything good!
+    w_opimpl._typechecked = True
+
 def _call_error_wrong_argcount(
         got: int, exp: int,
         args_wv: list[W_Value],
