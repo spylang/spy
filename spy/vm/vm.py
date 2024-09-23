@@ -332,7 +332,6 @@ class SPyVM:
         wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
         wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
         w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
-        assert not w_opimpl.is_null()
         w_res = w_opimpl.call(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
@@ -341,7 +340,6 @@ class SPyVM:
         wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
         wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
         w_opimpl = self.call_OP(OPERATOR.w_NE, [wv_a, wv_b])
-        assert not w_opimpl.is_null()
         w_res = w_opimpl.call(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
