@@ -471,37 +471,22 @@ def typecheck_opimpl(
                 err.add('error', f'this is `{t}`', wv_arg.loc)
         raise err
 
+    # if it's a simple OpImpl, we automatically pass the orig_args_wv in order
     if w_opimpl.is_simple():
         w_opimpl.set_args_wv(orig_args_wv)
+    args_wv = w_opimpl._args_wv
 
-    if w_opimpl.is_direct_call():
-        wv_func = orig_args_wv[0]
-    else:
-        wv_func = None
-
-    typecheck_call(
-        vm,
-        w_opimpl,
-        w_opimpl._args_wv,
-        wv_func = wv_func,
-    )
-
-def typecheck_call(
-        vm: 'SPyVM',
-        w_opimpl: W_OpImpl,
-        args_wv: list[W_Value],
-        *,
-        wv_func: W_Value
-) -> None:
-
+    # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
     def_loc = None
-    if wv_func is not None:
+    if w_opimpl.is_direct_call():
+        wv_func = orig_args_wv[0]
         call_loc = wv_func.loc
         # not all direct calls targets have a sym (e.g. if we call a builtin)
         if wv_func.sym is not None:
             def_loc = wv_func.sym.loc
 
+    # check that the number of arguments match
     w_functype = w_opimpl.w_functype
     got_nargs = len(args_wv)
     exp_nargs = len(w_functype.params)
@@ -512,7 +497,7 @@ def typecheck_call(
             args_wv,
             def_loc = def_loc,
             call_loc = call_loc)
-    #
+
     # check that the types of the arguments are compatible
     for i, (param, wv_arg) in enumerate(zip(w_functype.params, args_wv)):
         try:
