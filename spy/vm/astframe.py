@@ -275,8 +275,7 @@ class ASTFrame:
             # function, it's a bug in the typechecker
             assert isinstance(w_func, W_Func)
 
-        w_res = self.vm.call(w_func, args_w)
-        return w_res
+        return w_opimpl.call(self.vm, [w_func] + args_w)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
         assert len(call.args) == 1

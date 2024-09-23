@@ -200,7 +200,12 @@ class W_OpImpl(W_Object):
             if conv is not None:
                 w_arg = conv.convert(vm, w_arg)
             real_args_w.append(w_arg)
-        return vm.call(self._w_func, real_args_w)
+        #
+        if self.is_direct_call():
+            w_func = orig_args_w[0]
+            return vm.call(w_func, real_args_w)
+        else:
+            return vm.call(self._w_func, real_args_w)
 
     def redshift_args(self, vm: 'SPyVM',
                       orig_args: list[ast.Expr]) -> list[ast.Expr]:

@@ -287,6 +287,17 @@ class TestBasic(CompilerTest):
         assert mod.foo(1, 2, 3) == 123
         assert mod.bar(4) == 456
 
+    def test_function_call_conversion(self):
+        mod = self.compile(
+        """
+        def foo(x: f64) -> f64:
+            return x / 2
+
+        def bar(x: i32) -> f64:
+            return foo(x)
+        """)
+        assert mod.bar(3) == 1.5
+
     def test_cannot_call_non_functions(self):
         # it would be nice to report also the location where 'inc' is defined,
         # but we don't carry around this information for now. There is room
