@@ -125,9 +125,6 @@ def NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
     w_ltype = wv_l.w_static_type
     w_rtype = wv_r.w_static_type
     if can_use_reference_eq(vm, w_ltype, w_rtype):
-        # XXX this is silly: currently we NEED to call typecheck_opimpl else
-        # we cannot .call() it later. We need a better API to avoid this
-        # pitfall
         w_opimpl = W_OpImpl.simple(OP.w_object_isnot)
         typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
                          dispatch='multi',
@@ -137,11 +134,26 @@ def NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
 
 @OP.builtin(color='blue')
 def UNIVERSAL_EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return W_OpImpl.simple(OP.w_object_universal_eq)
+    from spy.vm.typechecker import typecheck_opimpl
+    # XXX this seems wrong: if we do universal_eq(i32, i32), we should get the
+    # same as eq(i32, i32), not "w_object_universal_eq". In practice, it's not
+    # a problem for now, because it's not exposed to the user, and we use it
+    # only on W_Objects.
+    w_opimpl = W_OpImpl.simple(OP.w_object_universal_eq)
+    typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+                     dispatch='multi',
+                     errmsg='cannot do `{0}` <universal_eq> `{1}`')
+    return w_opimpl
 
 @OP.builtin(color='blue')
 def UNIVERSAL_NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return W_OpImpl.simple(OP.w_object_universal_ne)
+    from spy.vm.typechecker import typecheck_opimpl
+    # XXX: see the commet in UNIVERSAL_EQ
+    w_opimpl = W_OpImpl.simple(OP.w_object_universal_ne)
+    typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+                     dispatch='multi',
+                     errmsg='cannot do `{0}` <universal_ne> `{1}`')
+    return w_opimpl
 
 @OP.builtin(color='blue')
 def LT(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
