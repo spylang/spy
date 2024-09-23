@@ -56,6 +56,8 @@ class TypeChecker:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self.expr_types = {}
+        # XXX: expr_conv nowadays is used only for typechecking locals. Maybe
+        # we should use a better system?
         self.expr_conv = {}
         self.opimpl = {}
         self.locals_types_w = {}
@@ -80,82 +82,33 @@ class TypeChecker:
         assert name in self.locals_types_w
         got_color, w_got_type = self.check_expr(expr)
         w_exp_type = self.locals_types_w[name]
-        err = self.convert_type_maybe(expr, w_got_type, w_exp_type)
-        if err is None:
-            return
-        #
-        # we got a SPyTypeError, raise it
-        exp = w_exp_type.name
-        exp_loc = self.funcdef.symtable.lookup(name).type_loc
-        if name == '@return':
-            because = 'because of return type'
-        else:
-            because = 'because of type declaration'
-        err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-        raise err
+
+        wv_local = W_Value('v', 0, w_got_type, expr.loc)
+        try:
+            conv = convert_type_maybe(self.vm, wv_local, w_exp_type)
+            if conv is not None:
+                self.expr_conv[expr] = conv
+        except SPyTypeError as err:
+            exp = w_exp_type.name
+            exp_loc = self.funcdef.symtable.lookup(name).type_loc
+            if name == '@return':
+                because = 'because of return type'
+            else:
+                because = 'because of type declaration'
+            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
+            raise
 
     def typecheck_bool(self, expr: ast.Expr) -> None:
-        color, w_type = self.check_expr(expr)
-        err = self.convert_type_maybe(expr, w_type, B.w_bool)
-        if err:
+        color, w_got_type = self.check_expr(expr)
+        wv_cond = W_Value('v', 0, w_got_type, expr.loc)
+        try:
+            conv = convert_type_maybe(self.vm, wv_cond, B.w_bool)
+            if conv is not None:
+                self.expr_conv[expr] = conv
+        except SPyTypeError as err:
             msg = 'implicit conversion to `bool` is not implemented yet'
             err.add('note', msg, expr.loc)
-            raise err
-
-    def convert_type_maybe(self, expr: Optional[ast.Expr], w_got: W_Type,
-                           w_exp: W_Type) -> Optional[SPyTypeError]:
-        """
-        Check that the given type if compatible with the expected type and/or can
-        be converted to it.
-
-        We have two cases, depending whether `expr` is None or not:
-
-        1. `expr is not None`: this is the standard case, and the type comes
-           from a user expression: in this case, automatic conversion is
-           allowed
-
-        2. `expr is None`: this happens only for a few builtin operators
-           (e.g. the `attr` value in GETATTR/SETATTR): in this case, the types
-           must match without conversions. It is an internal error to do
-           otherwise.
-
-        If there is a type mismatch, it returns a SPyTypeError: in that case,
-        it is up to the caller to add extra info and raise the error.
-
-        If the conversion can be made, return None.
-        """
-        if self.vm.issubclass(w_got, w_exp):
-            # nothing to do
-            return None
-
-        # the types don't match and/or we need a conversion (see point 2 above)
-        assert expr is not None
-
-        # try to see whether we can apply a type conversion
-        if self.vm.issubclass(w_exp, w_got):
-            # implicit upcast
-            self.expr_conv[expr] = DynamicCast(w_exp)
-            return None
-        elif w_got is B.w_i32 and w_exp is B.w_f64:
-            # numeric conversion
-            self.expr_conv[expr] = NumericConv(w_type=w_exp, w_fromtype=w_got)
-            return None
-        elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-            self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                             w_fromtype=w_got)
-            return None
-        elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-            assert w_got == W_FuncType.parse('def() -> void')
-            self.expr_conv[expr] = JsRefConv(w_type=JSFFI.w_JsRef,
-                                             w_fromtype=w_got)
-            return None
-
-        # mismatched types
-        err = SPyTypeError('mismatched types')
-        got = w_got.name
-        exp = w_exp.name
-        err.add('error', f'expected `{exp}`, got `{got}`', loc=expr.loc)
-        return err
+            raise
 
     def name2sym_maybe(self, expr: ast.Expr) -> Optional[Symbol]:
         """
@@ -609,22 +562,28 @@ def _call_error_wrong_argcount(
 
 def convert_type_maybe(
         vm: 'SPyVM',
-        wv_x: W_Type,
+        wv_x: W_Value,
         w_exp: W_Type
-) -> Optional[SPyTypeError]:
+) -> Optional[TypeConverter]:
+    """
+    Check whether the given W_Value is compatible with the expected type:
+
+      - return None if it's the same type (no conversion needed)
+
+      - return a TypeConverter if it can be converted
+
+      - raise SPyTypeError if the types are not compatible. In this case,
+        the caller can catch the error, add extra info and re-raise.
+    """
     w_got = wv_x.w_static_type
     if vm.issubclass(w_got, w_exp):
         # nothing to do
         return None
 
-    # the types don't match and/or we need a conversion (see point 2 above)
-
     # try to see whether we can apply a type conversion
     if vm.issubclass(w_exp, w_got):
-        XXX
         # implicit upcast
-        self.expr_conv[expr] = DynamicCast(w_exp)
-        return None
+        return DynamicCast(w_exp)
     elif w_got is B.w_i32 and w_exp is B.w_f64:
         return NumericConv(w_type=w_exp, w_fromtype=w_got)
     elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
