@@ -568,7 +568,7 @@ def typecheck_call(
         except SPyTypeError as err:
             if def_loc:
                 err.add('note', 'function defined here', def_loc)
-                raise
+            raise
 
 
 def convert_type_maybe(
