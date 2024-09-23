@@ -12,17 +12,9 @@ if TYPE_CHECKING:
 def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
                 w_a: W_Dynamic, w_b: W_Dynamic,
                 ) -> W_Dynamic:
-    from spy.vm.typechecker import typecheck_opimpl
-    # this looks suspiciously like vm.eq & co., we should unify them
-    token = OP.to_token(w_op)
-    errmsg = 'cannot do `{0}` %s `{1}`' % token
-
     wv_a = W_Value.from_w_obj(vm, w_a, 'a', 0)
     wv_b = W_Value.from_w_obj(vm, w_b, 'b', 1)
     w_opimpl = vm.call_OP(w_op, [wv_a, wv_b])
-    typecheck_opimpl(vm, w_opimpl, [wv_a, wv_b],
-                     dispatch='multi',
-                     errmsg=errmsg)
     return w_opimpl.call(vm, [w_a, w_b])
 
 @OP.builtin

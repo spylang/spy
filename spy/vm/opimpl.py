@@ -145,6 +145,7 @@ class W_OpImpl(W_Object):
         w_opimpl._w_func = w_func
         w_opimpl._args_wv = None
         w_opimpl._converters = None
+        w_opimpl._typechecked = False
         return w_opimpl
 
     @classmethod
@@ -153,6 +154,7 @@ class W_OpImpl(W_Object):
         w_opimpl._w_func = w_func
         w_opimpl._args_wv = args_wv
         w_opimpl._converters = [None] * len(args_wv)
+        w_opimpl._typechecked = False
         return w_opimpl
 
     def __repr__(self) -> str:
@@ -179,6 +181,9 @@ class W_OpImpl(W_Object):
         """
         return isinstance(self._w_func, W_DirectCall)
 
+    def is_valid(self):
+        return not self.is_null() and self._typechecked
+
     @property
     def w_functype(self) -> W_FuncType:
         return self._w_func.w_functype
@@ -194,6 +199,7 @@ class W_OpImpl(W_Object):
         self._converters = [None] * len(args_wv)
 
     def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
+        assert self.is_valid()
         real_args_w = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
             w_arg = orig_args_w[wv_arg.i]
@@ -209,6 +215,7 @@ class W_OpImpl(W_Object):
 
     def redshift_args(self, vm: 'SPyVM',
                       orig_args: list[ast.Expr]) -> list[ast.Expr]:
+        assert self.is_valid()
         real_args = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
             arg = orig_args[wv_arg.i]
