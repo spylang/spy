@@ -570,41 +570,6 @@ def typecheck_call(
                 err.add('note', 'function defined here', def_loc)
             raise
 
-
-def convert_type_maybe(
-        vm: 'SPyVM',
-        wv_x: W_Type,
-        w_exp: W_Type
-) -> Optional[SPyTypeError]:
-    w_got = wv_x.w_static_type
-    if vm.issubclass(w_got, w_exp):
-        # nothing to do
-        return None
-
-    # the types don't match and/or we need a conversion (see point 2 above)
-
-    # try to see whether we can apply a type conversion
-    if vm.issubclass(w_exp, w_got):
-        XXX
-        # implicit upcast
-        self.expr_conv[expr] = DynamicCast(w_exp)
-        return None
-    elif w_got is B.w_i32 and w_exp is B.w_f64:
-        return NumericConv(w_type=w_exp, w_fromtype=w_got)
-    elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
-    elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-        assert w_got == W_FuncType.parse('def() -> void')
-        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
-
-    # mismatched types
-    err = SPyTypeError('mismatched types')
-    got = w_got.name
-    exp = w_exp.name
-    err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
-    raise err
-
-
 def _call_error_wrong_argcount(
         got: int, exp: int,
         args_wv: list[W_Value],
@@ -640,4 +605,37 @@ def _call_error_wrong_argcount(
     #
     if def_loc:
         err.add('note', 'function defined here', def_loc)
+    raise err
+
+def convert_type_maybe(
+        vm: 'SPyVM',
+        wv_x: W_Type,
+        w_exp: W_Type
+) -> Optional[SPyTypeError]:
+    w_got = wv_x.w_static_type
+    if vm.issubclass(w_got, w_exp):
+        # nothing to do
+        return None
+
+    # the types don't match and/or we need a conversion (see point 2 above)
+
+    # try to see whether we can apply a type conversion
+    if vm.issubclass(w_exp, w_got):
+        XXX
+        # implicit upcast
+        self.expr_conv[expr] = DynamicCast(w_exp)
+        return None
+    elif w_got is B.w_i32 and w_exp is B.w_f64:
+        return NumericConv(w_type=w_exp, w_fromtype=w_got)
+    elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
+    elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
+        assert w_got == W_FuncType.parse('def() -> void')
+        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
+
+    # mismatched types
+    err = SPyTypeError('mismatched types')
+    got = w_got.name
+    exp = w_exp.name
+    err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
     raise err
