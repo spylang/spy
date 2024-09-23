@@ -251,30 +251,28 @@ class ASTFrame:
     def eval_expr_Call(self, call: ast.Call) -> W_Object:
         color, w_functype = self.t.check_expr(call.func)
         w_opimpl = self.t.opimpl[call]
-
         w_func = self.eval_expr(call.func)
+
+        # STATIC_TYPE is a special case, because it doesn't evaluate its
+        # arguments
         if w_func is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(call)
 
+        if w_opimpl.is_direct_call():
+            # some extra sanity checks
+            assert color == 'blue', 'indirect calls not supported'
+            if w_functype is B.w_dynamic:
+                # if the static type is `dynamic` and thing is not a function,
+                # it's a TypeError
+                if not isinstance(w_func, W_Func):
+                    t = self.vm.dynamic_type(w_func)
+                    raise SPyTypeError(f'cannot call objects of type `{t.name}`')
+            else:
+                # if the static type is not `dynamic` and the thing is not a
+                # function, it's a bug in the typechecker
+                assert isinstance(w_func, W_Func)
+
         args_w = [self.eval_expr(arg) for arg in call.args]
-        if not w_opimpl.is_direct_call():
-            # special case: we are calling something which implements op_CALL
-            return w_opimpl.call(self.vm, [w_func] + args_w)
-
-        # normal case: we are calling a "real" W_Func.
-        assert color == 'blue', 'indirect calls not supported'
-
-        if w_functype is B.w_dynamic:
-            # if the static type is `dynamic` and thing is not a function,
-            # it's a TypeError
-            if not isinstance(w_func, W_Func):
-                t = self.vm.dynamic_type(w_func)
-                raise SPyTypeError(f'cannot call objects of type `{t.name}`')
-        else:
-            # if the static type is not `dynamic` and the thing is not a
-            # function, it's a bug in the typechecker
-            assert isinstance(w_func, W_Func)
-
         return w_opimpl.call(self.vm, [w_func] + args_w)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
