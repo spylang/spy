@@ -244,3 +244,12 @@ class LLWasmMemory:
 
     def write(self, addr: int, b: bytes) -> None:
         self.mem.write(self.store, b, addr)
+
+    def write_i32(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack('i', v))
+
+    def write_i16(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack('h', v))
+
+    def write_i8(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack('b', v))
