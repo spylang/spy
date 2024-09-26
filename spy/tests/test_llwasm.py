@@ -71,6 +71,9 @@ class TestLLWasm(CTest):
         ptr = ll.read_global('foo')
         ll.mem.write(ptr, bytearray([40, 50, 60]))
         assert ll.call('foo_total') == 150
+        #
+        ll.mem.write_i8(ptr, 100)
+        assert ll.call('foo_total') == 210
 
     def test_multiple_instances(self):
         src = r"""
