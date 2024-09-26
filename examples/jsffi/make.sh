@@ -1,8 +1,13 @@
+#!/usr/bin/env bash
+
+# Based on: https://stackoverflow.com/a/246128
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 set -e
 
 # use ./make.sh -O3 to enable optimizations
 
-LIBSPY="/home/antocuni/anaconda/spy/spy/libspy"
+LIBSPY="${SCRIPT_DIR}/../../spy/libspy"
 
 CFLAGS="
   $1
