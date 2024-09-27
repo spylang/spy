@@ -7,7 +7,7 @@
 #
 # (*) the actual triplet for "native" depends on your system, of course
 
-SRCS = src/str.c src/builtins.c src/debug.c
+SRCS = src/str.c src/builtins.c src/debug.c src/unsafe.c
 
 CFLAGS := \
 	-DNDEBUG -O3 \
