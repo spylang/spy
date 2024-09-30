@@ -11,7 +11,8 @@ class TestUnsafe(CompilerTest):
         from unsafe import gc_alloc
 
         def foo() -> i32:
-            ptr = gc_alloc(i32, 1)
+            # ideally we want gc_alloc[i32](1), but we can't for now
+            ptr = gc_alloc(1)
             ptr[0] = 42
             return ptr[0]
         """)

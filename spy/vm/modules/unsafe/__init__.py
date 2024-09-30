@@ -61,8 +61,7 @@ def i32ptr_get(vm: 'SPyVM', w_ptr: W_I32Ptr, w_i: W_I32) -> W_I32:
 
 # this is just a PoC, for now we hardcode i32 as the type.
 @UNSAFE.builtin
-def gc_alloc(vm: 'SPyVM', w_type: W_Type, w_n: W_I32) -> W_I32Ptr:
-    assert w_type is B.w_i32
+def gc_alloc(vm: 'SPyVM', w_n: W_I32) -> W_I32Ptr:
     n = vm.unwrap_i32(w_n)
     size = 4 * n
     addr = vm.ll.call('spy_gc_alloc_mem', size)

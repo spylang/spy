@@ -6,6 +6,7 @@ from spy.vm.function import W_FuncType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.jsffi import JSFFI
+from spy.vm.modules.unsafe import UNSAFE
 
 @dataclass
 class C_Type:
@@ -64,6 +65,7 @@ class Context:
         self._d[B.w_str] = C_Type('spy_Str *')
         self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer *')
         self._d[JSFFI.w_JsRef] = C_Type('JsRef')
+        self._d[UNSAFE.w_i32ptr] = C_Type('int32_t *')
 
     def w2c(self, w_type: W_Type) -> C_Type:
         if isinstance(w_type, W_TypeDef):

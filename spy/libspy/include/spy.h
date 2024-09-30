@@ -26,6 +26,7 @@
 #include "spy/builtins.h"
 #include "spy/str.h"
 #include "spy/gc.h"
+#include "spy/unsafe.h"
 #include "spy/rawbuffer.h"
 #include "spy/debug.h"
 
