@@ -74,6 +74,7 @@ class CModuleWriter:
         self.out.wb("""
         // content of the module
         """)
+        #
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
             # XXX we should mangle the name somehow
@@ -81,6 +82,15 @@ class CModuleWriter:
                 if w_obj.color == 'red':
                     self.declare_function(fqn, w_obj)
                     self.emit_function(fqn, w_obj)
+            elif isinstance(w_obj, W_BuiltinFunc):
+                # this is a hack. We have a variable holding a builtin
+                # function: we don't support function pointers yet, so this
+                # MUST be a blue variable, which we don't want to declare, so
+                # we just skip it.
+                #
+                # Ideally, we should have a more direct way of knowing which
+                # of the module content are red and blue.
+                pass
             else:
                 self.declare_variable(fqn, w_obj)
 

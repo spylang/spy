@@ -65,13 +65,15 @@ class Context:
         self._d[B.w_str] = C_Type('spy_Str *')
         self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer *')
         self._d[JSFFI.w_JsRef] = C_Type('JsRef')
-        self._d[UNSAFE.w_i32ptr] = C_Type('int32_t *')
 
     def w2c(self, w_type: W_Type) -> C_Type:
         if isinstance(w_type, W_TypeDef):
             w_type = w_type.w_origintype
         if w_type in self._d:
             return self._d[w_type]
+        elif self.vm.issubclass(w_type, UNSAFE.w_ptr):
+            assert w_type.name == 'ptr[i32]'
+            return C_Type('int32_t *')
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
 
     def c_function(self, name: str, w_functype: W_FuncType) -> C_Function:
