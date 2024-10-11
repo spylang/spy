@@ -1,0 +1,16 @@
+# filename: generics.spy
+
+@blue
+def make_fn(T):
+  def fn(x: T, y: T) -> T:
+    return x + y * 2
+  return fn
+
+fn_i32 = make_fn(i32)
+fn_f64 = make_fn(f64)
+
+def main() -> void:
+  if True:
+     print(fn_f64(1, 2))
+  else:
+     print(fn_f64(1, 3))
