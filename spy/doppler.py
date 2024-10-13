@@ -3,7 +3,7 @@ from types import NoneType
 from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
-from spy.fqn import FQN
+from spy.fqn import FQN, QN
 from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -84,6 +84,12 @@ class FuncDoppler:
             elif isinstance(w_val, W_BuiltinFunc):
                 # builtin functions MUST be unique
                 fqn = self.vm.get_FQN(w_val.qn, is_global=True)
+                self.vm.add_global(fqn, None, w_val)
+            elif isinstance(w_val, W_Type):
+                # this is terribly wrong: types should carry their own QN, as
+                # functions do
+                qn = QN(modname='__fake_mod__', attr=w_val.name)
+                fqn = self.vm.get_FQN(qn, is_global=False)
                 self.vm.add_global(fqn, None, w_val)
             else:
                 assert False, 'implement me'

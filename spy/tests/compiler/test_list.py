@@ -6,9 +6,9 @@ from spy.vm.object import W_Type
 from spy.vm.list import W_List
 from spy.tests.support import CompilerTest, only_interp, no_C
 
-# Eventually we want to remove the @only_interp, but for now the C backend
+# Eventually we want to remove the @no_C, but for now the C backend
 # doesn't support lists
-@only_interp
+@no_C
 class TestList(CompilerTest):
 
     def test_generic_type(self):
