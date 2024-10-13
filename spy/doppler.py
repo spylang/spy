@@ -147,6 +147,14 @@ class FuncDoppler:
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
+    def shift_stmt_SetItem(self, node: ast.SetItem) -> list[ast.Stmt]:
+        v_target = self.shift_expr(node.target)
+        v_index = self.shift_expr(node.index)
+        v_value = self.shift_expr(node.value)
+        w_opimpl = self.t.opimpl[node]
+        call = self.shift_opimpl(node, w_opimpl, [v_target, v_index, v_value])
+        return [ast.StmtExpr(node.loc, call)]
+
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
         newvalue = self.shift_expr(stmt.value)
         return [stmt.replace(value=newvalue)]
