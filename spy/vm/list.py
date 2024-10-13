@@ -151,8 +151,11 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             w_rtype = wv_r.w_static_type
             assert w_ltype.pyclass is W_MyList
 
+            # the final '#' in the QN means that it's a non-unique
+            # builtin. See also FuncDoppler.make_const. This is a temporary
+            # hack that we should fix eventually.
             @no_type_check
-            @spy_builtin(QN('operator::list_eq'))
+            @spy_builtin(QN('operator::list_eq#'))
             def eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
                 items2_w = w_l2.items_w

@@ -82,8 +82,25 @@ class FuncDoppler:
                 fqn = self.vm.get_FQN(w_val.qn, is_global=False)
                 self.vm.add_global(fqn, None, w_val)
             elif isinstance(w_val, W_BuiltinFunc):
-                # builtin functions MUST be unique
-                fqn = self.vm.get_FQN(w_val.qn, is_global=True)
+                # XXX open question: MUST builtin functions BE unique?
+                # For "module-level" builtins it makes sense, and this call
+                # used to pass "is_global=True", but e.g. list::eq is not
+                # unique because list is a generic type. I think that the
+                # solution is to introduce a more complex notion of
+                # namespaces: currently it's just "modname::attr", but
+                # probably we want to introduce at least
+                # "modname::type::attr", or maybe even
+                # "modname::namespace1::namespace2::...::attr".
+
+                have_suffix = w_val.qn.attr.endswith('#')
+                if have_suffix:
+                    qn2 = QN(
+                        modname=w_val.qn.modname,
+                        attr=w_val.qn.attr[:-1]
+                    )
+                    fqn = self.vm.get_FQN(qn2, is_global=False)
+                else:
+                    fqn = self.vm.get_FQN(w_val.qn, is_global=True)
                 self.vm.add_global(fqn, None, w_val)
             elif isinstance(w_val, W_Type):
                 # this is terribly wrong: types should carry their own QN, as
