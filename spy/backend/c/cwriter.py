@@ -425,6 +425,27 @@ class CFuncWriter:
         # I think we need a more general way so that OPERATORs can have more
         # control on which arguments are passed to opimpls.
 
+        if str(call.func.fqn).startswith("unsafe::gc_alloc/"):
+            # the input is something like:
+            #     unsafe::gc_alloc/4(100)
+            # which means "allocate 100 items whose size if 4".
+            # We turn it into:
+            #     spy_gc_alloc_mem(4 * 100).p
+            assert len(call.args) == 1
+            _, itemsize = call.func.fqn.attr.split('/')
+            itemsize = int(itemsize)
+            c_name = 'spy_gc_alloc_mem'
+            c_n = self.fmt_expr(call.args[0])
+            c_size = C.BinOp(
+                '*',
+                C.Literal(str(itemsize)),
+                c_n
+            )
+            return C.Attr(
+                C.Call(c_name, [c_size]),
+                'p'
+            )
+
         if str(call.func.fqn).startswith("jsffi::getattr_"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_getattr"
