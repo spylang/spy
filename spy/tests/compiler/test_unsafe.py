@@ -8,12 +8,17 @@ class TestUnsafe(CompilerTest):
     def test_gc_alloc(self):
         mod = self.compile(
         """
-        from unsafe import gc_alloc
+        from unsafe import gc_alloc, ptr
 
         def foo() -> i32:
             # XXX: ideally we want gc_alloc[i32](1), but we can't for now
-            ptr = gc_alloc(i32)(1)
-            ptr[0] = 42
-            return ptr[0]
+            #
+            # XXX: ideally we would like the type of "buf" to be inferrable
+            # but we can't for now because the return type of
+            # gc_alloc(i32)(...) is `dynamic`
+            #
+            buf: ptr[i32] = gc_alloc(i32)(1)
+            buf[0] = 42
+            return buf[0]
         """)
         assert mod.foo() == 42
