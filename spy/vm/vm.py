@@ -135,7 +135,7 @@ class SPyVM:
                    w_value: W_Object
                    ) -> None:
         assert isinstance(fqn, FQN)
-        assert fqn.modname in self.modules_w
+        assert fqn.modname in self.modules_w or fqn.modname == '__fake_mod__'
         assert fqn not in self.globals_w
         assert fqn not in self.globals_types
         if w_type is None:

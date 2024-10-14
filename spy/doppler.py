@@ -3,7 +3,7 @@ from types import NoneType
 from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
-from spy.fqn import FQN
+from spy.fqn import FQN, QN
 from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -82,8 +82,31 @@ class FuncDoppler:
                 fqn = self.vm.get_FQN(w_val.qn, is_global=False)
                 self.vm.add_global(fqn, None, w_val)
             elif isinstance(w_val, W_BuiltinFunc):
-                # builtin functions MUST be unique
-                fqn = self.vm.get_FQN(w_val.qn, is_global=True)
+                # XXX open question: MUST builtin functions BE unique?
+                # For "module-level" builtins it makes sense, and this call
+                # used to pass "is_global=True", but e.g. list::eq is not
+                # unique because list is a generic type. I think that the
+                # solution is to introduce a more complex notion of
+                # namespaces: currently it's just "modname::attr", but
+                # probably we want to introduce at least
+                # "modname::type::attr", or maybe even
+                # "modname::namespace1::namespace2::...::attr".
+
+                have_suffix = w_val.qn.attr.endswith('#')
+                if have_suffix:
+                    qn2 = QN(
+                        modname=w_val.qn.modname,
+                        attr=w_val.qn.attr[:-1]
+                    )
+                    fqn = self.vm.get_FQN(qn2, is_global=False)
+                else:
+                    fqn = self.vm.get_FQN(w_val.qn, is_global=True)
+                self.vm.add_global(fqn, None, w_val)
+            elif isinstance(w_val, W_Type):
+                # this is terribly wrong: types should carry their own QN, as
+                # functions do
+                qn = QN(modname='__fake_mod__', attr=w_val.name)
+                fqn = self.vm.get_FQN(qn, is_global=False)
                 self.vm.add_global(fqn, None, w_val)
             else:
                 assert False, 'implement me'
@@ -139,6 +162,14 @@ class FuncDoppler:
         v_value = self.shift_expr(node.value)
         w_opimpl = self.t.opimpl[node]
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
+        return [ast.StmtExpr(node.loc, call)]
+
+    def shift_stmt_SetItem(self, node: ast.SetItem) -> list[ast.Stmt]:
+        v_target = self.shift_expr(node.target)
+        v_index = self.shift_expr(node.index)
+        v_value = self.shift_expr(node.value)
+        w_opimpl = self.t.opimpl[node]
+        call = self.shift_opimpl(node, w_opimpl, [v_target, v_index, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:

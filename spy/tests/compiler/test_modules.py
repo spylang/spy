@@ -1,5 +1,5 @@
 import pytest
-from spy.tests.support import CompilerTest, only_interp, expect_errors
+from spy.tests.support import CompilerTest, no_C, expect_errors
 
 class TestBasic(CompilerTest):
 
@@ -34,7 +34,7 @@ class TestBasic(CompilerTest):
             """)
 
     # we need to implement multi-module compilation to C
-    @only_interp
+    @no_C
     def test_two_modules(self):
         self.write_file(
             "delta.spy",
