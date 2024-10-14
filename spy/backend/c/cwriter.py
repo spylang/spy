@@ -24,6 +24,7 @@ class CModuleWriter:
     target: str
     out: TextBuilder          # main builder
     out_warnings: TextBuilder # nested builder
+    out_types: TextBuilder    # nested builder
     out_globals: TextBuilder  # nested builder for global declarations
     global_vars: set[str]
 
@@ -37,7 +38,9 @@ class CModuleWriter:
         self.cfile = cfile
         self.target = target
         self.out = TextBuilder(use_colors=False)
-        self.out_globals = None  # type: ignore
+        self.out_warnings = None  # type: ignore
+        self.out_types = None     # type: ignore
+        self.out_globals = None   # type: ignore
         self.global_vars = set()
 
     def write_c_source(self) -> None:
@@ -69,8 +72,13 @@ class CModuleWriter:
         // global declarations and definitions
         """)
         self.out_warnings = self.out.make_nested_builder()
+        self.out_types = self.out.make_nested_builder()
         self.out_globals = self.out.make_nested_builder()
         self.out.wl()
+
+        # this is a bit of a hack, but too bad
+        self.ctx.out_types = self.out_types
+
         self.out.wb("""
         // content of the module
         """)
@@ -424,27 +432,6 @@ class CFuncWriter:
         #
         # I think we need a more general way so that OPERATORs can have more
         # control on which arguments are passed to opimpls.
-
-        if str(call.func.fqn).startswith("unsafe::gc_alloc/"):
-            # the input is something like:
-            #     unsafe::gc_alloc/4(100)
-            # which means "allocate 100 items whose size if 4".
-            # We turn it into:
-            #     spy_gc_alloc_mem(4 * 100).p
-            assert len(call.args) == 1
-            _, itemsize = call.func.fqn.attr.split('/')
-            itemsize = int(itemsize)
-            c_name = 'spy_gc_alloc_mem'
-            c_n = self.fmt_expr(call.args[0])
-            c_size = C.BinOp(
-                '*',
-                C.Literal(str(itemsize)),
-                c_n
-            )
-            return C.Attr(
-                C.Call(c_name, [c_size]),
-                'p'
-            )
 
         if str(call.func.fqn).startswith("jsffi::getattr_"):
             assert isinstance(call.args[1], ast.Constant)

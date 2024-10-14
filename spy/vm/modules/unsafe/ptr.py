@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 import fixedint
 from spy.fqn import QN
 from spy.vm.b import B
@@ -47,33 +47,33 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
 
     @spytype(app_name)
     class W_MyPtr(W_Ptr):
+        w_itemtype: ClassVar[W_Type] = w_T
 
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', wv_ptr: W_Value, wv_i: W_Value) -> W_OpImpl:
-            return W_OpImpl.simple(vm.wrap(i32ptr_get))
+            return W_OpImpl.simple(vm.wrap(ptr_load))
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', wv_ptr: W_Value, wv_i: W_Value,
                        wv_v: W_Value) -> W_OpImpl:
-            return W_OpImpl.simple(vm.wrap(i32ptr_set))
+            return W_OpImpl.simple(vm.wrap(ptr_store))
 
 
-    @spy_builtin(QN('unsafe::i32ptr_get'))
-    def i32ptr_get(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> W_I32:
+    @spy_builtin(QN('unsafe::i32_ptr_load'))
+    def ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> W_I32:
         base = w_ptr.addr
         i = vm.unwrap_i32(w_i)
         # XXX we should introduce bound check
-        addr = base + 4*i
+        addr = base + 4*i # XXX item size?
         return vm.wrap(vm.ll.mem.read_i32(addr))
 
-    @spy_builtin(QN('unsafe::i32ptr_set'))
-    def i32ptr_set(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32,
-                   w_v: W_I32) -> W_Void:
+    @spy_builtin(QN('unsafe::i32_ptr_store'))
+    def ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32, w_v: W_I32) -> W_Void:
         base = w_ptr.addr
         i = vm.unwrap_i32(w_i)
         v = vm.unwrap_i32(w_v)
         # XXX we should introduce bound check
-        addr = base + 4*i
+        addr = base + 4*i # XXX item size?
         vm.ll.mem.write_i32(addr, v)
 
 
