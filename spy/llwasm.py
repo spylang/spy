@@ -229,6 +229,10 @@ class LLWasmMemory:
         rawbytes = self.read(addr, 1)
         return rawbytes[0]
 
+    def read_f64(self, addr: int) -> int:
+        rawbytes = self.read(addr, 8)
+        return struct.unpack('d', rawbytes)[0]
+
     def read_cstr(self, addr: int) -> bytearray:
         """
         Read the NULL-terminated string starting at addr.
@@ -253,3 +257,6 @@ class LLWasmMemory:
 
     def write_i8(self, addr: int, v: int) -> None:
         self.write(addr, struct.pack('b', v))
+
+    def write_f64(self, addr: int, v: float) -> None:
+        self.write(addr, struct.pack('d', v))

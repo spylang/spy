@@ -21,8 +21,19 @@ class TestUnsafe(CompilerTest):
             buf: ptr[i32] = gc_alloc(i32)(1)
             buf[0] = 42
             return buf[0]
+
+        def bar(i: i32) -> f64:
+            # make sure that we can use other item types as well
+            buf: ptr[f64] = gc_alloc(f64)(3)
+            buf[0] = 1.2
+            buf[1] = 3.4
+            buf[2] = 5.6
+            return buf[i]
         """)
         assert mod.foo() == 42
+        assert mod.bar(0) == 1.2
+        assert mod.bar(1) == 3.4
+        assert mod.bar(2) == 5.6
 
     @no_C # WIP
     def test_out_of_bound(self):

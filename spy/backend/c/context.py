@@ -75,7 +75,6 @@ class Context:
         if w_type in self._d:
             return self._d[w_type]
         elif self.vm.issubclass(w_type, UNSAFE.w_ptr):
-            assert w_type.name == 'ptr[i32]'
             return self.new_ptr_type(w_type)
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
 
