@@ -24,6 +24,6 @@ def gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
         addr = vm.ll.call('spy_gc_alloc_mem', size)
-        return W_MyPtr(addr, size)
+        return W_MyPtr(addr, n)
 
     return vm.wrap(my_gc_alloc)
