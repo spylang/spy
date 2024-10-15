@@ -65,7 +65,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
             return W_OpImpl.simple(vm.wrap(ptr_store))
 
 
-    @spy_builtin(QN('unsafe::i32_ptr_load'))
+    @spy_builtin(QN('unsafe::ptr_i32_load'))
     def ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> W_I32:
         base = w_ptr.addr
         size = w_ptr.size
@@ -78,7 +78,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
             raise SPyPanicError(msg)
         return vm.wrap(vm.ll.mem.read_i32(addr))
 
-    @spy_builtin(QN('unsafe::i32_ptr_store'))
+    @spy_builtin(QN('unsafe::ptr_i32_store'))
     def ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32, w_v: W_I32) -> W_Void:
         base = w_ptr.addr
         size = w_ptr.size

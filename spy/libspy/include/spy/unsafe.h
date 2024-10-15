@@ -6,18 +6,29 @@
 spy_GcRef
 WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
 
-/* static inline int32_t *spy_unsafe$gc_alloc(size_t n) { */
-/*     spy_GcRef r = spy_gc_alloc_mem(sizeof(int32_t) * n); */
-/*     return (int32_t *)(r.p); */
-/* } */
+/* Define the struct and accessor functions to represent a managed pointer to
+   type T.
 
-/* static inline int32_t spy_unsafe$i32ptr_get(int32_t *p, int32_t i) { */
-/*     return p[i]; */
-/* } */
+   DEFINE_PTR_TYPE(MyPtr, T) expands to:
 
-/* static inline void spy_unsafe$i32ptr_set(int32_t *p, int32_t i, int32_t v) { */
-/*     p[i] = v; */
-/* } */
-
+   typedef struct { ... } MyPtr;
+   static inline MyPtr MyPtr_gc_alloc(...);
+   static inline T MyPtr_load(...);
+   static inline void MyPtr_store(...);
+*/
+#define DEFINE_PTR_TYPE(PTR, T)                                  \
+    typedef struct {                                             \
+        T *p;                                                    \
+    } PTR;                                                       \
+    static inline PTR PTR##_gc_alloc(size_t n) {                 \
+        spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
+        return ( PTR ){ ref.p };                                 \
+    }                                                            \
+    static inline T PTR##_load(PTR p, size_t i) {                \
+        return p.p[i];                                           \
+    }                                                            \
+    static inline void PTR##_store(PTR p, size_t i, T v) {       \
+        p.p[i] = v;                                              \
+    }
 
 #endif /* SPY_UNSAFE_H */

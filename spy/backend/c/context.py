@@ -94,28 +94,8 @@ class Context:
         w_itemtype = w_ptrtype.pyclass.w_itemtype  # B.w_i32
         c_itemtype = self.w2c(w_itemtype)          # int32_t
         t = w_itemtype.name                        # i32
-        ptr = f'spy_gc_ptr${t}'                    # spy_gc_ptr$i32
+        ptr = f'spy_unsafe$ptr_{t}'                # spy_unsafe$ptr_i32
         c_type = C_Type(ptr);
-
-        self.out_types.wb(f"""
-        typedef struct {{
-            {c_itemtype} *p;
-        }} {ptr};
-
-        static inline {c_type} spy_unsafe${t}_gc_alloc(int32_t n) {{
-            spy_GcRef ref = spy_GcAlloc(sizeof({c_itemtype}) * n);
-            return ({c_type}){{ ref.p }};
-        }}
-
-        static inline {c_itemtype}
-        spy_unsafe${t}_ptr_load({ptr} p, int32_t i) {{
-            return p.p[i];
-        }}
-
-        static inline void
-        spy_unsafe${t}_ptr_store({ptr} p, int32_t i, {c_itemtype} v) {{
-            p.p[i] = v;
-        }}
-        """)
+        self.out_types.wl(f"DEFINE_PTR_TYPE({c_type}, {c_itemtype})")
         self._d[w_ptrtype] = c_type
         return c_type

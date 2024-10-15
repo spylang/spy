@@ -8,7 +8,7 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc
 from spy.vm.object import W_I32
 
-DUMP_C = False
+DUMP_C = True
 DUMP_WASM = False
 
 class ToolchainType(str, Enum):
