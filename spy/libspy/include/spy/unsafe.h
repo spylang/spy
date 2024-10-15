@@ -16,7 +16,7 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
    static inline T MyPtr_load(...);
    static inline void MyPtr_store(...);
 */
-#define DEFINE_PTR_TYPE(PTR, T)                                  \
+#define _DEFINE_PTR_TYPE_UNCHECKED(PTR, T)                       \
     typedef struct {                                             \
         T *p;                                                    \
     } PTR;                                                       \
@@ -30,5 +30,35 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline void PTR##_store(PTR p, size_t i, T v) {       \
         p.p[i] = v;                                              \
     }
+
+#define _DEFINE_PTR_TYPE_CHECKED(PTR, T)                         \
+    typedef struct {                                             \
+        T *p;                                                    \
+        size_t length;                                           \
+    } PTR;                                                       \
+    static inline PTR PTR##_gc_alloc(size_t n) {                 \
+        spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
+        return ( PTR ){ ref.p, n };                              \
+    }                                                            \
+    static inline T PTR##_load(PTR p, size_t i) {                \
+        if (i >= p.length)                                       \
+            spy_panic("ptr_load out of bounds");                 \
+        return p.p[i];                                           \
+    }                                                            \
+    static inline void PTR##_store(PTR p, size_t i, T v) {       \
+        if (i >= p.length)                                       \
+            spy_panic("ptr_store ouf of bounds");                \
+        p.p[i] = v;                                              \
+    }
+
+
+// XXX this should be configurable
+#define SPY_CHECK_PTR
+
+#ifdef SPY_CHECK_PTR
+#  define DEFINE_PTR_TYPE _DEFINE_PTR_TYPE_CHECKED
+#else
+#  define DEFINE_PTR_TYPE _DEFINE_PTR_TYPE_UNCHECKED
+#endif
 
 #endif /* SPY_UNSAFE_H */

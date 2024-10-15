@@ -35,7 +35,6 @@ class TestUnsafe(CompilerTest):
         assert mod.bar(1) == 3.4
         assert mod.bar(2) == 5.6
 
-    @no_C # WIP
     def test_out_of_bound(self):
         mod = self.compile(
         """
