@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, ClassVar
 import fixedint
+from spy.errors import SPyPanicError
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype
@@ -18,14 +19,19 @@ class W_Ptr(W_Object):
     # XXX: this works only if we target 32bit platforms such as wasm32, but we
     # need to think of a more general solution
     addr: fixedint.Int32
+    size: fixedint.Int32 # should be size_t? Size IN BYTES of the buffer
 
-    def __init__(self, addr: int | fixedint.Int32) -> None:
+    def __init__(self, addr: int | fixedint.Int32,
+                 size: int | fixedint.Int32) -> None:
         assert type(addr) in (int, fixedint.Int32)
+        assert type(size) in (int, fixedint.Int32)
+        assert size >= 1
         self.addr = fixedint.Int32(addr)
+        self.size = fixedint.Int32(size)
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
-        return f'{clsname}(0x{self.addr:x})'
+        return f'{clsname}(0x{self.addr:x}, size={self.size})'
 
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', wv_p: W_Value, wv_i: W_Value) -> W_OpImpl:
@@ -62,20 +68,29 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
     @spy_builtin(QN('unsafe::i32_ptr_load'))
     def ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> W_I32:
         base = w_ptr.addr
+        size = w_ptr.size
         i = vm.unwrap_i32(w_i)
-        # XXX we should introduce bound check
-        addr = base + 4*i # XXX item size?
+        offset = 4*i # XXX item size
+        addr = base + offset
+        if offset >= size:
+            msg = (f"ptr_load out of bounds: 0x{addr:x}+{offset} "
+                   f"(upper bound: {size})")
+            raise SPyPanicError(msg)
         return vm.wrap(vm.ll.mem.read_i32(addr))
 
     @spy_builtin(QN('unsafe::i32_ptr_store'))
     def ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32, w_v: W_I32) -> W_Void:
         base = w_ptr.addr
+        size = w_ptr.size
         i = vm.unwrap_i32(w_i)
         v = vm.unwrap_i32(w_v)
-        # XXX we should introduce bound check
-        addr = base + 4*i # XXX item size?
+        offset = 4 * i # XXX item size?
+        addr = base + offset
+        if offset >= size:
+            msg = (f"ptr_store out of bounds: 0x{addr:x}+{offset} "
+                   f"(upper bound: {size})")
+            raise SPyPanicError(msg)
         vm.ll.mem.write_i32(addr, v)
-
 
     W_MyPtr.__name__ = W_MyPtr.__qualname__ = interp_name
     return vm.wrap(W_MyPtr)

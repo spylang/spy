@@ -1,7 +1,8 @@
 #-*- encoding: utf-8 -*-
 
 import pytest
-from spy.tests.support import CompilerTest, skip_backends, no_backend
+from spy.errors import SPyPanicError
+from spy.tests.support import CompilerTest, no_C
 
 class TestUnsafe(CompilerTest):
 
@@ -22,3 +23,20 @@ class TestUnsafe(CompilerTest):
             return buf[0]
         """)
         assert mod.foo() == 42
+
+    @no_C # WIP
+    def test_out_of_bound(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        def foo(i: i32) -> i32:
+            buf: ptr[i32] = gc_alloc(i32)(3)
+            buf[0] = 0
+            buf[1] = 100
+            buf[2] = 200
+            return buf[i]
+        """)
+        assert mod.foo(1) == 100
+        with pytest.raises(SPyPanicError, match="ptr_load out of bounds"):
+            mod.foo(3)
