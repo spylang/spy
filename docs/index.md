@@ -3,37 +3,45 @@
 ## Prerequisite
 
 - `python >= 3.10`
-- `zig >= 0.13.0`
 - `emscripten`
 - `gcc`
 - `git`
 
 ## Install `emscripten`
 
-- Get the `emsdk` repository
-```
-git clone https://github.com/emscripten-core/emsdk.git
-```
+=== "Linux"
+    - Get the `emsdk` repository
+    ```
+    git clone https://github.com/emscripten-core/emsdk.git
+    ```
 
-- Enter `emsdk` directory
-```
-cd emsdk
-```
+    - Enter `emsdk` directory
+    ```
+    cd emsdk
+    ```
 
-- Make the "latest" SDK "active" for the current user (writes .emscripten file)
-```
-./emsdk activate latest
-```
+    - Make the "latest" SDK "active" for the current user (writes .emscripten file)
+    ```
+    ./emsdk activate latest
+    ```
 
-- Download and install the latest SDK tools
-```
-./emsdk install latest
-```
+    - Download and install the latest SDK tools
+    ```
+    ./emsdk install latest
+    ```
 
-- Activate PATH and other environment variables in the current terminal
-```
-source ./emsdk_env.sh
-```
+    - Activate PATH and other environment variables in the current terminal
+    ```
+    source ./emsdk_env.sh
+    ```
+
+=== "MacOS"
+    - Install with `brew`
+    ```
+    $ brew install emscripten
+    ```
+???+ info
+    Or follow the recommended [installation process](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended).
 
 ## Install `spylang`
 
@@ -49,7 +57,7 @@ cd spy
 
 - Make virtual environment for `spylang` project
 ```
-python -m venv .venv --prompt spy
+python -m venv .venv
 ```
 
 - Activate virtual environment
@@ -62,19 +70,14 @@ python -m venv .venv --prompt spy
 pip install -r requirements.txt
 ```
 
-- Add `zig` compiler to PATH
+- Ensure that the `zig` is available on PATH
 ```
 ln -s $(realpath .venv/lib/python3.*/site-packages/ziglang/zig) .venv/bin/
 ```
 
-- Build `libspy`
+- Build native libraries for spy
 ```
 make -C spy/libspy
-```
-
-- Install `requirement.txt` for depedency
-```
-pip install -r requirements.txt
 ```
 
 ## Basic Commands
