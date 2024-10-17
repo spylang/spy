@@ -450,7 +450,7 @@ class ClassDef(Stmt):
     loc: Loc = field(repr=False)
     name: str
     is_struct: bool
-    decls: list['Decl']
+    fields: list['VarDef']
 
 
 @dataclass(eq=False)

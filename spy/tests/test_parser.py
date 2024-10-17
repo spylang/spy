@@ -864,7 +864,7 @@ class TestParser:
         ClassDef(
             name='Foo',
             is_struct=False,
-            decls=[],
+            fields=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -879,7 +879,34 @@ class TestParser:
         ClassDef(
             name='Foo',
             is_struct=True,
-            decls=[],
+            fields=[],
+        )
+        """
+        self.assert_dump(classdef, expected)
+
+    def test_class_fields(self):
+        mod = self.parse("""
+        class Point(struct):
+            x: i32
+            y: i32
+        """)
+        classdef = mod.get_classdef('Point')
+        expected = """
+        ClassDef(
+            name='Point',
+            is_struct=True,
+            fields=[
+                VarDef(
+                    kind='var',
+                    name='x',
+                    type=Name(id='i32'),
+                ),
+                VarDef(
+                    kind='var',
+                    name='y',
+                    type=Name(id='i32'),
+                ),
+            ],
         )
         """
         self.assert_dump(classdef, expected)
