@@ -191,15 +191,3 @@ class Call(Expr):
         args = [str(arg) for arg in self.args if not isinstance(arg, Void)]
         arglist = ', '.join(args)
         return f'{self.func}({arglist})'
-
-
-@dataclass
-class Attr(Expr):
-    value: Expr
-    name: str
-
-    def precedence(self) -> int:
-        return 14
-
-    def __str__(self) -> str:
-        return f'{self.value}.{self.name}'
