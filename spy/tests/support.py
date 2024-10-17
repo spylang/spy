@@ -162,13 +162,15 @@ class CompilerTest:
         elif self.backend == 'C':
             self.vm.redshift()
             compiler = Compiler(self.vm, modname, self.builddir)
-            file_wasm = compiler.cbuild(opt_level=self.OPT_LEVEL)
+            file_wasm = compiler.cbuild(opt_level=self.OPT_LEVEL,
+                                        release_mode=False)
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift()
             #self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir)
             file_js = compiler.cbuild(opt_level=self.OPT_LEVEL,
+                                      release_mode=False,
                                       toolchain_type = 'emscripten')
             return ExeWrapper(file_js)
         else:

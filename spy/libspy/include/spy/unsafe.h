@@ -15,8 +15,24 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
    static inline MyPtr MyPtr_gc_alloc(...);
    static inline T MyPtr_load(...);
    static inline void MyPtr_store(...);
+
+   In SPY_RELEASE mode, a managed pointer is just a wrapper around an
+   unmanaged C pointer. E.g.:
+
+       typedef struct {
+           int32_t *p;
+       } ptr_i32;
+
+   In SPY_DEBUG mode, a managed pointer also contains the length of the array
+   it points to, and every access is checked. The length is expressed in
+   number of items, NOT size in bytes:
+
+       typedef struct {
+           int32_t *p;
+           size_t length;
+       } ptr_i32;
 */
-#define _DEFINE_PTR_TYPE_UNCHECKED(PTR, T)                       \
+#define _SPY_DEFINE_PTR_TYPE_UNCHECKED(PTR, T)                   \
     typedef struct {                                             \
         T *p;                                                    \
     } PTR;                                                       \
@@ -31,7 +47,7 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         p.p[i] = v;                                              \
     }
 
-#define _DEFINE_PTR_TYPE_CHECKED(PTR, T)                         \
+#define _SPY_DEFINE_PTR_TYPE_CHECKED(PTR, T)                     \
     typedef struct {                                             \
         T *p;                                                    \
         size_t length;                                           \
@@ -52,13 +68,11 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     }
 
 
-// XXX this should be configurable
-#define SPY_CHECK_PTR
 
-#ifdef SPY_CHECK_PTR
-#  define DEFINE_PTR_TYPE _DEFINE_PTR_TYPE_CHECKED
+#ifdef SPY_DEBUG
+#  define SPY_DEFINE_PTR_TYPE _SPY_DEFINE_PTR_TYPE_CHECKED
 #else
-#  define DEFINE_PTR_TYPE _DEFINE_PTR_TYPE_UNCHECKED
+#  define SPY_DEFINE_PTR_TYPE _SPY_DEFINE_PTR_TYPE_UNCHECKED
 #endif
 
 #endif /* SPY_UNSAFE_H */

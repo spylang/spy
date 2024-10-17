@@ -56,6 +56,7 @@ class Toolchain:
            *,
            opt_level: int = 0,
            debug_symbols: bool = False,
+           release_mode: bool = False,
            EXTRA_CFLAGS: Optional[list[str]] = None,
            EXTRA_LDFLAGS: Optional[list[str]] = None,
            ) -> py.path.local:
@@ -65,6 +66,12 @@ class Toolchain:
         cmdline += [f'-O{opt_level}']
         if debug_symbols:
             cmdline += ['-g']
+
+        if release_mode:
+            cmdline += ['-DSPY_RELEASE']
+        else:
+            cmdline += ['-DSPY_DEBUG']
+
         cmdline += [
             '-o', str(file_out),
             str(file_c)
@@ -88,6 +95,7 @@ class Toolchain:
                exports: Optional[list[str]] = None,
                opt_level: int = 0,
                debug_symbols: bool = False,
+               release_mode: bool = False,
                ) -> py.path.local:
         """
         Compile the C code to WASM.
@@ -101,6 +109,7 @@ class Toolchain:
             file_wasm,
             opt_level=opt_level,
             debug_symbols=debug_symbols,
+            release_mode=release_mode,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
             EXTRA_LDFLAGS=EXTRA_LDFLAGS
         )
@@ -108,6 +117,7 @@ class Toolchain:
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               opt_level: int = 0,
               debug_symbols: bool = False,
+              release_mode: bool = False,
               ) -> py.path.local:
         """
         Compile the C code to an executable
@@ -116,7 +126,8 @@ class Toolchain:
             file_c,
             file_exe,
             opt_level=opt_level,
-            debug_symbols=debug_symbols
+            debug_symbols=debug_symbols,
+            release_mode=release_mode,
         )
 
 
@@ -207,6 +218,7 @@ class EmscriptenToolchain(Toolchain):
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               opt_level: int = 0,
               debug_symbols: bool = False,
+              release_mode: bool = False,
               ) -> py.path.local:
 
         return self.cc(
@@ -214,5 +226,6 @@ class EmscriptenToolchain(Toolchain):
             file_exe,
             opt_level=opt_level,
             debug_symbols=debug_symbols,
+            release_mode=release_mode,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
         )

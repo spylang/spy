@@ -95,6 +95,6 @@ class Context:
         t = w_itemtype.name                        # i32
         ptr = f'spy_unsafe$ptr_{t}'                # spy_unsafe$ptr_i32
         c_type = C_Type(ptr);
-        self.out_types.wl(f"DEFINE_PTR_TYPE({c_type}, {c_itemtype})")
+        self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_type}, {c_itemtype})")
         self._d[w_ptrtype] = c_type
         return c_type
