@@ -62,6 +62,10 @@ class Parser:
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
                 globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
                 mod.decls.append(globfunc)
+            elif isinstance(py_stmt, py_ast.ClassDef):
+                classdef = self.from_py_stmt_ClassDef(py_stmt)
+                globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
+                mod.decls.append(globclass)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef, assign = self.from_py_AnnAssign(py_stmt, is_global=True)
                 assert assign is not None
@@ -165,6 +169,35 @@ class Parser:
             name = py_arg.arg,
             type = spy_type,
         )
+
+    def from_py_stmt_ClassDef(self,
+                              py_classdef: py_ast.ClassDef
+                              ) -> spy.ast.ClassDef:
+        if py_classdef.bases:
+            self.error('base classes not supported yet',
+                       py_classdef.bases[0].loc)
+        if py_classdef.keywords:
+            self.error('keywords in classes not supported yet',
+                       py_classdef.keywords[0].loc)
+        if py_classdef.decorator_list:
+            self.error('class decorators not supported yet',
+                       py_classdef.decorator_list[0].loc)
+
+        # only few kind of declarations are supported inside a class: statement
+        decls: list[spy.ast.Decl] = []
+        for py_stmt in py_classdef.body:
+            if isinstance(py_stmt, py_ast.Pass):
+                pass
+            else:
+                msg = 'only fields and methods are allowed inside a class def'
+                self.error(msg, 'this is not allowed here', py_stmt.loc)
+
+        return spy.ast.ClassDef(
+            loc = py_classdef.loc,
+            name = py_classdef.name,
+            decls = decls,
+        )
+
 
     def from_py_ImportFrom(self,
                            py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:

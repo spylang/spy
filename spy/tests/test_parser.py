@@ -853,3 +853,17 @@ class TestParser:
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_Class(self):
+        mod = self.parse("""
+        class Foo:
+            pass
+        """)
+        classdef = mod.get_classdef('Foo')
+        expected = """
+        ClassDef(
+            name='Foo',
+            decls=[],
+        )
+        """
+        self.assert_dump(classdef, expected)
