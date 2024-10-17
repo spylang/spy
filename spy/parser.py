@@ -173,14 +173,24 @@ class Parser:
     def from_py_stmt_ClassDef(self,
                               py_classdef: py_ast.ClassDef
                               ) -> spy.ast.ClassDef:
-        if py_classdef.bases:
-            self.error('base classes not supported yet',
-                       py_classdef.bases[0].loc)
+        # base classes are not supported yet, but class X(struct) is
+        # special-cased
+        is_struct = False
+        for py_base in py_classdef.bases:
+            if isinstance(py_base, py_ast.Name) and py_base.id == 'struct':
+                is_struct = True
+            else:
+                self.error('base classes not supported yet',
+                           'this is not supported',
+                           py_base.loc)
+
         if py_classdef.keywords:
             self.error('keywords in classes not supported yet',
+                       'this is not supported',
                        py_classdef.keywords[0].loc)
         if py_classdef.decorator_list:
             self.error('class decorators not supported yet',
+                       'this is not supported',
                        py_classdef.decorator_list[0].loc)
 
         # only few kind of declarations are supported inside a class: statement
@@ -195,6 +205,7 @@ class Parser:
         return spy.ast.ClassDef(
             loc = py_classdef.loc,
             name = py_classdef.name,
+            is_struct = is_struct,
             decls = decls,
         )
 

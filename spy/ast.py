@@ -449,6 +449,7 @@ class FuncDef(Stmt):
 class ClassDef(Stmt):
     loc: Loc = field(repr=False)
     name: str
+    is_struct: bool
     decls: list['Decl']
 
 

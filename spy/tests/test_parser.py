@@ -863,6 +863,22 @@ class TestParser:
         expected = """
         ClassDef(
             name='Foo',
+            is_struct=False,
+            decls=[],
+        )
+        """
+        self.assert_dump(classdef, expected)
+
+    def test_struct(self):
+        mod = self.parse("""
+        class Foo(struct):
+            pass
+        """)
+        classdef = mod.get_classdef('Foo')
+        expected = """
+        ClassDef(
+            name='Foo',
+            is_struct=True,
             decls=[],
         )
         """
