@@ -11,6 +11,6 @@ fn_f64 = make_fn(f64)
 
 def main() -> void:
   if True:
-     print(fn_f64(1, 2))
+     print(fn_i32(1, 2))
   else:
-     print(fn_f64(1, 3))
+     print(fn_f64(1, 3.5))
