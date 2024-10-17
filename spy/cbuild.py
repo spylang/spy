@@ -54,9 +54,9 @@ class Toolchain:
            file_c: py.path.local,
            file_out: py.path.local,
            *,
-           opt_level: int = 0,
-           debug_symbols: bool = False,
-           release_mode: bool = False,
+           opt_level: int,
+           debug_symbols: bool,
+           release_mode: bool,
            EXTRA_CFLAGS: Optional[list[str]] = None,
            EXTRA_LDFLAGS: Optional[list[str]] = None,
            ) -> py.path.local:
@@ -93,9 +93,9 @@ class Toolchain:
 
     def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
                exports: Optional[list[str]] = None,
-               opt_level: int = 0,
-               debug_symbols: bool = False,
-               release_mode: bool = False,
+               opt_level: int,
+               debug_symbols: bool,
+               release_mode: bool,
                ) -> py.path.local:
         """
         Compile the C code to WASM.
@@ -115,9 +115,9 @@ class Toolchain:
         )
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
-              opt_level: int = 0,
-              debug_symbols: bool = False,
-              release_mode: bool = False,
+              opt_level: int,
+              debug_symbols: bool,
+              release_mode: bool,
               ) -> py.path.local:
         """
         Compile the C code to an executable
@@ -216,9 +216,9 @@ class EmscriptenToolchain(Toolchain):
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
-              opt_level: int = 0,
-              debug_symbols: bool = False,
-              release_mode: bool = False,
+              opt_level: int,
+              debug_symbols: bool,
+              release_mode: bool,
               ) -> py.path.local:
 
         return self.cc(

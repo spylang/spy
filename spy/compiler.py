@@ -52,10 +52,10 @@ class Compiler:
         return self.file_c
 
     def cbuild(self, *,
-               opt_level: int = 0,
-               debug_symbols: bool = False,
-               release_mode: bool = False,
-               toolchain_type: ToolchainType = ToolchainType.zig,
+               opt_level: int,
+               debug_symbols: bool,
+               release_mode: bool,
+               toolchain_type: ToolchainType,
                ) -> py.path.local:
         """
         Build the .c file into a .wasm file or an executable
