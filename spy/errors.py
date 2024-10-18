@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import linecache
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
+from spy.libspy import SPyPanicError
 
 Level = Literal["error", "note"]
 

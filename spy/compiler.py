@@ -52,9 +52,10 @@ class Compiler:
         return self.file_c
 
     def cbuild(self, *,
-               opt_level: int = 0,
-               debug_symbols: bool = False,
-               toolchain_type: ToolchainType = ToolchainType.zig,
+               opt_level: int,
+               debug_symbols: bool,
+               release_mode: bool,
+               toolchain_type: ToolchainType,
                ) -> py.path.local:
         """
         Build the .c file into a .wasm file or an executable
@@ -76,7 +77,8 @@ class Compiler:
             file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                          exports=exports,
                                          opt_level=opt_level,
-                                         debug_symbols=debug_symbols)
+                                         debug_symbols=debug_symbols,
+                                         release_mode=release_mode)
             if DUMP_WASM:
                 print()
                 print(f'---- {self.file_wasm} ----')
@@ -86,5 +88,6 @@ class Compiler:
             file_exe = self.file_wasm.new(ext=toolchain.EXE_FILENAME_EXT)
             toolchain.c2exe(file_c, file_exe,
                             opt_level=opt_level,
-                            debug_symbols=debug_symbols)
+                            debug_symbols=debug_symbols,
+                            release_mode=release_mode)
             return file_exe

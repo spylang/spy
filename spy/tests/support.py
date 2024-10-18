@@ -162,14 +162,23 @@ class CompilerTest:
         elif self.backend == 'C':
             self.vm.redshift()
             compiler = Compiler(self.vm, modname, self.builddir)
-            file_wasm = compiler.cbuild(opt_level=self.OPT_LEVEL)
+            file_wasm = compiler.cbuild(
+                opt_level=self.OPT_LEVEL,
+                debug_symbols=True,
+                release_mode=False,
+                toolchain_type='zig'
+            )
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift()
             #self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir)
-            file_js = compiler.cbuild(opt_level=self.OPT_LEVEL,
-                                      toolchain_type = 'emscripten')
+            file_js = compiler.cbuild(
+                opt_level=self.OPT_LEVEL,
+                debug_symbols=True,
+                release_mode=False,
+                toolchain_type = 'emscripten'
+            )
             return ExeWrapper(file_js)
         else:
             assert False, f'Unknown backend: {self.backend}'
@@ -295,12 +304,25 @@ class CTest:
                 exports: Optional[list[str]] = None) -> py.path.local:
         test_c = self.write(src)
         test_wasm = self.builddir.join('test.wasm')
-        self.toolchain.c2wasm(test_c, test_wasm, exports=exports)
+        self.toolchain.c2wasm(
+            test_c,
+            test_wasm,
+            exports=exports,
+            opt_level=0,
+            debug_symbols=True,
+            release_mode=False
+        )
         return test_wasm
 
     def compile_exe(self, src: str) -> py.path.local:
         test_c = self.write(src)
         ext = self.toolchain.EXE_FILENAME_EXT
         test_exe = self.builddir.join(f'test.{ext}')
-        self.toolchain.c2exe(test_c, test_exe)
+        self.toolchain.c2exe(
+            test_c,
+            test_exe,
+            opt_level=0,
+            debug_symbols=True,
+            release_mode=False
+        )
         return test_exe

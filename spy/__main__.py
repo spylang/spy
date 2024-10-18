@@ -42,6 +42,9 @@ def main(filename: Path,
          cwrite: boolopt("create the .c file and exit") = False,
          g: boolopt("generate debug symbols", names=['-g']) = False,
          O: opt(int, "optimization level", names=['-O']) = 0,
+         release_mode: boolopt(
+             "enable release mode", names=['-r', '--release']
+         ) = False,
          toolchain: opt(
              ToolchainType,
              "which compiler to use",
@@ -51,7 +54,7 @@ def main(filename: Path,
          ) -> None:
     try:
         do_main(filename, run, pyparse, parse, redshift, cwrite, g, O,
-                toolchain, pretty)
+                release_mode, toolchain, pretty)
     except SPyError as e:
         print(e.format(use_colors=True))
 
@@ -60,6 +63,7 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             cwrite: bool,
             debug_symbols: bool,
             opt_level: int,
+            release_mode: bool,
             toolchain: ToolchainType,
             pretty: bool) -> None:
     if pyparse:
@@ -103,7 +107,8 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
         compiler.cbuild(
             opt_level=opt_level,
             debug_symbols=debug_symbols,
-            toolchain_type=toolchain
+            toolchain_type=toolchain,
+            release_mode=release_mode,
         )
 
 if __name__ == '__main__':

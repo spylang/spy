@@ -6,6 +6,8 @@ from spy.vm.function import W_FuncType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.jsffi import JSFFI
+from spy.vm.modules.unsafe import UNSAFE
+from spy.textbuilder import TextBuilder
 
 @dataclass
 class C_Type:
@@ -52,10 +54,12 @@ class Context:
     Keep track of things like the mapping from W_* types to C types.
     """
     vm: SPyVM
+    out_types: TextBuilder
     _d: dict[W_Type, C_Type]
 
     def __init__(self, vm: SPyVM) -> None:
         self.vm = vm
+        self.out_types = None # set by CModuleWriter.emit_module
         self._d = {}
         self._d[B.w_void] = C_Type('void')
         self._d[B.w_i32] = C_Type('int32_t')
@@ -70,6 +74,8 @@ class Context:
             w_type = w_type.w_origintype
         if w_type in self._d:
             return self._d[w_type]
+        elif self.vm.issubclass(w_type, UNSAFE.w_ptr):
+            return self.new_ptr_type(w_type)
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
 
     def c_function(self, name: str, w_functype: W_FuncType) -> C_Function:
@@ -79,3 +85,16 @@ class Context:
             for p in w_functype.params
         ]
         return C_Function(name, c_params, c_restype)
+
+    def new_ptr_type(self, w_ptrtype: W_Type) -> C_Type:
+        # XXX this way of computing the typename works only for simple
+        # types. To handle more complex types we need to give each of them an
+        # FQN, and probably we also need to think how to generate .h files
+        w_itemtype = w_ptrtype.pyclass.w_itemtype  # B.w_i32
+        c_itemtype = self.w2c(w_itemtype)          # int32_t
+        t = w_itemtype.name                        # i32
+        ptr = f'spy_unsafe$ptr_{t}'                # spy_unsafe$ptr_i32
+        c_type = C_Type(ptr);
+        self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_type}, {c_itemtype})")
+        self._d[w_ptrtype] = c_type
+        return c_type
