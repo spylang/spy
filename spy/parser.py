@@ -62,6 +62,10 @@ class Parser:
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
                 globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
                 mod.decls.append(globfunc)
+            elif isinstance(py_stmt, py_ast.ClassDef):
+                classdef = self.from_py_stmt_ClassDef(py_stmt)
+                globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
+                mod.decls.append(globclass)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef, assign = self.from_py_AnnAssign(py_stmt, is_global=True)
                 assert assign is not None
@@ -166,6 +170,53 @@ class Parser:
             type = spy_type,
         )
 
+    def from_py_stmt_ClassDef(self,
+                              py_classdef: py_ast.ClassDef
+                              ) -> spy.ast.ClassDef:
+        # base classes are not supported yet, but class X(struct) is
+        # special-cased
+        is_struct = False
+        for py_base in py_classdef.bases:
+            if isinstance(py_base, py_ast.Name) and py_base.id == 'struct':
+                is_struct = True
+            else:
+                self.error('base classes not supported yet',
+                           'this is not supported',
+                           py_base.loc)
+
+        if py_classdef.keywords:
+            self.error('keywords in classes not supported yet',
+                       'this is not supported',
+                       py_classdef.keywords[0].loc)
+        if py_classdef.decorator_list:
+            self.error('class decorators not supported yet',
+                       'this is not supported',
+                       py_classdef.decorator_list[0].loc)
+
+        # only few kind of declarations are supported inside a "class:" block
+        fields: list[spy.ast.VarDef] = []
+        for py_stmt in py_classdef.body:
+            if isinstance(py_stmt, py_ast.Pass):
+                pass
+            elif isinstance(py_stmt, py_ast.AnnAssign):
+                vardef, assign = self.from_py_AnnAssign(py_stmt)
+                if assign is not None:
+                    self.error('default values in fields not supported yet',
+                               'this is not supported',
+                               assign.loc)
+                fields.append(vardef)
+            else:
+                msg = 'only fields are allowed inside a class def'
+                self.error(msg, 'this is not allowed here', py_stmt.loc)
+
+        return spy.ast.ClassDef(
+            loc = py_classdef.loc,
+            name = py_classdef.name,
+            is_struct = is_struct,
+            fields = fields,
+        )
+
+
     def from_py_ImportFrom(self,
                            py_imp: py_ast.ImportFrom) -> list[spy.ast.Import]:
         res = []
@@ -259,7 +310,6 @@ class Parser:
         # I don't think it's possible to generate an AnnAssign node with a
         # non-name target
         assert isinstance(py_node.target, py_ast.Name), 'WTF?'
-        assert py_node.value is not None
 
         # global VarDef are 'const' by default, unless you specify 'var'.
         # local VarDef are always 'var' (for now?)

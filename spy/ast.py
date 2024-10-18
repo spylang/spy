@@ -135,6 +135,15 @@ class Module(Node):
                 return decl.funcdef
         raise KeyError(name)
 
+    def get_classdef(self, name: str) -> 'ClassDef':
+        """
+        Search for the ClassDef with the given name.
+        """
+        for decl in self.decls:
+            if isinstance(decl, GlobalClassDef) and decl.classdef.name == name:
+                return decl.classdef
+        raise KeyError(name)
+
 
 class Decl(Node):
     pass
@@ -154,6 +163,12 @@ class GlobalVarDef(Decl):
     @property
     def loc(self) -> Loc:
         return self.vardef.loc
+
+
+@dataclass(eq=False)
+class GlobalClassDef(Decl):
+    loc: Loc = field(repr=False)
+    classdef: 'ClassDef'
 
 
 @dataclass(eq=False)
@@ -429,6 +444,14 @@ class FuncDef(Stmt):
         'def' until the return type.
         """
         return Loc.combine(self.loc, self.return_type.loc)
+
+@dataclass(eq=False)
+class ClassDef(Stmt):
+    loc: Loc = field(repr=False)
+    name: str
+    is_struct: bool
+    fields: list['VarDef']
+
 
 @dataclass(eq=False)
 class Pass(Stmt):
