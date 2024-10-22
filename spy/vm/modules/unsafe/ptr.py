@@ -8,17 +8,11 @@ from spy.vm.w import W_Object, W_I32, W_Type, W_Void
 from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.sig import spy_builtin
 from . import UNSAFE
+from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-def SIZEOF(w_T: W_Type) -> int:
-    if w_T is B.w_i32:
-        return 4
-    elif w_T is B.w_f64:
-        return 8
-    else:
-        assert False
 
 
 @UNSAFE.spytype('ptr')
@@ -58,7 +52,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
     T = w_T.pyclass
     app_name = f'ptr[{w_T.name}]'         # e.g. ptr[i32]
     interp_name = f'W_Ptr[{T.__name__}]'  # e.g. W_Ptr[W_I32]
-    ITEMSIZE = SIZEOF(w_T)
+    ITEMSIZE = sizeof(w_T)
 
     @spytype(app_name)
     class W_MyPtr(W_Ptr):
@@ -97,7 +91,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
         length = w_ptr.length
-        i = vm.unwrap_i32(w_i)
+        i = vm.unwrap_i32(w_i)<xs
         addr = base + ITEMSIZE * i
         if i >= length:
             msg = (f"ptr_store out of bounds: 0x{addr:x}[{i}] "

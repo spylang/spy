@@ -50,3 +50,24 @@ class TestUnsafe(CompilerTest):
         assert mod.foo(1) == 100
         with pytest.raises(SPyPanicError, match="ptr_load out of bounds"):
             mod.foo(3)
+
+    def test_struct(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        class Point(struct):
+            x: i32
+            y: i32
+
+        def make_point(x: i32, y: i32) -> ptr[Point]:
+            p: ptr[Point] = gc_alloc(Point)(1)
+            p[0].x = x
+            p[0].y = y
+            return p
+
+        def foo(x: i32, y: i32) -> i32:
+            p = make_point(x, y)
+            return p[0].x + p[0].y
+        """)
+        assert mod.foo(3, 4) == 7
