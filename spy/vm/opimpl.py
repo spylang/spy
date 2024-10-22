@@ -202,7 +202,13 @@ class W_OpImpl(W_Object):
         assert self.is_valid()
         real_args_w = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
-            w_arg = orig_args_w[wv_arg.i]
+            # XXX we definitely need a better way to handle "constant" W_Values
+            if wv_arg.i == 999:
+                assert wv_arg.w_blueval is not None
+                w_arg = wv_arg.w_blueval
+            else:
+                w_arg = orig_args_w[wv_arg.i]
+
             if conv is not None:
                 w_arg = conv.convert(vm, w_arg)
             real_args_w.append(w_arg)

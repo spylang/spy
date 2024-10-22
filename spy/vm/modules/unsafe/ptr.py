@@ -78,13 +78,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
             msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
                    f"(upper bound: {length})")
             raise SPyPanicError(msg)
-
-        if w_T is B.w_i32:
-            return vm.wrap(vm.ll.mem.read_i32(addr))
-        elif w_T is B.w_f64:
-            return vm.wrap(vm.ll.mem.read_f64(addr))
-        else:
-            assert False
+        return read_ptr(vm, addr, w_T)
 
     @spy_builtin(QN(f'unsafe::ptr_{w_T.name}_store'))
     def ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
@@ -97,15 +91,31 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
             msg = (f"ptr_store out of bounds: 0x{addr:x}[{i}] "
                    f"(upper bound: {length})")
             raise SPyPanicError(msg)
+        write_ptr(vm, addr, w_T, w_v)
 
-        if w_T is B.w_i32:
-            v = vm.unwrap_i32(w_v)
-            vm.ll.mem.write_i32(addr, v)
-        elif w_T is B.w_f64:
-            v = vm.unwrap_f64(w_v)
-            vm.ll.mem.write_f64(addr, v)
-        else:
-            assert False
 
     W_MyPtr.__name__ = W_MyPtr.__qualname__ = interp_name
     return vm.wrap(W_MyPtr)
+
+
+def read_ptr(vm: 'SPyVM', addr: fixedint.Int32, w_T: W_Type) -> W_Object:
+    if w_T is B.w_i32:
+        return vm.wrap(vm.ll.mem.read_i32(addr))
+    elif w_T is B.w_f64:
+        return vm.wrap(vm.ll.mem.read_f64(addr))
+    elif w_T.is_struct():
+        return w_T.pyclass(addr)
+    else:
+        assert False
+
+
+def write_ptr(vm: 'SPyVM', addr: fixedint.Int32, w_T: W_Type,
+              w_val: W_Object) -> None:
+    if w_T is B.w_i32:
+        v = vm.unwrap_i32(w_val)
+        vm.ll.mem.write_i32(addr, v)
+    elif w_T is B.w_f64:
+        v = vm.unwrap_f64(w_val)
+        vm.ll.mem.write_f64(addr, v)
+    else:
+        assert False
