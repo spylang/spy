@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from spy.vm.opimpl import W_OpImpl, W_Value
 
 
-@dataclass(repr=False)
 class W_StructType(W_Type):
     fields: dict[str, W_Type]
     offsets: dict[str, int]
@@ -25,8 +24,7 @@ class W_StructType(W_Type):
         self.offsets, self.size = calc_layout(fields)
 
     def __repr__(self) -> str:
-        fields = ', '.join(self.fields)
-        return f"<spy struct '{self.name}' ({fields})>"
+        return f"<spy type struct '{self.name}'>"
 
     def is_struct(self) -> bool:
         return True

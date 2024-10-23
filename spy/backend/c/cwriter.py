@@ -11,6 +11,7 @@ from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.types import TYPES
+from spy.vm.modules.unsafe.struct import W_StructType
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import c_ast as C
@@ -133,6 +134,9 @@ class CModuleWriter:
             intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.out_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
+        elif w_type is B.w_type and isinstance(w_obj, W_StructType):
+            # this forces ctx to emit the struct definition
+            self.ctx.w2c(w_obj)
         elif w_type is TYPES.w_TypeDef:
             # XXX: for now, we just ignore global TypeDefs, since they are not
             # needed. But in general, we need a way to emit prebuilt
