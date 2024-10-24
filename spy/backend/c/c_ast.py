@@ -144,6 +144,7 @@ class BinOp(Expr):
          5: |
          4: &&
          3: ||
+         1: =
     """)
 
     def precedence(self) -> int:
@@ -191,3 +192,31 @@ class Call(Expr):
         args = [str(arg) for arg in self.args if not isinstance(arg, Void)]
         arglist = ', '.join(args)
         return f'{self.func}({arglist})'
+
+@dataclass
+class Arrow(Expr):
+    ptr: Expr
+    field: str
+
+    def precedence(self) -> int:
+        return 14
+
+    def __str__(self) -> str:
+        return f'{self.ptr}->{self.field}'
+
+@dataclass
+class SPyField(Expr):
+    """
+    Special case of Arrow.
+
+    Here it assumes that `ptr` is a SPy ptr, i.e. a struct with a `.p` field,
+    and dereferences that.
+    """
+    ptr: Expr
+    field: str
+
+    def precedence(self) -> int:
+        return 14
+
+    def __str__(self) -> str:
+        return f'{self.ptr}.p->{self.field}'

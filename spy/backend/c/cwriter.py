@@ -464,6 +464,19 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_arg])
 
+        if call.func.fqn == FQN.parse("unsafe::ptr_getfield_i32"):
+            c_ptr = self.fmt_expr(call.args[0])
+            attr = call.args[1].value
+            offset = call.args[2]  # ignored
+            return C.SPyField(c_ptr, attr)
+
+        if call.func.fqn == FQN.parse("unsafe::ptr_setfield_i32"):
+            c_ptr = self.fmt_expr(call.args[0])
+            attr = call.args[1].value
+            offset = call.args[2]  # ignored
+            c_value = self.fmt_expr(call.args[3])
+            return C.BinOp('=', C.SPyField(c_ptr, attr), c_value)
+
         # the default case is to call a function with the corresponding name
         c_name = call.func.fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]

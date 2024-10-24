@@ -4,7 +4,7 @@ from spy.errors import SPyPanicError
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype
-from spy.vm.w import W_Object, W_I32, W_Type, W_Void
+from spy.vm.w import W_Object, W_I32, W_Type, W_Void, W_Str
 from spy.vm.opimpl import W_OpImpl, W_Value
 from spy.vm.sig import spy_builtin
 from . import UNSAFE
@@ -91,7 +91,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
 
             return W_OpImpl.with_values(
                 vm.wrap(ptr_getfield_i32),
-                [wv_ptr, wv_offset]
+                [wv_ptr, wv_attr, wv_offset]
             )
 
         @staticmethod
@@ -116,7 +116,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
             wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
             return W_OpImpl.with_values(
                 vm.wrap(ptr_setfield_i32),
-                [wv_ptr, wv_offset, wv_v]
+                [wv_ptr, wv_attr, wv_offset, wv_v]
             )
 
 
@@ -151,13 +151,20 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
 
 
 @UNSAFE.builtin
-def ptr_getfield_i32(vm: 'SPyVM', w_ptr: W_Ptr, w_offset: W_I32) -> W_I32:
+def ptr_getfield_i32(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                     w_offset: W_I32) -> W_I32:
+    """
+    NOTE: w_attr is ignored here, but it's used by the C backend
+    """
     addr = w_ptr.addr + vm.unwrap_i32(w_offset)
     return read_ptr(vm, addr, B.w_i32)
 
 @UNSAFE.builtin
-def ptr_setfield_i32(vm: 'SPyVM', w_ptr: W_Ptr, w_offset: W_I32,
-                     w_val: W_I32) -> W_Void:
+def ptr_setfield_i32(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                     w_offset: W_I32, w_val: W_I32) -> W_Void:
+    """
+    NOTE: w_attr is ignored here, but it's used by the C backend
+    """
     addr = w_ptr.addr + vm.unwrap_i32(w_offset)
     write_ptr(vm, addr, B.w_i32, w_val)
 
