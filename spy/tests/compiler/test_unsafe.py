@@ -62,12 +62,12 @@ class TestUnsafe(CompilerTest):
 
         def make_point(x: i32, y: i32) -> ptr[Point]:
             p: ptr[Point] = gc_alloc(Point)(1)
-            p[0].x = x
-            p[0].y = y
+            p.x = x
+            p.y = y
             return p
 
         def foo(x: i32, y: i32) -> i32:
             p = make_point(x, y)
-            return p[0].x + p[0].y
+            return p.x + p.y
         """)
         assert mod.foo(3, 4) == 7

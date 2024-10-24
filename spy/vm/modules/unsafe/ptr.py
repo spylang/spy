@@ -47,6 +47,7 @@ class W_Ptr(W_Object):
 
 @UNSAFE.builtin(color='blue')
 def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
+    from .struct import W_StructType
     assert w_cls is vm.wrap(W_Ptr)
 
     T = w_T.pyclass
@@ -66,6 +67,57 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
         def op_SETITEM(vm: 'SPyVM', wv_ptr: W_Value, wv_i: W_Value,
                        wv_v: W_Value) -> W_OpImpl:
             return W_OpImpl.simple(vm.wrap(ptr_store))
+
+        @staticmethod
+        def op_GETATTR(vm: 'SPyVM', wv_ptr: W_Value,
+                       wv_attr: W_Value) -> W_OpImpl:
+            # getattr is supported only on ptr-to-structs
+            if not w_T.is_struct():
+                return W_OpImpl.NULL
+
+            assert isinstance(w_T, W_StructType)
+            attr = wv_attr.blue_unwrap_str(vm)
+            if attr not in w_T.fields:
+                XXX
+                # raise AttributeError
+
+            w_attr_type = w_T.fields[attr]
+            assert w_attr_type is B.w_i32, 'WIP: support for other types'
+            offset = w_T.offsets[attr]
+            # XXX it would be better to have a more official API to create
+            # "constant" W_Values. Here we use i=999 to indicate something which
+            # is not in the arglist.
+            wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
+
+            return W_OpImpl.with_values(
+                vm.wrap(ptr_getfield_i32),
+                [wv_ptr, wv_offset]
+            )
+
+        @staticmethod
+        def op_SETATTR(vm: 'SPyVM', wv_ptr: W_Value, wv_attr: W_Value,
+                       wv_v: W_Value) -> W_OpImpl:
+            # setattr is supported only on ptr-to-structs
+            if not w_T.is_struct():
+                return W_OpImpl.NULL
+
+            assert isinstance(w_T, W_StructType)
+            attr = wv_attr.blue_unwrap_str(vm)
+            if attr not in w_T.fields:
+                XXX
+                # raise AttributeError
+
+            w_attr_type = w_T.fields[attr]
+            assert w_attr_type is B.w_i32, 'WIP: support for other types'
+            offset = w_T.offsets[attr]
+            # XXX it would be better to have a more official API to create
+            # "constant" W_Values. Here we use i=999 to indicate something which
+            # is not in the arglist.
+            wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
+            return W_OpImpl.with_values(
+                vm.wrap(ptr_setfield_i32),
+                [wv_ptr, wv_offset, wv_v]
+            )
 
 
     @spy_builtin(QN(f'unsafe::ptr_{w_T.name}_load'))
@@ -93,9 +145,22 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
             raise SPyPanicError(msg)
         write_ptr(vm, addr, w_T, w_v)
 
-
     W_MyPtr.__name__ = W_MyPtr.__qualname__ = interp_name
     return vm.wrap(W_MyPtr)
+
+
+
+@UNSAFE.builtin
+def ptr_getfield_i32(vm: 'SPyVM', w_ptr: W_Ptr, w_offset: W_I32) -> W_I32:
+    addr = w_ptr.addr + vm.unwrap_i32(w_offset)
+    return read_ptr(vm, addr, B.w_i32)
+
+@UNSAFE.builtin
+def ptr_setfield_i32(vm: 'SPyVM', w_ptr: W_Ptr, w_offset: W_I32,
+                     w_val: W_I32) -> W_Void:
+    addr = w_ptr.addr + vm.unwrap_i32(w_offset)
+    write_ptr(vm, addr, B.w_i32, w_val)
+
 
 
 def read_ptr(vm: 'SPyVM', addr: fixedint.Int32, w_T: W_Type) -> W_Object:
