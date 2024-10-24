@@ -99,7 +99,8 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
         dump_spy_mod(vm, modname, pretty)
         return
 
-    compiler = Compiler(vm, modname, py.path.local(builddir))
+    compiler = Compiler(vm, modname, py.path.local(builddir),
+                        dump_c=False)
     if cwrite:
         t = get_toolchain(toolchain)
         compiler.cwrite(t.TARGET)

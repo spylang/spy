@@ -30,3 +30,9 @@ def pytest_collection_modifyitems(session, config, items):
             return 0   # don't touch
 
     items.sort(key=key)
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--dump-c", action="store_true", default=False,
+        help="Dump generated C code"
+    )

@@ -7,8 +7,8 @@ from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc
 from spy.vm.object import W_I32
+from spy.util import highlight_C_maybe
 
-DUMP_C = False
 DUMP_WASM = False
 
 class ToolchainType(str, Enum):
@@ -28,8 +28,11 @@ class Compiler:
     file_wasm: py.path.local # output file
 
     def __init__(self, vm: SPyVM, modname: str,
-                 builddir: py.path.local) -> None:
+                 builddir: py.path.local,
+                 *,
+                 dump_c: bool) -> None:
         self.vm = vm
+        self.dump_c = dump_c
         self.w_mod = vm.modules_w[modname]
         basename = modname
         self.file_c = builddir.join(f'{basename}.c')
@@ -44,10 +47,10 @@ class Compiler:
                                      target)
         self.cwriter.write_c_source()
         #
-        if DUMP_C:
+        if self.dump_c:
             print()
             print(f'---- {self.file_c} ----')
-            print(self.file_c.read())
+            print(highlight_C_maybe(self.file_c.read()))
         #
         return self.file_c
 
