@@ -58,16 +58,16 @@ class TestUnsafe(CompilerTest):
 
         class Point(struct):
             x: i32
-            y: i32
+            y: f64
 
-        def make_point(x: i32, y: i32) -> ptr[Point]:
+        def make_point(x: i32, y: f64) -> ptr[Point]:
             p: ptr[Point] = gc_alloc(Point)(1)
             p.x = x
             p.y = y
             return p
 
-        def foo(x: i32, y: i32) -> i32:
+        def foo(x: i32, y: f64) -> f64:
             p = make_point(x, y)
             return p.x + p.y
         """)
-        assert mod.foo(3, 4) == 7
+        assert mod.foo(3, 4.5) == 7.5

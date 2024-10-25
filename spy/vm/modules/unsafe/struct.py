@@ -60,7 +60,6 @@ def make_struct_type(vm: 'SPyVM', name: str,
     class W_MyStruct(W_Struct):
         pass
 
-
     W_MyStruct.__name__ = W_MyStruct.__qualname__ = f'W_{name}'
     w_struct_type = W_StructType(name, W_MyStruct, fields)
     W_MyStruct._w = w_struct_type # poor's man @spytype
