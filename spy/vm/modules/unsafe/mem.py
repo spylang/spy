@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 import fixedint
 from spy.fqn import QN
 from spy.vm.b import B
-from spy.vm.w import W_I32, W_Func, W_Type, W_Dynamic
+from spy.vm.w import W_I32, W_Func, W_Type, W_Dynamic, W_Object
 from spy.vm.sig import spy_builtin
 from . import UNSAFE
 from .ptr import W_Ptr, make_ptr_type
@@ -28,3 +28,43 @@ def gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         return W_MyPtr(addr, n)
 
     return vm.wrap(my_gc_alloc)
+
+
+@UNSAFE.builtin(color='blue')
+def mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+    T = w_T.pyclass
+    t = w_T.name
+
+    @spy_builtin(QN(f'unsafe::mem_read_{t}'))
+    def mem_read_T(vm: 'SPyVM', w_addr: W_I32) -> T:
+        addr = vm.unwrap_i32(w_addr)
+        if w_T is B.w_i32:
+            return vm.wrap(vm.ll.mem.read_i32(addr))
+        elif w_T is B.w_f64:
+            return vm.wrap(vm.ll.mem.read_f64(addr))
+        elif w_T.is_struct():
+            return w_T.pyclass(addr)
+        else:
+            assert False
+
+    return vm.wrap(mem_read_T)
+
+
+@UNSAFE.builtin(color='blue')
+def mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+    T = w_T.pyclass
+    t = w_T.name
+
+    @spy_builtin(QN(f'unsafe::mem_write_{t}'))
+    def mem_write_T(vm: 'SPyVM', w_addr: W_I32, w_val: T) -> None:
+        addr = vm.unwrap_i32(w_addr)
+        if w_T is B.w_i32:
+            v = vm.unwrap_i32(w_val)
+            vm.ll.mem.write_i32(addr, v)
+        elif w_T is B.w_f64:
+            v = vm.unwrap_f64(w_val)
+            vm.ll.mem.write_f64(addr, v)
+        else:
+            assert False
+
+    return vm.wrap(mem_write_T)

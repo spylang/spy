@@ -13,8 +13,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-
-
 @UNSAFE.spytype('ptr')
 class W_Ptr(W_Object):
     __spy_storage_category__ = 'value'
@@ -133,20 +131,28 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
             msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
                    f"(upper bound: {length})")
             raise SPyPanicError(msg)
-        return read_ptr(vm, addr, w_T)
+        return vm.call_generic(
+            UNSAFE.w_mem_read,
+            [w_T],
+            [vm.wrap(addr)]
+        )
 
     @spy_builtin(QN(f'unsafe::ptr_{w_T.name}_store'))
     def ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
         length = w_ptr.length
-        i = vm.unwrap_i32(w_i)<xs
+        i = vm.unwrap_i32(w_i)
         addr = base + ITEMSIZE * i
         if i >= length:
             msg = (f"ptr_store out of bounds: 0x{addr:x}[{i}] "
                    f"(upper bound: {length})")
             raise SPyPanicError(msg)
-        write_ptr(vm, addr, w_T, w_v)
+        return vm.call_generic(
+            UNSAFE.w_mem_write,
+            [w_T],
+            [vm.wrap(addr), w_v]
+        )
 
     W_MyPtr.__name__ = W_MyPtr.__qualname__ = interp_name
     return vm.wrap(W_MyPtr)
@@ -159,15 +165,18 @@ def ptr_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     t = w_T.name     # 'i32'
 
     @spy_builtin(QN(f'unsafe::ptr_getfield_{t}'))  # unsafe::ptr_getfield_i32
-    def my_ptr_getfield(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
-                        w_offset: W_I32) -> T:
+    def ptr_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                       w_offset: W_I32) -> T:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
-        return read_ptr(vm, addr, w_T)
-
-    return vm.wrap(my_ptr_getfield)
+        return vm.call_generic(
+            UNSAFE.w_mem_read,
+            [w_T],
+            [vm.wrap(addr)]
+        )
+    return vm.wrap(ptr_getfield_T)
 
 
 @UNSAFE.builtin(color='blue')
@@ -176,34 +185,15 @@ def ptr_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     t = w_T.name     # 'i32'
 
     @spy_builtin(QN(f'unsafe::ptr_setfield_{t}'))  # unsafe::ptr_setfield_i32
-    def my_ptr_setfield(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
-                        w_offset: W_I32, w_val: T) -> W_Void:
+    def ptr_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                       w_offset: W_I32, w_val: T) -> W_Void:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
-        write_ptr(vm, addr, w_T, w_val)
-
-    return vm.wrap(my_ptr_setfield)
-
-
-def read_ptr(vm: 'SPyVM', addr: fixedint.Int32, w_T: W_Type) -> W_Object:
-    if w_T is B.w_i32:
-        return vm.wrap(vm.ll.mem.read_i32(addr))
-    elif w_T is B.w_f64:
-        return vm.wrap(vm.ll.mem.read_f64(addr))
-    elif w_T.is_struct():
-        return w_T.pyclass(addr)
-    else:
-        assert False
-
-def write_ptr(vm: 'SPyVM', addr: fixedint.Int32, w_T: W_Type,
-              w_val: W_Object) -> None:
-    if w_T is B.w_i32:
-        v = vm.unwrap_i32(w_val)
-        vm.ll.mem.write_i32(addr, v)
-    elif w_T is B.w_f64:
-        v = vm.unwrap_f64(w_val)
-        vm.ll.mem.write_f64(addr, v)
-    else:
-        assert False
+        vm.call_generic(
+            UNSAFE.w_mem_write,
+            [w_T],
+            [vm.wrap(addr), w_val]
+        )
+    return vm.wrap(ptr_setfield_T)

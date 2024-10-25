@@ -323,6 +323,19 @@ class SPyVM:
         assert isinstance(w_opimpl, W_OpImpl)
         return w_opimpl
 
+    def call_generic(self, w_func: W_Func,
+                     generic_args_w: list[W_Object],
+                     args_w: list[W_Object]) -> W_Object:
+        """
+        Shortcut to call generic functions.
+            call_generic(f, [T0, T1], [a0, a1, a2])
+        is more or less equivalent to:
+            f_specialized = call(f, [T0, T1])
+            call(f_specialized, [a0, a1, a2])
+        """
+        w_specialized = self.call(w_func, generic_args_w)
+        return self.call(w_specialized, args_w)
+
     def _call_func(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
         assert w_functype.arity == len(args_w)
