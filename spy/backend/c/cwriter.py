@@ -464,13 +464,13 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_arg])
 
-        if call.func.fqn == FQN.parse("unsafe::ptr_getfield_i32"):
+        if str(call.func.fqn).startswith("unsafe::ptr_getfield_"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
             return C.SPyField(c_ptr, attr)
 
-        if call.func.fqn == FQN.parse("unsafe::ptr_setfield_i32"):
+        if str(call.func.fqn).startswith("unsafe::ptr_setfield_"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
