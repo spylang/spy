@@ -8,8 +8,7 @@ def sizeof(w_T: W_Type) -> int:
         return 4
     elif w_T is B.w_f64:
         return 8
-    elif w_T.is_struct():
-        assert isinstance(w_T, W_StructType)
+    elif isinstance(w_T, W_StructType):
         return w_T.size
     else:
         assert False

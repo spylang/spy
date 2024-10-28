@@ -35,8 +35,11 @@ class W_Ptr(W_Object):
         return f'{clsname}(0x{self.addr:x}, length={self.length})'
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wv_p: W_Value, wv_i: W_Value) -> W_OpImpl:
-        return W_OpImpl.simple(vm.wrap_func(make_ptr_type))
+    def meta_op_GETITEM(vm: 'SPyVM', wv_p: W_Value, wv_T: W_Value) -> W_OpImpl:
+        return W_OpImpl.with_values(
+            vm.wrap_func(make_ptr_type),
+            [wv_T]
+        )
 
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
         return self.addr
@@ -44,9 +47,8 @@ class W_Ptr(W_Object):
 
 
 @UNSAFE.builtin(color='blue')
-def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
+def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     from .struct import W_StructType
-    assert w_cls is vm.wrap(W_Ptr)
 
     T = w_T.pyclass
     app_name = f'ptr[{w_T.name}]'         # e.g. ptr[i32]
@@ -70,7 +72,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
         def op_GETATTR(vm: 'SPyVM', wv_ptr: W_Value,
                        wv_attr: W_Value) -> W_OpImpl:
             # getattr is supported only on ptr-to-structs
-            if not w_T.is_struct():
+            if not w_T.is_struct(vm):
                 return W_OpImpl.NULL
 
             assert isinstance(w_T, W_StructType)
@@ -97,7 +99,7 @@ def make_ptr_type(vm: 'SPyVM', w_cls: W_Object, w_T: W_Type) -> W_Object:
         def op_SETATTR(vm: 'SPyVM', wv_ptr: W_Value, wv_attr: W_Value,
                        wv_v: W_Value) -> W_OpImpl:
             # setattr is supported only on ptr-to-structs
-            if not w_T.is_struct():
+            if not w_T.is_struct(vm):
                 return W_OpImpl.NULL
 
             assert isinstance(w_T, W_StructType)

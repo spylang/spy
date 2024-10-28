@@ -25,7 +25,7 @@ class W_StructType(W_Type):
     def __repr__(self) -> str:
         return f"<spy type struct '{self.name}'>"
 
-    def is_struct(self) -> bool:
+    def is_struct(self, vm: 'SPyVM') -> bool:
         return True
 
 
