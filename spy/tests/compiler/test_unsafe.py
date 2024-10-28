@@ -71,3 +71,35 @@ class TestUnsafe(CompilerTest):
             return p.x + p.y
         """)
         assert mod.foo(3, 4.5) == 7.5
+
+    def test_nested_struct(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        class Point(struct):
+            x: i32
+            y: i32
+
+        class Rect(struct):
+            a: Point
+            b: Point
+
+        def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> ptr[Rect]:
+            r: ptr[Rect] = gc_alloc(Rect)(1)
+
+            # write via ptr
+            r_a: ptr[Point] = r.a
+            r_a.x = x0
+            r_a.y = y0
+
+            # write via chained fields
+            r.b.x = x1
+            r.b.y = y1
+            return r
+
+        def foo() -> i32:
+            r = make_rect(1, 2, 3, 4)
+            return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
+        """)
+        assert mod.foo() == 4321
