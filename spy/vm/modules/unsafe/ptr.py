@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Optional
 import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import QN
@@ -71,55 +71,51 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         @staticmethod
         def op_GETATTR(vm: 'SPyVM', wv_ptr: W_Value,
                        wv_attr: W_Value) -> W_OpImpl:
-            # getattr is supported only on ptr-to-structs
-            if not w_T.is_struct(vm):
-                return W_OpImpl.NULL
-
-            assert isinstance(w_T, W_StructType)
-            attr = wv_attr.blue_unwrap_str(vm)
-            if attr not in w_T.fields:
-                return W_OpImpl.NULL
-
-            w_field_T = w_T.fields[attr]
-            offset = w_T.offsets[attr]
-            # XXX it would be better to have a more official API to create
-            # "constant" W_Values. Here we use i=999 to indicate something which
-            # is not in the arglist.
-            wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
-
-            # this is basically: getfield[field_T](ptr, attr, offset)
-            my_ptr_getfield = vm.call(UNSAFE.w_getfield, [w_field_T])
-            return W_OpImpl.with_values(
-                vm.wrap(my_ptr_getfield),
-                [wv_ptr, wv_attr, wv_offset]
-            )
+            return op_ATTR('get', vm, wv_ptr, wv_attr, None)
 
         @staticmethod
         def op_SETATTR(vm: 'SPyVM', wv_ptr: W_Value, wv_attr: W_Value,
                        wv_v: W_Value) -> W_OpImpl:
-            # setattr is supported only on ptr-to-structs
-            if not w_T.is_struct(vm):
-                return W_OpImpl.NULL
+            return op_ATTR('set', vm, wv_ptr, wv_attr, wv_v)
 
-            assert isinstance(w_T, W_StructType)
-            attr = wv_attr.blue_unwrap_str(vm)
-            if attr not in w_T.fields:
-                return W_OpImpl.NULL
 
-            w_field_T = w_T.fields[attr]
-            offset = w_T.offsets[attr]
-            # XXX it would be better to have a more official API to create
-            # "constant" W_Values. Here we use i=999 to indicate something which
-            # is not in the arglist.
-            wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
+    def op_ATTR(opkind: str, vm: 'SPyVM', wv_ptr: W_Value, wv_attr: W_Value,
+                wv_v: Optional[W_Value]) -> W_OpImpl:
+        """
+        Implement both op_GETATTR and op_SETATTR.
+        """
+        # attributes are supported only on ptr-to-structs
+        if not w_T.is_struct(vm):
+            return W_OpImpl.NULL
 
-            # this is basically: setfield[field_T](ptr, attr, offset, v)
-            my_ptr_setfield = vm.call(UNSAFE.w_setfield, [w_field_T])
+        assert isinstance(w_T, W_StructType)
+        attr = wv_attr.blue_unwrap_str(vm)
+        if attr not in w_T.fields:
+            return W_OpImpl.NULL
+
+        w_field_T = w_T.fields[attr]
+        offset = w_T.offsets[attr]
+        # XXX it would be better to have a more official API to create
+        # "constant" W_Values. Here we use i=999 to indicate something which
+        # is not in the arglist.
+        wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
+
+        if opkind == 'get':
+            # getfield[field_T](ptr, attr, offset)
+            assert wv_v is None
+            w_func = vm.call(UNSAFE.w_getfield, [w_field_T])
             return W_OpImpl.with_values(
-                vm.wrap(my_ptr_setfield),
+                w_func,
+                [wv_ptr, wv_attr, wv_offset]
+            )
+        else:
+            # setfield[field_T](ptr, attr, offset, v)
+            assert wv_v is not None
+            w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
+            return W_OpImpl.with_values(
+                w_func,
                 [wv_ptr, wv_attr, wv_offset, wv_v]
             )
-
 
     @spy_builtin(QN(f'unsafe::ptr_{w_T.name}_load'))
     def ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
