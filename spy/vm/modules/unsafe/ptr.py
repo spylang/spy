@@ -88,8 +88,8 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             # is not in the arglist.
             wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
 
-            # this is basically: ptr_getfield[field_T](ptr, attr, offset)
-            my_ptr_getfield = vm.call(UNSAFE.w_ptr_getfield, [w_field_T])
+            # this is basically: getfield[field_T](ptr, attr, offset)
+            my_ptr_getfield = vm.call(UNSAFE.w_getfield, [w_field_T])
             return W_OpImpl.with_values(
                 vm.wrap(my_ptr_getfield),
                 [wv_ptr, wv_attr, wv_offset]
@@ -115,8 +115,8 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             # is not in the arglist.
             wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
 
-            # this is basically: ptr_setfield[field_T](ptr, attr, offset, v)
-            my_ptr_setfield = vm.call(UNSAFE.w_ptr_setfield, [w_field_T])
+            # this is basically: setfield[field_T](ptr, attr, offset, v)
+            my_ptr_setfield = vm.call(UNSAFE.w_setfield, [w_field_T])
             return W_OpImpl.with_values(
                 vm.wrap(my_ptr_setfield),
                 [wv_ptr, wv_attr, wv_offset, wv_v]
@@ -162,21 +162,21 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
 
 
 @UNSAFE.builtin(color='blue')
-def ptr_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+def getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     if w_T.is_struct(vm):
         w_T = make_ptr_type(vm, w_T)
-        name = 'ptr_getfield_ref'
+        name = 'getfield_ref'
     else:
-        name = 'ptr_getfield_prim'
+        name = 'getfield_prim'
 
     T = w_T.pyclass  # W_I32
     t = w_T.name     # 'i32'
 
-    # unsafe::ptr_getfield_prim_i32
-    # unsafe::ptr_getfield_ref_Point
+    # unsafe::getfield_prim_i32
+    # unsafe::getfield_ref_Point
     @spy_builtin(QN(f'unsafe::{name}_{t}'))
-    def ptr_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
-                       w_offset: W_I32) -> T:
+    def getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                   w_offset: W_I32) -> T:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
@@ -186,17 +186,17 @@ def ptr_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [w_T],
             [vm.wrap(addr)]
         )
-    return vm.wrap(ptr_getfield_T)
+    return vm.wrap(getfield_T)
 
 
 @UNSAFE.builtin(color='blue')
-def ptr_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+def setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass  # W_I32
     t = w_T.name     # 'i32'
 
-    @spy_builtin(QN(f'unsafe::ptr_setfield_{t}'))  # unsafe::ptr_setfield_i32
-    def ptr_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
-                       w_offset: W_I32, w_val: T) -> W_Void:
+    @spy_builtin(QN(f'unsafe::setfield_{t}'))  # unsafe::setfield_i32
+    def setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                   w_offset: W_I32, w_val: T) -> W_Void:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
@@ -206,4 +206,4 @@ def ptr_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [w_T],
             [vm.wrap(addr), w_val]
         )
-    return vm.wrap(ptr_setfield_T)
+    return vm.wrap(setfield_T)

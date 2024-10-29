@@ -464,13 +464,13 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_arg])
 
-        if str(call.func.fqn).startswith("unsafe::ptr_getfield_prim"):
+        if str(call.func.fqn).startswith("unsafe::getfield_prim"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
             return C.SPyField(c_ptr, attr)
 
-        if str(call.func.fqn).startswith("unsafe::ptr_getfield_ref"):
+        if str(call.func.fqn).startswith("unsafe::getfield_ref"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
@@ -478,7 +478,7 @@ class CFuncWriter:
             c_restype = self.ctx.c_restype_by_fqn(call.func.fqn)
             return C.SPyFieldRef(c_restype, c_field)
 
-        if str(call.func.fqn).startswith("unsafe::ptr_setfield_"):
+        if str(call.func.fqn).startswith("unsafe::setfield_"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
