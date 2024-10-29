@@ -163,18 +163,21 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
 
 @UNSAFE.builtin(color='blue')
 def getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+    # fields can be returned "by value" or "by reference". Primitive types
+    # returned by value, but struct types are always returned by reference
+    # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
         w_T = make_ptr_type(vm, w_T)
-        name = 'getfield_ref'
+        by = 'byref'
     else:
-        name = 'getfield_prim'
+        by = 'byval'
 
     T = w_T.pyclass  # W_I32
     t = w_T.name     # 'i32'
 
     # unsafe::getfield_prim_i32
     # unsafe::getfield_ref_Point
-    @spy_builtin(QN(f'unsafe::{name}_{t}'))
+    @spy_builtin(QN(f'unsafe::getfield_{by}_{t}'))
     def getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                    w_offset: W_I32) -> T:
         """

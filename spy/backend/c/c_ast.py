@@ -206,7 +206,7 @@ class Arrow(Expr):
         return f'{self.ptr}->{self.field}'
 
 @dataclass
-class SPyField(Expr):
+class PtrField(Expr):
     """
     Special case of Arrow.
 
@@ -224,15 +224,15 @@ class SPyField(Expr):
 
 
 @dataclass
-class SPyFieldRef(Expr):
+class PtrFieldByRef(Expr):
     """
-    XXX explain
+    Wrapper around PtrField to make it "by ref"
     """
     ptr_type: C_Type
-    field: SPyField
+    byval: PtrField
 
     def precedence(self) -> int:
         return 14
 
     def __str__(self) -> str:
-        return f'{self.ptr_type}_from_addr(&{self.field})'
+        return f'{self.ptr_type}_from_addr(&{self.byval})'
