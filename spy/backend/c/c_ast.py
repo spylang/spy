@@ -229,11 +229,50 @@ class PtrField(Expr):
     ptr: Expr
     field: str
 
+    PRETTY_PRINT = True
+    # This is a small optimization to increase readability of produced code in
+    # case of nested structs. Consider the following SPy code:
+    #     obj.a.b.c = 42
+    #
+    # The C writer produces the following C.Expr:
+    #    PtrField(
+    #        ptr=PtrFieldByRef(
+    #            byval=PtrField(
+    #                ptr=PtrFieldByRef(
+    #                    byval=PtrField(
+    #                        ptr=Literal(value='obj'),
+    #                        field='a'
+    #                    )
+    #                ),
+    #                field='b'
+    #            )
+    #        ),
+    #        field='c'
+    #    )
+    #
+    # Without pretty print, it becomes:
+    #    spy_unsafe$ptr_X_from_addr(
+    #        &spy_unsafe$ptr_Y_from_addr(
+    #            &obj.p->a
+    #        ).p->b
+    #    ).p->c = 42;
+    #
+    # Note that we have a lot of unnecessary "wrapping" (by calling
+    # ptr_from_addr) and "unwrapping" (by doing '.p'). With pretty print, we
+    # can avoid the wrapping/unwrapping and just generate a sequence of dots:
+    #    obj.p->a.b.c = 42
+    #
+    # The readability is much better, and it might also make the life of the C
+    # optimizer a bit easier.
+
     def precedence(self) -> int:
         return 14
 
     def __str__(self) -> str:
-        return f'{self.ptr}.p->{self.field}'
+        if self.PRETTY_PRINT and isinstance(self.ptr, PtrFieldByRef):
+            return f'{self.ptr.byval}.{self.field}'
+        else:
+            return f'{self.ptr}.p->{self.field}'
 
 
 @dataclass
