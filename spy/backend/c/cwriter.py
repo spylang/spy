@@ -437,7 +437,9 @@ class CFuncWriter:
         # I think we need a more general way so that OPERATORs can have more
         # control on which arguments are passed to opimpls.
 
-        if str(call.func.fqn).startswith("jsffi::getattr_"):
+        fqn = call.func.fqn
+
+        if str(fqn).startswith("jsffi::getattr_"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_getattr"
             attr = call.args[1].value
@@ -446,7 +448,7 @@ class CFuncWriter:
             return C.Call(c_name, [c_obj, c_attr])
 
         # horrible hack (see also jsffi.W_JsRef.op_SETATTR)
-        if str(call.func.fqn).startswith("jsffi::setattr_"):
+        if str(fqn).startswith("jsffi::setattr_"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_setattr"
             c_obj = self.fmt_expr(call.args[0])
@@ -455,7 +457,7 @@ class CFuncWriter:
             c_value = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_value])
 
-        if call.func.fqn == FQN.parse("jsffi::call_method_1"):
+        if fqn == FQN.parse("jsffi::call_method_1"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_call_method_1"
             c_obj = self.fmt_expr(call.args[0])
@@ -464,19 +466,19 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_arg])
 
-        if str(call.func.fqn).startswith("unsafe::getfield_"):
-            is_byref = str(call.func.fqn).startswith("unsafe::getfield_byref")
+        if str(fqn).startswith("unsafe::getfield_"):
+            is_byref = str(fqn).startswith("unsafe::getfield_byref")
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
             c_field = C.PtrField(c_ptr, attr)
             if is_byref:
-                c_restype = self.ctx.c_restype_by_fqn(call.func.fqn)
+                c_restype = self.ctx.c_restype_by_fqn(fqn)
                 return C.PtrFieldByRef(c_restype, c_field)
             else:
                 return c_field
 
-        if str(call.func.fqn).startswith("unsafe::setfield_"):
+        if str(fqn).startswith("unsafe::setfield_"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
@@ -485,6 +487,6 @@ class CFuncWriter:
             return C.BinOp('=', c_lval, c_rval)
 
         # the default case is to call a function with the corresponding name
-        c_name = call.func.fqn.c_name
+        c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
