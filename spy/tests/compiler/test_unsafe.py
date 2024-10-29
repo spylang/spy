@@ -2,7 +2,7 @@
 
 import pytest
 from spy.errors import SPyPanicError
-from spy.tests.support import CompilerTest, no_C
+from spy.tests.support import CompilerTest, no_C, expect_errors
 
 class TestUnsafe(CompilerTest):
 
@@ -71,6 +71,29 @@ class TestUnsafe(CompilerTest):
             return p.x + p.y
         """)
         assert mod.foo(3, 4.5) == 7.5
+
+    def test_struct_wrong_field(self):
+        src = """
+        from unsafe import ptr, gc_alloc
+
+        # XXX we should remove this workaround: currently you can use 'i32'
+        # inside 'class Point' only if 'i32' is used somewhere else at the
+        # module level.
+        WORKAROUND: i32 = 0
+
+        class Point(struct):
+            x: i32
+            y: i32
+
+        def foo() -> void:
+            p: ptr[Point] = gc_alloc(Point)(1)
+            p.z = 42
+        """
+        errors = expect_errors(
+            "type `ptr[Point]` does not support assignment to attribute 'z'",
+            ('this is `ptr[Point]`', 'p'),
+        )
+        self.compile_raises(src, 'foo', errors)
 
     def test_nested_struct(self):
         mod = self.compile(

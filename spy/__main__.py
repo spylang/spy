@@ -57,6 +57,7 @@ def main(filename: Path,
                 release_mode, toolchain, pretty)
     except SPyError as e:
         print(e.format(use_colors=True))
+        #import pdb;pdb.xpm()
 
 def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             redshift: bool,

@@ -78,8 +78,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             assert isinstance(w_T, W_StructType)
             attr = wv_attr.blue_unwrap_str(vm)
             if attr not in w_T.fields:
-                XXX
-                # raise AttributeError
+                return W_OpImpl.NULL
 
             w_field_T = w_T.fields[attr]
             offset = w_T.offsets[attr]
@@ -105,8 +104,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             assert isinstance(w_T, W_StructType)
             attr = wv_attr.blue_unwrap_str(vm)
             if attr not in w_T.fields:
-                XXX
-                # raise AttributeError
+                return W_OpImpl.NULL
 
             w_field_T = w_T.fields[attr]
             offset = w_T.offsets[attr]
