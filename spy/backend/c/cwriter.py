@@ -464,18 +464,27 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_arg])
 
-        if str(call.func.fqn).startswith("unsafe::ptr_getfield_"):
+        if str(call.func.fqn).startswith("unsafe::ptr_getfield_prim"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
             return C.SPyField(c_ptr, attr)
 
+        if str(call.func.fqn).startswith("unsafe::ptr_getfield_ref"):
+            c_ptr = self.fmt_expr(call.args[0])
+            attr = call.args[1].value
+            offset = call.args[2]  # ignored
+            c_field = C.SPyField(c_ptr, attr)
+            c_restype = self.ctx.c_restype_by_fqn(call.func.fqn)
+            return C.SPyFieldRef(c_restype, c_field)
+
         if str(call.func.fqn).startswith("unsafe::ptr_setfield_"):
             c_ptr = self.fmt_expr(call.args[0])
             attr = call.args[1].value
             offset = call.args[2]  # ignored
-            c_value = self.fmt_expr(call.args[3])
-            return C.BinOp('=', C.SPyField(c_ptr, attr), c_value)
+            c_lval = C.SPyField(c_ptr, attr)
+            c_rval = self.fmt_expr(call.args[3])
+            return C.BinOp('=', c_lval, c_rval)
 
         # the default case is to call a function with the corresponding name
         c_name = call.func.fqn.c_name

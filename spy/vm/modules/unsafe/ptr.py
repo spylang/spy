@@ -163,10 +163,18 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
 
 @UNSAFE.builtin(color='blue')
 def ptr_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+    if w_T.is_struct(vm):
+        w_T = make_ptr_type(vm, w_T)
+        name = 'ptr_getfield_ref'
+    else:
+        name = 'ptr_getfield_prim'
+
     T = w_T.pyclass  # W_I32
     t = w_T.name     # 'i32'
 
-    @spy_builtin(QN(f'unsafe::ptr_getfield_{t}'))  # unsafe::ptr_getfield_i32
+    # unsafe::ptr_getfield_prim_i32
+    # unsafe::ptr_getfield_ref_Point
+    @spy_builtin(QN(f'unsafe::{name}_{t}'))
     def ptr_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                        w_offset: W_I32) -> T:
         """

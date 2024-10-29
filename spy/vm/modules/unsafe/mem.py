@@ -42,8 +42,8 @@ def mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             return vm.wrap(vm.ll.mem.read_i32(addr))
         elif w_T is B.w_f64:
             return vm.wrap(vm.ll.mem.read_f64(addr))
-        elif w_T.is_struct():
-            return w_T.pyclass(addr)
+        elif issubclass(w_T.pyclass, W_Ptr):
+            return w_T.pyclass(addr, 1)
         else:
             assert False
 

@@ -35,6 +35,7 @@ PREC  CATEGORY         OPERATOR            ASSOCIATIVITY
 import re
 from dataclasses import dataclass
 from typing import ClassVar
+from .context import C_Type
 
 def make_table(src: str) -> dict[str, int]:
     """
@@ -220,3 +221,18 @@ class SPyField(Expr):
 
     def __str__(self) -> str:
         return f'{self.ptr}.p->{self.field}'
+
+
+@dataclass
+class SPyFieldRef(Expr):
+    """
+    XXX explain
+    """
+    ptr_type: C_Type
+    field: SPyField
+
+    def precedence(self) -> int:
+        return 14
+
+    def __str__(self) -> str:
+        return f'{self.ptr_type}_from_addr(&{self.field})'

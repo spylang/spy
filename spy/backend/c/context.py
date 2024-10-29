@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.object import W_Type
@@ -80,6 +81,11 @@ class Context:
         elif isinstance(w_type, W_StructType):
             return self.new_struct_type(w_type)
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
+
+    def c_restype_by_fqn(self, fqn: FQN) -> C_Type:
+        w_func = self.vm.lookup_global(fqn)
+        w_restype = w_func.w_functype.w_restype
+        return self.w2c(w_restype)
 
     def c_function(self, name: str, w_functype: W_FuncType) -> C_Function:
         c_restype = self.w2c(w_functype.w_restype)
