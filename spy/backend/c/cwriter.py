@@ -467,26 +467,32 @@ class CFuncWriter:
             return C.Call(c_name, [c_obj, c_attr, c_arg])
 
         if str(fqn).startswith("unsafe::getfield_"):
-            is_byref = str(fqn).startswith("unsafe::getfield_byref")
-            c_ptr = self.fmt_expr(call.args[0])
-            attr = call.args[1].value
-            offset = call.args[2]  # ignored
-            c_field = C.PtrField(c_ptr, attr)
-            if is_byref:
-                c_restype = self.ctx.c_restype_by_fqn(fqn)
-                return C.PtrFieldByRef(c_restype, c_field)
-            else:
-                return c_field
+            return self.fmt_getfield(fqn, call)
 
         if str(fqn).startswith("unsafe::setfield_"):
-            c_ptr = self.fmt_expr(call.args[0])
-            attr = call.args[1].value
-            offset = call.args[2]  # ignored
-            c_lval = C.PtrField(c_ptr, attr)
-            c_rval = self.fmt_expr(call.args[3])
-            return C.BinOp('=', c_lval, c_rval)
+            return self.fmt_setfield(fqn, call)
 
         # the default case is to call a function with the corresponding name
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
+
+    def fmt_getfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        is_byref = str(fqn).startswith("unsafe::getfield_byref")
+        c_ptr = self.fmt_expr(call.args[0])
+        attr = call.args[1].value
+        offset = call.args[2]  # ignored
+        c_field = C.PtrField(c_ptr, attr)
+        if is_byref:
+            c_restype = self.ctx.c_restype_by_fqn(fqn)
+            return C.PtrFieldByRef(c_restype, c_field)
+        else:
+            return c_field
+
+    def fmt_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        c_ptr = self.fmt_expr(call.args[0])
+        attr = call.args[1].value
+        offset = call.args[2]  # ignored
+        c_lval = C.PtrField(c_ptr, attr)
+        c_rval = self.fmt_expr(call.args[3])
+        return C.BinOp('=', c_lval, c_rval)

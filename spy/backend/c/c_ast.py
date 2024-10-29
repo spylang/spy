@@ -194,16 +194,29 @@ class Call(Expr):
         arglist = ', '.join(args)
         return f'{self.func}({arglist})'
 
+
 @dataclass
-class Arrow(Expr):
-    ptr: Expr
+class Dot(Expr):
+    expr: Expr
     field: str
 
     def precedence(self) -> int:
         return 14
 
     def __str__(self) -> str:
-        return f'{self.ptr}->{self.field}'
+        return f'{self.expr}.{self.field}'
+
+
+@dataclass
+class Arrow(Expr):
+    expr: Expr
+    field: str
+
+    def precedence(self) -> int:
+        return 14
+
+    def __str__(self) -> str:
+        return f'{self.expr}->{self.field}'
 
 @dataclass
 class PtrField(Expr):
