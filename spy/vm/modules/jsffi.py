@@ -6,7 +6,7 @@ from spy.vm.object import spytype, Member, Annotated
 from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
                       W_Dynamic, W_List, W_FuncType)
 from spy.vm.list import W_List
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.sig import spy_builtin
 from spy.vm.registry import ModuleRegistry
 from spy.vm.modules.types import W_TypeDef
@@ -20,7 +20,7 @@ JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 class W_JsRef(W_Object):
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value) -> W_OpImpl:
+    def op_GETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg) -> W_OpImpl:
         attr = wv_attr.blue_unwrap_str(vm)
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         @spy_builtin(QN(f'jsffi::getattr_{attr}'))
@@ -29,8 +29,8 @@ class W_JsRef(W_Object):
         return W_OpImpl.simple(vm.wrap_func(fn))
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
-                   wv_v: W_Value) -> W_OpImpl:
+    def op_SETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
+                   wv_v: W_OpArg) -> W_OpImpl:
         attr = wv_attr.blue_unwrap_str(vm)
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         @spy_builtin(QN(f'jsffi::setattr_{attr}'))
@@ -40,8 +40,8 @@ class W_JsRef(W_Object):
         return W_OpImpl.simple(vm.wrap_func(fn))
 
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_Value, wv_method: W_Value,
-                       w_values: W_List[W_Value]) -> W_OpImpl:
+    def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_OpArg, wv_method: W_OpArg,
+                       w_values: W_List[W_OpArg]) -> W_OpImpl:
         args_wv = w_values.items_w
         n = len(args_wv)
         if n == 1:

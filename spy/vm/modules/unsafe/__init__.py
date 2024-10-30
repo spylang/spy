@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype
 from spy.vm.w import W_Object, W_I32, W_Type, W_Void
 from spy.vm.registry import ModuleRegistry
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

@@ -120,8 +120,8 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
-    def op_CALL(vm: 'SPyVM', wv_func: 'W_Value',
-                w_values: 'W_List[W_Value]') -> 'W_OpImpl':
+    def op_CALL(vm: 'SPyVM', wv_func: 'W_OpArg',
+                w_values: 'W_List[W_OpArg]') -> 'W_OpImpl':
         """
         This is a bit of a hack.
 

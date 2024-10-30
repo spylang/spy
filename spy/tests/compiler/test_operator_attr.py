@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -57,8 +57,8 @@ class TestAttrOp(CompilerTest):
                 return W_MyClass()
 
             @staticmethod
-            def op_GETATTR(vm: 'SPyVM', wv_obj: W_Value,
-                           wv_attr: W_Value) -> W_OpImpl:
+            def op_GETATTR(vm: 'SPyVM', wv_obj: W_OpArg,
+                           wv_attr: W_OpArg) -> W_OpImpl:
                 attr = wv_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @spy_builtin(QN('ext::getx'))
@@ -74,8 +74,8 @@ class TestAttrOp(CompilerTest):
                 return W_OpImpl.simple(vm.wrap_func(fn))
 
             @staticmethod
-            def op_SETATTR(vm: 'SPyVM', wv_obj: W_OpImpl, wv_attr: W_Value,
-                           wv_v: W_Value) -> W_OpImpl:
+            def op_SETATTR(vm: 'SPyVM', wv_obj: W_OpImpl, wv_attr: W_OpArg,
+                           wv_v: W_OpArg) -> W_OpImpl:
                 attr = wv_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @spy_builtin(QN('ext::setx'))

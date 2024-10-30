@@ -6,7 +6,7 @@ from spy.vm.module import W_Module
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.sig import spy_builtin
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.modules.types import W_TypeDef
 
 from . import OP
@@ -16,14 +16,14 @@ if TYPE_CHECKING:
 
 OpKind = Literal['get', 'set']
 
-def unwrap_attr_maybe(vm: 'SPyVM', wv_attr: W_Value) -> str:
+def unwrap_attr_maybe(vm: 'SPyVM', wv_attr: W_OpArg) -> str:
     if wv_attr.is_blue() and wv_attr.w_static_type is B.w_str:
         return vm.unwrap_str(wv_attr.w_blueval)
     else:
         return '<unknown>'
 
 @OP.builtin(color='blue')
-def GETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value) -> W_OpImpl:
+def GETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     attr = unwrap_attr_maybe(vm, wv_attr)
     w_opimpl = _get_GETATTR_opimpl(vm, wv_obj, wv_attr, attr)
@@ -36,7 +36,7 @@ def GETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value) -> W_OpImpl:
     )
     return w_opimpl
 
-def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
+def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
                         attr: str) -> W_OpImpl:
     w_type = wv_obj.w_static_type
     pyclass = w_type.pyclass
@@ -53,8 +53,8 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
 
 
 @OP.builtin(color='blue')
-def SETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
-            wv_v: W_Value) -> W_OpImpl:
+def SETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
+            wv_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     attr = unwrap_attr_maybe(vm, wv_attr)
     w_opimpl = _get_SETATTR_opimpl(vm, wv_obj, wv_attr, wv_v, attr)
@@ -68,8 +68,8 @@ def SETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
     )
     return w_opimpl
 
-def _get_SETATTR_opimpl(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
-                        wv_v: W_Value, attr: str) -> W_OpImpl:
+def _get_SETATTR_opimpl(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
+                        wv_v: W_OpArg, attr: str) -> W_OpImpl:
     w_type = wv_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
@@ -89,7 +89,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
     pyclass = w_type.pyclass
     member = pyclass.__spy_members__[attr]
     W_Class = pyclass
-    W_Value = member.w_type.pyclass
+    W_OpArg = member.w_type.pyclass
     field = member.field # the interp-level name of the attr (e.g, 'w_x')
 
     # XXX QNs are slightly wrong because they uses the type name as the
@@ -98,7 +98,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
     if kind == 'get':
         @no_type_check
         @spy_builtin(QN(modname=w_type.name, attr=f"__get_{attr}__"))
-        def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_Value:
+        def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_OpArg:
             return getattr(w_obj, field)
 
         return W_OpImpl.simple(vm.wrap_func(opimpl_get))
@@ -107,7 +107,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
         @no_type_check
         @spy_builtin(QN(modname=w_type.name, attr=f"__set_{attr}__"))
         def opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
-                       w_val: W_Value) -> W_Void:
+                       w_val: W_OpArg) -> W_Void:
             setattr(w_obj, field, w_val)
 
         return W_OpImpl.simple(vm.wrap_func(opimpl_set))

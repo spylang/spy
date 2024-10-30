@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
-W_List.make_prebuilt(W_Value)
+W_List.make_prebuilt(W_OpArg)
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
@@ -83,7 +83,7 @@ class TypeChecker:
         got_color, w_got_type = self.check_expr(expr)
         w_exp_type = self.locals_types_w[name]
 
-        wv_local = W_Value('v', 0, w_got_type, expr.loc)
+        wv_local = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
             conv = convert_type_maybe(self.vm, wv_local, w_exp_type)
             if conv is not None:
@@ -100,7 +100,7 @@ class TypeChecker:
 
     def typecheck_bool(self, expr: ast.Expr) -> None:
         color, w_got_type = self.check_expr(expr)
-        wv_cond = W_Value('v', 0, w_got_type, expr.loc)
+        wv_cond = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
             conv = convert_type_maybe(self.vm, wv_cond, B.w_bool)
             if conv is not None:
@@ -136,7 +136,7 @@ class TypeChecker:
     def check_many_exprs(self,
                          prefixes: list[str],
                          exprs: list[ast.Expr | str]
-                         ) -> tuple[list[Color], list[W_Value]]:
+                         ) -> tuple[list[Color], list[W_OpArg]]:
         assert len(prefixes) == len(exprs)
         colors = []
         args_wv = []
@@ -151,15 +151,15 @@ class TypeChecker:
                 # Ultimately this happens because astr.GetAttr.attr is of type
                 # 'str'. Probably we should just turn it into a "real" Expr,
                 # so that it will be automatically and transparetly converted
-                # into a W_Value
+                # into a W_OpArg
                 assert last_loc is not None
                 loc = last_loc
                 color = 'blue'
-                wv = W_Value(prefix, i, B.w_str, loc,
+                wv = W_OpArg(prefix, i, B.w_str, loc,
                              w_blueval = self.vm.wrap(expr))
             else:
                 color, w_type = self.check_expr(expr)
-                wv = W_Value(prefix, i, w_type, expr.loc,
+                wv = W_OpArg(prefix, i, w_type, expr.loc,
                              sym=self.name2sym_maybe(expr))
                 last_loc = expr.loc
             colors.append(color)
@@ -376,7 +376,7 @@ class TypeChecker:
             [call.func] + call.args
         )
         wv_func = args_wv[0]
-        w_values = W_List[W_Value](args_wv[1:]) # type: ignore
+        w_values = W_List[W_OpArg](args_wv[1:]) # type: ignore
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_values])
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
@@ -390,7 +390,7 @@ class TypeChecker:
         )
         wv_obj = args_wv[0]
         wv_method = args_wv[1]
-        w_values = W_List[W_Value](args_wv[2:])
+        w_values = W_List[W_OpArg](args_wv[2:])
         w_opimpl = self.vm.call_OP(
             OP.w_CALL_METHOD,
             [wv_obj, wv_method, w_values]
@@ -432,7 +432,7 @@ class TypeChecker:
 def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
-        orig_args_wv: list[W_Value],
+        orig_args_wv: list[W_OpArg],
         *,
         dispatch: DispatchKind,
         errmsg: str,
@@ -513,7 +513,7 @@ def typecheck_opimpl(
 
 def _call_error_wrong_argcount(
         got: int, exp: int,
-        args_wv: list[W_Value],
+        args_wv: list[W_OpArg],
         *,
         def_loc: Optional[Loc],
         call_loc: Optional[Loc],
@@ -550,11 +550,11 @@ def _call_error_wrong_argcount(
 
 def convert_type_maybe(
         vm: 'SPyVM',
-        wv_x: W_Value,
+        wv_x: W_OpArg,
         w_exp: W_Type
 ) -> Optional[TypeConverter]:
     """
-    Check whether the given W_Value is compatible with the expected type:
+    Check whether the given W_OpArg is compatible with the expected type:
 
       - return None if it's the same type (no conversion needed)
 

@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
@@ -25,8 +25,8 @@ class TestOp(CompilerTest):
                 return W_MyClass()
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wv_obj: W_Value,
-                           wv_i: W_Value) -> W_OpImpl:
+            def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg,
+                           wv_i: W_OpArg) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
@@ -59,8 +59,8 @@ class TestOp(CompilerTest):
                 return W_MyClass()
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wv_obj: W_Value,
-                           wv_i: W_Value) -> W_OpImpl:
+            def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg,
+                           wv_i: W_OpArg) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)
@@ -95,10 +95,10 @@ class TestOp(CompilerTest):
                 return W_MyClass(w_x)
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wv_obj: W_Value,
-                           wv_i: W_Value) -> W_OpImpl:
-                assert isinstance(wv_obj, W_Value)
-                assert isinstance(wv_i, W_Value)
+            def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg,
+                           wv_i: W_OpArg) -> W_OpImpl:
+                assert isinstance(wv_obj, W_OpArg)
+                assert isinstance(wv_i, W_OpArg)
                 # NOTE we are reversing the two arguments
                 return W_OpImpl.with_values(EXT.w_sum, [wv_i, wv_obj])
 

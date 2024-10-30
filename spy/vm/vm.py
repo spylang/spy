@@ -14,7 +14,7 @@ from spy.vm.b import B
 from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.opimpl import W_OpImpl, W_Value, value_eq
+from spy.vm.opimpl import W_OpImpl, W_OpArg, value_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -357,7 +357,7 @@ class SPyVM:
             # for red functions, we just call them
             return self._call_func(w_func, args_w)
 
-    def call_OP(self, w_func: W_Func, args_wv: list[W_Value]) -> W_OpImpl:
+    def call_OP(self, w_func: W_Func, args_wv: list[W_OpArg]) -> W_OpImpl:
         """
         Like vm.call, but ensures that the result is a W_OpImpl.
 
@@ -388,16 +388,16 @@ class SPyVM:
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
-        wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
+        wv_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
+        wv_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
         w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
         w_res = w_opimpl.call(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
-        wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
+        wv_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
+        wv_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
         w_opimpl = self.call_OP(OPERATOR.w_NE, [wv_a, wv_b])
         w_res = w_opimpl.call(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
@@ -407,8 +407,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wv_obj = W_Value('obj', 0, self.dynamic_type(w_obj), None)
-        wv_i = W_Value('i', 1, self.dynamic_type(w_i), None)
+        wv_obj = W_OpArg('obj', 0, self.dynamic_type(w_obj), None)
+        wv_i = W_OpArg('i', 1, self.dynamic_type(w_i), None)
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wv_obj, wv_i])
         return w_opimpl.call(self, [w_obj, w_i])
 
@@ -447,19 +447,19 @@ class SPyVM:
         """
         # Avoid infinite recursion:
         #   1. vm.universal_eq(a, t) calls
-        #                    op.UNIVERSAL_EQ(W_Value(a, ...), W_Value(b, ...))
+        #                    op.UNIVERSAL_EQ(W_OpArg(a, ...), W_OpArg(b, ...))
         #   2. UNIVERSAL_EQ is a blue function and thus uses BlueCache.lookup
-        #   3. BlueCache.lookup calls vm.universal_eq on the W_Value
+        #   3. BlueCache.lookup calls vm.universal_eq on the W_OpArg
         #   4. vm.universal_eq(wv_a, wv_b) calls
-        #                    op.UNIVERSAL_EQ(W_Value(...), W_Value(...))
+        #                    op.UNIVERSAL_EQ(W_OpArg(...), W_OpArg(...))
         #   5  ...
-        # By special-casing vm.universal_eq(W_Value, W_Value), we break the
+        # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
         # recursion
-        if isinstance(w_a, W_Value) and isinstance(w_b, W_Value):
+        if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
             return value_eq(self, w_a, w_b)
 
-        wv_a = W_Value('a', 0, self.dynamic_type(w_a), None)
-        wv_b = W_Value('b', 1, self.dynamic_type(w_b), None)
+        wv_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
+        wv_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
         try:
             w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
         except SPyTypeError:

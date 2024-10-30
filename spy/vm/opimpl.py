@@ -8,14 +8,13 @@ from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.sig import spy_builtin
 
-
 if TYPE_CHECKING:
     from spy.vm.typeconverter import TypeConverter
 
 T = TypeVar('T')
 
-@spytype('Value')
-class W_Value(W_Object):
+@spytype('OpArg')
+class W_OpArg(W_Object):
     """
     A Value represent an operand of an OPERATOR.
 
@@ -48,9 +47,9 @@ class W_Value(W_Object):
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object,
-                   prefix: str, i: int) -> 'W_Value':
+                   prefix: str, i: int) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return W_Value(prefix, i, w_type, None, w_blueval=w_obj)
+        return W_OpArg(prefix, i, w_type, None, w_blueval=w_obj)
 
     @property
     def name(self):
@@ -61,7 +60,7 @@ class W_Value(W_Object):
             extra = f' = {self._w_blueval}'
         else:
             extra = ''
-        return f'<W_Value {self.name}: {self.w_static_type.name}{extra}>'
+        return f'<W_OpArg {self.name}: {self.w_static_type.name}{extra}>'
 
     def is_blue(self):
         return self._w_blueval is not None
@@ -73,7 +72,7 @@ class W_Value(W_Object):
 
     def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
         """
-        Ensure that the W_Value is blue and of the expected type.
+        Ensure that the W_OpArg is blue and of the expected type.
         Raise SPyTypeError if not.
         """
         from spy.vm.typechecker import convert_type_maybe
@@ -100,10 +99,10 @@ class W_Value(W_Object):
         return vm.unwrap_str(self._w_blueval)
 
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wv_l: 'W_Value', wv_r: 'W_Value') -> 'W_OpImpl':
+    def op_EQ(vm: 'SPyVM', wv_l: 'W_OpArg', wv_r: 'W_OpArg') -> 'W_OpImpl':
         w_ltype = wv_l.w_static_type
         w_rtype = wv_r.w_static_type
-        assert w_ltype.pyclass is W_Value
+        assert w_ltype.pyclass is W_OpArg
 
         if w_ltype is w_rtype:
             return W_OpImpl.simple(vm.wrap_func(value_eq))
@@ -113,7 +112,7 @@ class W_Value(W_Object):
 
 @no_type_check
 @spy_builtin(QN('operator::value_eq'))
-def value_eq(vm: 'SPyVM', wv1: W_Value, wv2: W_Value) -> W_Bool:
+def value_eq(vm: 'SPyVM', wv1: W_OpArg, wv2: W_OpArg) -> W_Bool:
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description
@@ -134,7 +133,7 @@ def value_eq(vm: 'SPyVM', wv1: W_Value, wv2: W_Value) -> W_Bool:
 class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
-    _args_wv: Optional[list[W_Value]]
+    _args_wv: Optional[list[W_OpArg]]
     _converters: Optional[list[Optional['TypeConverter']]]
 
     def __init__(self, *args) -> None:
@@ -150,7 +149,7 @@ class W_OpImpl(W_Object):
         return w_opimpl
 
     @classmethod
-    def with_values(cls, w_func: W_Func, args_wv: list[W_Value]) -> 'W_OpImpl':
+    def with_values(cls, w_func: W_Func, args_wv: list[W_OpArg]) -> 'W_OpImpl':
         w_opimpl = cls.__new__(cls)
         w_opimpl._w_func = w_func
         w_opimpl._args_wv = args_wv
@@ -203,7 +202,7 @@ class W_OpImpl(W_Object):
         assert self.is_valid()
         real_args_w = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
-            # XXX we definitely need a better way to handle "constant" W_Values
+            # XXX we definitely need a better way to handle "constant" W_OpArgs
             if wv_arg.i == 999:
                 assert wv_arg.w_blueval is not None
                 w_arg = wv_arg.w_blueval
@@ -226,7 +225,7 @@ class W_OpImpl(W_Object):
         assert self.is_valid()
         real_args = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
-            # XXX we definitely need a better way to handle "constant" W_Values
+            # XXX we definitely need a better way to handle "constant" W_OpArg
             if wv_arg.i == 999:
                 assert wv_arg.w_blueval is not None
                 w_arg = wv_arg.w_blueval
