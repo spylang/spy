@@ -184,3 +184,21 @@ class TestScopeAnalyzer:
             'cannot import `xxx.aaa`',
             ('module `xxx` does not exist', 'from xxx import aaa')
         )
+
+    def test_class(self):
+        scopes = self.analyze("""
+        class Foo:
+            x: i32
+            y: i32
+        """)
+        mod_scope = scopes.by_module()
+        assert mod_scope._symbols == {
+            'Foo': MatchSymbol('Foo', 'blue'),
+        }
+        classdef = self.mod.get_classdef('Foo')
+        class_scope = scopes.by_classdef(classdef)
+        assert class_scope._symbols == {
+            'x': MatchSymbol('x', 'red'),
+            'y': MatchSymbol('y', 'red'),
+            'i32': MatchSymbol('i32', 'blue', level=2),
+        }

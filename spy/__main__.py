@@ -57,6 +57,7 @@ def main(filename: Path,
                 release_mode, toolchain, pretty)
     except SPyError as e:
         print(e.format(use_colors=True))
+        #import pdb;pdb.xpm()
 
 def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             redshift: bool,
@@ -99,7 +100,8 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
         dump_spy_mod(vm, modname, pretty)
         return
 
-    compiler = Compiler(vm, modname, py.path.local(builddir))
+    compiler = Compiler(vm, modname, py.path.local(builddir),
+                        dump_c=False)
     if cwrite:
         t = get_toolchain(toolchain)
         compiler.cwrite(t.TARGET)

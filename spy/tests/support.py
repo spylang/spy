@@ -105,7 +105,8 @@ class CompilerTest:
         return request.param
 
     @pytest.fixture
-    def init(self, tmpdir, compiler_backend):
+    def init(self, request, tmpdir, compiler_backend):
+        self.dump_c = request.config.getoption('--dump-c')
         self.tmpdir = tmpdir
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
         self.backend = compiler_backend
@@ -161,7 +162,8 @@ class CompilerTest:
             return interp_mod
         elif self.backend == 'C':
             self.vm.redshift()
-            compiler = Compiler(self.vm, modname, self.builddir)
+            compiler = Compiler(self.vm, modname, self.builddir,
+                                dump_c=self.dump_c)
             file_wasm = compiler.cbuild(
                 opt_level=self.OPT_LEVEL,
                 debug_symbols=True,
@@ -172,7 +174,8 @@ class CompilerTest:
         elif self.backend == 'emscripten':
             self.vm.redshift()
             #self.dump_module(modname)
-            compiler = Compiler(self.vm, modname, self.builddir)
+            compiler = Compiler(self.vm, modname, self.builddir,
+                                dump_c=self.dump_c)
             file_js = compiler.cbuild(
                 opt_level=self.OPT_LEVEL,
                 debug_symbols=True,

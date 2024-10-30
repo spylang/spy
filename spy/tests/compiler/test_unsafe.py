@@ -2,7 +2,7 @@
 
 import pytest
 from spy.errors import SPyPanicError
-from spy.tests.support import CompilerTest, no_C
+from spy.tests.support import CompilerTest, no_C, expect_errors
 
 class TestUnsafe(CompilerTest):
 
@@ -50,3 +50,79 @@ class TestUnsafe(CompilerTest):
         assert mod.foo(1) == 100
         with pytest.raises(SPyPanicError, match="ptr_load out of bounds"):
             mod.foo(3)
+
+    def test_struct(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        class Point(struct):
+            x: i32
+            y: f64
+
+        def make_point(x: i32, y: f64) -> ptr[Point]:
+            p: ptr[Point] = gc_alloc(Point)(1)
+            p.x = x
+            p.y = y
+            return p
+
+        def foo(x: i32, y: f64) -> f64:
+            p = make_point(x, y)
+            return p.x + p.y
+        """)
+        assert mod.foo(3, 4.5) == 7.5
+
+    def test_struct_wrong_field(self):
+        src = """
+        from unsafe import ptr, gc_alloc
+
+        # XXX we should remove this workaround: currently you can use 'i32'
+        # inside 'class Point' only if 'i32' is used somewhere else at the
+        # module level.
+        WORKAROUND: i32 = 0
+
+        class Point(struct):
+            x: i32
+            y: i32
+
+        def foo() -> void:
+            p: ptr[Point] = gc_alloc(Point)(1)
+            p.z = 42
+        """
+        errors = expect_errors(
+            "type `ptr[Point]` does not support assignment to attribute 'z'",
+            ('this is `ptr[Point]`', 'p'),
+        )
+        self.compile_raises(src, 'foo', errors)
+
+    def test_nested_struct(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        class Point(struct):
+            x: i32
+            y: i32
+
+        class Rect(struct):
+            a: Point
+            b: Point
+
+        def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> ptr[Rect]:
+            r: ptr[Rect] = gc_alloc(Rect)(1)
+
+            # write via ptr
+            r_a: ptr[Point] = r.a
+            r_a.x = x0
+            r_a.y = y0
+
+            # write via chained fields
+            r.b.x = x1
+            r.b.y = y1
+            return r
+
+        def foo() -> i32:
+            r = make_rect(1, 2, 3, 4)
+            return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
+        """)
+        assert mod.foo() == 4321

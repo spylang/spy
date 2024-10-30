@@ -36,6 +36,9 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     typedef struct {                                             \
         T *p;                                                    \
     } PTR;                                                       \
+    static inline PTR PTR##_from_addr(T *p) {                    \
+        return (PTR){p};                                         \
+    }                                                            \
     static inline PTR PTR##_gc_alloc(size_t n) {                 \
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p };                                 \
@@ -52,6 +55,9 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         T *p;                                                    \
         size_t length;                                           \
     } PTR;                                                       \
+    static inline PTR PTR##_from_addr(T *p) {                    \
+        return (PTR){p, 1};                                      \
+    }                                                            \
     static inline PTR PTR##_gc_alloc(size_t n) {                 \
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p, n };                              \

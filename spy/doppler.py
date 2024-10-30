@@ -20,6 +20,28 @@ def redshift(vm: 'SPyVM', w_func: W_ASTFunc) -> W_ASTFunc:
     dop = FuncDoppler(vm, w_func)
     return dop.redshift()
 
+
+def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
+    """
+    Create an AST node to represent a constant of the given w_val.
+
+    For primitive types, it's easy, we can just reuse ast.Constant.
+    For non primitive types, we assign an unique FQN to the w_val, and we
+    return ast.FQNConst.
+    """
+    w_type = vm.dynamic_type(w_val)
+    if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_str, B.w_void):
+        # this is a primitive, we can just use ast.Constant
+        value = vm.unwrap(w_val)
+        if isinstance(value, FixedInt): # type: ignore
+            value = int(value)
+        return ast.Constant(loc, value)
+
+    # this is a non-primitive prebuilt constant.
+    fqn = vm.make_fqn_const(w_val)
+    return ast.FQNConst(loc, fqn)
+
+
 class FuncDoppler:
     """
     Perform a redshift on a W_ASTFunc
@@ -54,65 +76,7 @@ class FuncDoppler:
 
     def blue_eval(self, expr: ast.Expr) -> ast.Expr:
         w_val = self.blue_frame.eval_expr(expr)
-        return self.make_const(expr.loc, w_val)
-
-    def make_const(self, loc: Loc, w_val: W_Object) -> ast.Expr:
-        """
-        Create an AST node to represent a constant of the given w_val.
-
-        For primitive types, it's easy, we can just reuse ast.Constant.
-        For non primitive types, we assign an unique FQN to the w_val, and we
-        return ast.FQNConst.
-        """
-        w_type = self.vm.dynamic_type(w_val)
-        if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_str, B.w_void):
-            # this is a primitive, we can just use ast.Constant
-            value = self.vm.unwrap(w_val)
-            if isinstance(value, FixedInt): # type: ignore
-                value = int(value)
-            return ast.Constant(loc, value)
-
-        # this is a non-primitive prebuilt constant. If it doesn't have an FQN
-        # yet, we need to assign it one. For now we know how to do it only for
-        # non-global functions
-        fqn = self.vm.reverse_lookup_global(w_val)
-        if fqn is None:
-            if isinstance(w_val, W_ASTFunc):
-                # it's a closure, let's assign it an FQN and add to the globals
-                fqn = self.vm.get_FQN(w_val.qn, is_global=False)
-                self.vm.add_global(fqn, None, w_val)
-            elif isinstance(w_val, W_BuiltinFunc):
-                # XXX open question: MUST builtin functions BE unique?
-                # For "module-level" builtins it makes sense, and this call
-                # used to pass "is_global=True", but e.g. list::eq is not
-                # unique because list is a generic type. I think that the
-                # solution is to introduce a more complex notion of
-                # namespaces: currently it's just "modname::attr", but
-                # probably we want to introduce at least
-                # "modname::type::attr", or maybe even
-                # "modname::namespace1::namespace2::...::attr".
-
-                have_suffix = w_val.qn.attr.endswith('#')
-                if have_suffix:
-                    qn2 = QN(
-                        modname=w_val.qn.modname,
-                        attr=w_val.qn.attr[:-1]
-                    )
-                    fqn = self.vm.get_FQN(qn2, is_global=False)
-                else:
-                    fqn = self.vm.get_FQN(w_val.qn, is_global=True)
-                self.vm.add_global(fqn, None, w_val)
-            elif isinstance(w_val, W_Type):
-                # this is terribly wrong: types should carry their own QN, as
-                # functions do
-                qn = QN(modname='__fake_mod__', attr=w_val.name)
-                fqn = self.vm.get_FQN(qn, is_global=False)
-                self.vm.add_global(fqn, None, w_val)
-            else:
-                assert False, 'implement me'
-
-        assert fqn is not None
-        return ast.FQNConst(loc, fqn)
+        return make_const(self.vm, expr.loc, w_val)
 
     # =========
 
@@ -203,7 +167,7 @@ class FuncDoppler:
     # ==== expressions ====
 
     def shift_opimpl(self, op, w_opimpl, orig_args):
-        func = self.make_const(op.loc, w_opimpl._w_func)
+        func = make_const(self.vm, op.loc, w_opimpl._w_func)
         real_args = w_opimpl.redshift_args(self.vm, orig_args)
         return ast.Call(op.loc, func, real_args)
 

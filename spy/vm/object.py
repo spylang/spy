@@ -207,6 +207,10 @@ class W_Type(W_Object):
     def is_reference_type(self, vm: 'SPyVM') -> bool:
         return self.pyclass.__spy_storage_category__ == 'reference'
 
+    def is_struct(self, vm: 'SPyVM') -> bool:
+        return False
+
+
 W_Object._w = W_Type('object', W_Object)
 W_Object.__spy_members__ = {}
 W_Type._w = W_Type('type', W_Type)

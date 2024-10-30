@@ -31,7 +31,7 @@ class ScopeAnalyzer:
     vm: SPyVM
     mod: ast.Module
     stack: list[SymTable]
-    funcdef_scopes: dict[ast.FuncDef, SymTable]
+    inner_scopes: dict[ast.FuncDef|ast.ClassDef, SymTable]
 
     def __init__(self, vm: SPyVM, modname: str, mod: ast.Module) -> None:
         self.vm = vm
@@ -39,7 +39,7 @@ class ScopeAnalyzer:
         self.builtins_scope = SymTable.from_builtins(vm)
         self.mod_scope = SymTable(modname)
         self.stack = []
-        self.funcdef_scopes = {}
+        self.inner_scopes = {}
         self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
 
@@ -62,7 +62,10 @@ class ScopeAnalyzer:
         return self.mod_scope
 
     def by_funcdef(self, funcdef: ast.FuncDef) -> SymTable:
-        return self.funcdef_scopes[funcdef]
+        return self.inner_scopes[funcdef]
+
+    def by_classdef(self, classdef: ast.ClassDef) -> SymTable:
+        return self.inner_scopes[classdef]
 
     # =====
 
@@ -170,13 +173,23 @@ class ScopeAnalyzer:
                       funcdef.prototype_loc)
         inner_scope = SymTable(funcdef.name)
         self.push_scope(inner_scope)
-        self.funcdef_scopes[funcdef] = inner_scope
+        self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
             self.add_name(arg.name, 'red', arg.loc, arg.type.loc)
         self.add_name('@return', 'red', funcdef.return_type.loc,
                       funcdef.return_type.loc)
         for stmt in funcdef.body:
             self.declare(stmt)
+        self.pop_scope()
+
+    def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
+        # declare the class in the "outer" scope
+        self.add_name(classdef.name, 'blue', classdef.loc, classdef.loc)
+        inner_scope = SymTable(classdef.name)
+        self.push_scope(inner_scope)
+        self.inner_scopes[classdef] = inner_scope
+        for vardef in classdef.fields:
+            self.declare_VarDef(vardef)
         self.pop_scope()
 
     def declare_Assign(self, assign: ast.Assign) -> None:
@@ -236,6 +249,13 @@ class ScopeAnalyzer:
         self.pop_scope()
         #
         funcdef.symtable = inner_scope
+
+    def flatten_ClassDef(self, classdef: ast.ClassDef) -> None:
+        inner_scope = self.by_classdef(classdef)
+        self.push_scope(inner_scope)
+        for vardef in classdef.fields:
+            self.flatten(vardef)
+        self.pop_scope()
 
     def flatten_Name(self, name: ast.Name) -> None:
         self.capture_maybe(name.id)

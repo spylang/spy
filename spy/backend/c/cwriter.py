@@ -11,6 +11,7 @@ from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.types import TYPES
+from spy.vm.modules.unsafe.struct import W_StructType
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import c_ast as C
@@ -133,6 +134,9 @@ class CModuleWriter:
             intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.out_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
+        elif w_type is B.w_type and isinstance(w_obj, W_StructType):
+            # this forces ctx to emit the struct definition
+            self.ctx.w2c(w_obj)
         elif w_type is TYPES.w_TypeDef:
             # XXX: for now, we just ignore global TypeDefs, since they are not
             # needed. But in general, we need a way to emit prebuilt
@@ -433,7 +437,9 @@ class CFuncWriter:
         # I think we need a more general way so that OPERATORs can have more
         # control on which arguments are passed to opimpls.
 
-        if str(call.func.fqn).startswith("jsffi::getattr_"):
+        fqn = call.func.fqn
+
+        if str(fqn).startswith("jsffi::getattr_"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_getattr"
             attr = call.args[1].value
@@ -442,7 +448,7 @@ class CFuncWriter:
             return C.Call(c_name, [c_obj, c_attr])
 
         # horrible hack (see also jsffi.W_JsRef.op_SETATTR)
-        if str(call.func.fqn).startswith("jsffi::setattr_"):
+        if str(fqn).startswith("jsffi::setattr_"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_setattr"
             c_obj = self.fmt_expr(call.args[0])
@@ -451,7 +457,7 @@ class CFuncWriter:
             c_value = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_value])
 
-        if call.func.fqn == FQN.parse("jsffi::call_method_1"):
+        if fqn == FQN.parse("jsffi::call_method_1"):
             assert isinstance(call.args[1], ast.Constant)
             c_name = "jsffi_call_method_1"
             c_obj = self.fmt_expr(call.args[0])
@@ -460,7 +466,33 @@ class CFuncWriter:
             c_arg = self.fmt_expr(call.args[2])
             return C.Call(c_name, [c_obj, c_attr, c_arg])
 
+        if str(fqn).startswith("unsafe::getfield_"):
+            return self.fmt_getfield(fqn, call)
+
+        if str(fqn).startswith("unsafe::setfield_"):
+            return self.fmt_setfield(fqn, call)
+
         # the default case is to call a function with the corresponding name
-        c_name = call.func.fqn.c_name
+        c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
+
+    def fmt_getfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        is_byref = str(fqn).startswith("unsafe::getfield_byref")
+        c_ptr = self.fmt_expr(call.args[0])
+        attr = call.args[1].value
+        offset = call.args[2]  # ignored
+        c_field = C.PtrField(c_ptr, attr)
+        if is_byref:
+            c_restype = self.ctx.c_restype_by_fqn(fqn)
+            return C.PtrFieldByRef(c_restype, c_field)
+        else:
+            return c_field
+
+    def fmt_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        c_ptr = self.fmt_expr(call.args[0])
+        attr = call.args[1].value
+        offset = call.args[2]  # ignored
+        c_lval = C.PtrField(c_ptr, attr)
+        c_rval = self.fmt_expr(call.args[3])
+        return C.BinOp('=', c_lval, c_rval)

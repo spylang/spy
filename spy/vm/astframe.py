@@ -12,6 +12,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
+from spy.vm.modules.unsafe.struct import make_struct_type
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
@@ -101,6 +102,7 @@ class ASTFrame:
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         w_val = self.eval_expr(expr)
         if isinstance(w_val, W_Type):
+            self.vm.make_fqn_const(w_val)
             return w_val
         w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.name}`'
@@ -131,6 +133,17 @@ class ASTFrame:
         closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, qn, funcdef, closure)
         self.store_local(funcdef.name, w_func)
+
+    def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        d = {}
+        for vardef in classdef.fields:
+            assert vardef.kind == 'var'
+            d[vardef.name] = self.eval_expr_type(vardef.type)
+        #
+        assert classdef.is_struct, 'only structs are supported for now'
+        # XXX should we use a QN instead of just .name?
+        w_struct_type = make_struct_type(self.vm, classdef.name, d)
+        self.store_local(classdef.name, w_struct_type)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)

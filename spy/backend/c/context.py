@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.object import W_Type
@@ -7,6 +8,7 @@ from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.unsafe import UNSAFE
+from spy.vm.modules.unsafe.struct import W_StructType
 from spy.textbuilder import TextBuilder
 
 @dataclass
@@ -76,7 +78,14 @@ class Context:
             return self._d[w_type]
         elif self.vm.issubclass(w_type, UNSAFE.w_ptr):
             return self.new_ptr_type(w_type)
+        elif isinstance(w_type, W_StructType):
+            return self.new_struct_type(w_type)
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
+
+    def c_restype_by_fqn(self, fqn: FQN) -> C_Type:
+        w_func = self.vm.lookup_global(fqn)
+        w_restype = w_func.w_functype.w_restype
+        return self.w2c(w_restype)
 
     def c_function(self, name: str, w_functype: W_FuncType) -> C_Function:
         c_restype = self.w2c(w_functype.w_restype)
@@ -94,7 +103,26 @@ class Context:
         c_itemtype = self.w2c(w_itemtype)          # int32_t
         t = w_itemtype.name                        # i32
         ptr = f'spy_unsafe$ptr_{t}'                # spy_unsafe$ptr_i32
-        c_type = C_Type(ptr);
+        c_type = C_Type(ptr)
         self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_type}, {c_itemtype})")
         self._d[w_ptrtype] = c_type
+        return c_type
+
+    def new_struct_type(self, w_st: W_StructType) -> C_Type:
+        # XXX same comment about typename vs FQN as above.
+        #
+        # XXX this is VERY wrong: it assumes that the standard C layout
+        # matches the layout computed by struct.calc_layout: as long as we use
+        # only 32-bit types it should work, but eventually we need to do it
+        # properly.
+        t = w_st.name
+        self.out_types.wl("typedef struct {")
+        with self.out_types.indent():
+            for field, w_fieldtype in w_st.fields.items():
+                c_fieldtype = self.w2c(w_fieldtype)
+                self.out_types.wl(f"{c_fieldtype} {field};")
+        self.out_types.wl("} %s;" % t)
+        self.out_types.wl("")
+        c_type = C_Type(t)
+        self._d[w_st] = c_type
         return c_type

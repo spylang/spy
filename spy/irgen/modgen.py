@@ -48,10 +48,16 @@ class ModuleGen:
         frame = ASTFrame(self.vm, w_INIT)
         #
         for decl in self.mod.decls:
-            if isinstance(decl, ast.GlobalFuncDef):
+            if isinstance(decl, ast.Import):
+                pass
+            elif isinstance(decl, ast.GlobalFuncDef):
                 self.gen_FuncDef(frame, decl.funcdef)
+            elif isinstance(decl, ast.GlobalClassDef):
+                self.gen_ClassDef(frame, decl.classdef)
             elif isinstance(decl, ast.GlobalVarDef):
                 self.gen_GlobalVarDef(frame, decl)
+            else:
+                assert False
         #
         # call the __INIT__, if present
         w_init = self.w_mod.getattr_maybe('__INIT__')
@@ -85,6 +91,14 @@ class ModuleGen:
         assert isinstance(w_func, W_ASTFunc)
         fqn = self.vm.get_FQN(w_func.qn, is_global=True)
         self.vm.add_global(fqn, None, w_func)
+
+    def gen_ClassDef(self, frame: ASTFrame, classdef: ast.ClassDef) -> None:
+        frame.exec_stmt_ClassDef(classdef)
+        w_class = frame.load_local(classdef.name)
+        assert isinstance(w_class, W_Type)
+        qn = QN(modname=self.modname, attr=classdef.name)
+        fqn = self.vm.get_FQN(qn, is_global=True)
+        self.vm.add_global(fqn, None, w_class)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef

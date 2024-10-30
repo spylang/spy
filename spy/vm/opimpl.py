@@ -8,6 +8,7 @@ from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.sig import spy_builtin
 
+
 if TYPE_CHECKING:
     from spy.vm.typeconverter import TypeConverter
 
@@ -202,7 +203,13 @@ class W_OpImpl(W_Object):
         assert self.is_valid()
         real_args_w = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
-            w_arg = orig_args_w[wv_arg.i]
+            # XXX we definitely need a better way to handle "constant" W_Values
+            if wv_arg.i == 999:
+                assert wv_arg.w_blueval is not None
+                w_arg = wv_arg.w_blueval
+            else:
+                w_arg = orig_args_w[wv_arg.i]
+
             if conv is not None:
                 w_arg = conv.convert(vm, w_arg)
             real_args_w.append(w_arg)
@@ -215,10 +222,18 @@ class W_OpImpl(W_Object):
 
     def redshift_args(self, vm: 'SPyVM',
                       orig_args: list[ast.Expr]) -> list[ast.Expr]:
+        from spy.doppler import make_const
         assert self.is_valid()
         real_args = []
         for wv_arg, conv in zip(self._args_wv, self._converters):
-            arg = orig_args[wv_arg.i]
+            # XXX we definitely need a better way to handle "constant" W_Values
+            if wv_arg.i == 999:
+                assert wv_arg.w_blueval is not None
+                w_arg = wv_arg.w_blueval
+                arg = make_const(vm, wv_arg.loc, w_arg)
+            else:
+                arg = orig_args[wv_arg.i]
+
             if conv is not None:
                 arg = conv.redshift(vm, arg)
             real_args.append(arg)

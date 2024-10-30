@@ -93,6 +93,17 @@ def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
         print(line)
 
 
+def highlight_C_maybe(code: str) -> None:
+    try:
+        import pygments
+    except ImportError:
+        return code
+
+    from pygments import highlight
+    from pygments.lexers import CLexer
+    from pygments.formatters import TerminalFormatter
+    return highlight(code, CLexer(), TerminalFormatter())
+
 def shortrepr(s: str, n: int) -> str:
     """
     Return a repr of the `s`.
