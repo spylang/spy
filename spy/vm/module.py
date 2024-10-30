@@ -5,7 +5,7 @@ from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_Void
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc
 from spy.vm.sig import spy_builtin
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -32,7 +32,7 @@ class W_Module(W_Object):
     # ==== operator impls =====
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value) -> W_OpImpl:
+    def op_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         """
         Ideally, we should create a new subtype for each module, where every
         member has its own static type.
@@ -45,19 +45,19 @@ class W_Module(W_Object):
         def fn(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
             attr = vm.unwrap_str(w_attr)
             return w_mod.getattr(attr)
-        return W_OpImpl.simple(vm.wrap_func(fn))
+        return W_OpImpl(vm.wrap_func(fn))
 
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wv_obj: W_Value, wv_attr: W_Value,
-                   wv_v: W_Value) -> W_OpImpl:
+    def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+                   wop_v: W_OpArg) -> W_OpImpl:
         @spy_builtin(QN('builtins::module_setattr'))
         def fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
                    W_Str, w_val: W_Dynamic) -> W_Void:
             attr = vm.unwrap_str(w_attr)
             w_mod.setattr(attr, w_val)
             return B.w_None
-        return W_OpImpl.simple(vm.wrap_func(fn))
+        return W_OpImpl(vm.wrap_func(fn))
 
     # ==== public interp-level API ====
 

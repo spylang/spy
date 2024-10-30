@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Dynamic, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -12,9 +12,9 @@ if TYPE_CHECKING:
 def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
                 w_a: W_Dynamic, w_b: W_Dynamic,
                 ) -> W_Dynamic:
-    wv_a = W_Value.from_w_obj(vm, w_a, 'a', 0)
-    wv_b = W_Value.from_w_obj(vm, w_b, 'b', 1)
-    w_opimpl = vm.call_OP(w_op, [wv_a, wv_b])
+    wop_a = W_OpArg.from_w_obj(vm, w_a, 'a', 999)
+    wop_b = W_OpArg.from_w_obj(vm, w_b, 'b', 999)
+    w_opimpl = vm.call_OP(w_op, [wop_a, wop_b])
     return w_opimpl.call(vm, [w_a, w_b])
 
 @OP.builtin
@@ -53,8 +53,8 @@ def dynamic_ge(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
 @OP.builtin
 def dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
                     w_value: W_Dynamic) -> W_Dynamic:
-    wv_obj = W_Value.from_w_obj(vm, w_obj, 'o', 0)
-    wv_attr = W_Value.from_w_obj(vm, w_attr, 'a', 1)
-    wv_v = W_Value.from_w_obj(vm, w_value, 'v', 2)
-    w_opimpl = vm.call_OP(OP.w_SETATTR, [wv_obj, wv_attr, wv_v])
+    wop_obj = W_OpArg.from_w_obj(vm, w_obj, 'o', 0)
+    wop_attr = W_OpArg.from_w_obj(vm, w_attr, 'a', 1)
+    wop_v = W_OpArg.from_w_obj(vm, w_value, 'v', 2)
+    w_opimpl = vm.call_OP(OP.w_SETATTR, [wop_obj, wop_attr, wop_v])
     return w_opimpl.call(vm, [w_obj, w_attr, w_value])

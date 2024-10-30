@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
 from spy.vm.sig import spy_builtin
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.vm.list import W_List
@@ -36,7 +36,7 @@ class TestCallOp(CompilerTest):
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
                     return vm.wrap(res) # type: ignore
-                return W_OpImpl.simple(vm.wrap_func(call))
+                return W_OpImpl(vm.wrap_func(call))
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -70,7 +70,7 @@ class TestCallOp(CompilerTest):
                 def new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
-                return W_OpImpl.simple(vm.wrap_func(new))
+                return W_OpImpl(vm.wrap_func(new))
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -130,17 +130,17 @@ class TestCallOp(CompilerTest):
                 return W_Calc(vm.unwrap_i32(w_x))
 
             @staticmethod
-            def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_Value, wv_method: W_Str,
-                               w_values: W_List[W_Value]) -> W_OpImpl:
-                meth = wv_method.blue_unwrap_str(vm)
+            def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_Str,
+                               w_opargs: W_List[W_OpArg]) -> W_OpImpl:
+                meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @spy_builtin(QN('ext::meth_add'))
                     def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
-                    return W_OpImpl.with_values(
+                    return W_OpImpl(
                         vm.wrap_func(fn),
-                        [wv_obj] + w_values.items_w
+                        [wop_obj] + w_opargs.items_w
                     )
 
                 elif meth == 'sub':
@@ -148,9 +148,9 @@ class TestCallOp(CompilerTest):
                     def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
-                    return W_OpImpl.with_values(
+                    return W_OpImpl(
                         vm.wrap_func(fn),
-                        [wv_obj] + w_values.items_w
+                        [wop_obj] + w_opargs.items_w
                     )
                 else:
                     return W_OpImpl.NULL

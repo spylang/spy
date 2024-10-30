@@ -4,11 +4,11 @@ import fixedint
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_I32, W_Void
 from spy.vm.sig import spy_builtin
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from . import UNSAFE
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpImpl, W_Value
+    from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 
 class W_StructType(W_Type):

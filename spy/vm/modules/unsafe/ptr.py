@@ -5,7 +5,7 @@ from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype
 from spy.vm.w import W_Object, W_I32, W_Type, W_Void, W_Str, W_Dynamic
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.sig import spy_builtin
 from . import UNSAFE
 from .misc import sizeof
@@ -35,10 +35,10 @@ class W_Ptr(W_Object):
         return f'{clsname}(0x{self.addr:x}, length={self.length})'
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wv_p: W_Value, wv_T: W_Value) -> W_OpImpl:
-        return W_OpImpl.with_values(
+    def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg) -> W_OpImpl:
+        return W_OpImpl(
             vm.wrap_func(make_ptr_type),
-            [wv_T]
+            [wop_T]
         )
 
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
@@ -60,27 +60,27 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         w_itemtype: ClassVar[W_Type] = w_T
 
         @staticmethod
-        def op_GETITEM(vm: 'SPyVM', wv_ptr: W_Value, wv_i: W_Value) -> W_OpImpl:
-            return W_OpImpl.simple(vm.wrap(ptr_load))
+        def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+            return W_OpImpl(vm.wrap(ptr_load))
 
         @staticmethod
-        def op_SETITEM(vm: 'SPyVM', wv_ptr: W_Value, wv_i: W_Value,
-                       wv_v: W_Value) -> W_OpImpl:
-            return W_OpImpl.simple(vm.wrap(ptr_store))
+        def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
+                       wop_v: W_OpArg) -> W_OpImpl:
+            return W_OpImpl(vm.wrap(ptr_store))
 
         @staticmethod
-        def op_GETATTR(vm: 'SPyVM', wv_ptr: W_Value,
-                       wv_attr: W_Value) -> W_OpImpl:
-            return op_ATTR('get', vm, wv_ptr, wv_attr, None)
+        def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
+                       wop_attr: W_OpArg) -> W_OpImpl:
+            return op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
         @staticmethod
-        def op_SETATTR(vm: 'SPyVM', wv_ptr: W_Value, wv_attr: W_Value,
-                       wv_v: W_Value) -> W_OpImpl:
-            return op_ATTR('set', vm, wv_ptr, wv_attr, wv_v)
+        def op_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                       wop_v: W_OpArg) -> W_OpImpl:
+            return op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
 
-    def op_ATTR(opkind: str, vm: 'SPyVM', wv_ptr: W_Value, wv_attr: W_Value,
-                wv_v: Optional[W_Value]) -> W_OpImpl:
+    def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                wop_v: Optional[W_OpArg]) -> W_OpImpl:
         """
         Implement both op_GETATTR and op_SETATTR.
         """
@@ -89,32 +89,32 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             return W_OpImpl.NULL
 
         assert isinstance(w_T, W_StructType)
-        attr = wv_attr.blue_unwrap_str(vm)
+        attr = wop_attr.blue_unwrap_str(vm)
         if attr not in w_T.fields:
             return W_OpImpl.NULL
 
         w_field_T = w_T.fields[attr]
         offset = w_T.offsets[attr]
         # XXX it would be better to have a more official API to create
-        # "constant" W_Values. Here we use i=999 to indicate something which
+        # "constant" W_OpArgs. Here we use i=999 to indicate something which
         # is not in the arglist.
-        wv_offset = W_Value.from_w_obj(vm, vm.wrap(offset), 'off', 999)
+        wop_offset = W_OpArg.from_w_obj(vm, vm.wrap(offset), 'off', 999)
 
         if opkind == 'get':
             # getfield[field_T](ptr, attr, offset)
-            assert wv_v is None
+            assert wop_v is None
             w_func = vm.call(UNSAFE.w_getfield, [w_field_T])
-            return W_OpImpl.with_values(
+            return W_OpImpl(
                 w_func,
-                [wv_ptr, wv_attr, wv_offset]
+                [wop_ptr, wop_attr, wop_offset]
             )
         else:
             # setfield[field_T](ptr, attr, offset, v)
-            assert wv_v is not None
+            assert wop_v is not None
             w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
-            return W_OpImpl.with_values(
+            return W_OpImpl(
                 w_func,
-                [wv_ptr, wv_attr, wv_offset, wv_v]
+                [wop_ptr, wop_attr, wop_offset, wop_v]
             )
 
     @spy_builtin(QN(f'unsafe::ptr_{w_T.name}_load'))

@@ -6,7 +6,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
-W_List.make_prebuilt(W_Value)
+W_List.make_prebuilt(W_OpArg)
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
@@ -83,9 +83,9 @@ class TypeChecker:
         got_color, w_got_type = self.check_expr(expr)
         w_exp_type = self.locals_types_w[name]
 
-        wv_local = W_Value('v', 0, w_got_type, expr.loc)
+        wop_local = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
-            conv = convert_type_maybe(self.vm, wv_local, w_exp_type)
+            conv = convert_type_maybe(self.vm, wop_local, w_exp_type)
             if conv is not None:
                 self.expr_conv[expr] = conv
         except SPyTypeError as err:
@@ -100,9 +100,9 @@ class TypeChecker:
 
     def typecheck_bool(self, expr: ast.Expr) -> None:
         color, w_got_type = self.check_expr(expr)
-        wv_cond = W_Value('v', 0, w_got_type, expr.loc)
+        wop_cond = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
-            conv = convert_type_maybe(self.vm, wv_cond, B.w_bool)
+            conv = convert_type_maybe(self.vm, wop_cond, B.w_bool)
             if conv is not None:
                 self.expr_conv[expr] = conv
         except SPyTypeError as err:
@@ -136,10 +136,10 @@ class TypeChecker:
     def check_many_exprs(self,
                          prefixes: list[str],
                          exprs: list[ast.Expr | str]
-                         ) -> tuple[list[Color], list[W_Value]]:
+                         ) -> tuple[list[Color], list[W_OpArg]]:
         assert len(prefixes) == len(exprs)
         colors = []
-        args_wv = []
+        args_wop = []
         last_loc = None
         for i, (prefix, expr) in enumerate(zip(prefixes, exprs)):
             if isinstance(expr, str):
@@ -151,20 +151,20 @@ class TypeChecker:
                 # Ultimately this happens because astr.GetAttr.attr is of type
                 # 'str'. Probably we should just turn it into a "real" Expr,
                 # so that it will be automatically and transparetly converted
-                # into a W_Value
+                # into a W_OpArg
                 assert last_loc is not None
                 loc = last_loc
                 color = 'blue'
-                wv = W_Value(prefix, i, B.w_str, loc,
+                wop = W_OpArg(prefix, i, B.w_str, loc,
                              w_blueval = self.vm.wrap(expr))
             else:
                 color, w_type = self.check_expr(expr)
-                wv = W_Value(prefix, i, w_type, expr.loc,
+                wop = W_OpArg(prefix, i, w_type, expr.loc,
                              sym=self.name2sym_maybe(expr))
                 last_loc = expr.loc
             colors.append(color)
-            args_wv.append(wv)
-        return colors, args_wv
+            args_wop.append(wop)
+        return colors, args_wop
 
     # ==== statements ====
 
@@ -252,19 +252,19 @@ class TypeChecker:
             self._check_assign(target, target_loc, expr)
 
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
-        _, args_wv = self.check_many_exprs(
+        _, args_wop = self.check_many_exprs(
             ['t', 'a', 'v'],
             [node.target, node.attr, node.value]
         )
-        w_opimpl = self.vm.call_OP(OP.w_SETATTR, args_wv)
+        w_opimpl = self.vm.call_OP(OP.w_SETATTR, args_wop)
         self.opimpl[node] = w_opimpl
 
     def check_stmt_SetItem(self, node: ast.SetItem) -> None:
-        _, args_wv = self.check_many_exprs(
+        _, args_wop = self.check_many_exprs(
             ['t', 'i', 'v'],
             [node.target, node.index, node.value]
         )
-        w_opimpl = self.vm.call_OP(OP.w_SETITEM, args_wv)
+        w_opimpl = self.vm.call_OP(OP.w_SETITEM, args_wop)
         self.opimpl[node] = w_opimpl
 
     # ==== expressions ====
@@ -314,12 +314,12 @@ class TypeChecker:
 
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
         w_OP = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        colors, args_wv = self.check_many_exprs(
+        colors, args_wop = self.check_many_exprs(
             ['l', 'r'],
             [binop.left, binop.right],
         )
         color = maybe_blue(*colors)
-        w_opimpl = self.vm.call_OP(w_OP, args_wv)
+        w_opimpl = self.vm.call_OP(w_OP, args_wop)
         self.opimpl[binop] = w_opimpl
         return color, w_opimpl.w_restype
 
@@ -335,21 +335,21 @@ class TypeChecker:
     check_expr_GtE = check_expr_BinOp
 
     def check_expr_GetItem(self, expr: ast.GetItem) -> tuple[Color, W_Type]:
-        colors, args_wv = self.check_many_exprs(
+        colors, args_wop = self.check_many_exprs(
             ['v', 'i'],
             [expr.value, expr.index],
         )
         color = maybe_blue(*colors)
-        w_opimpl = self.vm.call_OP(OP.w_GETITEM, args_wv)
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, args_wop)
         self.opimpl[expr] = w_opimpl
         return color, w_opimpl.w_restype
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
-        colors, args_wv = self.check_many_exprs(
+        colors, args_wop = self.check_many_exprs(
             ['v', 'a'],
             [expr.value, expr.attr]
         )
-        w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wv)
+        w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wop)
         self.opimpl[expr] = w_opimpl
         return colors[0], w_opimpl.w_restype
 
@@ -371,29 +371,29 @@ class TypeChecker:
         # is the real behavior that we want.
 
         n = len(call.args)
-        colors, args_wv = self.check_many_exprs(
+        colors, args_wop = self.check_many_exprs(
             ['f'] + ['v']*n,
             [call.func] + call.args
         )
-        wv_func = args_wv[0]
-        w_values = W_List[W_Value](args_wv[1:]) # type: ignore
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_values])
+        wop_func = args_wop[0]
+        w_opargs = W_List[W_OpArg](args_wop[1:]) # type: ignore
+        w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func, w_opargs])
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
 
     def check_expr_CallMethod(self, op: ast.CallMethod) -> tuple[Color, W_Type]:
         n = len(op.args)
-        colors, args_wv = self.check_many_exprs(
+        colors, args_wop = self.check_many_exprs(
             ['t', 'm'] + ['v']*n,
             [op.target, op.method] + op.args
         )
-        wv_obj = args_wv[0]
-        wv_method = args_wv[1]
-        w_values = W_List[W_Value](args_wv[2:])
+        wop_obj = args_wop[0]
+        wop_method = args_wop[1]
+        w_opargs = W_List[W_OpArg](args_wop[2:])
         w_opimpl = self.vm.call_OP(
             OP.w_CALL_METHOD,
-            [wv_obj, wv_method, w_values]
+            [wop_obj, wop_method, w_opargs]
         )
         self.opimpl[op] = w_opimpl
         w_functype = w_opimpl.w_functype
@@ -432,7 +432,7 @@ class TypeChecker:
 def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
-        orig_args_wv: list[W_Value],
+        orig_args_wop: list[W_OpArg],
         *,
         dispatch: DispatchKind,
         errmsg: str,
@@ -454,54 +454,54 @@ def typecheck_opimpl(
         #  - multi dispatch means that all the types are equally imporant in
         #    determining whether an operation is supported, so we report all
         #    of them
-        typenames = [wv.w_static_type.name for wv in orig_args_wv]
+        typenames = [wop.w_static_type.name for wop in orig_args_wop]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':
-            wv_target = orig_args_wv[0]
-            t = wv_target.w_static_type.name
-            if wv_target.loc:
-                err.add('error', f'this is `{t}`', wv_target.loc)
-            if wv_target.sym:
-                sym = wv_target.sym
+            wop_target = orig_args_wop[0]
+            t = wop_target.w_static_type.name
+            if wop_target.loc:
+                err.add('error', f'this is `{t}`', wop_target.loc)
+            if wop_target.sym:
+                sym = wop_target.sym
                 err.add('note', f'`{sym.name}` defined here', sym.loc)
         else:
-            for wv_arg in orig_args_wv:
-                t = wv_arg.w_static_type.name
-                err.add('error', f'this is `{t}`', wv_arg.loc)
+            for wop_arg in orig_args_wop:
+                t = wop_arg.w_static_type.name
+                err.add('error', f'this is `{t}`', wop_arg.loc)
         raise err
 
-    # if it's a simple OpImpl, we automatically pass the orig_args_wv in order
+    # if it's a simple OpImpl, we automatically pass the orig_args_wop in order
     if w_opimpl.is_simple():
-        w_opimpl.set_args_wv(orig_args_wv)
-    args_wv = w_opimpl._args_wv
+        w_opimpl.set_args_wop(orig_args_wop)
+    args_wop = w_opimpl._args_wop
 
     # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
     def_loc = None
     if w_opimpl.is_direct_call():
-        wv_func = orig_args_wv[0]
-        call_loc = wv_func.loc
+        wop_func = orig_args_wop[0]
+        call_loc = wop_func.loc
         # not all direct calls targets have a sym (e.g. if we call a builtin)
-        if wv_func.sym is not None:
-            def_loc = wv_func.sym.loc
+        if wop_func.sym is not None:
+            def_loc = wop_func.sym.loc
 
     # check that the number of arguments match
     w_functype = w_opimpl.w_functype
-    got_nargs = len(args_wv)
+    got_nargs = len(args_wop)
     exp_nargs = len(w_functype.params)
     if got_nargs != exp_nargs:
         _call_error_wrong_argcount(
             got_nargs,
             exp_nargs,
-            args_wv,
+            args_wop,
             def_loc = def_loc,
             call_loc = call_loc)
 
     # check that the types of the arguments are compatible
-    for i, (param, wv_arg) in enumerate(zip(w_functype.params, args_wv)):
+    for i, (param, wop_arg) in enumerate(zip(w_functype.params, args_wop)):
         try:
-            conv = convert_type_maybe(vm, wv_arg, param.w_type)
+            conv = convert_type_maybe(vm, wop_arg, param.w_type)
             w_opimpl._converters[i] = conv
         except SPyTypeError as err:
             if def_loc:
@@ -513,7 +513,7 @@ def typecheck_opimpl(
 
 def _call_error_wrong_argcount(
         got: int, exp: int,
-        args_wv: list[W_Value],
+        args_wop: list[W_OpArg],
         *,
         def_loc: Optional[Loc],
         call_loc: Optional[Loc],
@@ -534,8 +534,8 @@ def _call_error_wrong_argcount(
         else:
             diff = got - exp
             arguments = maybe_plural(diff, 'argument')
-            first_extra_loc = args_wv[exp].loc
-            last_extra_loc = args_wv[-1].loc
+            first_extra_loc = args_wop[exp].loc
+            last_extra_loc = args_wop[-1].loc
             assert first_extra_loc is not None
             assert last_extra_loc is not None
             # XXX this assumes that all the arguments are on the same line
@@ -550,11 +550,11 @@ def _call_error_wrong_argcount(
 
 def convert_type_maybe(
         vm: 'SPyVM',
-        wv_x: W_Value,
+        wop_x: W_OpArg,
         w_exp: W_Type
 ) -> Optional[TypeConverter]:
     """
-    Check whether the given W_Value is compatible with the expected type:
+    Check whether the given W_OpArg is compatible with the expected type:
 
       - return None if it's the same type (no conversion needed)
 
@@ -563,7 +563,7 @@ def convert_type_maybe(
       - raise SPyTypeError if the types are not compatible. In this case,
         the caller can catch the error, add extra info and re-raise.
     """
-    w_got = wv_x.w_static_type
+    w_got = wop_x.w_static_type
     if vm.issubclass(w_got, w_exp):
         # nothing to do
         return None
@@ -584,5 +584,5 @@ def convert_type_maybe(
     err = SPyTypeError('mismatched types')
     got = w_got.name
     exp = w_exp.name
-    err.add('error', f'expected `{exp}`, got `{got}`', loc=wv_x.loc)
+    err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)
     raise err

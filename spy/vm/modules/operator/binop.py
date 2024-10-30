@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Dynamic, W_Type
-from spy.vm.opimpl import W_OpImpl, W_Value
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from . import OP
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
@@ -75,20 +75,20 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 
 @OP.builtin(color='blue')
-def ADD(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '+', wv_l, wv_r)
+def ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '+', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def SUB(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '-', wv_l, wv_r)
+def SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '-', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def MUL(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '*', wv_l, wv_r)
+def MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '*', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def DIV(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '/', wv_l, wv_r)
+def DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '/', wop_l, wop_r)
 
 def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     """
@@ -100,73 +100,73 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     return w_common is not B.w_object and w_common.is_reference_type(vm)
 
 @OP.builtin(color='blue')
-def EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+def EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
-    w_ltype = wv_l.w_static_type
-    w_rtype = wv_r.w_static_type
+    w_ltype = wop_l.w_static_type
+    w_rtype = wop_r.w_static_type
     if w_ltype.pyclass.has_meth_overriden('op_EQ'):
-        w_opimpl = w_ltype.pyclass.op_EQ(vm, wv_l, wv_r)
-        typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+        w_opimpl = w_ltype.pyclass.op_EQ(vm, wop_l, wop_r)
+        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                          dispatch='multi',
                          errmsg='cannot do `{0}` == `{1}`')
         return w_opimpl
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
-        w_opimpl = W_OpImpl.simple(OP.w_object_is)
-        typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+        w_opimpl = W_OpImpl(OP.w_object_is)
+        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                          dispatch='multi',
                          errmsg='cannot do `{0}` == `{1}`')
         return w_opimpl
     else:
-        return MM.lookup(vm, '==', wv_l, wv_r)
+        return MM.lookup(vm, '==', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+def NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
-    w_ltype = wv_l.w_static_type
-    w_rtype = wv_r.w_static_type
+    w_ltype = wop_l.w_static_type
+    w_rtype = wop_r.w_static_type
     if can_use_reference_eq(vm, w_ltype, w_rtype):
-        w_opimpl = W_OpImpl.simple(OP.w_object_isnot)
-        typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+        w_opimpl = W_OpImpl(OP.w_object_isnot)
+        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                          dispatch='multi',
                          errmsg='cannot do `{0}` != `{1}`')
         return w_opimpl
-    return MM.lookup(vm, '!=', wv_l, wv_r)
+    return MM.lookup(vm, '!=', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def UNIVERSAL_EQ(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+def UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     # XXX this seems wrong: if we do universal_eq(i32, i32), we should get the
     # same as eq(i32, i32), not "w_object_universal_eq". In practice, it's not
     # a problem for now, because it's not exposed to the user, and we use it
     # only on W_Objects.
-    w_opimpl = W_OpImpl.simple(OP.w_object_universal_eq)
-    typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+    w_opimpl = W_OpImpl(OP.w_object_universal_eq)
+    typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                      dispatch='multi',
                      errmsg='cannot do `{0}` <universal_eq> `{1}`')
     return w_opimpl
 
 @OP.builtin(color='blue')
-def UNIVERSAL_NE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
+def UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     # XXX: see the commet in UNIVERSAL_EQ
-    w_opimpl = W_OpImpl.simple(OP.w_object_universal_ne)
-    typecheck_opimpl(vm, w_opimpl, [wv_l, wv_r],
+    w_opimpl = W_OpImpl(OP.w_object_universal_ne)
+    typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                      dispatch='multi',
                      errmsg='cannot do `{0}` <universal_ne> `{1}`')
     return w_opimpl
 
 @OP.builtin(color='blue')
-def LT(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '<', wv_l, wv_r)
+def LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '<', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def LE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '<=', wv_l, wv_r)
+def LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '<=', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def GT(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '>', wv_l, wv_r)
+def GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '>', wop_l, wop_r)
 
 @OP.builtin(color='blue')
-def GE(vm: 'SPyVM', wv_l: W_Value, wv_r: W_Value) -> W_OpImpl:
-    return MM.lookup(vm, '>=', wv_l, wv_r)
+def GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    return MM.lookup(vm, '>=', wop_l, wop_r)

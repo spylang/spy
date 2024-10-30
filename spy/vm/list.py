@@ -5,7 +5,7 @@ from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
 from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpImpl, W_Value
+    from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 class Meta_W_List(type):
     """
@@ -63,10 +63,10 @@ class W_List(W_Object, metaclass=Meta_W_List):
         type(cls).make_prebuilt(cls, itemcls)
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wv_obj: 'W_Value',
-                        wv_i: 'W_Value') -> 'W_OpImpl':
+    def meta_op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                        wop_i: 'W_OpArg') -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
-        return W_OpImpl.simple(vm.wrap_func(make_list_type))
+        return W_OpImpl(vm.wrap_func(make_list_type))
 
 
 
@@ -118,19 +118,19 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             return [vm.unwrap(w_item) for w_item in self.items_w]
 
         @staticmethod
-        def op_GETITEM(vm: 'SPyVM', wv_obj: 'W_Value',
-                       wv_i: 'W_Value') -> W_OpImpl:
+        def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                       wop_i: 'W_OpArg') -> W_OpImpl:
             @no_type_check
             @spy_builtin(QN('operator::list_getitem'))
             def getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 return w_list.items_w[i]
-            return W_OpImpl.simple(vm.wrap_func(getitem))
+            return W_OpImpl(vm.wrap_func(getitem))
 
         @staticmethod
-        def op_SETITEM(vm: 'SPyVM', wv_obj: 'W_Value', wv_i: 'W_Value',
-                       wv_v: 'W_Value') -> W_OpImpl:
+        def op_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
+                       wop_v: 'W_OpArg') -> W_OpImpl:
             from spy.vm.b import B
 
             @no_type_check
@@ -142,13 +142,13 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 # XXX bound check?
                 w_list.items_w[i] = w_v
                 return B.w_None
-            return W_OpImpl.simple(vm.wrap_func(setitem))
+            return W_OpImpl(vm.wrap_func(setitem))
 
         @staticmethod
-        def op_EQ(vm: 'SPyVM', wv_l: 'W_Value', wv_r: 'W_Value') -> W_OpImpl:
+        def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> W_OpImpl:
             from spy.vm.b import B
-            w_ltype = wv_l.w_static_type
-            w_rtype = wv_r.w_static_type
+            w_ltype = wop_l.w_static_type
+            w_rtype = wop_r.w_static_type
             assert w_ltype.pyclass is W_MyList
 
             # the final '#' in the QN means that it's a non-unique
@@ -167,7 +167,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 return B.w_True
 
             if w_ltype is w_rtype:
-                return W_OpImpl.simple(vm.wrap_func(eq))
+                return W_OpImpl(vm.wrap_func(eq))
             else:
                 return W_OpImpl.NULL
 
