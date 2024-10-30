@@ -37,46 +37,8 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
             value = int(value)
         return ast.Constant(loc, value)
 
-    # this is a non-primitive prebuilt constant. If it doesn't have an FQN
-    # yet, we need to assign it one. For now we know how to do it only for
-    # non-global functions
-    fqn = vm.reverse_lookup_global(w_val)
-    if fqn is None:
-        if isinstance(w_val, W_ASTFunc):
-            # it's a closure, let's assign it an FQN and add to the globals
-            fqn = vm.get_FQN(w_val.qn, is_global=False)
-            vm.add_global(fqn, None, w_val)
-        elif isinstance(w_val, W_BuiltinFunc):
-            # XXX open question: MUST builtin functions BE unique?
-            # For "module-level" builtins it makes sense, and this call
-            # used to pass "is_global=True", but e.g. list::eq is not
-            # unique because list is a generic type. I think that the
-            # solution is to introduce a more complex notion of
-            # namespaces: currently it's just "modname::attr", but
-            # probably we want to introduce at least
-            # "modname::type::attr", or maybe even
-            # "modname::namespace1::namespace2::...::attr".
-
-            have_suffix = w_val.qn.attr.endswith('#')
-            if have_suffix:
-                qn2 = QN(
-                    modname=w_val.qn.modname,
-                    attr=w_val.qn.attr[:-1]
-                )
-                fqn = vm.get_FQN(qn2, is_global=False)
-            else:
-                fqn = vm.get_FQN(w_val.qn, is_global=True)
-            vm.add_global(fqn, None, w_val)
-        elif isinstance(w_val, W_Type):
-            # this is terribly wrong: types should carry their own QN, as
-            # functions do
-            qn = QN(modname='__fake_mod__', attr=w_val.name)
-            fqn = vm.get_FQN(qn, is_global=False)
-            vm.add_global(fqn, None, w_val)
-        else:
-            assert False, 'implement me'
-
-    assert fqn is not None
+    # this is a non-primitive prebuilt constant.
+    fqn = vm.make_fqn_const(w_val)
     return ast.FQNConst(loc, fqn)
 
 

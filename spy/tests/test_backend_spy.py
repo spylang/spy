@@ -186,6 +186,22 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_ptr(self):
+        src = """
+        from unsafe import ptr
+
+        def foo(p: ptr[i32]) -> void:
+            pass
+        """
+        # XXX for now it's good enough, but we need to pretty-print ptrs as
+        # soon as we give types their own QN
+        expected = """
+        def foo(p: `__fake_mod__::ptr[i32]#0`) -> void:
+            pass
+        """
+        self.compile(src)
+        self.assert_dump(expected)
+
     def test_zz_sanity_check(self):
         """
         This is a hack.

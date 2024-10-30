@@ -102,6 +102,7 @@ class ASTFrame:
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         w_val = self.eval_expr(expr)
         if isinstance(w_val, W_Type):
+            self.vm.make_fqn_const(w_val)
             return w_val
         w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.name}`'
