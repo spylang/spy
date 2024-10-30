@@ -131,14 +131,14 @@ class W_OpArg(W_Object):
         assert w_ltype.pyclass is W_OpArg
 
         if w_ltype is w_rtype:
-            return W_OpImpl(vm.wrap_func(value_eq))
+            return W_OpImpl(vm.wrap_func(oparg_eq))
         else:
             return W_OpImpl.NULL
 
 
 @no_type_check
-@spy_builtin(QN('operator::value_eq'))
-def value_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
+@spy_builtin(QN('operator::oparg_eq'))
+def oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description
@@ -194,7 +194,7 @@ class W_OpImpl(W_Object):
         return self._args_wop is None
 
     def is_direct_call(self):
-    """
+        """
         This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
         """
         return isinstance(self._w_func, W_DirectCall)

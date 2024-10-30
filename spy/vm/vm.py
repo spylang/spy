@@ -14,7 +14,7 @@ from spy.vm.b import B
 from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.opimpl import W_OpImpl, W_OpArg, value_eq
+from spy.vm.opimpl import W_OpImpl, W_OpArg, oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -456,7 +456,7 @@ class SPyVM:
         # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
         # recursion
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
-            return value_eq(self, w_a, w_b)
+            return oparg_eq(self, w_a, w_b)
 
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
