@@ -25,8 +25,8 @@ class TestOp(CompilerTest):
                 return W_MyClass()
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg,
-                           wv_i: W_OpArg) -> W_OpImpl:
+            def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                           wop_i: W_OpArg) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
@@ -59,8 +59,8 @@ class TestOp(CompilerTest):
                 return W_MyClass()
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg,
-                           wv_i: W_OpArg) -> W_OpImpl:
+            def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                           wop_i: W_OpArg) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)
@@ -95,12 +95,12 @@ class TestOp(CompilerTest):
                 return W_MyClass(w_x)
 
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg,
-                           wv_i: W_OpArg) -> W_OpImpl:
-                assert isinstance(wv_obj, W_OpArg)
-                assert isinstance(wv_i, W_OpArg)
+            def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                           wop_i: W_OpArg) -> W_OpImpl:
+                assert isinstance(wop_obj, W_OpArg)
+                assert isinstance(wop_i, W_OpArg)
                 # NOTE we are reversing the two arguments
-                return W_OpImpl.with_values(EXT.w_sum, [wv_i, wv_obj])
+                return W_OpImpl.with_values(EXT.w_sum, [wop_i, wop_obj])
 
         @EXT.builtin
         def sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:

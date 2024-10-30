@@ -16,36 +16,36 @@ if TYPE_CHECKING:
 
 OpKind = Literal['get', 'set']
 
-def unwrap_attr_maybe(vm: 'SPyVM', wv_attr: W_OpArg) -> str:
-    if wv_attr.is_blue() and wv_attr.w_static_type is B.w_str:
-        return vm.unwrap_str(wv_attr.w_blueval)
+def unwrap_attr_maybe(vm: 'SPyVM', wop_attr: W_OpArg) -> str:
+    if wop_attr.is_blue() and wop_attr.w_static_type is B.w_str:
+        return vm.unwrap_str(wop_attr.w_blueval)
     else:
         return '<unknown>'
 
 @OP.builtin(color='blue')
-def GETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg) -> W_OpImpl:
+def GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
-    attr = unwrap_attr_maybe(vm, wv_attr)
-    w_opimpl = _get_GETATTR_opimpl(vm, wv_obj, wv_attr, attr)
+    attr = unwrap_attr_maybe(vm, wop_attr)
+    w_opimpl = _get_GETATTR_opimpl(vm, wop_obj, wop_attr, attr)
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wv_obj, wv_attr],
+        [wop_obj, wop_attr],
         dispatch = 'single',
         errmsg = "type `{0}` has no attribute '%s'" % attr
     )
     return w_opimpl
 
-def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
+def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpImpl:
-    w_type = wv_obj.w_static_type
+    w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         raise NotImplementedError("implement me")
     elif attr in pyclass.__spy_members__:
         return opimpl_member('get', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_GETATTR'):
-        return pyclass.op_GETATTR(vm, wv_obj, wv_attr)
+        return pyclass.op_GETATTR(vm, wop_obj, wop_attr)
 
     # until commit fc4ff1b we had special logic for typedef. At some point we
     # either need to resume it or kill typedef entirely.
@@ -53,31 +53,31 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
 
 
 @OP.builtin(color='blue')
-def SETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
-            wv_v: W_OpArg) -> W_OpImpl:
+def SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+            wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
-    attr = unwrap_attr_maybe(vm, wv_attr)
-    w_opimpl = _get_SETATTR_opimpl(vm, wv_obj, wv_attr, wv_v, attr)
+    attr = unwrap_attr_maybe(vm, wop_attr)
+    w_opimpl = _get_SETATTR_opimpl(vm, wop_obj, wop_attr, wop_v, attr)
     errmsg = "type `{0}` does not support assignment to attribute '%s'" % attr
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wv_obj, wv_attr, wv_v],
+        [wop_obj, wop_attr, wop_v],
         dispatch = 'single',
         errmsg = errmsg
     )
     return w_opimpl
 
-def _get_SETATTR_opimpl(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
-                        wv_v: W_OpArg, attr: str) -> W_OpImpl:
-    w_type = wv_obj.w_static_type
+def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+                        wop_v: W_OpArg, attr: str) -> W_OpImpl:
+    w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         return W_OpImpl.simple(OP.w_dynamic_setattr)
     elif attr in pyclass.__spy_members__:
         return opimpl_member('set', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_SETATTR'):
-        return pyclass.op_SETATTR(vm, wv_obj, wv_attr, wv_v)
+        return pyclass.op_SETATTR(vm, wop_obj, wop_attr, wop_v)
 
     # until commit fc4ff1b we had special logic for typedef. At some point we
     # either need to resume it or kill typedef entirely.

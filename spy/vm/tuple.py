@@ -28,8 +28,8 @@ class W_Tuple(W_Object):
         return tuple([vm.unwrap(w_item) for w_item in self.items_w])
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg,
-                   wv_i: W_OpArg) -> W_OpImpl:
+    def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                   wop_i: W_OpArg) -> W_OpImpl:
         return W_OpImpl.simple(vm.wrap_func(tuple_getitem))
 
 

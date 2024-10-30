@@ -20,7 +20,7 @@ class W_OpArg(W_Object):
 
     All values have a w_static_type; blue values have also a w_blueval.
 
-    The naming convention is wv_one and manyvalues_wv.
+    The naming convention is wop_one and manyvalues_wop.
     """
     prefix: str
     i: int
@@ -32,7 +32,7 @@ class W_OpArg(W_Object):
     def __init__(self,
                  prefix: str,
                  i: int,
-                 w_static_type: W_Type,
+                 w_static_tye: W_Type,
                  loc: Optional[Loc],
                  *,
                  sym: Optional[Symbol] = None,
@@ -99,9 +99,9 @@ class W_OpArg(W_Object):
         return vm.unwrap_str(self._w_blueval)
 
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wv_l: 'W_OpArg', wv_r: 'W_OpArg') -> 'W_OpImpl':
-        w_ltype = wv_l.w_static_type
-        w_rtype = wv_r.w_static_type
+    def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+        w_ltype = wop_l.w_static_type
+        w_rtype = wop_r.w_static_type
         assert w_ltype.pyclass is W_OpArg
 
         if w_ltype is w_rtype:
@@ -133,7 +133,7 @@ def value_eq(vm: 'SPyVM', wv1: W_OpArg, wv2: W_OpArg) -> W_Bool:
 class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
-    _args_wv: Optional[list[W_OpArg]]
+    _args_wop: Optional[list[W_OpArg]]
     _converters: Optional[list[Optional['TypeConverter']]]
 
     def __init__(self, *args) -> None:
@@ -143,29 +143,29 @@ class W_OpImpl(W_Object):
     def simple(cls, w_func: W_Func) -> 'W_OpImpl':
         w_opimpl = cls.__new__(cls)
         w_opimpl._w_func = w_func
-        w_opimpl._args_wv = None
+        w_opimpl._args_wop = None
         w_opimpl._converters = None
         w_opimpl._typechecked = False
         return w_opimpl
 
     @classmethod
-    def with_values(cls, w_func: W_Func, args_wv: list[W_OpArg]) -> 'W_OpImpl':
+    def with_values(cls, w_func: W_Func, args_wop: list[W_OpArg]) -> 'W_OpImpl':
         w_opimpl = cls.__new__(cls)
         w_opimpl._w_func = w_func
-        w_opimpl._args_wv = args_wv
-        w_opimpl._converters = [None] * len(args_wv)
+        w_opimpl._args_wop = args_wop
+        w_opimpl._converters = [None] * len(args_wop)
         w_opimpl._typechecked = False
         return w_opimpl
 
     def __repr__(self) -> str:
         if self._w_func is None:
             return f"<spy OpImpl NULL>"
-        elif self._args_wv is None:
+        elif self._args_wop is None:
             qn = self._w_func.qn
             return f"<spy OpImpl {qn}>"
         else:
             qn = self._w_func.qn
-            argnames = [wv.name for wv in self._args_wv]
+            argnames = [wv.name for wv in self._args_wop]
             argnames = ', '.join(argnames)
             return f"<spy OpImpl {qn}({argnames})>"
 
@@ -173,7 +173,7 @@ class W_OpImpl(W_Object):
         return self._w_func is None
 
     def is_simple(self) -> bool:
-        return self._args_wv is None
+        return self._args_wop is None
 
     def is_direct_call(self):
         """
@@ -192,22 +192,22 @@ class W_OpImpl(W_Object):
     def w_restype(self) -> W_Type:
         return self._w_func.w_functype.w_restype
 
-    def set_args_wv(self, args_wv):
-        assert self._args_wv is None
+    def set_args_wop(self, args_wop):
+        assert self._args_wop is None
         assert self._converters is None
-        self._args_wv = args_wv[:]
-        self._converters = [None] * len(args_wv)
+        self._args_wop = args_wop[:]
+        self._converters = [None] * len(args_wop)
 
     def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
         assert self.is_valid()
         real_args_w = []
-        for wv_arg, conv in zip(self._args_wv, self._converters):
+        for wop_arg, conv in zip(self._args_wop, self._converters):
             # XXX we definitely need a better way to handle "constant" W_OpArgs
-            if wv_arg.i == 999:
-                assert wv_arg.w_blueval is not None
-                w_arg = wv_arg.w_blueval
+            if wop_arg.i == 999:
+                assert wop_arg.w_blueval is not None
+                w_arg = wop_arg.w_blueval
             else:
-                w_arg = orig_args_w[wv_arg.i]
+                w_arg = orig_args_w[wop_arg.i]
 
             if conv is not None:
                 w_arg = conv.convert(vm, w_arg)
@@ -224,14 +224,14 @@ class W_OpImpl(W_Object):
         from spy.doppler import make_const
         assert self.is_valid()
         real_args = []
-        for wv_arg, conv in zip(self._args_wv, self._converters):
+        for wop_arg, conv in zip(self._args_wop, self._converters):
             # XXX we definitely need a better way to handle "constant" W_OpArg
-            if wv_arg.i == 999:
-                assert wv_arg.w_blueval is not None
-                w_arg = wv_arg.w_blueval
-                arg = make_const(vm, wv_arg.loc, w_arg)
+            if wop_arg.i == 999:
+                assert wop_arg.w_blueval is not None
+                w_arg = wop_arg.w_blueval
+                arg = make_const(vm, wop_arg.loc, w_arg)
             else:
-                arg = orig_args[wv_arg.i]
+                arg = orig_args[wop_arg.i]
 
             if conv is not None:
                 arg = conv.redshift(vm, arg)

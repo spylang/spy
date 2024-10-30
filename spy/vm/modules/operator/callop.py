@@ -14,29 +14,29 @@ if TYPE_CHECKING:
 W_List.make_prebuilt(W_OpArg)
 
 @OP.builtin(color='blue')
-def CALL(vm: 'SPyVM', wv_obj: W_OpArg, w_opargs: W_List[W_OpArg]) -> W_OpImpl:
+def CALL(vm: 'SPyVM', wop_obj: W_OpArg, w_opargs: W_List[W_OpArg]) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
-    w_type = wv_obj.w_static_type
+    w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         w_opimpl = _dynamic_call_opimpl(w_opargs.items_w)
     elif pyclass.has_meth_overriden('op_CALL'):
-        w_opimpl = pyclass.op_CALL(vm, wv_obj, w_opargs)
+        w_opimpl = pyclass.op_CALL(vm, wop_obj, w_opargs)
 
     # turn the app-level W_List[W_OpArg] into an interp-level list[W_OpArg]
-    args_wv = w_opargs.items_w
+    args_wop = w_opargs.items_w
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wv_obj] + args_wv,
+        [wop_obj] + args_wop,
         dispatch = 'single',
         errmsg = 'cannot call objects of type `{0}`'
     )
     return w_opimpl
 
 
-def _dynamic_call_opimpl(args_wv: list[W_OpArg]) -> W_OpImpl:
+def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
     """
     This is a hack, and it's half wrong.
 
@@ -61,33 +61,33 @@ def _dynamic_call_opimpl(args_wv: list[W_OpArg]) -> W_OpImpl:
     The half-wrong part is that this breaks in all other cases, but for now
     it's good enough.
     """
-    N  = len(args_wv)
+    N  = len(args_wop)
     w_functype = W_FuncType(
         params = [FuncParam(f'v{i}', B.w_dynamic) for i in range(N)],
         w_restype = B.w_dynamic
     )
     return W_OpImpl.with_values(
         W_DirectCall(w_functype),
-        args_wv
+        args_wop
     )
 
 
 @OP.builtin(color='blue')
-def CALL_METHOD(vm: 'SPyVM', wv_obj: W_OpArg, wv_method: W_OpArg,
+def CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
                 w_opargs: W_List[W_OpArg]) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
-    w_type = wv_obj.w_static_type
+    w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if pyclass.has_meth_overriden('op_CALL_METHOD'):
-        w_opimpl = pyclass.op_CALL_METHOD(vm, wv_obj, wv_method, w_opargs)
+        w_opimpl = pyclass.op_CALL_METHOD(vm, wop_obj, wop_method, w_opargs)
 
     # turn the app-level W_List[W_OpArg] into an interp-level list[W_OpArg]
-    args_wv = w_opargs.items_w
+    args_wop = w_opargs.items_w
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wv_obj, wv_method] + args_wv,
+        [wop_obj, wop_method] + args_wop,
         dispatch = 'single',
         errmsg = 'cannot call methods on type `{0}`'
     )

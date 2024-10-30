@@ -9,17 +9,17 @@ if TYPE_CHECKING:
 
 
 @OP.builtin(color='blue')
-def GETITEM(vm: 'SPyVM', wv_obj: W_OpArg, wv_i: W_OpArg) -> W_OpImpl:
+def GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
-    pyclass = wv_obj.w_static_type.pyclass
+    pyclass = wop_obj.w_static_type.pyclass
     if pyclass.has_meth_overriden('op_GETITEM'):
-        w_opimpl = pyclass.op_GETITEM(vm, wv_obj, wv_i)
+        w_opimpl = pyclass.op_GETITEM(vm, wop_obj, wop_i)
 
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wv_obj, wv_i],
+        [wop_obj, wop_i],
         dispatch = 'single',
         errmsg = 'cannot do `{0}`[...]'
     )
@@ -27,18 +27,18 @@ def GETITEM(vm: 'SPyVM', wv_obj: W_OpArg, wv_i: W_OpArg) -> W_OpImpl:
 
 
 @OP.builtin(color='blue')
-def SETITEM(vm: 'SPyVM', wv_obj: W_OpArg, wv_i: W_OpArg,
-            wv_v: W_OpArg) -> W_OpImpl:
+def SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg,
+            wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
-    pyclass = wv_obj.w_static_type.pyclass
+    pyclass = wop_obj.w_static_type.pyclass
     if pyclass.has_meth_overriden('op_SETITEM'):
-        w_opimpl = pyclass.op_SETITEM(vm, wv_obj, wv_i, wv_v)
+        w_opimpl = pyclass.op_SETITEM(vm, wop_obj, wop_i, wop_v)
 
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wv_obj, wv_i, wv_v],
+        [wop_obj, wop_i, wop_v],
         dispatch = 'single',
         errmsg = "cannot do `{0}[`{1}`] = ..."
     )

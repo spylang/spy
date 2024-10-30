@@ -20,8 +20,8 @@ JSFFI = ModuleRegistry('jsffi', '<jsffi>')
 class W_JsRef(W_Object):
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg) -> W_OpImpl:
-        attr = wv_attr.blue_unwrap_str(vm)
+    def op_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
+        attr = wop_attr.blue_unwrap_str(vm)
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         @spy_builtin(QN(f'jsffi::getattr_{attr}'))
         def fn(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str) -> W_JsRef:
@@ -29,9 +29,9 @@ class W_JsRef(W_Object):
         return W_OpImpl.simple(vm.wrap_func(fn))
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
-                   wv_v: W_OpArg) -> W_OpImpl:
-        attr = wv_attr.blue_unwrap_str(vm)
+    def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+                   wop_v: W_OpArg) -> W_OpImpl:
+        attr = wop_attr.blue_unwrap_str(vm)
         # this is a horrible hack (see also cwriter.fmt_expr_Call)
         @spy_builtin(QN(f'jsffi::setattr_{attr}'))
         def fn(vm: 'SPyVM', w_self: W_JsRef, w_attr: W_Str,
@@ -40,10 +40,10 @@ class W_JsRef(W_Object):
         return W_OpImpl.simple(vm.wrap_func(fn))
 
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_OpArg, wv_method: W_OpArg,
+    def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
                        w_opargs: W_List[W_OpArg]) -> W_OpImpl:
-        args_wv = w_opargs.items_w
-        n = len(args_wv)
+        args_wop = w_opargs.items_w
+        n = len(args_wop)
         if n == 1:
             return W_OpImpl.simple(JSFFI.w_call_method_1)
         else:

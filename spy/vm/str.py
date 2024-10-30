@@ -71,7 +71,7 @@ class W_Str(W_Object):
         return self._as_str()
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wv_obj: W_OpArg, wv_i: W_OpArg) -> W_OpImpl:
+    def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
         @spy_builtin(QN('operator::str_getitem'))
         def str_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
             assert isinstance(w_s, W_Str)
@@ -81,15 +81,15 @@ class W_Str(W_Object):
         return W_OpImpl.simple(vm.wrap_func(str_getitem))
 
     @staticmethod
-    def meta_op_CALL(vm: 'SPyVM', wv_obj: W_OpArg,
+    def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                      w_opargs: W_List[W_OpArg]) -> W_OpImpl:
         from spy.vm.b import B
-        args_wv = w_opargs.items_w
-        if len(args_wv) == 1 and args_wv[0].w_static_type is B.w_i32:
-            wv_i = args_wv[0]
+        args_wop = w_opargs.items_w
+        if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
+            wop_i = args_wop[0]
             return W_OpImpl.with_values(
                 vm.wrap_func(int2str),
-                [wv_i]
+                [wop_i]
             )
         else:
             return W_OpImpl.NULL

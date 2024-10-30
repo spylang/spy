@@ -357,13 +357,13 @@ class SPyVM:
             # for red functions, we just call them
             return self._call_func(w_func, args_w)
 
-    def call_OP(self, w_func: W_Func, args_wv: list[W_OpArg]) -> W_OpImpl:
+    def call_OP(self, w_func: W_Func, args_wop: list[W_OpArg]) -> W_OpImpl:
         """
         Like vm.call, but ensures that the result is a W_OpImpl.
 
         Mostly useful to call OPERATORs.
         """
-        w_opimpl = self.call(w_func, args_wv)
+        w_opimpl = self.call(w_func, args_wop)
         assert isinstance(w_opimpl, W_OpImpl)
         return w_opimpl
 
@@ -388,17 +388,17 @@ class SPyVM:
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wv_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
-        wv_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
-        w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
+        wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
+        wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
+        w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         w_res = w_opimpl.call(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wv_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
-        wv_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
-        w_opimpl = self.call_OP(OPERATOR.w_NE, [wv_a, wv_b])
+        wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
+        wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
+        w_opimpl = self.call_OP(OPERATOR.w_NE, [wop_a, wop_b])
         w_res = w_opimpl.call(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
@@ -407,9 +407,9 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wv_obj = W_OpArg('obj', 0, self.dynamic_type(w_obj), None)
-        wv_i = W_OpArg('i', 1, self.dynamic_type(w_i), None)
-        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wv_obj, wv_i])
+        wop_obj = W_OpArg('obj', 0, self.dynamic_type(w_obj), None)
+        wop_i = W_OpArg('i', 1, self.dynamic_type(w_i), None)
+        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return w_opimpl.call(self, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
@@ -450,7 +450,7 @@ class SPyVM:
         #                    op.UNIVERSAL_EQ(W_OpArg(a, ...), W_OpArg(b, ...))
         #   2. UNIVERSAL_EQ is a blue function and thus uses BlueCache.lookup
         #   3. BlueCache.lookup calls vm.universal_eq on the W_OpArg
-        #   4. vm.universal_eq(wv_a, wv_b) calls
+        #   4. vm.universal_eq(wop_a, wop_b) calls
         #                    op.UNIVERSAL_EQ(W_OpArg(...), W_OpArg(...))
         #   5  ...
         # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
@@ -458,15 +458,15 @@ class SPyVM:
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
             return value_eq(self, w_a, w_b)
 
-        wv_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
-        wv_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
+        wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), None)
+        wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), None)
         try:
-            w_opimpl = self.call_OP(OPERATOR.w_EQ, [wv_a, wv_b])
+            w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         except SPyTypeError:
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
-            w_ta = wv_a.w_static_type
-            w_tb = wv_b.w_static_type
+            w_ta = wop_a.w_static_type
+            w_tb = wop_b.w_static_type
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
             return B.w_False
 

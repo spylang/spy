@@ -138,36 +138,36 @@ class W_Object:
         return True
 
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wv_a: 'W_OpArg', wv_b: 'W_OpArg') -> 'W_OpImpl':
+    def op_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wv_obj: 'W_OpArg',
-                   wv_attr: 'W_OpArg') -> 'W_OpImpl':
+    def op_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                   wop_attr: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wv_obj: 'W_OpArg', wv_attr: 'W_OpArg',
-                   wv_v: 'W_OpArg') -> 'W_OpImpl':
+    def op_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
+                   wop_v: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wv_obj: 'W_OpArg',
-                   wv_i: 'W_OpArg') -> 'W_OpImpl':
+    def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                   wop_i: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_SETITEM(vm: 'SPyVM', wv_obj: 'W_OpArg', wv_i: 'W_OpArg',
-                   wv_v: 'W_OpArg') -> 'W_OpImpl':
+    def op_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
+                   wop_v: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CALL(vm: 'SPyVM', wv_obj: 'W_OpArg',
+    def op_CALL(vm: 'SPyVM', wop_obj: 'W_OpArg',
                 w_opargs: 'W_Dynamic') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wv_obj: 'W_OpArg', wv_method: 'W_OpArg',
+    def op_CALL_METHOD(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_method: 'W_OpArg',
                        w_opargs: 'W_Dynamic') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
@@ -379,7 +379,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     assert hasattr(pyclass, 'spy_new')
     spy_new = pyclass.spy_new
 
-    def meta_op_CALL(vm: 'SPyVM', wv_obj: W_OpArg,
+    def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                      w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(spy_new, {pyclass.__name__: pyclass})
         qn = QN(modname='ext', attr='new') # XXX what modname should we use?

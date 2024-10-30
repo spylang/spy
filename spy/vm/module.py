@@ -32,7 +32,7 @@ class W_Module(W_Object):
     # ==== operator impls =====
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg) -> W_OpImpl:
+    def op_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         """
         Ideally, we should create a new subtype for each module, where every
         member has its own static type.
@@ -49,8 +49,8 @@ class W_Module(W_Object):
 
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wv_obj: W_OpArg, wv_attr: W_OpArg,
-                   wv_v: W_OpArg) -> W_OpImpl:
+    def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+                   wop_v: W_OpArg) -> W_OpImpl:
         @spy_builtin(QN('builtins::module_setattr'))
         def fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
                    W_Str, w_val: W_Dynamic) -> W_Void:

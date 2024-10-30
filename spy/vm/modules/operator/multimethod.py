@@ -55,10 +55,10 @@ class MultiMethodTable:
         self.register(op, None, atype, w_func)
 
     def lookup(self, vm: 'SPyVM', op: str,
-               wv_l: W_OpArg, wv_r: W_OpArg) -> W_OpImpl:
+               wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
         from spy.vm.typechecker import typecheck_opimpl
-        w_ltype = wv_l.w_static_type
-        w_rtype = wv_r.w_static_type
+        w_ltype = wop_l.w_static_type
+        w_rtype = wop_r.w_static_type
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
             (op, w_ltype, None),     # less precise ones
@@ -74,7 +74,7 @@ class MultiMethodTable:
         typecheck_opimpl(
             vm,
             w_opimpl,
-            [wv_l, wv_r],
+            [wop_l, wop_r],
             dispatch = 'multi',
             errmsg = 'cannot do `{0}` %s `{1}`' % op
         )
