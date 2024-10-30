@@ -155,15 +155,15 @@ class TypeChecker:
                 assert last_loc is not None
                 loc = last_loc
                 color = 'blue'
-                wv = W_OpArg(prefix, i, B.w_str, loc,
+                wop = W_OpArg(prefix, i, B.w_str, loc,
                              w_blueval = self.vm.wrap(expr))
             else:
                 color, w_type = self.check_expr(expr)
-                wv = W_OpArg(prefix, i, w_type, expr.loc,
+                wop = W_OpArg(prefix, i, w_type, expr.loc,
                              sym=self.name2sym_maybe(expr))
                 last_loc = expr.loc
             colors.append(color)
-            args_wop.append(wv)
+            args_wop.append(wop)
         return colors, args_wop
 
     # ==== statements ====
@@ -454,7 +454,7 @@ def typecheck_opimpl(
         #  - multi dispatch means that all the types are equally imporant in
         #    determining whether an operation is supported, so we report all
         #    of them
-        typenames = [wv.w_static_type.name for wv in orig_args_wop]
+        typenames = [wop.w_static_type.name for wop in orig_args_wop]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':

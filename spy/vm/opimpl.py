@@ -16,7 +16,7 @@ T = TypeVar('T')
 @spytype('OpArg')
 class W_OpArg(W_Object):
     """
-    A Value represent an operand of an OPERATOR.
+    OpArgs represents the operands passed to OPERATORs.
 
     All values have a w_static_type; blue values have also a w_blueval.
 
@@ -32,7 +32,7 @@ class W_OpArg(W_Object):
     def __init__(self,
                  prefix: str,
                  i: int,
-                 w_static_tye: W_Type,
+                 w_static_type: W_Type,
                  loc: Optional[Loc],
                  *,
                  sym: Optional[Symbol] = None,
@@ -112,17 +112,17 @@ class W_OpArg(W_Object):
 
 @no_type_check
 @spy_builtin(QN('operator::value_eq'))
-def value_eq(vm: 'SPyVM', wv1: W_OpArg, wv2: W_OpArg) -> W_Bool:
+def value_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description
-    if wv1.i != wv2.i:
+    if wop1.i != wop2.i:
         return B.w_False
-    if wv1.w_static_type is not wv2.w_static_type:
+    if wop1.w_static_type is not wop2.w_static_type:
         return B.w_False
-    if (wv1.is_blue() and
-        wv2.is_blue() and
-        vm.is_False(vm.eq(wv1._w_blueval, wv2._w_blueval))):
+    if (wop1.is_blue() and
+        wop2.is_blue() and
+        vm.is_False(vm.eq(wop1._w_blueval, wop2._w_blueval))):
         return B.w_False
     return B.w_True
 
@@ -165,7 +165,7 @@ class W_OpImpl(W_Object):
             return f"<spy OpImpl {qn}>"
         else:
             qn = self._w_func.qn
-            argnames = [wv.name for wv in self._args_wop]
+            argnames = [wop.name for wop in self._args_wop]
             argnames = ', '.join(argnames)
             return f"<spy OpImpl {qn}({argnames})>"
 
