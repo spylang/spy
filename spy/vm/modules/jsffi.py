@@ -41,8 +41,8 @@ class W_JsRef(W_Object):
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_OpArg, wv_method: W_OpArg,
-                       w_values: W_List[W_OpArg]) -> W_OpImpl:
-        args_wv = w_values.items_w
+                       w_opargs: W_List[W_OpArg]) -> W_OpImpl:
+        args_wv = w_opargs.items_w
         n = len(args_wv)
         if n == 1:
             return W_OpImpl.simple(JSFFI.w_call_method_1)

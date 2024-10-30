@@ -121,7 +121,7 @@ class W_Func(W_Object):
         raise NotImplementedError
 
     def op_CALL(vm: 'SPyVM', wv_func: 'W_OpArg',
-                w_values: 'W_List[W_OpArg]') -> 'W_OpImpl':
+                w_opargs: 'W_List[W_OpArg]') -> 'W_OpImpl':
         """
         This is a bit of a hack.
 
@@ -142,7 +142,7 @@ class W_Func(W_Object):
         w_functype = wv_func.w_static_type
         return W_OpImpl.with_values(
             W_DirectCall(w_functype),
-            w_values.items_w
+            w_opargs.items_w
         )
 
 

@@ -163,12 +163,12 @@ class W_Object:
 
     @staticmethod
     def op_CALL(vm: 'SPyVM', wv_obj: 'W_OpArg',
-                w_values: 'W_Dynamic') -> 'W_OpImpl':
+                w_opargs: 'W_Dynamic') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', wv_obj: 'W_OpArg', wv_method: 'W_OpArg',
-                       w_values: 'W_Dynamic') -> 'W_OpImpl':
+                       w_opargs: 'W_Dynamic') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
 
@@ -380,7 +380,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     spy_new = pyclass.spy_new
 
     def meta_op_CALL(vm: 'SPyVM', wv_obj: W_OpArg,
-                     w_values: W_Dynamic) -> W_OpImpl:
+                     w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(spy_new, {pyclass.__name__: pyclass})
         qn = QN(modname='ext', attr='new') # XXX what modname should we use?
         # manually apply the @spy_builtin decorator to the spy_new function

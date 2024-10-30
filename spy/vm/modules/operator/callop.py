@@ -14,18 +14,18 @@ if TYPE_CHECKING:
 W_List.make_prebuilt(W_OpArg)
 
 @OP.builtin(color='blue')
-def CALL(vm: 'SPyVM', wv_obj: W_OpArg, w_values: W_List[W_OpArg]) -> W_OpImpl:
+def CALL(vm: 'SPyVM', wv_obj: W_OpArg, w_opargs: W_List[W_OpArg]) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
     w_type = wv_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
-        w_opimpl = _dynamic_call_opimpl(w_values.items_w)
+        w_opimpl = _dynamic_call_opimpl(w_opargs.items_w)
     elif pyclass.has_meth_overriden('op_CALL'):
-        w_opimpl = pyclass.op_CALL(vm, wv_obj, w_values)
+        w_opimpl = pyclass.op_CALL(vm, wv_obj, w_opargs)
 
     # turn the app-level W_List[W_OpArg] into an interp-level list[W_OpArg]
-    args_wv = w_values.items_w
+    args_wv = w_opargs.items_w
     typecheck_opimpl(
         vm,
         w_opimpl,
@@ -74,16 +74,16 @@ def _dynamic_call_opimpl(args_wv: list[W_OpArg]) -> W_OpImpl:
 
 @OP.builtin(color='blue')
 def CALL_METHOD(vm: 'SPyVM', wv_obj: W_OpArg, wv_method: W_OpArg,
-                w_values: W_List[W_OpArg]) -> W_OpImpl:
+                w_opargs: W_List[W_OpArg]) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
     w_type = wv_obj.w_static_type
     pyclass = w_type.pyclass
     if pyclass.has_meth_overriden('op_CALL_METHOD'):
-        w_opimpl = pyclass.op_CALL_METHOD(vm, wv_obj, wv_method, w_values)
+        w_opimpl = pyclass.op_CALL_METHOD(vm, wv_obj, wv_method, w_opargs)
 
     # turn the app-level W_List[W_OpArg] into an interp-level list[W_OpArg]
-    args_wv = w_values.items_w
+    args_wv = w_opargs.items_w
     typecheck_opimpl(
         vm,
         w_opimpl,

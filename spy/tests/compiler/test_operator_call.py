@@ -131,7 +131,7 @@ class TestCallOp(CompilerTest):
 
             @staticmethod
             def op_CALL_METHOD(vm: 'SPyVM', wv_obj: W_OpArg, wv_method: W_Str,
-                               w_values: W_List[W_OpArg]) -> W_OpImpl:
+                               w_opargs: W_List[W_OpArg]) -> W_OpImpl:
                 meth = wv_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @spy_builtin(QN('ext::meth_add'))
@@ -140,7 +140,7 @@ class TestCallOp(CompilerTest):
                         return vm.wrap(w_self.x + y)  # type: ignore
                     return W_OpImpl.with_values(
                         vm.wrap_func(fn),
-                        [wv_obj] + w_values.items_w
+                        [wv_obj] + w_opargs.items_w
                     )
 
                 elif meth == 'sub':
@@ -150,7 +150,7 @@ class TestCallOp(CompilerTest):
                         return vm.wrap(w_self.x - y)  # type: ignore
                     return W_OpImpl.with_values(
                         vm.wrap_func(fn),
-                        [wv_obj] + w_values.items_w
+                        [wv_obj] + w_opargs.items_w
                     )
                 else:
                     return W_OpImpl.NULL

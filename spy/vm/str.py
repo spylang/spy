@@ -82,9 +82,9 @@ class W_Str(W_Object):
 
     @staticmethod
     def meta_op_CALL(vm: 'SPyVM', wv_obj: W_OpArg,
-                     w_values: W_List[W_OpArg]) -> W_OpImpl:
+                     w_opargs: W_List[W_OpArg]) -> W_OpImpl:
         from spy.vm.b import B
-        args_wv = w_values.items_w
+        args_wv = w_opargs.items_w
         if len(args_wv) == 1 and args_wv[0].w_static_type is B.w_i32:
             wv_i = args_wv[0]
             return W_OpImpl.with_values(

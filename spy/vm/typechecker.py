@@ -376,8 +376,8 @@ class TypeChecker:
             [call.func] + call.args
         )
         wv_func = args_wv[0]
-        w_values = W_List[W_OpArg](args_wv[1:]) # type: ignore
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_values])
+        w_opargs = W_List[W_OpArg](args_wv[1:]) # type: ignore
+        w_opimpl = self.vm.call_OP(OP.w_CALL, [wv_func, w_opargs])
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
@@ -390,10 +390,10 @@ class TypeChecker:
         )
         wv_obj = args_wv[0]
         wv_method = args_wv[1]
-        w_values = W_List[W_OpArg](args_wv[2:])
+        w_opargs = W_List[W_OpArg](args_wv[2:])
         w_opimpl = self.vm.call_OP(
             OP.w_CALL_METHOD,
-            [wv_obj, wv_method, w_values]
+            [wv_obj, wv_method, w_opargs]
         )
         self.opimpl[op] = w_opimpl
         w_functype = w_opimpl.w_functype
