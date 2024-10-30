@@ -78,7 +78,7 @@ class W_Str(W_Object):
             assert isinstance(w_i, W_I32)
             ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
             return W_Str.from_ptr(vm, ptr_c)
-        return W_OpImpl.simple(vm.wrap_func(str_getitem))
+        return W_OpImpl(vm.wrap_func(str_getitem))
 
     @staticmethod
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
@@ -87,7 +87,7 @@ class W_Str(W_Object):
         args_wop = w_opargs.items_w
         if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
             wop_i = args_wop[0]
-            return W_OpImpl.with_values(
+            return W_OpImpl(
                 vm.wrap_func(int2str),
                 [wop_i]
             )

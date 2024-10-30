@@ -36,7 +36,7 @@ class TestCallOp(CompilerTest):
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
                     return vm.wrap(res) # type: ignore
-                return W_OpImpl.simple(vm.wrap_func(call))
+                return W_OpImpl(vm.wrap_func(call))
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -70,7 +70,7 @@ class TestCallOp(CompilerTest):
                 def new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
-                return W_OpImpl.simple(vm.wrap_func(new))
+                return W_OpImpl(vm.wrap_func(new))
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -138,7 +138,7 @@ class TestCallOp(CompilerTest):
                     def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
-                    return W_OpImpl.with_values(
+                    return W_OpImpl(
                         vm.wrap_func(fn),
                         [wop_obj] + w_opargs.items_w
                     )
@@ -148,7 +148,7 @@ class TestCallOp(CompilerTest):
                     def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
-                    return W_OpImpl.with_values(
+                    return W_OpImpl(
                         vm.wrap_func(fn),
                         [wop_obj] + w_opargs.items_w
                     )

@@ -140,7 +140,7 @@ class W_Func(W_Object):
         """
         from spy.vm.opimpl import W_OpImpl
         w_functype = wop_func.w_static_type
-        return W_OpImpl.with_values(
+        return W_OpImpl(
             W_DirectCall(w_functype),
             w_opargs.items_w
         )

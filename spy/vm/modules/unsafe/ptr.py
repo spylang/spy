@@ -36,7 +36,7 @@ class W_Ptr(W_Object):
 
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg) -> W_OpImpl:
-        return W_OpImpl.with_values(
+        return W_OpImpl(
             vm.wrap_func(make_ptr_type),
             [wop_T]
         )
@@ -61,12 +61,12 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
 
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-            return W_OpImpl.simple(vm.wrap(ptr_load))
+            return W_OpImpl(vm.wrap(ptr_load))
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
                        wop_v: W_OpArg) -> W_OpImpl:
-            return W_OpImpl.simple(vm.wrap(ptr_store))
+            return W_OpImpl(vm.wrap(ptr_store))
 
         @staticmethod
         def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
@@ -104,7 +104,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             # getfield[field_T](ptr, attr, offset)
             assert wop_v is None
             w_func = vm.call(UNSAFE.w_getfield, [w_field_T])
-            return W_OpImpl.with_values(
+            return W_OpImpl(
                 w_func,
                 [wop_ptr, wop_attr, wop_offset]
             )
@@ -112,7 +112,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             # setfield[field_T](ptr, attr, offset, v)
             assert wop_v is not None
             w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
-            return W_OpImpl.with_values(
+            return W_OpImpl(
                 w_func,
                 [wop_ptr, wop_attr, wop_offset, wop_v]
             )

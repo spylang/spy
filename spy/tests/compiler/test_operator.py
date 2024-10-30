@@ -30,7 +30,7 @@ class TestOp(CompilerTest):
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
-                return W_OpImpl.simple(vm.wrap_func(getitem))
+                return W_OpImpl(vm.wrap_func(getitem))
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -64,7 +64,7 @@ class TestOp(CompilerTest):
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)
-                return W_OpImpl.simple(vm.wrap_func(getitem))
+                return W_OpImpl(vm.wrap_func(getitem))
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -100,7 +100,7 @@ class TestOp(CompilerTest):
                 assert isinstance(wop_obj, W_OpArg)
                 assert isinstance(wop_i, W_OpArg)
                 # NOTE we are reversing the two arguments
-                return W_OpImpl.with_values(EXT.w_sum, [wop_i, wop_obj])
+                return W_OpImpl(EXT.w_sum, [wop_i, wop_obj])
 
         @EXT.builtin
         def sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:

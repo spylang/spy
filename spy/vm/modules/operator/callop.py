@@ -47,7 +47,7 @@ def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
         def dynamic_call(vm, w_obj: W_Dynamic, args_w: list[W_Dynamic])
 
     here:
-        return W_OpImpl.simple(OP.w_dynamic_call)
+        return W_OpImpl(OP.w_dynamic_call)
 
     but this doesn't work because we don't have any support for calling
     opimpls with a variable number of arguments.
@@ -66,7 +66,7 @@ def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
         params = [FuncParam(f'v{i}', B.w_dynamic) for i in range(N)],
         w_restype = B.w_dynamic
     )
-    return W_OpImpl.with_values(
+    return W_OpImpl(
         W_DirectCall(w_functype),
         args_wop
     )

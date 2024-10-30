@@ -1,3 +1,29 @@
+"""
+OpImpl is the central concept to understand of SPy operators work.
+
+Conceptually, the following SPy code:
+   c = a + b
+
+is roughly equivalent to:
+   arg_a = OpArg('a', STATIC_TYPE(a))
+   arg_b = OpArg('b', STATIC_TYPE(b))
+   opimpl = operator.ADD(arg_a, arg_b)
+   c = opimpl(a, b)
+
+I.e., the execution of an operator happens in two-steps:
+  1. first, we call the OPERATOR to determine the opimpl
+  2. then, we call the opimpl to determine the final results.
+
+Note that OPERATORTs don't receive the actual values of operands. Instead,
+they receive OpArgs, which represents "abstract values", of which we know only
+the static type.
+
+Then, the OpImpl receives the actual values and compute the result.
+
+This scheme is designed in such a way that the call to OPERATOR() is always
+blue and can be optimized away during redshifting.
+"""
+
 from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
                     TYPE_CHECKING)
 from spy import ast
@@ -105,7 +131,7 @@ class W_OpArg(W_Object):
         assert w_ltype.pyclass is W_OpArg
 
         if w_ltype is w_rtype:
-            return W_OpImpl.simple(vm.wrap_func(value_eq))
+            return W_OpImpl(vm.wrap_func(value_eq))
         else:
             return W_OpImpl.NULL
 
@@ -136,26 +162,18 @@ class W_OpImpl(W_Object):
     _args_wop: Optional[list[W_OpArg]]
     _converters: Optional[list[Optional['TypeConverter']]]
 
-    def __init__(self, *args) -> None:
-        raise NotImplementedError('Please use W_OpImpl.simple()')
-
-    @classmethod
-    def simple(cls, w_func: W_Func) -> 'W_OpImpl':
-        w_opimpl = cls.__new__(cls)
-        w_opimpl._w_func = w_func
-        w_opimpl._args_wop = None
-        w_opimpl._converters = None
-        w_opimpl._typechecked = False
-        return w_opimpl
-
-    @classmethod
-    def with_values(cls, w_func: W_Func, args_wop: list[W_OpArg]) -> 'W_OpImpl':
-        w_opimpl = cls.__new__(cls)
-        w_opimpl._w_func = w_func
-        w_opimpl._args_wop = args_wop
-        w_opimpl._converters = [None] * len(args_wop)
-        w_opimpl._typechecked = False
-        return w_opimpl
+    def __init__(self,
+                 w_func: W_Func,
+                args_wop: Optional[list[W_OpArg]] = None
+                ) -> None:
+        self._w_func = w_func
+        self._typechecked = False
+        if args_wop is None:
+            self._args_wop = None
+            self._converters = None
+        else:
+            self._args_wop = args_wop
+            self._converters = [None] * len(args_wop)
 
     def __repr__(self) -> str:
         if self._w_func is None:
@@ -176,7 +194,7 @@ class W_OpImpl(W_Object):
         return self._args_wop is None
 
     def is_direct_call(self):
-        """
+    """
         This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
         """
         return isinstance(self._w_func, W_DirectCall)
@@ -239,4 +257,4 @@ class W_OpImpl(W_Object):
         return real_args
 
 
-W_OpImpl.NULL = W_OpImpl.simple(None)
+W_OpImpl.NULL = W_OpImpl(None)

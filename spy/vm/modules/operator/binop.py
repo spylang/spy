@@ -111,7 +111,7 @@ def EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
                          errmsg='cannot do `{0}` == `{1}`')
         return w_opimpl
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
-        w_opimpl = W_OpImpl.simple(OP.w_object_is)
+        w_opimpl = W_OpImpl(OP.w_object_is)
         typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                          dispatch='multi',
                          errmsg='cannot do `{0}` == `{1}`')
@@ -125,7 +125,7 @@ def NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
     if can_use_reference_eq(vm, w_ltype, w_rtype):
-        w_opimpl = W_OpImpl.simple(OP.w_object_isnot)
+        w_opimpl = W_OpImpl(OP.w_object_isnot)
         typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                          dispatch='multi',
                          errmsg='cannot do `{0}` != `{1}`')
@@ -139,7 +139,7 @@ def UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     # same as eq(i32, i32), not "w_object_universal_eq". In practice, it's not
     # a problem for now, because it's not exposed to the user, and we use it
     # only on W_Objects.
-    w_opimpl = W_OpImpl.simple(OP.w_object_universal_eq)
+    w_opimpl = W_OpImpl(OP.w_object_universal_eq)
     typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                      dispatch='multi',
                      errmsg='cannot do `{0}` <universal_eq> `{1}`')
@@ -149,7 +149,7 @@ def UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     # XXX: see the commet in UNIVERSAL_EQ
-    w_opimpl = W_OpImpl.simple(OP.w_object_universal_ne)
+    w_opimpl = W_OpImpl(OP.w_object_universal_ne)
     typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                      dispatch='multi',
                      errmsg='cannot do `{0}` <universal_ne> `{1}`')

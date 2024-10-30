@@ -68,7 +68,7 @@ class MultiMethodTable:
         for key in keys:
             w_func = self.impls.get(key)
             if w_func:
-                w_opimpl = W_OpImpl.simple(w_func)
+                w_opimpl = W_OpImpl(w_func)
                 break
         #
         typecheck_opimpl(
