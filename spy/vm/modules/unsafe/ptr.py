@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar, Optional, no_type_check
 import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype
-from spy.vm.w import W_Object, W_I32, W_Type, W_Void, W_Str, W_Dynamic
+from spy.vm.w import W_Object, W_I32, W_Type, W_Void, W_Str, W_Dynamic, W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.sig import spy_builtin
 from . import UNSAFE
@@ -60,13 +60,14 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         w_itemtype: ClassVar[W_Type] = w_T
 
         @staticmethod
-        def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-            return W_OpImpl(vm.wrap(ptr_load))
+        def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg,
+                       wop_i: W_OpArg) -> W_OpImpl:
+            return W_OpImpl(vm.wrap_func(ptr_load))
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
                        wop_v: W_OpArg) -> W_OpImpl:
-            return W_OpImpl(vm.wrap(ptr_store))
+            return W_OpImpl(vm.wrap_func(ptr_store))
 
         @staticmethod
         def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
@@ -101,6 +102,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             # getfield[field_T](ptr, attr, offset)
             assert wop_v is None
             w_func = vm.call(UNSAFE.w_getfield, [w_field_T])
+            assert isinstance(w_func, W_Func)
             return W_OpImpl(
                 w_func,
                 [wop_ptr, wop_attr, wop_offset]
@@ -109,11 +111,13 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             # setfield[field_T](ptr, attr, offset, v)
             assert wop_v is not None
             w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
+            assert isinstance(w_func, W_Func)
             return W_OpImpl(
                 w_func,
                 [wop_ptr, wop_attr, wop_offset, wop_v]
             )
 
+    @no_type_check
     @spy_builtin(QN(f'unsafe::ptr_{w_T.name}_load'))
     def ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
@@ -130,6 +134,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             [vm.wrap(addr)]
         )
 
+    @no_type_check
     @spy_builtin(QN(f'unsafe::ptr_{w_T.name}_store'))
     def ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
@@ -168,6 +173,7 @@ def getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
     # unsafe::getfield_prim_i32
     # unsafe::getfield_ref_Point
+    @no_type_check
     @spy_builtin(QN(f'unsafe::getfield_{by}_{t}'))
     def getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                    w_offset: W_I32) -> T:
@@ -188,6 +194,7 @@ def setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass  # W_I32
     t = w_T.name     # 'i32'
 
+    @no_type_check
     @spy_builtin(QN(f'unsafe::setfield_{t}'))  # unsafe::setfield_i32
     def setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                    w_offset: W_I32, w_val: T) -> W_Void:
