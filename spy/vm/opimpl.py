@@ -42,14 +42,26 @@ T = TypeVar('T')
 @spytype('OpArg')
 class W_OpArg(W_Object):
     """
-    OpArgs represents the operands passed to OPERATORs.
+    Class which represents the operands passed to OPERATORs.
 
-    All values have a w_static_type; blue values have also a w_blueval.
+    There are two kinds of operands:
+
+      - "proper" OpArgs, which refers to a value which will be known later at
+        runtime.
+
+      - OpConsts, which can be synthetized inside OPERATORs, in case they want
+        to pass a const to an opimpl.
+
+    In some cases, the *actual value* of an OpArg might be known at
+    compile time, if it comes from a blue expression: in this case, we also
+    set w_blueval.
 
     The naming convention is wop_one and manyvalues_wop.
+
+    Internally, an OpConst is represented as an OpArg whose .i is None.
     """
     prefix: str
-    i: int
+    i: Optional[int]
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Optional[Loc]
     sym: Optional[Symbol]
@@ -57,19 +69,26 @@ class W_OpArg(W_Object):
 
     def __init__(self,
                  prefix: str,
-                 i: int,
+                 i: Optional[int],
                  w_static_type: W_Type,
                  loc: Optional[Loc],
                  *,
                  sym: Optional[Symbol] = None,
                  w_blueval: Optional[W_Object] = None,
                  ) -> None:
+        if i is None:
+            assert w_blueval is not None
         self.prefix = prefix
         self.i = i
         self.w_static_type = w_static_type
         self.loc = loc
         self.sym = sym
         self._w_blueval = w_blueval
+
+    @classmethod
+    def const(cls, vm: 'SPyVM', w_obj: W_Object, prefix: str) -> 'W_OpArg':
+        w_type = vm.dynamic_type(w_obj)
+        return cls(prefix, None, w_type, None, w_blueval=w_obj)
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object,
@@ -86,10 +105,15 @@ class W_OpArg(W_Object):
             extra = f' = {self._w_blueval}'
         else:
             extra = ''
+        if self.is_const():
+            extra += ' const'
         return f'<W_OpArg {self.name}: {self.w_static_type.name}{extra}>'
 
     def is_blue(self):
         return self._w_blueval is not None
+
+    def is_const(self):
+        return self.i is None
 
     @property
     def w_blueval(self) -> W_Object:
@@ -220,9 +244,7 @@ class W_OpImpl(W_Object):
         assert self.is_valid()
         real_args_w = []
         for wop_arg, conv in zip(self._args_wop, self._converters):
-            # XXX we definitely need a better way to handle "constant" W_OpArgs
-            if wop_arg.i == 999:
-                assert wop_arg.w_blueval is not None
+            if wop_arg.is_const():
                 w_arg = wop_arg.w_blueval
             else:
                 w_arg = orig_args_w[wop_arg.i]
@@ -243,9 +265,7 @@ class W_OpImpl(W_Object):
         assert self.is_valid()
         real_args = []
         for wop_arg, conv in zip(self._args_wop, self._converters):
-            # XXX we definitely need a better way to handle "constant" W_OpArg
-            if wop_arg.i == 999:
-                assert wop_arg.w_blueval is not None
+            if wop_arg.is_const():
                 w_arg = wop_arg.w_blueval
                 arg = make_const(vm, wop_arg.loc, w_arg)
             else:

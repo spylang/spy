@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
                 w_a: W_Dynamic, w_b: W_Dynamic,
                 ) -> W_Dynamic:
-    wop_a = W_OpArg.from_w_obj(vm, w_a, 'a', 999)
-    wop_b = W_OpArg.from_w_obj(vm, w_b, 'b', 999)
+    wop_a = W_OpArg.from_w_obj(vm, w_a, 'a', 0)
+    wop_b = W_OpArg.from_w_obj(vm, w_b, 'b', 1)
     w_opimpl = vm.call_OP(w_op, [wop_a, wop_b])
     return w_opimpl.call(vm, [w_a, w_b])
 

@@ -95,10 +95,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
 
         w_field_T = w_T.fields[attr]
         offset = w_T.offsets[attr]
-        # XXX it would be better to have a more official API to create
-        # "constant" W_OpArgs. Here we use i=999 to indicate something which
-        # is not in the arglist.
-        wop_offset = W_OpArg.from_w_obj(vm, vm.wrap(offset), 'off', 999)
+        wop_offset = W_OpArg.const(vm, vm.wrap(offset), 'off')
 
         if opkind == 'get':
             # getfield[field_T](ptr, attr, offset)
