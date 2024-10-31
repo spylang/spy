@@ -417,59 +417,14 @@ class CFuncWriter:
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
-        if call.func.fqn.modname == "jsffi" and self.cmod.target != 'emscripten':
+        if (call.func.fqn.modname == "jsffi" and
+            self.cmod.target != 'emscripten'):
             self.cmod.emit_jsffi_error()
 
-        # FIXME: many of the following special-cases are needed because the
-        # signature of the opimpl doesn't match the needed signature of the
-        # corresponding C function. E.g.:
-        #
-        #   - int2str: the first param is the 'str' type but we remove it
-        #
-        #   - jsffi::getattr: the current sig for GETATTR does not pass the
-        #     attribute name, but we want it as a C literal. The hack is to
-        #     pass it as part of the builtin name (e.g.,
-        #     jsffi::getattr_document) and parse it. Same for jsffi::setattr
-        #
-        #   - jsffi::call_method_1: the method name is a W_Str but we want a C
-        #     literal, so we hack it
-        #
-        # I think we need a more general way so that OPERATORs can have more
-        # control on which arguments are passed to opimpls.
-
         fqn = call.func.fqn
-
-        if str(fqn).startswith("jsffi::getattr_"):
-            assert isinstance(call.args[1], ast.Constant)
-            c_name = "jsffi_getattr"
-            attr = call.args[1].value
-            c_obj = self.fmt_expr(call.args[0])
-            c_attr = C.Literal(f'"{attr}"')
-            return C.Call(c_name, [c_obj, c_attr])
-
-        # horrible hack (see also jsffi.W_JsRef.op_SETATTR)
-        if str(fqn).startswith("jsffi::setattr_"):
-            assert isinstance(call.args[1], ast.Constant)
-            c_name = "jsffi_setattr"
-            c_obj = self.fmt_expr(call.args[0])
-            attr = call.args[1].value
-            c_attr = C.Literal(f'"{attr}"')
-            c_value = self.fmt_expr(call.args[2])
-            return C.Call(c_name, [c_obj, c_attr, c_value])
-
-        if fqn == FQN.parse("jsffi::call_method_1"):
-            assert isinstance(call.args[1], ast.Constant)
-            c_name = "jsffi_call_method_1"
-            c_obj = self.fmt_expr(call.args[0])
-            attr = call.args[1].value
-            c_attr = C.Literal(f'"{attr}"')
-            c_arg = self.fmt_expr(call.args[2])
-            return C.Call(c_name, [c_obj, c_attr, c_arg])
-
         if str(fqn).startswith("unsafe::getfield_"):
             return self.fmt_getfield(fqn, call)
-
-        if str(fqn).startswith("unsafe::setfield_"):
+        elif str(fqn).startswith("unsafe::setfield_"):
             return self.fmt_setfield(fqn, call)
 
         # the default case is to call a function with the corresponding name
