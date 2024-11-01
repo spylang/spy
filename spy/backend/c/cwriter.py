@@ -433,9 +433,11 @@ class CFuncWriter:
         return C.Call(c_name, c_args)
 
     def fmt_getfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        assert isinstance(call.args[1], ast.Constant)
         is_byref = str(fqn).startswith("unsafe::getfield_byref")
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
+        assert isinstance(attr, str)
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
         if is_byref:
@@ -445,8 +447,10 @@ class CFuncWriter:
             return c_field
 
     def fmt_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        assert isinstance(call.args[1], ast.Constant)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
+        assert isinstance(attr, str)
         offset = call.args[2]  # ignored
         c_lval = C.PtrField(c_ptr, attr)
         c_rval = self.fmt_expr(call.args[3])
