@@ -386,7 +386,7 @@ class TypeChecker:
         n = len(op.args)
         colors, args_wop = self.check_many_exprs(
             ['t', 'm'] + ['v']*n,
-            [op.target, op.method] + op.args
+            [op.target, op.method] + op.args  # type: ignore
         )
         wop_obj = args_wop[0]
         wop_method = args_wop[1]

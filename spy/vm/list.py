@@ -60,6 +60,9 @@ class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     items_w: list[T]
     __spy_storage_category__ = 'reference'
 
+    def __init__(self, items_w: list[T]) -> None:
+        raise NotImplementedError
+
     @classmethod
     def make_prebuilt(cls, itemcls: Type[W_Object]) -> None:
         """

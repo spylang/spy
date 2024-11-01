@@ -1,5 +1,5 @@
 import py
-from typing import Any, Optional, Iterable
+from typing import Any, Optional, Iterable, Sequence
 import itertools
 from dataclasses import dataclass
 from types import FunctionType
@@ -357,13 +357,13 @@ class SPyVM:
             # for red functions, we just call them
             return self._call_func(w_func, args_w)
 
-    def call_OP(self, w_func: W_Func, args_wop: list[W_OpArg]) -> W_OpImpl:
+    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_Object]) -> W_OpImpl:
         """
         Like vm.call, but ensures that the result is a W_OpImpl.
 
         Mostly useful to call OPERATORs.
         """
-        w_opimpl = self.call(w_func, args_wop)
+        w_opimpl = self.call(w_OP, args_wop)
         assert isinstance(w_opimpl, W_OpImpl)
         return w_opimpl
 
