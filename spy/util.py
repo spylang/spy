@@ -93,7 +93,8 @@ def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
         print(line)
 
 
-def highlight_C_maybe(code: str) -> str:
+def highlight_C_maybe(code: str | bytes) -> str:
+    assert isinstance(code, str)
     try:
         import pygments  # type: ignore
     except ImportError:
