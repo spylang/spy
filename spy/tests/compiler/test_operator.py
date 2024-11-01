@@ -63,7 +63,7 @@ class TestOp(CompilerTest):
                            wop_i: W_OpArg) -> W_OpImpl:
                 @spy_builtin(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
-                    return vm.wrap(42)
+                    return vm.wrap(42)  # type: ignore
                 return W_OpImpl(vm.wrap_func(getitem))
         # ========== /EXT module for this test =========
 
@@ -108,7 +108,7 @@ class TestOp(CompilerTest):
             assert isinstance(w_obj, W_MyClass)
             a = vm.unwrap_i32(w_i)
             b = vm.unwrap_i32(w_obj.w_x)
-            return vm.wrap(a+b)
+            return vm.wrap(a+b)  # type: ignore
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
