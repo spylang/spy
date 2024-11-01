@@ -1,11 +1,13 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Callable
+from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence
 from spy import ast
 from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.object import W_Object, W_Type, W_Void
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.list import W_List
+    from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 # we cannot import B due to circular imports, let's fake it
 B_w_Void = W_Void._w
@@ -110,7 +112,7 @@ class W_Func(W_Object):
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
 
-    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         """
         Call the function.
 
@@ -120,6 +122,7 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
+    @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 w_opargs: 'W_List[W_OpArg]') -> 'W_OpImpl':
         """
@@ -140,9 +143,10 @@ class W_Func(W_Object):
         """
         from spy.vm.opimpl import W_OpImpl
         w_functype = wop_func.w_static_type
+        assert isinstance(w_functype, W_FuncType)
         return W_OpImpl(
             W_DirectCall(w_functype),
-            w_opargs.items_w
+            w_opargs.items_w           # type: ignore
         )
 
 
@@ -150,9 +154,9 @@ class W_DirectCall(W_Func):
     """
     See W_Func.op_CALL.
     """
-    qn = '<direct-call>'
+    qn = QN(modname='<direct-call>', attr='')
 
-    def __init__(self, w_functype):
+    def __init__(self, w_functype: W_FuncType) -> None:
         self.w_functype = w_functype
 
 
@@ -190,7 +194,7 @@ class W_ASTFunc(W_Func):
             extra = ''
         return f"<spy function '{self.qn}'{extra}>"
 
-    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
         frame = ASTFrame(vm, self)
         return frame.run(args_w)
@@ -214,7 +218,7 @@ class W_BuiltinFunc(W_Func):
     def __repr__(self) -> str:
         return f"<spy function '{self.qn}' (builtin)>"
 
-    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         w_res = self._pyfunc(vm, *args_w)
         if w_res is None and self.w_functype.w_restype is B_w_Void:
             return vm.wrap(None)

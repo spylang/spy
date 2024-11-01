@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar
+from typing import (TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar,
+                    TypeVar, Generic)
 from spy.fqn import QN
 from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
                            W_Bool)
@@ -6,6 +7,7 @@ from spy.vm.sig import spy_builtin
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
+
 
 class Meta_W_List(type):
     """
@@ -36,8 +38,10 @@ class Meta_W_List(type):
             W_MyList = _make_W_List(itemcls._w)
             self.CACHE[itemcls] = W_MyList
 
+T = TypeVar('T', bound='W_Object')
+
 @spytype('list')
-class W_List(W_Object, metaclass=Meta_W_List):
+class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     """
     The 'list' type.
 
@@ -53,7 +57,11 @@ class W_List(W_Object, metaclass=Meta_W_List):
     The specialized types are created by calling the builtin make_list_type:
     see its docstring for details.
     """
+    items_w: list[T]
     __spy_storage_category__ = 'reference'
+
+    def __init__(self, items_w: list[T]) -> None:
+        raise NotImplementedError
 
     @classmethod
     def make_prebuilt(cls, itemcls: Type[W_Object]) -> None:

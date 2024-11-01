@@ -21,7 +21,7 @@ class ModuleRegistry:
         self.filepath = filepath
         self.content = []
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<ModuleRegistry '{self.modname}'>"
 
     if TYPE_CHECKING:

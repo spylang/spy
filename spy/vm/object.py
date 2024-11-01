@@ -52,7 +52,8 @@ from spy.fqn import QN
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.str import W_Str
-    from spy.vm.opimpl import W_OpImpl
+    from spy.vm.list import W_List
+    from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
@@ -163,12 +164,12 @@ class W_Object:
 
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                w_opargs: 'W_Dynamic') -> 'W_OpImpl':
+                w_opargs: 'W_List[W_OpArg]') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_method: 'W_OpArg',
-                       w_opargs: 'W_Dynamic') -> 'W_OpImpl':
+                       w_opargs: 'W_List[W_OpArg]') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
 

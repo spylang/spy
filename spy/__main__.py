@@ -5,7 +5,7 @@ import py.path
 from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
-from spy.backend.spy import SPyBackend
+from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain
 from spy.vm.b import B
@@ -28,7 +28,7 @@ def do_pyparse(filename: str) -> None:
     mod.pp()
 
 def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
-    fqn_format = 'short' if pretty else 'full'
+    fqn_format: FQN_FORMAT = 'short' if pretty else 'full'
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 

@@ -30,11 +30,13 @@ from spy import ast
 from spy.fqn import QN
 from spy.location import Loc
 from spy.irgen.symtable import Symbol
+from spy.errors import SPyTypeError
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.sig import spy_builtin
 
 if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
     from spy.vm.typeconverter import TypeConverter
 
 T = TypeVar('T')
@@ -97,10 +99,10 @@ class W_OpArg(W_Object):
         return W_OpArg(prefix, i, w_type, None, w_blueval=w_obj)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return f'{self.prefix}{self.i}'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.is_blue():
             extra = f' = {self._w_blueval}'
         else:
@@ -109,10 +111,10 @@ class W_OpArg(W_Object):
             extra += ' const'
         return f'<W_OpArg {self.name}: {self.w_static_type.name}{extra}>'
 
-    def is_blue(self):
+    def is_blue(self) -> bool:
         return self._w_blueval is not None
 
-    def is_const(self):
+    def is_const(self) -> bool:
         return self.i is None
 
     @property
@@ -126,13 +128,14 @@ class W_OpArg(W_Object):
         Raise SPyTypeError if not.
         """
         from spy.vm.typechecker import convert_type_maybe
-        if not self.is_blue():
+        if self._w_blueval is None:
             raise SPyTypeError.simple(
                 'expected blue argument',
                 'this is red',
                 self.loc)
         err = convert_type_maybe(vm, self, w_expected_type)
         if err:
+            assert isinstance(err, BaseException)
             raise err
         return self._w_blueval
 
@@ -146,6 +149,7 @@ class W_OpArg(W_Object):
     def blue_unwrap_str(self, vm: 'SPyVM') -> str:
         from spy.vm.b import B
         self.blue_ensure(vm, B.w_str)
+        assert self._w_blueval is not None
         return vm.unwrap_str(self._w_blueval)
 
     @staticmethod
@@ -207,8 +211,7 @@ class W_OpImpl(W_Object):
             return f"<spy OpImpl {qn}>"
         else:
             qn = self._w_func.qn
-            argnames = [wop.name for wop in self._args_wop]
-            argnames = ', '.join(argnames)
+            argnames = ', '.join([wop.name for wop in self._args_wop])
             return f"<spy OpImpl {qn}({argnames})>"
 
     def is_null(self) -> bool:
@@ -217,24 +220,26 @@ class W_OpImpl(W_Object):
     def is_simple(self) -> bool:
         return self._args_wop is None
 
-    def is_direct_call(self):
+    def is_direct_call(self) -> bool:
         """
         This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
         """
         return isinstance(self._w_func, W_DirectCall)
 
-    def is_valid(self):
+    def is_valid(self) -> bool:
         return not self.is_null() and self._typechecked
 
     @property
     def w_functype(self) -> W_FuncType:
+        assert self._w_func is not None
         return self._w_func.w_functype
 
     @property
     def w_restype(self) -> W_Type:
+        assert self._w_func is not None
         return self._w_func.w_functype.w_restype
 
-    def set_args_wop(self, args_wop):
+    def set_args_wop(self, args_wop: list[W_OpArg]) -> None:
         assert self._args_wop is None
         assert self._converters is None
         self._args_wop = args_wop[:]
@@ -242,11 +247,14 @@ class W_OpImpl(W_Object):
 
     def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
         assert self.is_valid()
+        assert self._args_wop is not None
+        assert self._converters is not None
         real_args_w = []
         for wop_arg, conv in zip(self._args_wop, self._converters):
             if wop_arg.is_const():
                 w_arg = wop_arg.w_blueval
             else:
+                assert wop_arg.i is not None
                 w_arg = orig_args_w[wop_arg.i]
 
             if conv is not None:
@@ -255,20 +263,25 @@ class W_OpImpl(W_Object):
         #
         if self.is_direct_call():
             w_func = orig_args_w[0]
+            assert isinstance(w_func, W_Func)
             return vm.call(w_func, real_args_w)
         else:
+            assert self._w_func is not None
             return vm.call(self._w_func, real_args_w)
 
     def redshift_args(self, vm: 'SPyVM',
                       orig_args: list[ast.Expr]) -> list[ast.Expr]:
         from spy.doppler import make_const
         assert self.is_valid()
+        assert self._args_wop is not None
+        assert self._converters is not None
         real_args = []
         for wop_arg, conv in zip(self._args_wop, self._converters):
             if wop_arg.is_const():
                 w_arg = wop_arg.w_blueval
                 arg = make_const(vm, wop_arg.loc, w_arg)
             else:
+                assert wop_arg.i is not None
                 arg = orig_args[wop_arg.i]
 
             if conv is not None:
@@ -277,4 +290,4 @@ class W_OpImpl(W_Object):
         return real_args
 
 
-W_OpImpl.NULL = W_OpImpl(None)
+W_OpImpl.NULL = W_OpImpl(None)  # type: ignore

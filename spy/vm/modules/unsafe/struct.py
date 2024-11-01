@@ -10,14 +10,16 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
+FIELDS_T = dict[str, W_Type]
+OFFSETS_T = dict[str, int]
 
 class W_StructType(W_Type):
-    fields: dict[str, W_Type]
-    offsets: dict[str, int]
+    fields: FIELDS_T
+    offsets: OFFSETS_T
     size: int
 
     def __init__(self, name: str, pyclass: Type[W_Object],
-                 fields: dict[str, W_Type]) -> None:
+                 fields: FIELDS_T) -> None:
         super().__init__(name, pyclass)
         self.fields = fields
         self.offsets, self.size = calc_layout(fields)
@@ -29,9 +31,8 @@ class W_StructType(W_Type):
         return True
 
 
-def calc_layout(fields):
+def calc_layout(fields: FIELDS_T) -> tuple[OFFSETS_T, int]:
     from spy.vm.modules.unsafe.misc import sizeof
-
     offset = 0
     offsets = {}
     for field, w_type in fields.items():
@@ -53,7 +54,7 @@ class W_Struct(W_Object):
 
 
 def make_struct_type(vm: 'SPyVM', name: str,
-                     fields: dict[str, W_Type]) -> W_Type:
+                     fields: FIELDS_T) -> W_Type:
     size, layout = calc_layout(fields)
 
     class W_MyStruct(W_Struct):

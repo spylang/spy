@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.object import W_Type
-from spy.vm.function import W_FuncType
+from spy.vm.function import W_FuncType, W_Func
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.jsffi import JSFFI
@@ -61,7 +61,7 @@ class Context:
 
     def __init__(self, vm: SPyVM) -> None:
         self.vm = vm
-        self.out_types = None # set by CModuleWriter.emit_module
+        self.out_types = None # type: ignore # set by CModuleWriter.emit_module
         self._d = {}
         self._d[B.w_void] = C_Type('void')
         self._d[B.w_i32] = C_Type('int32_t')
@@ -84,6 +84,7 @@ class Context:
 
     def c_restype_by_fqn(self, fqn: FQN) -> C_Type:
         w_func = self.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
         w_restype = w_func.w_functype.w_restype
         return self.w2c(w_restype)
 
@@ -99,7 +100,7 @@ class Context:
         # XXX this way of computing the typename works only for simple
         # types. To handle more complex types we need to give each of them an
         # FQN, and probably we also need to think how to generate .h files
-        w_itemtype = w_ptrtype.pyclass.w_itemtype  # B.w_i32
+        w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore # B.w_i32
         c_itemtype = self.w2c(w_itemtype)          # int32_t
         t = w_itemtype.name                        # i32
         ptr = f'spy_unsafe$ptr_{t}'                # spy_unsafe$ptr_i32

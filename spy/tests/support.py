@@ -5,7 +5,7 @@ import subprocess
 import pytest
 import py.path
 from spy import ast
-from spy.compiler import Compiler
+from spy.compiler import Compiler, ToolchainType
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.cbuild import Toolchain, ZigToolchain
@@ -168,7 +168,7 @@ class CompilerTest:
                 opt_level=self.OPT_LEVEL,
                 debug_symbols=True,
                 release_mode=False,
-                toolchain_type='zig'
+                toolchain_type=ToolchainType.zig,
             )
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':

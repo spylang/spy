@@ -10,6 +10,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.astframe import ASTFrame
 from spy.vm.typeconverter import JsRefConv
+from spy.vm.opimpl import W_OpImpl
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:
@@ -166,7 +167,11 @@ class FuncDoppler:
 
     # ==== expressions ====
 
-    def shift_opimpl(self, op, w_opimpl, orig_args):
+    def shift_opimpl(self, op: ast.Expr | ast.Stmt,
+                     w_opimpl: W_OpImpl,
+                     orig_args: list[ast.Expr]
+                     ) -> ast.Call:
+        assert w_opimpl._w_func is not None
         func = make_const(self.vm, op.loc, w_opimpl._w_func)
         real_args = w_opimpl.redshift_args(self.vm, orig_args)
         return ast.Call(op.loc, func, real_args)

@@ -93,15 +93,16 @@ def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
         print(line)
 
 
-def highlight_C_maybe(code: str) -> None:
+def highlight_C_maybe(code: str | bytes) -> str:
+    assert isinstance(code, str)
     try:
-        import pygments
+        import pygments  # type: ignore
     except ImportError:
         return code
 
     from pygments import highlight
-    from pygments.lexers import CLexer
-    from pygments.formatters import TerminalFormatter
+    from pygments.lexers import CLexer  # type: ignore
+    from pygments.formatters import TerminalFormatter  # type: ignore
     return highlight(code, CLexer(), TerminalFormatter())
 
 def shortrepr(s: str, n: int) -> str:

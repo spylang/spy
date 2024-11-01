@@ -135,7 +135,7 @@ class TypeChecker:
 
     def check_many_exprs(self,
                          prefixes: list[str],
-                         exprs: list[ast.Expr | str]
+                         exprs: Sequence[ast.Expr | str]
                          ) -> tuple[list[Color], list[W_OpArg]]:
         assert len(prefixes) == len(exprs)
         colors = []
@@ -386,7 +386,7 @@ class TypeChecker:
         n = len(op.args)
         colors, args_wop = self.check_many_exprs(
             ['t', 'm'] + ['v']*n,
-            [op.target, op.method] + op.args
+            [op.target, op.method] + op.args  # type: ignore
         )
         wop_obj = args_wop[0]
         wop_method = args_wop[1]
@@ -475,6 +475,7 @@ def typecheck_opimpl(
     if w_opimpl.is_simple():
         w_opimpl.set_args_wop(orig_args_wop)
     args_wop = w_opimpl._args_wop
+    assert args_wop is not None
 
     # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
@@ -499,6 +500,7 @@ def typecheck_opimpl(
             call_loc = call_loc)
 
     # check that the types of the arguments are compatible
+    assert w_opimpl._converters is not None
     for i, (param, wop_arg) in enumerate(zip(w_functype.params, args_wop)):
         try:
             conv = convert_type_maybe(vm, wop_arg, param.w_type)
