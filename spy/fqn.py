@@ -1,61 +1,85 @@
 """
 (Fully) Qualified Names in SPy.
 
-A Qualified Name (QN) locates a function or class inside the source code: it
-consists of two parts:
+A Qualified Name (QN) locates a function or class inside the source code.
 
-  - module name or `modname`, which is the unique name of the module (possibly
-    dotted)
+A QN is composed by one or more Namespace Parts (NSPart), separated by '::'.
+Examples:
+  - builtins::i32
+  - a.b.c::foo
+  - builtins::list<i32>::append
+  - unsafe::ptr<Point>::getfield<i32>
 
-  - attribute name of `attr`, which is the name of the function or class
-    inside the module.
+A NSPart must be a valid Python identifier, but it can also contain dots.
+NSParts have 0 or more "qualifiers", expressed in angular brackets.
+
+The first part of a QN is the module name, which usually corresponds to a single
+.spy file.
 
 In case of closures and generics, you can have multiple objects with the same
 QN. To uniquely identify an object inside a live VM, we use a Fully Qualified
-Name, or FQN.  If needed, the uniqueness is guaranteed by appending a suffix.
-
-A QN is usually formatted as `modname::attr`: e.g., `a.b.c::foo`.
-An FQN is usually formatted as `modname::attr#suffix`, e.g. `a.b.c::foo#0`.
-The suffix "" (empty string) is special cased and not shown at all.
+Name, or FQN.  If needed, the uniqueness is guaranteed by appending a suffix,
+represented as "#N". The suffix "" (empty string) is special cased and not shown
+at all.
 
 The following example explains the difference between QNs and FQNs:
 
-@blue
-def make_fn(T):
+@blue def make_fn(T):
     def fn(x: T) -> T:
-        # QN is 'test::fn'
-        return ...
+        # QN is 'test::fn' return ...
     return fn
 
-fn_i32 = make_fn(i32)  # QN is 'test::fn', FQN is 'test::fn#1'
-fn_f64 = make_fn(f64)  # QN is 'test::fn', FQN is 'test::fn#2'
+fn_i32 = make_fn(i32)  # QN is 'test::fn', FQN is 'test::fn#1' fn_f64 =
+make_fn(f64)  # QN is 'test::fn', FQN is 'test::fn#2'
 
 See also SPyVM.get_FQN().
 """
 
 from typing import Optional, Any
+from dataclasses import dataclass
+import re
+
+_NSPART = re.compile(r"([a-zA-Z_][a-zA-Z0-9_\.]*)(?:<([a-zA-Z0-9_,\s]*)>)?")
+
+@dataclass
+class NSPart:
+    name: str
+    qualifiers: list[str]
+
+    @classmethod
+    def parse(cls, s: str) -> 'Optional[NSPart]':
+        m = _NSPART.fullmatch(s)
+        if not m:
+            return None
+        name = m.group(1)
+        qualifiers = [q.strip() for q in m.group(2).split(",")] if m.group(2) else []
+        return cls(name, qualifiers)
+
+    def __str__(self) -> str:
+        if len(self.qualifiers) == 0:
+            return self.name
+        else:
+            quals = ', '.join(self.qualifiers)
+            return f'{self.name}<{quals}>'
+
 
 class QN:
-    modname: str
-    attr: str
+    parts: list[NSPart]
 
-    def __init__(self,
-                 fullname: Optional[str] = None,
-                 *,
-                 modname: Optional[str] = None,
-                 attr: Optional[str] = None,
-                 ) -> None:
-        if fullname is None:
-            assert modname is not None
-            assert attr is not None
+    def __init__(self, x: str | list[str]) -> None:
+        if isinstance(x, str):
+            self.parts = self.parse(x)
         else:
-            assert modname is None
-            assert attr is None
-            assert fullname.count('::') == 1
-            modname, attr = fullname.split('::')
-        #
-        self.modname = modname
-        self.attr = attr
+            self.parts = [NSPart.parse(part) for part in x]
+
+    @staticmethod
+    def parse(s: str) -> list[NSPart]:
+        parts = []
+        for part in s.split("::"):
+            nspart = NSPart.parse(part)
+            if nspart is not None:
+                parts.append(nspart)
+        return parts
 
     def __repr__(self) -> str:
         return f"QN({self.fullname!r})"
@@ -73,12 +97,15 @@ class QN:
 
     @property
     def fullname(self) -> str:
-        return f'{self.modname}::{self.attr}'
+        return '::'.join(str(part) for part in self.parts)
+
+    @property
+    def modname(self) -> str:
+        return str(self.parts[0])
 
 
 class FQN:
-    modname: str
-    attr: str
+    qn: QN
     suffix: str
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -86,10 +113,12 @@ class FQN:
                          "Please use vm.get_FQN()")
 
     @classmethod
-    def make(cls, modname: str, attr: str, suffix: str) -> 'FQN':
+    def make(cls, x: QN | str | list[str], suffix: str) -> 'FQN':
         obj = cls.__new__(cls)
-        obj.modname = modname
-        obj.attr = attr
+        if isinstance(x, QN):
+            obj.qn = x
+        else:
+            obj.qn = QN(x)
         obj.suffix = suffix
         return obj
 
@@ -97,28 +126,23 @@ class FQN:
     def make_global(cls, modname: str, attr: str) -> 'FQN':
         """
         Return the FQN corresponding to a global name.
-
-        Until we have generics, global names are supposed to be unique, so we
-        can just use suffix=""
         """
-        return cls.make(modname, attr, suffix="")
+        return cls.make([modname, attr], suffix="")
 
     @classmethod
     def parse(cls, s: str) -> 'FQN':
         if '#' in s:
             assert s.count('#') == 1
-            qn, suffix = s.split('#')
+            s, suffix = s.split('#')
         else:
-            qn = s
             suffix = ""
         #
-        assert qn.count('::') == 1
-        modname, attr = qn.split('::')
-        return FQN.make(modname=modname, attr=attr, suffix=suffix)
+        qn = QN(s)
+        return FQN.make(qn, suffix=suffix)
 
     @property
     def fullname(self) -> str:
-        s = f'{self.modname}::{self.attr}'
+        s = self.qn.fullname
         if self.suffix != '':
             s += '#' + self.suffix
         return s
@@ -160,18 +184,20 @@ class FQN:
         Becomes:
             spy_a_b_c$foo
         """
-        modname = self.modname.replace('.', '_')
-        cn = f'spy_{modname}${self.attr}'
+        parts = [str(part) for part in self.qn.parts]
+        parts = [part.replace('.', '_') for part in parts]
+        cn = 'spy_' + '$'.join(parts)
         if self.suffix != '':
             cn += '$' + self.suffix
         return cn
 
     @property
     def spy_name(self) -> str:
-        return f'{self.modname}.{self.attr}'
+        # this works only for very simple cases
+        return '.'.join(part.name for part in self.qn.parts)
 
     def is_module(self) -> bool:
-        return self.attr == ""
+        return len(self.qn.parts) == 1
 
     def is_object(self) -> bool:
-        return self.attr != ""
+        return not self.is_module()
