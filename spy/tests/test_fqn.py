@@ -70,3 +70,7 @@ def test_FQN_parse():
     fqn = FQN.parse("aaa::bbb#0")
     assert fqn.qn == QN("aaa::bbb")
     assert fqn.suffix == "0"
+
+def test_qualifiers_c_name():
+    a = FQN.make("a::b<x, y>::c", suffix="0")
+    assert a.c_name == "spy_a$b__x_y$c$0"

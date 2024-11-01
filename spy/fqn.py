@@ -173,18 +173,30 @@ class FQN:
             result in the same C name.  This is not ideal but we will solve it
             only if it becomes an actual issue in practice.
 
-          - for separating modname and attr, we use a '$'. Strictly speaking,
+          - for separating parts, we use a '$'. Strictly speaking,
             using a '$' in C identifiers is not supported by the standard, but
             in reality it is supported by GCC, clang and MSVC. Again, we will
             think of a different approach if it becomes an actual issue.
 
+          - if a part has qualifiers, we use '__' to separate the name from the
+            qualifiers, and '_' to separate each qualifier. Same as above w.r.t.
+            safety.
+
+          - if the FQN has a suffix, we append it with a '$'.
+
         So e.g., the following FQN:
-            a.b.c::foo
+            mod::dict<i32, f64>::foo#0
 
         Becomes:
-            spy_a_b_c$foo
+            spy_mod$dict__i32_f64$foo$0
         """
-        parts = [str(part) for part in self.qn.parts]
+        def fmt_part(part: NSPart) -> str:
+            s = part.name
+            if part.qualifiers:
+                s += '__' + '_'.join(part.qualifiers)
+            return s
+
+        parts = [fmt_part(part) for part in self.qn.parts]
         parts = [part.replace('.', '_') for part in parts]
         cn = 'spy_' + '$'.join(parts)
         if self.suffix != '':
