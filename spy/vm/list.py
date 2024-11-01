@@ -8,7 +8,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
-T = TypeVar('T')
 
 class Meta_W_List(type):
     """
@@ -39,6 +38,8 @@ class Meta_W_List(type):
             W_MyList = _make_W_List(itemcls._w)
             self.CACHE[itemcls] = W_MyList
 
+T = TypeVar('T', bound='W_Object')
+
 @spytype('list')
 class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     """
@@ -56,7 +57,7 @@ class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     The specialized types are created by calling the builtin make_list_type:
     see its docstring for details.
     """
-    items_w: list[W_Object]
+    items_w: list[T]
     __spy_storage_category__ = 'reference'
 
     @classmethod
