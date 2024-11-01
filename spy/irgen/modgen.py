@@ -104,8 +104,8 @@ class ModuleGen:
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        fqn = self.vm.get_FQN(QN(modname=self.modname, attr=vardef.name),
-                              is_global=True)
+        qn = QN([self.modname, vardef.name])
+        fqn = self.vm.get_FQN(qn, is_global=True)
         if isinstance(vardef.type, ast.Auto):
             # type inference
             w_val = frame.eval_expr(assign.value)
