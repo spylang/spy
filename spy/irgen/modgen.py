@@ -97,7 +97,7 @@ class ModuleGen:
         frame.exec_stmt_ClassDef(classdef)
         w_class = frame.load_local(classdef.name)
         assert isinstance(w_class, W_Type)
-        qn = QN(modname=self.modname, attr=classdef.name)
+        qn = QN([self.modname, classdef.name])
         fqn = self.vm.get_FQN(qn, is_global=True)
         self.vm.add_global(fqn, None, w_class)
 
