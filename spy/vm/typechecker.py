@@ -135,7 +135,7 @@ class TypeChecker:
 
     def check_many_exprs(self,
                          prefixes: list[str],
-                         exprs: list[ast.Expr | str]
+                         exprs: Sequence[ast.Expr | str]
                          ) -> tuple[list[Color], list[W_OpArg]]:
         assert len(prefixes) == len(exprs)
         colors = []
