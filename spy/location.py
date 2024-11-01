@@ -1,6 +1,6 @@
+import inspect
 import dataclasses
 from dataclasses import dataclass
-import linecache
 
 @dataclass
 class Loc:
@@ -12,6 +12,25 @@ class Loc:
     line_end: int
     col_start: int
     col_end: int
+
+    @classmethod
+    def here(cls, level: int = -1) -> 'Loc':
+        """
+        Return a Loc corresponding to the interp-level code on the call
+        stack.
+
+        By default, level=-1 means "caller's frame".
+        level=-2 is "caller of the caller", etc.
+        """
+        assert level < 0
+        f = inspect.stack()[-level]
+        return cls(
+            filename = f.filename,
+            line_start = f.lineno,
+            line_end = f.lineno,
+            col_start = 0,
+            col_end = -1 # whole line
+        )
 
     @classmethod
     def fake(cls) -> 'Loc':

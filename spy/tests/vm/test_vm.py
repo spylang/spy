@@ -8,6 +8,7 @@ from spy.vm.object import W_Object, W_Type, spytype, W_Void, W_I32, W_Bool
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
+from spy.tests.support import expect_errors
 
 class TestVM:
 
@@ -231,3 +232,14 @@ class TestVM:
         assert vm.is_False(vm.eq(B.w_i32, B.w_str))
         assert vm.is_True(vm.ne(B.w_i32, B.w_str))
         assert vm.is_False(vm.ne(B.w_i32, B.w_i32))
+
+    def test_error_loc(self):
+        vm = SPyVM()
+        w_a = vm.wrap(1)
+        w_b = vm.wrap('x')
+        errors = expect_errors(
+            "cannot do `i32`[...]",
+            ("this is `i32`", "            vm.getitem(w_a, w_b) # hello")
+        )
+        with errors:
+            vm.getitem(w_a, w_b) # hello

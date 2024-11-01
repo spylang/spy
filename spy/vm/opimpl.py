@@ -65,7 +65,7 @@ class W_OpArg(W_Object):
     prefix: str
     i: Optional[int]
     w_static_type: Annotated[W_Type, Member('static_type')]
-    loc: Optional[Loc]
+    loc: Loc
     sym: Optional[Symbol]
     _w_blueval: Optional[W_Object]
 
@@ -73,7 +73,7 @@ class W_OpArg(W_Object):
                  prefix: str,
                  i: Optional[int],
                  w_static_type: W_Type,
-                 loc: Optional[Loc],
+                 loc: Loc,
                  *,
                  sym: Optional[Symbol] = None,
                  w_blueval: Optional[W_Object] = None,
@@ -90,13 +90,13 @@ class W_OpArg(W_Object):
     @classmethod
     def const(cls, vm: 'SPyVM', w_obj: W_Object, prefix: str) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return cls(prefix, None, w_type, None, w_blueval=w_obj)
+        return cls(prefix, None, w_type, Loc.here(-2), w_blueval=w_obj)
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object,
                    prefix: str, i: int) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(prefix, i, w_type, None, w_blueval=w_obj)
+        return W_OpArg(prefix, i, w_type, Loc.here(-2), w_blueval=w_obj)
 
     @property
     def name(self) -> str:
