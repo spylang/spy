@@ -26,8 +26,6 @@ class Annotation:
         Return the piece of source code pointed by the annotation.
         """
         loc = self.loc
-        if loc is None:
-            return ''
         filename = loc.filename
         assert loc.line_start == loc.line_end, 'multi-line not supported'
         line = loc.line_start
@@ -62,8 +60,6 @@ class ErrorFormatter:
         self.w(f'{prefix}: {message}')
 
     def emit_annotation(self, ann: Annotation) -> None:
-        if ann.loc is None:
-            return
         filename = ann.loc.filename
         line = ann.loc.line_start
         col = ann.loc.col_start + 1  # Loc columns are 0-based but we want 1-based
