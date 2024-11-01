@@ -19,7 +19,7 @@ def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
 class Annotation:
     level: Level
     message: str
-    loc: Optional[Loc]
+    loc: Loc
 
     def get_src(self) -> str:
         """
@@ -68,16 +68,18 @@ class ErrorFormatter:
         line = ann.loc.line_start
         col = ann.loc.col_start + 1  # Loc columns are 0-based but we want 1-based
         srcline = linecache.getline(filename, line).rstrip('\n')
-        carets = self.make_carets(ann.loc, ann.message)
+        carets = self.make_carets(srcline, ann.loc, ann.message)
         carets = self.color.set(ann.level, carets)
         self.w(f'   --> {filename}:{line}:{col}')
         self.w(f'{line:>3} | {srcline}')
         self.w(f'    | {carets}')
         self.w('')
 
-    def make_carets(self, loc: Loc, message: str) -> str:
+    def make_carets(self, srcline: str, loc: Loc, message: str) -> str:
         a = loc.col_start
         b = loc.col_end
+        if b < 0:
+            b = len(srcline) + b + 1
         n = b-a
         line = ' ' * a + '^' * n
         return line + ' ' + message
