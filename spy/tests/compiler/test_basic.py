@@ -615,7 +615,7 @@ class TestBasic(CompilerTest):
         """)
         vm = self.vm
         assert mod.x == 7
-        fqn = FQN.make_global("test", "x")
+        fqn = FQN.make_global(["test", "x"])
         w_xtype = self.vm.globals_types[fqn]
         assert w_xtype is B.w_i32
 

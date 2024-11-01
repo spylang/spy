@@ -105,7 +105,7 @@ class CModuleWriter:
 
         # XXX: this is probably broken in case we are compiling together
         # multiple modules with a 'main' function, but it's ok for now
-        fqn_main = FQN.make_global(self.w_mod.name, 'main')
+        fqn_main = FQN.make_global([self.w_mod.name, 'main'])
         if fqn_main in self.ctx.vm.globals_w:
             self.out.wb(f"""
                 int main(void) {{

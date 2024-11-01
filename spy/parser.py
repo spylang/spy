@@ -222,7 +222,7 @@ class Parser:
         res = []
         for py_alias in py_imp.names:
             assert py_imp.module is not None
-            fqn = FQN.make_global(py_imp.module, py_alias.name)
+            fqn = FQN.make_global([py_imp.module, py_alias.name])
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,

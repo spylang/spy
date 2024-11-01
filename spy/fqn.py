@@ -122,7 +122,7 @@ class FQN:
                          "Please use vm.get_FQN()")
 
     @classmethod
-    def make(cls, x: QN | str | list[str], suffix: str) -> 'FQN':
+    def make(cls, x: QN | str | list[str], *, suffix: str) -> 'FQN':
         obj = cls.__new__(cls)
         if isinstance(x, QN):
             obj.qn = x
@@ -132,11 +132,11 @@ class FQN:
         return obj
 
     @classmethod
-    def make_global(cls, modname: str, attr: str) -> 'FQN':
+    def make_global(cls, x: QN | str | list[str]) -> 'FQN':
         """
         Return the FQN corresponding to a global name.
         """
-        return cls.make([modname, attr], suffix="")
+        return cls.make(x, suffix="")
 
     @classmethod
     def parse(cls, s: str) -> 'FQN':

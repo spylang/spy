@@ -62,7 +62,7 @@ class W_Module(W_Object):
     # ==== public interp-level API ====
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:
-        fqn = FQN.make_global(modname=self.name, attr=attr)
+        fqn = FQN.make_global([self.name, attr])
         return self.vm.lookup_global(fqn)
 
     def getattr(self, attr: str) -> W_Object:
@@ -78,7 +78,7 @@ class W_Module(W_Object):
 
     def setattr(self, attr: str, w_value: W_Object) -> None:
         # XXX we should raise an exception if the attr doesn't exist
-        fqn = FQN.make_global(modname=self.name, attr=attr)
+        fqn = FQN.make_global([self.name, attr])
         self.vm.store_global(fqn, w_value)
 
     def keys(self) -> Iterable[FQN]:
