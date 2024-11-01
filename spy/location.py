@@ -1,6 +1,6 @@
+import inspect
 import dataclasses
 from dataclasses import dataclass
-import linecache
 
 @dataclass
 class Loc:
@@ -12,6 +12,17 @@ class Loc:
     line_end: int
     col_start: int
     col_end: int
+
+    @classmethod
+    def here(cls) -> 'Loc':
+        f = inspect.stack()[1] # caller's frame
+        return cls(
+            filename = f.filename,
+            line_start = f.lineno,
+            line_end = f.lineno,
+            col_start = 0,
+            col_end = -1 # whole line
+        )
 
     @classmethod
     def fake(cls) -> 'Loc':
