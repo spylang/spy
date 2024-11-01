@@ -344,7 +344,7 @@ class SPyVM:
             raise Exception('Type mismatch')
         return self.unwrap(w_value) # type: ignore
 
-    def call(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
+    def call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         if w_func.color == 'blue':
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
@@ -378,9 +378,11 @@ class SPyVM:
             call(f_specialized, [a0, a1, a2])
         """
         w_specialized = self.call(w_func, generic_args_w)
+        assert isinstance(w_specialized, W_Func)
         return self.call(w_specialized, args_w)
 
-    def _call_func(self, w_func: W_Func, args_w: list[W_Object]) -> W_Object:
+    def _call_func(self, w_func: W_Func,
+                   args_w: Sequence[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
         assert w_functype.arity == len(args_w)
         for param, w_arg in zip(w_functype.params, args_w):

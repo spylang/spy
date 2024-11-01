@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Optional, NoReturn
+from typing import TYPE_CHECKING, Any, Optional, NoReturn, Sequence
 from types import NoneType
 from dataclasses import dataclass
 from spy import ast
@@ -53,7 +53,7 @@ class ASTFrame:
             raise SPyRuntimeError('read from uninitialized local')
         return w_obj
 
-    def run(self, args_w: list[W_Object]) -> W_Object:
+    def run(self, args_w: Sequence[W_Object]) -> W_Object:
         self.init_arguments(args_w)
         try:
             for stmt in self.funcdef.body:
@@ -71,7 +71,7 @@ class ASTFrame:
         except Return as e:
             return e.w_value
 
-    def init_arguments(self, args_w: list[W_Object]) -> None:
+    def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """
         Store the arguments in args_w in the appropriate local var
         """

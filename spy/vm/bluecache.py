@@ -1,12 +1,12 @@
 from collections import defaultdict
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Sequence
 from spy.fqn import QN
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-ARGS_W = list[W_Object]
+ARGS_W = Sequence[W_Object]
 ENTRY = tuple[ARGS_W, W_Object]
 
 class BlueCache:

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Callable
+from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence
 from spy import ast
 from spy.ast import Color
 from spy.fqn import QN
@@ -112,7 +112,7 @@ class W_Func(W_Object):
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
 
-    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         """
         Call the function.
 
@@ -194,7 +194,7 @@ class W_ASTFunc(W_Func):
             extra = ''
         return f"<spy function '{self.qn}'{extra}>"
 
-    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
         frame = ASTFrame(vm, self)
         return frame.run(args_w)
@@ -218,7 +218,7 @@ class W_BuiltinFunc(W_Func):
     def __repr__(self) -> str:
         return f"<spy function '{self.qn}' (builtin)>"
 
-    def spy_call(self, vm: 'SPyVM', args_w: list[W_Object]) -> W_Object:
+    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         w_res = self._pyfunc(vm, *args_w)
         if w_res is None and self.w_functype.w_restype is B_w_Void:
             return vm.wrap(None)
