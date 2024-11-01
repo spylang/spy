@@ -12,12 +12,12 @@ class ModuleRegistry:
 
     At startup, the `vm` will create a W_Module out of it.
     """
-    modname: str
+    qn: QN
     filepath: str
     content: list[tuple[QN, W_Object]]
 
     def __init__(self, modname: str, filepath: str) -> None:
-        self.modname = modname
+        self.qn = QN(modname)
         self.filepath = filepath
         self.content = []
 
@@ -40,7 +40,7 @@ class ModuleRegistry:
             """
 
     def add(self, attr: str, w_obj: W_Object) -> None:
-        qn = QN(modname=self.modname, attr=attr)
+        qn = self.qn.nested(attr)
         setattr(self, f'w_{attr}', w_obj)
         self.content.append((qn, w_obj))
 
@@ -81,7 +81,7 @@ class ModuleRegistry:
         """
         def decorator(pyfunc: Callable) -> SPyBuiltin:
             attr = pyfunc.__name__
-            qn = QN(modname=self.modname, attr=attr)
+            qn = self.qn.nested(attr)
             # apply the @spy_builtin decorator to pyfunc
             spyfunc = spy_builtin(qn, color=color)(pyfunc)
             w_func = spyfunc._w

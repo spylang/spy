@@ -40,6 +40,11 @@ def test_qualifiers():
         NSPart("c", [])
     ]
 
+def test_QN_nested():
+    a = QN("aaa::bbb")
+    b = a.nested("ccc")
+    assert b.fullname == "aaa::bbb::ccc"
+
 def test_FQN():
     a = FQN.make("aaa::bbb", suffix="0")
     assert a.fullname == "aaa::bbb#0"

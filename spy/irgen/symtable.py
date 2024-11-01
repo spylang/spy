@@ -59,7 +59,8 @@ class SymTable:
                   col_end=0)
         builtins_mod = vm.modules_w['builtins']
         for fqn, w_obj in builtins_mod.items_w():
-            sym = Symbol(fqn.attr, 'blue', loc=loc, type_loc=loc,
+            sym_name = str(fqn.qn.parts[-1])
+            sym = Symbol(sym_name, 'blue', loc=loc, type_loc=loc,
                          level=0, fqn=fqn)
             scope.add(sym)
         return scope

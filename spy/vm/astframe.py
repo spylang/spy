@@ -127,8 +127,7 @@ class ASTFrame:
         self.t.lazy_check_FuncDef(funcdef, w_functype)
         #
         # create the w_func
-        modname = self.w_func.qn.modname # the module of the "outer" function
-        qn = QN(modname=modname, attr=funcdef.name)
+        qn = self.w_func.qn.nested(funcdef.name)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, qn, funcdef, closure)

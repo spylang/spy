@@ -101,7 +101,7 @@ class SPyVM:
         self.modules_w[w_mod.name] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
-        w_mod = W_Module(self, reg.modname, reg.filepath)
+        w_mod = W_Module(self, reg.qn.modname, reg.filepath)
         self.register_module(w_mod)
         for qn, w_obj in reg.content:
             fqn = self.get_FQN(qn, is_global=True)
@@ -120,12 +120,12 @@ class SPyVM:
         an unique suffix, we just increment a numeric counter.
         """
         if is_global:
-            fqn = FQN.make_global(modname=qn.modname, attr=qn.attr)
+            fqn = FQN.make(qn, suffix="")
         else:
             # XXX this is potentially quadratic if we create tons of
             # conflicting FQNs, but for now we don't care
             for n in itertools.count():
-                fqn = FQN.make(modname=qn.modname, attr=qn.attr, suffix=str(n))
+                fqn = FQN.make(qn, suffix=str(n))
                 if fqn not in self.unique_fqns:
                     break
         assert fqn not in self.unique_fqns

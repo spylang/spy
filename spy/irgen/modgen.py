@@ -39,9 +39,10 @@ class ModuleGen:
         self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
         self.vm.register_module(self.w_mod)
         #
-        # Synthesize and execute the fake '@module' function to populate the mod
+        # Synthesize and execute a function where to evaluate module-level
+        # declarations.
         w_functype = W_FuncType.parse('def() -> void')
-        qn = QN(modname=self.modname, attr='@module')
+        qn = QN(self.modname)
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, qn, modinit_funcdef, closure)

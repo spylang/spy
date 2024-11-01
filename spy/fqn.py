@@ -50,7 +50,7 @@ class NSPart:
     def parse(cls, s: str) -> 'Optional[NSPart]':
         m = _NSPART.fullmatch(s)
         if not m:
-            return None
+            raise ValueError(f'Invalid NSPart: {s}')
         name = m.group(1)
         qualifiers = [q.strip() for q in m.group(2).split(",")] if m.group(2) else []
         return cls(name, qualifiers)
@@ -66,9 +66,13 @@ class NSPart:
 class QN:
     parts: list[NSPart]
 
-    def __init__(self, x: str | list[str]) -> None:
+    def __init__(self, x: str | list[str] | list[NSPart]) -> None:
         if isinstance(x, str):
             self.parts = self.parse(x)
+        elif len(x) == 0:
+            self.parts = []
+        elif isinstance(x[0], NSPart):
+            self.parts = x
         else:
             self.parts = [NSPart.parse(part) for part in x]
 
@@ -76,9 +80,7 @@ class QN:
     def parse(s: str) -> list[NSPart]:
         parts = []
         for part in s.split("::"):
-            nspart = NSPart.parse(part)
-            if nspart is not None:
-                parts.append(nspart)
+            parts.append(NSPart.parse(part))
         return parts
 
     def __repr__(self) -> str:
@@ -102,6 +104,13 @@ class QN:
     @property
     def modname(self) -> str:
         return str(self.parts[0])
+
+    @property
+    def parent(self) -> 'QN':
+        return QN(self.parts[:-1])
+
+    def nested(self, name: str) -> 'QN':
+        return QN(self.parts + [NSPart.parse(name)])
 
 
 class FQN:
@@ -146,6 +155,10 @@ class FQN:
         if self.suffix != '':
             s += '#' + self.suffix
         return s
+
+    @property
+    def modname(self) -> str:
+        return self.qn.modname
 
     def __repr__(self) -> str:
         return f"FQN({self.fullname!r})"
