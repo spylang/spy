@@ -190,13 +190,10 @@ class SPyVM:
             # probably we want to introduce at least
             # "modname::type::attr", or maybe even
             # "modname::namespace1::namespace2::...::attr".
-            have_suffix = w_val.qn.attr.endswith('#')
-            if have_suffix:
-                qn2 = QN(
-                    modname=w_val.qn.modname,
-                    attr=w_val.qn.attr[:-1]
-                )
-                fqn = self.get_FQN(qn2, is_global=False)
+            #
+            # XXX temporary hack for list_eq, we should kill it eventually
+            if w_val.qn.fullname == 'operator::list_eq':
+                fqn = self.get_FQN(w_val.qn, is_global=False)
             else:
                 fqn = self.get_FQN(w_val.qn, is_global=True)
         elif isinstance(w_val, W_Type):
