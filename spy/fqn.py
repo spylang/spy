@@ -13,8 +13,22 @@ Examples:
 A NSPart must be a valid Python identifier, but it can also contain dots.
 NSParts have 0 or more "qualifiers", expressed in angular brackets.
 
-The first part of a QN is the module name, which usually corresponds to a single
-.spy file.
+Various subparts of a QN have different names:
+
+  - the first part is the "module name", which usually corresponds to a single
+    .spy file
+
+  - the parts up to the last one are the "namespace"
+
+  - the last part is the "symbol name"
+
+E.g., for "builtins::list<i32>::append":
+  - module name: "builtins"
+
+  - namespace: "builtins::list<i32>"
+
+  - symbol name: "append"
+
 
 In case of closures and generics, you can have multiple objects with the same
 QN. To uniquely identify an object inside a live VM, we use a Fully Qualified
@@ -24,13 +38,14 @@ at all.
 
 The following example explains the difference between QNs and FQNs:
 
-@blue def make_fn(T):
+@blue
+def make_fn(T):
     def fn(x: T) -> T:
         # QN is 'test::fn' return ...
     return fn
 
-fn_i32 = make_fn(i32)  # QN is 'test::fn', FQN is 'test::fn#1' fn_f64 =
-make_fn(f64)  # QN is 'test::fn', FQN is 'test::fn#2'
+fn_i32 = make_fn(i32)  # QN is 'test::make_fn::fn', FQN is 'test::make_fn::fn#1'
+fn_f64 = make_fn(f64)  # QN is 'test::make_fn::fn', FQN is 'test::make_fn::fn#2'
 
 See also SPyVM.get_FQN().
 """
