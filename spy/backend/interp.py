@@ -27,7 +27,7 @@ class InterpModuleWrapper:
         self.w_mod = w_mod
 
     def __dir__(self) -> list[str]:
-        return [fqn.attr for fqn in self.w_mod.keys()]
+        return [fqn.symbol_name for fqn in self.w_mod.keys()]
 
     def __getattr__(self, attr: str) -> Any:
         w_obj = self.w_mod.getattr(attr)

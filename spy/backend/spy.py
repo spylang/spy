@@ -35,7 +35,7 @@ class SPyBackend:
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         if fqn.suffix == '':
             # this is a global function, we can just use its name
-            name = fqn.attr
+            name = fqn.symbol_name
         else:
             name = self.fmt_fqn(fqn)
         w_functype = w_func.w_functype
@@ -66,9 +66,9 @@ class SPyBackend:
 
     def fmt_fqn(self, fqn: FQN) -> str:
         if self.fqn_format == 'no':
-            return fqn.attr # don't show the namespace
+            return fqn.symbol_name # don't show the namespace
         elif self.fqn_format == 'short' and fqn.modname == 'builtins':
-            return fqn.attr # don't show builtins::
+            return fqn.symbol_name # don't show builtins::
         else:
             return f'`{fqn}`'
 

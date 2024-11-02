@@ -749,10 +749,10 @@ class TestParser:
         Module(
             filename='{tmpdir}/test.spy',
             decls=[
-                Import(fqn=FQN('aaa::'), asname='aaa'),
-                Import(fqn=FQN('bbb::'), asname='BBB'),
-                Import(fqn=FQN('ccc::'), asname='ccc'),
-                Import(fqn=FQN('ddd::'), asname='DDD'),
+                Import(fqn=FQN('aaa'), asname='aaa'),
+                Import(fqn=FQN('bbb'), asname='BBB'),
+                Import(fqn=FQN('ccc'), asname='ccc'),
+                Import(fqn=FQN('ddd'), asname='DDD'),
             ],
         )
         """

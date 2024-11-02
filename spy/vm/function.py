@@ -154,7 +154,7 @@ class W_DirectCall(W_Func):
     """
     See W_Func.op_CALL.
     """
-    qn = QN(modname='<direct-call>', attr='')
+    qn = QN("builtins::__direct_call__")
 
     def __init__(self, w_functype: W_FuncType) -> None:
         self.w_functype = w_functype

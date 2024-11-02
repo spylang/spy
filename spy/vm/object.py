@@ -383,7 +383,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                      w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(spy_new, {pyclass.__name__: pyclass})
-        qn = QN(modname='ext', attr='new') # XXX what modname should we use?
+        qn = QN('ext::new') # XXX what modname should we use?
         # manually apply the @spy_builtin decorator to the spy_new function
         spyfunc = spy_builtin(qn)(spy_new)
         return W_OpImpl(vm.wrap_func(spyfunc))

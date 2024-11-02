@@ -39,9 +39,10 @@ class ModuleGen:
         self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
         self.vm.register_module(self.w_mod)
         #
-        # Synthesize and execute the fake '@module' function to populate the mod
+        # Synthesize and execute a function where to evaluate module-level
+        # declarations.
         w_functype = W_FuncType.parse('def() -> void')
-        qn = QN(modname=self.modname, attr='@module')
+        qn = QN(self.modname)
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, qn, modinit_funcdef, closure)
@@ -96,15 +97,15 @@ class ModuleGen:
         frame.exec_stmt_ClassDef(classdef)
         w_class = frame.load_local(classdef.name)
         assert isinstance(w_class, W_Type)
-        qn = QN(modname=self.modname, attr=classdef.name)
+        qn = QN([self.modname, classdef.name])
         fqn = self.vm.get_FQN(qn, is_global=True)
         self.vm.add_global(fqn, None, w_class)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        fqn = self.vm.get_FQN(QN(modname=self.modname, attr=vardef.name),
-                              is_global=True)
+        qn = QN([self.modname, vardef.name])
+        fqn = self.vm.get_FQN(qn, is_global=True)
         if isinstance(vardef.type, ast.Auto):
             # type inference
             w_val = frame.eval_expr(assign.value)

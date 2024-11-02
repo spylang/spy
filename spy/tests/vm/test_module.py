@@ -11,8 +11,8 @@ class TestModule:
         w_mod = W_Module(vm, 'mymod', 'mymod.spy')
         vm.register_module(w_mod)
         #
-        fqn_a = FQN.make('mymod', 'a', '')
-        fqn_b = FQN.make('mymod', 'b', '')
+        fqn_a = FQN.parse('mymod::a')
+        fqn_b = FQN.parse('mymod::b')
         w_a = vm.wrap(10)
         w_b = vm.wrap(20)
         vm.add_global(fqn_a, B.w_i32, w_a)

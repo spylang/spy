@@ -12,6 +12,11 @@ from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+def hack_hack_fix_typename(t: str) -> str:
+    # XXX hack hack hack, it will be fixed when types have a QN and we can
+    # properly nest QN qualifiers. In the meantime, we just use W_Type.name, but
+    # we  make sure it doesn't contain any square brackets.
+    return t.replace('[', '_').replace(']', '')
 
 @UNSAFE.spytype('ptr')
 class W_Ptr(W_Object):
@@ -173,6 +178,9 @@ def getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
     # unsafe::getfield_prim_i32
     # unsafe::getfield_ref_Point
+
+    t = hack_hack_fix_typename(t)
+
     @no_type_check
     @spy_builtin(QN(f'unsafe::getfield_{by}_{t}'))
     def getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,

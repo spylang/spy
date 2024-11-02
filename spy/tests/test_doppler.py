@@ -133,9 +133,9 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return `test::fn#0`(21)
+            return `test::make_fn::fn#0`(21)
 
-        def `test::fn#0`(x: i32) -> i32:
+        def `test::make_fn::fn#0`(x: i32) -> i32:
             return x * 2
         """)
 
