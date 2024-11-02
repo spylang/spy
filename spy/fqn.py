@@ -39,12 +39,12 @@ from typing import Optional, Any
 from dataclasses import dataclass
 import re
 
-_NSPART = re.compile(r"([a-zA-Z_][a-zA-Z0-9_\.]*)(?:<([a-zA-Z0-9_,\s]*)>)?")
+_NSPART = re.compile(r"([a-zA-Z_][a-zA-Z0-9_\.]*)(?:<([a-zA-Z0-9_,\s<>]*)>)?")
 
 @dataclass
 class NSPart:
     name: str
-    qualifiers: list[str]
+    qualifiers: list['NSPart']
 
     @classmethod
     def parse(cls, s: str) -> 'Optional[NSPart]':
@@ -52,16 +52,42 @@ class NSPart:
         if not m:
             raise ValueError(f'Invalid NSPart: {s}')
         name = m.group(1)
-        qualifiers = [q.strip() for q in m.group(2).split(",")] if m.group(2) else []
+        qualifiers_str = m.group(2)
+        qualifiers = cls.parse_qualifiers(qualifiers_str) if qualifiers_str else []
         return cls(name, qualifiers)
+
+    @classmethod
+    def parse_qualifiers(cls, s: str) -> list['NSPart']:
+        qualifiers = []
+        depth = 0
+        start = 0
+        for i, char in enumerate(s):
+            if char == '<':
+                depth += 1
+            elif char == '>':
+                depth -= 1
+            elif char == ',' and depth == 0:
+                qualifiers.append(cls.parse(s[start:i].strip()))
+                start = i + 1
+        if start < len(s):
+            qualifiers.append(cls.parse(s[start:].strip()))
+        return qualifiers
 
     def __str__(self) -> str:
         if len(self.qualifiers) == 0:
             return self.name
         else:
-            quals = ', '.join(self.qualifiers)
+            quals = ', '.join(str(q) for q in self.qualifiers)
             return f'{self.name}<{quals}>'
 
+    @property
+    def c_name(self) -> str:
+        name = self.name.replace('.', '_')
+        if len(self.qualifiers) == 0:
+            return name
+        else:
+            quals = '_'.join(q.c_name for q in self.qualifiers)
+            return f'{name}__{quals}'
 
 class QN:
     parts: list[NSPart]
@@ -203,14 +229,7 @@ class FQN:
         Becomes:
             spy_mod$dict__i32_f64$foo$0
         """
-        def fmt_part(part: NSPart) -> str:
-            s = part.name
-            if part.qualifiers:
-                s += '__' + '_'.join(part.qualifiers)
-            return s
-
-        parts = [fmt_part(part) for part in self.qn.parts]
-        parts = [part.replace('.', '_') for part in parts]
+        parts = [part.c_name for part in self.qn.parts]
         cn = 'spy_' + '$'.join(parts)
         if self.suffix != '':
             cn += '$' + self.suffix

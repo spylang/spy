@@ -36,9 +36,13 @@ def test_qualifiers():
     assert a.modname == "a"
     assert a.parts == [
         NSPart("a", []),
-        NSPart("b", ["x", "y"]),
+        NSPart("b", [NSPart("x", []), NSPart("y", [])]),
         NSPart("c", [])
     ]
+
+def test_nested_qualifiers():
+    a = QN("foo::list<Ptr<Point>>")
+    assert a.fullname == "foo::list<Ptr<Point>>"
 
 def test_QN_nested():
     a = QN("aaa::bbb")
@@ -79,3 +83,7 @@ def test_FQN_parse():
 def test_qualifiers_c_name():
     a = FQN.make("a::b<x, y>::c", suffix="0")
     assert a.c_name == "spy_a$b__x_y$c$0"
+
+def test_nested_qualifiers_c_name():
+    a = FQN.make("a::list<Ptr<x, y>>::c", suffix="0")
+    assert a.c_name == "spy_a$list__Ptr__x_y$c$0"
