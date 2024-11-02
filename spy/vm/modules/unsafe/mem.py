@@ -5,7 +5,7 @@ from spy.vm.b import B
 from spy.vm.w import W_I32, W_Func, W_Type, W_Dynamic, W_Object
 from spy.vm.sig import spy_builtin
 from . import UNSAFE
-from .ptr import W_Ptr, make_ptr_type
+from .ptr import W_Ptr, make_ptr_type, hack_hack_fix_typename
 from .misc import sizeof
 
 if TYPE_CHECKING:
@@ -35,6 +35,7 @@ def gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 def mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass
     t = w_T.name
+    t = hack_hack_fix_typename(t)
 
     @no_type_check
     @spy_builtin(QN(f'unsafe::mem_read_{t}'))
