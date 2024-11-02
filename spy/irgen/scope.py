@@ -149,7 +149,7 @@ class ScopeAnalyzer:
                     loc=imp.loc)
         else:
             # attribute not found
-            attr = str(imp.fqn.qn.parts[-1])
+            attr = str(imp.fqn.symbol_name)
             err.add('error',
                     f'attribute `{attr}` does not exist ' +
                     f'in module `{imp.fqn.modname}`',

@@ -132,6 +132,10 @@ class QN:
         return str(self.parts[0])
 
     @property
+    def symbol_name(self) -> str:
+        return str(self.parts[-1])
+
+    @property
     def parent(self) -> 'QN':
         return QN(self.parts[:-1])
 
@@ -185,6 +189,10 @@ class FQN:
     @property
     def modname(self) -> str:
         return self.qn.modname
+
+    @property
+    def symbol_name(self) -> str:
+        return self.qn.symbol_name
 
     def __repr__(self) -> str:
         return f"FQN({self.fullname!r})"
