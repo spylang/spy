@@ -62,7 +62,7 @@ class NSPart:
     qualifiers: list['NSPart']
 
     @classmethod
-    def parse(cls, s: str) -> 'Optional[NSPart]':
+    def parse(cls, s: str) -> 'NSPart':
         m = _NSPART.fullmatch(s)
         if not m:
             raise ValueError(f'Invalid NSPart: {s}')
@@ -113,9 +113,9 @@ class QN:
         elif len(x) == 0:
             self.parts = []
         elif isinstance(x[0], NSPart):
-            self.parts = x
+            self.parts = x  # type: ignore
         else:
-            self.parts = [NSPart.parse(part) for part in x]
+            self.parts = [NSPart.parse(part) for part in x]  # type: ignore
 
     @staticmethod
     def parse(s: str) -> list[NSPart]:
