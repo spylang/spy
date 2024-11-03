@@ -199,7 +199,8 @@ class SPyVM:
         elif isinstance(w_val, W_Type):
             # this is terribly wrong: types should carry their own QN, as
             # functions do
-            name = w_val.name.replace('[', '__').replace(']', '__')
+            from spy.vm.modules.unsafe.ptr import hack_hack_fix_typename
+            name = hack_hack_fix_typename(w_val.name)
             qn = QN(['__fake_mod__', name])
             fqn = self.get_FQN(qn, is_global=False)
         else:

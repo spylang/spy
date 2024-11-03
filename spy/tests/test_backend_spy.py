@@ -196,7 +196,7 @@ class TestSPyBackend(CompilerTest):
         # XXX for now it's good enough, but we need to pretty-print ptrs as
         # soon as we give types their own QN
         expected = """
-        def foo(p: `__fake_mod__::ptr[i32]#0`) -> void:
+        def foo(p: `__fake_mod__::ptr_i32#0`) -> void:
             pass
         """
         self.compile(src)
