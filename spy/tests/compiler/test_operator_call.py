@@ -140,10 +140,7 @@ class TestCallOp(CompilerTest):
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
-                    return W_OpImpl(
-                        w_fn,
-                        [wop_obj] + w_opargs.items_w
-                    )
+                    return W_OpImpl(w_fn, [wop_obj] + w_opargs.items_w)
 
                 elif meth == 'sub':
                     @builtin_func(QN('ext::meth_sub'))
@@ -151,10 +148,7 @@ class TestCallOp(CompilerTest):
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
-                    return W_OpImpl(
-                        w_fn,
-                        [wop_obj] + w_opargs.items_w
-                    )
+                    return W_OpImpl(w_fn, [wop_obj] + w_opargs.items_w)
                 else:
                     return W_OpImpl.NULL
         # ========== /EXT module for this test =========
