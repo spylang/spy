@@ -5,7 +5,7 @@ from spy.vm.b import B
 from spy.fqn import QN
 from spy.vm.builtin import builtin_func, functype_from_sig
 
-class TestSig:
+class TestBuiltin:
 
     def test_functype_from_sig(self):
         def foo(vm: 'SPyVM', w_x: W_I32) -> W_Str:
@@ -13,7 +13,7 @@ class TestSig:
         w_functype = functype_from_sig(foo, 'red')
         assert w_functype == W_FuncType.parse('def(x: i32) -> str')
 
-    def test_spy_builtin(self):
+    def test_builtin_func(self):
         vm = SPyVM()
 
         @builtin_func(QN('test::foo'))
@@ -30,7 +30,7 @@ class TestSig:
         w_y = vm.call(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
 
-    def test_spy_builtin_errors(self):
+    def test_builtin_func_errors(self):
         with pytest.raises(ValueError,
                            match="The first param should be 'vm: SPyVM'."):
             @builtin_func(QN('test::foo'))
@@ -53,7 +53,7 @@ class TestSig:
             def foo(vm: 'SPyVM') -> int:  # type: ignore
                 pass
 
-    def test_spy_builtin_dynamic(self):
+    def test_builtin_func_dynamic(self):
         vm = SPyVM()
         @builtin_func(QN('test::foo'))
         def foo(vm: 'SPyVM', w_x: W_Dynamic) -> W_Dynamic:  # type: ignore

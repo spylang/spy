@@ -249,7 +249,7 @@ W_Type.__spy_members__ = {}
 # Since it's a compile-time only concept, it doesn't have a corresponding
 # W_Dynamic interp-level class. However, we still provide W_Dynamic as an
 # annotated version of W_Object: from the mypy static typing point of view,
-# it's equivalent to W_Object, but it is recognized by @spy_builtin to
+# it's equivalent to W_Object, but it is recognized by @builtin_func to
 # generate the "correct" w_functype signature.
 
 w_DynamicType = W_Type('dynamic', W_Object) # this is B.w_dynamic
@@ -363,16 +363,16 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
 
     class W_Foo(W_Object):
         @staticmethod
-        @spy_builtin(QN("xxx::new"))
+        @builtin_func(QN("xxx::new"))
         def spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
             ...
 
-    But we cannot because spy_builtin is unable to understand the annotation
+    But we cannot because builtin_func is unable to understand the annotation
     'W_Foo' expressed as a string. A lot of the logic here is basically a
     workaround for this.
 
     Inside, we call fix_annotations to replace 'W_Foo' with the actual
-    W_Foo. Once we have done that, we can manually apply @spy_builtin and
+    W_Foo. Once we have done that, we can manually apply @builtin_func and
     finally vm.wrap() it.
     """
     from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -384,7 +384,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
                      w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(spy_new, {pyclass.__name__: pyclass})
         qn = QN('ext::new') # XXX what modname should we use?
-        # manually apply the @spy_builtin decorator to the spy_new function
+        # manually apply the @builtin_func decorator to the spy_new function
         spyfunc = builtin_func(qn)(spy_new)
         return W_OpImpl(vm.wrap_func(spyfunc))
 

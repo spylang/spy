@@ -311,7 +311,7 @@ class SPyVM:
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "
-                f"Did you forget `@spy_builtin`?")
+                f"Did you forget `@builtin_func`?")
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")
 

@@ -80,7 +80,7 @@ class ModuleRegistry:
         def decorator(pyfunc: Callable) -> SPyBuiltin:
             attr = pyfunc.__name__
             qn = self.qn.nested(attr)
-            # apply the @spy_builtin decorator to pyfunc
+            # apply the @builtin_func decorator to pyfunc
             spyfunc = builtin_func(qn, color=color)(pyfunc)
             w_func = spyfunc._w
             setattr(self, f'w_{attr}', w_func)
