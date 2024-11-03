@@ -11,7 +11,7 @@ from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-@UNSAFE.builtin(color='blue')
+@UNSAFE.builtin_func(color='blue')
 def gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     t = w_T.name                         # 'i32'
     w_ptr_type = vm.call(make_ptr_type, [w_T])  # ptr[i32]
@@ -31,7 +31,7 @@ def gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     return vm.wrap(my_gc_alloc)
 
 
-@UNSAFE.builtin(color='blue')
+@UNSAFE.builtin_func(color='blue')
 def mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass
     t = w_T.name
@@ -53,7 +53,7 @@ def mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     return vm.wrap(mem_read_T)
 
 
-@UNSAFE.builtin(color='blue')
+@UNSAFE.builtin_func(color='blue')
 def mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass
     t = w_T.name

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 W_List.make_prebuilt(W_OpArg)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def CALL(vm: 'SPyVM', wop_obj: W_OpArg, w_opargs: W_List[W_OpArg]) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
@@ -72,7 +72,7 @@ def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
     )
 
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
                 w_opargs: W_List[W_OpArg]) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl

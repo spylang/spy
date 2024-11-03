@@ -74,19 +74,19 @@ MM.register_partial('>',  'dynamic', OP.w_dynamic_gt)
 MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '+', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '-', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '*', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '/', wop_l, wop_r)
 
@@ -99,7 +99,7 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     w_common = vm.union_type(w_ltype, w_rtype)
     return w_common is not B.w_object and w_common.is_reference_type(vm)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wop_l.w_static_type
@@ -119,7 +119,7 @@ def EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     else:
         return MM.lookup(vm, '==', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wop_l.w_static_type
@@ -132,7 +132,7 @@ def NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
         return w_opimpl
     return MM.lookup(vm, '!=', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     # XXX this seems wrong: if we do universal_eq(i32, i32), we should get the
@@ -145,7 +145,7 @@ def UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
                      errmsg='cannot do `{0}` <universal_eq> `{1}`')
     return w_opimpl
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     # XXX: see the commet in UNIVERSAL_EQ
@@ -155,18 +155,18 @@ def UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
                      errmsg='cannot do `{0}` <universal_ne> `{1}`')
     return w_opimpl
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '<', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '<=', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '>', wop_l, wop_r)
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     return MM.lookup(vm, '>=', wop_l, wop_r)

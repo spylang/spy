@@ -15,19 +15,19 @@ if TYPE_CHECKING:
 
 PY_PRINT = print  # type: ignore
 
-@BUILTINS.builtin(color='blue')
+@BUILTINS.builtin_func(color='blue')
 def STATIC_TYPE(vm: 'SPyVM', w_expr: W_Object) -> W_Type:
     msg = ("STATIC_TYPE should never be called at runtime. "
            "It's special-cased by ASTFrame")
     raise NotImplementedError(msg)
 
-@BUILTINS.builtin
+@BUILTINS.builtin_func
 def abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
     res = vm.ll.call('spy_builtins$abs', x)
     return vm.wrap(res) # type: ignore
 
-@BUILTINS.builtin
+@BUILTINS.builtin_func
 def print(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
     """
     Super minimal implementation of print().
@@ -41,27 +41,27 @@ def print(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
     return B.w_None
 
 
-@BUILTINS.builtin
+@BUILTINS.builtin_func
 def print_i32(vm: 'SPyVM', w_x: W_I32) -> W_Void:
     PY_PRINT(vm.unwrap(w_x))
     return B.w_None
 
-@BUILTINS.builtin
+@BUILTINS.builtin_func
 def print_f64(vm: 'SPyVM', w_x: W_F64) -> W_Void:
     PY_PRINT(vm.unwrap(w_x))
     return B.w_None
 
-@BUILTINS.builtin
+@BUILTINS.builtin_func
 def print_bool(vm: 'SPyVM', w_x: W_Bool) -> W_Void:
     PY_PRINT(vm.unwrap(w_x))
     return B.w_None
 
-@BUILTINS.builtin
+@BUILTINS.builtin_func
 def print_void(vm: 'SPyVM', w_x: W_Void) -> W_Void:
     PY_PRINT(vm.unwrap(w_x))
     return B.w_None
 
-@BUILTINS.builtin
+@BUILTINS.builtin_func
 def print_str(vm: 'SPyVM', w_x: W_Str) -> W_Void:
     PY_PRINT(vm.unwrap(w_x))
     return B.w_None

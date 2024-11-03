@@ -22,7 +22,7 @@ def unwrap_attr_maybe(vm: 'SPyVM', wop_attr: W_OpArg) -> str:
     else:
         return '<unknown>'
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     attr = unwrap_attr_maybe(vm, wop_attr)
@@ -52,7 +52,7 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     return W_OpImpl.NULL
 
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
             wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl

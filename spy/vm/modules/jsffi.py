@@ -41,41 +41,41 @@ class W_JsRef(W_Object):
                 f"unsupported number of arguments for CALL_METHOD: {n}"
             )
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def debug(vm: 'SPyVM', w_str: W_Str) -> None:
     s = vm.unwrap_str(w_str)
     print('[JSFFI debug]', s)
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def init(vm: 'SPyVM') -> None:
     raise NotImplementedError
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def get_Console(vm: 'SPyVM') -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
                      name: W_Str, arg0: W_JsRef) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
+@JSFFI.builtin_func
 def js_setattr(vm: 'SPyVM', w_target: W_JsRef,
                name: W_Str, val: W_JsRef) -> None:
     raise NotImplementedError

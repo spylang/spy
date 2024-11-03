@@ -63,26 +63,27 @@ class ModuleRegistry:
             return W_class
         return decorator
 
-    def builtin(self,
-                pyfunc: Optional[Callable] = None,
-                *,
-                color: Color = 'red') -> Any:
+    def builtin_func(self,
+                     pyfunc: Optional[Callable] = None,
+                     *,
+                     color: Color = 'red') -> Any:
         """
         Register a builtin function on the module. We support two different
         syntaxes:
 
-        @MOD.builtin
+        @MOD.builtin_func
         def foo(): ...
 
-        @MOD.builtin(color='...')
+        @MOD.builtin_func(color='...')
         def foo(): ...
         """
         def decorator(pyfunc: Callable) -> W_BuiltinFunc:
-            attr = pyfunc.__name__
-            qn = self.qn.nested(attr)
+            #assert pyfunc.__name__.startswith('w_')
+            funcname = pyfunc.__name__#[2:]
+            qn = self.qn.nested(funcname)
             # apply the @builtin_func decorator to pyfunc
             w_func = builtin_func(qn, color=color)(pyfunc)
-            setattr(self, f'w_{attr}', w_func)
+            setattr(self, f'w_{funcname}', w_func)
             self.content.append((qn, w_func))
             return w_func
 

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
@@ -26,7 +26,7 @@ def GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
     return w_opimpl
 
 
-@OP.builtin(color='blue')
+@OP.builtin_func(color='blue')
 def SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg,
             wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
