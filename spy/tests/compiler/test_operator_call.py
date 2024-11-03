@@ -25,18 +25,18 @@ class TestCallOp(CompilerTest):
                 self.x = x
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Adder':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Adder':
                 return W_Adder(vm.unwrap_i32(w_x))
 
             @staticmethod
             def op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                         w_opargs: W_List[W_OpArg]) -> W_OpImpl:
                 @builtin_func(QN('ext::call'))
-                def call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
+                def w_call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
                     return vm.wrap(res) # type: ignore
-                return W_OpImpl(vm.wrap_func(call))
+                return W_OpImpl(w_call)
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -67,10 +67,10 @@ class TestCallOp(CompilerTest):
             def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
                              w_argtypes: W_Dynamic) -> W_OpImpl:
                 @builtin_func(QN('ext::new'))
-                def new(vm: 'SPyVM', w_cls: W_Type,
+                def w_new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
-                return W_OpImpl(vm.wrap_func(new))
+                return W_OpImpl(w_new)
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -98,7 +98,7 @@ class TestCallOp(CompilerTest):
                 self.w_y = w_y
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type,
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> 'W_Point':
                 return W_Point(w_x, w_y)
         # ========== /EXT module for this test =========
@@ -126,7 +126,7 @@ class TestCallOp(CompilerTest):
                 self.x = x
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Calc':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Calc':
                 return W_Calc(vm.unwrap_i32(w_x))
 
             @staticmethod
@@ -136,21 +136,23 @@ class TestCallOp(CompilerTest):
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @builtin_func(QN('ext::meth_add'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
+                    def w_fn(vm: 'SPyVM', w_self: W_Calc,
+                             w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
                     return W_OpImpl(
-                        vm.wrap_func(fn),
+                        w_fn,
                         [wop_obj] + w_opargs.items_w
                     )
 
                 elif meth == 'sub':
                     @builtin_func(QN('ext::meth_sub'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
+                    def w_fn(vm: 'SPyVM', w_self: W_Calc,
+                             w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
                     return W_OpImpl(
-                        vm.wrap_func(fn),
+                        w_fn,
                         [wop_obj] + w_opargs.items_w
                     )
                 else:

@@ -17,42 +17,42 @@ def _i32_op(vm: 'SPyVM', w_a: W_Object, w_b: W_Object, fn: Any) -> Any:
     return vm.wrap(res)
 
 @OP.builtin_func
-def i32_add(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+def w_i32_add(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a + b)
 
 @OP.builtin_func
-def i32_sub(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+def w_i32_sub(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a - b)
 
 @OP.builtin_func
-def i32_mul(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+def w_i32_mul(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a * b)
 
 # XXX: should we do floor division or float division?
 @OP.builtin_func
-def i32_div(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+def w_i32_div(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a // b)
 
 @OP.builtin_func
-def i32_eq(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
+def w_i32_eq(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a == b)
 
 @OP.builtin_func
-def i32_ne(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
+def w_i32_ne(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a != b)
 
 @OP.builtin_func
-def i32_lt(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
+def w_i32_lt(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a < b)
 
 @OP.builtin_func
-def i32_le(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
+def w_i32_le(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a <= b)
 
 @OP.builtin_func
-def i32_gt(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
+def w_i32_gt(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a > b)
 
 @OP.builtin_func
-def i32_ge(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
+def w_i32_ge(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a >= b)

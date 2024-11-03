@@ -30,12 +30,12 @@ class W_Tuple(W_Object):
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                    wop_i: W_OpArg) -> W_OpImpl:
-        return W_OpImpl(vm.wrap_func(tuple_getitem))
+        return W_OpImpl(w_tuple_getitem)
 
 
 
 @builtin_func(QN('operator::tuple_getitem'))
-def tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
+def w_tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
     i = vm.unwrap_i32(w_i)
     # XXX bound check?
     return w_tup.items_w[i]

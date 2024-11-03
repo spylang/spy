@@ -74,12 +74,12 @@ class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     def meta_op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
                         wop_i: 'W_OpArg') -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
-        return W_OpImpl(vm.wrap_func(make_list_type))
+        return W_OpImpl(w_make_list_type)
 
 
 
 @builtin_func(QN('__spy__::make_list_type'), color='blue')
-def make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
+def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
 
@@ -130,11 +130,11 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                        wop_i: 'W_OpArg') -> W_OpImpl:
             @no_type_check
             @builtin_func(QN('operator::list_getitem'))
-            def getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
+            def w_getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 return w_list.items_w[i]
-            return W_OpImpl(vm.wrap_func(getitem))
+            return W_OpImpl(w_getitem)
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
@@ -143,14 +143,14 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
 
             @no_type_check
             @builtin_func(QN('operator::list_setitem'))
-            def setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
-                        w_v: T) -> W_Void:
+            def w_setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
+                          w_v: T) -> W_Void:
                 assert isinstance(w_v, T)
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 w_list.items_w[i] = w_v
                 return B.w_None
-            return W_OpImpl(vm.wrap_func(setitem))
+            return W_OpImpl(w_setitem)
 
         @staticmethod
         def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> W_OpImpl:
@@ -163,7 +163,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             # vm.make_fqn_const
             @no_type_check
             @builtin_func(QN('operator::list_eq'))
-            def eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
+            def w_eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
                 items2_w = w_l2.items_w
                 if len(items1_w) != len(items2_w):
@@ -174,7 +174,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 return B.w_True
 
             if w_ltype is w_rtype:
-                return W_OpImpl(vm.wrap_func(eq))
+                return W_OpImpl(w_eq)
             else:
                 return W_OpImpl.NULL
 

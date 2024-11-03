@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 @OP.builtin_func(color='blue')
-def GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
     pyclass = wop_obj.w_static_type.pyclass
@@ -27,7 +27,7 @@ def GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
 
 
 @OP.builtin_func(color='blue')
-def SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg,
+def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg,
             wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL

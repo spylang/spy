@@ -25,7 +25,7 @@ class TestAttrOp(CompilerTest):
                 self.w_x = W_I32(0)
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -53,7 +53,7 @@ class TestAttrOp(CompilerTest):
                 self.x = 0
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
 
             @staticmethod
@@ -62,16 +62,16 @@ class TestAttrOp(CompilerTest):
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func(QN('ext::getx'))
-                    def fn(vm: 'SPyVM', w_obj: W_MyClass,
+                    def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                            w_attr: W_Str) -> W_I32:
                         return vm.wrap(w_obj.x)  # type: ignore
                 else:
                     @builtin_func(QN('ext::getany'))
-                    def fn(vm: 'SPyVM', w_obj: W_MyClass,
+                    def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
                         return vm.wrap(attr.upper() + '--42')  # type: ignore
-                return W_OpImpl(vm.wrap_func(fn))
+                return W_OpImpl(w_fn)
 
             @staticmethod
             def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
@@ -79,11 +79,11 @@ class TestAttrOp(CompilerTest):
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func(QN('ext::setx'))
-                    def fn(vm: 'SPyVM', w_obj: W_MyClass,
-                               w_attr: W_Str, w_val: W_I32) -> W_Void:
+                    def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
+                             w_attr: W_Str, w_val: W_I32) -> W_Void:
                         w_obj.x = vm.unwrap_i32(w_val)
                         return B.w_None
-                    return W_OpImpl(vm.wrap_func(fn))
+                    return W_OpImpl(w_fn)
                 else:
                     return W_OpImpl.NULL
         # ========== /EXT module for this test =========

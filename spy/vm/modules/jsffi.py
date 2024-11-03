@@ -42,40 +42,40 @@ class W_JsRef(W_Object):
             )
 
 @JSFFI.builtin_func
-def debug(vm: 'SPyVM', w_str: W_Str) -> None:
+def w_debug(vm: 'SPyVM', w_str: W_Str) -> None:
     s = vm.unwrap_str(w_str)
     print('[JSFFI debug]', s)
 
 @JSFFI.builtin_func
-def init(vm: 'SPyVM') -> None:
+def w_init(vm: 'SPyVM') -> None:
     raise NotImplementedError
 
 @JSFFI.builtin_func
-def get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
+def w_get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func
-def get_Console(vm: 'SPyVM') -> W_JsRef:
+def w_get_Console(vm: 'SPyVM') -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func
-def js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
+def w_js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func
-def js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
+def w_js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func
-def js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
+def w_js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
                      name: W_Str, arg0: W_JsRef) -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func
-def js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
+def w_js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func
-def js_setattr(vm: 'SPyVM', w_target: W_JsRef,
+def w_js_setattr(vm: 'SPyVM', w_target: W_JsRef,
                name: W_Str, val: W_JsRef) -> None:
     raise NotImplementedError

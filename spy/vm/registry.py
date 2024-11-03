@@ -72,14 +72,14 @@ class ModuleRegistry:
         syntaxes:
 
         @MOD.builtin_func
-        def foo(): ...
+        def w_foo(): ...
 
         @MOD.builtin_func(color='...')
         def foo(): ...
         """
         def decorator(pyfunc: Callable) -> W_BuiltinFunc:
-            #assert pyfunc.__name__.startswith('w_')
-            funcname = pyfunc.__name__#[2:]
+            assert pyfunc.__name__.startswith('w_')
+            funcname = pyfunc.__name__[2:]
             qn = self.qn.nested(funcname)
             # apply the @builtin_func decorator to pyfunc
             w_func = builtin_func(qn, color=color)(pyfunc)

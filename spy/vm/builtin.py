@@ -84,6 +84,7 @@ def builtin_func(qn: QN, color: Color = 'red') -> Callable:
     cannot call it directly, but you need to use vm.call.
     """
     def decorator(fn: Callable) -> W_BuiltinFunc:
+        assert fn.__name__.startswith('w_')
         w_functype = functype_from_sig(fn, color)
         return W_BuiltinFunc(w_functype, qn, fn)
     return decorator

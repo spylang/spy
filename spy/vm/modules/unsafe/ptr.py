@@ -40,11 +40,9 @@ class W_Ptr(W_Object):
         return f'{clsname}(0x{self.addr:x}, length={self.length})'
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg) -> W_OpImpl:
-        return W_OpImpl(
-            vm.wrap_func(make_ptr_type),
-            [wop_T]
-        )
+    def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg,
+                        wop_T: W_OpArg) -> W_OpImpl:
+        return W_OpImpl(w_make_ptr_type, [wop_T])
 
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
         return self.addr
@@ -52,7 +50,7 @@ class W_Ptr(W_Object):
 
 
 @UNSAFE.builtin_func(color='blue')
-def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
+def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     from .struct import W_StructType
 
     T = w_T.pyclass
@@ -67,12 +65,12 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg,
                        wop_i: W_OpArg) -> W_OpImpl:
-            return W_OpImpl(vm.wrap_func(ptr_load))
+            return W_OpImpl(w_ptr_load)
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
                        wop_v: W_OpArg) -> W_OpImpl:
-            return W_OpImpl(vm.wrap_func(ptr_store))
+            return W_OpImpl(w_ptr_store)
 
         @staticmethod
         def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
@@ -108,23 +106,17 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             assert wop_v is None
             w_func = vm.call(UNSAFE.w_getfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpImpl(
-                w_func,
-                [wop_ptr, wop_attr, wop_offset]
-            )
+            return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset])
         else:
             # setfield[field_T](ptr, attr, offset, v)
             assert wop_v is not None
             w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpImpl(
-                w_func,
-                [wop_ptr, wop_attr, wop_offset, wop_v]
-            )
+            return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
     @no_type_check
     @builtin_func(QN(f'unsafe::ptr_{w_T.name}_load'))
-    def ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
+    def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
         length = w_ptr.length
         i = vm.unwrap_i32(w_i)
@@ -141,7 +133,7 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
 
     @no_type_check
     @builtin_func(QN(f'unsafe::ptr_{w_T.name}_store'))
-    def ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
+    def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
         length = w_ptr.length
@@ -163,28 +155,26 @@ def make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
 
 
 @UNSAFE.builtin_func(color='blue')
-def getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # fields can be returned "by value" or "by reference". Primitive types
     # returned by value, but struct types are always returned by reference
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
-        w_T = vm.call(make_ptr_type, [w_T])
+        w_T = vm.call(w_make_ptr_type, [w_T])
         by = 'byref'
     else:
         by = 'byval'
 
     T = w_T.pyclass  # W_I32
     t = w_T.name     # 'i32'
+    t = hack_hack_fix_typename(t)
 
     # unsafe::getfield_prim_i32
     # unsafe::getfield_ref_Point
-
-    t = hack_hack_fix_typename(t)
-
     @no_type_check
     @builtin_func(QN(f'unsafe::getfield_{by}_{t}'))
-    def getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
-                   w_offset: W_I32) -> T:
+    def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                     w_offset: W_I32) -> T:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
@@ -194,18 +184,18 @@ def getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [w_T],
             [vm.wrap(addr)]
         )
-    return vm.wrap(getfield_T)
+    return w_getfield_T
 
 
 @UNSAFE.builtin_func(color='blue')
-def setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass  # W_I32
     t = w_T.name     # 'i32'
 
     @no_type_check
     @builtin_func(QN(f'unsafe::setfield_{t}'))  # unsafe::setfield_i32
-    def setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
-                   w_offset: W_I32, w_val: T) -> W_Void:
+    def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+                     w_offset: W_I32, w_val: T) -> W_Void:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
@@ -215,4 +205,4 @@ def setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [w_T],
             [vm.wrap(addr), w_val]
         )
-    return vm.wrap(setfield_T)
+    return w_setfield_T

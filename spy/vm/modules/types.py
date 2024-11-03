@@ -41,8 +41,8 @@ class W_TypeDef(W_Type):
         self.w_setattr = W_OpImpl.NULL
 
     @staticmethod
-    def spy_new(vm: 'SPyVM', w_cls: W_Type, w_name: W_Str,
-                w_origintype: W_Type) -> 'W_TypeDef':
+    def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_name: W_Str,
+                  w_origintype: W_Type) -> 'W_TypeDef':
         name = vm.unwrap_str(w_name)
         return W_TypeDef(name, w_origintype)
 

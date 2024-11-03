@@ -21,16 +21,17 @@ class TestOp(CompilerTest):
         class W_MyClass(W_Object):
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
 
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                            wop_i: W_OpArg) -> W_OpImpl:
                 @builtin_func(QN('ext::getitem'))
-                def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
+                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
+                              w_i: W_I32) -> W_I32:
                     return w_i
-                return W_OpImpl(vm.wrap_func(getitem))
+                return W_OpImpl(w_getitem)
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -55,16 +56,16 @@ class TestOp(CompilerTest):
         class W_MyClass(W_Object):
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
 
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                            wop_i: W_OpArg) -> W_OpImpl:
                 @builtin_func(QN('ext::getitem'))
-                def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
+                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
-                return W_OpImpl(vm.wrap_func(getitem))
+                return W_OpImpl(w_getitem)
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -91,7 +92,7 @@ class TestOp(CompilerTest):
                 self.w_x = w_x
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_MyClass':
                 return W_MyClass(w_x)
 
             @staticmethod
@@ -103,7 +104,7 @@ class TestOp(CompilerTest):
                 return W_OpImpl(EXT.w_sum, [wop_i, wop_obj])
 
         @EXT.builtin_func
-        def sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
+        def w_sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
             assert isinstance(w_i, W_I32)
             assert isinstance(w_obj, W_MyClass)
             a = vm.unwrap_i32(w_i)

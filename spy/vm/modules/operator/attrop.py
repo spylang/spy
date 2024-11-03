@@ -23,7 +23,7 @@ def unwrap_attr_maybe(vm: 'SPyVM', wop_attr: W_OpArg) -> str:
         return '<unknown>'
 
 @OP.builtin_func(color='blue')
-def GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
+def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     attr = unwrap_attr_maybe(vm, wop_attr)
     w_opimpl = _get_GETATTR_opimpl(vm, wop_obj, wop_attr, attr)
@@ -53,7 +53,7 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 
 
 @OP.builtin_func(color='blue')
-def SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
             wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     attr = unwrap_attr_maybe(vm, wop_attr)
@@ -98,19 +98,19 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
     if kind == 'get':
         @no_type_check
         @builtin_func(QN([w_type.name, f"__get_{attr}__"]))
-        def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_OpArg:
+        def w_opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_OpArg:
             return getattr(w_obj, field)
 
-        return W_OpImpl(vm.wrap_func(opimpl_get))
+        return W_OpImpl(w_opimpl_get)
 
     elif kind == 'set':
         @no_type_check
         @builtin_func(QN([w_type.name, f"__set_{attr}__"]))
-        def opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
-                       w_val: W_OpArg) -> W_Void:
+        def w_opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
+                         w_val: W_OpArg) -> W_Void:
             setattr(w_obj, field, w_val)
 
-        return W_OpImpl(vm.wrap_func(opimpl_set))
+        return W_OpImpl(w_opimpl_set)
 
     else:
         assert False, f'Invalid OpKind: {kind}'

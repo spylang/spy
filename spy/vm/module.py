@@ -42,22 +42,22 @@ class W_Module(W_Object):
         away.
         """
         @builtin_func(QN('builtins::module_getattr'))
-        def fn(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
+        def w_fn(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
             attr = vm.unwrap_str(w_attr)
             return w_mod.getattr(attr)
-        return W_OpImpl(vm.wrap_func(fn))
+        return W_OpImpl(w_fn)
 
 
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                    wop_v: W_OpArg) -> W_OpImpl:
         @builtin_func(QN('builtins::module_setattr'))
-        def fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
+        def w_fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
                    W_Str, w_val: W_Dynamic) -> W_Void:
             attr = vm.unwrap_str(w_attr)
             w_mod.setattr(attr, w_val)
             return B.w_None
-        return W_OpImpl(vm.wrap_func(fn))
+        return W_OpImpl(w_fn)
 
     # ==== public interp-level API ====
 

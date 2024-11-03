@@ -18,40 +18,40 @@ def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
     return w_opimpl.call(vm, [w_a, w_b])
 
 @OP.builtin_func
-def dynamic_add(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_add(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_ADD, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_mul(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_mul(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_MUL, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_eq(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_eq(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     # NOTE: == between dynamic uses UNIVERSAL_EQ
     return _dynamic_op(vm, OP.w_UNIVERSAL_EQ, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_ne(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_ne(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_UNIVERSAL_NE, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_lt(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_lt(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_LT, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_le(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_le(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_LE, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_gt(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_gt(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_GT, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_ge(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+def w_dynamic_ge(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_GE, w_a, w_b)
 
 @OP.builtin_func
-def dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
+def w_dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
                     w_value: W_Dynamic) -> W_Dynamic:
     wop_obj = W_OpArg.from_w_obj(vm, w_obj, 'o', 0)
     wop_attr = W_OpArg.from_w_obj(vm, w_attr, 'a', 1)
