@@ -10,7 +10,8 @@ import inspect
 from typing import TYPE_CHECKING, Any, Callable
 from spy.fqn import QN
 from spy.ast import Color
-from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType, W_Void
+from spy.vm.primitive import W_Void
+from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

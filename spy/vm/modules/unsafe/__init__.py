@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING
 import fixedint
+from spy.vm.primitive import W_Void
 from spy.vm.b import B
 from spy.vm.object import spytype
-from spy.vm.w import W_Object, W_I32, W_Type, W_Void
+from spy.vm.w import W_Object, W_I32, W_Type
 from spy.vm.registry import ModuleRegistry
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 if TYPE_CHECKING:

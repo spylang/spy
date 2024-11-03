@@ -5,7 +5,8 @@ The first half is in vm/b.py. See its docstring for more details.
 """
 
 from typing import TYPE_CHECKING, Any
-from spy.vm.object import (W_I32, W_F64, W_Bool, W_Dynamic, W_Void, W_Object,
+from spy.vm.primitive import W_Void
+from spy.vm.object import (W_I32, W_F64, W_Bool, W_Dynamic, W_Object,
                            W_Type)
 from spy.vm.str import W_Str
 from spy.vm.b import BUILTINS, B

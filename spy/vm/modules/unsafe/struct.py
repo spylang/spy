@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar
 from dataclasses import dataclass
 import fixedint
+from spy.vm.primitive import W_Void
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type, W_I32, W_Void
+from spy.vm.object import W_Object, W_Type, W_I32
 from spy.vm.builtin import builtin_func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from . import UNSAFE

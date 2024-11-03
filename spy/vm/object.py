@@ -49,8 +49,10 @@ import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
                     Union)
 from spy.fqn import QN
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.primitive import W_Void
     from spy.vm.str import W_Str
     from spy.vm.list import W_List
     from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -192,6 +194,7 @@ class W_Type(W_Object):
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
     def w_base(self) -> Union['W_Type', 'W_Void']:
+        from spy.vm.primitive import W_Void
         if self is W_Object._w or self is w_DynamicType:
             return W_Void._w_singleton  # this is B.w_None
         basecls = self.pyclass.__base__
@@ -413,29 +416,6 @@ def spytype(name: str) -> Any:
         return pyclass
     return decorator
 
-@spytype('void')
-class W_Void(W_Object):
-    """
-    Equivalent of Python's NoneType.
-
-    This is a singleton: there should be only one instance of this class,
-    which is w_None.
-    """
-
-    _w_singleton: ClassVar['W_Void']
-
-    def __init__(self) -> None:
-        # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_Void
-        raise Exception("You cannot instantiate W_Void")
-
-    def __repr__(self) -> str:
-        return '<spy None>'
-
-    def spy_unwrap(self, vm: 'SPyVM') -> None:
-        return None
-
-W_Void._w_singleton = W_Void.__new__(W_Void)
 
 
 @spytype('i32')
