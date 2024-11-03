@@ -31,9 +31,10 @@ from spy.fqn import QN
 from spy.location import Loc
 from spy.irgen.symtable import Symbol
 from spy.errors import SPyTypeError
-from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
+from spy.vm.object import Member, W_Type, W_Object, spytype
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.builtin import builtin_func
+from spy.vm.primitive import W_Bool
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

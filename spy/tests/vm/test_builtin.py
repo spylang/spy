@@ -1,6 +1,7 @@
 import pytest
+from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
-from spy.vm.w import W_FuncType, W_I32, W_BuiltinFunc, W_Dynamic, W_Str
+from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Dynamic, W_Str
 from spy.vm.b import B
 from spy.fqn import QN
 from spy.vm.builtin import builtin_func, functype_from_sig
