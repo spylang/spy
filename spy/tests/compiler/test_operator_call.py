@@ -16,7 +16,7 @@ class TestCallOp(CompilerTest):
 
     def test_call_instance(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Adder')
         class W_Adder(W_Object):
@@ -52,7 +52,7 @@ class TestCallOp(CompilerTest):
 
     def test_call_type(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Point')
         class W_Point(W_Object):
@@ -86,7 +86,7 @@ class TestCallOp(CompilerTest):
 
     def test_spy_new(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Point')
         class W_Point(W_Object):
@@ -117,7 +117,7 @@ class TestCallOp(CompilerTest):
 
     def test_call_method(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Calc')
         class W_Calc(W_Object):

@@ -63,7 +63,7 @@ class OperatorRegistry(ModuleRegistry):
         raise KeyError(w_OP)
 
 
-OPERATOR = OperatorRegistry('operator', '<operator>')
+OPERATOR = OperatorRegistry('operator')
 OP = OPERATOR
 
 # the folloing imports register all the various objects on OP

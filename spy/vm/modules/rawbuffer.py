@@ -11,7 +11,7 @@ from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-RAW_BUFFER = RB = ModuleRegistry('rawbuffer', '<rawbuffer>')
+RAW_BUFFER = RB = ModuleRegistry('rawbuffer')
 
 @RB.spytype('RawBuffer')
 class W_RawBuffer(W_Object):

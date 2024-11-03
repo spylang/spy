@@ -15,7 +15,7 @@ class TestOp(CompilerTest):
 
     def test_opimpl_type_mismatch(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
@@ -49,7 +49,7 @@ class TestOp(CompilerTest):
 
     def test_opimpl_wrong_argcount(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
@@ -82,7 +82,7 @@ class TestOp(CompilerTest):
 
     def test_Values(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('MyClass')
         class W_MyClass(W_Object):

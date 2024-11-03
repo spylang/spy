@@ -23,7 +23,7 @@ from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
 
 
-BUILTINS = ModuleRegistry('builtins', '<builtins>')
+BUILTINS = ModuleRegistry('builtins')
 B = BUILTINS
 
 B.add('object', W_Object._w)

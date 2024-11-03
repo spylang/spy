@@ -14,7 +14,7 @@ from spy.vm.modules.types import W_TypeDef
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-JSFFI = ModuleRegistry('jsffi', '<jsffi>')
+JSFFI = ModuleRegistry('jsffi')
 
 @JSFFI.spytype('JsRef')
 class W_JsRef(W_Object):

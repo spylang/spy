@@ -15,7 +15,7 @@ class TestAttrOp(CompilerTest):
 
     def test_member(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('MyClass')
         class W_MyClass(W_Object):
@@ -44,7 +44,7 @@ class TestAttrOp(CompilerTest):
 
     def test_getattr_setattr_custom(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('MyClass')
         class W_MyClass(W_Object):

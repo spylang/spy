@@ -101,7 +101,7 @@ class SPyVM:
         self.modules_w[w_mod.name] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
-        w_mod = W_Module(self, reg.qn.modname, reg.filepath)
+        w_mod = W_Module(self, reg.qn.modname, f'<reg.qn.modname>')
         self.register_module(w_mod)
         for qn, w_obj in reg.content:
             fqn = self.get_FQN(qn, is_global=True)

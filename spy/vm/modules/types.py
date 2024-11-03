@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-TYPES = ModuleRegistry('types', '<types>')
+TYPES = ModuleRegistry('types')
 TYPES.add('module', W_Module._w)
 
 

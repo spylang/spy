@@ -13,12 +13,10 @@ class ModuleRegistry:
     At startup, the `vm` will create a W_Module out of it.
     """
     qn: QN
-    filepath: str
     content: list[tuple[QN, W_Object]]
 
-    def __init__(self, modname: str, filepath: str) -> None:
+    def __init__(self, modname: str) -> None:
         self.qn = QN(modname)
-        self.filepath = filepath
         self.content = []
 
     def __repr__(self) -> str:
