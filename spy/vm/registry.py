@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
-from spy.vm.sig import spy_builtin, SPyBuiltin
+from spy.vm.builtin import builtin_func, SPyBuiltin
 from spy.vm.object import W_Object, spytype
 
 class ModuleRegistry:
@@ -81,7 +81,7 @@ class ModuleRegistry:
             attr = pyfunc.__name__
             qn = self.qn.nested(attr)
             # apply the @spy_builtin decorator to pyfunc
-            spyfunc = spy_builtin(qn, color=color)(pyfunc)
+            spyfunc = builtin_func(qn, color=color)(pyfunc)
             w_func = spyfunc._w
             setattr(self, f'w_{attr}', w_func)
             self.content.append((qn, w_func))

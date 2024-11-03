@@ -12,7 +12,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
-from spy.vm.sig import SPyBuiltin
+from spy.vm.builtin import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.opimpl import W_OpImpl, W_OpArg, oparg_eq

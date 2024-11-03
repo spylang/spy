@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -61,12 +61,12 @@ class TestAttrOp(CompilerTest):
                            wop_attr: W_OpArg) -> W_OpImpl:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
-                    @spy_builtin(QN('ext::getx'))
+                    @builtin_func(QN('ext::getx'))
                     def fn(vm: 'SPyVM', w_obj: W_MyClass,
                            w_attr: W_Str) -> W_I32:
                         return vm.wrap(w_obj.x)  # type: ignore
                 else:
-                    @spy_builtin(QN('ext::getany'))
+                    @builtin_func(QN('ext::getany'))
                     def fn(vm: 'SPyVM', w_obj: W_MyClass,
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
@@ -78,7 +78,7 @@ class TestAttrOp(CompilerTest):
                            wop_v: W_OpArg) -> W_OpImpl:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
-                    @spy_builtin(QN('ext::setx'))
+                    @builtin_func(QN('ext::setx'))
                     def fn(vm: 'SPyVM', w_obj: W_MyClass,
                                w_attr: W_Str, w_val: W_I32) -> W_Void:
                         w_obj.x = vm.unwrap_i32(w_val)

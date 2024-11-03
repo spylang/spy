@@ -3,7 +3,7 @@ from typing import (TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar,
 from spy.fqn import QN
 from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
                            W_Bool)
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -78,7 +78,7 @@ class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
 
 
 
-@spy_builtin(QN('__spy__::make_list_type'), color='blue')
+@builtin_func(QN('__spy__::make_list_type'), color='blue')
 def make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
@@ -129,7 +129,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
         def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
                        wop_i: 'W_OpArg') -> W_OpImpl:
             @no_type_check
-            @spy_builtin(QN('operator::list_getitem'))
+            @builtin_func(QN('operator::list_getitem'))
             def getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
@@ -142,7 +142,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             from spy.vm.b import B
 
             @no_type_check
-            @spy_builtin(QN('operator::list_setitem'))
+            @builtin_func(QN('operator::list_setitem'))
             def setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
                         w_v: T) -> W_Void:
                 assert isinstance(w_v, T)
@@ -162,7 +162,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             # XXX: we use use proper nested QNs. See also the comment in
             # vm.make_fqn_const
             @no_type_check
-            @spy_builtin(QN('operator::list_eq'))
+            @builtin_func(QN('operator::list_eq'))
             def eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
                 items2_w = w_l2.items_w

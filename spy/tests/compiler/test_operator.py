@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -27,7 +27,7 @@ class TestOp(CompilerTest):
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                            wop_i: W_OpArg) -> W_OpImpl:
-                @spy_builtin(QN('ext::getitem'))
+                @builtin_func(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
                 return W_OpImpl(vm.wrap_func(getitem))
@@ -61,7 +61,7 @@ class TestOp(CompilerTest):
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                            wop_i: W_OpArg) -> W_OpImpl:
-                @spy_builtin(QN('ext::getitem'))
+                @builtin_func(QN('ext::getitem'))
                 def getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
                 return W_OpImpl(vm.wrap_func(getitem))

@@ -1,3 +1,11 @@
+"""
+This is NOT the spy "builtins" module.
+
+This contains the basic machinery to build builtin functions and types, for
+ALL builtin module. The builtin module whose name is "builtins" reside in
+vm/modules/builtins.py.
+"""
+
 import inspect
 from typing import TYPE_CHECKING, Any, Callable
 from spy.fqn import QN
@@ -55,13 +63,13 @@ def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
     return W_FuncType(func_params, w_restype, color=color)
 
 
-def spy_builtin(qn: QN, color: Color = 'red') -> Callable:
-    """
+def builtin_func(qn: QN, color: Color = 'red') -> Callable:
+"""
     Decorator to make an interp-level function wrappable by the VM.
 
     Example of usage:
 
-        @spy_builtin(QN("foo::hello"))
+        @builtin_func(QN("foo::hello"))
         def hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             ...
 

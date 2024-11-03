@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, spytype, W_Type, W_Dynamic, W_Void
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ class W_Module(W_Object):
         all the module getattrs are done in blue contexts are redshifted
         away.
         """
-        @spy_builtin(QN('builtins::module_getattr'))
+        @builtin_func(QN('builtins::module_getattr'))
         def fn(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
             attr = vm.unwrap_str(w_attr)
             return w_mod.getattr(attr)
@@ -51,7 +51,7 @@ class W_Module(W_Object):
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                    wop_v: W_OpArg) -> W_OpImpl:
-        @spy_builtin(QN('builtins::module_setattr'))
+        @builtin_func(QN('builtins::module_setattr'))
         def fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
                    W_Str, w_val: W_Dynamic) -> W_Void:
             attr = vm.unwrap_str(w_attr)

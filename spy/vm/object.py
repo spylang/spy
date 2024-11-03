@@ -376,7 +376,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     finally vm.wrap() it.
     """
     from spy.vm.opimpl import W_OpImpl, W_OpArg
-    from spy.vm.sig import spy_builtin
+    from spy.vm.builtin import builtin_func
     assert hasattr(pyclass, 'spy_new')
     spy_new = pyclass.spy_new
 
@@ -385,7 +385,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
         fix_annotations(spy_new, {pyclass.__name__: pyclass})
         qn = QN('ext::new') # XXX what modname should we use?
         # manually apply the @spy_builtin decorator to the spy_new function
-        spyfunc = spy_builtin(qn)(spy_new)
+        spyfunc = builtin_func(qn)(spy_new)
         return W_OpImpl(vm.wrap_func(spyfunc))
 
     return meta_op_CALL

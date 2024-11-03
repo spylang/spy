@@ -5,7 +5,7 @@ from spy.vm.object import W_Object, W_Type, W_Dynamic, W_Void
 from spy.vm.module import W_Module
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.modules.types import W_TypeDef
 
@@ -97,7 +97,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
 
     if kind == 'get':
         @no_type_check
-        @spy_builtin(QN([w_type.name, f"__get_{attr}__"]))
+        @builtin_func(QN([w_type.name, f"__get_{attr}__"]))
         def opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_OpArg:
             return getattr(w_obj, field)
 
@@ -105,7 +105,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
 
     elif kind == 'set':
         @no_type_check
-        @spy_builtin(QN([w_type.name, f"__set_{attr}__"]))
+        @builtin_func(QN([w_type.name, f"__set_{attr}__"]))
         def opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
                        w_val: W_OpArg) -> W_Void:
             setattr(w_obj, field, w_val)

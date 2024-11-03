@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void, W_List
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -31,7 +31,7 @@ class TestCallOp(CompilerTest):
             @staticmethod
             def op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                         w_opargs: W_List[W_OpArg]) -> W_OpImpl:
-                @spy_builtin(QN('ext::call'))
+                @builtin_func(QN('ext::call'))
                 def call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
@@ -66,7 +66,7 @@ class TestCallOp(CompilerTest):
             @staticmethod
             def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
                              w_argtypes: W_Dynamic) -> W_OpImpl:
-                @spy_builtin(QN('ext::new'))
+                @builtin_func(QN('ext::new'))
                 def new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
@@ -135,7 +135,7 @@ class TestCallOp(CompilerTest):
                                w_opargs: W_List[W_OpArg]) -> W_OpImpl:
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
-                    @spy_builtin(QN('ext::meth_add'))
+                    @builtin_func(QN('ext::meth_add'))
                     def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
@@ -145,7 +145,7 @@ class TestCallOp(CompilerTest):
                     )
 
                 elif meth == 'sub':
-                    @spy_builtin(QN('ext::meth_sub'))
+                    @builtin_func(QN('ext::meth_sub'))
                     def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
