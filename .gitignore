@@ -5,6 +5,7 @@ tmp/
 tmp_*
 all.sh
 comp.sh
+basic.sh
 
 examples/jsffi/demo.c
 examples/jsffi/demo.mjs

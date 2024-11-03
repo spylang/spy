@@ -7,10 +7,12 @@ vm/modules/builtins.py.
 """
 
 import inspect
-from typing import TYPE_CHECKING, Any, Callable
+import typing
+from typing import TYPE_CHECKING, Any, Callable, Type
 from spy.fqn import QN
 from spy.ast import Color
-from spy.vm.object import W_Object, W_Type, W_Dynamic, w_DynamicType, W_Void
+from spy.vm.primitive import W_Void
+from spy.vm.object import W_Object, W_Type, W_Dynamic, _get_member_maybe, make_metaclass, w_DynamicType
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -87,4 +89,28 @@ def builtin_func(qn: QN, color: Color = 'red') -> Callable:
         assert fn.__name__.startswith('w_')
         w_functype = functype_from_sig(fn, color)
         return W_BuiltinFunc(w_functype, qn, fn)
+    return decorator
+
+
+def builtin_type(name: str) -> Any:
+    """
+    Class decorator to simplify the creation of SPy types.
+
+    Given a W_* class, it automatically creates the corresponding instance of
+    W_Type and attaches it to the W_* class.
+    """
+    def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
+        W_MetaClass = make_metaclass(name, pyclass)
+
+        pyclass._w = W_MetaClass(name, pyclass)
+        # setup __spy_members__
+        pyclass.__spy_members__ = {}
+        for field, t in pyclass.__annotations__.items():
+            member = _get_member_maybe(t)
+            if member is not None:
+                member.field = field
+                member.w_type = typing.get_args(t)[0]._w
+                pyclass.__spy_members__[member.name] = member
+
+        return pyclass
     return decorator

@@ -44,13 +44,13 @@ For simple cases, SPy app-level types are instances of W_Type, which is
 basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
-import fixedint
-import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
                     Union)
 from spy.fqn import QN
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.primitive import W_Void
     from spy.vm.str import W_Str
     from spy.vm.list import W_List
     from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -192,6 +192,7 @@ class W_Type(W_Object):
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
     def w_base(self) -> Union['W_Type', 'W_Void']:
+        from spy.vm.primitive import W_Void
         if self is W_Object._w or self is w_DynamicType:
             return W_Void._w_singleton  # this is B.w_None
         basecls = self.pyclass.__base__
@@ -390,128 +391,3 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
 
     return meta_op_CALL
 
-def spytype(name: str) -> Any:
-    """
-    Class decorator to simplify the creation of SPy types.
-
-    Given a W_* class, it automatically creates the corresponding instance of
-    W_Type and attaches it to the W_* class.
-    """
-    def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-        W_MetaClass = make_metaclass(name, pyclass)
-
-        pyclass._w = W_MetaClass(name, pyclass)
-        # setup __spy_members__
-        pyclass.__spy_members__ = {}
-        for field, t in pyclass.__annotations__.items():
-            member = _get_member_maybe(t)
-            if member is not None:
-                member.field = field
-                member.w_type = typing.get_args(t)[0]._w
-                pyclass.__spy_members__[member.name] = member
-
-        return pyclass
-    return decorator
-
-@spytype('void')
-class W_Void(W_Object):
-    """
-    Equivalent of Python's NoneType.
-
-    This is a singleton: there should be only one instance of this class,
-    which is w_None.
-    """
-
-    _w_singleton: ClassVar['W_Void']
-
-    def __init__(self) -> None:
-        # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_Void
-        raise Exception("You cannot instantiate W_Void")
-
-    def __repr__(self) -> str:
-        return '<spy None>'
-
-    def spy_unwrap(self, vm: 'SPyVM') -> None:
-        return None
-
-W_Void._w_singleton = W_Void.__new__(W_Void)
-
-
-@spytype('i32')
-class W_I32(W_Object):
-    value: fixedint.Int32
-
-    def __init__(self, value: int | fixedint.Int32) -> None:
-        assert type(value) in (int, fixedint.Int32)
-        self.value = fixedint.Int32(value)
-
-    def __repr__(self) -> str:
-        return f'W_I32({self.value})'
-
-    def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
-        return self.value
-
-
-@spytype('f64')
-class W_F64(W_Object):
-    value: float
-
-    def __init__(self, value: float) -> None:
-        assert type(value) is float
-        self.value = value
-
-    def __repr__(self) -> str:
-        return f'W_F64({self.value})'
-
-    def spy_unwrap(self, vm: 'SPyVM') -> float:
-        return self.value
-
-
-@spytype('bool')
-class W_Bool(W_Object):
-    value: bool
-    #
-    _w_singleton_True: ClassVar['W_Bool']
-    _w_singleton_False: ClassVar['W_Bool']
-
-    def __init__(self, value: bool) -> None:
-        # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_Bool
-        raise Exception("You cannot instantiate W_Bool. Use vm.wrap().")
-
-    @staticmethod
-    def _make_singleton(value: bool) -> 'W_Bool':
-        w_obj = W_Bool.__new__(W_Bool)
-        w_obj.value = value
-        return w_obj
-
-    def __repr__(self) -> str:
-        return f'W_Bool({self.value})'
-
-    def spy_unwrap(self, vm: 'SPyVM') -> bool:
-        return self.value
-
-    def not_(self, vm: 'SPyVM') -> 'W_Bool':
-        if self.value:
-            return W_Bool._w_singleton_False
-        else:
-            return W_Bool._w_singleton_True
-
-W_Bool._w_singleton_True = W_Bool._make_singleton(True)
-W_Bool._w_singleton_False = W_Bool._make_singleton(False)
-
-
-@spytype('NotImplementedType')
-class W_NotImplementedType(W_Object):
-    _w_singleton: ClassVar['W_NotImplementedType']
-
-    def __init__(self) -> None:
-        # this is just a sanity check: we don't want people to be able to
-        # create additional instances
-        raise Exception("You cannot instantiate W_NotImplementedType")
-
-
-W_NotImplementedType._w_singleton = (
-    W_NotImplementedType.__new__(W_NotImplementedType)
-)

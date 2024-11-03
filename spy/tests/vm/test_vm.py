@@ -1,10 +1,12 @@
 import fixedint
 import pytest
+from spy.vm.builtin import builtin_type
+from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.fqn import QN, FQN
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, spytype, W_Void, W_I32, W_Bool
+from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
@@ -52,7 +54,7 @@ class TestVM:
         assert repr(B.w_dynamic) == "<spy type 'dynamic'>"
 
     def test_spytype_decorator(self):
-        @spytype('foo')
+        @builtin_type('foo')
         class W_Foo(W_Object):
             pass
         #
@@ -61,11 +63,11 @@ class TestVM:
         assert W_Foo._w.pyclass is W_Foo
 
     def test_w_base(self):
-        @spytype('A')
+        @builtin_type('A')
         class W_A(W_Object):
             pass
         #
-        @spytype('B')
+        @builtin_type('B')
         class W_B(W_A):
             pass
         #
@@ -75,11 +77,11 @@ class TestVM:
         assert W_B._w.w_base is W_A._w
 
     def test_issubclass(self):
-        @spytype('A')
+        @builtin_type('A')
         class W_A(W_Object):
             pass
         #
-        @spytype('B')
+        @builtin_type('B')
         class W_B(W_A):
             pass
         #
@@ -95,15 +97,15 @@ class TestVM:
         assert not vm.issubclass(w_a, w_b)
 
     def test_union_type(self):
-        @spytype('A')
+        @builtin_type('A')
         class W_A(W_Object):
             pass
         #
-        @spytype('B')
+        @builtin_type('B')
         class W_B(W_A):
             pass
         #
-        @spytype('C')
+        @builtin_type('C')
         class W_C(W_A):
             pass
         vm = SPyVM()

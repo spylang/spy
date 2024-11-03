@@ -15,9 +15,9 @@ This strange setup is needed to avoid circular imports, since B.* is needed
 all over the place and we need to import it very early.
 """
 
+from spy.vm.primitive import W_F64, W_I32, W_Bool, W_NotImplementedType, W_Void
 from spy.vm.registry import ModuleRegistry
-from spy.vm.object import (W_Object, W_Type, w_DynamicType, W_Void, W_I32,
-                           W_F64, W_Bool, W_NotImplementedType)
+from spy.vm.object import (W_Object, W_Type, w_DynamicType)
 from spy.vm.str import W_Str
 from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple

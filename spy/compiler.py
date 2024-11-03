@@ -6,7 +6,7 @@ from spy.cbuild import get_toolchain
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc
-from spy.vm.object import W_I32
+from spy.vm.primitive import W_I32
 from spy.util import highlight_C_maybe
 
 DUMP_WASM = False

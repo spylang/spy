@@ -2,7 +2,8 @@ from typing import TYPE_CHECKING, no_type_check
 import fixedint
 from spy.fqn import QN
 from spy.vm.b import B
-from spy.vm.w import W_I32, W_Func, W_Type, W_Dynamic, W_Object
+from spy.vm.primitive import W_I32
+from spy.vm.w import W_Func, W_Type, W_Dynamic, W_Object
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
 from .ptr import W_Ptr, w_make_ptr_type, hack_hack_fix_typename

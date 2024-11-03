@@ -1,7 +1,8 @@
 import pytest
+from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.w import W_FuncType, W_I32
+from spy.vm.w import W_FuncType
 
 class TestFunction:
 

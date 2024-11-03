@@ -2,9 +2,10 @@ from typing import TYPE_CHECKING, ClassVar, Optional, no_type_check
 import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import QN
+from spy.vm.primitive import W_I32, W_Void
 from spy.vm.b import B
-from spy.vm.object import spytype
-from spy.vm.w import W_Object, W_I32, W_Type, W_Void, W_Str, W_Dynamic, W_Func
+from spy.vm.builtin import builtin_type
+from spy.vm.w import W_Object, W_Type, W_Str, W_Dynamic, W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
@@ -58,7 +59,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     interp_name = f'W_Ptr[{T.__name__}]'  # e.g. W_Ptr[W_I32]
     ITEMSIZE = sizeof(w_T)
 
-    @spytype(app_name)
+    @builtin_type(app_name)
     class W_MyPtr(W_Ptr):
         w_itemtype: ClassVar[W_Type] = w_T
 
