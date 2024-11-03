@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import QN
 from spy.vm.primitive import W_I32, W_Void
 from spy.vm.b import B
-from spy.vm.object import spytype, Member, Annotated
+from spy.vm.object import builtin_type, Member, Annotated
 from spy.vm.builtin import builtin_func
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg

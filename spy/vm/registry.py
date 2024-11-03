@@ -4,7 +4,7 @@ from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
 from spy.vm.builtin import builtin_func
-from spy.vm.object import W_Object, spytype
+from spy.vm.object import W_Object, builtin_type
 
 class ModuleRegistry:
     """
@@ -58,7 +58,7 @@ class ModuleRegistry:
             MOD.add('Foo', W_Foo._w)
         """
         def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-            W_class = spytype(name)(pyclass)
+            W_class = builtin_type(name)(pyclass)
             self.add(name, W_class._w)
             return W_class
         return decorator

@@ -1,12 +1,12 @@
 from typing import ClassVar, TYPE_CHECKING
 import fixedint
-from spy.vm.object import W_Object, spytype
+from spy.vm.object import W_Object, builtin_type
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@spytype('void')
+@builtin_type('void')
 class W_Void(W_Object):
     """
     Equivalent of Python's NoneType.
@@ -31,7 +31,7 @@ class W_Void(W_Object):
 W_Void._w_singleton = W_Void.__new__(W_Void)
 
 
-@spytype('i32')
+@builtin_type('i32')
 class W_I32(W_Object):
     value: fixedint.Int32
 
@@ -46,7 +46,7 @@ class W_I32(W_Object):
         return self.value
 
 
-@spytype('f64')
+@builtin_type('f64')
 class W_F64(W_Object):
     value: float
 
@@ -61,7 +61,7 @@ class W_F64(W_Object):
         return self.value
 
 
-@spytype('bool')
+@builtin_type('bool')
 class W_Bool(W_Object):
     value: bool
     #
@@ -95,7 +95,7 @@ W_Bool._w_singleton_True = W_Bool._make_singleton(True)
 W_Bool._w_singleton_False = W_Bool._make_singleton(False)
 
 
-@spytype('NotImplementedType')
+@builtin_type('NotImplementedType')
 class W_NotImplementedType(W_Object):
     _w_singleton: ClassVar['W_NotImplementedType']
 

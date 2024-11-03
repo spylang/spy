@@ -2,7 +2,7 @@ from typing import (TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar,
                     TypeVar, Generic)
 from spy.fqn import QN
 from spy.vm.primitive import W_I32, W_Bool, W_Void
-from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic)
+from spy.vm.object import (W_Object, builtin_type, W_Type, W_Dynamic)
 from spy.vm.builtin import builtin_func
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -40,7 +40,7 @@ class Meta_W_List(type):
 
 T = TypeVar('T', bound='W_Object')
 
-@spytype('list')
+@builtin_type('list')
 class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     """
     The 'list' type.
@@ -110,7 +110,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     app_name = f'list[{w_T.name}]'        # e.g. list[i32]
     interp_name = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
 
-    @spytype(app_name)
+    @builtin_type(app_name)
     class W_MyList(W_List):
         items_w: list[W_Object]
 

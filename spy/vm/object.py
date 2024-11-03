@@ -392,7 +392,7 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
 
     return meta_op_CALL
 
-def spytype(name: str) -> Any:
+def builtin_type(name: str) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
 

@@ -3,7 +3,7 @@ import struct
 from spy.fqn import QN
 from spy.vm.primitive import W_F64, W_I32, W_Void
 from spy.vm.b import B
-from spy.vm.object import spytype, Member, Annotated
+from spy.vm.object import builtin_type, Member, Annotated
 from spy.vm.w import (W_Func, W_Type, W_Object, W_Str,
                       W_Dynamic, W_List, W_FuncType)
 from spy.vm.list import W_List

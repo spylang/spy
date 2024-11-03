@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import struct
 from spy.vm.primitive import W_F64, W_I32, W_Void
 from spy.vm.b import B
-from spy.vm.object import spytype
+from spy.vm.object import builtin_type
 from spy.vm.w import W_Func, W_Type, W_Object, W_Str
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:

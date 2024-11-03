@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated
 from spy.vm.primitive import W_Void
 from spy.vm.module import W_Module
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, spytype, W_Dynamic, Member
+from spy.vm.object import W_Type, W_Object, builtin_type, W_Dynamic, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.opimpl import W_OpImpl
