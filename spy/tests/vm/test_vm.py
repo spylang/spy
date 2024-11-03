@@ -1,11 +1,12 @@
 import fixedint
 import pytest
+from spy.vm.builtin import builtin_type
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.fqn import QN, FQN
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, builtin_type
+from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module

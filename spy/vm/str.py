@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Any
 from spy.llwasm import LLWasmInstance
 from spy.fqn import QN
-from spy.vm.object import W_Object, W_Type, W_Dynamic, builtin_type
-from spy.vm.builtin import builtin_func
+from spy.vm.object import W_Object, W_Type, W_Dynamic
+from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List
 from spy.vm.primitive import W_I32

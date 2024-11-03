@@ -1,12 +1,14 @@
 from typing import ClassVar, TYPE_CHECKING
 import fixedint
-from spy.vm.object import W_Object, builtin_type
+from spy.vm.object import W_Object
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+# NOTE: we apply @builtin_type later, at the end of the file, to avoid circular
+# imports
 
-@builtin_type('void')
+
 class W_Void(W_Object):
     """
     Equivalent of Python's NoneType.
@@ -31,7 +33,6 @@ class W_Void(W_Object):
 W_Void._w_singleton = W_Void.__new__(W_Void)
 
 
-@builtin_type('i32')
 class W_I32(W_Object):
     value: fixedint.Int32
 
@@ -46,7 +47,6 @@ class W_I32(W_Object):
         return self.value
 
 
-@builtin_type('f64')
 class W_F64(W_Object):
     value: float
 
@@ -61,7 +61,6 @@ class W_F64(W_Object):
         return self.value
 
 
-@builtin_type('bool')
 class W_Bool(W_Object):
     value: bool
     #
@@ -95,7 +94,6 @@ W_Bool._w_singleton_True = W_Bool._make_singleton(True)
 W_Bool._w_singleton_False = W_Bool._make_singleton(False)
 
 
-@builtin_type('NotImplementedType')
 class W_NotImplementedType(W_Object):
     _w_singleton: ClassVar['W_NotImplementedType']
 
@@ -107,3 +105,13 @@ class W_NotImplementedType(W_Object):
 W_NotImplementedType._w_singleton = (
     W_NotImplementedType.__new__(W_NotImplementedType)
 )
+
+
+# manually apply @builtin_type to all the classes above. This is done here
+# to avoid circular imports between object.py, builtin.py and primitive.py
+from spy.vm.builtin import builtin_type
+builtin_type('void')(W_Void)
+builtin_type('i32')(W_I32)
+builtin_type('f64')(W_F64)
+builtin_type('bool')(W_Bool)
+builtin_type('NotImplementedType')(W_NotImplementedType)

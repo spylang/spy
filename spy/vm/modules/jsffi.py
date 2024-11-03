@@ -3,12 +3,12 @@ import struct
 from spy.fqn import QN
 from spy.vm.primitive import W_F64, W_I32, W_Void
 from spy.vm.b import B
-from spy.vm.object import builtin_type, Member, Annotated
+from spy.vm.object import Member, Annotated
 from spy.vm.w import (W_Func, W_Type, W_Object, W_Str,
                       W_Dynamic, W_List, W_FuncType)
 from spy.vm.list import W_List
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func
+from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.registry import ModuleRegistry
 from spy.vm.modules.types import W_TypeDef
 

@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
-from spy.vm.builtin import builtin_func
-from spy.vm.object import W_Object, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.object import W_Object
 
 class ModuleRegistry:
     """
