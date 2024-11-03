@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Any, no_type_check, Optional
 from spy.fqn import QN
 from spy.vm.object import (W_Object, spytype, W_Type, W_Dynamic, W_I32, W_Void,
                            W_Bool)
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -30,12 +30,12 @@ class W_Tuple(W_Object):
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                    wop_i: W_OpArg) -> W_OpImpl:
-        return W_OpImpl(vm.wrap_func(tuple_getitem))
+        return W_OpImpl(w_tuple_getitem)
 
 
 
-@spy_builtin(QN('operator::tuple_getitem'))
-def tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
+@builtin_func(QN('operator::tuple_getitem'))
+def w_tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
     i = vm.unwrap_i32(w_i)
     # XXX bound check?
     return w_tup.items_w[i]

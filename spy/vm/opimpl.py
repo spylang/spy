@@ -33,7 +33,7 @@ from spy.irgen.symtable import Symbol
 from spy.errors import SPyTypeError
 from spy.vm.object import Member, W_Type, W_Object, spytype, W_Bool
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -159,14 +159,14 @@ class W_OpArg(W_Object):
         assert w_ltype.pyclass is W_OpArg
 
         if w_ltype is w_rtype:
-            return W_OpImpl(vm.wrap_func(oparg_eq))
+            return W_OpImpl(w_oparg_eq)
         else:
             return W_OpImpl.NULL
 
 
 @no_type_check
-@spy_builtin(QN('operator::oparg_eq'))
-def oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
+@builtin_func(QN('operator::oparg_eq'))
+def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description

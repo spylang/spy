@@ -249,7 +249,7 @@ W_Type.__spy_members__ = {}
 # Since it's a compile-time only concept, it doesn't have a corresponding
 # W_Dynamic interp-level class. However, we still provide W_Dynamic as an
 # annotated version of W_Object: from the mypy static typing point of view,
-# it's equivalent to W_Object, but it is recognized by @spy_builtin to
+# it's equivalent to W_Object, but it is recognized by @builtin_func to
 # generate the "correct" w_functype signature.
 
 w_DynamicType = W_Type('dynamic', W_Object) # this is B.w_dynamic
@@ -316,7 +316,7 @@ def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
        of the metaclass. In particular, `op_meta_CALL` is used to create
        app-level instances of w_Foo.
 
-    2. by using `spy_new`, which automatically synthesize an appropriare
+    2. by using `w_spy_new`, which automatically synthesize an appropriare
        op_meta_CALL. This is just for convenience.
     """
     metaname = f'Meta_{name}'
@@ -327,7 +327,7 @@ def make_metaclass(name: str, pyclass: Type[W_Object]) -> Type[W_Type]:
 
     if hasattr(pyclass, 'meta_op_CALL'):
         W_MetaType.op_CALL = pyclass.meta_op_CALL  # type: ignore
-    elif hasattr(pyclass, 'spy_new'):
+    elif hasattr(pyclass, 'w_spy_new'):
         W_MetaType.op_CALL = synthesize_meta_op_CALL(pyclass)  # type: ignore
 
     if hasattr(pyclass, 'meta_op_GETITEM'):
@@ -348,45 +348,45 @@ def fix_annotations(fn: Any, types: dict[str, type]) -> None:
 
 def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     """
-    Given a pyclass which implements spy_new, create an op_CALL for the
+    Given a pyclass which implements w_spy_new, create an op_CALL for the
     corresponding metaclass. Example:
 
     class W_Foo(W_Object):
         @staticmethod
-        def spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
+        def w_spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
             ...
 
     This function creates an op_CALL method which will be put on W_Meta_Foo.
-    W_Meta_Foo.op_CALL returns W_Foo.spy_new as the opimpl.
+    W_Meta_Foo.op_CALL returns W_Foo.w_spy_new as the opimpl.
 
     Ideally, we would like to be able to write this:
 
     class W_Foo(W_Object):
         @staticmethod
-        @spy_builtin(QN("xxx::new"))
-        def spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
+        @builtin_func(QN("xxx::new"))
+        def w_spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
             ...
 
-    But we cannot because spy_builtin is unable to understand the annotation
+    But we cannot because builtin_func is unable to understand the annotation
     'W_Foo' expressed as a string. A lot of the logic here is basically a
     workaround for this.
 
     Inside, we call fix_annotations to replace 'W_Foo' with the actual
-    W_Foo. Once we have done that, we can manually apply @spy_builtin and
+    W_Foo. Once we have done that, we can manually apply @builtin_func and
     finally vm.wrap() it.
     """
     from spy.vm.opimpl import W_OpImpl, W_OpArg
-    from spy.vm.sig import spy_builtin
-    assert hasattr(pyclass, 'spy_new')
-    spy_new = pyclass.spy_new
+    from spy.vm.builtin import builtin_func
+    assert hasattr(pyclass, 'w_spy_new')
+    w_spy_new = pyclass.w_spy_new
 
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                      w_opargs: W_Dynamic) -> W_OpImpl:
-        fix_annotations(spy_new, {pyclass.__name__: pyclass})
+        fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
         qn = QN('ext::new') # XXX what modname should we use?
-        # manually apply the @spy_builtin decorator to the spy_new function
-        spyfunc = spy_builtin(qn)(spy_new)
-        return W_OpImpl(vm.wrap_func(spyfunc))
+        # manually apply the @builtin_func decorator to the spy_new function
+        w_spyfunc = builtin_func(qn)(w_spy_new)
+        return W_OpImpl(w_spyfunc)
 
     return meta_op_CALL
 

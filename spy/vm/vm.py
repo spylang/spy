@@ -12,10 +12,9 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
-from spy.vm.sig import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.opimpl import W_OpImpl, W_OpArg, oparg_eq
+from spy.vm.opimpl import W_OpImpl, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -101,7 +100,7 @@ class SPyVM:
         self.modules_w[w_mod.name] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
-        w_mod = W_Module(self, reg.qn.modname, reg.filepath)
+        w_mod = W_Module(self, reg.qn.modname, f'<reg.qn.modname>')
         self.register_module(w_mod)
         for qn, w_obj in reg.content:
             fqn = self.get_FQN(qn, is_global=True)
@@ -199,7 +198,8 @@ class SPyVM:
         elif isinstance(w_val, W_Type):
             # this is terribly wrong: types should carry their own QN, as
             # functions do
-            name = w_val.name.replace('[', '__').replace(']', '__')
+            from spy.vm.modules.unsafe.ptr import hack_hack_fix_typename
+            name = hack_hack_fix_typename(w_val.name)
             qn = QN(['__fake_mod__', name])
             fqn = self.get_FQN(qn, is_global=False)
         else:
@@ -305,19 +305,12 @@ class SPyVM:
             return W_Str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
-        elif isinstance(value, SPyBuiltin):
-            return value._w
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "
-                f"Did you forget `@spy_builtin`?")
+                f"Did you forget `@builtin_func`?")
         raise Exception(f"Cannot wrap interp-level objects " +
                         f"of type {value.__class__.__name__}")
-
-    def wrap_func(self, value: Any) -> W_Func:
-        w_func = self.wrap(value)
-        assert isinstance(w_func, W_Func)
-        return w_func
 
     def unwrap(self, w_value: W_Object) -> Any:
         """
@@ -457,7 +450,7 @@ class SPyVM:
         # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
         # recursion
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
-            return oparg_eq(self, w_a, w_b)
+            return self.call(w_oparg_eq, [w_a, w_b])
 
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))

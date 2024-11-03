@@ -2,7 +2,7 @@ import pytest
 from spy.fqn import QN
 from spy.vm.b import B
 from spy.vm.object import spytype, Member, Annotated
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.w import W_Type, W_Object, W_Dynamic, W_Str, W_I32, W_Void, W_List
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -16,7 +16,7 @@ class TestCallOp(CompilerTest):
 
     def test_call_instance(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Adder')
         class W_Adder(W_Object):
@@ -25,18 +25,18 @@ class TestCallOp(CompilerTest):
                 self.x = x
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Adder':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Adder':
                 return W_Adder(vm.unwrap_i32(w_x))
 
             @staticmethod
             def op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                         w_opargs: W_List[W_OpArg]) -> W_OpImpl:
-                @spy_builtin(QN('ext::call'))
-                def call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
+                @builtin_func(QN('ext::call'))
+                def w_call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
                     return vm.wrap(res) # type: ignore
-                return W_OpImpl(vm.wrap_func(call))
+                return W_OpImpl(w_call)
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -52,7 +52,7 @@ class TestCallOp(CompilerTest):
 
     def test_call_type(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Point')
         class W_Point(W_Object):
@@ -66,11 +66,11 @@ class TestCallOp(CompilerTest):
             @staticmethod
             def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
                              w_argtypes: W_Dynamic) -> W_OpImpl:
-                @spy_builtin(QN('ext::new'))
-                def new(vm: 'SPyVM', w_cls: W_Type,
+                @builtin_func(QN('ext::new'))
+                def w_new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
-                return W_OpImpl(vm.wrap_func(new))
+                return W_OpImpl(w_new)
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -86,7 +86,7 @@ class TestCallOp(CompilerTest):
 
     def test_spy_new(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Point')
         class W_Point(W_Object):
@@ -98,7 +98,7 @@ class TestCallOp(CompilerTest):
                 self.w_y = w_y
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type,
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> 'W_Point':
                 return W_Point(w_x, w_y)
         # ========== /EXT module for this test =========
@@ -117,7 +117,7 @@ class TestCallOp(CompilerTest):
 
     def test_call_method(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext', '<ext>')
+        EXT = ModuleRegistry('ext')
 
         @EXT.spytype('Calc')
         class W_Calc(W_Object):
@@ -126,7 +126,7 @@ class TestCallOp(CompilerTest):
                 self.x = x
 
             @staticmethod
-            def spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Calc':
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Calc':
                 return W_Calc(vm.unwrap_i32(w_x))
 
             @staticmethod
@@ -135,24 +135,20 @@ class TestCallOp(CompilerTest):
                                w_opargs: W_List[W_OpArg]) -> W_OpImpl:
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
-                    @spy_builtin(QN('ext::meth_add'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
+                    @builtin_func(QN('ext::meth_add'))
+                    def w_fn(vm: 'SPyVM', w_self: W_Calc,
+                             w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)  # type: ignore
-                    return W_OpImpl(
-                        vm.wrap_func(fn),
-                        [wop_obj] + w_opargs.items_w
-                    )
+                    return W_OpImpl(w_fn, [wop_obj] + w_opargs.items_w)
 
                 elif meth == 'sub':
-                    @spy_builtin(QN('ext::meth_sub'))
-                    def fn(vm: 'SPyVM', w_self: W_Calc, w_arg: W_I32) -> W_I32:
+                    @builtin_func(QN('ext::meth_sub'))
+                    def w_fn(vm: 'SPyVM', w_self: W_Calc,
+                             w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)  # type: ignore
-                    return W_OpImpl(
-                        vm.wrap_func(fn),
-                        [wop_obj] + w_opargs.items_w
-                    )
+                    return W_OpImpl(w_fn, [wop_obj] + w_opargs.items_w)
                 else:
                     return W_OpImpl.NULL
         # ========== /EXT module for this test =========

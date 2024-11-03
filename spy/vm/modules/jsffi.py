@@ -7,14 +7,14 @@ from spy.vm.w import (W_Func, W_Type, W_Object, W_I32, W_F64, W_Void, W_Str,
                       W_Dynamic, W_List, W_FuncType)
 from spy.vm.list import W_List
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.sig import spy_builtin
+from spy.vm.builtin import builtin_func
 from spy.vm.registry import ModuleRegistry
 from spy.vm.modules.types import W_TypeDef
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-JSFFI = ModuleRegistry('jsffi', '<jsffi>')
+JSFFI = ModuleRegistry('jsffi')
 
 @JSFFI.spytype('JsRef')
 class W_JsRef(W_Object):
@@ -41,41 +41,41 @@ class W_JsRef(W_Object):
                 f"unsupported number of arguments for CALL_METHOD: {n}"
             )
 
-@JSFFI.builtin
-def debug(vm: 'SPyVM', w_str: W_Str) -> None:
+@JSFFI.builtin_func
+def w_debug(vm: 'SPyVM', w_str: W_Str) -> None:
     s = vm.unwrap_str(w_str)
     print('[JSFFI debug]', s)
 
-@JSFFI.builtin
-def init(vm: 'SPyVM') -> None:
+@JSFFI.builtin_func
+def w_init(vm: 'SPyVM') -> None:
     raise NotImplementedError
 
-@JSFFI.builtin
-def get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
+@JSFFI.builtin_func
+def w_get_GlobalThis(vm: 'SPyVM') -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
-def get_Console(vm: 'SPyVM') -> W_JsRef:
+@JSFFI.builtin_func
+def w_get_Console(vm: 'SPyVM') -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
-def js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
+@JSFFI.builtin_func
+def w_js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
-def js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
+@JSFFI.builtin_func
+def w_js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
-def js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
+@JSFFI.builtin_func
+def w_js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
                      name: W_Str, arg0: W_JsRef) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
-def js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
+@JSFFI.builtin_func
+def w_js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
     raise NotImplementedError
 
-@JSFFI.builtin
-def js_setattr(vm: 'SPyVM', w_target: W_JsRef,
+@JSFFI.builtin_func
+def w_js_setattr(vm: 'SPyVM', w_target: W_JsRef,
                name: W_Str, val: W_JsRef) -> None:
     raise NotImplementedError

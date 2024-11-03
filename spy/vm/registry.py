@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
-from spy.vm.sig import spy_builtin, SPyBuiltin
+from spy.vm.builtin import builtin_func
 from spy.vm.object import W_Object, spytype
 
 class ModuleRegistry:
@@ -13,12 +13,10 @@ class ModuleRegistry:
     At startup, the `vm` will create a W_Module out of it.
     """
     qn: QN
-    filepath: str
     content: list[tuple[QN, W_Object]]
 
-    def __init__(self, modname: str, filepath: str) -> None:
+    def __init__(self, modname: str) -> None:
         self.qn = QN(modname)
-        self.filepath = filepath
         self.content = []
 
     def __repr__(self) -> str:
@@ -65,29 +63,29 @@ class ModuleRegistry:
             return W_class
         return decorator
 
-    def builtin(self,
-                pyfunc: Optional[Callable] = None,
-                *,
-                color: Color = 'red') -> Any:
+    def builtin_func(self,
+                     pyfunc: Optional[Callable] = None,
+                     *,
+                     color: Color = 'red') -> Any:
         """
         Register a builtin function on the module. We support two different
         syntaxes:
 
-        @MOD.builtin
-        def foo(): ...
+        @MOD.builtin_func
+        def w_foo(): ...
 
-        @MOD.builtin(color='...')
+        @MOD.builtin_func(color='...')
         def foo(): ...
         """
-        def decorator(pyfunc: Callable) -> SPyBuiltin:
-            attr = pyfunc.__name__
-            qn = self.qn.nested(attr)
-            # apply the @spy_builtin decorator to pyfunc
-            spyfunc = spy_builtin(qn, color=color)(pyfunc)
-            w_func = spyfunc._w
-            setattr(self, f'w_{attr}', w_func)
+        def decorator(pyfunc: Callable) -> W_BuiltinFunc:
+            assert pyfunc.__name__.startswith('w_')
+            funcname = pyfunc.__name__[2:]
+            qn = self.qn.nested(funcname)
+            # apply the @builtin_func decorator to pyfunc
+            w_func = builtin_func(qn, color=color)(pyfunc)
+            setattr(self, f'w_{funcname}', w_func)
             self.content.append((qn, w_func))
-            return spyfunc
+            return w_func
 
         if pyfunc is None:
             return decorator
