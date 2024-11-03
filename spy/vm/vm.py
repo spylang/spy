@@ -12,7 +12,6 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type, W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
-from spy.vm.builtin import SPyBuiltin
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.opimpl import W_OpImpl, W_OpArg, oparg_eq
@@ -306,8 +305,6 @@ class SPyVM:
             return W_Str(self, value)
         elif isinstance(value, type) and issubclass(value, W_Object):
             return value._w
-        elif isinstance(value, SPyBuiltin):
-            return value._w
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "
@@ -458,7 +455,7 @@ class SPyVM:
         # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
         # recursion
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
-            return oparg_eq(self, w_a, w_b)
+            return self.call(oparg_eq, [w_a, w_b])
 
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))

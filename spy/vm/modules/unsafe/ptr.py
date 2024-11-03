@@ -168,7 +168,7 @@ def getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # returned by value, but struct types are always returned by reference
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
-        w_T = make_ptr_type(vm, w_T)
+        w_T = vm.call(make_ptr_type, [w_T])
         by = 'byref'
     else:
         by = 'byval'

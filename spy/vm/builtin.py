@@ -70,10 +70,9 @@ def builtin_func(qn: QN, color: Color = 'red') -> Callable:
     Example of usage:
 
         @builtin_func(QN("foo::hello"))
-        def hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
+        def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             ...
 
-        w_hello = vm.wrap(hello)
         assert isinstance(w_hello, W_BuiltinFunc)
         assert w_hello.qn == QN("foo::hello")
 
@@ -81,28 +80,10 @@ def builtin_func(qn: QN, color: Color = 'red') -> Callable:
     inspectng the signature of the interp-level function. The first parameter
     MUST be 'vm'.
 
-    Note that the decorated object is no longer the original function, but an
-    instance of SPyBuiltin: among the other things, this ensures that blue
-    calls are correctly cached.
+    Note that the decorator returns a W_BuiltinFunc, which means that you
+    cannot call it directly, but you need to use vm.call.
     """
-    def decorator(fn: Callable) -> SPyBuiltin:
-        return SPyBuiltin(fn, qn, color)
-    return decorator
-
-
-class SPyBuiltin:
-    fn: Callable
-    _w: W_BuiltinFunc
-
-    def __init__(self, fn: Callable, qn: QN, color: Color) -> None:
-        self.fn = fn
+    def decorator(fn: Callable) -> W_BuiltinFunc:
         w_functype = functype_from_sig(fn, color)
-        self._w = W_BuiltinFunc(w_functype, qn, fn)
-
-    @property
-    def w_functype(self) -> W_FuncType:
-        return self._w.w_functype
-
-    def __call__(self, vm: 'SPyVM', *args: W_Object) -> W_Object:
-        args_w = list(args)
-        return vm.call(self._w, args_w)
+        return W_BuiltinFunc(w_functype, qn, fn)
+    return decorator

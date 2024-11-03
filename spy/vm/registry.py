@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import QN
 from spy.vm.function import W_FuncType, W_BuiltinFunc
-from spy.vm.builtin import builtin_func, SPyBuiltin
+from spy.vm.builtin import builtin_func
 from spy.vm.object import W_Object, spytype
 
 class ModuleRegistry:
@@ -77,15 +77,14 @@ class ModuleRegistry:
         @MOD.builtin(color='...')
         def foo(): ...
         """
-        def decorator(pyfunc: Callable) -> SPyBuiltin:
+        def decorator(pyfunc: Callable) -> W_BuiltinFunc:
             attr = pyfunc.__name__
             qn = self.qn.nested(attr)
             # apply the @builtin_func decorator to pyfunc
-            spyfunc = builtin_func(qn, color=color)(pyfunc)
-            w_func = spyfunc._w
+            w_func = builtin_func(qn, color=color)(pyfunc)
             setattr(self, f'w_{attr}', w_func)
             self.content.append((qn, w_func))
-            return spyfunc
+            return w_func
 
         if pyfunc is None:
             return decorator

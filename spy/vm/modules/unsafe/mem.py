@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 @UNSAFE.builtin(color='blue')
 def gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     t = w_T.name                         # 'i32'
-    w_ptr_type = make_ptr_type(vm, w_T)  # ptr[i32]
+    w_ptr_type = vm.call(make_ptr_type, [w_T])  # ptr[i32]
     W_MyPtr = vm.unwrap(w_ptr_type)      # W_Ptr[W_I32]
     ITEMSIZE = sizeof(w_T)
 
