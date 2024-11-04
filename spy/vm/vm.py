@@ -451,7 +451,7 @@ class SPyVM:
         # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
         # recursion
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
-            return self.call(w_oparg_eq, [w_a, w_b])
+            return self.call(w_oparg_eq, [w_a, w_b])  # type: ignore
 
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))
