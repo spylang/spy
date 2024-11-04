@@ -17,15 +17,14 @@ from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-# we cannot import B due to circular imports, let's fake it
-B_w_dynamic = w_DynamicType
-B_w_Void = W_Void._w
 
 def is_W_class(x: Any) -> bool:
     return isinstance(x, type) and issubclass(x, W_Object)
 
 
 def to_spy_FuncParam(p: Any) -> FuncParam:
+    # we cannot import spy.vm.b due to circular imports, fake it
+    B_w_dynamic = w_DynamicType
     if p.name.startswith('w_'):
         name = p.name[2:]
     else:
@@ -41,6 +40,10 @@ def to_spy_FuncParam(p: Any) -> FuncParam:
 
 
 def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
+    # we cannot import spy.vm.b due to circular imports, fake it
+    B_w_Void = W_Void._w
+    B_w_dynamic = w_DynamicType
+
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
     if len(params) == 0:
