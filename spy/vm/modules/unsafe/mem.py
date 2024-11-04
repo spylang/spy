@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 @UNSAFE.builtin_func(color='blue')
 def w_gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    t = w_T.name                         # 'i32'
+    t = w_T.qn.symbol_name                         # 'i32'
     w_ptr_type = vm.call(w_make_ptr_type, [w_T])  # ptr[i32]
     W_MyPtr = vm.unwrap(w_ptr_type)      # W_Ptr[W_I32]
     ITEMSIZE = sizeof(w_T)
@@ -35,7 +35,7 @@ def w_gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 @UNSAFE.builtin_func(color='blue')
 def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass
-    t = w_T.name
+    t = w_T.qn.symbol_name
     t = hack_hack_fix_typename(t)
 
     @no_type_check
@@ -57,7 +57,7 @@ def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 @UNSAFE.builtin_func(color='blue')
 def w_mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass
-    t = w_T.name
+    t = w_T.qn.symbol_name
 
     @no_type_check
     @builtin_func(QN(f'unsafe::mem_write_{t}'))

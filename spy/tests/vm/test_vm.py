@@ -59,7 +59,7 @@ class TestVM:
             pass
         #
         assert isinstance(W_Foo._w, W_Type)
-        assert W_Foo._w.name == 'foo'
+        assert W_Foo._w.qn == QN('test::foo')
         assert W_Foo._w.pyclass is W_Foo
 
     def test_w_base(self):
@@ -136,7 +136,7 @@ class TestVM:
         vm = SPyVM()
         w_None = B.w_None
         assert isinstance(w_None, W_Void)
-        assert vm.dynamic_type(w_None).name == 'void'
+        assert vm.dynamic_type(w_None).qn == QN('builtins::void')
         assert repr(w_None) == '<spy None>'
         #
         assert vm.wrap(None) is w_None

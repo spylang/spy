@@ -116,7 +116,7 @@ class Context:
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
         # properly.
-        t = w_st.name
+        t = w_st.qn.symbol_name
         self.out_types.wl("typedef struct {")
         with self.out_types.indent():
             for field, w_fieldtype in w_st.fields.items():

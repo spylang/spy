@@ -8,7 +8,7 @@ class TestFunction:
 
     def test_FunctionType_repr(self):
         w_functype = W_FuncType.make(x=B.w_i32, y=B.w_i32, w_restype=B.w_i32)
-        assert w_functype.name == 'def(x: i32, y: i32) -> i32'
+        assert w_functype.qn == 'def(x: i32, y: i32) -> i32' # XXX
         assert repr(w_functype) == "<spy type 'def(x: i32, y: i32) -> i32'>"
 
     def test_FunctionType_parse(self):

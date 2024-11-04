@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar
 from dataclasses import dataclass
 import fixedint
+from spy.fqn import QN
 from spy.vm.primitive import W_I32, W_Void
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -19,14 +20,14 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def __init__(self, name: str, pyclass: Type[W_Object],
+    def __init__(self, qn: QN, pyclass: Type[W_Object],
                  fields: FIELDS_T) -> None:
-        super().__init__(name, pyclass)
+        super().__init__(qn, pyclass)
         self.fields = fields
         self.offsets, self.size = calc_layout(fields)
 
     def __repr__(self) -> str:
-        return f"<spy type struct '{self.name}'>"
+        return f"<spy type struct '{self.qn}'>"
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return True
@@ -54,14 +55,14 @@ class W_Struct(W_Object):
     pass
 
 
-def make_struct_type(vm: 'SPyVM', name: str,
-                     fields: FIELDS_T) -> W_Type:
+def make_struct_type(vm: 'SPyVM', qn: QN, fields: FIELDS_T) -> W_Type:
     size, layout = calc_layout(fields)
 
     class W_MyStruct(W_Struct):
         pass
 
+    name = qn.symbol_name
     W_MyStruct.__name__ = W_MyStruct.__qualname__ = f'W_{name}'
-    w_struct_type = W_StructType(name, W_MyStruct, fields)
+    w_struct_type = W_StructType(qn, W_MyStruct, fields)
     W_MyStruct._w = w_struct_type # poor's man @spytype
     return w_struct_type

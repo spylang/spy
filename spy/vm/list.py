@@ -107,8 +107,8 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     from spy.vm.opimpl import W_OpImpl
 
     T = w_T.pyclass
-    app_name = f'list[{w_T.name}]'        # e.g. list[i32]
-    interp_name = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
+    app_name = f'list[{w_T.qn.symbol_name}]' # e.g. list[i32]
+    interp_name = f'W_List[{T.__name__}]'    # e.g. W_List[W_I32]
 
     @builtin_type(QN(f'builtins::{app_name}'))
     class W_MyList(W_List):

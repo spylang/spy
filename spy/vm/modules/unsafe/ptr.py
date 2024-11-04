@@ -55,8 +55,8 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     from .struct import W_StructType
 
     T = w_T.pyclass
-    app_name = f'ptr[{w_T.name}]'         # e.g. ptr[i32]
-    interp_name = f'W_Ptr[{T.__name__}]'  # e.g. W_Ptr[W_I32]
+    app_name = f'ptr[{w_T.qn.symbol_name}]'  # e.g. ptr[i32]
+    interp_name = f'W_Ptr[{T.__name__}]'     # e.g. W_Ptr[W_I32]
     ITEMSIZE = sizeof(w_T)
 
     @builtin_type(QN('unsafe::{app_name}'))
@@ -167,8 +167,8 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         by = 'byval'
 
     T = w_T.pyclass  # W_I32
-    t = w_T.name     # 'i32'
-    t = hack_hack_fix_typename(t)
+    t = w_T.qn.symbol_name     # 'i32'
+    t = hack_hack_fix_typename(t) # XXX we can remove this now?
 
     # unsafe::getfield_prim_i32
     # unsafe::getfield_ref_Point
@@ -190,8 +190,8 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
 @UNSAFE.builtin_func(color='blue')
 def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    T = w_T.pyclass  # W_I32
-    t = w_T.name     # 'i32'
+    T = w_T.pyclass        # W_I32
+    t = w_T.qn.symbol_name # 'i32'
 
     @no_type_check
     @builtin_func(QN(f'unsafe::setfield_{t}'))  # unsafe::setfield_i32
