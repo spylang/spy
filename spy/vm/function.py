@@ -41,8 +41,12 @@ class W_FuncType(W_Type):
         # but that's ok because it will be uniquified when it becomes an FQN.
         # The QN looks like:
         #    builtins::def[args[i32, i32], bool]
-        args = NSPart('args', [p.w_type.qn.symbol_name for p in self.params])
-        ret = w_restype.qn.symbol_name
+        def T(w_type: W_Type) -> NSPart:
+            "Convert a W_Type into an NSPart"
+            return NSPart(w_type.qn.symbol_name, [])
+
+        args = NSPart('args', [T(p.w_type) for p in self.params])
+        ret = T(w_restype)
         qn = QN([
             NSPart('builtins', []),
             NSPart('def', [args, ret]),
