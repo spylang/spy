@@ -7,11 +7,11 @@ A QN is composed by one or more Namespace Parts (NSPart), separated by '::'.
 Examples:
   - builtins::i32
   - a.b.c::foo
-  - builtins::list<i32>::append
-  - unsafe::ptr<Point>::getfield<i32>
+  - builtins::list[i32]::append
+  - unsafe::ptr[Point]::getfield[i32]
 
 A NSPart must be a valid Python identifier, but it can also contain dots.
-NSParts have 0 or more "qualifiers", expressed in angular brackets.
+NSParts have 0 or more "qualifiers", expressed in square brackets.
 
 Various subparts of a QN have different names:
 
@@ -22,10 +22,10 @@ Various subparts of a QN have different names:
 
   - the last part is the "symbol name"
 
-E.g., for "builtins::list<i32>::append":
+E.g., for "builtins::list[i32]::append":
   - module name: "builtins"
 
-  - namespace: "builtins::list<i32>"
+  - namespace: "builtins::list[i32]"
 
   - symbol name: "append"
 
@@ -54,7 +54,7 @@ from typing import Optional, Any
 from dataclasses import dataclass
 import re
 
-_NSPART = re.compile(r"([a-zA-Z_][a-zA-Z0-9_\.]*)(?:<([a-zA-Z0-9_,\s<>]*)>)?")
+_NSPART = re.compile(r"([a-zA-Z_][a-zA-Z0-9_\.]*)(?:\[([a-zA-Z0-9_,\s\[\]]*)\])?")
 
 @dataclass
 class NSPart:
@@ -77,9 +77,9 @@ class NSPart:
         depth = 0
         start = 0
         for i, char in enumerate(s):
-            if char == '<':
+            if char == '[':
                 depth += 1
-            elif char == '>':
+            elif char == ']':
                 depth -= 1
             elif char == ',' and depth == 0:
                 qualifiers.append(cls.parse(s[start:i].strip()))
@@ -93,7 +93,7 @@ class NSPart:
             return self.name
         else:
             quals = ', '.join(str(q) for q in self.qualifiers)
-            return f'{self.name}<{quals}>'
+            return f'{self.name}[{quals}]'
 
     @property
     def c_name(self) -> str:
@@ -247,7 +247,7 @@ class FQN:
           - if the FQN has a suffix, we append it with a '$'.
 
         So e.g., the following FQN:
-            mod::dict<i32, f64>::foo#0
+            mod::dict[i32, f64]::foo#0
 
         Becomes:
             spy_mod$dict__i32_f64$foo$0

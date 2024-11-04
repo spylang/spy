@@ -31,8 +31,8 @@ def test_QN_hash_eq():
     assert hash(a) == hash(b)
 
 def test_qualifiers():
-    a = QN("a::b<x, y>::c")
-    assert a.fullname == "a::b<x, y>::c"
+    a = QN("a::b[x, y]::c")
+    assert a.fullname == "a::b[x, y]::c"
     assert a.modname == "a"
     assert a.parts == [
         NSPart("a", []),
@@ -41,8 +41,8 @@ def test_qualifiers():
     ]
 
 def test_nested_qualifiers():
-    a = QN("foo::list<Ptr<Point>>")
-    assert a.fullname == "foo::list<Ptr<Point>>"
+    a = QN("foo::list[Ptr[Point]]")
+    assert a.fullname == "foo::list[Ptr[Point]]"
 
 def test_QN_nested():
     a = QN("aaa::bbb")
@@ -81,9 +81,9 @@ def test_FQN_parse():
     assert fqn.suffix == "0"
 
 def test_qualifiers_c_name():
-    a = FQN.make("a::b<x, y>::c", suffix="0")
+    a = FQN.make("a::b[x, y]::c", suffix="0")
     assert a.c_name == "spy_a$b__x_y$c$0"
 
 def test_nested_qualifiers_c_name():
-    a = FQN.make("a::list<Ptr<x, y>>::c", suffix="0")
+    a = FQN.make("a::list[Ptr[x, y]]::c", suffix="0")
     assert a.c_name == "spy_a$list__Ptr__x_y$c$0"
