@@ -54,7 +54,7 @@ class TestVM:
         assert repr(B.w_dynamic) == "<spy type 'dynamic'>"
 
     def test_spytype_decorator(self):
-        @builtin_type('foo')
+        @builtin_type(QN('test::foo'))
         class W_Foo(W_Object):
             pass
         #
@@ -63,11 +63,11 @@ class TestVM:
         assert W_Foo._w.pyclass is W_Foo
 
     def test_w_base(self):
-        @builtin_type('A')
+        @builtin_type(QN('test::A'))
         class W_A(W_Object):
             pass
         #
-        @builtin_type('B')
+        @builtin_type(QN('test::B'))
         class W_B(W_A):
             pass
         #
@@ -77,11 +77,11 @@ class TestVM:
         assert W_B._w.w_base is W_A._w
 
     def test_issubclass(self):
-        @builtin_type('A')
+        @builtin_type(QN('test::A'))
         class W_A(W_Object):
             pass
         #
-        @builtin_type('B')
+        @builtin_type(QN('test::B'))
         class W_B(W_A):
             pass
         #
@@ -97,15 +97,15 @@ class TestVM:
         assert not vm.issubclass(w_a, w_b)
 
     def test_union_type(self):
-        @builtin_type('A')
+        @builtin_type(QN('test::A'))
         class W_A(W_Object):
             pass
         #
-        @builtin_type('B')
+        @builtin_type(QN('test::B'))
         class W_B(W_A):
             pass
         #
-        @builtin_type('C')
+        @builtin_type(QN('test::C'))
         class W_C(W_A):
             pass
         vm = SPyVM()

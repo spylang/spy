@@ -35,12 +35,13 @@ class W_FuncType(W_Type):
         self.params = params
         self.w_restype = w_restype
         self.color = color
+        # XXX this is wrong. What is the QN???
         super().__init__(self._str_sig(), W_Func)
 
     def _str_sig(self) -> str:
-        params = [f'{p.name}: {p.w_type.name}' for p in self.params]
+        params = [f'{p.name}: {p.w_type.qn}' for p in self.params]
         str_params = ', '.join(params)
-        resname = self.w_restype.name
+        resname = self.w_restype.qn
         s = f'def({str_params}) -> {resname}'
         if self.color == 'blue':
             s = f'@blue {s}'

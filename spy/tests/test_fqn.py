@@ -46,7 +46,7 @@ def test_nested_qualifiers():
 
 def test_QN_nested():
     a = QN("aaa::bbb")
-    b = a.nested("ccc")
+    b = a.join("ccc")
     assert b.fullname == "aaa::bbb::ccc"
 
 def test_FQN():

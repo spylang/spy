@@ -40,7 +40,7 @@ class Meta_W_List(type):
 
 T = TypeVar('T', bound='W_Object')
 
-@builtin_type('list')
+@builtin_type(QN('builtins::list'))
 class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     """
     The 'list' type.
@@ -110,7 +110,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     app_name = f'list[{w_T.name}]'        # e.g. list[i32]
     interp_name = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
 
-    @builtin_type(app_name)
+    @builtin_type(QN(f'builtins::{app_name}'))
     class W_MyList(W_List):
         items_w: list[W_Object]
 

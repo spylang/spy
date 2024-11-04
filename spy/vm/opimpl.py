@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-@builtin_type('OpArg')
+@builtin_type(QN('operator::OpArg'))
 class W_OpArg(W_Object):
     """
     Class which represents the operands passed to OPERATORs.
@@ -110,7 +110,7 @@ class W_OpArg(W_Object):
             extra = ''
         if self.is_const():
             extra += ' const'
-        return f'<W_OpArg {self.name}: {self.w_static_type.name}{extra}>'
+        return f'<W_OpArg {self.name}: {self.w_static_type.qn}{extra}>'
 
     def is_blue(self) -> bool:
         return self._w_blueval is not None
@@ -184,7 +184,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 
 
 
-@builtin_type('OpImpl')
+@builtin_type(QN('operator::OpImpl'))
 class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]

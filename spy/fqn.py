@@ -147,14 +147,17 @@ class QN:
         return str(self.parts[0])
 
     @property
+    def namespace(self) -> 'QN':
+        return QN(self.parts[:-1])
+
+    @property
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-    @property
-    def parent(self) -> 'QN':
-        return QN(self.parts[:-1])
-
-    def nested(self, name: str) -> 'QN':
+    def join(self, name: str) -> 'QN':
+        """
+        Create a new QN nested inside the current one.
+        """
         return QN(self.parts + [NSPart.parse(name)])
 
 
