@@ -147,7 +147,7 @@ class QN:
         """
         Like fullname, but doesn't show 'builtins::'
         """
-        if self.parts[0] == 'builtins':
+        if str(self.parts[0]) == 'builtins':
             return '::'.join(str(part) for part in self.parts[1:])
         else:
             return self.fullname
