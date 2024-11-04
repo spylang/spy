@@ -59,7 +59,9 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     interp_name = f'W_Ptr[{T.__name__}]'     # e.g. W_Ptr[W_I32]
     ITEMSIZE = sizeof(w_T)
 
-    @builtin_type(QN('unsafe::{app_name}'))
+    qn = QN(f'unsafe::{app_name}')
+
+    @builtin_type(qn)
     class W_MyPtr(W_Ptr):
         w_itemtype: ClassVar[W_Type] = w_T
 
@@ -116,7 +118,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::ptr_{w_T.name}_load'))
+    @builtin_func(qn.join('ptr_load'))
     def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
         length = w_ptr.length
@@ -133,7 +135,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         )
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::ptr_{w_T.name}_store'))
+    @builtin_func(qn.join('ptr_store'))
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
