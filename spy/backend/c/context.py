@@ -98,6 +98,7 @@ class Context:
 
     def new_ptr_type(self, w_ptrtype: W_Type) -> C_Type:
         fqn = self.vm.reverse_lookup_global(w_ptrtype)
+        assert fqn is not None
         c_ptrtype = C_Type(fqn.c_name)
         w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore
         c_itemtype = self.w2c(w_itemtype)
@@ -107,6 +108,7 @@ class Context:
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
         fqn = self.vm.reverse_lookup_global(w_st)
+        assert fqn is not None
         c_struct_type = C_Type(fqn.c_name)
 
         # XXX this is VERY wrong: it assumes that the standard C layout
