@@ -75,7 +75,7 @@ class W_Object:
     def __repr__(self) -> str:
         qn = self._w.qn
         addr = f'0x{id(self):x}'
-        return f'<spy instance: type={qn}, id={addr}>'
+        return f'<spy instance: type={qn.human_name}, id={addr}>'
 
     def spy_get_w_type(self, vm: 'SPyVM') -> 'W_Type':
         pyclass = type(self)
@@ -201,7 +201,7 @@ class W_Type(W_Object):
         return basecls._w
 
     def __repr__(self) -> str:
-        return f"<spy type '{self.qn}'>"
+        return f"<spy type '{self.qn.human_name}'>"
 
     def spy_unwrap(self, vm: 'SPyVM') -> Type[W_Object]:
         return self.pyclass
