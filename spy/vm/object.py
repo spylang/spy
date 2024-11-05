@@ -330,7 +330,7 @@ def make_metaclass(qn: QN, pyclass: Type[W_Object]) -> Type[W_Type]:
     if hasattr(pyclass, 'meta_op_CALL'):
         W_MetaType.op_CALL = pyclass.meta_op_CALL  # type: ignore
     elif hasattr(pyclass, 'w_spy_new'):
-        W_MetaType.op_CALL = synthesize_meta_op_CALL(pyclass)  # type: ignore
+        W_MetaType.op_CALL = synthesize_meta_op_CALL(qn, pyclass) # type: ignore
 
     if hasattr(pyclass, 'meta_op_GETITEM'):
         W_MetaType.op_GETITEM = pyclass.meta_op_GETITEM  # type: ignore
@@ -348,7 +348,7 @@ def fix_annotations(fn: Any, types: dict[str, type]) -> None:
             newT = types[T]
             fn.__annotations__[key] = newT
 
-def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
+def synthesize_meta_op_CALL(qn: QN, pyclass: Type[W_Object]) -> Any:
     """
     Given a pyclass which implements w_spy_new, create an op_CALL for the
     corresponding metaclass. Example:
@@ -385,9 +385,9 @@ def synthesize_meta_op_CALL(pyclass: Type[W_Object]) -> Any:
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                      w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
-        qn = QN('ext::new') # XXX what modname should we use?
         # manually apply the @builtin_func decorator to the spy_new function
-        w_spyfunc = builtin_func(qn)(w_spy_new)
+        qn2 = qn.join('__new__')
+        w_spyfunc = builtin_func(qn2)(w_spy_new)
         return W_OpImpl(w_spyfunc)
 
     return meta_op_CALL
