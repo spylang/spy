@@ -422,9 +422,9 @@ class CFuncWriter:
             self.cmod.emit_jsffi_error()
 
         fqn = call.func.fqn
-        if str(fqn).startswith("unsafe::getfield_"):
+        if str(fqn).startswith("unsafe::getfield_by"):
             return self.fmt_getfield(fqn, call)
-        elif str(fqn).startswith("unsafe::setfield_"):
+        elif str(fqn).startswith("unsafe::setfield["):
             return self.fmt_setfield(fqn, call)
 
         # the default case is to call a function with the corresponding name

@@ -168,14 +168,15 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     else:
         by = 'byval'
 
+    # XXX: ideally we would like to use qn, but we don't support "::" in
+    # qualifiers for now, so we just use symbol_name
+    t = w_T.qn.symbol_name
     T = w_T.pyclass  # W_I32
-    t = w_T.qn.symbol_name     # 'i32'
-    t = hack_hack_fix_typename(t) # XXX we can remove this now?
 
-    # unsafe::getfield_prim_i32
-    # unsafe::getfield_ref_Point
+    # unsafe::getfield_byval[i32]
+    # unsafe::getfield_byref[ptr[Point]]
     @no_type_check
-    @builtin_func(QN(f'unsafe::getfield_{by}_{t}'))
+    @builtin_func(QN(f'unsafe::getfield_{by}[{t}]'))
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32) -> T:
         """
@@ -196,7 +197,7 @@ def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     t = w_T.qn.symbol_name # 'i32'
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::setfield_{t}'))  # unsafe::setfield_i32
+    @builtin_func(QN(f'unsafe::setfield[{t}]'))  # unsafe::setfield[i32]
     def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32, w_val: T) -> W_Void:
         """
