@@ -211,12 +211,10 @@ class SPyVM:
             else:
                 fqn = self.get_FQN(w_val.qn, is_global=True)
         elif isinstance(w_val, W_Type):
-            # this is terribly wrong: types should carry their own QN, as
-            # functions do
-            from spy.vm.modules.unsafe.ptr import hack_hack_fix_typename
-            name = hack_hack_fix_typename(w_val.qn.symbol_name)
-            qn = QN(['__fake_mod__', name])
-            fqn = self.get_FQN(qn, is_global=False)
+            raise Exception(
+                "Types should get their own FQN by calling vm.ensure_type_FQN, "
+                "please call it at type creation time."
+            )
         else:
             assert False, 'implement me'
 
