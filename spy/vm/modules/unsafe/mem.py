@@ -6,7 +6,7 @@ from spy.vm.primitive import W_I32
 from spy.vm.w import W_Func, W_Type, W_Dynamic, W_Object
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
-from .ptr import W_Ptr, w_make_ptr_type, hack_hack_fix_typename
+from .ptr import W_Ptr, w_make_ptr_type
 from .misc import sizeof
 
 if TYPE_CHECKING:
@@ -36,10 +36,9 @@ def w_gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass
     t = w_T.qn.symbol_name
-    t = hack_hack_fix_typename(t)
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::mem_read_{t}'))
+    @builtin_func(QN(f'unsafe::mem_read[t]'))
     def w_mem_read_T(vm: 'SPyVM', w_addr: W_I32) -> T:
         addr = vm.unwrap_i32(w_addr)
         if w_T is B.w_i32:
@@ -60,7 +59,7 @@ def w_mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     t = w_T.qn.symbol_name
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::mem_write_{t}'))
+    @builtin_func(QN(f'unsafe::mem_write[t]'))
     def w_mem_write_T(vm: 'SPyVM', w_addr: W_I32, w_val: T) -> None:
         addr = vm.unwrap_i32(w_addr)
         if w_T is B.w_i32:
