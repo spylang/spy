@@ -106,20 +106,20 @@ class Context:
         return c_ptrtype
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
-        # XXX same comment about typename vs FQN as above.
-        #
+        fqn = self.vm.reverse_lookup_global(w_st)
+        c_struct_type = C_Type(fqn.c_name)
+
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
         # properly.
-        t = w_st.qn.symbol_name
         self.out_types.wl("typedef struct {")
         with self.out_types.indent():
             for field, w_fieldtype in w_st.fields.items():
                 c_fieldtype = self.w2c(w_fieldtype)
                 self.out_types.wl(f"{c_fieldtype} {field};")
-        self.out_types.wl("} %s;" % t)
+        self.out_types.wl("} %s;" % c_struct_type)
         self.out_types.wl("")
-        c_type = C_Type(t)
-        self._d[w_st] = c_type
-        return c_type
+
+        self._d[w_st] = c_struct_type
+        return c_struct_type
