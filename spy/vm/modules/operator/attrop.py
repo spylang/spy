@@ -98,7 +98,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
 
     if kind == 'get':
         @no_type_check
-        @builtin_func(QN([w_type.name, f"__get_{attr}__"]))
+        @builtin_func(w_type.qn.join(f"__get_{attr}__"))
         def w_opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_OpArg:
             return getattr(w_obj, field)
 
@@ -106,7 +106,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
 
     elif kind == 'set':
         @no_type_check
-        @builtin_func(QN([w_type.name, f"__set_{attr}__"]))
+        @builtin_func(w_type.qn.join(f"__set_{attr}__"))
         def w_opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
                          w_val: W_OpArg) -> W_Void:
             setattr(w_obj, field, w_val)

@@ -7,9 +7,9 @@ from spy.vm.w import W_FuncType
 class TestFunction:
 
     def test_FunctionType_repr(self):
-        w_functype = W_FuncType.make(x=B.w_i32, y=B.w_i32, w_restype=B.w_i32)
-        assert w_functype.name == 'def(x: i32, y: i32) -> i32'
-        assert repr(w_functype) == "<spy type 'def(x: i32, y: i32) -> i32'>"
+        w_functype = W_FuncType.make(x=B.w_i32, y=B.w_i32, w_restype=B.w_bool)
+        assert str(w_functype.qn) == 'builtins::def[args[i32, i32], bool]'
+        assert repr(w_functype) == "<spy type 'def(x: i32, y: i32) -> bool'>"
 
     def test_FunctionType_parse(self):
         w_ft = W_FuncType.parse('def() -> i32')

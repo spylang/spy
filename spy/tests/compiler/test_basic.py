@@ -550,7 +550,7 @@ class TestBasic(CompilerTest):
         """)
         #
         w_functype = mod.foo.w_functype
-        assert w_functype.name == 'def(x: i32) -> i32'
+        assert w_functype.signature == 'def(x: i32) -> i32'
         assert mod.foo(1) == 2
 
     def test_redshift_nonglobal_function(self):

@@ -13,12 +13,6 @@ from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-def hack_hack_fix_typename(t: str) -> str:
-    # XXX hack hack hack, it will be fixed when types have a QN and we can
-    # properly nest QN qualifiers. In the meantime, we just use W_Type.name, but
-    # we  make sure it doesn't contain any square brackets.
-    return t.replace('[', '_').replace(']', '')
-
 @UNSAFE.spytype('ptr')
 class W_Ptr(W_Object):
     __spy_storage_category__ = 'value'
@@ -55,11 +49,12 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     from .struct import W_StructType
 
     T = w_T.pyclass
-    app_name = f'ptr[{w_T.name}]'         # e.g. ptr[i32]
-    interp_name = f'W_Ptr[{T.__name__}]'  # e.g. W_Ptr[W_I32]
+    interp_name = f'W_Ptr[{T.__name__}]'     # W_Ptr[W_I32]
+    app_name = f'ptr[{w_T.qn.symbol_name}]'  # 'ptr[i32]'
+    qn = QN(f'unsafe::{app_name}')           # unsafe::ptr[i32]
     ITEMSIZE = sizeof(w_T)
 
-    @builtin_type(app_name)
+    @builtin_type(qn)
     class W_MyPtr(W_Ptr):
         w_itemtype: ClassVar[W_Type] = w_T
 
@@ -116,7 +111,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::ptr_{w_T.name}_load'))
+    @builtin_func(qn.join('load'))
     def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
         length = w_ptr.length
@@ -133,7 +128,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         )
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::ptr_{w_T.name}_store'))
+    @builtin_func(qn.join('store'))
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
@@ -151,8 +146,9 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         )
 
     W_MyPtr.__name__ = W_MyPtr.__qualname__ = interp_name
-    return vm.wrap(W_MyPtr)
-
+    w_ptrtype = vm.wrap(W_MyPtr)
+    vm.ensure_type_FQN(w_ptrtype)  # type: ignore
+    return w_ptrtype
 
 
 @UNSAFE.builtin_func(color='blue')
@@ -166,14 +162,15 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     else:
         by = 'byval'
 
+    # XXX: ideally we would like to use qn, but we don't support "::" in
+    # qualifiers for now, so we just use symbol_name
+    t = w_T.qn.symbol_name
     T = w_T.pyclass  # W_I32
-    t = w_T.name     # 'i32'
-    t = hack_hack_fix_typename(t)
 
-    # unsafe::getfield_prim_i32
-    # unsafe::getfield_ref_Point
+    # unsafe::getfield_byval[i32]
+    # unsafe::getfield_byref[ptr[Point]]
     @no_type_check
-    @builtin_func(QN(f'unsafe::getfield_{by}_{t}'))
+    @builtin_func(QN(f'unsafe::getfield_{by}[{t}]'))
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32) -> T:
         """
@@ -190,11 +187,11 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
 @UNSAFE.builtin_func(color='blue')
 def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    T = w_T.pyclass  # W_I32
-    t = w_T.name     # 'i32'
+    T = w_T.pyclass        # W_I32
+    t = w_T.qn.symbol_name # 'i32'
 
     @no_type_check
-    @builtin_func(QN(f'unsafe::setfield_{t}'))  # unsafe::setfield_i32
+    @builtin_func(QN(f'unsafe::setfield[{t}]'))  # unsafe::setfield[i32]
     def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32, w_val: T) -> W_Void:
         """

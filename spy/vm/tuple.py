@@ -7,7 +7,7 @@ from spy.vm.opimpl import W_OpImpl, W_OpArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-@builtin_type('tuple')
+@builtin_type(QN('builtins::tuple'))
 class W_Tuple(W_Object):
     """
     This is not the "real" tuple type that we will have in SPy.

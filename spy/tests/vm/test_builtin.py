@@ -55,14 +55,14 @@ class TestBuiltin:
         @builtin_func(QN('test::foo'))
         def w_foo(vm: 'SPyVM', w_x: W_Dynamic) -> W_Dynamic:  # type: ignore
             pass
-        assert w_foo.w_functype.name == 'def(x: dynamic) -> dynamic'
+        assert w_foo.w_functype.signature == 'def(x: dynamic) -> dynamic'
 
     def test_return_None(self):
         vm = SPyVM()
         @builtin_func(QN('test::foo'))
         def w_foo(vm: 'SPyVM') -> None:
             pass
-        assert w_foo.w_functype.name == 'def() -> void'
+        assert w_foo.w_functype.signature == 'def() -> void'
         assert isinstance(w_foo, W_BuiltinFunc)
         w_res = vm.call(w_foo, [])
         assert w_res is B.w_None
@@ -75,7 +75,7 @@ class TestBuiltin:
             x = vm.unwrap_i32(w_x)
             return vm.wrap(x*2)  # type: ignore
 
-        assert w_foo.w_functype.name == '@blue def(x: i32) -> i32'
+        assert w_foo.w_functype.signature == '@blue def(x: i32) -> i32'
         w_x = vm.call(w_foo, [vm.wrap(21)])
         w_y = vm.call(w_foo, [vm.wrap(21)])
         assert w_x is w_y

@@ -239,7 +239,7 @@ class FuncDoppler:
 
         assert len(call.args) == 1
         color, w_type = self.t.check_expr(call.args[0])
-        t = w_type.name
+        t = w_type.qn.symbol_name
         if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
             fqn = FQN.parse(f'builtins::print_{t}')
         else:

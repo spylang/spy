@@ -39,7 +39,7 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline PTR PTR##_from_addr(T *p) {                    \
         return (PTR){p};                                         \
     }                                                            \
-    static inline PTR PTR##_gc_alloc(size_t n) {                 \
+    static inline PTR PTR##$gc_alloc(size_t n) {                 \
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p };                                 \
     }                                                            \
@@ -58,16 +58,16 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline PTR PTR##_from_addr(T *p) {                    \
         return (PTR){p, 1};                                      \
     }                                                            \
-    static inline PTR PTR##_gc_alloc(size_t n) {                 \
+    static inline PTR PTR##$gc_alloc(size_t n) {                 \
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p, n };                              \
     }                                                            \
-    static inline T PTR##_load(PTR p, size_t i) {                \
+    static inline T PTR##$load(PTR p, size_t i) {                \
         if (i >= p.length)                                       \
             spy_panic("ptr_load out of bounds");                 \
         return p.p[i];                                           \
     }                                                            \
-    static inline void PTR##_store(PTR p, size_t i, T v) {       \
+    static inline void PTR##$store(PTR p, size_t i, T v) {       \
         if (i >= p.length)                                       \
             spy_panic("ptr_store ouf of bounds");                \
         p.p[i] = v;                                              \

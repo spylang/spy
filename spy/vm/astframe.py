@@ -105,7 +105,7 @@ class ASTFrame:
             self.vm.make_fqn_const(w_val)
             return w_val
         w_valtype = self.vm.dynamic_type(w_val)
-        msg = f'expected `type`, got `{w_valtype.name}`'
+        msg = f'expected `type`, got `{w_valtype.qn.human_name}`'
         raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
 
     # ==== statements ====
@@ -127,7 +127,7 @@ class ASTFrame:
         self.t.lazy_check_FuncDef(funcdef, w_functype)
         #
         # create the w_func
-        qn = self.w_func.qn.nested(funcdef.name)
+        qn = self.w_func.qn.join(funcdef.name)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, qn, funcdef, closure)
@@ -140,8 +140,8 @@ class ASTFrame:
             d[vardef.name] = self.eval_expr_type(vardef.type)
         #
         assert classdef.is_struct, 'only structs are supported for now'
-        # XXX should we use a QN instead of just .name?
-        w_struct_type = make_struct_type(self.vm, classdef.name, d)
+        qn = self.w_func.qn.join(classdef.name)
+        w_struct_type = make_struct_type(self.vm, qn, d)
         self.store_local(classdef.name, w_struct_type)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
@@ -278,7 +278,8 @@ class ASTFrame:
                 # it's a TypeError
                 if not isinstance(w_func, W_Func):
                     t = self.vm.dynamic_type(w_func)
-                    raise SPyTypeError(f'cannot call objects of type `{t.name}`')
+                    raise SPyTypeError(
+                        f'cannot call objects of type `{t.qn.human_name}`')
             else:
                 # if the static type is not `dynamic` and the thing is not a
                 # function, it's a bug in the typechecker

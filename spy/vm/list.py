@@ -40,7 +40,7 @@ class Meta_W_List(type):
 
 T = TypeVar('T', bound='W_Object')
 
-@builtin_type('list')
+@builtin_type(QN('builtins::list'))
 class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     """
     The 'list' type.
@@ -93,9 +93,13 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     assert w_list is W_List._w
     if w_T.pyclass in Meta_W_List.CACHE:
-        return vm.wrap(Meta_W_List.CACHE[w_T.pyclass])  # type: ignore
-    pyclass = _make_W_List(w_T)
-    return vm.wrap(pyclass)  # type: ignore
+        w_list_type = vm.wrap(Meta_W_List.CACHE[w_T.pyclass])
+    else:
+        pyclass = _make_W_List(w_T)
+        w_list_type = vm.wrap(pyclass)
+    assert isinstance(w_list_type, W_Type)
+    vm.ensure_type_FQN(w_list_type)
+    return w_list_type
 
 
 def _make_W_List(w_T: W_Type) -> Type[W_List]:
@@ -107,10 +111,10 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     from spy.vm.opimpl import W_OpImpl
 
     T = w_T.pyclass
-    app_name = f'list[{w_T.name}]'        # e.g. list[i32]
-    interp_name = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
+    app_name = f'list[{w_T.qn.symbol_name}]' # e.g. list[i32]
+    interp_name = f'W_List[{T.__name__}]'    # e.g. W_List[W_I32]
 
-    @builtin_type(app_name)
+    @builtin_type(QN(f'builtins::{app_name}'))
     class W_MyList(W_List):
         items_w: list[W_Object]
 

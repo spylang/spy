@@ -57,7 +57,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_List):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.name
+            return w_obj.qn.human_name
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)

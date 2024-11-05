@@ -143,18 +143,32 @@ class QN:
         return '::'.join(str(part) for part in self.parts)
 
     @property
+    def human_name(self) -> str:
+        """
+        Like fullname, but doesn't show 'builtins::'
+        """
+        if str(self.parts[0]) == 'builtins':
+            return '::'.join(str(part) for part in self.parts[1:])
+        else:
+            return self.fullname
+
+    @property
     def modname(self) -> str:
         return str(self.parts[0])
+
+    @property
+    def namespace(self) -> 'QN':
+        return QN(self.parts[:-1])
 
     @property
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-    @property
-    def parent(self) -> 'QN':
-        return QN(self.parts[:-1])
 
-    def nested(self, name: str) -> 'QN':
+    def join(self, name: str) -> 'QN':
+        """
+        Create a new QN nested inside the current one.
+        """
         return QN(self.parts + [NSPart.parse(name)])
 
 

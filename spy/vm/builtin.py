@@ -95,7 +95,7 @@ def builtin_func(qn: QN, color: Color = 'red') -> Callable:
     return decorator
 
 
-def builtin_type(name: str) -> Any:
+def builtin_type(qn: QN) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
 
@@ -103,9 +103,8 @@ def builtin_type(name: str) -> Any:
     W_Type and attaches it to the W_* class.
     """
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-        W_MetaClass = make_metaclass(name, pyclass)
-
-        pyclass._w = W_MetaClass(name, pyclass)
+        W_MetaClass = make_metaclass(qn, pyclass)
+        pyclass._w = W_MetaClass(qn, pyclass)
         # setup __spy_members__
         pyclass.__spy_members__ = {}
         for field, t in pyclass.__annotations__.items():

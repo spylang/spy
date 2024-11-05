@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence
 from spy import ast
 from spy.ast import Color
-from spy.fqn import QN
+from spy.fqn import QN, NSPart
 from spy.vm.primitive import W_Void
 from spy.vm.object import W_Object, W_Type
 if TYPE_CHECKING:
@@ -35,16 +35,36 @@ class W_FuncType(W_Type):
         self.params = params
         self.w_restype = w_restype
         self.color = color
-        super().__init__(self._str_sig(), W_Func)
+        #
+        # build an artificial QN for the functype. Note that the QN is not
+        # necessarily unique (e.g., we don't take into account param names),
+        # but that's ok because it will be uniquified when it becomes an FQN.
+        # The QN looks like:
+        #    builtins::def[args[i32, i32], bool]
+        def T(w_type: W_Type) -> NSPart:
+            "Convert a W_Type into an NSPart"
+            return NSPart(w_type.qn.symbol_name, [])
 
-    def _str_sig(self) -> str:
-        params = [f'{p.name}: {p.w_type.name}' for p in self.params]
+        args = NSPart('args', [T(p.w_type) for p in self.params])
+        ret = T(w_restype)
+        qn = QN([
+            NSPart('builtins', []),
+            NSPart('def', [args, ret]),
+        ])
+        super().__init__(qn, W_Func)
+
+    @property
+    def signature(self) -> str:
+        params = [f'{p.name}: {p.w_type.qn.human_name}' for p in self.params]
         str_params = ', '.join(params)
-        resname = self.w_restype.name
+        resname = self.w_restype.qn.human_name
         s = f'def({str_params}) -> {resname}'
         if self.color == 'blue':
             s = f'@blue {s}'
         return s
+
+    def __repr__(self) -> str:
+        return f"<spy type '{self.signature}'>"
 
     @classmethod
     def make(cls,

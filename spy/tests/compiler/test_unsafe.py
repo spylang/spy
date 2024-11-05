@@ -90,8 +90,8 @@ class TestUnsafe(CompilerTest):
             p.z = 42
         """
         errors = expect_errors(
-            "type `ptr[Point]` does not support assignment to attribute 'z'",
-            ('this is `ptr[Point]`', 'p'),
+            "type `unsafe::ptr[Point]` does not support assignment to attribute 'z'",
+            ('this is `unsafe::ptr[Point]`', 'p'),
         )
         self.compile_raises(src, 'foo', errors)
 

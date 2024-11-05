@@ -132,6 +132,20 @@ class SPyVM:
         self.unique_fqns.add(fqn)
         return fqn
 
+    def ensure_type_FQN(self, w_type: W_Type) -> FQN:
+        """
+        Make sure that the given type has an unique FQN assigned.
+        Mostly useful for generic builtin types, such as ptr[] and list[].
+
+        XXX: this is probably a workaround: we need to think more but it's
+        possible that the best solution is to avoid the QN/FQN dichotomy, keep
+        only FQNs, and assign them eagerly as soon as we create a function or
+        a type.
+        """
+        fqn = self.get_FQN(w_type.qn, is_global=True)
+        self.add_global(fqn, None, w_type)
+        return fqn
+
     def add_global(self,
                    fqn: FQN,
                    w_type: Optional[W_Type],
@@ -197,12 +211,10 @@ class SPyVM:
             else:
                 fqn = self.get_FQN(w_val.qn, is_global=True)
         elif isinstance(w_val, W_Type):
-            # this is terribly wrong: types should carry their own QN, as
-            # functions do
-            from spy.vm.modules.unsafe.ptr import hack_hack_fix_typename
-            name = hack_hack_fix_typename(w_val.name)
-            qn = QN(['__fake_mod__', name])
-            fqn = self.get_FQN(qn, is_global=False)
+            raise Exception(
+                "Types should get their own FQN by calling vm.ensure_type_FQN, "
+                "please call it at type creation time."
+            )
         else:
             assert False, 'implement me'
 
@@ -269,8 +281,8 @@ class SPyVM:
         """
         w_t1 = self.dynamic_type(w_obj)
         if w_t1 != w_type and not self.issubclass(w_t1, w_type):
-            exp = w_type.name
-            got = w_t1.name
+            exp = w_type.qn.human_name
+            got = w_t1.qn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyTypeError(msg)
 
@@ -462,7 +474,7 @@ class SPyVM:
             # be possible. If it's not, it means that we forgot to implement it
             w_ta = wop_a.w_static_type
             w_tb = wop_b.w_static_type
-            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.name}`'
+            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.qn}`'
             return B.w_False
 
         w_res = w_opimpl.call(self, [w_a, w_b])

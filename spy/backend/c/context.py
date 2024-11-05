@@ -97,33 +97,31 @@ class Context:
         return C_Function(name, c_params, c_restype)
 
     def new_ptr_type(self, w_ptrtype: W_Type) -> C_Type:
-        # XXX this way of computing the typename works only for simple
-        # types. To handle more complex types we need to give each of them an
-        # FQN, and probably we also need to think how to generate .h files
-        w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore # B.w_i32
-        c_itemtype = self.w2c(w_itemtype)          # int32_t
-        t = w_itemtype.name                        # i32
-        ptr = f'spy_unsafe$ptr_{t}'                # spy_unsafe$ptr_i32
-        c_type = C_Type(ptr)
-        self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_type}, {c_itemtype})")
-        self._d[w_ptrtype] = c_type
-        return c_type
+        fqn = self.vm.reverse_lookup_global(w_ptrtype)
+        assert fqn is not None
+        c_ptrtype = C_Type(fqn.c_name)
+        w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore
+        c_itemtype = self.w2c(w_itemtype)
+        self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_ptrtype}, {c_itemtype})")
+        self._d[w_ptrtype] = c_ptrtype
+        return c_ptrtype
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
-        # XXX same comment about typename vs FQN as above.
-        #
+        fqn = self.vm.reverse_lookup_global(w_st)
+        assert fqn is not None
+        c_struct_type = C_Type(fqn.c_name)
+
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
         # properly.
-        t = w_st.name
         self.out_types.wl("typedef struct {")
         with self.out_types.indent():
             for field, w_fieldtype in w_st.fields.items():
                 c_fieldtype = self.w2c(w_fieldtype)
                 self.out_types.wl(f"{c_fieldtype} {field};")
-        self.out_types.wl("} %s;" % t)
+        self.out_types.wl("} %s;" % c_struct_type)
         self.out_types.wl("")
-        c_type = C_Type(t)
-        self._d[w_st] = c_type
-        return c_type
+
+        self._d[w_st] = c_struct_type
+        return c_struct_type

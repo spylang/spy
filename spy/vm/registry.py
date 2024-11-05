@@ -38,7 +38,7 @@ class ModuleRegistry:
             """
 
     def add(self, attr: str, w_obj: W_Object) -> None:
-        qn = self.qn.nested(attr)
+        qn = self.qn.join(attr)
         setattr(self, f'w_{attr}', w_obj)
         self.content.append((qn, w_obj))
 
@@ -58,7 +58,8 @@ class ModuleRegistry:
             MOD.add('Foo', W_Foo._w)
         """
         def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-            W_class = builtin_type(name)(pyclass)
+            qn = self.qn.join(name)
+            W_class = builtin_type(qn)(pyclass)
             self.add(name, W_class._w)
             return W_class
         return decorator
@@ -80,7 +81,7 @@ class ModuleRegistry:
         def decorator(pyfunc: Callable) -> W_BuiltinFunc:
             assert pyfunc.__name__.startswith('w_')
             funcname = pyfunc.__name__[2:]
-            qn = self.qn.nested(funcname)
+            qn = self.qn.join(funcname)
             # apply the @builtin_func decorator to pyfunc
             w_func = builtin_func(qn, color=color)(pyfunc)
             setattr(self, f'w_{funcname}', w_func)
