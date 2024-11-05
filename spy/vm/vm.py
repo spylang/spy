@@ -132,6 +132,20 @@ class SPyVM:
         self.unique_fqns.add(fqn)
         return fqn
 
+    def ensure_type_FQN(self, w_type: W_Type) -> FQN:
+        """
+        Make sure that the given type has an unique FQN assigned.
+        Mostly useful for generic builtin types, such as ptr[] and list[].
+
+        XXX: this is probably a workaround: we need to think more but it's
+        possible that the best solution is to avoid the QN/FQN dichotomy, keep
+        only FQNs, and assign them eagerly as soon as we create a function or
+        a type.
+        """
+        fqn = self.get_FQN(w_type.qn, is_global=True)
+        self.add_global(fqn, None, w_type)
+        return fqn
+
     def add_global(self,
                    fqn: FQN,
                    w_type: Optional[W_Type],

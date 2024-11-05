@@ -97,17 +97,13 @@ class Context:
         return C_Function(name, c_params, c_restype)
 
     def new_ptr_type(self, w_ptrtype: W_Type) -> C_Type:
-        # XXX this way of computing the typename works only for simple
-        # types. To handle more complex types we need to give each of them an
-        # FQN, and probably we also need to think how to generate .h files
-        w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore # B.w_i32
-        c_itemtype = self.w2c(w_itemtype)          # int32_t
-        t = w_itemtype.name                        # i32
-        ptr = f'spy_unsafe$ptr_{t}'                # spy_unsafe$ptr_i32
-        c_type = C_Type(ptr)
-        self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_type}, {c_itemtype})")
-        self._d[w_ptrtype] = c_type
-        return c_type
+        fqn = self.vm.reverse_lookup_global(w_ptrtype)
+        c_ptrtype = C_Type(fqn.c_name)
+        w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore
+        c_itemtype = self.w2c(w_itemtype)
+        self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_ptrtype}, {c_itemtype})")
+        self._d[w_ptrtype] = c_ptrtype
+        return c_ptrtype
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
         # XXX same comment about typename vs FQN as above.
