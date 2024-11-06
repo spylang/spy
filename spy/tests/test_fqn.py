@@ -36,13 +36,13 @@ def test_qualifiers():
     assert a.modname == "a"
     assert a.parts == [
         NSPart("a", []),
-        NSPart("b", [NSPart("x", []), NSPart("y", [])]),
+        NSPart("b", [QN("x"), QN("y")]),
         NSPart("c", [])
     ]
 
 def test_nested_qualifiers():
-    a = QN("foo::list[Ptr[Point]]")
-    assert a.fullname == "foo::list[Ptr[Point]]"
+    a = QN("mod::dict[str, unsafe::ptr[mymod::Point]]")
+    assert a.fullname == "mod::dict[str, unsafe::ptr[mymod::Point]]"
 
 def test_QN_nested():
     a = QN("aaa::bbb")

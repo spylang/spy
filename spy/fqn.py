@@ -4,14 +4,24 @@
 A Qualified Name (QN) locates a function or class inside the source code.
 
 A QN is composed by one or more Namespace Parts (NSPart), separated by '::'.
-Examples:
-  - builtins::i32
-  - a.b.c::foo
-  - builtins::list[i32]::append
-  - unsafe::ptr[Point]::getfield[i32]
 
-A NSPart must be a valid Python identifier, but it can also contain dots.
-NSParts have 0 or more "qualifiers", expressed in square brackets.
+NSPart.name can contain the following characters:
+  - letters (a-z, A-Z)
+  - digits (0-9)
+  - underscore (_)
+  - dot
+
+NSPart can have a list of qualifiers. If the list is non-empty, the qualifiers
+are expressed into square brackets, separated by commas.
+
+Examples:
+
+  - "foo": a QN composed by a single unqualified part
+  - "mod::foo": a QN composed by two parts, "mod" and "foo"
+  - "a.b.c::foo": a QN composed by two parts, "a.b.c" and "foo"
+  - "list[i32]": a QN composed by a single part "list" with a qualifier "i32"
+  - "dict[str, unsafe::ptr[i32]]"
+
 
 Various subparts of a QN have different names:
 
@@ -24,9 +34,7 @@ Various subparts of a QN have different names:
 
 E.g., for "builtins::list[i32]::append":
   - module name: "builtins"
-
   - namespace: "builtins::list[i32]"
-
   - symbol name: "append"
 
 
@@ -54,39 +62,14 @@ from typing import Optional, Any
 from dataclasses import dataclass
 import re
 
-_NSPART = re.compile(r"([a-zA-Z_][a-zA-Z0-9_\.]*)(?:\[([a-zA-Z0-9_,\s\[\]]*)\])?")
-
 @dataclass
 class NSPart:
     name: str
-    qualifiers: list['NSPart']
+    qualifiers: list['QN']
 
-    @classmethod
-    def parse(cls, s: str) -> 'NSPart':
-        m = _NSPART.fullmatch(s)
-        if not m:
-            raise ValueError(f'Invalid NSPart: {s}')
-        name = m.group(1)
-        qualifiers_str = m.group(2)
-        qualifiers = cls.parse_qualifiers(qualifiers_str) if qualifiers_str else []
-        return cls(name, qualifiers)
-
-    @classmethod
-    def parse_qualifiers(cls, s: str) -> list['NSPart']:
-        qualifiers = []
-        depth = 0
-        start = 0
-        for i, char in enumerate(s):
-            if char == '[':
-                depth += 1
-            elif char == ']':
-                depth -= 1
-            elif char == ',' and depth == 0:
-                qualifiers.append(cls.parse(s[start:i].strip()))
-                start = i + 1
-        if start < len(s):
-            qualifiers.append(cls.parse(s[start:].strip()))
-        return qualifiers
+    def __init__(self, name: str, qualifiers: list['QN']) -> None:
+        self.name = name
+        self.qualifiers = qualifiers
 
     def __str__(self) -> str:
         if len(self.qualifiers) == 0:
@@ -101,28 +84,36 @@ class NSPart:
         if len(self.qualifiers) == 0:
             return name
         else:
-            quals = '_'.join(q.c_name for q in self.qualifiers)
+            # XXX temporary hack, eventually we need to kill the QN/FQN
+            # dichotomy
+            quals = '_'.join(FQN.make(qn, suffix='').c_name_plain
+                             for qn in self.qualifiers)
             return f'{name}__{quals}'
+
 
 class QN:
     parts: list[NSPart]
 
     def __init__(self, x: str | list[str] | list[NSPart]) -> None:
         if isinstance(x, str):
-            self.parts = self.parse(x)
+            self.parts = self.parse(x).parts
         elif len(x) == 0:
             self.parts = []
         elif isinstance(x[0], NSPart):
             self.parts = x  # type: ignore
         else:
-            self.parts = [NSPart.parse(part) for part in x]  # type: ignore
+            self.parts = [NSPart(name, []) for name in x]  # type: ignore
 
     @staticmethod
-    def parse(s: str) -> list[NSPart]:
-        parts = []
-        for part in s.split("::"):
-            parts.append(NSPart.parse(part))
-        return parts
+    def parse(s: str) -> 'QN':
+        from .fqn_parser import QNParser
+        return QNParser(s).parse()
+
+    @classmethod
+    def from_parts(cls, parts: list[NSPart]) -> 'QN':
+        res = cls.__new__(cls)
+        res.parts = parts
+        return res
 
     def __repr__(self) -> str:
         return f"QN({self.fullname!r})"
@@ -164,12 +155,12 @@ class QN:
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-
     def join(self, name: str) -> 'QN':
         """
         Create a new QN nested inside the current one.
         """
-        return QN(self.parts + [NSPart.parse(name)])
+        return QN(self.parts + [NSPart(name, [])])
+
 
 
 class FQN:
@@ -266,11 +257,19 @@ class FQN:
         Becomes:
             spy_mod$dict__i32_f64$foo$0
         """
+        return f'spy_{self.c_name_plain}'
+
+    @property
+    def c_name_plain(self) -> str:
+        """
+        Like c_name, but without the spy_ prefix
+        """
         parts = [part.c_name for part in self.qn.parts]
-        cn = 'spy_' + '$'.join(parts)
+        cn = '$'.join(parts)
         if self.suffix != '':
             cn += '$' + self.suffix
         return cn
+
 
     @property
     def spy_name(self) -> str:
