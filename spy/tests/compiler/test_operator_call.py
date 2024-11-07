@@ -19,7 +19,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Adder')
+        @EXT.builtin_type('Adder')
         class W_Adder(W_Object):
 
             def __init__(self, x: int) -> None:
@@ -55,7 +55,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Point')
+        @EXT.builtin_type('Point')
         class W_Point(W_Object):
             w_x: Annotated[W_I32, Member('x')]
             w_y: Annotated[W_I32, Member('y')]
@@ -89,7 +89,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Point')
+        @EXT.builtin_type('Point')
         class W_Point(W_Object):
             w_x: Annotated[W_I32, Member('x')]
             w_y: Annotated[W_I32, Member('y')]
@@ -120,7 +120,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Calc')
+        @EXT.builtin_type('Calc')
         class W_Calc(W_Object):
 
             def __init__(self, x: int) -> None:

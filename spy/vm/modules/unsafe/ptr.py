@@ -13,7 +13,7 @@ from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-@UNSAFE.spytype('ptr')
+@UNSAFE.builtin_type('ptr')
 class W_Ptr(W_Object):
     __spy_storage_category__ = 'value'
 

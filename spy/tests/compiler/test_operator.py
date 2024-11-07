@@ -18,7 +18,7 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             @staticmethod
@@ -53,7 +53,7 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             @staticmethod
@@ -86,7 +86,7 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             def __init__(self, w_x: W_I32):

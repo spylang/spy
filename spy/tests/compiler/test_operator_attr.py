@@ -18,7 +18,7 @@ class TestAttrOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
             w_x: Annotated[W_I32, Member('x')]
 
@@ -47,7 +47,7 @@ class TestAttrOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             def __init__(self) -> None:
