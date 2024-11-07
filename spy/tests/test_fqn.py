@@ -44,10 +44,17 @@ def test_nested_qualifiers():
     a = QN("mod::dict[str, unsafe::ptr[mymod::Point]]")
     assert a.fullname == "mod::dict[str, unsafe::ptr[mymod::Point]]"
 
-def test_QN_nested():
-    a = QN("aaa::bbb")
-    b = a.join("ccc")
-    assert b.fullname == "aaa::bbb::ccc"
+def test_QN_join():
+    a = QN("a")
+    b = a.join("b")
+    assert b.fullname == "a::b"
+    c = b.join("c", ["i32"])
+    assert c.fullname == "a::b::c[i32]"
+    d = a.join("d", [QN("mod::x")])
+    assert d.fullname == "a::d[mod::x]"
+    e = a.join("e", ["mod::y"])
+    assert e.fullname == "a::e[mod::y]"
+
 
 def test_FQN():
     a = FQN.make("aaa::bbb", suffix="0")

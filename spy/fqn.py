@@ -58,7 +58,7 @@ fn_f64 = make_fn(f64)  # QN is 'test::make_fn::fn', FQN is 'test::make_fn::fn#2'
 See also SPyVM.get_FQN().
 """
 
-from typing import Optional, Any
+from typing import Optional, Any, Union
 from dataclasses import dataclass
 import re
 
@@ -96,8 +96,10 @@ class NSPart:
 class QN:
     parts: list[NSPart]
 
-    def __init__(self, x: str | list[str|NSPart]) -> None:
-        if isinstance(x, str):
+    def __init__(self, x: Union['QN', str, list[str|NSPart]]) -> None:
+        if isinstance(x, QN):
+            self.parts = x.parts[:]
+        elif isinstance(x, str):
             self.parts = self.parse(x).parts
         else:
             self.parts = []
@@ -151,11 +153,15 @@ class QN:
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-    def join(self, name: str) -> 'QN':
+    def join(self, name: str,
+             qualifiers: Optional[list[Union[str, 'QN']]] = None
+             ) -> 'QN':
         """
         Create a new QN nested inside the current one.
         """
-        return QN(self.parts + [NSPart(name, [])])
+        qualifiers = qualifiers or []
+        qualifiers = [QN(q) for q in qualifiers]
+        return QN(self.parts + [NSPart(name, qualifiers)])
 
 
 
