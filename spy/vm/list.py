@@ -78,7 +78,7 @@ class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
 
 
 
-@builtin_func(QN('__spy__::make_list_type'), color='blue')
+@builtin_func('__spy__', color='blue')
 def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
@@ -132,7 +132,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
         def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
                        wop_i: 'W_OpArg') -> W_OpImpl:
             @no_type_check
-            @builtin_func(QN('operator::list_getitem'))
+            @builtin_func(W_MyList.qn)
             def w_getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
@@ -145,7 +145,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             from spy.vm.b import B
 
             @no_type_check
-            @builtin_func(QN('operator::list_setitem'))
+            @builtin_func(W_MyList.qn)
             def w_setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
                           w_v: T) -> W_Void:
                 assert isinstance(w_v, T)
@@ -165,7 +165,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             # XXX: we use use proper nested QNs. See also the comment in
             # vm.make_fqn_const
             @no_type_check
-            @builtin_func(QN('operator::list_eq'))
+            @builtin_func(W_MyList.qn)
             def w_eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
                 items2_w = w_l2.items_w

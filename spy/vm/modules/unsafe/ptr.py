@@ -109,7 +109,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
     @no_type_check
-    @builtin_func(W_MyPtr.qn.join('load'))
+    @builtin_func(W_MyPtr.qn)
     def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
         length = w_ptr.length
@@ -126,7 +126,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         )
 
     @no_type_check
-    @builtin_func(W_MyPtr.qn.join('store'))
+    @builtin_func(W_MyPtr.qn)
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr

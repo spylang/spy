@@ -73,13 +73,13 @@ class W_Str(W_Object):
 
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-        @builtin_func(QN('operator::str_getitem'))
-        def w_str_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
+        @builtin_func(W_Str.qn)
+        def w_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
             assert isinstance(w_s, W_Str)
             assert isinstance(w_i, W_I32)
             ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
             return W_Str.from_ptr(vm, ptr_c)
-        return W_OpImpl(w_str_getitem)
+        return W_OpImpl(w_getitem)
 
     @staticmethod
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
@@ -93,7 +93,7 @@ class W_Str(W_Object):
             return W_OpImpl.NULL
 
 
-@builtin_func(QN('builtins::int2str'))
+@builtin_func('builtins')
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
     return vm.wrap(str(i))  # type: ignore

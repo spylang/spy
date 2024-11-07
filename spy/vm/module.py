@@ -42,7 +42,7 @@ class W_Module(W_Object):
         all the module getattrs are done in blue contexts are redshifted
         away.
         """
-        @builtin_func(QN('builtins::module_getattr'))
+        @builtin_func('builtins', 'module_getattr')
         def w_fn(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
             attr = vm.unwrap_str(w_attr)
             return w_mod.getattr(attr)
@@ -52,7 +52,7 @@ class W_Module(W_Object):
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                    wop_v: W_OpArg) -> W_OpImpl:
-        @builtin_func(QN('builtins::module_setattr'))
+        @builtin_func('builtins', 'module_setattr')
         def w_fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
                    W_Str, w_val: W_Dynamic) -> W_Void:
             attr = vm.unwrap_str(w_attr)

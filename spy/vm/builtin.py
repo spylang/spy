@@ -8,7 +8,7 @@ vm/modules/builtins.py.
 
 import inspect
 import typing
-from typing import TYPE_CHECKING, Any, Callable, Type
+from typing import TYPE_CHECKING, Any, Callable, Type, Optional
 from spy.fqn import QN, QUALIFIERS
 from spy.ast import Color
 from spy.vm.primitive import W_Void
@@ -68,18 +68,31 @@ def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
     return W_FuncType(func_params, w_restype, color=color)
 
 
-def builtin_func(qn: QN, *, color: Color = 'red') -> Callable:
+def builtin_func(namespace: QN|str,
+                 funcname: Optional[str] = None,
+                 qualifiers: QUALIFIERS = None,
+                 *,
+                 color: Color = 'red'
+                 ) -> Callable:
     """
     Decorator to make an interp-level function wrappable by the VM.
 
     Example of usage:
 
-        @builtin_func(QN("foo::hello"))
+        @builtin_func("mymodule", "hello")
         def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             ...
-
         assert isinstance(w_hello, W_BuiltinFunc)
-        assert w_hello.qn == QN("foo::hello")
+        assert w_hello.qn == QN("mymodule::hello")
+
+    funcname can be omitted, and in that case it will automatically be deduced
+    from __name__:
+
+        @builtin_func("mymodule")
+        def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
+            ...
+        assert w_hello.qn == QN("mymodule::hello")
+
 
     The w_functype of the wrapped function is automatically computed by
     inspectng the signature of the interp-level function. The first parameter
@@ -88,8 +101,18 @@ def builtin_func(qn: QN, *, color: Color = 'red') -> Callable:
     Note that the decorator returns a W_BuiltinFunc, which means that you
     cannot call it directly, but you need to use vm.call.
     """
+    namespace = QN(namespace)
     def decorator(fn: Callable) -> W_BuiltinFunc:
+        # sanity check, for refactoring, DELETE ME
+        ## assert fn.__name__.startswith('w_')
+        ## assert fn.__name__[2:] not in str(namespace)
+
+
         assert fn.__name__.startswith('w_')
+        fname = funcname
+        if fname is None:
+            fname = fn.__name__[2:]
+        qn = namespace.join(fname, qualifiers)
         w_functype = functype_from_sig(fn, color)
         return W_BuiltinFunc(w_functype, qn, fn)
     return decorator

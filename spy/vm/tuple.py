@@ -34,7 +34,7 @@ class W_Tuple(W_Object):
 
 
 
-@builtin_func(QN('operator::tuple_getitem'))
+@builtin_func('operator')
 def w_tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
     i = vm.unwrap_i32(w_i)
     # XXX bound check?

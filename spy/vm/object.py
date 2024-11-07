@@ -365,7 +365,7 @@ def synthesize_meta_op_CALL(qn: QN, pyclass: Type[W_Object]) -> Any:
 
     class W_Foo(W_Object):
         @staticmethod
-        @builtin_func(QN("xxx::new"))
+        @builtin_func(W_Foo.qn, '__new__')
         def w_spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
             ...
 
@@ -386,8 +386,7 @@ def synthesize_meta_op_CALL(qn: QN, pyclass: Type[W_Object]) -> Any:
                      w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
         # manually apply the @builtin_func decorator to the spy_new function
-        qn2 = qn.join('__new__')
-        w_spyfunc = builtin_func(qn2)(w_spy_new)
+        w_spyfunc = builtin_func(qn, '__new__')(w_spy_new)
         return W_OpImpl(w_spyfunc)
 
     return meta_op_CALL

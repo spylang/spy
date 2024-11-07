@@ -166,7 +166,7 @@ class W_OpArg(W_Object):
 
 
 @no_type_check
-@builtin_func(QN('operator::oparg_eq'))
+@builtin_func('operator')
 def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
