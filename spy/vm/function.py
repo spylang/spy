@@ -47,10 +47,7 @@ class W_FuncType(W_Type):
 
         args = NSPart('args', [T(p.w_type) for p in self.params])
         ret = T(w_restype)
-        qn = QN([
-            NSPart('builtins', []),
-            NSPart('def', [args, ret]),
-        ])
+        qn = QN(['builtins', NSPart('def', [args, ret])])
         super().__init__(qn, W_Func)
 
     @property

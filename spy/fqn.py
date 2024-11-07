@@ -67,9 +67,11 @@ class NSPart:
     name: str
     qualifiers: list['QN']
 
-    def __init__(self, name: str, qualifiers: list['QN']) -> None:
+    def __init__(self, name: str,
+                 qualifiers: Optional[list['QN']] = None
+                 ) -> None:
         self.name = name
-        self.qualifiers = qualifiers
+        self.qualifiers = qualifiers or []
 
     def __str__(self) -> str:
         if len(self.qualifiers) == 0:
@@ -94,26 +96,20 @@ class NSPart:
 class QN:
     parts: list[NSPart]
 
-    def __init__(self, x: str | list[str] | list[NSPart]) -> None:
+    def __init__(self, x: str | list[str|NSPart]) -> None:
         if isinstance(x, str):
             self.parts = self.parse(x).parts
-        elif len(x) == 0:
-            self.parts = []
-        elif isinstance(x[0], NSPart):
-            self.parts = x  # type: ignore
         else:
-            self.parts = [NSPart(name, []) for name in x]  # type: ignore
+            self.parts = []
+            for part in x:
+                if isinstance(part, str):
+                    part = NSPart(part, [])
+                self.parts.append(part)
 
     @staticmethod
     def parse(s: str) -> 'QN':
         from .fqn_parser import QNParser
         return QNParser(s).parse()
-
-    @classmethod
-    def from_parts(cls, parts: list[NSPart]) -> 'QN':
-        res = cls.__new__(cls)
-        res.parts = parts
-        return res
 
     def __repr__(self) -> str:
         return f"QN({self.fullname!r})"

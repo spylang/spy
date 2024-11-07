@@ -89,7 +89,7 @@ class QNParser:
                 self.expect('::')
             else:
                 break
-        return QN.from_parts(parts)
+        return QN(parts)
 
     @log
     def parse_part(self) -> NSPart:
