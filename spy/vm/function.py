@@ -39,15 +39,10 @@ class W_FuncType(W_Type):
         # build an artificial QN for the functype. Note that the QN is not
         # necessarily unique (e.g., we don't take into account param names),
         # but that's ok because it will be uniquified when it becomes an FQN.
-        # The QN looks like:
-        #    builtins::def[args[i32, i32], bool]
-        def T(w_type: W_Type) -> NSPart:
-            "Convert a W_Type into an NSPart"
-            return NSPart(w_type.qn.symbol_name, [])
-
-        args = NSPart('args', [T(p.w_type) for p in self.params])
-        ret = T(w_restype)
-        qn = QN(['builtins', NSPart('def', [args, ret])])
+        # For 'def(i32, i32) -> bool', the QN looks like this:
+        #    builtins::def[i32, i32, bool]
+        qualifiers = [p.w_type.qn for p in self.params] + [w_restype.qn]
+        qn = QN('builtins').join('def', qualifiers)
         super().__init__(qn, W_Func)
 
     @property

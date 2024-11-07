@@ -26,7 +26,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
 
 
 
-@builtin_type(QN('builtins::str'))
+@builtin_type('builtins', 'str')
 class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.

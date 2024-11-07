@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 
-@builtin_type(QN('builtins::module'))
+@builtin_type('builtins', 'module')
 class W_Module(W_Object):
     vm: 'SPyVM'
     name: str

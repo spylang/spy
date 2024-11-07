@@ -47,15 +47,12 @@ class W_Ptr(W_Object):
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     from .struct import W_StructType
-
     T = w_T.pyclass
-    interp_name = f'W_Ptr[{T.__name__}]'     # W_Ptr[W_I32]
-    app_name = f'ptr[{w_T.qn.symbol_name}]'  # 'ptr[i32]'
-    qn = QN(f'unsafe::{app_name}')           # unsafe::ptr[i32]
     ITEMSIZE = sizeof(w_T)
 
-    @builtin_type(qn)
+    @builtin_type('unsafe', 'ptr', [w_T.qn]) # unsafe::ptr[i32]
     class W_MyPtr(W_Ptr):
+        __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
         w_itemtype: ClassVar[W_Type] = w_T
 
         @staticmethod
@@ -78,6 +75,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
                        wop_v: W_OpArg) -> W_OpImpl:
             return op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
+    W_MyPtr.__name__ = W_MyPtr.__qualname__
 
     def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                 wop_v: Optional[W_OpArg]) -> W_OpImpl:
@@ -111,7 +109,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
     @no_type_check
-    @builtin_func(qn.join('load'))
+    @builtin_func(W_MyPtr.qn.join('load'))
     def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
         length = w_ptr.length
@@ -128,7 +126,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         )
 
     @no_type_check
-    @builtin_func(qn.join('store'))
+    @builtin_func(W_MyPtr.qn.join('store'))
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
@@ -145,7 +143,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             [vm.wrap(addr), w_v]
         )
 
-    W_MyPtr.__name__ = W_MyPtr.__qualname__ = interp_name
     w_ptrtype = vm.wrap(W_MyPtr)
     vm.ensure_type_FQN(w_ptrtype)  # type: ignore
     return w_ptrtype

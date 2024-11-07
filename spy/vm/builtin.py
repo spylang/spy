@@ -9,7 +9,7 @@ vm/modules/builtins.py.
 import inspect
 import typing
 from typing import TYPE_CHECKING, Any, Callable, Type
-from spy.fqn import QN
+from spy.fqn import QN, QUALIFIERS
 from spy.ast import Color
 from spy.vm.primitive import W_Void
 from spy.vm.object import W_Object, W_Type, W_Dynamic, _get_member_maybe, make_metaclass, w_DynamicType
@@ -95,15 +95,21 @@ def builtin_func(qn: QN, color: Color = 'red') -> Callable:
     return decorator
 
 
-def builtin_type(qn: QN) -> Any:
+def builtin_type(namespace: QN|str,
+                 typename: str,
+                 qualifiers: QUALIFIERS = None
+                 ) -> Any:
     """
     Class decorator to simplify the creation of SPy types.
 
     Given a W_* class, it automatically creates the corresponding instance of
     W_Type and attaches it to the W_* class.
     """
+    namespace = QN(namespace)
+    qn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass(qn, pyclass)
+        pyclass.qn = qn
         pyclass._w = W_MetaClass(qn, pyclass)
         # setup __spy_members__
         pyclass.__spy_members__ = {}

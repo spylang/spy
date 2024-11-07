@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-@builtin_type(QN('operator::OpArg'))
+@builtin_type('operator', 'OpArg')
 class W_OpArg(W_Object):
     """
     Class which represents the operands passed to OPERATORs.
@@ -184,7 +184,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 
 
 
-@builtin_type(QN('operator::OpImpl'))
+@builtin_type('operator', 'OpImpl')
 class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]

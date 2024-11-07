@@ -58,8 +58,7 @@ class ModuleRegistry:
             MOD.add('Foo', W_Foo._w)
         """
         def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-            qn = self.qn.join(name)
-            W_class = builtin_type(qn)(pyclass)
+            W_class = builtin_type(self.qn, name)(pyclass)
             self.add(name, W_class._w)
             return W_class
         return decorator
