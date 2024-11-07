@@ -68,7 +68,7 @@ def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
     return W_FuncType(func_params, w_restype, color=color)
 
 
-def builtin_func(qn: QN, color: Color = 'red') -> Callable:
+def builtin_func(qn: QN, *, color: Color = 'red') -> Callable:
     """
     Decorator to make an interp-level function wrappable by the VM.
 
