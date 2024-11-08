@@ -107,6 +107,7 @@ def builtin_func(namespace: QN|str,
         fname = funcname
         if fname is None:
             fname = fn.__name__[2:]
+        assert isinstance(namespace, QN)
         qn = namespace.join(fname, qualifiers)
         w_functype = functype_from_sig(fn, color)
         return W_BuiltinFunc(w_functype, qn, fn)
@@ -127,7 +128,7 @@ def builtin_type(namespace: QN|str,
     qn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass(qn, pyclass)
-        pyclass.qn = qn
+        pyclass.type_qn = qn  # type: ignore
         pyclass._w = W_MetaClass(qn, pyclass)
         # setup __spy_members__
         pyclass.__spy_members__ = {}

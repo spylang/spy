@@ -1,4 +1,5 @@
 from typing import Callable, Optional, TYPE_CHECKING, Any, Type
+from types import FunctionType
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import QN, QUALIFIERS
@@ -88,7 +89,7 @@ class ModuleRegistry:
         'qualifiers' is allowed only if you also explicitly specify
         'funcname'.
         """
-        if isinstance(pyfunc_or_funcname, Callable):
+        if isinstance(pyfunc_or_funcname, FunctionType):
             pyfunc = pyfunc_or_funcname
             funcname = None
             assert qualifiers is None

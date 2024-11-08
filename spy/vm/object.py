@@ -63,8 +63,9 @@ class W_Object:
     The root of SPy object hierarchy
     """
 
-    _w: ClassVar['W_Type']                         # set later by @spytype
-    __spy_members__: ClassVar['dict[str, Member]'] # set later by @spytype
+    _w: ClassVar['W_Type']                         # set by @builtin_type
+    __spy_members__: ClassVar['dict[str, Member]'] # set by @builtin_type
+    type_qn: ClassVar[QN]                          # set by @builtin_type
 
     # Storage category:
     #   - 'value': compares by value, don't have an identity, 'is' is

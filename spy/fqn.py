@@ -58,12 +58,12 @@ fn_f64 = make_fn(f64)  # QN is 'test::make_fn::fn', FQN is 'test::make_fn::fn#2'
 See also SPyVM.get_FQN().
 """
 
-from typing import Optional, Any, Union
+from typing import Optional, Any, Union, Sequence
 from dataclasses import dataclass
 import re
 
-PARTS = list[Union[str, 'NSPart']]
-QUALIFIERS = Optional[list[Union[str, 'QN']]]
+PARTS = Sequence[Union[str, 'NSPart']]
+QUALIFIERS = Optional[Sequence[Union[str, 'QN']]]
 
 def get_parts(x: PARTS) -> list['NSPart']:
     parts = []
@@ -177,8 +177,8 @@ class QN:
         """
         Create a new QN nested inside the current one.
         """
-        qualifiers = get_qualifiers(qualifiers)
-        return QN(self.parts + [NSPart(name, qualifiers)])
+        qual2 = get_qualifiers(qualifiers)
+        return QN(self.parts + [NSPart(name, qual2)])
 
 
 class FQN:

@@ -1,3 +1,4 @@
+from typing import Optional
 import re
 from dataclasses import dataclass
 from .fqn import NSPart, QN
@@ -50,7 +51,7 @@ class QNParser:
         self.i = 0
         self.level = 0
 
-    def peek(self) -> str:
+    def peek(self) -> Optional[str]:
         while self.i < len(self.tokens) and self.tokens[self.i].isspace():
             self.i += 1
         if self.i >= len(self.tokens):
@@ -99,6 +100,7 @@ class QNParser:
     def parse_name(self) -> str:
         name = self.peek()
         self.i += 1
+        assert name is not None
         return name
 
     def expect(self, token: str) -> None:
