@@ -84,7 +84,7 @@ class TestAttrOp(CompilerTest):
                                w_attr: W_Str, w_val: W_I32) -> W_Void:
                         w_obj.x = vm.unwrap_i32(w_val)
                         return B.w_None
-                    return W_OpImpl(w_fn)
+                    return W_OpImpl(w_setx)
                 else:
                     return W_OpImpl.NULL
         # ========== /EXT module for this test =========

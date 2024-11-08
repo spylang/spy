@@ -136,7 +136,7 @@ class TestCallOp(CompilerTest):
                                w_opargs: W_List[W_OpArg]) -> W_OpImpl:
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
-                    @builtin_func('ext')
+                    @builtin_func('ext', 'add')
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
@@ -144,7 +144,7 @@ class TestCallOp(CompilerTest):
                     return W_OpImpl(w_fn, [wop_obj] + w_opargs.items_w)
 
                 elif meth == 'sub':
-                    @builtin_func('ext')
+                    @builtin_func('ext', 'sub')
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
