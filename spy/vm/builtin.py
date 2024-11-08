@@ -103,11 +103,6 @@ def builtin_func(namespace: QN|str,
     """
     namespace = QN(namespace)
     def decorator(fn: Callable) -> W_BuiltinFunc:
-        # sanity check, for refactoring, DELETE ME
-        ## assert fn.__name__.startswith('w_')
-        ## assert fn.__name__[2:] not in str(namespace)
-
-
         assert fn.__name__.startswith('w_')
         fname = funcname
         if fname is None:
