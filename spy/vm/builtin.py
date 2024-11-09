@@ -128,7 +128,7 @@ def builtin_type(namespace: QN|str,
     qn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass(qn, pyclass)
-        pyclass.type_qn = qn  # type: ignore
+        pyclass.type_qn = qn
         pyclass._w = W_MetaClass(qn, pyclass)
         # setup __spy_members__
         pyclass.__spy_members__ = {}
