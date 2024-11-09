@@ -1,7 +1,7 @@
 from typing import Optional
 import re
 from dataclasses import dataclass
-from .fqn import NSPart, QN
+from .fqn import NSPart, FQN
 
 
 def tokenize(s: str) -> list[str]:
@@ -37,6 +37,11 @@ def tokenize(s: str) -> list[str]:
                 token = ''
             tokens.append('::')
             i += 1  # Skip the next ':'
+        elif char == '#' and depth == 0:
+            if token:
+                tokens.append(token)
+                token = ''
+            tokens.append('#')
         else:
             token += char
         i += 1
@@ -45,7 +50,7 @@ def tokenize(s: str) -> list[str]:
     return tokens
 
 
-class QNParser:
+class FQNParser:
     def __init__(self, s: str) -> None:
         self.tokens = tokenize(s)
         self.i = 0
@@ -58,14 +63,14 @@ class QNParser:
             return None
         return self.tokens[self.i]
 
-    def parse(self) -> 'QN':
-        qn = self.parse_qn()
+    def parse(self) -> 'FQN':
+        fqn = self.parse_fqn()
         if self.i < len(self.tokens):
             tok = self.tokens[self.i]
             raise ValueError(f'Unexpected token: {tok}')
-        return qn
+        return fqn
 
-    def parse_qn(self) -> 'QN':
+    def parse_fqn(self) -> 'FQN':
         parts = []
         while True:
             parts.append(self.parse_part())
@@ -73,7 +78,14 @@ class QNParser:
                 self.expect('::')
             else:
                 break
-        return QN(parts)
+
+        if self.peek() == "#":
+            self.expect("#")
+            suffix = self.parse_suffix()
+        else:
+            suffix = ''
+
+        return FQN.make(parts, suffix=suffix)
 
     def parse_part(self) -> NSPart:
         name = self.parse_name()
@@ -85,10 +97,10 @@ class QNParser:
         else:
             return NSPart(name, [])
 
-    def parse_qualifiers(self) -> list['QN']:
+    def parse_qualifiers(self) -> list['FQN']:
         qualifiers = []
         while True:
-            qualifiers.append(self.parse_qn())
+            qualifiers.append(self.parse_fqn())
             if self.peek() is None:
                 raise ValueError('Unclosed bracket')
             elif self.peek() == ',':
@@ -102,6 +114,12 @@ class QNParser:
         self.i += 1
         assert name is not None
         return name
+
+    def parse_suffix(self) -> str:
+        suffix = self.peek()
+        self.i += 1
+        assert suffix is not None
+        return suffix
 
     def expect(self, token: str) -> None:
         if self.peek() != token:

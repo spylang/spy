@@ -124,14 +124,16 @@ class QN:
         if isinstance(x, QN):
             self.parts = x.parts[:]
         elif isinstance(x, str):
-            self.parts = self.parse(x).parts
+            qn = self.parse(x)
+            self.parts = qn.parts[:]
         else:
             self.parts = get_parts(x)
 
     @staticmethod
     def parse(s: str) -> 'QN':
-        from .fqn_parser import QNParser
-        return QNParser(s).parse()
+        from .fqn_parser import FQNParser
+        fqn = FQNParser(s).parse()
+        return fqn.qn
 
     def __repr__(self) -> str:
         return f"QN({self.fullname!r})"
@@ -147,19 +149,27 @@ class QN:
     def __hash__(self) -> int:
         return hash(self.fullname)
 
+    def _fullname(self, human: bool) -> str:
+        parts = self.parts
+        if human and str(parts[0]) == 'builtins':
+            parts = parts[1:]
+        s = '::'.join(str(part) for part in parts)
+
+        if isinstance(self, FQN): # XXX
+            if self.suffix != '':
+                s += f'#{self.suffix}'
+        return s
+
     @property
     def fullname(self) -> str:
-        return '::'.join(str(part) for part in self.parts)
+        return self._fullname(human=False)
 
     @property
     def human_name(self) -> str:
         """
         Like fullname, but doesn't show 'builtins::'
         """
-        if str(self.parts[0]) == 'builtins':
-            return '::'.join(str(part) for part in self.parts[1:])
-        else:
-            return self.fullname
+        return self._fullname(human=True)
 
     @property
     def modname(self) -> str:
@@ -181,9 +191,7 @@ class QN:
         return QN(self.parts + [NSPart(name, qual2)])
 
 
-class FQN:
-    qn: QN
-    suffix: str
+class FQN(QN):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         raise ValueError("You cannot instantiate an FQN directly. "
@@ -192,10 +200,7 @@ class FQN:
     @classmethod
     def make(cls, x: QN | str | list[str], *, suffix: str) -> 'FQN':
         obj = cls.__new__(cls)
-        if isinstance(x, QN):
-            obj.qn = x
-        else:
-            obj.qn = QN(x)
+        QN.__init__(obj, x)
         obj.suffix = suffix
         return obj
 
@@ -204,25 +209,18 @@ class FQN:
         """
         Return the FQN corresponding to a global name.
         """
-        return cls.make(x, suffix="")
+        return cls.make(x, suffix='')
 
     @classmethod
     def parse(cls, s: str) -> 'FQN':
-        if '#' in s:
-            assert s.count('#') == 1
-            s, suffix = s.split('#')
-        else:
-            suffix = ""
-        #
-        qn = QN(s)
-        return FQN.make(qn, suffix=suffix)
+        from .fqn_parser import FQNParser
+        fqn = FQNParser(s).parse()
+        return fqn
 
     @property
-    def fullname(self) -> str:
-        s = self.qn.fullname
-        if self.suffix != '':
-            s += '#' + self.suffix
-        return s
+    def qn(self) -> QN:
+        # XXX KILL ME
+        return QN(self)
 
     @property
     def modname(self) -> str:
