@@ -40,7 +40,7 @@ class Meta_W_List(type):
 
 T = TypeVar('T', bound='W_Object')
 
-@builtin_type(QN('builtins::list'))
+@builtin_type('builtins', 'list')
 class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
     """
     The 'list' type.
@@ -78,7 +78,7 @@ class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
 
 
 
-@builtin_func(QN('__spy__::make_list_type'), color='blue')
+@builtin_func('__spy__', color='blue')
 def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
@@ -111,11 +111,10 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     from spy.vm.opimpl import W_OpImpl
 
     T = w_T.pyclass
-    app_name = f'list[{w_T.qn.symbol_name}]' # e.g. list[i32]
-    interp_name = f'W_List[{T.__name__}]'    # e.g. W_List[W_I32]
 
-    @builtin_type(QN(f'builtins::{app_name}'))
+    @builtin_type('builtins', 'list', [w_T.qn])
     class W_MyList(W_List):
+        __qualname__ = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
         items_w: list[W_Object]
 
         def __init__(self, items_w: list[W_Object]) -> None:
@@ -133,7 +132,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
         def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
                        wop_i: 'W_OpArg') -> W_OpImpl:
             @no_type_check
-            @builtin_func(QN('operator::list_getitem'))
+            @builtin_func(W_MyList.type_qn)
             def w_getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
@@ -146,7 +145,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             from spy.vm.b import B
 
             @no_type_check
-            @builtin_func(QN('operator::list_setitem'))
+            @builtin_func(W_MyList.type_qn)
             def w_setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
                           w_v: T) -> W_Void:
                 assert isinstance(w_v, T)
@@ -166,7 +165,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             # XXX: we use use proper nested QNs. See also the comment in
             # vm.make_fqn_const
             @no_type_check
-            @builtin_func(QN('operator::list_eq'))
+            @builtin_func(W_MyList.type_qn)
             def w_eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
                 items2_w = w_l2.items_w
@@ -182,5 +181,5 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             else:
                 return W_OpImpl.NULL
 
-    W_MyList.__name__ = W_MyList.__qualname__ = interp_name
+    W_MyList.__name__ = W_MyList.__qualname__
     return W_MyList

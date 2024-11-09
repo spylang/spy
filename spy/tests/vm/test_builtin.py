@@ -17,49 +17,49 @@ class TestBuiltin:
     def test_builtin_func(self):
         vm = SPyVM()
 
-        @builtin_func(QN('test::foo'))
+        @builtin_func('mymod')
         def w_foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
             return vm.wrap(x*2)  # type: ignore
 
         assert isinstance(w_foo, W_BuiltinFunc)
-        assert w_foo.qn == QN('test::foo')
+        assert w_foo.qn == QN('mymod::foo')
         w_y = vm.call(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
 
     def test_builtin_func_errors(self):
         with pytest.raises(ValueError,
                            match="The first param should be 'vm: SPyVM'."):
-            @builtin_func(QN('test::foo'))
+            @builtin_func('mymod')
             def w_foo() -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(ValueError,
                            match="The first param should be 'vm: SPyVM'."):
-            @builtin_func(QN('test::foo'))
+            @builtin_func('mymod')
             def w_foo(w_x: W_I32) -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(ValueError, match="Invalid param: 'x: int'"):
-            @builtin_func(QN('test::foo'))
+            @builtin_func('mymod')
             def w_foo(vm: 'SPyVM', x: int) -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(ValueError, match="Invalid return type"):
-            @builtin_func(QN('test::foo'))
+            @builtin_func('mymod')
             def w_foo(vm: 'SPyVM') -> int:  # type: ignore
                 pass
 
     def test_builtin_func_dynamic(self):
         vm = SPyVM()
-        @builtin_func(QN('test::foo'))
+        @builtin_func('mymod')
         def w_foo(vm: 'SPyVM', w_x: W_Dynamic) -> W_Dynamic:  # type: ignore
             pass
         assert w_foo.w_functype.signature == 'def(x: dynamic) -> dynamic'
 
     def test_return_None(self):
         vm = SPyVM()
-        @builtin_func(QN('test::foo'))
+        @builtin_func('mymod')
         def w_foo(vm: 'SPyVM') -> None:
             pass
         assert w_foo.w_functype.signature == 'def() -> void'
@@ -70,7 +70,7 @@ class TestBuiltin:
     def test_blue(self):
         vm = SPyVM()
 
-        @builtin_func(QN('test::foo'), color='blue')
+        @builtin_func('mymod', color='blue')
         def w_foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
             return vm.wrap(x*2)  # type: ignore

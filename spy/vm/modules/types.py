@@ -21,7 +21,7 @@ TYPES = ModuleRegistry('types')
 TYPES.add('module', W_Module._w)
 
 
-@TYPES.spytype('TypeDef')
+@TYPES.builtin_type('TypeDef')
 class W_TypeDef(W_Type):
     """
     A TypeDef is a purely static alias for another type (called "origin

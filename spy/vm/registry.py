@@ -1,7 +1,8 @@
 from typing import Callable, Optional, TYPE_CHECKING, Any, Type
+from types import FunctionType
 from dataclasses import dataclass
 from spy.ast import Color
-from spy.fqn import QN
+from spy.fqn import QN, QUALIFIERS
 from spy.vm.function import W_FuncType, W_BuiltinFunc
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.object import W_Object
@@ -42,7 +43,10 @@ class ModuleRegistry:
         setattr(self, f'w_{attr}', w_obj)
         self.content.append((qn, w_obj))
 
-    def spytype(self, name: str) -> Callable:
+    def builtin_type(self,
+                     typename: str,
+                     qualifiers: QUALIFIERS = None
+                     ) -> Callable:
         """
         Register a type on the module.
 
@@ -58,34 +62,57 @@ class ModuleRegistry:
             MOD.add('Foo', W_Foo._w)
         """
         def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-            qn = self.qn.join(name)
-            W_class = builtin_type(qn)(pyclass)
-            self.add(name, W_class._w)
+            W_class = builtin_type(self.qn, typename, qualifiers)(pyclass)
+            self.add(typename, W_class._w)
             return W_class
         return decorator
 
     def builtin_func(self,
-                     pyfunc: Optional[Callable] = None,
+                     pyfunc_or_funcname: Callable|str|None = None,
+                     qualifiers: QUALIFIERS = None,
                      *,
                      color: Color = 'red') -> Any:
         """
-        Register a builtin function on the module. We support two different
-        syntaxes:
+        Register a builtin function on the module. We support three
+        different syntaxes:
 
+        # funcname is automatically set to 'foo'
         @MOD.builtin_func
+        def w_foo(): ...
+
+        @MOD.builtin_func('myfuncname')
         def w_foo(): ...
 
         @MOD.builtin_func(color='...')
         def foo(): ...
+
+        'qualifiers' is allowed only if you also explicitly specify
+        'funcname'.
         """
+        if isinstance(pyfunc_or_funcname, FunctionType):
+            pyfunc = pyfunc_or_funcname
+            funcname = None
+            assert qualifiers is None
+        elif isinstance(pyfunc_or_funcname, str):
+            pyfunc = None
+            funcname = pyfunc_or_funcname
+        else:
+            assert pyfunc_or_funcname is None
+            pyfunc = None
+            funcname = None
+            assert qualifiers is None
+
         def decorator(pyfunc: Callable) -> W_BuiltinFunc:
-            assert pyfunc.__name__.startswith('w_')
-            funcname = pyfunc.__name__[2:]
-            qn = self.qn.join(funcname)
+            namespace = self.qn
             # apply the @builtin_func decorator to pyfunc
-            w_func = builtin_func(qn, color=color)(pyfunc)
-            setattr(self, f'w_{funcname}', w_func)
-            self.content.append((qn, w_func))
+            w_func = builtin_func(
+                namespace=namespace,
+                funcname=funcname,
+                qualifiers=qualifiers,
+                color=color
+            )(pyfunc)
+            setattr(self, f'w_{w_func.qn.symbol_name}', w_func)
+            self.content.append((w_func.qn, w_func))
             return w_func
 
         if pyfunc is None:

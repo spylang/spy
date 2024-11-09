@@ -58,26 +58,50 @@ fn_f64 = make_fn(f64)  # QN is 'test::make_fn::fn', FQN is 'test::make_fn::fn#2'
 See also SPyVM.get_FQN().
 """
 
-from typing import Optional, Any
+from typing import Optional, Any, Union, Sequence
 from dataclasses import dataclass
 import re
+
+PARTS = Sequence[Union[str, 'NSPart']]
+QUALIFIERS = Optional[Sequence[Union[str, 'QN']]]
+
+def get_parts(x: PARTS) -> list['NSPart']:
+    parts = []
+    for part in x:
+        if isinstance(part, str):
+            parts.append(NSPart(part, []))
+        elif isinstance(part, NSPart):
+            parts.append(part)
+        else:
+            assert False
+    return parts
+
+def get_qualifiers(x: QUALIFIERS) -> list['QN']:
+    x = x or []
+    quals = []
+    for item in x:
+        if isinstance(item, str):
+            quals.append(QN(item))
+        elif isinstance(item, QN):
+            quals.append(item)
+        else:
+            assert False
+    return quals
 
 @dataclass
 class NSPart:
     name: str
     qualifiers: list['QN']
 
-    def __init__(self, name: str,
-                 qualifiers: Optional[list['QN']] = None
-                 ) -> None:
+    def __init__(self, name: str, quals: QUALIFIERS=None) -> None:
         self.name = name
-        self.qualifiers = qualifiers or []
+        self.qualifiers = get_qualifiers(quals)
 
     def __str__(self) -> str:
         if len(self.qualifiers) == 0:
             return self.name
         else:
-            quals = ', '.join(str(q) for q in self.qualifiers)
+            quals = ', '.join(q.human_name for q in self.qualifiers)
             return f'{self.name}[{quals}]'
 
     @property
@@ -96,15 +120,13 @@ class NSPart:
 class QN:
     parts: list[NSPart]
 
-    def __init__(self, x: str | list[str|NSPart]) -> None:
-        if isinstance(x, str):
+    def __init__(self, x: Union['QN', str, PARTS]) -> None:
+        if isinstance(x, QN):
+            self.parts = x.parts[:]
+        elif isinstance(x, str):
             self.parts = self.parse(x).parts
         else:
-            self.parts = []
-            for part in x:
-                if isinstance(part, str):
-                    part = NSPart(part, [])
-                self.parts.append(part)
+            self.parts = get_parts(x)
 
     @staticmethod
     def parse(s: str) -> 'QN':
@@ -151,12 +173,12 @@ class QN:
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-    def join(self, name: str) -> 'QN':
+    def join(self, name: str, qualifiers: QUALIFIERS=None) -> 'QN':
         """
         Create a new QN nested inside the current one.
         """
-        return QN(self.parts + [NSPart(name, [])])
-
+        qual2 = get_qualifiers(qualifiers)
+        return QN(self.parts + [NSPart(name, qual2)])
 
 
 class FQN:

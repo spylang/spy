@@ -195,21 +195,7 @@ class SPyVM:
             # it's a closure, let's assign it an FQN and add to the globals
             fqn = self.get_FQN(w_val.qn, is_global=False)
         elif isinstance(w_val, W_BuiltinFunc):
-            # XXX open question: MUST builtin functions BE unique?
-            # For "module-level" builtins it makes sense, and this call
-            # used to pass "is_global=True", but e.g. list::eq is not
-            # unique because list is a generic type. I think that the
-            # solution is to introduce a more complex notion of
-            # namespaces: currently it's just "modname::attr", but
-            # probably we want to introduce at least
-            # "modname::type::attr", or maybe even
-            # "modname::namespace1::namespace2::...::attr".
-            #
-            # XXX temporary hack for list_eq, we should kill it eventually
-            if w_val.qn.fullname == 'operator::list_eq':
-                fqn = self.get_FQN(w_val.qn, is_global=False)
-            else:
-                fqn = self.get_FQN(w_val.qn, is_global=True)
+            fqn = self.get_FQN(w_val.qn, is_global=True)
         elif isinstance(w_val, W_Type):
             raise Exception(
                 "Types should get their own FQN by calling vm.ensure_type_FQN, "

@@ -2,6 +2,9 @@ from typing import Optional
 import subprocess
 import py.path
 import spy.libspy
+from spy.textbuilder import Color
+
+FORCE_COLORS=True
 
 def get_toolchain(toolchain: str) -> 'Toolchain':
     if toolchain == 'zig':
@@ -77,7 +80,8 @@ class Toolchain:
             str(file_c)
         ]
         cmdline += self.LDFLAGS + EXTRA_LDFLAGS
-        #print(' '.join(cmdline))
+        if FORCE_COLORS:
+            cmdline = ['unbuffer'] + cmdline
         proc = subprocess.run(cmdline,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
@@ -85,7 +89,10 @@ class Toolchain:
             lines = ["Compilation failed!"]
             lines.append(' '.join(cmdline))
             lines.append('')
-            lines.append(proc.stdout.decode('utf-8'))
+            errlines = proc.stdout.decode('utf-8').splitlines()
+            if FORCE_COLORS:
+                errlines = [Color.set('default', line) for line in errlines]
+            lines += errlines
             msg = '\n'.join(lines)
             raise Exception(msg)
         return file_out

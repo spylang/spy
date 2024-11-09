@@ -18,7 +18,7 @@ class TestAttrOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
             w_x: Annotated[W_I32, Member('x')]
 
@@ -47,7 +47,7 @@ class TestAttrOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             def __init__(self) -> None:
@@ -62,12 +62,12 @@ class TestAttrOp(CompilerTest):
                            wop_attr: W_OpArg) -> W_OpImpl:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
-                    @builtin_func(QN('ext::getx'))
+                    @builtin_func('ext', 'getx')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                            w_attr: W_Str) -> W_I32:
                         return vm.wrap(w_obj.x)  # type: ignore
                 else:
-                    @builtin_func(QN('ext::getany'))
+                    @builtin_func('ext', 'getany')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
@@ -79,12 +79,12 @@ class TestAttrOp(CompilerTest):
                            wop_v: W_OpArg) -> W_OpImpl:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
-                    @builtin_func(QN('ext::setx'))
-                    def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
-                             w_attr: W_Str, w_val: W_I32) -> W_Void:
+                    @builtin_func('ext')
+                    def w_setx(vm: 'SPyVM', w_obj: W_MyClass,
+                               w_attr: W_Str, w_val: W_I32) -> W_Void:
                         w_obj.x = vm.unwrap_i32(w_val)
                         return B.w_None
-                    return W_OpImpl(w_fn)
+                    return W_OpImpl(w_setx)
                 else:
                     return W_OpImpl.NULL
         # ========== /EXT module for this test =========

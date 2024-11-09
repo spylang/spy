@@ -19,7 +19,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Adder')
+        @EXT.builtin_type('Adder')
         class W_Adder(W_Object):
 
             def __init__(self, x: int) -> None:
@@ -32,7 +32,7 @@ class TestCallOp(CompilerTest):
             @staticmethod
             def op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                         w_opargs: W_List[W_OpArg]) -> W_OpImpl:
-                @builtin_func(QN('ext::call'))
+                @builtin_func('ext')
                 def w_call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
                     y = vm.unwrap_i32(w_y)
                     res = w_obj.x + y
@@ -55,7 +55,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Point')
+        @EXT.builtin_type('Point')
         class W_Point(W_Object):
             w_x: Annotated[W_I32, Member('x')]
             w_y: Annotated[W_I32, Member('y')]
@@ -67,7 +67,7 @@ class TestCallOp(CompilerTest):
             @staticmethod
             def meta_op_CALL(vm: 'SPyVM', w_type: W_Type,
                              w_argtypes: W_Dynamic) -> W_OpImpl:
-                @builtin_func(QN('ext::new'))
+                @builtin_func('ext')
                 def w_new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> W_Point:
                     return W_Point(w_x, w_y)
@@ -89,7 +89,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Point')
+        @EXT.builtin_type('Point')
         class W_Point(W_Object):
             w_x: Annotated[W_I32, Member('x')]
             w_y: Annotated[W_I32, Member('y')]
@@ -120,7 +120,7 @@ class TestCallOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('Calc')
+        @EXT.builtin_type('Calc')
         class W_Calc(W_Object):
 
             def __init__(self, x: int) -> None:
@@ -136,7 +136,7 @@ class TestCallOp(CompilerTest):
                                w_opargs: W_List[W_OpArg]) -> W_OpImpl:
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
-                    @builtin_func(QN('ext::meth_add'))
+                    @builtin_func('ext', 'add')
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
@@ -144,7 +144,7 @@ class TestCallOp(CompilerTest):
                     return W_OpImpl(w_fn, [wop_obj] + w_opargs.items_w)
 
                 elif meth == 'sub':
-                    @builtin_func(QN('ext::meth_sub'))
+                    @builtin_func('ext', 'sub')
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)

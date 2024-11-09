@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 JSFFI = ModuleRegistry('jsffi')
 
-@JSFFI.spytype('JsRef')
+@JSFFI.builtin_type('JsRef')
 class W_JsRef(W_Object):
 
     @staticmethod

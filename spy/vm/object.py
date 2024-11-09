@@ -63,8 +63,9 @@ class W_Object:
     The root of SPy object hierarchy
     """
 
-    _w: ClassVar['W_Type']                         # set later by @spytype
-    __spy_members__: ClassVar['dict[str, Member]'] # set later by @spytype
+    _w: ClassVar['W_Type']                         # set by @builtin_type
+    __spy_members__: ClassVar['dict[str, Member]'] # set by @builtin_type
+    type_qn: ClassVar[QN]                          # set by @builtin_type
 
     # Storage category:
     #   - 'value': compares by value, don't have an identity, 'is' is
@@ -365,7 +366,7 @@ def synthesize_meta_op_CALL(qn: QN, pyclass: Type[W_Object]) -> Any:
 
     class W_Foo(W_Object):
         @staticmethod
-        @builtin_func(QN("xxx::new"))
+        @builtin_func(W_Foo.qn, '__new__')
         def w_spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
             ...
 
@@ -386,8 +387,7 @@ def synthesize_meta_op_CALL(qn: QN, pyclass: Type[W_Object]) -> Any:
                      w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
         # manually apply the @builtin_func decorator to the spy_new function
-        qn2 = qn.join('__new__')
-        w_spyfunc = builtin_func(qn2)(w_spy_new)
+        w_spyfunc = builtin_func(qn, '__new__')(w_spy_new)
         return W_OpImpl(w_spyfunc)
 
     return meta_op_CALL

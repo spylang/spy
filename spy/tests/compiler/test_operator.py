@@ -18,7 +18,7 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             @staticmethod
@@ -28,7 +28,7 @@ class TestOp(CompilerTest):
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                            wop_i: W_OpArg) -> W_OpImpl:
-                @builtin_func(QN('ext::getitem'))
+                @builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
                               w_i: W_I32) -> W_I32:
                     return w_i
@@ -53,7 +53,7 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             @staticmethod
@@ -63,7 +63,7 @@ class TestOp(CompilerTest):
             @staticmethod
             def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                            wop_i: W_OpArg) -> W_OpImpl:
-                @builtin_func(QN('ext::getitem'))
+                @builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
                 return W_OpImpl(w_getitem)
@@ -86,7 +86,7 @@ class TestOp(CompilerTest):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
-        @EXT.spytype('MyClass')
+        @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
             def __init__(self, w_x: W_I32):

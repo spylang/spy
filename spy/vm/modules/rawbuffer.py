@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 RAW_BUFFER = RB = ModuleRegistry('rawbuffer')
 
-@RB.spytype('RawBuffer')
+@RB.builtin_type('RawBuffer')
 class W_RawBuffer(W_Object):
     buf: bytearray
 

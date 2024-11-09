@@ -1,3 +1,4 @@
+from typing import Optional
 import re
 from dataclasses import dataclass
 from .fqn import NSPart, QN
@@ -50,23 +51,7 @@ class QNParser:
         self.i = 0
         self.level = 0
 
-    @staticmethod
-    def log(fn):
-        return fn # XXX
-        def inner(self, *args):
-            spaces = '  ' * self.level
-            toks = ' '.join(self.tokens[self.i:])
-            msg = f'{spaces}{fn.__name__}{args}'
-            print(f'{msg:60s}{toks}')
-            self.level += 1
-            res = fn(self, *args)
-            self.level -= 1
-            print(spaces, '-->', res)
-            return res
-        return inner
-
-
-    def peek(self) -> str:
+    def peek(self) -> Optional[str]:
         while self.i < len(self.tokens) and self.tokens[self.i].isspace():
             self.i += 1
         if self.i >= len(self.tokens):
@@ -80,7 +65,6 @@ class QNParser:
             raise ValueError(f'Unexpected token: {tok}')
         return qn
 
-    @log
     def parse_qn(self) -> 'QN':
         parts = []
         while True:
@@ -91,7 +75,6 @@ class QNParser:
                 break
         return QN(parts)
 
-    @log
     def parse_part(self) -> NSPart:
         name = self.parse_name()
         if self.peek() == '[':
@@ -102,7 +85,6 @@ class QNParser:
         else:
             return NSPart(name, [])
 
-    @log
     def parse_qualifiers(self) -> list['QN']:
         qualifiers = []
         while True:
@@ -115,15 +97,12 @@ class QNParser:
                 break
         return qualifiers
 
-    @log
     def parse_name(self) -> str:
         name = self.peek()
         self.i += 1
-        ## if name == 'i32':
-        ##     import pdb;pdb.set_trace()
+        assert name is not None
         return name
 
-    @log
     def expect(self, token: str) -> None:
         if self.peek() != token:
             raise ValueError(f"Expected {token}, got {self.peek()}")
