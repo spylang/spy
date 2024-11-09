@@ -79,7 +79,7 @@ class JsRefConv(TypeConverter):
             loc = expr.loc,
             func = ast.FQNConst(
                 loc = expr.loc,
-                fqn = FQN.parse(f)
+                fqn = FQN(f)
             ),
             args = [expr]
         )

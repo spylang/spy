@@ -118,27 +118,21 @@ class FQN:
     parts: list[NSPart]
     suffix: str
 
-    def __init__(self, x: str | PARTS, *, suffix: str = '') -> None:
+    def __new__(cls, x: str | PARTS, *, suffix: str = '') -> None:
         """
         Supported overloads:
             FQN(x: str)
             FQN(x: PARTS, *, suffix='')
         """
+        from .fqn_parser import FQNParser
         if isinstance(x, str):
             assert suffix == ''
-            fqn = FQN.parse(x)
-            self.parts = fqn.parts[:]
-            self.suffix = fqn.suffix
+            return FQNParser(x).parse()
         else:
-            self.parts = get_parts(x)
-            self.suffix = suffix
-
-
-    @classmethod
-    def parse(cls, s: str) -> 'FQN':
-        from .fqn_parser import FQNParser
-        fqn = FQNParser(s).parse()
-        return fqn
+            fqn = super().__new__(cls)
+            fqn.parts = get_parts(x)
+            fqn.suffix = suffix
+            return fqn
 
     @property
     def qn(self) -> 'QN':

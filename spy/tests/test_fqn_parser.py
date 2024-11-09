@@ -8,14 +8,14 @@ def test_tokenizer():
     assert tokenize("list[i32]") == ["list", "[", "i32", "]"]
 
 def test_single_unqualified_part():
-    fqn = FQN.parse("foo")
+    fqn = FQN("foo")
     assert len(fqn.parts) == 1
     assert fqn.parts[0].name == "foo"
     assert fqn.parts[0].qualifiers == []
     assert fqn.suffix == ''
 
 def test_two_parts():
-    fqn = FQN.parse("mod::foo")
+    fqn = FQN("mod::foo")
     assert len(fqn.parts) == 2
     assert fqn.parts[0].name == "mod"
     assert fqn.parts[0].qualifiers == []
@@ -23,7 +23,7 @@ def test_two_parts():
     assert fqn.parts[1].qualifiers == []
 
 def test_dot_in_name():
-    fqn = FQN.parse("a.b.c::foo")
+    fqn = FQN("a.b.c::foo")
     assert len(fqn.parts) == 2
     assert fqn.parts[0].name == "a.b.c"
     assert fqn.parts[0].qualifiers == []
@@ -31,14 +31,14 @@ def test_dot_in_name():
     assert fqn.parts[1].qualifiers == []
 
 def test_single_part_with_qualifier():
-    fqn = FQN.parse("list[i32]")
+    fqn = FQN("list[i32]")
     assert len(fqn.parts) == 1
     assert fqn.parts[0].name == "list"
     assert len(fqn.parts[0].qualifiers) == 1
     assert fqn.parts[0].qualifiers[0].parts[0].name == "i32"
 
 def test_nested_qualifiers():
-    fqn = FQN.parse("dict[str, unsafe::ptr[i32]]")
+    fqn = FQN("dict[str, unsafe::ptr[i32]]")
     assert len(fqn.parts) == 1
     assert fqn.parts[0].name == "dict"
     assert len(fqn.parts[0].qualifiers) == 2
@@ -48,7 +48,7 @@ def test_nested_qualifiers():
     assert fqn.parts[0].qualifiers[1].parts[1].qualifiers[0].parts[0].name == "i32"
 
 def test_suffix():
-    fqn = FQN.parse("mod::foo[i32]#1")
+    fqn = FQN("mod::foo[i32]#1")
     assert fqn.parts[0].name == "mod"
     assert fqn.parts[1].name == "foo"
     assert fqn.parts[1].qualifiers[0].parts[0].name == "i32"

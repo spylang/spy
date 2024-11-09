@@ -234,14 +234,14 @@ class FuncDoppler:
         of its first argument
         """
         if not (isinstance(call.func, ast.FQNConst) and
-                call.func.fqn == FQN.parse('builtins::print')):
+                call.func.fqn == FQN('builtins::print')):
             return call
 
         assert len(call.args) == 1
         color, w_type = self.t.check_expr(call.args[0])
         t = w_type.qn.symbol_name
         if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
-            fqn = FQN.parse(f'builtins::print_{t}')
+            fqn = FQN(f'builtins::print_{t}')
         else:
             raise SPyTypeError(f"Invalid type for print(): {t}")
 
