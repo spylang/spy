@@ -101,7 +101,8 @@ def builtin_func(namespace: FQN|str,
     Note that the decorator returns a W_BuiltinFunc, which means that you
     cannot call it directly, but you need to use vm.call.
     """
-    namespace = FQN(namespace)
+    if isinstance(namespace, str):
+        namespace = FQN(namespace)
     def decorator(fn: Callable) -> W_BuiltinFunc:
         assert fn.__name__.startswith('w_')
         fname = funcname
@@ -124,7 +125,8 @@ def builtin_type(namespace: FQN|str,
     Given a W_* class, it automatically creates the corresponding instance of
     W_Type and attaches it to the W_* class.
     """
-    namespace = FQN(namespace)
+    if isinstance(namespace, str):
+        namespace = FQN(namespace)
     qn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass(qn, pyclass)

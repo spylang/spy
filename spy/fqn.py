@@ -110,20 +110,16 @@ class NSPart:
         if len(self.qualifiers) == 0:
             return name
         else:
-            # XXX temporary hack, eventually we need to kill the QN/FQN
-            # dichotomy
-            quals = '_'.join(FQN.make(qn, suffix='').c_name_plain
-                             for qn in self.qualifiers)
+            quals = '_'.join(fqn.c_name_plain for fqn in self.qualifiers)
             return f'{name}__{quals}'
 
 
 class FQN:
     parts: list[NSPart]
+    suffix: str
 
-    def __init__(self, x: Union['FQN', str, PARTS]) -> None:
-        if isinstance(x, FQN):
-            self.parts = x.parts[:]
-        elif isinstance(x, str):
+    def __init__(self, x: str | PARTS) -> None:
+        if isinstance(x, str):
             fqn = FQN.parse(x)
             self.parts = fqn.parts[:]
         else:
@@ -155,6 +151,11 @@ class FQN:
     def qn(self) -> 'QN':
         # XXX KILL ME
         return self
+
+    def with_suffix(self, suffix: str) -> 'FQN':
+        res = FQN(self.parts)
+        res.suffix = suffix
+        return res
 
     def __repr__(self) -> str:
         return f"FQN({self.fullname!r})"

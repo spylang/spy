@@ -122,12 +122,12 @@ class SPyVM:
         an unique suffix, we just increment a numeric counter.
         """
         if is_global:
-            fqn = FQN.make(qn, suffix="")
+            fqn = qn # XXX
         else:
             # XXX this is potentially quadratic if we create tons of
             # conflicting FQNs, but for now we don't care
             for n in itertools.count():
-                fqn = FQN.make(qn, suffix=str(n))
+                fqn = qn.with_suffix(str(n))
                 if fqn not in self.unique_fqns:
                     break
         assert fqn not in self.unique_fqns
