@@ -85,7 +85,7 @@ class FQNParser:
         else:
             suffix = ''
 
-        return FQN.make(parts, suffix=suffix)
+        return FQN(parts, suffix=suffix)
 
     def parse_part(self) -> NSPart:
         name = self.parse_name()

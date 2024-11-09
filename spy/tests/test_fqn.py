@@ -15,6 +15,11 @@ def test_FQN_init_parts():
     assert a.fullname == "a.b.c::xxx"
     assert a.modname == "a.b.c"
 
+def test_FQN_suffix():
+    a = FQN("aaa::bbb#1")
+    assert a.fullname == "aaa::bbb#1"
+    assert a.suffix == '1'
+
 def test_many_FQNs():
     assert str(FQN("aaa")) == "aaa"
     assert str(FQN("aaa::bbb::ccc")) == "aaa::bbb::ccc"
@@ -55,34 +60,28 @@ def test_FQN_join():
     e = a.join("e", ["mod::y"])
     assert e.fullname == "a::e[mod::y]"
 
-
-def test_FQN():
-    a = FQN.make("aaa::bbb", suffix="0")
-    assert a.fullname == "aaa::bbb#0"
-
 def test_FQN_str():
-    a = FQN.make("aaa::bbb", suffix='0')
+    a = FQN("aaa::bbb#0")
     assert str(a) == "aaa::bbb#0"
     assert a.c_name == "spy_aaa$bbb$0"
-    b = FQN.make("aaa::bbb", suffix='')
+    b = FQN("aaa::bbb")
     assert str(b) == "aaa::bbb"
     assert b.c_name == "spy_aaa$bbb"
 
 def test_FQN_hash_eq():
-    a = FQN.make("aaa::bbb", suffix="0")
-    b = FQN.make("aaa::bbb", suffix="0")
+    a = FQN("aaa::bbb#0")
+    b = FQN("aaa::bbb#0")
     assert a == b
     assert hash(a) == hash(b)
 
 def test_FQN_c_name_dotted():
-    a = FQN.make("a.b.c::xxx", suffix="0")
+    a = FQN("a.b.c::xxx#0")
     assert a.c_name == "spy_a_b_c$xxx$0"
 
-
 def test_qualifiers_c_name():
-    a = FQN.make("a::b[x, y]::c", suffix="0")
+    a = FQN("a::b[x, y]::c#0")
     assert a.c_name == "spy_a$b__x_y$c$0"
 
 def test_nested_qualifiers_c_name():
-    a = FQN.make("a::list[Ptr[x, y]]::c", suffix="0")
+    a = FQN("a::list[Ptr[x, y]]::c#0")
     assert a.c_name == "spy_a$list__Ptr__x_y$c$0"

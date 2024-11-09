@@ -118,28 +118,21 @@ class FQN:
     parts: list[NSPart]
     suffix: str
 
-    def __init__(self, x: str | PARTS) -> None:
+    def __init__(self, x: str | PARTS, *, suffix: str = '') -> None:
+        """
+        Supported overloads:
+            FQN(x: str)
+            FQN(x: PARTS, *, suffix='')
+        """
         if isinstance(x, str):
+            assert suffix == ''
             fqn = FQN.parse(x)
             self.parts = fqn.parts[:]
+            self.suffix = fqn.suffix
         else:
             self.parts = get_parts(x)
-        self.suffix = '' # ???
+            self.suffix = suffix
 
-
-    @classmethod
-    def make(cls, x: Union['FQN', str, list[str]], *, suffix: str) -> 'FQN':
-        obj = cls.__new__(cls)
-        obj.__init__(x)
-        obj.suffix = suffix
-        return obj
-
-    @classmethod
-    def make_global(cls, x: Union['FQN', str, list[str]]) -> 'FQN':
-        """
-        Return the FQN corresponding to a global name.
-        """
-        return cls.make(x, suffix='')
 
     @classmethod
     def parse(cls, s: str) -> 'FQN':
