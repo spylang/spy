@@ -81,8 +81,8 @@ def get_qualifiers(x: QUALIFIERS) -> list['QN']:
     quals = []
     for item in x:
         if isinstance(item, str):
-            quals.append(QN(item))
-        elif isinstance(item, QN):
+            quals.append(FQN(item))
+        elif isinstance(item, FQN):
             quals.append(item)
         else:
             assert False
@@ -124,19 +124,40 @@ class QN:
         if isinstance(x, QN):
             self.parts = x.parts[:]
         elif isinstance(x, str):
-            qn = self.parse(x)
-            self.parts = qn.parts[:]
+            fqn = FQN.parse(x)
+            self.parts = fqn.parts[:]
         else:
             self.parts = get_parts(x)
+        self.suffix = '' # ???
 
-    @staticmethod
-    def parse(s: str) -> 'QN':
+
+    @classmethod
+    def make(cls, x: Union['QN', str, list[str]], *, suffix: str) -> 'FQN':
+        obj = cls.__new__(cls)
+        obj.__init__(x)
+        obj.suffix = suffix
+        return obj
+
+    @classmethod
+    def make_global(cls, x: Union['QN', str, list[str]]) -> 'FQN':
+        """
+        Return the FQN corresponding to a global name.
+        """
+        return cls.make(x, suffix='')
+
+    @classmethod
+    def parse(cls, s: str) -> 'FQN':
         from .fqn_parser import FQNParser
         fqn = FQNParser(s).parse()
-        return fqn.qn
+        return fqn
+
+    @property
+    def qn(self) -> 'QN':
+        # XXX KILL ME
+        return self
 
     def __repr__(self) -> str:
-        return f"QN({self.fullname!r})"
+        return f"FQN({self.fullname!r})"
 
     def __str__(self) -> str:
         return self.fullname
@@ -155,9 +176,8 @@ class QN:
             parts = parts[1:]
         s = '::'.join(str(part) for part in parts)
 
-        if isinstance(self, FQN): # XXX
-            if self.suffix != '':
-                s += f'#{self.suffix}'
+        if self.suffix != '':
+            s += f'#{self.suffix}'
         return s
 
     @property
@@ -188,61 +208,7 @@ class QN:
         Create a new QN nested inside the current one.
         """
         qual2 = get_qualifiers(qualifiers)
-        return QN(self.parts + [NSPart(name, qual2)])
-
-
-class FQN(QN):
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        raise ValueError("You cannot instantiate an FQN directly. "
-                         "Please use vm.get_FQN()")
-
-    @classmethod
-    def make(cls, x: QN | str | list[str], *, suffix: str) -> 'FQN':
-        obj = cls.__new__(cls)
-        QN.__init__(obj, x)
-        obj.suffix = suffix
-        return obj
-
-    @classmethod
-    def make_global(cls, x: QN | str | list[str]) -> 'FQN':
-        """
-        Return the FQN corresponding to a global name.
-        """
-        return cls.make(x, suffix='')
-
-    @classmethod
-    def parse(cls, s: str) -> 'FQN':
-        from .fqn_parser import FQNParser
-        fqn = FQNParser(s).parse()
-        return fqn
-
-    @property
-    def qn(self) -> QN:
-        # XXX KILL ME
-        return QN(self)
-
-    @property
-    def modname(self) -> str:
-        return self.qn.modname
-
-    @property
-    def symbol_name(self) -> str:
-        return self.qn.symbol_name
-
-    def __repr__(self) -> str:
-        return f"FQN({self.fullname!r})"
-
-    def __str__(self) -> str:
-        return self.fullname
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, FQN):
-            return NotImplemented
-        return self.fullname == other.fullname
-
-    def __hash__(self) -> int:
-        return hash(self.fullname)
+        return FQN(self.parts + [NSPart(name, qual2)])
 
     @property
     def c_name(self) -> str:
@@ -286,7 +252,6 @@ class FQN(QN):
             cn += '$' + self.suffix
         return cn
 
-
     @property
     def spy_name(self) -> str:
         # this works only for very simple cases
@@ -297,3 +262,5 @@ class FQN(QN):
 
     def is_object(self) -> bool:
         return not self.is_module()
+
+FQN = QN # XXX
