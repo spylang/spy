@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Optional, Iterable
-from spy.fqn import QN, FQN
+from spy.fqn import FQN
 from spy.vm.primitive import W_Void
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_Dynamic

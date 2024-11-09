@@ -1,6 +1,5 @@
 from typing import (TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar,
                     TypeVar, Generic)
-from spy.fqn import QN
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.object import (W_Object, W_Type, W_Dynamic)
 from spy.vm.builtin import builtin_func, builtin_type
@@ -162,8 +161,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             w_rtype = wop_r.w_static_type
             assert w_ltype.pyclass is W_MyList
 
-            # XXX: we use use proper nested QNs. See also the comment in
-            # vm.make_fqn_const
             @no_type_check
             @builtin_func(W_MyList.type_qn)
             def w_eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:

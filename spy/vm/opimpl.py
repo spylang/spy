@@ -27,7 +27,6 @@ blue and can be optimized away during redshifting.
 from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
                     TYPE_CHECKING)
 from spy import ast
-from spy.fqn import QN
 from spy.location import Loc
 from spy.irgen.symtable import Symbol
 from spy.errors import SPyTypeError

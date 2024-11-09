@@ -46,7 +46,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
                     Union)
-from spy.fqn import QN
+from spy.fqn import FQN
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -65,7 +65,7 @@ class W_Object:
 
     _w: ClassVar['W_Type']                         # set by @builtin_type
     __spy_members__: ClassVar['dict[str, Member]'] # set by @builtin_type
-    type_qn: ClassVar[QN]                          # set by @builtin_type
+    type_qn: ClassVar[FQN]                         # set by @builtin_type
 
     # Storage category:
     #   - 'value': compares by value, don't have an identity, 'is' is
@@ -181,11 +181,11 @@ class W_Type(W_Object):
     This is basically a thin wrapper around W_* classes.
     """
 
-    qn: QN
+    qn: FQN
     pyclass: Type[W_Object]
     __spy_storage_category__ = 'reference'
 
-    def __init__(self, qn: QN, pyclass: Type[W_Object]):
+    def __init__(self, qn: FQN, pyclass: Type[W_Object]):
         assert issubclass(pyclass, W_Object)
         self.qn = qn
         self.pyclass = pyclass
@@ -214,9 +214,9 @@ class W_Type(W_Object):
         return False
 
 
-W_Object._w = W_Type(QN('builtins::object'), W_Object)
+W_Object._w = W_Type(FQN('builtins::object'), W_Object)
 W_Object.__spy_members__ = {}
-W_Type._w = W_Type(QN('builtins::type'), W_Type)
+W_Type._w = W_Type(FQN('builtins::type'), W_Type)
 W_Type.__spy_members__ = {}
 
 # The <dynamic> type
@@ -254,7 +254,7 @@ W_Type.__spy_members__ = {}
 # it's equivalent to W_Object, but it is recognized by @builtin_func to
 # generate the "correct" w_functype signature.
 
-w_DynamicType = W_Type(QN('builtins::dynamic'), W_Object) # this is B.w_dynamic
+w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object) # this is B.w_dynamic
 W_Dynamic = Annotated[W_Object, 'W_Dynamic']
 
 
@@ -290,7 +290,7 @@ def _get_member_maybe(t: Any) -> Optional[Member]:
     return None
 
 
-def make_metaclass(qn: QN, pyclass: Type[W_Object]) -> Type[W_Type]:
+def make_metaclass(qn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
     Synthesize an app-level metaclass for the corresponding interp-level
     pyclass.
@@ -349,7 +349,7 @@ def fix_annotations(fn: Any, types: dict[str, type]) -> None:
             newT = types[T]
             fn.__annotations__[key] = newT
 
-def synthesize_meta_op_CALL(qn: QN, pyclass: Type[W_Object]) -> Any:
+def synthesize_meta_op_CALL(qn: FQN, pyclass: Type[W_Object]) -> Any:
     """
     Given a pyclass which implements w_spy_new, create an op_CALL for the
     corresponding metaclass. Example:

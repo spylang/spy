@@ -1,7 +1,7 @@
 import py
 from spy import ast
 from spy.location import Loc
-from spy.fqn import QN
+from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import SymTable
 from spy.errors import SPyTypeError
@@ -42,7 +42,7 @@ class ModuleGen:
         # Synthesize and execute a function where to evaluate module-level
         # declarations.
         w_functype = W_FuncType.parse('def() -> void')
-        qn = QN(self.modname)
+        qn = FQN(self.modname)
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, qn, modinit_funcdef, closure)
@@ -97,14 +97,14 @@ class ModuleGen:
         frame.exec_stmt_ClassDef(classdef)
         w_class = frame.load_local(classdef.name)
         assert isinstance(w_class, W_Type)
-        qn = QN([self.modname, classdef.name])
+        qn = FQN([self.modname, classdef.name])
         fqn = self.vm.get_FQN(qn, is_global=True)
         self.vm.add_global(fqn, None, w_class)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        qn = QN([self.modname, vardef.name])
+        qn = FQN([self.modname, vardef.name])
         fqn = self.vm.get_FQN(qn, is_global=True)
         if isinstance(vardef.type, ast.Auto):
             # type inference

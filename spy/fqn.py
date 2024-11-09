@@ -63,7 +63,7 @@ from dataclasses import dataclass
 import re
 
 PARTS = Sequence[Union[str, 'NSPart']]
-QUALIFIERS = Optional[Sequence[Union[str, 'QN']]]
+QUALIFIERS = Optional[Sequence[Union[str, 'FQN']]]
 
 def get_parts(x: PARTS) -> list['NSPart']:
     parts = []
@@ -76,7 +76,7 @@ def get_parts(x: PARTS) -> list['NSPart']:
             assert False
     return parts
 
-def get_qualifiers(x: QUALIFIERS) -> list['QN']:
+def get_qualifiers(x: QUALIFIERS) -> list['FQN']:
     x = x or []
     quals = []
     for item in x:
@@ -91,7 +91,7 @@ def get_qualifiers(x: QUALIFIERS) -> list['QN']:
 @dataclass
 class NSPart:
     name: str
-    qualifiers: list['QN']
+    qualifiers: list['FQN']
 
     def __init__(self, name: str, quals: QUALIFIERS=None) -> None:
         self.name = name
@@ -117,11 +117,11 @@ class NSPart:
             return f'{name}__{quals}'
 
 
-class QN:
+class FQN:
     parts: list[NSPart]
 
-    def __init__(self, x: Union['QN', str, PARTS]) -> None:
-        if isinstance(x, QN):
+    def __init__(self, x: Union['FQN', str, PARTS]) -> None:
+        if isinstance(x, FQN):
             self.parts = x.parts[:]
         elif isinstance(x, str):
             fqn = FQN.parse(x)
@@ -132,14 +132,14 @@ class QN:
 
 
     @classmethod
-    def make(cls, x: Union['QN', str, list[str]], *, suffix: str) -> 'FQN':
+    def make(cls, x: Union['FQN', str, list[str]], *, suffix: str) -> 'FQN':
         obj = cls.__new__(cls)
         obj.__init__(x)
         obj.suffix = suffix
         return obj
 
     @classmethod
-    def make_global(cls, x: Union['QN', str, list[str]]) -> 'FQN':
+    def make_global(cls, x: Union['FQN', str, list[str]]) -> 'FQN':
         """
         Return the FQN corresponding to a global name.
         """
@@ -163,7 +163,7 @@ class QN:
         return self.fullname
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, QN):
+        if not isinstance(other, FQN):
             return NotImplemented
         return self.fullname == other.fullname
 
@@ -196,16 +196,16 @@ class QN:
         return str(self.parts[0])
 
     @property
-    def namespace(self) -> 'QN':
-        return QN(self.parts[:-1])
+    def namespace(self) -> 'FQN':
+        return FQN(self.parts[:-1])
 
     @property
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-    def join(self, name: str, qualifiers: QUALIFIERS=None) -> 'QN':
+    def join(self, name: str, qualifiers: QUALIFIERS=None) -> 'FQN':
         """
-        Create a new QN nested inside the current one.
+        Create a new FQN nested inside the current one.
         """
         qual2 = get_qualifiers(qualifiers)
         return FQN(self.parts + [NSPart(name, qual2)])
@@ -262,5 +262,3 @@ class QN:
 
     def is_object(self) -> bool:
         return not self.is_module()
-
-FQN = QN # XXX

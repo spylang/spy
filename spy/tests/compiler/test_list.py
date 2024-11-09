@@ -1,7 +1,7 @@
 #-*- encoding: utf-8 -*-
 
 import pytest
-from spy.fqn import QN
+from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.list import W_List
@@ -22,7 +22,7 @@ class TestList(CompilerTest):
         w_foo = mod.foo.w_func
         w_list_i32 = self.vm.call(w_foo, [])
         assert isinstance(w_list_i32, W_Type)
-        assert w_list_i32.qn == QN('builtins::list[i32]')
+        assert w_list_i32.qn == FQN('builtins::list[i32]')
         assert w_list_i32.pyclass.__name__ == 'W_List[W_I32]'
 
     def test_cached_generic(self):
@@ -55,10 +55,10 @@ class TestList(CompilerTest):
         # our machinery unwraps types, let's wrap it again
         w_t1 = self.vm.wrap(mod.foo())
         assert isinstance(w_t1, W_Type)
-        assert w_t1.qn == QN('builtins::list[type]')
+        assert w_t1.qn == FQN('builtins::list[type]')
         w_t2 = self.vm.wrap(mod.bar())
         assert isinstance(w_t2, W_Type)
-        assert w_t2.qn == QN('builtins::list[object]')
+        assert w_t2.qn == FQN('builtins::list[object]')
 
     def test_literal(self):
         mod = self.compile(

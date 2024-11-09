@@ -2,7 +2,7 @@ from typing import Callable, Optional, TYPE_CHECKING, Any, Type
 from types import FunctionType
 from dataclasses import dataclass
 from spy.ast import Color
-from spy.fqn import QN, QUALIFIERS
+from spy.fqn import FQN, QUALIFIERS
 from spy.vm.function import W_FuncType, W_BuiltinFunc
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.object import W_Object
@@ -13,11 +13,11 @@ class ModuleRegistry:
 
     At startup, the `vm` will create a W_Module out of it.
     """
-    qn: QN
-    content: list[tuple[QN, W_Object]]
+    qn: FQN
+    content: list[tuple[FQN, W_Object]]
 
     def __init__(self, modname: str) -> None:
-        self.qn = QN(modname)
+        self.qn = FQN(modname)
         self.content = []
 
     def __repr__(self) -> str:

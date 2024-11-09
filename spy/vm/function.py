@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence
 from spy import ast
 from spy.ast import Color
-from spy.fqn import QN, NSPart
+from spy.fqn import FQN, NSPart
 from spy.vm.primitive import W_Void
 from spy.vm.object import W_Object, W_Type
 if TYPE_CHECKING:
@@ -36,14 +36,15 @@ class W_FuncType(W_Type):
         self.w_restype = w_restype
         self.color = color
         #
-        # build an artificial QN for the functype. Note that the QN is not
-        # necessarily unique (e.g., we don't take into account param names),
-        # but that's ok because it will be uniquified when it becomes an FQN.
-        # For 'def(i32, i32) -> bool', the QN looks like this:
+        # build an artificial FQN for the functype.
+        # For 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
+        #
+        # XXX the FQN is not necessarily unique, we don't take into account
+        # param names
         qualifiers = [p.w_type.qn for p in self.params] + [w_restype.qn]
-        qn = QN('builtins').join('def', qualifiers)
-        super().__init__(qn, W_Func)
+        fqn = FQN('builtins').join('def', qualifiers)
+        super().__init__(fqn, W_Func)
 
     @property
     def signature(self) -> str:
@@ -110,7 +111,7 @@ class W_FuncType(W_Type):
 
 class W_Func(W_Object):
     w_functype: W_FuncType
-    qn: QN
+    qn: FQN
 
     @property
     def color(self) -> Color:
@@ -164,7 +165,7 @@ class W_DirectCall(W_Func):
     """
     See W_Func.op_CALL.
     """
-    qn = QN("builtins::__direct_call__")
+    qn = FQN("builtins::__direct_call__")
 
     def __init__(self, w_functype: W_FuncType) -> None:
         self.w_functype = w_functype
@@ -179,7 +180,7 @@ class W_ASTFunc(W_Func):
 
     def __init__(self,
                  w_functype: W_FuncType,
-                 qn: QN,
+                 qn: FQN,
                  funcdef: ast.FuncDef,
                  closure: tuple[Namespace, ...],
                  *,
@@ -217,7 +218,7 @@ class W_BuiltinFunc(W_Func):
     """
     pyfunc: Callable
 
-    def __init__(self, w_functype: W_FuncType, qn: QN,
+    def __init__(self, w_functype: W_FuncType, qn: FQN,
                  pyfunc: Callable) -> None:
         self.w_functype = w_functype
         self.qn = qn

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar
 from dataclasses import dataclass
 import fixedint
-from spy.fqn import QN
+from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Void
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -20,7 +20,7 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def __init__(self, qn: QN, pyclass: Type[W_Object],
+    def __init__(self, qn: FQN, pyclass: Type[W_Object],
                  fields: FIELDS_T) -> None:
         super().__init__(qn, pyclass)
         self.fields = fields
@@ -55,7 +55,7 @@ class W_Struct(W_Object):
     pass
 
 
-def make_struct_type(vm: 'SPyVM', qn: QN, fields: FIELDS_T) -> W_Type:
+def make_struct_type(vm: 'SPyVM', qn: FQN, fields: FIELDS_T) -> W_Type:
     size, layout = calc_layout(fields)
 
     class W_MyStruct(W_Struct):

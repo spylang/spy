@@ -3,7 +3,7 @@ from types import NoneType
 from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
-from spy.fqn import FQN, QN
+from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type

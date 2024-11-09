@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Any, Optional, NoReturn, Sequence
 from types import NoneType
 from dataclasses import dataclass
 from spy import ast
-from spy.fqn import FQN, QN
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)

@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence, Literal
 from types import NoneType
 from spy import ast
-from spy.fqn import QN, FQN
 from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc

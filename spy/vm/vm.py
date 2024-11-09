@@ -4,7 +4,7 @@ import itertools
 from dataclasses import dataclass
 from types import FunctionType
 import fixedint
-from spy.fqn import QN, FQN
+from spy.fqn import FQN
 from spy.location import Loc
 from spy import libspy
 from spy.doppler import redshift
@@ -108,8 +108,10 @@ class SPyVM:
             w_type = self.dynamic_type(w_obj)
             self.add_global(fqn, w_type, w_obj)
 
-    def get_FQN(self, qn: QN, *, is_global: bool) -> FQN:
+    def get_FQN(self, qn: FQN, *, is_global: bool) -> FQN:
         """
+        XXX docstring
+
         Get an unique FQN from a QN.
 
         Module-level names are considered "global": their FQN will get an

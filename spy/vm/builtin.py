@@ -9,7 +9,7 @@ vm/modules/builtins.py.
 import inspect
 import typing
 from typing import TYPE_CHECKING, Any, Callable, Type, Optional
-from spy.fqn import QN, QUALIFIERS
+from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
 from spy.vm.primitive import W_Void
 from spy.vm.object import W_Object, W_Type, W_Dynamic, _get_member_maybe, make_metaclass, w_DynamicType
@@ -68,7 +68,7 @@ def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
     return W_FuncType(func_params, w_restype, color=color)
 
 
-def builtin_func(namespace: QN|str,
+def builtin_func(namespace: FQN|str,
                  funcname: Optional[str] = None,
                  qualifiers: QUALIFIERS = None,
                  *,
@@ -83,7 +83,7 @@ def builtin_func(namespace: QN|str,
         def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             ...
         assert isinstance(w_hello, W_BuiltinFunc)
-        assert w_hello.qn == QN("mymodule::hello")
+        assert w_hello.qn == FQN("mymodule::hello")
 
     funcname can be omitted, and in that case it will automatically be deduced
     from __name__:
@@ -91,7 +91,7 @@ def builtin_func(namespace: QN|str,
         @builtin_func("mymodule")
         def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             ...
-        assert w_hello.qn == QN("mymodule::hello")
+        assert w_hello.qn == FQN("mymodule::hello")
 
 
     The w_functype of the wrapped function is automatically computed by
@@ -101,20 +101,20 @@ def builtin_func(namespace: QN|str,
     Note that the decorator returns a W_BuiltinFunc, which means that you
     cannot call it directly, but you need to use vm.call.
     """
-    namespace = QN(namespace)
+    namespace = FQN(namespace)
     def decorator(fn: Callable) -> W_BuiltinFunc:
         assert fn.__name__.startswith('w_')
         fname = funcname
         if fname is None:
             fname = fn.__name__[2:]
-        assert isinstance(namespace, QN)
+        assert isinstance(namespace, FQN)
         qn = namespace.join(fname, qualifiers)
         w_functype = functype_from_sig(fn, color)
         return W_BuiltinFunc(w_functype, qn, fn)
     return decorator
 
 
-def builtin_type(namespace: QN|str,
+def builtin_type(namespace: FQN|str,
                  typename: str,
                  qualifiers: QUALIFIERS = None
                  ) -> Any:
@@ -124,7 +124,7 @@ def builtin_type(namespace: QN|str,
     Given a W_* class, it automatically creates the corresponding instance of
     W_Type and attaches it to the W_* class.
     """
-    namespace = QN(namespace)
+    namespace = FQN(namespace)
     qn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass(qn, pyclass)
