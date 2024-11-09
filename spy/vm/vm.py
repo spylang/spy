@@ -101,10 +101,10 @@ class SPyVM:
         self.modules_w[w_mod.name] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
-        w_mod = W_Module(self, reg.qn.modname, f'<reg.qn.modname>')
+        w_mod = W_Module(self, reg.fqn.modname, f'<reg.fqn.modname>')
         self.register_module(w_mod)
-        for qn, w_obj in reg.content:
-            fqn = self.get_FQN(qn, is_global=True)
+        for fqn, w_obj in reg.content:
+            fqn = self.get_FQN(fqn, is_global=True)
             w_type = self.dynamic_type(w_obj)
             self.add_global(fqn, w_type, w_obj)
 
@@ -144,7 +144,7 @@ class SPyVM:
         only FQNs, and assign them eagerly as soon as we create a function or
         a type.
         """
-        fqn = self.get_FQN(w_type.qn, is_global=True)
+        fqn = self.get_FQN(w_type.fqn, is_global=True)
         self.add_global(fqn, None, w_type)
         return fqn
 
@@ -195,9 +195,9 @@ class SPyVM:
         # no FQN yet, we need to assign it one.
         if isinstance(w_val, W_ASTFunc):
             # it's a closure, let's assign it an FQN and add to the globals
-            fqn = self.get_FQN(w_val.qn, is_global=False)
+            fqn = self.get_FQN(w_val.fqn, is_global=False)
         elif isinstance(w_val, W_BuiltinFunc):
-            fqn = self.get_FQN(w_val.qn, is_global=True)
+            fqn = self.get_FQN(w_val.fqn, is_global=True)
         elif isinstance(w_val, W_Type):
             raise Exception(
                 "Types should get their own FQN by calling vm.ensure_type_FQN, "
@@ -269,8 +269,8 @@ class SPyVM:
         """
         w_t1 = self.dynamic_type(w_obj)
         if w_t1 != w_type and not self.issubclass(w_t1, w_type):
-            exp = w_type.qn.human_name
-            got = w_t1.qn.human_name
+            exp = w_type.fqn.human_name
+            got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyTypeError(msg)
 
@@ -462,7 +462,7 @@ class SPyVM:
             # be possible. If it's not, it means that we forgot to implement it
             w_ta = wop_a.w_static_type
             w_tb = wop_b.w_static_type
-            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.qn}`'
+            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 
         w_res = w_opimpl.call(self, [w_a, w_b])

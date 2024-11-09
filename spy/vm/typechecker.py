@@ -88,7 +88,7 @@ class TypeChecker:
             if conv is not None:
                 self.expr_conv[expr] = conv
         except SPyTypeError as err:
-            exp = w_exp_type.qn.human_name
+            exp = w_exp_type.fqn.human_name
             exp_loc = self.funcdef.symtable.lookup(name).type_loc
             if name == '@return':
                 because = 'because of return type'
@@ -232,7 +232,7 @@ class TypeChecker:
     def check_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         _, w_valuetype = self.check_expr(unpack.value)
         if w_valuetype is not B.w_tuple:
-            t = w_valuetype.qn.human_name
+            t = w_valuetype.fqn.human_name
             err = SPyTypeError(f'`{t}` does not support unpacking')
             err.add('error', f'this is `{t}`', unpack.value.loc)
             raise err
@@ -453,12 +453,12 @@ def typecheck_opimpl(
         #  - multi dispatch means that all the types are equally imporant in
         #    determining whether an operation is supported, so we report all
         #    of them
-        typenames = [wop.w_static_type.qn.human_name for wop in orig_args_wop]
+        typenames = [wop.w_static_type.fqn.human_name for wop in orig_args_wop]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':
             wop_target = orig_args_wop[0]
-            t = wop_target.w_static_type.qn.human_name
+            t = wop_target.w_static_type.fqn.human_name
             if wop_target.loc:
                 err.add('error', f'this is `{t}`', wop_target.loc)
             if wop_target.sym:
@@ -466,7 +466,7 @@ def typecheck_opimpl(
                 err.add('note', f'`{sym.name}` defined here', sym.loc)
         else:
             for wop_arg in orig_args_wop:
-                t = wop_arg.w_static_type.qn.human_name
+                t = wop_arg.w_static_type.fqn.human_name
                 err.add('error', f'this is `{t}`', wop_arg.loc)
         raise err
 
@@ -583,7 +583,7 @@ def convert_type_maybe(
 
     # mismatched types
     err = SPyTypeError('mismatched types')
-    got = w_got.qn.human_name
-    exp = w_exp.qn.human_name
+    got = w_got.fqn.human_name
+    exp = w_exp.fqn.human_name
     err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)
     raise err

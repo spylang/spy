@@ -62,7 +62,7 @@ class TestTypeDef(CompilerTest):
         assert isinstance(w_MyInt, W_TypeDef)
         w_getattr = w_MyInt.w_getattr
         assert isinstance(w_getattr, W_ASTFunc)
-        assert w_getattr.qn == FQN("test::__getattr__")
+        assert w_getattr.fqn == FQN("test::__getattr__")
         w_res = self.vm.call(w_getattr, [B.w_None])
         assert w_res is B.w_NotImplemented
 

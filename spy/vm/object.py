@@ -65,7 +65,7 @@ class W_Object:
 
     _w: ClassVar['W_Type']                         # set by @builtin_type
     __spy_members__: ClassVar['dict[str, Member]'] # set by @builtin_type
-    type_qn: ClassVar[FQN]                         # set by @builtin_type
+    type_fqn: ClassVar[FQN]                        # set by @builtin_type
 
     # Storage category:
     #   - 'value': compares by value, don't have an identity, 'is' is
@@ -74,9 +74,9 @@ class W_Object:
     __spy_storage_category__ = 'value'
 
     def __repr__(self) -> str:
-        qn = self._w.qn
+        fqn = self._w.fqn
         addr = f'0x{id(self):x}'
-        return f'<spy instance: type={qn.human_name}, id={addr}>'
+        return f'<spy instance: type={fqn.human_name}, id={addr}>'
 
     def spy_get_w_type(self, vm: 'SPyVM') -> 'W_Type':
         pyclass = type(self)
@@ -84,7 +84,7 @@ class W_Object:
         return pyclass._w
 
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
-        spy_type = vm.dynamic_type(self).qn
+        spy_type = vm.dynamic_type(self).fqn
         py_type = self.__class__.__name__
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
                         f"(inter-level type: {py_type})")
@@ -181,13 +181,13 @@ class W_Type(W_Object):
     This is basically a thin wrapper around W_* classes.
     """
 
-    qn: FQN
+    fqn: FQN
     pyclass: Type[W_Object]
     __spy_storage_category__ = 'reference'
 
-    def __init__(self, qn: FQN, pyclass: Type[W_Object]):
+    def __init__(self, fqn: FQN, pyclass: Type[W_Object]):
         assert issubclass(pyclass, W_Object)
-        self.qn = qn
+        self.fqn = fqn
         self.pyclass = pyclass
 
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
@@ -202,7 +202,7 @@ class W_Type(W_Object):
         return basecls._w
 
     def __repr__(self) -> str:
-        return f"<spy type '{self.qn.human_name}'>"
+        return f"<spy type '{self.fqn.human_name}'>"
 
     def spy_unwrap(self, vm: 'SPyVM') -> Type[W_Object]:
         return self.pyclass
@@ -290,7 +290,7 @@ def _get_member_maybe(t: Any) -> Optional[Member]:
     return None
 
 
-def make_metaclass(qn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
+def make_metaclass(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
     Synthesize an app-level metaclass for the corresponding interp-level
     pyclass.
@@ -321,8 +321,8 @@ def make_metaclass(qn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     2. by using `w_spy_new`, which automatically synthesize an appropriare
        op_meta_CALL. This is just for convenience.
     """
-    metaname = f'Meta_{qn.symbol_name}'
-    metaqn = qn.namespace.join(metaname)
+    metaname = f'Meta_{fqn.symbol_name}'
+    metafqn = fqn.namespace.join(metaname)
 
     class W_MetaType(W_Type):
         __name__ = f'W_{metaname}'
@@ -331,12 +331,12 @@ def make_metaclass(qn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     if hasattr(pyclass, 'meta_op_CALL'):
         W_MetaType.op_CALL = pyclass.meta_op_CALL  # type: ignore
     elif hasattr(pyclass, 'w_spy_new'):
-        W_MetaType.op_CALL = synthesize_meta_op_CALL(qn, pyclass) # type: ignore
+        W_MetaType.op_CALL = synthesize_meta_op_CALL(fqn, pyclass) # type: ignore
 
     if hasattr(pyclass, 'meta_op_GETITEM'):
         W_MetaType.op_GETITEM = pyclass.meta_op_GETITEM  # type: ignore
 
-    W_MetaType._w = W_Type(metaqn, W_MetaType)
+    W_MetaType._w = W_Type(metafqn, W_MetaType)
     return W_MetaType
 
 def fix_annotations(fn: Any, types: dict[str, type]) -> None:
@@ -349,7 +349,7 @@ def fix_annotations(fn: Any, types: dict[str, type]) -> None:
             newT = types[T]
             fn.__annotations__[key] = newT
 
-def synthesize_meta_op_CALL(qn: FQN, pyclass: Type[W_Object]) -> Any:
+def synthesize_meta_op_CALL(fqn: FQN, pyclass: Type[W_Object]) -> Any:
     """
     Given a pyclass which implements w_spy_new, create an op_CALL for the
     corresponding metaclass. Example:
@@ -366,7 +366,7 @@ def synthesize_meta_op_CALL(qn: FQN, pyclass: Type[W_Object]) -> Any:
 
     class W_Foo(W_Object):
         @staticmethod
-        @builtin_func(W_Foo.qn, '__new__')
+        @builtin_func(W_Foo.fqn, '__new__')
         def w_spy_new(vm: 'SPyVM', w_cls: W_Type, ...) -> 'W_Foo':
             ...
 
@@ -387,7 +387,7 @@ def synthesize_meta_op_CALL(qn: FQN, pyclass: Type[W_Object]) -> Any:
                      w_opargs: W_Dynamic) -> W_OpImpl:
         fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
         # manually apply the @builtin_func decorator to the spy_new function
-        w_spyfunc = builtin_func(qn, '__new__')(w_spy_new)
+        w_spyfunc = builtin_func(fqn, '__new__')(w_spy_new)
         return W_OpImpl(w_spyfunc)
 
     return meta_op_CALL

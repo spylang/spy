@@ -83,7 +83,7 @@ def builtin_func(namespace: FQN|str,
         def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             ...
         assert isinstance(w_hello, W_BuiltinFunc)
-        assert w_hello.qn == FQN("mymodule::hello")
+        assert w_hello.fqn == FQN("mymodule::hello")
 
     funcname can be omitted, and in that case it will automatically be deduced
     from __name__:
@@ -91,7 +91,7 @@ def builtin_func(namespace: FQN|str,
         @builtin_func("mymodule")
         def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             ...
-        assert w_hello.qn == FQN("mymodule::hello")
+        assert w_hello.fqn == FQN("mymodule::hello")
 
 
     The w_functype of the wrapped function is automatically computed by
@@ -109,9 +109,9 @@ def builtin_func(namespace: FQN|str,
         if fname is None:
             fname = fn.__name__[2:]
         assert isinstance(namespace, FQN)
-        qn = namespace.join(fname, qualifiers)
+        fqn = namespace.join(fname, qualifiers)
         w_functype = functype_from_sig(fn, color)
-        return W_BuiltinFunc(w_functype, qn, fn)
+        return W_BuiltinFunc(w_functype, fqn, fn)
     return decorator
 
 
@@ -127,11 +127,11 @@ def builtin_type(namespace: FQN|str,
     """
     if isinstance(namespace, str):
         namespace = FQN(namespace)
-    qn = namespace.join(typename, qualifiers)
+    fqn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-        W_MetaClass = make_metaclass(qn, pyclass)
-        pyclass.type_qn = qn
-        pyclass._w = W_MetaClass(qn, pyclass)
+        W_MetaClass = make_metaclass(fqn, pyclass)
+        pyclass.type_fqn = fqn
+        pyclass._w = W_MetaClass(fqn, pyclass)
         # setup __spy_members__
         pyclass.__spy_members__ = {}
         for field, t in pyclass.__annotations__.items():

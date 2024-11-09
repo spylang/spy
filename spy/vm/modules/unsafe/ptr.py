@@ -50,7 +50,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
     T = w_T.pyclass
     ITEMSIZE = sizeof(w_T)
 
-    @builtin_type('unsafe', 'ptr', [w_T.qn]) # unsafe::ptr[i32]
+    @builtin_type('unsafe', 'ptr', [w_T.fqn]) # unsafe::ptr[i32]
     class W_MyPtr(W_Ptr):
         __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
         w_itemtype: ClassVar[W_Type] = w_T
@@ -109,7 +109,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
     @no_type_check
-    @builtin_func(W_MyPtr.type_qn, 'load')
+    @builtin_func(W_MyPtr.type_fqn, 'load')
     def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
         length = w_ptr.length
@@ -126,7 +126,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         )
 
     @no_type_check
-    @builtin_func(W_MyPtr.type_qn, 'store')
+    @builtin_func(W_MyPtr.type_fqn, 'store')
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
@@ -159,9 +159,10 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     else:
         by = 'byval'
 
-    # XXX: ideally we would like to use qn, but we don't support "::" in
+    # XXX fix this before mergin the branch
+    # XXX: ideally we would like to use fqn, but we don't support "::" in
     # qualifiers for now, so we just use symbol_name
-    t = w_T.qn.symbol_name
+    t = w_T.fqn.symbol_name
     T = w_T.pyclass  # W_I32
 
     # unsafe::getfield_byval[i32]
@@ -185,7 +186,7 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 @UNSAFE.builtin_func(color='blue')
 def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass        # W_I32
-    t = w_T.qn.symbol_name # 'i32'
+    t = w_T.fqn.symbol_name # 'i32'
 
     @no_type_check
     @builtin_func(FQN(f'unsafe::setfield[{t}]'))  # unsafe::setfield[i32]

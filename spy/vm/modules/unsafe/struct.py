@@ -20,14 +20,14 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def __init__(self, qn: FQN, pyclass: Type[W_Object],
+    def __init__(self, fqn: FQN, pyclass: Type[W_Object],
                  fields: FIELDS_T) -> None:
-        super().__init__(qn, pyclass)
+        super().__init__(fqn, pyclass)
         self.fields = fields
         self.offsets, self.size = calc_layout(fields)
 
     def __repr__(self) -> str:
-        return f"<spy type struct '{self.qn}'>"
+        return f"<spy type struct '{self.fqn}'>"
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return True
@@ -55,14 +55,14 @@ class W_Struct(W_Object):
     pass
 
 
-def make_struct_type(vm: 'SPyVM', qn: FQN, fields: FIELDS_T) -> W_Type:
+def make_struct_type(vm: 'SPyVM', fqn: FQN, fields: FIELDS_T) -> W_Type:
     size, layout = calc_layout(fields)
 
     class W_MyStruct(W_Struct):
         pass
 
-    name = qn.symbol_name
+    name = fqn.symbol_name
     W_MyStruct.__name__ = W_MyStruct.__qualname__ = f'W_{name}'
-    w_struct_type = W_StructType(qn, W_MyStruct, fields)
+    w_struct_type = W_StructType(fqn, W_MyStruct, fields)
     W_MyStruct._w = w_struct_type # poor's man @spytype
     return w_struct_type

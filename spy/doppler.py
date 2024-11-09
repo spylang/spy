@@ -62,13 +62,13 @@ class FuncDoppler:
             new_body += self.shift_stmt(stmt)
         new_funcdef = funcdef.replace(body=new_body)
         #
-        new_qn = self.w_func.qn
+        new_fqn = self.w_func.fqn
         # all the non-local lookups are redshifted into constants, so the
         # closure will be empty
         new_closure = ()
         w_newfunctype = self.w_func.w_functype
         w_newfunc = W_ASTFunc(
-            qn = new_qn,
+            fqn = new_fqn,
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
@@ -239,7 +239,7 @@ class FuncDoppler:
 
         assert len(call.args) == 1
         color, w_type = self.t.check_expr(call.args[0])
-        t = w_type.qn.symbol_name
+        t = w_type.fqn.symbol_name
         if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
             fqn = FQN(f'builtins::print_{t}')
         else:

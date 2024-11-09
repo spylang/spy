@@ -134,11 +134,6 @@ class FQN:
             fqn.suffix = suffix
             return fqn
 
-    @property
-    def qn(self) -> 'QN':
-        # XXX KILL ME
-        return self
-
     def with_suffix(self, suffix: str) -> 'FQN':
         res = FQN(self.parts)
         res.suffix = suffix
@@ -234,7 +229,7 @@ class FQN:
         """
         Like c_name, but without the spy_ prefix
         """
-        parts = [part.c_name for part in self.qn.parts]
+        parts = [part.c_name for part in self.parts]
         cn = '$'.join(parts)
         if self.suffix != '':
             cn += '$' + self.suffix
@@ -243,10 +238,10 @@ class FQN:
     @property
     def spy_name(self) -> str:
         # this works only for very simple cases
-        return '.'.join(part.name for part in self.qn.parts)
+        return '.'.join(part.name for part in self.parts)
 
     def is_module(self) -> bool:
-        return len(self.qn.parts) == 1
+        return len(self.parts) == 1
 
     def is_object(self) -> bool:
         return not self.is_module()

@@ -23,7 +23,7 @@ class TestBuiltin:
             return vm.wrap(x*2)  # type: ignore
 
         assert isinstance(w_foo, W_BuiltinFunc)
-        assert w_foo.qn == FQN('mymod::foo')
+        assert w_foo.fqn == FQN('mymod::foo')
         w_y = vm.call(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
 

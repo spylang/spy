@@ -13,11 +13,11 @@ class ModuleRegistry:
 
     At startup, the `vm` will create a W_Module out of it.
     """
-    qn: FQN
+    fqn: FQN
     content: list[tuple[FQN, W_Object]]
 
     def __init__(self, modname: str) -> None:
-        self.qn = FQN(modname)
+        self.fqn = FQN(modname)
         self.content = []
 
     def __repr__(self) -> str:
@@ -39,9 +39,9 @@ class ModuleRegistry:
             """
 
     def add(self, attr: str, w_obj: W_Object) -> None:
-        qn = self.qn.join(attr)
+        fqn = self.fqn.join(attr)
         setattr(self, f'w_{attr}', w_obj)
-        self.content.append((qn, w_obj))
+        self.content.append((fqn, w_obj))
 
     def builtin_type(self,
                      typename: str,
@@ -62,7 +62,7 @@ class ModuleRegistry:
             MOD.add('Foo', W_Foo._w)
         """
         def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-            W_class = builtin_type(self.qn, typename, qualifiers)(pyclass)
+            W_class = builtin_type(self.fqn, typename, qualifiers)(pyclass)
             self.add(typename, W_class._w)
             return W_class
         return decorator
@@ -103,7 +103,7 @@ class ModuleRegistry:
             assert qualifiers is None
 
         def decorator(pyfunc: Callable) -> W_BuiltinFunc:
-            namespace = self.qn
+            namespace = self.fqn
             # apply the @builtin_func decorator to pyfunc
             w_func = builtin_func(
                 namespace=namespace,
@@ -111,8 +111,8 @@ class ModuleRegistry:
                 qualifiers=qualifiers,
                 color=color
             )(pyfunc)
-            setattr(self, f'w_{w_func.qn.symbol_name}', w_func)
-            self.content.append((w_func.qn, w_func))
+            setattr(self, f'w_{w_func.fqn.symbol_name}', w_func)
+            self.content.append((w_func.fqn, w_func))
             return w_func
 
         if pyfunc is None:

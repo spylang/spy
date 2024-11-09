@@ -37,8 +37,8 @@ class W_TypeDef(W_Type):
     w_getattr: Annotated[W_Dynamic, Member('__getattr__')]
     w_setattr: Annotated[W_Dynamic, Member('__setattr__')]
 
-    def __init__(self, qn: FQN, w_origintype: W_Type) -> None:
-        super().__init__(qn, w_origintype.pyclass)
+    def __init__(self, fqn: FQN, w_origintype: W_Type) -> None:
+        super().__init__(fqn, w_origintype.pyclass)
         self.w_origintype = w_origintype
         self.w_getattr = W_OpImpl.NULL
         self.w_setattr = W_OpImpl.NULL
@@ -47,9 +47,9 @@ class W_TypeDef(W_Type):
     def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_name: W_Str,
                   w_origintype: W_Type) -> 'W_TypeDef':
         name = vm.unwrap_str(w_name)
-        qn = FQN(f'types::typedef::{name}')
-        return W_TypeDef(qn, w_origintype)
+        fqn = FQN(f'types::typedef::{name}')
+        return W_TypeDef(fqn, w_origintype)
 
     def __repr__(self) -> str:
-        r = f"<spy type '{self.qn}' (typedef of '{self.w_origintype.qn}')>"
+        r = f"<spy type '{self.fqn}' (typedef of '{self.w_origintype.fqn}')>"
         return r

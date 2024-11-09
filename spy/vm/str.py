@@ -72,7 +72,7 @@ class W_Str(W_Object):
 
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-        @builtin_func(W_Str.type_qn)
+        @builtin_func(W_Str.type_fqn)
         def w_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
             assert isinstance(w_s, W_Str)
             assert isinstance(w_i, W_I32)
