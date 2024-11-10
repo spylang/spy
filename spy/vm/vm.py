@@ -117,20 +117,6 @@ class SPyVM:
                 return fqn2
         assert False, 'unreachable'
 
-    def ensure_type_FQN(self, w_type: W_Type) -> FQN:
-        """
-        Make sure that the given type has an unique FQN assigned.
-        Mostly useful for generic builtin types, such as ptr[] and list[].
-
-        XXX: this is probably a workaround: we need to think more but it's
-        possible that the best solution is to avoid the QN/FQN dichotomy, keep
-        only FQNs, and assign them eagerly as soon as we create a function or
-        a type.
-        """
-        # XXX kill before merging branch
-        self.add_global(w_type.fqn, None, w_type)
-        return w_type.fqn
-
     def add_global(self,
                    fqn: FQN,
                    w_type: Optional[W_Type],
@@ -180,12 +166,14 @@ class SPyVM:
             # it's a closure, let's assign it an FQN and add to the globals
             fqn = self.get_unique_FQN(w_val.fqn)
         elif isinstance(w_val, W_BuiltinFunc):
+            # builtin functions should have an unique fqn already
             fqn = w_val.fqn
+            assert w_val.fqn not in self.globals_w
         elif isinstance(w_val, W_Type):
-            raise Exception(
-                "Types should get their own FQN by calling vm.ensure_type_FQN, "
-                "please call it at type creation time."
-            )
+            # for now types are only builtin so they must have an unique fqn,
+            # we might need to change this when we introduce custom types
+            fqn = w_val.fqn
+            assert w_val.fqn not in self.globals_w
         else:
             assert False, 'implement me'
 

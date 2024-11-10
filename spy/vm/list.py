@@ -97,7 +97,6 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
         pyclass = _make_W_List(w_T)
         w_list_type = vm.wrap(pyclass)
     assert isinstance(w_list_type, W_Type)
-    vm.ensure_type_FQN(w_list_type)
     return w_list_type
 
 

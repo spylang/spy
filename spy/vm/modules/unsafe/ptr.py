@@ -144,7 +144,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         )
 
     w_ptrtype = vm.wrap(W_MyPtr)
-    vm.ensure_type_FQN(w_ptrtype)  # type: ignore
     return w_ptrtype
 
 
