@@ -45,7 +45,8 @@ class WasmModuleWrapper:
                                fqn.c_name, w_func.w_functype)
 
     def read_global(self, fqn: FQN) -> Any:
-        w_type = self.vm.lookup_global_type(fqn)
+        w_val = self.vm.lookup_global(fqn)
+        w_type = self.vm.dynamic_type(w_val)
         t: LLWasmType
         if w_type is B.w_i32:
             t = 'int32_t'

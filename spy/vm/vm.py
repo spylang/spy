@@ -34,7 +34,6 @@ class SPyVM:
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
     ll: libspy.LLSPyInstance
-    globals_types: dict[FQN, W_Type]
     globals_w: dict[FQN, W_Object]
     modules_w: dict[str, W_Module]
     path: list[str]
@@ -42,7 +41,6 @@ class SPyVM:
 
     def __init__(self) -> None:
         self.ll = libspy.LLSPyInstance(libspy.LLMOD)
-        self.globals_types = {}
         self.globals_w = {}
         self.modules_w = {}
         self.path = []
@@ -102,8 +100,7 @@ class SPyVM:
         w_mod = W_Module(self, reg.fqn.modname, f'<reg.fqn.modname>')
         self.register_module(w_mod)
         for fqn, w_obj in reg.content:
-            w_type = self.dynamic_type(w_obj)
-            self.add_global(fqn, w_type, w_obj)
+            self.add_global(fqn, w_obj)
 
     def get_unique_FQN(self, fqn: FQN) -> FQN:
         """
@@ -117,28 +114,12 @@ class SPyVM:
                 return fqn2
         assert False, 'unreachable'
 
-    def add_global(self,
-                   fqn: FQN,
-                   w_type: Optional[W_Type],
-                   w_value: W_Object
-                   ) -> None:
-        assert isinstance(fqn, FQN)
-        assert fqn.modname in self.modules_w or fqn.modname == '__fake_mod__'
+    def add_global(self, fqn: FQN, w_value: W_Object) -> None:
+        assert fqn.modname in self.modules_w
         assert fqn not in self.globals_w
-        assert fqn not in self.globals_types
-        if w_type is None:
-            w_type = self.dynamic_type(w_value)
-        else:
-            assert self.isinstance(w_value, w_type)
-        self.globals_types[fqn] = w_type
         self.globals_w[fqn] = w_value
 
-    def lookup_global_type(self, fqn: FQN) -> Optional[W_Type]:
-        assert isinstance(fqn, FQN)
-        return self.globals_types.get(fqn)
-
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
-        assert isinstance(fqn, FQN)
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
@@ -178,13 +159,10 @@ class SPyVM:
             assert False, 'implement me'
 
         assert fqn is not None
-        self.add_global(fqn, None, w_val)
+        self.add_global(fqn, w_val)
         return fqn
 
     def store_global(self, fqn: FQN, w_value: W_Object) -> None:
-        assert isinstance(fqn, FQN)
-        w_type = self.globals_types[fqn]
-        assert self.isinstance(w_value, w_type)
         self.globals_w[fqn] = w_value
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
