@@ -90,22 +90,19 @@ class ModuleGen:
         frame.exec_stmt_FuncDef(funcdef)
         w_func = frame.load_local(funcdef.name)
         assert isinstance(w_func, W_ASTFunc)
-        fqn = self.vm.get_FQN(w_func.fqn, is_global=True)
-        self.vm.add_global(fqn, None, w_func)
+        self.vm.add_global(w_func.fqn, None, w_func)
 
     def gen_ClassDef(self, frame: ASTFrame, classdef: ast.ClassDef) -> None:
         frame.exec_stmt_ClassDef(classdef)
         w_class = frame.load_local(classdef.name)
         assert isinstance(w_class, W_Type)
         fqn = FQN([self.modname, classdef.name])
-        fqn = self.vm.get_FQN(fqn, is_global=True)
         self.vm.add_global(fqn, None, w_class)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
         fqn = FQN([self.modname, vardef.name])
-        fqn = self.vm.get_FQN(fqn, is_global=True)
         if isinstance(vardef.type, ast.Auto):
             # type inference
             w_val = frame.eval_expr(assign.value)

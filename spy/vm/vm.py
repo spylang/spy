@@ -37,7 +37,6 @@ class SPyVM:
     globals_types: dict[FQN, W_Type]
     globals_w: dict[FQN, W_Object]
     modules_w: dict[str, W_Module]
-    unique_fqns: set[FQN]
     path: list[str]
     bluecache: BlueCache
 
@@ -46,7 +45,6 @@ class SPyVM:
         self.globals_types = {}
         self.globals_w = {}
         self.modules_w = {}
-        self.unique_fqns = set()
         self.path = []
         self.bluecache = BlueCache(self)
         self.make_module(BUILTINS)   # builtins::
@@ -104,35 +102,20 @@ class SPyVM:
         w_mod = W_Module(self, reg.fqn.modname, f'<reg.fqn.modname>')
         self.register_module(w_mod)
         for fqn, w_obj in reg.content:
-            fqn = self.get_FQN(fqn, is_global=True)
             w_type = self.dynamic_type(w_obj)
             self.add_global(fqn, w_type, w_obj)
 
-    def get_FQN(self, qn: FQN, *, is_global: bool) -> FQN:
+    def get_unique_FQN(self, fqn: FQN) -> FQN:
         """
-        XXX docstring
-
-        Get an unique FQN from a QN.
-
-        Module-level names are considered "global": their FQN will get an
-        empty suffix and must be unique. It is an error to try to "get_FQN()"
-        the same global twice.
-
-        For non globals (e.g., closures) the algorithm is simple: to compute
-        an unique suffix, we just increment a numeric counter.
+        Get an unique variant of the given FQN, adding a suffix if necessary.
         """
-        if is_global:
-            fqn = qn # XXX
-        else:
-            # XXX this is potentially quadratic if we create tons of
-            # conflicting FQNs, but for now we don't care
-            for n in itertools.count():
-                fqn = qn.with_suffix(str(n))
-                if fqn not in self.unique_fqns:
-                    break
-        assert fqn not in self.unique_fqns
-        self.unique_fqns.add(fqn)
-        return fqn
+        # XXX this is potentially quadratic if we create tons of
+        # conflicting FQNs, but for now we don't care
+        for n in itertools.count():
+            fqn2 = fqn.with_suffix(str(n))
+            if fqn2 not in self.globals_w:
+                return fqn2
+        assert False, 'unreachable'
 
     def ensure_type_FQN(self, w_type: W_Type) -> FQN:
         """
@@ -144,9 +127,9 @@ class SPyVM:
         only FQNs, and assign them eagerly as soon as we create a function or
         a type.
         """
-        fqn = self.get_FQN(w_type.fqn, is_global=True)
-        self.add_global(fqn, None, w_type)
-        return fqn
+        # XXX kill before merging branch
+        self.add_global(w_type.fqn, None, w_type)
+        return w_type.fqn
 
     def add_global(self,
                    fqn: FQN,
@@ -195,9 +178,9 @@ class SPyVM:
         # no FQN yet, we need to assign it one.
         if isinstance(w_val, W_ASTFunc):
             # it's a closure, let's assign it an FQN and add to the globals
-            fqn = self.get_FQN(w_val.fqn, is_global=False)
+            fqn = self.get_unique_FQN(w_val.fqn)
         elif isinstance(w_val, W_BuiltinFunc):
-            fqn = self.get_FQN(w_val.fqn, is_global=True)
+            fqn = w_val.fqn
         elif isinstance(w_val, W_Type):
             raise Exception(
                 "Types should get their own FQN by calling vm.ensure_type_FQN, "

@@ -203,22 +203,6 @@ class TestVM:
         with pytest.raises(SPyTypeError, match=msg):
             vm.call(w_abs, [w_x])
 
-    def test_get_FQN(self):
-        vm = SPyVM()
-        w_mod = W_Module(vm, "test", "...")
-        vm.register_module(w_mod)
-        #
-        a = vm.get_FQN(FQN("test::a"), is_global=True)
-        assert a.fullname == "test::a"
-        with pytest.raises(AssertionError):
-            vm.get_FQN(FQN("test::a"), is_global=True)
-        #
-        # for non-globals, we always put a suffix
-        b0 = vm.get_FQN(FQN("test::b"), is_global=False)
-        assert b0.fullname == "test::b#0"
-        b1 = vm.get_FQN(FQN("test::b"), is_global=False)
-        assert b1.fullname == "test::b#1"
-
     def test_eq(self):
         vm = SPyVM()
         w_a = vm.wrap(1)
