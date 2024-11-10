@@ -118,7 +118,7 @@ class FQN:
     parts: list[NSPart]
     suffix: str
 
-    def __new__(cls, x: str | PARTS, *, suffix: str = '') -> None:
+    def __new__(cls, x: str | PARTS, *, suffix: str = '') -> 'FQN':
         """
         Supported overloads:
             FQN(x: str)

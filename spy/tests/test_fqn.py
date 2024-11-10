@@ -34,6 +34,10 @@ def test_FQN_hash_eq():
     b = FQN("aaa::bbb")
     assert a == b
     assert hash(a) == hash(b)
+    a0 = FQN("aaa::bbb#0")
+    b0 = FQN("aaa::bbb#0")
+    assert a0 == b0
+    assert hash(a0) == hash(b0)
 
 def test_qualifiers():
     a = FQN("a::b[x, y]::c")
@@ -67,12 +71,6 @@ def test_FQN_str():
     b = FQN("aaa::bbb")
     assert str(b) == "aaa::bbb"
     assert b.c_name == "spy_aaa$bbb"
-
-def test_FQN_hash_eq():
-    a = FQN("aaa::bbb#0")
-    b = FQN("aaa::bbb#0")
-    assert a == b
-    assert hash(a) == hash(b)
 
 def test_FQN_c_name_dotted():
     a = FQN("a.b.c::xxx#0")

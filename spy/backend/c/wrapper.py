@@ -46,6 +46,7 @@ class WasmModuleWrapper:
 
     def read_global(self, fqn: FQN) -> Any:
         w_val = self.vm.lookup_global(fqn)
+        assert w_val is not None
         w_type = self.vm.dynamic_type(w_val)
         t: LLWasmType
         if w_type is B.w_i32:
