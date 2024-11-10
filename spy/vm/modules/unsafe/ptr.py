@@ -154,20 +154,17 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
         w_T = vm.call(w_make_ptr_type, [w_T])  # type: ignore
-        by = 'byref'
+        funcname = 'getfield_byref'
     else:
-        by = 'byval'
+        funcname = 'getfield_byval'
 
-    # XXX fix this before mergin the branch
-    # XXX: ideally we would like to use fqn, but we don't support "::" in
-    # qualifiers for now, so we just use symbol_name
-    t = w_T.fqn.symbol_name
     T = w_T.pyclass  # W_I32
 
+    # e.g.:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
     @no_type_check
-    @builtin_func(FQN(f'unsafe::getfield_{by}[{t}]'))
+    @builtin_func('unsafe', funcname, [w_T.fqn])
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32) -> T:
         """
@@ -185,10 +182,9 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 @UNSAFE.builtin_func(color='blue')
 def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = w_T.pyclass        # W_I32
-    t = w_T.fqn.symbol_name # 'i32'
 
     @no_type_check
-    @builtin_func(FQN(f'unsafe::setfield[{t}]'))  # unsafe::setfield[i32]
+    @builtin_func('unsafe', 'setfield', [w_T.fqn])  # unsafe::setfield[i32]
     def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32, w_val: T) -> W_Void:
         """
