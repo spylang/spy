@@ -28,7 +28,7 @@ class WasmModuleWrapper:
         return f"<WasmModuleWrapper '{self.ll.llmod.f}'>"
 
     def __getattr__(self, attr: str) -> Any:
-        fqn = FQN.make_global([self.modname, attr])
+        fqn = FQN([self.modname, attr])
         wasm_obj = self.ll.get_export(fqn.c_name)
         if isinstance(wasm_obj, wasmtime.Func):
             return self.read_function(fqn)
@@ -45,7 +45,9 @@ class WasmModuleWrapper:
                                fqn.c_name, w_func.w_functype)
 
     def read_global(self, fqn: FQN) -> Any:
-        w_type = self.vm.lookup_global_type(fqn)
+        w_val = self.vm.lookup_global(fqn)
+        assert w_val is not None
+        w_type = self.vm.dynamic_type(w_val)
         t: LLWasmType
         if w_type is B.w_i32:
             t = 'int32_t'

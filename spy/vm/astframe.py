@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Any, Optional, NoReturn, Sequence
 from types import NoneType
 from dataclasses import dataclass
 from spy import ast
-from spy.fqn import FQN, QN
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
@@ -42,7 +41,7 @@ class ASTFrame:
         self.t = TypeChecker(vm, self.w_func)
 
     def __repr__(self) -> str:
-        return f'<ASTFrame for {self.w_func.qn}>'
+        return f'<ASTFrame for {self.w_func.fqn}>'
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         self._locals[name] = w_value
@@ -105,7 +104,7 @@ class ASTFrame:
             self.vm.make_fqn_const(w_val)
             return w_val
         w_valtype = self.vm.dynamic_type(w_val)
-        msg = f'expected `type`, got `{w_valtype.qn.human_name}`'
+        msg = f'expected `type`, got `{w_valtype.fqn.human_name}`'
         raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
 
     # ==== statements ====
@@ -127,10 +126,10 @@ class ASTFrame:
         self.t.lazy_check_FuncDef(funcdef, w_functype)
         #
         # create the w_func
-        qn = self.w_func.qn.join(funcdef.name)
+        fqn = self.w_func.fqn.join(funcdef.name)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
-        w_func = W_ASTFunc(w_functype, qn, funcdef, closure)
+        w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.store_local(funcdef.name, w_func)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
@@ -140,8 +139,8 @@ class ASTFrame:
             d[vardef.name] = self.eval_expr_type(vardef.type)
         #
         assert classdef.is_struct, 'only structs are supported for now'
-        qn = self.w_func.qn.join(classdef.name)
-        w_struct_type = make_struct_type(self.vm, qn, d)
+        fqn = self.w_func.fqn.join(classdef.name)
+        w_struct_type = make_struct_type(self.vm, fqn, d)
         self.store_local(classdef.name, w_struct_type)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
@@ -279,7 +278,7 @@ class ASTFrame:
                 if not isinstance(w_func, W_Func):
                     t = self.vm.dynamic_type(w_func)
                     raise SPyTypeError(
-                        f'cannot call objects of type `{t.qn.human_name}`')
+                        f'cannot call objects of type `{t.fqn.human_name}`')
             else:
                 # if the static type is not `dynamic` and the thing is not a
                 # function, it's a bug in the typechecker

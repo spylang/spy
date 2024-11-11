@@ -615,9 +615,8 @@ class TestBasic(CompilerTest):
         """)
         vm = self.vm
         assert mod.x == 7
-        fqn = FQN.make_global(["test", "x"])
-        w_xtype = self.vm.globals_types[fqn]
-        assert w_xtype is B.w_i32
+        fqn = FQN("test::x")
+        assert vm.unwrap(self.vm.globals_w[fqn]) == 7
 
     def test_getattr_module(self):
         mod = self.compile("""

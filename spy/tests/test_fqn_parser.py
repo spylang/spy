@@ -1,5 +1,5 @@
 import pytest
-from spy.fqn_parser import QN, NSPart, tokenize
+from spy.fqn_parser import FQN, NSPart, tokenize
 
 def test_tokenizer():
     assert tokenize("foo") == ["foo"]
@@ -8,40 +8,49 @@ def test_tokenizer():
     assert tokenize("list[i32]") == ["list", "[", "i32", "]"]
 
 def test_single_unqualified_part():
-    qn = QN.parse("foo")
-    assert len(qn.parts) == 1
-    assert qn.parts[0].name == "foo"
-    assert qn.parts[0].qualifiers == []
+    fqn = FQN("foo")
+    assert len(fqn.parts) == 1
+    assert fqn.parts[0].name == "foo"
+    assert fqn.parts[0].qualifiers == []
+    assert fqn.suffix == ''
 
 def test_two_parts():
-    qn = QN.parse("mod::foo")
-    assert len(qn.parts) == 2
-    assert qn.parts[0].name == "mod"
-    assert qn.parts[0].qualifiers == []
-    assert qn.parts[1].name == "foo"
-    assert qn.parts[1].qualifiers == []
+    fqn = FQN("mod::foo")
+    assert len(fqn.parts) == 2
+    assert fqn.parts[0].name == "mod"
+    assert fqn.parts[0].qualifiers == []
+    assert fqn.parts[1].name == "foo"
+    assert fqn.parts[1].qualifiers == []
 
 def test_dot_in_name():
-    qn = QN.parse("a.b.c::foo")
-    assert len(qn.parts) == 2
-    assert qn.parts[0].name == "a.b.c"
-    assert qn.parts[0].qualifiers == []
-    assert qn.parts[1].name == "foo"
-    assert qn.parts[1].qualifiers == []
+    fqn = FQN("a.b.c::foo")
+    assert len(fqn.parts) == 2
+    assert fqn.parts[0].name == "a.b.c"
+    assert fqn.parts[0].qualifiers == []
+    assert fqn.parts[1].name == "foo"
+    assert fqn.parts[1].qualifiers == []
 
 def test_single_part_with_qualifier():
-    qn = QN.parse("list[i32]")
-    assert len(qn.parts) == 1
-    assert qn.parts[0].name == "list"
-    assert len(qn.parts[0].qualifiers) == 1
-    assert qn.parts[0].qualifiers[0].parts[0].name == "i32"
+    fqn = FQN("list[i32]")
+    assert len(fqn.parts) == 1
+    assert fqn.parts[0].name == "list"
+    assert len(fqn.parts[0].qualifiers) == 1
+    assert fqn.parts[0].qualifiers[0].parts[0].name == "i32"
 
 def test_nested_qualifiers():
-    qn = QN.parse("dict[str, unsafe::ptr[i32]]")
-    assert len(qn.parts) == 1
-    assert qn.parts[0].name == "dict"
-    assert len(qn.parts[0].qualifiers) == 2
-    assert qn.parts[0].qualifiers[0].parts[0].name == "str"
-    assert qn.parts[0].qualifiers[1].parts[0].name == "unsafe"
-    assert qn.parts[0].qualifiers[1].parts[1].name == "ptr"
-    assert qn.parts[0].qualifiers[1].parts[1].qualifiers[0].parts[0].name == "i32"
+    fqn = FQN("dict[str, unsafe::ptr[i32]]")
+    assert len(fqn.parts) == 1
+    assert fqn.parts[0].name == "dict"
+    assert len(fqn.parts[0].qualifiers) == 2
+    assert fqn.parts[0].qualifiers[0].parts[0].name == "str"
+    assert fqn.parts[0].qualifiers[1].parts[0].name == "unsafe"
+    assert fqn.parts[0].qualifiers[1].parts[1].name == "ptr"
+    assert fqn.parts[0].qualifiers[1].parts[1].qualifiers[0].parts[0].name == "i32"
+
+def test_suffix():
+    fqn = FQN("mod::foo[i32]#1")
+    assert fqn.parts[0].name == "mod"
+    assert fqn.parts[1].name == "foo"
+    assert fqn.parts[1].qualifiers[0].parts[0].name == "i32"
+    assert fqn.suffix == '1'
+    assert str(fqn) == "mod::foo[i32]#1"

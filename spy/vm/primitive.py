@@ -1,7 +1,6 @@
 from typing import ClassVar, TYPE_CHECKING
 import fixedint
 from spy.vm.object import W_Object
-from spy.fqn import QN
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

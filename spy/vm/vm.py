@@ -4,7 +4,7 @@ import itertools
 from dataclasses import dataclass
 from types import FunctionType
 import fixedint
-from spy.fqn import QN, FQN
+from spy.fqn import FQN
 from spy.location import Loc
 from spy import libspy
 from spy.doppler import redshift
@@ -34,19 +34,15 @@ class SPyVM:
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
     ll: libspy.LLSPyInstance
-    globals_types: dict[FQN, W_Type]
     globals_w: dict[FQN, W_Object]
     modules_w: dict[str, W_Module]
-    unique_fqns: set[FQN]
     path: list[str]
     bluecache: BlueCache
 
     def __init__(self) -> None:
         self.ll = libspy.LLSPyInstance(libspy.LLMOD)
-        self.globals_types = {}
         self.globals_w = {}
         self.modules_w = {}
-        self.unique_fqns = set()
         self.path = []
         self.bluecache = BlueCache(self)
         self.make_module(BUILTINS)   # builtins::
@@ -101,73 +97,29 @@ class SPyVM:
         self.modules_w[w_mod.name] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
-        w_mod = W_Module(self, reg.qn.modname, f'<reg.qn.modname>')
+        w_mod = W_Module(self, reg.fqn.modname, f'<reg.fqn.modname>')
         self.register_module(w_mod)
-        for qn, w_obj in reg.content:
-            fqn = self.get_FQN(qn, is_global=True)
-            w_type = self.dynamic_type(w_obj)
-            self.add_global(fqn, w_type, w_obj)
+        for fqn, w_obj in reg.content:
+            self.add_global(fqn, w_obj)
 
-    def get_FQN(self, qn: QN, *, is_global: bool) -> FQN:
+    def get_unique_FQN(self, fqn: FQN) -> FQN:
         """
-        Get an unique FQN from a QN.
-
-        Module-level names are considered "global": their FQN will get an
-        empty suffix and must be unique. It is an error to try to "get_FQN()"
-        the same global twice.
-
-        For non globals (e.g., closures) the algorithm is simple: to compute
-        an unique suffix, we just increment a numeric counter.
+        Get an unique variant of the given FQN, adding a suffix if necessary.
         """
-        if is_global:
-            fqn = FQN.make(qn, suffix="")
-        else:
-            # XXX this is potentially quadratic if we create tons of
-            # conflicting FQNs, but for now we don't care
-            for n in itertools.count():
-                fqn = FQN.make(qn, suffix=str(n))
-                if fqn not in self.unique_fqns:
-                    break
-        assert fqn not in self.unique_fqns
-        self.unique_fqns.add(fqn)
-        return fqn
+        # XXX this is potentially quadratic if we create tons of
+        # conflicting FQNs, but for now we don't care
+        for n in itertools.count():
+            fqn2 = fqn.with_suffix(str(n))
+            if fqn2 not in self.globals_w:
+                return fqn2
+        assert False, 'unreachable'
 
-    def ensure_type_FQN(self, w_type: W_Type) -> FQN:
-        """
-        Make sure that the given type has an unique FQN assigned.
-        Mostly useful for generic builtin types, such as ptr[] and list[].
-
-        XXX: this is probably a workaround: we need to think more but it's
-        possible that the best solution is to avoid the QN/FQN dichotomy, keep
-        only FQNs, and assign them eagerly as soon as we create a function or
-        a type.
-        """
-        fqn = self.get_FQN(w_type.qn, is_global=True)
-        self.add_global(fqn, None, w_type)
-        return fqn
-
-    def add_global(self,
-                   fqn: FQN,
-                   w_type: Optional[W_Type],
-                   w_value: W_Object
-                   ) -> None:
-        assert isinstance(fqn, FQN)
-        assert fqn.modname in self.modules_w or fqn.modname == '__fake_mod__'
+    def add_global(self, fqn: FQN, w_value: W_Object) -> None:
+        assert fqn.modname in self.modules_w
         assert fqn not in self.globals_w
-        assert fqn not in self.globals_types
-        if w_type is None:
-            w_type = self.dynamic_type(w_value)
-        else:
-            assert self.isinstance(w_value, w_type)
-        self.globals_types[fqn] = w_type
         self.globals_w[fqn] = w_value
 
-    def lookup_global_type(self, fqn: FQN) -> Optional[W_Type]:
-        assert isinstance(fqn, FQN)
-        return self.globals_types.get(fqn)
-
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
-        assert isinstance(fqn, FQN)
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
@@ -193,25 +145,24 @@ class SPyVM:
         # no FQN yet, we need to assign it one.
         if isinstance(w_val, W_ASTFunc):
             # it's a closure, let's assign it an FQN and add to the globals
-            fqn = self.get_FQN(w_val.qn, is_global=False)
+            fqn = self.get_unique_FQN(w_val.fqn)
         elif isinstance(w_val, W_BuiltinFunc):
-            fqn = self.get_FQN(w_val.qn, is_global=True)
+            # builtin functions should have an unique fqn already
+            fqn = w_val.fqn
+            assert w_val.fqn not in self.globals_w
         elif isinstance(w_val, W_Type):
-            raise Exception(
-                "Types should get their own FQN by calling vm.ensure_type_FQN, "
-                "please call it at type creation time."
-            )
+            # for now types are only builtin so they must have an unique fqn,
+            # we might need to change this when we introduce custom types
+            fqn = w_val.fqn
+            assert w_val.fqn not in self.globals_w
         else:
             assert False, 'implement me'
 
         assert fqn is not None
-        self.add_global(fqn, None, w_val)
+        self.add_global(fqn, w_val)
         return fqn
 
     def store_global(self, fqn: FQN, w_value: W_Object) -> None:
-        assert isinstance(fqn, FQN)
-        w_type = self.globals_types[fqn]
-        assert self.isinstance(w_value, w_type)
         self.globals_w[fqn] = w_value
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
@@ -267,8 +218,8 @@ class SPyVM:
         """
         w_t1 = self.dynamic_type(w_obj)
         if w_t1 != w_type and not self.issubclass(w_t1, w_type):
-            exp = w_type.qn.human_name
-            got = w_t1.qn.human_name
+            exp = w_type.fqn.human_name
+            got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyTypeError(msg)
 
@@ -460,7 +411,7 @@ class SPyVM:
             # be possible. If it's not, it means that we forgot to implement it
             w_ta = wop_a.w_static_type
             w_tb = wop_b.w_static_type
-            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.qn}`'
+            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 
         w_res = w_opimpl.call(self, [w_a, w_b])

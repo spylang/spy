@@ -2,7 +2,7 @@ from typing import Optional
 from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Color
-from spy.fqn import FQN, QN
+from spy.fqn import FQN
 from spy.errors import SPyImportError, SPyScopeError
 from spy.irgen.symtable import SymTable, Symbol
 from spy.vm.vm import SPyVM
@@ -121,7 +121,7 @@ class ScopeAnalyzer:
 
         if fqn is None and self.scope is self.mod_scope:
             # this is a module-level global. Let's give it a FQN
-            fqn = FQN.make_global([self.mod_scope.name, name])
+            fqn = FQN([self.mod_scope.name, name])
 
         sym = Symbol(name, color, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
         self.scope.add(sym)

@@ -4,7 +4,7 @@ from spy.vm.builtin import builtin_type
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.fqn import QN, FQN
+from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
@@ -59,7 +59,7 @@ class TestVM:
             pass
         #
         assert isinstance(W_Foo._w, W_Type)
-        assert W_Foo._w.qn == QN('test::foo')
+        assert W_Foo._w.fqn == FQN('test::foo')
         assert W_Foo._w.pyclass is W_Foo
 
     def test_w_base(self):
@@ -136,7 +136,7 @@ class TestVM:
         vm = SPyVM()
         w_None = B.w_None
         assert isinstance(w_None, W_Void)
-        assert vm.dynamic_type(w_None).qn == QN('builtins::void')
+        assert vm.dynamic_type(w_None).fqn == FQN('builtins::void')
         assert repr(w_None) == '<spy None>'
         #
         assert vm.wrap(None) is w_None
@@ -202,22 +202,6 @@ class TestVM:
         msg = 'Invalid cast. Expected `i32`, got `str`'
         with pytest.raises(SPyTypeError, match=msg):
             vm.call(w_abs, [w_x])
-
-    def test_get_FQN(self):
-        vm = SPyVM()
-        w_mod = W_Module(vm, "test", "...")
-        vm.register_module(w_mod)
-        #
-        a = vm.get_FQN(QN("test::a"), is_global=True)
-        assert a.fullname == "test::a"
-        with pytest.raises(AssertionError):
-            vm.get_FQN(QN("test::a"), is_global=True)
-        #
-        # for non-globals, we always put a suffix
-        b0 = vm.get_FQN(QN("test::b"), is_global=False)
-        assert b0.fullname == "test::b#0"
-        b1 = vm.get_FQN(QN("test::b"), is_global=False)
-        assert b1.fullname == "test::b#1"
 
     def test_eq(self):
         vm = SPyVM()

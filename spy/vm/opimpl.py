@@ -27,7 +27,6 @@ blue and can be optimized away during redshifting.
 from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
                     TYPE_CHECKING)
 from spy import ast
-from spy.fqn import QN
 from spy.location import Loc
 from spy.irgen.symtable import Symbol
 from spy.errors import SPyTypeError
@@ -110,7 +109,7 @@ class W_OpArg(W_Object):
             extra = ''
         if self.is_const():
             extra += ' const'
-        return f'<W_OpArg {self.name}: {self.w_static_type.qn}{extra}>'
+        return f'<W_OpArg {self.name}: {self.w_static_type.fqn}{extra}>'
 
     def is_blue(self) -> bool:
         return self._w_blueval is not None
@@ -208,12 +207,12 @@ class W_OpImpl(W_Object):
         if self._w_func is None:
             return f"<spy OpImpl NULL>"
         elif self._args_wop is None:
-            qn = self._w_func.qn
-            return f"<spy OpImpl {qn}>"
+            fqn = self._w_func.fqn
+            return f"<spy OpImpl {fqn}>"
         else:
-            qn = self._w_func.qn
+            fqn = self._w_func.fqn
             argnames = ', '.join([wop.name for wop in self._args_wop])
-            return f"<spy OpImpl {qn}({argnames})>"
+            return f"<spy OpImpl {fqn}({argnames})>"
 
     def is_null(self) -> bool:
         return self._w_func is None

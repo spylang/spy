@@ -3,7 +3,7 @@ from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
 from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Dynamic, W_Str
 from spy.vm.b import B
-from spy.fqn import QN
+from spy.fqn import FQN
 from spy.vm.builtin import builtin_func, functype_from_sig
 
 class TestBuiltin:
@@ -23,7 +23,7 @@ class TestBuiltin:
             return vm.wrap(x*2)  # type: ignore
 
         assert isinstance(w_foo, W_BuiltinFunc)
-        assert w_foo.qn == QN('mymod::foo')
+        assert w_foo.fqn == FQN('mymod::foo')
         w_y = vm.call(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
 

@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, Literal, no_type_check
-from spy.fqn import QN
 from spy.vm.primitive import W_Void
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_Dynamic
@@ -93,12 +92,9 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
     W_OpArg = member.w_type.pyclass
     field = member.field # the interp-level name of the attr (e.g, 'w_x')
 
-    # XXX FIXME QNs are slightly wrong because they uses the type name as the
-    # modname. We need to rethink how QNs are computed
-
     if kind == 'get':
         @no_type_check
-        @builtin_func(w_type.qn, f"__get_{attr}__")
+        @builtin_func(w_type.fqn, f"__get_{attr}__")
         def w_opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_OpArg:
             return getattr(w_obj, field)
 
@@ -106,7 +102,7 @@ def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
 
     elif kind == 'set':
         @no_type_check
-        @builtin_func(w_type.qn, f"__set_{attr}__")
+        @builtin_func(w_type.fqn, f"__set_{attr}__")
         def w_opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
                          w_val: W_OpArg) -> W_Void:
             setattr(w_obj, field, w_val)

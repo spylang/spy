@@ -105,7 +105,7 @@ class CModuleWriter:
 
         # XXX: this is probably broken in case we are compiling together
         # multiple modules with a 'main' function, but it's ok for now
-        fqn_main = FQN.make_global([self.w_mod.name, 'main'])
+        fqn_main = FQN([self.w_mod.name, 'main'])
         if fqn_main in self.ctx.vm.globals_w:
             self.out.wb(f"""
                 int main(void) {{
@@ -383,27 +383,27 @@ class CFuncWriter:
 
 
     FQN2BinOp = {
-        FQN.parse('operator::i32_add'): '+',
-        FQN.parse('operator::i32_sub'): '-',
-        FQN.parse('operator::i32_mul'): '*',
-        FQN.parse('operator::i32_div'): '/', # XXX: floor or int division?
-        FQN.parse('operator::i32_eq') : '==',
-        FQN.parse('operator::i32_ne') : '!=',
-        FQN.parse('operator::i32_lt') : '<',
-        FQN.parse('operator::i32_le') : '<=',
-        FQN.parse('operator::i32_gt') : '>',
-        FQN.parse('operator::i32_ge') : '>=',
+        FQN('operator::i32_add'): '+',
+        FQN('operator::i32_sub'): '-',
+        FQN('operator::i32_mul'): '*',
+        FQN('operator::i32_div'): '/', # XXX: floor or int division?
+        FQN('operator::i32_eq') : '==',
+        FQN('operator::i32_ne') : '!=',
+        FQN('operator::i32_lt') : '<',
+        FQN('operator::i32_le') : '<=',
+        FQN('operator::i32_gt') : '>',
+        FQN('operator::i32_ge') : '>=',
         #
-        FQN.parse('operator::f64_add'): '+',
-        FQN.parse('operator::f64_sub'): '-',
-        FQN.parse('operator::f64_mul'): '*',
-        FQN.parse('operator::f64_div'): '/',
-        FQN.parse('operator::f64_eq') : '==',
-        FQN.parse('operator::f64_ne') : '!=',
-        FQN.parse('operator::f64_lt') : '<',
-        FQN.parse('operator::f64_le') : '<=',
-        FQN.parse('operator::f64_gt') : '>',
-        FQN.parse('operator::f64_ge') : '>=',
+        FQN('operator::f64_add'): '+',
+        FQN('operator::f64_sub'): '-',
+        FQN('operator::f64_mul'): '*',
+        FQN('operator::f64_div'): '/',
+        FQN('operator::f64_eq') : '==',
+        FQN('operator::f64_ne') : '!=',
+        FQN('operator::f64_lt') : '<',
+        FQN('operator::f64_le') : '<=',
+        FQN('operator::f64_gt') : '>',
+        FQN('operator::f64_ge') : '>=',
     }
 
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:

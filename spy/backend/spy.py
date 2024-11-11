@@ -57,7 +57,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_List):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.qn.human_name
+            return w_obj.fqn.human_name
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
@@ -191,27 +191,27 @@ class SPyBackend:
 
     # special cases
     FQN2BinOp = {
-        FQN.parse('operator::i32_add'): ast.Add,
-        FQN.parse('operator::i32_sub'): ast.Sub,
-        FQN.parse('operator::i32_mul'): ast.Mul,
-        FQN.parse('operator::i32_div'): ast.Div,
-        FQN.parse('operator::i32_eq'): ast.Eq,
-        FQN.parse('operator::i32_ne'): ast.NotEq,
-        FQN.parse('operator::i32_lt'): ast.Lt,
-        FQN.parse('operator::i32_le'): ast.LtE,
-        FQN.parse('operator::i32_gt'): ast.Gt,
-        FQN.parse('operator::i32_ge'): ast.GtE,
+        FQN('operator::i32_add'): ast.Add,
+        FQN('operator::i32_sub'): ast.Sub,
+        FQN('operator::i32_mul'): ast.Mul,
+        FQN('operator::i32_div'): ast.Div,
+        FQN('operator::i32_eq'): ast.Eq,
+        FQN('operator::i32_ne'): ast.NotEq,
+        FQN('operator::i32_lt'): ast.Lt,
+        FQN('operator::i32_le'): ast.LtE,
+        FQN('operator::i32_gt'): ast.Gt,
+        FQN('operator::i32_ge'): ast.GtE,
         #
-        FQN.parse('operator::f64_add'): ast.Add,
-        FQN.parse('operator::f64_sub'): ast.Sub,
-        FQN.parse('operator::f64_mul'): ast.Mul,
-        FQN.parse('operator::f64_div'): ast.Div,
-        FQN.parse('operator::f64_eq'): ast.Eq,
-        FQN.parse('operator::f64_ne'): ast.NotEq,
-        FQN.parse('operator::f64_lt'): ast.Lt,
-        FQN.parse('operator::f64_le'): ast.LtE,
-        FQN.parse('operator::f64_gt'): ast.Gt,
-        FQN.parse('operator::f64_ge'): ast.GtE,
+        FQN('operator::f64_add'): ast.Add,
+        FQN('operator::f64_sub'): ast.Sub,
+        FQN('operator::f64_mul'): ast.Mul,
+        FQN('operator::f64_div'): ast.Div,
+        FQN('operator::f64_eq'): ast.Eq,
+        FQN('operator::f64_ne'): ast.NotEq,
+        FQN('operator::f64_lt'): ast.Lt,
+        FQN('operator::f64_le'): ast.LtE,
+        FQN('operator::f64_gt'): ast.Gt,
+        FQN('operator::f64_ge'): ast.GtE,
     }
 
     def get_binop_maybe(self, func: ast.Expr) -> Optional[type[ast.BinOp]]:

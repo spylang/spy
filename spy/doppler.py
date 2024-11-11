@@ -3,7 +3,7 @@ from types import NoneType
 from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
-from spy.fqn import FQN, QN
+from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -62,13 +62,13 @@ class FuncDoppler:
             new_body += self.shift_stmt(stmt)
         new_funcdef = funcdef.replace(body=new_body)
         #
-        new_qn = self.w_func.qn
+        new_fqn = self.w_func.fqn
         # all the non-local lookups are redshifted into constants, so the
         # closure will be empty
         new_closure = ()
         w_newfunctype = self.w_func.w_functype
         w_newfunc = W_ASTFunc(
-            qn = new_qn,
+            fqn = new_fqn,
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
@@ -234,14 +234,14 @@ class FuncDoppler:
         of its first argument
         """
         if not (isinstance(call.func, ast.FQNConst) and
-                call.func.fqn == FQN.parse('builtins::print')):
+                call.func.fqn == FQN('builtins::print')):
             return call
 
         assert len(call.args) == 1
         color, w_type = self.t.check_expr(call.args[0])
-        t = w_type.qn.symbol_name
+        t = w_type.fqn.symbol_name
         if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
-            fqn = FQN.parse(f'builtins::print_{t}')
+            fqn = FQN(f'builtins::print_{t}')
         else:
             raise SPyTypeError(f"Invalid type for print(): {t}")
 

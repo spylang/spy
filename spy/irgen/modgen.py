@@ -1,7 +1,7 @@
 import py
 from spy import ast
 from spy.location import Loc
-from spy.fqn import QN
+from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import SymTable
 from spy.errors import SPyTypeError
@@ -42,10 +42,10 @@ class ModuleGen:
         # Synthesize and execute a function where to evaluate module-level
         # declarations.
         w_functype = W_FuncType.parse('def() -> void')
-        qn = QN(self.modname)
+        fqn = FQN(self.modname)
         modinit_funcdef = self.make_modinit()
         closure = ()
-        w_INIT = W_ASTFunc(w_functype, qn, modinit_funcdef, closure)
+        w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
         frame = ASTFrame(self.vm, w_INIT)
         #
         for decl in self.mod.decls:
@@ -90,28 +90,26 @@ class ModuleGen:
         frame.exec_stmt_FuncDef(funcdef)
         w_func = frame.load_local(funcdef.name)
         assert isinstance(w_func, W_ASTFunc)
-        fqn = self.vm.get_FQN(w_func.qn, is_global=True)
-        self.vm.add_global(fqn, None, w_func)
+        self.vm.add_global(w_func.fqn, w_func)
 
     def gen_ClassDef(self, frame: ASTFrame, classdef: ast.ClassDef) -> None:
         frame.exec_stmt_ClassDef(classdef)
         w_class = frame.load_local(classdef.name)
         assert isinstance(w_class, W_Type)
-        qn = QN([self.modname, classdef.name])
-        fqn = self.vm.get_FQN(qn, is_global=True)
-        self.vm.add_global(fqn, None, w_class)
+        fqn = FQN([self.modname, classdef.name])
+        self.vm.add_global(fqn, w_class)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        qn = QN([self.modname, vardef.name])
-        fqn = self.vm.get_FQN(qn, is_global=True)
+        fqn = FQN([self.modname, vardef.name])
         if isinstance(vardef.type, ast.Auto):
             # type inference
             w_val = frame.eval_expr(assign.value)
-            self.vm.add_global(fqn, None, w_val)
+            self.vm.add_global(fqn, w_val)
         else:
             # eval the type and use it in the globals declaration
             w_type = frame.eval_expr_type(vardef.type)
             w_val = frame.eval_expr(assign.value)
-            self.vm.add_global(fqn, w_type, w_val)
+            assert self.vm.isinstance(w_val, w_type)
+            self.vm.add_global(fqn, w_val)

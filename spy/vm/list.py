@@ -1,6 +1,5 @@
 from typing import (TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar,
                     TypeVar, Generic)
-from spy.fqn import QN
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.object import (W_Object, W_Type, W_Dynamic)
 from spy.vm.builtin import builtin_func, builtin_type
@@ -98,7 +97,6 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
         pyclass = _make_W_List(w_T)
         w_list_type = vm.wrap(pyclass)
     assert isinstance(w_list_type, W_Type)
-    vm.ensure_type_FQN(w_list_type)
     return w_list_type
 
 
@@ -112,7 +110,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
 
     T = w_T.pyclass
 
-    @builtin_type('builtins', 'list', [w_T.qn])
+    @builtin_type('builtins', 'list', [w_T.fqn])
     class W_MyList(W_List):
         __qualname__ = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
         items_w: list[W_Object]
@@ -132,7 +130,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
         def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
                        wop_i: 'W_OpArg') -> W_OpImpl:
             @no_type_check
-            @builtin_func(W_MyList.type_qn)
+            @builtin_func(W_MyList.type_fqn)
             def w_getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
@@ -145,7 +143,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             from spy.vm.b import B
 
             @no_type_check
-            @builtin_func(W_MyList.type_qn)
+            @builtin_func(W_MyList.type_fqn)
             def w_setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
                           w_v: T) -> W_Void:
                 assert isinstance(w_v, T)
@@ -162,10 +160,8 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             w_rtype = wop_r.w_static_type
             assert w_ltype.pyclass is W_MyList
 
-            # XXX: we use use proper nested QNs. See also the comment in
-            # vm.make_fqn_const
             @no_type_check
-            @builtin_func(W_MyList.type_qn)
+            @builtin_func(W_MyList.type_fqn)
             def w_eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
                 items2_w = w_l2.items_w

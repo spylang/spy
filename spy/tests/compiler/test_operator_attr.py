@@ -1,5 +1,4 @@
 import pytest
-from spy.fqn import QN
 from spy.vm.primitive import W_I32, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member, Annotated
