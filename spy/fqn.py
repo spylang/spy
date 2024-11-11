@@ -1,29 +1,38 @@
 """
-(Fully) Qualified Names in SPy.
+Fully Qualified Names (FQN) in SPy.
 
-A Qualified Name (QN) locates a function or class inside the source code.
+An FQN uniquely identify functions, types and constants inside a running SPy
+VM.
 
-A QN is composed by one or more Namespace Parts (NSPart), separated by '::'.
+An FQN is composed by one or more Namespace Parts (NSPart), separated by '::'.
+It can have an optional suffix, separated by '#'
+    part0::part1::...
+    part0::part1#2
+
+An NSPart is composed by a name and an optional list of qualifiers:
+    name
+    name[q0, q1, ...]
 
 NSPart.name can contain the following characters:
   - letters (a-z, A-Z)
   - digits (0-9)
   - underscore (_)
-  - dot
+  - dot (.)
 
-NSPart can have a list of qualifiers. If the list is non-empty, the qualifiers
-are expressed into square brackets, separated by commas.
+The list of qualifiers can contain zero or more FQNs.
+
 
 Examples:
 
-  - "foo": a QN composed by a single unqualified part
-  - "mod::foo": a QN composed by two parts, "mod" and "foo"
-  - "a.b.c::foo": a QN composed by two parts, "a.b.c" and "foo"
-  - "list[i32]": a QN composed by a single part "list" with a qualifier "i32"
+  - "foo": one unqualified part: "foo"
+  - "mod::foo": two unqualified parts: "mod" and "foo"
+  - "a.b.c::foo": two unqualified parts: "a.b.c" and "foo"
+  - "foo#2": one unqualified part "foo", with suffix "2"
+  - "list[i32]": one unqualified part "list" with a qualifier "i32"
   - "dict[str, unsafe::ptr[i32]]"
 
 
-Various subparts of a QN have different names:
+Various subparts of a FQN have different names:
 
   - the first part is the "module name", which usually corresponds to a single
     .spy file
@@ -38,24 +47,20 @@ E.g., for "builtins::list[i32]::append":
   - symbol name: "append"
 
 
-In case of closures and generics, you can have multiple objects with the same
-QN. To uniquely identify an object inside a live VM, we use a Fully Qualified
-Name, or FQN.  If needed, the uniqueness is guaranteed by appending a suffix,
-represented as "#N". The suffix "" (empty string) is special cased and not shown
-at all.
-
-The following example explains the difference between QNs and FQNs:
+In case of closures you can have multiple objects with the same FQN. To
+disambiguate, we append an unique suffix
 
 @blue
 def make_fn(T):
     def fn(x: T) -> T:
-        # QN is 'test::fn' return ...
+        # FQN is 'test::make_fn::fn'
+        return ...
     return fn
 
-fn_i32 = make_fn(i32)  # QN is 'test::make_fn::fn', FQN is 'test::make_fn::fn#1'
-fn_f64 = make_fn(f64)  # QN is 'test::make_fn::fn', FQN is 'test::make_fn::fn#2'
+fn_i32 = make_fn(i32)  # FQN is 'test::make_fn::fn#1'
+fn_f64 = make_fn(f64)  # FQN is 'test::make_fn::fn#2'
 
-See also SPyVM.get_FQN().
+See also vm.get_unique_FQN.
 """
 
 from typing import Optional, Any, Union, Sequence
