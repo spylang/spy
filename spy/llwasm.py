@@ -260,3 +260,8 @@ class LLWasmMemory:
 
     def write_f64(self, addr: int, v: float) -> None:
         self.write(addr, struct.pack('d', v))
+
+    def write_ptr(self, addr: int, v_addr: int, v_length: int) -> None:
+        # XXX docstring
+        self.write_i32(addr, v_addr)
+        self.write_i32(addr+4, v_length)

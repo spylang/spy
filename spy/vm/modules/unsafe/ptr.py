@@ -13,6 +13,9 @@ from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+def is_ptr_type(w_T: W_Type) -> bool:
+    return issubclass(w_T.pyclass, W_Ptr)
+
 @UNSAFE.builtin_type('ptr')
 class W_Ptr(W_Object):
     __spy_storage_category__ = 'value'

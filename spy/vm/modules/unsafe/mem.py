@@ -5,7 +5,7 @@ from spy.vm.primitive import W_I32
 from spy.vm.w import W_Func, W_Type, W_Dynamic, W_Object
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
-from .ptr import W_Ptr, w_make_ptr_type
+from .ptr import W_Ptr, w_make_ptr_type, is_ptr_type
 from .misc import sizeof
 
 if TYPE_CHECKING:
@@ -65,6 +65,8 @@ def w_mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         elif w_T is B.w_f64:
             v = vm.unwrap_f64(w_val)
             vm.ll.mem.write_f64(addr, v)
+        ## elif is_ptr_type(w_T):
+        ##     vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)
         else:
             assert False
 

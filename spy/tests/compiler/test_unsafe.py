@@ -146,3 +146,23 @@ class TestUnsafe(CompilerTest):
         assert not mod.eq(p0, p1)
         assert not mod.ne(p0, p0)
         assert mod.ne(p0, p1)
+
+    @pytest.mark.skip('WIP')
+    def test_can_allocate_ptr(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        class Array(struct):
+            n: i32
+            buf: ptr[i32]
+
+        def foo(i: i32) -> i32:
+            arr: ptr[Array] = gc_alloc(Array)(1)
+            arr.n = 3
+            arr.buf = gc_alloc(i32)(4)
+            arr.buf[0] = 1
+            arr.buf[1] = 2
+            arr.buf[2] = 3
+            return arr.buf[i]
+        """)
+        assert mod.foo(2) == 3
