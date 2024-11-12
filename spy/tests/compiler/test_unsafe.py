@@ -126,3 +126,23 @@ class TestUnsafe(CompilerTest):
             return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
         """)
         assert mod.foo() == 4321
+
+    def test_ptr_eq(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        def alloc() -> ptr[i32]:
+            return gc_alloc(i32)(1)
+
+        def eq(a: ptr[i32], b: ptr[i32]) -> bool:
+            return a == b
+
+        def ne(a: ptr[i32], b: ptr[i32]) -> bool:
+            return a != b
+        """)
+        p0 = mod.alloc()
+        p1 = mod.alloc()
+        assert mod.eq(p0, p0)
+        assert not mod.eq(p0, p1)
+        assert not mod.ne(p0, p0)
+        assert mod.ne(p0, p1)
