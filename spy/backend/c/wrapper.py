@@ -1,5 +1,6 @@
 import struct
 from typing import Any, Optional
+from dataclasses import dataclass
 import py.path
 import wasmtime
 from spy.fqn import FQN
@@ -13,6 +14,12 @@ from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.types import W_TypeDef
+from spy.vm.modules.unsafe.ptr import is_ptr_type
+
+@dataclass
+class WasmPtr:
+    addr: int
+    length: int
 
 class WasmModuleWrapper:
     vm: SPyVM
@@ -76,6 +83,9 @@ class WasmFuncWrapper:
         elif w_type is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
             return ll_spy_Str_new(self.ll, pyval)
+        elif is_ptr_type(w_type):
+            assert isinstance(pyval, WasmPtr)
+            return (pyval.addr, pyval.length)
         else:
             assert False, f'Unsupported type: {w_type}'
 
@@ -88,7 +98,11 @@ class WasmFuncWrapper:
         wasm_args = []
         for py_arg, param in zip(py_args, self.w_functype.params):
             wasm_arg = self.py2wasm(py_arg, param.w_type)
-            wasm_args.append(wasm_arg)
+            if type(wasm_arg) is tuple:
+                # special case for multivalue
+                wasm_args += wasm_arg
+            else:
+                wasm_args.append(wasm_arg)
         return wasm_args
 
     def __call__(self, *py_args: Any) -> Any:
@@ -119,5 +133,12 @@ class WasmFuncWrapper:
             length = self.ll.mem.read_i32(addr)
             buf = self.ll.mem.read(addr + 4, length)
             return buf
+        elif is_ptr_type(w_type):
+            # this assumes that we compiled libspy with SPY_DEBUG:
+            #   - checked ptrs are represented as a struct { addr; length }
+            #   - res contains a a list [addr, length] (because of WASM
+            #     multivalue)
+            addr, length = res
+            return WasmPtr(addr, length)
         else:
             assert False, f"Don't know how to read {w_type} from WASM"

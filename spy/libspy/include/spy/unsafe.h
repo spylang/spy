@@ -43,11 +43,17 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p };                                 \
     }                                                            \
-    static inline T PTR##_load(PTR p, size_t i) {                \
+    static inline T PTR##$load(PTR p, size_t i) {                \
         return p.p[i];                                           \
     }                                                            \
-    static inline void PTR##_store(PTR p, size_t i, T v) {       \
+    static inline void PTR##$store(PTR p, size_t i, T v) {       \
         p.p[i] = v;                                              \
+    }                                                            \
+    static inline bool PTR##$eq(PTR p0, PTR p1) {                \
+        return p0.p == p1.p;                                     \
+    }                                                            \
+    static inline bool PTR##$ne(PTR p0, PTR p1) {                \
+        return p0.p != p1.p;                                     \
     }
 
 #define _SPY_DEFINE_PTR_TYPE_CHECKED(PTR, T)                     \
@@ -71,6 +77,12 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         if (i >= p.length)                                       \
             spy_panic("ptr_store ouf of bounds");                \
         p.p[i] = v;                                              \
+    }                                                            \
+    static inline bool PTR##$eq(PTR p0, PTR p1) {                \
+        return p0.p == p1.p && p0.length == p1.length;           \
+    }                                                            \
+    static inline bool PTR##$ne(PTR p0, PTR p1) {                \
+        return p0.p != p1.p || p0.length != p1.length;           \
     }
 
 
