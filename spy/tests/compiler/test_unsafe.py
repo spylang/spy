@@ -147,7 +147,6 @@ class TestUnsafe(CompilerTest):
         assert not mod.ne(p0, p0)
         assert mod.ne(p0, p1)
 
-    @pytest.mark.skip('WIP')
     def test_can_allocate_ptr(self):
         mod = self.compile("""
         from unsafe import gc_alloc, ptr

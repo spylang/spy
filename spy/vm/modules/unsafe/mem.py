@@ -44,7 +44,8 @@ def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         elif w_T is B.w_f64:
             return vm.wrap(vm.ll.mem.read_f64(addr))
         elif issubclass(w_T.pyclass, W_Ptr):
-            return w_T.pyclass(addr, 1)
+            v_addr, v_length = vm.ll.mem.read_ptr(addr)
+            return w_T.pyclass(v_addr, v_length)
         else:
             assert False
 
@@ -65,8 +66,8 @@ def w_mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         elif w_T is B.w_f64:
             v = vm.unwrap_f64(w_val)
             vm.ll.mem.write_f64(addr, v)
-        ## elif is_ptr_type(w_T):
-        ##     vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)
+        elif is_ptr_type(w_T):
+            vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)
         else:
             assert False
 

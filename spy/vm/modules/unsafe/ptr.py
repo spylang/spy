@@ -194,9 +194,9 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
         w_T = vm.call(w_make_ptr_type, [w_T])  # type: ignore
-        funcname = 'getfield_byref'
+        by = 'byref'
     else:
-        funcname = 'getfield_byval'
+        by = 'byval'
 
     T = w_T.pyclass  # W_I32
 
@@ -204,18 +204,22 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
     @no_type_check
-    @builtin_func('unsafe', funcname, [w_T.fqn])
+    @builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32) -> T:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
-        return vm.call_generic(
-            UNSAFE.w_mem_read,
-            [w_T],
-            [vm.wrap(addr)]
-        )
+        if by == 'byref':
+            assert issubclass(w_T.pyclass, W_Ptr)
+            return w_T.pyclass(addr, 1)
+        else:
+            return vm.call_generic(
+                UNSAFE.w_mem_read,
+                [w_T],
+                [vm.wrap(addr)]
+            )
     return w_getfield_T
 
 

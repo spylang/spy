@@ -233,6 +233,14 @@ class LLWasmMemory:
         rawbytes = self.read(addr, 8)
         return struct.unpack('d', rawbytes)[0]
 
+    def read_ptr(self, addr: int) -> None:
+        """
+        Read a ptr, which we represent as a struct {addr; length }
+        """
+        v_addr = self.read_i32(addr)
+        v_length = self.read_i32(addr+4)
+        return v_addr, v_length
+
     def read_cstr(self, addr: int) -> bytearray:
         """
         Read the NULL-terminated string starting at addr.
@@ -262,6 +270,8 @@ class LLWasmMemory:
         self.write(addr, struct.pack('d', v))
 
     def write_ptr(self, addr: int, v_addr: int, v_length: int) -> None:
-        # XXX docstring
+        """
+        Write a ptr { addr; length } to the given addr
+        """
         self.write_i32(addr, v_addr)
         self.write_i32(addr+4, v_length)
