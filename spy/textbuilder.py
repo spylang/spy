@@ -31,21 +31,40 @@ class TextBuilder:
         yield
         self.level -= 1
 
-    def make_nested_builder(self) -> 'TextBuilder':
+    def make_nested_builder(self, *, detached: bool = False) -> 'TextBuilder':
         """
-        Create a new nested TextBuilder, at the current position.
+        Create a new nested TextBuilder.
+
+        If detached==False (the default), the nested builder will
+        automatically be placed at the current position.
+
+        If detached==True, the nested builder must be attached later, by
+        calling attach_nested_builder.
 
         The nested builder can be written independently of the outer one, and
         it will be built automatically when the outer is built.
         """
-        if self.lines[-1] != '':
-            raise ValueError('make_nested_builder can be called only '
-                             'after a newline')
         nested = TextBuilder(use_colors=self.use_colors)
+        if not detached:
+            self.attach_nested_builder(nested)
+        return nested
+
+    def attach_nested_builder(self, nested: 'TextBuilder') -> None:
+        """
+        Attach a nested builder which was previously created by
+        make_nested_builder().
+
+        NOTE: the indentation level will be the one which was active at
+        creation time, not attachment time. This is probably a bug, but too
+        bad for now.
+        See also test_detached_indent.
+        """
+        if self.lines[-1] != '':
+            raise ValueError('attach_nested_builder can be called only '
+                             'after a newline')
         nested.level = self.level
         self.lines[-1] = nested
         self.lines.append('')
-        return nested
 
     def write(self, s: str, *, color: Optional[str] = None) -> None:
         assert '\n' not in s
