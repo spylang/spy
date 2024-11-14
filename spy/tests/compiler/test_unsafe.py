@@ -166,6 +166,35 @@ class TestUnsafe(CompilerTest):
         """)
         assert mod.foo(2) == 3
 
+    def test_generic_struct(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        @blue
+        def make_Point(T):
+            class Point(struct):
+                x: T
+                y: T
+            return Point
+
+        Point_i32 = make_Point(i32)
+        Point_f64 = make_Point(f64)
+
+        def foo() -> i32:
+            p: ptr[Point_i32] = gc_alloc(Point_i32)(1)
+            p.x = 1
+            p.y = 2
+            return p.x + p.y
+
+        def bar() -> f64:
+            p: ptr[Point_f64] = gc_alloc(Point_f64)(1)
+            p.x = 1.1
+            p.y = 2.2
+            return p.x + p.y
+        """)
+        assert mod.foo() == 3
+        assert mod.bar() == 3.3
+
     @pytest.mark.xfail(reason='implement W_Dynamic.op_GETATTR')
     def test_ptr_NULL(self):
         mod = self.compile("""

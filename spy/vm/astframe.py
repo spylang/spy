@@ -141,6 +141,7 @@ class ASTFrame:
         assert classdef.is_struct, 'only structs are supported for now'
         fqn = self.w_func.fqn.join(classdef.name)
         w_struct_type = make_struct_type(self.vm, fqn, d)
+        self.t.lazy_check_ClassDef(classdef, w_struct_type)
         self.store_local(classdef.name, w_struct_type)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
