@@ -104,6 +104,14 @@ class SPyBackend:
             for stmt in funcdef.body:
                 self.emit_stmt(stmt)
 
+    def emit_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        assert classdef.is_struct, 'IMPLEMENT ME'
+        name = classdef.name
+        self.wl(f'class {name}(struct):')
+        with self.out.indent():
+            for field in classdef.fields:
+                self.emit_stmt_VarDef(field)
+
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
         self.wl('pass')
 

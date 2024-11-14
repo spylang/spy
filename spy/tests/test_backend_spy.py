@@ -200,6 +200,16 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(expected)
 
+    def test_classdef(self):
+        src = """
+        def foo() -> void:
+            class Point(struct):
+                x: i32
+                y: i32
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_zz_sanity_check(self):
         """
         This is a hack.
