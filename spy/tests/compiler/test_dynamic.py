@@ -146,3 +146,17 @@ class TestDynamic(CompilerTest):
         msg = "type `str` does not support assignment to attribute 'x'"
         with pytest.raises(SPyTypeError, match=msg):
             mod.foo()
+
+    def test_getattr(self):
+        mod = self.compile(
+        """
+        x: i32 = 42
+        y: i32 = 0
+
+        @blue
+        def __INIT__(mod: dynamic):
+            mod.y = mod.x + 1
+        """)
+        vm = self.vm
+        assert mod.x == 42
+        assert mod.y == 43

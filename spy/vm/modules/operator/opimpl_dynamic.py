@@ -58,3 +58,11 @@ def w_dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
     wop_v = W_OpArg.from_w_obj(vm, w_value, 'v', 2)
     w_opimpl = vm.call_OP(OP.w_SETATTR, [wop_obj, wop_attr, wop_v])
     return w_opimpl.call(vm, [w_obj, w_attr, w_value])
+
+@OP.builtin_func
+def w_dynamic_getattr(vm: 'SPyVM', w_obj: W_Dynamic,
+                      w_attr: W_Str) -> W_Dynamic:
+    wop_obj = W_OpArg.from_w_obj(vm, w_obj, 'o', 0)
+    wop_attr = W_OpArg.from_w_obj(vm, w_attr, 'a', 1)
+    w_opimpl = vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
+    return w_opimpl.call(vm, [w_obj, w_attr])

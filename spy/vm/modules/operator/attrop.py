@@ -41,7 +41,7 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
-        raise NotImplementedError("implement me")
+        return W_OpImpl(OP.w_dynamic_getattr)
     elif attr in pyclass.__spy_members__:
         return opimpl_member('get', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_GETATTR'):
