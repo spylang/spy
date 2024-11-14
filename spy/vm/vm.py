@@ -144,8 +144,13 @@ class SPyVM:
 
         # no FQN yet, we need to assign it one.
         if isinstance(w_val, W_ASTFunc):
-            assert False, ("W_ASTFunc should be automatically be added to the "
-                           "globals by ASTFrame.exec_stmt_FuncDef")
+            # this is a W_ASTFunc which is NOT in the globals. The only
+            # possibility is that it's a function which has already been
+            # redshifted, in that case it is fine to return the FQN that we
+            # already have
+            w_func = self.lookup_global(w_val.fqn)
+            assert w_func.redshifted
+            return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
             # the fqn of builtin functions should be unique, else it's a fault
             # of whoever declared it.

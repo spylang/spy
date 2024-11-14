@@ -139,6 +139,33 @@ class TestDoppler:
             return x * 2
         """)
 
+    def test_call_func_already_redshifted(self):
+        self.redshift("""
+        @blue
+        def make_foo():
+            def fn() -> void:
+                print('fn')
+
+            def foo() -> void:
+                fn()
+                fn()
+            return foo
+
+        def main() -> void:
+            return make_foo()()
+        """)
+        self.assert_dump("""
+        def main() -> void:
+            return `test::make_foo::foo#0`()
+
+        def `test::make_foo::fn#0`() -> void:
+            print_str('fn')
+
+        def `test::make_foo::foo#0`() -> void:
+            `test::make_foo::fn#0`()
+            `test::make_foo::fn#0`()
+        """)
+
     def test_binops(self):
         src = """
         def foo(i: i32, f: f64) -> void:

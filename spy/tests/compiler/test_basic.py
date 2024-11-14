@@ -579,6 +579,22 @@ class TestBasic(CompilerTest):
         """)
         mod.foo()
 
+    def test_call_func_already_redshifted(self):
+        mod = self.compile("""
+        @blue
+        def make_foo():
+            def inc(x: i32) -> i32:
+                return x + 1
+
+            def foo(x: i32, y: i32) -> i32:
+                return inc(x) * inc(y)
+            return foo
+
+        def bar() -> i32:
+            return make_foo()(3, 4)
+        """)
+        assert mod.bar() == 20
+
     def test_print(self, capfd):
         mod = self.compile("""
         def foo() -> void:
