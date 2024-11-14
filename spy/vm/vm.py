@@ -144,10 +144,11 @@ class SPyVM:
 
         # no FQN yet, we need to assign it one.
         if isinstance(w_val, W_ASTFunc):
-            # it's a closure, let's assign it an FQN and add to the globals
-            fqn = self.get_unique_FQN(w_val.fqn)
+            assert False, ("W_ASTFunc should be automatically be added to the "
+                           "globals by ASTFrame.exec_stmt_FuncDef")
         elif isinstance(w_val, W_BuiltinFunc):
-            # builtin functions should have an unique fqn already
+            # the fqn of builtin functions should be unique, else it's a fault
+            # of whoever declared it.
             fqn = w_val.fqn
             assert w_val.fqn not in self.globals_w
         elif isinstance(w_val, W_Type):

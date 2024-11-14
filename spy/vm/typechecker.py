@@ -197,6 +197,18 @@ class TypeChecker:
         """
         self.declare_local(funcdef.name, w_type)
 
+    def check_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        """
+        See check_stmt_VarDef
+        """
+
+    def lazy_check_ClassDef(self, classdef: ast.ClassDef,
+                            w_type: W_Type) -> None:
+        """
+        See check_stmt_ClassDef and lazy_check_ClassDef
+        """
+        self.declare_local(classdef.name, w_type)
+
     def check_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         pass
 

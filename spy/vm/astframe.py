@@ -6,6 +6,7 @@ from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
 from spy.irgen.symtable import Symbol, Color
+from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
@@ -42,6 +43,22 @@ class ASTFrame:
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
+
+    @property
+    def is_module_body(self):
+        return self.w_func.fqn.is_module()
+
+    def get_unique_FQN_maybe(self, fqn: FQN) -> FQN:
+        """
+        Return an unique FQN to use for a type or function.
+
+        If we are executing a module body, we can assume that the FQN is
+        already unique and just return it, else we ask the VM to compute one.
+        """
+        if self.is_module_body:
+            return fqn
+        else:
+            return self.vm.get_unique_FQN(fqn)
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         self._locals[name] = w_value
@@ -127,10 +144,12 @@ class ASTFrame:
         #
         # create the w_func
         fqn = self.w_func.fqn.join(funcdef.name)
+        fqn = self.get_unique_FQN_maybe(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.store_local(funcdef.name, w_func)
+        self.vm.add_global(fqn, w_func)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         d = {}
@@ -140,8 +159,11 @@ class ASTFrame:
         #
         assert classdef.is_struct, 'only structs are supported for now'
         fqn = self.w_func.fqn.join(classdef.name)
+        fqn = self.get_unique_FQN_maybe(fqn)
         w_struct_type = make_struct_type(self.vm, fqn, d)
+        self.t.lazy_check_ClassDef(classdef, w_struct_type)
         self.store_local(classdef.name, w_struct_type)
+        self.vm.add_global(fqn, w_struct_type)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)

@@ -87,17 +87,14 @@ class ModuleGen:
             err = SPyTypeError("the __INIT__ function must be @blue")
             err.add("error", "function defined here", funcdef.prototype_loc)
             raise err
+        # NOTE: executing the FuncDef automatically add the new w_func to the
+        # globals
         frame.exec_stmt_FuncDef(funcdef)
-        w_func = frame.load_local(funcdef.name)
-        assert isinstance(w_func, W_ASTFunc)
-        self.vm.add_global(w_func.fqn, w_func)
 
     def gen_ClassDef(self, frame: ASTFrame, classdef: ast.ClassDef) -> None:
+        # NOTE: executing the ClassDef automatically add the new w_type to the
+        # globals
         frame.exec_stmt_ClassDef(classdef)
-        w_class = frame.load_local(classdef.name)
-        assert isinstance(w_class, W_Type)
-        fqn = FQN([self.modname, classdef.name])
-        self.vm.add_global(fqn, w_class)
 
     def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
