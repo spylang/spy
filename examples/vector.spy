@@ -1,0 +1,68 @@
+# -*- mode: python -*-
+
+from unsafe import gc_alloc, ptr
+
+@blue
+def play_with_vector(T):
+
+    class Vector(struct):
+        capacity: i32
+        length: i32
+        items: ptr[i32]
+
+    def vector_new(capacity: i32) -> ptr[Vector]:
+        v: ptr[Vector] = gc_alloc(Vector)(1)
+        v.capacity = capacity
+        v.length = 0
+        v.items = gc_alloc(i32)(capacity)
+        return v
+
+    def vector_append(v: ptr[Vector], item: i32) -> void:
+        if v.length >= v.capacity:
+            new_capacity = v.capacity * 2
+            new_items: ptr[i32] = gc_alloc(i32)(new_capacity)
+            i = 0
+            while i < v.length:
+                new_items[i] = v.items[i]
+                i = i+1
+            v.items = new_items
+            v.capacity = new_capacity
+        v.items[v.length] = item
+        v.length = v.length+1
+
+    def vector_get(v: ptr[Vector], index: i32) -> i32:
+        if index < 0:
+            print("Index out of bounds")
+        if index >= v.length:
+            print("Index out of bounds")
+        return v.items[index]
+
+    def vector_set(v: ptr[Vector], index: i32, item: i32) -> void:
+        if index < 0:
+            print("Index out of bounds")
+
+        if index >= v.length:
+            print("Index out of bounds")
+        v.items[index] = item
+
+    def vector_len(v: ptr[Vector]) -> i32:
+        return v.length
+
+    def vector_print(v: ptr[Vector]) -> void:
+        i = 0
+        while i < v.length:
+            print(v.items[i])
+            i = i+1
+
+    def play(n: i32) -> void:
+        v = vector_new(n)
+        i = 0
+        while i < n:
+            vector_append(v, i*i)
+            i = i+1
+        vector_print(v)
+
+    return play
+
+def main() -> void:
+    play_with_vector(i32)(10)

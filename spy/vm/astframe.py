@@ -161,7 +161,8 @@ class ASTFrame:
         fqn = self.w_func.fqn.join(classdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
         w_struct_type = make_struct_type(self.vm, fqn, d)
-        self.t.lazy_check_ClassDef(classdef, w_struct_type)
+        w_meta_type = self.vm.dynamic_type(w_struct_type)
+        self.t.lazy_check_ClassDef(classdef, w_meta_type)
         self.store_local(classdef.name, w_struct_type)
         self.vm.add_global(fqn, w_struct_type)
 
