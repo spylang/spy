@@ -166,6 +166,39 @@ class TestUnsafe(CompilerTest):
         """)
         assert mod.foo(2) == 3
 
+    @pytest.mark.xfail(reason='implement W_Dynamic.op_GETATTR')
+    def test_ptr_NULL(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        def foo() -> ptr[i32]:
+            return ptr[i32].NULL
+        """)
+        x = mod.foo()
+        import pdb;pdb.set_trace()
+
+    @pytest.mark.xfail(reason='implement ptr.NULL')
+    def test_ptr_truth(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        def is_null(p: ptr[i32]) -> bool:
+            if p:
+                return False
+            else:
+                return True
+
+        def foo() -> bool:
+            return is_null(ptr[i32].NULL)
+
+        def bar() -> bool:
+            p: ptr[i32] = gc_alloc(i32)(1)
+            return is_null(p)
+
+        """)
+        assert mod.foo() is True
+        assert mod.bar() is False
+
     @pytest.mark.xfail(reason='FIXME')
     def test_struct_with_ptr_to_itself(self):
         mod = self.compile("""

@@ -47,7 +47,7 @@ class W_Ptr(W_Object):
 
 
 @UNSAFE.builtin_func(color='blue')
-def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
+def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     from .struct import W_StructType
     T = w_T.pyclass
     ITEMSIZE = sizeof(w_T)
