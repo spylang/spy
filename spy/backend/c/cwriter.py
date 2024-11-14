@@ -70,11 +70,16 @@ class CModuleWriter:
         #    define SPY_LINE(SPY, C) SPY "{self.spyfile}"
         #endif
 
-        // global declarations and definitions
         """)
         self.out_warnings = self.out.make_nested_builder()
+        self.out.wl()
+        self.out.wl('// forward type declarations')
         self.out_types_decl = self.out.make_nested_builder()
+        self.out.wl()
+        self.out.wl('// type definitions')
         self.out_types_def = self.out.make_nested_builder()
+        self.out.wl()
+        self.out.wl('// constants and functions')
         self.out_globals = self.out.make_nested_builder()
         self.out.wl()
 
