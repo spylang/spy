@@ -56,12 +56,15 @@ class Context:
     Keep track of things like the mapping from W_* types to C types.
     """
     vm: SPyVM
-    out_types: TextBuilder
+    out_types_decl: TextBuilder
+    out_types_def: TextBuilder
     _d: dict[W_Type, C_Type]
 
     def __init__(self, vm: SPyVM) -> None:
         self.vm = vm
-        self.out_types = None # type: ignore # set by CModuleWriter.emit_module
+        # set by CModuleWriter.emit_module
+        self.out_types_decl = None # type: ignore
+        self.out_types_def = None  # type: ignore
         self._d = {}
         self._d[B.w_void] = C_Type('void')
         self._d[B.w_i32] = C_Type('int32_t')
@@ -102,7 +105,8 @@ class Context:
         c_ptrtype = C_Type(fqn.c_name)
         w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore
         c_itemtype = self.w2c(w_itemtype)
-        self.out_types.wl(f"SPY_DEFINE_PTR_TYPE({c_ptrtype}, {c_itemtype})")
+        self.out_types_decl.wl(f'typedef struct {c_ptrtype} {c_ptrtype};')
+        self.out_types_def.wl(f"SPY_DEFINE_PTR_TYPE({c_ptrtype}, {c_itemtype})")
         self._d[w_ptrtype] = c_ptrtype
         return c_ptrtype
 
@@ -110,18 +114,26 @@ class Context:
         fqn = self.vm.reverse_lookup_global(w_st)
         assert fqn is not None
         c_struct_type = C_Type(fqn.c_name)
+        self.out_types_decl.wl(f'typedef struct {c_struct_type} {c_struct_type};')
 
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
         # properly.
-        self.out_types.wl("typedef struct {")
-        with self.out_types.indent():
+        #
+        # Write the struct definition in a detached builder. This is necessary
+        # because the call to w2c might trigger OTHER type definitions, so we
+        # must ensure that we write the whole "struct { ... }" block
+        # atomically.
+        out = self.out_types_def.make_nested_builder(detached=True)
+        out.wl("struct %s {" % c_struct_type)
+        with out.indent():
             for field, w_fieldtype in w_st.fields.items():
                 c_fieldtype = self.w2c(w_fieldtype)
-                self.out_types.wl(f"{c_fieldtype} {field};")
-        self.out_types.wl("} %s;" % c_struct_type)
-        self.out_types.wl("")
+                out.wl(f"{c_fieldtype} {field};")
+        out.wl("};")
+        out.wl("")
+        self.out_types_def.attach_nested_builder(out)
 
         self._d[w_st] = c_struct_type
         return c_struct_type

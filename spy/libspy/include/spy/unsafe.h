@@ -33,7 +33,7 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
        } ptr_i32;
 */
 #define _SPY_DEFINE_PTR_TYPE_UNCHECKED(PTR, T)                   \
-    typedef struct {                                             \
+    typedef struct PTR {                                         \
         T *p;                                                    \
     } PTR;                                                       \
     static inline PTR PTR##_from_addr(T *p) {                    \
@@ -57,7 +57,7 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     }
 
 #define _SPY_DEFINE_PTR_TYPE_CHECKED(PTR, T)                     \
-    typedef struct {                                             \
+    typedef struct PTR {                                         \
         T *p;                                                    \
         size_t length;                                           \
     } PTR;                                                       \

@@ -73,12 +73,14 @@ class CModuleWriter:
         // global declarations and definitions
         """)
         self.out_warnings = self.out.make_nested_builder()
-        self.out_types = self.out.make_nested_builder()
+        self.out_types_decl = self.out.make_nested_builder()
+        self.out_types_def = self.out.make_nested_builder()
         self.out_globals = self.out.make_nested_builder()
         self.out.wl()
 
         # this is a bit of a hack, but too bad
-        self.ctx.out_types = self.out_types
+        self.ctx.out_types_decl = self.out_types_decl
+        self.ctx.out_types_def = self.out_types_def
 
         self.out.wb("""
         // content of the module
