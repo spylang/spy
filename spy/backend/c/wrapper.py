@@ -95,7 +95,7 @@ class WasmFuncWrapper:
         if a != b:
             raise TypeError(f'{self.c_name}: expected {b} arguments, got {a}')
         #
-        wasm_args = []
+        wasm_args: list[Any] = []
         for py_arg, param in zip(py_args, self.w_functype.params):
             wasm_arg = self.py2wasm(py_arg, param.w_type)
             if type(wasm_arg) is tuple:

@@ -233,7 +233,7 @@ class LLWasmMemory:
         rawbytes = self.read(addr, 8)
         return struct.unpack('d', rawbytes)[0]
 
-    def read_ptr(self, addr: int) -> None:
+    def read_ptr(self, addr: int) -> tuple[int, int]:
         """
         Read a ptr, which we represent as a struct {addr; length }
         """
