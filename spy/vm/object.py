@@ -144,6 +144,10 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
+    def op_NE(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
+        raise NotImplementedError('this should never be called')
+
+    @staticmethod
     def op_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
                    wop_attr: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')

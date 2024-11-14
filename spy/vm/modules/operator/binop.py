@@ -124,6 +124,12 @@ def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
+    if w_ltype.pyclass.has_meth_overriden('op_NE'):
+        w_opimpl = w_ltype.pyclass.op_NE(vm, wop_l, wop_r)
+        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                         dispatch='multi',
+                         errmsg='cannot do `{0}` != `{1}`')
+        return w_opimpl
     if can_use_reference_eq(vm, w_ltype, w_rtype):
         w_opimpl = W_OpImpl(OP.w_object_isnot)
         typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],

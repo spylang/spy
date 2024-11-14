@@ -99,9 +99,43 @@ class TestTextBuilder:
     def test_nested_error(self):
         outer = TextBuilder()
         outer.w('begin')
-        with pytest.raises(ValueError, match='make_nested_builder can be '
+        with pytest.raises(ValueError, match='attach_nested_builder can be '
                            'called only after a newline'):
             inner = outer.make_nested_builder()
+
+    def test_nested_detached(self):
+        outer = TextBuilder()
+        outer.wl('AAA')
+        inner = outer.make_nested_builder(detached=True)
+        inner.wl('CCC')
+        outer.wl('BBB')
+        outer.attach_nested_builder(inner)
+        s = outer.build()
+        expected = textwrap.dedent("""\
+        AAA
+        BBB
+        CCC
+        """)
+        assert s == expected
+
+    @pytest.mark.xfail(reason='fixme') # see attach_nested_builder.__doc__
+    def test_detached_indent(self):
+        outer = TextBuilder()
+        inner = outer.make_nested_builder(detached=True)
+        inner.wl('AAA')
+        inner.wl('BBB')
+        outer.wl('begin')
+        with outer.indent():
+            outer.attach_nested_builder(inner)
+        outer.wl('end')
+        s = outer.build()
+        expected = textwrap.dedent("""\
+        begin
+            AAA
+            BBB
+        end
+        """)
+        assert s == expected
 
     def test_writeblock(self):
         b = TextBuilder()

@@ -126,3 +126,98 @@ class TestUnsafe(CompilerTest):
             return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
         """)
         assert mod.foo() == 4321
+
+    def test_ptr_eq(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        def alloc() -> ptr[i32]:
+            return gc_alloc(i32)(1)
+
+        def eq(a: ptr[i32], b: ptr[i32]) -> bool:
+            return a == b
+
+        def ne(a: ptr[i32], b: ptr[i32]) -> bool:
+            return a != b
+        """)
+        p0 = mod.alloc()
+        p1 = mod.alloc()
+        assert mod.eq(p0, p0)
+        assert not mod.eq(p0, p1)
+        assert not mod.ne(p0, p0)
+        assert mod.ne(p0, p1)
+
+    def test_can_allocate_ptr(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        class Array(struct):
+            n: i32
+            buf: ptr[i32]
+
+        def foo(i: i32) -> i32:
+            arr: ptr[Array] = gc_alloc(Array)(1)
+            arr.n = 3
+            arr.buf = gc_alloc(i32)(4)
+            arr.buf[0] = 1
+            arr.buf[1] = 2
+            arr.buf[2] = 3
+            return arr.buf[i]
+        """)
+        assert mod.foo(2) == 3
+
+    @pytest.mark.xfail(reason='implement W_Dynamic.op_GETATTR')
+    def test_ptr_NULL(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        def foo() -> ptr[i32]:
+            return ptr[i32].NULL
+        """)
+        x = mod.foo()
+        import pdb;pdb.set_trace()
+
+    @pytest.mark.xfail(reason='implement ptr.NULL')
+    def test_ptr_truth(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        def is_null(p: ptr[i32]) -> bool:
+            if p:
+                return False
+            else:
+                return True
+
+        def foo() -> bool:
+            return is_null(ptr[i32].NULL)
+
+        def bar() -> bool:
+            p: ptr[i32] = gc_alloc(i32)(1)
+            return is_null(p)
+
+        """)
+        assert mod.foo() is True
+        assert mod.bar() is False
+
+    @pytest.mark.xfail(reason='FIXME')
+    def test_struct_with_ptr_to_itself(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        class Node(struct):
+            val: i32
+            next: ptr[Node]
+
+        def new_node(val: i32) -> ptr[Node]:
+            n = gc_alloc(Node)(1)
+            n.val = val
+            n.next = None
+            return n
+
+        def alloc_list(a: i32, b: i32, c: i32) -> ptr[Node]:
+            lst = new_node(a)
+            lst.next = new_node(b)
+            lst.next = new_node(c)
+        """)
+        ptr = mod.alloc_list(1, 2, 3)
+        import pdb;pdb.set_trace()

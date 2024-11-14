@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, ClassVar, Optional, no_type_check
 import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import FQN
-from spy.vm.primitive import W_I32, W_Void
+from spy.vm.primitive import W_I32, W_Void, W_Bool
 from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.w import W_Object, W_Type, W_Str, W_Dynamic, W_Func
@@ -12,6 +12,9 @@ from . import UNSAFE
 from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+def is_ptr_type(w_T: W_Type) -> bool:
+    return issubclass(w_T.pyclass, W_Ptr)
 
 @UNSAFE.builtin_type('ptr')
 class W_Ptr(W_Object):
@@ -39,13 +42,12 @@ class W_Ptr(W_Object):
                         wop_T: W_OpArg) -> W_OpImpl:
         return W_OpImpl(w_make_ptr_type, [wop_T])
 
-    def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
-        return self.addr
-
+    def spy_unwrap(self, vm: 'SPyVM') -> 'W_Ptr':
+        return self
 
 
 @UNSAFE.builtin_func(color='blue')
-def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
+def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     from .struct import W_StructType
     T = w_T.pyclass
     ITEMSIZE = sizeof(w_T)
@@ -74,6 +76,27 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
         def op_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                        wop_v: W_OpArg) -> W_OpImpl:
             return op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
+
+        @staticmethod
+        def op_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+            w_ltype = wop_l.w_static_type
+            w_rtype = wop_r.w_static_type
+            if w_ltype is w_rtype:
+                return W_OpImpl(w_ptr_eq)
+            else:
+                return W_OpImpl.NULL
+
+        @staticmethod
+        def op_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+            # XXX: ideally, we shouldn't be forced to write op_NE, it should be
+            # automatically be deduced from op_EQ
+            w_ltype = wop_l.w_static_type
+            w_rtype = wop_r.w_static_type
+            if w_ltype is w_rtype:
+                return W_OpImpl(w_ptr_ne)
+            else:
+                return W_OpImpl.NULL
+
 
     W_MyPtr.__name__ = W_MyPtr.__qualname__
 
@@ -143,6 +166,23 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Object:
             [vm.wrap(addr), w_v]
         )
 
+    @no_type_check
+    @builtin_func(W_MyPtr.type_fqn, 'eq')
+    def w_ptr_eq(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
+        return vm.wrap(
+            w_ptr1.addr == w_ptr2.addr and
+            w_ptr1.length == w_ptr1.length
+        )
+
+    @no_type_check
+    @builtin_func(W_MyPtr.type_fqn, 'ne')
+    def w_ptr_ne(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
+        return vm.wrap(
+            w_ptr1.addr != w_ptr2.addr or
+            w_ptr1.length != w_ptr1.length
+        )
+
+
     w_ptrtype = vm.wrap(W_MyPtr)
     return w_ptrtype
 
@@ -154,9 +194,9 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
         w_T = vm.call(w_make_ptr_type, [w_T])  # type: ignore
-        funcname = 'getfield_byref'
+        by = 'byref'
     else:
-        funcname = 'getfield_byval'
+        by = 'byval'
 
     T = w_T.pyclass  # W_I32
 
@@ -164,18 +204,22 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
     @no_type_check
-    @builtin_func('unsafe', funcname, [w_T.fqn])
+    @builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32) -> T:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
-        return vm.call_generic(
-            UNSAFE.w_mem_read,
-            [w_T],
-            [vm.wrap(addr)]
-        )
+        if by == 'byref':
+            assert issubclass(w_T.pyclass, W_Ptr)
+            return w_T.pyclass(addr, 1)
+        else:
+            return vm.call_generic(
+                UNSAFE.w_mem_read,
+                [w_T],
+                [vm.wrap(addr)]
+            )
     return w_getfield_T
 
 
