@@ -165,3 +165,26 @@ class TestUnsafe(CompilerTest):
             return arr.buf[i]
         """)
         assert mod.foo(2) == 3
+
+    @pytest.mark.xfail(reason='FIXME')
+    def test_struct_with_ptr_to_itself(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        class Node(struct):
+            val: i32
+            next: ptr[Node]
+
+        def new_node(val: i32) -> ptr[Node]:
+            n = gc_alloc(Node)(1)
+            n.val = val
+            n.next = None
+            return n
+
+        def alloc_list(a: i32, b: i32, c: i32) -> ptr[Node]:
+            lst = new_node(a)
+            lst.next = new_node(b)
+            lst.next = new_node(c)
+        """)
+        ptr = mod.alloc_list(1, 2, 3)
+        import pdb;pdb.set_trace()
