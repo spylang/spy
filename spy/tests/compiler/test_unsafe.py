@@ -188,12 +188,12 @@ class TestUnsafe(CompilerTest):
 
         def bar() -> f64:
             p: ptr[Point_f64] = gc_alloc(Point_f64)(1)
-            p.x = 1.1
-            p.y = 2.2
+            p.x = 1.2
+            p.y = 3.4
             return p.x + p.y
         """)
         assert mod.foo() == 3
-        assert mod.bar() == 3.3
+        assert mod.bar() == 4.6
 
     @pytest.mark.xfail(reason='implement W_Dynamic.op_GETATTR')
     def test_ptr_NULL(self):
