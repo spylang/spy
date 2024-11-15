@@ -45,7 +45,7 @@ class ASTFrame:
         return f'<ASTFrame for {self.w_func.fqn}>'
 
     @property
-    def is_module_body(self):
+    def is_module_body(self) -> bool:
         return self.w_func.fqn.is_module()
 
     def get_unique_FQN_maybe(self, fqn: FQN) -> FQN:

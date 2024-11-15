@@ -149,6 +149,7 @@ class SPyVM:
             # redshifted, in that case it is fine to return the FQN that we
             # already have
             w_func = self.lookup_global(w_val.fqn)
+            assert isinstance(w_func, W_ASTFunc)
             assert w_func.redshifted
             return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
