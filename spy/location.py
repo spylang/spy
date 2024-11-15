@@ -1,4 +1,4 @@
-import inspect
+import sys
 import dataclasses
 from dataclasses import dataclass
 
@@ -22,12 +22,15 @@ class Loc:
         By default, level=-1 means "caller's frame".
         level=-2 is "caller of the caller", etc.
         """
+        # don't use inspect.stack(), it's horribly slow. Better to get
+        # the frames directly. Using inspect.stack() makes the SPy
+        # interpreter ~20x slower
         assert level < 0
-        f = inspect.stack()[-level]
+        f = sys._getframe(-level)
         return cls(
-            filename = f.filename,
-            line_start = f.lineno,
-            line_end = f.lineno,
+            filename = f.f_code.co_filename,
+            line_start = f.f_lineno,
+            line_end = f.f_lineno,
             col_start = 0,
             col_end = -1 # whole line
         )

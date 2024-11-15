@@ -2,67 +2,103 @@
 
 from unsafe import gc_alloc, ptr
 
-@blue
-def play_with_vector(T):
+class Vector(struct):
+    capacity: i32
+    length: i32
+    items: ptr[i32]
 
-    class Vector(struct):
-        capacity: i32
-        length: i32
-        items: ptr[i32]
 
-    def vector_new(capacity: i32) -> ptr[Vector]:
-        v: ptr[Vector] = gc_alloc(Vector)(1)
-        v.capacity = capacity
-        v.length = 0
-        v.items = gc_alloc(i32)(capacity)
-        return v
+# available operations:
+#     arr: ptr[i32] = gc_alloc(i32)(5)  # allocates an array of 5 i32
+#     arr[0]     # read item 0 of the array
+#     arr[0] = x # write item 0
+#     v = gc_alloc(Vector)(1)   # allocate a new Vector
+#     v.capacity  # read the field "capacity" of the Vector "v"
 
-    def vector_append(v: ptr[Vector], item: i32) -> void:
-        if v.length >= v.capacity:
-            new_capacity = v.capacity * 2
-            new_items: ptr[i32] = gc_alloc(i32)(new_capacity)
-            i = 0
-            while i < v.length:
-                new_items[i] = v.items[i]
-                i = i+1
-            v.items = new_items
-            v.capacity = new_capacity
-        v.items[v.length] = item
-        v.length = v.length+1
+def vector_new(capacity: i32) -> ptr[Vector]:
+    v: ptr[Vector] = gc_alloc(Vector)(1)
+    v.capacity = capacity
+    v.length = 0
+    v.items = gc_alloc(i32)(capacity)
+    return v
 
-    def vector_get(v: ptr[Vector], index: i32) -> i32:
-        if index < 0:
-            print("Index out of bounds")
-        if index >= v.length:
-            print("Index out of bounds")
-        return v.items[index]
-
-    def vector_set(v: ptr[Vector], index: i32, item: i32) -> void:
-        if index < 0:
-            print("Index out of bounds")
-
-        if index >= v.length:
-            print("Index out of bounds")
-        v.items[index] = item
-
-    def vector_len(v: ptr[Vector]) -> i32:
-        return v.length
-
-    def vector_print(v: ptr[Vector]) -> void:
+def vector_append(v: ptr[Vector], item: i32) -> void:
+    if v.length >= v.capacity:
+        new_capacity = v.capacity * 2
+        new_items: ptr[i32] = gc_alloc(i32)(new_capacity)
         i = 0
         while i < v.length:
-            print(v.items[i])
+            new_items[i] = v.items[i]
             i = i+1
+        v.items = new_items
+        v.capacity = new_capacity
+    v.items[v.length] = item
+    v.length = v.length+1
 
-    def play(n: i32) -> void:
-        v = vector_new(n)
-        i = 0
-        while i < n:
-            vector_append(v, i*i)
-            i = i+1
-        vector_print(v)
+def vector_get(v: ptr[Vector], index: i32) -> i32:
+    if index < 0:
+        print("Index out of bounds")
+    if index >= v.length:
+        print("Index out of bounds")
+    return v.items[index]
 
-    return play
+def vector_set(v: ptr[Vector], index: i32, item: i32) -> void:
+    if index < 0:
+        print("Index out of bounds")
+
+    if index >= v.length:
+        print("Index out of bounds")
+    v.items[index] = item
+
+def vector_len(v: ptr[Vector]) -> i32:
+    return v.length
+
+def vector_print(v: ptr[Vector]) -> void:
+    i = 0
+    while i < v.length:
+        print(v.items[i])
+        i = i+1
+
+def test_vector() -> void:
+    v = vector_new(2)
+    if vector_len(v) != 0:
+        print("Test failed: Initial length should be 0")
+
+    vector_append(v, 10)
+    if vector_len(v) != 1:
+        print("Test failed: Length should be 1 after one append")
+    if vector_get(v, 0) != 10:
+        print("Test failed: First item should be 10")
+
+    vector_append(v, 20)
+    if vector_len(v) != 2:
+        print("Test failed: Length should be 2 after two appends")
+    if vector_get(v, 1) != 20:
+        print("Test failed: Second item should be 20")
+
+    vector_append(v, 30)
+    if vector_len(v) != 3:
+        print("Test failed: Length should be 3 after three appends")
+    if vector_get(v, 2) != 30:
+        print("Test failed: Third item should be 30")
+
+    vector_set(v, 1, 25)
+    if vector_get(v, 1) != 25:
+        print("Test failed: Second item should be 25 after set")
+
+    #vector_get(v, 5) # PANIC
+
+    print("All tests completed")
+
+
+def test_squares(n: i32) -> void:
+    v = vector_new(n)
+    i = 0
+    while i < n:
+        vector_append(v, i*i)
+        i = i+1
+    vector_print(v)
 
 def main() -> void:
-    play_with_vector(i32)(10)
+    #test_vector()
+    test_squares(100)

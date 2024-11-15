@@ -1,5 +1,7 @@
+import sys
 from typing import Annotated, Any, no_type_check
 from pathlib import Path
+import time
 import typer
 import py.path
 from spy.magic_py_parse import magic_py_parse
@@ -51,10 +53,11 @@ def main(filename: Path,
              names=['--toolchain', '-t']
          ) = "zig",
          pretty: boolopt("prettify redshifted modules") = True,
+         timeit: boolopt("print execution time") = False,
          ) -> None:
     try:
         do_main(filename, run, pyparse, parse, redshift, cwrite, g, O,
-                release_mode, toolchain, pretty)
+                release_mode, toolchain, pretty, timeit)
     except SPyError as e:
         print(e.format(use_colors=True))
         #import pdb;pdb.xpm()
@@ -66,7 +69,8 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             opt_level: int,
             release_mode: bool,
             toolchain: ToolchainType,
-            pretty: bool) -> None:
+            pretty: bool,
+            timeit: bool) -> None:
     if pyparse:
         do_pyparse(str(filename))
         return
@@ -91,8 +95,13 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             return
         vm.typecheck(w_main, w_main_functype)
         assert isinstance(w_main, W_Func)
+        a = time.time()
         w_res = vm.call(w_main, [])
+        b = time.time()
+        if timeit:
+            print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
         assert w_res is B.w_None
+
         return
 
     vm.redshift()
