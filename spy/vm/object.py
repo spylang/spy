@@ -44,6 +44,7 @@ For simple cases, SPy app-level types are instances of W_Type, which is
 basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
+import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
                     Union)
 from spy.fqn import FQN
@@ -178,6 +179,35 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
 
+class Member:
+    """
+    Represent a property of a W_ class. Use it like this:
+
+    @builtin_type('MyClass')
+    class W_MyClass(W_Object):
+        w_x: Annotated[W_I32, Member('x')]
+
+    This will add an app-level attribute "x" to the class, corresponding to
+    the interp-level attribute "w_x".
+    """
+    name: str
+    field: str        # set later by W_Type.__init__
+    w_type: 'W_Type'  # set later by W_Type.__init__
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    @staticmethod
+    def from_annotation_maybe(t: Any) -> Optional['Member']:
+        """
+        Return the Member instance found in the annotation metadata, if any.
+        """
+        for meta in getattr(t, '__metadata__', []):
+            if isinstance(meta, Member):
+                return meta
+        return None
+
+
 class W_Type(W_Object):
     """
     The default metaclass for SPy types.
@@ -193,6 +223,15 @@ class W_Type(W_Object):
         assert issubclass(pyclass, W_Object)
         self.fqn = fqn
         self.pyclass = pyclass
+        # setup __spy_members__
+        pyclass.__spy_members__ = {}
+        for field, t in pyclass.__annotations__.items():
+            member = Member.from_annotation_maybe(t)
+            if member is not None:
+                member.field = field
+                member.w_type = typing.get_args(t)[0]._w
+                pyclass.__spy_members__[member.name] = member
+
 
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
@@ -264,34 +303,6 @@ W_Dynamic = Annotated[W_Object, 'W_Dynamic']
 
 # Other types
 # ============
-
-class Member:
-    """
-    Represent a property of a W_ class. Use it like this:
-
-    @spytype('MyClass')
-    class W_MyClass(W_Object):
-        w_x: Annotated[W_I32, Member('x')]
-
-    This will add an app-level attribute "x" to the class, corresponding to
-    the interp-level attribute "w_x".
-    """
-    name: str
-    field: str      # set later by @spytype
-    w_type: W_Type  # set later by @spytype
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-
-def _get_member_maybe(t: Any) -> Optional[Member]:
-    """
-    Return the Member instance found in the annotation metadata, if any.
-    """
-    for meta in getattr(t, '__metadata__', []):
-        if isinstance(meta, Member):
-            return meta
-    return None
 
 
 def make_metaclass(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:

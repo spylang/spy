@@ -7,12 +7,11 @@ vm/modules/builtins.py.
 """
 
 import inspect
-import typing
 from typing import TYPE_CHECKING, Any, Callable, Type, Optional
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
 from spy.vm.primitive import W_Void
-from spy.vm.object import W_Object, W_Type, W_Dynamic, _get_member_maybe, make_metaclass, w_DynamicType
+from spy.vm.object import W_Object, W_Type, W_Dynamic, make_metaclass, w_DynamicType
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -132,14 +131,5 @@ def builtin_type(namespace: FQN|str,
         W_MetaClass = make_metaclass(fqn, pyclass)
         pyclass.type_fqn = fqn
         pyclass._w = W_MetaClass(fqn, pyclass)
-        # setup __spy_members__
-        pyclass.__spy_members__ = {}
-        for field, t in pyclass.__annotations__.items():
-            member = _get_member_maybe(t)
-            if member is not None:
-                member.field = field
-                member.w_type = typing.get_args(t)[0]._w
-                pyclass.__spy_members__[member.name] = member
-
         return pyclass
     return decorator
