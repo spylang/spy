@@ -1,6 +1,5 @@
 import fixedint
 import pytest
-from spy.vm.builtin import builtin_type
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
@@ -10,6 +9,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
+from spy.vm.builtin import builtin_type
 from spy.tests.support import expect_errors
 
 class TestVM:
@@ -198,6 +198,7 @@ class TestVM:
     def test_call_function_TypeError(self):
         vm = SPyVM()
         w_abs = B.w_abs
+        #import pdb;pdb.set_trace()
         w_x = vm.wrap('hello')
         msg = 'Invalid cast. Expected `i32`, got `str`'
         with pytest.raises(SPyTypeError, match=msg):
