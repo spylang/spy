@@ -7,7 +7,8 @@ vm/modules/builtins.py.
 """
 
 import inspect
-from typing import TYPE_CHECKING, Any, Callable, Type, Optional, get_origin
+from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
+                    Annotated)
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
 from spy.vm.object import W_Object, W_Type, W_Dynamic, make_metaclass
@@ -15,9 +16,15 @@ from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-
 def is_W_class(x: Any) -> bool:
     return isinstance(x, type) and issubclass(x, W_Object)
+
+def get_spy_type_annotation(ann: Any) -> Optional[W_Type]:
+    if get_origin(ann) is Annotated:
+        for x in ann.__metadata__:
+            if isinstance(x, W_Type):
+                return x
+    return None
 
 def to_spy_type(ann: Any, *, allow_None=False) -> W_Type:
     """
@@ -35,8 +42,9 @@ def to_spy_type(ann: Any, *, allow_None=False) -> W_Type:
         return B.w_dynamic
     elif is_W_class(ann):
         return ann._w
+    elif w_t := get_spy_type_annotation(ann):
+        return w_t
     raise ValueError(f"Invalid @builtin_func annotation: {ann}")
-
 
 def to_spy_FuncParam(p: Any) -> FuncParam:
     if p.name.startswith('w_'):
