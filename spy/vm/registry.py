@@ -23,7 +23,7 @@ class ModuleRegistry:
         self.content = []
 
     def __repr__(self) -> str:
-        return f"<ModuleRegistry '{self.modname}'>"
+        return f"<ModuleRegistry '{self.fqn}'>"
 
     if TYPE_CHECKING:
         def __getattr__(self, attr: str) -> Any:
@@ -42,7 +42,9 @@ class ModuleRegistry:
 
     def add(self, attr: str, w_obj: 'W_Object') -> None:
         fqn = self.fqn.join(attr)
-        setattr(self, f'w_{attr}', w_obj)
+        attr = f'w_{attr}'
+        assert not hasattr(self, attr)
+        setattr(self, attr, w_obj)
         self.content.append((fqn, w_obj))
 
     def builtin_type(self,

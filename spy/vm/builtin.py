@@ -10,7 +10,6 @@ import inspect
 from typing import TYPE_CHECKING, Any, Callable, Type, Optional
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
-from spy.vm.primitive import W_Void
 from spy.vm.object import W_Object, W_Type, W_Dynamic, make_metaclass, w_DynamicType
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
@@ -39,9 +38,7 @@ def to_spy_FuncParam(p: Any) -> FuncParam:
 
 
 def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
-    # we cannot import spy.vm.b due to circular imports, fake it
-    B_w_Void = W_Void._w
-    B_w_dynamic = w_DynamicType
+    from spy.vm.b import B
 
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
@@ -56,9 +53,9 @@ def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
     func_params = [to_spy_FuncParam(p) for p in params[1:]]
     ret = sig.return_annotation
     if ret is None:
-        w_restype = B_w_Void
+        w_restype = B.w_void
     elif ret is W_Dynamic:
-        w_restype = B_w_dynamic
+        w_restype = B.w_dynamic
     elif is_W_class(ret):
         w_restype = ret._w
     else:
