@@ -184,35 +184,6 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
 
-class Member:
-    """
-    Represent a property of a W_ class. Use it like this:
-
-    @builtin_type('MyClass')
-    class W_MyClass(W_Object):
-        w_x: Annotated[W_I32, Member('x')]
-
-    This will add an app-level attribute "x" to the class, corresponding to
-    the interp-level attribute "w_x".
-    """
-    name: str
-    field: str        # set later by W_Type.__init__
-    w_type: 'W_Type'  # set later by W_Type.__init__
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-    @staticmethod
-    def from_annotation_maybe(t: Any) -> Optional['Member']:
-        """
-        Return the Member instance found in the annotation metadata, if any.
-        """
-        for meta in getattr(t, '__metadata__', []):
-            if isinstance(meta, Member):
-                return meta
-        return None
-
-
 class W_Type(W_Object):
     """
     The default metaclass for SPy types.
@@ -300,20 +271,36 @@ class W_Type(W_Object):
 W_Dynamic = Annotated[W_Object, 'W_Dynamic']
 
 
-# Initial setup of the 'builtins' module
-# ======================================
-
-W_Object._w = W_Type(FQN('builtins::object'), W_Object)
-W_Type._w = W_Type(FQN('builtins::type'), W_Type)
-w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object)
-
-B.add('object', W_Object._w)
-B.add('type', W_Type._w)
-B.add('dynamic', w_DynamicType)
-
-
 # helpers
 # =======
+
+class Member:
+    """
+    Represent a property of a W_ class. Use it like this:
+
+    @builtin_type('MyClass')
+    class W_MyClass(W_Object):
+        w_x: Annotated[W_I32, Member('x')]
+
+    This will add an app-level attribute "x" to the class, corresponding to
+    the interp-level attribute "w_x".
+    """
+    name: str
+    field: str        # set later by W_Type.__init__
+    w_type: 'W_Type'  # set later by W_Type.__init__
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    @staticmethod
+    def from_annotation_maybe(t: Any) -> Optional['Member']:
+        """
+        Return the Member instance found in the annotation metadata, if any.
+        """
+        for meta in getattr(t, '__metadata__', []):
+            if isinstance(meta, Member):
+                return meta
+        return None
 
 def make_metaclass(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
@@ -416,3 +403,15 @@ def synthesize_meta_op_CALL(fqn: FQN, pyclass: Type[W_Object]) -> Any:
         return W_OpImpl(w_spyfunc)
 
     return meta_op_CALL
+
+
+# Initial setup of the 'builtins' module
+# ======================================
+
+W_Object._w = W_Type(FQN('builtins::object'), W_Object)
+W_Type._w = W_Type(FQN('builtins::type'), W_Type)
+w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object)
+
+B.add('object', W_Object._w)
+B.add('type', W_Type._w)
+B.add('dynamic', w_DynamicType)
