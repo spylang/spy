@@ -1,5 +1,5 @@
-from typing import (TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar,
-                    TypeVar, Generic)
+from typing import (TYPE_CHECKING, Any, Optional, Type, ClassVar,
+                    TypeVar, Generic, Annotated)
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
 from spy.vm.object import (W_Object, W_Type)
@@ -109,11 +109,11 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     """
     from spy.vm.opimpl import W_OpImpl
 
-    T = w_T.pyclass
+    T = Annotated[W_Object, w_T]
 
     @builtin_type('builtins', 'list', [w_T.fqn])
     class W_MyList(W_List):
-        __qualname__ = f'W_List[{T.__name__}]' # e.g. W_List[W_I32]
+        __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
         items_w: list[W_Object]
 
         def __init__(self, items_w: list[W_Object]) -> None:
@@ -130,7 +130,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
                        wop_i: 'W_OpArg') -> W_OpImpl:
-            @no_type_check
             @builtin_func(W_MyList.type_fqn)
             def w_getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
                 i = vm.unwrap_i32(w_i)
@@ -143,11 +142,9 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                        wop_v: 'W_OpArg') -> W_OpImpl:
             from spy.vm.b import B
 
-            @no_type_check
             @builtin_func(W_MyList.type_fqn)
             def w_setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
                           w_v: T) -> W_Void:
-                assert isinstance(w_v, T)
                 i = vm.unwrap_i32(w_i)
                 # XXX bound check?
                 w_list.items_w[i] = w_v
@@ -161,7 +158,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
             w_rtype = wop_r.w_static_type
             assert w_ltype.pyclass is W_MyList
 
-            @no_type_check
             @builtin_func(W_MyList.type_fqn)
             def w_eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
                 items1_w = w_l1.items_w
