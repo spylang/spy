@@ -3,7 +3,6 @@ from types import FunctionType
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN, QUALIFIERS
-#from spy.vm.builtin import builtin_func, builtin_type
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Object
