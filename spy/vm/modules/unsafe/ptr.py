@@ -37,7 +37,7 @@ class W_PtrType(W_Type):
 class W_Ptr(W_Object):
 
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise Exception("You cannot instantiate W_Ptr, use W_PtrValue")
 
     @staticmethod
@@ -94,7 +94,7 @@ class W_PtrVal(W_Ptr):
         w_ptrtype = W_PtrVal._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
-        PTR = Annotated[W_Ptr, w_ptrtype]
+        PTR = Annotated[W_PtrVal, w_ptrtype]
         T = Annotated[W_Object, w_T]
 
         @builtin_func(w_ptrtype.fqn, 'load')
@@ -120,7 +120,7 @@ class W_PtrVal(W_Ptr):
         w_ptrtype = W_PtrVal._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
-        PTR = Annotated[W_Ptr, w_ptrtype]
+        PTR = Annotated[W_PtrVal, w_ptrtype]
         T = Annotated[W_Object, w_T]
 
         @builtin_func(w_ptrtype.fqn, 'store')
@@ -147,7 +147,7 @@ class W_PtrVal(W_Ptr):
         if w_ltype is not w_rtype:
             return W_OpImpl.NULL
         w_ptrtype = W_PtrVal._get_ptrtype(wop_l)
-        PTR = Annotated[W_Ptr, w_ptrtype]
+        PTR = Annotated[W_PtrVal, w_ptrtype]
 
         @builtin_func(w_ptrtype.fqn, 'eq')
         def w_ptr_eq(vm: 'SPyVM', w_ptr1: PTR, w_ptr2: PTR) -> W_Bool:
@@ -164,7 +164,7 @@ class W_PtrVal(W_Ptr):
         if w_ltype is not w_rtype:
             return W_OpImpl.NULL
         w_ptrtype = W_PtrVal._get_ptrtype(wop_l)
-        PTR = Annotated[W_Ptr, w_ptrtype]
+        PTR = Annotated[W_PtrVal, w_ptrtype]
 
         @builtin_func(w_ptrtype.fqn, 'ne')
         def w_ptr_ne(vm: 'SPyVM', w_ptr1: PTR, w_ptr2: PTR) -> W_Bool:
@@ -184,6 +184,7 @@ class W_PtrVal(W_Ptr):
                    wop_v: W_OpArg) -> W_OpImpl:
         return W_PtrVal._op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
+    @staticmethod
     def _op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                  wop_v: Optional[W_OpArg]) -> W_OpImpl:
         """
@@ -236,7 +237,7 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
     @builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
-    def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+    def w_getfield_T(vm: 'SPyVM', w_ptr: W_PtrVal, w_attr: W_Str,
                      w_offset: W_I32) -> T:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
@@ -259,7 +260,7 @@ def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
 
     @builtin_func('unsafe', 'setfield', [w_T.fqn])  # unsafe::setfield[i32]
-    def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+    def w_setfield_T(vm: 'SPyVM', w_ptr: W_PtrVal, w_attr: W_Str,
                      w_offset: W_I32, w_val: T) -> None:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
