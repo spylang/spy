@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
-    w_ptrtype = W_PtrType(fqn, W_PtrVal, w_T)
+    w_ptrtype = W_PtrType(fqn, w_T)
     return w_ptrtype
 
 
@@ -28,10 +28,9 @@ class W_PtrType(W_Type):
     """
     w_itemtype: W_Type
 
-    def __init__(self, fqn: FQN, pyclass, w_itemtype: W_Type) -> None:
-        super().__init__(fqn, pyclass)
+    def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
+        super().__init__(fqn, W_PtrVal)
         self.w_itemtype = w_itemtype
-
 
 
 @UNSAFE.builtin_type('ptr')
