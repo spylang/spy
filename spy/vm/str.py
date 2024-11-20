@@ -26,7 +26,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
 
 
 
-@builtin_type('builtins', 'str')
+@B.builtin_type('str')
 class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.
@@ -97,5 +97,3 @@ class W_Str(W_Object):
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
     return vm.wrap(str(i))  # type: ignore
-
-B.add('str', W_Str._w)

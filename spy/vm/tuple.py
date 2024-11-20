@@ -7,7 +7,7 @@ from spy.vm.opimpl import W_OpImpl, W_OpArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-@builtin_type('builtins', 'tuple')
+@B.builtin_type('tuple')
 class W_Tuple(W_Object):
     """
     This is not the "real" tuple type that we will have in SPy.
@@ -39,6 +39,3 @@ def w_tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
     i = vm.unwrap_i32(w_i)
     # XXX bound check?
     return w_tup.items_w[i]
-
-
-B.add('tuple', W_Tuple._w)

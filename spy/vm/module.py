@@ -5,7 +5,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 if TYPE_CHECKING:
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 
-@builtin_type('builtins', 'module')
+@B.builtin_type('module')
 class W_Module(W_Object):
     vm: 'SPyVM'
     name: str
