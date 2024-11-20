@@ -1,4 +1,6 @@
 import pytest
+from typing import Annotated
+from spy.vm.object import W_Object
 from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
 from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Dynamic, W_Str
@@ -40,12 +42,16 @@ class TestBuiltin:
             def w_foo(w_x: W_I32) -> W_I32:  # type: ignore
                 pass
 
-        with pytest.raises(ValueError, match="Invalid param: 'x: int'"):
+        with pytest.raises(
+                ValueError,
+                match="Invalid @builtin_func annotation: <class 'int'>"):
             @builtin_func('mymod')
             def w_foo(vm: 'SPyVM', x: int) -> W_I32:  # type: ignore
                 pass
 
-        with pytest.raises(ValueError, match="Invalid return type"):
+        with pytest.raises(
+                ValueError,
+                match="Invalid @builtin_func annotation: <class 'int'>"):
             @builtin_func('mymod')
             def w_foo(vm: 'SPyVM') -> int:  # type: ignore
                 pass

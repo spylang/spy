@@ -7,10 +7,10 @@ vm/modules/builtins.py.
 """
 
 import inspect
-from typing import TYPE_CHECKING, Any, Callable, Type, Optional
+from typing import TYPE_CHECKING, Any, Callable, Type, Optional, get_origin
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
-from spy.vm.object import W_Object, W_Type, W_Dynamic, make_metaclass, w_DynamicType
+from spy.vm.object import W_Object, W_Type, W_Dynamic, make_metaclass
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -19,27 +19,36 @@ if TYPE_CHECKING:
 def is_W_class(x: Any) -> bool:
     return isinstance(x, type) and issubclass(x, W_Object)
 
+def to_spy_type(ann: Any, *, allow_None=False) -> W_Type:
+    """
+    Convert an interp-level annotation into a spy type.
+    Examples:
+      W_I32 -> B.w_i32
+      W_Dynamic -> B.w_dynamic
+      Annotated[W_Object, w_mytype] -> w_mytype
+      None -> B.w_void
+    """
+    from spy.vm.b import B
+    if allow_None and ann is None:
+        return B.w_void
+    elif ann is W_Dynamic:
+        return B.w_dynamic
+    elif is_W_class(ann):
+        return ann._w
+    raise ValueError(f"Invalid @builtin_func annotation: {ann}")
+
 
 def to_spy_FuncParam(p: Any) -> FuncParam:
-    # we cannot import spy.vm.b due to circular imports, fake it
-    B_w_dynamic = w_DynamicType
     if p.name.startswith('w_'):
         name = p.name[2:]
     else:
         name = p.name
     #
-    pyclass = p.annotation
-    if pyclass is W_Dynamic:
-        return FuncParam(name, B_w_dynamic)
-    elif issubclass(pyclass, W_Object):
-        return FuncParam(name, pyclass._w)
-    else:
-        raise ValueError(f"Invalid param: '{p}'")
+    w_type = to_spy_type(p.annotation)
+    return FuncParam(name, w_type)
 
 
 def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
-    from spy.vm.b import B
-
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
     if len(params) == 0:
@@ -51,16 +60,7 @@ def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
         raise ValueError(msg)
 
     func_params = [to_spy_FuncParam(p) for p in params[1:]]
-    ret = sig.return_annotation
-    if ret is None:
-        w_restype = B.w_void
-    elif ret is W_Dynamic:
-        w_restype = B.w_dynamic
-    elif is_W_class(ret):
-        w_restype = ret._w
-    else:
-        raise ValueError(f"Invalid return type: '{sig.return_annotation}'")
-
+    w_restype = to_spy_type(sig.return_annotation, allow_None=True)
     return W_FuncType(func_params, w_restype, color=color)
 
 
