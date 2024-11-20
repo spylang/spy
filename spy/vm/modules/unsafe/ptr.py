@@ -113,10 +113,37 @@ class W_Ptr(W_Object):
             )
         return W_OpImpl(w_ptr_store_T)
 
+    @staticmethod
+    def op_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+        w_ltype = wop_l.w_static_type
+        w_rtype = wop_r.w_static_type
+        if w_ltype is not w_rtype:
+            return W_OpImpl.NULL
+        w_ptrtype = W_Ptr._get_ptrtype(wop_l)
 
+        @builtin_func(w_ptrtype.fqn, 'eq')
+        def w_ptr_eq(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
+            return vm.wrap(
+                w_ptr1.addr == w_ptr2.addr and
+                w_ptr1.length == w_ptr1.length
+            )  # type: ignore
+        return W_OpImpl(w_ptr_eq)
 
+    @staticmethod
+    def op_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+        w_ltype = wop_l.w_static_type
+        w_rtype = wop_r.w_static_type
+        if w_ltype is not w_rtype:
+            return W_OpImpl.NULL
+        w_ptrtype = W_Ptr._get_ptrtype(wop_l)
 
-
+        @builtin_func(w_ptrtype.fqn, 'ne')
+        def w_ptr_ne(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
+            return vm.wrap(
+                w_ptr1.addr != w_ptr2.addr or
+                w_ptr1.length != w_ptr1.length
+            )  # type: ignore
+        return W_OpImpl(w_ptr_ne)
 
 
 
@@ -130,7 +157,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     class W_MyPtr(W_Ptr):
         __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
 
-
         @staticmethod
         def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
                        wop_attr: W_OpArg) -> W_OpImpl:
@@ -141,33 +167,12 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
                        wop_v: W_OpArg) -> W_OpImpl:
             return op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
-        @staticmethod
-        def op_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-            w_ltype = wop_l.w_static_type
-            w_rtype = wop_r.w_static_type
-            if w_ltype is w_rtype:
-                return W_OpImpl(w_ptr_eq)
-            else:
-                return W_OpImpl.NULL
-
-        @staticmethod
-        def op_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-            # XXX: ideally, we shouldn't be forced to write op_NE, it should be
-            # automatically be deduced from op_EQ
-            w_ltype = wop_l.w_static_type
-            w_rtype = wop_r.w_static_type
-            if w_ltype is w_rtype:
-                return W_OpImpl(w_ptr_ne)
-            else:
-                return W_OpImpl.NULL
-
 
     W_MyPtr.__name__ = W_MyPtr.__qualname__
 
     fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
     w_ptrtype = W_PtrType(fqn, W_MyPtr, w_T)
     W_MyPtr._w = w_ptrtype # poor's man @builtin_type
-
 
     def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                 wop_v: Optional[W_OpArg]) -> W_OpImpl:
@@ -200,22 +205,8 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
-
-    @builtin_func(fqn, 'eq')
-    def w_ptr_eq(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
-        return vm.wrap(
-            w_ptr1.addr == w_ptr2.addr and
-            w_ptr1.length == w_ptr1.length
-        )  # type: ignore
-
-    @builtin_func(fqn, 'ne')
-    def w_ptr_ne(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
-        return vm.wrap(
-            w_ptr1.addr != w_ptr2.addr or
-            w_ptr1.length != w_ptr1.length
-        )  # type: ignore
-
     return w_ptrtype
+
 
 
 @UNSAFE.builtin_func(color='blue')
