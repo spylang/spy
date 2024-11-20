@@ -1,6 +1,7 @@
-from typing import ClassVar, TYPE_CHECKING
+from typing import Annotated, ClassVar, TYPE_CHECKING
 import fixedint
-from spy.vm.object import W_Object
+from spy.fqn import FQN
+from spy.vm.object import W_Object, W_Type
 from spy.vm.b import B
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -97,3 +98,42 @@ class W_NotImplementedType(W_Object):
         raise Exception("You cannot instantiate W_NotImplementedType")
 
 B.add('NotImplemented', W_NotImplementedType.__new__(W_NotImplementedType))
+
+
+
+# The <dynamic> type
+# ===================
+#
+# <dynamic> is special:
+#
+# - it's not a real type, in the sense that you cannot have an instance whose
+#   type is `dynamic`
+#
+# - every class is considered to be a subclass of <dynamic>
+#
+# - conversion from T to <dynamic> always succeeds (like from T to <object>)
+#
+# - conversion from <dynamic> to T is always possible but it might fail at
+#   runtime (like from <object> to T)
+#
+# From some point of view, <dynamic> is the twin of <object>, because it acts
+# as if it were at the root of the type hierarchy. The biggest difference is
+# how operators are dispatched: operations on <object> almost never succeeds,
+# while operations on <dynamic> are dispatched to the actual dynamic
+# types. For example:
+#
+#    x: object = 1
+#    y: dynamic = 2
+#    z: dynamic = 'hello'
+#
+#    x + 1 # compile-time error: cannot do `<object> + <i32>`
+#    y + 1 # succeeds, but the dispatch is done at runtime
+#    z + 1 # runtime error: cannot do `<i32> + <str>`
+#
+# Since it's a compile-time only concept, W_Dynamic is not a pyclass, but it's
+# just an annotated version of W_Object, which @builtin_func knows how to deal
+# with.
+
+w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object)
+B.add('dynamic', w_DynamicType)
+W_Dynamic = Annotated[W_Object, B.w_dynamic]

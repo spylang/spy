@@ -1,9 +1,9 @@
 import pytest
 from typing import Annotated
 from spy.vm.object import W_Object
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.vm import SPyVM
-from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Dynamic, W_Str
+from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Str
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.vm.builtin import builtin_func, functype_from_sig

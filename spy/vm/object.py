@@ -45,14 +45,13 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
 import typing
-from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
-                    Union)
+from typing import TYPE_CHECKING, ClassVar, Type, Any, Optional, Union
 from spy.fqn import FQN
 from spy.vm.b import B
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.primitive import W_Void
+    from spy.vm.primitive import W_Void, W_Dynamic
     from spy.vm.str import W_Str
     from spy.vm.list import W_List
     from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -60,9 +59,9 @@ if TYPE_CHECKING:
 # Basic setup of the object model: <object> and <type>
 # =====================================================
 
-# NOTE: contrarily to all the other builtin types, for W_Object, W_Type and
-# W_Dynamic we cannot use @B.builtin_type, because of bootstrapping issues.
-# See also the section "Initial setup of the 'builtins' module"
+# NOTE: contrarily to all the other builtin types, for W_Object and W_Type we
+# cannot use @B.builtin_type, because of bootstrapping issues.  See also the
+# section "Initial setup of the 'builtins' module"
 
 class W_Object:
     """
@@ -213,7 +212,7 @@ class W_Type(W_Object):
     @property
     def w_base(self) -> Union['W_Type', 'W_Void']:
         from spy.vm.b import B
-        if self is W_Object._w or self is w_DynamicType:
+        if self is B.w_object or self is B.w_dynamic:
             return B.w_None
         basecls = self.pyclass.__base__
         assert issubclass(basecls, W_Object)
@@ -231,44 +230,6 @@ class W_Type(W_Object):
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
-
-
-# The <dynamic> type
-# ===================
-#
-# <dynamic> is special:
-#
-# - it's not a real type, in the sense that you cannot have an instance whose
-#   type is `dynamic`
-#
-# - every class is considered to be a subclass of <dynamic>
-#
-# - conversion from T to <dynamic> always succeeds (like from T to <object>)
-#
-# - conversion from <dynamic> to T is always possible but it might fail at
-#   runtime (like from <object> to T)
-#
-# From some point of view, <dynamic> is the twin of <object>, because it acts
-# as if it were at the root of the type hierarchy. The biggest difference is
-# how operators are dispatched: operations on <object> almost never succeeds,
-# while operations on <dynamic> are dispatched to the actual dynamic
-# types. For example:
-#
-#    x: object = 1
-#    y: dynamic = 2
-#    z: dynamic = 'hello'
-#
-#    x + 1 # compile-time error: cannot do `<object> + <i32>`
-#    y + 1 # succeeds, but the dispatch is done at runtime
-#    z + 1 # runtime error: cannot do `<i32> + <str>`
-#
-# Since it's a compile-time only concept, it doesn't have a corresponding
-# W_Dynamic interp-level class. However, we still provide W_Dynamic as an
-# annotated version of W_Object: from the mypy static typing point of view,
-# it's equivalent to W_Object, but it is recognized by @builtin_func to
-# generate the "correct" w_functype signature.
-
-W_Dynamic = Annotated[W_Object, 'W_Dynamic']
 
 
 # helpers
@@ -396,7 +357,7 @@ def synthesize_meta_op_CALL(fqn: FQN, pyclass: Type[W_Object]) -> Any:
     w_spy_new = pyclass.w_spy_new
 
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                     w_opargs: W_Dynamic) -> W_OpImpl:
+                     w_opargs: 'W_Dynamic') -> W_OpImpl:
         fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
         # manually apply the @builtin_func decorator to the spy_new function
         w_spyfunc = builtin_func(fqn, '__new__')(w_spy_new)
@@ -410,8 +371,6 @@ def synthesize_meta_op_CALL(fqn: FQN, pyclass: Type[W_Object]) -> Any:
 
 W_Object._w = W_Type(FQN('builtins::object'), W_Object)
 W_Type._w = W_Type(FQN('builtins::type'), W_Type)
-w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object)
 
 B.add('object', W_Object._w)
 B.add('type', W_Type._w)
-B.add('dynamic', w_DynamicType)

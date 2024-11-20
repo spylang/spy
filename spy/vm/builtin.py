@@ -11,7 +11,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
                     Annotated)
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
-from spy.vm.object import W_Object, W_Type, W_Dynamic, make_metaclass
+from spy.vm.object import W_Object, W_Type, make_metaclass
 from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -38,8 +38,6 @@ def to_spy_type(ann: Any, *, allow_None=False) -> W_Type:
     from spy.vm.b import B
     if allow_None and ann is None:
         return B.w_void
-    elif ann is W_Dynamic:
-        return B.w_dynamic
     elif is_W_class(ann):
         return ann._w
     elif w_t := get_spy_type_annotation(ann):
