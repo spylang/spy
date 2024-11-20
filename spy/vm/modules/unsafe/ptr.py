@@ -54,6 +54,45 @@ class W_Ptr(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> 'W_Ptr':
         return self
 
+    @staticmethod
+    def _get_itemtype(wop_ptr: W_OpArg) -> W_Type:
+        w_ptrtype = wop_ptr.w_static_type
+        if isinstance(w_ptrtype, W_PtrType):
+            return wop_ptr.w_static_type.w_itemtype
+        else:
+            # I think we can get here if we have something typed 'ptr' as
+            # opposed to e.g. 'ptr[i32]'
+            assert False, 'FIXME: raise a nice error'
+
+    @staticmethod
+    def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+        w_T = W_Ptr._get_itemtype(wop_ptr)
+        ITEMSIZE = sizeof(w_T)
+        T = Annotated[W_Object, w_T]
+
+        @builtin_func(w_ptrtype.fqn, 'load')
+        def w_ptr_load_T(vm: 'SPyVM', w_ptr: W_Ptr, w_i: W_I32) -> T:
+            base = w_ptr.addr
+            length = w_ptr.length
+            i = vm.unwrap_i32(w_i)
+            addr = base + ITEMSIZE * i
+            if i >= length:
+                msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
+                       f"(upper bound: {length})")
+                raise SPyPanicError(msg)
+            return vm.call_generic(
+                UNSAFE.w_mem_read,
+                [w_T],
+                [vm.wrap(addr)]
+            )
+        return W_OpImpl(w_ptr_load_T)
+
+
+
+
+
+
+
 
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
@@ -64,11 +103,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
     class W_MyPtr(W_Ptr):
         __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
-
-        @staticmethod
-        def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg,
-                       wop_i: W_OpArg) -> W_OpImpl:
-            return W_OpImpl(w_ptr_load)
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
@@ -143,22 +177,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
-
-    @builtin_func(fqn, 'load')
-    def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
-        base = w_ptr.addr
-        length = w_ptr.length
-        i = vm.unwrap_i32(w_i)
-        addr = base + ITEMSIZE * i
-        if i >= length:
-            msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
-                   f"(upper bound: {length})")
-            raise SPyPanicError(msg)
-        return vm.call_generic(
-            UNSAFE.w_mem_read,
-            [w_T],
-            [vm.wrap(addr)]
-        )
 
     @builtin_func(fqn, 'store')
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
