@@ -64,7 +64,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
     class W_MyPtr(W_Ptr):
         __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
-        w_itemtype: ClassVar[W_Type] = w_T
 
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg,
