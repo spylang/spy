@@ -1,12 +1,11 @@
 """
 First half of the `builtins` module.
 
-This contains the definition of the BUILTINS registry, and registers the
-"basic" builtins, i.e., all the primitive types and constants which are used
-everywhere.
+This contains the empty definition of the BUILTINS registry. Additionally, it
+also contains an alias B, because it's shorter to type than BUILTINS
 
-Additionally, it also contains an alias B, because it's shorter to type than
-BUILTINS
+Many of the fundamental types are registered using @B.builtin_type and @B.add
+inside vm/object.py, vm/primitive.py, etc.
 
 The rest of the builtins are registered in vm/modules/builtins.py, which is
 the proper place where to put modules.
@@ -16,11 +15,6 @@ all over the place and we need to import it very early.
 """
 
 from spy.vm.registry import ModuleRegistry
-from spy.vm.object import (W_Object, W_Type, w_DynamicType)
 
 BUILTINS = ModuleRegistry('builtins')
 B = BUILTINS
-
-B.add('object', W_Object._w)
-B.add('type', W_Type._w)
-B.add('dynamic', w_DynamicType)

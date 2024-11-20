@@ -48,6 +48,7 @@ import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
                     Union)
 from spy.fqn import FQN
+from spy.vm.b import B
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -58,6 +59,10 @@ if TYPE_CHECKING:
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
+
+# NOTE: contrarily to all the other builtin types, for W_Object, W_Type and
+# W_Dynamic we cannot use @B.builtin_type, because of bootstrapping issues.
+# See also the section "Initial setup of the 'builtins' module"
 
 class W_Object:
     """
@@ -257,11 +262,6 @@ class W_Type(W_Object):
         return False
 
 
-W_Object._w = W_Type(FQN('builtins::object'), W_Object)
-W_Object.__spy_members__ = {}
-W_Type._w = W_Type(FQN('builtins::type'), W_Type)
-W_Type.__spy_members__ = {}
-
 # The <dynamic> type
 # ===================
 #
@@ -297,13 +297,23 @@ W_Type.__spy_members__ = {}
 # it's equivalent to W_Object, but it is recognized by @builtin_func to
 # generate the "correct" w_functype signature.
 
-w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object) # this is B.w_dynamic
 W_Dynamic = Annotated[W_Object, 'W_Dynamic']
 
 
-# Other types
-# ============
+# Initial setup of the 'builtins' module
+# ======================================
 
+W_Object._w = W_Type(FQN('builtins::object'), W_Object)
+W_Type._w = W_Type(FQN('builtins::type'), W_Type)
+w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object)
+
+B.add('object', W_Object._w)
+B.add('type', W_Type._w)
+B.add('dynamic', w_DynamicType)
+
+
+# helpers
+# =======
 
 def make_metaclass(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
