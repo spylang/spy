@@ -9,8 +9,8 @@ from spy.location import Loc
 from spy import libspy
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
-from spy.vm.object import W_Object, W_Type, W_Dynamic
-from spy.vm.primitive import W_F64, W_I32, W_Bool
+from spy.vm.object import W_Object, W_Type
+from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
@@ -25,6 +25,7 @@ from spy.vm.modules.types import TYPES, W_TypeDef
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
+
 
 class SPyVM:
     """

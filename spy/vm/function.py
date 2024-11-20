@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN, NSPart
-from spy.vm.primitive import W_Void
 from spy.vm.object import W_Object, W_Type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -230,9 +229,8 @@ class W_BuiltinFunc(W_Func):
         return f"<spy function '{self.fqn}' (builtin)>"
 
     def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
-        # we cannot import B due to circular imports, let's fake it
-        B_w_Void = W_Void._w
+        from spy.vm.b import B
         w_res = self._pyfunc(vm, *args_w)
-        if w_res is None and self.w_functype.w_restype is B_w_Void:
+        if w_res is None and self.w_functype.w_restype is B.w_void:
             return vm.wrap(None)
         return w_res

@@ -44,19 +44,24 @@ For simple cases, SPy app-level types are instances of W_Type, which is
 basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
-from typing import (TYPE_CHECKING, ClassVar, Type, Any, Annotated, Optional,
-                    Union)
+import typing
+from typing import TYPE_CHECKING, ClassVar, Type, Any, Optional, Union
 from spy.fqn import FQN
+from spy.vm.b import B
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.primitive import W_Void
+    from spy.vm.primitive import W_Void, W_Dynamic
     from spy.vm.str import W_Str
     from spy.vm.list import W_List
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
+
+# NOTE: contrarily to all the other builtin types, for W_Object and W_Type we
+# cannot use @B.builtin_type, because of bootstrapping issues.  See also the
+# section "Initial setup of the 'builtins' module"
 
 class W_Object:
     """
@@ -193,13 +198,22 @@ class W_Type(W_Object):
         assert issubclass(pyclass, W_Object)
         self.fqn = fqn
         self.pyclass = pyclass
+        # setup __spy_members__
+        pyclass.__spy_members__ = {}
+        for field, t in pyclass.__annotations__.items():
+            member = Member.from_annotation_maybe(t)
+            if member is not None:
+                member.field = field
+                member.w_type = typing.get_args(t)[0]._w
+                pyclass.__spy_members__[member.name] = member
+
 
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
     def w_base(self) -> Union['W_Type', 'W_Void']:
-        from spy.vm.primitive import W_Void
-        if self is W_Object._w or self is w_DynamicType:
-            return W_Void._w_singleton  # this is B.w_None
+        from spy.vm.b import B
+        if self is B.w_object or self is B.w_dynamic:
+            return B.w_None
         basecls = self.pyclass.__base__
         assert issubclass(basecls, W_Object)
         assert isinstance(basecls._w, W_Type)
@@ -218,58 +232,14 @@ class W_Type(W_Object):
         return False
 
 
-W_Object._w = W_Type(FQN('builtins::object'), W_Object)
-W_Object.__spy_members__ = {}
-W_Type._w = W_Type(FQN('builtins::type'), W_Type)
-W_Type.__spy_members__ = {}
-
-# The <dynamic> type
-# ===================
-#
-# <dynamic> is special:
-#
-# - it's not a real type, in the sense that you cannot have an instance whose
-#   type is `dynamic`
-#
-# - every class is considered to be a subclass of <dynamic>
-#
-# - conversion from T to <dynamic> always succeeds (like from T to <object>)
-#
-# - conversion from <dynamic> to T is always possible but it might fail at
-#   runtime (like from <object> to T)
-#
-# From some point of view, <dynamic> is the twin of <object>, because it acts
-# as if it were at the root of the type hierarchy. The biggest difference is
-# how operators are dispatched: operations on <object> almost never succeeds,
-# while operations on <dynamic> are dispatched to the actual dynamic
-# types. For example:
-#
-#    x: object = 1
-#    y: dynamic = 2
-#    z: dynamic = 'hello'
-#
-#    x + 1 # compile-time error: cannot do `<object> + <i32>`
-#    y + 1 # succeeds, but the dispatch is done at runtime
-#    z + 1 # runtime error: cannot do `<i32> + <str>`
-#
-# Since it's a compile-time only concept, it doesn't have a corresponding
-# W_Dynamic interp-level class. However, we still provide W_Dynamic as an
-# annotated version of W_Object: from the mypy static typing point of view,
-# it's equivalent to W_Object, but it is recognized by @builtin_func to
-# generate the "correct" w_functype signature.
-
-w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object) # this is B.w_dynamic
-W_Dynamic = Annotated[W_Object, 'W_Dynamic']
-
-
-# Other types
-# ============
+# helpers
+# =======
 
 class Member:
     """
     Represent a property of a W_ class. Use it like this:
 
-    @spytype('MyClass')
+    @builtin_type('MyClass')
     class W_MyClass(W_Object):
         w_x: Annotated[W_I32, Member('x')]
 
@@ -277,22 +247,21 @@ class Member:
     the interp-level attribute "w_x".
     """
     name: str
-    field: str      # set later by @spytype
-    w_type: W_Type  # set later by @spytype
+    field: str        # set later by W_Type.__init__
+    w_type: 'W_Type'  # set later by W_Type.__init__
 
     def __init__(self, name: str) -> None:
         self.name = name
 
-
-def _get_member_maybe(t: Any) -> Optional[Member]:
-    """
-    Return the Member instance found in the annotation metadata, if any.
-    """
-    for meta in getattr(t, '__metadata__', []):
-        if isinstance(meta, Member):
-            return meta
-    return None
-
+    @staticmethod
+    def from_annotation_maybe(t: Any) -> Optional['Member']:
+        """
+        Return the Member instance found in the annotation metadata, if any.
+        """
+        for meta in getattr(t, '__metadata__', []):
+            if isinstance(meta, Member):
+                return meta
+        return None
 
 def make_metaclass(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
@@ -388,10 +357,20 @@ def synthesize_meta_op_CALL(fqn: FQN, pyclass: Type[W_Object]) -> Any:
     w_spy_new = pyclass.w_spy_new
 
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                     w_opargs: W_Dynamic) -> W_OpImpl:
+                     w_opargs: 'W_Dynamic') -> W_OpImpl:
         fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
         # manually apply the @builtin_func decorator to the spy_new function
         w_spyfunc = builtin_func(fqn, '__new__')(w_spy_new)
         return W_OpImpl(w_spyfunc)
 
     return meta_op_CALL
+
+
+# Initial setup of the 'builtins' module
+# ======================================
+
+W_Object._w = W_Type(FQN('builtins::object'), W_Object)
+W_Type._w = W_Type(FQN('builtins::type'), W_Type)
+
+B.add('object', W_Object._w)
+B.add('type', W_Type._w)

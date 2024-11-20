@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING, Any
 from spy.llwasm import LLWasmInstance
-from spy.vm.object import W_Object, W_Type, W_Dynamic
+from spy.vm.b import B
+from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_I32, W_Dynamic
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -25,7 +26,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
 
 
 
-@builtin_type('builtins', 'str')
+@B.builtin_type('str')
 class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.

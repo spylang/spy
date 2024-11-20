@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Literal, no_type_check
-from spy.vm.primitive import W_Void
+from spy.vm.primitive import W_Dynamic, W_Void
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type, W_Dynamic
+from spy.vm.object import W_Object, W_Type
 from spy.vm.module import W_Module
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func

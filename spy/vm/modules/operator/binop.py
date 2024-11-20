@@ -1,7 +1,8 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
-from spy.vm.object import W_Dynamic, W_Type
+from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.primitive import W_Dynamic
 from . import OP
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:

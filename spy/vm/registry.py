@@ -3,9 +3,10 @@ from types import FunctionType
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN, QUALIFIERS
-from spy.vm.function import W_FuncType, W_BuiltinFunc
-from spy.vm.builtin import builtin_func, builtin_type
-from spy.vm.object import W_Object
+
+if TYPE_CHECKING:
+    from spy.vm.object import W_Object
+    from spy.vm.function import W_BuiltinFunc
 
 class ModuleRegistry:
     """
@@ -14,14 +15,14 @@ class ModuleRegistry:
     At startup, the `vm` will create a W_Module out of it.
     """
     fqn: FQN
-    content: list[tuple[FQN, W_Object]]
+    content: list[tuple[FQN, 'W_Object']]
 
     def __init__(self, modname: str) -> None:
         self.fqn = FQN(modname)
         self.content = []
 
     def __repr__(self) -> str:
-        return f"<ModuleRegistry '{self.modname}'>"
+        return f"<ModuleRegistry '{self.fqn}'>"
 
     if TYPE_CHECKING:
         def __getattr__(self, attr: str) -> Any:
@@ -38,9 +39,11 @@ class ModuleRegistry:
             but well...)
             """
 
-    def add(self, attr: str, w_obj: W_Object) -> None:
+    def add(self, attr: str, w_obj: 'W_Object') -> None:
         fqn = self.fqn.join(attr)
-        setattr(self, f'w_{attr}', w_obj)
+        attr = f'w_{attr}'
+        assert not hasattr(self, attr)
+        setattr(self, attr, w_obj)
         self.content.append((fqn, w_obj))
 
     def builtin_type(self,
@@ -52,16 +55,17 @@ class ModuleRegistry:
 
         In practice:
             @MOD.spytype('Foo')
-            class W_Foo(W_Object):
+            class W_Foo('W_Object'):
                 ...
 
         is equivalent to:
             @spytype('Foo')
-            class W_Foo(W_Object):
+            class W_Foo('W_Object'):
                 ...
             MOD.add('Foo', W_Foo._w)
         """
-        def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
+        from spy.vm.builtin import builtin_type
+        def decorator(pyclass: Type['W_Object']) -> Type['W_Object']:
             W_class = builtin_type(self.fqn, typename, qualifiers)(pyclass)
             self.add(typename, W_class._w)
             return W_class
@@ -89,6 +93,7 @@ class ModuleRegistry:
         'qualifiers' is allowed only if you also explicitly specify
         'funcname'.
         """
+        from spy.vm.builtin import builtin_func
         if isinstance(pyfunc_or_funcname, FunctionType):
             pyfunc = pyfunc_or_funcname
             funcname = None
@@ -102,7 +107,7 @@ class ModuleRegistry:
             funcname = None
             assert qualifiers is None
 
-        def decorator(pyfunc: Callable) -> W_BuiltinFunc:
+        def decorator(pyfunc: Callable) -> 'W_BuiltinFunc':
             namespace = self.fqn
             # apply the @builtin_func decorator to pyfunc
             w_func = builtin_func(

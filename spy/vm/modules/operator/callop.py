@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type, W_Dynamic
+from spy.vm.object import W_Object, W_Type
+from spy.vm.primitive import W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List

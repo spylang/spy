@@ -1,12 +1,11 @@
 """
 First half of the `builtins` module.
 
-This contains the definition of the BUILTINS registry, and registers the
-"basic" builtins, i.e., all the primitive types and constants which are used
-everywhere.
+This contains the empty definition of the BUILTINS registry. Additionally, it
+also contains an alias B, because it's shorter to type than BUILTINS
 
-Additionally, it also contains an alias B, because it's shorter to type than
-BUILTINS
+Many of the fundamental types are registered using @B.builtin_type and @B.add
+inside vm/object.py, vm/primitive.py, etc.
 
 The rest of the builtins are registered in vm/modules/builtins.py, which is
 the proper place where to put modules.
@@ -15,28 +14,7 @@ This strange setup is needed to avoid circular imports, since B.* is needed
 all over the place and we need to import it very early.
 """
 
-from spy.vm.primitive import W_F64, W_I32, W_Bool, W_NotImplementedType, W_Void
 from spy.vm.registry import ModuleRegistry
-from spy.vm.object import (W_Object, W_Type, w_DynamicType)
-from spy.vm.str import W_Str
-from spy.vm.list import W_List
-from spy.vm.tuple import W_Tuple
-
 
 BUILTINS = ModuleRegistry('builtins')
 B = BUILTINS
-
-B.add('object', W_Object._w)
-B.add('type', W_Type._w)
-B.add('void', W_Void._w)
-B.add('dynamic', w_DynamicType)
-B.add('i32', W_I32._w)
-B.add('f64', W_F64._w)
-B.add('bool', W_Bool._w)
-B.add('str', W_Str._w)
-B.add('list', W_List._w)
-B.add('tuple', W_Tuple._w)
-B.add('None', W_Void._w_singleton)
-B.add('True', W_Bool._w_singleton_True)
-B.add('False', W_Bool._w_singleton_False)
-B.add('NotImplemented', W_NotImplementedType._w_singleton)

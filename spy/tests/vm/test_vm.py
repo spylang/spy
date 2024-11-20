@@ -1,6 +1,5 @@
 import fixedint
 import pytest
-from spy.vm.builtin import builtin_type
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
@@ -10,6 +9,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
+from spy.vm.builtin import builtin_type
 from spy.tests.support import expect_errors
 
 class TestVM:
@@ -71,8 +71,7 @@ class TestVM:
         class W_B(W_A):
             pass
         #
-        w_None = W_Void._w_singleton
-        assert W_Object._w.w_base is w_None
+        assert W_Object._w.w_base is B.w_None
         assert W_A._w.w_base is W_Object._w
         assert W_B._w.w_base is W_A._w
 

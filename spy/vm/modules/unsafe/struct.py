@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar
+from typing import TYPE_CHECKING, Any, Optional, Type, ClassVar
 from dataclasses import dataclass
 import fixedint
 from spy.fqn import FQN
@@ -56,8 +56,6 @@ class W_Struct(W_Object):
 
 
 def make_struct_type(vm: 'SPyVM', fqn: FQN, fields: FIELDS_T) -> W_Type:
-    size, layout = calc_layout(fields)
-
     class W_MyStruct(W_Struct):
         pass
 

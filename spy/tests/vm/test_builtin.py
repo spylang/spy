@@ -1,7 +1,9 @@
 import pytest
-from spy.vm.primitive import W_I32
+from typing import Annotated
+from spy.vm.object import W_Object
+from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.vm import SPyVM
-from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Dynamic, W_Str
+from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Str
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.vm.builtin import builtin_func, functype_from_sig
@@ -13,6 +15,13 @@ class TestBuiltin:
             return W_Str(vm, 'this is never called')
         w_functype = functype_from_sig(foo, 'red')
         assert w_functype == W_FuncType.parse('def(x: i32) -> str')
+
+    def test_annotated_type(self):
+        W_MyType = Annotated[W_Object, B.w_i32]
+        def foo(vm: 'SPyVM', w_x: W_MyType) -> None:
+            pass
+        w_functype = functype_from_sig(foo, 'red')
+        assert w_functype == W_FuncType.parse('def(x: i32) -> void')
 
     def test_builtin_func(self):
         vm = SPyVM()
@@ -40,12 +49,16 @@ class TestBuiltin:
             def w_foo(w_x: W_I32) -> W_I32:  # type: ignore
                 pass
 
-        with pytest.raises(ValueError, match="Invalid param: 'x: int'"):
+        with pytest.raises(
+                ValueError,
+                match="Invalid @builtin_func annotation: <class 'int'>"):
             @builtin_func('mymod')
             def w_foo(vm: 'SPyVM', x: int) -> W_I32:  # type: ignore
                 pass
 
-        with pytest.raises(ValueError, match="Invalid return type"):
+        with pytest.raises(
+                ValueError,
+                match="Invalid @builtin_func annotation: <class 'int'>"):
             @builtin_func('mymod')
             def w_foo(vm: 'SPyVM') -> int:  # type: ignore
                 pass

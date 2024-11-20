@@ -1,14 +1,12 @@
-from typing import ClassVar, TYPE_CHECKING
+from typing import Annotated, ClassVar, TYPE_CHECKING
 import fixedint
-from spy.vm.object import W_Object
-
+from spy.fqn import FQN
+from spy.vm.object import W_Object, W_Type
+from spy.vm.b import B
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-# NOTE: we apply @builtin_type later, at the end of the file, to avoid circular
-# imports
-
-
+@B.builtin_type('void')
 class W_Void(W_Object):
     """
     Equivalent of Python's NoneType.
@@ -16,9 +14,6 @@ class W_Void(W_Object):
     This is a singleton: there should be only one instance of this class,
     which is w_None.
     """
-
-    _w_singleton: ClassVar['W_Void']
-
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
         # create additional instances of W_Void
@@ -30,9 +25,10 @@ class W_Void(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> None:
         return None
 
-W_Void._w_singleton = W_Void.__new__(W_Void)
+B.add('None', W_Void.__new__(W_Void))
 
 
+@B.builtin_type('i32')
 class W_I32(W_Object):
     value: fixedint.Int32
 
@@ -47,6 +43,7 @@ class W_I32(W_Object):
         return self.value
 
 
+@B.builtin_type('f64')
 class W_F64(W_Object):
     value: float
 
@@ -61,11 +58,9 @@ class W_F64(W_Object):
         return self.value
 
 
+@B.builtin_type('bool')
 class W_Bool(W_Object):
     value: bool
-    #
-    _w_singleton_True: ClassVar['W_Bool']
-    _w_singleton_False: ClassVar['W_Bool']
 
     def __init__(self, value: bool) -> None:
         # this is just a sanity check: we don't want people to be able to
@@ -86,32 +81,59 @@ class W_Bool(W_Object):
 
     def not_(self, vm: 'SPyVM') -> 'W_Bool':
         if self.value:
-            return W_Bool._w_singleton_False
+            return B.w_False
         else:
-            return W_Bool._w_singleton_True
+            return B.w_True
 
-W_Bool._w_singleton_True = W_Bool._make_singleton(True)
-W_Bool._w_singleton_False = W_Bool._make_singleton(False)
+B.add('True', W_Bool._make_singleton(True))
+B.add('False', W_Bool._make_singleton(False))
 
 
+@B.builtin_type('NotImplementedType') # XXX it should go to types?
 class W_NotImplementedType(W_Object):
-    _w_singleton: ClassVar['W_NotImplementedType']
 
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
         # create additional instances
         raise Exception("You cannot instantiate W_NotImplementedType")
 
-W_NotImplementedType._w_singleton = (
-    W_NotImplementedType.__new__(W_NotImplementedType)
-)
+B.add('NotImplemented', W_NotImplementedType.__new__(W_NotImplementedType))
 
 
-# manually apply @builtin_type to all the classes above. This is done here
-# to avoid circular imports between object.py, builtin.py and primitive.py
-from spy.vm.builtin import builtin_type
-builtin_type('builtins', 'void')(W_Void)
-builtin_type('builtins', 'i32')(W_I32)
-builtin_type('builtins', 'f64')(W_F64)
-builtin_type('builtins', 'bool')(W_Bool)
-builtin_type('builtins', 'NotImplementedType')(W_NotImplementedType)
+
+# The <dynamic> type
+# ===================
+#
+# <dynamic> is special:
+#
+# - it's not a real type, in the sense that you cannot have an instance whose
+#   type is `dynamic`
+#
+# - every class is considered to be a subclass of <dynamic>
+#
+# - conversion from T to <dynamic> always succeeds (like from T to <object>)
+#
+# - conversion from <dynamic> to T is always possible but it might fail at
+#   runtime (like from <object> to T)
+#
+# From some point of view, <dynamic> is the twin of <object>, because it acts
+# as if it were at the root of the type hierarchy. The biggest difference is
+# how operators are dispatched: operations on <object> almost never succeeds,
+# while operations on <dynamic> are dispatched to the actual dynamic
+# types. For example:
+#
+#    x: object = 1
+#    y: dynamic = 2
+#    z: dynamic = 'hello'
+#
+#    x + 1 # compile-time error: cannot do `<object> + <i32>`
+#    y + 1 # succeeds, but the dispatch is done at runtime
+#    z + 1 # runtime error: cannot do `<i32> + <str>`
+#
+# Since it's a compile-time only concept, W_Dynamic is not a pyclass, but it's
+# just an annotated version of W_Object, which @builtin_func knows how to deal
+# with.
+
+w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object)
+B.add('dynamic', w_DynamicType)
+W_Dynamic = Annotated[W_Object, B.w_dynamic]
