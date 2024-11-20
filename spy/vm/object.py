@@ -236,9 +236,9 @@ class W_Type(W_Object):
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
     def w_base(self) -> Union['W_Type', 'W_Void']:
-        from spy.vm.primitive import W_Void
+        from spy.vm.b import B
         if self is W_Object._w or self is w_DynamicType:
-            return W_Void._w_singleton  # this is B.w_None
+            return B.w_None
         basecls = self.pyclass.__base__
         assert issubclass(basecls, W_Object)
         assert isinstance(basecls._w, W_Type)
