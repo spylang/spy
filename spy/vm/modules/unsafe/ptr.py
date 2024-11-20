@@ -145,40 +145,24 @@ class W_Ptr(W_Object):
             )  # type: ignore
         return W_OpImpl(w_ptr_ne)
 
+    @staticmethod
+    def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
+                   wop_attr: W_OpArg) -> W_OpImpl:
+        return W_Ptr._op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
+    @staticmethod
+    def op_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                   wop_v: W_OpArg) -> W_OpImpl:
+        return W_Ptr._op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
-@UNSAFE.builtin_func(color='blue')
-def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    from .struct import W_StructType
-    T = Annotated[W_Object, w_T]
-
-    ITEMSIZE = sizeof(w_T)
-
-    class W_MyPtr(W_Ptr):
-        __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
-
-        @staticmethod
-        def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
-                       wop_attr: W_OpArg) -> W_OpImpl:
-            return op_ATTR('get', vm, wop_ptr, wop_attr, None)
-
-        @staticmethod
-        def op_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                       wop_v: W_OpArg) -> W_OpImpl:
-            return op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
-
-
-    W_MyPtr.__name__ = W_MyPtr.__qualname__
-
-    fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
-    w_ptrtype = W_PtrType(fqn, W_MyPtr, w_T)
-    W_MyPtr._w = w_ptrtype # poor's man @builtin_type
-
-    def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                wop_v: Optional[W_OpArg]) -> W_OpImpl:
+    def _op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                 wop_v: Optional[W_OpArg]) -> W_OpImpl:
         """
         Implement both op_GETATTR and op_SETATTR.
         """
+        from .struct import W_StructType
+        w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
+        w_T = w_ptrtype.w_itemtype
         # attributes are supported only on ptr-to-structs
         if not w_T.is_struct(vm):
             return W_OpImpl.NULL
@@ -204,6 +188,20 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
+
+
+
+@UNSAFE.builtin_func(color='blue')
+def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+
+    class W_MyPtr(W_Ptr):
+        __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
+
+    W_MyPtr.__name__ = W_MyPtr.__qualname__
+
+    fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
+    w_ptrtype = W_PtrType(fqn, W_MyPtr, w_T)
+    W_MyPtr._w = w_ptrtype # poor's man @builtin_type
 
     return w_ptrtype
 
