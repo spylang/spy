@@ -14,7 +14,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.types import W_TypeDef
-from spy.vm.modules.unsafe.ptr import is_ptr_type
+from spy.vm.modules.unsafe.ptr import W_PtrType
 
 @dataclass
 class WasmPtr:
@@ -83,7 +83,7 @@ class WasmFuncWrapper:
         elif w_type is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
             return ll_spy_Str_new(self.ll, pyval)
-        elif is_ptr_type(w_type):
+        elif isinstance(w_type, W_PtrType):
             assert isinstance(pyval, WasmPtr)
             return (pyval.addr, pyval.length)
         else:
@@ -133,7 +133,7 @@ class WasmFuncWrapper:
             length = self.ll.mem.read_i32(addr)
             buf = self.ll.mem.read(addr + 4, length)
             return buf
-        elif is_ptr_type(w_type):
+        elif isinstance(w_type, W_PtrType):
             # this assumes that we compiled libspy with SPY_DEBUG:
             #   - checked ptrs are represented as a struct { addr; length }
             #   - res contains a a list [addr, length] (because of WASM

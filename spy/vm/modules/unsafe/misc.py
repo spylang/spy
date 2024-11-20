@@ -3,7 +3,7 @@ from spy.vm.object import W_Type
 
 def sizeof(w_T: W_Type) -> int:
     from .struct import W_StructType
-    from .ptr import is_ptr_type
+    from .ptr import W_PtrType
 
     if w_T is B.w_i32:
         return 4
@@ -11,7 +11,7 @@ def sizeof(w_T: W_Type) -> int:
         return 8
     elif isinstance(w_T, W_StructType):
         return w_T.size
-    elif is_ptr_type(w_T):
+    elif isinstance(w_T, W_PtrType):
         # XXX what is the right size of pointers? For wasm32 is 4 of course,
         # but for native it might be 8. Does it mean that we need to
         # preemptively choose the target platform BEFORE redshifting?

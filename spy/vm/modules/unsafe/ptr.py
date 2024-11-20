@@ -13,9 +13,6 @@ from .misc import sizeof
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-def is_ptr_type(w_T: W_Type) -> bool:
-    return issubclass(w_T.pyclass, W_Ptr)
-
 
 class W_PtrType(W_Type):
     w_itemtype: W_Type
@@ -31,20 +28,26 @@ class W_Ptr(W_Object):
 
     # XXX: this works only if we target 32bit platforms such as wasm32, but we
     # need to think of a more general solution
+    w_ptrtype: W_PtrType
     addr: fixedint.Int32
     length: fixedint.Int32 # how many items in the array
 
-    def __init__(self, addr: int | fixedint.Int32,
+    def __init__(self, w_ptrtype: W_PtrType,
+                 addr: int | fixedint.Int32,
                  length: int | fixedint.Int32) -> None:
         assert type(addr) in (int, fixedint.Int32)
         assert type(length) in (int, fixedint.Int32)
         assert length >= 1
+        self.w_ptrtype = w_ptrtype
         self.addr = fixedint.Int32(addr)
         self.length = fixedint.Int32(length)
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
         return f'{clsname}(0x{self.addr:x}, length={self.length})'
+
+    def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
+        return self.w_ptrtype
 
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg,
@@ -193,10 +196,9 @@ class W_Ptr(W_Object):
 
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-
+    T = Annotated[W_Object, w_T]
     class W_MyPtr(W_Ptr):
         __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
-
     W_MyPtr.__name__ = W_MyPtr.__qualname__
 
     fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
@@ -231,8 +233,8 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
         if by == 'byref':
-            assert issubclass(w_T.pyclass, W_Ptr)
-            return w_T.pyclass(addr, 1)
+            assert isinstance(w_T, W_PtrType)
+            return W_Ptr(w_T, addr, 1)
         else:
             return vm.call_generic(
                 UNSAFE.w_mem_read,
