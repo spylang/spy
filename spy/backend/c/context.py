@@ -7,7 +7,7 @@ from spy.vm.function import W_FuncType, W_Func
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.jsffi import JSFFI
-from spy.vm.modules.unsafe import UNSAFE
+from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.textbuilder import TextBuilder
 
@@ -79,7 +79,7 @@ class Context:
             w_type = w_type.w_origintype
         if w_type in self._d:
             return self._d[w_type]
-        elif self.vm.issubclass(w_type, UNSAFE.w_ptr):
+        elif isinstance(w_type, W_PtrType):
             return self.new_ptr_type(w_type)
         elif isinstance(w_type, W_StructType):
             return self.new_struct_type(w_type)
@@ -99,11 +99,11 @@ class Context:
         ]
         return C_Function(name, c_params, c_restype)
 
-    def new_ptr_type(self, w_ptrtype: W_Type) -> C_Type:
+    def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
         fqn = self.vm.reverse_lookup_global(w_ptrtype)
         assert fqn is not None
         c_ptrtype = C_Type(fqn.c_name)
-        w_itemtype = w_ptrtype.pyclass.w_itemtype  # type: ignore
+        w_itemtype = w_ptrtype.w_itemtype
         c_itemtype = self.w2c(w_itemtype)
         self.out_types_decl.wl(f'typedef struct {c_ptrtype} {c_ptrtype};')
         self.out_types_def.wl(f"SPY_DEFINE_PTR_TYPE({c_ptrtype}, {c_itemtype})")

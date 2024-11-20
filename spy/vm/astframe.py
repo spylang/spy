@@ -12,7 +12,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
-from spy.vm.modules.unsafe.struct import make_struct_type
+from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.typechecker import TypeChecker
 from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
@@ -160,7 +160,7 @@ class ASTFrame:
         assert classdef.is_struct, 'only structs are supported for now'
         fqn = self.w_func.fqn.join(classdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
-        w_struct_type = make_struct_type(self.vm, fqn, d)
+        w_struct_type = W_StructType(fqn, d)
         w_meta_type = self.vm.dynamic_type(w_struct_type)
         self.t.lazy_check_ClassDef(classdef, w_meta_type)
         self.store_local(classdef.name, w_struct_type)

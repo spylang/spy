@@ -20,14 +20,13 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def __init__(self, fqn: FQN, pyclass: Type[W_Object],
-                 fields: FIELDS_T) -> None:
-        super().__init__(fqn, pyclass)
+    def __init__(self, fqn: FQN, fields: FIELDS_T) -> None:
+        super().__init__(fqn, W_Struct)
         self.fields = fields
         self.offsets, self.size = calc_layout(fields)
 
     def __repr__(self) -> str:
-        return f"<spy type struct '{self.fqn}'>"
+        return f"<spy type '{self.fqn}' (struct)>"
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return True
@@ -47,20 +46,6 @@ def calc_layout(fields: FIELDS_T) -> tuple[OFFSETS_T, int]:
     return offsets, size
 
 
-# XXX note that we don't call @spytype, because it's annoying to pass a custom
-# metaclass. But it's fine for now because we don't need/want many
-# functionalities: in particolar, we don't want to *instantiate* a struct: we
-# just want to have a w_type to describe the fields, to pass to gc_alloc
+@UNSAFE.builtin_type('struct')
 class W_Struct(W_Object):
     pass
-
-
-def make_struct_type(vm: 'SPyVM', fqn: FQN, fields: FIELDS_T) -> W_Type:
-    class W_MyStruct(W_Struct):
-        pass
-
-    name = fqn.symbol_name
-    W_MyStruct.__name__ = W_MyStruct.__qualname__ = f'W_{name}'
-    w_struct_type = W_StructType(fqn, W_MyStruct, fields)
-    W_MyStruct._w = w_struct_type # poor's man @spytype
-    return w_struct_type
