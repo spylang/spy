@@ -197,7 +197,6 @@ class TestVM:
     def test_call_function_TypeError(self):
         vm = SPyVM()
         w_abs = B.w_abs
-        #import pdb;pdb.set_trace()
         w_x = vm.wrap('hello')
         msg = 'Invalid cast. Expected `i32`, got `str`'
         with pytest.raises(SPyTypeError, match=msg):
