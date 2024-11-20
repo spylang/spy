@@ -1,6 +1,7 @@
 from typing import ClassVar, TYPE_CHECKING
 import fixedint
 from spy.vm.object import W_Object
+from spy.vm.b import B
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -115,3 +116,12 @@ builtin_type('builtins', 'i32')(W_I32)
 builtin_type('builtins', 'f64')(W_F64)
 builtin_type('builtins', 'bool')(W_Bool)
 builtin_type('builtins', 'NotImplementedType')(W_NotImplementedType)
+
+B.add('i32', W_I32._w)
+B.add('f64', W_F64._w)
+B.add('bool', W_Bool._w)
+B.add('NotImplemented', W_NotImplementedType._w_singleton)
+B.add('void', W_Void._w)
+B.add('None', W_Void._w_singleton)
+B.add('True', W_Bool._w_singleton_True)
+B.add('False', W_Bool._w_singleton_False)

@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any
 from spy.llwasm import LLWasmInstance
+from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, W_Dynamic
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -96,3 +97,5 @@ class W_Str(W_Object):
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
     return vm.wrap(str(i))  # type: ignore
+
+B.add('str', W_Str._w)

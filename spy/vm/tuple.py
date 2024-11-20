@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Any, no_type_check, Optional
+from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.object import (W_Object, W_Type, W_Dynamic)
 from spy.vm.builtin import builtin_func, builtin_type
@@ -38,3 +39,6 @@ def w_tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
     i = vm.unwrap_i32(w_i)
     # XXX bound check?
     return w_tup.items_w[i]
+
+
+B.add('tuple', W_Tuple._w)

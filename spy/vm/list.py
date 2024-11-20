@@ -1,5 +1,6 @@
 from typing import (TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar,
                     TypeVar, Generic)
+from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.object import (W_Object, W_Type, W_Dynamic)
 from spy.vm.builtin import builtin_func, builtin_type
@@ -179,3 +180,7 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
 
     W_MyList.__name__ = W_MyList.__qualname__
     return W_MyList
+
+
+
+B.add('list', W_List._w)

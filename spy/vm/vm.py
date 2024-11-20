@@ -26,6 +26,7 @@ from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
 
+
 class SPyVM:
     """
     A Virtual Machine to execute SPy code.
