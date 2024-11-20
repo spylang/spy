@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar, Optional, no_type_check
+from typing import TYPE_CHECKING, ClassVar, Optional, Annotated
 import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import FQN
@@ -49,7 +49,8 @@ class W_Ptr(W_Object):
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     from .struct import W_StructType
-    T = w_T.pyclass
+    T = Annotated[W_Object, w_T]
+
     ITEMSIZE = sizeof(w_T)
 
     @builtin_type('unsafe', 'ptr', [w_T.fqn]) # unsafe::ptr[i32]
@@ -131,7 +132,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
-    @no_type_check
     @builtin_func(W_MyPtr.type_fqn, 'load')
     def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
@@ -148,7 +148,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [vm.wrap(addr)]
         )
 
-    @no_type_check
     @builtin_func(W_MyPtr.type_fqn, 'store')
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
@@ -164,23 +163,21 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             UNSAFE.w_mem_write,
             [w_T],
             [vm.wrap(addr), w_v]
-        )
+        )  # type: ignore
 
-    @no_type_check
     @builtin_func(W_MyPtr.type_fqn, 'eq')
     def w_ptr_eq(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
         return vm.wrap(
             w_ptr1.addr == w_ptr2.addr and
             w_ptr1.length == w_ptr1.length
-        )
+        )  # type: ignore
 
-    @no_type_check
     @builtin_func(W_MyPtr.type_fqn, 'ne')
     def w_ptr_ne(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
         return vm.wrap(
             w_ptr1.addr != w_ptr2.addr or
             w_ptr1.length != w_ptr1.length
-        )
+        )  # type: ignore
 
 
     w_ptrtype = vm.wrap(W_MyPtr)
@@ -198,12 +195,11 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     else:
         by = 'byval'
 
-    T = w_T.pyclass  # W_I32
+    T = Annotated[W_Object, w_T]
 
     # e.g.:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
-    @no_type_check
     @builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
                      w_offset: W_I32) -> T:
@@ -225,12 +221,11 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
 @UNSAFE.builtin_func(color='blue')
 def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    T = w_T.pyclass        # W_I32
+    T = Annotated[W_Object, w_T]
 
-    @no_type_check
     @builtin_func('unsafe', 'setfield', [w_T.fqn])  # unsafe::setfield[i32]
     def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
-                     w_offset: W_I32, w_val: T) -> W_Void:
+                     w_offset: W_I32, w_val: T) -> None:
         """
         NOTE: w_attr is ignored here, but it's used by the C backend
         """

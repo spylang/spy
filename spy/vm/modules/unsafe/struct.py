@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, no_type_check, Optional, Type, ClassVar
+from typing import TYPE_CHECKING, Any, Optional, Type, ClassVar
 from dataclasses import dataclass
 import fixedint
 from spy.fqn import FQN
