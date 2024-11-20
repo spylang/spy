@@ -16,6 +16,15 @@ if TYPE_CHECKING:
 def is_ptr_type(w_T: W_Type) -> bool:
     return issubclass(w_T.pyclass, W_Ptr)
 
+
+class W_PtrType(W_Type):
+    w_itemtype: W_Type
+
+    def __init__(self, fqn: FQN, pyclass, w_itemtype: W_Type) -> None:
+        super().__init__(fqn, pyclass)
+        self.w_itemtype = w_itemtype
+
+
 @UNSAFE.builtin_type('ptr')
 class W_Ptr(W_Object):
     __spy_storage_category__ = 'value'
@@ -53,7 +62,6 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
     ITEMSIZE = sizeof(w_T)
 
-    @builtin_type('unsafe', 'ptr', [w_T.fqn]) # unsafe::ptr[i32]
     class W_MyPtr(W_Ptr):
         __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
         w_itemtype: ClassVar[W_Type] = w_T
@@ -101,6 +109,11 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
     W_MyPtr.__name__ = W_MyPtr.__qualname__
 
+    fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
+    w_ptrtype = W_PtrType(fqn, W_MyPtr, w_T)
+    W_MyPtr._w = w_ptrtype # poor's man @builtin_type
+
+
     def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                 wop_v: Optional[W_OpArg]) -> W_OpImpl:
         """
@@ -132,7 +145,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
-    @builtin_func(W_MyPtr.type_fqn, 'load')
+    @builtin_func(fqn, 'load')
     def w_ptr_load(vm: 'SPyVM', w_ptr: W_MyPtr, w_i: W_I32) -> T:
         base = w_ptr.addr
         length = w_ptr.length
@@ -148,7 +161,7 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [vm.wrap(addr)]
         )
 
-    @builtin_func(W_MyPtr.type_fqn, 'store')
+    @builtin_func(fqn, 'store')
     def w_ptr_store(vm: 'SPyVM', w_ptr: W_MyPtr,
                   w_i: W_I32, w_v: T) -> W_Void:
         base = w_ptr.addr
@@ -165,22 +178,20 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [vm.wrap(addr), w_v]
         )  # type: ignore
 
-    @builtin_func(W_MyPtr.type_fqn, 'eq')
+    @builtin_func(fqn, 'eq')
     def w_ptr_eq(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
         return vm.wrap(
             w_ptr1.addr == w_ptr2.addr and
             w_ptr1.length == w_ptr1.length
         )  # type: ignore
 
-    @builtin_func(W_MyPtr.type_fqn, 'ne')
+    @builtin_func(fqn, 'ne')
     def w_ptr_ne(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
         return vm.wrap(
             w_ptr1.addr != w_ptr2.addr or
             w_ptr1.length != w_ptr1.length
         )  # type: ignore
 
-
-    w_ptrtype = vm.wrap(W_MyPtr)
     return w_ptrtype
 
 
