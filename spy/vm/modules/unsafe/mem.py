@@ -32,7 +32,7 @@ def w_gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
 @UNSAFE.builtin_func(color='blue')
 def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    T = w_T.pyclass
+    T = Annotated[W_Object, w_T]
 
     @no_type_check
     @builtin_func('unsafe', 'mem_read', [w_T.fqn])  # unsafe::mem_read[i32]
@@ -53,7 +53,7 @@ def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
 @UNSAFE.builtin_func(color='blue')
 def w_mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    T = w_T.pyclass
+    T = Annotated[W_Object, w_T]
 
     @no_type_check
     @builtin_func('unsafe', 'mem_write', [w_T.fqn])  # unsafe::mem_write[i32]
