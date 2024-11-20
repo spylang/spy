@@ -34,6 +34,8 @@ class Meta_W_List(type):
 
     def make_prebuilt(self, itemcls: Type[W_Object]) -> None:
         assert issubclass(itemcls, W_Object)
+        if itemcls.__name__ != 'W_OpArg':
+            import pdb;pdb.set_trace()
         if itemcls not in self.CACHE:
             W_MyList = _make_W_List(itemcls._w)
             self.CACHE[itemcls] = W_MyList

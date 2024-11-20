@@ -4,6 +4,7 @@ import pytest
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Type
+from spy.vm.opimpl import W_OpArg
 from spy.vm.list import W_List
 from spy.tests.support import CompilerTest, no_C
 
@@ -33,9 +34,9 @@ class TestList(CompilerTest):
             return list[T]
         """)
         w_make_list = mod.make_list.w_func
-        w_list_type = self.vm.call(w_make_list, [B.w_type])
+        w_list_type = self.vm.call(w_make_list, [W_OpArg._w])
         assert isinstance(w_list_type, W_Type)
-        assert w_list_type.pyclass is W_List[W_Type]
+        assert w_list_type.pyclass is W_List[W_OpArg]
         #
         w_list_f64a = self.vm.call(w_make_list, [B.w_f64])
         w_list_f64b = self.vm.call(w_make_list, [B.w_f64])

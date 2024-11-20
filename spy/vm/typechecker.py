@@ -18,8 +18,7 @@ from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
-W_List.make_prebuilt(W_OpArg)
+W_List.make_prebuilt(W_OpArg) # make it possible to use W_List[W_OpArg]
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
