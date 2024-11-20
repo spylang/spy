@@ -2,9 +2,16 @@
 
 import pytest
 from spy.errors import SPyPanicError
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.vm.b import B
+from spy.vm.modules.unsafe import UNSAFE
+from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
 
 class TestUnsafe(CompilerTest):
+
+    @only_interp
+    def test_ptrtype_repr(self):
+        w_ptrtype = self.vm.call(UNSAFE.w_make_ptr_type, [B.w_i32])
+        assert repr(w_ptrtype) == "<spy type 'unsafe::ptr[i32]'>"
 
     def test_gc_alloc(self):
         mod = self.compile(

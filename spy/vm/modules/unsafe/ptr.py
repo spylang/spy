@@ -14,7 +14,18 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+@UNSAFE.builtin_func(color='blue')
+def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+    fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
+    w_ptrtype = W_PtrType(fqn, W_PtrVal, w_T)
+    return w_ptrtype
+
+
 class W_PtrType(W_Type):
+    """
+    A specialized ptr type.
+    ptr[i32] -> W_PtrType(fqn, B.w_i32)
+    """
     w_itemtype: W_Type
 
     def __init__(self, fqn: FQN, pyclass, w_itemtype: W_Type) -> None:
@@ -22,8 +33,24 @@ class W_PtrType(W_Type):
         self.w_itemtype = w_itemtype
 
 
+
 @UNSAFE.builtin_type('ptr')
 class W_Ptr(W_Object):
+
+
+    def __init__(self):
+        raise Exception("You cannot instantiate W_Ptr, use W_PtrValue")
+
+    @staticmethod
+    def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg,
+                        wop_T: W_OpArg) -> W_OpImpl:
+        return W_OpImpl(w_make_ptr_type, [wop_T])
+
+
+class W_PtrVal(W_Ptr):
+    """
+    An actual ptr
+    """
     __spy_storage_category__ = 'value'
 
     # XXX: this works only if we target 32bit platforms such as wasm32, but we
@@ -49,10 +76,6 @@ class W_Ptr(W_Object):
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_ptrtype
 
-    @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg,
-                        wop_T: W_OpArg) -> W_OpImpl:
-        return W_OpImpl(w_make_ptr_type, [wop_T])
 
     def spy_unwrap(self, vm: 'SPyVM') -> 'W_Ptr':
         return self
@@ -69,13 +92,14 @@ class W_Ptr(W_Object):
 
     @staticmethod
     def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-        w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
+        w_ptrtype = W_PtrVal._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
+        PTR = Annotated[W_Ptr, w_ptrtype]
         T = Annotated[W_Object, w_T]
 
         @builtin_func(w_ptrtype.fqn, 'load')
-        def w_ptr_load_T(vm: 'SPyVM', w_ptr: W_Ptr, w_i: W_I32) -> T:
+        def w_ptr_load_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32) -> T:
             base = w_ptr.addr
             length = w_ptr.length
             i = vm.unwrap_i32(w_i)
@@ -94,13 +118,14 @@ class W_Ptr(W_Object):
     @staticmethod
     def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
                    wop_v: W_OpArg) -> W_OpImpl:
-        w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
+        w_ptrtype = W_PtrVal._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
+        PTR = Annotated[W_Ptr, w_ptrtype]
         T = Annotated[W_Object, w_T]
 
         @builtin_func(w_ptrtype.fqn, 'store')
-        def w_ptr_store_T(vm: 'SPyVM', w_ptr: W_Ptr, w_i: W_I32, w_v: T)-> None:
+        def w_ptr_store_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32, w_v: T)-> None:
             base = w_ptr.addr
             length = w_ptr.length
             i = vm.unwrap_i32(w_i)
@@ -122,10 +147,11 @@ class W_Ptr(W_Object):
         w_rtype = wop_r.w_static_type
         if w_ltype is not w_rtype:
             return W_OpImpl.NULL
-        w_ptrtype = W_Ptr._get_ptrtype(wop_l)
+        w_ptrtype = W_PtrVal._get_ptrtype(wop_l)
+        PTR = Annotated[W_Ptr, w_ptrtype]
 
         @builtin_func(w_ptrtype.fqn, 'eq')
-        def w_ptr_eq(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
+        def w_ptr_eq(vm: 'SPyVM', w_ptr1: PTR, w_ptr2: PTR) -> W_Bool:
             return vm.wrap(
                 w_ptr1.addr == w_ptr2.addr and
                 w_ptr1.length == w_ptr1.length
@@ -138,10 +164,11 @@ class W_Ptr(W_Object):
         w_rtype = wop_r.w_static_type
         if w_ltype is not w_rtype:
             return W_OpImpl.NULL
-        w_ptrtype = W_Ptr._get_ptrtype(wop_l)
+        w_ptrtype = W_PtrVal._get_ptrtype(wop_l)
+        PTR = Annotated[W_Ptr, w_ptrtype]
 
         @builtin_func(w_ptrtype.fqn, 'ne')
-        def w_ptr_ne(vm: 'SPyVM', w_ptr1: W_Ptr, w_ptr2: W_Ptr) -> W_Bool:
+        def w_ptr_ne(vm: 'SPyVM', w_ptr1: PTR, w_ptr2: PTR) -> W_Bool:
             return vm.wrap(
                 w_ptr1.addr != w_ptr2.addr or
                 w_ptr1.length != w_ptr1.length
@@ -151,12 +178,12 @@ class W_Ptr(W_Object):
     @staticmethod
     def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
                    wop_attr: W_OpArg) -> W_OpImpl:
-        return W_Ptr._op_ATTR('get', vm, wop_ptr, wop_attr, None)
+        return W_PtrVal._op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
     @staticmethod
     def op_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                    wop_v: W_OpArg) -> W_OpImpl:
-        return W_Ptr._op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
+        return W_PtrVal._op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
     def _op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                  wop_v: Optional[W_OpArg]) -> W_OpImpl:
@@ -164,7 +191,7 @@ class W_Ptr(W_Object):
         Implement both op_GETATTR and op_SETATTR.
         """
         from .struct import W_StructType
-        w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
+        w_ptrtype = W_PtrVal._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         # attributes are supported only on ptr-to-structs
         if not w_T.is_struct(vm):
@@ -193,22 +220,6 @@ class W_Ptr(W_Object):
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
 
-
-@UNSAFE.builtin_func(color='blue')
-def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
-    T = Annotated[W_Object, w_T]
-    class W_MyPtr(W_Ptr):
-        __qualname__ = f'W_Ptr[{T.__name__}]' # e.g. W_Ptr[W_I32]
-    W_MyPtr.__name__ = W_MyPtr.__qualname__
-
-    fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
-    w_ptrtype = W_PtrType(fqn, W_MyPtr, w_T)
-    W_MyPtr._w = w_ptrtype # poor's man @builtin_type
-
-    return w_ptrtype
-
-
-
 @UNSAFE.builtin_func(color='blue')
 def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # fields can be returned "by value" or "by reference". Primitive types
@@ -234,7 +245,7 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
         if by == 'byref':
             assert isinstance(w_T, W_PtrType)
-            return W_Ptr(w_T, addr, 1)
+            return W_PtrVal(w_T, addr, 1)
         else:
             return vm.call_generic(
                 UNSAFE.w_mem_read,

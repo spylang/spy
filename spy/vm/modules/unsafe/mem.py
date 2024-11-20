@@ -5,7 +5,7 @@ from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.w import W_Func, W_Type, W_Object
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
-from .ptr import W_Ptr, w_make_ptr_type, W_PtrType
+from .ptr import W_Ptr, W_PtrVal, w_make_ptr_type, W_PtrType
 from .misc import sizeof
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ def w_gc_alloc(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
         addr = vm.ll.call('spy_gc_alloc_mem', size)
-        return W_Ptr(w_ptrtype, addr, n)
+        return W_PtrVal(w_ptrtype, addr, n)
 
     return w_fn
 
@@ -44,7 +44,7 @@ def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             return vm.wrap(vm.ll.mem.read_f64(addr))
         elif isinstance(w_T, W_PtrType):
             v_addr, v_length = vm.ll.mem.read_ptr(addr)
-            return W_Ptr(w_T, v_addr, v_length)
+            return W_PtrVal(w_T, v_addr, v_length)
         else:
             assert False
 
