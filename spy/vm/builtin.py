@@ -26,7 +26,7 @@ def get_spy_type_annotation(ann: Any) -> Optional[W_Type]:
                 return x
     return None
 
-def to_spy_type(ann: Any, *, allow_None=False) -> W_Type:
+def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
     """
     Convert an interp-level annotation into a spy type.
     Examples:
