@@ -3,11 +3,12 @@ from typing import (TYPE_CHECKING, Any, Optional, Type, ClassVar,
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
-from spy.vm.object import (W_Object, W_Type)
+from spy.vm.object import W_Object, W_Type
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpImpl, W_OpArg
+
 
 
 CACHE = {}
@@ -57,8 +58,8 @@ class W_BaseList(W_Object):
         raise Exception("You cannot instantiate W_BaseList, use W_List")
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                        wop_i: 'W_OpArg') -> 'W_OpImpl':
+    def meta_op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                        wop_i: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         return W_OpImpl(w_make_list_type)
 
@@ -85,7 +86,7 @@ class W_List(W_BaseList):
         return [vm.unwrap(w_item) for w_item in self.items_w]
 
     @staticmethod
-    def _get_listtype(wop_list: 'W_OpArg') -> W_ListType:
+    def _get_listtype(wop_list: W_OpArg) -> W_ListType:
         w_listtype = wop_list.w_static_type
         if isinstance(w_listtype, W_ListType):
             return w_listtype
@@ -95,8 +96,7 @@ class W_List(W_BaseList):
             assert False, 'FIXME: raise a nice error'
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wop_list: 'W_OpArg',
-                   wop_i: 'W_OpArg') -> 'W_OpImpl':
+    def op_GETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         w_listtype = W_List._get_listtype(wop_list)
         w_T = w_listtype.w_itemtype
@@ -111,8 +111,8 @@ class W_List(W_BaseList):
         return W_OpImpl(w_getitem)
 
     @staticmethod
-    def op_SETITEM(vm: 'SPyVM', wop_list: 'W_OpArg', wop_i: 'W_OpArg',
-                   wop_v: 'W_OpArg') -> 'W_OpImpl':
+    def op_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
+                   wop_v: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         w_listtype = W_List._get_listtype(wop_list)
         w_T = w_listtype.w_itemtype
@@ -127,7 +127,7 @@ class W_List(W_BaseList):
         return W_OpImpl(w_setitem)
 
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+    def op_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
@@ -199,7 +199,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
 
 
 ### temporary
-from spy.vm.opimpl import W_OpArg
 w_oparglist_type = make_prebuilt(W_OpArg)
 W_OpArgList = Annotated[W_List, w_oparglist_type]
 
