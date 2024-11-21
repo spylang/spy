@@ -10,7 +10,7 @@ from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
-from spy.vm.list import W_List
+from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.typechecker import TypeChecker
@@ -347,8 +347,8 @@ class ASTFrame:
 
     def eval_expr_List(self, op: ast.List) -> W_Object:
         color, w_listtype = self.t.check_expr(op)
+        assert isinstance(w_listtype, W_ListType)
         items_w = [self.eval_expr(item) for item in op.items]
-        assert w_listtype.pyclass is W_List
         return W_List(w_listtype, items_w)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_Object:

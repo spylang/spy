@@ -50,8 +50,6 @@ def make_prebuilt(itemcls: Type[W_Object]) -> W_Type:
         CACHE[itemcls] = w_listtype
     return CACHE[itemcls]
 
-
-
 @B.builtin_type('list')
 class W_BaseList(W_Object):
     """
@@ -81,15 +79,17 @@ class W_BaseList(W_Object):
         return W_OpImpl(w_make_list_type)
 
 
-class W_List(W_BaseList):
+T = TypeVar('T', bound='W_Object')
+
+class W_List(W_BaseList, Generic[T]):
     w_listtype: W_ListType
-    items_w: list[W_Object]
+    items_w: list[T]
 
     def __init__(self, w_listtype: W_ListType, items_w: list[W_Object]) -> None:
         assert isinstance(w_listtype, W_ListType)
         self.w_listtype = w_listtype
         # XXX typecheck?
-        self.items_w = items_w
+        self.items_w = items_w  # type: ignore
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
