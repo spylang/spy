@@ -83,6 +83,32 @@ class W_List(W_BaseList):
     def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
         return [vm.unwrap(w_item) for w_item in self.items_w]
 
+    @staticmethod
+    def _get_listtype(wop_list: 'W_OpArg') -> W_ListType:
+        w_listtype = wop_list.w_static_type
+        if isinstance(w_listtype, W_ListType):
+            return w_listtype
+        else:
+            # I think we can get here if we have something typed 'list' as
+            # opposed to e.g. 'list[i32]'
+            assert False, 'FIXME: raise a nice error'
+
+    @staticmethod
+    def op_GETITEM(vm: 'SPyVM', wop_list: 'W_OpArg',
+                   wop_i: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        w_listtype = W_List._get_listtype(wop_list)
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_List, w_listtype]
+        T = Annotated[W_Object, w_T]
+
+        @builtin_func(w_listtype.fqn)
+        def w_getitem(vm: 'SPyVM', w_list: LIST, w_i: W_I32) -> T:
+            i = vm.unwrap_i32(w_i)
+            # XXX bound check?
+            return w_list.items_w[i]
+        return W_OpImpl(w_getitem)
+
 
 
 @builtin_func('__spy__', color='blue')
@@ -126,16 +152,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
 
     class W_MyList(W_List):
         __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
-
-        @staticmethod
-        def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                       wop_i: 'W_OpArg') -> W_OpImpl:
-            @builtin_func(W_MyList.type_fqn)
-            def w_getitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32) -> T:
-                i = vm.unwrap_i32(w_i)
-                # XXX bound check?
-                return w_list.items_w[i]
-            return W_OpImpl(w_getitem)
 
         @staticmethod
         def op_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
