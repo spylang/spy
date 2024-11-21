@@ -43,7 +43,7 @@ class W_BasePtr(W_Object):
     """
 
     def __init__(self) -> None:
-        raise Exception("You cannot instantiate W_Ptr, use W_PtrValue")
+        raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
 
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpImpl:
@@ -78,7 +78,6 @@ class W_Ptr(W_BasePtr):
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_ptrtype
-
 
     def spy_unwrap(self, vm: 'SPyVM') -> 'W_BasePtr':
         return self
