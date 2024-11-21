@@ -75,7 +75,8 @@ class W_List(W_BaseList):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        return f'{cls}({self.items_w})'
+        T = self.w_listtype.w_itemtype.fqn.human_name
+        return f"{cls}('{T}', {self.items_w})"
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_listtype

@@ -101,4 +101,4 @@ class TestList(CompilerTest):
         """)
         w_foo = mod.foo.w_func
         w_l = self.vm.call(w_foo, [])
-        assert repr(w_l) == 'W_List[W_I32]([W_I32(1), W_I32(2)])'
+        assert repr(w_l) == "W_List('i32', [W_I32(1), W_I32(2)])"
