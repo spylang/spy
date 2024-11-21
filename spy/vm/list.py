@@ -125,6 +125,28 @@ class W_List(W_BaseList):
             w_list.items_w[i] = w_v
         return W_OpImpl(w_setitem)
 
+    @staticmethod
+    def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        w_ltype = wop_l.w_static_type
+        w_rtype = wop_r.w_static_type
+        if w_ltype is not w_rtype:
+            return W_OpImpl.NULL
+        w_listtype = W_List._get_listtype(wop_l)
+        LIST = Annotated[W_List, w_listtype]
+
+        @builtin_func(w_listtype.fqn)
+        def w_eq(vm: 'SPyVM', w_l1: LIST, w_l2: LIST) -> W_Bool:
+            items1_w = w_l1.items_w
+            items2_w = w_l2.items_w
+            if len(items1_w) != len(items2_w):
+                return B.w_False
+            for w_1, w_2 in zip(items1_w, items2_w):
+                if vm.is_False(vm.eq(w_1, w_2)):
+                    return B.w_False
+            return B.w_True
+        return W_OpImpl(w_eq)
+
 
 @builtin_func('__spy__', color='blue')
 def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
@@ -169,28 +191,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
         __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
 
 
-        @staticmethod
-        def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> W_OpImpl:
-            from spy.vm.b import B
-            w_ltype = wop_l.w_static_type
-            w_rtype = wop_r.w_static_type
-            assert w_ltype.pyclass is W_MyList
-
-            @builtin_func(W_MyList.type_fqn)
-            def w_eq(vm: 'SPyVM', w_l1: W_MyList, w_l2: W_MyList) -> W_Bool:
-                items1_w = w_l1.items_w
-                items2_w = w_l2.items_w
-                if len(items1_w) != len(items2_w):
-                    return B.w_False
-                for w_1, w_2 in zip(items1_w, items2_w):
-                    if vm.is_False(vm.eq(w_1, w_2)):
-                        return B.w_False
-                return B.w_True
-
-            if w_ltype is w_rtype:
-                return W_OpImpl(w_eq)
-            else:
-                return W_OpImpl.NULL
 
     W_MyList.__name__ = W_MyList.__qualname__
     w_listtype = W_ListType(fqn, w_T, pyclass=W_MyList)
