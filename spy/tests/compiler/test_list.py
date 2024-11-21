@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpArg
-from spy.vm.list import W_List
+from spy.vm.list import W_List, W_ListType
 from spy.tests.support import CompilerTest, no_C
 
 # Eventually we want to remove the @no_C, but for now the C backend
@@ -22,9 +22,8 @@ class TestList(CompilerTest):
         """)
         w_foo = mod.foo.w_func
         w_list_i32 = self.vm.call(w_foo, [])
-        assert isinstance(w_list_i32, W_Type)
+        assert isinstance(w_list_i32, W_ListType)
         assert w_list_i32.fqn == FQN('builtins::list[i32]')
-        assert w_list_i32.pyclass.__name__ == 'W_List[W_I32]'
 
     def test_generalize_literal(self):
         mod = self.compile(

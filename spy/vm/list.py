@@ -1,5 +1,6 @@
 from typing import (TYPE_CHECKING, Any, Optional, Type, ClassVar,
                     TypeVar, Generic, Annotated)
+from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
 from spy.vm.object import (W_Object, W_Type)
@@ -17,7 +18,21 @@ def make_prebuilt(itemcls: Type[W_Object]) -> W_Type:
         CACHE[itemcls] = W_MyList
     return W_MyList._w
 
-#T = TypeVar('T', bound='W_Object')
+
+class W_ListType(W_Type):
+    """
+    A specialized list type.
+    list[i32] -> W_ListType(fqn, B.w_i32)
+    """
+    w_itemtype: W_Type
+
+    def __init__(self, fqn: FQN, w_itemtype: W_Type,
+                 *,
+                 pyclass # temporary
+                 ) -> None:
+        super().__init__(fqn, pyclass)
+        self.w_itemtype = w_itemtype
+
 
 @B.builtin_type('list')
 class W_BaseList(W_Object):
@@ -39,7 +54,7 @@ class W_BaseList(W_Object):
     __spy_storage_category__ = 'reference'
 
     def __init__(self, items_w: Any) -> None:
-        raise NotImplementedError
+        raise Exception("You cannot instantiate W_BaseList, use W_List")
 
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
@@ -49,9 +64,12 @@ class W_BaseList(W_Object):
 
 
 class W_List(W_BaseList):
+    w_listtype: W_ListType
     items_w: list[W_Object]
 
-    def __init__(self, items_w: list[W_Object]) -> None:
+    def __init__(self, w_listtype: W_ListType, items_w: list[W_Object]) -> None:
+        assert isinstance(w_listtype, W_ListType)
+        self.w_listtype = w_listtype
         # XXX typecheck?
         self.items_w = items_w
 
@@ -59,13 +77,16 @@ class W_List(W_BaseList):
         cls = self.__class__.__name__
         return f'{cls}({self.items_w})'
 
+    def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
+        return self.w_listtype
+
     def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
         return [vm.unwrap(w_item) for w_item in self.items_w]
 
 
 
 @builtin_func('__spy__', color='blue')
-def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
+def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
     """
     Create a concrete W_List class specialized for W_Type.
 
@@ -79,12 +100,14 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
     """
     assert w_list is W_List._w
     if w_T.pyclass in CACHE:
+        # legacy code, kill it eventually
         w_list_type = vm.wrap(CACHE[w_T.pyclass])
-    else:
-        pyclass = _make_W_List(w_T)
-        w_list_type = vm.wrap(pyclass)
-    assert isinstance(w_list_type, W_Type)
-    return w_list_type
+        return w_list_type
+    #
+    # new code
+    fqn = FQN('builtins').join('list', [w_T.fqn])  # builtins::list[i32]
+    return W_ListType(fqn, w_T, pyclass=W_List)
+
 
 
 def _make_W_List(w_T: W_Type) -> Type[W_List]:
@@ -94,10 +117,13 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     prebuilt types.
     """
     from spy.vm.opimpl import W_OpImpl
+    # legacy code for list[OpArg], we will kill it eventually
+    assert w_T.fqn == FQN('operator::OpArg')
 
     T = Annotated[W_Object, w_T]
 
-    @builtin_type('builtins', 'list', [w_T.fqn])
+    fqn = FQN('builtins').join('list', [w_T.fqn])
+
     class W_MyList(W_List):
         __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
 
@@ -149,4 +175,8 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
                 return W_OpImpl.NULL
 
     W_MyList.__name__ = W_MyList.__qualname__
+    w_listtype = W_ListType(fqn, w_T, pyclass=W_MyList)
+    W_MyList._w = w_listtype
+    W_MyList.type_fqn = fqn
+
     return W_MyList
