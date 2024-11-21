@@ -6,10 +6,10 @@ from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.list import W_List
+from spy.vm.list import W_List, make_oparg_list
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
-from spy.vm.modules.operator import OP
+from spy.vm.modules.operator import OP, OP_from_token
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.typeconverter import (TypeConverter, DynamicCast, NumericConv,
                                   JsRefConv)
@@ -17,9 +17,6 @@ from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-
-W_List.make_prebuilt(W_Type) # make it possible to use W_List[W_Type]
-W_List.make_prebuilt(W_OpArg)
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
@@ -324,7 +321,7 @@ class TypeChecker:
         return 'blue', w_type
 
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
-        w_OP = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
         colors, args_wop = self.check_many_exprs(
             ['l', 'r'],
             [binop.left, binop.right],
@@ -387,7 +384,7 @@ class TypeChecker:
             [call.func] + call.args
         )
         wop_func = args_wop[0]
-        w_opargs = W_List[W_OpArg](args_wop[1:]) # type: ignore
+        w_opargs = make_oparg_list(args_wop[1:])
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func, w_opargs])
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
@@ -401,7 +398,7 @@ class TypeChecker:
         )
         wop_obj = args_wop[0]
         wop_method = args_wop[1]
-        w_opargs = W_List[W_OpArg](args_wop[2:])
+        w_opargs = make_oparg_list(args_wop[2:])
         w_opimpl = self.vm.call_OP(
             OP.w_CALL_METHOD,
             [wop_obj, wop_method, w_opargs]

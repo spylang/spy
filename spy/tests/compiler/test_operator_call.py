@@ -8,7 +8,7 @@ from spy.vm.w import W_Type, W_Object, W_Str, W_List
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.vm.list import W_List
+from spy.vm.list import W_List, W_OpArgList
 from spy.tests.support import CompilerTest, no_C
 
 @no_C
@@ -31,7 +31,7 @@ class TestCallOp(CompilerTest):
 
             @staticmethod
             def op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                        w_opargs: W_List[W_OpArg]) -> W_OpImpl:
+                        w_opargs: W_OpArgList) -> W_OpImpl:
                 @builtin_func('ext')
                 def w_call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
                     y = vm.unwrap_i32(w_y)
@@ -133,7 +133,7 @@ class TestCallOp(CompilerTest):
             @staticmethod
             def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg,
                                wop_method: W_OpArg,
-                               w_opargs: W_List[W_OpArg]) -> W_OpImpl:
+                               w_opargs: W_OpArgList) -> W_OpImpl:
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @builtin_func('ext', 'add')

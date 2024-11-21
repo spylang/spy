@@ -34,37 +34,13 @@ The exception is the type `dynamic`:
     a + b
 
 In this case, the dispatch will be done on the dynamic type of the operands.
+
+Note that for bootstrap reason, the OPERATOR module is defined in vm/b.py, and
+re-exported here.
 """
 
 from spy.vm.function import W_Func
-from spy.vm.registry import ModuleRegistry
-
-class OperatorRegistry(ModuleRegistry):
-    """
-    Like ModuleRegistry, but adds a from_token method.
-    """
-
-    _from_token: dict[str, W_Func] = {}
-    def from_token(self, token: str) -> W_Func:
-        """
-        Return the generic operator corresponding to the given token.
-
-        E.g., OPS.from_token('+') returns OPS.w_ADD.
-        """
-        return self._from_token[token]
-
-    def to_token(self, w_OP: W_Func) -> str:
-        """
-        Inverse of from_token
-        """
-        for token, w_obj in self._from_token.items():
-            if w_obj is w_OP:
-                return token
-        raise KeyError(w_OP)
-
-
-OPERATOR = OperatorRegistry('operator')
-OP = OPERATOR
+from spy.vm.b import OPERATOR, OP
 
 # the folloing imports register all the various objects on OP
 from . import opimpl_i32     # side effects
@@ -77,8 +53,8 @@ from . import attrop         # side effects
 from . import itemop         # side effects
 from . import callop         # side effects
 
-# fill the _from_token dict
-OP._from_token.update({
+
+_from_token: dict[str, W_Func] = {
     '+': OP.w_ADD,
     '-': OP.w_SUB,
     '*': OP.w_MUL,
@@ -92,4 +68,12 @@ OP._from_token.update({
     '[]': OP.w_GETITEM,
     '<universal_eq>': OP.w_UNIVERSAL_EQ,
     '<universal_ne>': OP.w_UNIVERSAL_NE,
-})
+}
+
+def OP_from_token(token: str) -> W_Func:
+    """
+    Return the generic operator corresponding to the given token.
+
+    E.g., OPS.from_token('+') returns OPS.w_ADD.
+    """
+    return _from_token[token]

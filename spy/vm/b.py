@@ -12,9 +12,15 @@ the proper place where to put modules.
 
 This strange setup is needed to avoid circular imports, since B.* is needed
 all over the place and we need to import it very early.
+
+Morever, it also contains the empty definition of the OPERATOR module, since
+we also need it very early.
 """
 
 from spy.vm.registry import ModuleRegistry
 
 BUILTINS = ModuleRegistry('builtins')
 B = BUILTINS
+
+OPERATOR = ModuleRegistry('operator')
+OP = OPERATOR

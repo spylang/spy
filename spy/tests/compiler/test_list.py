@@ -4,7 +4,8 @@ import pytest
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Type
-from spy.vm.list import W_List
+from spy.vm.opimpl import W_OpArg
+from spy.vm.list import W_List, W_ListType
 from spy.tests.support import CompilerTest, no_C
 
 # Eventually we want to remove the @no_C, but for now the C backend
@@ -21,25 +22,8 @@ class TestList(CompilerTest):
         """)
         w_foo = mod.foo.w_func
         w_list_i32 = self.vm.call(w_foo, [])
-        assert isinstance(w_list_i32, W_Type)
+        assert isinstance(w_list_i32, W_ListType)
         assert w_list_i32.fqn == FQN('builtins::list[i32]')
-        assert w_list_i32.pyclass.__name__ == 'W_List[W_I32]'
-
-    def test_cached_generic(self):
-        mod = self.compile(
-        """
-        @blue
-        def make_list(T: type):
-            return list[T]
-        """)
-        w_make_list = mod.make_list.w_func
-        w_list_type = self.vm.call(w_make_list, [B.w_type])
-        assert isinstance(w_list_type, W_Type)
-        assert w_list_type.pyclass is W_List[W_Type]
-        #
-        w_list_f64a = self.vm.call(w_make_list, [B.w_f64])
-        w_list_f64b = self.vm.call(w_make_list, [B.w_f64])
-        assert w_list_f64a is w_list_f64b
 
     def test_generalize_literal(self):
         mod = self.compile(
@@ -117,4 +101,4 @@ class TestList(CompilerTest):
         """)
         w_foo = mod.foo.w_func
         w_l = self.vm.call(w_foo, [])
-        assert repr(w_l) == 'W_List[W_I32]([W_I32(1), W_I32(2)])'
+        assert repr(w_l) == "W_List('i32', [W_I32(1), W_I32(2)])"
