@@ -348,8 +348,8 @@ class ASTFrame:
     def eval_expr_List(self, op: ast.List) -> W_Object:
         color, w_listtype = self.t.check_expr(op)
         items_w = [self.eval_expr(item) for item in op.items]
-        assert issubclass(w_listtype.pyclass, W_List)
-        return w_listtype.pyclass(items_w) # type: ignore
+        assert w_listtype.pyclass is W_List
+        return W_List(w_listtype, items_w)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_Object:
         color, w_tupletype = self.t.check_expr(op)
