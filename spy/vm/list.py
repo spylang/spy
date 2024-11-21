@@ -10,16 +10,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-
-CACHE = {}
-def make_prebuilt(itemcls: Type[W_Object]) -> W_Type:
-    assert issubclass(itemcls, W_Object)
-    if itemcls not in CACHE:
-        W_MyList = _make_W_List(itemcls._w)
-        CACHE[itemcls] = W_MyList
-    return W_MyList._w
-
-
 class W_ListType(W_Type):
     """
     A specialized list type.
@@ -27,12 +17,39 @@ class W_ListType(W_Type):
     """
     w_itemtype: W_Type
 
-    def __init__(self, fqn: FQN, w_itemtype: W_Type,
-                 *,
-                 pyclass # temporary
-                 ) -> None:
-        super().__init__(fqn, pyclass)
+    def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
+        super().__init__(fqn, W_List)
         self.w_itemtype = w_itemtype
+
+
+@builtin_func('__spy__', color='blue')
+def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
+    """
+    Create a concrete W_List class specialized for W_Type.
+
+    Given a type T, it is always safe to call make_list_type(T) multiple
+    types, and it is guaranteed to get always the same type.
+
+    It is worth noting that to achieve that, we have two layers of caching:
+
+      - if we have a prebuilt list type, just use that
+      - for other types, we rely on the fact that `make_list_type` is blue.
+    """
+    return _make_list_type(w_T)
+
+def _make_list_type(w_T: W_Type) -> W_ListType:
+    fqn = FQN('builtins').join('list', [w_T.fqn])  # builtins::list[i32]
+    return W_ListType(fqn, w_T)
+
+
+CACHE = {}
+def make_prebuilt(itemcls: Type[W_Object]) -> W_Type:
+    assert issubclass(itemcls, W_Object)
+    if itemcls not in CACHE:
+        w_listtype = _make_list_type(itemcls._w)
+        CACHE[itemcls] = w_listtype
+    return CACHE[itemcls]
+
 
 
 @B.builtin_type('list')
@@ -147,55 +164,6 @@ class W_List(W_BaseList):
                     return B.w_False
             return B.w_True
         return W_OpImpl(w_eq)
-
-
-@builtin_func('__spy__', color='blue')
-def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
-    """
-    Create a concrete W_List class specialized for W_Type.
-
-    Given a type T, it is always safe to call make_list_type(T) multiple
-    types, and it is guaranteed to get always the same type.
-
-    It is worth noting that to achieve that, we have two layers of caching:
-
-      - if we have a prebuilt list type, just use that
-      - for other types, we rely on the fact that `make_list_type` is blue.
-    """
-    assert w_list is W_List._w
-    if w_T.pyclass in CACHE:
-        # legacy code, kill it eventually
-        w_list_type = vm.wrap(CACHE[w_T.pyclass])
-        return w_list_type
-    #
-    # new code
-    fqn = FQN('builtins').join('list', [w_T.fqn])  # builtins::list[i32]
-    return W_ListType(fqn, w_T, pyclass=W_List)
-
-
-
-def _make_W_List(w_T: W_Type) -> Type[W_List]:
-    """
-    DON'T CALL THIS DIRECTLY!
-    You should call make_list_type instead, which knows how to deal with
-    prebuilt types.
-    """
-    from spy.vm.opimpl import W_OpImpl
-    # legacy code for list[OpArg], we will kill it eventually
-    assert w_T.fqn == FQN('operator::OpArg')
-
-    T = Annotated[W_Object, w_T]
-
-    fqn = FQN('builtins').join('list', [w_T.fqn])
-
-    class W_MyList(W_List):
-        __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
-
-    W_MyList.__name__ = W_MyList.__qualname__
-    w_listtype = W_ListType(fqn, w_T, pyclass=W_MyList)
-    W_MyList._w = w_listtype
-    W_MyList.type_fqn = fqn
-    return W_MyList
 
 
 ### temporary
