@@ -261,8 +261,6 @@ class SPyVM:
                 return B.w_False
         elif T is str:
             return W_Str(self, value)
-        elif isinstance(value, type) and issubclass(value, W_Object):
-            return value._w
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "
