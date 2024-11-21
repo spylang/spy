@@ -783,8 +783,8 @@ class TestBasic(CompilerTest):
             x = 42
             return STATIC_TYPE(x)
         """)
-        pyclass = mod.foo()
-        assert pyclass is self.vm.unwrap(B.w_i32)
+        w_type = mod.foo(unwrap=False)
+        assert w_type is B.w_i32
 
     @no_C
     def test_STATIC_TYPE_wrong_argcount(self):

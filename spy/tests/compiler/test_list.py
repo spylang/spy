@@ -52,11 +52,10 @@ class TestList(CompilerTest):
             x = [i32, f64, 'hello']
             return STATIC_TYPE(x)
         """)
-        # our machinery unwraps types, let's wrap it again
-        w_t1 = self.vm.wrap(mod.foo())
+        w_t1 = mod.foo(unwrap=False)
         assert isinstance(w_t1, W_Type)
         assert w_t1.fqn == FQN('builtins::list[type]')
-        w_t2 = self.vm.wrap(mod.bar())
+        w_t2 = mod.bar(unwrap=False)
         assert isinstance(w_t2, W_Type)
         assert w_t2.fqn == FQN('builtins::list[object]')
 

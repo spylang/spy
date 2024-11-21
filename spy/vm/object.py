@@ -222,9 +222,6 @@ class W_Type(W_Object):
     def __repr__(self) -> str:
         return f"<spy type '{self.fqn.human_name}'>"
 
-    def spy_unwrap(self, vm: 'SPyVM') -> Type[W_Object]:
-        return self.pyclass
-
     def is_reference_type(self, vm: 'SPyVM') -> bool:
         return self.pyclass.__spy_storage_category__ == 'reference'
 

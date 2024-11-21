@@ -119,16 +119,13 @@ class TestVM:
         assert vm.union_type(w_b, w_c) is w_a
         assert vm.union_type(w_b, B.w_i32) is B.w_object
 
-    def test_wrap_unwrap_types(self):
+    def test_cannot_wrap(self):
         vm = SPyVM()
-        assert vm.wrap(W_Object) is B.w_object
-        assert vm.unwrap(B.w_object) is W_Object
-        #
-        # check that wrapping an unsupported type raises
         class Foo:
             pass
-        with pytest.raises(Exception,
-                           match="Cannot wrap interp-level objects of type Foo"):
+        with pytest.raises(
+                Exception,
+                match="Cannot wrap interp-level objects of type Foo"):
             vm.wrap(Foo())
 
     def test_w_None(self):

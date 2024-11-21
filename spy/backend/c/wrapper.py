@@ -105,7 +105,8 @@ class WasmFuncWrapper:
                 wasm_args.append(wasm_arg)
         return wasm_args
 
-    def __call__(self, *py_args: Any) -> Any:
+    def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
+        assert unwrap, 'unwrap=False is not supported by the C backend'
         wasm_args = self.from_py_args(py_args)
         res = self.ll.call(self.c_name, *wasm_args)
         w_type = self.w_functype.w_restype
