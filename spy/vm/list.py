@@ -109,6 +109,21 @@ class W_List(W_BaseList):
             return w_list.items_w[i]
         return W_OpImpl(w_getitem)
 
+    @staticmethod
+    def op_SETITEM(vm: 'SPyVM', wop_list: 'W_OpArg', wop_i: 'W_OpArg',
+                   wop_v: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        w_listtype = W_List._get_listtype(wop_list)
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_List, w_listtype]
+        T = Annotated[W_Object, w_T]
+
+        @builtin_func(w_listtype.fqn)
+        def w_setitem(vm: 'SPyVM', w_list: LIST, w_i: W_I32, w_v: T) -> None:
+            i = vm.unwrap_i32(w_i)
+            # XXX bound check?
+            w_list.items_w[i] = w_v
+        return W_OpImpl(w_setitem)
 
 
 @builtin_func('__spy__', color='blue')
@@ -153,19 +168,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     class W_MyList(W_List):
         __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
 
-        @staticmethod
-        def op_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
-                       wop_v: 'W_OpArg') -> W_OpImpl:
-            from spy.vm.b import B
-
-            @builtin_func(W_MyList.type_fqn)
-            def w_setitem(vm: 'SPyVM', w_list: W_MyList, w_i: W_I32,
-                          w_v: T) -> W_Void:
-                i = vm.unwrap_i32(w_i)
-                # XXX bound check?
-                w_list.items_w[i] = w_v
-                return B.w_None
-            return W_OpImpl(w_setitem)
 
         @staticmethod
         def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> W_OpImpl:
