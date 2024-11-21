@@ -297,7 +297,7 @@ W_OpImpl.NULL = W_OpImpl(None)  # type: ignore
 # XXX temporary
 from spy.vm.list import W_List, make_prebuilt
 w_oparglist_type = make_prebuilt(W_OpArg)
-W_OpArgList = Annotated[W_List[W_OpArg], w_oparglist_type]
+W_OpArgList = Annotated[W_List, w_oparglist_type]
 
 def make_oparg_list(args_wop: list[W_OpArg]) -> W_OpArgList:
     return w_oparglist_type.pyclass(args_wop)  # type: ignore

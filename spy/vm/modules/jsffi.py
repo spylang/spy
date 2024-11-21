@@ -3,10 +3,8 @@ import struct
 from spy.vm.primitive import W_F64, W_I32, W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member
-from spy.vm.w import (W_Func, W_Type, W_Object, W_Str,
-                      W_List, W_FuncType)
-from spy.vm.list import W_List
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
+from spy.vm.opimpl import W_OpImpl, W_OpArg, W_OpArgList
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.registry import ModuleRegistry
 from spy.vm.modules.types import W_TypeDef
@@ -31,7 +29,7 @@ class W_JsRef(W_Object):
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                       w_opargs: W_List[W_OpArg]) -> W_OpImpl:
+                       w_opargs: W_OpArgList) -> W_OpImpl:
         args_wop = w_opargs.items_w
         n = len(args_wop)
         if n == 1:

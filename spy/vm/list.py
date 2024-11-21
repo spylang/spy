@@ -17,10 +17,10 @@ def make_prebuilt(itemcls: Type[W_Object]) -> W_Type:
         CACHE[itemcls] = W_MyList
     return W_MyList._w
 
-T = TypeVar('T', bound='W_Object')
+#T = TypeVar('T', bound='W_Object')
 
 @B.builtin_type('list')
-class W_List(W_Object, Generic[T]):
+class W_BaseList(W_Object):
     """
     The 'list' type.
 
@@ -36,10 +36,9 @@ class W_List(W_Object, Generic[T]):
     The specialized types are created by calling the builtin make_list_type:
     see its docstring for details.
     """
-    items_w: list[T]
     __spy_storage_category__ = 'reference'
 
-    def __init__(self, items_w: list[T]) -> None:
+    def __init__(self, items_w: Any) -> None:
         raise NotImplementedError
 
     @staticmethod
@@ -47,6 +46,21 @@ class W_List(W_Object, Generic[T]):
                         wop_i: 'W_OpArg') -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
         return W_OpImpl(w_make_list_type)
+
+
+class W_List(W_BaseList):
+    items_w: list[W_Object]
+
+    def __init__(self, items_w: list[W_Object]) -> None:
+        # XXX typecheck?
+        self.items_w = items_w
+
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        return f'{cls}({self.items_w})'
+
+    def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
+        return [vm.unwrap(w_item) for w_item in self.items_w]
 
 
 
@@ -86,18 +100,6 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     @builtin_type('builtins', 'list', [w_T.fqn])
     class W_MyList(W_List):
         __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
-        items_w: list[W_Object]
-
-        def __init__(self, items_w: list[W_Object]) -> None:
-            # XXX typecheck?
-            self.items_w = items_w
-
-        def __repr__(self) -> str:
-            cls = self.__class__.__name__
-            return f'{cls}({self.items_w})'
-
-        def spy_unwrap(self, vm: 'SPyVM') -> list[Any]:
-            return [vm.unwrap(w_item) for w_item in self.items_w]
 
         @staticmethod
         def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
