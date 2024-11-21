@@ -191,11 +191,17 @@ def _make_W_List(w_T: W_Type) -> Type[W_List]:
     class W_MyList(W_List):
         __qualname__ = f'W_List[{w_T.pyclass.__name__}]' # e.g. W_List[W_I32]
 
-
-
     W_MyList.__name__ = W_MyList.__qualname__
     w_listtype = W_ListType(fqn, w_T, pyclass=W_MyList)
     W_MyList._w = w_listtype
     W_MyList.type_fqn = fqn
-
     return W_MyList
+
+
+### temporary
+from spy.vm.opimpl import W_OpArg
+w_oparglist_type = make_prebuilt(W_OpArg)
+W_OpArgList = Annotated[W_List, w_oparglist_type]
+
+def make_oparg_list(args_wop: list[W_OpArg]) -> W_OpArgList:
+   return w_oparglist_type.pyclass(w_oparglist_type, args_wop)  # type: ignore

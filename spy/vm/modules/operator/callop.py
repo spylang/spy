@@ -3,8 +3,8 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_Dynamic
 from spy.vm.str import W_Str
-from spy.vm.opimpl import W_OpImpl, W_OpArg, W_OpArgList
-from spy.vm.list import W_List
+from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.list import W_List, W_OpArgList
 from spy.vm.function import W_DirectCall, W_FuncType, FuncParam
 
 from . import OP

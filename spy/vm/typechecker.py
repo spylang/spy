@@ -5,8 +5,8 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
 from spy.vm.object import W_Object, W_Type
-from spy.vm.opimpl import W_OpImpl, W_OpArg, make_oparg_list
-from spy.vm.list import W_List
+from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.list import W_List, make_oparg_list
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP

@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING, Annotated
 import struct
+from spy.vm.list import W_OpArgList
 from spy.vm.primitive import W_F64, W_I32, W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member
 from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
-from spy.vm.opimpl import W_OpImpl, W_OpArg, W_OpArgList
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.registry import ModuleRegistry
 from spy.vm.modules.types import W_TypeDef

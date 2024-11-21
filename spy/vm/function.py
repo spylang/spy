@@ -6,7 +6,8 @@ from spy.fqn import FQN, NSPart
 from spy.vm.object import W_Object, W_Type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpImpl, W_OpArg, W_OpArgList
+    from spy.vm.opimpl import W_OpImpl, W_OpArg
+    from spy.vm.list import W_OpArgList
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.

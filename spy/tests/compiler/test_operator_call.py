@@ -5,10 +5,10 @@ from spy.vm.b import B
 from spy.vm.object import Member
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.w import W_Type, W_Object, W_Str, W_List
-from spy.vm.opimpl import W_OpImpl, W_OpArg, W_OpArgList
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.vm.list import W_List
+from spy.vm.list import W_List, W_OpArgList
 from spy.tests.support import CompilerTest, no_C
 
 @no_C
