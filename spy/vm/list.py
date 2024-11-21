@@ -1,7 +1,7 @@
 from typing import (TYPE_CHECKING, Any, Optional, Type, ClassVar,
                     TypeVar, Generic, Annotated)
 from spy.fqn import FQN
-from spy.vm.b import B
+from spy.vm.b import B, OP
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -22,6 +22,9 @@ class W_ListType(W_Type):
         self.w_itemtype = w_itemtype
 
 
+# PREBUILT list types are instantiated the end of the file
+PREBUILT_LIST_TYPES = {}
+
 @builtin_func('__spy__', color='blue')
 def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
     """
@@ -35,20 +38,14 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
       - if we have a prebuilt list type, just use that
       - for other types, we rely on the fact that `make_list_type` is blue.
     """
+    if w_T in PREBUILT_LIST_TYPES:
+        return PREBUILT_LIST_TYPES[w_T]
     return _make_list_type(w_T)
 
 def _make_list_type(w_T: W_Type) -> W_ListType:
     fqn = FQN('builtins').join('list', [w_T.fqn])  # builtins::list[i32]
     return W_ListType(fqn, w_T)
 
-
-CACHE = {}
-def make_prebuilt(itemcls: Type[W_Object]) -> W_Type:
-    assert issubclass(itemcls, W_Object)
-    if itemcls not in CACHE:
-        w_listtype = _make_list_type(itemcls._w)
-        CACHE[itemcls] = w_listtype
-    return CACHE[itemcls]
 
 @B.builtin_type('list')
 class W_BaseList(W_Object):
@@ -166,8 +163,15 @@ class W_List(W_BaseList, Generic[T]):
         return W_OpImpl(w_eq)
 
 
-### temporary
-w_oparglist_type = make_prebuilt(W_OpArg)
+# prebuilt list types
+# ===================
+
+# this is mainly needed to make the type `list[OpArg]` available, since it's
+# used a bit everywhere
+
+w_oparglist_type = _make_list_type(OP.w_OpArg)
+PREBUILT_LIST_TYPES[OP.w_OpArg] = w_oparglist_type
+
 W_OpArgList = Annotated[W_List, w_oparglist_type]
 
 def make_oparg_list(args_wop: list[W_OpArg]) -> W_OpArgList:
