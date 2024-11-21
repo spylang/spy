@@ -30,6 +30,7 @@ from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Symbol
 from spy.errors import SPyTypeError
+from spy.vm.b import OPERATOR
 from spy.vm.object import Member, W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.builtin import builtin_func, builtin_type
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-@builtin_type('operator', 'OpArg')
+@OPERATOR.builtin_type('OpArg')
 class W_OpArg(W_Object):
     """
     Class which represents the operands passed to OPERATORs.
@@ -183,7 +184,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 
 
 
-@builtin_type('operator', 'OpImpl')
+@OPERATOR.builtin_type('OpImpl')
 class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]

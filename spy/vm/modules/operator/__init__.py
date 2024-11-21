@@ -34,13 +34,13 @@ The exception is the type `dynamic`:
     a + b
 
 In this case, the dispatch will be done on the dynamic type of the operands.
+
+Note that for bootstrap reason, the OPERATOR module is defined in vm/b.py, and
+re-exported here.
 """
 
 from spy.vm.function import W_Func
-from spy.vm.registry import ModuleRegistry
-
-OPERATOR = ModuleRegistry('operator')
-OP = OPERATOR
+from spy.vm.b import OPERATOR, OP
 
 # the folloing imports register all the various objects on OP
 from . import opimpl_i32     # side effects
