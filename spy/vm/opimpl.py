@@ -34,6 +34,7 @@ from spy.vm.object import Member, W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.primitive import W_Bool
+from spy.vm.list import W_List
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -291,3 +292,12 @@ class W_OpImpl(W_Object):
 
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore
+
+
+# XXX temporary
+from spy.vm.list import W_List, make_prebuilt
+w_oparglist_type = make_prebuilt(W_OpArg)
+W_OpArgList = Annotated[W_List[W_OpArg], w_oparglist_type]
+
+def make_oparg_list(args_wop: list[W_OpArg]) -> W_OpArgList:
+    return w_oparglist_type.pyclass(args_wop)  # type: ignore

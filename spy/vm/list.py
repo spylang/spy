@@ -9,41 +9,18 @@ if TYPE_CHECKING:
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 
-class Meta_W_List(type):
-    """
-    Some magic to be able to do e.g. W_List[W_MyClass].
-
-    W_List[] works only if the result was prebuilt by calling
-    W_List.make_prebuilt(W_MyClass).
-
-    It is guaranteed that make_list_type will use the prebuilt class, in
-    case it exists, i.e.:
-
-        make_list_type(vm, B.w_i32) is vm.wrap(W_List[W_I32])
-    """
-    CACHE: ClassVar[dict[Type[W_Object], 'Type[W_List]']] = {}
-
-    def __getitem__(self, itemcls: Type[W_Object]) -> 'Type[W_List]':
-        if itemcls in self.CACHE:
-            return self.CACHE[itemcls]
-        else:
-            n = itemcls.__name__
-            msg = (f"W_List[{n}] is not available. Make sure to build it by "
-                   f"calling W_List.make_prebuilt({n}) at import time")
-            raise ValueError(msg)
-
-    def make_prebuilt(self, itemcls: Type[W_Object]) -> None:
-        assert issubclass(itemcls, W_Object)
-        if itemcls.__name__ != 'W_OpArg':
-            import pdb;pdb.set_trace()
-        if itemcls not in self.CACHE:
-            W_MyList = _make_W_List(itemcls._w)
-            self.CACHE[itemcls] = W_MyList
+CACHE = {}
+def make_prebuilt(itemcls: Type[W_Object]) -> W_Type:
+    assert issubclass(itemcls, W_Object)
+    if itemcls not in CACHE:
+        W_MyList = _make_W_List(itemcls._w)
+        CACHE[itemcls] = W_MyList
+    return W_MyList._w
 
 T = TypeVar('T', bound='W_Object')
 
 @B.builtin_type('list')
-class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
+class W_List(W_Object, Generic[T]):
     """
     The 'list' type.
 
@@ -64,13 +41,6 @@ class W_List(W_Object, Generic[T], metaclass=Meta_W_List):
 
     def __init__(self, items_w: list[T]) -> None:
         raise NotImplementedError
-
-    @classmethod
-    def make_prebuilt(cls, itemcls: Type[W_Object]) -> None:
-        """
-        Just a shortcut to reach Meta_W_List more easily
-        """
-        type(cls).make_prebuilt(cls, itemcls)
 
     @staticmethod
     def meta_op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
@@ -94,8 +64,8 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_Type:
       - for other types, we rely on the fact that `make_list_type` is blue.
     """
     assert w_list is W_List._w
-    if w_T.pyclass in Meta_W_List.CACHE:
-        w_list_type = vm.wrap(Meta_W_List.CACHE[w_T.pyclass])
+    if w_T.pyclass in CACHE:
+        w_list_type = vm.wrap(CACHE[w_T.pyclass])
     else:
         pyclass = _make_W_List(w_T)
         w_list_type = vm.wrap(pyclass)

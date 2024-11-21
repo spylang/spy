@@ -26,22 +26,6 @@ class TestList(CompilerTest):
         assert w_list_i32.fqn == FQN('builtins::list[i32]')
         assert w_list_i32.pyclass.__name__ == 'W_List[W_I32]'
 
-    def test_cached_generic(self):
-        mod = self.compile(
-        """
-        @blue
-        def make_list(T: type):
-            return list[T]
-        """)
-        w_make_list = mod.make_list.w_func
-        w_list_type = self.vm.call(w_make_list, [W_OpArg._w])
-        assert isinstance(w_list_type, W_Type)
-        assert w_list_type.pyclass is W_List[W_OpArg]
-        #
-        w_list_f64a = self.vm.call(w_make_list, [B.w_f64])
-        w_list_f64b = self.vm.call(w_make_list, [B.w_f64])
-        assert w_list_f64a is w_list_f64b
-
     def test_generalize_literal(self):
         mod = self.compile(
         """

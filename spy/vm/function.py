@@ -6,8 +6,7 @@ from spy.fqn import FQN, NSPart
 from spy.vm.object import W_Object, W_Type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.list import W_List
-    from spy.vm.opimpl import W_OpImpl, W_OpArg
+    from spy.vm.opimpl import W_OpImpl, W_OpArg, W_OpArgList
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
@@ -134,7 +133,7 @@ class W_Func(W_Object):
 
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
-                w_opargs: 'W_List[W_OpArg]') -> 'W_OpImpl':
+                w_opargs: 'W_OpArgList') -> 'W_OpImpl':
         """
         This is a bit of a hack.
 
