@@ -132,7 +132,6 @@ def builtin_type(namespace: FQN|str,
     fqn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass(fqn, pyclass)
-        pyclass.type_fqn = fqn
         pyclass._w = W_MetaClass(fqn, pyclass)
         return pyclass
     return decorator

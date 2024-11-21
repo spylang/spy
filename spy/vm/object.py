@@ -69,7 +69,6 @@ class W_Object:
 
     _w: ClassVar['W_Type']                         # set by @builtin_type
     __spy_members__: ClassVar['dict[str, Member]'] # set by @builtin_type
-    type_fqn: ClassVar[FQN]                        # set by @builtin_type
 
     # Storage category:
     #   - 'value': compares by value, don't have an identity, 'is' is
