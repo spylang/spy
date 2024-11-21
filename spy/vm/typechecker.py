@@ -9,7 +9,7 @@ from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List, make_oparg_list
 from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
 from spy.vm.b import B
-from spy.vm.modules.operator import OP
+from spy.vm.modules.operator import OP, OP_from_token
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.typeconverter import (TypeConverter, DynamicCast, NumericConv,
                                   JsRefConv)
@@ -321,7 +321,7 @@ class TypeChecker:
         return 'blue', w_type
 
     def check_expr_BinOp(self, binop: ast.BinOp) -> tuple[Color, W_Type]:
-        w_OP = OP.from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
         colors, args_wop = self.check_many_exprs(
             ['l', 'r'],
             [binop.left, binop.right],
