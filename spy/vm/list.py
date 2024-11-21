@@ -23,7 +23,7 @@ class W_ListType(W_Type):
 
 
 # PREBUILT list types are instantiated the end of the file
-PREBUILT_LIST_TYPES = {}
+PREBUILT_LIST_TYPES: dict[W_Type, W_ListType] = {}
 
 @builtin_func('__spy__', color='blue')
 def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
@@ -172,7 +172,6 @@ class W_List(W_BaseList, Generic[T]):
 w_oparglist_type = _make_list_type(OP.w_OpArg)
 PREBUILT_LIST_TYPES[OP.w_OpArg] = w_oparglist_type
 
-W_OpArgList = Annotated[W_List, w_oparglist_type]
-
+W_OpArgList = Annotated[W_List[W_OpArg], w_oparglist_type]
 def make_oparg_list(args_wop: list[W_OpArg]) -> W_OpArgList:
-   return w_oparglist_type.pyclass(w_oparglist_type, args_wop)  # type: ignore
+   return W_List(w_oparglist_type, args_wop)  # type: ignore
