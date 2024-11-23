@@ -68,7 +68,6 @@ class W_Object:
     """
 
     _w: ClassVar['W_Type']                         # set by @builtin_type
-    __spy_members__: ClassVar['dict[str, Member]'] # set by @builtin_type
 
     # Storage category:
     #   - 'value': compares by value, don't have an identity, 'is' is
@@ -200,21 +199,21 @@ class W_Type(W_Object):
 
     fqn: FQN
     pyclass: Type[W_Object]
+    spy_members: dict[str, 'Member']
     __spy_storage_category__ = 'reference'
 
     def __init__(self, fqn: FQN, pyclass: Type[W_Object]):
         assert issubclass(pyclass, W_Object)
         self.fqn = fqn
         self.pyclass = pyclass
-        # setup __spy_members__
-        pyclass.__spy_members__ = {}
+        # setup spy_members
+        self.spy_members = {}
         for field, t in pyclass.__annotations__.items():
             member = Member.from_annotation_maybe(t)
             if member is not None:
                 member.field = field
                 member.w_type = typing.get_args(t)[0]._w
-                pyclass.__spy_members__[member.name] = member
-
+                self.spy_members[member.name] = member
 
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property

@@ -42,7 +42,7 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         return W_OpImpl(OP.w_dynamic_getattr)
-    elif attr in pyclass.__spy_members__:
+    elif attr in w_type.spy_members:
         return opimpl_member('get', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_GETATTR'):
         return pyclass.op_GETATTR(vm, wop_obj, wop_attr)
@@ -74,7 +74,7 @@ def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         return W_OpImpl(OP.w_dynamic_setattr)
-    elif attr in pyclass.__spy_members__:
+    elif attr in w_type.spy_members:
         return opimpl_member('set', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_SETATTR'):
         return pyclass.op_SETATTR(vm, wop_obj, wop_attr, wop_v)
@@ -87,7 +87,7 @@ def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
                   attr: str) -> W_OpImpl:
     pyclass = w_type.pyclass
-    member = pyclass.__spy_members__[attr]
+    member = w_type.spy_members[attr]
     W_Class = pyclass
     W_OpArg = member.w_type.pyclass
     field = member.field # the interp-level name of the attr (e.g, 'w_x')
