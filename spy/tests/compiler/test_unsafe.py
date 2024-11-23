@@ -13,6 +13,17 @@ class TestUnsafe(CompilerTest):
         w_ptrtype = self.vm.call(UNSAFE.w_make_ptr_type, [B.w_i32])
         assert repr(w_ptrtype) == "<spy type 'unsafe::ptr[i32]'>"
 
+    @only_interp
+    def test_itemtype(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        def get_itemtype() -> type:
+            return ptr[i32].itemtype
+        """)
+        w_T = mod.get_itemtype(unwrap=False)
+        assert w_T is B.w_i32
+
     def test_gc_alloc(self):
         mod = self.compile(
         """

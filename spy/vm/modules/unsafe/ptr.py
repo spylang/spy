@@ -3,6 +3,7 @@ import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void, W_Bool
+from spy.vm.object import Member
 from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
@@ -21,12 +22,13 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     return w_ptrtype
 
 
+@UNSAFE.builtin_type('ptrtype')
 class W_PtrType(W_Type):
     """
     A specialized ptr type.
     ptr[i32] -> W_PtrType(fqn, B.w_i32)
     """
-    w_itemtype: W_Type
+    w_itemtype: Annotated[W_Type, Member('itemtype')]
 
     def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
         super().__init__(fqn, W_Ptr)
