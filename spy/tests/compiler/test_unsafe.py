@@ -4,6 +4,8 @@ import pytest
 from spy.errors import SPyPanicError
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
+from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.backend.c.wrapper import WasmPtr
 from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
 
 class TestUnsafe(CompilerTest):
@@ -222,9 +224,15 @@ class TestUnsafe(CompilerTest):
             return ptr[i32].NULL
         """)
         w_p = mod.foo()
-        assert w_p.addr == 0
-        assert w_p.length == 0
-        assert repr(w_p) == 'W_Ptr(i32, NULL)'
+        if self.backend in ('interp', 'doppler'):
+            assert isinstance(w_p, W_Ptr)
+            assert w_p.addr == 0
+            assert w_p.length == 0
+            assert repr(w_p) == 'W_Ptr(i32, NULL)'
+        else:
+            assert isinstance(w_p, WasmPtr)
+            assert w_p.addr == 0
+            assert w_p.length == 0
 
     @pytest.mark.xfail(reason='implement ptr.NULL')
     def test_ptr_truth(self):

@@ -63,10 +63,15 @@ class W_PtrType(W_Type):
                    wop_attr: 'W_OpArg') -> 'W_OpImpl':
         attr = wop_attr.blue_unwrap_str(vm)
         if attr == 'NULL':
+            # NOTE: the precise spelling of the FQN of NULL matters! The
+            # C backend emits a #define to match it, see Context.new_ptr_type
             w_self = wop_ptr.blue_ensure(vm, UNSAFE.w_ptrtype)
+            w_NULL = W_Ptr(w_self, 0, 0)
+            vm.add_global(w_self.fqn.join('NULL'), w_NULL)
+
             @builtin_func(w_self.fqn)  # ptr[i32]::get_NULL
             def w_get_NULL(vm: 'SPyVM') -> Annotated['W_Ptr', w_self]:
-                return W_Ptr(w_self, 0, 0)
+                return w_NULL
             return W_OpImpl(w_get_NULL, [])
 
         else:

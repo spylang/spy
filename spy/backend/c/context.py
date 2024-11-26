@@ -107,6 +107,7 @@ class Context:
         c_itemtype = self.w2c(w_itemtype)
         self.out_types_decl.wl(f'typedef struct {c_ptrtype} {c_ptrtype};')
         self.out_types_def.wl(f"SPY_DEFINE_PTR_TYPE({c_ptrtype}, {c_itemtype})")
+        self.out_types_def.wl(f"#define {c_ptrtype}$NULL (({c_ptrtype}){{0}})")
         self._d[w_ptrtype] = c_ptrtype
         return c_ptrtype
 
