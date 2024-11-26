@@ -213,7 +213,7 @@ class TestUnsafe(CompilerTest):
         assert mod.foo() == 3
         assert mod.bar() == 4.6
 
-    @pytest.mark.xfail(reason='implement W_Dynamic.op_GETATTR')
+
     def test_ptr_NULL(self):
         mod = self.compile("""
         from unsafe import ptr
@@ -221,8 +221,10 @@ class TestUnsafe(CompilerTest):
         def foo() -> ptr[i32]:
             return ptr[i32].NULL
         """)
-        x = mod.foo()
-        import pdb;pdb.set_trace()
+        w_p = mod.foo()
+        assert w_p.addr == 0
+        assert w_p.length == 0
+        assert repr(w_p) == 'W_Ptr(i32, NULL)'
 
     @pytest.mark.xfail(reason='implement ptr.NULL')
     def test_ptr_truth(self):
