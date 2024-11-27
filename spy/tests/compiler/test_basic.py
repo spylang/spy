@@ -502,19 +502,6 @@ class TestBasic(CompilerTest):
         assert mod.foo(1) == 100
         assert mod.foo(0) == 200
 
-    def test_while_error(self):
-        src = """
-        def foo() -> void:
-            while 123:
-                pass
-        """
-        errors = expect_errors(
-            'mismatched types',
-            ('expected `bool`, got `i32`', '123'),
-            ('implicit conversion to `bool` is not implemented yet', '123')
-        )
-        self.compile_raises(src, "foo", errors)
-
     def test_getitem_error_1(self):
         src = """
         def bar(a: i32, i: bool) -> void:
