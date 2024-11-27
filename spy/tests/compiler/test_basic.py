@@ -485,6 +485,13 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
+    def test_pass(self):
+        mod = self.compile("""
+        def foo() -> void:
+            pass
+        """)
+        assert mod.foo() is None
+
     def test_bool_conversion(self):
         mod = self.compile("""
         def foo(a: i32) -> i32:

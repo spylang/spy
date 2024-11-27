@@ -126,6 +126,9 @@ class ASTFrame:
 
     # ==== statements ====
 
+    def exec_stmt_Pass(self, stmt: ast.Pass) -> None:
+        pass
+
     def exec_stmt_Return(self, ret: ast.Return) -> None:
         w_val = self.eval_expr(ret.value)
         raise Return(w_val)
