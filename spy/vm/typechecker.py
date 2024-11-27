@@ -584,6 +584,8 @@ def convert_type_maybe(
         return DynamicCast(w_exp)
     elif w_got is B.w_i32 and w_exp is B.w_f64:
         return NumericConv(w_type=w_exp, w_fromtype=w_got)
+    elif w_got is B.w_i32 and w_exp is B.w_bool:
+        return NumericConv(w_type=w_exp, w_fromtype=w_got)
     elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
         return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
     elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):

@@ -44,17 +44,21 @@ class NumericConv(TypeConverter):
     """
     Convert between numeric types.
 
-    At the moment, the only supported conversion is i32->f64, and it's
-    hard-coded
+    At the moment, the only supported conversions are i32->f64 and i32->bool,
+    and they are hard-coded
     """
     color = 'blue'
     w_fromtype: W_Type
 
     def convert(self, vm: 'SPyVM', w_obj: W_Object) -> W_Object:
-        assert self.w_type is B.w_f64
         assert self.w_fromtype is B.w_i32
         val = vm.unwrap_i32(w_obj)
-        return vm.wrap(float(val))
+        if self.w_type is B.w_f64:
+            return vm.wrap(float(val))
+        elif self.w_type is B.w_bool:
+            return vm.wrap(bool(val))
+        else:
+            assert False
 
 
 @dataclass

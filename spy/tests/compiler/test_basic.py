@@ -485,25 +485,15 @@ class TestBasic(CompilerTest):
         assert mod.factorial(0) == 1
         assert mod.factorial(5) == 120
 
-    def test_if_error(self):
-        # XXX: eventually, we want to introduce the concept of "truth value"
-        # and insert automatic conversions but for now the condition must be a
-        # bool
-        src = """
-        def bar(a: i32) -> i32:
+    def test_bool_conversion(self):
+        mod = self.compile("""
+        def foo(a: i32) -> i32:
             if a:
-                return 1
-            return 2
-
-        def foo() -> void:
-            bar(1)
-        """
-        errors = expect_errors(
-            'mismatched types',
-            ('expected `bool`, got `i32`', 'a'),
-            ('implicit conversion to `bool` is not implemented yet', 'a')
-        )
-        self.compile_raises(src, "foo", errors)
+                return 100
+            return 200
+        """)
+        assert mod.foo(1) == 100
+        assert mod.foo(0) == 200
 
     def test_while_error(self):
         src = """
