@@ -38,7 +38,6 @@ from spy.vm.primitive import W_Bool
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.typeconverter import TypeConverter
 
 T = TypeVar('T')
 
@@ -189,7 +188,7 @@ class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
     _args_wop: Optional[list[W_OpArg]]
-    _converters: Optional[list[Optional['TypeConverter']]]
+    _converters_w: Optional[list[Optional[W_Func]]]
 
     def __init__(self,
                  w_func: W_Func,
@@ -199,10 +198,10 @@ class W_OpImpl(W_Object):
         self._typechecked = False
         if args_wop is None:
             self._args_wop = None
-            self._converters = None
+            self._converters_w = None
         else:
             self._args_wop = args_wop
-            self._converters = [None] * len(args_wop)
+            self._converters_w = [None] * len(args_wop)
 
     def __repr__(self) -> str:
         if self._w_func is None:
@@ -242,24 +241,24 @@ class W_OpImpl(W_Object):
 
     def set_args_wop(self, args_wop: list[W_OpArg]) -> None:
         assert self._args_wop is None
-        assert self._converters is None
+        assert self._converters_w is None
         self._args_wop = args_wop[:]
-        self._converters = [None] * len(args_wop)
+        self._converters_w = [None] * len(args_wop)
 
     def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
         assert self.is_valid()
         assert self._args_wop is not None
-        assert self._converters is not None
+        assert self._converters_w is not None
         real_args_w = []
-        for wop_arg, conv in zip(self._args_wop, self._converters):
+        for wop_arg, w_conv in zip(self._args_wop, self._converters_w):
             if wop_arg.is_const():
                 w_arg = wop_arg.w_blueval
             else:
                 assert wop_arg.i is not None
                 w_arg = orig_args_w[wop_arg.i]
 
-            if conv is not None:
-                w_arg = conv.convert(vm, w_arg)
+            if w_conv is not None:
+                w_arg = vm.call(w_conv, [w_arg])
             real_args_w.append(w_arg)
         #
         if self.is_direct_call():
@@ -275,9 +274,9 @@ class W_OpImpl(W_Object):
         from spy.doppler import make_const
         assert self.is_valid()
         assert self._args_wop is not None
-        assert self._converters is not None
+        assert self._converters_w is not None
         real_args = []
-        for wop_arg, conv in zip(self._args_wop, self._converters):
+        for wop_arg, w_conv in zip(self._args_wop, self._converters_w):
             if wop_arg.is_const():
                 w_arg = wop_arg.w_blueval
                 arg = make_const(vm, wop_arg.loc, w_arg)
@@ -285,8 +284,15 @@ class W_OpImpl(W_Object):
                 assert wop_arg.i is not None
                 arg = orig_args[wop_arg.i]
 
-            if conv is not None:
-                arg = conv.redshift(vm, arg)
+            if w_conv is not None:
+                arg = ast.Call(
+                    loc = arg.loc,
+                    func = ast.FQNConst(
+                        loc = arg.loc,
+                        fqn = w_conv.fqn
+                    ),
+                    args = [arg]
+                )
             real_args.append(arg)
         return real_args
 

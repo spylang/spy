@@ -169,6 +169,9 @@ class W_DirectCall(W_Func):
     def __init__(self, w_functype: W_FuncType) -> None:
         self.w_functype = w_functype
 
+    def __repr__(self) -> str:
+        return f'W_DirectCall({self.w_functype})'
+
 
 class W_ASTFunc(W_Func):
     funcdef: ast.FuncDef

@@ -28,38 +28,6 @@ class TypeConverter:
     def redshift(self, vm: 'SPyVM', expr: ast.Expr) -> ast.Expr:
         return expr
 
-class DynamicCast(TypeConverter):
-    """
-    This doesn't actually perform any active "conversion", it just checks at
-    runtime that the given object is an instance of the desired type.
-    """
-    color = 'blue'
-
-    def convert(self, vm: 'SPyVM', w_obj: W_Object) -> W_Object:
-        w_from_dynamic_T = vm.call(OP.w_from_dynamic, [self.w_type])
-        return vm.call(w_from_dynamic_T, [w_obj])
-
-
-@dataclass
-class NumericConv(TypeConverter):
-    """
-    Convert between numeric types.
-
-    At the moment, the only supported conversions are i32->f64 and i32->bool,
-    and they are hard-coded
-    """
-    color = 'blue'
-    w_fromtype: W_Type
-
-    def convert(self, vm: 'SPyVM', w_obj: W_Object) -> W_Object:
-        impls_w = {
-            (B.w_i32, B.w_f64): OP.w_i32_to_f64,
-            (B.w_i32, B.w_bool): OP.w_i32_to_bool
-        }
-        w_impl = impls_w[(self.w_fromtype, self.w_type)]
-        return vm.call(w_impl, [w_obj])
-
-
 @dataclass
 class JsRefConv(TypeConverter):
     color = 'red'
