@@ -592,16 +592,13 @@ def convert_type_maybe(
         (B.w_i32, B.w_bool): OP.w_i32_to_bool
     }
     key = (w_got, w_exp)
-    w_converter = converters_w.get(key)
-    if w_converter is not None:
-        return w_converter
+    w_conv = converters_w.get(key)
+    if w_conv is not None:
+        return w_conv
 
-    # FIXME
-    ## elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-    ##     return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
-    ## elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-    ##     assert w_got == W_FuncType.parse('def() -> void')
-    ##     return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
+    if w_exp is JSFFI.w_JsRef:
+        if w_conv := convert_JsRef_maybe(w_got, w_exp):
+            return w_conv
 
     # mismatched types
     err = SPyTypeError('mismatched types')
@@ -609,3 +606,13 @@ def convert_type_maybe(
     exp = w_exp.fqn.human_name
     err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)
     raise err
+
+
+def convert_JsRef_maybe(w_got: W_Type, w_exp: W_Type) -> Optional[W_Func]:
+    if w_got is B.w_str:
+        return JSFFI.w_js_string
+    elif w_got is B.w_i32:
+        return JSFFI.w_js_i32
+    elif isinstance(w_got, W_FuncType):
+        assert w_got == W_FuncType.parse('def() -> void')
+        return JSFFI.w_js_wrap_func

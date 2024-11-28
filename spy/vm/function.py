@@ -20,7 +20,7 @@ class FuncParam:
     w_type: W_Type
 
 
-@dataclass(repr=False)
+@dataclass(repr=False, eq=True)
 class W_FuncType(W_Type):
     color: Color
     params: list[FuncParam]
@@ -57,6 +57,9 @@ class W_FuncType(W_Type):
 
     def __repr__(self) -> str:
         return f"<spy type '{self.signature}'>"
+
+    def __hash__(self) -> int:
+        return hash((self.fqn, self.color, tuple(self.params), self.w_restype))
 
     @classmethod
     def make(cls,

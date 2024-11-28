@@ -62,6 +62,10 @@ def w_js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func
+def w_js_i32(vm: 'SPyVM', w_i: W_I32) -> W_JsRef:
+    raise NotImplementedError
+
+@JSFFI.builtin_func
 def w_js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
     raise NotImplementedError
 
