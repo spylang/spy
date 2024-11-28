@@ -36,8 +36,9 @@ class DynamicCast(TypeConverter):
     color = 'blue'
 
     def convert(self, vm: 'SPyVM', w_obj: W_Object) -> W_Object:
-        vm.typecheck(w_obj, self.w_type)
-        return w_obj
+        w_from_dynamic_T = vm.call(OP.w_from_dynamic, [self.w_type])
+        return vm.call(w_from_dynamic_T, [w_obj])
+
 
 @dataclass
 class NumericConv(TypeConverter):
