@@ -203,3 +203,20 @@ class TestDoppler:
         def foo() -> dynamic:
             return [1, 2, 7]
         """)
+
+    def test_type_conversion(self):
+        src = """
+        def foo(x: f64) -> void:
+            pass
+
+        def main() -> void:
+            foo(42)
+        """
+        self.redshift(src)
+        self.assert_dump("""
+        def foo(x: f64) -> void:
+            pass
+
+        def main() -> void:
+            `test::foo`(`operator::i32_to_f64`(42))
+        """)

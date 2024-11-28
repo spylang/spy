@@ -223,6 +223,7 @@ class FuncDoppler:
             # sanity check: the redshift MUST have produced a const. If it
             # didn't, the C backend won't be able to compile the call.
             assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
+            newargs = w_opimpl.redshift_args(self.vm, [newfunc] + newargs)
             newop = ast.Call(call.loc, newfunc, newargs)
             return self.specialize_print_maybe(newop)
         else:

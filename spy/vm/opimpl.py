@@ -109,7 +109,8 @@ class W_OpArg(W_Object):
             extra = ''
         if self.is_const():
             extra += ' const'
-        return f'<W_OpArg {self.name}: {self.w_static_type.fqn}{extra}>'
+        t = self.w_static_type.fqn.human_name
+        return f'<W_OpArg {self.name}: {t}{extra}>'
 
     def is_blue(self) -> bool:
         return self._w_blueval is not None
