@@ -135,11 +135,11 @@ class W_OpArg(W_Object):
                 'this is red',
                 self.loc)
 
-        # XXX THIS IS WRONG! MERGE BLOCKER
-        err = CONVERT_maybe(vm, w_expected_type, self)
-        if err:
-            assert isinstance(err, BaseException)
-            raise err
+        # check that the blueval has the expected type. If not, we should
+        # probably raise a better error, but for now we just fail with
+        # AssertionError.
+        w_opimpl = CONVERT_maybe(vm, w_expected_type, self)
+        assert w_opimpl is None
         return self._w_blueval
 
     def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
