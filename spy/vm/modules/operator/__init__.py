@@ -52,6 +52,7 @@ from . import binop          # side effects
 from . import attrop         # side effects
 from . import itemop         # side effects
 from . import callop         # side effects
+from . import convop         # side effects
 
 
 _from_token: dict[str, W_Func] = {

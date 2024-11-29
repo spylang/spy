@@ -77,19 +77,19 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 @OP.builtin_func(color='blue')
 def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '+', wop_l, wop_r)
+    return MM.get_opimpl(vm, '+', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '-', wop_l, wop_r)
+    return MM.get_opimpl(vm, '-', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '*', wop_l, wop_r)
+    return MM.get_opimpl(vm, '*', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '/', wop_l, wop_r)
+    return MM.get_opimpl(vm, '/', wop_l, wop_r)
 
 def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     """
@@ -118,7 +118,7 @@ def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
                          errmsg='cannot do `{0}` == `{1}`')
         return w_opimpl
     else:
-        return MM.lookup(vm, '==', wop_l, wop_r)
+        return MM.get_opimpl(vm, '==', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
@@ -137,7 +137,7 @@ def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
                          dispatch='multi',
                          errmsg='cannot do `{0}` != `{1}`')
         return w_opimpl
-    return MM.lookup(vm, '!=', wop_l, wop_r)
+    return MM.get_opimpl(vm, '!=', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
@@ -164,16 +164,16 @@ def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 
 @OP.builtin_func(color='blue')
 def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '<', wop_l, wop_r)
+    return MM.get_opimpl(vm, '<', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '<=', wop_l, wop_r)
+    return MM.get_opimpl(vm, '<=', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '>', wop_l, wop_r)
+    return MM.get_opimpl(vm, '>', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-    return MM.lookup(vm, '>=', wop_l, wop_r)
+    return MM.get_opimpl(vm, '>=', wop_l, wop_r)

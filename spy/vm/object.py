@@ -180,6 +180,16 @@ class W_Object:
                        w_opargs: 'W_OpArgList') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
+    @staticmethod
+    def op_CONVERT_FROM(vm: 'SPyVM', w_T: 'W_Type',
+                        wop_x: 'W_OpArg') -> 'W_OpImpl':
+        raise NotImplementedError('this should never be called')
+
+    @staticmethod
+    def op_CONVERT_TO(vm: 'SPyVM', w_T: 'W_Type',
+                      wop_x: 'W_OpArg') -> 'W_OpImpl':
+        raise NotImplementedError('this should never be called')
+
 
 class W_Type(W_Object):
     """

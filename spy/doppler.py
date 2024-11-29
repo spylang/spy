@@ -9,7 +9,6 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.astframe import ASTFrame
-from spy.vm.typeconverter import JsRefConv
 from spy.vm.opimpl import W_OpImpl
 from spy.util import magic_dispatch
 
@@ -92,8 +91,6 @@ class FuncDoppler:
             if not conv or conv.color == 'blue':
                 return self.blue_eval(expr)
         res = magic_dispatch(self, 'shift_expr', expr)
-        if conv and isinstance(conv, JsRefConv):
-            res = conv.redshift(self.vm, res)
         return res
 
     # ==== statements ====
@@ -223,6 +220,7 @@ class FuncDoppler:
             # sanity check: the redshift MUST have produced a const. If it
             # didn't, the C backend won't be able to compile the call.
             assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
+            newargs = w_opimpl.redshift_args(self.vm, [newfunc] + newargs)
             newop = ast.Call(call.loc, newfunc, newargs)
             return self.specialize_print_maybe(newop)
         else:

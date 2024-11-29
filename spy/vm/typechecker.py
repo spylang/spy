@@ -4,15 +4,13 @@ from spy import ast
 from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
+from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List, make_oparg_list
-from spy.vm.function import W_FuncType, W_ASTFunc, W_Func
+from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP, OP_from_token
-from spy.vm.modules.jsffi import JSFFI
-from spy.vm.typeconverter import (TypeConverter, DynamicCast, NumericConv,
-                                  JsRefConv)
 from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -42,7 +40,7 @@ class TypeChecker:
     w_func: W_ASTFunc
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
-    expr_conv: dict[ast.Expr, TypeConverter]
+    expr_conv: dict[ast.Expr, W_Func]
     opimpl: dict[ast.Node, W_OpImpl]
     locals_types_w: dict[str, W_Type]
 
@@ -81,9 +79,9 @@ class TypeChecker:
 
         wop_local = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
-            conv = convert_type_maybe(self.vm, wop_local, w_exp_type)
-            if conv is not None:
-                self.expr_conv[expr] = conv
+            w_conv = CONVERT_maybe(self.vm, w_exp_type, wop_local)
+            if w_conv is not None:
+                self.expr_conv[expr] = w_conv
         except SPyTypeError as err:
             exp = w_exp_type.fqn.human_name
             exp_loc = self.funcdef.symtable.lookup(name).type_loc
@@ -98,9 +96,9 @@ class TypeChecker:
         color, w_got_type = self.check_expr(expr)
         wop_cond = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
-            conv = convert_type_maybe(self.vm, wop_cond, B.w_bool)
-            if conv is not None:
-                self.expr_conv[expr] = conv
+            w_conv = CONVERT_maybe(self.vm, B.w_bool, wop_cond)
+            if w_conv is not None:
+                self.expr_conv[expr] = w_conv
         except SPyTypeError as err:
             msg = 'implicit conversion to `bool` is not implemented yet'
             err.add('note', msg, expr.loc)
@@ -508,11 +506,11 @@ def typecheck_opimpl(
             call_loc = call_loc)
 
     # check that the types of the arguments are compatible
-    assert w_opimpl._converters is not None
+    assert w_opimpl._converters_w is not None
     for i, (param, wop_arg) in enumerate(zip(w_functype.params, args_wop)):
         try:
-            conv = convert_type_maybe(vm, wop_arg, param.w_type)
-            w_opimpl._converters[i] = conv
+            w_conv = CONVERT_maybe(vm, param.w_type, wop_arg)
+            w_opimpl._converters_w[i] = w_conv
         except SPyTypeError as err:
             if def_loc:
                 err.add('note', 'function defined here', def_loc)
@@ -556,43 +554,4 @@ def _call_error_wrong_argcount(
     #
     if def_loc:
         err.add('note', 'function defined here', def_loc)
-    raise err
-
-def convert_type_maybe(
-        vm: 'SPyVM',
-        wop_x: W_OpArg,
-        w_exp: W_Type
-) -> Optional[TypeConverter]:
-    """
-    Check whether the given W_OpArg is compatible with the expected type:
-
-      - return None if it's the same type (no conversion needed)
-
-      - return a TypeConverter if it can be converted
-
-      - raise SPyTypeError if the types are not compatible. In this case,
-        the caller can catch the error, add extra info and re-raise.
-    """
-    w_got = wop_x.w_static_type
-    if vm.issubclass(w_got, w_exp):
-        # nothing to do
-        return None
-
-    # try to see whether we can apply a type conversion
-    if vm.issubclass(w_exp, w_got):
-        # implicit upcast
-        return DynamicCast(w_exp)
-    elif w_got is B.w_i32 and w_exp is B.w_f64:
-        return NumericConv(w_type=w_exp, w_fromtype=w_got)
-    elif w_exp is JSFFI.w_JsRef and w_got in (B.w_str, B.w_i32):
-        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
-    elif w_exp is JSFFI.w_JsRef and isinstance(w_got, W_FuncType):
-        assert w_got == W_FuncType.parse('def() -> void')
-        return JsRefConv(w_type=JSFFI.w_JsRef, w_fromtype=w_got)
-
-    # mismatched types
-    err = SPyTypeError('mismatched types')
-    got = w_got.fqn.human_name
-    exp = w_exp.fqn.human_name
-    err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)
     raise err

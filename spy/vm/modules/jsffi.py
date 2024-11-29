@@ -40,6 +40,19 @@ class W_JsRef(W_Object):
                 f"unsupported number of arguments for CALL_METHOD: {n}"
             )
 
+    @staticmethod
+    def op_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+        if w_T is B.w_str:
+            return W_OpImpl(JSFFI.w_js_string)
+        elif w_T is B.w_i32:
+            return W_OpImpl(JSFFI.w_js_i32)
+        elif isinstance(w_T, W_FuncType):
+            assert w_T == W_FuncType.parse('def() -> void')
+            return W_OpImpl(JSFFI.w_js_wrap_func)
+        else:
+            return W_OpImpl.NULL
+
+
 @JSFFI.builtin_func
 def w_debug(vm: 'SPyVM', w_str: W_Str) -> None:
     s = vm.unwrap_str(w_str)
@@ -59,6 +72,10 @@ def w_get_Console(vm: 'SPyVM') -> W_JsRef:
 
 @JSFFI.builtin_func
 def w_js_string(vm: 'SPyVM', w_str: W_Str) -> W_JsRef:
+    raise NotImplementedError
+
+@JSFFI.builtin_func
+def w_js_i32(vm: 'SPyVM', w_i: W_I32) -> W_JsRef:
     raise NotImplementedError
 
 @JSFFI.builtin_func

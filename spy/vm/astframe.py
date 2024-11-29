@@ -14,7 +14,6 @@ from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.typechecker import TypeChecker
-from spy.vm.typeconverter import TypeConverter
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -107,13 +106,13 @@ class ASTFrame:
 
     def eval_expr(self, expr: ast.Expr) -> W_Object:
         self.t.check_expr(expr)
-        typeconv = self.t.expr_conv.get(expr)
+        w_typeconv = self.t.expr_conv.get(expr)
         w_val = magic_dispatch(self, 'eval_expr', expr)
-        if typeconv is None:
+        if w_typeconv is None:
             return w_val
         else:
             # apply the type converter, if present
-            return typeconv.convert(self.vm, w_val)
+            return self.vm.call(w_typeconv, [w_val])
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         w_val = self.eval_expr(expr)
@@ -125,6 +124,9 @@ class ASTFrame:
         raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
 
     # ==== statements ====
+
+    def exec_stmt_Pass(self, stmt: ast.Pass) -> None:
+        pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
         w_val = self.eval_expr(ret.value)
