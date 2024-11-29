@@ -128,13 +128,15 @@ class W_OpArg(W_Object):
         Ensure that the W_OpArg is blue and of the expected type.
         Raise SPyTypeError if not.
         """
-        from spy.vm.modules.operator.convop import convert_type_maybe
+        from spy.vm.modules.operator.convop import CONVERT_maybe
         if self._w_blueval is None:
             raise SPyTypeError.simple(
                 'expected blue argument',
                 'this is red',
                 self.loc)
-        err = convert_type_maybe(vm, self, w_expected_type)
+
+        # XXX THIS IS WRONG! MERGE BLOCKER
+        err = CONVERT_maybe(vm, w_expected_type, self)
         if err:
             assert isinstance(err, BaseException)
             raise err

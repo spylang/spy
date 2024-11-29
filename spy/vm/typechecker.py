@@ -4,7 +4,7 @@ from spy import ast
 from spy.irgen.symtable import Symbol, Color
 from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
 from spy.location import Loc
-from spy.vm.modules.operator.convop import convert_type_maybe
+from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.list import W_List, make_oparg_list
@@ -79,9 +79,9 @@ class TypeChecker:
 
         wop_local = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
-            conv = convert_type_maybe(self.vm, wop_local, w_exp_type)
-            if conv is not None:
-                self.expr_conv[expr] = conv
+            w_conv = CONVERT_maybe(self.vm, w_exp_type, wop_local)
+            if w_conv is not None:
+                self.expr_conv[expr] = w_conv
         except SPyTypeError as err:
             exp = w_exp_type.fqn.human_name
             exp_loc = self.funcdef.symtable.lookup(name).type_loc
@@ -96,9 +96,9 @@ class TypeChecker:
         color, w_got_type = self.check_expr(expr)
         wop_cond = W_OpArg('v', 0, w_got_type, expr.loc)
         try:
-            conv = convert_type_maybe(self.vm, wop_cond, B.w_bool)
-            if conv is not None:
-                self.expr_conv[expr] = conv
+            w_conv = CONVERT_maybe(self.vm, B.w_bool, wop_cond)
+            if w_conv is not None:
+                self.expr_conv[expr] = w_conv
         except SPyTypeError as err:
             msg = 'implicit conversion to `bool` is not implemented yet'
             err.add('note', msg, expr.loc)
@@ -509,7 +509,7 @@ def typecheck_opimpl(
     assert w_opimpl._converters_w is not None
     for i, (param, wop_arg) in enumerate(zip(w_functype.params, args_wop)):
         try:
-            w_conv = convert_type_maybe(vm, wop_arg, param.w_type)
+            w_conv = CONVERT_maybe(vm, param.w_type, wop_arg)
             w_opimpl._converters_w[i] = w_conv
         except SPyTypeError as err:
             if def_loc:
@@ -555,4 +555,3 @@ def _call_error_wrong_argcount(
     if def_loc:
         err.add('note', 'function defined here', def_loc)
     raise err
-
