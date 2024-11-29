@@ -9,9 +9,11 @@ from spy.vm.opimpl import W_OpArg
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.builtin import builtin_func
 from . import OP
+from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+MM = MultiMethodTable()
 
 @OP.builtin_func(color='blue')
 def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
@@ -37,15 +39,9 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
         w_from_dynamic_T = vm.call(OP.w_from_dynamic, [w_exp])
         return w_from_dynamic_T
 
-    # XXX move this dictionary somewhere else
-    converters_w = {
-        (B.w_i32, B.w_f64): OP.w_i32_to_f64,
-        (B.w_i32, B.w_bool): OP.w_i32_to_bool
-    }
-    key = (w_got, w_exp)
-    w_conv = converters_w.get(key)
-    if w_conv is not None:
-        return w_conv
+    w_opimpl = MM.lookup('convert', w_got, w_exp)
+    if not w_opimpl.is_null():
+        return w_opimpl._w_func
 
     if w_exp is JSFFI.w_JsRef:
         if w_conv := convert_JsRef_maybe(w_got, w_exp):
@@ -119,3 +115,6 @@ def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
     vm.add_global(w_from_dynamic_T.fqn, w_from_dynamic_T)
     return w_from_dynamic_T
+
+MM.register('convert', 'i32', 'f64', OP.w_i32_to_f64)
+MM.register('convert', 'i32', 'bool', OP.w_i32_to_bool)
