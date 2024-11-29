@@ -5,7 +5,7 @@ from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.operator import OP
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.opimpl import W_OpArg
+from spy.vm.opimpl import W_OpArg, W_OpImpl
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.builtin import builtin_func
 from . import OP
@@ -23,11 +23,23 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
     If the types are not compatible, raise SPyTypeError. In this case,
     the caller can catch the error, add extra info and re-raise.
     """
-    w_got = wop_x.w_static_type
+    w_opimpl = get_opimpl(vm, w_exp, wop_x)
+    if not w_opimpl.is_null():
+        return w_opimpl._w_func # XXX: maybe we should return a W_OpImpl?
 
+    # mismatched types
+    err = SPyTypeError('mismatched types')
+    got = wop_x.w_static_type.fqn.human_name
+    exp = w_exp.fqn.human_name
+    err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)
+    raise err
+
+
+def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
     # this condition is checked by CONVERT_maybe. If we want this function to
     # become more generally usable, we might want to return an identity func
     # here.
+    w_got = wop_x.w_static_type
     assert not vm.issubclass(w_got, w_exp)
 
     if vm.issubclass(w_exp, w_got):
@@ -37,22 +49,20 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
         #                 the moment we don't so we conflate the two cases
         #                 into one
         w_from_dynamic_T = vm.call(OP.w_from_dynamic, [w_exp])
-        return w_from_dynamic_T
+        return W_OpImpl(w_from_dynamic_T)
 
     w_opimpl = MM.lookup('convert', w_got, w_exp)
     if not w_opimpl.is_null():
-        return w_opimpl._w_func
+        return w_opimpl
 
-    if w_exp is JSFFI.w_JsRef:
-        if w_conv := convert_JsRef_maybe(w_got, w_exp):
-            return w_conv
+    from_pyclass = w_got.pyclass
+    to_pyclass = w_exp.pyclass
+    if from_pyclass.has_meth_overriden('op_CONVERT_TO'):
+        return from_pyclass.op_CONVERT_TO(vm, w_exp, wop_x)
+    elif to_pyclass.has_meth_overriden('op_CONVERT_FROM'):
+        return to_pyclass.op_CONVERT_FROM(vm, w_got, wop_x)
 
-    # mismatched types
-    err = SPyTypeError('mismatched types')
-    got = w_got.fqn.human_name
-    exp = w_exp.fqn.human_name
-    err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)
-    raise err
+    return W_OpImpl.NULL
 
 
 def CONVERT_maybe(
@@ -66,20 +76,6 @@ def CONVERT_maybe(
         # nothing to do
         return None
     return vm.call(OP.w_CONVERT, [w_exp, wop_x])
-
-def convert_JsRef_maybe(w_got: W_Type, w_exp: W_Type) -> Optional[W_Func]:
-    if w_got is B.w_str:
-        return JSFFI.w_js_string
-    elif w_got is B.w_i32:
-        return JSFFI.w_js_i32
-    elif isinstance(w_got, W_FuncType):
-        assert w_got == W_FuncType.parse('def() -> void')
-        return JSFFI.w_js_wrap_func
-    else:
-        return None
-
-
-
 
 @OP.builtin_func
 def w_i32_to_f64(vm: 'SPyVM', w_x: W_I32) -> W_F64:
