@@ -4,6 +4,8 @@ import pytest
 from spy.errors import SPyPanicError
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
+from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.backend.c.wrapper import WasmPtr
 from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
 
 class TestUnsafe(CompilerTest):
@@ -12,6 +14,17 @@ class TestUnsafe(CompilerTest):
     def test_ptrtype_repr(self):
         w_ptrtype = self.vm.call(UNSAFE.w_make_ptr_type, [B.w_i32])
         assert repr(w_ptrtype) == "<spy type 'unsafe::ptr[i32]'>"
+
+    @only_interp
+    def test_itemtype(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        def get_itemtype() -> type:
+            return ptr[i32].itemtype
+        """)
+        w_T = mod.get_itemtype(unwrap=False)
+        assert w_T is B.w_i32
 
     def test_gc_alloc(self):
         mod = self.compile(
@@ -202,7 +215,7 @@ class TestUnsafe(CompilerTest):
         assert mod.foo() == 3
         assert mod.bar() == 4.6
 
-    @pytest.mark.xfail(reason='implement W_Dynamic.op_GETATTR')
+
     def test_ptr_NULL(self):
         mod = self.compile("""
         from unsafe import ptr
@@ -210,8 +223,16 @@ class TestUnsafe(CompilerTest):
         def foo() -> ptr[i32]:
             return ptr[i32].NULL
         """)
-        x = mod.foo()
-        import pdb;pdb.set_trace()
+        w_p = mod.foo()
+        if self.backend in ('interp', 'doppler'):
+            assert isinstance(w_p, W_Ptr)
+            assert w_p.addr == 0
+            assert w_p.length == 0
+            assert repr(w_p) == 'W_Ptr(i32, NULL)'
+        else:
+            assert isinstance(w_p, WasmPtr)
+            assert w_p.addr == 0
+            assert w_p.length == 0
 
     @pytest.mark.xfail(reason='implement ptr.NULL')
     def test_ptr_truth(self):

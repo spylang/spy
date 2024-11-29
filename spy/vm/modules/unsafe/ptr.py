@@ -3,6 +3,7 @@ import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void, W_Bool
+from spy.vm.object import Member
 from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
@@ -21,16 +22,62 @@ def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     return w_ptrtype
 
 
+@UNSAFE.builtin_type('ptrtype')
 class W_PtrType(W_Type):
     """
     A specialized ptr type.
     ptr[i32] -> W_PtrType(fqn, B.w_i32)
     """
-    w_itemtype: W_Type
+    w_itemtype: Annotated[W_Type, Member('itemtype')]
+
+    # w_NULL: ???
+    # PtrTypes have a NULL member, which you can use like that:
+    #    ptr[i32].NULL
+    #
+    # So ideally, we would like to have a w_NULL Annotated[Member] here, but
+    # we cannot because the typing of is a bit problematic.
+    #
+    # From the point of view of concrete ptr[] types, it's a class variable,
+    # roughly equivalent to this:
+    #   class ptr[T]:
+    #       NULL: ClassVar['Self']
+    #
+    # HOWEVER, ptr[T] is an instance of PtrType, so NULL is _also_ an instance
+    # variable of PtrType. The problem here is that we don't have any good way
+    # of declaring its type:
+    #   class PtrType:
+    #       NULL: ???
+    #
+    # This happens because giving a PtrType(T) instance, PtrType(T).NULL is of
+    # type PtrType(T), and AFAIK there is no syntax to denote that.
+    #
+    # The workaround is not to use a Member, but to implement .NULL as a
+    # special case of op_GETATTR.
 
     def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
         super().__init__(fqn, W_Ptr)
         self.w_itemtype = w_itemtype
+
+    @staticmethod
+    def op_GETATTR(vm: 'SPyVM', wop_ptr: 'W_OpArg',
+                   wop_attr: 'W_OpArg') -> 'W_OpImpl':
+        attr = wop_attr.blue_unwrap_str(vm)
+        if attr == 'NULL':
+            # NOTE: the precise spelling of the FQN of NULL matters! The
+            # C backend emits a #define to match it, see Context.new_ptr_type
+            w_self = wop_ptr.blue_ensure(vm, UNSAFE.w_ptrtype)
+            w_NULL = W_Ptr(w_self, 0, 0)
+            vm.add_global(w_self.fqn.join('NULL'), w_NULL)
+
+            @builtin_func(w_self.fqn)  # ptr[i32]::get_NULL
+            def w_get_NULL(vm: 'SPyVM') -> Annotated['W_Ptr', w_self]:
+                return w_NULL
+            return W_OpImpl(w_get_NULL, [])
+
+        else:
+            return W_OpImpl.NULL
+
+
 
 
 @UNSAFE.builtin_type('ptr')
@@ -67,14 +114,21 @@ class W_Ptr(W_BasePtr):
                  length: int | fixedint.Int32) -> None:
         assert type(addr) in (int, fixedint.Int32)
         assert type(length) in (int, fixedint.Int32)
-        assert length >= 1
+        if addr == 0:
+            assert length == 0
+        else:
+            assert length >= 1
         self.w_ptrtype = w_ptrtype
         self.addr = fixedint.Int32(addr)
         self.length = fixedint.Int32(length)
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
-        return f'{clsname}(0x{self.addr:x}, length={self.length})'
+        t = self.w_ptrtype.w_itemtype.fqn.human_name
+        if self.addr == 0:
+            return f'{clsname}({t}, NULL)'
+        else:
+            return f'{clsname}({t}, 0x{self.addr:x}, length={self.length})'
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_ptrtype

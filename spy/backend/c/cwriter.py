@@ -11,6 +11,7 @@ from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.types import TYPES
+from spy.vm.modules.unsafe.ptr import W_PtrType, W_Ptr
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
@@ -363,8 +364,15 @@ class CFuncWriter:
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> C.Expr:
         w_obj = self.ctx.vm.lookup_global(const.fqn)
-        assert isinstance(w_obj, W_Func)
-        return C.Literal(const.fqn.c_name)
+        if isinstance(w_obj, W_Ptr):
+            # for each PtrType, we emit the corresponding NULL define with the
+            # appropriate fqn name, see Context.new_ptr_type
+            assert w_obj.addr == 0, 'only NULL ptrs can be constants'
+            return C.Literal(const.fqn.c_name)
+        elif isinstance(w_obj, W_Func):
+            return C.Literal(const.fqn.c_name)
+        else:
+            assert False
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         sym = self.w_func.funcdef.symtable.lookup(name.id)
