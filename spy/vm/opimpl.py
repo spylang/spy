@@ -128,7 +128,7 @@ class W_OpArg(W_Object):
         Ensure that the W_OpArg is blue and of the expected type.
         Raise SPyTypeError if not.
         """
-        from spy.vm.typechecker import convert_type_maybe
+        from spy.vm.modules.operator.convop import convert_type_maybe
         if self._w_blueval is None:
             raise SPyTypeError.simple(
                 'expected blue argument',
