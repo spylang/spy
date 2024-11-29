@@ -86,10 +86,8 @@ class FuncDoppler:
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
         color, w_type = self.t.check_expr(expr)
-        conv = self.t.expr_conv.get(expr)
         if color == 'blue':
-            if not conv or conv.color == 'blue':
-                return self.blue_eval(expr)
+            return self.blue_eval(expr)
         res = magic_dispatch(self, 'shift_expr', expr)
         return res
 
