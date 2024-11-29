@@ -25,7 +25,8 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
     """
     w_opimpl = get_opimpl(vm, w_exp, wop_x)
     if not w_opimpl.is_null():
-        return w_opimpl._w_func # XXX: maybe we should return a W_OpImpl?
+        # XXX: maybe we should return a W_OpImpl?
+        return w_opimpl._w_func  # type: ignore
 
     # mismatched types
     err = SPyTypeError('mismatched types')
@@ -49,6 +50,7 @@ def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
         #                 the moment we don't so we conflate the two cases
         #                 into one
         w_from_dynamic_T = vm.call(OP.w_from_dynamic, [w_exp])
+        assert isinstance(w_from_dynamic_T, W_Func)
         return W_OpImpl(w_from_dynamic_T)
 
     w_opimpl = MM.lookup('convert', w_got, w_exp)
@@ -75,17 +77,17 @@ def CONVERT_maybe(
     if vm.issubclass(w_got, w_exp):
         # nothing to do
         return None
-    return vm.call(OP.w_CONVERT, [w_exp, wop_x])
+    return vm.call(OP.w_CONVERT, [w_exp, wop_x])  # type: ignore
 
 @OP.builtin_func
 def w_i32_to_f64(vm: 'SPyVM', w_x: W_I32) -> W_F64:
     val = vm.unwrap_i32(w_x)
-    return vm.wrap(float(val))
+    return vm.wrap(float(val))  # type: ignore
 
 @OP.builtin_func
 def w_i32_to_bool(vm: 'SPyVM', w_x: W_I32) -> W_Bool:
     val = vm.unwrap_i32(w_x)
-    return vm.wrap(bool(val))
+    return vm.wrap(bool(val))  # type: ignore
 
 
 @OP.builtin_func(color='blue')
