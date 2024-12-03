@@ -234,10 +234,9 @@ class TestUnsafe(CompilerTest):
             assert w_p.addr == 0
             assert w_p.length == 0
 
-    @pytest.mark.xfail(reason='implement ptr.NULL')
     def test_ptr_truth(self):
         mod = self.compile("""
-        from unsafe import ptr
+        from unsafe import ptr, gc_alloc
 
         def is_null(p: ptr[i32]) -> bool:
             if p:

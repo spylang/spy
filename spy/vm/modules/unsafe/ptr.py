@@ -232,6 +232,21 @@ class W_Ptr(W_BasePtr):
         return W_OpImpl(w_ptr_ne)
 
     @staticmethod
+    def op_CONVERT_TO(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+        if w_T is not B.w_bool:
+            return W_OpImpl.NULL
+        w_ptrtype = W_Ptr._get_ptrtype(wop_x)
+        PTR = Annotated[W_Ptr, w_ptrtype]
+
+        @builtin_func(w_ptrtype.fqn, 'to_bool')
+        def w_ptr_to_bool(vm: 'SPyVM', w_ptr: PTR) -> W_Bool:
+            if w_ptr.addr == 0:
+                return B.w_False
+            return B.w_True
+        return W_OpImpl(w_ptr_to_bool)
+
+
+    @staticmethod
     def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
                    wop_attr: W_OpArg) -> W_OpImpl:
         return W_Ptr._op_ATTR('get', vm, wop_ptr, wop_attr, None)
@@ -275,6 +290,7 @@ class W_Ptr(W_BasePtr):
             w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
+
 
 
 @UNSAFE.builtin_func(color='blue')
