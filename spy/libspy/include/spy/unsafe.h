@@ -54,6 +54,9 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     }                                                            \
     static inline bool PTR##$ne(PTR p0, PTR p1) {                \
         return p0.p != p1.p;                                     \
+    }                                                            \
+    static inline bool PTR##$to_bool(PTR p) {                    \
+        return p.p;                                              \
     }
 
 #define _SPY_DEFINE_PTR_TYPE_CHECKED(PTR, T)                     \
@@ -83,6 +86,9 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     }                                                            \
     static inline bool PTR##$ne(PTR p0, PTR p1) {                \
         return p0.p != p1.p || p0.length != p1.length;           \
+    }                                                            \
+    static inline bool PTR##$to_bool(PTR p) {                    \
+        return p.p;                                              \
     }
 
 

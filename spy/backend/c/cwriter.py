@@ -301,8 +301,9 @@ class CFuncWriter:
         #
         if if_node.else_body:
             self.out.wl('} else {')
-            for stmt in if_node.else_body:
-                self.emit_stmt(stmt)
+            with self.out.indent():
+                for stmt in if_node.else_body:
+                    self.emit_stmt(stmt)
         #
         self.out.wl('}')
 

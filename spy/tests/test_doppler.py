@@ -209,14 +209,31 @@ class TestDoppler:
         def foo(x: f64) -> void:
             pass
 
-        def main() -> void:
+        def convert_in_call() -> void:
             foo(42)
+
+        def convert_in_locals(x: i32) -> bool:
+            flag: bool = x
+            return x
+
+        def convert_in_conditions(x: i32) -> void:
+            if x:
+                pass
         """
         self.redshift(src)
         self.assert_dump("""
         def foo(x: f64) -> void:
             pass
 
-        def main() -> void:
+        def convert_in_call() -> void:
             `test::foo`(`operator::i32_to_f64`(42))
+
+        def convert_in_locals(x: i32) -> bool:
+            flag: bool
+            flag = `operator::i32_to_bool`(x)
+            return `operator::i32_to_bool`(x)
+
+        def convert_in_conditions(x: i32) -> void:
+            if `operator::i32_to_bool`(x):
+                pass
         """)
