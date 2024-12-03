@@ -89,7 +89,21 @@ class FuncDoppler:
         if color == 'blue':
             return self.blue_eval(expr)
         res = magic_dispatch(self, 'shift_expr', expr)
-        return res
+        w_conv = self.t.expr_conv.get(expr)
+        if w_conv:
+            # converters are used only for local variables and if/while
+            # conditions (see TypeChecker.expr_conv). Probably we could just
+            # use an W_OpImpl instead?
+            return ast.Call(
+                loc = res.loc,
+                func = ast.FQNConst(
+                    loc = res.loc,
+                    fqn = w_conv.fqn
+                ),
+                args = [res]
+            )
+        else:
+            return res
 
     # ==== statements ====
 
