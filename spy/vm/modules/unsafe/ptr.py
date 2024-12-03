@@ -243,6 +243,8 @@ class W_Ptr(W_BasePtr):
             if w_ptr.addr == 0:
                 return B.w_False
             return B.w_True
+
+        vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
         return W_OpImpl(w_ptr_to_bool)
 
 
