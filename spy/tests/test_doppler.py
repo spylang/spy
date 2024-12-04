@@ -131,9 +131,17 @@ class TestDoppler:
         def foo() -> i32:
             return make_fn()(21)
         """)
+
+        # XXX: ideally, we would like that:
+        #   1. make_fn() is evaluated eagerly
+        #   2. ==> we know the precise type of fn
+        #   3. ==> we know the precise type of fn(21)
+        #   4. ==> we don't need the call to from_dynamic[i32]
+        #
+        # See also the comment in cwriter.py:fmt_expr_Call
         self.assert_dump("""
         def foo() -> i32:
-            return `test::make_fn::fn#0`(21)
+            return `operator::from_dynamic[i32]`(`test::make_fn::fn#0`(21))
 
         def `test::make_fn::fn#0`(x: i32) -> i32:
             return x * 2
@@ -152,11 +160,11 @@ class TestDoppler:
             return foo
 
         def main() -> void:
-            return make_foo()()
+            make_foo()()
         """)
         self.assert_dump("""
         def main() -> void:
-            return `test::make_foo::foo#0`()
+            `test::make_foo::foo#0`()
 
         def `test::make_foo::fn#0`() -> void:
             print_str('fn')
