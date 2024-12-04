@@ -11,7 +11,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -53,3 +53,50 @@ class W_TypeDef(W_Type):
     def __repr__(self) -> str:
         r = f"<spy type '{self.fqn}' (typedef of '{self.w_origintype.fqn}')>"
         return r
+
+
+@TYPES.builtin_type('ForwardRef')
+class W_ForwardRef(W_Object):
+    """
+    A ForwardRef represent a value which has been declared but not defined
+    yet.
+    It can `become()` a different value while preserving identity, so that
+    existing references to the forward ref are automatically updated.
+
+    It is primarily used to predeclare types and functions in a module, so
+    they can be referenced in advance before their actual definition. Consider
+    the following example:
+
+        def foo(p: Point) -> void:
+            pass
+
+        class Point:
+            pass
+
+    When executing the module, there are implicit statements, shown below:
+
+        foo = ForwardRef('test::foo')
+        Point = ForwardRef('test::Point')
+
+        def foo(p: Point) -> void:
+            pass
+        `test::foo`.become(foo)
+
+        # here foo's signature is 'def(x: ForwardRef(`test::Point`))'
+
+        class Point:
+            ...
+        # `test::Point`.become(Point)
+        # now, foo's signature is 'def(x: Point)'.
+    """
+    fqn: FQN
+
+    def __init__(self, fqn: FQN) -> None:
+        self.fqn = fqn
+
+    def __repr__(self) -> str:
+        return f"<ForwardRef '{self.fqn}'>"
+
+    def become(self, w_val: W_Object) -> None:
+        self.__class__ = w_val.__class__
+        self.__dict__ = w_val.__dict__

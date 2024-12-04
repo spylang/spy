@@ -10,6 +10,7 @@ from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.builtin import builtin_type
+from spy.vm.modules.types import W_ForwardRef
 from spy.tests.support import expect_errors
 
 class TestVM:
@@ -225,3 +226,33 @@ class TestVM:
         )
         with errors:
             vm.getitem(w_a, w_b) # hello
+
+    def test_forwardref_become(self):
+        vm = SPyVM()
+        w_fw = W_ForwardRef(FQN('test::hello'))
+        w_x = vm.wrap(42)
+        w_fw.become(w_x)
+        assert isinstance(w_fw, W_I32)
+        assert w_fw.value == 42
+        assert not hasattr(w_fw, 'fqn')
+        assert vm.eq(w_fw, w_x) is B.w_True
+        assert w_fw is not w_x
+
+    def test_add_global(self):
+        vm = SPyVM()
+        fqn = FQN('builtins::x')
+        w_x = vm.wrap(42)
+        vm.add_global(fqn, w_x)
+        assert vm.lookup_global(fqn) is w_x
+        with pytest.raises(ValueError, match="'builtins::x' already exists"):
+            vm.add_global(fqn, vm.wrap(43))
+
+    def test_add_global_forwardref(self):
+        vm = SPyVM()
+        fqn = FQN('builtins::x')
+        w_fw = W_ForwardRef(fqn)
+        w_x = vm.wrap(42)
+        vm.add_global(fqn, w_fw)
+        vm.add_global(fqn, w_x)
+        assert vm.lookup_global(fqn) is w_fw
+        assert vm.unwrap(w_fw) == 42
