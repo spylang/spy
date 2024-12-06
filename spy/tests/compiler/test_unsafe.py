@@ -255,8 +255,7 @@ class TestUnsafe(CompilerTest):
         assert mod.foo() is True
         assert mod.bar() is False
 
-    @pytest.mark.xfail(reason='FIXME')
-    def test_struct_with_ptr_to_itself(self):
+    def test_struct_with_ptr_to_itself(self, capfd):
         mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
@@ -267,13 +266,21 @@ class TestUnsafe(CompilerTest):
         def new_node(val: i32) -> ptr[Node]:
             n = gc_alloc(Node)(1)
             n.val = val
-            n.next = None
+            n.next = ptr[Node].NULL
             return n
 
         def alloc_list(a: i32, b: i32, c: i32) -> ptr[Node]:
             lst = new_node(a)
             lst.next = new_node(b)
-            lst.next = new_node(c)
+            lst.next.next = new_node(c)
+            return lst
+
+        def print_list(n: ptr[Node]) -> void:
+            if n:
+                print(n.val)
+                print_list(n.next)
         """)
         ptr = mod.alloc_list(1, 2, 3)
-        import pdb;pdb.set_trace()
+        mod.print_list(ptr)
+        out, err = capfd.readouterr()
+        assert out.splitlines() == ['1', '2', '3']
