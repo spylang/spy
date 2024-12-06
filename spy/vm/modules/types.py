@@ -97,5 +97,5 @@ class W_ForwardRef(W_Type):
 
     def become(self, w_T: W_Type) -> None:
         assert self.fqn == w_T.fqn
-        self.__class__ = w_T.__class__
+        self.__class__ = w_T.__class__  # type: ignore
         self.__dict__ = w_T.__dict__

@@ -121,6 +121,7 @@ class SPyVM:
         if w_existing is None:
             self.globals_w[fqn] = w_value
         elif isinstance(w_existing, W_ForwardRef):
+            assert isinstance(w_value, W_Type)
             w_existing.become(w_value)
         else:
             raise ValueError(f"'{fqn}' already exists")

@@ -66,6 +66,7 @@ class W_PtrType(W_Type):
             # NOTE: the precise spelling of the FQN of NULL matters! The
             # C backend emits a #define to match it, see Context.new_ptr_type
             w_self = wop_ptr.blue_ensure(vm, UNSAFE.w_ptrtype)
+            assert isinstance(w_self, W_PtrType)
             w_NULL = W_Ptr(w_self, 0, 0)
             vm.add_global(w_self.fqn.join('NULL'), w_NULL)
 
