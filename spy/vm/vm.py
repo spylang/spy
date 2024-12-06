@@ -21,7 +21,7 @@ from spy.vm.bluecache import BlueCache
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
-from spy.vm.modules.types import TYPES, W_TypeDef
+from spy.vm.modules.types import TYPES, W_TypeDef, W_ForwardRef
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
@@ -117,8 +117,13 @@ class SPyVM:
 
     def add_global(self, fqn: FQN, w_value: W_Object) -> None:
         assert fqn.modname in self.modules_w
-        assert fqn not in self.globals_w
-        self.globals_w[fqn] = w_value
+        w_existing = self.globals_w.get(fqn)
+        if w_existing is None:
+            self.globals_w[fqn] = w_value
+        elif isinstance(w_existing, W_ForwardRef):
+            w_existing.become(w_value)
+        else:
+            raise ValueError(f"'{fqn}' already exists")
 
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
         if fqn.is_module():
