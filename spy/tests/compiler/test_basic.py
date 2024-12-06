@@ -814,3 +814,31 @@ class TestBasic(CompilerTest):
             ('Call not allowed here', 'inc()')
         )
         self.compile_raises(src, 'foo', errors)
+
+    @only_interp
+    def test_forwardref(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        # we can use S even if it's declared later
+        def foo(s: S, p: ptr[S]) -> void:
+            pass
+
+        ptr_S1 = ptr[S] # using the ForwardRef
+
+        class S(struct):
+            pass
+
+        ptr_S2 = ptr[S] # using the actual S
+        """)
+        w_mod = mod.w_mod
+        w_foo = w_mod.getattr('foo')
+        w_S = w_mod.getattr('S')
+        w_ptr_S1 = w_mod.getattr('ptr_S1')
+        w_ptr_S2 = w_mod.getattr('ptr_S2')
+        #
+        expected_sig = 'def(s: test::S, p: unsafe::ptr[test::S]) -> void'
+        assert w_foo.w_functype.signature == expected_sig
+        params = w_foo.w_functype.params
+        assert params[0].w_type is w_S
+        assert params[1].w_type is w_ptr_S1 is w_ptr_S2

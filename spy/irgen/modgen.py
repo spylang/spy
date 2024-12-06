@@ -11,6 +11,7 @@ from spy.vm.module import W_Module
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.astframe import ASTFrame
+from spy.vm.modules.types import W_ForwardRef
 
 
 class ModuleGen:
@@ -48,6 +49,15 @@ class ModuleGen:
         w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
         frame = ASTFrame(self.vm, w_INIT)
         #
+
+        # automatically predeclare types as ForwardRef
+        # XXX: should we maybe predeclare also functions and variables?
+        for decl in self.mod.decls:
+            if isinstance(decl, ast.GlobalClassDef):
+                type_fqn = fqn.join(decl.classdef.name)
+                w_fw = W_ForwardRef(type_fqn)
+                self.vm.add_global(type_fqn, w_fw)
+
         for decl in self.mod.decls:
             if isinstance(decl, ast.Import):
                 pass

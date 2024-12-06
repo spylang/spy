@@ -56,16 +56,16 @@ class W_TypeDef(W_Type):
 
 
 @TYPES.builtin_type('ForwardRef')
-class W_ForwardRef(W_Object):
+class W_ForwardRef(W_Type):
     """
-    A ForwardRef represent a value which has been declared but not defined
+    A ForwardRef represent a type which has been declared but not defined
     yet.
-    It can `become()` a different value while preserving identity, so that
+    It can `become()` an actual type while preserving identity, so that
     existing references to the forward ref are automatically updated.
 
-    It is primarily used to predeclare types and functions in a module, so
-    they can be referenced in advance before their actual definition. Consider
-    the following example:
+    It is primarily used to predeclare types in a module, so they can be
+    referenced in advance before their actual definition. Consider the
+    following example:
 
         def foo(p: Point) -> void:
             pass
@@ -75,28 +75,27 @@ class W_ForwardRef(W_Object):
 
     When executing the module, there are implicit statements, shown below:
 
-        foo = ForwardRef('test::foo')
         Point = ForwardRef('test::Point')
 
         def foo(p: Point) -> void:
             pass
-        `test::foo`.become(foo)
 
         # here foo's signature is 'def(x: ForwardRef(`test::Point`))'
 
         class Point:
             ...
-        # `test::Point`.become(Point)
+        `test::Point`.become(Point)
         # now, foo's signature is 'def(x: Point)'.
     """
     fqn: FQN
 
     def __init__(self, fqn: FQN) -> None:
-        self.fqn = fqn
+        super().__init__(fqn, pyclass=W_Object)
 
     def __repr__(self) -> str:
         return f"<ForwardRef '{self.fqn}'>"
 
-    def become(self, w_val: W_Object) -> None:
-        self.__class__ = w_val.__class__
-        self.__dict__ = w_val.__dict__
+    def become(self, w_T: W_Type) -> None:
+        assert self.fqn == w_T.fqn
+        self.__class__ = w_T.__class__
+        self.__dict__ = w_T.__dict__
