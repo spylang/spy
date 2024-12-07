@@ -76,8 +76,7 @@ class TypeChecker:
         assert name in self.locals_types_w
         got_color, w_got_type = self.check_expr(expr)
         w_exp_type = self.locals_types_w[name]
-
-        wop_local = W_OpArg(w_got_type, expr.loc)
+        wop_local = W_OpArg('red', w_got_type, expr.loc)
         try:
             w_conv = CONVERT_maybe(self.vm, w_exp_type, wop_local)
             if w_conv is not None:
@@ -94,7 +93,7 @@ class TypeChecker:
 
     def typecheck_bool(self, expr: ast.Expr) -> None:
         color, w_got_type = self.check_expr(expr)
-        wop_cond = W_OpArg(w_got_type, expr.loc)
+        wop_cond = W_OpArg('red', w_got_type, expr.loc)
         try:
             w_conv = CONVERT_maybe(self.vm, B.w_bool, wop_cond)
             if w_conv is not None:
@@ -149,12 +148,11 @@ class TypeChecker:
                 assert last_loc is not None
                 loc = last_loc
                 color = 'blue'
-                wop = W_OpArg(B.w_str, loc,
-                             w_blueval = self.vm.wrap(expr))
+                wop = W_OpArg('blue', B.w_str, loc, w_val = self.vm.wrap(expr))
             else:
                 color, w_type = self.check_expr(expr)
-                wop = W_OpArg(w_type, expr.loc,
-                             sym=self.name2sym_maybe(expr))
+                wop = W_OpArg('red', w_type, expr.loc,
+                              sym=self.name2sym_maybe(expr))
                 last_loc = expr.loc
             colors.append(color)
             args_wop.append(wop)

@@ -28,7 +28,7 @@ from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
                     TYPE_CHECKING)
 from spy import ast
 from spy.location import Loc
-from spy.irgen.symtable import Symbol
+from spy.irgen.symtable import Symbol, Color
 from spy.errors import SPyTypeError
 from spy.vm.b import OPERATOR
 from spy.vm.object import Member, W_Type, W_Object
@@ -62,43 +62,49 @@ class W_OpArg(W_Object):
 
     Internally, an OpConst is represented as an OpArg whose .i is None.
     """
+    color: Color
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
     sym: Optional[Symbol]
-    _w_blueval: Optional[W_Object]
+    _w_val: Optional[W_Object]
 
     def __init__(self,
+                 color: Color,
                  w_static_type: W_Type,
                  loc: Loc,
                  *,
                  sym: Optional[Symbol] = None,
-                 w_blueval: Optional[W_Object] = None,
+                 w_val: Optional[W_Object] = None,
                  ) -> None:
+        if color == 'blue':
+            assert w_val is not None
+        self.color = color
         self.w_static_type = w_static_type
         self.loc = loc
         self.sym = sym
-        self._w_blueval = w_blueval
+        self._w_val = w_val
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(w_type, Loc.here(-2), w_blueval=w_obj)
+        return W_OpArg('blue', w_type, Loc.here(-2), w_val=w_obj)
 
     def __repr__(self) -> str:
         if self.is_blue():
-            extra = f' = {self._w_blueval}'
+            extra = f' = {self._w_val}'
         else:
             extra = ''
         t = self.w_static_type.fqn.human_name
-        return f'<W_OpArg {t}{extra}>'
+        return f'<W_OpArg {self.color} {t}{extra}>'
 
     def is_blue(self) -> bool:
-        return self._w_blueval is not None
+        return self.color == 'blue'
 
     @property
     def w_blueval(self) -> W_Object:
-        assert self._w_blueval is not None
-        return self._w_blueval
+        assert self.color == 'blue'
+        assert self._w_val is not None
+        return self._w_val
 
     def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
         """
@@ -106,7 +112,7 @@ class W_OpArg(W_Object):
         Raise SPyTypeError if not.
         """
         from spy.vm.modules.operator.convop import CONVERT_maybe
-        if self._w_blueval is None:
+        if self.color != 'blue':
             raise SPyTypeError.simple(
                 'expected blue argument',
                 'this is red',
@@ -117,7 +123,8 @@ class W_OpArg(W_Object):
         # AssertionError.
         w_opimpl = CONVERT_maybe(vm, w_expected_type, self)
         assert w_opimpl is None
-        return self._w_blueval
+        assert self._w_val is not None
+        return self._w_val
 
     def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
         """
@@ -129,8 +136,8 @@ class W_OpArg(W_Object):
     def blue_unwrap_str(self, vm: 'SPyVM') -> str:
         from spy.vm.b import B
         self.blue_ensure(vm, B.w_str)
-        assert self._w_blueval is not None
-        return vm.unwrap_str(self._w_blueval)
+        assert self._w_val is not None
+        return vm.unwrap_str(self._w_val)
 
     @staticmethod
     def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
@@ -161,7 +168,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     ##     import pdb;pdb.set_trace()
     if (wop1.is_blue() and
         wop2.is_blue() and
-        vm.is_False(vm.eq(wop1._w_blueval, wop2._w_blueval))):
+        vm.is_False(vm.eq(wop1._w_val, wop2._w_val))):
         return B.w_False
     return B.w_True
 
