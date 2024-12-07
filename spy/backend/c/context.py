@@ -105,9 +105,18 @@ class Context:
         c_ptrtype = C_Type(fqn.c_name)
         w_itemtype = w_ptrtype.w_itemtype
         c_itemtype = self.w2c(w_itemtype)
-        self.out_types_decl.wl(f'typedef struct {c_ptrtype} {c_ptrtype};')
-        self.out_types_def.wl(f"SPY_DEFINE_PTR_TYPE({c_ptrtype}, {c_itemtype})")
-        self.out_types_def.wl(f"#define {c_ptrtype}$NULL (({c_ptrtype}){{0}})")
+        self.out_types_decl.wb(f"""
+        typedef struct {c_ptrtype} {{
+            {c_itemtype} *p;
+        #ifdef SPY_DEBUG
+            size_t length;
+        #endif
+        }} {c_ptrtype};
+        """)
+        self.out_ptrs_def.wb(f"""
+        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
+        #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
+        """)
         self._d[w_ptrtype] = c_ptrtype
         return c_ptrtype
 

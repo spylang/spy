@@ -282,5 +282,7 @@ class TestUnsafe(CompilerTest):
         """)
         ptr = mod.alloc_list(1, 2, 3)
         mod.print_list(ptr)
+        if self.backend == 'C':
+            mod.ll.call('spy_flush')
         out, err = capfd.readouterr()
         assert out.splitlines() == ['1', '2', '3']
