@@ -80,12 +80,16 @@ class CModuleWriter:
         self.out.wl('// type definitions')
         self.out_types_def = self.out.make_nested_builder()
         self.out.wl()
+        self.out.wl('// unsafe::ptr accessors')
+        self.out_ptrs_def = self.out.make_nested_builder()
+        self.out.wl()
         self.out.wl('// constants and functions')
         self.out_globals = self.out.make_nested_builder()
         self.out.wl()
 
         # this is a bit of a hack, but too bad
         self.ctx.out_types_decl = self.out_types_decl
+        self.ctx.out_ptrs_def = self.out_ptrs_def
         self.ctx.out_types_def = self.out_types_def
 
         self.out.wb("""

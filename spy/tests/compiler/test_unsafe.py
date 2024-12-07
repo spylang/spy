@@ -264,7 +264,7 @@ class TestUnsafe(CompilerTest):
             next: ptr[Node]
 
         def new_node(val: i32) -> ptr[Node]:
-            n = gc_alloc(Node)(1)
+            n: ptr[Node] = gc_alloc(Node)(1)
             n.val = val
             n.next = ptr[Node].NULL
             return n
@@ -282,5 +282,7 @@ class TestUnsafe(CompilerTest):
         """)
         ptr = mod.alloc_list(1, 2, 3)
         mod.print_list(ptr)
+        if self.backend == 'C':
+            mod.ll.call('spy_flush')
         out, err = capfd.readouterr()
         assert out.splitlines() == ['1', '2', '3']

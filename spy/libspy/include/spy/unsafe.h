@@ -9,33 +9,29 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
 /* Define the struct and accessor functions to represent a managed pointer to
    type T.
 
-   DEFINE_PTR_TYPE(MyPtr, T) expands to:
+   The C backend emits the struct definition:
+   typedef struct Ptr_T {
+       T *p;
+   #ifdef SPY_PTR_CHECKED
+       size_t length;
+   #endif
+   } Ptr_T;
 
-   typedef struct { ... } MyPtr;
-   static inline MyPtr MyPtr_gc_alloc(...);
-   static inline T MyPtr_load(...);
-   static inline void MyPtr_store(...);
+   SPY_PTR_FUNCTIONS(Ptr_T, T) defines all the accessor functions such as
+   Ptr_T$gc_alloc, Ptr_T$load, etc.
 
    In SPY_RELEASE mode, a managed pointer is just a wrapper around an
-   unmanaged C pointer. E.g.:
-
-       typedef struct {
-           int32_t *p;
-       } ptr_i32;
-
-   In SPY_DEBUG mode, a managed pointer also contains the length of the array
-   it points to, and every access is checked. The length is expressed in
-   number of items, NOT size in bytes:
-
-       typedef struct {
-           int32_t *p;
-           size_t length;
-       } ptr_i32;
+   unmanaged C pointer, but in SPY_DEBUG it also contains the length of the
+   array it points to, and every access is checked. The length is expressed in
+   number of items, NOT size in bytes.
 */
-#define _SPY_DEFINE_PTR_TYPE_UNCHECKED(PTR, T)                   \
-    typedef struct PTR {                                         \
-        T *p;                                                    \
-    } PTR;                                                       \
+#ifdef SPY_DEBUG
+#  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_CHECKED
+#else
+#  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_UNCHECKED
+#endif
+
+#define _SPY_PTR_FUNCTIONS__UNCHECKED(PTR, T)                    \
     static inline PTR PTR##_from_addr(T *p) {                    \
         return (PTR){p};                                         \
     }                                                            \
@@ -59,11 +55,8 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         return p.p;                                              \
     }
 
-#define _SPY_DEFINE_PTR_TYPE_CHECKED(PTR, T)                     \
-    typedef struct PTR {                                         \
-        T *p;                                                    \
-        size_t length;                                           \
-    } PTR;                                                       \
+
+#define _SPY_PTR_FUNCTIONS_CHECKED(PTR, T)                       \
     static inline PTR PTR##_from_addr(T *p) {                    \
         return (PTR){p, 1};                                      \
     }                                                            \
@@ -90,13 +83,5 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline bool PTR##$to_bool(PTR p) {                    \
         return p.p;                                              \
     }
-
-
-
-#ifdef SPY_DEBUG
-#  define SPY_DEFINE_PTR_TYPE _SPY_DEFINE_PTR_TYPE_CHECKED
-#else
-#  define SPY_DEFINE_PTR_TYPE _SPY_DEFINE_PTR_TYPE_UNCHECKED
-#endif
 
 #endif /* SPY_UNSAFE_H */
