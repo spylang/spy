@@ -264,7 +264,7 @@ class TestUnsafe(CompilerTest):
             next: ptr[Node]
 
         def new_node(val: i32) -> ptr[Node]:
-            n = gc_alloc(Node)(1)
+            n: ptr[Node] = gc_alloc(Node)(1)
             n.val = val
             n.next = ptr[Node].NULL
             return n
