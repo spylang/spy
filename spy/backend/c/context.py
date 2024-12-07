@@ -115,6 +115,8 @@ class Context:
         fqn = self.vm.reverse_lookup_global(w_st)
         assert fqn is not None
         c_struct_type = C_Type(fqn.c_name)
+        # forward declaration
+        self._d[w_st] = c_struct_type
         self.out_types_decl.wl(f'typedef struct {c_struct_type} {c_struct_type};')
 
         # XXX this is VERY wrong: it assumes that the standard C layout
@@ -135,6 +137,4 @@ class Context:
         out.wl("};")
         out.wl("")
         self.out_types_def.attach_nested_builder(out)
-
-        self._d[w_st] = c_struct_type
         return c_struct_type
