@@ -78,6 +78,14 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, 'foo', errors)
 
+    def test_binop(self):
+        mod = self.compile(
+        """
+        def foo() -> i32:
+            return 1 + 2
+        """)
+        assert mod.foo() == 3
+
     def test_local_variables(self):
         mod = self.compile(
         """

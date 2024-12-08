@@ -14,7 +14,9 @@ from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.unsafe.struct import W_StructType
-from spy.vm.typechecker import TypeChecker
+from spy.vm.typechecker import TypeChecker, maybe_blue
+from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.modules.operator import OP, OP_from_token
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -105,18 +107,20 @@ class ASTFrame:
         self.t.check_stmt(stmt)
         return magic_dispatch(self, 'exec_stmt', stmt)
 
-    def eval_expr(self, expr: ast.Expr) -> W_Object:
+    def eval_expr(self, expr: ast.Expr) -> W_OpArg:
         self.t.check_expr(expr)
         w_typeconv = self.t.expr_conv.get(expr)
-        w_val = magic_dispatch(self, 'eval_expr', expr)
+        wop_val = magic_dispatch(self, 'eval_expr', expr)
         if w_typeconv is None:
-            return w_val
+            return wop_val
         else:
+            assert False, 'fixme'
             # apply the type converter, if present
             return self.vm.fast_call(w_typeconv, [w_val])
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
-        w_val = self.eval_expr(expr)
+        wop_val = self.eval_expr(expr)
+        w_val = wop_val._w_val # XXX
         if isinstance(w_val, W_Type):
             self.vm.make_fqn_const(w_val)
             return w_val
@@ -130,8 +134,8 @@ class ASTFrame:
         pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        w_val = self.eval_expr(ret.value)
-        raise Return(w_val)
+        wop_val = self.eval_expr(ret.value)
+        raise Return(wop_val._w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
@@ -239,12 +243,15 @@ class ASTFrame:
 
     # ==== expressions ====
 
-    def eval_expr_Constant(self, const: ast.Constant) -> W_Object:
+    def eval_expr_Constant(self, const: ast.Constant) -> W_OpArg:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, float, bool, str, NoneType)
-        return self.vm.wrap(const.value)
+
+        color, w_type = self.t.check_expr_Constant(const)
+        w_val = self.vm.wrap(const.value)
+        return W_OpArg(color, w_type, const.loc, w_val=w_val)
 
     def eval_expr_StrConst(self, const: ast.StrConst) -> W_Object:
         return self.vm.wrap(const.value)
@@ -254,28 +261,30 @@ class ASTFrame:
         assert w_value is not None
         return w_value
 
-    def eval_expr_Name(self, name: ast.Name) -> W_Object:
+    def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
+        color, w_type = self.t.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
         if sym.fqn is not None:
-            w_value = self.vm.lookup_global(sym.fqn)
-            assert w_value is not None, \
+            w_val = self.vm.lookup_global(sym.fqn)
+            assert w_val is not None, \
                 f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
-            return w_value
         elif sym.is_local:
-            return self.load_local(name.id)
+            w_val = self.load_local(name.id)
         else:
             namespace = self.w_func.closure[sym.level]
-            w_value = namespace[sym.name]
-            assert w_value is not None
-            return w_value
+            w_val = namespace[sym.name]
+            assert w_val is not None
+        return W_OpArg(color, w_type, name.loc, sym=sym, w_val=w_val)
 
-    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_Object:
-        w_opimpl = self.t.opimpl[binop]
-        assert w_opimpl, 'bug in the typechecker'
-        w_l = self.eval_expr(binop.left)
-        w_r = self.eval_expr(binop.right)
-        w_res = self.vm.fast_call(w_opimpl, [w_l, w_r])
-        return w_res
+    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_OpArg:
+        w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        wop_l = self.eval_expr(binop.left)
+        wop_r = self.eval_expr(binop.right)
+        w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
+        w_res = self.vm.fast_call(w_opimpl, [wop_l._w_val, wop_r._w_val])
+        color = maybe_blue(wop_l.color, wop_r.color)
+        w_restype = w_opimpl.w_functype.w_restype
+        return W_OpArg(color, w_restype, binop.loc, w_val=w_res)
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Sub = eval_expr_BinOp
