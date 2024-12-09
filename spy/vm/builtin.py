@@ -12,7 +12,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
 from spy.vm.object import W_Object, W_Type, make_metaclass
-from spy.vm.function import FuncParam, W_FuncType, W_BuiltinFunc
+from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -51,6 +51,7 @@ def to_spy_FuncParam(p: Any) -> FuncParam:
         name = p.name
     #
     w_type = to_spy_type(p.annotation)
+    kind: FuncParamKind
     if p.kind == p.POSITIONAL_OR_KEYWORD:
         kind = 'simple'
     elif p.kind == p.VAR_POSITIONAL:

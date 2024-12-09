@@ -73,7 +73,7 @@ def w_dynamic_getattr(vm: 'SPyVM', w_obj: W_Dynamic,
 @OP.builtin_func
 def w_dynamic_call(vm: 'SPyVM', w_obj: W_Dynamic,
                    *args_w: W_Dynamic) -> W_Dynamic:
-    all_args_w = (w_obj,) + args_w
+    all_args_w = [w_obj] + list(args_w)
     all_args_wop = [
         W_OpArg.from_w_obj(vm, w_x, 'v', i)
         for i, w_x in enumerate(all_args_w)

@@ -120,7 +120,7 @@ class W_FuncType(W_Type):
 
     @property
     def is_varargs(self) -> bool:
-        return self.params and self.params[-1].kind == 'varargs'
+        return bool(self.params) and self.params[-1].kind == 'varargs'
 
 
 
@@ -172,7 +172,7 @@ class W_Func(W_Object):
         assert isinstance(w_functype, W_FuncType)
         return W_OpImpl(
             W_DirectCall(w_functype),
-            args_wop,
+            list(args_wop),
         )
 
 

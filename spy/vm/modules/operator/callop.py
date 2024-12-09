@@ -20,7 +20,7 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         #w_opimpl = W_OpImpl(OP.w_dynamic_call)  # see _dynamic_call_opimpl
-        w_opimpl = _dynamic_call_opimpl(args_wop)
+        w_opimpl = _dynamic_call_opimpl(list(args_wop))
     elif pyclass.has_meth_overriden('op_CALL'):
         w_opimpl = pyclass.op_CALL(vm, wop_obj, *args_wop)
 
