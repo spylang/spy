@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN, NSPart
@@ -7,17 +7,18 @@ from spy.vm.object import W_Object, W_Type
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
-    from spy.vm.list import W_OpArgList
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
 Namespace = dict[str, Optional[W_Object]]
 
+FuncParamKind = Literal['simple', 'varargs']
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class FuncParam:
     name: str
     w_type: W_Type
+    kind: FuncParamKind
 
 
 @dataclass(repr=False, eq=True)
@@ -72,7 +73,8 @@ class W_FuncType(W_Type):
         Small helper to make it easier to build W_FuncType, especially in
         tests
         """
-        params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
+        params = [FuncParam(key, w_type, 'simple')
+                  for key, w_type in kwargs.items()]
         return cls(params, w_restype, color=color)
 
     @classmethod
@@ -107,7 +109,18 @@ class W_FuncType(W_Type):
 
     @property
     def arity(self) -> int:
-        return len(self.params)
+        """
+        Return the *minimum* number of arguments expected by the function.
+        In case of varargs, it's the number of non-varargs paramenters.
+        """
+        if self.is_varargs:
+            return len(self.params) - 1
+        else:
+            return len(self.params)
+
+    @property
+    def is_varargs(self) -> bool:
+        return bool(self.params) and self.params[-1].kind == 'varargs'
 
 
 
@@ -137,7 +150,7 @@ class W_Func(W_Object):
 
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
-                w_opargs: 'W_OpArgList') -> 'W_OpImpl':
+                *args_wop: 'W_OpArg') -> 'W_OpImpl':
         """
         This is a bit of a hack.
 
@@ -159,7 +172,7 @@ class W_Func(W_Object):
         assert isinstance(w_functype, W_FuncType)
         return W_OpImpl(
             W_DirectCall(w_functype),
-            w_opargs.items_w           # type: ignore
+            list(args_wop),
         )
 
 

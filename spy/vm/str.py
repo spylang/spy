@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Any
 from spy.llwasm import LLWasmInstance
 from spy.vm.b import B
-from spy.vm.list import W_OpArgList
 from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -82,9 +81,8 @@ class W_Str(W_Object):
 
     @staticmethod
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                     w_opargs: W_OpArgList) -> W_OpImpl:
+                     *args_wop: W_OpArg) -> W_OpImpl:
         from spy.vm.b import B
-        args_wop: list[W_OpArg] = w_opargs.items_w  # type: ignore
         if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
             wop_i = args_wop[0]
             return W_OpImpl(w_int2str, [wop_i])

@@ -311,7 +311,7 @@ class SPyVM:
             # for red functions, we just call them
             return self._call_func(w_func, args_w)
 
-    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_Object]) -> W_OpImpl:
+    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_OpImpl:
         """
         Like vm.call, but ensures that the result is a W_OpImpl.
 
@@ -338,9 +338,17 @@ class SPyVM:
     def _call_func(self, w_func: W_Func,
                    args_w: Sequence[W_Object]) -> W_Object:
         w_functype = w_func.w_functype
-        assert w_functype.arity == len(args_w)
-        for param, w_arg in zip(w_functype.params, args_w):
+        n = w_functype.arity
+        if w_functype.is_varargs:
+            assert len(args_w) >= n
+        else:
+            assert len(args_w) == n
+        for param, w_arg in zip(w_functype.params[:n], args_w[:n]):
             self.typecheck(w_arg, param.w_type)
+        if w_functype.is_varargs:
+            param = w_functype.params[-1]
+            for w_arg in args_w[n:]:
+                self.typecheck(w_arg, param.w_type)
         return w_func.spy_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:

@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, Annotated
 import struct
-from spy.vm.list import W_OpArgList
 from spy.vm.primitive import W_F64, W_I32, W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member
@@ -30,8 +29,7 @@ class W_JsRef(W_Object):
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                       w_opargs: W_OpArgList) -> W_OpImpl:
-        args_wop = w_opargs.items_w
+                       *args_wop: W_OpArg) -> W_OpImpl:
         n = len(args_wop)
         if n == 1:
             return W_OpImpl(JSFFI.w_js_call_method_1)
