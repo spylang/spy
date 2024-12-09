@@ -83,3 +83,10 @@ def test_qualifiers_c_name():
 def test_nested_qualifiers_c_name():
     a = FQN("a::list[Ptr[x, y]]::c#0")
     assert a.c_name == "spy_a$list__Ptr__x_y$c$0"
+
+def test_FQN_human_name():
+    assert FQN("a::b").human_name == "a::b"
+    assert FQN("builtins::i32").human_name == "i32"
+    func = FQN("builtins").join('def', ['builtins::i32', 'builtins::f64',
+                                        'builtins::str'])
+    assert func.human_name == 'def(i32, f64) -> str'
