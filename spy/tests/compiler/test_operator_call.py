@@ -23,7 +23,7 @@ class TestCallOp(CompilerTest):
             tot = 0
             for w_x in args_w:
                 tot += vm.unwrap_i32(w_x)
-            return vm.wrap(tot)
+            return vm.wrap(tot)  # type: ignore
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
