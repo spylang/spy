@@ -57,6 +57,7 @@ class Context:
     """
     vm: SPyVM
     out_types_decl: TextBuilder
+    out_ptrs_def: TextBuilder
     out_types_def: TextBuilder
     _d: dict[W_Type, C_Type]
 
@@ -64,6 +65,7 @@ class Context:
         self.vm = vm
         # set by CModuleWriter.emit_module
         self.out_types_decl = None # type: ignore
+        self.out_ptrs_def = None   # type: ignore
         self.out_types_def = None  # type: ignore
         self._d = {}
         self._d[B.w_void] = C_Type('void')
