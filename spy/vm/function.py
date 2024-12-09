@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN, NSPart
@@ -13,11 +13,13 @@ if TYPE_CHECKING:
 # here because it's also used by W_ASTFunc.closure.
 Namespace = dict[str, Optional[W_Object]]
 
+FuncParamKind = Literal['simple', 'varargs']
 
 @dataclass
 class FuncParam:
     name: str
     w_type: W_Type
+    kind: FuncParamKind
 
 
 @dataclass(repr=False, eq=True)
@@ -72,7 +74,8 @@ class W_FuncType(W_Type):
         Small helper to make it easier to build W_FuncType, especially in
         tests
         """
-        params = [FuncParam(key, w_type) for key, w_type in kwargs.items()]
+        params = [FuncParam(key, w_type, 'simple')
+                  for key, w_type in kwargs.items()]
         return cls(params, w_restype, color=color)
 
     @classmethod
@@ -107,7 +110,18 @@ class W_FuncType(W_Type):
 
     @property
     def arity(self) -> int:
-        return len(self.params)
+        """
+        Return the *minimum* number of arguments expected by the function.
+        In case of varargs, it's the number of non-varargs paramenters.
+        """
+        if self.is_varargs:
+            return len(self.params) - 1
+        else:
+            return len(self.params)
+
+    @property
+    def is_varargs(self) -> bool:
+        return self.params and self.params[-1].kind == 'varargs'
 
 
 

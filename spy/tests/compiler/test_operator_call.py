@@ -15,6 +15,26 @@ from spy.tests.support import CompilerTest, no_C
 class TestCallOp(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
+    def test_call_varargs(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_func
+        def w_sum(vm: 'SPyVM', *args_w: W_I32) -> W_I32:
+            tot = 0
+            for w_x in args_w:
+                tot += vm.unwrap_i32(w_x)
+            return vm.wrap(tot)
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import sum
+
+        def foo(x: i32) -> i32:
+            return sum(x, 1, 2, 3)
+        """)
+        assert mod.foo(10) == 16
+
     def test_call_instance(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')

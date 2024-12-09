@@ -51,7 +51,13 @@ def to_spy_FuncParam(p: Any) -> FuncParam:
         name = p.name
     #
     w_type = to_spy_type(p.annotation)
-    return FuncParam(name, w_type)
+    if p.kind == p.POSITIONAL_OR_KEYWORD:
+        kind = 'simple'
+    elif p.kind == p.VAR_POSITIONAL:
+        kind = 'varargs'
+    else:
+        assert False
+    return FuncParam(name, w_type, kind)
 
 
 def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:

@@ -53,6 +53,9 @@ def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
     but this doesn't work because we don't have any support for calling
     opimpls with a variable number of arguments.
 
+    MERGE BLOCKER check whether we can kill this hack in this branch
+
+
     The temporary workaround is to pretend that this is a direct call: for
     this, we fabricate a fake w_functype which takes the right number of
     arguments, to ensure that we pass the typechecking.
@@ -64,7 +67,7 @@ def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
     """
     N  = len(args_wop)
     w_functype = W_FuncType(
-        params = [FuncParam(f'v{i}', B.w_dynamic) for i in range(N)],
+        params = [FuncParam(f'v{i}', B.w_dynamic, 'simple') for i in range(N)],
         w_restype = B.w_dynamic
     )
     return W_OpImpl(
