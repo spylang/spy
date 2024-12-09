@@ -14,7 +14,7 @@ Namespace = dict[str, Optional[W_Object]]
 
 FuncParamKind = Literal['simple', 'varargs']
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class FuncParam:
     name: str
     w_type: W_Type

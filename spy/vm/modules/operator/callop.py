@@ -19,7 +19,7 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
-        # XXX fixme
+        #w_opimpl = W_OpImpl(OP.w_dynamic_call)  # see _dynamic_call_opimpl
         w_opimpl = _dynamic_call_opimpl(args_wop)
     elif pyclass.has_meth_overriden('op_CALL'):
         w_opimpl = pyclass.op_CALL(vm, wop_obj, *args_wop)
@@ -38,20 +38,13 @@ def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
     """
     This is a hack, and it's half wrong.
 
-    We are trying to CALL something of type dynamic, so we don't know anything
-    about it. Ideally, we would like a setup like this:
+    Ideally, we would like to do this in w_CALL above:
+        if w_type is B.w_dynamic:
+            w_opimpl = W_OpImpl(OP.w_dynamic_call)
 
-    in opimpl_dynamic.py:
-        def dynamic_call(vm, w_obj: W_Dynamic, args_w: list[W_Dynamic])
-
-    here:
-        return W_OpImpl(OP.w_dynamic_call)
-
-    but this doesn't work because we don't have any support for calling
-    opimpls with a variable number of arguments.
-
-    MERGE BLOCKER check whether we can kill this hack in this branch
-
+    But in order for it to work, we need more goodies, like the ability of
+    comparing two W_FuncType by equality (because e.g. for test_unsafe they
+    end up in the bluecache).
 
     The temporary workaround is to pretend that this is a direct call: for
     this, we fabricate a fake w_functype which takes the right number of
