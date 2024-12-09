@@ -7,7 +7,6 @@ from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.list import W_List, make_oparg_list
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.b import B
 from spy.vm.modules.operator import OP, OP_from_token
@@ -381,9 +380,7 @@ class TypeChecker:
             ['f'] + ['v']*n,
             [call.func] + call.args
         )
-        wop_func = args_wop[0]
-        w_opargs = make_oparg_list(args_wop[1:])
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func, w_opargs])
+        w_opimpl = self.vm.call_OP(OP.w_CALL, args_wop)
         self.opimpl[call] = w_opimpl
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype
@@ -394,13 +391,7 @@ class TypeChecker:
             ['t', 'm'] + ['v']*n,
             [op.target, op.method] + op.args  # type: ignore
         )
-        wop_obj = args_wop[0]
-        wop_method = args_wop[1]
-        w_opargs = make_oparg_list(args_wop[2:])
-        w_opimpl = self.vm.call_OP(
-            OP.w_CALL_METHOD,
-            [wop_obj, wop_method, w_opargs]
-        )
+        w_opimpl = self.vm.call_OP(OP.w_CALL_METHOD, args_wop)
         self.opimpl[op] = w_opimpl
         w_functype = w_opimpl.w_functype
         return w_functype.color, w_functype.w_restype

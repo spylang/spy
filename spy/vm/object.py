@@ -53,7 +53,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.primitive import W_Void, W_Dynamic
     from spy.vm.opimpl import W_OpImpl, W_OpArg
-    from spy.vm.list import W_OpArgList
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
@@ -171,12 +170,12 @@ class W_Object:
 
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                w_opargs: 'W_OpArgList') -> 'W_OpImpl':
+                *args_wop: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_method: 'W_OpArg',
-                       w_opargs: 'W_OpArgList') -> 'W_OpImpl':
+                       *args_wop: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
@@ -361,7 +360,7 @@ def synthesize_meta_op_CALL(fqn: FQN, pyclass: Type[W_Object]) -> Any:
     w_spy_new = pyclass.w_spy_new
 
     def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                     w_opargs: 'W_Dynamic') -> W_OpImpl:
+                     *args_wop: W_OpArg) -> W_OpImpl:
         fix_annotations(w_spy_new, {pyclass.__name__: pyclass})
         # manually apply the @builtin_func decorator to the spy_new function
         w_spyfunc = builtin_func(fqn, '__new__')(w_spy_new)

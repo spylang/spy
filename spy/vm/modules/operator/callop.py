@@ -4,7 +4,6 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.list import W_List, W_OpArgList
 from spy.vm.function import W_DirectCall, W_FuncType, FuncParam
 
 from . import OP
@@ -14,23 +13,21 @@ if TYPE_CHECKING:
 
 
 @OP.builtin_func(color='blue')
-def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-           w_opargs: W_OpArgList) -> W_OpImpl:
+def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
-        w_opimpl = _dynamic_call_opimpl(w_opargs.items_w)
+        # XXX fixme
+        w_opimpl = _dynamic_call_opimpl(args_wop)
     elif pyclass.has_meth_overriden('op_CALL'):
-        w_opimpl = pyclass.op_CALL(vm, wop_obj, w_opargs)
+        w_opimpl = pyclass.op_CALL(vm, wop_obj, *args_wop)
 
-    # turn the app-level W_OpArgList into an interp-level list[W_OpArg]
-    args_wop = w_opargs.items_w
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wop_obj] + args_wop,
+        [wop_obj] + list(args_wop),
         dispatch = 'single',
         errmsg = 'cannot call objects of type `{0}`'
     )
@@ -78,20 +75,18 @@ def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:
 
 @OP.builtin_func(color='blue')
 def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                  w_opargs: W_OpArgList) -> W_OpImpl:
+                  *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type
     pyclass = w_type.pyclass
     if pyclass.has_meth_overriden('op_CALL_METHOD'):
-        w_opimpl = pyclass.op_CALL_METHOD(vm, wop_obj, wop_method, w_opargs)
+        w_opimpl = pyclass.op_CALL_METHOD(vm, wop_obj, wop_method, *args_wop)
 
-    # turn the app-level W_OpArgList into an interp-level list[W_OpArg]
-    args_wop = w_opargs.items_w
     typecheck_opimpl(
         vm,
         w_opimpl,
-        [wop_obj, wop_method] + args_wop,
+        [wop_obj, wop_method] + list(args_wop),
         dispatch = 'single',
         errmsg = 'cannot call methods on type `{0}`'
     )
