@@ -35,6 +35,11 @@ class W_FuncAdapter(W_Func):
         self.w_func = w_func
         self.args = args
 
+    def __repr__(self):
+        sig = self.w_functype.signature
+        fqn = self.w_func.fqn
+        return f'<spy adapter `{sig}` for `{fqn}`>'
+
     def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         def getarg(spec):
             if isinstance(spec, Arg):

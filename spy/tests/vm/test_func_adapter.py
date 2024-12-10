@@ -31,6 +31,9 @@ def test_shuffle_args():
     w_s = vm.call(w_adapter, [vm.wrap(3), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
+    r = '<spy adapter `def(n: i32, s: str) -> str` for `test::repeat`>'
+    assert repr(w_adapter) == r
+    #
     expected = textwrap.dedent("""
     def(n: i32, s: str) -> str:
         return `test::repeat`(s, n)
