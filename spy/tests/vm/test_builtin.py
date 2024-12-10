@@ -33,7 +33,7 @@ class TestBuiltin:
 
         assert isinstance(w_foo, W_BuiltinFunc)
         assert w_foo.fqn == FQN('mymod::foo')
-        w_y = vm.call(w_foo, [vm.wrap(10)])
+        w_y = vm.fast_call(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
 
     def test_builtin_func_errors(self):
@@ -77,7 +77,7 @@ class TestBuiltin:
             pass
         assert w_foo.w_functype.signature == 'def() -> void'
         assert isinstance(w_foo, W_BuiltinFunc)
-        w_res = vm.call(w_foo, [])
+        w_res = vm.fast_call(w_foo, [])
         assert w_res is B.w_None
 
     def test_blue(self):
@@ -89,6 +89,6 @@ class TestBuiltin:
             return vm.wrap(x*2)  # type: ignore
 
         assert w_foo.w_functype.signature == '@blue def(x: i32) -> i32'
-        w_x = vm.call(w_foo, [vm.wrap(21)])
-        w_y = vm.call(w_foo, [vm.wrap(21)])
+        w_x = vm.fast_call(w_foo, [vm.wrap(21)])
+        w_y = vm.fast_call(w_foo, [vm.wrap(21)])
         assert w_x is w_y

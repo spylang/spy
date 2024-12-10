@@ -189,7 +189,7 @@ class TestVM:
         vm = SPyVM()
         w_abs = B.w_abs
         w_x = vm.wrap(-42)
-        w_y = vm.call(w_abs, [w_x])
+        w_y = vm.fast_call(w_abs, [w_x])
         assert vm.unwrap(w_y) == 42
 
     def test_call_function_TypeError(self):
