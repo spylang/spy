@@ -227,10 +227,5 @@ class W_OpImpl(W_Object):
         assert self._w_func is not None
         return self._w_func.w_functype
 
-    @property
-    def w_restype(self) -> W_Type:
-        assert self._w_func is not None
-        return self._w_func.w_functype.w_restype
-
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore
