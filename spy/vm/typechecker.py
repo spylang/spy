@@ -7,7 +7,8 @@ from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncType, FuncParam
+from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.b import B
 from spy.vm.modules.operator import OP, OP_from_token
 from spy.vm.modules.types import W_TypeDef
@@ -326,7 +327,7 @@ class TypeChecker:
         color = maybe_blue(*colors)
         w_opimpl = self.vm.call_OP(w_OP, args_wop)
         self.opimpl[binop] = w_opimpl
-        return color, w_opimpl.w_restype
+        return color, w_opimpl.w_functype.w_restype
 
     check_expr_Add = check_expr_BinOp
     check_expr_Sub = check_expr_BinOp
@@ -347,7 +348,7 @@ class TypeChecker:
         color = maybe_blue(*colors)
         w_opimpl = self.vm.call_OP(OP.w_GETITEM, args_wop)
         self.opimpl[expr] = w_opimpl
-        return color, w_opimpl.w_restype
+        return color, w_opimpl.w_functype.w_restype
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         colors, args_wop = self.check_many_exprs(
@@ -356,7 +357,7 @@ class TypeChecker:
         )
         w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wop)
         self.opimpl[expr] = w_opimpl
-        return colors[0], w_opimpl.w_restype
+        return colors[0], w_opimpl.w_functype.w_restype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         # XXX: how are we supposed to know the color of the result if we
@@ -433,8 +434,10 @@ def typecheck_opimpl(
         *,
         dispatch: DispatchKind,
         errmsg: str,
-) -> None:
+) -> W_Func:
     """
+    Turn the W_OpImpl into a W_Func which can be called using fast_call.
+
     Check the arg types that we are passing to the opimpl, and insert
     appropriate type conversions if needed.
 
@@ -514,7 +517,28 @@ def typecheck_opimpl(
             raise
 
     # everything good!
-    w_opimpl._typechecked = True
+    #
+    # XXX: we should create a W_FuncAdapter only if it's needed
+    params = [
+        FuncParam(f'v{i}', wop_arg.w_static_type, 'simple')
+        for i, wop_arg in enumerate(args_wop)
+    ]
+    w_functype = W_FuncType(params, w_opimpl.w_functype.w_restype,
+                            color=w_opimpl.w_functype.color)
+    args = []
+    for wop_arg, w_conv in zip(w_opimpl._args_wop, w_opimpl._converters_w):
+        if wop_arg.is_const():
+            arg = ArgSpec.Const(wop_arg.w_blueval)
+            assert w_conv is None
+        else:
+            assert wop_arg.i is not None
+            arg = ArgSpec.Arg(wop_arg.i, w_conv)
+        args.append(arg)
+    w_adapter = W_FuncAdapter(w_functype, w_opimpl._w_func, args)
+    return w_adapter
+
+
+    #w_opimpl._typechecked = True
 
 def _call_error_wrong_argcount(
         got: int, exp: int,

@@ -67,16 +67,15 @@ class MultiMethodTable:
         return W_OpImpl.NULL
 
     def get_opimpl(self, vm: 'SPyVM', op: str,
-                   wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+                   wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
         from spy.vm.typechecker import typecheck_opimpl
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         w_opimpl = self.lookup(op, w_ltype, w_rtype)
-        typecheck_opimpl(
+        return typecheck_opimpl(
             vm,
             w_opimpl,
             [wop_l, wop_r],
             dispatch = 'multi',
             errmsg = 'cannot do `{0}` %s `{1}`' % op
         )
-        return w_opimpl

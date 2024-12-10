@@ -270,7 +270,7 @@ class ASTFrame:
         assert w_opimpl, 'bug in the typechecker'
         w_l = self.eval_expr(binop.left)
         w_r = self.eval_expr(binop.right)
-        w_res = w_opimpl.call(self.vm, [w_l, w_r])
+        w_res = w_opimpl.fast_call(self.vm, [w_l, w_r])
         return w_res
 
     eval_expr_Add = eval_expr_BinOp

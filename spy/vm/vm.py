@@ -311,15 +311,15 @@ class SPyVM:
             # for red functions, we just call them
             return self._call_func(w_func, args_w)
 
-    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_OpImpl:
+    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_Func:
         """
-        Like vm.call, but ensures that the result is a W_OpImpl.
+        Like vm.call, but ensures that the result is a W_Func.
 
         Mostly useful to call OPERATORs.
         """
-        w_opimpl = self.call(w_OP, args_wop)
-        assert isinstance(w_opimpl, W_OpImpl)
-        return w_opimpl
+        w_func = self.call(w_OP, args_wop)
+        assert isinstance(w_func, W_Func)
+        return w_func
 
     def call_generic(self, w_func: W_Func,
                      generic_args_w: list[W_Object],
