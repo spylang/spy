@@ -201,10 +201,8 @@ class W_OpImpl(W_Object):
         self._typechecked = False
         if args_wop is None:
             self._args_wop = None
-            self._converters_w = None
         else:
             self._args_wop = args_wop
-            self._converters_w = [None] * len(args_wop)
 
     def __repr__(self) -> str:
         if self._w_func is None:
@@ -244,9 +242,7 @@ class W_OpImpl(W_Object):
 
     def set_args_wop(self, args_wop: list[W_OpArg]) -> None:
         assert self._args_wop is None
-        assert self._converters_w is None
         self._args_wop = args_wop[:]
-        self._converters_w = [None] * len(args_wop)
 
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore

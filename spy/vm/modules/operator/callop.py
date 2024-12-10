@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 @OP.builtin_func(color='blue')
-def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
+def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type

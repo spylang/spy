@@ -506,11 +506,11 @@ def typecheck_opimpl(
             call_loc = call_loc)
 
     # check that the types of the arguments are compatible
-    assert w_opimpl._converters_w is not None
+    converters_w = [None] * len(w_opimpl._args_wop)
     for i, (param, wop_arg) in enumerate(zip(w_functype.params, args_wop)):
         try:
             w_conv = CONVERT_maybe(vm, param.w_type, wop_arg)
-            w_opimpl._converters_w[i] = w_conv
+            converters_w[i] = w_conv
         except SPyTypeError as err:
             if def_loc:
                 err.add('note', 'function defined here', def_loc)
@@ -526,7 +526,7 @@ def typecheck_opimpl(
     w_functype = W_FuncType(params, w_opimpl.w_functype.w_restype,
                             color=w_opimpl.w_functype.color)
     args = []
-    for wop_arg, w_conv in zip(w_opimpl._args_wop, w_opimpl._converters_w):
+    for wop_arg, w_conv in zip(w_opimpl._args_wop, converters_w):
         if wop_arg.is_const():
             arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)
             assert w_conv is None
