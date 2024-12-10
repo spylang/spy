@@ -24,14 +24,13 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     elif pyclass.has_meth_overriden('op_CALL'):
         w_opimpl = pyclass.op_CALL(vm, wop_obj, *args_wop)
 
-    typecheck_opimpl(
+    return typecheck_opimpl(
         vm,
         w_opimpl,
         [wop_obj] + list(args_wop),
         dispatch = 'single',
         errmsg = 'cannot call objects of type `{0}`'
     )
-    return w_opimpl
 
 
 def _dynamic_call_opimpl(args_wop: list[W_OpArg]) -> W_OpImpl:

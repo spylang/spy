@@ -294,6 +294,7 @@ class ASTFrame:
         if w_func is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(call)
 
+        args_w = [self.eval_expr(arg) for arg in call.args]
         if w_opimpl.is_direct_call():
             # some extra sanity checks
             assert color == 'blue', 'indirect calls not supported'
@@ -308,9 +309,7 @@ class ASTFrame:
                 # if the static type is not `dynamic` and the thing is not a
                 # function, it's a bug in the typechecker
                 assert isinstance(w_func, W_Func)
-
-        args_w = [self.eval_expr(arg) for arg in call.args]
-        return w_opimpl.call(self.vm, [w_func] + args_w)
+        return w_opimpl.fast_call(self.vm, [w_func] + args_w)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
         assert len(call.args) == 1

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import textwrap
 from spy.fqn import FQN
 from spy.vm.object import W_Object
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -46,7 +46,19 @@ class W_FuncAdapter(W_Func):
         fqn = self.w_func.fqn
         return f'<spy adapter `{sig}` for `{fqn}`>'
 
+    def is_direct_call(self) -> bool:
+        """
+        This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
+        """
+        return isinstance(self.w_func, W_DirectCall)
+
     def fast_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+        # hack hack hack, we should kill all of this eventually
+        if self.is_direct_call():
+            w_func = args_w[0]
+        else:
+            w_func = self.w_func
+
         def getarg(spec):
             if isinstance(spec, Arg):
                 w_arg = args_w[spec.i]
@@ -59,7 +71,7 @@ class W_FuncAdapter(W_Func):
                 assert False
 
         real_args_w = [getarg(spec) for spec in self.args]
-        return self.w_func.fast_call(vm, real_args_w)
+        return w_func.fast_call(vm, real_args_w)
 
     def pp(self):
         print(self.render())

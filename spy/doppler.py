@@ -8,6 +8,7 @@ from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
+from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opimpl import W_OpImpl
 from spy.util import magic_dispatch
@@ -180,9 +181,30 @@ class FuncDoppler:
                      w_opimpl: W_OpImpl,
                      orig_args: list[ast.Expr]
                      ) -> ast.Call:
-        assert w_opimpl._w_func is not None
-        func = make_const(self.vm, op.loc, w_opimpl._w_func)
-        real_args = w_opimpl.redshift_args(self.vm, orig_args)
+        assert isinstance(w_opimpl, W_FuncAdapter)
+        func = make_const(self.vm, op.loc, w_opimpl.w_func)
+
+        real_args = []
+        for spec in w_opimpl.args:
+            if isinstance(spec, ArgSpec.Arg):
+                arg = orig_args[spec.i]
+                if spec.w_converter is not None:
+                    arg = ast.Call(
+                        loc = arg.loc,
+                        func = ast.FQNConst(
+                            loc = arg.loc,
+                            fqn = spec.w_converter.fqn
+                        ),
+                        args = [arg]
+                    )
+            elif isinstance(spec, ArgSpec.Const):
+                # XXX: we use op.loc, but ideally we should add
+                # ArgSpec.Const.loc and use that
+                arg = make_const(vm, op.loc, spec.w_const)
+            else:
+                assert False
+            real_args.append(arg)
+
         return ast.Call(op.loc, func, real_args)
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
