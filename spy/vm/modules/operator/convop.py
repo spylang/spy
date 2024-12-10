@@ -49,7 +49,7 @@ def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
         #   - dynamic->*: in this case we SHOULD do actual conversions, but at
         #                 the moment we don't so we conflate the two cases
         #                 into one
-        w_from_dynamic_T = vm.call(OP.w_from_dynamic, [w_exp])
+        w_from_dynamic_T = vm.fast_call(OP.w_from_dynamic, [w_exp])
         assert isinstance(w_from_dynamic_T, W_Func)
         return W_OpImpl(w_from_dynamic_T)
 
@@ -77,7 +77,7 @@ def CONVERT_maybe(
     if vm.issubclass(w_got, w_exp):
         # nothing to do
         return None
-    return vm.call(OP.w_CONVERT, [w_exp, wop_x])  # type: ignore
+    return vm.fast_call(OP.w_CONVERT, [w_exp, wop_x])  # type: ignore
 
 @OP.builtin_func
 def w_i32_to_f64(vm: 'SPyVM', w_x: W_I32) -> W_F64:

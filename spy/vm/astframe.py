@@ -112,7 +112,7 @@ class ASTFrame:
             return w_val
         else:
             # apply the type converter, if present
-            return self.vm.call(w_typeconv, [w_val])
+            return self.vm.fast_call(w_typeconv, [w_val])
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         w_val = self.eval_expr(expr)
@@ -270,7 +270,7 @@ class ASTFrame:
         assert w_opimpl, 'bug in the typechecker'
         w_l = self.eval_expr(binop.left)
         w_r = self.eval_expr(binop.right)
-        w_res = w_opimpl.fast_call(self.vm, [w_l, w_r])
+        w_res = self.vm.fast_call(w_opimpl, [w_l, w_r])
         return w_res
 
     eval_expr_Add = eval_expr_BinOp
@@ -309,7 +309,7 @@ class ASTFrame:
                 # if the static type is not `dynamic` and the thing is not a
                 # function, it's a bug in the typechecker
                 assert isinstance(w_func, W_Func)
-        return w_opimpl.fast_call(self.vm, [w_func] + args_w)
+        return self.vm.fast_call(w_opimpl, [w_func] + args_w)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
         assert len(call.args) == 1

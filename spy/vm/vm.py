@@ -330,11 +330,11 @@ class SPyVM:
 
     def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_Func:
         """
-        Like vm.call, but ensures that the result is a W_Func.
+        Like vm.fast_call, but ensures that the result is a W_Func.
 
         Mostly useful to call OPERATORs.
         """
-        w_func = self.call(w_OP, args_wop)
+        w_func = self.fast_call(w_OP, args_wop)
         assert isinstance(w_func, W_Func)
         return w_func
 

@@ -71,7 +71,7 @@ class W_FuncAdapter(W_Func):
                 assert False
 
         real_args_w = [getarg(spec) for spec in self.args]
-        return w_func.fast_call(vm, real_args_w)
+        return vm.fast_call(w_func, real_args_w)
 
     def pp(self):
         print(self.render())
