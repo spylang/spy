@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal
+from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
+                    Iterator)
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN, NSPart
@@ -122,6 +123,19 @@ class W_FuncType(W_Type):
     def is_varargs(self) -> bool:
         return bool(self.params) and self.params[-1].kind == 'varargs'
 
+    def all_params(self) -> Iterator[FuncParam]:
+        """
+        Iterate over all params. Go to infinity in case of varargs
+        """
+        if self.is_varargs:
+            for param in self.params[:-1]:
+                yield param
+            last_param = self.params[-1]
+            while True:
+                yield last_param
+        else:
+            for param in self.params:
+                yield param
 
 
 class W_Func(W_Object):

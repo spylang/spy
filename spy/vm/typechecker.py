@@ -447,6 +447,16 @@ def typecheck_opimpl(
     if w_opimpl.is_null():
         _opimpl_null_error(in_args_wop, dispatch, errmsg)
 
+    # the want to make an adapter that:
+    #   - behaves like a function of type w_in_functype
+    #   - calls an opimpl of type w_out_functype
+    w_out_functype = w_opimpl.w_functype
+    w_in_functype = functype_from_opargs(
+        in_args_wop,
+        w_out_functype.w_restype,
+        color=w_out_functype.color
+    )
+
     # if it's a simple OpImpl, we automatically pass the in_args_wop in order
     if w_opimpl.is_simple():
         out_args_wop = in_args_wop
@@ -464,7 +474,6 @@ def typecheck_opimpl(
             def_loc = wop_func.sym.loc
 
     # check that the number of arguments match
-    w_out_functype = w_opimpl.w_functype
     got_nargs = len(out_args_wop)
     exp_nargs = len(w_out_functype.params)
 
@@ -481,15 +490,9 @@ def typecheck_opimpl(
             def_loc = def_loc,
             call_loc = call_loc)
 
-    argtypes_w = [wop_arg.w_static_type for wop_arg in in_args_wop]
-    params = [
-        FuncParam(f'v{i}', w_type, 'simple')
-        for i, w_type in enumerate(argtypes_w)
-    ]
-    w_in_functype = W_FuncType(params, w_opimpl.w_functype.w_restype,
-                               color=w_opimpl.w_functype.color)
+    # build the argspec for the W_FuncAdapter
     args = []
-    for param, wop_arg in zip(w_out_functype.params, out_args_wop):
+    for param, wop_arg in zip(w_out_functype.all_params(), out_args_wop):
         # add a converter if needed (this might raise SPyTypeError)
         w_conv = get_w_conv(vm, param.w_type, wop_arg, def_loc)
         if wop_arg.is_const():
@@ -503,6 +506,15 @@ def typecheck_opimpl(
     # everything good!
     w_adapter = W_FuncAdapter(w_in_functype, w_opimpl._w_func, args)
     return w_adapter
+
+
+def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
+                         color: Color) -> W_FuncType:
+    params = [
+        FuncParam(f'v{i}', wop.w_static_type, 'simple')
+        for i, wop in enumerate(args_wop)
+    ]
+    return W_FuncType(params, w_restype, color=color)
 
 
 def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
