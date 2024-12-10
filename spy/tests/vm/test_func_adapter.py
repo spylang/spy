@@ -1,4 +1,5 @@
 import pytest
+import textwrap
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FuncType
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
@@ -29,6 +30,12 @@ def test_shuffle_args():
     )
     w_s = vm.call(w_adapter, [vm.wrap(3), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
+    #
+    expected = textwrap.dedent("""
+    def(n: i32, s: str) -> str:
+        return `test::repeat`(s, n)
+    """).strip()
+    assert w_adapter.render() == expected
 
 def test_const():
     vm = SPyVM()
@@ -41,6 +48,11 @@ def test_const():
     )
     w_s = vm.call(w_adapter, [vm.wrap(3)])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
+    expected = textwrap.dedent("""
+    def(n: i32) -> str:
+        return `test::repeat`(W_Str('ab '), n)
+    """).strip()
+    assert w_adapter.render() == expected
 
 def test_converter():
     vm = SPyVM()
@@ -52,3 +64,9 @@ def test_converter():
     )
     w_s = vm.call(w_adapter, [vm.wrap(3.5), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
+    #
+    expected = textwrap.dedent("""
+    def(x: f64, s: str) -> str:
+        return `test::repeat`(s, `operator::f64_to_i32`(x))
+    """).strip()
+    assert w_adapter.render() == expected
