@@ -384,7 +384,7 @@ class SPyVM:
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
-        w_res = w_opimpl.call(self, [w_a, w_b])
+        w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -392,7 +392,7 @@ class SPyVM:
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_NE, [wop_a, wop_b])
-        w_res = w_opimpl.call(self, [w_a, w_b])
+        w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

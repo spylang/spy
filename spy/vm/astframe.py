@@ -207,7 +207,7 @@ class ASTFrame:
         w_target = self.eval_expr(node.target)
         w_attr = self.vm.wrap(node.attr)
         w_value = self.eval_expr(node.value)
-        w_opimpl.call(self.vm, [w_target, w_attr, w_value])
+        self.vm.fast_call(w_opimpl, [w_target, w_attr, w_value])
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
         w_opimpl = self.t.opimpl[node]
@@ -332,7 +332,7 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_i = self.eval_expr(op.index)
-        return w_opimpl.call(self.vm, [w_val, w_i])
+        return self.vm.fast_call(w_opimpl, [w_val, w_i])
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_Object:
         # this is suboptimal, but good enough for now: ideally, we would like
@@ -343,7 +343,7 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_attr = self.vm.wrap(op.attr)
-        w_res = w_opimpl.call(self.vm, [w_val, w_attr])
+        w_res = self.vm.fast_call(w_opimpl, [w_val, w_attr])
         return w_res
 
     def eval_expr_List(self, op: ast.List) -> W_Object:

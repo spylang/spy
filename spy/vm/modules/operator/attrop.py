@@ -23,18 +23,17 @@ def unwrap_attr_maybe(vm: 'SPyVM', wop_attr: W_OpArg) -> str:
         return '<unknown>'
 
 @OP.builtin_func(color='blue')
-def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
+def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     attr = unwrap_attr_maybe(vm, wop_attr)
     w_opimpl = _get_GETATTR_opimpl(vm, wop_obj, wop_attr, attr)
-    typecheck_opimpl(
+    return typecheck_opimpl(
         vm,
         w_opimpl,
         [wop_obj, wop_attr],
         dispatch = 'single',
         errmsg = "type `{0}` has no attribute '%s'" % attr
     )
-    return w_opimpl
 
 def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpImpl:
@@ -54,19 +53,18 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 
 @OP.builtin_func(color='blue')
 def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-            wop_v: W_OpArg) -> W_OpImpl:
+            wop_v: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     attr = unwrap_attr_maybe(vm, wop_attr)
     w_opimpl = _get_SETATTR_opimpl(vm, wop_obj, wop_attr, wop_v, attr)
     errmsg = "type `{0}` does not support assignment to attribute '%s'" % attr
-    typecheck_opimpl(
+    return typecheck_opimpl(
         vm,
         w_opimpl,
         [wop_obj, wop_attr, wop_v],
         dispatch = 'single',
         errmsg = errmsg
     )
-    return w_opimpl
 
 def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         wop_v: W_OpArg, attr: str) -> W_OpImpl:
