@@ -14,7 +14,12 @@ class ArgSpec:
 class Arg(ArgSpec):
     i: int
 
+@dataclass
+class Const(ArgSpec):
+    w_const: W_Object
+
 ArgSpec.Arg = Arg
+ArgSpec.Const = Const
 
 class W_FuncAdapter(W_Func):
     """
@@ -34,6 +39,8 @@ class W_FuncAdapter(W_Func):
         for spec in self.args:
             if isinstance(spec, Arg):
                 real_args_w.append(args_w[spec.i])
+            elif isinstance(spec, Const):
+                real_args_w.append(spec.w_const)
             else:
                 assert False
         return self.w_func.spy_call(vm, real_args_w)

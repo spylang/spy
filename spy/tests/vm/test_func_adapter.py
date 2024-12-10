@@ -28,3 +28,15 @@ def test_shuffle_args():
     )
     w_s = vm.call(w_adapter, [vm.wrap(3), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
+
+def test_const():
+    vm = SPyVM()
+    w_functype = W_FuncType.parse('def(n: i32) -> str')
+    w_s = vm.wrap('ab ')
+    w_adapter = W_FuncAdapter(
+        w_functype,
+        w_repeat,
+        [ArgSpec.Const(w_s), ArgSpec.Arg(0)]
+    )
+    w_s = vm.call(w_adapter, [vm.wrap(3)])
+    assert vm.unwrap_str(w_s) == 'ab ab ab '
