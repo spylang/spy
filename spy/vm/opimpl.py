@@ -248,56 +248,5 @@ class W_OpImpl(W_Object):
         self._args_wop = args_wop[:]
         self._converters_w = [None] * len(args_wop)
 
-    def call(self, vm: 'SPyVM', orig_args_w: list[W_Object]) -> W_Object:
-        assert self.is_valid()
-        assert self._args_wop is not None
-        assert self._converters_w is not None
-        real_args_w = []
-        for wop_arg, w_conv in zip(self._args_wop, self._converters_w):
-            if wop_arg.is_const():
-                w_arg = wop_arg.w_blueval
-            else:
-                assert wop_arg.i is not None
-                w_arg = orig_args_w[wop_arg.i]
-
-            if w_conv is not None:
-                w_arg = vm.call(w_conv, [w_arg])
-            real_args_w.append(w_arg)
-        #
-        if self.is_direct_call():
-            w_func = orig_args_w[0]
-            assert isinstance(w_func, W_Func)
-            return vm.call(w_func, real_args_w)
-        else:
-            assert self._w_func is not None
-            return vm.call(self._w_func, real_args_w)
-
-    def redshift_args(self, vm: 'SPyVM',
-                      orig_args: list[ast.Expr]) -> list[ast.Expr]:
-        from spy.doppler import make_const
-        assert self.is_valid()
-        assert self._args_wop is not None
-        assert self._converters_w is not None
-        real_args = []
-        for wop_arg, w_conv in zip(self._args_wop, self._converters_w):
-            if wop_arg.is_const():
-                w_arg = wop_arg.w_blueval
-                arg = make_const(vm, wop_arg.loc, w_arg)
-            else:
-                assert wop_arg.i is not None
-                arg = orig_args[wop_arg.i]
-
-            if w_conv is not None:
-                arg = ast.Call(
-                    loc = arg.loc,
-                    func = ast.FQNConst(
-                        loc = arg.loc,
-                        fqn = w_conv.fqn
-                    ),
-                    args = [arg]
-                )
-            real_args.append(arg)
-        return real_args
-
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore
