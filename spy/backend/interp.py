@@ -53,7 +53,7 @@ class InterpFuncWrapper:
         # *args contains python-level objs. We want to wrap them into args_w
         # *and to call the func, and unwrap the result
         args_w = [self.vm.wrap(arg) for arg in args]
-        w_res = self.vm.call(self.w_func, args_w)
+        w_res = self.vm.fast_call(self.w_func, args_w)
         if unwrap:
             return self.vm.unwrap(w_res)
         else:

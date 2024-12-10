@@ -138,17 +138,17 @@ class W_Func(W_Object):
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
 
-    def fast_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         """
         Call the function.
 
-        This is the simplest calling convention: arguments can be passed ONLY
-        positionally, and the must be of the correct type, no conversions are
-        allowed here.
+        This is the simplest calling convention, and it's at the base to
+        everything else. Arguments can be passed ONLY positionally, and they
+        must be of the correct type, no conversions are allowed here.
 
-        Also, fast_call bypasses the blue cache.
+        Also, raw_call bypasses the blue cache.
 
-        If you want to call a generic object, you should use vm.call().
+        You should never call this directly. Use vm.call or vm.fast_call.
         """
         raise NotImplementedError
 
@@ -227,7 +227,7 @@ class W_ASTFunc(W_Func):
             extra = ''
         return f"<spy function '{self.fqn}'{extra}>"
 
-    def fast_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
         frame = ASTFrame(vm, self)
         return frame.run(args_w)
@@ -251,7 +251,7 @@ class W_BuiltinFunc(W_Func):
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"
 
-    def fast_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.b import B
         w_res = self._pyfunc(vm, *args_w)
         if w_res is None and self.w_functype.w_restype is B.w_void:

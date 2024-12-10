@@ -298,18 +298,35 @@ class SPyVM:
             raise Exception('Type mismatch')
         return self.unwrap(w_value) # type: ignore
 
-    def call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
+    def call(self, w_obj: W_Object, args_w: Sequence[W_Object]) -> W_Object:
+        """
+        The most generic way of calling an object.
+
+        It calls OPERATOR.CALL in order to get an opimpl, then calls it.
+        """
+        raise NotImplementedError
+
+    def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
+        """
+        fast_call is a simpler calling convention which works only on
+        W_Funcs.
+
+        Arguments can be passed only positionally, and it assumes that types
+        are correct.
+
+        Blue functions are cached, as expected.
+        """
         if w_func.color == 'blue':
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
             if w_result is not None:
                 return w_result
-            w_result = self._call_func(w_func, args_w)
+            w_result = self._raw_call(w_func, args_w)
             self.bluecache.record(w_func, args_w, w_result)
             return w_result
         else:
             # for red functions, we just call them
-            return self._call_func(w_func, args_w)
+            return self._raw_call(w_func, args_w)
 
     def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_Func:
         """
@@ -333,10 +350,16 @@ class SPyVM:
         """
         w_specialized = self.call(w_func, generic_args_w)
         assert isinstance(w_specialized, W_Func)
-        return self.call(w_specialized, args_w)
+        return self.fast_call(w_specialized, args_w)
 
-    def _call_func(self, w_func: W_Func,
-                   args_w: Sequence[W_Object]) -> W_Object:
+    def _raw_call(self, w_func: W_Func,
+                  args_w: Sequence[W_Object]) -> W_Object:
+        """
+        The most fundamental building block for calling in SPy.
+
+        Like fast_call, but it doesn't handle blue caching. Never call this
+        directly unless you know what you are doing.
+        """
         w_functype = w_func.w_functype
         n = w_functype.arity
         if w_functype.is_varargs:
@@ -353,7 +376,7 @@ class SPyVM:
             for w_arg in args_w[n:]:
                 self.typecheck(w_arg, param.w_type)
 
-        return w_func.fast_call(self, args_w)
+        return w_func.raw_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))

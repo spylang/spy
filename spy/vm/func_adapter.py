@@ -52,7 +52,7 @@ class W_FuncAdapter(W_Func):
         """
         return isinstance(self.w_func, W_DirectCall)
 
-    def fast_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         # hack hack hack, we should kill all of this eventually
         if self.is_direct_call():
             w_func = args_w[0]
