@@ -21,7 +21,7 @@ class TestList(CompilerTest):
             return list[i32]
         """)
         w_foo = mod.foo.w_func
-        w_list_i32 = self.vm.call(w_foo, [])
+        w_list_i32 = self.vm.fast_call(w_foo, [])
         assert isinstance(w_list_i32, W_ListType)
         assert w_list_i32.fqn == FQN('builtins::list[i32]')
 
@@ -100,5 +100,5 @@ class TestList(CompilerTest):
             return [1, 2]
         """)
         w_foo = mod.foo.w_func
-        w_l = self.vm.call(w_foo, [])
+        w_l = self.vm.fast_call(w_foo, [])
         assert repr(w_l) == "W_List('i32', [W_I32(1), W_I32(2)])"

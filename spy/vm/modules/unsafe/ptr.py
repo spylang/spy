@@ -284,13 +284,13 @@ class W_Ptr(W_BasePtr):
         if opkind == 'get':
             # getfield[field_T](ptr, attr, offset)
             assert wop_v is None
-            w_func = vm.call(UNSAFE.w_getfield, [w_field_T])
+            w_func = vm.fast_call(UNSAFE.w_getfield, [w_field_T])
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset])
         else:
             # setfield[field_T](ptr, attr, offset, v)
             assert wop_v is not None
-            w_func = vm.call(UNSAFE.w_setfield, [w_field_T])
+            w_func = vm.fast_call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
             return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
@@ -302,7 +302,7 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # returned by value, but struct types are always returned by reference
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
-        w_T = vm.call(w_make_ptr_type, [w_T])  # type: ignore
+        w_T = vm.fast_call(w_make_ptr_type, [w_T])  # type: ignore
         by = 'byref'
     else:
         by = 'byval'

@@ -528,7 +528,7 @@ def typecheck_opimpl(
     args = []
     for wop_arg, w_conv in zip(w_opimpl._args_wop, w_opimpl._converters_w):
         if wop_arg.is_const():
-            arg = ArgSpec.Const(wop_arg.w_blueval)
+            arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)
             assert w_conv is None
         else:
             assert wop_arg.i is not None

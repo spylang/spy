@@ -214,7 +214,7 @@ class ASTFrame:
         w_target = self.eval_expr(node.target)
         w_index = self.eval_expr(node.index)
         w_value = self.eval_expr(node.value)
-        w_opimpl.call(self.vm, [w_target, w_index, w_value])
+        self.vm.fast_call(w_opimpl, [w_target, w_index, w_value])
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
@@ -326,7 +326,7 @@ class ASTFrame:
         w_target = self.eval_expr(op.target)
         w_method = self.vm.wrap(op.method)
         args_w = [self.eval_expr(arg) for arg in op.args]
-        return w_opimpl.call(self.vm, [w_target, w_method] + args_w)
+        return self.vm.fast_call(w_opimpl, [w_target, w_method] + args_w)
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
         w_opimpl = self.t.opimpl[op]

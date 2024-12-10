@@ -202,9 +202,7 @@ class FuncDoppler:
                         args = [arg]
                     )
             elif isinstance(spec, ArgSpec.Const):
-                # XXX: we use op.loc, but ideally we should add
-                # ArgSpec.Const.loc and use that
-                arg = make_const(vm, op.loc, spec.w_const)
+                arg = make_const(self.vm, spec.loc, spec.w_const)
             else:
                 assert False
             real_args.append(arg)

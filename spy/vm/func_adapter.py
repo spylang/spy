@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Sequence
 from dataclasses import dataclass
 import textwrap
 from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 if TYPE_CHECKING:
@@ -19,6 +20,7 @@ class Arg(ArgSpec):
 @dataclass
 class Const(ArgSpec):
     w_const: W_Object
+    loc: Loc
 
 ArgSpec.Arg = Arg
 ArgSpec.Const = Const

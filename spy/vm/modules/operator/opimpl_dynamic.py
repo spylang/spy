@@ -66,7 +66,7 @@ def w_dynamic_getattr(vm: 'SPyVM', w_obj: W_Dynamic,
     wop_obj = W_OpArg.from_w_obj(vm, w_obj, 'o', 0)
     wop_attr = W_OpArg.from_w_obj(vm, w_attr, 'a', 1)
     w_opimpl = vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
-    return w_opimpl.call(vm, [w_obj, w_attr])
+    return vm.fast_call(w_opimpl, [w_obj, w_attr])
 
 
 # NOT USED, but will be soon (hopefully)
@@ -79,4 +79,4 @@ def w_dynamic_call(vm: 'SPyVM', w_obj: W_Dynamic,
         for i, w_x in enumerate(all_args_w)
     ]
     w_opimpl = vm.call_OP(OP.w_CALL, all_args_wop)
-    return w_opimpl.call(vm, all_args_w)
+    return vm.fast_call(w_opimpl, all_args_w)

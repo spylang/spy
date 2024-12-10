@@ -14,6 +14,7 @@ from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
+from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.module import W_Module
 from spy.vm.opimpl import W_OpImpl, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
@@ -316,7 +317,7 @@ class SPyVM:
 
         Blue functions are cached, as expected.
         """
-        if w_func.color == 'blue':
+        if w_func.color == 'blue' and not isinstance(w_func, W_FuncAdapter):
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
             if w_result is not None:
@@ -348,7 +349,7 @@ class SPyVM:
             f_specialized = call(f, [T0, T1])
             call(f_specialized, [a0, a1, a2])
         """
-        w_specialized = self.call(w_func, generic_args_w)
+        w_specialized = self.fast_call(w_func, generic_args_w)
         assert isinstance(w_specialized, W_Func)
         return self.fast_call(w_specialized, args_w)
 
@@ -403,7 +404,7 @@ class SPyVM:
         wop_obj = W_OpArg('obj', 0, self.dynamic_type(w_obj), Loc.here(-2))
         wop_i = W_OpArg('i', 1, self.dynamic_type(w_i), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wop_obj, wop_i])
-        return w_opimpl.call(self, [w_obj, w_i])
+        return self.fast_call(w_opimpl, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
