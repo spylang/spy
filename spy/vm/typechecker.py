@@ -518,10 +518,10 @@ def typecheck_opimpl(
 
     # everything good!
     #
-    # XXX: we should create a W_FuncAdapter only if it's needed
+    argtypes_w = [wop_arg.w_static_type for wop_arg in orig_args_wop]
     params = [
-        FuncParam(f'v{i}', wop_arg.w_static_type, 'simple')
-        for i, wop_arg in enumerate(args_wop)
+        FuncParam(f'v{i}', w_type, 'simple')
+        for i, w_type in enumerate(argtypes_w)
     ]
     w_functype = W_FuncType(params, w_opimpl.w_functype.w_restype,
                             color=w_opimpl.w_functype.color)

@@ -198,7 +198,7 @@ class TestVM:
         w_x = vm.wrap('hello')
         msg = 'Invalid cast. Expected `i32`, got `str`'
         with pytest.raises(SPyTypeError, match=msg):
-            vm.call(w_abs, [w_x])
+            vm.fast_call(w_abs, [w_x])
 
     def test_eq(self):
         vm = SPyVM()

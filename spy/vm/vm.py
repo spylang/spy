@@ -364,21 +364,21 @@ class SPyVM:
         # XXX we should delete this code, but let's keep it here while we are
         # developing the branch
 
-        ## w_functype = w_func.w_functype
-        ## n = w_functype.arity
-        ## if w_functype.is_varargs:
-        ##     assert len(args_w) >= n
-        ## else:
-        ##     assert len(args_w) == n
+        w_functype = w_func.w_functype
+        n = w_functype.arity
+        if w_functype.is_varargs:
+            assert len(args_w) >= n
+        else:
+            assert len(args_w) == n
 
-        ## # XXX: this should be a _fast_call ideally, and we shouldn't do
-        ## # typecheck (but only assert that the type are compatible)
-        ## for param, w_arg in zip(w_functype.params[:n], args_w[:n]):
-        ##     self.typecheck(w_arg, param.w_type)
-        ## if w_functype.is_varargs:
-        ##     param = w_functype.params[-1]
-        ##     for w_arg in args_w[n:]:
-        ##         self.typecheck(w_arg, param.w_type)
+        # XXX: this should be a _fast_call ideally, and we shouldn't do
+        # typecheck (but only assert that the type are compatible)
+        for param, w_arg in zip(w_functype.params[:n], args_w[:n]):
+            self.typecheck(w_arg, param.w_type)
+        if w_functype.is_varargs:
+            param = w_functype.params[-1]
+            for w_arg in args_w[n:]:
+                self.typecheck(w_arg, param.w_type)
         return w_func.raw_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
