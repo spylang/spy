@@ -25,7 +25,13 @@ ArgSpec.Const = Const
 
 class W_FuncAdapter(W_Func):
     """
-    WRITE ME
+    Adapt another w_func to a different signature.
+
+    When called, W_FuncAdapter transforms the input args_w into the "real"
+    args_w which is passed to w_func.
+
+    The transformation rules are stored into a list of ArgSpec, which
+    effectively encodes a mini-AST.
     """
     fqn = FQN('builtins::__adapter__')
 
