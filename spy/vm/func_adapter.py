@@ -40,12 +40,12 @@ class W_FuncAdapter(W_Func):
         fqn = self.w_func.fqn
         return f'<spy adapter `{sig}` for `{fqn}`>'
 
-    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def fast_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         def getarg(spec):
             if isinstance(spec, Arg):
                 w_arg = args_w[spec.i]
                 if spec.w_converter:
-                    w_arg = spec.w_converter.spy_call(vm, [w_arg])
+                    w_arg = spec.w_converter.fast_call(vm, [w_arg])
                 return w_arg
             elif isinstance(spec, Const):
                 return spec.w_const
@@ -53,7 +53,7 @@ class W_FuncAdapter(W_Func):
                 assert False
 
         real_args_w = [getarg(spec) for spec in self.args]
-        return self.w_func.spy_call(vm, real_args_w)
+        return self.w_func.fast_call(vm, real_args_w)
 
     def pp(self):
         print(self.render())
