@@ -449,7 +449,7 @@ class SPyVM:
         # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
         # recursion
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
-            return self.call(w_oparg_eq, [w_a, w_b])  # type: ignore
+            return self.fast_call(w_oparg_eq, [w_a, w_b])  # type: ignore
 
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))
@@ -463,7 +463,7 @@ class SPyVM:
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 
-        w_res = w_opimpl.call(self, [w_a, w_b])
+        w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

@@ -63,7 +63,7 @@ class W_FuncAdapter(W_Func):
             if isinstance(spec, Arg):
                 w_arg = args_w[spec.i]
                 if spec.w_converter:
-                    w_arg = spec.w_converter.fast_call(vm, [w_arg])
+                    w_arg = vm.fast_call(spec.w_converter, [w_arg])
                 return w_arg
             elif isinstance(spec, Const):
                 return spec.w_const
