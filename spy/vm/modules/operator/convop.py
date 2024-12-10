@@ -89,6 +89,11 @@ def w_i32_to_bool(vm: 'SPyVM', w_x: W_I32) -> W_Bool:
     val = vm.unwrap_i32(w_x)
     return vm.wrap(bool(val))  # type: ignore
 
+@OP.builtin_func
+def w_f64_to_i32(vm: 'SPyVM', w_x: W_F64) -> W_I32:
+    val = vm.unwrap_f64(w_x)
+    return vm.wrap(int(val))  # type: ignore
+
 
 @OP.builtin_func(color='blue')
 def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
@@ -116,3 +121,4 @@ def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
 MM.register('convert', 'i32', 'f64', OP.w_i32_to_f64)
 MM.register('convert', 'i32', 'bool', OP.w_i32_to_bool)
+MM.register('convert', 'f64', 'i32', OP.w_f64_to_i32)

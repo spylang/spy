@@ -13,6 +13,7 @@ class ArgSpec:
 @dataclass
 class Arg(ArgSpec):
     i: int
+    w_converter: W_Func = None
 
 @dataclass
 class Const(ArgSpec):
@@ -38,7 +39,10 @@ class W_FuncAdapter(W_Func):
         real_args_w = []
         for spec in self.args:
             if isinstance(spec, Arg):
-                real_args_w.append(args_w[spec.i])
+                w_arg = args_w[spec.i]
+                if spec.w_converter:
+                    w_arg = spec.w_converter.spy_call(vm, [w_arg])
+                real_args_w.append(w_arg)
             elif isinstance(spec, Const):
                 real_args_w.append(spec.w_const)
             else:
