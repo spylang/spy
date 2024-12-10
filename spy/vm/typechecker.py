@@ -481,13 +481,6 @@ def typecheck_opimpl(
             def_loc = def_loc,
             call_loc = call_loc)
 
-    # check that the types of the arguments are compatible
-    converters_w = [None] * len(out_args_wop)
-    for i, (param, wop_arg) in enumerate(zip(w_out_functype.params, out_args_wop)):
-        converters_w[i] = get_w_conv(vm, param.w_type, wop_arg, def_loc)
-
-    # everything good!
-    #
     argtypes_w = [wop_arg.w_static_type for wop_arg in in_args_wop]
     params = [
         FuncParam(f'v{i}', w_type, 'simple')
@@ -496,14 +489,18 @@ def typecheck_opimpl(
     w_in_functype = W_FuncType(params, w_opimpl.w_functype.w_restype,
                                color=w_opimpl.w_functype.color)
     args = []
-    for wop_arg, w_conv in zip(out_args_wop, converters_w):
+    for param, wop_arg in zip(w_out_functype.params, out_args_wop):
+        # add a converter if needed (this might raise SPyTypeError)
+        w_conv = get_w_conv(vm, param.w_type, wop_arg, def_loc)
         if wop_arg.is_const():
-            arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)
             assert w_conv is None
+            arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)
         else:
             assert wop_arg.i is not None
             arg = ArgSpec.Arg(wop_arg.i, w_conv)
         args.append(arg)
+
+    # everything good!
     w_adapter = W_FuncAdapter(w_in_functype, w_opimpl._w_func, args)
     return w_adapter
 
