@@ -191,18 +191,13 @@ class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
     _args_wop: Optional[list[W_OpArg]]
-    _converters_w: Optional[list[Optional[W_Func]]]
 
     def __init__(self,
                  w_func: W_Func,
                 args_wop: Optional[list[W_OpArg]] = None
                 ) -> None:
         self._w_func = w_func
-        self._typechecked = False
-        if args_wop is None:
-            self._args_wop = None
-        else:
-            self._args_wop = args_wop
+        self._args_wop = args_wop
 
     def __repr__(self) -> str:
         if self._w_func is None:
@@ -227,9 +222,6 @@ class W_OpImpl(W_Object):
         """
         return isinstance(self._w_func, W_DirectCall)
 
-    def is_valid(self) -> bool:
-        return not self.is_null() and self._typechecked
-
     @property
     def w_functype(self) -> W_FuncType:
         assert self._w_func is not None
@@ -239,10 +231,6 @@ class W_OpImpl(W_Object):
     def w_restype(self) -> W_Type:
         assert self._w_func is not None
         return self._w_func.w_functype.w_restype
-
-    def set_args_wop(self, args_wop: list[W_OpArg]) -> None:
-        assert self._args_wop is None
-        self._args_wop = args_wop[:]
 
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore

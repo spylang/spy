@@ -430,7 +430,7 @@ class TypeChecker:
 def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
-        orig_args_wop: list[W_OpArg],
+        in_args_wop: list[W_OpArg],
         *,
         dispatch: DispatchKind,
         errmsg: str,
@@ -454,11 +454,11 @@ def typecheck_opimpl(
         #  - multi dispatch means that all the types are equally imporant in
         #    determining whether an operation is supported, so we report all
         #    of them
-        typenames = [wop.w_static_type.fqn.human_name for wop in orig_args_wop]
+        typenames = [wop.w_static_type.fqn.human_name for wop in in_args_wop]
         errmsg = errmsg.format(*typenames)
         err = SPyTypeError(errmsg)
         if dispatch == 'single':
-            wop_target = orig_args_wop[0]
+            wop_target = in_args_wop[0]
             t = wop_target.w_static_type.fqn.human_name
             if wop_target.loc:
                 err.add('error', f'this is `{t}`', wop_target.loc)
@@ -466,33 +466,33 @@ def typecheck_opimpl(
                 sym = wop_target.sym
                 err.add('note', f'`{sym.name}` defined here', sym.loc)
         else:
-            for wop_arg in orig_args_wop:
+            for wop_arg in in_args_wop:
                 t = wop_arg.w_static_type.fqn.human_name
                 err.add('error', f'this is `{t}`', wop_arg.loc)
         raise err
 
-    # if it's a simple OpImpl, we automatically pass the orig_args_wop in order
+    # if it's a simple OpImpl, we automatically pass the in_args_wop in order
     if w_opimpl.is_simple():
-        w_opimpl.set_args_wop(orig_args_wop)
-    args_wop = w_opimpl._args_wop
-    assert args_wop is not None
+        out_args_wop = in_args_wop
+    else:
+        out_args_wop = w_opimpl._args_wop
 
     # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
     def_loc = None
     if w_opimpl.is_direct_call():
-        wop_func = orig_args_wop[0]
+        wop_func = in_args_wop[0]
         call_loc = wop_func.loc
         # not all direct calls targets have a sym (e.g. if we call a builtin)
         if wop_func.sym is not None:
             def_loc = wop_func.sym.loc
 
     # check that the number of arguments match
-    w_functype = w_opimpl.w_functype
-    got_nargs = len(args_wop)
-    exp_nargs = len(w_functype.params)
+    w_out_functype = w_opimpl.w_functype
+    got_nargs = len(out_args_wop)
+    exp_nargs = len(w_out_functype.params)
 
-    if w_functype.is_varargs:
+    if w_out_functype.is_varargs:
         argcount_ok = got_nargs >= exp_nargs
     else:
         argcount_ok = got_nargs == exp_nargs
@@ -501,13 +501,13 @@ def typecheck_opimpl(
         _call_error_wrong_argcount(
             got_nargs,
             exp_nargs,
-            args_wop,
+            out_args_wop,
             def_loc = def_loc,
             call_loc = call_loc)
 
     # check that the types of the arguments are compatible
-    converters_w = [None] * len(w_opimpl._args_wop)
-    for i, (param, wop_arg) in enumerate(zip(w_functype.params, args_wop)):
+    converters_w = [None] * len(out_args_wop)
+    for i, (param, wop_arg) in enumerate(zip(w_out_functype.params, out_args_wop)):
         try:
             w_conv = CONVERT_maybe(vm, param.w_type, wop_arg)
             converters_w[i] = w_conv
@@ -518,15 +518,15 @@ def typecheck_opimpl(
 
     # everything good!
     #
-    argtypes_w = [wop_arg.w_static_type for wop_arg in orig_args_wop]
+    argtypes_w = [wop_arg.w_static_type for wop_arg in in_args_wop]
     params = [
         FuncParam(f'v{i}', w_type, 'simple')
         for i, w_type in enumerate(argtypes_w)
     ]
-    w_functype = W_FuncType(params, w_opimpl.w_functype.w_restype,
-                            color=w_opimpl.w_functype.color)
+    w_in_functype = W_FuncType(params, w_opimpl.w_functype.w_restype,
+                               color=w_opimpl.w_functype.color)
     args = []
-    for wop_arg, w_conv in zip(w_opimpl._args_wop, converters_w):
+    for wop_arg, w_conv in zip(out_args_wop, converters_w):
         if wop_arg.is_const():
             arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)
             assert w_conv is None
@@ -534,11 +534,9 @@ def typecheck_opimpl(
             assert wop_arg.i is not None
             arg = ArgSpec.Arg(wop_arg.i, w_conv)
         args.append(arg)
-    w_adapter = W_FuncAdapter(w_functype, w_opimpl._w_func, args)
+    w_adapter = W_FuncAdapter(w_in_functype, w_opimpl._w_func, args)
     return w_adapter
 
-
-    #w_opimpl._typechecked = True
 
 def _call_error_wrong_argcount(
         got: int, exp: int,
