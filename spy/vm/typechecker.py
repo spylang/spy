@@ -445,31 +445,7 @@ def typecheck_opimpl(
     report the type of the first operand, else of all operands.
     """
     if w_opimpl.is_null():
-        # this means that we couldn't find an OpImpl for this OPERATOR.
-        # The details of the error message depends on the DispatchKind:
-
-        #  - single dispatch means that the target (argument 0) doesn't
-        #    support this operation, so we report its type and its definition
-        #
-        #  - multi dispatch means that all the types are equally imporant in
-        #    determining whether an operation is supported, so we report all
-        #    of them
-        typenames = [wop.w_static_type.fqn.human_name for wop in in_args_wop]
-        errmsg = errmsg.format(*typenames)
-        err = SPyTypeError(errmsg)
-        if dispatch == 'single':
-            wop_target = in_args_wop[0]
-            t = wop_target.w_static_type.fqn.human_name
-            if wop_target.loc:
-                err.add('error', f'this is `{t}`', wop_target.loc)
-            if wop_target.sym:
-                sym = wop_target.sym
-                err.add('note', f'`{sym.name}` defined here', sym.loc)
-        else:
-            for wop_arg in in_args_wop:
-                t = wop_arg.w_static_type.fqn.human_name
-                err.add('error', f'this is `{t}`', wop_arg.loc)
-        raise err
+        _opimpl_null_error(in_args_wop, dispatch, errmsg)
 
     # if it's a simple OpImpl, we automatically pass the in_args_wop in order
     if w_opimpl.is_simple():
@@ -536,6 +512,40 @@ def typecheck_opimpl(
         args.append(arg)
     w_adapter = W_FuncAdapter(w_in_functype, w_opimpl._w_func, args)
     return w_adapter
+
+
+def _opimpl_null_error(
+        in_args_wop: list[W_OpArg],
+        dispatch: DispatchKind,
+        errmsg: str
+) -> NoReturn:
+    """
+    We couldn't find an OpImpl for this OPERATOR.
+    The details of the error message depends on the DispatchKind:
+
+     - single dispatch means that the target (argument 0) doesn't
+       support this operation, so we report its type and its definition
+
+     - multi dispatch means that all the types are equally imporant in
+       determining whether an operation is supported, so we report all
+       of them
+    """
+    typenames = [wop.w_static_type.fqn.human_name for wop in in_args_wop]
+    errmsg = errmsg.format(*typenames)
+    err = SPyTypeError(errmsg)
+    if dispatch == 'single':
+        wop_target = in_args_wop[0]
+        t = wop_target.w_static_type.fqn.human_name
+        if wop_target.loc:
+            err.add('error', f'this is `{t}`', wop_target.loc)
+        if wop_target.sym:
+            sym = wop_target.sym
+            err.add('note', f'`{sym.name}` defined here', sym.loc)
+    else:
+        for wop_arg in in_args_wop:
+            t = wop_arg.w_static_type.fqn.human_name
+            err.add('error', f'this is `{t}`', wop_arg.loc)
+    raise err
 
 
 def _call_error_wrong_argcount(
