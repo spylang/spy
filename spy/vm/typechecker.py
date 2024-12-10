@@ -484,13 +484,7 @@ def typecheck_opimpl(
     # check that the types of the arguments are compatible
     converters_w = [None] * len(out_args_wop)
     for i, (param, wop_arg) in enumerate(zip(w_out_functype.params, out_args_wop)):
-        try:
-            w_conv = CONVERT_maybe(vm, param.w_type, wop_arg)
-            converters_w[i] = w_conv
-        except SPyTypeError as err:
-            if def_loc:
-                err.add('note', 'function defined here', def_loc)
-            raise
+        converters_w[i] = get_w_conv(vm, param.w_type, wop_arg, def_loc)
 
     # everything good!
     #
@@ -512,6 +506,19 @@ def typecheck_opimpl(
         args.append(arg)
     w_adapter = W_FuncAdapter(w_in_functype, w_opimpl._w_func, args)
     return w_adapter
+
+
+def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
+               def_loc: Loc) -> Optional[W_Func]:
+    """
+    Like CONVERT_maybe, but improve the error message if we can
+    """
+    try:
+        return CONVERT_maybe(vm, w_type, wop_arg)
+    except SPyTypeError as err:
+        if def_loc:
+            err.add('note', 'function defined here', def_loc)
+        raise
 
 
 def _opimpl_null_error(
