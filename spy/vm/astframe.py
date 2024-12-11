@@ -230,7 +230,7 @@ class ASTFrame:
         self.vm.fast_call(w_opimpl, [w_target, w_index, w_value])
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
-        self.eval_expr(stmt.value)
+        self.eval_expr(stmt.value, newstyle=True)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
         w_cond = self.eval_expr(if_node.test)
@@ -305,34 +305,31 @@ class ASTFrame:
     eval_expr_Gt = eval_expr_BinOp
     eval_expr_GtE = eval_expr_BinOp
 
-    def eval_expr_Call(self, call: ast.Call) -> W_Object:
-        color, w_functype = self.t.check_expr(call.func)
-        w_opimpl = self.t.opimpl[call]
-        w_func = self.eval_expr(call.func)
+    def eval_expr_Call(self, call: ast.Call) -> W_OpArg:
+        wop_func = self.eval_expr(call.func, newstyle=True)
 
         # STATIC_TYPE is a special case, because it doesn't evaluate its
         # arguments
-        if w_func is B.w_STATIC_TYPE:
+        if wop_func.w_val is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(call)
 
-        args_w = [self.eval_expr(arg) for arg in call.args]
+        args_wop = [self.eval_expr(arg, newstyle=True) for arg in call.args]
+        w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
+
         # as long as we have the is_direct_call hack, this is needed
         assert isinstance(w_opimpl, W_FuncAdapter)
         if w_opimpl.is_direct_call():
-            # some extra sanity checks
-            assert color == 'blue', 'indirect calls not supported'
-            if w_functype is B.w_dynamic:
-                # if the static type is `dynamic` and thing is not a function,
-                # it's a TypeError
-                if not isinstance(w_func, W_Func):
-                    t = self.vm.dynamic_type(w_func)
-                    raise SPyTypeError(
-                        f'cannot call objects of type `{t.fqn.human_name}`')
-            else:
-                # if the static type is not `dynamic` and the thing is not a
-                # function, it's a bug in the typechecker
-                assert isinstance(w_func, W_Func)
-        return self.vm.fast_call(w_opimpl, [w_func] + args_w)
+            assert wop_func.color == 'blue', 'indirect calls not supported'
+
+        w_func = wop_func.w_val
+        args_w = [wop.w_val for wop in args_wop]
+        w_res = self.vm.fast_call(w_opimpl, [w_func] + args_w)
+        w_functype = w_opimpl.w_functype
+        return W_OpArg(
+            w_functype.color,
+            w_functype.w_restype,
+            call.loc,
+            w_val=w_res)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
         assert len(call.args) == 1
