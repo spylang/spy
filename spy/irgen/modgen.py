@@ -47,7 +47,7 @@ class ModuleGen:
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
-        frame = ASTFrame(self.vm, w_INIT)
+        frame = ASTFrame(self.vm, w_INIT, color='red')
         #
 
         # automatically predeclare types as ForwardRef

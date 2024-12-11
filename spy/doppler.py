@@ -55,7 +55,7 @@ class FuncDoppler:
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
-        self.blue_frame = ASTFrame(vm, w_func)
+        self.blue_frame = ASTFrame(vm, w_func, color='blue')
         self.t = self.blue_frame.t
 
     def redshift(self) -> W_ASTFunc:
@@ -78,10 +78,6 @@ class FuncDoppler:
             locals_types_w = self.t.locals_types_w.copy())
         return w_newfunc
 
-    def blue_eval(self, expr: ast.Expr) -> ast.Expr:
-        w_val = self.blue_frame.eval_expr(expr)
-        return make_const(self.vm, expr.loc, w_val)
-
     # =========
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
@@ -89,12 +85,13 @@ class FuncDoppler:
         return magic_dispatch(self, 'shift_stmt', stmt)
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
-        color, w_type = self.t.check_expr(expr)
-        if color == 'blue':
-            return self.blue_eval(expr)
+        wop = self.blue_frame.eval_expr(expr, newstyle=True)
+        if wop.color == 'blue':
+            return make_const(self.vm, expr.loc, wop.w_val)
         res = magic_dispatch(self, 'shift_expr', expr)
         w_conv = self.t.expr_conv.get(expr)
         if w_conv:
+            assert False, 'fixme'
             # converters are used only for local variables and if/while
             # conditions (see TypeChecker.expr_conv). Probably we could just
             # use an W_OpImpl instead?
