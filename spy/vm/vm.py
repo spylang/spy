@@ -14,6 +14,7 @@ from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
+from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.module import W_Module
 from spy.vm.opimpl import W_OpImpl, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
@@ -224,14 +225,14 @@ class SPyVM:
 
     def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:
         w_t1 = self.dynamic_type(w_obj)
-        return self.issubclass(w_t1, w_type)
+        return w_t1 == w_type or self.issubclass(w_t1, w_type)
 
     def typecheck(self, w_obj: W_Object, w_type: W_Type) -> None:
         """
         Like vm.isinstance(), but raise SPyTypeError if the check fails.
         """
-        w_t1 = self.dynamic_type(w_obj)
-        if w_t1 != w_type and not self.issubclass(w_t1, w_type):
+        if not self.isinstance(w_obj, w_type):
+            w_t1 = self.dynamic_type(w_obj)
             exp = w_type.fqn.human_name
             got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
@@ -298,28 +299,45 @@ class SPyVM:
             raise Exception('Type mismatch')
         return self.unwrap(w_value) # type: ignore
 
-    def call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
-        if w_func.color == 'blue':
+    def call(self, w_obj: W_Object, args_w: Sequence[W_Object]) -> W_Object:
+        """
+        The most generic way of calling an object.
+
+        It calls OPERATOR.CALL in order to get an opimpl, then calls it.
+        """
+        raise NotImplementedError
+
+    def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
+        """
+        fast_call is a simpler calling convention which works only on
+        W_Funcs.
+
+        Arguments can be passed only positionally, and it assumes that types
+        are correct.
+
+        Blue functions are cached, as expected.
+        """
+        if w_func.color == 'blue' and not isinstance(w_func, W_FuncAdapter):
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
             if w_result is not None:
                 return w_result
-            w_result = self._call_func(w_func, args_w)
+            w_result = self._raw_call(w_func, args_w)
             self.bluecache.record(w_func, args_w, w_result)
             return w_result
         else:
             # for red functions, we just call them
-            return self._call_func(w_func, args_w)
+            return self._raw_call(w_func, args_w)
 
-    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_OpImpl:
+    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_Func:
         """
-        Like vm.call, but ensures that the result is a W_OpImpl.
+        Like vm.fast_call, but ensures that the result is a W_Func.
 
         Mostly useful to call OPERATORs.
         """
-        w_opimpl = self.call(w_OP, args_wop)
-        assert isinstance(w_opimpl, W_OpImpl)
-        return w_opimpl
+        w_func = self.fast_call(w_OP, args_wop)
+        assert isinstance(w_func, W_Func)
+        return w_func
 
     def call_generic(self, w_func: W_Func,
                      generic_args_w: list[W_Object],
@@ -331,31 +349,29 @@ class SPyVM:
             f_specialized = call(f, [T0, T1])
             call(f_specialized, [a0, a1, a2])
         """
-        w_specialized = self.call(w_func, generic_args_w)
+        w_specialized = self.fast_call(w_func, generic_args_w)
         assert isinstance(w_specialized, W_Func)
-        return self.call(w_specialized, args_w)
+        return self.fast_call(w_specialized, args_w)
 
-    def _call_func(self, w_func: W_Func,
-                   args_w: Sequence[W_Object]) -> W_Object:
+    def _raw_call(self, w_func: W_Func,
+                  args_w: Sequence[W_Object]) -> W_Object:
+        """
+        The most fundamental building block for calling in SPy.
+
+        Like fast_call, but it doesn't handle blue caching. Never call this
+        directly unless you know what you are doing.
+        """
         w_functype = w_func.w_functype
-        n = w_functype.arity
-        if w_functype.is_varargs:
-            assert len(args_w) >= n
-        else:
-            assert len(args_w) == n
-        for param, w_arg in zip(w_functype.params[:n], args_w[:n]):
-            self.typecheck(w_arg, param.w_type)
-        if w_functype.is_varargs:
-            param = w_functype.params[-1]
-            for w_arg in args_w[n:]:
-                self.typecheck(w_arg, param.w_type)
-        return w_func.spy_call(self, args_w)
+        assert w_functype.is_argcount_ok(len(args_w))
+        for param, w_arg in zip(w_functype.all_params(), args_w):
+            assert self.isinstance(w_arg, param.w_type)
+        return w_func.raw_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
-        w_res = w_opimpl.call(self, [w_a, w_b])
+        w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -363,7 +379,7 @@ class SPyVM:
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_NE, [wop_a, wop_b])
-        w_res = w_opimpl.call(self, [w_a, w_b])
+        w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -374,7 +390,7 @@ class SPyVM:
         wop_obj = W_OpArg('obj', 0, self.dynamic_type(w_obj), Loc.here(-2))
         wop_i = W_OpArg('i', 1, self.dynamic_type(w_i), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wop_obj, wop_i])
-        return w_opimpl.call(self, [w_obj, w_i])
+        return self.fast_call(w_opimpl, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -420,7 +436,7 @@ class SPyVM:
         # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
         # recursion
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
-            return self.call(w_oparg_eq, [w_a, w_b])  # type: ignore
+            return self.fast_call(w_oparg_eq, [w_a, w_b])  # type: ignore
 
         wop_a = W_OpArg('a', 0, self.dynamic_type(w_a), Loc.here(-2))
         wop_b = W_OpArg('b', 1, self.dynamic_type(w_b), Loc.here(-2))
@@ -434,7 +450,7 @@ class SPyVM:
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 
-        w_res = w_opimpl.call(self, [w_a, w_b])
+        w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal
+from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
+                    Iterator)
 from spy import ast
 from spy.ast import Color
 from spy.fqn import FQN, NSPart
@@ -108,6 +109,10 @@ class W_FuncType(W_Type):
         return cls.make(w_restype=w_restype, **kwargs)
 
     @property
+    def is_varargs(self) -> bool:
+        return bool(self.params) and self.params[-1].kind == 'varargs'
+
+    @property
     def arity(self) -> int:
         """
         Return the *minimum* number of arguments expected by the function.
@@ -118,9 +123,25 @@ class W_FuncType(W_Type):
         else:
             return len(self.params)
 
-    @property
-    def is_varargs(self) -> bool:
-        return bool(self.params) and self.params[-1].kind == 'varargs'
+    def is_argcount_ok(self, n: int) -> bool:
+        if self.is_varargs:
+            return n >= self.arity
+        else:
+            return n == self.arity
+
+    def all_params(self) -> Iterator[FuncParam]:
+        """
+        Iterate over all params. Go to infinity in case of varargs
+        """
+        if self.is_varargs:
+            for param in self.params[:-1]:
+                yield param
+            last_param = self.params[-1]
+            while True:
+                yield last_param
+        else:
+            for param in self.params:
+                yield param
 
 
 
@@ -138,13 +159,17 @@ class W_Func(W_Object):
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
 
-    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         """
         Call the function.
 
-        args_w contains the list of wrapped arguments. Note that here we
-        assume that they are of the correct type: end users should use
-        vm.call_function, which is the official API and does typecheck.
+        This is the simplest calling convention, and it's at the base to
+        everything else. Arguments can be passed ONLY positionally, and they
+        must be of the correct type, no conversions are allowed here.
+
+        Also, raw_call bypasses the blue cache.
+
+        You should never call this directly. Use vm.call or vm.fast_call.
         """
         raise NotImplementedError
 
@@ -223,7 +248,7 @@ class W_ASTFunc(W_Func):
             extra = ''
         return f"<spy function '{self.fqn}'{extra}>"
 
-    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
         frame = ASTFrame(vm, self)
         return frame.run(args_w)
@@ -247,7 +272,7 @@ class W_BuiltinFunc(W_Func):
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"
 
-    def spy_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.b import B
         w_res = self._pyfunc(vm, *args_w)
         if w_res is None and self.w_functype.w_restype is B.w_void:

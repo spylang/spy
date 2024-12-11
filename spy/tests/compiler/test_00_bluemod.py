@@ -55,7 +55,7 @@ class TestBlueMod:
         """)
         w_mod = mod.w_mod
         w_foo = w_mod.getattr('foo')
-        w_res = self.vm.call(w_foo, [])
+        w_res = self.vm.fast_call(w_foo, [])
         assert w_res is B.w_i32
 
     def test_make_function(self):
@@ -68,11 +68,11 @@ class TestBlueMod:
         """)
         w_mod = mod.w_mod
         w_foo = w_mod.getattr('foo')
-        w_bar = self.vm.call(w_foo, [])
+        w_bar = self.vm.fast_call(w_foo, [])
         assert isinstance(w_bar, W_ASTFunc)
         assert w_bar.w_functype == W_FuncType.parse('def(x: i32) -> i32')
         w_42 = self.vm.wrap(42)
-        assert self.vm.call(w_bar, [w_42]) is w_42
+        assert self.vm.fast_call(w_bar, [w_42]) is w_42
 
     def test_closure(self):
         mod = self.import_("""
@@ -84,8 +84,8 @@ class TestBlueMod:
         """)
         w_mod = mod.w_mod
         w_make_adder = w_mod.getattr('make_adder')
-        w_add5 = self.vm.call(w_make_adder, [self.vm.wrap(5)])
+        w_add5 = self.vm.fast_call(w_make_adder, [self.vm.wrap(5)])
         assert isinstance(w_add5, W_ASTFunc)
-        w_42 = self.vm.call(w_add5, [self.vm.wrap(37)])
+        w_42 = self.vm.fast_call(w_add5, [self.vm.wrap(37)])
         res = self.vm.unwrap(w_42)
         assert res == 42

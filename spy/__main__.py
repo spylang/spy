@@ -96,7 +96,7 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
         vm.typecheck(w_main, w_main_functype)
         assert isinstance(w_main, W_Func)
         a = time.time()
-        w_res = vm.call(w_main, [])
+        w_res = vm.fast_call(w_main, [])
         b = time.time()
         if timeit:
             print(f'main(): {b - a:.3f} seconds', file=sys.stderr)

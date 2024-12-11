@@ -7,7 +7,8 @@ from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_ASTFunc, W_BuiltinFunc
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
+from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opimpl import W_OpImpl
 from spy.util import magic_dispatch
@@ -177,13 +178,35 @@ class FuncDoppler:
     # ==== expressions ====
 
     def shift_opimpl(self, op: ast.Expr | ast.Stmt,
-                     w_opimpl: W_OpImpl,
+                     w_opimpl: W_Func,
                      orig_args: list[ast.Expr]
                      ) -> ast.Call:
-        assert w_opimpl._w_func is not None
-        func = make_const(self.vm, op.loc, w_opimpl._w_func)
-        real_args = w_opimpl.redshift_args(self.vm, orig_args)
+        assert isinstance(w_opimpl, W_FuncAdapter)
+        func = make_const(self.vm, op.loc, w_opimpl.w_func)
+        real_args = self._shift_adapter_args(w_opimpl, orig_args)
         return ast.Call(op.loc, func, real_args)
+
+    def _shift_adapter_args(self, w_adapter: W_FuncAdapter,
+                            orig_args: list[ast.Expr]) -> list[ast.Expr]:
+        real_args = []
+        for spec in w_adapter.args:
+            if isinstance(spec, ArgSpec.Arg):
+                arg = orig_args[spec.i]
+                if spec.w_converter is not None:
+                    arg = ast.Call(
+                        loc = arg.loc,
+                        func = ast.FQNConst(
+                            loc = arg.loc,
+                            fqn = spec.w_converter.fqn
+                        ),
+                        args = [arg]
+                    )
+            elif isinstance(spec, ArgSpec.Const):
+                arg = make_const(self.vm, spec.loc, spec.w_const)
+            else:
+                assert False
+            real_args.append(arg)
+        return real_args
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
         return const
@@ -228,11 +251,12 @@ class FuncDoppler:
         newfunc = self.shift_expr(call.func)
         newargs = [self.shift_expr(arg) for arg in call.args]
         w_opimpl = self.t.opimpl[call]
+        assert isinstance(w_opimpl, W_FuncAdapter)
         if w_opimpl.is_direct_call():
             # sanity check: the redshift MUST have produced a const. If it
             # didn't, the C backend won't be able to compile the call.
             assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
-            newargs = w_opimpl.redshift_args(self.vm, [newfunc] + newargs)
+            newargs = self._shift_adapter_args(w_opimpl, [newfunc] + newargs)
             newop = ast.Call(call.loc, newfunc, newargs)
             return self.specialize_print_maybe(newop)
         else:

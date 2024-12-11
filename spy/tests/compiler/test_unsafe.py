@@ -12,7 +12,7 @@ class TestUnsafe(CompilerTest):
 
     @only_interp
     def test_ptrtype_repr(self):
-        w_ptrtype = self.vm.call(UNSAFE.w_make_ptr_type, [B.w_i32])
+        w_ptrtype = self.vm.fast_call(UNSAFE.w_make_ptr_type, [B.w_i32])
         assert repr(w_ptrtype) == "<spy type 'unsafe::ptr[i32]'>"
 
     @only_interp

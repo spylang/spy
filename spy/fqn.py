@@ -175,9 +175,19 @@ class FQN:
     @property
     def human_name(self) -> str:
         """
-        Like fullname, but doesn't show 'builtins::'
+        Like fullname, but doesn't show 'builtins::',
+        and special-case 'def[...]'
         """
-        return self._fullname(human=True)
+        is_def = (len(self.parts) == 2 and
+                  self.modname == 'builtins' and
+                  self.parts[1].name == 'def')
+        if is_def:
+            quals = [fqn.human_name for fqn in self.parts[1].qualifiers]
+            p = ', '.join(quals[:-1])
+            r = quals[-1]
+            return f'def({p}) -> {r}'
+        else:
+            return self._fullname(human=True)
 
     @property
     def modname(self) -> str:

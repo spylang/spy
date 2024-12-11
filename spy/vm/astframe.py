@@ -10,6 +10,7 @@ from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
+from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.unsafe.struct import W_StructType
@@ -112,7 +113,7 @@ class ASTFrame:
             return w_val
         else:
             # apply the type converter, if present
-            return self.vm.call(w_typeconv, [w_val])
+            return self.vm.fast_call(w_typeconv, [w_val])
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         w_val = self.eval_expr(expr)
@@ -207,14 +208,14 @@ class ASTFrame:
         w_target = self.eval_expr(node.target)
         w_attr = self.vm.wrap(node.attr)
         w_value = self.eval_expr(node.value)
-        w_opimpl.call(self.vm, [w_target, w_attr, w_value])
+        self.vm.fast_call(w_opimpl, [w_target, w_attr, w_value])
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
         w_opimpl = self.t.opimpl[node]
         w_target = self.eval_expr(node.target)
         w_index = self.eval_expr(node.index)
         w_value = self.eval_expr(node.value)
-        w_opimpl.call(self.vm, [w_target, w_index, w_value])
+        self.vm.fast_call(w_opimpl, [w_target, w_index, w_value])
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
@@ -270,7 +271,7 @@ class ASTFrame:
         assert w_opimpl, 'bug in the typechecker'
         w_l = self.eval_expr(binop.left)
         w_r = self.eval_expr(binop.right)
-        w_res = w_opimpl.call(self.vm, [w_l, w_r])
+        w_res = self.vm.fast_call(w_opimpl, [w_l, w_r])
         return w_res
 
     eval_expr_Add = eval_expr_BinOp
@@ -294,6 +295,9 @@ class ASTFrame:
         if w_func is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(call)
 
+        args_w = [self.eval_expr(arg) for arg in call.args]
+        # as long as we have the is_direct_call hack, this is needed
+        assert isinstance(w_opimpl, W_FuncAdapter)
         if w_opimpl.is_direct_call():
             # some extra sanity checks
             assert color == 'blue', 'indirect calls not supported'
@@ -308,9 +312,7 @@ class ASTFrame:
                 # if the static type is not `dynamic` and the thing is not a
                 # function, it's a bug in the typechecker
                 assert isinstance(w_func, W_Func)
-
-        args_w = [self.eval_expr(arg) for arg in call.args]
-        return w_opimpl.call(self.vm, [w_func] + args_w)
+        return self.vm.fast_call(w_opimpl, [w_func] + args_w)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
         assert len(call.args) == 1
@@ -327,13 +329,13 @@ class ASTFrame:
         w_target = self.eval_expr(op.target)
         w_method = self.vm.wrap(op.method)
         args_w = [self.eval_expr(arg) for arg in op.args]
-        return w_opimpl.call(self.vm, [w_target, w_method] + args_w)
+        return self.vm.fast_call(w_opimpl, [w_target, w_method] + args_w)
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_i = self.eval_expr(op.index)
-        return w_opimpl.call(self.vm, [w_val, w_i])
+        return self.vm.fast_call(w_opimpl, [w_val, w_i])
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_Object:
         # this is suboptimal, but good enough for now: ideally, we would like
@@ -344,7 +346,7 @@ class ASTFrame:
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
         w_attr = self.vm.wrap(op.attr)
-        w_res = w_opimpl.call(self.vm, [w_val, w_attr])
+        w_res = self.vm.fast_call(w_opimpl, [w_val, w_attr])
         return w_res
 
     def eval_expr_List(self, op: ast.List) -> W_Object:

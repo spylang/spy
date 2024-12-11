@@ -7,7 +7,8 @@ from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncType, FuncParam
+from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.b import B
 from spy.vm.modules.operator import OP, OP_from_token
 from spy.vm.modules.types import W_TypeDef
@@ -40,7 +41,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, W_Func]
-    opimpl: dict[ast.Node, W_OpImpl]
+    opimpl: dict[ast.Node, W_Func]
     locals_types_w: dict[str, W_Type]
 
 
@@ -326,7 +327,7 @@ class TypeChecker:
         color = maybe_blue(*colors)
         w_opimpl = self.vm.call_OP(w_OP, args_wop)
         self.opimpl[binop] = w_opimpl
-        return color, w_opimpl.w_restype
+        return color, w_opimpl.w_functype.w_restype
 
     check_expr_Add = check_expr_BinOp
     check_expr_Sub = check_expr_BinOp
@@ -347,7 +348,7 @@ class TypeChecker:
         color = maybe_blue(*colors)
         w_opimpl = self.vm.call_OP(OP.w_GETITEM, args_wop)
         self.opimpl[expr] = w_opimpl
-        return color, w_opimpl.w_restype
+        return color, w_opimpl.w_functype.w_restype
 
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         colors, args_wop = self.check_many_exprs(
@@ -356,7 +357,7 @@ class TypeChecker:
         )
         w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wop)
         self.opimpl[expr] = w_opimpl
-        return colors[0], w_opimpl.w_restype
+        return colors[0], w_opimpl.w_functype.w_restype
 
     def check_expr_Call(self, call: ast.Call) -> tuple[Color, W_Type]:
         # XXX: how are we supposed to know the color of the result if we
@@ -429,12 +430,14 @@ class TypeChecker:
 def typecheck_opimpl(
         vm: 'SPyVM',
         w_opimpl: W_OpImpl,
-        orig_args_wop: list[W_OpArg],
+        in_args_wop: list[W_OpArg],
         *,
         dispatch: DispatchKind,
         errmsg: str,
-) -> None:
+) -> W_Func:
     """
+    Turn the W_OpImpl into a W_Func which can be called using fast_call.
+
     Check the arg types that we are passing to the opimpl, and insert
     appropriate type conversions if needed.
 
@@ -442,79 +445,121 @@ def typecheck_opimpl(
     report the type of the first operand, else of all operands.
     """
     if w_opimpl.is_null():
-        # this means that we couldn't find an OpImpl for this OPERATOR.
-        # The details of the error message depends on the DispatchKind:
+        _opimpl_null_error(in_args_wop, dispatch, errmsg)
+    assert w_opimpl._w_func is not None
 
-        #  - single dispatch means that the target (argument 0) doesn't
-        #    support this operation, so we report its type and its definition
-        #
-        #  - multi dispatch means that all the types are equally imporant in
-        #    determining whether an operation is supported, so we report all
-        #    of them
-        typenames = [wop.w_static_type.fqn.human_name for wop in orig_args_wop]
-        errmsg = errmsg.format(*typenames)
-        err = SPyTypeError(errmsg)
-        if dispatch == 'single':
-            wop_target = orig_args_wop[0]
-            t = wop_target.w_static_type.fqn.human_name
-            if wop_target.loc:
-                err.add('error', f'this is `{t}`', wop_target.loc)
-            if wop_target.sym:
-                sym = wop_target.sym
-                err.add('note', f'`{sym.name}` defined here', sym.loc)
-        else:
-            for wop_arg in orig_args_wop:
-                t = wop_arg.w_static_type.fqn.human_name
-                err.add('error', f'this is `{t}`', wop_arg.loc)
-        raise err
+    # the want to make an adapter that:
+    #   - behaves like a function of type w_in_functype
+    #   - calls an opimpl of type w_out_functype
+    w_out_functype = w_opimpl.w_functype
+    w_in_functype = functype_from_opargs(
+        in_args_wop,
+        w_out_functype.w_restype,
+        color=w_out_functype.color
+    )
 
-    # if it's a simple OpImpl, we automatically pass the orig_args_wop in order
+    # if it's a simple OpImpl, we automatically pass the in_args_wop in order
     if w_opimpl.is_simple():
-        w_opimpl.set_args_wop(orig_args_wop)
-    args_wop = w_opimpl._args_wop
-    assert args_wop is not None
+        out_args_wop = in_args_wop
+    else:
+        assert w_opimpl._args_wop is not None
+        out_args_wop = w_opimpl._args_wop
 
     # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
     def_loc = None
     if w_opimpl.is_direct_call():
-        wop_func = orig_args_wop[0]
+        wop_func = in_args_wop[0]
         call_loc = wop_func.loc
         # not all direct calls targets have a sym (e.g. if we call a builtin)
         if wop_func.sym is not None:
             def_loc = wop_func.sym.loc
 
     # check that the number of arguments match
-    w_functype = w_opimpl.w_functype
-    got_nargs = len(args_wop)
-    exp_nargs = len(w_functype.params)
-
-    if w_functype.is_varargs:
-        argcount_ok = got_nargs >= exp_nargs
-    else:
-        argcount_ok = got_nargs == exp_nargs
-
-    if not argcount_ok:
+    got_nargs = len(out_args_wop)
+    exp_nargs = len(w_out_functype.params)
+    if not w_out_functype.is_argcount_ok(got_nargs):
         _call_error_wrong_argcount(
             got_nargs,
             exp_nargs,
-            args_wop,
+            out_args_wop,
             def_loc = def_loc,
             call_loc = call_loc)
 
-    # check that the types of the arguments are compatible
-    assert w_opimpl._converters_w is not None
-    for i, (param, wop_arg) in enumerate(zip(w_functype.params, args_wop)):
-        try:
-            w_conv = CONVERT_maybe(vm, param.w_type, wop_arg)
-            w_opimpl._converters_w[i] = w_conv
-        except SPyTypeError as err:
-            if def_loc:
-                err.add('note', 'function defined here', def_loc)
-            raise
+    # build the argspec for the W_FuncAdapter
+    args = []
+    for param, wop_arg in zip(w_out_functype.all_params(), out_args_wop):
+        # add a converter if needed (this might raise SPyTypeError)
+        w_conv = get_w_conv(vm, param.w_type, wop_arg, def_loc)
+        arg: ArgSpec
+        if wop_arg.is_const():
+            assert w_conv is None
+            arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)
+        else:
+            assert wop_arg.i is not None
+            arg = ArgSpec.Arg(wop_arg.i, w_conv)
+        args.append(arg)
 
     # everything good!
-    w_opimpl._typechecked = True
+    w_adapter = W_FuncAdapter(w_in_functype, w_opimpl._w_func, args)
+    return w_adapter
+
+
+def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
+                         color: Color) -> W_FuncType:
+    params = [
+        FuncParam(f'v{i}', wop.w_static_type, 'simple')
+        for i, wop in enumerate(args_wop)
+    ]
+    return W_FuncType(params, w_restype, color=color)
+
+
+def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
+               def_loc: Optional[Loc]) -> Optional[W_Func]:
+    """
+    Like CONVERT_maybe, but improve the error message if we can
+    """
+    try:
+        return CONVERT_maybe(vm, w_type, wop_arg)
+    except SPyTypeError as err:
+        if def_loc:
+            err.add('note', 'function defined here', def_loc)
+        raise
+
+
+def _opimpl_null_error(
+        in_args_wop: list[W_OpArg],
+        dispatch: DispatchKind,
+        errmsg: str
+) -> NoReturn:
+    """
+    We couldn't find an OpImpl for this OPERATOR.
+    The details of the error message depends on the DispatchKind:
+
+     - single dispatch means that the target (argument 0) doesn't
+       support this operation, so we report its type and its definition
+
+     - multi dispatch means that all the types are equally imporant in
+       determining whether an operation is supported, so we report all
+       of them
+    """
+    typenames = [wop.w_static_type.fqn.human_name for wop in in_args_wop]
+    errmsg = errmsg.format(*typenames)
+    err = SPyTypeError(errmsg)
+    if dispatch == 'single':
+        wop_target = in_args_wop[0]
+        t = wop_target.w_static_type.fqn.human_name
+        if wop_target.loc:
+            err.add('error', f'this is `{t}`', wop_target.loc)
+        if wop_target.sym:
+            sym = wop_target.sym
+            err.add('note', f'`{sym.name}` defined here', sym.loc)
+    else:
+        for wop_arg in in_args_wop:
+            t = wop_arg.w_static_type.fqn.human_name
+            err.add('error', f'this is `{t}`', wop_arg.loc)
+    raise err
+
 
 def _call_error_wrong_argcount(
         got: int, exp: int,

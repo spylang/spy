@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.function import W_Func
 from spy.vm.primitive import W_Dynamic
 from . import OP
 from .multimethod import MultiMethodTable
@@ -76,19 +77,19 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 
 @OP.builtin_func(color='blue')
-def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '+', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '-', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '*', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '/', wop_l, wop_r)
 
 def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
@@ -101,79 +102,73 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     return w_common is not B.w_object and w_common.is_reference_type(vm)
 
 @OP.builtin_func(color='blue')
-def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
     if w_ltype.pyclass.has_meth_overriden('op_EQ'):
         w_opimpl = w_ltype.pyclass.op_EQ(vm, wop_l, wop_r)
-        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
-                         dispatch='multi',
-                         errmsg='cannot do `{0}` == `{1}`')
-        return w_opimpl
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                                dispatch='multi',
+                                errmsg='cannot do `{0}` == `{1}`')
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
         w_opimpl = W_OpImpl(OP.w_object_is)
-        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
-                         dispatch='multi',
-                         errmsg='cannot do `{0}` == `{1}`')
-        return w_opimpl
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                                dispatch='multi',
+                                errmsg='cannot do `{0}` == `{1}`')
     else:
         return MM.get_opimpl(vm, '==', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
     if w_ltype.pyclass.has_meth_overriden('op_NE'):
         w_opimpl = w_ltype.pyclass.op_NE(vm, wop_l, wop_r)
-        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
-                         dispatch='multi',
-                         errmsg='cannot do `{0}` != `{1}`')
-        return w_opimpl
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                                dispatch='multi',
+                                errmsg='cannot do `{0}` != `{1}`')
     if can_use_reference_eq(vm, w_ltype, w_rtype):
         w_opimpl = W_OpImpl(OP.w_object_isnot)
-        typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
-                         dispatch='multi',
-                         errmsg='cannot do `{0}` != `{1}`')
-        return w_opimpl
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                                dispatch='multi',
+                                errmsg='cannot do `{0}` != `{1}`')
     return MM.get_opimpl(vm, '!=', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     # XXX this seems wrong: if we do universal_eq(i32, i32), we should get the
     # same as eq(i32, i32), not "w_object_universal_eq". In practice, it's not
     # a problem for now, because it's not exposed to the user, and we use it
     # only on W_Objects.
     w_opimpl = W_OpImpl(OP.w_object_universal_eq)
-    typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
-                     dispatch='multi',
-                     errmsg='cannot do `{0}` <universal_eq> `{1}`')
-    return w_opimpl
+    return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                            dispatch='multi',
+                            errmsg='cannot do `{0}` <universal_eq> `{1}`')
 
 @OP.builtin_func(color='blue')
-def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     # XXX: see the commet in UNIVERSAL_EQ
     w_opimpl = W_OpImpl(OP.w_object_universal_ne)
-    typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
-                     dispatch='multi',
-                     errmsg='cannot do `{0}` <universal_ne> `{1}`')
-    return w_opimpl
+    return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                            dispatch='multi',
+                            errmsg='cannot do `{0}` <universal_ne> `{1}`')
 
 @OP.builtin_func(color='blue')
-def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '<', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '<=', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '>', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+def w_GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '>=', wop_l, wop_r)
