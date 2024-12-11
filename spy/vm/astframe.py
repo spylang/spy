@@ -35,13 +35,21 @@ class ASTFrame:
     _locals: Namespace
     t: TypeChecker
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
+                 *,
+                 color: Color
+                 ) -> None:
         assert isinstance(w_func, W_ASTFunc)
         self.vm = vm
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self._locals = {}
         self.t = TypeChecker(vm, self.w_func)
+        #
+        # a "red" frame performs concrete computation
+        # a "blue" frame performs abstract computation on red values, and
+        # concrete computation on blue values
+        self.color = color
 
     def __repr__(self) -> str:
         return f'<ASTFrame for {self.w_func.fqn}>'
