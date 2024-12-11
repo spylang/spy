@@ -497,6 +497,7 @@ def typecheck_opimpl(
     for param, wop_arg in zip(w_out_functype.all_params(), out_args_wop):
         # add a converter if needed (this might raise SPyTypeError)
         w_conv = get_w_conv(vm, param.w_type, wop_arg, def_loc)
+        arg: ArgSpec
         if wop_arg.is_const():
             assert w_conv is None
             arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)

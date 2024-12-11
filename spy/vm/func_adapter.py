@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 # simulate Algebraic Data Type
 class ArgSpec:
-    Arg: ClassVar[type]
-    Const: ClassVar[type]
+    Arg: ClassVar[type['Arg']]
+    Const: ClassVar[type['Const']]
 
 @dataclass
 class Arg(ArgSpec):

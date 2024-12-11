@@ -187,7 +187,7 @@ class FuncDoppler:
         return ast.Call(op.loc, func, real_args)
 
     def _shift_adapter_args(self, w_adapter: W_FuncAdapter,
-                            orig_args: list[ast.Expr]):
+                            orig_args: list[ast.Expr]) -> list[ast.Expr]:
         real_args = []
         for spec in w_adapter.args:
             if isinstance(spec, ArgSpec.Arg):
@@ -251,6 +251,7 @@ class FuncDoppler:
         newfunc = self.shift_expr(call.func)
         newargs = [self.shift_expr(arg) for arg in call.args]
         w_opimpl = self.t.opimpl[call]
+        assert isinstance(w_opimpl, W_FuncAdapter)
         if w_opimpl.is_direct_call():
             # sanity check: the redshift MUST have produced a const. If it
             # didn't, the C backend won't be able to compile the call.

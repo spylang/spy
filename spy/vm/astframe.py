@@ -10,6 +10,7 @@ from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
+from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.unsafe.struct import W_StructType
@@ -295,6 +296,8 @@ class ASTFrame:
             return self._eval_STATIC_TYPE(call)
 
         args_w = [self.eval_expr(arg) for arg in call.args]
+        # as long as we have the is_direct_call hack, this is needed
+        assert isinstance(w_opimpl, W_FuncAdapter)
         if w_opimpl.is_direct_call():
             # some extra sanity checks
             assert color == 'blue', 'indirect calls not supported'
