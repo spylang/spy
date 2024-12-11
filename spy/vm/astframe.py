@@ -55,6 +55,10 @@ class ASTFrame:
         return f'<{self.color} ASTFrame for {self.w_func.fqn}>'
 
     @property
+    def abstract_interpretation(self):
+        return self.color == 'blue'
+
+    @property
     def is_module_body(self) -> bool:
         return self.w_func.fqn.is_module()
 
@@ -121,11 +125,14 @@ class ASTFrame:
         self.t.check_expr(expr)
         w_typeconv = self.t.expr_conv.get(expr)
         wop = magic_dispatch(self, 'eval_expr', expr)
+        # apply the type converter, if present
         if w_typeconv is None:
             return wop
         else:
-            # apply the type converter, if present
-            w_val = self.vm.fast_call(w_typeconv, [wop.w_val])
+            if self.abstract_interpretation:
+                w_val = None
+            else:
+                w_val = self.vm.fast_call(w_typeconv, [wop.w_val])
             return W_OpArg(
                 wop.color,
                 w_typeconv.w_functype.w_restype,
@@ -281,7 +288,7 @@ class ASTFrame:
     def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
         color, w_type = self.t.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
-        if color == 'red' and self.color == 'blue':
+        if color == 'red' and self.abstract_interpretation:
             # this is a red variable and we are doing abstract interpretation,
             # so we don't/can't put a specific value.
             w_val = None

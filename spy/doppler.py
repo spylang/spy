@@ -91,7 +91,6 @@ class FuncDoppler:
         res = magic_dispatch(self, 'shift_expr', expr)
         w_conv = self.t.expr_conv.get(expr)
         if w_conv:
-            assert False, 'fixme'
             # converters are used only for local variables and if/while
             # conditions (see TypeChecker.expr_conv). Probably we could just
             # use an W_OpImpl instead?
