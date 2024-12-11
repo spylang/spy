@@ -231,11 +231,15 @@ class ASTFrame:
 
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
-        w_opimpl = self.t.opimpl[node]
-        w_target = self.eval_expr(node.target)
-        w_attr = self.eval_expr(node.attr)
-        w_value = self.eval_expr(node.value)
-        self.vm.fast_call(w_opimpl, [w_target, w_attr, w_value])
+        w_attr = self.vm.wrap(node.attr.value) # XXX maybe just eval op.attr?
+        wop_target = self.eval_expr(node.target, newstyle=True)
+        wop_attr = W_OpArg('blue', B.w_str, node.loc, w_val=w_attr)
+        wop_value = self.eval_expr(node.value, newstyle=True)
+        w_opimpl = self.vm.call_OP(
+            OP.w_SETATTR,
+            [wop_target, wop_attr, wop_value]
+        )
+        self.call_opimpl(w_opimpl, [wop_target, wop_attr, wop_value], node.loc)
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
         w_opimpl = self.t.opimpl[node]
