@@ -117,6 +117,6 @@ class ModuleGen:
         else:
             # eval the type and use it in the globals declaration
             w_type = frame.eval_expr_type(vardef.type)
-            w_val = frame.eval_expr(assign.value)
-            assert self.vm.isinstance(w_val, w_type)
-            self.vm.add_global(fqn, w_val)
+            wop = frame.eval_expr(assign.value, newstyle=True)
+            assert self.vm.isinstance(wop.w_val, w_type)
+            self.vm.add_global(fqn, wop.w_val)
