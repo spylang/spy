@@ -380,11 +380,11 @@ class ASTFrame:
         args_w = [self.eval_expr(arg) for arg in op.args]
         return self.vm.fast_call(w_opimpl, [w_target, w_method] + args_w)
 
-    def eval_expr_GetItem(self, op: ast.GetItem) -> W_Object:
-        w_opimpl = self.t.opimpl[op]
-        w_val = self.eval_expr(op.value)
-        w_i = self.eval_expr(op.index)
-        return self.vm.fast_call(w_opimpl, [w_val, w_i])
+    def eval_expr_GetItem(self, op: ast.GetItem) -> W_OpArg:
+        wop_obj = self.eval_expr(op.value, newstyle=True)
+        wop_i = self.eval_expr(op.index, newstyle=True)
+        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wop_obj, wop_i])
+        return self.call_opimpl(w_opimpl, [wop_obj, wop_i], op.loc)
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_OpArg:
         w_attr = self.vm.wrap(op.attr.value) # XXX maybe just eval op.attr?
