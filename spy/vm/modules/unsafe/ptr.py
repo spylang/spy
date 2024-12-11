@@ -279,7 +279,7 @@ class W_Ptr(W_BasePtr):
 
         w_field_T = w_T.fields[attr]
         offset = w_T.offsets[attr]
-        wop_offset = W_OpArg.const(vm, vm.wrap(offset), 'off')
+        wop_offset = W_OpArg.from_w_obj(vm, vm.wrap(offset))
 
         if opkind == 'get':
             # getfield[field_T](ptr, attr, offset)

@@ -62,60 +62,38 @@ class W_OpArg(W_Object):
 
     Internally, an OpConst is represented as an OpArg whose .i is None.
     """
-    prefix: str
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
     sym: Optional[Symbol]
     _w_blueval: Optional[W_Object]
 
     def __init__(self,
-                 prefix: str,
-                 i: Optional[int],
                  w_static_type: W_Type,
                  loc: Loc,
                  *,
                  sym: Optional[Symbol] = None,
                  w_blueval: Optional[W_Object] = None,
                  ) -> None:
-        if i is None:
-            assert w_blueval is not None
-        self._is_const = i is None
-        self.prefix = prefix
         self.w_static_type = w_static_type
         self.loc = loc
         self.sym = sym
         self._w_blueval = w_blueval
 
     @classmethod
-    def const(cls, vm: 'SPyVM', w_obj: W_Object, prefix: str) -> 'W_OpArg':
+    def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return cls(prefix, None, w_type, Loc.here(-2), w_blueval=w_obj)
-
-    @classmethod
-    def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object,
-                   prefix: str, i: int) -> 'W_OpArg':
-        w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(prefix, i, w_type, Loc.here(-2), w_blueval=w_obj)
-
-    @property
-    def name(self) -> str:
-        return f'{self.prefix}'
+        return W_OpArg(w_type, Loc.here(-2), w_blueval=w_obj)
 
     def __repr__(self) -> str:
         if self.is_blue():
             extra = f' = {self._w_blueval}'
         else:
             extra = ''
-        if self.is_const():
-            extra += ' const'
         t = self.w_static_type.fqn.human_name
-        return f'<W_OpArg {self.name}: {t}{extra}>'
+        return f'<W_OpArg {t}{extra}>'
 
     def is_blue(self) -> bool:
         return self._w_blueval is not None
-
-    def is_const(self) -> bool:
-        return self._is_const
 
     @property
     def w_blueval(self) -> W_Object:
@@ -208,8 +186,7 @@ class W_OpImpl(W_Object):
             return f"<spy OpImpl {fqn}>"
         else:
             fqn = self._w_func.fqn
-            argnames = ', '.join([wop.name for wop in self._args_wop])
-            return f"<spy OpImpl {fqn}({argnames})>"
+            return f"<spy OpImpl {fqn}(...)>"
 
     def is_null(self) -> bool:
         return self._w_func is None

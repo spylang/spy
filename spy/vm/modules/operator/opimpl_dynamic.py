@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 def _dynamic_op(vm: 'SPyVM', w_op: W_Func,
                 w_a: W_Dynamic, w_b: W_Dynamic,
                 ) -> W_Dynamic:
-    wop_a = W_OpArg.from_w_obj(vm, w_a, 'a', 0)
-    wop_b = W_OpArg.from_w_obj(vm, w_b, 'b', 1)
+    wop_a = W_OpArg.from_w_obj(vm, w_a)
+    wop_b = W_OpArg.from_w_obj(vm, w_b)
     w_opimpl = vm.call_OP(w_op, [wop_a, wop_b])
     return vm.fast_call(w_opimpl, [w_a, w_b])
 
@@ -54,17 +54,17 @@ def w_dynamic_ge(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
 @OP.builtin_func
 def w_dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
                     w_value: W_Dynamic) -> W_Dynamic:
-    wop_obj = W_OpArg.from_w_obj(vm, w_obj, 'o', 0)
-    wop_attr = W_OpArg.from_w_obj(vm, w_attr, 'a', 1)
-    wop_v = W_OpArg.from_w_obj(vm, w_value, 'v', 2)
+    wop_obj = W_OpArg.from_w_obj(vm, w_obj)
+    wop_attr = W_OpArg.from_w_obj(vm, w_attr)
+    wop_v = W_OpArg.from_w_obj(vm, w_value)
     w_opimpl = vm.call_OP(OP.w_SETATTR, [wop_obj, wop_attr, wop_v])
     return vm.fast_call(w_opimpl, [w_obj, w_attr, w_value])
 
 @OP.builtin_func
 def w_dynamic_getattr(vm: 'SPyVM', w_obj: W_Dynamic,
                       w_attr: W_Str) -> W_Dynamic:
-    wop_obj = W_OpArg.from_w_obj(vm, w_obj, 'o', 0)
-    wop_attr = W_OpArg.from_w_obj(vm, w_attr, 'a', 1)
+    wop_obj = W_OpArg.from_w_obj(vm, w_obj)
+    wop_attr = W_OpArg.from_w_obj(vm, w_attr)
     w_opimpl = vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
     return vm.fast_call(w_opimpl, [w_obj, w_attr])
 
@@ -75,7 +75,7 @@ def w_dynamic_call(vm: 'SPyVM', w_obj: W_Dynamic,
                    *args_w: W_Dynamic) -> W_Dynamic:
     all_args_w = [w_obj] + list(args_w)
     all_args_wop = [
-        W_OpArg.from_w_obj(vm, w_x, 'v', i)
+        W_OpArg.from_w_obj(vm, w_x)
         for i, w_x in enumerate(all_args_w)
     ]
     w_opimpl = vm.call_OP(OP.w_CALL, all_args_wop)
