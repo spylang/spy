@@ -225,14 +225,14 @@ class SPyVM:
 
     def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:
         w_t1 = self.dynamic_type(w_obj)
-        return self.issubclass(w_t1, w_type)
+        return w_t1 == w_type or self.issubclass(w_t1, w_type)
 
     def typecheck(self, w_obj: W_Object, w_type: W_Type) -> None:
         """
         Like vm.isinstance(), but raise SPyTypeError if the check fails.
         """
-        w_t1 = self.dynamic_type(w_obj)
-        if w_t1 != w_type and not self.issubclass(w_t1, w_type):
+        if not self.isinstance(w_obj, w_type):
+            w_t1 = self.dynamic_type(w_obj)
             exp = w_type.fqn.human_name
             got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
@@ -361,24 +361,10 @@ class SPyVM:
         Like fast_call, but it doesn't handle blue caching. Never call this
         directly unless you know what you are doing.
         """
-        # XXX we should delete this code, but let's keep it here while we are
-        # developing the branch
-
         w_functype = w_func.w_functype
-        n = w_functype.arity
-        if w_functype.is_varargs:
-            assert len(args_w) >= n
-        else:
-            assert len(args_w) == n
-
-        # XXX: this should be a _fast_call ideally, and we shouldn't do
-        # typecheck (but only assert that the type are compatible)
-        for param, w_arg in zip(w_functype.params[:n], args_w[:n]):
-            self.typecheck(w_arg, param.w_type)
-        if w_functype.is_varargs:
-            param = w_functype.params[-1]
-            for w_arg in args_w[n:]:
-                self.typecheck(w_arg, param.w_type)
+        assert w_functype.is_argcount_ok(len(args_w))
+        for param, w_arg in zip(w_functype.all_params(), args_w):
+            assert self.isinstance(w_arg, param.w_type)
         return w_func.raw_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:

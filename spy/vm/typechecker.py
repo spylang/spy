@@ -478,13 +478,7 @@ def typecheck_opimpl(
     # check that the number of arguments match
     got_nargs = len(out_args_wop)
     exp_nargs = len(w_out_functype.params)
-
-    if w_out_functype.is_varargs:
-        argcount_ok = got_nargs >= exp_nargs
-    else:
-        argcount_ok = got_nargs == exp_nargs
-
-    if not argcount_ok:
+    if not w_out_functype.is_argcount_ok(got_nargs):
         _call_error_wrong_argcount(
             got_nargs,
             exp_nargs,

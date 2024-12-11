@@ -109,6 +109,10 @@ class W_FuncType(W_Type):
         return cls.make(w_restype=w_restype, **kwargs)
 
     @property
+    def is_varargs(self) -> bool:
+        return bool(self.params) and self.params[-1].kind == 'varargs'
+
+    @property
     def arity(self) -> int:
         """
         Return the *minimum* number of arguments expected by the function.
@@ -119,9 +123,11 @@ class W_FuncType(W_Type):
         else:
             return len(self.params)
 
-    @property
-    def is_varargs(self) -> bool:
-        return bool(self.params) and self.params[-1].kind == 'varargs'
+    def is_argcount_ok(self, n: int) -> bool:
+        if self.is_varargs:
+            return n >= self.arity
+        else:
+            return n == self.arity
 
     def all_params(self) -> Iterator[FuncParam]:
         """
@@ -136,6 +142,7 @@ class W_FuncType(W_Type):
         else:
             for param in self.params:
                 yield param
+
 
 
 class W_Func(W_Object):
