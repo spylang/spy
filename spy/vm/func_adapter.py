@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Sequence, Optional
+from typing import TYPE_CHECKING, Sequence, Optional, ClassVar
 from dataclasses import dataclass
 import textwrap
 from spy.fqn import FQN
@@ -10,7 +10,8 @@ if TYPE_CHECKING:
 
 # simulate Algebraic Data Type
 class ArgSpec:
-    pass
+    Arg: ClassVar[type]
+    Const: ClassVar[type]
 
 @dataclass
 class Arg(ArgSpec):

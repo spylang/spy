@@ -41,7 +41,7 @@ class TypeChecker:
     funcef: ast.FuncDef
     expr_types: dict[ast.Expr, tuple[Color, W_Type]]
     expr_conv: dict[ast.Expr, W_Func]
-    opimpl: dict[ast.Node, W_OpImpl]
+    opimpl: dict[ast.Node, W_Func]
     locals_types_w: dict[str, W_Type]
 
 
@@ -446,6 +446,7 @@ def typecheck_opimpl(
     """
     if w_opimpl.is_null():
         _opimpl_null_error(in_args_wop, dispatch, errmsg)
+    assert w_opimpl._w_func is not None
 
     # the want to make an adapter that:
     #   - behaves like a function of type w_in_functype
@@ -461,6 +462,7 @@ def typecheck_opimpl(
     if w_opimpl.is_simple():
         out_args_wop = in_args_wop
     else:
+        assert w_opimpl._args_wop is not None
         out_args_wop = w_opimpl._args_wop
 
     # if it's a direct call, we can get extra info about call and def locations
@@ -518,7 +520,7 @@ def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
 
 
 def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
-               def_loc: Loc) -> Optional[W_Func]:
+               def_loc: Optional[Loc]) -> Optional[W_Func]:
     """
     Like CONVERT_maybe, but improve the error message if we can
     """
