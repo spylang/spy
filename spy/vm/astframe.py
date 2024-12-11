@@ -116,9 +116,15 @@ class ASTFrame:
         if w_typeconv is None:
             return wop
         else:
-            assert False, 'fixme'
             # apply the type converter, if present
-            return self.vm.fast_call(w_typeconv, [w_val])
+            w_val = self.vm.fast_call(w_typeconv, [wop.w_val])
+            return W_OpArg(
+                wop.color,
+                w_typeconv.w_functype.w_restype,
+                wop.loc,
+                sym=wop.sym,
+                w_val=w_val
+            )
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         wop = self.eval_expr(expr, newstyle=True)
