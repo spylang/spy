@@ -284,25 +284,34 @@ class ASTFrame:
             assert w_val is not None
         return W_OpArg(color, w_type, name.loc, sym=sym, w_val=w_val)
 
-    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_OpArg:
-        w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        wop_l = self.eval_expr(binop.left, newstyle=True)
-        wop_r = self.eval_expr(binop.right, newstyle=True)
-        w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
-        w_res = self.vm.fast_call(w_opimpl, [wop_l.w_val, wop_r.w_val])
-
+    def call_opimpl(self, w_opimpl: W_Func, args_wop: list[W_OpArg],
+                    loc: Loc) -> W_OpArg:
+        args_w = [wop.w_val for wop in args_wop]
+        w_res = self.vm.fast_call(w_opimpl, args_w)
         # hack hack hack
         # result color:
         #   - pure function and blue arguments -> blue
         #   - red function -> red
         #   - blue function -> blue
         # XXX what happens if we try to call a blue func with red arguments?
+        w_functype = w_opimpl.w_functype
         if w_opimpl.is_pure():
-            color = maybe_blue(wop_l.color, wop_r.color)
+            colors = [wop.color for wop in args_wop]
+            color = maybe_blue(*colors)
         else:
-            color = w_opimpl.w_functype.color
-        w_restype = w_opimpl.w_functype.w_restype
-        return W_OpArg(color, w_restype, binop.loc, w_val=w_res)
+            color = w_functype.color
+        return W_OpArg(
+            color,
+            w_functype.w_restype,
+            loc,
+            w_val=w_res)
+
+    def eval_expr_BinOp(self, binop: ast.BinOp) -> W_OpArg:
+        w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        wop_l = self.eval_expr(binop.left, newstyle=True)
+        wop_r = self.eval_expr(binop.right, newstyle=True)
+        w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
+        return self.call_opimpl(w_opimpl, [wop_l, wop_r], binop.loc)
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Sub = eval_expr_BinOp
@@ -317,29 +326,12 @@ class ASTFrame:
 
     def eval_expr_Call(self, call: ast.Call) -> W_OpArg:
         wop_func = self.eval_expr(call.func, newstyle=True)
-
-        # STATIC_TYPE is a special case, because it doesn't evaluate its
-        # arguments
+        # STATIC_TYPE is special, because it doesn't evaluate its arguments
         if wop_func.w_val is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(call)
-
         args_wop = [self.eval_expr(arg, newstyle=True) for arg in call.args]
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
-
-        # as long as we have the is_direct_call hack, this is needed
-        assert isinstance(w_opimpl, W_FuncAdapter)
-        if w_opimpl.is_direct_call():
-            assert wop_func.color == 'blue', 'indirect calls not supported'
-
-        w_func = wop_func.w_val
-        args_w = [wop.w_val for wop in args_wop]
-        w_res = self.vm.fast_call(w_opimpl, [w_func] + args_w)
-        w_functype = w_opimpl.w_functype
-        return W_OpArg(
-            w_functype.color,
-            w_functype.w_restype,
-            call.loc,
-            w_val=w_res)
+        return self.call_opimpl(w_opimpl, [wop_func]+args_wop, call.loc)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
         assert len(call.args) == 1
@@ -369,13 +361,7 @@ class ASTFrame:
         wop_obj = self.eval_expr(op.value, newstyle=True)
         wop_attr = W_OpArg('blue', B.w_str, op.loc, w_val=w_attr)
         w_opimpl = self.vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
-        w_res = self.vm.fast_call(w_opimpl, [wop_obj.w_val, w_attr])
-        w_functype = w_opimpl.w_functype
-        return W_OpArg(
-            w_functype.color,
-            w_functype.w_restype,
-            op.loc,
-            w_val=w_res)
+        return self.call_opimpl(w_opimpl, [wop_obj, wop_attr], op.loc)
 
     def eval_expr_List(self, op: ast.List) -> W_Object:
         color, w_listtype = self.t.check_expr(op)
