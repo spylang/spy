@@ -148,14 +148,17 @@ class W_OpArg(W_Object):
 @builtin_func('operator')
 def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     """
-    XXX write me
-    basically, for red we check only the types, but please explain
+    Two red opargs are equal if they have the same static types.
+    Two blue opargs are equal if they also have the same values.
     """
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description
     if wop1.w_static_type is not wop2.w_static_type:
         return B.w_False
+    # we need to think what to do in this case
+    ## if wop1.is_blue() != wop2.is_blue():
+    ##     import pdb;pdb.set_trace()
     if (wop1.is_blue() and
         wop2.is_blue() and
         vm.is_False(vm.eq(wop1._w_blueval, wop2._w_blueval))):
