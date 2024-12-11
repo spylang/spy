@@ -319,7 +319,7 @@ class ASTFrame:
         else:
             color = w_functype.color
 
-        if self.abstract_interpretation:
+        if color == 'red' and self.abstract_interpretation:
             w_res = None
         else:
             args_w = [wop.w_val for wop in args_wop]
