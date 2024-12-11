@@ -362,12 +362,13 @@ class ASTFrame:
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
         return self.call_opimpl(w_opimpl, [wop_func]+args_wop, call.loc)
 
-    def _eval_STATIC_TYPE(self, call: ast.Call) -> W_Object:
+    def _eval_STATIC_TYPE(self, call: ast.Call) -> W_OpArg:
         assert len(call.args) == 1
         arg = call.args[0]
         if isinstance(arg, ast.Name):
-            _, w_argtype = self.t.check_expr(arg)
-            return w_argtype
+            wop = self.eval_expr(arg, newstyle=True)
+            w_argtype = wop.w_static_type
+            return W_OpArg.from_w_obj(self.vm, w_argtype)
         msg = 'STATIC_TYPE works only on simple expressions'
         OP = arg.__class__.__name__
         raise SPyTypeError.simple(msg, f'{OP} not allowed here', arg.loc)
