@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, Optional
 from dataclasses import dataclass
 import textwrap
 from spy.fqn import FQN
@@ -15,15 +15,15 @@ class ArgSpec:
 @dataclass
 class Arg(ArgSpec):
     i: int
-    w_converter: W_Func = None
+    w_converter: Optional[W_Func] = None
 
 @dataclass
 class Const(ArgSpec):
     w_const: W_Object
     loc: Loc
 
-ArgSpec.Arg = Arg
-ArgSpec.Const = Const
+ArgSpec.Arg = Arg      # type: ignore
+ArgSpec.Const = Const  # type: ignore
 
 class W_FuncAdapter(W_Func):
     """
@@ -43,7 +43,7 @@ class W_FuncAdapter(W_Func):
         self.w_func = w_func
         self.args = args
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         sig = self.w_functype.signature
         fqn = self.w_func.fqn
         return f'<spy adapter `{sig}` for `{fqn}`>'
@@ -58,10 +58,11 @@ class W_FuncAdapter(W_Func):
         # hack hack hack, we should kill all of this eventually
         if self.is_direct_call():
             w_func = args_w[0]
+            assert isinstance(w_func, W_Func)
         else:
             w_func = self.w_func
 
-        def getarg(spec):
+        def getarg(spec: ArgSpec) -> W_Object:
             if isinstance(spec, Arg):
                 w_arg = args_w[spec.i]
                 if spec.w_converter:
@@ -75,15 +76,15 @@ class W_FuncAdapter(W_Func):
         real_args_w = [getarg(spec) for spec in self.args]
         return vm.fast_call(w_func, real_args_w)
 
-    def pp(self):
+    def pp(self) -> None:
         print(self.render())
 
-    def render(self):
+    def render(self) -> str:
         """
         Return a human-readable representation of the adapter
         """
         argnames = [p.name for p in self.w_functype.params]
-        def fmt(spec):
+        def fmt(spec: ArgSpec) -> str:
             if isinstance(spec, Arg):
                 arg = argnames[spec.i]
                 if spec.w_converter:
