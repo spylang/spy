@@ -52,7 +52,7 @@ class ASTFrame:
         self.color = color
 
     def __repr__(self) -> str:
-        return f'<ASTFrame for {self.w_func.fqn}>'
+        return f'<{self.color} ASTFrame for {self.w_func.fqn}>'
 
     @property
     def is_module_body(self) -> bool:
@@ -269,15 +269,19 @@ class ASTFrame:
         w_val = self.vm.wrap(const.value)
         return W_OpArg(color, w_type, const.loc, w_val=w_val)
 
-    def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_Object:
+    def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_OpArg:
         w_value = self.vm.lookup_global(const.fqn)
         assert w_value is not None
-        return w_value
+        return W_OpArg.from_w_obj(self.vm, w_value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
         color, w_type = self.t.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
-        if sym.fqn is not None:
+        if color == 'red' and self.color == 'blue':
+            # this is a red variable and we are doing abstract interpretation,
+            # so we don't/can't put a specific value.
+            w_val = None
+        elif sym.fqn is not None:
             w_val = self.vm.lookup_global(sym.fqn)
             assert w_val is not None, \
                 f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
