@@ -110,17 +110,17 @@ class ASTFrame:
     def eval_expr(self, expr: ast.Expr) -> W_OpArg:
         self.t.check_expr(expr)
         w_typeconv = self.t.expr_conv.get(expr)
-        wop_val = magic_dispatch(self, 'eval_expr', expr)
+        wop = magic_dispatch(self, 'eval_expr', expr)
         if w_typeconv is None:
-            return wop_val
+            return wop
         else:
             assert False, 'fixme'
             # apply the type converter, if present
             return self.vm.fast_call(w_typeconv, [w_val])
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
-        wop_val = self.eval_expr(expr)
-        w_val = wop_val._w_val # XXX
+        wop = self.eval_expr(expr)
+        w_val = wop.w_val
         if isinstance(w_val, W_Type):
             self.vm.make_fqn_const(w_val)
             return w_val
@@ -134,8 +134,8 @@ class ASTFrame:
         pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        wop_val = self.eval_expr(ret.value)
-        raise Return(wop_val._w_val)
+        wop = self.eval_expr(ret.value)
+        raise Return(wop.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
@@ -281,7 +281,7 @@ class ASTFrame:
         wop_l = self.eval_expr(binop.left)
         wop_r = self.eval_expr(binop.right)
         w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
-        w_res = self.vm.fast_call(w_opimpl, [wop_l._w_val, wop_r._w_val])
+        w_res = self.vm.fast_call(w_opimpl, [wop_l.w_val, wop_r.w_val])
         color = maybe_blue(wop_l.color, wop_r.color)
         w_restype = w_opimpl.w_functype.w_restype
         return W_OpArg(color, w_restype, binop.loc, w_val=w_res)
