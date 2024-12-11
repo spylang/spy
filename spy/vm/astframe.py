@@ -354,17 +354,18 @@ class ASTFrame:
         w_i = self.eval_expr(op.index)
         return self.vm.fast_call(w_opimpl, [w_val, w_i])
 
-    def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_Object:
-        # this is suboptimal, but good enough for now: ideally, we would like
-        # to support two cases:
-        #
-        #   1. "generic" impls, which are called with [w_val, w_attr]
-        #   2. "specialized" impls, which are called with only [w_val]
-        w_opimpl = self.t.opimpl[op]
-        w_val = self.eval_expr(op.value)
-        w_attr = self.eval_expr(op.attr)
-        w_res = self.vm.fast_call(w_opimpl, [w_val, w_attr])
-        return w_res
+    def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_OpArg:
+        w_attr = self.vm.wrap(op.attr.value) # XXX maybe just eval op.attr?
+        wop_obj = self.eval_expr(op.value, newstyle=True)
+        wop_attr = W_OpArg('blue', B.w_str, op.loc, w_val=w_attr)
+        w_opimpl = self.vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
+        w_res = self.vm.fast_call(w_opimpl, [wop_obj.w_val, w_attr])
+        w_functype = w_opimpl.w_functype
+        return W_OpArg(
+            w_functype.color,
+            w_functype.w_restype,
+            op.loc,
+            w_val=w_res)
 
     def eval_expr_List(self, op: ast.List) -> W_Object:
         color, w_listtype = self.t.check_expr(op)
