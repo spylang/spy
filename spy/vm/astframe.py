@@ -290,7 +290,17 @@ class ASTFrame:
         wop_r = self.eval_expr(binop.right, newstyle=True)
         w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
         w_res = self.vm.fast_call(w_opimpl, [wop_l.w_val, wop_r.w_val])
-        color = maybe_blue(wop_l.color, wop_r.color)
+
+        # hack hack hack
+        # result color:
+        #   - pure function and blue arguments -> blue
+        #   - red function -> red
+        #   - blue function -> blue
+        # XXX what happens if we try to call a blue func with red arguments?
+        if w_opimpl.is_pure():
+            color = maybe_blue(wop_l.color, wop_r.color)
+        else:
+            color = w_opimpl.w_functype.color
         w_restype = w_opimpl.w_functype.w_restype
         return W_OpArg(color, w_restype, binop.loc, w_val=w_res)
 

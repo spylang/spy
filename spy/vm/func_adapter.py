@@ -49,6 +49,9 @@ class W_FuncAdapter(W_Func):
         fqn = self.w_func.fqn
         return f'<spy adapter `{sig}` for `{fqn}`>'
 
+    def is_pure(self) -> bool:
+        return self.w_func.is_pure()
+
     def is_direct_call(self) -> bool:
         """
         This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
