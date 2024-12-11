@@ -77,7 +77,7 @@ class TypeChecker:
         got_color, w_got_type = self.check_expr(expr)
         w_exp_type = self.locals_types_w[name]
 
-        wop_local = W_OpArg('v', 0, w_got_type, expr.loc)
+        wop_local = W_OpArg(w_got_type, expr.loc)
         try:
             w_conv = CONVERT_maybe(self.vm, w_exp_type, wop_local)
             if w_conv is not None:
@@ -94,7 +94,7 @@ class TypeChecker:
 
     def typecheck_bool(self, expr: ast.Expr) -> None:
         color, w_got_type = self.check_expr(expr)
-        wop_cond = W_OpArg('v', 0, w_got_type, expr.loc)
+        wop_cond = W_OpArg(w_got_type, expr.loc)
         try:
             w_conv = CONVERT_maybe(self.vm, B.w_bool, wop_cond)
             if w_conv is not None:
@@ -149,11 +149,11 @@ class TypeChecker:
                 assert last_loc is not None
                 loc = last_loc
                 color = 'blue'
-                wop = W_OpArg(prefix, i, B.w_str, loc,
+                wop = W_OpArg(B.w_str, loc,
                              w_blueval = self.vm.wrap(expr))
             else:
                 color, w_type = self.check_expr(expr)
-                wop = W_OpArg(prefix, i, w_type, expr.loc,
+                wop = W_OpArg(w_type, expr.loc,
                              sym=self.name2sym_maybe(expr))
                 last_loc = expr.loc
             colors.append(color)
@@ -488,16 +488,18 @@ def typecheck_opimpl(
 
     # build the argspec for the W_FuncAdapter
     args = []
-    for param, wop_arg in zip(w_out_functype.all_params(), out_args_wop):
+    for param, wop_out_arg in zip(w_out_functype.all_params(), out_args_wop):
         # add a converter if needed (this might raise SPyTypeError)
-        w_conv = get_w_conv(vm, param.w_type, wop_arg, def_loc)
+        w_conv = get_w_conv(vm, param.w_type, wop_out_arg, def_loc)
         arg: ArgSpec
-        if wop_arg.is_const():
+        if wop_out_arg.is_blue():
             assert w_conv is None
-            arg = ArgSpec.Const(wop_arg.w_blueval, wop_arg.loc)
+            arg = ArgSpec.Const(wop_out_arg.w_blueval, wop_out_arg.loc)
         else:
-            assert wop_arg.i is not None
-            arg = ArgSpec.Arg(wop_arg.i, w_conv)
+            # red W_OpArg MUST come from in_args_wop. Tell the Adapter where
+            # to ffind them
+            i = in_args_wop.index(wop_out_arg)
+            arg = ArgSpec.Arg(i, w_conv)
         args.append(arg)
 
     # everything good!

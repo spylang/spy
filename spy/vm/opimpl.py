@@ -62,61 +62,38 @@ class W_OpArg(W_Object):
 
     Internally, an OpConst is represented as an OpArg whose .i is None.
     """
-    prefix: str
-    i: Optional[int]
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
     sym: Optional[Symbol]
     _w_blueval: Optional[W_Object]
 
     def __init__(self,
-                 prefix: str,
-                 i: Optional[int],
                  w_static_type: W_Type,
                  loc: Loc,
                  *,
                  sym: Optional[Symbol] = None,
                  w_blueval: Optional[W_Object] = None,
                  ) -> None:
-        if i is None:
-            assert w_blueval is not None
-        self.prefix = prefix
-        self.i = i
         self.w_static_type = w_static_type
         self.loc = loc
         self.sym = sym
         self._w_blueval = w_blueval
 
     @classmethod
-    def const(cls, vm: 'SPyVM', w_obj: W_Object, prefix: str) -> 'W_OpArg':
+    def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return cls(prefix, None, w_type, Loc.here(-2), w_blueval=w_obj)
-
-    @classmethod
-    def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object,
-                   prefix: str, i: int) -> 'W_OpArg':
-        w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(prefix, i, w_type, Loc.here(-2), w_blueval=w_obj)
-
-    @property
-    def name(self) -> str:
-        return f'{self.prefix}{self.i}'
+        return W_OpArg(w_type, Loc.here(-2), w_blueval=w_obj)
 
     def __repr__(self) -> str:
         if self.is_blue():
             extra = f' = {self._w_blueval}'
         else:
             extra = ''
-        if self.is_const():
-            extra += ' const'
         t = self.w_static_type.fqn.human_name
-        return f'<W_OpArg {self.name}: {t}{extra}>'
+        return f'<W_OpArg {t}{extra}>'
 
     def is_blue(self) -> bool:
         return self._w_blueval is not None
-
-    def is_const(self) -> bool:
-        return self.i is None
 
     @property
     def w_blueval(self) -> W_Object:
@@ -170,13 +147,18 @@ class W_OpArg(W_Object):
 @no_type_check
 @builtin_func('operator')
 def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
+    """
+    Two red opargs are equal if they have the same static types.
+    Two blue opargs are equal if they also have the same values.
+    """
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description
-    if wop1.i != wop2.i:
-        return B.w_False
     if wop1.w_static_type is not wop2.w_static_type:
         return B.w_False
+    # we need to think what to do in this case
+    ## if wop1.is_blue() != wop2.is_blue():
+    ##     import pdb;pdb.set_trace()
     if (wop1.is_blue() and
         wop2.is_blue() and
         vm.is_False(vm.eq(wop1._w_blueval, wop2._w_blueval))):
@@ -207,8 +189,7 @@ class W_OpImpl(W_Object):
             return f"<spy OpImpl {fqn}>"
         else:
             fqn = self._w_func.fqn
-            argnames = ', '.join([wop.name for wop in self._args_wop])
-            return f"<spy OpImpl {fqn}({argnames})>"
+            return f"<spy OpImpl {fqn}(...)>"
 
     def is_null(self) -> bool:
         return self._w_func is None
