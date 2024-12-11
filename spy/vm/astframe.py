@@ -233,8 +233,8 @@ class ASTFrame:
         self.eval_expr(stmt.value, newstyle=True)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        w_cond = self.eval_expr(if_node.test)
-        if self.vm.is_True(w_cond):
+        wop_cond = self.eval_expr(if_node.test, newstyle=True)
+        if self.vm.is_True(wop_cond.w_val):
             for stmt in if_node.then_body:
                 self.exec_stmt(stmt)
         else:
@@ -243,8 +243,8 @@ class ASTFrame:
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
-            w_cond = self.eval_expr(while_node.test)
-            if self.vm.is_False(w_cond):
+            wop_cond = self.eval_expr(while_node.test, newstyle=True)
+            if self.vm.is_False(wop_cond.w_val):
                 break
             for stmt in while_node.body:
                 self.exec_stmt(stmt)
