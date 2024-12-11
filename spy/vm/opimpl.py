@@ -63,7 +63,6 @@ class W_OpArg(W_Object):
     Internally, an OpConst is represented as an OpArg whose .i is None.
     """
     prefix: str
-    i: Optional[int]
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
     sym: Optional[Symbol]
@@ -80,8 +79,8 @@ class W_OpArg(W_Object):
                  ) -> None:
         if i is None:
             assert w_blueval is not None
+        self._is_const = i is None
         self.prefix = prefix
-        self.i = i
         self.w_static_type = w_static_type
         self.loc = loc
         self.sym = sym
@@ -100,7 +99,7 @@ class W_OpArg(W_Object):
 
     @property
     def name(self) -> str:
-        return f'{self.prefix}{self.i}'
+        return f'{self.prefix}'
 
     def __repr__(self) -> str:
         if self.is_blue():
@@ -116,7 +115,7 @@ class W_OpArg(W_Object):
         return self._w_blueval is not None
 
     def is_const(self) -> bool:
-        return self.i is None
+        return self._is_const
 
     @property
     def w_blueval(self) -> W_Object:
@@ -170,11 +169,13 @@ class W_OpArg(W_Object):
 @no_type_check
 @builtin_func('operator')
 def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
+    """
+    XXX write me
+    basically, for red we check only the types, but please explain
+    """
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description
-    if wop1.i != wop2.i:
-        return B.w_False
     if wop1.w_static_type is not wop2.w_static_type:
         return B.w_False
     if (wop1.is_blue() and
