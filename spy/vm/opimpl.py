@@ -66,7 +66,7 @@ class W_OpArg(W_Object):
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
     sym: Optional[Symbol]
-    _w_val: Optional[W_Object]
+    w_val: Optional[W_Object]
 
     def __init__(self,
                  color: Color,
@@ -82,7 +82,7 @@ class W_OpArg(W_Object):
         self.w_static_type = w_static_type
         self.loc = loc
         self.sym = sym
-        self._w_val = w_val
+        self.w_val = w_val
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
@@ -91,7 +91,7 @@ class W_OpArg(W_Object):
 
     def __repr__(self) -> str:
         if self.is_blue():
-            extra = f' = {self._w_val}'
+            extra = f' = {self.w_val}'
         else:
             extra = ''
         t = self.w_static_type.fqn.human_name
@@ -103,8 +103,8 @@ class W_OpArg(W_Object):
     @property
     def w_blueval(self) -> W_Object:
         assert self.color == 'blue'
-        assert self._w_val is not None
-        return self._w_val
+        assert self.w_val is not None
+        return self.w_val
 
     def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
         """
@@ -123,8 +123,8 @@ class W_OpArg(W_Object):
         # AssertionError.
         w_opimpl = CONVERT_maybe(vm, w_expected_type, self)
         assert w_opimpl is None
-        assert self._w_val is not None
-        return self._w_val
+        assert self.w_val is not None
+        return self.w_val
 
     def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
         """
@@ -136,8 +136,8 @@ class W_OpArg(W_Object):
     def blue_unwrap_str(self, vm: 'SPyVM') -> str:
         from spy.vm.b import B
         self.blue_ensure(vm, B.w_str)
-        assert self._w_val is not None
-        return vm.unwrap_str(self._w_val)
+        assert self.w_val is not None
+        return vm.unwrap_str(self.w_val)
 
     @staticmethod
     def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
@@ -168,7 +168,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     ##     import pdb;pdb.set_trace()
     if (wop1.is_blue() and
         wop2.is_blue() and
-        vm.is_False(vm.eq(wop1._w_val, wop2._w_val))):
+        vm.is_False(vm.eq(wop1.w_val, wop2.w_val))):
         return B.w_False
     return B.w_True
 
