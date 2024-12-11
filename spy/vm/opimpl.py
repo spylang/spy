@@ -66,7 +66,7 @@ class W_OpArg(W_Object):
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
     sym: Optional[Symbol]
-    w_val: Optional[W_Object]
+    _w_val: Optional[W_Object]
 
     def __init__(self,
                  color: Color,
@@ -82,7 +82,7 @@ class W_OpArg(W_Object):
         self.w_static_type = w_static_type
         self.loc = loc
         self.sym = sym
-        self.w_val = w_val
+        self._w_val = w_val
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
@@ -101,10 +101,15 @@ class W_OpArg(W_Object):
         return self.color == 'blue'
 
     @property
+    def w_val(self) -> W_Object:
+        assert self._w_val is not None, 'cannot read w_val from abstract OpArg'
+        return self._w_val
+
+    @property
     def w_blueval(self) -> W_Object:
         assert self.color == 'blue'
-        assert self.w_val is not None
-        return self.w_val
+        assert self._w_val is not None
+        return self._w_val
 
     def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
         """
