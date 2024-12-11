@@ -306,8 +306,6 @@ class ASTFrame:
 
     def call_opimpl(self, w_opimpl: W_Func, args_wop: list[W_OpArg],
                     loc: Loc) -> W_OpArg:
-        args_w = [wop.w_val for wop in args_wop]
-        w_res = self.vm.fast_call(w_opimpl, args_w)
         # hack hack hack
         # result color:
         #   - pure function and blue arguments -> blue
@@ -320,6 +318,13 @@ class ASTFrame:
             color = maybe_blue(*colors)
         else:
             color = w_functype.color
+
+        if self.abstract_interpretation:
+            w_res = None
+        else:
+            args_w = [wop.w_val for wop in args_wop]
+            w_res = self.vm.fast_call(w_opimpl, args_w)
+
         return W_OpArg(
             color,
             w_functype.w_restype,
