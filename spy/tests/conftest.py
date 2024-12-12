@@ -36,3 +36,7 @@ def pytest_addoption(parser):
         "--dump-c", action="store_true", default=False,
         help="Dump generated C code"
     )
+    parser.addoption(
+        "--dump-redshift", action="store_true", default=False,
+        help="Dump the redshifted module"
+    )

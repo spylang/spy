@@ -11,6 +11,7 @@ from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opimpl import W_OpImpl
+from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:
@@ -84,13 +85,21 @@ class FuncDoppler:
         self.t.check_stmt(stmt)
         return magic_dispatch(self, 'shift_stmt', stmt)
 
-    def shift_expr(self, expr: ast.Expr) -> ast.Expr:
+    def shift_expr(self, expr: ast.Expr,
+                   *,
+                   w_target_type: Optional[W_Type] = None,
+                   ) -> ast.Expr:
         wop = self.blue_frame.eval_expr(expr, newstyle=True)
         if wop.color == 'blue':
             return make_const(self.vm, expr.loc, wop.w_val)
         res = magic_dispatch(self, 'shift_expr', expr)
-        w_conv = self.t.expr_conv.get(expr)
-        if w_conv:
+        w_typeconv = self.t.expr_conv.get(expr)
+        if w_target_type:
+            # a bit of code duplication with astframe, but too bad for now
+            assert w_typeconv is None
+            w_typeconv = CONVERT_maybe(self.vm, w_target_type, wop)
+
+        if w_typeconv:
             # converters are used only for local variables and if/while
             # conditions (see TypeChecker.expr_conv). Probably we could just
             # use an W_OpImpl instead?
@@ -98,7 +107,7 @@ class FuncDoppler:
                 loc = res.loc,
                 func = ast.FQNConst(
                     loc = res.loc,
-                    fqn = w_conv.fqn
+                    fqn = w_typeconv.fqn
                 ),
                 args = [res]
             )
@@ -157,7 +166,7 @@ class FuncDoppler:
         return newbody
 
     def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
-        newtest = self.shift_expr(if_node.test)
+        newtest = self.shift_expr(if_node.test, w_target_type=B.w_bool)
         newthen = self.shift_body(if_node.then_body)
         newelse = self.shift_body(if_node.else_body)
         return [if_node.replace(
