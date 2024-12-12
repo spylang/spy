@@ -189,15 +189,6 @@ class TypeChecker:
     def _check_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value
         sym = self.funcdef.symtable.lookup(varname)
-        if sym.is_global and sym.color == 'blue':
-            err = SPyTypeError("invalid assignment target")
-            err.add('error', f'{varname} is const', target.loc)
-            err.add('note', 'const declared here', sym.loc)
-            err.add('note',
-                    f'help: declare it as variable: `var {varname} ...`',
-                    sym.loc)
-            raise err
-
         if sym.is_local:
             if varname not in self.locals_types_w:
                 # first assignment, implicit declaration

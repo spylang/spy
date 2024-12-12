@@ -242,7 +242,7 @@ class ASTFrame:
         sym = self.funcdef.symtable.lookup(assign.target)
         varname = assign.target.value if sym.is_local else None
         wop = self.eval_expr(assign.value, newstyle=True, varname=varname)
-        self._exec_assign(assign.target.value, wop.w_val)
+        self._exec_assign(assign.target, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wop_tup = self.eval_expr(unpack.value, newstyle=True)
@@ -260,7 +260,7 @@ class ASTFrame:
             raise SPyRuntimeError(
                 f"Wrong number of values to unpack: expected {exp}, got {got}"
             )
-        for i, target in enumerate(unpack.targets):
+        for i, (target, target_loc) in enumerate(unpack.targlocs):
             # we need an expression which has the type of each individual item
             # of the tuple. The easiest way is to make it a const
             expr = ast.GetItem(
@@ -272,16 +272,29 @@ class ASTFrame:
                 )
             )
             wop_item = self.eval_expr(expr, newstyle=True, varname=target)
-            varname = target.value
-            self._exec_assign(varname, wop_item.w_val)
+            self._exec_assign(target, wop_item.w_val)
 
-    def _exec_assign(self, target: str, w_val: W_Object) -> None:
+    def check_assign_target(self, target: StrConst) -> None:
         # XXX this is semi-wrong. We need to add an AST field to keep track of
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
-        sym = self.funcdef.symtable.lookup(target)
+        varname = target.value
+        sym = self.funcdef.symtable.lookup(varname)
+        if sym.is_global and sym.color == 'blue':
+            err = SPyTypeError("invalid assignment target")
+            err.add('error', f'{sym.name} is const', target.loc)
+            err.add('note', 'const declared here', sym.loc)
+            err.add('note',
+                    f'help: declare it as variable: `var {sym.name} ...`',
+                    sym.loc)
+            raise err
+
+    def _exec_assign(self, target: ast.StrConst, w_val: W_Object) -> None:
+        self.check_assign_target(target)
+        varname = target.value
+        sym = self.funcdef.symtable.lookup(varname)
         if sym.is_local:
-            self.store_local(target, w_val)
+            self.store_local(varname, w_val)
         elif sym.fqn is not None:
             assert sym.color == 'red'
             self.vm.store_global(sym.fqn, w_val)
