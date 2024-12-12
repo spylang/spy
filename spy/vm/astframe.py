@@ -127,18 +127,35 @@ class ASTFrame:
         self.t.check_stmt(stmt)
         return magic_dispatch(self, 'exec_stmt', stmt)
 
+    def typecheck_maybe(self, wop: W_OpArg,
+                        varname: Optional[str]) -> Optional[W_Func]:
+        if varname is None:
+            return None # to typecheck needed
+        w_exp_type = self.t.locals_types_w[varname]
+        try:
+            w_typeconv = CONVERT_maybe(self.vm, w_exp_type, wop)
+        except SPyTypeError as err:
+            exp = w_exp_type.fqn.human_name
+            exp_loc = self.funcdef.symtable.lookup(varname).type_loc
+            if varname == '@return':
+                because = ' because of return type'
+            elif varname in ('@if', '@while'):
+                because = ''
+            else:
+                because = ' because of type declaration'
+            err.add('note', f'expected `{exp}`{because}', loc=exp_loc)
+            raise
+        return w_typeconv
+
     # "newtyle" is a temporary param, I want to make sure that tests crash hard
     # in old calling locations
     def eval_expr(self, expr: ast.Expr, *, newstyle,
-                  w_target_type: Optional[W_Type] = None
+                  varname: Optional[str] = None
                   ) -> W_OpArg:
-        self.t.check_expr(expr)
-        w_typeconv = self.t.expr_conv.get(expr) # XXX kill this
+        self.t.check_expr(expr) # XXX kill this
+
         wop = magic_dispatch(self, 'eval_expr', expr)
-        # apply the type converter, if present
-        if w_target_type:
-            assert w_typeconv is None
-            w_typeconv = CONVERT_maybe(self.vm, w_target_type, wop)
+        w_typeconv = self.typecheck_maybe(wop, varname)
 
         if self.w_func.redshifted:
             # this is just a sanity check. After redshifting, all type
@@ -178,7 +195,7 @@ class ASTFrame:
         pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        wop = self.eval_expr(ret.value, newstyle=True)
+        wop = self.eval_expr(ret.value, newstyle=True, varname='@return')
         raise Return(wop.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
@@ -222,7 +239,9 @@ class ASTFrame:
         self.t.lazy_check_VarDef(vardef, w_type)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        wop = self.eval_expr(assign.value, newstyle=True)
+        sym = self.funcdef.symtable.lookup(assign.target)
+        varname = assign.target.value if sym.is_local else None
+        wop = self.eval_expr(assign.value, newstyle=True, varname=varname)
         self._exec_assign(assign.target.value, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
@@ -273,8 +292,7 @@ class ASTFrame:
         self.eval_expr(stmt.value, newstyle=True)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        wop_cond = self.eval_expr(if_node.test, newstyle=True,
-                                  w_target_type=B.w_bool)
+        wop_cond = self.eval_expr(if_node.test, newstyle=True, varname='@if')
         assert isinstance(wop_cond.w_val, W_Bool)
         if self.vm.is_True(wop_cond.w_val):
             for stmt in if_node.then_body:
@@ -285,7 +303,8 @@ class ASTFrame:
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
-            wop_cond = self.eval_expr(while_node.test, newstyle=True)
+            wop_cond = self.eval_expr(while_node.test, newstyle=True,
+                                      varname='@while')
             assert isinstance(wop_cond.w_val, W_Bool)
             if self.vm.is_False(wop_cond.w_val):
                 break

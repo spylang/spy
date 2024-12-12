@@ -87,18 +87,13 @@ class FuncDoppler:
 
     def shift_expr(self, expr: ast.Expr,
                    *,
-                   w_target_type: Optional[W_Type] = None,
+                   varname: Optional[str] = None,
                    ) -> ast.Expr:
         wop = self.blue_frame.eval_expr(expr, newstyle=True)
+        w_typeconv = self.blue_frame.typecheck_maybe(wop, varname)
         if wop.color == 'blue':
             return make_const(self.vm, expr.loc, wop.w_val)
         res = magic_dispatch(self, 'shift_expr', expr)
-        w_typeconv = self.t.expr_conv.get(expr)
-        if w_target_type:
-            # a bit of code duplication with astframe, but too bad for now
-            assert w_typeconv is None
-            w_typeconv = CONVERT_maybe(self.vm, w_target_type, wop)
-
         if w_typeconv:
             # converters are used only for local variables and if/while
             # conditions (see TypeChecker.expr_conv). Probably we could just
@@ -117,7 +112,7 @@ class FuncDoppler:
     # ==== statements ====
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
-        newvalue = self.shift_expr(ret.value)
+        newvalue = self.shift_expr(ret.value, varname='@return')
         return [ret.replace(value=newvalue)]
 
     def shift_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
@@ -133,8 +128,9 @@ class FuncDoppler:
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         sym = self.funcdef.symtable.lookup(assign.target.value)
+        varname = assign.target.value if sym.is_local else None
         if sym.color == 'red':
-            newvalue = self.shift_expr(assign.value)
+            newvalue = self.shift_expr(assign.value, varname=varname)
             return [assign.replace(value=newvalue)]
         else:
             assert False, 'implement me'
@@ -166,7 +162,7 @@ class FuncDoppler:
         return newbody
 
     def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
-        newtest = self.shift_expr(if_node.test, w_target_type=B.w_bool)
+        newtest = self.shift_expr(if_node.test, varname='@if')
         newthen = self.shift_body(if_node.then_body)
         newelse = self.shift_body(if_node.else_body)
         return [if_node.replace(
@@ -176,7 +172,7 @@ class FuncDoppler:
         )]
 
     def shift_stmt_While(self, while_node: ast.While) -> list[ast.While]:
-        newtest = self.shift_expr(while_node.test)
+        newtest = self.shift_expr(while_node.test, varname='@while')
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(
             test = newtest,
