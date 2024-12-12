@@ -224,7 +224,8 @@ class CFuncWriter:
         param_names = [p.name for p in self.w_func.w_functype.params]
         for varname, w_type in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_type)
-            if varname != '@return' and varname not in param_names:
+            if (varname not in ('@return', '@if', '@while') and
+                varname not in param_names):
                 self.out.wl(f'{c_type} {varname};')
 
     # ==============

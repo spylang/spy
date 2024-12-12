@@ -62,6 +62,8 @@ class TypeChecker:
         Declare the local vars for the arguments and @return
         """
         w_functype = self.w_func.w_functype
+        self.declare_local('@if', B.w_bool)
+        self.declare_local('@while', B.w_bool)
         self.declare_local('@return', w_functype.w_restype)
         params = self.w_func.w_functype.params
         for param in params:
@@ -75,21 +77,6 @@ class TypeChecker:
     def typecheck_local(self, expr: ast.Expr, name: str) -> None:
         assert name in self.locals_types_w
         got_color, w_got_type = self.check_expr(expr)
-        w_exp_type = self.locals_types_w[name]
-        wop_local = W_OpArg('red', w_got_type, expr.loc)
-        try:
-            w_conv = CONVERT_maybe(self.vm, w_exp_type, wop_local)
-            if w_conv is not None:
-                self.expr_conv[expr] = w_conv
-        except SPyTypeError as err:
-            exp = w_exp_type.fqn.human_name
-            exp_loc = self.funcdef.symtable.lookup(name).type_loc
-            if name == '@return':
-                because = 'because of return type'
-            else:
-                because = 'because of type declaration'
-            err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
-            raise
 
     def name2sym_maybe(self, expr: ast.Expr) -> Optional[Symbol]:
         """
@@ -149,7 +136,7 @@ class TypeChecker:
     # ==== statements ====
 
     def check_stmt_Return(self, ret: ast.Return) -> None:
-        self.typecheck_local(ret.value, '@return')
+        self.check_expr(ret.value)
 
     def check_stmt_Pass(self, stmt: ast.Pass) -> None:
         pass
