@@ -91,18 +91,6 @@ class TypeChecker:
             err.add('note', f'expected `{exp}` {because}', loc=exp_loc)
             raise
 
-    def typecheck_bool(self, expr: ast.Expr) -> None:
-        color, w_got_type = self.check_expr(expr)
-        wop_cond = W_OpArg('red', w_got_type, expr.loc)
-        try:
-            w_conv = CONVERT_maybe(self.vm, B.w_bool, wop_cond)
-            if w_conv is not None:
-                self.expr_conv[expr] = w_conv
-        except SPyTypeError as err:
-            msg = 'implicit conversion to `bool` is not implemented yet'
-            err.add('note', msg, expr.loc)
-            raise
-
     def name2sym_maybe(self, expr: ast.Expr) -> Optional[Symbol]:
         """
         If expr is an ast.Name, return the corresponding Symbol.
@@ -206,10 +194,10 @@ class TypeChecker:
         pass
 
     def check_stmt_If(self, if_node: ast.If) -> None:
-        self.typecheck_bool(if_node.test)
+        color, w_got_type = self.check_expr(if_node.test)
 
     def check_stmt_While(self, while_node: ast.While) -> None:
-        self.typecheck_bool(while_node.test)
+        color, w_got_type = self.check_expr(while_node.test)
 
     def _check_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value

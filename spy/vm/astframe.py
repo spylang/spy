@@ -9,6 +9,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
+from spy.vm.primitive import W_Bool
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
@@ -17,6 +18,7 @@ from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.typechecker import TypeChecker, maybe_blue
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.modules.operator import OP, OP_from_token
+from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -119,13 +121,19 @@ class ASTFrame:
         self.t.check_stmt(stmt)
         return magic_dispatch(self, 'exec_stmt', stmt)
 
-    # the xxx is a temporary param, I want to make sure that tests crash hard
+    # "newtyle" is a temporary param, I want to make sure that tests crash hard
     # in old calling locations
-    def eval_expr(self, expr: ast.Expr, *, newstyle) -> W_OpArg:
+    def eval_expr(self, expr: ast.Expr, *, newstyle,
+                  w_target_type: Optional[W_Type] = None
+                  ) -> W_OpArg:
         self.t.check_expr(expr)
-        w_typeconv = self.t.expr_conv.get(expr)
+        w_typeconv = self.t.expr_conv.get(expr) # XXX kill this
         wop = magic_dispatch(self, 'eval_expr', expr)
         # apply the type converter, if present
+        if w_target_type:
+            assert w_typeconv is None
+            w_typeconv = CONVERT_maybe(self.vm, w_target_type, wop)
+
         if w_typeconv is None:
             return wop
         else:
@@ -252,7 +260,9 @@ class ASTFrame:
         self.eval_expr(stmt.value, newstyle=True)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        wop_cond = self.eval_expr(if_node.test, newstyle=True)
+        wop_cond = self.eval_expr(if_node.test, newstyle=True,
+                                  w_target_type=B.w_bool)
+        assert isinstance(wop_cond.w_val, W_Bool)
         if self.vm.is_True(wop_cond.w_val):
             for stmt in if_node.then_body:
                 self.exec_stmt(stmt)
@@ -263,6 +273,7 @@ class ASTFrame:
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
             wop_cond = self.eval_expr(while_node.test, newstyle=True)
+            assert isinstance(wop_cond.w_val, W_Bool)
             if self.vm.is_False(wop_cond.w_val):
                 break
             for stmt in while_node.body:
