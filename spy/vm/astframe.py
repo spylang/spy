@@ -460,11 +460,19 @@ class ASTFrame:
         raise SPyTypeError.simple(msg, f'{OP} not allowed here', arg.loc)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
-        w_opimpl = self.t.opimpl[op]
-        w_target = self.eval_expr(op.target)
-        w_method = self.eval_expr(op.method)
-        args_w = [self.eval_expr(arg) for arg in op.args]
-        return self.vm.fast_call(w_opimpl, [w_target, w_method] + args_w)
+        w_method = self.vm.wrap(op.method.value) # XXX maybe just eval op.method
+        wop_target = self.eval_expr(op.target, newstyle=True)
+        wop_method = W_OpArg('blue', B.w_str, op.loc, w_val=w_method)
+        args_wop = [self.eval_expr(arg, newstyle=True) for arg in op.args]
+        w_opimpl = self.vm.call_OP(
+            OP.w_CALL_METHOD,
+            [wop_target, wop_method] + args_wop
+        )
+        return self.call_opimpl(
+            w_opimpl,
+            [wop_target, wop_method] + args_wop,
+            op.loc
+        )
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_OpArg:
         wop_obj = self.eval_expr(op.value, newstyle=True)
