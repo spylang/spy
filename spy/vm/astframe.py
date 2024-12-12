@@ -245,7 +245,14 @@ class ASTFrame:
         self._exec_assign(assign.target.value, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        w_tup = self.eval_expr(unpack.value)
+        wop_tup = self.eval_expr(unpack.value, newstyle=True)
+        if wop_tup.w_static_type is not B.w_tuple:
+            t = w_valuetype.fqn.human_name
+            err = SPyTypeError(f'`{t}` does not support unpacking')
+            err.add('error', f'this is `{t}`', unpack.value.loc)
+            raise err
+
+        w_tup = wop_tup.w_val
         assert isinstance(w_tup, W_Tuple)
         exp = len(unpack.targets)
         got = len(w_tup.items_w)
@@ -253,8 +260,20 @@ class ASTFrame:
             raise SPyRuntimeError(
                 f"Wrong number of values to unpack: expected {exp}, got {got}"
             )
-        for target, w_val in zip(unpack.targets, w_tup.items_w):
-            self._exec_assign(target.value, w_val)
+        for i, target in enumerate(unpack.targets):
+            # we need an expression which has the type of each individual item
+            # of the tuple. The easiest way is to make it a const
+            expr = ast.GetItem(
+                loc = unpack.value.loc,
+                value = unpack.value,
+                index = ast.Constant(
+                    loc = unpack.value.loc,
+                    value = i
+                )
+            )
+            wop_item = self.eval_expr(expr, newstyle=True, varname=target)
+            varname = target.value
+            self._exec_assign(varname, wop_item.w_val)
 
     def _exec_assign(self, target: str, w_val: W_Object) -> None:
         # XXX this is semi-wrong. We need to add an AST field to keep track of
