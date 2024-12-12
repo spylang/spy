@@ -442,8 +442,13 @@ class ASTFrame:
         items_w = [self.eval_expr(item) for item in op.items]
         return W_List(w_listtype, items_w)
 
-    def eval_expr_Tuple(self, op: ast.Tuple) -> W_Object:
-        color, w_tupletype = self.t.check_expr(op)
-        assert w_tupletype is B.w_tuple
-        items_w = [self.eval_expr(item) for item in op.items]
-        return W_Tuple(items_w)
+    def eval_expr_Tuple(self, op: ast.Tuple) -> W_OpArg:
+        items_wop = [self.eval_expr(item, newstyle=True) for item in op.items]
+        colors = [wop.color for wop in items_wop]
+        color = maybe_blue(*colors)
+        if color == 'red' and self.abstract_interpretation:
+            w_val = None
+        else:
+            items_w = [wop.w_val for wop in items_wop]
+            w_val = W_Tuple(items_w)
+        return W_OpArg(color, B.w_tuple, op.loc, w_val=w_val)
