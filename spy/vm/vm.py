@@ -241,10 +241,11 @@ class SPyVM:
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
 
-    def is_True(self, w_obj: W_Object) -> bool:
+    def is_True(self, w_obj: W_Bool) -> bool:
+        assert isinstance(w_obj, W_Bool)
         return w_obj is B.w_True
 
-    def is_False(self, w_obj: W_Object) -> bool:
+    def is_False(self, w_obj: W_Bool) -> bool:
         return w_obj is B.w_False
 
     def wrap(self, value: Any) -> W_Object:
