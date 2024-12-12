@@ -418,7 +418,7 @@ class ASTFrame:
     def eval_expr_Call(self, call: ast.Call) -> W_OpArg:
         wop_func = self.eval_expr(call.func, newstyle=True)
         # STATIC_TYPE is special, because it doesn't evaluate its arguments
-        if wop_func.w_val is B.w_STATIC_TYPE:
+        if wop_func.color == 'blue' and wop_func.w_val is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(call)
         args_wop = [self.eval_expr(arg, newstyle=True) for arg in call.args]
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
