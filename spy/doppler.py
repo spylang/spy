@@ -124,6 +124,7 @@ class FuncDoppler:
         return [vardef.replace(type=newtype)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
+        self.blue_frame.check_assign_target(assign.target, assign.target_loc)
         sym = self.funcdef.symtable.lookup(assign.target)
         varname = assign.target if sym.is_local else None
         if sym.color == 'red':

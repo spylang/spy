@@ -189,14 +189,6 @@ class TypeChecker:
     def _check_assign(self, target: str, target_loc: Loc,
                       expr: ast.Expr) -> None:
         sym = self.funcdef.symtable.lookup(target)
-        if sym.is_global and sym.color == 'blue':
-            err = SPyTypeError("invalid assignment target")
-            err.add('error', f'{sym.name} is const', target_loc)
-            err.add('note', 'const declared here', sym.loc)
-            err.add('note',
-                    f'help: declare it as variable: `var {sym.name} ...`',
-                    sym.loc)
-            raise err
 
         if sym.is_local:
             if target not in self.locals_types_w:
