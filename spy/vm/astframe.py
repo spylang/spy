@@ -54,7 +54,13 @@ class ASTFrame:
         self.color = color
 
     def __repr__(self) -> str:
-        return f'<{self.color} ASTFrame for {self.w_func.fqn}>'
+        if self.w_func.redshifted:
+            extra = ' (redshifted)'
+        elif self.w_func.color == 'blue':
+            extra = ' (blue)'
+        else:
+            extra = ''
+        return f'<{self.color} ASTFrame for {self.w_func.fqn}{extra}>'
 
     @property
     def abstract_interpretation(self):
@@ -133,6 +139,13 @@ class ASTFrame:
         if w_target_type:
             assert w_typeconv is None
             w_typeconv = CONVERT_maybe(self.vm, w_target_type, wop)
+
+        if self.w_func.redshifted:
+            # this is just a sanity check. After redshifting, all type
+            # conversions should be explicit. If w_typeconv is not None here,
+            # it means that Doppler failed to insert the appropriate
+            # conversion
+            assert w_typeconv is None
 
         if w_typeconv is None:
             return wop
