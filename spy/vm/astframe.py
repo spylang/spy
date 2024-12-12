@@ -488,10 +488,26 @@ class ASTFrame:
         return self.call_opimpl(w_opimpl, [wop_obj, wop_attr], op.loc)
 
     def eval_expr_List(self, op: ast.List) -> W_Object:
-        color, w_listtype = self.t.check_expr(op)
-        assert isinstance(w_listtype, W_ListType)
-        items_w = [self.eval_expr(item) for item in op.items]
-        return W_List(w_listtype, items_w)
+        items_wop = []
+        w_itemtype = None
+        color: Color = 'red' # XXX should be blue?
+        for item in op.items:
+            wop_item = self.eval_expr(item, newstyle=True)
+            items_wop.append(wop_item)
+            color = maybe_blue(color, wop_item.color)
+            if w_itemtype is None:
+                w_itemtype = wop_item.w_static_type
+            w_itemtype = self.vm.union_type(w_itemtype, wop_item.w_static_type)
+        #
+        # XXX we need to handle empty lists
+        assert w_itemtype is not None
+        w_listtype = self.vm.make_list_type(w_itemtype)
+        if self.abstract_interpretation:
+            w_val = None
+        else:
+            items_w = [wop.w_val for wop in items_wop]
+            w_val = W_List(w_listtype, items_w)
+        return W_OpArg(color, w_listtype, op.loc, w_val=w_val)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_OpArg:
         items_wop = [self.eval_expr(item, newstyle=True) for item in op.items]
