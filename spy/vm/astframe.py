@@ -422,6 +422,30 @@ class ASTFrame:
             return self._eval_STATIC_TYPE(call)
         args_wop = [self.eval_expr(arg, newstyle=True) for arg in call.args]
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
+
+        # XXX: this is needed to catch errors in case the static type is
+        # dynamic but the object is not callable. Ideally, this should be done
+        # by w_dynamic_call, but we cannot yet. See also the docstring of
+        # callop._dynamic_call_opimpl
+        assert isinstance(w_opimpl, W_FuncAdapter)
+        #
+        # XXX2: the "not self.abstract_interpretation" is needed because
+        # test_dynamic.test_wrong_call assumes that it will raise at runtime,
+        # not compile time. But the ultimate point of this branch is to
+        # achieve the opposite, so we need to fix the test and the code,
+        # eventually.
+        if w_opimpl.is_direct_call() and not self.abstract_interpretation:
+            # some extra sanity checks
+            assert wop_func.color == 'blue', 'indirect calls not supported'
+            if wop_func.w_static_type is B.w_dynamic:
+                # if the static type is `dynamic` and thing is not a function,
+                # it's a TypeError
+                w_func = wop_func.w_val
+                if not isinstance(w_func, W_Func):
+                    t = self.vm.dynamic_type(w_func)
+                    raise SPyTypeError(
+                        f'cannot call objects of type `{t.fqn.human_name}`')
+
         return self.call_opimpl(w_opimpl, [wop_func]+args_wop, call.loc)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_OpArg:
