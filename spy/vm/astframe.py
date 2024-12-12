@@ -301,11 +301,11 @@ class ASTFrame:
         self.call_opimpl(w_opimpl, [wop_target, wop_attr, wop_value], node.loc)
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
-        w_opimpl = self.t.opimpl[node]
-        w_target = self.eval_expr(node.target)
-        w_index = self.eval_expr(node.index)
-        w_value = self.eval_expr(node.value)
-        self.vm.fast_call(w_opimpl, [w_target, w_index, w_value])
+        wop_target = self.eval_expr(node.target, newstyle=True)
+        wop_i = self.eval_expr(node.index, newstyle=True)
+        wop_v = self.eval_expr(node.value, newstyle=True)
+        w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wop_target, wop_i, wop_v])
+        return self.call_opimpl(w_opimpl, [wop_target, wop_i, wop_v], node.loc)
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value, newstyle=True)
