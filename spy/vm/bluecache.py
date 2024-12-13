@@ -1,7 +1,9 @@
 from collections import defaultdict
+import operator
 from typing import TYPE_CHECKING, Optional, Sequence
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
+from spy.textbuilder import Color
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -42,3 +44,21 @@ class BlueCache:
             if self.vm.is_False(self.vm.universal_eq(w_a, w_b)):
                 return False
         return True
+
+    def pp(self, funcname=None):
+        if funcname:
+            for w_func, entries in self.data.items():
+                if funcname in str(w_func.fqn):
+                    self._pp_one(w_func, entries)
+        else:
+            items = sorted(self.data.items(), key=lambda x: len(x[1]))
+            for w_func, entries in items:
+                n = len(entries)
+                print(f'{n:4d} {w_func.fqn}')
+
+    def _pp_one(self, w_func, entries):
+        print(w_func.fqn)
+        for args_w, w_result in entries:
+            args = ', '.join([str(w_arg) for w_arg in args_w])
+            res = str(w_result)
+            print(Color.set('red', args), Color.set('yellow', res))
