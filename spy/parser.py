@@ -56,7 +56,8 @@ class Parser:
                    'this is not supported', node.loc)
 
     def from_py_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
-        mod = spy.ast.Module(filename=self.filename, decls=[])
+        loc = Loc(self.filename, 1, 1, 0, -1)
+        mod = spy.ast.Module(loc=loc, filename=self.filename, decls=[])
         for py_stmt in py_mod.body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
@@ -69,11 +70,11 @@ class Parser:
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef, assign = self.from_py_AnnAssign(py_stmt, is_global=True)
                 assert assign is not None
-                globvar = spy.ast.GlobalVarDef(vardef, assign)
+                globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef, assign)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.Assign):
                 vardef, assign = self.from_py_global_Assign(py_stmt)
-                globvar = spy.ast.GlobalVarDef(vardef, assign)
+                globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef, assign)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.ImportFrom):
                 importdecls = self.from_py_ImportFrom(py_stmt)

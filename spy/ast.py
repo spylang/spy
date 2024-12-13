@@ -67,6 +67,7 @@ del AST
 
 @dataclass(eq=False)
 class Node:
+    loc: Loc = field(repr=False)
 
     def pp(self, hl: Any=None) -> None:
         import spy.ast_dump
@@ -151,7 +152,6 @@ class Decl(Node):
 
 @dataclass(eq=False)
 class GlobalFuncDef(Decl):
-    loc: Loc = field(repr=False)
     funcdef: 'FuncDef'
 
 
@@ -160,20 +160,14 @@ class GlobalVarDef(Decl):
     vardef: 'VarDef'
     assign: 'Assign'
 
-    @property
-    def loc(self) -> Loc:
-        return self.vardef.loc
-
 
 @dataclass(eq=False)
 class GlobalClassDef(Decl):
-    loc: Loc = field(repr=False)
     classdef: 'ClassDef'
 
 
 @dataclass(eq=False)
 class Import(Decl):
-    loc: Loc = field(repr=False)
     loc_asname: Loc
     fqn: FQN
     asname: str
@@ -209,7 +203,6 @@ class Expr(Node):
     # precedence must be overriden by subclasses. The weird type comment is
     # needed to make mypy happy
     precedence = '<Expr.precedence not set>' # type: int # type: ignore
-    loc: Loc = field(repr=False)
 
     def is_const(self) -> bool:
         return isinstance(self, Constant)
@@ -419,17 +412,15 @@ class Not(UnaryOp):
 
 @dataclass(eq=False)
 class Stmt(Node):
-    loc: Loc = field(repr=False)
+    pass
 
 @dataclass(eq=False)
 class FuncArg(Node):
-    loc: Loc = field(repr=False)
     name: str
     type: 'Expr'
 
 @dataclass(eq=False)
 class FuncDef(Stmt):
-    loc: Loc = field(repr=False)
     color: Color
     name: str
     args: list[FuncArg]
@@ -447,7 +438,6 @@ class FuncDef(Stmt):
 
 @dataclass(eq=False)
 class ClassDef(Stmt):
-    loc: Loc = field(repr=False)
     name: str
     is_struct: bool
     fields: list['VarDef']
