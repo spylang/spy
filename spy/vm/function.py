@@ -146,6 +146,8 @@ class W_FuncType(W_Type):
 
 
 class W_Func(W_Object):
+    __spy_storage_category__ = 'reference'
+
     w_functype: W_FuncType
     fqn: FQN
 
