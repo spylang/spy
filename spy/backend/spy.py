@@ -171,6 +171,9 @@ class SPyBackend:
     def fmt_expr_Constant(self, const: ast.Constant) -> str:
         return repr(const.value)
 
+    def fmt_expr_StrConst(self, const: ast.StrConst) -> str:
+        return repr(const.value)
+
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
         return self.fmt_fqn(const.fqn)
 

@@ -298,18 +298,19 @@ class TypeChecker:
 
     def check_expr_Constant(self, const: ast.Constant) -> tuple[Color, W_Type]:
         T = type(const.value)
-        assert T in (int, float, bool, str, NoneType)
+        assert T in (int, float, bool, NoneType)
         if T is int:
             return 'blue', B.w_i32
         elif T is float:
             return 'blue', B.w_f64
         elif T is bool:
             return 'blue', B.w_bool
-        elif T is str:
-            return 'blue', B.w_str
         elif T is NoneType:
             return 'blue', B.w_void
         assert False
+
+    def check_expr_StrConst(self, const: ast.StrConst) -> tuple[Color, W_Type]:
+        return 'blue', B.w_str
 
     def check_expr_FQNConst(self, const: ast.FQNConst) -> tuple[Color, W_Type]:
         # XXX: I think that FQNConst should remember what was its static type

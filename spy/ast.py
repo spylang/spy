@@ -204,8 +204,6 @@ class Expr(Node):
     # needed to make mypy happy
     precedence = '<Expr.precedence not set>' # type: int # type: ignore
 
-    def is_const(self) -> bool:
-        return isinstance(self, Constant)
 
 @dataclass(eq=False)
 class Name(Expr):
@@ -220,6 +218,20 @@ class Auto(Expr):
 class Constant(Expr):
     precedence = 100 # the highest
     value: object
+
+    def __post_init__(self) -> None:
+        assert type(self.value) is not str, 'use StrConst instead'
+
+@dataclass(eq=False)
+class StrConst(Expr):
+    """
+    Like Constant, but for strings.
+
+    The reason we have a specialized node is that we want to use it for fields
+    than MUST be strings, like GetAttr.attr or Assign.target.
+    """
+    precedence = 100 # the highest
+    value: str
 
 @dataclass(eq=False)
 class GetItem(Expr):

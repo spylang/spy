@@ -412,13 +412,15 @@ class Parser:
         return spy.ast.Name(py_node.loc, py_node.id)
 
     def from_py_expr_Constant(self,
-                              py_node: py_ast.Constant) -> spy.ast.Constant:
+                              py_node: py_ast.Constant) -> spy.ast.Expr:
         # according to _ast.pyi, the type of const.value can be one of the
         # following:
         #     None, str, bytes, bool, int, float, complex, Ellipsis
         assert py_node.kind is None  # I don't know what is 'kind' here
         T = type(py_node.value)
-        if T in (int, float, bool, str, NoneType):
+        if T is str:
+            return spy.ast.StrConst(py_node.loc, py_node.value)
+        elif T in (int, float, bool, NoneType):
             return spy.ast.Constant(py_node.loc, py_node.value)
         elif T in (bytes, float, complex, Ellipsis):
             self.error(f'unsupported literal: {py_node.value!r}',

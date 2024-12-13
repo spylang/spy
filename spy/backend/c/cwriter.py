@@ -334,13 +334,10 @@ class CFuncWriter:
             return C.Literal(str(const.value))
         elif T is bool:
             return C.Literal(str(const.value).lower())
-        elif T is str:
-            assert isinstance(const.value, str)
-            return self._fmt_str_literal(const.value)
         else:
             raise NotImplementedError('WIP')
 
-    def _fmt_str_literal(self, s: str) -> C.Expr:
+    def fmt_expr_StrConst(self, const: ast.StrConst) -> C.Expr:
         # SPy string literals must be initialized as C globals. We want to
         # generate the following:
         #
@@ -355,6 +352,7 @@ class CFuncWriter:
         # readable for humans.
         #
         # Emit the global decl
+        s = const.value
         utf8 = s.encode('utf-8')
         v = self.cmod.new_global_var('str')  # SPY_g_str0
         n = len(utf8)
@@ -473,11 +471,10 @@ class CFuncWriter:
         return C.Call(c_name, c_args)
 
     def fmt_getfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
-        assert isinstance(call.args[1], ast.Constant)
+        assert isinstance(call.args[1], ast.StrConst)
         is_byref = str(fqn).startswith("unsafe::getfield_byref")
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
-        assert isinstance(attr, str)
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
         if is_byref:
@@ -487,10 +484,9 @@ class CFuncWriter:
             return c_field
 
     def fmt_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
-        assert isinstance(call.args[1], ast.Constant)
+        assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
-        assert isinstance(attr, str)
         offset = call.args[2]  # ignored
         c_lval = C.PtrField(c_ptr, attr)
         c_rval = self.fmt_expr(call.args[3])

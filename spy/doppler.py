@@ -31,12 +31,15 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
     return ast.FQNConst.
     """
     w_type = vm.dynamic_type(w_val)
-    if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_str, B.w_void):
+    if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void):
         # this is a primitive, we can just use ast.Constant
         value = vm.unwrap(w_val)
         if isinstance(value, FixedInt): # type: ignore
             value = int(value)
         return ast.Constant(loc, value)
+    elif w_type is B.w_str:
+        value = vm.unwrap_str(w_val)
+        return ast.StrConst(loc, value)
 
     # this is a non-primitive prebuilt constant.
     fqn = vm.make_fqn_const(w_val)
@@ -133,7 +136,7 @@ class FuncDoppler:
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         v_target = self.shift_expr(node.target)
-        v_attr = ast.Constant(node.loc, value=node.attr)
+        v_attr = ast.StrConst(node.loc, value=node.attr)
         v_value = self.shift_expr(node.value)
         w_opimpl = self.t.opimpl[node]
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
@@ -243,7 +246,7 @@ class FuncDoppler:
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
         v = self.shift_expr(op.value)
-        v_attr = ast.Constant(op.loc, value=op.attr)
+        v_attr = ast.StrConst(op.loc, value=op.attr)
         w_opimpl = self.t.opimpl[op]
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
@@ -255,7 +258,7 @@ class FuncDoppler:
         if w_opimpl.is_direct_call():
             # sanity check: the redshift MUST have produced a const. If it
             # didn't, the C backend won't be able to compile the call.
-            assert isinstance(newfunc, (ast.FQNConst, ast.Constant))
+            assert isinstance(newfunc, (ast.FQNConst, ast.Constant, ast.StrConst))
             newargs = self._shift_adapter_args(w_opimpl, [newfunc] + newargs)
             newop = ast.Call(call.loc, newfunc, newargs)
             return self.specialize_print_maybe(newop)
@@ -286,6 +289,6 @@ class FuncDoppler:
         assert op in self.t.opimpl
         w_opimpl = self.t.opimpl[op]
         v_target = self.shift_expr(op.target)
-        v_method = ast.Constant(op.loc, value=op.method)
+        v_method = ast.StrConst(op.loc, value=op.method)
         newargs_v = [self.shift_expr(arg) for arg in op.args]
         return self.shift_opimpl(op, w_opimpl, [v_target, v_method] + newargs_v)

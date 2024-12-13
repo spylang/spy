@@ -255,6 +255,20 @@ class TestParser:
             ('this is not supported yet', "42j"),
         )
 
+    def test_StrConst(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            return "hello"
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        Return(
+            value=StrConst(value='hello'),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+
     def test_GetItem(self):
         mod = self.parse("""
         def foo() -> void:

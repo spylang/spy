@@ -246,6 +246,9 @@ class ASTFrame:
         assert T in (int, float, bool, str, NoneType)
         return self.vm.wrap(const.value)
 
+    def eval_expr_StrConst(self, const: ast.StrConst) -> W_Object:
+        return self.vm.wrap(const.value)
+
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_Object:
         w_value = self.vm.lookup_global(const.fqn)
         assert w_value is not None
