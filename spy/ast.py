@@ -259,14 +259,14 @@ class Call(Expr):
 class CallMethod(Expr):
     precedence = 17 # higher than GetAttr
     target: Expr
-    method: str
+    method: StrConst
     args: list[Expr]
 
 @dataclass(eq=False)
 class GetAttr(Expr):
     precedence = 16
     value: Expr
-    attr: str
+    attr: StrConst
 
 # ====== BinOp sub-hierarchy ======
 
@@ -478,25 +478,19 @@ class StmtExpr(Stmt):
 
 @dataclass(eq=False)
 class Assign(Stmt):
-    target_loc: Loc = field(repr=False)
-    target: str
+    target: StrConst
     value: Expr
 
 @dataclass(eq=False)
 class UnpackAssign(Stmt):
-    target_locs: list[Loc] = field(repr=False)
-    targets: list[str]
+    targets: list[StrConst]
     value: Expr
-
-    @property
-    def targlocs(self) -> list[tuple[str, Loc]]:
-        return list(zip(self.targets, self.target_locs))
 
 
 @dataclass(eq=False)
 class SetAttr(Stmt):
     target: Expr
-    attr: str
+    attr: StrConst
     value: Expr
 
 @dataclass(eq=False)

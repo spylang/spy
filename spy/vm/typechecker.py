@@ -213,28 +213,28 @@ class TypeChecker:
     def check_stmt_While(self, while_node: ast.While) -> None:
         self.typecheck_bool(while_node.test)
 
-    def _check_assign(self, target: str, target_loc: Loc,
-                      expr: ast.Expr) -> None:
-        sym = self.funcdef.symtable.lookup(target)
+    def _check_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
+        varname = target.value
+        sym = self.funcdef.symtable.lookup(varname)
         if sym.is_global and sym.color == 'blue':
             err = SPyTypeError("invalid assignment target")
-            err.add('error', f'{sym.name} is const', target_loc)
+            err.add('error', f'{varname} is const', target.loc)
             err.add('note', 'const declared here', sym.loc)
             err.add('note',
-                    f'help: declare it as variable: `var {sym.name} ...`',
+                    f'help: declare it as variable: `var {varname} ...`',
                     sym.loc)
             raise err
 
         if sym.is_local:
-            if target not in self.locals_types_w:
+            if varname not in self.locals_types_w:
                 # first assignment, implicit declaration
                 _, w_valuetype = self.check_expr(expr)
-                self.declare_local(target, w_valuetype)
-            self.typecheck_local(expr, target)
+                self.declare_local(varname, w_valuetype)
+            self.typecheck_local(expr, varname)
 
     def check_stmt_Assign(self, assign: ast.Assign) -> None:
         _, w_valuetype = self.check_expr(assign.value)
-        self._check_assign(assign.target, assign.target_loc, assign.value)
+        self._check_assign(assign.target, assign.value)
 
     def check_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         _, w_valuetype = self.check_expr(unpack.value)
@@ -244,7 +244,7 @@ class TypeChecker:
             err.add('error', f'this is `{t}`', unpack.value.loc)
             raise err
 
-        for i, (target, target_loc) in enumerate(unpack.targlocs):
+        for i, target in enumerate(unpack.targets):
             # we need an expression which has the type of each individual item
             # of the tuple. The easiest way is to synthetize a GetItem
             expr = ast.GetItem(
@@ -255,12 +255,12 @@ class TypeChecker:
                     value = i
                 )
             )
-            self._check_assign(target, target_loc, expr)
+            self._check_assign(target, expr)
 
     def check_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         _, args_wop = self.check_many_exprs(
             ['t', 'a', 'v'],
-            [node.target, node.attr, node.value]
+            [node.target, node.attr.value, node.value]
         )
         w_opimpl = self.vm.call_OP(OP.w_SETATTR, args_wop)
         self.opimpl[node] = w_opimpl
@@ -354,7 +354,7 @@ class TypeChecker:
     def check_expr_GetAttr(self, expr: ast.GetAttr) -> tuple[Color, W_Type]:
         colors, args_wop = self.check_many_exprs(
             ['v', 'a'],
-            [expr.value, expr.attr]
+            [expr.value, expr.attr.value] # hack hack hack
         )
         w_opimpl = self.vm.call_OP(OP.w_GETATTR, args_wop)
         self.opimpl[expr] = w_opimpl
@@ -391,7 +391,7 @@ class TypeChecker:
         n = len(op.args)
         colors, args_wop = self.check_many_exprs(
             ['t', 'm'] + ['v']*n,
-            [op.target, op.method] + op.args  # type: ignore
+            [op.target, op.method.value] + op.args  # type: ignore
         )
         w_opimpl = self.vm.call_OP(OP.w_CALL_METHOD, args_wop)
         self.opimpl[op] = w_opimpl

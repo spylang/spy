@@ -284,10 +284,11 @@ class CFuncWriter:
         pass
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
+        varname = assign.target.value
         v = self.fmt_expr(assign.value)
-        sym = self.w_func.funcdef.symtable.lookup(assign.target)
+        sym = self.w_func.funcdef.symtable.lookup(varname)
         if sym.is_local:
-            target = assign.target
+            target = varname
         else:
             target = sym.fqn.c_name
         self.out.wl(f'{target} = {v};')

@@ -297,7 +297,7 @@ class Parser:
             kind = 'var'
         vardef = spy.ast.VarDef(loc=py_node.loc,
                                 kind=kind,
-                                name=assign.target,
+                                name=assign.target.value,
                                 type=spy.ast.Auto(loc=py_node.loc))
         return vardef, assign
 
@@ -333,8 +333,7 @@ class Parser:
         else:
             assign = spy.ast.Assign(
                 loc = py_node.loc,
-                target_loc = py_node.target.loc,
-                target = py_node.target.id,
+                target = spy.ast.StrConst(py_node.target.loc, py_node.target.id),
                 value = self.from_py_expr(py_node.value)
             )
 
@@ -350,15 +349,14 @@ class Parser:
         if isinstance(py_target, py_ast.Name):
             return spy.ast.Assign(
                 loc = py_node.loc,
-                target_loc = py_target.loc,
-                target = py_target.id,
+                target = spy.ast.StrConst(py_target.loc, py_target.id),
                 value = self.from_py_expr(py_node.value)
             )
         elif isinstance(py_target, py_ast.Attribute):
             return spy.ast.SetAttr(
                 loc = py_node.loc,
                 target = self.from_py_expr(py_target.value),
-                attr = py_target.attr,
+                attr = spy.ast.StrConst(py_target.loc, py_target.attr),
                 value = self.from_py_expr(py_node.value)
             )
         elif isinstance(py_target, py_ast.Subscript):
@@ -370,14 +368,11 @@ class Parser:
             )
         elif isinstance(py_target, py_ast.Tuple):
             targets = []
-            target_locs = []
             for item in py_target.elts:
                 assert isinstance(item, py_ast.Name)
-                targets.append(item.id)
-                target_locs.append(item.loc)
+                targets.append(spy.ast.StrConst(item.loc, item.id))
             return spy.ast.UnpackAssign(
                 loc = py_node.loc,
-                target_locs = target_locs,
                 targets = targets,
                 value = self.from_py_expr(py_node.value)
             )
@@ -437,7 +432,7 @@ class Parser:
     def from_py_expr_Attribute(self,
                                py_node: py_ast.Attribute) -> spy.ast.GetAttr:
         value = self.from_py_expr(py_node.value)
-        attr = py_node.attr
+        attr = spy.ast.StrConst(py_node.loc, py_node.attr)
         return spy.ast.GetAttr(py_node.loc, value, attr)
 
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:

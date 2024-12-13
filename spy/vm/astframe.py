@@ -175,7 +175,7 @@ class ASTFrame:
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         w_val = self.eval_expr(assign.value)
-        self._exec_assign(assign.target, w_val)
+        self._exec_assign(assign.target.value, w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         w_tup = self.eval_expr(unpack.value)
@@ -187,7 +187,7 @@ class ASTFrame:
                 f"Wrong number of values to unpack: expected {exp}, got {got}"
             )
         for target, w_val in zip(unpack.targets, w_tup.items_w):
-            self._exec_assign(target, w_val)
+            self._exec_assign(target.value, w_val)
 
     def _exec_assign(self, target: str, w_val: W_Object) -> None:
         # XXX this is semi-wrong. We need to add an AST field to keep track of
@@ -206,7 +206,7 @@ class ASTFrame:
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         w_opimpl = self.t.opimpl[node]
         w_target = self.eval_expr(node.target)
-        w_attr = self.vm.wrap(node.attr)
+        w_attr = self.eval_expr(node.attr)
         w_value = self.eval_expr(node.value)
         self.vm.fast_call(w_opimpl, [w_target, w_attr, w_value])
 
@@ -330,7 +330,7 @@ class ASTFrame:
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         w_opimpl = self.t.opimpl[op]
         w_target = self.eval_expr(op.target)
-        w_method = self.vm.wrap(op.method)
+        w_method = self.eval_expr(op.method)
         args_w = [self.eval_expr(arg) for arg in op.args]
         return self.vm.fast_call(w_opimpl, [w_target, w_method] + args_w)
 
@@ -348,7 +348,7 @@ class ASTFrame:
         #   2. "specialized" impls, which are called with only [w_val]
         w_opimpl = self.t.opimpl[op]
         w_val = self.eval_expr(op.value)
-        w_attr = self.vm.wrap(op.attr)
+        w_attr = self.eval_expr(op.attr)
         w_res = self.vm.fast_call(w_opimpl, [w_val, w_attr])
         return w_res
 

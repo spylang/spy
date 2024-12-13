@@ -315,7 +315,7 @@ class TestParser:
         """
         assign_expected = """
         Assign(
-            target='x',
+            target=StrConst(value='x'),
             value=Constant(value=42),
         )
         """
@@ -337,7 +337,7 @@ class TestParser:
                         type=Name(id='i32'),
                     ),
                     assign=Assign(
-                        target='x',
+                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -361,7 +361,7 @@ class TestParser:
                         type=Name(id='i32'),
                     ),
                     assign=Assign(
-                        target='x',
+                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -385,7 +385,7 @@ class TestParser:
                         type=Auto(),
                     ),
                     assign=Assign(
-                        target='x',
+                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -409,7 +409,7 @@ class TestParser:
                         type=Auto(),
                     ),
                     assign=Assign(
-                        target='x',
+                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -583,7 +583,7 @@ class TestParser:
         stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Assign(
-            target='x',
+            target=StrConst(value='x'),
             value=Constant(value=42),
         )
         """
@@ -620,9 +620,9 @@ class TestParser:
         expected = """
         UnpackAssign(
             targets=[
-                'a',
-                'b',
-                'c',
+                StrConst(value='a'),
+                StrConst(value='b'),
+                StrConst(value='c'),
             ],
             value=Name(id='x'),
         )
@@ -670,7 +670,7 @@ class TestParser:
         Return(
             value=CallMethod(
                 target=Name(id='a'),
-                method='b',
+                method=StrConst(value='b'),
                 args=[
                     Constant(value=1),
                     Constant(value=2),
@@ -788,11 +788,12 @@ class TestParser:
         assert isclass(nodes[3], 'Name') and nodes[3].id == 'void'
         assert isclass(nodes[4], 'If')
         assert isclass(nodes[5], 'Constant') and nodes[5].value is True
-        assert isclass(nodes[6], 'Assign') and nodes[6].target == 'x'
-        assert isclass(nodes[7], 'Add')
-        assert isclass(nodes[8], 'Name') and nodes[8].id == 'y'
-        assert isclass(nodes[9], 'Constant') and nodes[9].value == 1
-        assert len(nodes) == 10
+        assert isclass(nodes[6], 'Assign')
+        assert isclass(nodes[7], 'StrConst') and nodes[7].value == 'x'
+        assert isclass(nodes[8], 'Add')
+        assert isclass(nodes[9], 'Name') and nodes[9].id == 'y'
+        assert isclass(nodes[10], 'Constant') and nodes[10].value == 1
+        assert len(nodes) == 11
         #
         nodes2 = list(mod.walk(ast.Stmt))
         expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
@@ -847,7 +848,7 @@ class TestParser:
         StmtExpr(
             value=GetAttr(
                 value=Name(id='a'),
-                attr='b',
+                attr=StrConst(value='b'),
             ),
         )
         """
@@ -862,7 +863,7 @@ class TestParser:
         expected = """
         SetAttr(
             target=Name(id='a'),
-            attr='b',
+            attr=StrConst(value='b'),
             value=Constant(value=42),
         )
         """

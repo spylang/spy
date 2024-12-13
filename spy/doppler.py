@@ -127,7 +127,7 @@ class FuncDoppler:
         return [vardef.replace(type=newtype)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        sym = self.funcdef.symtable.lookup(assign.target)
+        sym = self.funcdef.symtable.lookup(assign.target.value)
         if sym.color == 'red':
             newvalue = self.shift_expr(assign.value)
             return [assign.replace(value=newvalue)]
@@ -136,7 +136,7 @@ class FuncDoppler:
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         v_target = self.shift_expr(node.target)
-        v_attr = ast.StrConst(node.loc, value=node.attr)
+        v_attr = self.shift_expr(node.attr)
         v_value = self.shift_expr(node.value)
         w_opimpl = self.t.opimpl[node]
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
@@ -246,7 +246,7 @@ class FuncDoppler:
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
         v = self.shift_expr(op.value)
-        v_attr = ast.StrConst(op.loc, value=op.attr)
+        v_attr = self.shift_expr(op.attr)
         w_opimpl = self.t.opimpl[op]
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
@@ -289,6 +289,6 @@ class FuncDoppler:
         assert op in self.t.opimpl
         w_opimpl = self.t.opimpl[op]
         v_target = self.shift_expr(op.target)
-        v_method = ast.StrConst(op.loc, value=op.method)
+        v_method = self.shift_expr(op.method)
         newargs_v = [self.shift_expr(arg) for arg in op.args]
         return self.shift_opimpl(op, w_opimpl, [v_target, v_method] + newargs_v)
