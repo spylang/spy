@@ -12,6 +12,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
+from spy.vm.list import W_ListType
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.func_adapter import W_FuncAdapter
@@ -458,7 +459,7 @@ class SPyVM:
     def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         return self.universal_eq(w_a, w_b).not_(self)
 
-    def make_list_type(self, w_T: W_Type) -> W_Type:
+    def make_list_type(self, w_T: W_Type) -> W_ListType:
         w_res = self.getitem(B.w_list, w_T)
-        assert isinstance(w_res, W_Type)
+        assert isinstance(w_res, W_ListType)
         return w_res

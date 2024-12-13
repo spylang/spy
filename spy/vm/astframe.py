@@ -63,7 +63,7 @@ class ASTFrame:
         return f'<{self.color} ASTFrame for {self.w_func.fqn}{extra}>'
 
     @property
-    def abstract_interpretation(self):
+    def abstract_interpretation(self) -> bool:
         return self.color == 'blue'
 
     @property
@@ -247,7 +247,7 @@ class ASTFrame:
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wop_tup = self.eval_expr(unpack.value)
         if wop_tup.w_static_type is not B.w_tuple:
-            t = w_valuetype.fqn.human_name
+            t = wop_tup.w_static_type.fqn.human_name
             err = SPyTypeError(f'`{t}` does not support unpacking')
             err.add('error', f'this is `{t}`', unpack.value.loc)
             raise err
@@ -318,7 +318,7 @@ class ASTFrame:
         wop_i = self.eval_expr(node.index)
         wop_v = self.eval_expr(node.value)
         w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wop_target, wop_i, wop_v])
-        return self.call_opimpl(w_opimpl, [wop_target, wop_i, wop_v], node.loc)
+        self.call_opimpl(w_opimpl, [wop_target, wop_i, wop_v], node.loc)
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
