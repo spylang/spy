@@ -146,6 +146,8 @@ class W_FuncType(W_Type):
 
 
 class W_Func(W_Object):
+    __spy_storage_category__ = 'reference'
+
     w_functype: W_FuncType
     fqn: FQN
 
@@ -155,6 +157,20 @@ class W_Func(W_Object):
         Just a shortcut
         """
         return self.w_functype.color
+
+    def is_pure(self) -> bool:
+        """
+        The result of pure functions depend only on their argument,
+        without side effects.
+
+        This means that if we call a red pure function with blue arguments,
+        the result can be blue.
+
+        Maybe the proper thing to do is to introduce a new color and store
+        this info on the w_functype.
+        """
+        # this is a hack, but good enough to constant-fold arithmetic ops
+        return self.fqn.modname == 'operator'
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype
@@ -250,7 +266,7 @@ class W_ASTFunc(W_Func):
 
     def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
-        frame = ASTFrame(vm, self)
+        frame = ASTFrame(vm, self, color='red')
         return frame.run(args_w)
 
 

@@ -12,6 +12,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
+from spy.vm.list import W_ListType
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.func_adapter import W_FuncAdapter
@@ -241,10 +242,11 @@ class SPyVM:
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
 
-    def is_True(self, w_obj: W_Object) -> bool:
+    def is_True(self, w_obj: W_Bool) -> bool:
+        assert isinstance(w_obj, W_Bool)
         return w_obj is B.w_True
 
-    def is_False(self, w_obj: W_Object) -> bool:
+    def is_False(self, w_obj: W_Bool) -> bool:
         return w_obj is B.w_False
 
     def wrap(self, value: Any) -> W_Object:
@@ -368,16 +370,16 @@ class SPyVM:
         return w_func.raw_call(self, args_w)
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = W_OpArg(self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = W_OpArg('red', self.dynamic_type(w_a), Loc.here(-2))
+        wop_b = W_OpArg('red', self.dynamic_type(w_b), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = W_OpArg(self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = W_OpArg('red', self.dynamic_type(w_a), Loc.here(-2))
+        wop_b = W_OpArg('red', self.dynamic_type(w_b), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_NE, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
@@ -387,8 +389,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wop_obj = W_OpArg(self.dynamic_type(w_obj), Loc.here(-2))
-        wop_i = W_OpArg(self.dynamic_type(w_i), Loc.here(-2))
+        wop_obj = W_OpArg('red', self.dynamic_type(w_obj), Loc.here(-2))
+        wop_i = W_OpArg('red', self.dynamic_type(w_i), Loc.here(-2))
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return self.fast_call(w_opimpl, [w_obj, w_i])
 
@@ -438,8 +440,8 @@ class SPyVM:
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
             return self.fast_call(w_oparg_eq, [w_a, w_b])  # type: ignore
 
-        wop_a = W_OpArg(self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = W_OpArg('red', self.dynamic_type(w_a), Loc.here(-2))
+        wop_b = W_OpArg('red', self.dynamic_type(w_b), Loc.here(-2))
         try:
             w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         except SPyTypeError:
@@ -457,7 +459,7 @@ class SPyVM:
     def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         return self.universal_eq(w_a, w_b).not_(self)
 
-    def make_list_type(self, w_T: W_Type) -> W_Type:
+    def make_list_type(self, w_T: W_Type) -> W_ListType:
         w_res = self.getitem(B.w_list, w_T)
-        assert isinstance(w_res, W_Type)
+        assert isinstance(w_res, W_ListType)
         return w_res

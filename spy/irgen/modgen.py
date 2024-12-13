@@ -47,7 +47,7 @@ class ModuleGen:
         modinit_funcdef = self.make_modinit()
         closure = ()
         w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
-        frame = ASTFrame(self.vm, w_INIT)
+        frame = ASTFrame(self.vm, w_INIT, color='red')
         #
 
         # automatically predeclare types as ForwardRef
@@ -112,11 +112,11 @@ class ModuleGen:
         fqn = FQN([self.modname, vardef.name])
         if isinstance(vardef.type, ast.Auto):
             # type inference
-            w_val = frame.eval_expr(assign.value)
-            self.vm.add_global(fqn, w_val)
+            wop = frame.eval_expr(assign.value)
+            self.vm.add_global(fqn, wop.w_val)
         else:
             # eval the type and use it in the globals declaration
             w_type = frame.eval_expr_type(vardef.type)
-            w_val = frame.eval_expr(assign.value)
-            assert self.vm.isinstance(w_val, w_type)
-            self.vm.add_global(fqn, w_val)
+            wop = frame.eval_expr(assign.value)
+            assert self.vm.isinstance(wop.w_val, w_type)
+            self.vm.add_global(fqn, wop.w_val)
