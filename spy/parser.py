@@ -357,7 +357,6 @@ class Parser:
         elif isinstance(py_target, py_ast.Attribute):
             return spy.ast.SetAttr(
                 loc = py_node.loc,
-                target_loc = py_target.value.loc,
                 target = self.from_py_expr(py_target.value),
                 attr = py_target.attr,
                 value = self.from_py_expr(py_node.value)
@@ -365,7 +364,6 @@ class Parser:
         elif isinstance(py_target, py_ast.Subscript):
             return spy.ast.SetItem(
                 loc = py_node.loc,
-                target_loc = py_target.value.loc,
                 target = self.from_py_expr(py_target.value),
                 index = self.from_py_expr(py_target.slice),
                 value = self.from_py_expr(py_node.value)

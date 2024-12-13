@@ -483,14 +483,12 @@ class UnpackAssign(Stmt):
 
 @dataclass(eq=False)
 class SetAttr(Stmt):
-    target_loc: Loc = field(repr=False)
     target: Expr
     attr: str
     value: Expr
 
 @dataclass(eq=False)
 class SetItem(Stmt):
-    target_loc: Loc = field(repr=False)
     target: Expr
     index: Expr
     value: Expr
