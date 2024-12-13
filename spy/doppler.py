@@ -10,7 +10,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 
@@ -47,23 +47,21 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
     return ast.FQNConst(loc, fqn)
 
 
-class FuncDoppler:
+class FuncDoppler(ASTFrame):
     """
     Perform a redshift on a W_ASTFunc
     """
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
-        self.vm = vm
-        self.w_func = w_func
-        self.funcdef = w_func.funcdef
-        self.blue_frame = ASTFrame(vm, w_func, color='blue')
-        self.t = self.blue_frame.t
+        super().__init__(vm, w_func, color='blue')
+        self.shifted_expr = {}
 
     def redshift(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
         new_body = []
         for stmt in funcdef.body:
             new_body += self.shift_stmt(stmt)
+
         new_funcdef = funcdef.replace(body=new_body)
         #
         new_fqn = self.w_func.fqn
@@ -81,35 +79,46 @@ class FuncDoppler:
 
     # =========
 
+    def shift_expr(self, expr: ast.Expr,
+                       *,
+                       varname: Optional[str] = None,
+                       ) -> ast.Expr:
+        self.eval_expr(expr, varname=varname)
+        return self.shifted_expr[expr]
+
+    def eval_expr(self, expr: ast.Expr,
+                   *,
+                   varname: Optional[str] = None,
+                   ) -> W_OpArg:
+        wop = super().eval_expr(expr, varname=varname)
+
+        ## w_typeconv = self.blue_frame.typecheck_maybe(wop, varname)
+        ## if wop.color == 'blue':
+        ##     return make_const(self.vm, expr.loc, wop.w_val)
+        ## res = magic_dispatch(self, 'shift_expr', expr)
+        ## if w_typeconv:
+        ##     # converters are used only for local variables and if/while
+        ##     # conditions (see TypeChecker.expr_conv). Probably we could just
+        ##     # use an W_OpImpl instead?
+        ##     return ast.Call(
+        ##         loc = res.loc,
+        ##         func = ast.FQNConst(
+        ##             loc = res.loc,
+        ##             fqn = w_typeconv.fqn
+        ##         ),
+        ##         args = [res]
+        ##     )
+        ## else:
+        ##     return res
+
+        new_expr = self.shifted_expr[expr]
+        return wop
+
+    # ==== statements ====
+
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
         self.t.check_stmt(stmt)
         return magic_dispatch(self, 'shift_stmt', stmt)
-
-    def shift_expr(self, expr: ast.Expr,
-                   *,
-                   varname: Optional[str] = None,
-                   ) -> ast.Expr:
-        wop = self.blue_frame.eval_expr(expr)
-        w_typeconv = self.blue_frame.typecheck_maybe(wop, varname)
-        if wop.color == 'blue':
-            return make_const(self.vm, expr.loc, wop.w_val)
-        res = magic_dispatch(self, 'shift_expr', expr)
-        if w_typeconv:
-            # converters are used only for local variables and if/while
-            # conditions (see TypeChecker.expr_conv). Probably we could just
-            # use an W_OpImpl instead?
-            return ast.Call(
-                loc = res.loc,
-                func = ast.FQNConst(
-                    loc = res.loc,
-                    fqn = w_typeconv.fqn
-                ),
-                args = [res]
-            )
-        else:
-            return res
-
-    # ==== statements ====
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         newvalue = self.shift_expr(ret.value, varname='@return')
@@ -213,8 +222,9 @@ class FuncDoppler:
             real_args.append(arg)
         return real_args
 
-    def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
-        return const
+    def eval_expr_Constant(self, const: ast.Constant) -> W_OpArg:
+        self.shifted_expr[const] = const
+        return super().eval_expr_Constant(const)
 
     def shift_expr_Name(self, name: ast.Name) -> ast.Expr:
         return name
