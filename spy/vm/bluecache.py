@@ -45,7 +45,7 @@ class BlueCache:
                 return False
         return True
 
-    def pp(self, funcname=None):
+    def pp(self, funcname: Optional[str] = None) -> None:
         if funcname:
             for w_func, entries in self.data.items():
                 if funcname in str(w_func.fqn):
@@ -56,7 +56,7 @@ class BlueCache:
                 n = len(entries)
                 print(f'{n:4d} {w_func.fqn}')
 
-    def _pp_one(self, w_func, entries):
+    def _pp_one(self, w_func: W_Func, entries: list[ENTRY]) -> None:
         print(w_func.fqn)
         for args_w, w_result in entries:
             args = ', '.join([str(w_arg) for w_arg in args_w])

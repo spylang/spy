@@ -1,4 +1,5 @@
 import pytest
+from typing import no_type_check
 from spy.fqn import FQN
 from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
@@ -35,6 +36,7 @@ class TestFunction:
         w_res = vm.eq(w_ft1, w_ft2)
         assert w_res is B.w_True
 
+    @no_type_check
     def test_function_eq(self):
         vm = SPyVM()
         w_functype = W_FuncType.parse('def() -> i32')
