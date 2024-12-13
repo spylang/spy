@@ -149,7 +149,7 @@ class ASTFrame:
 
     # "newtyle" is a temporary param, I want to make sure that tests crash hard
     # in old calling locations
-    def eval_expr(self, expr: ast.Expr, *, newstyle,
+    def eval_expr(self, expr: ast.Expr, *,
                   varname: Optional[str] = None
                   ) -> W_OpArg:
         self.t.check_expr(expr) # XXX kill this
@@ -180,7 +180,7 @@ class ASTFrame:
             )
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
-        wop = self.eval_expr(expr, newstyle=True)
+        wop = self.eval_expr(expr)
         w_val = wop.w_val
         if isinstance(w_val, W_Type):
             self.vm.make_fqn_const(w_val)
@@ -195,7 +195,7 @@ class ASTFrame:
         pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        wop = self.eval_expr(ret.value, newstyle=True, varname='@return')
+        wop = self.eval_expr(ret.value, varname='@return')
         raise Return(wop.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
@@ -241,11 +241,11 @@ class ASTFrame:
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         sym = self.funcdef.symtable.lookup(assign.target)
         varname = assign.target.value if sym.is_local else None
-        wop = self.eval_expr(assign.value, newstyle=True, varname=varname)
+        wop = self.eval_expr(assign.value, varname=varname)
         self._exec_assign(assign.target, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        wop_tup = self.eval_expr(unpack.value, newstyle=True)
+        wop_tup = self.eval_expr(unpack.value)
         if wop_tup.w_static_type is not B.w_tuple:
             t = w_valuetype.fqn.human_name
             err = SPyTypeError(f'`{t}` does not support unpacking')
@@ -271,7 +271,7 @@ class ASTFrame:
                     value = i
                 )
             )
-            wop_item = self.eval_expr(expr, newstyle=True, varname=target)
+            wop_item = self.eval_expr(expr, varname=target)
             self._exec_assign(target, wop_item.w_val)
 
     def check_assign_target(self, target: StrConst) -> None:
@@ -304,9 +304,9 @@ class ASTFrame:
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         w_attr = self.vm.wrap(node.attr.value) # XXX maybe just eval op.attr?
-        wop_target = self.eval_expr(node.target, newstyle=True)
+        wop_target = self.eval_expr(node.target)
         wop_attr = W_OpArg('blue', B.w_str, node.loc, w_val=w_attr)
-        wop_value = self.eval_expr(node.value, newstyle=True)
+        wop_value = self.eval_expr(node.value)
         w_opimpl = self.vm.call_OP(
             OP.w_SETATTR,
             [wop_target, wop_attr, wop_value]
@@ -314,17 +314,17 @@ class ASTFrame:
         self.call_opimpl(w_opimpl, [wop_target, wop_attr, wop_value], node.loc)
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
-        wop_target = self.eval_expr(node.target, newstyle=True)
-        wop_i = self.eval_expr(node.index, newstyle=True)
-        wop_v = self.eval_expr(node.value, newstyle=True)
+        wop_target = self.eval_expr(node.target)
+        wop_i = self.eval_expr(node.index)
+        wop_v = self.eval_expr(node.value)
         w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wop_target, wop_i, wop_v])
         return self.call_opimpl(w_opimpl, [wop_target, wop_i, wop_v], node.loc)
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
-        self.eval_expr(stmt.value, newstyle=True)
+        self.eval_expr(stmt.value)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        wop_cond = self.eval_expr(if_node.test, newstyle=True, varname='@if')
+        wop_cond = self.eval_expr(if_node.test, varname='@if')
         assert isinstance(wop_cond.w_val, W_Bool)
         if self.vm.is_True(wop_cond.w_val):
             for stmt in if_node.then_body:
@@ -335,8 +335,7 @@ class ASTFrame:
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
-            wop_cond = self.eval_expr(while_node.test, newstyle=True,
-                                      varname='@while')
+            wop_cond = self.eval_expr(while_node.test, varname='@while')
             assert isinstance(wop_cond.w_val, W_Bool)
             if self.vm.is_False(wop_cond.w_val):
                 break
@@ -412,8 +411,8 @@ class ASTFrame:
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_OpArg:
         w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        wop_l = self.eval_expr(binop.left, newstyle=True)
-        wop_r = self.eval_expr(binop.right, newstyle=True)
+        wop_l = self.eval_expr(binop.left)
+        wop_r = self.eval_expr(binop.right)
         w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
         return self.call_opimpl(w_opimpl, [wop_l, wop_r], binop.loc)
 
@@ -429,11 +428,11 @@ class ASTFrame:
     eval_expr_GtE = eval_expr_BinOp
 
     def eval_expr_Call(self, call: ast.Call) -> W_OpArg:
-        wop_func = self.eval_expr(call.func, newstyle=True)
+        wop_func = self.eval_expr(call.func)
         # STATIC_TYPE is special, because it doesn't evaluate its arguments
         if wop_func.color == 'blue' and wop_func.w_val is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(call)
-        args_wop = [self.eval_expr(arg, newstyle=True) for arg in call.args]
+        args_wop = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
 
         # XXX: this is needed to catch errors in case the static type is
@@ -465,7 +464,7 @@ class ASTFrame:
         assert len(call.args) == 1
         arg = call.args[0]
         if isinstance(arg, ast.Name):
-            wop = self.eval_expr(arg, newstyle=True)
+            wop = self.eval_expr(arg)
             w_argtype = wop.w_static_type
             return W_OpArg.from_w_obj(self.vm, w_argtype)
         msg = 'STATIC_TYPE works only on simple expressions'
@@ -474,9 +473,9 @@ class ASTFrame:
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         w_method = self.vm.wrap(op.method.value) # XXX maybe just eval op.method
-        wop_target = self.eval_expr(op.target, newstyle=True)
+        wop_target = self.eval_expr(op.target)
         wop_method = W_OpArg('blue', B.w_str, op.loc, w_val=w_method)
-        args_wop = [self.eval_expr(arg, newstyle=True) for arg in op.args]
+        args_wop = [self.eval_expr(arg) for arg in op.args]
         w_opimpl = self.vm.call_OP(
             OP.w_CALL_METHOD,
             [wop_target, wop_method] + args_wop
@@ -488,14 +487,14 @@ class ASTFrame:
         )
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_OpArg:
-        wop_obj = self.eval_expr(op.value, newstyle=True)
-        wop_i = self.eval_expr(op.index, newstyle=True)
+        wop_obj = self.eval_expr(op.value)
+        wop_i = self.eval_expr(op.index)
         w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wop_obj, wop_i])
         return self.call_opimpl(w_opimpl, [wop_obj, wop_i], op.loc)
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_OpArg:
         w_attr = self.vm.wrap(op.attr.value) # XXX maybe just eval op.attr?
-        wop_obj = self.eval_expr(op.value, newstyle=True)
+        wop_obj = self.eval_expr(op.value)
         wop_attr = W_OpArg('blue', B.w_str, op.loc, w_val=w_attr)
         w_opimpl = self.vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
         return self.call_opimpl(w_opimpl, [wop_obj, wop_attr], op.loc)
@@ -505,7 +504,7 @@ class ASTFrame:
         w_itemtype = None
         color: Color = 'red' # XXX should be blue?
         for item in op.items:
-            wop_item = self.eval_expr(item, newstyle=True)
+            wop_item = self.eval_expr(item)
             items_wop.append(wop_item)
             color = maybe_blue(color, wop_item.color)
             if w_itemtype is None:
@@ -523,7 +522,7 @@ class ASTFrame:
         return W_OpArg(color, w_listtype, op.loc, w_val=w_val)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_OpArg:
-        items_wop = [self.eval_expr(item, newstyle=True) for item in op.items]
+        items_wop = [self.eval_expr(item) for item in op.items]
         colors = [wop.color for wop in items_wop]
         color = maybe_blue(*colors)
         if color == 'red' and self.abstract_interpretation:

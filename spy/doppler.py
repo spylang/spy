@@ -89,7 +89,7 @@ class FuncDoppler:
                    *,
                    varname: Optional[str] = None,
                    ) -> ast.Expr:
-        wop = self.blue_frame.eval_expr(expr, newstyle=True)
+        wop = self.blue_frame.eval_expr(expr)
         w_typeconv = self.blue_frame.typecheck_maybe(wop, varname)
         if wop.color == 'blue':
             return make_const(self.vm, expr.loc, wop.w_val)
