@@ -112,11 +112,11 @@ class ModuleGen:
         fqn = FQN([self.modname, vardef.name])
         if isinstance(vardef.type, ast.Auto):
             # type inference
-            wop = frame.eval_expr(assign.value, newstyle=True)
+            wop = frame.eval_expr(assign.value)
             self.vm.add_global(fqn, wop.w_val)
         else:
             # eval the type and use it in the globals declaration
             w_type = frame.eval_expr_type(vardef.type)
-            wop = frame.eval_expr(assign.value, newstyle=True)
+            wop = frame.eval_expr(assign.value)
             assert self.vm.isinstance(wop.w_val, w_type)
             self.vm.add_global(fqn, wop.w_val)
