@@ -107,7 +107,9 @@ class ASTFrame:
         self.t.check_stmt(stmt)
         return magic_dispatch(self, 'exec_stmt', stmt)
 
-    def eval_expr(self, expr: ast.Expr) -> W_OpArg:
+    # the xxx is a temporary param, I want to make sure that tests crash hard
+    # in old calling locations
+    def eval_expr(self, expr: ast.Expr, *, newstyle) -> W_OpArg:
         self.t.check_expr(expr)
         w_typeconv = self.t.expr_conv.get(expr)
         wop = magic_dispatch(self, 'eval_expr', expr)
@@ -119,7 +121,7 @@ class ASTFrame:
             return self.vm.fast_call(w_typeconv, [w_val])
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
-        wop = self.eval_expr(expr)
+        wop = self.eval_expr(expr, newstyle=True)
         w_val = wop.w_val
         if isinstance(w_val, W_Type):
             self.vm.make_fqn_const(w_val)
@@ -134,7 +136,7 @@ class ASTFrame:
         pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        wop = self.eval_expr(ret.value)
+        wop = self.eval_expr(ret.value, newstyle=True)
         raise Return(wop.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
@@ -178,8 +180,8 @@ class ASTFrame:
         self.t.lazy_check_VarDef(vardef, w_type)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        w_val = self.eval_expr(assign.value)
-        self._exec_assign(assign.target.value, w_val)
+        wop = self.eval_expr(assign.value, newstyle=True)
+        self._exec_assign(assign.target.value, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         w_tup = self.eval_expr(unpack.value)
@@ -278,8 +280,8 @@ class ASTFrame:
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_OpArg:
         w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        wop_l = self.eval_expr(binop.left)
-        wop_r = self.eval_expr(binop.right)
+        wop_l = self.eval_expr(binop.left, newstyle=True)
+        wop_r = self.eval_expr(binop.right, newstyle=True)
         w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
         w_res = self.vm.fast_call(w_opimpl, [wop_l.w_val, wop_r.w_val])
         color = maybe_blue(wop_l.color, wop_r.color)
