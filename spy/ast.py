@@ -204,8 +204,6 @@ class Expr(Node):
     # needed to make mypy happy
     precedence = '<Expr.precedence not set>' # type: int # type: ignore
 
-    def is_const(self) -> bool:
-        return isinstance(self, Constant)
 
 @dataclass(eq=False)
 class Name(Expr):
@@ -220,6 +218,20 @@ class Auto(Expr):
 class Constant(Expr):
     precedence = 100 # the highest
     value: object
+
+    def __post_init__(self) -> None:
+        assert type(self.value) is not str, 'use StrConst instead'
+
+@dataclass(eq=False)
+class StrConst(Expr):
+    """
+    Like Constant, but for strings.
+
+    The reason we have a specialized node is that we want to use it for fields
+    than MUST be strings, like GetAttr.attr or Assign.target.
+    """
+    precedence = 100 # the highest
+    value: str
 
 @dataclass(eq=False)
 class GetItem(Expr):
@@ -247,14 +259,14 @@ class Call(Expr):
 class CallMethod(Expr):
     precedence = 17 # higher than GetAttr
     target: Expr
-    method: str
+    method: StrConst
     args: list[Expr]
 
 @dataclass(eq=False)
 class GetAttr(Expr):
     precedence = 16
     value: Expr
-    attr: str
+    attr: StrConst
 
 # ====== BinOp sub-hierarchy ======
 
@@ -466,31 +478,23 @@ class StmtExpr(Stmt):
 
 @dataclass(eq=False)
 class Assign(Stmt):
-    target_loc: Loc = field(repr=False)
-    target: str
+    target: StrConst
     value: Expr
 
 @dataclass(eq=False)
 class UnpackAssign(Stmt):
-    target_locs: list[Loc] = field(repr=False)
-    targets: list[str]
+    targets: list[StrConst]
     value: Expr
-
-    @property
-    def targlocs(self) -> list[tuple[str, Loc]]:
-        return list(zip(self.targets, self.target_locs))
 
 
 @dataclass(eq=False)
 class SetAttr(Stmt):
-    target_loc: Loc = field(repr=False)
     target: Expr
-    attr: str
+    attr: StrConst
     value: Expr
 
 @dataclass(eq=False)
 class SetItem(Stmt):
-    target_loc: Loc = field(repr=False)
     target: Expr
     index: Expr
     value: Expr

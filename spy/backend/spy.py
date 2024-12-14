@@ -121,17 +121,18 @@ class SPyBackend:
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
         v = self.fmt_expr(assign.value)
-        self.wl(f'{assign.target} = {v}')
+        self.wl(f'{assign.target.value} = {v}')
 
     def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        targets = ', '.join(unpack.targets)
+        targets = ', '.join([t.value for t in unpack.targets])
         v = self.fmt_expr(unpack.value)
         self.wl(f'{targets} = {v}')
 
     def emit_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         t = self.fmt_expr(node.target)
+        a = node.attr.value
         v = self.fmt_expr(node.value)
-        self.wl(f'{t}.{node.attr} = {v}')
+        self.wl(f'{t}.{a} = {v}')
 
     def emit_stmt_SetItem(self, node: ast.SetItem) -> None:
         t = self.fmt_expr(node.target)
@@ -169,6 +170,9 @@ class SPyBackend:
     # expressions
 
     def fmt_expr_Constant(self, const: ast.Constant) -> str:
+        return repr(const.value)
+
+    def fmt_expr_StrConst(self, const: ast.StrConst) -> str:
         return repr(const.value)
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
@@ -246,7 +250,7 @@ class SPyBackend:
 
     def fmt_expr_CallMethod(self, callm: ast.CallMethod) -> str:
         t = self.fmt_expr(callm.target)
-        m = callm.method
+        m = callm.method.value
         arglist = [self.fmt_expr(arg) for arg in callm.args]
         args = ', '.join(arglist)
         return f'{t}.{m}({args})'
@@ -258,7 +262,7 @@ class SPyBackend:
 
     def fmt_expr_GetAttr(self, node: ast.GetAttr) -> str:
         v = self.fmt_expr(node.value)
-        return f'{v}.{node.attr}'
+        return f'{v}.{node.attr.value}'
 
     def fmt_expr_List(self, node: ast.List) -> str:
         itemlist = [self.fmt_expr(it) for it in node.items]

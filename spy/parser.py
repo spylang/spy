@@ -297,7 +297,7 @@ class Parser:
             kind = 'var'
         vardef = spy.ast.VarDef(loc=py_node.loc,
                                 kind=kind,
-                                name=assign.target,
+                                name=assign.target.value,
                                 type=spy.ast.Auto(loc=py_node.loc))
         return vardef, assign
 
@@ -333,8 +333,7 @@ class Parser:
         else:
             assign = spy.ast.Assign(
                 loc = py_node.loc,
-                target_loc = py_node.target.loc,
-                target = py_node.target.id,
+                target = spy.ast.StrConst(py_node.target.loc, py_node.target.id),
                 value = self.from_py_expr(py_node.value)
             )
 
@@ -350,36 +349,30 @@ class Parser:
         if isinstance(py_target, py_ast.Name):
             return spy.ast.Assign(
                 loc = py_node.loc,
-                target_loc = py_target.loc,
-                target = py_target.id,
+                target = spy.ast.StrConst(py_target.loc, py_target.id),
                 value = self.from_py_expr(py_node.value)
             )
         elif isinstance(py_target, py_ast.Attribute):
             return spy.ast.SetAttr(
                 loc = py_node.loc,
-                target_loc = py_target.value.loc,
                 target = self.from_py_expr(py_target.value),
-                attr = py_target.attr,
+                attr = spy.ast.StrConst(py_target.loc, py_target.attr),
                 value = self.from_py_expr(py_node.value)
             )
         elif isinstance(py_target, py_ast.Subscript):
             return spy.ast.SetItem(
                 loc = py_node.loc,
-                target_loc = py_target.value.loc,
                 target = self.from_py_expr(py_target.value),
                 index = self.from_py_expr(py_target.slice),
                 value = self.from_py_expr(py_node.value)
             )
         elif isinstance(py_target, py_ast.Tuple):
             targets = []
-            target_locs = []
             for item in py_target.elts:
                 assert isinstance(item, py_ast.Name)
-                targets.append(item.id)
-                target_locs.append(item.loc)
+                targets.append(spy.ast.StrConst(item.loc, item.id))
             return spy.ast.UnpackAssign(
                 loc = py_node.loc,
-                target_locs = target_locs,
                 targets = targets,
                 value = self.from_py_expr(py_node.value)
             )
@@ -414,13 +407,15 @@ class Parser:
         return spy.ast.Name(py_node.loc, py_node.id)
 
     def from_py_expr_Constant(self,
-                              py_node: py_ast.Constant) -> spy.ast.Constant:
+                              py_node: py_ast.Constant) -> spy.ast.Expr:
         # according to _ast.pyi, the type of const.value can be one of the
         # following:
         #     None, str, bytes, bool, int, float, complex, Ellipsis
         assert py_node.kind is None  # I don't know what is 'kind' here
         T = type(py_node.value)
-        if T in (int, float, bool, str, NoneType):
+        if T is str:
+            return spy.ast.StrConst(py_node.loc, py_node.value)
+        elif T in (int, float, bool, NoneType):
             return spy.ast.Constant(py_node.loc, py_node.value)
         elif T in (bytes, float, complex, Ellipsis):
             self.error(f'unsupported literal: {py_node.value!r}',
@@ -437,7 +432,7 @@ class Parser:
     def from_py_expr_Attribute(self,
                                py_node: py_ast.Attribute) -> spy.ast.GetAttr:
         value = self.from_py_expr(py_node.value)
-        attr = py_node.attr
+        attr = spy.ast.StrConst(py_node.loc, py_node.attr)
         return spy.ast.GetAttr(py_node.loc, value, attr)
 
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
