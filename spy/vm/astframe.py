@@ -385,8 +385,8 @@ class ASTFrame:
             assert w_val is not None
         return W_OpArg(color, w_type, name.loc, sym=sym, w_val=w_val)
 
-    def call_opimpl(self, w_opimpl: W_Func, args_wop: list[W_OpArg],
-                    loc: Loc) -> W_OpArg:
+    def eval_opimpl(self, op: ast.Node, w_opimpl: W_Func,
+                    args_wop: list[W_OpArg]) -> W_OpArg:
         # hack hack hack
         # result color:
         #   - pure function and blue arguments -> blue
@@ -409,7 +409,7 @@ class ASTFrame:
         return W_OpArg(
             color,
             w_functype.w_restype,
-            loc,
+            op.loc,
             w_val=w_res)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_OpArg:
@@ -417,7 +417,11 @@ class ASTFrame:
         wop_l = self.eval_expr(binop.left)
         wop_r = self.eval_expr(binop.right)
         w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
-        return self.call_opimpl(w_opimpl, [wop_l, wop_r], binop.loc)
+        return self.eval_opimpl(
+            binop,
+            w_opimpl,
+            [wop_l, wop_r]
+        )
 
     eval_expr_Add = eval_expr_BinOp
     eval_expr_Sub = eval_expr_BinOp
@@ -461,7 +465,7 @@ class ASTFrame:
                     raise SPyTypeError(
                         f'cannot call objects of type `{t.fqn.human_name}`')
 
-        return self.call_opimpl(w_opimpl, [wop_func]+args_wop, call.loc)
+        return self.eval_opimpl(call, w_opimpl, [wop_func]+args_wop)
 
     def _eval_STATIC_TYPE(self, call: ast.Call) -> W_OpArg:
         assert len(call.args) == 1
