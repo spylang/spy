@@ -205,27 +205,22 @@ class FuncDoppler(ASTFrame):
         """
         wop = super().eval_expr(expr, varname=varname)
         if wop.color == 'blue':
-            self.shifted_expr[expr] = make_const(self.vm, expr.loc, wop.w_val)
-            return wop
+            new_expr = make_const(self.vm, expr.loc, wop.w_val)
+        else:
+            new_expr = self.shift_expr(expr)
 
-        ## w_typeconv = self.blue_frame.typecheck_maybe(wop, varname)
-        ## res = magic_dispatch(self, 'shift_expr', expr)
-        ## if w_typeconv:
-        ##     # converters are used only for local variables and if/while
-        ##     # conditions (see TypeChecker.expr_conv). Probably we could just
-        ##     # use an W_OpImpl instead?
-        ##     return ast.Call(
-        ##         loc = res.loc,
-        ##         func = ast.FQNConst(
-        ##             loc = res.loc,
-        ##             fqn = w_typeconv.fqn
-        ##         ),
-        ##         args = [res]
-        ##     )
-        ## else:
-        ##     return res
+        w_typeconv = self.typecheck_maybe(wop, varname)
+        if w_typeconv:
+            new_expr = ast.Call(
+                loc = new_expr.loc,
+                func = ast.FQNConst(
+                    loc = new_expr.loc,
+                    fqn = w_typeconv.fqn
+                ),
+                args = [new_expr]
+            )
 
-        self.shift_expr(expr)
+        self.shifted_expr[expr] = new_expr
         return wop
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_Func,

@@ -147,8 +147,6 @@ class ASTFrame:
             raise
         return w_typeconv
 
-    # "newtyle" is a temporary param, I want to make sure that tests crash hard
-    # in old calling locations
     def eval_expr(self, expr: ast.Expr, *,
                   varname: Optional[str] = None
                   ) -> W_OpArg:
@@ -165,12 +163,15 @@ class ASTFrame:
             assert w_typeconv is None
 
         if w_typeconv is None:
+            # no conversion needed, hooray
+            return wop
+        elif self.abstract_interpretation:
+            # we are performing redshifting: the conversion will be handlded
+            # by FuncDoppler
             return wop
         else:
-            if self.abstract_interpretation:
-                w_val = None
-            else:
-                w_val = self.vm.fast_call(w_typeconv, [wop.w_val])
+            # apply the conversion immediately
+            w_val = self.vm.fast_call(w_typeconv, [wop.w_val])
             return W_OpArg(
                 wop.color,
                 w_typeconv.w_functype.w_restype,
