@@ -97,16 +97,16 @@ class FuncDoppler(ASTFrame):
         ann_color, w_ann_type = self.t.check_expr(vardef.type)
         assert ann_color == 'blue'
         assert isinstance(w_ann_type, W_Type)
-        self.blue_frame.exec_stmt_VarDef(vardef)
-        newtype = self.shift_expr(vardef.type)
+        super().exec_stmt_VarDef(vardef)
+        newtype = self.shifted_expr[vardef.type]
         return [vardef.replace(type=newtype)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        self.blue_frame.check_assign_target(assign.target)
+        self.check_assign_target(assign.target)
         sym = self.funcdef.symtable.lookup(assign.target.value)
         varname = assign.target.value if sym.is_local else None
         if sym.color == 'red':
-            newvalue = self.shift_expr(assign.value, varname=varname)
+            newvalue = self.eval_and_shift(assign.value, varname=varname)
             return [assign.replace(value=newvalue)]
         else:
             assert False, 'implement me'
