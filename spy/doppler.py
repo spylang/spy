@@ -112,11 +112,11 @@ class FuncDoppler(ASTFrame):
             assert False, 'implement me'
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
-        xxx
-        v_target = self.shift_expr(node.target)
-        v_attr = self.shift_expr(node.attr)
-        v_value = self.shift_expr(node.value)
-        w_opimpl = self.t.opimpl[node]
+        self.exec_stmt(node)
+        w_opimpl = self.opimpl[node]
+        v_target = self.shifted_expr[node.target]
+        v_attr = self.shifted_expr[node.attr]
+        v_value = self.shifted_expr[node.value]
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
@@ -311,9 +311,9 @@ class FuncDoppler(ASTFrame):
         return self.shift_opimpl(op, w_opimpl, [v, i])
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
-        v = self.shift_expr(op.value)
-        v_attr = self.shift_expr(op.attr)
-        w_opimpl = self.t.opimpl[op]
+        w_opimpl = self.opimpl[op]
+        v = self.shifted_expr[op.value]
+        v_attr = self.shifted_expr[op.attr]
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
@@ -352,9 +352,8 @@ class FuncDoppler(ASTFrame):
         return call.replace(func=newfunc)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
-        assert op in self.t.opimpl
-        w_opimpl = self.t.opimpl[op]
-        v_target = self.shift_expr(op.target)
-        v_method = self.shift_expr(op.method)
-        newargs_v = [self.shift_expr(arg) for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v_target, v_method] + newargs_v)
+        w_opimpl = self.opimpl[op]
+        v_obj = self.shifted_expr[op.target]
+        v_meth = self.shifted_expr[op.method]
+        newargs_v = [self.shifted_expr[arg] for arg in op.args]
+        return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
