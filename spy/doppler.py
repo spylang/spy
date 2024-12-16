@@ -121,11 +121,11 @@ class FuncDoppler(ASTFrame):
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_SetItem(self, node: ast.SetItem) -> list[ast.Stmt]:
-        xxx
-        v_target = self.shift_expr(node.target)
-        v_index = self.shift_expr(node.index)
-        v_value = self.shift_expr(node.value)
-        w_opimpl = self.t.opimpl[node]
+        self.exec_stmt(node)
+        w_opimpl = self.opimpl[node]
+        v_target = self.shifted_expr[node.target]
+        v_index = self.shifted_expr[node.index]
+        v_value = self.shifted_expr[node.value]
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_index, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
@@ -301,13 +301,13 @@ class FuncDoppler(ASTFrame):
     shift_expr_GtE = shift_expr_BinOp
 
     def shift_expr_List(self, lst: ast.List) -> ast.Expr:
-        items = [self.shift_expr(item) for item in lst.items]
+        items = [self.shifted_expr[item] for item in lst.items]
         return ast.List(lst.loc, items)
 
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
-        v = self.shift_expr(op.value)
-        i = self.shift_expr(op.index)
-        w_opimpl = self.t.opimpl[op]
+        w_opimpl = self.opimpl[op]
+        v = self.shifted_expr[op.value]
+        i = self.shifted_expr[op.index]
         return self.shift_opimpl(op, w_opimpl, [v, i])
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
