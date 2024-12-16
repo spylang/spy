@@ -204,10 +204,11 @@ class FuncDoppler(ASTFrame):
                   -> compute shited binop (stored in .shifted_expr)
         """
         wop = super().eval_expr(expr, varname=varname)
+        if wop.color == 'blue':
+            self.shifted_expr[expr] = make_const(self.vm, expr.loc, wop.w_val)
+            return wop
 
         ## w_typeconv = self.blue_frame.typecheck_maybe(wop, varname)
-        ## if wop.color == 'blue':
-        ##     return make_const(self.vm, expr.loc, wop.w_val)
         ## res = magic_dispatch(self, 'shift_expr', expr)
         ## if w_typeconv:
         ##     # converters are used only for local variables and if/while
