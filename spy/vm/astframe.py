@@ -306,22 +306,18 @@ class ASTFrame:
 
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
-        w_attr = self.vm.wrap(node.attr.value) # XXX maybe just eval op.attr?
-        wop_target = self.eval_expr(node.target)
-        wop_attr = W_OpArg('blue', B.w_str, node.loc, w_val=w_attr)
+        wop_obj = self.eval_expr(node.target)
+        wop_attr = self.eval_expr(node.attr)
         wop_value = self.eval_expr(node.value)
-        w_opimpl = self.vm.call_OP(
-            OP.w_SETATTR,
-            [wop_target, wop_attr, wop_value]
-        )
-        self.call_opimpl(w_opimpl, [wop_target, wop_attr, wop_value], node.loc)
+        w_opimpl = self.vm.call_OP(OP.w_SETATTR, [wop_obj, wop_attr, wop_value])
+        self.eval_opimpl(node, w_opimpl, [wop_obj, wop_attr, wop_value])
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
-        wop_target = self.eval_expr(node.target)
+        wop_obj = self.eval_expr(node.target)
         wop_i = self.eval_expr(node.index)
         wop_v = self.eval_expr(node.value)
-        w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wop_target, wop_i, wop_v])
-        self.call_opimpl(w_opimpl, [wop_target, wop_i, wop_v], node.loc)
+        w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wop_obj, wop_i, wop_v])
+        self.eval_opimpl(node, w_opimpl, [wop_obj, wop_i, wop_v])
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
@@ -479,32 +475,30 @@ class ASTFrame:
         raise SPyTypeError.simple(msg, f'{OP} not allowed here', arg.loc)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
-        w_method = self.vm.wrap(op.method.value) # XXX maybe just eval op.method
-        wop_target = self.eval_expr(op.target)
-        wop_method = W_OpArg('blue', B.w_str, op.loc, w_val=w_method)
+        wop_obj = self.eval_expr(op.target)
+        wop_meth = self.eval_expr(op.method)
         args_wop = [self.eval_expr(arg) for arg in op.args]
         w_opimpl = self.vm.call_OP(
             OP.w_CALL_METHOD,
-            [wop_target, wop_method] + args_wop
+            [wop_obj, wop_meth] + args_wop
         )
-        return self.call_opimpl(
+        return self.eval_opimpl(
+            op,
             w_opimpl,
-            [wop_target, wop_method] + args_wop,
-            op.loc
+            [wop_obj, wop_meth] + args_wop,
         )
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_OpArg:
         wop_obj = self.eval_expr(op.value)
         wop_i = self.eval_expr(op.index)
         w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wop_obj, wop_i])
-        return self.call_opimpl(w_opimpl, [wop_obj, wop_i], op.loc)
+        return self.eval_opimpl(op, w_opimpl, [wop_obj, wop_i])
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_OpArg:
-        w_attr = self.vm.wrap(op.attr.value) # XXX maybe just eval op.attr?
         wop_obj = self.eval_expr(op.value)
-        wop_attr = W_OpArg('blue', B.w_str, op.loc, w_val=w_attr)
+        wop_attr = self.eval_expr(op.attr)
         w_opimpl = self.vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
-        return self.call_opimpl(w_opimpl, [wop_obj, wop_attr], op.loc)
+        return self.eval_opimpl(op, w_opimpl, [wop_obj, wop_attr])
 
     def eval_expr_List(self, op: ast.List) -> W_Object:
         items_wop = []
