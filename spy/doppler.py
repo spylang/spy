@@ -315,9 +315,9 @@ class FuncDoppler(ASTFrame):
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
-        newfunc = self.shift_expr(call.func)
-        newargs = [self.shift_expr(arg) for arg in call.args]
-        w_opimpl = self.t.opimpl[call]
+        w_opimpl = self.opimpl[call]
+        newfunc = self.shifted_expr[call.func]
+        newargs = [self.shifted_expr[arg] for arg in call.args]
         assert isinstance(w_opimpl, W_FuncAdapter)
         if w_opimpl.is_direct_call():
             # sanity check: the redshift MUST have produced a const. If it
