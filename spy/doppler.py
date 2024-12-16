@@ -327,11 +327,12 @@ class FuncDoppler(ASTFrame):
             assert isinstance(newfunc, (ast.FQNConst, ast.Constant, ast.StrConst))
             newargs = self._shift_adapter_args(w_opimpl, [newfunc] + newargs)
             newop = ast.Call(call.loc, newfunc, newargs)
-            return self.specialize_print_maybe(newop)
+            return self.specialize_print_maybe(w_opimpl, newop)
         else:
             return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
 
-    def specialize_print_maybe(self, call: ast.Call) -> ast.Expr:
+    def specialize_print_maybe(self, w_opimpl: W_Func,
+                               call: ast.Call) -> ast.Expr:
         """
         This is a temporary hack. We specialize print() based on the type
         of its first argument
@@ -341,9 +342,9 @@ class FuncDoppler(ASTFrame):
             return call
 
         assert len(call.args) == 1
-        color, w_type = self.t.check_expr(call.args[0])
-        t = w_type.fqn.symbol_name
-        if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
+        w_argtype = w_opimpl.w_functype.params[1].w_type
+        t = w_argtype.fqn.symbol_name
+        if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
             fqn = FQN(f'builtins::print_{t}')
         else:
             raise SPyTypeError(f"Invalid type for print(): {t}")
