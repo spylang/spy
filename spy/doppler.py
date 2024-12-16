@@ -112,6 +112,7 @@ class FuncDoppler(ASTFrame):
             assert False, 'implement me'
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
+        xxx
         v_target = self.shift_expr(node.target)
         v_attr = self.shift_expr(node.attr)
         v_value = self.shift_expr(node.value)
@@ -120,6 +121,7 @@ class FuncDoppler(ASTFrame):
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_SetItem(self, node: ast.SetItem) -> list[ast.Stmt]:
+        xxx
         v_target = self.shift_expr(node.target)
         v_index = self.shift_expr(node.index)
         v_value = self.shift_expr(node.value)
@@ -128,7 +130,7 @@ class FuncDoppler(ASTFrame):
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
-        newvalue = self.shift_expr(stmt.value)
+        newvalue = self.eval_and_shift(stmt.value)
         return [stmt.replace(value=newvalue)]
 
     def shift_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
@@ -138,7 +140,7 @@ class FuncDoppler(ASTFrame):
         return newbody
 
     def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
-        newtest = self.shift_expr(if_node.test, varname='@if')
+        newtest = self.eval_and_shift(if_node.test, varname='@if')
         newthen = self.shift_body(if_node.then_body)
         newelse = self.shift_body(if_node.else_body)
         return [if_node.replace(
@@ -148,7 +150,7 @@ class FuncDoppler(ASTFrame):
         )]
 
     def shift_stmt_While(self, while_node: ast.While) -> list[ast.While]:
-        newtest = self.shift_expr(while_node.test, varname='@while')
+        newtest = self.eval_and_shift(while_node.test, varname='@while')
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(
             test = newtest,
