@@ -175,7 +175,8 @@ class CompilerTest:
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift()
-            #self.dump_module(modname)
+            if self.dump_redshift:
+                self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir,
                                 dump_c=self.dump_c)
             file_js = compiler.cbuild(

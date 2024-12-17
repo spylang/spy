@@ -458,15 +458,14 @@ def typecheck_opimpl(
         w_conv = get_w_conv(vm, param.w_type, wop_out_arg, def_loc)
         arg: ArgSpec
         if wop_out_arg.is_blue():
-            assert w_conv is None
             arg = ArgSpec.Const(wop_out_arg.w_blueval, wop_out_arg.loc)
         else:
-            # red W_OpArg MUST come from in_args_wop. Tell the Adapter where
-            # to ffind them
+            # red W_OpArg MUST come from in_args_wop
             i = in_args_wop.index(wop_out_arg)
             arg = ArgSpec.Arg(i)
-            if w_conv:
-                arg = ArgSpec.Convert(w_conv, arg)
+
+        if w_conv:
+            arg = ArgSpec.Convert(w_conv, arg)
         args.append(arg)
 
     # everything good!

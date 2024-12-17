@@ -150,8 +150,6 @@ class ASTFrame:
     def eval_expr(self, expr: ast.Expr, *,
                   varname: Optional[str] = None
                   ) -> W_OpArg:
-        self.t.check_expr(expr) # XXX kill this
-
         wop = magic_dispatch(self, 'eval_expr', expr)
         w_typeconv = self.typecheck_maybe(wop, varname)
 
