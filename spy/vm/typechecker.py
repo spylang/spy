@@ -57,23 +57,6 @@ class TypeChecker:
         self.locals_types_w = {}
         self.declare_arguments()
 
-    def declare_arguments(self) -> None:
-        """
-        Declare the local vars for the arguments and @return
-        """
-        w_functype = self.w_func.w_functype
-        self.declare_local('@if', B.w_bool)
-        self.declare_local('@while', B.w_bool)
-        self.declare_local('@return', w_functype.w_restype)
-        params = self.w_func.w_functype.params
-        for param in params:
-            self.declare_local(param.name, param.w_type)
-
-    def declare_local(self, name: str, w_type: W_Type) -> None:
-        assert name not in self.locals_types_w, \
-            f'variable already declared: {name}'
-        self.locals_types_w[name] = w_type
-
     def typecheck_local(self, expr: ast.Expr, name: str) -> None:
         assert name in self.locals_types_w
         got_color, w_got_type = self.check_expr(expr)
@@ -158,12 +141,6 @@ class TypeChecker:
         """
         See check_stmt_VarDef
         """
-
-    def lazy_check_FuncDef(self, funcdef: ast.FuncDef, w_type: W_Type) -> None:
-        """
-        See check_stmt_VarDef and lazy_check_VarDef
-        """
-        self.declare_local(funcdef.name, w_type)
 
     def check_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         """

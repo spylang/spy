@@ -46,7 +46,7 @@ class ASTFrame:
         self.w_func = w_func
         self.funcdef = w_func.funcdef
         self._locals = {}
-        self.t = TypeChecker(vm, self.w_func)
+        self.locals_types_w = {}
         #
         # a "red" frame performs concrete computation
         # a "blue" frame performs abstract computation on red values, and
@@ -82,6 +82,11 @@ class ASTFrame:
         else:
             return self.vm.get_unique_FQN(fqn)
 
+    def declare_local(self, name: str, w_type: W_Type) -> None:
+        assert name not in self.locals_types_w, \
+            f'variable already declared: {name}'
+        self.locals_types_w[name] = w_type
+
     def store_local(self, name: str, w_value: W_Object) -> None:
         self._locals[name] = w_value
 
@@ -115,23 +120,22 @@ class ASTFrame:
         """
         w_functype = self.w_func.w_functype
         params = self.w_func.w_functype.params
-        arglocs = [arg.loc for arg in self.funcdef.args]
-        for loc, param, w_arg in zip(arglocs, params, args_w, strict=True):
-            # we assume that the arguments' types are correct. It's not the
-            # job of astframe to raise SPyTypeError if there is a type
-            # mismatch here, it is the job of vm.call_function
+        self.declare_local('@if', B.w_bool)
+        self.declare_local('@while', B.w_bool)
+        self.declare_local('@return', w_functype.w_restype)
+        for param, w_arg in zip(params, args_w, strict=True):
             assert self.vm.isinstance(w_arg, param.w_type)
+            self.declare_local(param.name, param.w_type)
             self.store_local(param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
-        self.t.check_stmt(stmt)
         return magic_dispatch(self, 'exec_stmt', stmt)
 
     def typecheck_maybe(self, wop: W_OpArg,
                         varname: Optional[str]) -> Optional[W_Func]:
         if varname is None:
-            return None # to typecheck needed
-        w_exp_type = self.t.locals_types_w[varname]
+            return None # no typecheck needed
+        w_exp_type = self.locals_types_w[varname]
         try:
             w_typeconv = CONVERT_maybe(self.vm, w_exp_type, wop)
         except SPyTypeError as err:
@@ -207,14 +211,13 @@ class ASTFrame:
             color = funcdef.color,
             w_restype = w_restype,
             **d)
-        self.t.lazy_check_FuncDef(funcdef, w_functype)
-        #
         # create the w_func
         fqn = self.w_func.fqn.join(funcdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.w_func.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
+        self.declare_local(funcdef.name, w_functype)
         self.store_local(funcdef.name, w_func)
         self.vm.add_global(fqn, w_func)
 
