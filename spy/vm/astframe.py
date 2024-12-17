@@ -97,6 +97,7 @@ class ASTFrame:
         return w_obj
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
+        self.declare_arguments()
         self.init_arguments(args_w)
         try:
             for stmt in self.funcdef.body:
@@ -114,18 +115,22 @@ class ASTFrame:
         except Return as e:
             return e.w_value
 
+    def declare_arguments(self) -> None:
+        w_functype = self.w_func.w_functype
+        self.declare_local('@if', B.w_bool)
+        self.declare_local('@while', B.w_bool)
+        self.declare_local('@return', w_functype.w_restype)
+        for param in w_functype.params:
+            self.declare_local(param.name, param.w_type)
+
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """
         Store the arguments in args_w in the appropriate local var
         """
         w_functype = self.w_func.w_functype
         params = self.w_func.w_functype.params
-        self.declare_local('@if', B.w_bool)
-        self.declare_local('@while', B.w_bool)
-        self.declare_local('@return', w_functype.w_restype)
         for param, w_arg in zip(params, args_w, strict=True):
             assert self.vm.isinstance(w_arg, param.w_type)
-            self.declare_local(param.name, param.w_type)
             self.store_local(param.name, w_arg)
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:

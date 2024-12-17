@@ -58,6 +58,7 @@ class FuncDoppler(ASTFrame):
         self.opimpl = {}
 
     def redshift(self) -> W_ASTFunc:
+        self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
         for stmt in funcdef.body:
@@ -75,7 +76,7 @@ class FuncDoppler(ASTFrame):
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
-            locals_types_w = self.t.locals_types_w.copy())
+            locals_types_w = self.locals_types_w.copy())
         return w_newfunc
 
     # =========
@@ -83,7 +84,6 @@ class FuncDoppler(ASTFrame):
     # ==== statements ====
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
-        self.t.check_stmt(stmt)
         return magic_dispatch(self, 'shift_stmt', stmt)
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
