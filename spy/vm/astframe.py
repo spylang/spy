@@ -347,14 +347,13 @@ class ASTFrame:
         # Parser.from_py_expr_Constant
         T = type(const.value)
         assert T in (int, float, bool, NoneType)
-        color, w_type = self.t.check_expr_Constant(const)
         w_val = self.vm.wrap(const.value)
-        return W_OpArg(color, w_type, const.loc, w_val=w_val)
+        w_type = self.vm.dynamic_type(w_val)
+        return W_OpArg('blue', w_type, const.loc, w_val=w_val)
 
     def eval_expr_StrConst(self, const: ast.StrConst) -> W_OpArg:
-        color, w_type = self.t.check_expr_StrConst(const)
         w_val = self.vm.wrap(const.value)
-        return W_OpArg(color, w_type, const.loc, w_val=w_val)
+        return W_OpArg('blue', B.w_str, const.loc, w_val=w_val)
 
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_OpArg:
         w_value = self.vm.lookup_global(const.fqn)
