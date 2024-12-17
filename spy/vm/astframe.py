@@ -264,10 +264,12 @@ class ASTFrame:
             if not is_declared:
                 # first assignment, implicit declaration
                 self.declare_local(varname, wop.w_static_type)
-            self.store_local(varname, wop.w_val)
+            if not self.abstract_interpretation:
+                self.store_local(varname, wop.w_val)
         elif sym.fqn is not None:
             assert sym.color == 'red'
-            self.vm.store_global(sym.fqn, wop.w_val)
+            if not self.abstract_interpretation:
+                self.vm.store_global(sym.fqn, wop.w_val)
         else:
             assert False, 'closures not implemented yet'
 
