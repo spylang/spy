@@ -173,7 +173,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     ##     import pdb;pdb.set_trace()
     if (wop1.is_blue() and
         wop2.is_blue() and
-        vm.is_False(vm.eq(wop1.w_val, wop2.w_val))):
+        vm.is_True(vm.universal_ne(wop1.w_val, wop2.w_val))):
         return B.w_False
     return B.w_True
 
