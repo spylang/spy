@@ -243,9 +243,15 @@ class ASTFrame:
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         varname = assign.target.value
         sym = self.funcdef.symtable.lookup(varname)
-        if not sym.is_local:
-            varname = None
-        wop = self.eval_expr(assign.value, varname=varname)
+        is_declared = varname in self.locals_types_w
+        if not sym.is_local or not is_declared:
+            target_varname = None # no type conversions
+        else:
+            target_varname = varname
+        wop = self.eval_expr(assign.value, varname=target_varname)
+        if not is_declared:
+            # first assignment, implicit declaration
+            self.declare_local(varname, wop.w_static_type)
         self._exec_assign(assign.target, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:

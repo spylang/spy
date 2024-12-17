@@ -146,20 +146,6 @@ class TypeChecker:
     def check_stmt_While(self, while_node: ast.While) -> None:
         color, w_got_type = self.check_expr(while_node.test)
 
-    def _check_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
-        varname = target.value
-        sym = self.funcdef.symtable.lookup(varname)
-        if sym.is_local:
-            if varname not in self.locals_types_w:
-                # first assignment, implicit declaration
-                _, w_valuetype = self.check_expr(expr)
-                self.declare_local(varname, w_valuetype)
-            self.typecheck_local(expr, varname)
-
-    def check_stmt_Assign(self, assign: ast.Assign) -> None:
-        _, w_valuetype = self.check_expr(assign.value)
-        self._check_assign(assign.target, assign.value)
-
     def check_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         _, w_valuetype = self.check_expr(unpack.value)
         if w_valuetype is not B.w_tuple:
