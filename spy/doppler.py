@@ -257,24 +257,24 @@ class FuncDoppler(ASTFrame):
 
     def _shift_adapter_args(self, w_adapter: W_FuncAdapter,
                             orig_args: list[ast.Expr]) -> list[ast.Expr]:
-        real_args = []
-        for spec in w_adapter.args:
+        def getarg(spec: ArgSpec):
             if isinstance(spec, ArgSpec.Arg):
-                arg = orig_args[spec.i]
-                if spec.w_converter is not None:
-                    arg = ast.Call(
-                        loc = arg.loc,
-                        func = ast.FQNConst(
-                            loc = arg.loc,
-                            fqn = spec.w_converter.fqn
-                        ),
-                        args = [arg]
-                    )
+                return orig_args[spec.i]
             elif isinstance(spec, ArgSpec.Const):
-                arg = make_const(self.vm, spec.loc, spec.w_const)
+                return make_const(self.vm, spec.loc, spec.w_const)
+            elif isinstance(spec, ArgSpec.Convert):
+                arg = getarg(spec.arg)
+                return ast.Call(
+                    loc = arg.loc,
+                    func = ast.FQNConst(
+                        loc = arg.loc,
+                        fqn = spec.w_conv.fqn
+                    ),
+                    args = [arg]
+                )
             else:
                 assert False
-            real_args.append(arg)
+        real_args = [getarg(spec) for spec in w_adapter.args]
         return real_args
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:

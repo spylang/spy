@@ -464,7 +464,9 @@ def typecheck_opimpl(
             # red W_OpArg MUST come from in_args_wop. Tell the Adapter where
             # to ffind them
             i = in_args_wop.index(wop_out_arg)
-            arg = ArgSpec.Arg(i, w_conv)
+            arg = ArgSpec.Arg(i)
+            if w_conv:
+                arg = ArgSpec.Convert(w_conv, arg)
         args.append(arg)
 
     # everything good!

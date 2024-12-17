@@ -12,19 +12,25 @@ if TYPE_CHECKING:
 class ArgSpec:
     Arg: ClassVar[type['Arg']]
     Const: ClassVar[type['Const']]
+    Convert: ClassVar[type['Convert']]
 
 @dataclass
 class Arg(ArgSpec):
     i: int
-    w_converter: Optional[W_Func] = None
 
 @dataclass
 class Const(ArgSpec):
     w_const: W_Object
     loc: Loc
 
-ArgSpec.Arg = Arg      # type: ignore
-ArgSpec.Const = Const  # type: ignore
+@dataclass
+class Convert(ArgSpec):
+    w_conv: W_Func
+    arg: ArgSpec
+
+ArgSpec.Arg = Arg          # type: ignore
+ArgSpec.Const = Const      # type: ignore
+ArgSpec.Convert = Convert  # type: ignore
 
 class W_FuncAdapter(W_Func):
     """
@@ -68,12 +74,12 @@ class W_FuncAdapter(W_Func):
 
         def getarg(spec: ArgSpec) -> W_Object:
             if isinstance(spec, Arg):
-                w_arg = args_w[spec.i]
-                if spec.w_converter:
-                    w_arg = vm.fast_call(spec.w_converter, [w_arg])
-                return w_arg
+                return args_w[spec.i]
             elif isinstance(spec, Const):
                 return spec.w_const
+            elif isinstance(spec, Convert):
+                w_arg = getarg(spec.arg)
+                return vm.fast_call(spec.w_conv, [w_arg])
             else:
                 assert False
 
@@ -91,12 +97,13 @@ class W_FuncAdapter(W_Func):
         def fmt(spec: ArgSpec) -> str:
             if isinstance(spec, Arg):
                 arg = argnames[spec.i]
-                if spec.w_converter:
-                    fqn = spec.w_converter.fqn
-                    return f'`{fqn}`({arg})'
                 return arg
             elif isinstance(spec, Const):
                 return str(spec.w_const)
+            elif isinstance(spec, Convert):
+                fqn = spec.w_conv.fqn
+                arg = fmt(spec.arg)
+                return f'`{fqn}`({arg})'
             else:
                 assert False
 
