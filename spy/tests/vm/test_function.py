@@ -26,7 +26,6 @@ class TestFunction:
                                            y=B.w_i32,
                                            w_restype=B.w_i32)
 
-    @pytest.mark.xfail(reason='implement me')
     def test_FunctionType_eq(self):
         vm = SPyVM()
         w_ft1 = W_FuncType.parse('def() -> i32')
