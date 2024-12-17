@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 ARGS_W = Sequence[W_Object]
 ENTRY = tuple[ARGS_W, W_Object]
 
+DEBUG = False
+
 class BlueCache:
     """
     Store and record the results of blue functions.
@@ -31,6 +33,12 @@ class BlueCache:
         self.data[w_func].append(entry)
 
     def lookup(self, w_func: W_Func, got_args_w: ARGS_W) -> Optional[W_Object]:
+        w_res = self._lookup(w_func, got_args_w)
+        if DEBUG:
+            print(f'BlueCache.lookup: {w_func.fqn}, {got_args_w} -> {w_res}')
+        return w_res
+
+    def _lookup(self, w_func: W_Func, got_args_w: ARGS_W) -> Optional[W_Object]:
         entries = self.data[w_func]
         for args_w, w_result in entries:
             if self.args_w_eq(args_w, got_args_w):
