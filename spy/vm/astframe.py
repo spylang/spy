@@ -232,7 +232,7 @@ class ASTFrame:
         fqn = self.get_unique_FQN_maybe(fqn)
         w_struct_type = W_StructType(fqn, d)
         w_meta_type = self.vm.dynamic_type(w_struct_type)
-        self.t.lazy_check_ClassDef(classdef, w_meta_type)
+        self.declare_local(classdef.name, w_meta_type)
         self.store_local(classdef.name, w_struct_type)
         self.vm.add_global(fqn, w_struct_type)
 
