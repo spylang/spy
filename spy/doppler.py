@@ -94,10 +94,7 @@ class FuncDoppler(ASTFrame):
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        ann_color, w_ann_type = self.t.check_expr(vardef.type)
-        assert ann_color == 'blue'
-        assert isinstance(w_ann_type, W_Type)
-        super().exec_stmt_VarDef(vardef)
+        self.exec_stmt_VarDef(vardef)
         newtype = self.shifted_expr[vardef.type]
         return [vardef.replace(type=newtype)]
 
