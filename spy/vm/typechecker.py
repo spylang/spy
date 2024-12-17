@@ -124,23 +124,6 @@ class TypeChecker:
     def check_stmt_Pass(self, stmt: ast.Pass) -> None:
         pass
 
-    def check_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        """
-        VarDef is type-checked lazily, because the type annotation is evaluated
-        at runtime.
-
-        So, this function does nothing, and astframe calls lazy_check_VarDef
-        after having evaluated the annotation. Similarly for
-        lazy_check_FuncDef.
-        """
-
-    def lazy_check_VarDef(self, vardef: ast.VarDef, w_type: W_Type) -> None:
-        self.declare_local(vardef.name, w_type)
-
-    def check_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        """
-        See check_stmt_VarDef
-        """
 
     def check_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         """

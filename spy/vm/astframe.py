@@ -238,7 +238,7 @@ class ASTFrame:
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)
-        self.t.lazy_check_VarDef(vardef, w_type)
+        self.declare_local(vardef.name, w_type)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         varname = assign.target.value
@@ -377,7 +377,7 @@ class ASTFrame:
             assert w_value is not None
             return sym.color, self.vm.dynamic_type(w_value)
         elif sym.is_local:
-            return sym.color, self.t.locals_types_w[name.id]
+            return sym.color, self.locals_types_w[name.id]
         else:
             # closed-over variables are always blue
             namespace = self.w_func.closure[sym.level]
