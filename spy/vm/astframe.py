@@ -360,8 +360,30 @@ class ASTFrame:
         assert w_value is not None
         return W_OpArg.from_w_obj(self.vm, w_value)
 
+    # XXX: probably we should merge this with eval_expr_Name
+    def check_expr_Name(self, name: ast.Name) -> tuple[Color, W_Type]:
+        varname = name.id
+        sym = self.funcdef.symtable.lookup_maybe(varname)
+        if sym is None:
+            msg = f"name `{name.id}` is not defined"
+            raise SPyNameError.simple(msg, "not found in this scope", name.loc)
+        elif sym.fqn:
+            # XXX this is wrong: we should keep track of the static type of
+            # FQNs. For now, we just look it up and use the dynamic type
+            w_value = self.vm.lookup_global(sym.fqn)
+            assert w_value is not None
+            return sym.color, self.vm.dynamic_type(w_value)
+        elif sym.is_local:
+            return sym.color, self.t.locals_types_w[name.id]
+        else:
+            # closed-over variables are always blue
+            namespace = self.w_func.closure[sym.level]
+            w_value = namespace[sym.name]
+            assert w_value is not None
+            return 'blue', self.vm.dynamic_type(w_value)
+
     def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
-        color, w_type = self.t.check_expr_Name(name)
+        color, w_type = self.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
         if color == 'red' and self.abstract_interpretation:
             # this is a red variable and we are doing abstract interpretation,
