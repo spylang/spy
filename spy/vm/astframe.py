@@ -35,6 +35,7 @@ class ASTFrame:
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
     _locals: Namespace
+    locals_types_w: dict[str, W_Type]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
                  *,
@@ -494,7 +495,7 @@ class ASTFrame:
 
         return self.eval_opimpl(call, w_opimpl, [wop_func]+args_wop)
 
-    def _eval_STATIC_TYPE(self, wop_func: W_Func, call: ast.Call) -> W_OpArg:
+    def _eval_STATIC_TYPE(self, wop_func: W_OpArg, call: ast.Call) -> W_OpArg:
         for arg in call.args:
             if not isinstance(arg, (ast.Name, ast.Constant, ast.StrConst)):
                 msg = 'STATIC_TYPE works only on simple expressions'

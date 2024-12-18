@@ -51,6 +51,8 @@ class FuncDoppler(ASTFrame):
     """
     Perform a redshift on a W_ASTFunc
     """
+    shifted_expr: dict[ast.Expr, ast.Expr]
+    opimpl: dict[ast.Node, W_Func]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         super().__init__(vm, w_func, color='blue')
@@ -249,7 +251,7 @@ class FuncDoppler(ASTFrame):
 
     def _shift_adapter_args(self, w_adapter: W_FuncAdapter,
                             orig_args: list[ast.Expr]) -> list[ast.Expr]:
-        def getarg(spec: ArgSpec):
+        def getarg(spec: ArgSpec) -> ast.Expr:
             if isinstance(spec, ArgSpec.Arg):
                 return orig_args[spec.i]
             elif isinstance(spec, ArgSpec.Const):
