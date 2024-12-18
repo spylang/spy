@@ -100,6 +100,12 @@ class W_OpArg(W_Object):
     def is_blue(self) -> bool:
         return self.color == 'blue'
 
+    def as_red(self) -> 'W_OpArg':
+        if self.color == 'red':
+            return self
+        return W_OpArg('red', self.w_static_type, self.loc,
+                       sym=self.sym, w_val=self.w_val)
+
     @property
     def w_val(self) -> W_Object:
         assert self._w_val is not None, 'cannot read w_val from abstract OpArg'
