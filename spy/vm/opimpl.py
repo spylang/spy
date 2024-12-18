@@ -44,23 +44,35 @@ T = TypeVar('T')
 @OPERATOR.builtin_type('OpArg')
 class W_OpArg(W_Object):
     """
-    Class which represents the operands passed to OPERATORs.
+    A value which carries some extra information.
+    This is a central part of how SPy works.
 
-    There are two kinds of operands:
+    In order to preserve the same semantics between interp and compile,
+    operation dispatch must be done on STATIC types. The same object can have
+    different static types, and thus respond to different operations. For
+    example:
+        x: MyClass = ...
+        y: object = x
 
-      - "proper" OpArgs, which refers to a value which will be known later at
-        runtime.
+    x and y are identical, but have different static types.
 
-      - OpConsts, which can be synthetized inside OPERATORs, in case they want
-        to pass a const to an opimpl.
+    The main job of OpArgs is to keep track of the color and the static type
+    of objects inside the ASTFrame.  As the name suggests, they are then
+    passed as arguments to OPERATORs, which can then use the static type to
+    dispatch to the proper OpImpl.
 
-    In some cases, the *actual value* of an OpArg might be known at
-    compile time, if it comes from a blue expression: in this case, we also
-    set w_blueval.
+    Moreover, they carry around extra information which are used to produce
+    better error messages, when needed:
+      - loc: the source code location where this object comes from
+      - sym: the symbol associated with this objects (if any)
 
-    The naming convention is wop_one and manyvalues_wop.
+    In interpreter mode, OpArgs represent concrete values, so they carry an
+    actualy object + its static type.
 
-    Internally, an OpConst is represented as an OpArg whose .i is None.
+    During redshifting, red OpArgs are abstract: they carry around only the
+    static types.
+
+    Blue OpArg always have an associated value.
     """
     color: Color
     w_static_type: Annotated[W_Type, Member('static_type')]
