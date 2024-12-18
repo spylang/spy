@@ -85,6 +85,8 @@ class ASTFrame:
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_types_w, \
             f'variable already declared: {name}'
+        if not isinstance(w_type, W_FuncType):
+            self.vm.make_fqn_const(w_type)
         self.locals_types_w[name] = w_type
 
     def store_local(self, name: str, w_value: W_Object) -> None:

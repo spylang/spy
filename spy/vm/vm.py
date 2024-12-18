@@ -138,7 +138,7 @@ class SPyVM:
         # XXX we should maintain a reverse-lookup table instead of doing a
         # linear search
         for fqn, w_obj in self.globals_w.items():
-            if w_val is w_obj:
+            if w_val == w_obj:
                 return fqn
         return None
 
