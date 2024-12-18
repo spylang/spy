@@ -65,30 +65,30 @@ class W_OpArg(W_Object):
     color: Color
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
-    sym: Optional[Symbol]
     _w_val: Optional[W_Object]
+    sym: Optional[Symbol]
 
     def __init__(self,
                  vm: 'SPyVM',
                  color: Color,
                  w_static_type: W_Type,
+                 w_val: Optional[W_Object],
                  loc: Loc,
                  *,
                  sym: Optional[Symbol] = None,
-                 w_val: Optional[W_Object] = None,
                  ) -> None:
         if color == 'blue':
             assert w_val is not None
         self.color = color
         self.w_static_type = w_static_type
+        self._w_val = w_val
         self.loc = loc
         self.sym = sym
-        self._w_val = w_val
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(vm, 'blue', w_type, Loc.here(-2), w_val=w_obj)
+        return W_OpArg(vm, 'blue', w_type, w_obj, Loc.here(-2))
 
     def __repr__(self) -> str:
         if self.is_blue():
@@ -104,8 +104,8 @@ class W_OpArg(W_Object):
     def as_red(self, vm: 'SPyVM') -> 'W_OpArg':
         if self.color == 'red':
             return self
-        return W_OpArg(vm, 'red', self.w_static_type, self.loc,
-                       sym=self.sym, w_val=self.w_val)
+        return W_OpArg(vm, 'red', self.w_static_type, self._w_val, self.loc,
+                       sym=self.sym)
 
     @property
     def w_val(self) -> W_Object:

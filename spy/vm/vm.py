@@ -402,17 +402,20 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_type)
         return w_func.raw_call(self, args_w)
 
+    def _w_oparg(self, w_x: W_Dynamic) -> W_OpArg:
+        return W_OpArg(self, 'red', self.dynamic_type(w_x), None, Loc.here(-3))
+
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = W_OpArg(self, 'red', self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self, 'red', self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = self._w_oparg(w_a)
+        wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = W_OpArg(self, 'red', self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self, 'red', self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = self._w_oparg(w_a)
+        wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(OPERATOR.w_NE, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
@@ -422,8 +425,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wop_obj = W_OpArg(self, 'red', self.dynamic_type(w_obj), Loc.here(-2))
-        wop_i = W_OpArg(self, 'red', self.dynamic_type(w_i), Loc.here(-2))
+        wop_obj = self._w_oparg(w_obj)
+        wop_i = self._w_oparg(w_i)
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return self.fast_call(w_opimpl, [w_obj, w_i])
 
@@ -473,8 +476,8 @@ class SPyVM:
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
             return self.fast_call(w_oparg_eq, [w_a, w_b])  # type: ignore
 
-        wop_a = W_OpArg(self, 'red', self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self, 'red', self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = self._w_oparg(w_a)
+        wop_b = self._w_oparg(w_b)
         try:
             w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         except SPyTypeError:

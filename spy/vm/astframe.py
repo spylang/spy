@@ -183,9 +183,9 @@ class ASTFrame:
                 self.vm,
                 wop.color,
                 w_typeconv.w_functype.w_restype,
+                w_val,
                 wop.loc,
                 sym=wop.sym,
-                w_val=w_val
             )
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
@@ -362,11 +362,11 @@ class ASTFrame:
         assert T in (int, float, bool, NoneType)
         w_val = self.vm.wrap(const.value)
         w_type = self.vm.dynamic_type(w_val)
-        return W_OpArg(self.vm, 'blue', w_type, const.loc, w_val=w_val)
+        return W_OpArg(self.vm, 'blue', w_type, w_val, const.loc)
 
     def eval_expr_StrConst(self, const: ast.StrConst) -> W_OpArg:
         w_val = self.vm.wrap(const.value)
-        return W_OpArg(self.vm, 'blue', B.w_str, const.loc, w_val=w_val)
+        return W_OpArg(self.vm, 'blue', B.w_str, w_val, const.loc)
 
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_OpArg:
         w_value = self.vm.lookup_global(const.fqn)
@@ -412,7 +412,7 @@ class ASTFrame:
             namespace = self.w_func.closure[sym.level]
             w_val = namespace[sym.name]
             assert w_val is not None
-        return W_OpArg(self.vm, color, w_type, name.loc, sym=sym, w_val=w_val)
+        return W_OpArg(self.vm, color, w_type, w_val, name.loc, sym=sym)
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_Func,
                     args_wop: list[W_OpArg]) -> W_OpArg:
@@ -435,12 +435,7 @@ class ASTFrame:
             args_w = [wop.w_val for wop in args_wop]
             w_res = self.vm.fast_call(w_opimpl, args_w)
 
-        return W_OpArg(
-            self.vm,
-            color,
-            w_functype.w_restype,
-            op.loc,
-            w_val=w_res)
+        return W_OpArg(self.vm, color, w_functype.w_restype, w_res, op.loc)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_OpArg:
         w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
@@ -556,7 +551,7 @@ class ASTFrame:
         else:
             items_w = [wop.w_val for wop in items_wop]
             w_val = W_List(w_listtype, items_w)
-        return W_OpArg(self.vm, color, w_listtype, op.loc, w_val=w_val)
+        return W_OpArg(self.vm, color, w_listtype, w_val, op.loc)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_OpArg:
         items_wop = [self.eval_expr(item) for item in op.items]
@@ -567,4 +562,4 @@ class ASTFrame:
         else:
             items_w = [wop.w_val for wop in items_wop]
             w_val = W_Tuple(items_w)
-        return W_OpArg(self.vm, color, B.w_tuple, op.loc, w_val=w_val)
+        return W_OpArg(self.vm, color, B.w_tuple, w_val, op.loc)
