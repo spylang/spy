@@ -446,26 +446,6 @@ class CFuncWriter:
             return self.fmt_getfield(fqn, call)
         elif str(fqn).startswith("unsafe::setfield["):
             return self.fmt_setfield(fqn, call)
-        elif str(fqn).startswith("operator::from_dynamic["):
-            # HACK HACK HACK
-            # This hack is needed because life is complicated.
-            # Consider this case:
-            #     p: ptr[i32] = gc_alloc(i32)(1)
-            #
-            # gc_alloc(i32) is a blue call, and returns dynamic.
-            #
-            # Ideally, we want the typechecker to eagerly evaluate
-            # gc_alloc(i32) and thus know the precise type of the function,
-            # but this is not supported yet.
-            #
-            # So, the typechecher sees a call to dynamic, and has to insert a
-            # from_dynamic() conversion, but the C backend doesn't support it.
-            #
-            # The workaround is to simply ignore the conversion and return the
-            # argument unchanghed. This works in "correct" cases, but note
-            # that if you do the following, it will fail at GCC time:
-            #    p: str = gc_alloc(i32)(1)
-            return self.fmt_expr(call.args[0])
 
         # the default case is to call a function with the corresponding name
         c_name = fqn.c_name

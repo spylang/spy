@@ -94,12 +94,12 @@ class TestDynamic(CompilerTest):
         assert mod.gte(5, 5) is True
         assert mod.gte(6, 5) is True
 
+    @pytest.mark.xfail(reason='implement me')
     def test_call(self):
         mod = self.compile("""
         def inc(x: i32) -> i32:
             return x + 1
 
-        @blue
         def get_inc() -> dynamic:
             return inc
 
@@ -108,9 +108,9 @@ class TestDynamic(CompilerTest):
         """)
         assert mod.foo() == 8
 
+    @pytest.mark.xfail(reason='implement me')
     def test_wrong_call(self):
         mod = self.compile("""
-        @blue
         def get_inc() -> dynamic:
             return 'hello'
 
