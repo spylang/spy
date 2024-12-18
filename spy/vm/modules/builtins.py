@@ -73,4 +73,4 @@ def w_print_str(vm: 'SPyVM', w_x: W_Str) -> W_Void:
 # circular import issues
 @builtin_func('builtins')
 def w_functype_eq(vm: 'SPyVM', w_ft1: W_FuncType, w_ft2: W_FuncType) -> W_Bool:
-    return vm.wrap(w_ft1 == w_ft2)
+    return vm.wrap(w_ft1 == w_ft2)  # type: ignore

@@ -5,7 +5,7 @@ from spy import ast
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
-from spy.irgen.symtable import Symbol, Color
+from spy.irgen.symtable import Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -15,13 +15,13 @@ from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.unsafe.struct import W_StructType
-from spy.vm.typechecker import TypeChecker, maybe_blue
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.modules.operator import OP, OP_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
 
 class Return(Exception):
     w_value: W_Object
@@ -35,7 +35,6 @@ class ASTFrame:
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
     _locals: Namespace
-    t: TypeChecker
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
                  *,
