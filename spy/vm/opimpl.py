@@ -30,7 +30,7 @@ from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Symbol, Color
 from spy.errors import SPyTypeError
-from spy.vm.b import OPERATOR
+from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.builtin import builtin_func, builtin_type
@@ -91,6 +91,11 @@ class W_OpArg(W_Object):
                  ) -> None:
         if color == 'blue':
             assert w_val is not None
+            if w_static_type is B.w_dynamic:
+                # "dynamic blue" doesn't make sense: if it's blue, we
+                # precisely know its type, and we can eagerly evaluate it.
+                # See test_basic::test_eager_blue_eval
+                w_static_type = vm.dynamic_type(w_val)
         self.color = color
         self.w_static_type = w_static_type
         self._w_val = w_val

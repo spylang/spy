@@ -851,7 +851,6 @@ class TestBasic(CompilerTest):
         assert params[0].w_type is w_S
         assert params[1].w_type is w_ptr_S1 is w_ptr_S2
 
-    @pytest.mark.xfail(reason='FIXME')
     @only_interp
     def test_eager_blue_eval(self):
         mod = self.compile("""
