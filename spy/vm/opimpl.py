@@ -69,6 +69,7 @@ class W_OpArg(W_Object):
     _w_val: Optional[W_Object]
 
     def __init__(self,
+                 vm: 'SPyVM',
                  color: Color,
                  w_static_type: W_Type,
                  loc: Loc,
@@ -87,7 +88,7 @@ class W_OpArg(W_Object):
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return W_OpArg('blue', w_type, Loc.here(-2), w_val=w_obj)
+        return W_OpArg(vm, 'blue', w_type, Loc.here(-2), w_val=w_obj)
 
     def __repr__(self) -> str:
         if self.is_blue():
@@ -100,10 +101,10 @@ class W_OpArg(W_Object):
     def is_blue(self) -> bool:
         return self.color == 'blue'
 
-    def as_red(self) -> 'W_OpArg':
+    def as_red(self, vm: 'SPyVM') -> 'W_OpArg':
         if self.color == 'red':
             return self
-        return W_OpArg('red', self.w_static_type, self.loc,
+        return W_OpArg(vm, 'red', self.w_static_type, self.loc,
                        sym=self.sym, w_val=self.w_val)
 
     @property
