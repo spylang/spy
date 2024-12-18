@@ -55,11 +55,29 @@ class TestSPyBackend(CompilerTest):
         mod = self.compile("""
         def foo() -> void:
             x: i32 = 1
+            y: f64 = 2.0
         """)
         self.assert_dump("""
         def foo() -> void:
             x: i32
             x = 1
+            y: f64
+            y = 2.0
+        """)
+
+    def test_implicit_declaration(self):
+        self.backend = 'doppler'
+        mod = self.compile("""
+        def foo() -> void:
+            x: i32 = 1
+            y = 2.0
+        """)
+        self.assert_dump("""
+        def foo() -> void:
+            x: i32
+            x = 1
+            y: f64
+            y = 2.0
         """)
 
     def test_dont_dump_blue_func(self):
