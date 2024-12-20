@@ -373,45 +373,39 @@ class ASTFrame:
         assert w_value is not None
         return W_OpArg.from_w_obj(self.vm, w_value)
 
-    # XXX: probably we should merge this with eval_expr_Name
-    def check_expr_Name(self, name: ast.Name) -> tuple[Color, W_Type]:
+    def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
         varname = name.id
         sym = self.funcdef.symtable.lookup_maybe(varname)
         if sym is None:
             msg = f"name `{name.id}` is not defined"
             raise SPyNameError.simple(msg, "not found in this scope", name.loc)
-        elif sym.fqn:
-            # XXX this is wrong: we should keep track of the static type of
-            # FQNs. For now, we just look it up and use the dynamic type
-            w_value = self.vm.lookup_global(sym.fqn)
-            assert w_value is not None
-            return sym.color, self.vm.dynamic_type(w_value)
+        if sym.fqn is not None:
+            return self.eval_Name_global(name, sym)
         elif sym.is_local:
-            return sym.color, self.locals_types_w[name.id]
+            return self.eval_Name_local(name, sym)
         else:
-            # closed-over variables are always blue
-            namespace = self.w_func.closure[sym.level]
-            w_value = namespace[sym.name]
-            assert w_value is not None
-            return 'blue', self.vm.dynamic_type(w_value)
+            return self.eval_Name_outer(name, sym)
 
-    def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
-        color, w_type = self.check_expr_Name(name)
-        sym = self.w_func.funcdef.symtable.lookup(name.id)
-        if color == 'red' and self.redshifting:
-            # this is a red variable and we are doing abstract interpretation,
-            # so we don't/can't put a specific value.
+    def eval_Name_global(self, name: ast.Name, sym: Symbol) -> W_OpArg:
+        w_val = self.vm.lookup_global(sym.fqn)
+        assert w_val is not None
+        w_type = self.vm.dynamic_type(w_val)
+        return W_OpArg(self.vm, sym.color, w_type, w_val, name.loc, sym=sym)
+
+    def eval_Name_local(self, name: ast.Name, sym: Symbol) -> W_OpArg:
+        w_type = self.locals_types_w[name.id]
+        if sym.color == 'red' and self.redshifting:
             w_val = None
-        elif sym.fqn is not None:
-            w_val = self.vm.lookup_global(sym.fqn)
-            assert w_val is not None, \
-                f'{sym.fqn} not found. Bug in the ScopeAnalyzer?'
-        elif sym.is_local:
-            w_val = self.load_local(name.id)
         else:
-            namespace = self.w_func.closure[sym.level]
-            w_val = namespace[sym.name]
-            assert w_val is not None
+            w_val = self.load_local(name.id)
+        return W_OpArg(self.vm, sym.color, w_type, w_val, name.loc, sym=sym)
+
+    def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_OpArg:
+        color = 'blue'  # closed-over variables are always blue
+        namespace = self.w_func.closure[sym.level]
+        w_val = namespace[sym.name]
+        assert w_val is not None
+        w_type = self.vm.dynamic_type(w_val)
         return W_OpArg(self.vm, color, w_type, w_val, name.loc, sym=sym)
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_Func,
