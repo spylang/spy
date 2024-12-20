@@ -475,22 +475,9 @@ class ASTFrame:
         # callop._dynamic_call_opimpl
         assert isinstance(w_opimpl, W_FuncAdapter)
         #
-        # XXX2: the "not self.abstract_interpretation" is needed because
-        # test_dynamic.test_wrong_call assumes that it will raise at runtime,
-        # not compile time. But the ultimate point of this branch is to
-        # achieve the opposite, so we need to fix the test and the code,
-        # eventually.
-        if w_opimpl.is_direct_call() and not self.abstract_interpretation:
+        if w_opimpl.is_direct_call():
             # some extra sanity checks
             assert wop_func.color == 'blue', 'indirect calls not supported'
-            if wop_func.w_static_type is B.w_dynamic:
-                # if the static type is `dynamic` and thing is not a function,
-                # it's a TypeError
-                w_func = wop_func.w_val
-                if not isinstance(w_func, W_Func):
-                    t = self.vm.dynamic_type(w_func)
-                    raise SPyTypeError(
-                        f'cannot call objects of type `{t.fqn.human_name}`')
 
         return self.eval_opimpl(call, w_opimpl, [wop_func]+args_wop)
 

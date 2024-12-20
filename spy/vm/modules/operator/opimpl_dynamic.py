@@ -69,7 +69,6 @@ def w_dynamic_getattr(vm: 'SPyVM', w_obj: W_Dynamic,
     return vm.fast_call(w_opimpl, [w_obj, w_attr])
 
 
-# NOT USED, but will be soon (hopefully)
 @OP.builtin_func
 def w_dynamic_call(vm: 'SPyVM', w_obj: W_Dynamic,
                    *args_w: W_Dynamic) -> W_Dynamic:
