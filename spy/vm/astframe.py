@@ -37,10 +37,7 @@ class ASTFrame:
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
-                 *,
-                 redshifting: bool = False
-                 ) -> None:
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
         self.vm = vm
         self.w_func = w_func
