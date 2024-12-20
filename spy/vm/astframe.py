@@ -249,37 +249,35 @@ class ASTFrame:
         self._exec_assign(assign.target, assign.value)
 
     def _exec_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
-        self.check_assign_target(target)
         varname = target.value
         sym = self.funcdef.symtable.lookup(varname)
-        is_declared = varname in self.locals_types_w
-        #
-        # evaluate the right side of the assign
-        if sym.is_local and is_declared:
-            wop = self.eval_expr(expr, varname=varname) # convert type if needed
-        else:
-            wop = self.eval_expr(expr) # no type conversion
-        #
         if sym.is_local:
-            if not is_declared:
-                # first assignment, implicit declaration
-                self.declare_local(varname, wop.w_static_type)
-            if not self.redshifting:
-                self.store_local(varname, wop.w_val)
-        elif sym.fqn is not None:
-            assert sym.color == 'red'
-            if not self.redshifting:
-                self.vm.store_global(sym.fqn, wop.w_val)
+            self._exec_assign_local(target, expr)
+        elif sym.is_global:
+            self._exec_assign_global(target, expr)
         else:
-            assert False, 'closures not implemented yet'
+            assert False, 'assignment to outer scopes not implemented yet'
 
-    def check_assign_target(self, target: ast.StrConst) -> None:
+    def _exec_assign_local(self, target: ast.StrConst, expr: ast.Expr) -> None:
+        varname = target.value
+        is_declared = varname in self.locals_types_w
+        if is_declared:
+            wop = self.eval_expr(expr, varname=varname)
+        else:
+            # first assignment, implicit declaration
+            wop = self.eval_expr(expr)
+            self.declare_local(varname, wop.w_static_type)
+
+        if not self.redshifting:
+            self.store_local(varname, wop.w_val)
+
+    def _exec_assign_global(self, target: ast.StrConst, expr: ast.Expr) -> None:
         # XXX this is semi-wrong. We need to add an AST field to keep track of
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
         varname = target.value
         sym = self.funcdef.symtable.lookup(varname)
-        if sym.is_global and sym.color == 'blue':
+        if sym.color == 'blue':
             err = SPyTypeError("invalid assignment target")
             err.add('error', f'{sym.name} is const', target.loc)
             err.add('note', 'const declared here', sym.loc)
@@ -287,6 +285,9 @@ class ASTFrame:
                     f'help: declare it as variable: `var {sym.name} ...`',
                     sym.loc)
             raise err
+        wop = self.eval_expr(expr)
+        if not self.redshifting:
+            self.vm.store_global(sym.fqn, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wop_tup = self.eval_expr(unpack.value)
