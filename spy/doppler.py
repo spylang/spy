@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def redshift(vm: 'SPyVM', w_func: W_ASTFunc) -> W_ASTFunc:
-    dop = FuncDoppler(vm, w_func)
+    dop = DopplerFrame(vm, w_func)
     return dop.redshift()
 
 
@@ -47,17 +47,22 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
     return ast.FQNConst(loc, fqn)
 
 
-class FuncDoppler(ASTFrame):
+class DopplerFrame(ASTFrame):
     """
-    Perform a redshift on a W_ASTFunc
+    Perform redshift on a W_ASTFunc
     """
     shifted_expr: dict[ast.Expr, ast.Expr]
     opimpl: dict[ast.Node, W_Func]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
-        super().__init__(vm, w_func, color='blue')
+        super().__init__(vm, w_func)
         self.shifted_expr = {}
         self.opimpl = {}
+
+    # overridden
+    @property
+    def redshifting(self) -> bool:
+        return True
 
     def redshift(self) -> W_ASTFunc:
         self.declare_arguments()

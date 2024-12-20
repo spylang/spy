@@ -278,7 +278,7 @@ class W_ASTFunc(W_Func):
 
     def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
-        frame = ASTFrame(vm, self, color='red')
+        frame = ASTFrame(vm, self)
         return frame.run(args_w)
 
 

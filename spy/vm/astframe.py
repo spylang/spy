@@ -39,7 +39,7 @@ class ASTFrame:
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
                  *,
-                 color: Color
+                 redshifting: bool = False
                  ) -> None:
         assert isinstance(w_func, W_ASTFunc)
         self.vm = vm
@@ -47,24 +47,21 @@ class ASTFrame:
         self.funcdef = w_func.funcdef
         self._locals = {}
         self.locals_types_w = {}
-        #
-        # a "red" frame performs concrete computation
-        # a "blue" frame performs abstract computation on red values, and
-        # concrete computation on blue values
-        self.color = color
+
+    # overridden by DopplerFrame
+    @property
+    def redshifting(self) -> bool:
+        return False
 
     def __repr__(self) -> str:
+        cls = self.__class__.__name__
         if self.w_func.redshifted:
             extra = ' (redshifted)'
         elif self.w_func.color == 'blue':
             extra = ' (blue)'
         else:
             extra = ''
-        return f'<{self.color} ASTFrame for {self.w_func.fqn}{extra}>'
-
-    @property
-    def abstract_interpretation(self) -> bool:
-        return self.color == 'blue'
+        return f'<{cls} for {self.w_func.fqn}{extra}>'
 
     @property
     def is_module_body(self) -> bool:
@@ -174,7 +171,7 @@ class ASTFrame:
         if w_typeconv is None:
             # no conversion needed, hooray
             return wop
-        elif self.abstract_interpretation:
+        elif self.redshifting:
             # we are performing redshifting: the conversion will be handlded
             # by FuncDoppler
             return wop
@@ -267,11 +264,11 @@ class ASTFrame:
             if not is_declared:
                 # first assignment, implicit declaration
                 self.declare_local(varname, wop.w_static_type)
-            if not self.abstract_interpretation:
+            if not self.redshifting:
                 self.store_local(varname, wop.w_val)
         elif sym.fqn is not None:
             assert sym.color == 'red'
-            if not self.abstract_interpretation:
+            if not self.redshifting:
                 self.vm.store_global(sym.fqn, wop.w_val)
         else:
             assert False, 'closures not implemented yet'
@@ -400,7 +397,7 @@ class ASTFrame:
     def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
         color, w_type = self.check_expr_Name(name)
         sym = self.w_func.funcdef.symtable.lookup(name.id)
-        if color == 'red' and self.abstract_interpretation:
+        if color == 'red' and self.redshifting:
             # this is a red variable and we are doing abstract interpretation,
             # so we don't/can't put a specific value.
             w_val = None
@@ -431,7 +428,7 @@ class ASTFrame:
         else:
             color = w_functype.color
 
-        if color == 'red' and self.abstract_interpretation:
+        if color == 'red' and self.redshifting:
             w_res = None
         else:
             args_w = [wop.w_val for wop in args_wop]
@@ -535,7 +532,7 @@ class ASTFrame:
         # XXX we need to handle empty lists
         assert w_itemtype is not None
         w_listtype = self.vm.make_list_type(w_itemtype)
-        if self.abstract_interpretation:
+        if color == 'red' and self.redshifting:
             w_val = None
         else:
             items_w = [wop.w_val for wop in items_wop]
@@ -546,7 +543,7 @@ class ASTFrame:
         items_wop = [self.eval_expr(item) for item in op.items]
         colors = [wop.color for wop in items_wop]
         color = maybe_blue(*colors)
-        if color == 'red' and self.abstract_interpretation:
+        if color == 'red' and self.redshifting:
             w_val = None
         else:
             items_w = [wop.w_val for wop in items_wop]
