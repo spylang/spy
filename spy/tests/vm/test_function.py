@@ -1,8 +1,11 @@
 import pytest
+from typing import no_type_check
+from spy.fqn import FQN
 from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.w import W_FuncType
+from spy.vm.function import W_ASTFunc
 
 class TestFunction:
 
@@ -22,3 +25,21 @@ class TestFunction:
         assert w_ft == W_FuncType.make(x=B.w_str,
                                            y=B.w_i32,
                                            w_restype=B.w_i32)
+
+    def test_FunctionType_eq(self):
+        vm = SPyVM()
+        w_ft1 = W_FuncType.parse('def() -> i32')
+        w_ft2 = W_FuncType.parse('def() -> i32')
+        assert w_ft1 is not w_ft2
+        assert w_ft1 == w_ft2
+        w_res = vm.eq(w_ft1, w_ft2)
+        assert w_res is B.w_True
+
+    @no_type_check
+    def test_function_eq(self):
+        vm = SPyVM()
+        w_functype = W_FuncType.parse('def() -> i32')
+        w_a = W_ASTFunc(w_functype, FQN('test::a'), funcdef=None, closure=None)
+        w_b = W_ASTFunc(w_functype, FQN('test::b'), funcdef=None, closure=None)
+        assert vm.eq(w_a, w_a) is B.w_True
+        assert vm.eq(w_a, w_b) is B.w_False

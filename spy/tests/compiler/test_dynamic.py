@@ -99,7 +99,6 @@ class TestDynamic(CompilerTest):
         def inc(x: i32) -> i32:
             return x + 1
 
-        @blue
         def get_inc() -> dynamic:
             return inc
 
@@ -110,7 +109,6 @@ class TestDynamic(CompilerTest):
 
     def test_wrong_call(self):
         mod = self.compile("""
-        @blue
         def get_inc() -> dynamic:
             return 'hello'
 

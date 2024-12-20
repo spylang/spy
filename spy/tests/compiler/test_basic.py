@@ -78,6 +78,14 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, 'foo', errors)
 
+    def test_binop(self):
+        mod = self.compile(
+        """
+        def foo() -> i32:
+            return 1 + 2
+        """)
+        assert mod.foo() == 3
+
     def test_local_variables(self):
         mod = self.compile(
         """
@@ -842,3 +850,17 @@ class TestBasic(CompilerTest):
         params = w_foo.w_functype.params
         assert params[0].w_type is w_S
         assert params[1].w_type is w_ptr_S1 is w_ptr_S2
+
+    @only_interp
+    def test_eager_blue_eval(self):
+        mod = self.compile("""
+        @blue
+        def bar() -> dynamic:
+            return 42
+
+        def foo() -> type:
+            x = bar()
+            return STATIC_TYPE(x)
+        """)
+        w_type = mod.foo(unwrap=False)
+        assert w_type is B.w_i32

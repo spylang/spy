@@ -28,9 +28,9 @@ from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
                     TYPE_CHECKING)
 from spy import ast
 from spy.location import Loc
-from spy.irgen.symtable import Symbol
+from spy.irgen.symtable import Symbol, Color
 from spy.errors import SPyTypeError
-from spy.vm.b import OPERATOR
+from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType, W_DirectCall
 from spy.vm.builtin import builtin_func, builtin_type
@@ -44,61 +44,96 @@ T = TypeVar('T')
 @OPERATOR.builtin_type('OpArg')
 class W_OpArg(W_Object):
     """
-    Class which represents the operands passed to OPERATORs.
+    A value which carries some extra information.
+    This is a central part of how SPy works.
 
-    There are two kinds of operands:
+    In order to preserve the same semantics between interp and compile,
+    operation dispatch must be done on STATIC types. The same object can have
+    different static types, and thus respond to different operations. For
+    example:
+        x: MyClass = ...
+        y: object = x
 
-      - "proper" OpArgs, which refers to a value which will be known later at
-        runtime.
+    x and y are identical, but have different static types.
 
-      - OpConsts, which can be synthetized inside OPERATORs, in case they want
-        to pass a const to an opimpl.
+    The main job of OpArgs is to keep track of the color and the static type
+    of objects inside the ASTFrame.  As the name suggests, they are then
+    passed as arguments to OPERATORs, which can then use the static type to
+    dispatch to the proper OpImpl.
 
-    In some cases, the *actual value* of an OpArg might be known at
-    compile time, if it comes from a blue expression: in this case, we also
-    set w_blueval.
+    Moreover, they carry around extra information which are used to produce
+    better error messages, when needed:
+      - loc: the source code location where this object comes from
+      - sym: the symbol associated with this objects (if any)
 
-    The naming convention is wop_one and manyvalues_wop.
+    In interpreter mode, OpArgs represent concrete values, so they carry an
+    actualy object + its static type.
 
-    Internally, an OpConst is represented as an OpArg whose .i is None.
+    During redshifting, red OpArgs are abstract: they carry around only the
+    static types.
+
+    Blue OpArg always have an associated value.
     """
+    color: Color
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
+    _w_val: Optional[W_Object]
     sym: Optional[Symbol]
-    _w_blueval: Optional[W_Object]
 
     def __init__(self,
+                 vm: 'SPyVM',
+                 color: Color,
                  w_static_type: W_Type,
+                 w_val: Optional[W_Object],
                  loc: Loc,
                  *,
                  sym: Optional[Symbol] = None,
-                 w_blueval: Optional[W_Object] = None,
                  ) -> None:
+        if color == 'blue':
+            assert w_val is not None
+            if w_static_type is B.w_dynamic:
+                # "dynamic blue" doesn't make sense: if it's blue, we
+                # precisely know its type, and we can eagerly evaluate it.
+                # See test_basic::test_eager_blue_eval
+                w_static_type = vm.dynamic_type(w_val)
+        self.color = color
         self.w_static_type = w_static_type
+        self._w_val = w_val
         self.loc = loc
         self.sym = sym
-        self._w_blueval = w_blueval
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(w_type, Loc.here(-2), w_blueval=w_obj)
+        return W_OpArg(vm, 'blue', w_type, w_obj, Loc.here(-2))
 
     def __repr__(self) -> str:
         if self.is_blue():
-            extra = f' = {self._w_blueval}'
+            extra = f' = {self.w_val}'
         else:
             extra = ''
         t = self.w_static_type.fqn.human_name
-        return f'<W_OpArg {t}{extra}>'
+        return f'<W_OpArg {self.color} {t}{extra}>'
 
     def is_blue(self) -> bool:
-        return self._w_blueval is not None
+        return self.color == 'blue'
+
+    def as_red(self, vm: 'SPyVM') -> 'W_OpArg':
+        if self.color == 'red':
+            return self
+        return W_OpArg(vm, 'red', self.w_static_type, self._w_val, self.loc,
+                       sym=self.sym)
+
+    @property
+    def w_val(self) -> W_Object:
+        assert self._w_val is not None, 'cannot read w_val from abstract OpArg'
+        return self._w_val
 
     @property
     def w_blueval(self) -> W_Object:
-        assert self._w_blueval is not None
-        return self._w_blueval
+        assert self.color == 'blue'
+        assert self._w_val is not None
+        return self._w_val
 
     def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
         """
@@ -106,7 +141,7 @@ class W_OpArg(W_Object):
         Raise SPyTypeError if not.
         """
         from spy.vm.modules.operator.convop import CONVERT_maybe
-        if self._w_blueval is None:
+        if self.color != 'blue':
             raise SPyTypeError.simple(
                 'expected blue argument',
                 'this is red',
@@ -117,7 +152,8 @@ class W_OpArg(W_Object):
         # AssertionError.
         w_opimpl = CONVERT_maybe(vm, w_expected_type, self)
         assert w_opimpl is None
-        return self._w_blueval
+        assert self.w_val is not None
+        return self.w_val
 
     def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
         """
@@ -129,8 +165,8 @@ class W_OpArg(W_Object):
     def blue_unwrap_str(self, vm: 'SPyVM') -> str:
         from spy.vm.b import B
         self.blue_ensure(vm, B.w_str)
-        assert self._w_blueval is not None
-        return vm.unwrap_str(self._w_blueval)
+        assert self.w_val is not None
+        return vm.unwrap_str(self.w_val)
 
     @staticmethod
     def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
@@ -161,7 +197,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     ##     import pdb;pdb.set_trace()
     if (wop1.is_blue() and
         wop2.is_blue() and
-        vm.is_False(vm.eq(wop1._w_blueval, wop2._w_blueval))):
+        vm.is_True(vm.universal_ne(wop1.w_val, wop2.w_val))):
         return B.w_False
     return B.w_True
 

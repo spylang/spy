@@ -9,6 +9,16 @@ if TYPE_CHECKING:
 
 Color = Literal["red", "blue"]
 
+def maybe_blue(*colors: Color) -> Color:
+    """
+    Return 'blue' if all the given colors are blue, else 'red'
+    """
+    if set(colors) == {'blue'}:
+        return 'blue'
+    else:
+        return 'red'
+
+
 @dataclass
 class Symbol:
     name: str

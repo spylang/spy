@@ -64,7 +64,7 @@ def test_converter():
     w_adapter = W_FuncAdapter(
         w_functype,
         w_repeat,
-        [ArgSpec.Arg(1), ArgSpec.Arg(0, OP.w_f64_to_i32)]
+        [ArgSpec.Arg(1), ArgSpec.Convert(OP.w_f64_to_i32, ArgSpec.Arg(0))]
     )
     w_s = vm.fast_call(w_adapter, [vm.wrap(3.5), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '

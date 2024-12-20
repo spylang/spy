@@ -63,6 +63,15 @@ class W_FuncType(W_Type):
     def __hash__(self) -> int:
         return hash((self.fqn, self.color, tuple(self.params), self.w_restype))
 
+    @staticmethod
+    def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        from spy.vm.modules.builtins import w_functype_eq
+        if wop_l.w_static_type is wop_r.w_static_type:
+            return W_OpImpl(w_functype_eq)
+        else:
+            return W_OpImpl.NULL
+
     @classmethod
     def make(cls,
              *,
@@ -143,9 +152,14 @@ class W_FuncType(W_Type):
             for param in self.params:
                 yield param
 
+# we cannot use @builtin_type because of circular import issues. Let's build
+# the app-level type manually
+W_FuncType._w = W_Type(FQN('builtins::functype'), W_FuncType)
 
 
 class W_Func(W_Object):
+    __spy_storage_category__ = 'reference'
+
     w_functype: W_FuncType
     fqn: FQN
 
@@ -155,6 +169,20 @@ class W_Func(W_Object):
         Just a shortcut
         """
         return self.w_functype.color
+
+    def is_pure(self) -> bool:
+        """
+        The result of pure functions depend only on their argument,
+        without side effects.
+
+        This means that if we call a red pure function with blue arguments,
+        the result can be blue.
+
+        Maybe the proper thing to do is to introduce a new color and store
+        this info on the w_functype.
+        """
+        # this is a hack, but good enough to constant-fold arithmetic ops
+        return self.fqn.modname == 'operator'
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype

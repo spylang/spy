@@ -70,7 +70,7 @@ class W_PtrType(W_Type):
             w_NULL = W_Ptr(w_self, 0, 0)
             vm.add_global(w_self.fqn.join('NULL'), w_NULL)
 
-            @builtin_func(w_self.fqn)  # ptr[i32]::get_NULL
+            @builtin_func(w_self.fqn, color='blue')  # ptr[i32]::get_NULL
             def w_get_NULL(vm: 'SPyVM') -> Annotated['W_Ptr', w_self]:
                 return w_NULL
             return W_OpImpl(w_get_NULL, [])

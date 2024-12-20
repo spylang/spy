@@ -107,6 +107,7 @@ class CompilerTest:
     @pytest.fixture
     def init(self, request, tmpdir, compiler_backend):
         self.dump_c = request.config.getoption('--dump-c')
+        self.dump_redshift = request.config.getoption('--dump-redshift')
         self.tmpdir = tmpdir
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
         self.backend = compiler_backend
@@ -157,7 +158,8 @@ class CompilerTest:
             return interp_mod
         elif self.backend == 'doppler':
             self.vm.redshift()
-            #self.dump_module(modname)
+            if self.dump_redshift:
+                self.dump_module(modname)
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
@@ -173,7 +175,8 @@ class CompilerTest:
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift()
-            #self.dump_module(modname)
+            if self.dump_redshift:
+                self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir,
                                 dump_c=self.dump_c)
             file_js = compiler.cbuild(

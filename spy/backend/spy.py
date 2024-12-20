@@ -23,6 +23,9 @@ class SPyBackend:
         self.out = TextBuilder(use_colors=False)
         self.w = self.out.w
         self.wl = self.out.wl
+        # these are initialized by dump_w_func
+        self.w_func: W_ASTFunc = None       # type: ignore
+        self.vars_declared: set[str] = None # type: ignore
 
     def dump_mod(self, modname: str) -> str:
         w_mod = self.vm.modules_w[modname]
@@ -38,6 +41,8 @@ class SPyBackend:
             name = fqn.symbol_name
         else:
             name = self.fmt_fqn(fqn)
+        self.w_func = w_func
+        self.vars_declared = set()
         w_functype = w_func.w_functype
         params = self.fmt_params(w_functype.params)
         ret = self.fmt_w_obj(w_functype.w_restype)
@@ -90,6 +95,13 @@ class SPyBackend:
 
     # statements
 
+    def emit_declare_var_maybe(self, varname: str) -> None:
+        if self.w_func.redshifted and varname not in self.vars_declared:
+            w_type = self.w_func.locals_types_w[varname]
+            t = self.fmt_w_obj(w_type)
+            self.wl(f'{varname}: {t}')
+            self.vars_declared.add(varname)
+
     def emit_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         name = funcdef.name
         paramlist = []
@@ -120,8 +132,10 @@ class SPyBackend:
         self.wl(f'return {v}')
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
+        varname = assign.target.value
+        self.emit_declare_var_maybe(varname)
         v = self.fmt_expr(assign.value)
-        self.wl(f'{assign.target.value} = {v}')
+        self.wl(f'{varname} = {v}')
 
     def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         targets = ', '.join([t.value for t in unpack.targets])
@@ -143,6 +157,7 @@ class SPyBackend:
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         t = self.fmt_expr(vardef.type)
         self.wl(f'{vardef.name}: {t}')
+        self.vars_declared.add(vardef.name)
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value)

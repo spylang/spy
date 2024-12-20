@@ -1,12 +1,16 @@
 from collections import defaultdict
+import operator
 from typing import TYPE_CHECKING, Optional, Sequence
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
+from spy.textbuilder import Color
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 ARGS_W = Sequence[W_Object]
 ENTRY = tuple[ARGS_W, W_Object]
+
+DEBUG = False
 
 class BlueCache:
     """
@@ -29,6 +33,12 @@ class BlueCache:
         self.data[w_func].append(entry)
 
     def lookup(self, w_func: W_Func, got_args_w: ARGS_W) -> Optional[W_Object]:
+        w_res = self._lookup(w_func, got_args_w)
+        if DEBUG:
+            print(f'BlueCache.lookup: {w_func.fqn}, {got_args_w} -> {w_res}')
+        return w_res
+
+    def _lookup(self, w_func: W_Func, got_args_w: ARGS_W) -> Optional[W_Object]:
         entries = self.data[w_func]
         for args_w, w_result in entries:
             if self.args_w_eq(args_w, got_args_w):
@@ -42,3 +52,21 @@ class BlueCache:
             if self.vm.is_False(self.vm.universal_eq(w_a, w_b)):
                 return False
         return True
+
+    def pp(self, funcname: Optional[str] = None) -> None:
+        if funcname:
+            for w_func, entries in self.data.items():
+                if funcname in str(w_func.fqn):
+                    self._pp_one(w_func, entries)
+        else:
+            items = sorted(self.data.items(), key=lambda x: len(x[1]))
+            for w_func, entries in items:
+                n = len(entries)
+                print(f'{n:4d} {w_func.fqn}')
+
+    def _pp_one(self, w_func: W_Func, entries: list[ENTRY]) -> None:
+        print(w_func.fqn)
+        for args_w, w_result in entries:
+            args = ', '.join([str(w_arg) for w_arg in args_w])
+            res = str(w_result)
+            print(Color.set('red', args), Color.set('yellow', res))

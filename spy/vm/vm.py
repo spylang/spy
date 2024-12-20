@@ -12,6 +12,7 @@ from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
+from spy.vm.list import W_ListType
 from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.func_adapter import W_FuncAdapter
@@ -137,7 +138,7 @@ class SPyVM:
         # XXX we should maintain a reverse-lookup table instead of doing a
         # linear search
         for fqn, w_obj in self.globals_w.items():
-            if w_val is w_obj:
+            if w_val == w_obj:
                 return fqn
         return None
 
@@ -241,10 +242,11 @@ class SPyVM:
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
 
-    def is_True(self, w_obj: W_Object) -> bool:
+    def is_True(self, w_obj: W_Bool) -> bool:
+        assert isinstance(w_obj, W_Bool)
         return w_obj is B.w_True
 
-    def is_False(self, w_obj: W_Object) -> bool:
+    def is_False(self, w_obj: W_Bool) -> bool:
         return w_obj is B.w_False
 
     def wrap(self, value: Any) -> W_Object:
@@ -335,7 +337,40 @@ class SPyVM:
 
         Mostly useful to call OPERATORs.
         """
-        w_func = self.fast_call(w_OP, args_wop)
+        # <TEMPORARY HACK>
+        #
+        # we don't want to over-specialize OPERATORs: for example, in case of
+        # W_List.op_GETITEM(obj, i) we care only about the types, and we don't
+        # care whether "i" is blue.
+        #
+        # args_wop contains W_OpArgs which directly comes from ASTFrame, and
+        # so they might be either red or blue: e.g., if you do mylist[0], "0"
+        # corresponds to a blue oparg. The idea is that we want to convert
+        # "non-interesting" blue opargs into red opargs.
+
+        # Ideally, each op_* should be able to specify whether it wants to
+        # specialize only on types (i.e., red W_OpArgs) or also values (i.e.,
+        # blue W_OpArgs). But we don't support that yet, so for now we use
+        # some heuristics which seems to work:
+        #
+        #   1. for "single dispatch" operator, in which we have an "obj" which
+        #      is the receiver of the OP, we keep it blue
+        #
+        #   2. for GETATTR, SETATTR, CALL_METHOD, we keep the attribute/method
+        #      name blue
+        #
+        #   3. everything else becomes red
+        OP = OPERATOR
+        new_args_wop = [wop.as_red(self) for wop in args_wop]
+
+        if w_OP in (OP.w_CALL, OP.w_CALL_METHOD, OP.w_GETATTR,
+                    OP.w_GETITEM, OP.w_SETATTR, OP.w_SETITEM):
+            new_args_wop[0] = args_wop[0]
+        if w_OP in (OP.w_GETATTR, OP.w_SETATTR, OP.w_CALL_METHOD):
+            new_args_wop[1] = args_wop[1]
+        # </TEMPORARY HACK>
+
+        w_func = self.fast_call(w_OP, new_args_wop)
         assert isinstance(w_func, W_Func)
         return w_func
 
@@ -367,17 +402,20 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_type)
         return w_func.raw_call(self, args_w)
 
+    def _w_oparg(self, w_x: W_Dynamic) -> W_OpArg:
+        return W_OpArg(self, 'red', self.dynamic_type(w_x), None, Loc.here(-3))
+
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = W_OpArg(self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = self._w_oparg(w_a)
+        wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = W_OpArg(self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = self._w_oparg(w_a)
+        wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(OPERATOR.w_NE, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
@@ -387,8 +425,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wop_obj = W_OpArg(self.dynamic_type(w_obj), Loc.here(-2))
-        wop_i = W_OpArg(self.dynamic_type(w_i), Loc.here(-2))
+        wop_obj = self._w_oparg(w_obj)
+        wop_i = self._w_oparg(w_i)
         w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return self.fast_call(w_opimpl, [w_obj, w_i])
 
@@ -438,8 +476,8 @@ class SPyVM:
         if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
             return self.fast_call(w_oparg_eq, [w_a, w_b])  # type: ignore
 
-        wop_a = W_OpArg(self.dynamic_type(w_a), Loc.here(-2))
-        wop_b = W_OpArg(self.dynamic_type(w_b), Loc.here(-2))
+        wop_a = self._w_oparg(w_a)
+        wop_b = self._w_oparg(w_b)
         try:
             w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
         except SPyTypeError:
@@ -457,7 +495,7 @@ class SPyVM:
     def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         return self.universal_eq(w_a, w_b).not_(self)
 
-    def make_list_type(self, w_T: W_Type) -> W_Type:
+    def make_list_type(self, w_T: W_Type) -> W_ListType:
         w_res = self.getitem(B.w_list, w_T)
-        assert isinstance(w_res, W_Type)
+        assert isinstance(w_res, W_ListType)
         return w_res

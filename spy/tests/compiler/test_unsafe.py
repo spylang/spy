@@ -33,18 +33,13 @@ class TestUnsafe(CompilerTest):
 
         def foo() -> i32:
             # XXX: ideally we want gc_alloc[i32](1), but we can't for now
-            #
-            # XXX: ideally we would like the type of "buf" to be inferrable
-            # but we can't for now because the return type of
-            # gc_alloc(i32)(...) is `dynamic`
-            #
-            buf: ptr[i32] = gc_alloc(i32)(1)
+            buf = gc_alloc(i32)(1)
             buf[0] = 42
             return buf[0]
 
         def bar(i: i32) -> f64:
             # make sure that we can use other item types as well
-            buf: ptr[f64] = gc_alloc(f64)(3)
+            buf = gc_alloc(f64)(3)
             buf[0] = 1.2
             buf[1] = 3.4
             buf[2] = 5.6
@@ -61,7 +56,7 @@ class TestUnsafe(CompilerTest):
         from unsafe import gc_alloc, ptr
 
         def foo(i: i32) -> i32:
-            buf: ptr[i32] = gc_alloc(i32)(3)
+            buf = gc_alloc(i32)(3)
             buf[0] = 0
             buf[1] = 100
             buf[2] = 200
@@ -81,7 +76,7 @@ class TestUnsafe(CompilerTest):
             y: f64
 
         def make_point(x: i32, y: f64) -> ptr[Point]:
-            p: ptr[Point] = gc_alloc(Point)(1)
+            p = gc_alloc(Point)(1)
             p.x = x
             p.y = y
             return p
@@ -106,7 +101,7 @@ class TestUnsafe(CompilerTest):
             y: i32
 
         def foo() -> void:
-            p: ptr[Point] = gc_alloc(Point)(1)
+            p = gc_alloc(Point)(1)
             p.z = 42
         """
         errors = expect_errors(
@@ -129,7 +124,7 @@ class TestUnsafe(CompilerTest):
             b: Point
 
         def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> ptr[Rect]:
-            r: ptr[Rect] = gc_alloc(Rect)(1)
+            r = gc_alloc(Rect)(1)
 
             # write via ptr
             r_a: ptr[Point] = r.a
@@ -176,7 +171,7 @@ class TestUnsafe(CompilerTest):
             buf: ptr[i32]
 
         def foo(i: i32) -> i32:
-            arr: ptr[Array] = gc_alloc(Array)(1)
+            arr = gc_alloc(Array)(1)
             arr.n = 3
             arr.buf = gc_alloc(i32)(4)
             arr.buf[0] = 1
@@ -201,13 +196,13 @@ class TestUnsafe(CompilerTest):
         Point_f64 = make_Point(f64)
 
         def foo() -> i32:
-            p: ptr[Point_i32] = gc_alloc(Point_i32)(1)
+            p = gc_alloc(Point_i32)(1)
             p.x = 1
             p.y = 2
             return p.x + p.y
 
         def bar() -> f64:
-            p: ptr[Point_f64] = gc_alloc(Point_f64)(1)
+            p = gc_alloc(Point_f64)(1)
             p.x = 1.2
             p.y = 3.4
             return p.x + p.y
@@ -248,7 +243,7 @@ class TestUnsafe(CompilerTest):
             return is_null(ptr[i32].NULL)
 
         def bar() -> bool:
-            p: ptr[i32] = gc_alloc(i32)(1)
+            p = gc_alloc(i32)(1)
             return is_null(p)
 
         """)
@@ -264,7 +259,7 @@ class TestUnsafe(CompilerTest):
             next: ptr[Node]
 
         def new_node(val: i32) -> ptr[Node]:
-            n: ptr[Node] = gc_alloc(Node)(1)
+            n = gc_alloc(Node)(1)
             n.val = val
             n.next = ptr[Node].NULL
             return n

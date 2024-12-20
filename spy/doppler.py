@@ -10,7 +10,8 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def redshift(vm: 'SPyVM', w_func: W_ASTFunc) -> W_ASTFunc:
-    dop = FuncDoppler(vm, w_func)
+    dop = DopplerFrame(vm, w_func)
     return dop.redshift()
 
 
@@ -46,23 +47,30 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
     return ast.FQNConst(loc, fqn)
 
 
-class FuncDoppler:
+class DopplerFrame(ASTFrame):
     """
-    Perform a redshift on a W_ASTFunc
+    Perform redshift on a W_ASTFunc
     """
+    shifted_expr: dict[ast.Expr, ast.Expr]
+    opimpl: dict[ast.Node, W_Func]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
-        self.vm = vm
-        self.w_func = w_func
-        self.funcdef = w_func.funcdef
-        self.blue_frame = ASTFrame(vm, w_func)
-        self.t = self.blue_frame.t
+        super().__init__(vm, w_func)
+        self.shifted_expr = {}
+        self.opimpl = {}
+
+    # overridden
+    @property
+    def redshifting(self) -> bool:
+        return True
 
     def redshift(self) -> W_ASTFunc:
+        self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
         for stmt in funcdef.body:
             new_body += self.shift_stmt(stmt)
+
         new_funcdef = funcdef.replace(body=new_body)
         #
         new_fqn = self.w_func.fqn
@@ -75,83 +83,53 @@ class FuncDoppler:
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
-            locals_types_w = self.t.locals_types_w.copy())
+            locals_types_w = self.locals_types_w.copy())
         return w_newfunc
-
-    def blue_eval(self, expr: ast.Expr) -> ast.Expr:
-        w_val = self.blue_frame.eval_expr(expr)
-        return make_const(self.vm, expr.loc, w_val)
 
     # =========
 
-    def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
-        self.t.check_stmt(stmt)
-        return magic_dispatch(self, 'shift_stmt', stmt)
-
-    def shift_expr(self, expr: ast.Expr) -> ast.Expr:
-        color, w_type = self.t.check_expr(expr)
-        if color == 'blue':
-            return self.blue_eval(expr)
-        res = magic_dispatch(self, 'shift_expr', expr)
-        w_conv = self.t.expr_conv.get(expr)
-        if w_conv:
-            # converters are used only for local variables and if/while
-            # conditions (see TypeChecker.expr_conv). Probably we could just
-            # use an W_OpImpl instead?
-            return ast.Call(
-                loc = res.loc,
-                func = ast.FQNConst(
-                    loc = res.loc,
-                    fqn = w_conv.fqn
-                ),
-                args = [res]
-            )
-        else:
-            return res
-
     # ==== statements ====
 
+    def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        return magic_dispatch(self, 'shift_stmt', stmt)
+
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
-        newvalue = self.shift_expr(ret.value)
+        newvalue = self.eval_and_shift(ret.value, varname='@return')
         return [ret.replace(value=newvalue)]
 
     def shift_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        ann_color, w_ann_type = self.t.check_expr(vardef.type)
-        assert ann_color == 'blue'
-        assert isinstance(w_ann_type, W_Type)
-        self.blue_frame.exec_stmt_VarDef(vardef)
-        newtype = self.shift_expr(vardef.type)
+        self.exec_stmt_VarDef(vardef)
+        newtype = self.shifted_expr[vardef.type]
         return [vardef.replace(type=newtype)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        sym = self.funcdef.symtable.lookup(assign.target.value)
-        if sym.color == 'red':
-            newvalue = self.shift_expr(assign.value)
-            return [assign.replace(value=newvalue)]
-        else:
-            assert False, 'implement me'
+        self.exec_stmt_Assign(assign)
+        newvalue = self.shifted_expr[assign.value]
+        return [assign.replace(value=newvalue)]
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
-        v_target = self.shift_expr(node.target)
-        v_attr = self.shift_expr(node.attr)
-        v_value = self.shift_expr(node.value)
-        w_opimpl = self.t.opimpl[node]
+        self.exec_stmt(node)
+        w_opimpl = self.opimpl[node]
+        v_target = self.shifted_expr[node.target]
+        v_attr = self.shifted_expr[node.attr]
+        v_value = self.shifted_expr[node.value]
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_attr, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_SetItem(self, node: ast.SetItem) -> list[ast.Stmt]:
-        v_target = self.shift_expr(node.target)
-        v_index = self.shift_expr(node.index)
-        v_value = self.shift_expr(node.value)
-        w_opimpl = self.t.opimpl[node]
+        self.exec_stmt(node)
+        w_opimpl = self.opimpl[node]
+        v_target = self.shifted_expr[node.target]
+        v_index = self.shifted_expr[node.index]
+        v_value = self.shifted_expr[node.value]
         call = self.shift_opimpl(node, w_opimpl, [v_target, v_index, v_value])
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
-        newvalue = self.shift_expr(stmt.value)
+        newvalue = self.eval_and_shift(stmt.value)
         return [stmt.replace(value=newvalue)]
 
     def shift_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
@@ -161,7 +139,7 @@ class FuncDoppler:
         return newbody
 
     def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
-        newtest = self.shift_expr(if_node.test)
+        newtest = self.eval_and_shift(if_node.test, varname='@if')
         newthen = self.shift_body(if_node.then_body)
         newelse = self.shift_body(if_node.else_body)
         return [if_node.replace(
@@ -171,7 +149,7 @@ class FuncDoppler:
         )]
 
     def shift_stmt_While(self, while_node: ast.While) -> list[ast.While]:
-        newtest = self.shift_expr(while_node.test)
+        newtest = self.eval_and_shift(while_node.test, varname='@while')
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(
             test = newtest,
@@ -180,7 +158,94 @@ class FuncDoppler:
 
     # ==== expressions ====
 
-    def shift_opimpl(self, op: ast.Expr | ast.Stmt,
+    def eval_and_shift(self, expr: ast.Expr,
+                       *,
+                       varname: Optional[str] = None,
+                       ) -> ast.Expr:
+        """
+        Just a shortcut to call eval_expr() and get its shifted version.
+        """
+        self.eval_expr(expr, varname=varname)
+        return self.shifted_expr[expr]
+
+    def eval_expr(self, expr: ast.Expr,
+                  *,
+                  varname: Optional[str] = None,
+                  ) -> W_OpArg:
+        """
+        Override ASTFrame.eval_expr.
+        For each expr, also compute its shifted version.
+
+        The execution flow is a bit of a ping-pong between astframe and
+        doppler. It is better explained by tracing what happens when shifting
+        a statement like "return 1 + 3":
+
+        FuncDoppler.shift_stmt_Return
+          -> call self.eval_and_shift(ret.value)
+
+          FuncDoppler.eval_and_shift
+            -> call self.eval_expr
+            -> return self.shifted_expr[...]
+
+            FuncDoppler.eval_expr
+              -> call ASTFrame.eval_expr
+              -> call FuncDoppler.shift_expr
+
+              ASTFrame.eval_expr_BinOp
+                -> recursive call eval_expr() on binop.{left,right}
+                -> call FuncDoppler.eval_opimpl
+
+                FuncDoppler.eval_opimpl
+                  -> save self.opimpl[op]
+                  -> call ASTFrame.eval_opimpl
+                  -> return W_OpArg
+
+              FuncDoppler.shift_expr_BinOp
+                  -> retrieve shifted operands for binop.{left,right}
+                  -> compute shited binop (stored in .shifted_expr)
+        """
+        wop = super().eval_expr(expr, varname=varname)
+        if wop.color == 'blue':
+            new_expr = make_const(self.vm, expr.loc, wop.w_val)
+        else:
+            new_expr = self.shift_expr(expr)
+
+        w_typeconv = self.typecheck_maybe(wop, varname)
+        if w_typeconv:
+            new_expr = ast.Call(
+                loc = new_expr.loc,
+                func = ast.FQNConst(
+                    loc = new_expr.loc,
+                    fqn = w_typeconv.fqn
+                ),
+                args = [new_expr]
+            )
+
+        self.shifted_expr[expr] = new_expr
+        return wop
+
+    def eval_opimpl(self, op: ast.Node, w_opimpl: W_Func,
+                    args_wop: list[W_OpArg]) -> W_OpArg:
+        """
+        Override ASTFrame.eval_opimpl.
+        This is a bug ugly, but too bad: record a mapping from op to w_opimpl.
+        """
+        self.opimpl[op] = w_opimpl
+        return super().eval_opimpl(op, w_opimpl, args_wop)
+
+    def shift_expr(self, expr: ast.Expr) -> ast.Expr:
+        """
+        Shift an expression and store it into self.shifted_expr.
+
+        This method must to be called EXACTLY ONCE for each expr node
+        of the AST, and it's supposed to be called by eval_expr.
+        """
+        assert expr not in self.shifted_expr
+        new_expr = magic_dispatch(self, 'shift_expr', expr)
+        self.shifted_expr[expr] = new_expr
+        return new_expr
+
+    def shift_opimpl(self, op: ast.Node,
                      w_opimpl: W_Func,
                      orig_args: list[ast.Expr]
                      ) -> ast.Call:
@@ -191,24 +256,24 @@ class FuncDoppler:
 
     def _shift_adapter_args(self, w_adapter: W_FuncAdapter,
                             orig_args: list[ast.Expr]) -> list[ast.Expr]:
-        real_args = []
-        for spec in w_adapter.args:
+        def getarg(spec: ArgSpec) -> ast.Expr:
             if isinstance(spec, ArgSpec.Arg):
-                arg = orig_args[spec.i]
-                if spec.w_converter is not None:
-                    arg = ast.Call(
-                        loc = arg.loc,
-                        func = ast.FQNConst(
-                            loc = arg.loc,
-                            fqn = spec.w_converter.fqn
-                        ),
-                        args = [arg]
-                    )
+                return orig_args[spec.i]
             elif isinstance(spec, ArgSpec.Const):
-                arg = make_const(self.vm, spec.loc, spec.w_const)
+                return make_const(self.vm, spec.loc, spec.w_const)
+            elif isinstance(spec, ArgSpec.Convert):
+                arg = getarg(spec.arg)
+                return ast.Call(
+                    loc = arg.loc,
+                    func = ast.FQNConst(
+                        loc = arg.loc,
+                        fqn = spec.w_conv.fqn
+                    ),
+                    args = [arg]
+                )
             else:
                 assert False
-            real_args.append(arg)
+        real_args = [getarg(spec) for spec in w_adapter.args]
         return real_args
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
@@ -217,14 +282,10 @@ class FuncDoppler:
     def shift_expr_Name(self, name: ast.Name) -> ast.Expr:
         return name
 
-    def shift_expr_List(self, lst: ast.List) -> ast.Expr:
-        items = [self.shift_expr(item) for item in lst.items]
-        return ast.List(lst.loc, items)
-
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
-        l = self.shift_expr(binop.left)
-        r = self.shift_expr(binop.right)
-        w_opimpl = self.t.opimpl[binop]
+        w_opimpl = self.opimpl[binop]
+        l = self.shifted_expr[binop.left]
+        r = self.shifted_expr[binop.right]
         return self.shift_opimpl(binop, w_opimpl, [l, r])
 
     shift_expr_Add = shift_expr_BinOp
@@ -238,22 +299,26 @@ class FuncDoppler:
     shift_expr_Gt = shift_expr_BinOp
     shift_expr_GtE = shift_expr_BinOp
 
+    def shift_expr_List(self, lst: ast.List) -> ast.Expr:
+        items = [self.shifted_expr[item] for item in lst.items]
+        return ast.List(lst.loc, items)
+
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
-        v = self.shift_expr(op.value)
-        i = self.shift_expr(op.index)
-        w_opimpl = self.t.opimpl[op]
+        w_opimpl = self.opimpl[op]
+        v = self.shifted_expr[op.value]
+        i = self.shifted_expr[op.index]
         return self.shift_opimpl(op, w_opimpl, [v, i])
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
-        v = self.shift_expr(op.value)
-        v_attr = self.shift_expr(op.attr)
-        w_opimpl = self.t.opimpl[op]
+        w_opimpl = self.opimpl[op]
+        v = self.shifted_expr[op.value]
+        v_attr = self.shifted_expr[op.attr]
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call) -> ast.Expr:
-        newfunc = self.shift_expr(call.func)
-        newargs = [self.shift_expr(arg) for arg in call.args]
-        w_opimpl = self.t.opimpl[call]
+        w_opimpl = self.opimpl[call]
+        newfunc = self.shifted_expr[call.func]
+        newargs = [self.shifted_expr[arg] for arg in call.args]
         assert isinstance(w_opimpl, W_FuncAdapter)
         if w_opimpl.is_direct_call():
             # sanity check: the redshift MUST have produced a const. If it
@@ -261,11 +326,12 @@ class FuncDoppler:
             assert isinstance(newfunc, (ast.FQNConst, ast.Constant, ast.StrConst))
             newargs = self._shift_adapter_args(w_opimpl, [newfunc] + newargs)
             newop = ast.Call(call.loc, newfunc, newargs)
-            return self.specialize_print_maybe(newop)
+            return self.specialize_print_maybe(w_opimpl, newop)
         else:
             return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
 
-    def specialize_print_maybe(self, call: ast.Call) -> ast.Expr:
+    def specialize_print_maybe(self, w_opimpl: W_Func,
+                               call: ast.Call) -> ast.Expr:
         """
         This is a temporary hack. We specialize print() based on the type
         of its first argument
@@ -275,9 +341,9 @@ class FuncDoppler:
             return call
 
         assert len(call.args) == 1
-        color, w_type = self.t.check_expr(call.args[0])
-        t = w_type.fqn.symbol_name
-        if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
+        w_argtype = w_opimpl.w_functype.params[1].w_type
+        t = w_argtype.fqn.symbol_name
+        if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
             fqn = FQN(f'builtins::print_{t}')
         else:
             raise SPyTypeError(f"Invalid type for print(): {t}")
@@ -286,9 +352,8 @@ class FuncDoppler:
         return call.replace(func=newfunc)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
-        assert op in self.t.opimpl
-        w_opimpl = self.t.opimpl[op]
-        v_target = self.shift_expr(op.target)
-        v_method = self.shift_expr(op.method)
-        newargs_v = [self.shift_expr(arg) for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v_target, v_method] + newargs_v)
+        w_opimpl = self.opimpl[op]
+        v_obj = self.shifted_expr[op.target]
+        v_meth = self.shifted_expr[op.method]
+        newargs_v = [self.shifted_expr[arg] for arg in op.args]
+        return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
