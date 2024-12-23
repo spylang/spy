@@ -64,15 +64,13 @@ def typecheck_opimpl(
         assert w_opimpl._args_wop is not None
         out_args_wop = w_opimpl._args_wop
 
+    def_loc = w_opimpl._w_func.def_loc
+
     # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
-    def_loc = None
     if w_opimpl.is_direct_call():
         wop_func = in_args_wop[0]
         call_loc = wop_func.loc
-        # not all direct calls targets have a sym (e.g. if we call a builtin)
-        if wop_func.sym is not None:
-            def_loc = wop_func.sym.loc
 
     # check that the number of arguments match
     got_nargs = len(out_args_wop)

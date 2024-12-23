@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
                     Iterator)
 from spy import ast
+from spy.location import Loc
 from spy.ast import Color
 from spy.fqn import FQN, NSPart
 from spy.vm.object import W_Object, W_Type
@@ -162,6 +163,7 @@ class W_Func(W_Object):
 
     w_functype: W_FuncType
     fqn: FQN
+    def_loc: Loc
 
     @property
     def color(self) -> Color:
@@ -223,8 +225,9 @@ class W_Func(W_Object):
         from spy.vm.opimpl import W_OpImpl
         w_functype = wop_func.w_static_type
         assert isinstance(w_functype, W_FuncType)
+        w_func = wop_func.w_blueval
         return W_OpImpl(
-            W_DirectCall(w_functype),
+            W_DirectCall(w_functype, w_func.def_loc),
             list(args_wop),
         )
 
@@ -235,8 +238,9 @@ class W_DirectCall(W_Func):
     """
     fqn = FQN("builtins::__direct_call__")
 
-    def __init__(self, w_functype: W_FuncType) -> None:
+    def __init__(self, w_functype: W_FuncType, def_loc: Loc) -> None:
         self.w_functype = w_functype
+        self.def_loc = def_loc
 
     def __repr__(self) -> str:
         return f'W_DirectCall({self.w_functype})'
@@ -259,6 +263,7 @@ class W_ASTFunc(W_Func):
                  ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
+        self.def_loc = funcdef.prototype_loc
         self.funcdef = funcdef
         self.closure = closure
         self.locals_types_w = locals_types_w
@@ -293,6 +298,7 @@ class W_BuiltinFunc(W_Func):
                  pyfunc: Callable) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
+        self.def_loc = Loc.from_pyfunc(pyfunc)
         # _pyfunc should NEVER be called directly, because it bypasses the
         # bluecache
         self._pyfunc = pyfunc
