@@ -32,7 +32,7 @@ from spy.irgen.symtable import Symbol, Color
 from spy.errors import SPyTypeError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object
-from spy.vm.function import W_Func, W_FuncType, W_DirectCall
+from spy.vm.function import W_Func, W_FuncType
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.primitive import W_Bool
 
@@ -209,13 +209,17 @@ class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
     _args_wop: Optional[list[W_OpArg]]
+    is_direct_call: bool
 
     def __init__(self,
                  w_func: W_Func,
-                args_wop: Optional[list[W_OpArg]] = None
+                 args_wop: Optional[list[W_OpArg]] = None,
+                 *,
+                 is_direct_call: bool = False,
                 ) -> None:
         self._w_func = w_func
         self._args_wop = args_wop
+        self.is_direct_call = is_direct_call
 
     def __repr__(self) -> str:
         if self._w_func is None:
@@ -232,12 +236,6 @@ class W_OpImpl(W_Object):
 
     def is_simple(self) -> bool:
         return self._args_wop is None
-
-    def is_direct_call(self) -> bool:
-        """
-        This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
-        """
-        return isinstance(self._w_func, W_DirectCall)
 
     @property
     def w_functype(self) -> W_FuncType:

@@ -64,11 +64,10 @@ def typecheck_opimpl(
         assert w_opimpl._args_wop is not None
         out_args_wop = w_opimpl._args_wop
 
+    # if it's a direct call, we can display extra info about call location
     def_loc = w_opimpl._w_func.def_loc
-
-    # if it's a direct call, we can get extra info about call and def locations
     call_loc = None
-    if w_opimpl.is_direct_call():
+    if w_opimpl.is_direct_call:
         wop_func = in_args_wop[0]
         call_loc = wop_func.loc
 

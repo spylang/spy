@@ -319,27 +319,17 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[call]
         newfunc = self.shifted_expr[call.func]
         newargs = [self.shifted_expr[arg] for arg in call.args]
-        assert isinstance(w_opimpl, W_FuncAdapter)
-        if w_opimpl.is_direct_call():
-            # sanity check: the redshift MUST have produced a const. If it
-            # didn't, the C backend won't be able to compile the call.
-            assert isinstance(newfunc, (ast.FQNConst, ast.Constant, ast.StrConst))
-            newargs = self._shift_adapter_args(w_opimpl, [newfunc] + newargs)
-            newop = ast.Call(call.loc, newfunc, newargs)
-            return self.specialize_print_maybe(w_opimpl, newop)
-        else:
-            return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
+        newcall = self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
+        if (isinstance(newcall.func, ast.FQNConst) and
+            newcall.func.fqn == FQN('builtins::print')):
+            return self.specialize_print(w_opimpl, newcall)
+        return newcall
 
-    def specialize_print_maybe(self, w_opimpl: W_Func,
-                               call: ast.Call) -> ast.Expr:
+    def specialize_print(self, w_opimpl: W_Func, call: ast.Call) -> ast.Expr:
         """
         This is a temporary hack. We specialize print() based on the type
         of its first argument
         """
-        if not (isinstance(call.func, ast.FQNConst) and
-                call.func.fqn == FQN('builtins::print')):
-            return call
-
         assert len(call.args) == 1
         w_argtype = w_opimpl.w_functype.params[1].w_type
         t = w_argtype.fqn.symbol_name

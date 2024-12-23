@@ -4,7 +4,7 @@ import textwrap
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.object import W_Object
-from spy.vm.function import W_Func, W_FuncType, W_DirectCall
+from spy.vm.function import W_Func, W_FuncType
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -58,20 +58,7 @@ class W_FuncAdapter(W_Func):
     def is_pure(self) -> bool:
         return self.w_func.is_pure()
 
-    def is_direct_call(self) -> bool:
-        """
-        This is a hack. See W_Func.op_CALL and ASTFrame.eval_expr_Call.
-        """
-        return isinstance(self.w_func, W_DirectCall)
-
     def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
-        # hack hack hack, we should kill all of this eventually
-        if self.is_direct_call():
-            w_func = args_w[0]
-            assert isinstance(w_func, W_Func)
-        else:
-            w_func = self.w_func
-
         def getarg(spec: ArgSpec) -> W_Object:
             if isinstance(spec, Arg):
                 return args_w[spec.i]
@@ -84,7 +71,7 @@ class W_FuncAdapter(W_Func):
                 assert False
 
         real_args_w = [getarg(spec) for spec in self.args]
-        return vm.fast_call(w_func, real_args_w)
+        return vm.fast_call(self.w_func, real_args_w)
 
     def pp(self) -> None:
         print(self.render())

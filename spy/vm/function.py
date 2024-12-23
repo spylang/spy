@@ -206,44 +206,13 @@ class W_Func(W_Object):
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':
-        """
-        This is a bit of a hack.
-
-        The correct opimpl for a W_Func object is something which says "please
-        just call it". Ideally, we would like to do something like that:
-
-            w_func = wop_func.blue_unwrap()
-            return W_OpImpl(w_func, ...)
-
-        However, we cannot because at the current moment, wop_func doesn't
-        carry around it's blue value: this is something which needs to be
-        fixed in the typechecker, eventually.
-
-        The workaround is to wrap the functype inside a special W_DirectCall
-        object, which is special cased by ASTFrame.
-        """
         from spy.vm.opimpl import W_OpImpl
-        w_functype = wop_func.w_static_type
-        assert isinstance(w_functype, W_FuncType)
         w_func = wop_func.w_blueval
         return W_OpImpl(
-            W_DirectCall(w_functype, w_func.def_loc),
+            w_func,
             list(args_wop),
+            is_direct_call = True,
         )
-
-
-class W_DirectCall(W_Func):
-    """
-    See W_Func.op_CALL.
-    """
-    fqn = FQN("builtins::__direct_call__")
-
-    def __init__(self, w_functype: W_FuncType, def_loc: Loc) -> None:
-        self.w_functype = w_functype
-        self.def_loc = def_loc
-
-    def __repr__(self) -> str:
-        return f'W_DirectCall({self.w_functype})'
 
 
 class W_ASTFunc(W_Func):

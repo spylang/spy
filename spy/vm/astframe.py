@@ -457,17 +457,6 @@ class ASTFrame:
             return self._eval_STATIC_TYPE(wop_func, call)
         args_wop = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
-
-        # XXX: this is needed to catch errors in case the static type is
-        # dynamic but the object is not callable. Ideally, this should be done
-        # by w_dynamic_call, but we cannot yet. See also the docstring of
-        # callop._dynamic_call_opimpl
-        assert isinstance(w_opimpl, W_FuncAdapter)
-        #
-        if w_opimpl.is_direct_call():
-            # some extra sanity checks
-            assert wop_func.color == 'blue', 'indirect calls not supported'
-
         return self.eval_opimpl(call, w_opimpl, [wop_func]+args_wop)
 
     def _eval_STATIC_TYPE(self, wop_func: W_OpArg, call: ast.Call) -> W_OpArg:
