@@ -1,4 +1,7 @@
 import sys
+from types import FunctionType
+import inspect
+import linecache
 import dataclasses
 from dataclasses import dataclass
 
@@ -54,6 +57,23 @@ class Loc:
         c2 = end.col_end
         return cls(start.filename, l1, l2, c1, c2)
 
+    @classmethod
+    def from_pyfunc(cls, pyfunc: FunctionType) -> 'Loc':
+        # in case of decorators, start points to the line with the first
+        # decorator. Try to find the actual 'def'
+        lines, start = inspect.getsourcelines(pyfunc)
+        for i, l in enumerate(lines):
+            if l.strip().startswith("def "):
+                start = start + i
+                break
+        return cls(
+            filename = inspect.getfile(pyfunc),
+            line_start = start,
+            line_end = start,
+            col_start = 0,
+            col_end = -1 # whole line
+        )
+
     def replace(self, **kwargs: int) -> 'Loc':
         return dataclasses.replace(self, **kwargs)
 
@@ -73,6 +93,18 @@ class Loc:
             return f"<Loc: '{self.filename}'>"
         else:
             return f"<Loc: '{self.filename} {l1}:{c1} {l2}:{c2}'>"
+
+    def get_src(self) -> str:
+        """
+        Return the piece of source code pointed by this Loc
+        """
+        filename = self.filename
+        assert self.line_start == self.line_end, 'multi-line not supported'
+        line = self.line_start
+        a = self.col_start
+        b = self.col_end
+        srcline = linecache.getline(filename, line)
+        return srcline[a:b]
 
     def pp(self) -> None:
         """

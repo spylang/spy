@@ -7,7 +7,26 @@ def myfunc() -> Loc:
 
 def test_Loc_here():
     loc = myfunc()
-    ann = Annotation("error", "hello", loc)
-    src = ann.get_src()
+    src = loc.get_src()
     exp = '    loc = Loc.here()'
     assert src == exp
+
+def test_Loc_from_pyfunc():
+    def decorator(fn):
+        return fn
+
+    def foo():
+        pass
+
+    @decorator
+    def bar():
+        pass
+
+    loc = Loc.from_pyfunc(foo)
+    src = loc.get_src()
+    exp = '    def foo():'
+    assert src == exp
+    #
+    loc = Loc.from_pyfunc(bar)
+    src = loc.get_src()
+    exp = '    def bar():'

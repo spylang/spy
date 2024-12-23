@@ -61,14 +61,19 @@ class SymTable:
 
     @classmethod
     def from_builtins(cls, vm: 'SPyVM') -> 'SymTable':
+        from spy.vm.function import W_BuiltinFunc
         scope = cls('builtins')
-        loc = Loc(filename='<builtins>',
-                  line_start=0,
-                  line_end=0,
-                  col_start=0,
-                  col_end=0)
+        generic_loc = Loc(filename='<builtins>',
+                          line_start=0,
+                          line_end=0,
+                          col_start=0,
+                          col_end=0)
         builtins_mod = vm.modules_w['builtins']
         for fqn, w_obj in builtins_mod.items_w():
+            if isinstance(w_obj, W_BuiltinFunc):
+                loc = w_obj.def_loc
+            else:
+                loc = generic_loc
             sym = Symbol(fqn.symbol_name, 'blue', loc=loc, type_loc=loc,
                          level=0, fqn=fqn)
             scope.add(sym)

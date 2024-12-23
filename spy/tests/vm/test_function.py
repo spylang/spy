@@ -37,9 +37,13 @@ class TestFunction:
 
     @no_type_check
     def test_function_eq(self):
+        class FakeFuncDef:
+            prototype_loc = None
+        funcdef = FakeFuncDef()
+
         vm = SPyVM()
         w_functype = W_FuncType.parse('def() -> i32')
-        w_a = W_ASTFunc(w_functype, FQN('test::a'), funcdef=None, closure=None)
-        w_b = W_ASTFunc(w_functype, FQN('test::b'), funcdef=None, closure=None)
+        w_a = W_ASTFunc(w_functype, FQN('test::a'), funcdef, closure=None)
+        w_b = W_ASTFunc(w_functype, FQN('test::b'), funcdef, closure=None)
         assert vm.eq(w_a, w_a) is B.w_True
         assert vm.eq(w_a, w_b) is B.w_False
