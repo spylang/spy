@@ -384,6 +384,7 @@ class ASTFrame:
             return self.eval_Name_outer(name, sym)
 
     def eval_Name_global(self, name: ast.Name, sym: Symbol) -> W_OpArg:
+        assert sym.fqn is not None
         w_val = self.vm.lookup_global(sym.fqn)
         assert w_val is not None
         w_type = self.vm.dynamic_type(w_val)
@@ -398,7 +399,7 @@ class ASTFrame:
         return W_OpArg(self.vm, sym.color, w_type, w_val, name.loc, sym=sym)
 
     def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_OpArg:
-        color = 'blue'  # closed-over variables are always blue
+        color: Color = 'blue'  # closed-over variables are always blue
         namespace = self.w_func.closure[sym.level]
         w_val = namespace[sym.name]
         assert w_val is not None

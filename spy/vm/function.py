@@ -208,6 +208,7 @@ class W_Func(W_Object):
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
         w_func = wop_func.w_blueval
+        assert isinstance(w_func, W_Func)
         return W_OpImpl(
             w_func,
             list(args_wop),

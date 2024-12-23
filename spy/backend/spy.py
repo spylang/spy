@@ -97,6 +97,7 @@ class SPyBackend:
 
     def emit_declare_var_maybe(self, varname: str) -> None:
         if self.w_func.redshifted and varname not in self.vars_declared:
+            assert self.w_func.locals_types_w is not None
             w_type = self.w_func.locals_types_w[varname]
             t = self.fmt_w_obj(w_type)
             self.wl(f'{varname}: {t}')

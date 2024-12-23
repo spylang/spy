@@ -1,9 +1,9 @@
 import sys
-from types import FunctionType
 import inspect
 import linecache
 import dataclasses
 from dataclasses import dataclass
+from typing import Callable
 
 @dataclass
 class Loc:
@@ -58,7 +58,7 @@ class Loc:
         return cls(start.filename, l1, l2, c1, c2)
 
     @classmethod
-    def from_pyfunc(cls, pyfunc: FunctionType) -> 'Loc':
+    def from_pyfunc(cls, pyfunc: Callable) -> 'Loc':
         # in case of decorators, start points to the line with the first
         # decorator. Try to find the actual 'def'
         lines, start = inspect.getsourcelines(pyfunc)
