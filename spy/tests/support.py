@@ -259,7 +259,7 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
 
     def match_one_annotation(expected_msg: str, expected_src: str) -> bool:
         for ann in err.annotations:
-            got_src = ann.get_src()
+            got_src = ann.loc.get_src()
             if ann.message == expected_msg and expected_src == got_src:
                 return True
         return False
