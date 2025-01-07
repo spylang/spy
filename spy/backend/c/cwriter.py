@@ -149,11 +149,6 @@ class CModuleWriter:
         elif isinstance(w_obj, W_StructType):
             # this forces ctx to emit the struct definition
             self.ctx.w2c(w_obj)
-        elif w_type is TYPES.w_TypeDef:
-            # XXX: for now, we just ignore global TypeDefs, since they are not
-            # needed. But in general, we need a way to emit prebuilt
-            # constants.
-            pass
         else:
             raise NotImplementedError('WIP')
 

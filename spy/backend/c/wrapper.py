@@ -13,7 +13,6 @@ from spy.vm.function import W_Func, W_FuncType
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.unsafe.ptr import W_PtrType
 
 @dataclass
@@ -110,9 +109,6 @@ class WasmFuncWrapper:
         wasm_args = self.from_py_args(py_args)
         res = self.ll.call(self.c_name, *wasm_args)
         w_type = self.w_functype.w_restype
-        if isinstance(w_type, W_TypeDef):
-            w_type = w_type.w_origintype
-        #
         if w_type is B.w_void:
             assert res is None
             return None

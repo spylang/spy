@@ -5,7 +5,6 @@ from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType, W_Func
 from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.types import W_TypeDef
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.modules.unsafe.struct import W_StructType
@@ -77,8 +76,6 @@ class Context:
         self._d[JSFFI.w_JsRef] = C_Type('JsRef')
 
     def w2c(self, w_type: W_Type) -> C_Type:
-        if isinstance(w_type, W_TypeDef):
-            w_type = w_type.w_origintype
         if w_type in self._d:
             return self._d[w_type]
         elif isinstance(w_type, W_PtrType):

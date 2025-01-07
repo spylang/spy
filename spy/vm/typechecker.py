@@ -11,7 +11,6 @@ from spy.vm.function import W_ASTFunc, W_Func, W_FuncType, FuncParam
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.b import B
 from spy.vm.modules.operator import OP, OP_from_token
-from spy.vm.modules.types import W_TypeDef
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

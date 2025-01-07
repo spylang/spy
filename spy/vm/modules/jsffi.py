@@ -7,7 +7,6 @@ from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.registry import ModuleRegistry
-from spy.vm.modules.types import W_TypeDef
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
