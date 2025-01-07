@@ -71,7 +71,8 @@ class TestUnsafe(CompilerTest):
         """
         from unsafe import gc_alloc, ptr
 
-        class Point(struct):
+        @struct
+        class Point:
             x: i32
             y: f64
 
@@ -96,7 +97,8 @@ class TestUnsafe(CompilerTest):
         # module level.
         WORKAROUND: i32 = 0
 
-        class Point(struct):
+        @struct
+        class Point:
             x: i32
             y: i32
 
@@ -115,11 +117,13 @@ class TestUnsafe(CompilerTest):
         """
         from unsafe import gc_alloc, ptr
 
-        class Point(struct):
+        @struct
+        class Point:
             x: i32
             y: i32
 
-        class Rect(struct):
+        @struct
+        class Rect:
             a: Point
             b: Point
 
@@ -166,7 +170,8 @@ class TestUnsafe(CompilerTest):
         mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
-        class Array(struct):
+        @struct
+        class Array:
             n: i32
             buf: ptr[i32]
 
@@ -187,7 +192,8 @@ class TestUnsafe(CompilerTest):
 
         @blue
         def make_Point(T):
-            class Point(struct):
+            @struct
+            class Point:
                 x: T
                 y: T
             return Point
@@ -254,7 +260,8 @@ class TestUnsafe(CompilerTest):
         mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
-        class Node(struct):
+        @struct
+        class Node:
             val: i32
             next: ptr[Node]
 
