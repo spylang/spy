@@ -9,6 +9,9 @@ from spy.location import Loc
 from spy.errors import SPyError, SPyParseError
 from spy.util import magic_dispatch
 
+def is_py_Name(py_expr: py_ast.Expr, expected: str) -> bool:
+    return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
+
 class Parser:
     """
     SPy parser: take source code as input, produce a SPy AST as output.
@@ -93,7 +96,7 @@ class Parser:
                                  ) -> spy.ast.FuncDef:
         color: spy.ast.Color = 'red'
         for deco in py_funcdef.decorator_list:
-            if (isinstance(deco, py_ast.Name) and deco.id == 'blue'):
+            if is_py_Name(deco, 'blue'):
                 # @blue is special-cased
                 color = 'blue'
             else:
@@ -184,15 +187,30 @@ class Parser:
                        'this is not supported',
                        py_classdef.keywords[0].loc)
 
-        # decorators are not supported yet, but @struct is special-cased
-        is_struct = False
+        # decorators are not supported yet, but @struct and @typedef are
+        # special-cased
+        struct_loc: Optional[Loc] = None
+        typedef_loc: Optional[Loc] = None
         for py_deco in py_classdef.decorator_list:
-            if isinstance(py_deco, py_ast.Name) and py_deco.id == 'struct':
-                is_struct = True
+            if is_py_Name(py_deco, 'struct'):
+                struct_loc = py_deco.loc
+            elif is_py_Name(py_deco, 'typedef'):
+                typedef_loc = py_deco.loc
             else:
                 self.error('class decorators not supported yet',
                            'this is not supported',
                            py_deco.loc)
+
+        if struct_loc and typedef_loc:
+            self.error('cannot use both @struct and @typedef',
+                       'this is invalid',
+                       typedef_loc)
+        elif struct_loc:
+            kind = 'struct'
+        elif typedef_loc:
+            kind = 'typedef'
+        else:
+            kind = 'class'
 
         # only few kind of declarations are supported inside a "class:" block
         fields: list[spy.ast.VarDef] = []
@@ -213,7 +231,7 @@ class Parser:
         return spy.ast.ClassDef(
             loc = py_classdef.loc,
             name = py_classdef.name,
-            is_struct = is_struct,
+            kind = kind,
             fields = fields,
         )
 

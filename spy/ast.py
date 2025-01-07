@@ -11,6 +11,7 @@ from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
 VarKind = typing.Literal['const', 'var']
+ClassKind = typing.Literal['class', 'struct', 'typedef']
 
 @extend(py_ast.AST)
 class AST:
@@ -451,8 +452,16 @@ class FuncDef(Stmt):
 @dataclass(eq=False)
 class ClassDef(Stmt):
     name: str
-    is_struct: bool
+    kind: ClassKind
     fields: list['VarDef']
+
+    @property
+    def is_struct(self):
+        return self.kind == 'struct'
+
+    @property
+    def is_typedef(self):
+        return self.kind == 'typedef'
 
 
 @dataclass(eq=False)
