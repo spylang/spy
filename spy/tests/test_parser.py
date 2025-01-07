@@ -886,7 +886,8 @@ class TestParser:
 
     def test_struct(self):
         mod = self.parse("""
-        class Foo(struct):
+        @struct
+        class Foo:
             pass
         """)
         classdef = mod.get_classdef('Foo')
@@ -901,7 +902,8 @@ class TestParser:
 
     def test_class_fields(self):
         mod = self.parse("""
-        class Point(struct):
+        @struct
+        class Point:
             x: i32
             y: i32
         """)

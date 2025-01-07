@@ -174,25 +174,25 @@ class Parser:
     def from_py_stmt_ClassDef(self,
                               py_classdef: py_ast.ClassDef
                               ) -> spy.ast.ClassDef:
-        # base classes are not supported yet, but class X(struct) is
-        # special-cased
-        is_struct = False
-        for py_base in py_classdef.bases:
-            if isinstance(py_base, py_ast.Name) and py_base.id == 'struct':
-                is_struct = True
-            else:
-                self.error('base classes not supported yet',
-                           'this is not supported',
-                           py_base.loc)
+        if py_classdef.bases:
+            self.error('base classes not supported yet',
+                       'this is not supported',
+                       py_classdef.bases[0].loc)
 
         if py_classdef.keywords:
             self.error('keywords in classes not supported yet',
                        'this is not supported',
                        py_classdef.keywords[0].loc)
-        if py_classdef.decorator_list:
-            self.error('class decorators not supported yet',
-                       'this is not supported',
-                       py_classdef.decorator_list[0].loc)
+
+        # decorators are not supported yet, but @struct is special-cased
+        is_struct = False
+        for py_deco in py_classdef.decorator_list:
+            if isinstance(py_deco, py_ast.Name) and py_deco.id == 'struct':
+                is_struct = True
+            else:
+                self.error('class decorators not supported yet',
+                           'this is not supported',
+                           py_deco.loc)
 
         # only few kind of declarations are supported inside a "class:" block
         fields: list[spy.ast.VarDef] = []

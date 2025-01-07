@@ -221,7 +221,8 @@ class TestSPyBackend(CompilerTest):
     def test_classdef(self):
         src = """
         def foo() -> void:
-            class Point(struct):
+            @struct
+            class Point:
                 x: i32
                 y: i32
         """
