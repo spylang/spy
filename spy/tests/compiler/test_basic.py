@@ -834,7 +834,8 @@ class TestBasic(CompilerTest):
 
         ptr_S1 = ptr[S] # using the ForwardRef
 
-        class S(struct):
+        @struct
+        class S:
             pass
 
         ptr_S2 = ptr[S] # using the actual S
