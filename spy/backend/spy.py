@@ -120,7 +120,8 @@ class SPyBackend:
     def emit_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         assert classdef.is_struct, 'IMPLEMENT ME'
         name = classdef.name
-        self.wl(f'class {name}(struct):')
+        self.wl('@struct')
+        self.wl(f'class {name}:')
         with self.out.indent():
             for field in classdef.fields:
                 self.emit_stmt_VarDef(field)
