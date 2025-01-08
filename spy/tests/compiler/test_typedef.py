@@ -9,7 +9,21 @@ from spy.tests.support import (CompilerTest, skip_backends,  expect_errors,
 
 class TestTypedef(CompilerTest):
 
-    @pytest.mark.xfail(reason="IMPLEMENT ME")
+    @only_interp
+    def test_repr(self):
+        mod = self.compile("""
+        WORKAROUND: i32 = 0
+
+        @typedef
+        class MyInt:
+            __inner__: i32
+
+        def get() -> type:
+            return MyInt
+        """)
+        w_myint = mod.get(unwrap=False)
+        assert repr(w_myint) == "<spy type 'test::MyInt' (typedef of 'i32' )>"
+
     def test_from_and_to(self):
         mod = self.compile("""
         @typedef

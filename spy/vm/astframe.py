@@ -14,6 +14,7 @@ from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
+from spy.vm.modules.types import W_TypedefType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.modules.operator import OP, OP_from_token
@@ -224,19 +225,25 @@ class ASTFrame:
         self.vm.add_global(fqn, w_func)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        if classdef.kind == 'struct':
+            W_Metaclass = W_StructType
+        elif classdef.kind == 'typedef':
+            W_Metaclass = W_TypedefType
+        else:
+            assert False, 'only @struct and @typedef are supported for now'
+        #
         d = {}
         for vardef in classdef.fields:
             assert vardef.kind == 'var'
             d[vardef.name] = self.eval_expr_type(vardef.type)
         #
-        assert classdef.is_struct, 'only structs are supported for now'
         fqn = self.w_func.fqn.join(classdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
-        w_struct_type = W_StructType(fqn, d)
-        w_meta_type = self.vm.dynamic_type(w_struct_type)
+        w_type = W_Metaclass(fqn, d)
+        w_meta_type = self.vm.dynamic_type(w_type)
         self.declare_local(classdef.name, w_meta_type)
-        self.store_local(classdef.name, w_struct_type)
-        self.vm.add_global(fqn, w_struct_type)
+        self.store_local(classdef.name, w_type)
+        self.vm.add_global(fqn, w_type)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)
