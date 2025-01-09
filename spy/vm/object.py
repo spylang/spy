@@ -88,7 +88,7 @@ class W_Object:
         spy_type = vm.dynamic_type(self).fqn
         py_type = self.__class__.__name__
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
-                        f"(inter-level type: {py_type})")
+                        f"(interp-level type: {py_type})")
 
 
     # ==== OPERATOR SUPPORT ====

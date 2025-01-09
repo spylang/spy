@@ -12,6 +12,7 @@ from spy.vm.object import W_Type, W_Object, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.builtin import builtin_func
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -69,6 +70,7 @@ class W_ForwardRef(W_Type):
 
 FIELDS_T = dict[str, W_Type]
 
+@TYPES.builtin_type('TypedefType')
 class W_TypedefType(W_Type):
     w_innertype: W_Type
 
@@ -81,6 +83,33 @@ class W_TypedefType(W_Type):
         inner = self.w_innertype.fqn.human_name
         return f"<spy type '{self.fqn}' (typedef of '{inner}' )>"
 
+    @staticmethod
+    def op_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
+                       *args_wop: W_OpArg) -> W_OpImpl:
+        meth = wop_method.blue_unwrap_str(vm)
+        if meth != 'from_inner':
+            return W_OpImpl.NULL
+
+        w_ttype = wop_self.w_blueval
+        assert isinstance(w_ttype, W_TypedefType)
+        w_T = Annotated[W_TypedefInst, w_ttype]
+        w_I = Annotated[W_Object, w_ttype.w_innertype]
+
+        @builtin_func(w_ttype.fqn, 'from_inner')
+        def w_from_inner(vm: 'SPyVM', w_inner: w_I) -> w_T:
+            return W_TypedefInst(w_ttype, w_inner)
+
+        return W_OpImpl(w_from_inner, list(args_wop))
+
 
 class W_TypedefInst(W_Object):
-    pass
+    w_ttype: W_TypedefType
+    w_inner: W_Object
+
+    def __init__(self, w_ttype: W_TypedefType, w_inner: W_Object) -> None:
+        assert isinstance(w_inner, w_ttype.w_innertype.pyclass)
+        self.w_ttype = w_ttype
+        self.w_inner = w_inner
+
+    def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
+        return self.w_ttype

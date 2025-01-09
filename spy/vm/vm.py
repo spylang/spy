@@ -241,8 +241,8 @@ class SPyVM:
 
     def wrap(self, value: Any) -> W_Object:
         """
-        Useful for tests: magic funtion which wraps the given inter-level object
-        into the most appropriate app-level W_* object.
+        Useful for tests: magic funtion which wraps the given interp-level
+        object into the most appropriate app-level W_* object.
         """
         T = type(value)
         if isinstance(value, W_Object):
@@ -270,7 +270,7 @@ class SPyVM:
     def unwrap(self, w_value: W_Object) -> Any:
         """
         Useful for tests: magic funtion which wraps the given app-level w_
-        object into the most appropriate inter-level object. Opposite of
+        object into the most appropriate interp-level object. Opposite of
         wrap().
         """
         assert isinstance(w_value, W_Object)
