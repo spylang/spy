@@ -43,6 +43,4 @@ class TestTypedef(CompilerTest):
         myint = mod.box(42)
         assert myint.value == 42
         assert myint.w_ttype.fqn.fullname == 'test::MyInt'
-
-        ## assert mod.box(42).__inner__ == 42
-        ## assert mod.call_unbox(43) == 43
+        assert mod.call_unbox(43) == 43

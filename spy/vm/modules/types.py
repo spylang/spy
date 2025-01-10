@@ -111,7 +111,7 @@ class UnwrappedTypedef:
 
 class W_TypedefInst(W_Object):
     w_ttype: W_TypedefType
-    w_inner: W_Object
+    w_inner: Annotated[W_Object, Member('__inner__')]
 
     def __init__(self, w_ttype: W_TypedefType, w_inner: W_Object) -> None:
         assert isinstance(w_inner, w_ttype.w_innertype.pyclass)
