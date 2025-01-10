@@ -2,7 +2,8 @@
 SPy `types` module.
 """
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
+from dataclasses import dataclass
 from spy.fqn import FQN
 from spy.vm.builtin import builtin_type
 from spy.vm.primitive import W_Dynamic, W_Void
@@ -102,6 +103,12 @@ class W_TypedefType(W_Type):
         return W_OpImpl(w_from_inner, list(args_wop))
 
 
+@dataclass
+class UnwrappedTypedef:
+    value: Any
+    w_ttype: W_TypedefType
+
+
 class W_TypedefInst(W_Object):
     w_ttype: W_TypedefType
     w_inner: W_Object
@@ -113,3 +120,11 @@ class W_TypedefInst(W_Object):
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_ttype
+
+    def spy_unwrap(self, vm: 'SPyVM') -> UnwrappedTypedef:
+        return UnwrappedTypedef(self.w_inner.spy_unwrap(vm), self.w_ttype)
+
+    def __repr__(self) -> str:
+        inner_repr = repr(self.w_inner)
+        t = self.w_ttype.fqn.human_name
+        return f'<typedef {t} of {inner_repr}>'
