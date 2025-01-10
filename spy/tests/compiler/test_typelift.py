@@ -16,31 +16,31 @@ class TestTypelift(CompilerTest):
 
         @typelift
         class MyInt:
-            __inner__: i32
+            __ll__: i32
 
         def get() -> type:
             return MyInt
         """)
         w_myint = mod.get(unwrap=False)
-        assert repr(w_myint) == "<spy type 'test::MyInt' (lifted from 'i32' )>"
+        assert repr(w_myint) == "<spy type 'test::MyInt' (lifted from 'i32')>"
 
-    def test_from_and_to(self):
+    def test_lift_and_lower(self):
         mod = self.compile("""
         @typelift
         class MyInt:
-            __inner__: i32
+            __ll__: i32
 
-        def box(i: i32) -> MyInt:
-            return MyInt.from_inner(i)
+        def lift(i: i32) -> MyInt:
+            return MyInt.__lift__(i)
 
-        def unbox(m: MyInt) -> i32:
-            return m.__inner__
+        def lower(m: MyInt) -> i32:
+            return m.__ll__
 
-        def call_unbox(i: i32) -> i32:
-            return unbox(box(i))
+        def call_lower(i: i32) -> i32:
+            return lower(lift(i))
 
         """)
-        myint = mod.box(42)
+        myint = mod.lift(42)
         assert myint.llval == 42
         assert myint.w_hltype.fqn.fullname == 'test::MyInt'
-        assert mod.call_unbox(43) == 43
+        assert mod.call_lower(43) == 43

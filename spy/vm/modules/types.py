@@ -73,34 +73,34 @@ FIELDS_T = dict[str, W_Type]
 
 @TYPES.builtin_type('LiftedType')
 class W_LiftedType(W_Type):
-    w_innertype: W_Type
+    w_lltype: W_Type  # low level type
 
     def __init__(self, fqn: FQN, fields: FIELDS_T) -> None:
         super().__init__(fqn, W_LiftedObject)
-        assert set(fields.keys()) == {'__inner__'} # XXX raise proper exception
-        self.w_innertype = fields['__inner__']
+        assert set(fields.keys()) == {'__ll__'} # XXX raise proper exception
+        self.w_lltype = fields['__ll__']
 
     def __repr__(self) -> str:
-        inner = self.w_innertype.fqn.human_name
-        return f"<spy type '{self.fqn}' (lifted from '{inner}' )>"
+        lltype = self.w_lltype.fqn.human_name
+        return f"<spy type '{self.fqn}' (lifted from '{lltype}')>"
 
     @staticmethod
     def op_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
                        *args_wop: W_OpArg) -> W_OpImpl:
         meth = wop_method.blue_unwrap_str(vm)
-        if meth != 'from_inner':
+        if meth != '__lift__':
             return W_OpImpl.NULL
 
         w_hltype = wop_self.w_blueval
         assert isinstance(w_hltype, W_LiftedType)
-        w_HT = Annotated[W_LiftedObject, w_hltype]
-        w_I = Annotated[W_Object, w_hltype.w_innertype]
+        HL = Annotated[W_LiftedObject, w_hltype]
+        LL = Annotated[W_Object, w_hltype.w_lltype]
 
-        @builtin_func(w_hltype.fqn, 'from_inner')
-        def w_from_inner(vm: 'SPyVM', w_inner: w_I) -> w_HT:
-            return W_LiftedObject(w_hltype, w_inner)
+        @builtin_func(w_hltype.fqn, '__lift__')
+        def w_lift(vm: 'SPyVM', w_ll: LL) -> HL:
+            return W_LiftedObject(w_hltype, w_ll)
 
-        return W_OpImpl(w_from_inner, list(args_wop))
+        return W_OpImpl(w_lift, list(args_wop))
 
 
 @dataclass
@@ -114,13 +114,13 @@ class UnwrappedLiftedObject:
 
 
 class W_LiftedObject(W_Object):
-    w_hltype: W_LiftedType
-    w_inner: Annotated[W_Object, Member('__inner__')]
+    w_hltype: W_LiftedType  # high level type
+    w_ll: Annotated[W_Object, Member('__ll__')]
 
-    def __init__(self, w_hltype: W_LiftedType, w_inner: W_Object) -> None:
-        assert isinstance(w_inner, w_hltype.w_innertype.pyclass)
+    def __init__(self, w_hltype: W_LiftedType, w_ll: W_Object) -> None:
+        assert isinstance(w_ll, w_hltype.w_lltype.pyclass)
         self.w_hltype = w_hltype
-        self.w_inner = w_inner
+        self.w_ll = w_ll
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_hltype
@@ -128,10 +128,10 @@ class W_LiftedObject(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> UnwrappedLiftedObject:
         return UnwrappedLiftedObject(
             self.w_hltype,
-            self.w_inner.spy_unwrap(vm)
+            vm.unwrap(self.w_ll),
         )
 
     def __repr__(self) -> str:
-        inner_repr = repr(self.w_inner)
-        t = self.w_hltype.fqn.human_name
-        return f'<{t} (lifted from {inner_repr})>'
+        ll_repr = repr(self.w_ll)
+        hltype = self.w_hltype.fqn.human_name
+        return f'<{hltype} (lifted from {ll_repr})>'
