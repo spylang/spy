@@ -187,28 +187,28 @@ class Parser:
                        'this is not supported',
                        py_classdef.keywords[0].loc)
 
-        # decorators are not supported yet, but @struct and @typedef are
+        # decorators are not supported yet, but @struct and @typelif are
         # special-cased
         struct_loc: Optional[Loc] = None
-        typedef_loc: Optional[Loc] = None
+        typelift_loc: Optional[Loc] = None
         for py_deco in py_classdef.decorator_list:
             if is_py_Name(py_deco, 'struct'):
                 struct_loc = py_deco.loc
-            elif is_py_Name(py_deco, 'typedef'):
-                typedef_loc = py_deco.loc
+            elif is_py_Name(py_deco, 'typelift'):
+                typelift_loc = py_deco.loc
             else:
                 self.error('class decorators not supported yet',
                            'this is not supported',
                            py_deco.loc)
 
-        if struct_loc and typedef_loc:
-            self.error('cannot use both @struct and @typedef',
+        if struct_loc and typelift_loc:
+            self.error('cannot use both @struct and @typelift',
                        'this is invalid',
-                       typedef_loc)
+                       typelift_loc)
         elif struct_loc:
             kind = 'struct'
-        elif typedef_loc:
-            kind = 'typedef'
+        elif typelift_loc:
+            kind = 'typelift'
         else:
             kind = 'class'
 

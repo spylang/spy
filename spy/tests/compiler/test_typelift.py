@@ -7,14 +7,14 @@ from spy.vm.function import W_ASTFunc
 from spy.tests.support import (CompilerTest, skip_backends,  expect_errors,
                                only_interp)
 
-class TestTypedef(CompilerTest):
+class TestTypelift(CompilerTest):
 
     @only_interp
     def test_repr(self):
         mod = self.compile("""
         WORKAROUND: i32 = 0
 
-        @typedef
+        @typelift
         class MyInt:
             __inner__: i32
 
@@ -22,11 +22,11 @@ class TestTypedef(CompilerTest):
             return MyInt
         """)
         w_myint = mod.get(unwrap=False)
-        assert repr(w_myint) == "<spy type 'test::MyInt' (typedef of 'i32' )>"
+        assert repr(w_myint) == "<spy type 'test::MyInt' (lifted from 'i32' )>"
 
     def test_from_and_to(self):
         mod = self.compile("""
-        @typedef
+        @typelift
         class MyInt:
             __inner__: i32
 
@@ -41,6 +41,6 @@ class TestTypedef(CompilerTest):
 
         """)
         myint = mod.box(42)
-        assert myint.value == 42
-        assert myint.w_ttype.fqn.fullname == 'test::MyInt'
+        assert myint.llval == 42
+        assert myint.w_hltype.fqn.fullname == 'test::MyInt'
         assert mod.call_unbox(43) == 43

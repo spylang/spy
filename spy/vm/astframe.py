@@ -14,7 +14,7 @@ from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
-from spy.vm.modules.types import W_TypedefType
+from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.modules.operator import OP, OP_from_token
@@ -227,8 +227,8 @@ class ASTFrame:
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         if classdef.kind == 'struct':
             W_Metaclass = W_StructType
-        elif classdef.kind == 'typedef':
-            W_Metaclass = W_TypedefType
+        elif classdef.kind == 'typelift':
+            W_Metaclass = W_LiftedType
         else:
             assert False, 'only @struct and @typedef are supported for now'
         #

@@ -11,7 +11,7 @@ from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
 VarKind = typing.Literal['const', 'var']
-ClassKind = typing.Literal['class', 'struct', 'typedef']
+ClassKind = typing.Literal['class', 'struct', 'typelift']
 
 @extend(py_ast.AST)
 class AST:
@@ -460,8 +460,8 @@ class ClassDef(Stmt):
         return self.kind == 'struct'
 
     @property
-    def is_typedef(self):
-        return self.kind == 'typedef'
+    def is_typelift(self):
+        return self.kind == 'typelift'
 
 
 @dataclass(eq=False)
