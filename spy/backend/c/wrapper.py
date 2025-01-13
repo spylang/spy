@@ -14,6 +14,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_PtrType
+from spy.vm.modules.types import W_LiftedType, UnwrappedLiftedObject
 
 @dataclass
 class WasmPtr:
@@ -104,11 +105,7 @@ class WasmFuncWrapper:
                 wasm_args.append(wasm_arg)
         return wasm_args
 
-    def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
-        assert unwrap, 'unwrap=False is not supported by the C backend'
-        wasm_args = self.from_py_args(py_args)
-        res = self.ll.call(self.c_name, *wasm_args)
-        w_type = self.w_functype.w_restype
+    def to_py_result(self, w_type: W_Type, res: Any) -> Any:
         if w_type is B.w_void:
             assert res is None
             return None
@@ -137,5 +134,17 @@ class WasmFuncWrapper:
             #     multivalue)
             addr, length = res
             return WasmPtr(addr, length)
+        elif isinstance(w_type, W_LiftedType):
+            w_hltype = w_type
+            llval = self.to_py_result(w_hltype.w_lltype, res)
+            return UnwrappedLiftedObject(w_hltype, llval)
         else:
             assert False, f"Don't know how to read {w_type} from WASM"
+
+
+    def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
+        assert unwrap, 'unwrap=False is not supported by the C backend'
+        wasm_args = self.from_py_args(py_args)
+        res = self.ll.call(self.c_name, *wasm_args)
+        w_type = self.w_functype.w_restype
+        return self.to_py_result(w_type, res)

@@ -115,7 +115,7 @@ class UnwrappedLiftedObject:
 
 class W_LiftedObject(W_Object):
     w_hltype: W_LiftedType  # high level type
-    w_ll: Annotated[W_Object, Member('__ll__')]
+    w_ll: W_Object
 
     def __init__(self, w_hltype: W_LiftedType, w_ll: W_Object) -> None:
         assert isinstance(w_ll, w_hltype.w_lltype.pyclass)
@@ -135,3 +135,15 @@ class W_LiftedObject(W_Object):
         ll_repr = repr(self.w_ll)
         hltype = self.w_hltype.fqn.human_name
         return f'<{hltype} (lifted from {ll_repr})>'
+
+    @staticmethod
+    def op_GET___ll__(vm: 'SPyVM', wop_hl: W_OpArg,
+                      wop_attr: W_OpArg) -> W_OpArg:
+        w_hltype = wop_hl.w_static_type
+        HL = Annotated[W_LiftedObject, w_hltype]
+        LL = Annotated[W_Object, w_hltype.w_lltype]
+
+        @builtin_func(w_hltype.fqn, '__unlift__')
+        def w_unlift(vm: 'SPyVM', w_hl: HL) -> LL:
+            return w_hl.w_ll
+        return W_OpImpl(w_unlift, [wop_hl])

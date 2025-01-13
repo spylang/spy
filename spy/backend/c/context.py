@@ -147,4 +147,17 @@ class Context:
         return c_struct_type
 
     def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
-        xxx
+        c_hltype = C_Type(w_hltype.fqn.c_name)
+        w_lltype = w_hltype.w_lltype
+        c_lltype = self.w2c(w_lltype)
+        self.out_types_decl.wb(f"""
+        typedef struct {c_hltype} {{
+            {c_lltype} ll;
+        }} {c_hltype};
+        """)
+        LIFT = w_hltype.fqn.join('__lift__').c_name
+        self.out_ptrs_def.wb(f"""
+        SPY_TYPELIFT_FUNCTIONS({c_hltype}, {c_lltype});
+        """)
+        self._d[w_hltype] = c_hltype
+        return c_hltype
