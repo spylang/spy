@@ -4,6 +4,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.function import W_FuncType, W_Func
+from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.unsafe.ptr import W_PtrType
@@ -82,6 +83,8 @@ class Context:
             return self.new_ptr_type(w_type)
         elif isinstance(w_type, W_StructType):
             return self.new_struct_type(w_type)
+        elif isinstance(w_type, W_LiftedType):
+            return self.new_lifted_type(w_type)
         raise NotImplementedError(f'Cannot translate type {w_type} to C')
 
     def c_restype_by_fqn(self, fqn: FQN) -> C_Type:
@@ -99,9 +102,7 @@ class Context:
         return C_Function(name, c_params, c_restype)
 
     def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
-        fqn = self.vm.reverse_lookup_global(w_ptrtype)
-        assert fqn is not None
-        c_ptrtype = C_Type(fqn.c_name)
+        c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemtype = w_ptrtype.w_itemtype
         c_itemtype = self.w2c(w_itemtype)
         self.out_types_decl.wb(f"""
@@ -120,9 +121,7 @@ class Context:
         return c_ptrtype
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
-        fqn = self.vm.reverse_lookup_global(w_st)
-        assert fqn is not None
-        c_struct_type = C_Type(fqn.c_name)
+        c_struct_type = C_Type(w_st.fqn.c_name)
         # forward declaration
         self._d[w_st] = c_struct_type
         self.out_types_decl.wl(f'typedef struct {c_struct_type} {c_struct_type};')
@@ -146,3 +145,6 @@ class Context:
         out.wl("")
         self.out_types_def.attach_nested_builder(out)
         return c_struct_type
+
+    def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
+        xxx
