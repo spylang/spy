@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+@B.builtin_type('ListType')
 class W_ListType(W_Type):
     """
     A specialized list type.

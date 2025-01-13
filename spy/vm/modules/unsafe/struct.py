@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 FIELDS_T = dict[str, W_Type]
 OFFSETS_T = dict[str, int]
 
+@UNSAFE.builtin_type('StructType')
 class W_StructType(W_Type):
     fields: FIELDS_T
     offsets: OFFSETS_T

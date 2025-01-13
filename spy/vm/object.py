@@ -81,7 +81,7 @@ class W_Object:
 
     def spy_get_w_type(self, vm: 'SPyVM') -> 'W_Type':
         pyclass = type(self)
-        assert pyclass._w is not None
+        assert pyclass.__dict__['_w'] is not None, 'missing @builtin_type?'
         return pyclass._w
 
     def spy_unwrap(self, vm: 'SPyVM') -> Any:

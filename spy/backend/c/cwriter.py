@@ -146,7 +146,7 @@ class CModuleWriter:
             intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.out_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
-        elif w_type is B.w_type and isinstance(w_obj, W_StructType):
+        elif isinstance(w_obj, W_StructType):
             # this forces ctx to emit the struct definition
             self.ctx.w2c(w_obj)
         elif w_type is TYPES.w_TypeDef:
