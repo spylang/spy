@@ -455,15 +455,6 @@ class ClassDef(Stmt):
     kind: ClassKind
     fields: list['VarDef']
 
-    @property
-    def is_struct(self):
-        return self.kind == 'struct'
-
-    @property
-    def is_typelift(self):
-        return self.kind == 'typelift'
-
-
 @dataclass(eq=False)
 class Pass(Stmt):
     pass
