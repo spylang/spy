@@ -42,6 +42,9 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return W_OpImpl(OP.w_dynamic_getattr)
     elif attr in w_type.spy_members:
         return opimpl_member('get', vm, w_type, attr)
+    elif hasattr(pyclass, f'op_GET_{attr}'):
+        meth = getattr(pyclass, f'op_GET_{attr}')
+        return meth(vm, wop_obj, wop_attr)
     elif pyclass.has_meth_overriden('op_GETATTR'):
         return pyclass.op_GETATTR(vm, wop_obj, wop_attr)
     return W_OpImpl.NULL
