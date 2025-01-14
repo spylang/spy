@@ -56,7 +56,7 @@ class TestAttrOp(CompilerTest):
 
             @staticmethod
             def op_GET_x(vm: 'SPyVM', wop_obj: W_OpArg,
-                         wop_attr: W_OpArg) -> W_OpArg:
+                         wop_attr: W_OpArg) -> W_OpImpl:
                 w_t = wop_obj.w_static_type
                 @builtin_func(w_t.fqn, 'get_x')
                 def w_get_x(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:

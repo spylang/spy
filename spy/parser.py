@@ -9,7 +9,7 @@ from spy.location import Loc
 from spy.errors import SPyError, SPyParseError
 from spy.util import magic_dispatch
 
-def is_py_Name(py_expr: py_ast.Expr, expected: str) -> bool:
+def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
 
 class Parser:
@@ -201,6 +201,7 @@ class Parser:
                            'this is not supported',
                            py_deco.loc)
 
+        kind: spy.ast.ClassKind
         if struct_loc and typelift_loc:
             self.error('cannot use both @struct and @typelift',
                        'this is invalid',

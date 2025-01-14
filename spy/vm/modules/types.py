@@ -98,6 +98,7 @@ class W_LiftedType(W_Type):
 
         @builtin_func(w_hltype.fqn, '__lift__')
         def w_lift(vm: 'SPyVM', w_ll: LL) -> HL:
+            assert isinstance(w_hltype, W_LiftedType)
             return W_LiftedObject(w_hltype, w_ll)
 
         return W_OpImpl(w_lift, list(args_wop))
@@ -138,7 +139,7 @@ class W_LiftedObject(W_Object):
 
     @staticmethod
     def op_GET___ll__(vm: 'SPyVM', wop_hl: W_OpArg,
-                      wop_attr: W_OpArg) -> W_OpArg:
+                      wop_attr: W_OpArg) -> W_OpImpl:
         w_hltype = wop_hl.w_static_type
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]

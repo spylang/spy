@@ -225,6 +225,7 @@ class ASTFrame:
         self.vm.add_global(fqn, w_func)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        W_Metaclass: type[W_Type]
         if classdef.kind == 'struct':
             W_Metaclass = W_StructType
         elif classdef.kind == 'typelift':
@@ -239,7 +240,7 @@ class ASTFrame:
         #
         fqn = self.w_func.fqn.join(classdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
-        w_type = W_Metaclass(fqn, d)
+        w_type = W_Metaclass(fqn, d)  # type: ignore
         w_meta_type = self.vm.dynamic_type(w_type)
         self.declare_local(classdef.name, w_meta_type)
         self.store_local(classdef.name, w_type)
