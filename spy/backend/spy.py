@@ -118,7 +118,7 @@ class SPyBackend:
                 self.emit_stmt(stmt)
 
     def emit_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
-        assert classdef.is_struct, 'IMPLEMENT ME'
+        assert classdef.kind == 'struct', 'IMPLEMENT ME'
         name = classdef.name
         self.wl('@struct')
         self.wl(f'class {name}:')

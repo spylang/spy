@@ -878,7 +878,7 @@ class TestParser:
         expected = """
         ClassDef(
             name='Foo',
-            is_struct=False,
+            kind='class',
             fields=[],
         )
         """
@@ -894,7 +894,7 @@ class TestParser:
         expected = """
         ClassDef(
             name='Foo',
-            is_struct=True,
+            kind='struct',
             fields=[],
         )
         """
@@ -911,7 +911,7 @@ class TestParser:
         expected = """
         ClassDef(
             name='Point',
-            is_struct=True,
+            kind='struct',
             fields=[
                 VarDef(
                     kind='var',
@@ -927,3 +927,38 @@ class TestParser:
         )
         """
         self.assert_dump(classdef, expected)
+
+    def test_typelift(self):
+        mod = self.parse("""
+        @typelift
+        class Foo:
+            __ll__: i32
+        """)
+        classdef = mod.get_classdef('Foo')
+        expected = """
+        ClassDef(
+            name='Foo',
+            kind='typelift',
+            fields=[
+                VarDef(
+                    kind='var',
+                    name='__ll__',
+                    type=Name(id='i32'),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(classdef, expected)
+
+    def test_typelift_and_struct(self):
+        src = """
+        @typelift
+        @struct
+        class Foo:
+            pass
+        """
+        self.expect_errors(
+            src,
+            "cannot use both @struct and @typelift",
+            ("this is invalid", "typelift"),
+        )

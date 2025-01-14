@@ -23,7 +23,7 @@ from spy.vm.bluecache import BlueCache
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
-from spy.vm.modules.types import TYPES, W_TypeDef, W_ForwardRef
+from spy.vm.modules.types import TYPES, W_ForwardRef
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
@@ -190,16 +190,6 @@ class SPyVM:
         assert isinstance(w_sub, W_Type)
         if w_super is B.w_dynamic:
             return True
-        #
-        # XXX: these are needed to support automatic conversion from/to a
-        # TypeDef and its origin type. For now it's fine, but eventually we
-        # want to allow only explicit conversions. See
-        # TestTypeDef.test_cast_from_to.
-        if isinstance(w_sub, W_TypeDef):
-            w_sub = w_sub.w_origintype
-        if isinstance(w_super, W_TypeDef):
-            w_super = w_super.w_origintype
-        #
         w_class = w_sub
         while w_class is not B.w_None:
             if w_class is w_super:
@@ -251,8 +241,8 @@ class SPyVM:
 
     def wrap(self, value: Any) -> W_Object:
         """
-        Useful for tests: magic funtion which wraps the given inter-level object
-        into the most appropriate app-level W_* object.
+        Useful for tests: magic funtion which wraps the given interp-level
+        object into the most appropriate app-level W_* object.
         """
         T = type(value)
         if isinstance(value, W_Object):
@@ -280,7 +270,7 @@ class SPyVM:
     def unwrap(self, w_value: W_Object) -> Any:
         """
         Useful for tests: magic funtion which wraps the given app-level w_
-        object into the most appropriate inter-level object. Opposite of
+        object into the most appropriate interp-level object. Opposite of
         wrap().
         """
         assert isinstance(w_value, W_Object)

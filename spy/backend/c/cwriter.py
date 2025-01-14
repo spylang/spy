@@ -10,7 +10,7 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.modules.types import TYPES
+from spy.vm.modules.types import TYPES, W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_Ptr
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.textbuilder import TextBuilder
@@ -80,7 +80,7 @@ class CModuleWriter:
         self.out.wl('// type definitions')
         self.out_types_def = self.out.make_nested_builder()
         self.out.wl()
-        self.out.wl('// unsafe::ptr accessors')
+        self.out.wl('// ptr and typelift accessors')
         self.out_ptrs_def = self.out.make_nested_builder()
         self.out.wl()
         self.out.wl('// constants and functions')
@@ -146,14 +146,9 @@ class CModuleWriter:
             intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.out_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
-        elif isinstance(w_obj, W_StructType):
+        elif isinstance(w_obj, (W_StructType, W_LiftedType)):
             # this forces ctx to emit the struct definition
             self.ctx.w2c(w_obj)
-        elif w_type is TYPES.w_TypeDef:
-            # XXX: for now, we just ignore global TypeDefs, since they are not
-            # needed. But in general, we need a way to emit prebuilt
-            # constants.
-            pass
         else:
             raise NotImplementedError('WIP')
 

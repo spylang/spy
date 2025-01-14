@@ -7,7 +7,6 @@ from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.builtin import builtin_func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.modules.types import W_TypeDef
 
 from . import OP
 from .binop import MM
@@ -43,11 +42,11 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return W_OpImpl(OP.w_dynamic_getattr)
     elif attr in w_type.spy_members:
         return opimpl_member('get', vm, w_type, attr)
+    elif hasattr(pyclass, f'op_GET_{attr}'):
+        meth = getattr(pyclass, f'op_GET_{attr}')
+        return meth(vm, wop_obj, wop_attr)
     elif pyclass.has_meth_overriden('op_GETATTR'):
         return pyclass.op_GETATTR(vm, wop_obj, wop_attr)
-
-    # until commit fc4ff1b we had special logic for typedef. At some point we
-    # either need to resume it or kill typedef entirely.
     return W_OpImpl.NULL
 
 
@@ -76,9 +75,6 @@ def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return opimpl_member('set', vm, w_type, attr)
     elif pyclass.has_meth_overriden('op_SETATTR'):
         return pyclass.op_SETATTR(vm, wop_obj, wop_attr, wop_v)
-
-    # until commit fc4ff1b we had special logic for typedef. At some point we
-    # either need to resume it or kill typedef entirely.
     return W_OpImpl.NULL
 
 

@@ -43,6 +43,39 @@ class TestAttrOp(CompilerTest):
         assert x == 123
 
 
+    def test_op_GET(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+
+            @staticmethod
+            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+                return W_MyClass()
+
+            @staticmethod
+            def op_GET_x(vm: 'SPyVM', wop_obj: W_OpArg,
+                         wop_attr: W_OpArg) -> W_OpArg:
+                w_t = wop_obj.w_static_type
+                @builtin_func(w_t.fqn, 'get_x')
+                def w_get_x(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
+                    return vm.wrap(42)  # type: ignore
+                return W_OpImpl(w_get_x, [wop_obj])
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import MyClass
+
+        @blue
+        def foo():
+            obj =  MyClass()
+            return obj.x
+        """)
+        x = mod.foo()
+        assert x == 42
+
     def test_getattr_setattr_custom(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
