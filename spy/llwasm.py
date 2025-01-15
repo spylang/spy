@@ -156,7 +156,7 @@ class LLWasmInstance:
         return func(self.store, *args)
 
     def read_global(self, name: str, deref: LLWasmType = None) -> Any:
-        """
+        r"""
         Read the given global.
 
         The semantics is a bit unfortunately: currently, clang always store C
