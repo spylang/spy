@@ -3,7 +3,7 @@ import pytest
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type, builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -25,6 +25,7 @@ class TestAttrOp(CompilerTest):
             def __init__(self) -> None:
                 self.w_x = W_I32(0)
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
@@ -50,6 +51,7 @@ class TestAttrOp(CompilerTest):
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
@@ -86,6 +88,7 @@ class TestAttrOp(CompilerTest):
             def __init__(self) -> None:
                 self.x = 0
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()

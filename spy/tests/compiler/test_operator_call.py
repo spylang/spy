@@ -3,7 +3,7 @@ import pytest
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type, builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -44,6 +44,7 @@ class TestCallOp(CompilerTest):
             def __init__(self, x: int) -> None:
                 self.x = x
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Adder':
                 return W_Adder(vm.unwrap_i32(w_x))
@@ -117,6 +118,7 @@ class TestCallOp(CompilerTest):
                 self.w_x = w_x
                 self.w_y = w_y
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type,
                         w_x: W_I32, w_y: W_I32) -> 'W_Point':
@@ -145,6 +147,7 @@ class TestCallOp(CompilerTest):
             def __init__(self, x: int) -> None:
                 self.x = x
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Calc':
                 return W_Calc(vm.unwrap_i32(w_x))

@@ -21,6 +21,7 @@ class TestOp(CompilerTest):
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
@@ -56,6 +57,7 @@ class TestOp(CompilerTest):
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
@@ -92,6 +94,7 @@ class TestOp(CompilerTest):
             def __init__(self, w_x: W_I32):
                 self.w_x = w_x
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_MyClass':
                 return W_MyClass(w_x)
