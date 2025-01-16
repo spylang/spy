@@ -36,6 +36,19 @@ class TestOp(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_cannot_instante_red_class(self):
+        src = """
+        def bar(T: type) -> dynamic:
+            return T()
+
+        def foo() -> dynamic:
+            return bar(i32)
+        """
+        errors = expect_errors(
+            'instantiation of red types is not yet supported',
+            ('this is red', "T"),
+        )
+        self.compile_raises(src, "foo", errors)
 
 
     def test_opimpl_type_mismatch(self):

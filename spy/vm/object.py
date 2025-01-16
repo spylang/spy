@@ -276,7 +276,10 @@ class W_Type(W_Object):
         from spy.vm.opimpl import W_OpImpl
 
         if wop_t.color != 'blue':
-            assert False # XXX better exception
+            err = SPyTypeError(
+                f"instantiation of red types is not yet supported")
+            err.add('error', f"this is red", loc=wop_t.loc)
+            raise err
 
         w_type = wop_t.w_blueval
         w_new = w_type.dict_w.get('__new__')
