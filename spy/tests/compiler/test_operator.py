@@ -14,6 +14,30 @@ from spy.tests.support import CompilerTest, no_C, expect_errors
 class TestOp(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
+    def test_no_spy_new(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+            pass
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyClass
+
+        def foo() -> MyClass:
+            return MyClass()
+        """
+        errors = expect_errors(
+            'cannot instantiate `ext::MyClass`',
+            ('`ext::MyClass` does not have a method `__new__`', "MyClass"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+
+
     def test_opimpl_type_mismatch(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')

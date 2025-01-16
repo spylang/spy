@@ -48,6 +48,7 @@ import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
                     Callable, Annotated)
 from spy.fqn import FQN
+from spy.errors import SPyTypeError
 from spy.vm.b import B
 
 if TYPE_CHECKING:
@@ -270,7 +271,6 @@ class W_Type(W_Object):
         w_meth = decorator(pyfunc)
         setattr(self.pyclass, pyname, w_meth)
 
-
     def op_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
@@ -281,7 +281,13 @@ class W_Type(W_Object):
         w_type = wop_t.w_blueval
         w_new = w_type.dict_w.get('__new__')
         if w_new is None:
-            assert False # XXX better exception
+            clsname = w_type.fqn.human_name
+            err = SPyTypeError(f"cannot instantiate `{clsname}`")
+            err.add('error', f"`{clsname}` does not have a method `__new__`",
+                    loc=wop_t.loc)
+            if wop_t.sym:
+                err.add('note', f"{clsname} defined here", wop_t.sym.loc)
+            raise err
 
         return W_OpImpl(w_new)
 
