@@ -45,7 +45,8 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
 import typing
-from typing import TYPE_CHECKING, ClassVar, Type, Any, Optional, Union
+from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
+                    Callable, Annotated)
 from spy.fqn import FQN
 from spy.vm.b import B
 
@@ -214,6 +215,11 @@ class W_Type(W_Object):
                 member.w_type = typing.get_args(t)[0]._w
                 self.spy_members[member.name] = member
 
+        # lazy evaluation of @builtin methods decorators
+        for name, value in pyclass.__dict__.items():
+            if hasattr(value, 'spy_builtin_method'):
+                self._eval_builtin_method(name, value)
+
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
     def w_base(self) -> Union['W_Type', 'W_Void']:
@@ -233,6 +239,27 @@ class W_Type(W_Object):
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
+
+    def _eval_builtin_method(self, pyname: str, statmeth: staticmethod) -> None:
+        "Turn the @builtin_method into a W_BuiltinFunc"
+        from spy.vm.builtin import builtin_func
+        appname, color = statmeth.spy_builtin_method
+        pyfunc = statmeth.__func__
+
+        # make it possible to use the string 'W_MyClass' in annotations
+        W_SelfType = Annotated[self.pyclass, self]
+        fix_annotations(pyfunc, {self.pyclass.__name__: W_SelfType})
+
+        # create the @builtin_func decorator
+        decorator = builtin_func(
+            namespace = self.fqn,
+            funcname = appname,
+            qualifiers = [],
+            color = color
+        )
+        # apply the decorator
+        w_meth = decorator(pyfunc)
+        setattr(self.pyclass, pyname, w_meth)
 
 
 # helpers

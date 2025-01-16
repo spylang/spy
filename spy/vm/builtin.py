@@ -123,6 +123,20 @@ def builtin_func(namespace: FQN|str,
         return W_BuiltinFunc(w_functype, fqn, fn)
     return decorator
 
+def builtin_method(name: str, *, color: Color = 'red') -> Any:
+    """
+    Like @builtin_func, but allows to use 'W_MyClass' annotations in
+    string form.
+
+    Because of that, they are evaluated lazily: this decorator only sets the
+    attribute spy_builtin_method on the function object, then the actual logic
+    is performed by W_Type.__init__.
+    """
+    def decorator(fn: Callable) -> Callable:
+        assert isinstance(fn, staticmethod), 'missing @staticmethod'
+        fn.spy_builtin_method = (name, color)
+        return fn
+    return decorator
 
 def builtin_type(namespace: FQN|str,
                  typename: str,

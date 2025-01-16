@@ -6,7 +6,8 @@ from spy.vm.vm import SPyVM
 from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Str
 from spy.vm.b import B
 from spy.fqn import FQN
-from spy.vm.builtin import builtin_func, functype_from_sig
+from spy.vm.builtin import (builtin_func, functype_from_sig,
+                            builtin_type, builtin_method)
 
 class TestBuiltin:
 
@@ -92,3 +93,17 @@ class TestBuiltin:
         w_x = vm.fast_call(w_foo, [vm.wrap(21)])
         w_y = vm.fast_call(w_foo, [vm.wrap(21)])
         assert w_x is w_y
+
+    def test_builtin_method(self):
+        @builtin_type('test', 'Foo')
+        class W_Foo(W_Object):
+
+            @builtin_method('bar')
+            @staticmethod
+            def w_make(vm: 'SPyVM') -> 'W_Foo':
+                return W_Foo()
+
+        w_make = W_Foo.w_make
+        assert isinstance(w_make, W_BuiltinFunc)
+        assert w_make.w_functype.signature == "def() -> test::Foo"
+        assert w_make.w_functype.w_restype is W_Foo._w
