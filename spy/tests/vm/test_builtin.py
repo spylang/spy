@@ -17,6 +17,15 @@ class TestBuiltin:
         w_functype = functype_from_sig(foo, 'red')
         assert w_functype == W_FuncType.parse('def(x: i32) -> str')
 
+    def test_functype_from_sig_extra_types(self):
+        def foo(vm: 'SPyVM', w_x: W_I32) -> 'FooBar':
+            return W_Str(vm, 'this is never called')
+        extra_types = {
+            'FooBar': W_Str
+        }
+        w_functype = functype_from_sig(foo, 'red', extra_types=extra_types)
+        assert w_functype == W_FuncType.parse('def(x: i32) -> str')
+
     def test_annotated_type(self):
         W_MyType = Annotated[W_Object, B.w_i32]
         def foo(vm: 'SPyVM', w_x: W_MyType) -> None:

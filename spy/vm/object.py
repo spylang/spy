@@ -256,16 +256,17 @@ class W_Type(W_Object):
         appname, color = statmeth.spy_builtin_method
         pyfunc = statmeth.__func__
 
-        # make it possible to use the string 'W_MyClass' in annotations
-        W_SelfType = Annotated[self.pyclass, self]
-        fix_annotations(pyfunc, {self.pyclass.__name__: W_SelfType})
-
-        # create the @builtin_func decorator
+        # create the @builtin_func decorator, and make it possible to use the
+        # string 'W_MyClass' in annotations
+        extra_types = {
+            self.pyclass.__name__: Annotated[self.pyclass, self],
+        }
         decorator = builtin_func(
             namespace = self.fqn,
             funcname = appname,
             qualifiers = [],
-            color = color
+            color = color,
+            extra_types = extra_types,
         )
         # apply the decorator
         w_meth = decorator(pyfunc)
@@ -372,17 +373,6 @@ def make_metaclass(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
 
     W_MetaType._w = W_Type(metafqn, W_MetaType)
     return W_MetaType
-
-def fix_annotations(fn: Any, types: dict[str, type]) -> None:
-    """
-    Substitute lazy annotations expressed as strings with their "real"
-    corresponding type.
-    """
-    for key, T in fn.__annotations__.items():
-        if isinstance(T, str) and T in types:
-            newT = types[T]
-            fn.__annotations__[key] = newT
-
 
 
 # Initial setup of the 'builtins' module

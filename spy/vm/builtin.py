@@ -44,13 +44,14 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
         return w_t
     raise ValueError(f"Invalid @builtin_func annotation: {ann}")
 
-def to_spy_FuncParam(p: Any) -> FuncParam:
+def to_spy_FuncParam(p: Any, extra_types) -> FuncParam:
     if p.name.startswith('w_'):
         name = p.name[2:]
     else:
         name = p.name
     #
-    w_type = to_spy_type(p.annotation)
+    annotation = extra_types.get(p.annotation, p.annotation)
+    w_type = to_spy_type(annotation)
     kind: FuncParamKind
     if p.kind == p.POSITIONAL_OR_KEYWORD:
         kind = 'simple'
@@ -61,7 +62,8 @@ def to_spy_FuncParam(p: Any) -> FuncParam:
     return FuncParam(name, w_type, kind)
 
 
-def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
+def functype_from_sig(fn: Callable, color: Color, *,
+                      extra_types: dict = {}) -> W_FuncType:
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
     if len(params) == 0:
@@ -72,8 +74,9 @@ def functype_from_sig(fn: Callable, color: Color) -> W_FuncType:
         msg = (f"The first param should be 'vm: SPyVM'. Got '{params[0]}'")
         raise ValueError(msg)
 
-    func_params = [to_spy_FuncParam(p) for p in params[1:]]
-    w_restype = to_spy_type(sig.return_annotation, allow_None=True)
+    func_params = [to_spy_FuncParam(p, extra_types) for p in params[1:]]
+    ret_ann = extra_types.get(sig.return_annotation, sig.return_annotation)
+    w_restype = to_spy_type(ret_ann, allow_None=True)
     return W_FuncType(func_params, w_restype, color=color)
 
 
@@ -81,7 +84,8 @@ def builtin_func(namespace: FQN|str,
                  funcname: Optional[str] = None,
                  qualifiers: QUALIFIERS = None,
                  *,
-                 color: Color = 'red'
+                 color: Color = 'red',
+                 extra_types: dict = {},
                  ) -> Callable:
     """
     Decorator to make an interp-level function wrappable by the VM.
@@ -119,7 +123,7 @@ def builtin_func(namespace: FQN|str,
             fname = fn.__name__[2:]
         assert isinstance(namespace, FQN)
         fqn = namespace.join(fname, qualifiers)
-        w_functype = functype_from_sig(fn, color)
+        w_functype = functype_from_sig(fn, color, extra_types=extra_types)
         return W_BuiltinFunc(w_functype, fqn, fn)
     return decorator
 
