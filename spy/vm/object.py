@@ -273,6 +273,11 @@ class W_Type(W_Object):
 
     def op_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':
+        """
+        Calling a type means to instantiate it.
+
+        We support instantiation of types only if they define a __new__.
+        """
         from spy.vm.opimpl import W_OpImpl
 
         if wop_t.color != 'blue':
