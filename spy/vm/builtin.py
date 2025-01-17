@@ -11,7 +11,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
                     Annotated)
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
-from spy.vm.object import W_Object, W_Type, make_metaclass
+from spy.vm.object import W_Object, W_Type, make_metaclass_maybe
 from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -156,7 +156,7 @@ def builtin_type(namespace: FQN|str,
         namespace = FQN(namespace)
     fqn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
-        W_MetaClass = make_metaclass(fqn, pyclass)
+        W_MetaClass = make_metaclass_maybe(fqn, pyclass)
         pyclass._w = W_MetaClass(fqn, pyclass)
         return pyclass
     return decorator

@@ -333,33 +333,50 @@ class Member:
                 return meta
         return None
 
-def make_metaclass(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
+def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
     Synthesize an app-level metaclass for the corresponding interp-level
-    pyclass.
+    pyclass, if needed.
+
+    Normally, for each interp-level class W_Foo, we create an app-level type
+    which is an instance of W_Type.
+
+    However, W_Foo can request the creation of a custom metaclass by
+    implementing any of the supported op_meta_* methods.
 
     Example:
 
-    @spytype('Foo')
+    @builtin_type('ext', 'Foo')
     class W_Foo(W_Object):
         pass
 
-    this automatically creates:
+    ==> creates:
+    w_footype = W_Type('ext::Foo', pyclass=W_Foo)
 
-    class W_Meta_Foo(W_Type):
-        ...
+    @builtin_type('ext', 'Bar')
+    class W_Bar(W_Object):
+        def meta_op_GETITEM(...):
+            ...
 
-    The relationship between Foo and Meta_Foo is the following:
+    ==> creates:
 
-    w_Foo = vm.wrap(W_Foo)
-    w_Meta_Foo = vm.wrap(W_Meta_Foo)
-    assert vm.dynamic_type(w_Foo) is w_Meta_Foo
+    class W_BarType(W_Type):
+        def op_GETITEM(...):
+            ...
+    w_bartype = W_BarType('ext::Bar', pyclass=W_Bar)
 
-    W_Foo can customize the behavior of the metaclass by defining `op_meta_*`
-    operators: these automatically becomes operators of the metaclass. In
-    particular, `op_meta_CALL` is used to create app-level instances of w_Foo.
+    The relationship between Bar and Meta_Bar is the following:
+
+    w_Bar = vm.wrap(W_Bar)
+    w_bar_type = vm.wrap(W_BarType)
+    assert vm.dynamic_type(w_Bar) is w_bar_type
     """
-    metaname = f'Meta_{fqn.symbol_name}'
+    if (not hasattr(pyclass, 'meta_op_CALL') and
+        not hasattr(pyclass, 'meta_op_GETITEM')):
+        # no metaclass needed
+        return W_Type
+
+    metaname = f'{fqn.symbol_name}Type'
     metafqn = fqn.namespace.join(metaname)
 
     class W_MetaType(W_Type):
