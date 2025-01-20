@@ -247,7 +247,7 @@ class W_Type(W_Object):
     def _eval_builtin_method(self, pyname: str, statmeth: staticmethod) -> None:
         "Turn the @builtin_method into a W_BuiltinFunc"
         from spy.vm.builtin import builtin_func
-        appname, color = statmeth.spy_builtin_method
+        appname, color = statmeth.spy_builtin_method  # type: ignore
         pyfunc = statmeth.__func__
 
         # create the @builtin_func decorator, and make it possible to use the
@@ -266,6 +266,7 @@ class W_Type(W_Object):
         w_meth = decorator(pyfunc)
         self.dict_w[appname] = w_meth
 
+    @staticmethod
     def op_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':
         """
@@ -273,6 +274,7 @@ class W_Type(W_Object):
 
         We support instantiation of types only if they define a __new__.
         """
+        from spy.vm.function import W_Func
         from spy.vm.opimpl import W_OpImpl
 
         if wop_t.color != 'blue':
@@ -282,6 +284,7 @@ class W_Type(W_Object):
             raise err
 
         w_type = wop_t.w_blueval
+        assert isinstance(w_type, W_Type)
         w_new = w_type.dict_w.get('__new__')
         if w_new is None:
             clsname = w_type.fqn.human_name
@@ -292,6 +295,7 @@ class W_Type(W_Object):
                 err.add('note', f"{clsname} defined here", wop_t.sym.loc)
             raise err
 
+        assert isinstance(w_new, W_Func), 'XXX raise proper exception'
         return W_OpImpl(w_new)
 
 

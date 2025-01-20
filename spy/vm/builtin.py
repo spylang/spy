@@ -16,6 +16,8 @@ from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+TYPES_DICT = dict[str, W_Type]
+
 def is_W_class(x: Any) -> bool:
     return isinstance(x, type) and issubclass(x, W_Object)
 
@@ -44,7 +46,7 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
         return w_t
     raise ValueError(f"Invalid @builtin_func annotation: {ann}")
 
-def to_spy_FuncParam(p: Any, extra_types) -> FuncParam:
+def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     if p.name.startswith('w_'):
         name = p.name[2:]
     else:
@@ -138,7 +140,7 @@ def builtin_method(name: str, *, color: Color = 'red') -> Any:
     """
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), 'missing @staticmethod'
-        fn.spy_builtin_method = (name, color)
+        fn.spy_builtin_method = (name, color)  # type: ignore
         return fn
     return decorator
 

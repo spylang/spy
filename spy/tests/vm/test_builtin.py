@@ -18,7 +18,7 @@ class TestBuiltin:
         assert w_functype == W_FuncType.parse('def(x: i32) -> str')
 
     def test_functype_from_sig_extra_types(self):
-        def foo(vm: 'SPyVM', w_x: W_I32) -> 'FooBar':
+        def foo(vm: 'SPyVM', w_x: W_I32) -> 'FooBar':  # type: ignore
             return W_Str(vm, 'this is never called')
         extra_types = {
             'FooBar': W_Str
