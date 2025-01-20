@@ -126,9 +126,10 @@ class W_List(W_BaseList, Generic[T]):
             return w_list.items_w[i]
         return W_OpImpl(w_getitem)
 
+    @builtin_method('__SETITEM__', color='blue')
     @staticmethod
-    def op_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
+    def w_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         w_listtype = W_List._get_listtype(wop_list)
         w_T = w_listtype.w_itemtype

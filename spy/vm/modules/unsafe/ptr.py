@@ -173,9 +173,10 @@ class W_Ptr(W_BasePtr):
             )
         return W_OpImpl(w_ptr_load_T)
 
+    @builtin_method('__SETITEM__', color='blue')
     @staticmethod
-    def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
+    def w_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)

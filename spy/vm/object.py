@@ -166,8 +166,8 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
-                   wop_v: 'W_OpArg') -> 'W_OpImpl':
+    def w_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
+                  wop_v: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
