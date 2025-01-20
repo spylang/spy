@@ -39,9 +39,10 @@ def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type
-    pyclass = w_type.pyclass
-    if pyclass.has_meth_overriden('op_CALL_METHOD'):
-        w_opimpl = pyclass.op_CALL_METHOD(vm, wop_obj, wop_method, *args_wop)
+
+    if w_CALL_METHOD := w_type.lookup_blue_func('__CALL_METHOD__'):
+        newargs_wop = [wop_obj, wop_method] + list(args_wop)
+        w_opimpl = vm.fast_call(w_CALL_METHOD, newargs_wop)
 
     return typecheck_opimpl(
         vm,

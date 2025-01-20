@@ -84,9 +84,10 @@ class W_LiftedType(W_Type):
         lltype = self.w_lltype.fqn.human_name
         return f"<spy type '{self.fqn}' (lifted from '{lltype}')>"
 
+    @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
-                       *args_wop: W_OpArg) -> W_OpImpl:
+    def w_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
+                      *args_wop: W_OpArg) -> W_OpImpl:
         meth = wop_method.blue_unwrap_str(vm)
         if meth != '__lift__':
             return W_OpImpl.NULL

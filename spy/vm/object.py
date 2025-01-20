@@ -176,8 +176,8 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_method: 'W_OpArg',
-                       *args_wop: 'W_OpArg') -> 'W_OpImpl':
+    def w_CALL_METHOD(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_method: 'W_OpArg',
+                      *args_wop: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod

@@ -152,10 +152,11 @@ class TestCallOp(CompilerTest):
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_Calc':
                 return W_Calc(vm.unwrap_i32(w_x))
 
+            @builtin_method('__CALL_METHOD__', color='blue')
             @staticmethod
-            def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg,
-                               wop_method: W_OpArg,
-                               *args_wop: W_OpArg) -> W_OpImpl:
+            def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg,
+                              wop_method: W_OpArg,
+                              *args_wop: W_OpArg) -> W_OpImpl:
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @builtin_func('ext', 'add')

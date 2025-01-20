@@ -28,9 +28,10 @@ class W_JsRef(W_Object):
                   wop_v: W_OpArg) -> W_OpImpl:
         return W_OpImpl(JSFFI.w_js_setattr)
 
+    @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                       *args_wop: W_OpArg) -> W_OpImpl:
+    def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
+                      *args_wop: W_OpArg) -> W_OpImpl:
         n = len(args_wop)
         if n == 1:
             return W_OpImpl(JSFFI.w_js_call_method_1)
