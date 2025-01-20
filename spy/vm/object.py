@@ -181,13 +181,13 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CONVERT_FROM(vm: 'SPyVM', w_T: 'W_Type',
-                        wop_x: 'W_OpArg') -> 'W_OpImpl':
+    def w_CONVERT_FROM(vm: 'SPyVM', w_T: 'W_Type',
+                       wop_x: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CONVERT_TO(vm: 'SPyVM', w_T: 'W_Type',
-                      wop_x: 'W_OpArg') -> 'W_OpImpl':
+    def w_CONVERT_TO(vm: 'SPyVM', w_T: 'W_Type',
+                     wop_x: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
 

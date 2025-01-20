@@ -57,12 +57,10 @@ def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
     if not w_opimpl.is_null():
         return w_opimpl
 
-    from_pyclass = w_got.pyclass
-    to_pyclass = w_exp.pyclass
-    if from_pyclass.has_meth_overriden('op_CONVERT_TO'):
-        return from_pyclass.op_CONVERT_TO(vm, w_exp, wop_x)
-    elif to_pyclass.has_meth_overriden('op_CONVERT_FROM'):
-        return to_pyclass.op_CONVERT_FROM(vm, w_got, wop_x)
+    if w_CONV_TO := w_got.lookup_blue_func('__CONVERT_TO__'):
+        return vm.fast_call(w_CONV_TO, [w_exp, wop_x])
+    elif w_CONV_FROM := w_exp.lookup_blue_func('__CONVERT_FROM__'):
+        return vm.fast_call(w_CONV_FROM, [w_got, wop_x])
 
     return W_OpImpl.NULL
 
