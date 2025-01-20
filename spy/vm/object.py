@@ -151,8 +151,9 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                   wop_attr: 'W_OpArg') -> 'W_OpImpl':
+    @builtin_method('__GETATTR__', color='blue')
+    def w_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                  wop_attr: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
