@@ -207,6 +207,8 @@ class W_Type(W_Object):
         assert issubclass(pyclass, W_Object)
         self.fqn = fqn
         self.pyclass = pyclass
+        self.dict_w = {}
+
         # setup spy_members
         self.spy_members = {}
         for field, t in pyclass.__annotations__.items():
@@ -220,14 +222,6 @@ class W_Type(W_Object):
         for name, value in pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
                 self._eval_builtin_method(name, value)
-
-        # setup slots
-        self.dict_w = {}
-        if 'w_spy_new' in pyclass.__dict__:
-            from spy.vm.function import W_Func
-            w_new = pyclass.w_spy_new
-            assert isinstance(w_new, W_Func)
-            self.dict_w['__new__'] = pyclass.w_spy_new
 
 
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
@@ -268,9 +262,9 @@ class W_Type(W_Object):
             color = color,
             extra_types = extra_types,
         )
-        # apply the decorator
+        # apply the decorator and store the method in the applevel dict
         w_meth = decorator(pyfunc)
-        setattr(self.pyclass, pyname, w_meth)
+        self.dict_w[appname] = w_meth
 
     def op_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':

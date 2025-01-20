@@ -107,12 +107,13 @@ class TestBuiltin:
         @builtin_type('test', 'Foo')
         class W_Foo(W_Object):
 
-            @builtin_method('bar')
+            @builtin_method('make')
             @staticmethod
             def w_make(vm: 'SPyVM') -> 'W_Foo':
                 return W_Foo()
 
-        w_make = W_Foo.w_make
+        w_foo = W_Foo._w
+        w_make = w_foo.dict_w['make']
         assert isinstance(w_make, W_BuiltinFunc)
         assert w_make.w_functype.signature == "def() -> test::Foo"
         assert w_make.w_functype.w_restype is W_Foo._w
