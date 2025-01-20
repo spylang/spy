@@ -33,7 +33,8 @@ class W_Module(W_Object):
     # ==== operator impls =====
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
+    @builtin_method('__GETATTR__', color='blue')
+    def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         """
         Ideally, we should create a new subtype for each module, where every
         member has its own static type.
