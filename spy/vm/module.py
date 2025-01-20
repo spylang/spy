@@ -5,7 +5,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc
-from spy.vm.builtin import builtin_func
+from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 if TYPE_CHECKING:
@@ -32,8 +32,8 @@ class W_Module(W_Object):
 
     # ==== operator impls =====
 
-    @staticmethod
     @builtin_method('__GETATTR__', color='blue')
+    @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         """
         Ideally, we should create a new subtype for each module, where every

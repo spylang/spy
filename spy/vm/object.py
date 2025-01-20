@@ -111,7 +111,7 @@ class W_Object:
     #     return opimpl(obj, 'a')
     #
     # Subclasses of W_Object can implement their own operator by overriding
-    # the various op_GETATTR & co.  These must be *static methods* on the
+    # the various w_GETATTR & co.  These must be *static methods* on the
     # class, and must return an opimpl.
     #
     #
@@ -151,7 +151,6 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    @builtin_method('__GETATTR__', color='blue')
     def w_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
                   wop_attr: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')

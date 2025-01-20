@@ -5,7 +5,7 @@ from spy.vm.b import B
 from spy.vm.object import Member
 from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type, builtin_method
 from spy.vm.registry import ModuleRegistry
 
 if TYPE_CHECKING:
@@ -16,8 +16,8 @@ JSFFI = ModuleRegistry('jsffi')
 @JSFFI.builtin_type('JsRef')
 class W_JsRef(W_Object):
 
-    @staticmethod
     @builtin_method('__GETATTR__', color='blue')
+    @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
                   wop_attr: W_OpArg) -> W_OpImpl:
         return W_OpImpl(JSFFI.w_js_getattr)

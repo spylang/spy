@@ -52,16 +52,15 @@ class W_PtrType(W_Type):
     # type PtrType(T), and AFAIK there is no syntax to denote that.
     #
     # The workaround is not to use a Member, but to implement .NULL as a
-    # special case of op_GETATTR.
+    # special case of w_GETATTR.
 
     def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
         super().__init__(fqn, W_Ptr)
         self.w_itemtype = w_itemtype
 
-    @staticmethod
     @builtin_method('__GETATTR__', color='blue')
-    def w_GETATTR(vm: 'SPyVM', wop_ptr: 'W_OpArg',
-                  wop_attr: 'W_OpArg') -> 'W_OpImpl':
+    @staticmethod
+    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         attr = wop_attr.blue_unwrap_str(vm)
         if attr == 'NULL':
             # NOTE: the precise spelling of the FQN of NULL matters! The
@@ -251,10 +250,10 @@ class W_Ptr(W_BasePtr):
         vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
         return W_OpImpl(w_ptr_to_bool)
 
-
+    @builtin_method('__GETATTR__', color='blue')
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
-                   wop_attr: W_OpArg) -> W_OpImpl:
+    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
+                  wop_attr: W_OpArg) -> W_OpImpl:
         return W_Ptr._op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
     @staticmethod
@@ -266,7 +265,7 @@ class W_Ptr(W_BasePtr):
     def _op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                  wop_v: Optional[W_OpArg]) -> W_OpImpl:
         """
-        Implement both op_GETATTR and op_SETATTR.
+        Implement both w_GETATTR and op_SETATTR.
         """
         from .struct import W_StructType
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)

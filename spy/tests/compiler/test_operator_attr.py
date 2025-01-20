@@ -56,8 +56,9 @@ class TestAttrOp(CompilerTest):
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
 
+            @builtin_method('__GET_x__', color='blue')
             @staticmethod
-            def op_GET_x(vm: 'SPyVM', wop_obj: W_OpArg,
+            def w_GET_x(vm: 'SPyVM', wop_obj: W_OpArg,
                          wop_attr: W_OpArg) -> W_OpImpl:
                 w_t = wop_obj.w_static_type
                 @builtin_func(w_t.fqn, 'get_x')
@@ -93,8 +94,8 @@ class TestAttrOp(CompilerTest):
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
 
-            @staticmethod
             @builtin_method('__GETATTR__', color='blue')
+            @staticmethod
             def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
                           wop_attr: W_OpArg) -> W_OpImpl:
                 attr = wop_attr.blue_unwrap_str(vm)
