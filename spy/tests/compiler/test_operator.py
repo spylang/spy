@@ -3,7 +3,7 @@ import pytest
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type, builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -14,6 +14,43 @@ from spy.tests.support import CompilerTest, no_C, expect_errors
 class TestOp(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
+    def test_no_spy_new(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+            pass
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyClass
+
+        def foo() -> MyClass:
+            return MyClass()
+        """
+        errors = expect_errors(
+            'cannot instantiate `ext::MyClass`',
+            ('`ext::MyClass` does not have a method `__new__`', "MyClass"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_cannot_instante_red_class(self):
+        src = """
+        def bar(T: type) -> dynamic:
+            return T()
+
+        def foo() -> dynamic:
+            return bar(i32)
+        """
+        errors = expect_errors(
+            'instantiation of red types is not yet supported',
+            ('this is red', "T"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+
     def test_opimpl_type_mismatch(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
@@ -21,6 +58,7 @@ class TestOp(CompilerTest):
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
@@ -56,6 +94,7 @@ class TestOp(CompilerTest):
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
@@ -92,6 +131,7 @@ class TestOp(CompilerTest):
             def __init__(self, w_x: W_I32):
                 self.w_x = w_x
 
+            @builtin_method('__new__')
             @staticmethod
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_MyClass':
                 return W_MyClass(w_x)
