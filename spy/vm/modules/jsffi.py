@@ -22,9 +22,10 @@ class W_JsRef(W_Object):
                   wop_attr: W_OpArg) -> W_OpImpl:
         return W_OpImpl(JSFFI.w_js_getattr)
 
+    @builtin_method('__SETATTR__', color='blue')
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
+    def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
         return W_OpImpl(JSFFI.w_js_setattr)
 
     @staticmethod

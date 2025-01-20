@@ -254,18 +254,19 @@ class W_Ptr(W_BasePtr):
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
                   wop_attr: W_OpArg) -> W_OpImpl:
-        return W_Ptr._op_ATTR('get', vm, wop_ptr, wop_attr, None)
+        return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_attr, None)
+
+    @builtin_method('__SETATTR__', color='blue')
+    @staticmethod
+    def w_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
+        return W_Ptr.op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
-        return W_Ptr._op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
-
-    @staticmethod
-    def _op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                 wop_v: Optional[W_OpArg]) -> W_OpImpl:
+    def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                wop_v: Optional[W_OpArg]) -> W_OpImpl:
         """
-        Implement both w_GETATTR and op_SETATTR.
+        Implement both w_GETATTR and w_SETATTR.
         """
         from .struct import W_StructType
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)

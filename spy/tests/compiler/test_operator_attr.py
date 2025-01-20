@@ -112,9 +112,10 @@ class TestAttrOp(CompilerTest):
                         return vm.wrap(attr.upper() + '--42')  # type: ignore
                 return W_OpImpl(w_fn)
 
+            @builtin_method('__SETATTR__', color='blue')
             @staticmethod
-            def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                           wop_v: W_OpArg) -> W_OpImpl:
+            def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+                          wop_v: W_OpArg) -> W_OpImpl:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func('ext')
