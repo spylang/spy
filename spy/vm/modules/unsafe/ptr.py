@@ -59,8 +59,9 @@ class W_PtrType(W_Type):
         self.w_itemtype = w_itemtype
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_ptr: 'W_OpArg',
-                   wop_attr: 'W_OpArg') -> 'W_OpImpl':
+    @builtin_method('__GETATTR__', color='blue')
+    def w_GETATTR(vm: 'SPyVM', wop_ptr: 'W_OpArg',
+                  wop_attr: 'W_OpArg') -> 'W_OpImpl':
         attr = wop_attr.blue_unwrap_str(vm)
         if attr == 'NULL':
             # NOTE: the precise spelling of the FQN of NULL matters! The

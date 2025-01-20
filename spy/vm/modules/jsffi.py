@@ -17,8 +17,9 @@ JSFFI = ModuleRegistry('jsffi')
 class W_JsRef(W_Object):
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
-                   wop_attr: W_OpArg) -> W_OpImpl:
+    @builtin_method('__GETATTR__', color='blue')
+    def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
+                  wop_attr: W_OpArg) -> W_OpImpl:
         return W_OpImpl(JSFFI.w_js_getattr)
 
     @staticmethod
