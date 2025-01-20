@@ -330,7 +330,7 @@ class SPyVM:
         # <TEMPORARY HACK>
         #
         # we don't want to over-specialize OPERATORs: for example, in case of
-        # W_List.op_GETITEM(obj, i) we care only about the types, and we don't
+        # W_List.w_GETITEM(obj, i) we care only about the types, and we don't
         # care whether "i" is blue.
         #
         # args_wop contains W_OpArgs which directly comes from ASTFrame, and

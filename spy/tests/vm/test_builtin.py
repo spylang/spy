@@ -1,5 +1,6 @@
 import pytest
 from typing import Annotated
+from spy.errors import SPyTypeError
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.vm import SPyVM
@@ -117,3 +118,16 @@ class TestBuiltin:
         assert isinstance(w_make, W_BuiltinFunc)
         assert w_make.w_functype.signature == "def() -> test::Foo"
         assert w_make.w_functype.w_restype is W_Foo._w
+
+    def test_builtin_method_wrong_color(self):
+        class W_Foo(W_Object):
+
+            @builtin_method('__GETITEM__')
+            @staticmethod
+            def w_GETITEM(vm: 'SPyVM') -> 'W_Foo':
+                return W_Foo()
+
+        msg = "method `test::Foo.__GETITEM__` should be blue, but it's red"
+        with pytest.raises(SPyTypeError, match=msg):
+            # simulate @decorator application
+            builtin_type('test', 'Foo')(W_Foo)

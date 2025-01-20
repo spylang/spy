@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void, W_Bool
 from spy.vm.object import Member
 from spy.vm.b import B
-from spy.vm.builtin import builtin_type
+from spy.vm.builtin import builtin_type, builtin_method
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func
@@ -94,7 +94,7 @@ class W_BasePtr(W_Object):
         raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpImpl:
+    def w_meta_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpImpl:
         return W_OpImpl(w_make_ptr_type, [wop_T])
 
 
@@ -147,8 +147,9 @@ class W_Ptr(W_BasePtr):
             # opposed to e.g. 'ptr[i32]'
             assert False, 'FIXME: raise a nice error'
 
+    @builtin_method('__GETITEM__', color='blue')
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+    def w_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)

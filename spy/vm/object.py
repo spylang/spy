@@ -161,8 +161,8 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                   wop_i: 'W_OpArg') -> 'W_OpImpl':
+    def w_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                  wop_i: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
@@ -244,11 +244,50 @@ class W_Type(W_Object):
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
 
+    def lookup_func(self, name: str) -> Optional['W_Func']:
+        """
+        Lookup the given attribute into the applevel dict, and ensure it's
+        a W_Func.
+        """
+        from spy.vm.function import W_Func
+        w_obj = self.dict_w.get(name)
+        if w_obj:
+            assert isinstance(w_obj, W_Func)
+            return w_obj
+        return None
+
+    def lookup_blue_func(self, name: str) -> Optional['W_Func']:
+        """
+        Like lookup_func, but also check that the function is blue
+        """
+        from spy.vm.function import W_Func
+        w_obj = self.dict_w.get(name)
+        if w_obj:
+            assert isinstance(w_obj, W_Func)
+            assert w_obj.color == 'blue'
+            return w_obj
+        return None
+
     def _eval_builtin_method(self, pyname: str, statmeth: staticmethod) -> None:
         "Turn the @builtin_method into a W_BuiltinFunc"
         from spy.vm.builtin import builtin_func
         appname, color = statmeth.spy_builtin_method  # type: ignore
         pyfunc = statmeth.__func__
+
+        # sanity check: __MAGIC__ methods should be blue
+        if appname in (
+                '__ADD__', '__SUB__', '__MUL__', '__DIV__',
+                '__EQ__', '__NE__', '__LT__', '__LE__', '__GT__', '__GE__',
+                '__GETATTR__', '__SETATTR__',
+                '__GETITEM__', '__SETITEM__',
+                '__CALL__', '__CALL_METHOD__',
+                '__CONVERT_FROM__', '__CONVERT_TO__',
+        ) and color != 'blue':
+            # XXX we should raise a more detailed exception
+            fqn = self.fqn.human_name
+            msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
+            raise SPyTypeError(msg)
+
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations
@@ -340,37 +379,39 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     which is an instance of W_Type.
 
     However, W_Foo can request the creation of a custom metaclass by
-    implementing any of the supported op_meta_* methods.
+    implementing any of the supported w_meta_* methods.
 
     Example:
 
     @builtin_type('ext', 'Foo')
     class W_Foo(W_Object):
         pass
-
     ==> creates:
     w_footype = W_Type('ext::Foo', pyclass=W_Foo)
 
+
     @builtin_type('ext', 'Bar')
     class W_Bar(W_Object):
-        def meta_op_GETITEM(...):
-            ...
-
+        @staticmethod
+        def w_meta_GETITEM(...):
+            ..
     ==> creates:
-
     class W_BarType(W_Type):
-        def op_GETITEM(...):
+        @builtin_method('__GETITEM__', color='blue')
+        @staticmethod
+        def w_GETITEM(...):
             ...
     w_bartype = W_BarType('ext::Bar', pyclass=W_Bar)
 
-    The relationship between Bar and Meta_Bar is the following:
+    The relationship between W_Bar and W_BarType is the following:
 
     w_Bar = vm.wrap(W_Bar)
     w_bar_type = vm.wrap(W_BarType)
     assert vm.dynamic_type(w_Bar) is w_bar_type
     """
+    from spy.vm.builtin import builtin_method
     if (not hasattr(pyclass, 'meta_op_CALL') and
-        not hasattr(pyclass, 'meta_op_GETITEM')):
+        not hasattr(pyclass, 'w_meta_GETITEM')):
         # no metaclass needed
         return W_Type
 
@@ -383,8 +424,10 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
 
     if hasattr(pyclass, 'meta_op_CALL'):
         W_MetaType.op_CALL = pyclass.meta_op_CALL  # type: ignore
-    if hasattr(pyclass, 'meta_op_GETITEM'):
-        W_MetaType.op_GETITEM = pyclass.meta_op_GETITEM  # type: ignore
+    if hasattr(pyclass, 'w_meta_GETITEM'):
+        fn = pyclass.w_meta_GETITEM
+        decorator = builtin_method('__GETITEM__', color='blue')
+        W_MetaType.w_GETITEM = decorator(staticmethod(fn))
 
     W_MetaType._w = W_Type(metafqn, W_MetaType)
     return W_MetaType
