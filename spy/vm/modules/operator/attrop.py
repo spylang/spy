@@ -44,8 +44,8 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return opimpl_member('get', vm, w_type, attr)
     elif w_GET := w_type.lookup_blue_func(f'__GET_{attr}__'):
         return vm.fast_call(w_GET, [wop_obj, wop_attr])
-    elif pyclass.has_meth_overriden('op_GETATTR'):
-        return pyclass.op_GETATTR(vm, wop_obj, wop_attr)
+    elif pyclass.has_meth_overriden('w_GETATTR'):
+        return pyclass.w_GETATTR(vm, wop_obj, wop_attr)
     return W_OpImpl.NULL
 
 
