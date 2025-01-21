@@ -47,6 +47,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
                     Callable, Annotated)
+from spy.ast import Color
 from spy.fqn import FQN
 from spy.errors import SPyTypeError
 from spy.vm.b import B
@@ -54,6 +55,7 @@ from spy.vm.b import B
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.primitive import W_Void, W_Dynamic
+    from spy.vm.functions import W_Func
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 # Basic setup of the object model: <object> and <type>
@@ -127,10 +129,10 @@ class W_Object:
     #    @spytype('Foo')
     #    class W_Foo(W_Object):
     #        @staticmethod
-    #        def meta_op_CALL(...): ...
+    #        def w_meta_CALL(...): ...
     #
     # Here spytype will automatically create the metaclass W_Meta_Foo, and it
-    # will assign W_Meta_Foo.op_CALL = W_Foo.meta_op_CALL
+    # will assign W_Meta_Foo.w_CALL = W_Foo.w_meta_CALL
 
     @classmethod
     def has_meth_overriden(cls, name: str) -> bool:
@@ -171,7 +173,7 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_CALL(vm: 'SPyVM', wop_obj: 'W_OpArg',
+    def w_CALL(vm: 'SPyVM', wop_obj: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
@@ -221,8 +223,10 @@ class W_Type(W_Object):
         # lazy evaluation of @builtin methods decorators
         for name, value in pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
-                self._eval_builtin_method(name, value)
-
+                statmeth = value
+                assert isinstance(statmeth, staticmethod)
+                appname, color = statmeth.spy_builtin_method  # type: ignore
+                self.setup_builtin_method(statmeth.__func__, appname, color)
 
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
@@ -268,11 +272,14 @@ class W_Type(W_Object):
             return w_obj
         return None
 
-    def _eval_builtin_method(self, pyname: str, statmeth: staticmethod) -> None:
+    def setup_builtin_method(self,
+                             pyfunc: Callable,
+                             appname: str,
+                             color: Color
+                             ) -> None:
         "Turn the @builtin_method into a W_BuiltinFunc"
         from spy.vm.builtin import builtin_func
-        appname, color = statmeth.spy_builtin_method  # type: ignore
-        pyfunc = statmeth.__func__
+        from spy.vm.opimpl import W_OpArg, W_OpImpl
 
         # sanity check: __MAGIC__ methods should be blue
         if appname in (
@@ -288,11 +295,12 @@ class W_Type(W_Object):
             msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
             raise SPyTypeError(msg)
 
-
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations
         extra_types = {
             self.pyclass.__name__: Annotated[self.pyclass, self],
+            'W_OpArg': W_OpArg,
+            'W_OpImpl': W_OpImpl,
         }
         decorator = builtin_func(
             namespace = self.fqn,
@@ -305,9 +313,11 @@ class W_Type(W_Object):
         w_meth = decorator(pyfunc)
         self.dict_w[appname] = w_meth
 
+    # we cannot use @builtin_method due to circular imports. See the manual
+    # call to setup_builtin_method() at the top of vm.py
     @staticmethod
-    def op_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
-                *args_wop: 'W_OpArg') -> 'W_OpImpl':
+    def w_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
+               *args_wop: 'W_OpArg') -> 'W_OpImpl':
         """
         Calling a type means to instantiate it.
 
@@ -410,7 +420,7 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     assert vm.dynamic_type(w_Bar) is w_bar_type
     """
     from spy.vm.builtin import builtin_method
-    if (not hasattr(pyclass, 'meta_op_CALL') and
+    if (not hasattr(pyclass, 'w_meta_CALL') and
         not hasattr(pyclass, 'w_meta_GETITEM')):
         # no metaclass needed
         return W_Type
@@ -422,12 +432,14 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
         __name__ = f'W_{metaname}'
         __qualname__ = __name__
 
-    if hasattr(pyclass, 'meta_op_CALL'):
-        W_MetaType.op_CALL = pyclass.meta_op_CALL  # type: ignore
+    if hasattr(pyclass, 'w_meta_CALL'):
+        fn = pyclass.w_meta_CALL
+        decorator = builtin_method('__CALL__', color='blue')
+        W_MetaType.w_CALL = decorator(staticmethod(fn))  # type: ignore
     if hasattr(pyclass, 'w_meta_GETITEM'):
         fn = pyclass.w_meta_GETITEM
         decorator = builtin_method('__GETITEM__', color='blue')
-        W_MetaType.w_GETITEM = decorator(staticmethod(fn))
+        W_MetaType.w_GETITEM = decorator(staticmethod(fn))  # type: ignore
 
     W_MetaType._w = W_Type(metafqn, W_MetaType)
     return W_MetaType

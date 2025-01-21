@@ -28,6 +28,10 @@ from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
 
+# manually setup `builtins::type.__CALL__`. We must do it here because of
+# bootstrapping reasons.
+W_Type._w.setup_builtin_method(W_Type.w_CALL, '__CALL__', 'blue')
+
 
 class SPyVM:
     """
