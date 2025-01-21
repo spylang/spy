@@ -454,6 +454,7 @@ class ClassDef(Stmt):
     name: str
     kind: ClassKind
     fields: list['VarDef']
+    methods: list['FuncDef']
 
 @dataclass(eq=False)
 class Pass(Stmt):

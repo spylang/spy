@@ -215,6 +215,7 @@ class Parser:
 
         # only few kind of declarations are supported inside a "class:" block
         fields: list[spy.ast.VarDef] = []
+        methods: list[spy.ast.FuncDef] = []
         for py_stmt in py_classdef.body:
             if isinstance(py_stmt, py_ast.Pass):
                 pass
@@ -225,6 +226,9 @@ class Parser:
                                'this is not supported',
                                assign.loc)
                 fields.append(vardef)
+            elif isinstance(py_stmt, py_ast.FunctionDef):
+                funcdef = self.from_py_stmt_FunctionDef(py_stmt)
+                methods.append(funcdef)
             else:
                 msg = 'only fields are allowed inside a class def'
                 self.error(msg, 'this is not allowed here', py_stmt.loc)
@@ -234,6 +238,7 @@ class Parser:
             name = py_classdef.name,
             kind = kind,
             fields = fields,
+            methods = methods,
         )
 
 
