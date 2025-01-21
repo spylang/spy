@@ -8,7 +8,7 @@ from spy.vm.function import W_Func, W_FuncType
 from spy.vm.opimpl import W_OpArg, W_OpImpl
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic
 from spy.vm.builtin import builtin_func
-from . import OP
+from . import OP, op_fast_call
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -58,9 +58,9 @@ def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
         return w_opimpl
 
     if w_CONV_TO := w_got.lookup_blue_func('__CONVERT_TO__'):
-        return vm.fast_call(w_CONV_TO, [w_exp, wop_x])
+        return op_fast_call(vm, w_CONV_TO, [w_exp, wop_x])
     elif w_CONV_FROM := w_exp.lookup_blue_func('__CONVERT_FROM__'):
-        return vm.fast_call(w_CONV_FROM, [w_got, wop_x])
+        return op_fast_call(vm, w_CONV_FROM, [w_got, wop_x])
 
     return W_OpImpl.NULL
 

@@ -39,8 +39,24 @@ Note that for bootstrap reason, the OPERATOR module is defined in vm/b.py, and
 re-exported here.
 """
 
+from typing import TYPE_CHECKING, Sequence
+from spy.vm.object import W_Object
 from spy.vm.function import W_Func
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.b import OPERATOR, OP
+
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
+
+def op_fast_call(vm: 'SPyVM', w_func: W_Func,
+                 args_w: Sequence[W_Object]) -> W_OpImpl:
+    """
+    Like vm.fast_call, but ensure that the result is a W_OpImpl
+    """
+    w_res = vm.fast_call(w_func, args_w)
+    assert isinstance(w_res, W_OpImpl)
+    return w_res
+
 
 # the folloing imports register all the various objects on OP
 from . import opimpl_i32     # side effects
@@ -53,7 +69,6 @@ from . import attrop         # side effects
 from . import itemop         # side effects
 from . import callop         # side effects
 from . import convop         # side effects
-
 
 _from_token: dict[str, W_Func] = {
     '+': OP.w_ADD,

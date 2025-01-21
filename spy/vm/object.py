@@ -55,7 +55,7 @@ from spy.vm.b import B
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.primitive import W_Void, W_Dynamic
-    from spy.vm.functions import W_Func
+    from spy.vm.function import W_Func
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 # Basic setup of the object model: <object> and <type>

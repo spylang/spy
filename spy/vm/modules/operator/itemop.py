@@ -5,7 +5,7 @@ from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.function import W_Func
 from spy.vm.primitive import W_Dynamic
 
-from . import OP
+from . import OP, op_fast_call
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -17,7 +17,7 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_Func:
     w_type = wop_obj.w_static_type
 
     if w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
-        w_opimpl = vm.fast_call(w_GETITEM, [wop_obj, wop_i])
+        w_opimpl = op_fast_call(vm, w_GETITEM, [wop_obj, wop_i])
 
     return typecheck_opimpl(
         vm,
@@ -36,7 +36,7 @@ def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg,
     w_type = wop_obj.w_static_type
 
     if w_SETITEM := w_type.lookup_blue_func('__SETITEM__'):
-        w_opimpl = vm.fast_call(w_SETITEM, [wop_obj, wop_i, wop_v])
+        w_opimpl = op_fast_call(vm, w_SETITEM, [wop_obj, wop_i, wop_v])
 
     return typecheck_opimpl(
         vm,
