@@ -203,6 +203,8 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
+    # NOTE: we cannot use a w_CALL/__CALL__ here, for bootstrapping
+    # reason. OP.CALL on W_Func objects is special-cased, see callop.w_CALL.
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':

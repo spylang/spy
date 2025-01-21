@@ -5,7 +5,7 @@ from spy.vm.b import B, OP
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -57,7 +57,7 @@ class W_BaseList(W_Object):
 
       - it's the base type for all lists
 
-      - by implementing meta_op_GETITEM, it can be used to create
+      - by implementing w_meta_GETITEM, it can be used to create
        _specialized_ list types, e.g. `list[i32]`.
 
     In other words, `list[i32]` inherits from `list`.
@@ -71,8 +71,8 @@ class W_BaseList(W_Object):
         raise Exception("You cannot instantiate W_BaseList, use W_List")
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                        wop_i: W_OpArg) -> W_OpImpl:
+    def w_meta_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                       wop_i: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         return W_OpImpl(w_make_list_type)
 
@@ -110,8 +110,9 @@ class W_List(W_BaseList, Generic[T]):
             # opposed to e.g. 'list[i32]'
             assert False, 'FIXME: raise a nice error'
 
+    @builtin_method('__GETITEM__', color='blue')
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+    def w_GETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         w_listtype = W_List._get_listtype(wop_list)
         w_T = w_listtype.w_itemtype
@@ -125,9 +126,10 @@ class W_List(W_BaseList, Generic[T]):
             return w_list.items_w[i]
         return W_OpImpl(w_getitem)
 
+    @builtin_method('__SETITEM__', color='blue')
     @staticmethod
-    def op_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
+    def w_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         w_listtype = W_List._get_listtype(wop_list)
         w_T = w_listtype.w_itemtype

@@ -78,3 +78,15 @@ def OP_from_token(token: str) -> W_Func:
     E.g., OPS.from_token('+') returns OPS.w_ADD.
     """
     return _from_token[token]
+
+def print_all_OPERATORS() -> None:
+    """
+    Just a development tool to print the list of all OPERATORs
+    """
+    print('SPy OPERATORS:')
+    for fqn, w_func in OP.content:
+        if fqn.symbol_name.isupper():
+            print("   ", fqn)
+    print()
+
+#print_all_OPERATORS()

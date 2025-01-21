@@ -63,9 +63,10 @@ class TestOp(CompilerTest):
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
 
+            @builtin_method('__GETITEM__', color='blue')
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                           wop_i: W_OpArg) -> W_OpImpl:
+            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                          wop_i: W_OpArg) -> W_OpImpl:
                 @builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
                               w_i: W_I32) -> W_I32:
@@ -99,9 +100,10 @@ class TestOp(CompilerTest):
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
                 return W_MyClass()
 
+            @builtin_method('__GETITEM__', color='blue')
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                           wop_i: W_OpArg) -> W_OpImpl:
+            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                          wop_i: W_OpArg) -> W_OpImpl:
                 @builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
@@ -136,9 +138,10 @@ class TestOp(CompilerTest):
             def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_MyClass':
                 return W_MyClass(w_x)
 
+            @builtin_method('__GETITEM__', color='blue')
             @staticmethod
-            def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                           wop_i: W_OpArg) -> W_OpImpl:
+            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                          wop_i: W_OpArg) -> W_OpImpl:
                 assert isinstance(wop_obj, W_OpArg)
                 assert isinstance(wop_i, W_OpArg)
                 # NOTE we are reversing the two arguments

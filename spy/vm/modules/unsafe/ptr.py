@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void, W_Bool
 from spy.vm.object import Member
 from spy.vm.b import B
-from spy.vm.builtin import builtin_type
+from spy.vm.builtin import builtin_type, builtin_method
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func
@@ -52,15 +52,15 @@ class W_PtrType(W_Type):
     # type PtrType(T), and AFAIK there is no syntax to denote that.
     #
     # The workaround is not to use a Member, but to implement .NULL as a
-    # special case of op_GETATTR.
+    # special case of w_GETATTR.
 
     def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
         super().__init__(fqn, W_Ptr)
         self.w_itemtype = w_itemtype
 
+    @builtin_method('__GETATTR__', color='blue')
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_ptr: 'W_OpArg',
-                   wop_attr: 'W_OpArg') -> 'W_OpImpl':
+    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         attr = wop_attr.blue_unwrap_str(vm)
         if attr == 'NULL':
             # NOTE: the precise spelling of the FQN of NULL matters! The
@@ -94,7 +94,7 @@ class W_BasePtr(W_Object):
         raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
 
     @staticmethod
-    def meta_op_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpImpl:
+    def w_meta_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpImpl:
         return W_OpImpl(w_make_ptr_type, [wop_T])
 
 
@@ -147,8 +147,9 @@ class W_Ptr(W_BasePtr):
             # opposed to e.g. 'ptr[i32]'
             assert False, 'FIXME: raise a nice error'
 
+    @builtin_method('__GETITEM__', color='blue')
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+    def w_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
@@ -172,9 +173,10 @@ class W_Ptr(W_BasePtr):
             )
         return W_OpImpl(w_ptr_load_T)
 
+    @builtin_method('__SETITEM__', color='blue')
     @staticmethod
-    def op_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
+    def w_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
@@ -232,8 +234,9 @@ class W_Ptr(W_BasePtr):
             )  # type: ignore
         return W_OpImpl(w_ptr_ne)
 
+    @builtin_method('__CONVERT_TO__', color='blue')
     @staticmethod
-    def op_CONVERT_TO(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+    def w_CONVERT_TO(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
         if w_T is not B.w_bool:
             return W_OpImpl.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_x)
@@ -248,22 +251,23 @@ class W_Ptr(W_BasePtr):
         vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
         return W_OpImpl(w_ptr_to_bool)
 
+    @builtin_method('__GETATTR__', color='blue')
+    @staticmethod
+    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
+                  wop_attr: W_OpArg) -> W_OpImpl:
+        return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_attr, None)
+
+    @builtin_method('__SETATTR__', color='blue')
+    @staticmethod
+    def w_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
+        return W_Ptr.op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
-                   wop_attr: W_OpArg) -> W_OpImpl:
-        return W_Ptr._op_ATTR('get', vm, wop_ptr, wop_attr, None)
-
-    @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
-        return W_Ptr._op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
-
-    @staticmethod
-    def _op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                 wop_v: Optional[W_OpArg]) -> W_OpImpl:
+    def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+                wop_v: Optional[W_OpArg]) -> W_OpImpl:
         """
-        Implement both op_GETATTR and op_SETATTR.
+        Implement both w_GETATTR and w_SETATTR.
         """
         from .struct import W_StructType
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)

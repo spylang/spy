@@ -37,16 +37,14 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_Func:
 def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpImpl:
     w_type = wop_obj.w_static_type
-    pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         return W_OpImpl(OP.w_dynamic_getattr)
     elif attr in w_type.spy_members:
         return opimpl_member('get', vm, w_type, attr)
-    elif hasattr(pyclass, f'op_GET_{attr}'):
-        meth = getattr(pyclass, f'op_GET_{attr}')
-        return meth(vm, wop_obj, wop_attr)
-    elif pyclass.has_meth_overriden('op_GETATTR'):
-        return pyclass.op_GETATTR(vm, wop_obj, wop_attr)
+    elif w_GET := w_type.lookup_blue_func(f'__GET_{attr}__'):
+        return vm.fast_call(w_GET, [wop_obj, wop_attr])
+    elif w_GETATTR := w_type.lookup_blue_func(f'__GETATTR__'):
+        return vm.fast_call(w_GETATTR, [wop_obj, wop_attr])
     return W_OpImpl.NULL
 
 
@@ -68,13 +66,12 @@ def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         wop_v: W_OpArg, attr: str) -> W_OpImpl:
     w_type = wop_obj.w_static_type
-    pyclass = w_type.pyclass
     if w_type is B.w_dynamic:
         return W_OpImpl(OP.w_dynamic_setattr)
     elif attr in w_type.spy_members:
         return opimpl_member('set', vm, w_type, attr)
-    elif pyclass.has_meth_overriden('op_SETATTR'):
-        return pyclass.op_SETATTR(vm, wop_obj, wop_attr, wop_v)
+    elif w_SETATTR := w_type.lookup_blue_func('__SETATTR__'):
+        return vm.fast_call(w_SETATTR, [wop_obj, wop_attr, wop_v])
     return W_OpImpl.NULL
 
 

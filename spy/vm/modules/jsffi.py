@@ -5,7 +5,7 @@ from spy.vm.b import B
 from spy.vm.object import Member
 from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type, builtin_method
 from spy.vm.registry import ModuleRegistry
 
 if TYPE_CHECKING:
@@ -16,19 +16,22 @@ JSFFI = ModuleRegistry('jsffi')
 @JSFFI.builtin_type('JsRef')
 class W_JsRef(W_Object):
 
+    @builtin_method('__GETATTR__', color='blue')
     @staticmethod
-    def op_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
-                   wop_attr: W_OpArg) -> W_OpImpl:
+    def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
+                  wop_attr: W_OpArg) -> W_OpImpl:
         return W_OpImpl(JSFFI.w_js_getattr)
 
+    @builtin_method('__SETATTR__', color='blue')
     @staticmethod
-    def op_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                   wop_v: W_OpArg) -> W_OpImpl:
+    def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+                  wop_v: W_OpArg) -> W_OpImpl:
         return W_OpImpl(JSFFI.w_js_setattr)
 
+    @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                       *args_wop: W_OpArg) -> W_OpImpl:
+    def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
+                      *args_wop: W_OpArg) -> W_OpImpl:
         n = len(args_wop)
         if n == 1:
             return W_OpImpl(JSFFI.w_js_call_method_1)
@@ -37,8 +40,9 @@ class W_JsRef(W_Object):
                 f"unsupported number of arguments for CALL_METHOD: {n}"
             )
 
+    @builtin_method('__CONVERT_FROM__', color='blue')
     @staticmethod
-    def op_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+    def w_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
         if w_T is B.w_str:
             return W_OpImpl(JSFFI.w_js_string)
         elif w_T is B.w_i32:

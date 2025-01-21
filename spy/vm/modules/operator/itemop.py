@@ -14,9 +14,10 @@ if TYPE_CHECKING:
 def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
-    pyclass = wop_obj.w_static_type.pyclass
-    if pyclass.has_meth_overriden('op_GETITEM'):
-        w_opimpl = pyclass.op_GETITEM(vm, wop_obj, wop_i)
+    w_type = wop_obj.w_static_type
+
+    if w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
+        w_opimpl = vm.fast_call(w_GETITEM, [wop_obj, wop_i])
 
     return typecheck_opimpl(
         vm,
@@ -32,9 +33,10 @@ def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg,
             wop_v: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     w_opimpl = W_OpImpl.NULL
-    pyclass = wop_obj.w_static_type.pyclass
-    if pyclass.has_meth_overriden('op_SETITEM'):
-        w_opimpl = pyclass.op_SETITEM(vm, wop_obj, wop_i, wop_v)
+    w_type = wop_obj.w_static_type
+
+    if w_SETITEM := w_type.lookup_blue_func('__SETITEM__'):
+        w_opimpl = vm.fast_call(w_SETITEM, [wop_obj, wop_i, wop_v])
 
     return typecheck_opimpl(
         vm,

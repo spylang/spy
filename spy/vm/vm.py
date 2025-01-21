@@ -28,6 +28,10 @@ from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
 
+# manually setup `builtins::type.__CALL__`. We must do it here because of
+# bootstrapping reasons.
+W_Type._w.setup_builtin_method(W_Type.w_CALL, '__CALL__', 'blue')
+
 
 class SPyVM:
     """
@@ -330,7 +334,7 @@ class SPyVM:
         # <TEMPORARY HACK>
         #
         # we don't want to over-specialize OPERATORs: for example, in case of
-        # W_List.op_GETITEM(obj, i) we care only about the types, and we don't
+        # W_List.w_GETITEM(obj, i) we care only about the types, and we don't
         # care whether "i" is blue.
         #
         # args_wop contains W_OpArgs which directly comes from ASTFrame, and

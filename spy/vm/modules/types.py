@@ -13,7 +13,7 @@ from spy.vm.object import W_Type, W_Object, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func
+from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -84,9 +84,10 @@ class W_LiftedType(W_Type):
         lltype = self.w_lltype.fqn.human_name
         return f"<spy type '{self.fqn}' (lifted from '{lltype}')>"
 
+    @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod
-    def op_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
-                       *args_wop: W_OpArg) -> W_OpImpl:
+    def w_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
+                      *args_wop: W_OpArg) -> W_OpImpl:
         meth = wop_method.blue_unwrap_str(vm)
         if meth != '__lift__':
             return W_OpImpl.NULL
@@ -137,8 +138,9 @@ class W_LiftedObject(W_Object):
         hltype = self.w_hltype.fqn.human_name
         return f'<{hltype} (lifted from {ll_repr})>'
 
+    @builtin_method('__GET___ll____', color='blue')
     @staticmethod
-    def op_GET___ll__(vm: 'SPyVM', wop_hl: W_OpArg,
+    def w_GET___ll__(vm: 'SPyVM', wop_hl: W_OpArg,
                       wop_attr: W_OpArg) -> W_OpImpl:
         w_hltype = wop_hl.w_static_type
         HL = Annotated[W_LiftedObject, w_hltype]

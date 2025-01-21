@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Any
 from spy.llwasm import LLWasmInstance
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.builtin import builtin_func, builtin_type
+from spy.vm.builtin import builtin_func, builtin_type, builtin_method
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.primitive import W_I32, W_Dynamic
 if TYPE_CHECKING:
@@ -69,8 +69,9 @@ class W_Str(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()
 
+    @builtin_method('__GETITEM__', color='blue')
     @staticmethod
-    def op_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+    def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
         @builtin_func('builtins::str')
         def w_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
             assert isinstance(w_s, W_Str)
@@ -80,8 +81,8 @@ class W_Str(W_Object):
         return W_OpImpl(w_getitem)
 
     @staticmethod
-    def meta_op_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                     *args_wop: W_OpArg) -> W_OpImpl:
+    def w_meta_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
+                    *args_wop: W_OpArg) -> W_OpImpl:
         from spy.vm.b import B
         if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
             wop_i = args_wop[0]
