@@ -190,6 +190,9 @@ class TestScopeAnalyzer:
         class Foo:
             x: i32
             y: i32
+
+            def foo() -> void:
+                pass
         """)
         mod_scope = scopes.by_module()
         assert mod_scope._symbols == {
@@ -199,5 +202,7 @@ class TestScopeAnalyzer:
         assert classdef.symtable._symbols == {
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
+            'foo': MatchSymbol('foo', 'blue'),
             'i32': MatchSymbol('i32', 'blue', level=2),
+            'void': MatchSymbol('void', 'blue', level=2),
         }
