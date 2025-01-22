@@ -4,6 +4,7 @@ from pathlib import Path
 import time
 import typer
 import py.path
+import pdb as stdlib_pdb # to distinguish from the "--pdb" option
 from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
@@ -44,6 +45,7 @@ def main(filename: Path,
          cwrite: boolopt("create the .c file and exit") = False,
          g: boolopt("generate debug symbols", names=['-g']) = False,
          O: opt(int, "optimization level", names=['-O']) = 0,
+         pdb: boolopt("enter interp-level debugger in case of error") = False,
          release_mode: boolopt(
              "enable release mode", names=['-r', '--release']
          ) = False,
@@ -60,7 +62,10 @@ def main(filename: Path,
                 release_mode, toolchain, pretty, timeit)
     except SPyError as e:
         print(e.format(use_colors=True))
-        #import pdb;pdb.xpm()
+        if pdb:
+            info = sys.exc_info()
+            stdlib_pdb.post_mortem(info[2])
+
 
 def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
             redshift: bool,
