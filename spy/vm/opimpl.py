@@ -221,6 +221,11 @@ class W_OpImpl(W_Object):
         self._args_wop = args_wop
         self.is_direct_call = is_direct_call
 
+    # lazy @builtin_method. See vm.py.
+    @staticmethod
+    def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> 'W_OpImpl':
+        return W_OpImpl(w_func)
+
     def __repr__(self) -> str:
         if self._w_func is None:
             return f"<spy OpImpl NULL>"

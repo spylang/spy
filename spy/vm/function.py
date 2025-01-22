@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
 Namespace = dict[str, Optional[W_Object]]
+CLOSURE = tuple[Namespace, ...]
 
 FuncParamKind = Literal['simple', 'varargs']
 

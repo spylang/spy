@@ -880,6 +880,7 @@ class TestParser:
             name='Foo',
             kind='class',
             fields=[],
+            methods=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -896,6 +897,7 @@ class TestParser:
             name='Foo',
             kind='struct',
             fields=[],
+            methods=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -924,6 +926,7 @@ class TestParser:
                     type=Name(id='i32'),
                 ),
             ],
+            methods=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -946,6 +949,7 @@ class TestParser:
                     type=Name(id='i32'),
                 ),
             ],
+            methods=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -962,3 +966,39 @@ class TestParser:
             "cannot use both @struct and @typelift",
             ("this is invalid", "typelift"),
         )
+
+    def test_classdef_methods(self):
+        mod = self.parse("""
+        @typelift
+        class Foo:
+            __ll__: i32
+
+            def foo() -> void:
+                pass
+        """)
+        classdef = mod.get_classdef('Foo')
+        expected = """
+        ClassDef(
+            name='Foo',
+            kind='typelift',
+            fields=[
+                VarDef(
+                    kind='var',
+                    name='__ll__',
+                    type=Name(id='i32'),
+                ),
+            ],
+            methods=[
+                FuncDef(
+                    color='red',
+                    name='foo',
+                    args=[],
+                    return_type=Name(id='void'),
+                    body=[
+                        Pass(),
+                    ],
+                ),
+            ],
+        )
+        """
+        self.assert_dump(classdef, expected)

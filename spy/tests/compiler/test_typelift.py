@@ -12,8 +12,6 @@ class TestTypelift(CompilerTest):
     @only_interp
     def test_repr(self):
         mod = self.compile("""
-        WORKAROUND: i32 = 0
-
         @typelift
         class MyInt:
             __ll__: i32
@@ -44,3 +42,23 @@ class TestTypelift(CompilerTest):
         assert myint.llval == 42
         assert myint.w_hltype.fqn.fullname == 'test::MyInt'
         assert mod.call_lower(43) == 43
+
+    def test_method(self):
+        mod = self.compile("""
+        from operator import OpImpl
+
+        @typelift
+        class MyInt:
+            __ll__: i32
+
+            @blue
+            def __GETITEM__(v_obj, v_i):
+                def getitem(m: MyInt, i: i32) -> i32:
+                    return m.__ll__ + i*2
+                return OpImpl(getitem)
+
+        def foo(x: i32, y: i32) -> i32:
+            m = MyInt.__lift__(x)
+            return m[y]
+        """)
+        assert mod.foo(30, 6) == 42

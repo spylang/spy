@@ -5,12 +5,12 @@ from spy import ast
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
-from spy.irgen.symtable import Symbol, Color, maybe_blue
+from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_Bool
-from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
@@ -31,18 +31,27 @@ class Return(Exception):
         self.w_value = w_value
 
 
-class ASTFrame:
+class AbstractFrame:
+    """
+    Frame which is able to run AST expressions/statements.
+
+    This is an abstract class, for concrete execution see ASTFrame and
+    ClassFrame.
+    """
     vm: 'SPyVM'
-    w_func: W_ASTFunc
-    funcdef: ast.FuncDef
+    fqn: FQN
+    closure: CLOSURE
+    symtable: SymTable
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
-        assert isinstance(w_func, W_ASTFunc)
+    def __init__(self, vm: 'SPyVM', fqn: FQN, symtable: SymTable,
+                 closure: CLOSURE) -> None:
+        assert type(self) is not AbstractFrame, 'abstract class'
         self.vm = vm
-        self.w_func = w_func
-        self.funcdef = w_func.funcdef
+        self.fqn = fqn
+        self.symtable = symtable
+        self.closure = closure
         self._locals = {}
         self.locals_types_w = {}
 
@@ -51,19 +60,9 @@ class ASTFrame:
     def redshifting(self) -> bool:
         return False
 
-    def __repr__(self) -> str:
-        cls = self.__class__.__name__
-        if self.w_func.redshifted:
-            extra = ' (redshifted)'
-        elif self.w_func.color == 'blue':
-            extra = ' (blue)'
-        else:
-            extra = ''
-        return f'<{cls} for {self.w_func.fqn}{extra}>'
-
     @property
     def is_module_body(self) -> bool:
-        return self.w_func.fqn.is_module()
+        return self.fqn.is_module()
 
     def get_unique_FQN_maybe(self, fqn: FQN) -> FQN:
         """
@@ -93,43 +92,6 @@ class ASTFrame:
             raise SPyRuntimeError('read from uninitialized local')
         return w_obj
 
-    def run(self, args_w: Sequence[W_Object]) -> W_Object:
-        self.declare_arguments()
-        self.init_arguments(args_w)
-        try:
-            for stmt in self.funcdef.body:
-                self.exec_stmt(stmt)
-            #
-            # we reached the end of the function. If it's void, we can return
-            # None, else it's an error.
-            if self.w_func.w_functype.w_restype in (B.w_void, B.w_dynamic):
-                return B.w_None
-            else:
-                loc = self.w_func.funcdef.loc.make_end_loc()
-                msg = 'reached the end of the function without a `return`'
-                raise SPyTypeError.simple(msg, 'no return', loc)
-
-        except Return as e:
-            return e.w_value
-
-    def declare_arguments(self) -> None:
-        w_functype = self.w_func.w_functype
-        self.declare_local('@if', B.w_bool)
-        self.declare_local('@while', B.w_bool)
-        self.declare_local('@return', w_functype.w_restype)
-        for param in w_functype.params:
-            self.declare_local(param.name, param.w_type)
-
-    def init_arguments(self, args_w: Sequence[W_Object]) -> None:
-        """
-        Store the arguments in args_w in the appropriate local var
-        """
-        w_functype = self.w_func.w_functype
-        params = self.w_func.w_functype.params
-        for param, w_arg in zip(params, args_w, strict=True):
-            assert self.vm.isinstance(w_arg, param.w_type)
-            self.store_local(param.name, w_arg)
-
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, 'exec_stmt', stmt)
 
@@ -142,7 +104,7 @@ class ASTFrame:
             w_typeconv = CONVERT_maybe(self.vm, w_exp_type, wop)
         except SPyTypeError as err:
             exp = w_exp_type.fqn.human_name
-            exp_loc = self.funcdef.symtable.lookup(varname).type_loc
+            exp_loc = self.symtable.lookup(varname).type_loc
             if varname == '@return':
                 because = ' because of return type'
             elif varname in ('@if', '@while'):
@@ -159,7 +121,7 @@ class ASTFrame:
         wop = magic_dispatch(self, 'eval_expr', expr)
         w_typeconv = self.typecheck_maybe(wop, varname)
 
-        if self.w_func.redshifted:
+        if isinstance(self, ASTFrame) and self.w_func.redshifted:
             # this is just a sanity check. After redshifting, all type
             # conversions should be explicit. If w_typeconv is not None here,
             # it means that Doppler failed to insert the appropriate
@@ -215,16 +177,26 @@ class ASTFrame:
             w_restype = w_restype,
             **d)
         # create the w_func
-        fqn = self.w_func.fqn.join(funcdef.name)
+        fqn = self.fqn.join(funcdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
         # XXX we should capture only the names actually used in the inner func
-        closure = self.w_func.closure + (self._locals,)
+        closure = self.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.declare_local(funcdef.name, w_functype)
         self.store_local(funcdef.name, w_func)
         self.vm.add_global(fqn, w_func)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        # compute the FQN of the class we are defining
+        fqn = self.fqn.join(classdef.name)
+        fqn = self.get_unique_FQN_maybe(fqn)
+
+        # create a frame where to execute the class body statements
+        # XXX we should capture only the names actually used in the inner frame
+        closure = self.closure + (self._locals,)
+        classframe = ClassFrame(self.vm, classdef, fqn, closure)
+
+        # find the appropriate metaclass
         W_Metaclass: type[W_Type]
         if classdef.kind == 'struct':
             W_Metaclass = W_StructType
@@ -232,16 +204,26 @@ class ASTFrame:
             W_Metaclass = W_LiftedType
         else:
             assert False, 'only @struct and @typedef are supported for now'
-        #
-        d = {}
+
+        # execute field definitions
+        fields = {}
         for vardef in classdef.fields:
             assert vardef.kind == 'var'
-            d[vardef.name] = self.eval_expr_type(vardef.type)
-        #
-        fqn = self.w_func.fqn.join(classdef.name)
-        fqn = self.get_unique_FQN_maybe(fqn)
-        w_type = W_Metaclass(fqn, d)  # type: ignore
+            classframe.exec_stmt_VarDef(vardef)
+            fields[vardef.name] = classframe.locals_types_w[vardef.name]
+
+        # execute method definitions
+        methods = {}
+        for funcdef in classdef.methods:
+            name = funcdef.name
+            classframe.exec_stmt_FuncDef(funcdef)
+            methods[name] = classframe.load_local(name)
+
+        # create the type (i.e., instantiate the metaclass)
+        w_type = W_Metaclass(fqn, fields, methods)  # type: ignore
         w_meta_type = self.vm.dynamic_type(w_type)
+
+        # add the new type to the locals and to the globals
         self.declare_local(classdef.name, w_meta_type)
         self.store_local(classdef.name, w_type)
         self.vm.add_global(fqn, w_type)
@@ -255,7 +237,7 @@ class ASTFrame:
 
     def _exec_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value
-        sym = self.funcdef.symtable.lookup(varname)
+        sym = self.symtable.lookup(varname)
         if sym.is_local:
             self._exec_assign_local(target, expr)
         elif sym.is_global:
@@ -281,7 +263,7 @@ class ASTFrame:
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
         varname = target.value
-        sym = self.funcdef.symtable.lookup(varname)
+        sym = self.symtable.lookup(varname)
         if sym.color == 'blue':
             err = SPyTypeError("invalid assignment target")
             err.add('error', f'{sym.name} is const', target.loc)
@@ -292,6 +274,7 @@ class ASTFrame:
             raise err
         wop = self.eval_expr(expr)
         if not self.redshifting:
+            assert sym.fqn is not None
             self.vm.store_global(sym.fqn, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
@@ -380,7 +363,7 @@ class ASTFrame:
 
     def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
         varname = name.id
-        sym = self.funcdef.symtable.lookup_maybe(varname)
+        sym = self.symtable.lookup_maybe(varname)
         if sym is None:
             msg = f"name `{name.id}` is not defined"
             raise SPyNameError.simple(msg, "not found in this scope", name.loc)
@@ -408,7 +391,7 @@ class ASTFrame:
 
     def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_OpArg:
         color: Color = 'blue'  # closed-over variables are always blue
-        namespace = self.w_func.closure[sym.level]
+        namespace = self.closure[sym.level]
         w_val = namespace[sym.name]
         assert w_val is not None
         w_type = self.vm.dynamic_type(w_val)
@@ -539,3 +522,83 @@ class ASTFrame:
             items_w = [wop.w_val for wop in items_wop]
             w_val = W_Tuple(items_w)
         return W_OpArg(self.vm, color, B.w_tuple, w_val, op.loc)
+
+
+
+class ASTFrame(AbstractFrame):
+    """
+    A frame to execute and ASTFunc
+    """
+    w_func: W_ASTFunc
+    funcdef: ast.FuncDef
+
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
+        assert isinstance(w_func, W_ASTFunc)
+        super().__init__(vm, w_func.fqn, w_func.funcdef.symtable,
+                         w_func.closure)
+        self.w_func = w_func
+        self.funcdef = w_func.funcdef
+
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        if self.w_func.redshifted:
+            extra = ' (redshifted)'
+        elif self.w_func.color == 'blue':
+            extra = ' (blue)'
+        else:
+            extra = ''
+        return f'<{cls} for {self.w_func.fqn}{extra}>'
+
+    def run(self, args_w: Sequence[W_Object]) -> W_Object:
+        self.declare_arguments()
+        self.init_arguments(args_w)
+        try:
+            for stmt in self.funcdef.body:
+                self.exec_stmt(stmt)
+            #
+            # we reached the end of the function. If it's void, we can return
+            # None, else it's an error.
+            if self.w_func.w_functype.w_restype in (B.w_void, B.w_dynamic):
+                return B.w_None
+            else:
+                loc = self.w_func.funcdef.loc.make_end_loc()
+                msg = 'reached the end of the function without a `return`'
+                raise SPyTypeError.simple(msg, 'no return', loc)
+
+        except Return as e:
+            return e.w_value
+
+    def declare_arguments(self) -> None:
+        w_functype = self.w_func.w_functype
+        self.declare_local('@if', B.w_bool)
+        self.declare_local('@while', B.w_bool)
+        self.declare_local('@return', w_functype.w_restype)
+        for param in w_functype.params:
+            self.declare_local(param.name, param.w_type)
+
+    def init_arguments(self, args_w: Sequence[W_Object]) -> None:
+        """
+        Store the arguments in args_w in the appropriate local var
+        """
+        w_functype = self.w_func.w_functype
+        params = self.w_func.w_functype.params
+        for param, w_arg in zip(params, args_w, strict=True):
+            assert self.vm.isinstance(w_arg, param.w_type)
+            self.store_local(param.name, w_arg)
+
+
+
+class ClassFrame(AbstractFrame):
+    """
+    A frame to execute a classdef body
+    """
+    classdef: ast.ClassDef
+
+    def __init__(self,
+                 vm: 'SPyVM',
+                 classdef: ast.ClassDef,
+                 fqn: FQN,
+                 closure: CLOSURE
+                 ) -> None:
+        super().__init__(vm, fqn, classdef.symtable, closure)
+        self.classdef = classdef
