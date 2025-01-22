@@ -70,15 +70,19 @@ class W_ForwardRef(W_Type):
 
 
 FIELDS_T = dict[str, W_Type]
+METHODS_T = dict[str, W_Func]
 
 @TYPES.builtin_type('LiftedType')
 class W_LiftedType(W_Type):
     w_lltype: W_Type  # low level type
 
-    def __init__(self, fqn: FQN, fields: FIELDS_T) -> None:
+    def __init__(self, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> None:
         super().__init__(fqn, W_LiftedObject)
         assert set(fields.keys()) == {'__ll__'} # XXX raise proper exception
         self.w_lltype = fields['__ll__']
+        for key, w_meth in methods.items():
+            assert isinstance(w_meth, W_Func)
+            self.dict_w[key] = w_meth
 
     def __repr__(self) -> str:
         lltype = self.w_lltype.fqn.human_name

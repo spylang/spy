@@ -206,14 +206,21 @@ class AbstractFrame:
             assert False, 'only @struct and @typedef are supported for now'
 
         # execute field definitions
-        d = {}
+        fields = {}
         for vardef in classdef.fields:
             assert vardef.kind == 'var'
             classframe.exec_stmt_VarDef(vardef)
-            d[vardef.name] = classframe.locals_types_w[vardef.name]
+            fields[vardef.name] = classframe.locals_types_w[vardef.name]
+
+        # execute method definitions
+        methods = {}
+        for funcdef in classdef.methods:
+            name = funcdef.name
+            classframe.exec_stmt_FuncDef(funcdef)
+            methods[name] = classframe.load_local(name)
 
         # create the type (i.e., instantiate the metaclass)
-        w_type = W_Metaclass(fqn, d)  # type: ignore
+        w_type = W_Metaclass(fqn, fields, methods)  # type: ignore
         w_meta_type = self.vm.dynamic_type(w_type)
 
         # add the new type to the locals and to the globals

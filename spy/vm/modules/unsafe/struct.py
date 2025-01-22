@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any, Optional, Type, ClassVar
 from dataclasses import dataclass
 import fixedint
 from spy.fqn import FQN
+from spy.vm.function import W_Func
 from spy.vm.primitive import W_I32, W_Void
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 FIELDS_T = dict[str, W_Type]
+METHODS_T = dict[str, W_Func]
 OFFSETS_T = dict[str, int]
 
 @UNSAFE.builtin_type('StructType')
@@ -21,10 +23,11 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def __init__(self, fqn: FQN, fields: FIELDS_T) -> None:
+    def __init__(self, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> None:
         super().__init__(fqn, W_Struct)
         self.fields = fields
         self.offsets, self.size = calc_layout(fields)
+        assert methods == {}
 
     def __repr__(self) -> str:
         return f"<spy type '{self.fqn}' (struct)>"
