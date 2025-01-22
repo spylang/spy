@@ -196,8 +196,7 @@ class TestScopeAnalyzer:
             'Foo': MatchSymbol('Foo', 'blue'),
         }
         classdef = self.mod.get_classdef('Foo')
-        class_scope = scopes.by_classdef(classdef)
-        assert class_scope._symbols == {
+        assert classdef.symtable._symbols == {
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
             'i32': MatchSymbol('i32', 'blue', level=2),

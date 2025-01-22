@@ -5,7 +5,7 @@ from spy import ast
 from spy.location import Loc
 from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
-from spy.irgen.symtable import Symbol, Color, maybe_blue
+from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -41,13 +41,16 @@ class AbstractFrame:
     vm: 'SPyVM'
     fqn: FQN
     closure: CLOSURE
+    symtable: SymTable
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', fqn: FQN, closure: CLOSURE) -> None:
+    def __init__(self, vm: 'SPyVM', fqn: FQN, symtable: SymTable,
+                 closure: CLOSURE) -> None:
         assert type(self) is not AbstractFrame, 'abstract class'
         self.vm = vm
         self.fqn = fqn
+        self.symtable = symtable
         self.closure = closure
         self._locals = {}
         self.locals_types_w = {}
@@ -101,7 +104,7 @@ class AbstractFrame:
             w_typeconv = CONVERT_maybe(self.vm, w_exp_type, wop)
         except SPyTypeError as err:
             exp = w_exp_type.fqn.human_name
-            exp_loc = self.funcdef.symtable.lookup(varname).type_loc
+            exp_loc = self.symtable.lookup(varname).type_loc
             if varname == '@return':
                 because = ' because of return type'
             elif varname in ('@if', '@while'):
@@ -184,6 +187,16 @@ class AbstractFrame:
         self.vm.add_global(fqn, w_func)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        # compute the FQN of the class we are defining
+        fqn = self.fqn.join(classdef.name)
+        fqn = self.get_unique_FQN_maybe(fqn)
+
+        # create a frame where to execute the class body statements
+        # XXX we should capture only the names actually used in the inner frame
+        closure = self.closure + (self._locals,)
+        classframe = ClassFrame(self.vm, classdef, fqn, closure)
+
+        # find the appropriate metaclass
         W_Metaclass: type[W_Type]
         if classdef.kind == 'struct':
             W_Metaclass = W_StructType
@@ -191,16 +204,19 @@ class AbstractFrame:
             W_Metaclass = W_LiftedType
         else:
             assert False, 'only @struct and @typedef are supported for now'
-        #
+
+        # execute field definitions
         d = {}
         for vardef in classdef.fields:
             assert vardef.kind == 'var'
-            d[vardef.name] = self.eval_expr_type(vardef.type)
-        #
-        fqn = self.fqn.join(classdef.name)
-        fqn = self.get_unique_FQN_maybe(fqn)
+            classframe.exec_stmt_VarDef(vardef)
+            d[vardef.name] = classframe.locals_types_w[vardef.name]
+
+        # create the type (i.e., instantiate the metaclass)
         w_type = W_Metaclass(fqn, d)  # type: ignore
         w_meta_type = self.vm.dynamic_type(w_type)
+
+        # add the new type to the locals and to the globals
         self.declare_local(classdef.name, w_meta_type)
         self.store_local(classdef.name, w_type)
         self.vm.add_global(fqn, w_type)
@@ -214,7 +230,7 @@ class AbstractFrame:
 
     def _exec_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value
-        sym = self.funcdef.symtable.lookup(varname)
+        sym = self.symtable.lookup(varname)
         if sym.is_local:
             self._exec_assign_local(target, expr)
         elif sym.is_global:
@@ -240,7 +256,7 @@ class AbstractFrame:
         # which scope we want to assign to. For now we just assume that if
         # it's not local, it's module.
         varname = target.value
-        sym = self.funcdef.symtable.lookup(varname)
+        sym = self.symtable.lookup(varname)
         if sym.color == 'blue':
             err = SPyTypeError("invalid assignment target")
             err.add('error', f'{sym.name} is const', target.loc)
@@ -251,6 +267,7 @@ class AbstractFrame:
             raise err
         wop = self.eval_expr(expr)
         if not self.redshifting:
+            assert sym.fqn is not None
             self.vm.store_global(sym.fqn, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
@@ -339,7 +356,7 @@ class AbstractFrame:
 
     def eval_expr_Name(self, name: ast.Name) -> W_OpArg:
         varname = name.id
-        sym = self.funcdef.symtable.lookup_maybe(varname)
+        sym = self.symtable.lookup_maybe(varname)
         if sym is None:
             msg = f"name `{name.id}` is not defined"
             raise SPyNameError.simple(msg, "not found in this scope", name.loc)
@@ -510,7 +527,8 @@ class ASTFrame(AbstractFrame):
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
         assert isinstance(w_func, W_ASTFunc)
-        super().__init__(vm, w_func.fqn, w_func.closure)
+        super().__init__(vm, w_func.fqn, w_func.funcdef.symtable,
+                         w_func.closure)
         self.w_func = w_func
         self.funcdef = w_func.funcdef
 
@@ -563,8 +581,17 @@ class ASTFrame(AbstractFrame):
 
 
 
-class ClassFrame(ASTFrame):
+class ClassFrame(AbstractFrame):
     """
     A frame to execute a classdef body
     """
     classdef: ast.ClassDef
+
+    def __init__(self,
+                 vm: 'SPyVM',
+                 classdef: ast.ClassDef,
+                 fqn: FQN,
+                 closure: CLOSURE
+                 ) -> None:
+        super().__init__(vm, fqn, classdef.symtable, closure)
+        self.classdef = classdef

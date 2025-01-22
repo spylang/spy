@@ -455,6 +455,7 @@ class ClassDef(Stmt):
     kind: ClassKind
     fields: list['VarDef']
     methods: list['FuncDef']
+    symtable: Any = field(repr=False, default=None)
 
 @dataclass(eq=False)
 class Pass(Stmt):

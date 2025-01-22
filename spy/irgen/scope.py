@@ -256,6 +256,8 @@ class ScopeAnalyzer:
         for vardef in classdef.fields:
             self.flatten(vardef)
         self.pop_scope()
+        #
+        classdef.symtable = inner_scope
 
     def flatten_Name(self, name: ast.Name) -> None:
         self.capture_maybe(name.id)

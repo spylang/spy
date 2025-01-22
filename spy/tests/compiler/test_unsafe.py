@@ -92,11 +92,6 @@ class TestUnsafe(CompilerTest):
         src = """
         from unsafe import ptr, gc_alloc
 
-        # XXX we should remove this workaround: currently you can use 'i32'
-        # inside 'class Point' only if 'i32' is used somewhere else at the
-        # module level.
-        WORKAROUND: i32 = 0
-
         @struct
         class Point:
             x: i32

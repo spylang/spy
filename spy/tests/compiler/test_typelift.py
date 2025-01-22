@@ -12,8 +12,6 @@ class TestTypelift(CompilerTest):
     @only_interp
     def test_repr(self):
         mod = self.compile("""
-        WORKAROUND: i32 = 0
-
         @typelift
         class MyInt:
             __ll__: i32
