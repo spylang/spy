@@ -123,7 +123,7 @@ class TestOp(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_Values(self):
+    def test_complex_OpImpl(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
@@ -165,3 +165,20 @@ class TestOp(CompilerTest):
             return obj[b]
         """)
         assert mod.foo(10, 20) == 30
+
+    def test_OpImpl_new(self):
+        if self.backend == 'doppler':
+            pytest.skip('OpImpl becomes blue? FIXME')
+
+        mod = self.compile("""
+        from operator import OpImpl
+
+        def bar() -> void:
+            pass
+
+        def foo() -> dynamic:
+            return OpImpl(bar)
+        """)
+        w_opimpl = mod.foo(unwrap=False)
+        assert isinstance(w_opimpl, W_OpImpl)
+        assert w_opimpl._w_func is mod.bar.w_func
