@@ -200,8 +200,9 @@ class W_Ptr(W_BasePtr):
             )
         return W_OpImpl(w_ptr_store_T)
 
+    @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         if w_ltype is not w_rtype:
@@ -217,8 +218,9 @@ class W_Ptr(W_BasePtr):
             )  # type: ignore
         return W_OpImpl(w_ptr_eq)
 
+    @builtin_method('__NE__', color='blue')
     @staticmethod
-    def op_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         if w_ltype is not w_rtype:

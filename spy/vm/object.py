@@ -58,6 +58,20 @@ if TYPE_CHECKING:
     from spy.vm.function import W_Func
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
+def builtin_method(name: str, *, color: Color = 'red') -> Any:
+    """
+    Turn an interp-level method into an app-level one.
+
+    This decorator just put a mark on the method. The actual job is done by
+    W_Type.__init__(), or by calling W_MyType._w.lazy_init() for W_* classes
+    with __spy_lazy_init__ = True.
+    """
+    def decorator(fn: Callable) -> Callable:
+        assert isinstance(fn, staticmethod), 'missing @staticmethod'
+        fn.spy_builtin_method = (name, color)  # type: ignore
+        return fn
+    return decorator
+
 # Basic setup of the object model: <object> and <type>
 # =====================================================
 
@@ -145,11 +159,11 @@ class W_Object:
         return True
 
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
+    def w_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def op_NE(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
+    def w_NE(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
@@ -199,6 +213,7 @@ class W_Type(W_Object):
 
     This is basically a thin wrapper around W_* classes.
     """
+    __spy_lazy_init__ = True
     __spy_storage_category__ = 'reference'
     fqn: FQN
     pyclass: Type[W_Object]
@@ -210,10 +225,31 @@ class W_Type(W_Object):
         self.fqn = fqn
         self.pyclass = pyclass
         self.dict_w = {}
+        lazy_init = pyclass.__dict__.get('__spy_lazy_init__', False)
+        if not lazy_init:
+            self._init()
 
+    def lazy_init(self) -> None:
+        """
+        Most app-level types are fully initialized when calling
+        W_Type.__init__().
+
+        However, for some core types this is not possible, because of
+        bootstrapping reasons: in particular, in order to evaluate
+        @builtin_method we need to import vm.opimpl and vm.function, so any
+        type which needs @builtin_method in vm/object.py, vm/opimpl.py and
+        vm/function.py needs a lazy init.
+
+        This can be achieved by setting __spy_lazy_init__ = True, and then
+        manually call W_MyType._w.lazy_init() at the beginning of spy/vm.py.
+        """
+        assert self.pyclass.__dict__.get('__spy_lazy_init__', False)
+        self._init()
+
+    def _init(self) -> None:
         # setup spy_members
         self.spy_members = {}
-        for field, t in pyclass.__annotations__.items():
+        for field, t in self.pyclass.__annotations__.items():
             member = Member.from_annotation_maybe(t)
             if member is not None:
                 member.field = field
@@ -221,12 +257,48 @@ class W_Type(W_Object):
                 self.spy_members[member.name] = member
 
         # lazy evaluation of @builtin methods decorators
-        for name, value in pyclass.__dict__.items():
+        for name, value in self.pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
-                statmeth = value
-                assert isinstance(statmeth, staticmethod)
-                appname, color = statmeth.spy_builtin_method  # type: ignore
-                self.setup_builtin_method(statmeth.__func__, appname, color)
+                self._init_builtin_method(value)
+
+    def _init_builtin_method(self, statmeth: staticmethod) -> None:
+        "Turn the @builtin_method into a W_BuiltinFunc"
+        from spy.vm.builtin import builtin_func
+        from spy.vm.opimpl import W_OpArg, W_OpImpl
+        appname, color = statmeth.spy_builtin_method  # type: ignore
+        pyfunc = statmeth.__func__
+
+        # sanity check: __MAGIC__ methods should be blue
+        if appname in (
+                '__ADD__', '__SUB__', '__MUL__', '__DIV__',
+                '__EQ__', '__NE__', '__LT__', '__LE__', '__GT__', '__GE__',
+                '__GETATTR__', '__SETATTR__',
+                '__GETITEM__', '__SETITEM__',
+                '__CALL__', '__CALL_METHOD__',
+                '__CONVERT_FROM__', '__CONVERT_TO__',
+        ) and color != 'blue':
+            # XXX we should raise a more detailed exception
+            fqn = self.fqn.human_name
+            msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
+            raise SPyTypeError(msg)
+
+        # create the @builtin_func decorator, and make it possible to use the
+        # string 'W_MyClass' in annotations
+        extra_types = {
+            self.pyclass.__name__: Annotated[self.pyclass, self],
+            'W_OpArg': W_OpArg,
+            'W_OpImpl': W_OpImpl,
+        }
+        decorator = builtin_func(
+            namespace = self.fqn,
+            funcname = appname,
+            qualifiers = [],
+            color = color,
+            extra_types = extra_types,
+        )
+        # apply the decorator and store the method in the applevel dict
+        w_meth = decorator(pyfunc)
+        self.dict_w[appname] = w_meth
 
     # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
     @property
@@ -272,49 +344,9 @@ class W_Type(W_Object):
             return w_obj
         return None
 
-    def setup_builtin_method(self,
-                             pyfunc: Callable,
-                             appname: str,
-                             color: Color
-                             ) -> None:
-        "Turn the @builtin_method into a W_BuiltinFunc"
-        from spy.vm.builtin import builtin_func
-        from spy.vm.opimpl import W_OpArg, W_OpImpl
+    # ======== app-level interface ========
 
-        # sanity check: __MAGIC__ methods should be blue
-        if appname in (
-                '__ADD__', '__SUB__', '__MUL__', '__DIV__',
-                '__EQ__', '__NE__', '__LT__', '__LE__', '__GT__', '__GE__',
-                '__GETATTR__', '__SETATTR__',
-                '__GETITEM__', '__SETITEM__',
-                '__CALL__', '__CALL_METHOD__',
-                '__CONVERT_FROM__', '__CONVERT_TO__',
-        ) and color != 'blue':
-            # XXX we should raise a more detailed exception
-            fqn = self.fqn.human_name
-            msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
-            raise SPyTypeError(msg)
-
-        # create the @builtin_func decorator, and make it possible to use the
-        # string 'W_MyClass' in annotations
-        extra_types = {
-            self.pyclass.__name__: Annotated[self.pyclass, self],
-            'W_OpArg': W_OpArg,
-            'W_OpImpl': W_OpImpl,
-        }
-        decorator = builtin_func(
-            namespace = self.fqn,
-            funcname = appname,
-            qualifiers = [],
-            color = color,
-            extra_types = extra_types,
-        )
-        # apply the decorator and store the method in the applevel dict
-        w_meth = decorator(pyfunc)
-        self.dict_w[appname] = w_meth
-
-    # we cannot use @builtin_method due to circular imports. See the manual
-    # call to setup_builtin_method() at the top of vm.py
+    @builtin_method('__CALL__', color='blue')
     @staticmethod
     def w_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                *args_wop: 'W_OpArg') -> 'W_OpImpl':
@@ -346,7 +378,6 @@ class W_Type(W_Object):
 
         assert isinstance(w_new, W_Func), 'XXX raise proper exception'
         return W_OpImpl(w_new)
-
 
 
 # helpers

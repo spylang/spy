@@ -5,7 +5,7 @@ from spy import ast
 from spy.location import Loc
 from spy.ast import Color
 from spy.fqn import FQN, NSPart
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -26,6 +26,7 @@ class FuncParam:
 
 @dataclass(repr=False, eq=True)
 class W_FuncType(W_Type):
+    __spy_lazy_init__ = True
     color: Color
     params: list[FuncParam]
     w_restype: W_Type
@@ -65,8 +66,9 @@ class W_FuncType(W_Type):
     def __hash__(self) -> int:
         return hash((self.fqn, self.color, tuple(self.params), self.w_restype))
 
+    @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
         from spy.vm.opimpl import W_OpImpl
         from spy.vm.modules.builtins import w_functype_eq
         if wop_l.w_static_type is wop_r.w_static_type:

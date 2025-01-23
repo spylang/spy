@@ -28,10 +28,11 @@ from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
 
-# manually setup some @builtin_method on some core types. We must do it here
-# because of bootstrapping reasons.
-W_Type._w.setup_builtin_method(W_Type.w_CALL, '__CALL__', 'blue')
-W_OpImpl._w.setup_builtin_method(W_OpImpl.w_spy_new, '__new__', 'red')
+# lazy init of some some core types. See the docstring for W_Type.lazy_init.
+W_Type._w.lazy_init()
+W_OpImpl._w.lazy_init()
+W_OpArg._w.lazy_init()
+W_FuncType._w.lazy_init()
 
 
 class SPyVM:

@@ -143,8 +143,9 @@ class W_List(W_BaseList, Generic[T]):
             w_list.items_w[i] = w_v
         return W_OpImpl(w_setitem)
 
+    @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
         from spy.vm.opimpl import W_OpImpl
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type

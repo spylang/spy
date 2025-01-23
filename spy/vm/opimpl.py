@@ -31,7 +31,7 @@ from spy.location import Loc
 from spy.irgen.symtable import Symbol, Color
 from spy.errors import SPyTypeError
 from spy.vm.b import OPERATOR, B
-from spy.vm.object import Member, W_Type, W_Object
+from spy.vm.object import Member, W_Type, W_Object, builtin_method
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.builtin import builtin_func, builtin_type
 from spy.vm.primitive import W_Bool
@@ -74,6 +74,7 @@ class W_OpArg(W_Object):
 
     Blue OpArg always have an associated value.
     """
+    __spy_lazy_init__ = True
     color: Color
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
@@ -168,8 +169,9 @@ class W_OpArg(W_Object):
         assert self.w_val is not None
         return vm.unwrap_str(self.w_val)
 
+    @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         assert w_ltype.pyclass is W_OpArg
@@ -206,6 +208,8 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 
 @OPERATOR.builtin_type('OpImpl')
 class W_OpImpl(W_Object):
+    __spy_lazy_init__ = True
+
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
     _args_wop: Optional[list[W_OpArg]]
@@ -220,11 +224,6 @@ class W_OpImpl(W_Object):
         self._w_func = w_func
         self._args_wop = args_wop
         self.is_direct_call = is_direct_call
-
-    # lazy @builtin_method. See vm.py.
-    @staticmethod
-    def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> 'W_OpImpl':
-        return W_OpImpl(w_func)
 
     def __repr__(self) -> str:
         if self._w_func is None:
@@ -246,6 +245,13 @@ class W_OpImpl(W_Object):
     def w_functype(self) -> W_FuncType:
         assert self._w_func is not None
         return self._w_func.w_functype
+
+    # ======== app-level interface ========
+
+    @builtin_method('__new__')
+    @staticmethod
+    def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> 'W_OpImpl':
+        return W_OpImpl(w_func)
 
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore
