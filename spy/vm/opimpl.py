@@ -74,6 +74,7 @@ class W_OpArg(W_Object):
 
     Blue OpArg always have an associated value.
     """
+    __spy_lazy_init__ = True
     color: Color
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
@@ -168,8 +169,9 @@ class W_OpArg(W_Object):
         assert self.w_val is not None
         return vm.unwrap_str(self.w_val)
 
+    @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def op_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         assert w_ltype.pyclass is W_OpArg

@@ -31,6 +31,8 @@ from spy.vm.modules.jsffi import JSFFI
 # lazy init of some some core types. See the docstring for W_Type.lazy_init.
 W_Type._w.lazy_init()
 W_OpImpl._w.lazy_init()
+W_OpArg._w.lazy_init()
+W_FuncType._w.lazy_init()
 
 
 class SPyVM:

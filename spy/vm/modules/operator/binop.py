@@ -4,7 +4,7 @@ from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.function import W_Func
 from spy.vm.primitive import W_Dynamic
-from . import OP
+from . import OP, op_fast_call
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -106,8 +106,8 @@ def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
-    if w_ltype.pyclass.has_meth_overriden('op_EQ'):
-        w_opimpl = w_ltype.pyclass.op_EQ(vm, wop_l, wop_r)
+    if w_EQ := w_ltype.lookup_blue_func('__EQ__'):
+        w_opimpl = op_fast_call(vm, w_EQ, [wop_l, wop_r])
         return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` == `{1}`')
@@ -124,8 +124,8 @@ def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
-    if w_ltype.pyclass.has_meth_overriden('op_NE'):
-        w_opimpl = w_ltype.pyclass.op_NE(vm, wop_l, wop_r)
+    if w_NE := w_ltype.lookup_blue_func('__NE__'):
+        w_opimpl = op_fast_call(vm, w_NE, [wop_l, wop_r])
         return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` != `{1}`')
