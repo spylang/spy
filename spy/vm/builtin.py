@@ -11,7 +11,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
                     Annotated)
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
-from spy.vm.object import W_Object, W_Type, make_metaclass_maybe
+from spy.vm.object import W_Object, W_Type, make_metaclass_maybe, builtin_method
 from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -129,20 +129,6 @@ def builtin_func(namespace: FQN|str,
         return W_BuiltinFunc(w_functype, fqn, fn)
     return decorator
 
-def builtin_method(name: str, *, color: Color = 'red') -> Any:
-    """
-    Like @builtin_func, but allows to use 'W_MyClass' annotations in
-    string form.
-
-    Because of that, they are evaluated lazily: this decorator only sets the
-    attribute spy_builtin_method on the function object, then the actual logic
-    is performed by W_Type.__init__.
-    """
-    def decorator(fn: Callable) -> Callable:
-        assert isinstance(fn, staticmethod), 'missing @staticmethod'
-        fn.spy_builtin_method = (name, color)  # type: ignore
-        return fn
-    return decorator
 
 def builtin_type(namespace: FQN|str,
                  typename: str,
