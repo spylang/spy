@@ -4,7 +4,7 @@ import textwrap
 from subprocess import getstatusoutput
 import pytest
 from typer.testing import CliRunner
-from spy.__main__ import app
+from spy.cli import app
 
 
 # https://stackoverflow.com/a/14693789
@@ -61,12 +61,12 @@ class TestMain:
         res, stdout = self.run('--parse', self.foo_spy)
         assert stdout.startswith('Module(')
 
-    def test_run(self):
+    def test_execute(self):
         self.foo_spy.write(textwrap.dedent("""
         def main() -> void:
             print("hello world")
         """))
-        res, stdout = self.run("--run", self.foo_spy)
+        res, stdout = self.run(self.foo_spy)
         assert stdout == "hello world\n"
 
     def test_redshift(self):
@@ -81,7 +81,7 @@ class TestMain:
         assert csrc.startswith('#include <spy.h>')
 
     def test_build_wasm(self):
-        res, stdout = self.run(self.foo_spy)
+        res, stdout = self.run("--compile", self.foo_spy)
         foo_wasm = self.tmpdir.join('foo.wasm')
         assert foo_wasm.exists()
         wasm_bytes = foo_wasm.read_binary()
@@ -89,7 +89,9 @@ class TestMain:
 
     @pytest.mark.parametrize('toolchain', ['native', 'emscripten'])
     def test_build(self, toolchain):
-        res, stdout = self.run("--toolchain", toolchain, self.main_spy)
+        res, stdout = self.run("--compile",
+                               "--toolchain", toolchain,
+                               self.main_spy)
         if toolchain == 'native':
             main_exe = self.tmpdir.join('main')
             assert main_exe.exists()

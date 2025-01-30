@@ -1,3 +1,24 @@
+[project]
+name = "spylang"
+authors = [
+    { name = "Antonio Cuni", email = "anto.cuni@gmail.com" }
+]
+version = "0.1.0"  # Add an appropriate version
+
+[project.urls]
+Homepage = "https://github.com/spylang/spy"
+
+[project.scripts]
+spy = "spy.cli:app"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+
 [tool.pytest.ini_options]
 markers = [
     "interp: mark tests executed with the 'interp' backend",
