@@ -80,6 +80,11 @@ class Arguments:
     )
 
     def __post_init__(self):
+        self.validate_actions()
+        if not self.filename.exists():
+            raise typer.BadParameter(f"File {self.filename} does not exist")
+
+    def validate_actions(self):
         # check that we specify at most one of the following options
         possible_actions = ["execute", "pyparse", "parse", "redshift", "cwrite", "compile"]
         actions = {a for a in possible_actions if getattr(self, a)}
