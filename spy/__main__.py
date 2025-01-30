@@ -1,9 +1,10 @@
 import sys
-from typing import Annotated, Any, no_type_check
+from typing import Annotated, Any, no_type_check, Optional
 from pathlib import Path
 import time
 from dataclasses import dataclass
 import typer
+from typer import Option
 import py.path
 import pdb as stdlib_pdb # to distinguish from the "--pdb" option
 from spy.vendored.dataclass_typer import dataclass_typer
@@ -19,33 +20,56 @@ from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
-def opt(T: type, help: str, names: tuple[str, ...]=()) -> Any:
-    return Annotated[T, typer.Option(*names, help=help)]
-
-def boolopt(help: str, names: tuple[str, ...]=()) -> Any:
-    return opt(bool, help, names)
 
 @dataclass
 class Arguments:
     filename: Path
-    run: boolopt("run the file") = False
-    pyparse: boolopt("dump the Python AST exit") = False
-    parse: boolopt("dump the SPy AST and exit") = False
-    redshift: boolopt("perform redshift and exit") = False
-    cwrite: boolopt("create the .c file and exit") = False
-    debug_symbols: boolopt("generate debug symbols", names=['-g']) = False
-    opt_level: opt(int, "optimization level", names=['-O']) = 0
-    pdb: boolopt("enter interp-level debugger in case of error") = False
-    release_mode: boolopt(
-        "enable release mode", names=['-r', '--release']
-    ) = False
-    toolchain: opt(
-        ToolchainType,
-        "which compiler to use",
-        names=['--toolchain', '-t']
-    ) = "zig"
-    pretty: boolopt("prettify redshifted modules") = True
-    timeit: boolopt("print execution time") = False
+
+    run: bool = Option(False,
+        "--run",
+        help="run the file"
+    )
+    pyparse: bool = Option(False,
+        "--pyparse",
+        help="dump the Python AST exit"
+    )
+    parse: bool = Option(False,
+        "--parse",
+        help="dump the SPy AST and exit"
+    )
+    redshift: bool = Option(False,
+        "--redshift",
+        help="perform redshift and exit"
+    )
+    cwrite: bool = Option(False,
+        "--cwrite",
+        help="create the .c file and exit"
+    )
+    debug_symbols: bool = Option(False,
+        '-g',
+        help="generate debug symbols"
+    )
+    opt_level: int = Option(0,
+        '-O',
+        help="optimization level"
+    )
+    pdb: bool = Option(False,
+        help="enter interp-level debugger in case of error"
+    )
+    release_mode: bool = Option(False,
+        '-r', '--release',
+        help="enable release mode"
+    )
+    toolchain: ToolchainType = Option("zig",
+        "-t", "--toolchain",
+        help="which compiler to use"
+    )
+    pretty: bool = Option(True,
+        help="prettify redshifted modules"
+    )
+    timeit: bool = Option(False,
+        help="print execution time"
+    )
 
 
 def do_pyparse(filename: str) -> None:
