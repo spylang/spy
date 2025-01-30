@@ -2,9 +2,11 @@ import sys
 from typing import Annotated, Any, no_type_check
 from pathlib import Path
 import time
+from dataclasses import dataclass
 import typer
 import py.path
 import pdb as stdlib_pdb # to distinguish from the "--pdb" option
+from spy.vendored.dataclass_typer import dataclass_typer
 from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
@@ -23,6 +25,29 @@ def opt(T: type, help: str, names: tuple[str, ...]=()) -> Any:
 def boolopt(help: str, names: tuple[str, ...]=()) -> Any:
     return opt(bool, help, names)
 
+@dataclass
+class Arguments:
+    filename: Path
+    run: boolopt("run the file") = False
+    pyparse: boolopt("dump the Python AST exit") = False
+    parse: boolopt("dump the SPy AST and exit") = False
+    redshift: boolopt("perform redshift and exit") = False
+    cwrite: boolopt("create the .c file and exit") = False
+    debug_symbols: boolopt("generate debug symbols", names=['-g']) = False
+    opt_level: opt(int, "optimization level", names=['-O']) = 0
+    pdb: boolopt("enter interp-level debugger in case of error") = False
+    release_mode: boolopt(
+        "enable release mode", names=['-r', '--release']
+    ) = False
+    toolchain: opt(
+        ToolchainType,
+        "which compiler to use",
+        names=['--toolchain', '-t']
+    ) = "zig"
+    pretty: boolopt("prettify redshifted modules") = True
+    timeit: boolopt("print execution time") = False
+
+
 def do_pyparse(filename: str) -> None:
     import ast as py_ast
     with open(filename) as f:
@@ -37,62 +62,36 @@ def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
 
 @no_type_check
 @app.command()
-def main(filename: Path,
-         run: boolopt("run the file") = False,
-         pyparse: boolopt("dump the Python AST exit") = False,
-         parse: boolopt("dump the SPy AST and exit") = False,
-         redshift: boolopt("perform redshift and exit") = False,
-         cwrite: boolopt("create the .c file and exit") = False,
-         g: boolopt("generate debug symbols", names=['-g']) = False,
-         O: opt(int, "optimization level", names=['-O']) = 0,
-         pdb: boolopt("enter interp-level debugger in case of error") = False,
-         release_mode: boolopt(
-             "enable release mode", names=['-r', '--release']
-         ) = False,
-         toolchain: opt(
-             ToolchainType,
-             "which compiler to use",
-             names=['--toolchain', '-t']
-         ) = "zig",
-         pretty: boolopt("prettify redshifted modules") = True,
-         timeit: boolopt("print execution time") = False,
-         ) -> None:
+@dataclass_typer
+def main(args: Arguments) -> None:
+    ""
     try:
-        do_main(filename, run, pyparse, parse, redshift, cwrite, g, O,
-                release_mode, toolchain, pretty, timeit)
+        do_main(args)
     except SPyError as e:
         print(e.format(use_colors=True))
-        if pdb:
+        if args.pdb:
             info = sys.exc_info()
             stdlib_pdb.post_mortem(info[2])
 
 
-def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
-            redshift: bool,
-            cwrite: bool,
-            debug_symbols: bool,
-            opt_level: int,
-            release_mode: bool,
-            toolchain: ToolchainType,
-            pretty: bool,
-            timeit: bool) -> None:
-    if pyparse:
-        do_pyparse(str(filename))
+def do_main(args: Arguments) -> None:
+    if args.pyparse:
+        do_pyparse(str(args.filename))
         return
 
-    if parse:
-        parser = Parser.from_filename(str(filename))
+    if args.parse:
+        parser = Parser.from_filename(str(args.filename))
         mod = parser.parse()
         mod.pp()
         return
 
-    modname = filename.stem
-    builddir = filename.parent
+    modname = args.filename.stem
+    builddir = args.filename.parent
     vm = SPyVM()
     vm.path.append(str(builddir))
     w_mod = vm.import_(modname)
 
-    if run:
+    if args.run:
         w_main_functype = W_FuncType.parse('def() -> void')
         w_main = w_mod.getattr_maybe('main')
         if w_main is None:
@@ -103,28 +102,28 @@ def do_main(filename: Path, run: bool, pyparse: bool, parse: bool,
         a = time.time()
         w_res = vm.fast_call(w_main, [])
         b = time.time()
-        if timeit:
+        if args.timeit:
             print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
         assert w_res is B.w_None
 
         return
 
     vm.redshift()
-    if redshift:
-        dump_spy_mod(vm, modname, pretty)
+    if args.redshift:
+        dump_spy_mod(vm, modname, args.pretty)
         return
 
     compiler = Compiler(vm, modname, py.path.local(builddir),
                         dump_c=False)
-    if cwrite:
-        t = get_toolchain(toolchain)
+    if args.cwrite:
+        t = get_toolchain(args.toolchain)
         compiler.cwrite(t.TARGET)
     else:
         compiler.cbuild(
-            opt_level=opt_level,
-            debug_symbols=debug_symbols,
-            toolchain_type=toolchain,
-            release_mode=release_mode,
+            opt_level=args.opt_level,
+            debug_symbols=args.debug_symbols,
+            toolchain_type=args.toolchain,
+            release_mode=args.release_mode,
         )
 
 if __name__ == '__main__':
