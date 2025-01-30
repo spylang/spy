@@ -6,7 +6,7 @@ import dataclasses
 import typer
 
 
-def dataclass_cli(func):
+def dataclass_typer(func):
     """
     Converts a function taking a dataclass as its first argument into a
     dataclass that can be called via `typer` as a CLI.
