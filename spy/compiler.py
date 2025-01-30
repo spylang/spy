@@ -63,7 +63,8 @@ class Compiler:
         """
         Build the .c file into a .wasm file or an executable
         """
-        toolchain = get_toolchain(toolchain_type)
+        build_type = 'release' if release_mode else 'debug'
+        toolchain = get_toolchain(toolchain_type, build_type=build_type)
         file_c = self.cwrite(toolchain.TARGET)
         if toolchain.TARGET == 'wasi':
             # ok, this logic is wrong: we cannot know which names we want to
@@ -80,8 +81,7 @@ class Compiler:
             file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
                                          exports=exports,
                                          opt_level=opt_level,
-                                         debug_symbols=debug_symbols,
-                                         release_mode=release_mode)
+                                         debug_symbols=debug_symbols)
             if DUMP_WASM:
                 print()
                 print(f'---- {self.file_wasm} ----')
@@ -91,6 +91,5 @@ class Compiler:
             file_exe = self.file_wasm.new(ext=toolchain.EXE_FILENAME_EXT)
             toolchain.c2exe(file_c, file_exe,
                             opt_level=opt_level,
-                            debug_symbols=debug_symbols,
-                            release_mode=release_mode)
+                            debug_symbols=debug_symbols)
             return file_exe

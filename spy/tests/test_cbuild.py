@@ -8,7 +8,7 @@ class TestToolchain(CTest):
 
     @pytest.mark.parametrize("toolchain", ["zig", "clang"])
     def test_c2wasm(self, toolchain):
-        self.toolchain = get_toolchain(toolchain)
+        self.toolchain = get_toolchain(toolchain, build_type="debug")
         src = r"""
         int add(int x, int y) {
             return x+y;
@@ -20,7 +20,7 @@ class TestToolchain(CTest):
 
     @pytest.mark.parametrize("toolchain", ["native", "emscripten"])
     def test_c2exe(self, toolchain):
-        self.toolchain = get_toolchain(toolchain)
+        self.toolchain = get_toolchain(toolchain, build_type="debug")
         src = r"""
         #include <stdio.h>
         #include "spy.h"

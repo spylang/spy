@@ -7,7 +7,12 @@ from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
 SRC = spy.ROOT.join('libspy', 'src')
 INCLUDE = spy.ROOT.join('libspy', 'include')
 BUILD = spy.ROOT.join('libspy', 'build')
-LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'libspy.wasm')
+LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'debug', 'libspy.wasm')
+# XXX ^^^^
+# is it correct to always use debug/libspy.wasm? For tests it's surely fine
+# since we always compile them with SPY_DEBUG, but we need to double check
+# what to do when we do e.g. spy -c --release fine sine
+
 
 LLMOD = LLWasmModule(LIBSPY_WASM)
 

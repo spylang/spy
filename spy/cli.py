@@ -172,7 +172,8 @@ def do_main(args: Arguments) -> None:
     compiler = Compiler(vm, modname, py.path.local(builddir),
                         dump_c=False)
     if args.cwrite:
-        t = get_toolchain(args.toolchain)
+        build_type = "release" if args.release_mode else "debug"
+        t = get_toolchain(args.toolchain, build_type=build_type)
         compiler.cwrite(t.TARGET)
     else:
         compiler.cbuild(
