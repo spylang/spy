@@ -13,6 +13,8 @@ ifeq ($(ZIG),)
     $(error zig not found)
 endif
 
+EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
+
 SRCS = src/str.c src/builtins.c src/debug.c src/unsafe.c
 
 # Base CFLAGS without optimization or debug settings
@@ -65,22 +67,21 @@ else ifeq ($(TARGET), wasi)
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
-	CC := emcc
-	AR := emar
+    CC := emcc
+    LD := emcc
+    AR := emar
 
-	CFLAGS := \
-		$(CFLAGS) \
-		-DSPY_TARGET_EMSCRIPTEN \
-		-mmultivalue \
-		-Xclang -target-abi \
-		-Xclang experimental-mv \
-		-mbulk-memory
+    CFLAGS := \
+        $(CFLAGS) \
+        -DSPY_TARGET_EMSCRIPTEN
 
-	SRCS := \
-		$(SRCS) \
-		src/jsffi/jsffi.c
-
-	.DEFAULT_GOAL = build/emscripten/$(BUILD_TYPE)/libspy.a
+    ifeq ($(EMCC_AVAILABLE),)
+        # emcc not found - display message and skip
+        $(warning Skipping emscripten target - emcc compiler not found in PATH)
+        .DEFAULT_GOAL := skip_emscripten
+	else
+        .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.a
+    endif
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
@@ -106,10 +107,10 @@ OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 all:
 	make TARGET=wasi BUILD_TYPE=release
 	make TARGET=wasi BUILD_TYPE=debug
-	make TARGET=emscripten BUILD_TYPE=release
-	make TARGET=emscripten BUILD_TYPE=debug
 	make TARGET=native BUILD_TYPE=release
 	make TARGET=native BUILD_TYPE=debug
+	make TARGET=emscripten BUILD_TYPE=release
+	make TARGET=emscripten BUILD_TYPE=debug
 
 # wasi-specific rules
 build/wasi/$(BUILD_TYPE)/libspy.wasm: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
@@ -130,6 +131,10 @@ build/$(TARGET)/$(BUILD_TYPE)/libspy.a: $(OBJS)
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+skip_emscripten:
+	@echo "Skipping emscripten build - emcc compiler not found"
+	@echo "To build for emscripten, please install and activate the emsdk toolchain"
 
 clean:
 	rm -rf build
