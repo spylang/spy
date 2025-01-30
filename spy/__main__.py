@@ -3,6 +3,7 @@ from typing import Annotated, Any, no_type_check, Optional
 from pathlib import Path
 import time
 from dataclasses import dataclass
+import click
 import typer
 from typer import Option
 import py.path
@@ -25,36 +26,38 @@ app = typer.Typer(pretty_exceptions_enable=False)
 class Arguments:
     filename: Path
 
-    run: bool = Option(False,
-        "--run",
-        help="run the file"
+    execute: bool = Option(False,
+        "-x", "--execute",
+        help="Execute the file (default)"
     )
     pyparse: bool = Option(False,
-        "--pyparse",
-        help="dump the Python AST exit"
+        "-P", "--pyparse",
+        help="Dump the Python AST"
     )
     parse: bool = Option(False,
-        "--parse",
-        help="dump the SPy AST and exit"
+        "-p", "--parse",
+        help="Dump the SPy AST"
     )
     redshift: bool = Option(False,
-        "--redshift",
-        help="perform redshift and exit"
+        "-r", "--redshift",
+        help="Perform redshift and dump the result"
     )
     cwrite: bool = Option(False,
-        "--cwrite",
-        help="create the .c file and exit"
+        "-C", "--cwrite",
+        help="Generate the C code"
     )
-    debug_symbols: bool = Option(False,
-        '-g',
-        help="generate debug symbols"
+    compile: bool = Option(False,
+        "-c", "--compile",
+        help="Compile the generated C code"
     )
     opt_level: int = Option(0,
         '-O',
-        help="optimization level"
+        metavar='LEVEL',
+        help="Optimization level",
     )
-    pdb: bool = Option(False,
-        help="enter interp-level debugger in case of error"
+    debug_symbols: bool = Option(False,
+        '-g',
+        help="Generate debug symbols"
     )
     release_mode: bool = Option(False,
         '-r', '--release',
@@ -65,11 +68,35 @@ class Arguments:
         help="which compiler to use"
     )
     pretty: bool = Option(True,
-        help="prettify redshifted modules"
+        help="Prettify redshifted modules"
     )
     timeit: bool = Option(False,
-        help="print execution time"
+        "--timeit",
+        help="Print execution time"
     )
+    pdb: bool = Option(False,
+        "--pdb",
+        help="Enter interp-level debugger in case of error"
+    )
+
+    def __post_init__(self):
+        # check that we specify at most one of the following options
+        possible_actions = ["execute", "pyparse", "parse", "redshift", "cwrite", "compile"]
+        actions = {a for a in possible_actions if getattr(self, a)}
+        n = len(actions)
+        if n == 0:
+            self.execute = True
+        elif n == 1:
+            pass # this is valid
+        elif n == {"execute", "redshift"}:
+            pass # this is valid
+        else:
+            msg = "Too many actions specified: "
+            msg += " ".join(["--" + a for a in actions])
+            raise typer.BadParameter(msg)
+
+
+
 
 
 def do_pyparse(filename: str) -> None:
@@ -115,7 +142,7 @@ def do_main(args: Arguments) -> None:
     vm.path.append(str(builddir))
     w_mod = vm.import_(modname)
 
-    if args.run:
+    if args.execute:
         w_main_functype = W_FuncType.parse('def() -> void')
         w_main = w_mod.getattr_maybe('main')
         if w_main is None:
