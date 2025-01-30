@@ -28,17 +28,7 @@ def dataclass_cli(func):
     cls = param.annotation
     assert dataclasses.is_dataclass(cls)
 
-    def wrapped(**kwargs):
-        # Load the config file if specified.
-        if kwargs.get("config", "") != "":
-            with open(kwargs["config"], "r") as f:
-                conf = yaml.safe_load(f)
-        else:
-            conf = {}
-
-        # CLI options override the config file.
-        conf.update(kwargs)
-
+    def wrapped(**conf):
         # Convert back to the original dataclass type.
         arg = cls(**conf)
 
@@ -51,17 +41,6 @@ def dataclass_cli(func):
     parameters = list(signature.parameters.values())
     if len(parameters) > 0 and parameters[0].name == "self":
         del parameters[0]
-
-    # Add the --config option to the signature.
-    # When called through the CLI, we need to set defaults via the YAML file.
-    # Otherwise, every field will get overwritten when the YAML is loaded.
-    parameters = [
-        inspect.Parameter(
-            "config",
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            default=typer.Option("", callback=conf_callback, is_eager=True),
-        )
-    ] + [p for p in parameters if p.name != "config"]
 
     # The new signature is compatible with the **kwargs argument.
     wrapped.__signature__ = signature.replace(parameters=parameters)
