@@ -18,7 +18,11 @@ class TestToolchain(CTest):
         ll = LLWasmInstance.from_file(test_wasm)
         assert ll.call('add', 4, 8) == 12
 
-    @pytest.mark.parametrize("toolchain", ["native", "emscripten"])
+
+    @pytest.mark.parametrize("toolchain", [
+        pytest.param("native"),
+        pytest.param("emscripten", marks=pytest.mark.emscripten)
+    ])
     def test_c2exe(self, toolchain):
         self.toolchain = get_toolchain(toolchain, build_type="debug")
         src = r"""
