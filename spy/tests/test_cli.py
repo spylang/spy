@@ -4,7 +4,7 @@ import textwrap
 from subprocess import getstatusoutput
 import pytest
 from typer.testing import CliRunner
-from spy.__main__ import app
+from spy.cli import app
 
 
 # https://stackoverflow.com/a/14693789

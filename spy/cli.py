@@ -181,6 +181,3 @@ def do_main(args: Arguments) -> None:
             toolchain_type=args.toolchain,
             release_mode=args.release_mode,
         )
-
-if __name__ == '__main__':
-    app()
