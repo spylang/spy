@@ -68,12 +68,19 @@ else ifeq ($(TARGET), wasi)
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
     CC := emcc
-    LD := emcc
     AR := emar
 
     CFLAGS := \
         $(CFLAGS) \
-        -DSPY_TARGET_EMSCRIPTEN
+        -DSPY_TARGET_EMSCRIPTEN \
+		-mmultivalue \
+		-Xclang -target-abi \
+		-Xclang experimental-mv \
+		-mbulk-memory
+
+	SRCS := \
+		$(SRCS) \
+		src/jsffi/jsffi.c
 
     ifeq ($(EMCC_AVAILABLE),)
         # emcc not found - display message and skip
