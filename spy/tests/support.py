@@ -190,7 +190,7 @@ class CompilerTest:
             assert False, f'Unknown backend: {self.backend}'
 
     def dump_module(self, modname: str) -> None:
-        from spy.__main__ import dump_spy_mod
+        from spy.cli import dump_spy_mod
         print()
         print()
         dump_spy_mod(self.vm, modname, pretty=True)
@@ -297,7 +297,7 @@ class CTest:
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
-        self.toolchain = ZigToolchain()
+        self.toolchain = ZigToolchain('debug')
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:
@@ -316,7 +316,6 @@ class CTest:
             exports=exports,
             opt_level=0,
             debug_symbols=True,
-            release_mode=False
         )
         return test_wasm
 
@@ -329,6 +328,5 @@ class CTest:
             test_exe,
             opt_level=0,
             debug_symbols=True,
-            release_mode=False
         )
         return test_exe

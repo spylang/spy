@@ -1,7 +1,11 @@
 # type: ignore
 
+import pytest
+import shutil
 import py
+
 ROOT = py.path.local(__file__).dirpath()
+HAVE_EMCC = shutil.which("emcc") is not None
 
 def pytest_collection_modifyitems(session, config, items):
     """
@@ -40,3 +44,9 @@ def pytest_addoption(parser):
         "--dump-redshift", action="store_true", default=False,
         help="Dump the redshifted module"
     )
+
+
+@pytest.fixture(autouse=True)
+def skip_if_no_emcc(request):
+    if request.node.get_closest_marker("emscripten") and not HAVE_EMCC:
+        pytest.skip("Requires emcc")

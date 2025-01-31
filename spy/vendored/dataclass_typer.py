@@ -1,12 +1,13 @@
 # copied and adapted from this code by @tbenthompson (Ben Thompson):
 # https://github.com/fastapi/typer/issues/154#issuecomment-1544876144
 
+from typing import Callable, no_type_check
 import inspect
 import dataclasses
 import typer
 
-
-def dataclass_typer(func):
+@no_type_check
+def dataclass_typer(func: Callable) -> Callable:
     """
     Converts a function taking a dataclass as its first argument into a
     dataclass that can be called via `typer` as a CLI.

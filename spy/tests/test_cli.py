@@ -87,7 +87,10 @@ class TestMain:
         wasm_bytes = foo_wasm.read_binary()
         assert wasm_bytes.startswith(b'\0asm')
 
-    @pytest.mark.parametrize('toolchain', ['native', 'emscripten'])
+    @pytest.mark.parametrize("toolchain", [
+        pytest.param("native"),
+        pytest.param("emscripten", marks=pytest.mark.emscripten)
+    ])
     def test_build(self, toolchain):
         res, stdout = self.run("--compile",
                                "--toolchain", toolchain,

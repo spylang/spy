@@ -14,7 +14,7 @@ from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.compiler import Compiler, ToolchainType
-from spy.cbuild import get_toolchain
+from spy.cbuild import get_toolchain, BUILD_TYPE
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
@@ -79,12 +79,12 @@ class Arguments:
         help="Enter interp-level debugger in case of error"
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.validate_actions()
         if not self.filename.exists():
             raise typer.BadParameter(f"File {self.filename} does not exist")
 
-    def validate_actions(self):
+    def validate_actions(self) -> None:
         # check that we specify at most one of the following options
         possible_actions = ["execute", "pyparse", "parse", "redshift", "cwrite", "compile"]
         actions = {a for a in possible_actions if getattr(self, a)}
@@ -172,7 +172,8 @@ def do_main(args: Arguments) -> None:
     compiler = Compiler(vm, modname, py.path.local(builddir),
                         dump_c=False)
     if args.cwrite:
-        t = get_toolchain(args.toolchain)
+        build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
+        t = get_toolchain(args.toolchain, build_type=build_type)
         compiler.cwrite(t.TARGET)
     else:
         compiler.cbuild(

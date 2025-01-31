@@ -1,20 +1,21 @@
-from typing import Optional
+from typing import Optional, Literal
 import subprocess
 import py.path
 import spy.libspy
 from spy.textbuilder import Color
 
 FORCE_COLORS=True
+BUILD_TYPE = Literal['release', 'debug']
 
-def get_toolchain(toolchain: str) -> 'Toolchain':
+def get_toolchain(toolchain: str, *, build_type: BUILD_TYPE) -> 'Toolchain':
     if toolchain == 'zig':
-        return ZigToolchain()
+        return ZigToolchain(build_type)
     elif toolchain == 'clang':
-        return ClangToolchain()
+        return ClangToolchain(build_type)
     elif toolchain == 'emscripten':
-        return EmscriptenToolchain()
+        return EmscriptenToolchain(build_type)
     elif toolchain == 'native':
-        return NativeToolchain()
+        return NativeToolchain(build_type)
     else:
         raise ValueError(f"Unknown toolchain: {toolchain}")
 
@@ -23,6 +24,13 @@ class Toolchain:
 
     TARGET = '' # 'wasi', 'native', 'emscripten'
     EXE_FILENAME_EXT = ''
+
+    def __init__(self, build_type: BUILD_TYPE) -> None:
+        self.build_type = build_type
+
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        return f'<{cls} for {self.TARGET} ({self.build_type})>'
 
     @property
     def CC(self) -> list[str]:
@@ -50,7 +58,7 @@ class Toolchain:
 
     @property
     def LDFLAGS(self) -> list[str]:
-        libspy_dir = spy.libspy.BUILD.join(self.TARGET)
+        libspy_dir = spy.libspy.BUILD.join(self.TARGET, self.build_type)
         return ['-L', str(libspy_dir), '-lspy']
 
     def cc(self,
@@ -59,7 +67,6 @@ class Toolchain:
            *,
            opt_level: int,
            debug_symbols: bool,
-           release_mode: bool,
            EXTRA_CFLAGS: Optional[list[str]] = None,
            EXTRA_LDFLAGS: Optional[list[str]] = None,
            ) -> py.path.local:
@@ -70,10 +77,12 @@ class Toolchain:
         if debug_symbols:
             cmdline += ['-g']
 
-        if release_mode:
+        if self.build_type == 'release':
             cmdline += ['-DSPY_RELEASE']
-        else:
+        elif self.build_type == 'debug':
             cmdline += ['-DSPY_DEBUG']
+        else:
+            assert False
 
         cmdline += [
             '-o', str(file_out),
@@ -102,7 +111,6 @@ class Toolchain:
                exports: Optional[list[str]] = None,
                opt_level: int,
                debug_symbols: bool,
-               release_mode: bool,
                ) -> py.path.local:
         """
         Compile the C code to WASM.
@@ -116,7 +124,6 @@ class Toolchain:
             file_wasm,
             opt_level=opt_level,
             debug_symbols=debug_symbols,
-            release_mode=release_mode,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
             EXTRA_LDFLAGS=EXTRA_LDFLAGS
         )
@@ -124,7 +131,6 @@ class Toolchain:
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               opt_level: int,
               debug_symbols: bool,
-              release_mode: bool,
               ) -> py.path.local:
         """
         Compile the C code to an executable
@@ -134,7 +140,6 @@ class Toolchain:
             file_exe,
             opt_level=opt_level,
             debug_symbols=debug_symbols,
-            release_mode=release_mode,
         )
 
 
@@ -143,7 +148,8 @@ class ZigToolchain(Toolchain):
 
     TARGET = 'wasi'
 
-    def __init__(self) -> None:
+    def __init__(self, build_type: BUILD_TYPE) -> None:
+        super().__init__(build_type)
         import ziglang  # type: ignore
         self.ZIG = py.path.local(ziglang.__file__).dirpath('zig')
         if not self.ZIG.check(exists=True):
@@ -204,7 +210,8 @@ class EmscriptenToolchain(Toolchain):
     TARGET = 'emscripten'
     EXE_FILENAME_EXT = 'mjs'
 
-    def __init__(self) -> None:
+    def __init__(self, build_type: BUILD_TYPE) -> None:
+        super().__init__(build_type)
         self.EMCC = py.path.local.sysfind('emcc')
         if self.EMCC is None:
             raise ValueError('Cannot find the emcc executable')
@@ -225,7 +232,6 @@ class EmscriptenToolchain(Toolchain):
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               opt_level: int,
               debug_symbols: bool,
-              release_mode: bool,
               ) -> py.path.local:
 
         return self.cc(
@@ -233,6 +239,5 @@ class EmscriptenToolchain(Toolchain):
             file_exe,
             opt_level=opt_level,
             debug_symbols=debug_symbols,
-            release_mode=release_mode,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
         )
