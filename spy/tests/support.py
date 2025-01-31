@@ -190,7 +190,7 @@ class CompilerTest:
             assert False, f'Unknown backend: {self.backend}'
 
     def dump_module(self, modname: str) -> None:
-        from spy.__main__ import dump_spy_mod
+        from spy.cli import dump_spy_mod
         print()
         print()
         dump_spy_mod(self.vm, modname, pretty=True)

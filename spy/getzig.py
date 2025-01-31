@@ -4,7 +4,7 @@ Small utility to get the path to the zig executable installed via:
 """
 
 from pathlib import Path
-import ziglang
+import ziglang  # type: ignore
 
 ZIG = Path(ziglang.__file__).parent.joinpath('zig')
 assert ZIG.exists()

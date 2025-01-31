@@ -6,8 +6,9 @@ compilers.
 import sys
 from pathlib import Path
 from spy.vm.vm import SPyVM
+from spy.vm.module import W_Module
 
-def redshift(filename: str) -> SPyVM:
+def redshift(filename: str|Path) -> tuple[SPyVM, W_Module]:
     """
     Perform redshift on the given file
     """
@@ -21,7 +22,7 @@ def redshift(filename: str) -> SPyVM:
     return vm, w_mod
 
 
-def main(argv):
+def main(argv: list[str]) -> None:
     """
     Example of how to use spy.interop.redshift
     """
@@ -33,6 +34,7 @@ def main(argv):
         if isinstance(w_obj, W_ASTFunc):
             print('functype:', w_obj.w_functype)
             print('locals:')
+            assert w_obj.locals_types_w is not None
             for varname, w_type in w_obj.locals_types_w.items():
                 print('   ', varname, w_type)
             print('AST:')

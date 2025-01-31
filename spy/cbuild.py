@@ -28,9 +28,9 @@ class Toolchain:
     def __init__(self, build_type: BUILD_TYPE) -> None:
         self.build_type = build_type
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         cls = self.__class__.__name__
-        return f'<{cls} for {self.TARGET} ({selfq.build_type})>'
+        return f'<{cls} for {self.TARGET} ({self.build_type})>'
 
     @property
     def CC(self) -> list[str]:

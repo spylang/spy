@@ -2,7 +2,7 @@ import os
 from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
-from spy.cbuild import get_toolchain
+from spy.cbuild import get_toolchain, BUILD_TYPE
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc
@@ -63,7 +63,7 @@ class Compiler:
         """
         Build the .c file into a .wasm file or an executable
         """
-        build_type = 'release' if release_mode else 'debug'
+        build_type: BUILD_TYPE = 'release' if release_mode else 'debug'
         toolchain = get_toolchain(toolchain_type, build_type=build_type)
         file_c = self.cwrite(toolchain.TARGET)
         if toolchain.TARGET == 'wasi':
