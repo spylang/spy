@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
-    w_ptrtype = W_PtrType(fqn, w_T)
+    w_ptrtype = W_PtrType.define(fqn, w_T)
     return w_ptrtype
 
 
@@ -54,9 +54,11 @@ class W_PtrType(W_Type):
     # The workaround is not to use a Member, but to implement .NULL as a
     # special case of w_GETATTR.
 
-    def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
-        super().__init__(fqn, W_Ptr)
-        self.w_itemtype = w_itemtype
+    @classmethod
+    def declare(cls, fqn: FQN, w_itemtype: W_Type) -> 'Self':
+        w_ptrtype = super().declare(fqn, W_Ptr)
+        w_ptrtype.w_itemtype = w_itemtype
+        return w_ptrtype
 
     @builtin_method('__GETATTR__', color='blue')
     @staticmethod

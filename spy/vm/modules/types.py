@@ -54,11 +54,6 @@ class W_ForwardRef(W_Type):
         `test::Point`.become(Point)
         # now, foo's signature is 'def(x: Point)'.
     """
-    fqn: FQN
-
-    def __init__(self, fqn: FQN) -> None:
-        super().__init__(fqn, pyclass=W_Object)
-
     def __repr__(self) -> str:
         return f"<ForwardRef '{self.fqn}'>"
 
@@ -76,13 +71,15 @@ METHODS_T = dict[str, W_Func]
 class W_LiftedType(W_Type):
     w_lltype: W_Type  # low level type
 
-    def __init__(self, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> None:
-        super().__init__(fqn, W_LiftedObject)
+    @classmethod
+    def define(cls, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> 'Self':
+        w_type = super().define(fqn, W_LiftedObject)
         assert set(fields.keys()) == {'__ll__'} # XXX raise proper exception
-        self.w_lltype = fields['__ll__']
+        w_type.w_lltype = fields['__ll__']
         for key, w_meth in methods.items():
             assert isinstance(w_meth, W_Func)
-            self.dict_w[key] = w_meth
+            w_type.dict_w[key] = w_meth
+        return w_type
 
     def __repr__(self) -> str:
         lltype = self.w_lltype.fqn.human_name

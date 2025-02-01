@@ -48,7 +48,9 @@ class ModuleRegistry:
 
     def builtin_type(self,
                      typename: str,
-                     qualifiers: QUALIFIERS = None
+                     qualifiers: QUALIFIERS = None,
+                     *,
+                     lazy_setup: bool = False,
                      ) -> Callable:
         """
         Register a type on the module.
@@ -66,7 +68,9 @@ class ModuleRegistry:
         """
         from spy.vm.builtin import builtin_type
         def decorator(pyclass: Type['W_Object']) -> Type['W_Object']:
-            W_class = builtin_type(self.fqn, typename, qualifiers)(pyclass)
+            bt_deco = builtin_type(self.fqn, typename, qualifiers,
+                                   lazy_setup=lazy_setup)
+            W_class = bt_deco(pyclass)
             self.add(typename, W_class._w)
             return W_class
         return decorator

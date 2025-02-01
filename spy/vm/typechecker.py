@@ -109,7 +109,7 @@ def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
         FuncParam(f'v{i}', wop.w_static_type, 'simple')
         for i, wop in enumerate(args_wop)
     ]
-    return W_FuncType(params, w_restype, color=color)
+    return W_FuncType.define(params, w_restype, color=color)
 
 
 def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,

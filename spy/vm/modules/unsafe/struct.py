@@ -23,11 +23,13 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def __init__(self, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> None:
-        super().__init__(fqn, W_Struct)
-        self.fields = fields
-        self.offsets, self.size = calc_layout(fields)
+    @classmethod
+    def define(cls, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> 'Self':
+        w_type = super().define(fqn, W_Struct)
+        w_type.fields = fields
+        w_type.offsets, w_type.size = calc_layout(fields)
         assert methods == {}
+        return w_type
 
     def __repr__(self) -> str:
         return f"<spy type '{self.fqn}' (struct)>"

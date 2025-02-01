@@ -18,9 +18,11 @@ class W_ListType(W_Type):
     """
     w_itemtype: W_Type
 
-    def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
-        super().__init__(fqn, W_List)
-        self.w_itemtype = w_itemtype
+    @classmethod
+    def declare(cls, fqn: FQN, w_itemtype: W_Type) -> 'Self':
+        w_listtype = super().declare(fqn, W_List)
+        w_listtype.w_itemtype = w_itemtype
+        return w_listtype
 
 
 # PREBUILT list types are instantiated the end of the file
@@ -45,7 +47,7 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
 
 def _make_list_type(w_T: W_Type) -> W_ListType:
     fqn = FQN('builtins').join('list', [w_T.fqn])  # builtins::list[i32]
-    return W_ListType(fqn, w_T)
+    return W_ListType.define(fqn, w_T)
 
 
 @B.builtin_type('list')

@@ -236,8 +236,8 @@ class TestVM:
 
     def test_forwardref_become(self):
         vm = SPyVM()
-        w_fw = W_ForwardRef(FQN('test::hello'))
-        w_HelloType = W_Type(FQN('test::hello'), W_Object)
+        w_fw = W_ForwardRef.define(FQN('test::hello'), W_Object)
+        w_HelloType = W_Type.define(FQN('test::hello'), W_Object)
         w_fw.become(w_HelloType)
         assert isinstance(w_fw, W_Type)
         assert w_fw.fqn == FQN('test::hello')
@@ -256,8 +256,8 @@ class TestVM:
     def test_add_global_forwardref(self):
         vm = SPyVM()
         fqn = FQN('builtins::hello')
-        w_fw = W_ForwardRef(fqn)
-        w_HelloType = W_Type(fqn, W_Object)
+        w_fw = W_ForwardRef.define(fqn, W_Object)
+        w_HelloType = W_Type.define(fqn, W_Object)
         vm.add_global(fqn, w_fw)
         vm.add_global(fqn, w_HelloType)
         assert vm.lookup_global(fqn) is w_fw

@@ -220,7 +220,7 @@ class AbstractFrame:
             methods[name] = classframe.load_local(name)
 
         # create the type (i.e., instantiate the metaclass)
-        w_type = W_Metaclass(fqn, fields, methods)  # type: ignore
+        w_type = W_Metaclass.define(fqn, fields, methods)  # type: ignore
         w_meta_type = self.vm.dynamic_type(w_type)
 
         # add the new type to the locals and to the globals

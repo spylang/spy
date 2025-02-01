@@ -8,7 +8,7 @@ from spy.errors import SPyTypeError
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.module import W_Module
-from spy.vm.object import W_Type
+from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.vm.astframe import ASTFrame
 from spy.vm.modules.types import W_ForwardRef
@@ -55,7 +55,7 @@ class ModuleGen:
         for decl in self.mod.decls:
             if isinstance(decl, ast.GlobalClassDef):
                 type_fqn = fqn.join(decl.classdef.name)
-                w_fw = W_ForwardRef(type_fqn)
+                w_fw = W_ForwardRef.define(type_fqn, W_Object)
                 self.vm.add_global(type_fqn, w_fw)
 
         for decl in self.mod.decls:
