@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Literal, no_type_check
+from typing import TYPE_CHECKING, Literal, Annotated
 from spy.vm.primitive import W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
@@ -77,25 +77,21 @@ def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 
 def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
                   attr: str) -> W_OpImpl:
-    pyclass = w_type.pyclass
     member = w_type.spy_members[attr]
-    W_Class = pyclass
-    W_OpArg = member.w_type.pyclass
     field = member.field # the interp-level name of the attr (e.g, 'w_x')
+    T = Annotated[W_Object, w_type]        # type of the object
+    V = Annotated[W_Object, member.w_type] # type of the attribute
 
     if kind == 'get':
-        @no_type_check
         @builtin_func(w_type.fqn, f"__get_{attr}__")
-        def w_opimpl_get(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str) -> W_OpArg:
+        def w_opimpl_get(vm: 'SPyVM', w_obj: T, w_attr: W_Str) -> V:
             return getattr(w_obj, field)
 
         return W_OpImpl(w_opimpl_get)
 
     elif kind == 'set':
-        @no_type_check
         @builtin_func(w_type.fqn, f"__set_{attr}__")
-        def w_opimpl_set(vm: 'SPyVM', w_obj: W_Class, w_attr: W_Str,
-                         w_val: W_OpArg) -> W_Void:
+        def w_opimpl_set(vm: 'SPyVM', w_obj: T, w_attr: W_Str, w_val: V)-> None:
             setattr(w_obj, field, w_val)
 
         return W_OpImpl(w_opimpl_set)
