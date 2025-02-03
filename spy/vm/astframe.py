@@ -8,7 +8,7 @@ from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
 from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.primitive import W_Bool
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE
 from spy.vm.func_adapter import W_FuncAdapter
@@ -207,18 +207,17 @@ class AbstractFrame:
         classframe = ClassFrame(self.vm, classdef, fqn, closure)
 
         # execute field definitions
-        fields = {}
+        body = ClassBody(fields={}, methods={})
         for vardef in classdef.fields:
             assert vardef.kind == 'var'
             classframe.exec_stmt_VarDef(vardef)
-            fields[vardef.name] = classframe.locals_types_w[vardef.name]
+            body.fields[vardef.name] = classframe.locals_types_w[vardef.name]
 
         # execute method definitions
-        methods = {}
         for funcdef in classdef.methods:
             name = funcdef.name
             classframe.exec_stmt_FuncDef(funcdef)
-            methods[name] = classframe.load_local(name)
+            body.methods[name] = classframe.load_local(name)
 
         # finalize type definition: we expect to find a forward-declared type
         # in the locals
@@ -226,7 +225,7 @@ class AbstractFrame:
             w_type = self.load_local(classdef.name)
             assert w_type.fqn == fqn
             assert not w_type.is_defined()
-            w_type.setup(fields, methods)
+            w_type.define_from_classbody(body)
             assert w_type.is_defined()
         else:
             # TEMP HACK for function-level definition, we don't have forward
@@ -238,7 +237,7 @@ class AbstractFrame:
             self.store_local(classdef.name, w_type)
             self.vm.add_global(fqn, w_type)
             # finalize definition
-            w_type.setup(fields, methods)
+            w_type.define_from_classbody(body)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)

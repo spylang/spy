@@ -9,7 +9,7 @@ from spy.vm.builtin import builtin_type
 from spy.vm.primitive import W_Dynamic, W_Void
 from spy.vm.module import W_Module
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, Member
+from spy.vm.object import W_Type, W_Object, Member, ClassBody
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -29,15 +29,11 @@ METHODS_T = dict[str, W_Func]
 class W_LiftedType(W_Type):
     w_lltype: W_Type  # low level type
 
-    @classmethod
-    def declare(cls, fqn: FQN) -> 'Self':
-        return super().declare(fqn, W_LiftedObject)
-
-    def setup(self, fields: FIELDS_T, methods: METHODS_T) -> None:
-        super().setup()
-        assert set(fields.keys()) == {'__ll__'} # XXX raise proper exception
-        self.w_lltype = fields['__ll__']
-        for key, w_meth in methods.items():
+    def define_from_classbody(self, body: ClassBody) -> None:
+        super().define(W_LiftedObject)
+        assert set(body.fields.keys()) == {'__ll__'} # XXX raise proper exc
+        self.w_lltype = body.fields['__ll__']
+        for key, w_meth in body.methods.items():
             assert isinstance(w_meth, W_Func)
             self.dict_w[key] = w_meth
 

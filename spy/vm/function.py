@@ -31,8 +31,8 @@ class W_FuncType(W_Type):
     w_restype: W_Type
 
     @classmethod
-    def declare(cls, params: list[FuncParam], w_restype: W_Type,
-                *, color: Color = 'red') -> 'Self':
+    def new(cls, params: list[FuncParam], w_restype: W_Type,
+            *, color: Color = 'red') -> 'Self':
         # sanity check
         if params:
             assert isinstance(params[0], FuncParam)
@@ -44,7 +44,7 @@ class W_FuncType(W_Type):
         # param names
         qualifiers = [p.w_type.fqn for p in params] + [w_restype.fqn]
         fqn = FQN('builtins').join('def', qualifiers)
-        w_functype = super().declare(fqn, W_Func)
+        w_functype = super().from_pyclass(fqn, W_Func)
         w_functype.params = params
         w_functype.w_restype = w_restype
         w_functype.color = color
@@ -89,7 +89,7 @@ class W_FuncType(W_Type):
         """
         params = [FuncParam(key, w_type, 'simple')
                   for key, w_type in kwargs.items()]
-        return cls.define(params, w_restype, color=color)
+        return cls.new(params, w_restype, color=color)
 
     @classmethod
     def parse(cls, s: str) -> 'W_FuncType':
@@ -158,7 +158,7 @@ class W_FuncType(W_Type):
 
 # we cannot use @builtin_type because of circular import issues. Let's build
 # the app-level type manually
-W_FuncType._w = W_Type.declare(FQN('builtins::functype'), W_FuncType)
+W_FuncType._w = W_Type.declare(FQN('builtins::functype'))
 
 class W_Func(W_Object):
     __spy_storage_category__ = 'reference'

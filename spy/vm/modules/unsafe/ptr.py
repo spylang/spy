@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
-    w_ptrtype = W_PtrType.define(fqn, w_T)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, w_T)
     return w_ptrtype
 
 
@@ -55,10 +55,10 @@ class W_PtrType(W_Type):
     # special case of w_GETATTR.
 
     @classmethod
-    def declare(cls, fqn: FQN, w_itemtype: W_Type) -> 'Self':
-        w_ptrtype = super().declare(fqn, W_Ptr)
-        w_ptrtype.w_itemtype = w_itemtype
-        return w_ptrtype
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> 'Self':
+        w_type = cls.from_pyclass(fqn, W_Ptr)
+        w_type.w_itemtype = w_itemtype
+        return w_type
 
     @builtin_method('__GETATTR__', color='blue')
     @staticmethod

@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-@OPERATOR.builtin_type('OpArg', lazy_setup=True)
+@OPERATOR.builtin_type('OpArg', lazy_definition=True)
 class W_OpArg(W_Object):
     """
     A value which carries some extra information.
@@ -205,7 +205,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 
 
 
-@OPERATOR.builtin_type('OpImpl', lazy_setup=True)
+@OPERATOR.builtin_type('OpImpl', lazy_definition=True)
 class W_OpImpl(W_Object):
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]

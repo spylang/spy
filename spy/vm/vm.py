@@ -28,12 +28,12 @@ from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
 
-# lazy setup of some some core types. See the docstring of W_Type.
-W_Object._w.setup()
-W_Type._w.setup()
-W_OpImpl._w.setup()
-W_OpArg._w.setup()
-W_FuncType._w.setup()
+# lazy definition of some some core types. See the docstring of W_Type.
+W_Object._w.define(W_Object)
+W_Type._w.define(W_Type)
+W_OpImpl._w.define(W_OpImpl)
+W_OpArg._w.define(W_OpArg)
+W_FuncType._w.define(W_FuncType)
 
 
 class SPyVM:
