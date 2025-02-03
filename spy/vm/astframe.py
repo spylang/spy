@@ -222,11 +222,23 @@ class AbstractFrame:
 
         # finalize type definition: we expect to find a forward-declared type
         # in the locals
-        w_type = self.load_local(classdef.name)
-        assert w_type.fqn == fqn
-        assert not w_type.is_defined()
-        w_type.setup(fields, methods)
-        assert w_type.is_defined()
+        if self.is_module_body:
+            w_type = self.load_local(classdef.name)
+            assert w_type.fqn == fqn
+            assert not w_type.is_defined()
+            w_type.setup(fields, methods)
+            assert w_type.is_defined()
+        else:
+            # TEMP HACK for function-level definition, we don't have forward
+            # declaration (yet)
+            pyclass = ASTFrame.metaclass_for_classdef(classdef)
+            w_type = pyclass.declare(fqn)
+            w_meta_type = self.vm.dynamic_type(w_type)
+            self.declare_local(classdef.name, w_meta_type)
+            self.store_local(classdef.name, w_type)
+            self.vm.add_global(fqn, w_type)
+            # finalize definition
+            w_type.setup(fields, methods)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)
