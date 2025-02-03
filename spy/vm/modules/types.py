@@ -30,14 +30,16 @@ class W_LiftedType(W_Type):
     w_lltype: W_Type  # low level type
 
     @classmethod
-    def define(cls, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> 'Self':
-        w_type = super().define(fqn, W_LiftedObject)
+    def declare(cls, fqn: FQN) -> 'Self':
+        return super().declare(fqn, W_LiftedObject)
+
+    def setup(self, fields: FIELDS_T, methods: METHODS_T) -> None:
+        super().setup()
         assert set(fields.keys()) == {'__ll__'} # XXX raise proper exception
-        w_type.w_lltype = fields['__ll__']
+        self.w_lltype = fields['__ll__']
         for key, w_meth in methods.items():
             assert isinstance(w_meth, W_Func)
-            w_type.dict_w[key] = w_meth
-        return w_type
+            self.dict_w[key] = w_meth
 
     def __repr__(self) -> str:
         lltype = self.w_lltype.fqn.human_name

@@ -28,6 +28,7 @@ class W_StructType(W_Type):
         return super().declare(fqn, W_Struct)
 
     def setup(self, fields: FIELDS_T, methods: METHODS_T) -> None:
+        super().setup()
         self.fields = fields
         self.offsets, self.size = calc_layout(fields)
         assert methods == {}

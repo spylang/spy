@@ -224,7 +224,9 @@ class AbstractFrame:
         # in the locals
         w_type = self.load_local(classdef.name)
         assert w_type.fqn == fqn
+        assert not w_type.is_defined()
         w_type.setup(fields, methods)
+        assert w_type.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)
