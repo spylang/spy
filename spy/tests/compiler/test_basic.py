@@ -865,3 +865,10 @@ class TestBasic(CompilerTest):
         """)
         w_type = mod.foo(unwrap=False)
         assert w_type is B.w_i32
+
+    def test_cls_as_param_name(self):
+        mod = self.compile("""
+        def foo(cls: i32) -> i32:
+            return cls+1
+        """)
+        assert mod.foo(3) == 4

@@ -10,7 +10,8 @@ from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.primitive import W_Bool
-from spy.vm.function import W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE
+from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
+                             FuncParam)
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
@@ -168,14 +169,17 @@ class AbstractFrame:
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
-        d = {}
+        params = []
         for arg in funcdef.args:
-            d[arg.name] = self.eval_expr_type(arg.type)
+            w_param_type = self.eval_expr_type(arg.type)
+            param = FuncParam(
+                name = arg.name,
+                w_type = w_param_type,
+                kind = 'simple'
+            )
+            params.append(param)
         w_restype = self.eval_expr_type(funcdef.return_type)
-        w_functype = W_FuncType.make(
-            color = funcdef.color,
-            w_restype = w_restype,
-            **d)
+        w_functype = W_FuncType.new(params, w_restype, color=funcdef.color)
         # create the w_func
         fqn = self.fqn.join(funcdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
