@@ -22,48 +22,6 @@ TYPES = ModuleRegistry('types')
 TYPES.add('module', W_Module._w)
 
 
-@TYPES.builtin_type('ForwardRef')
-class W_ForwardRef(W_Type):
-    """
-    A ForwardRef represent a type which has been declared but not defined
-    yet.
-    It can `become()` an actual type while preserving identity, so that
-    existing references to the forward ref are automatically updated.
-
-    It is primarily used to predeclare types in a module, so they can be
-    referenced in advance before their actual definition. Consider the
-    following example:
-
-        def foo(p: Point) -> void:
-            pass
-
-        class Point:
-            pass
-
-    When executing the module, there are implicit statements, shown below:
-
-        Point = ForwardRef('test::Point')
-
-        def foo(p: Point) -> void:
-            pass
-
-        # here foo's signature is 'def(x: ForwardRef(`test::Point`))'
-
-        class Point:
-            ...
-        `test::Point`.become(Point)
-        # now, foo's signature is 'def(x: Point)'.
-    """
-    def __repr__(self) -> str:
-        return f"<ForwardRef '{self.fqn}'>"
-
-    def become(self, w_T: W_Type) -> None:
-        assert self.fqn == w_T.fqn
-        self.__class__ = w_T.__class__  # type: ignore
-        self.__dict__ = w_T.__dict__
-
-
-
 FIELDS_T = dict[str, W_Type]
 METHODS_T = dict[str, W_Func]
 

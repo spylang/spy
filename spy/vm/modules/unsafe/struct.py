@@ -24,15 +24,20 @@ class W_StructType(W_Type):
     size: int
 
     @classmethod
-    def define(cls, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> 'Self':
-        w_type = super().define(fqn, W_Struct)
-        w_type.fields = fields
-        w_type.offsets, w_type.size = calc_layout(fields)
+    def declare(cls, fqn: FQN) -> 'Self':
+        return super().declare(fqn, W_Struct)
+
+    def setup(self, fields: FIELDS_T, methods: METHODS_T) -> None:
+        self.fields = fields
+        self.offsets, self.size = calc_layout(fields)
         assert methods == {}
-        return w_type
 
     def __repr__(self) -> str:
-        return f"<spy type '{self.fqn}' (struct)>"
+        if self.is_defined():
+            fw = ''
+        else:
+            fw = 'fwdecl '
+        return f"<spy {fw}type '{self.fqn}' (struct)>"
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return True

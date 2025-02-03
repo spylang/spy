@@ -186,6 +186,16 @@ class AbstractFrame:
         self.store_local(funcdef.name, w_func)
         self.vm.add_global(fqn, w_func)
 
+    @staticmethod
+    def metaclass_for_classdef(classdef: ast.ClassDef) -> type[W_Type]:
+        if classdef.kind == 'struct':
+            return W_StructType
+        elif classdef.kind == 'typelift':
+            return W_LiftedType
+        else:
+            assert False, 'only @struct and @typedef are supported for now'
+
+
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         # compute the FQN of the class we are defining
         fqn = self.fqn.join(classdef.name)
@@ -195,15 +205,6 @@ class AbstractFrame:
         # XXX we should capture only the names actually used in the inner frame
         closure = self.closure + (self._locals,)
         classframe = ClassFrame(self.vm, classdef, fqn, closure)
-
-        # find the appropriate metaclass
-        W_Metaclass: type[W_Type]
-        if classdef.kind == 'struct':
-            W_Metaclass = W_StructType
-        elif classdef.kind == 'typelift':
-            W_Metaclass = W_LiftedType
-        else:
-            assert False, 'only @struct and @typedef are supported for now'
 
         # execute field definitions
         fields = {}
@@ -219,14 +220,11 @@ class AbstractFrame:
             classframe.exec_stmt_FuncDef(funcdef)
             methods[name] = classframe.load_local(name)
 
-        # create the type (i.e., instantiate the metaclass)
-        w_type = W_Metaclass.define(fqn, fields, methods)  # type: ignore
-        w_meta_type = self.vm.dynamic_type(w_type)
-
-        # add the new type to the locals and to the globals
-        self.declare_local(classdef.name, w_meta_type)
-        self.store_local(classdef.name, w_type)
-        self.vm.add_global(fqn, w_type)
+        # finalize type definition: we expect to find a forward-declared type
+        # in the locals
+        w_type = self.load_local(classdef.name)
+        assert w_type.fqn == fqn
+        w_type.setup(fields, methods)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)

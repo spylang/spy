@@ -824,7 +824,7 @@ class TestBasic(CompilerTest):
         self.compile_raises(src, 'foo', errors)
 
     @only_interp
-    def test_forwardref(self):
+    def test_automatic_forward_declaration(self):
         mod = self.compile("""
         from unsafe import ptr
 
@@ -832,7 +832,7 @@ class TestBasic(CompilerTest):
         def foo(s: S, p: ptr[S]) -> void:
             pass
 
-        ptr_S1 = ptr[S] # using the ForwardRef
+        ptr_S1 = ptr[S] # using the forward decl
 
         @struct
         class S:
