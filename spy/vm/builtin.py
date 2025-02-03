@@ -147,9 +147,8 @@ def builtin_type(namespace: FQN|str,
     fqn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass_maybe(fqn, pyclass)
-        if lazy_setup:
-            pyclass._w = W_MetaClass.declare(fqn, pyclass)
-        else:
-            pyclass._w = W_MetaClass.define(fqn, pyclass)
+        pyclass._w = W_MetaClass.declare(fqn, pyclass)
+        if not lazy_setup:
+            pyclass._w.setup()
         return pyclass
     return decorator
