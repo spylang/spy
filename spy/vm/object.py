@@ -217,9 +217,8 @@ class W_Type(W_Object):
       2. definition
 
     - `W_Type.declare(fqn)` creates a type in "forward declared" mode.
-    - `W_Type.new(fqn, ...)` creates a type in "defined" mode.
-    - `w_t.define_from_*()` takes a declared type and turn it into a defined
-      type.
+    - `w_t.define()` turns a declared type into a defined one.
+    - `W_Type.from_pyclass()` combines the two above.
 
     Most builtin types are created by calling @builtin_type, which takes care
     of both declaration and definition.
