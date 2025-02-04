@@ -853,6 +853,25 @@ class TestBasic(CompilerTest):
         assert params[1].w_type is w_ptr_S1 is w_ptr_S2
 
     @only_interp
+    def test_forward_declaration_in_funcdef(self):
+        mod = self.compile("""
+        from unsafe import ptr, gc_alloc
+
+        @blue
+        def foo() -> i32:
+            p: ptr[S]  # S is forward-declared at this point
+
+            @struct
+            class S:
+                x: i32
+
+            p = gc_alloc(S)(1)
+            p.x = 42
+            return p.x
+        """)
+        assert mod.foo() == 42
+
+    @only_interp
     def test_eager_blue_eval(self):
         mod = self.compile("""
         @blue

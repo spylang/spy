@@ -38,13 +38,7 @@ class ModFrame(AbstractFrame):
         # forward declaration of types
         for decl in self.mod.decls:
             if isinstance(decl, ast.GlobalClassDef):
-                type_fqn = self.fqn.join(decl.classdef.name)
-                pyclass = self.metaclass_for_classdef(decl.classdef)
-                w_typedecl = pyclass.declare(type_fqn)
-                w_meta_type = self.vm.dynamic_type(w_typedecl)
-                self.declare_local(decl.classdef.name, w_meta_type)
-                self.store_local(decl.classdef.name, w_typedecl)
-                self.vm.add_global(type_fqn, w_typedecl)
+                self.fwdecl_ClassDef(decl.classdef)
 
         for decl in self.mod.decls:
             if isinstance(decl, ast.Import):

@@ -207,39 +207,37 @@ class AbstractFrame:
         else:
             assert False, 'only @struct and @typedef are supported for now'
 
-    def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
-        from spy.vm.classframe import ClassFrame
-
-        # compute the FQN of the class we are defining
+    def fwdecl_ClassDef(self, classdef: ast.ClassDef) -> None:
+        """
+        Create a forward-declaration for the given classdef
+        """
         fqn = self.fqn.join(classdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
+        pyclass = self.metaclass_for_classdef(classdef)
+        w_typedecl = pyclass.declare(fqn)
+        w_meta_type = self.vm.dynamic_type(w_typedecl)
+        self.declare_local(classdef.name, w_meta_type)
+        self.store_local(classdef.name, w_typedecl)
+        self.vm.add_global(fqn, w_typedecl)
+
+    def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        from spy.vm.classframe import ClassFrame
+        # we are DEFINING a type which has already been declared by
+        # fwdecl_ClassDef. Look it up
+        w_type = self.load_local(classdef.name)
+        assert isinstance(w_type, W_Type)
+        assert w_type.fqn.symbol_name == classdef.name
+        assert not w_type.is_defined()
 
         # create a frame where to execute the class body
         # XXX we should capture only the names actually used in the inner frame
         closure = self.closure + (self._locals,)
-        classframe = ClassFrame(self.vm, classdef, fqn, closure)
+        classframe = ClassFrame(self.vm, classdef, w_type.fqn, closure)
         body = classframe.run()
 
-        # finalize type definition: we expect to find a forward-declared type
-        # in the locals
-        if self.is_module_body:
-            w_type = self.load_local(classdef.name)
-            assert isinstance(w_type, W_Type)
-            assert w_type.fqn == fqn
-            assert not w_type.is_defined()
-            w_type.define_from_classbody(body)
-            assert w_type.is_defined()
-        else:
-            # TEMP HACK for function-level definition, we don't have forward
-            # declaration (yet)
-            pyclass = ASTFrame.metaclass_for_classdef(classdef)
-            w_type = pyclass.declare(fqn)
-            w_meta_type = self.vm.dynamic_type(w_type)
-            self.declare_local(classdef.name, w_meta_type)
-            self.store_local(classdef.name, w_type)
-            self.vm.add_global(fqn, w_type)
-            # finalize definition
-            w_type.define_from_classbody(body)
+        # finalize type definition
+        w_type.define_from_classbody(body)
+        assert w_type.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)
@@ -566,6 +564,25 @@ class ASTFrame(AbstractFrame):
         self.declare_arguments()
         self.init_arguments(args_w)
         try:
+            # This is suboptimal, but probably good enough for now: do a
+            # forward declaration of user-defined types, found by looking at
+            # 'classdef' statements. The problem is that by doing this, we
+            # don't consider nested classdefs (e.g., if it's inside an
+            # if). But even so, it's unclear whether it makes any sense? For
+            # example, what should the following code do?
+            #   @blue
+            #   def foo():
+            #       x: S
+            #       if random():
+            #           class S: ...
+            #
+            # Is the forward declaration of "S" available or not?  For now, we
+            # just ignore the problem and support only classdef done at the
+            # outermost level.
+            for stmt in self.funcdef.body:
+                if isinstance(stmt, ast.ClassDef):
+                    self.fwdecl_ClassDef(stmt)
+
             for stmt in self.funcdef.body:
                 self.exec_stmt(stmt)
             #
