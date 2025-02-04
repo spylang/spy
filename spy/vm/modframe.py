@@ -38,12 +38,12 @@ class ModFrame(AbstractFrame):
         # forward declaration of types
         for decl in self.mod.decls:
             if isinstance(decl, ast.GlobalClassDef):
-                type_fqn = fqn.join(decl.classdef.name)
-                pyclass = ASTFrame.metaclass_for_classdef(decl.classdef)
+                type_fqn = self.fqn.join(decl.classdef.name)
+                pyclass = self.metaclass_for_classdef(decl.classdef)
                 w_typedecl = pyclass.declare(type_fqn)
                 w_meta_type = self.vm.dynamic_type(w_typedecl)
-                frame.declare_local(decl.classdef.name, w_meta_type)
-                frame.store_local(decl.classdef.name, w_typedecl)
+                self.declare_local(decl.classdef.name, w_meta_type)
+                self.store_local(decl.classdef.name, w_typedecl)
                 self.vm.add_global(type_fqn, w_typedecl)
 
         for decl in self.mod.decls:
@@ -83,14 +83,14 @@ class ModFrame(AbstractFrame):
     def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        fqn = FQN([self.modname, vardef.name])
+        fqn = self.fqn.join(vardef.name)
         if isinstance(vardef.type, ast.Auto):
             # type inference
             wop = self.eval_expr(assign.value)
             self.vm.add_global(fqn, wop.w_val)
         else:
             # eval the type and use it in the globals declaration
-            w_type = frame.eval_expr_type(vardef.type)
+            w_type = self.eval_expr_type(vardef.type)
             wop = self.eval_expr(assign.value)
             assert self.vm.isinstance(wop.w_val, w_type)
             self.vm.add_global(fqn, wop.w_val)
