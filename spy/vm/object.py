@@ -363,7 +363,17 @@ class W_Type(W_Object):
         return basecls._w
 
     def __repr__(self) -> str:
-        return f"<spy type '{self.fqn.human_name}'>"
+        hints = [] if self.is_defined() else ['fwdecl']
+        hints += self.repr_hints()
+        if hints:
+            s_hints = ', '.join(hints)
+            s_hints = f' ({s_hints})'
+        else:
+            s_hints = ''
+        return f"<spy type '{self.fqn.human_name}'{s_hints}>"
+
+    def repr_hints(self) -> list[str]:
+        return []
 
     def is_reference_type(self, vm: 'SPyVM') -> bool:
         return self.pyclass.__spy_storage_category__ == 'reference'

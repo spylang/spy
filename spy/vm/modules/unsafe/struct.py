@@ -27,12 +27,8 @@ class W_StructType(W_Type):
         self.offsets, self.size = calc_layout(body.fields)
         assert body.methods == {}
 
-    def __repr__(self) -> str:
-        if self.is_defined():
-            fw = ''
-        else:
-            fw = 'fwdecl '
-        return f"<spy {fw}type '{self.fqn}' (struct)>"
+    def repr_hints(self) -> list[str]:
+        return super().repr_hints() + ['struct']
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return True

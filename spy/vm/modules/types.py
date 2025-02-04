@@ -37,9 +37,10 @@ class W_LiftedType(W_Type):
             assert isinstance(w_meth, W_Func)
             self.dict_w[key] = w_meth
 
-    def __repr__(self) -> str:
+    def repr_hints(self) -> list[str]:
         lltype = self.w_lltype.fqn.human_name
-        return f"<spy type '{self.fqn}' (lifted from '{lltype}')>"
+        h = f"lifted from '{lltype}'"
+        return [h]
 
     @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod

@@ -52,8 +52,11 @@ class TestVM:
         assert repr(B.w_object) == "<spy type 'object'>"
         assert repr(B.w_type) == "<spy type 'type'>"
         assert repr(B.w_dynamic) == "<spy type 'dynamic'>"
+        #
+        w_t = W_Type.declare(FQN('foo::t'))
+        assert repr(w_t) == "<spy type 'foo::t' (fwdecl)>"
 
-    def test_spytype_decorator(self):
+    def test_builtin_type_decorator(self):
         @builtin_type('test', 'foo')
         class W_Foo(W_Object):
             pass
