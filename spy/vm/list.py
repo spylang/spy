@@ -1,5 +1,5 @@
 from typing import (TYPE_CHECKING, Any, Optional, Type, ClassVar,
-                    TypeVar, Generic, Annotated)
+                    TypeVar, Generic, Annotated, Self)
 from spy.fqn import FQN
 from spy.vm.b import B, OP
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
@@ -19,7 +19,7 @@ class W_ListType(W_Type):
     w_itemtype: W_Type
 
     @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> 'Self':
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
         w_type = cls.from_pyclass(fqn, W_List)
         w_type.w_itemtype = w_itemtype
         return w_type

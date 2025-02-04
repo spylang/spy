@@ -46,7 +46,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
-                    Callable, Annotated)
+                    Callable, Annotated, Self)
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
@@ -237,11 +237,11 @@ class W_Type(W_Object):
     """
     __spy_storage_category__ = 'reference'
     fqn: FQN
-    _pyclass: Type[W_Object]
+    _pyclass: Optional[Type[W_Object]]
     spy_members: dict[str, 'Member']
     _dict_w: Optional[dict[str, W_Object]]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         cls = self.__class__.__name__
         raise TypeError(
             f'cannot instantiate {cls} directly. Use {cls}.declare ' +
@@ -268,7 +268,7 @@ class W_Type(W_Object):
             return self._pyclass
 
     @classmethod
-    def declare(cls, fqn: FQN) -> 'Self':
+    def declare(cls, fqn: FQN) -> Self:
         """
         Create a new type in the "forward declaration" state
         """
@@ -279,7 +279,7 @@ class W_Type(W_Object):
         return w_type
 
     @classmethod
-    def from_pyclass(cls, fqn: FQN, pyclass: Type[W_Object]) -> 'Self':
+    def from_pyclass(cls, fqn: FQN, pyclass: Type[W_Object]) -> Self:
         """
         Declare AND define a new builtin type.
         """

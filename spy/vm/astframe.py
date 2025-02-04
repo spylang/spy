@@ -221,12 +221,15 @@ class AbstractFrame:
         for funcdef in classdef.methods:
             name = funcdef.name
             classframe.exec_stmt_FuncDef(funcdef)
-            body.methods[name] = classframe.load_local(name)
+            w_meth = classframe.load_local(name)
+            assert isinstance(w_meth, W_Func)
+            body.methods[name] = w_meth
 
         # finalize type definition: we expect to find a forward-declared type
         # in the locals
         if self.is_module_body:
             w_type = self.load_local(classdef.name)
+            assert isinstance(w_type, W_Type)
             assert w_type.fqn == fqn
             assert not w_type.is_defined()
             w_type.define_from_classbody(body)

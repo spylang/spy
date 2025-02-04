@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
-                    Iterator)
+                    Iterator, Self)
 from spy import ast
 from spy.location import Loc
 from spy.ast import Color

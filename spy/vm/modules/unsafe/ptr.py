@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar, Optional, Annotated
+from typing import TYPE_CHECKING, ClassVar, Optional, Annotated, Self
 import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import FQN
@@ -55,7 +55,7 @@ class W_PtrType(W_Type):
     # special case of w_GETATTR.
 
     @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> 'Self':
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
         w_type = cls.from_pyclass(fqn, W_Ptr)
         w_type.w_itemtype = w_itemtype
         return w_type

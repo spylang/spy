@@ -13,8 +13,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
-FIELDS_T = dict[str, W_Type]
-METHODS_T = dict[str, W_Func]
 OFFSETS_T = dict[str, int]
 
 @UNSAFE.builtin_type('StructType')
