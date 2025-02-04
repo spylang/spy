@@ -71,13 +71,12 @@ class ModFrame(AbstractFrame):
         vardef = decl.vardef
         assign = decl.assign
         fqn = self.fqn.join(vardef.name)
-        if isinstance(vardef.type, ast.Auto):
-            # type inference
-            wop = self.eval_expr(assign.value)
-            self.vm.add_global(fqn, wop.w_val)
-        else:
-            # eval the type and use it in the globals declaration
-            w_type = self.eval_expr_type(vardef.type)
-            wop = self.eval_expr(assign.value)
-            assert self.vm.isinstance(wop.w_val, w_type)
-            self.vm.add_global(fqn, wop.w_val)
+
+        # evaluate the vardef in the current frame
+        if not isinstance(vardef.type, ast.Auto):
+            self.exec_stmt_VarDef(vardef)
+        self.exec_stmt_Assign(assign)
+
+        # add it to the globals
+        w_val = self.load_local(vardef.name)
+        self.vm.add_global(fqn, w_val)
