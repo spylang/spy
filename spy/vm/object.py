@@ -46,7 +46,8 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
-                    Callable, Annotated)
+                    Callable, Annotated, Self)
+from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
 from spy.errors import SPyTypeError
@@ -63,8 +64,7 @@ def builtin_method(name: str, *, color: Color = 'red') -> Any:
     Turn an interp-level method into an app-level one.
 
     This decorator just put a mark on the method. The actual job is done by
-    W_Type.__init__(), or by calling W_MyType._w.lazy_init() for W_* classes
-    with __spy_lazy_init__ = True.
+    W_Type._init_builtin_method().
     """
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), 'missing @staticmethod'
@@ -207,49 +207,96 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
 
+
 class W_Type(W_Object):
     """
     The default metaclass for SPy types.
 
-    This is basically a thin wrapper around W_* classes.
+    Types are always created in two steps:
+      1. forward declaration
+      2. definition
+
+    - `W_Type.declare(fqn)` creates a type in "forward declared" mode.
+    - `w_t.define()` turns a declared type into a defined one.
+    - `W_Type.from_pyclass()` combines the two above.
+
+    Most builtin types are created by calling @builtin_type, which takes care
+    of both declaration and definition.
+
+    However, for some core types this is not possible, because of
+    bootstrapping reasons: in particular, in order to evaluate
+    @builtin_method we need to import vm.opimpl and vm.function, so any
+    type which needs @builtin_method in vm/object.py, vm/opimpl.py and
+    vm/function.py needs a lazy definition.
+
+    This can be achieved by declaring the W_Type manually (as done e.g. by
+    W_Object and W_Type itself) or by calling
+    @builtin_type(lazy_definition=True) (as done e.g. by W_OpImpl). By
+    convention, the .define() is called at the beginning of vm.py.
     """
-    __spy_lazy_init__ = True
     __spy_storage_category__ = 'reference'
     fqn: FQN
-    pyclass: Type[W_Object]
+    _pyclass: Optional[Type[W_Object]]
     spy_members: dict[str, 'Member']
-    dict_w: dict[str, W_Object]
+    _dict_w: Optional[dict[str, W_Object]]
 
-    def __init__(self, fqn: FQN, pyclass: Type[W_Object]):
-        assert issubclass(pyclass, W_Object)
-        self.fqn = fqn
-        self.pyclass = pyclass
-        self.dict_w = {}
-        lazy_init = pyclass.__dict__.get('__spy_lazy_init__', False)
-        if not lazy_init:
-            self._init()
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        cls = self.__class__.__name__
+        raise TypeError(
+            f'cannot instantiate {cls} directly. Use {cls}.declare ' +
+            f'or {cls}.new'
+        )
 
-    def lazy_init(self) -> None:
+    def is_defined(self) -> bool:
+        return self._dict_w is not None
+
+    @property
+    def dict_w(self) -> dict[str, W_Object]:
+        if self._dict_w is None:
+            m = f"The type {self.fqn} is declared but not defined yet"
+            raise Exception(m)
+        else:
+            return self._dict_w
+
+    @property
+    def pyclass(self) -> Type[W_Object]:
+        if self._pyclass is None:
+            m = f"The type {self.fqn} is declared but not defined yet"
+            raise Exception(m)
+        else:
+            return self._pyclass
+
+    @classmethod
+    def declare(cls, fqn: FQN) -> Self:
         """
-        Most app-level types are fully initialized when calling
-        W_Type.__init__().
-
-        However, for some core types this is not possible, because of
-        bootstrapping reasons: in particular, in order to evaluate
-        @builtin_method we need to import vm.opimpl and vm.function, so any
-        type which needs @builtin_method in vm/object.py, vm/opimpl.py and
-        vm/function.py needs a lazy init.
-
-        This can be achieved by setting __spy_lazy_init__ = True, and then
-        manually call W_MyType._w.lazy_init() at the beginning of spy/vm.py.
+        Create a new type in the "forward declaration" state
         """
-        assert self.pyclass.__dict__.get('__spy_lazy_init__', False)
-        self._init()
+        w_type = super().__new__(cls)
+        w_type.fqn = fqn
+        w_type._pyclass = None
+        w_type._dict_w = None
+        return w_type
 
-    def _init(self) -> None:
+    @classmethod
+    def from_pyclass(cls, fqn: FQN, pyclass: Type[W_Object]) -> Self:
+        """
+        Declare AND define a new builtin type.
+        """
+        w_type = cls.declare(fqn)
+        w_type.define(pyclass)
+        return w_type
+
+    def define(self, pyclass: Type[W_Object]) -> None:
+        """
+        Turn a declared type into a defined type, using the given pyclass.
+        """
+        assert not self.is_defined(), 'cannot call W_Type.setup() twice'
+        self._pyclass = pyclass
+        self._dict_w = {}
+
         # setup spy_members
         self.spy_members = {}
-        for field, t in self.pyclass.__annotations__.items():
+        for field, t in self._pyclass.__annotations__.items():
             member = Member.from_annotation_maybe(t)
             if member is not None:
                 member.field = field
@@ -257,9 +304,12 @@ class W_Type(W_Object):
                 self.spy_members[member.name] = member
 
         # lazy evaluation of @builtin methods decorators
-        for name, value in self.pyclass.__dict__.items():
+        for name, value in self._pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
                 self._init_builtin_method(value)
+
+    def define_from_classbody(self, body: 'ClassBody') -> None:
+        raise NotImplementedError
 
     def _init_builtin_method(self, statmeth: staticmethod) -> None:
         "Turn the @builtin_method into a W_BuiltinFunc"
@@ -312,7 +362,17 @@ class W_Type(W_Object):
         return basecls._w
 
     def __repr__(self) -> str:
-        return f"<spy type '{self.fqn.human_name}'>"
+        hints = [] if self.is_defined() else ['fwdecl']
+        hints += self.repr_hints()
+        if hints:
+            s_hints = ', '.join(hints)
+            s_hints = f' ({s_hints})'
+        else:
+            s_hints = ''
+        return f"<spy type '{self.fqn.human_name}'{s_hints}>"
+
+    def repr_hints(self) -> list[str]:
+        return []
 
     def is_reference_type(self, vm: 'SPyVM') -> bool:
         return self.pyclass.__spy_storage_category__ == 'reference'
@@ -382,6 +442,20 @@ class W_Type(W_Object):
 
 # helpers
 # =======
+
+FIELDS_T = dict[str, W_Type]
+METHODS_T = dict[str, 'W_Func']
+
+@dataclass
+class ClassBody:
+    """
+    Collect fields and methods which are evaluated inside a 'class'
+    statement, and passed to W_Type.define_from_classbody to define
+    user-defined types.
+    """
+    fields: FIELDS_T
+    methods: METHODS_T
+
 
 class Member:
     """
@@ -472,15 +546,14 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
         decorator = builtin_method('__GETITEM__', color='blue')
         W_MetaType.w_GETITEM = decorator(staticmethod(fn))  # type: ignore
 
-    W_MetaType._w = W_Type(metafqn, W_MetaType)
+    W_MetaType._w = W_Type.from_pyclass(metafqn, W_MetaType)
     return W_MetaType
 
 
 # Initial setup of the 'builtins' module
 # ======================================
 
-W_Object._w = W_Type(FQN('builtins::object'), W_Object)
-W_Type._w = W_Type(FQN('builtins::type'), W_Type)
-
+W_Object._w = W_Type.declare(FQN('builtins::object'))
+W_Type._w = W_Type.declare(FQN('builtins::type'))
 B.add('object', W_Object._w)
 B.add('type', W_Type._w)

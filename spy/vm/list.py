@@ -1,5 +1,5 @@
 from typing import (TYPE_CHECKING, Any, Optional, Type, ClassVar,
-                    TypeVar, Generic, Annotated)
+                    TypeVar, Generic, Annotated, Self)
 from spy.fqn import FQN
 from spy.vm.b import B, OP
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
@@ -18,9 +18,11 @@ class W_ListType(W_Type):
     """
     w_itemtype: W_Type
 
-    def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
-        super().__init__(fqn, W_List)
-        self.w_itemtype = w_itemtype
+    @classmethod
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
+        w_type = cls.from_pyclass(fqn, W_List)
+        w_type.w_itemtype = w_itemtype
+        return w_type
 
 
 # PREBUILT list types are instantiated the end of the file
@@ -45,7 +47,7 @@ def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
 
 def _make_list_type(w_T: W_Type) -> W_ListType:
     fqn = FQN('builtins').join('list', [w_T.fqn])  # builtins::list[i32]
-    return W_ListType(fqn, w_T)
+    return W_ListType.from_itemtype(fqn, w_T)
 
 
 @B.builtin_type('list')

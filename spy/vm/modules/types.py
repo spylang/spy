@@ -9,7 +9,7 @@ from spy.vm.builtin import builtin_type
 from spy.vm.primitive import W_Dynamic, W_Void
 from spy.vm.module import W_Module
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, Member
+from spy.vm.object import W_Type, W_Object, Member, ClassBody
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -22,53 +22,6 @@ TYPES = ModuleRegistry('types')
 TYPES.add('module', W_Module._w)
 
 
-@TYPES.builtin_type('ForwardRef')
-class W_ForwardRef(W_Type):
-    """
-    A ForwardRef represent a type which has been declared but not defined
-    yet.
-    It can `become()` an actual type while preserving identity, so that
-    existing references to the forward ref are automatically updated.
-
-    It is primarily used to predeclare types in a module, so they can be
-    referenced in advance before their actual definition. Consider the
-    following example:
-
-        def foo(p: Point) -> void:
-            pass
-
-        class Point:
-            pass
-
-    When executing the module, there are implicit statements, shown below:
-
-        Point = ForwardRef('test::Point')
-
-        def foo(p: Point) -> void:
-            pass
-
-        # here foo's signature is 'def(x: ForwardRef(`test::Point`))'
-
-        class Point:
-            ...
-        `test::Point`.become(Point)
-        # now, foo's signature is 'def(x: Point)'.
-    """
-    fqn: FQN
-
-    def __init__(self, fqn: FQN) -> None:
-        super().__init__(fqn, pyclass=W_Object)
-
-    def __repr__(self) -> str:
-        return f"<ForwardRef '{self.fqn}'>"
-
-    def become(self, w_T: W_Type) -> None:
-        assert self.fqn == w_T.fqn
-        self.__class__ = w_T.__class__  # type: ignore
-        self.__dict__ = w_T.__dict__
-
-
-
 FIELDS_T = dict[str, W_Type]
 METHODS_T = dict[str, W_Func]
 
@@ -76,17 +29,18 @@ METHODS_T = dict[str, W_Func]
 class W_LiftedType(W_Type):
     w_lltype: W_Type  # low level type
 
-    def __init__(self, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> None:
-        super().__init__(fqn, W_LiftedObject)
-        assert set(fields.keys()) == {'__ll__'} # XXX raise proper exception
-        self.w_lltype = fields['__ll__']
-        for key, w_meth in methods.items():
+    def define_from_classbody(self, body: ClassBody) -> None:
+        super().define(W_LiftedObject)
+        assert set(body.fields.keys()) == {'__ll__'} # XXX raise proper exc
+        self.w_lltype = body.fields['__ll__']
+        for key, w_meth in body.methods.items():
             assert isinstance(w_meth, W_Func)
             self.dict_w[key] = w_meth
 
-    def __repr__(self) -> str:
+    def repr_hints(self) -> list[str]:
         lltype = self.w_lltype.fqn.human_name
-        return f"<spy type '{self.fqn}' (lifted from '{lltype}')>"
+        h = f"lifted from '{lltype}'"
+        return [h]
 
     @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod

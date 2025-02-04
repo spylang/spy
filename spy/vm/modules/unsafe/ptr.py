@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar, Optional, Annotated
+from typing import TYPE_CHECKING, ClassVar, Optional, Annotated, Self
 import fixedint
 from spy.errors import SPyPanicError
 from spy.fqn import FQN
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 @UNSAFE.builtin_func(color='blue')
 def w_make_ptr_type(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     fqn = FQN('unsafe').join('ptr', [w_T.fqn])  # unsafe::ptr[i32]
-    w_ptrtype = W_PtrType(fqn, w_T)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, w_T)
     return w_ptrtype
 
 
@@ -54,9 +54,11 @@ class W_PtrType(W_Type):
     # The workaround is not to use a Member, but to implement .NULL as a
     # special case of w_GETATTR.
 
-    def __init__(self, fqn: FQN, w_itemtype: W_Type) -> None:
-        super().__init__(fqn, W_Ptr)
-        self.w_itemtype = w_itemtype
+    @classmethod
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
+        w_type = cls.from_pyclass(fqn, W_Ptr)
+        w_type.w_itemtype = w_itemtype
+        return w_type
 
     @builtin_method('__GETATTR__', color='blue')
     @staticmethod

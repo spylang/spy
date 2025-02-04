@@ -10,7 +10,6 @@ from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
 from spy.vm.builtin import builtin_type
-from spy.vm.modules.types import W_ForwardRef
 from spy.tests.support import expect_errors
 
 class TestVM:
@@ -53,8 +52,11 @@ class TestVM:
         assert repr(B.w_object) == "<spy type 'object'>"
         assert repr(B.w_type) == "<spy type 'type'>"
         assert repr(B.w_dynamic) == "<spy type 'dynamic'>"
+        #
+        w_t = W_Type.declare(FQN('foo::t'))
+        assert repr(w_t) == "<spy type 'foo::t' (fwdecl)>"
 
-    def test_spytype_decorator(self):
+    def test_builtin_type_decorator(self):
         @builtin_type('test', 'foo')
         class W_Foo(W_Object):
             pass
@@ -234,16 +236,6 @@ class TestVM:
         with errors:
             vm.getitem(w_a, w_b) # hello
 
-    def test_forwardref_become(self):
-        vm = SPyVM()
-        w_fw = W_ForwardRef(FQN('test::hello'))
-        w_HelloType = W_Type(FQN('test::hello'), W_Object)
-        w_fw.become(w_HelloType)
-        assert isinstance(w_fw, W_Type)
-        assert w_fw.fqn == FQN('test::hello')
-        assert w_fw.pyclass is W_Object
-        assert w_fw is not w_HelloType
-
     def test_add_global(self):
         vm = SPyVM()
         fqn = FQN('builtins::x')
@@ -252,13 +244,3 @@ class TestVM:
         assert vm.lookup_global(fqn) is w_x
         with pytest.raises(ValueError, match="'builtins::x' already exists"):
             vm.add_global(fqn, vm.wrap(43))
-
-    def test_add_global_forwardref(self):
-        vm = SPyVM()
-        fqn = FQN('builtins::hello')
-        w_fw = W_ForwardRef(fqn)
-        w_HelloType = W_Type(fqn, W_Object)
-        vm.add_global(fqn, w_fw)
-        vm.add_global(fqn, w_HelloType)
-        assert vm.lookup_global(fqn) is w_fw
-        assert isinstance(w_fw, W_Type)

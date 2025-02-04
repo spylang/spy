@@ -134,6 +134,6 @@ B.add('NotImplemented', W_NotImplementedType.__new__(W_NotImplementedType))
 # just an annotated version of W_Object, which @builtin_func knows how to deal
 # with.
 
-w_DynamicType = W_Type(FQN('builtins::dynamic'), W_Object)
+w_DynamicType = W_Type.from_pyclass(FQN('builtins::dynamic'), W_Object)
 B.add('dynamic', w_DynamicType)
 W_Dynamic = Annotated[W_Object, B.w_dynamic]

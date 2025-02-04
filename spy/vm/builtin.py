@@ -79,7 +79,7 @@ def functype_from_sig(fn: Callable, color: Color, *,
     func_params = [to_spy_FuncParam(p, extra_types) for p in params[1:]]
     ret_ann = extra_types.get(sig.return_annotation, sig.return_annotation)
     w_restype = to_spy_type(ret_ann, allow_None=True)
-    return W_FuncType(func_params, w_restype, color=color)
+    return W_FuncType.new(func_params, w_restype, color=color)
 
 
 def builtin_func(namespace: FQN|str,
@@ -132,10 +132,12 @@ def builtin_func(namespace: FQN|str,
 
 def builtin_type(namespace: FQN|str,
                  typename: str,
-                 qualifiers: QUALIFIERS = None
+                 qualifiers: QUALIFIERS = None,
+                 *,
+                 lazy_definition: bool = False
                  ) -> Any:
     """
-    Class decorator to simplify the creation of SPy types.
+    Class decorator to simplify the creation of builtin SPy types.
 
     Given a W_* class, it automatically creates the corresponding instance of
     W_Type and attaches it to the W_* class.
@@ -145,6 +147,9 @@ def builtin_type(namespace: FQN|str,
     fqn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         W_MetaClass = make_metaclass_maybe(fqn, pyclass)
-        pyclass._w = W_MetaClass(fqn, pyclass)
+        w_type = W_MetaClass.declare(fqn)
+        if not lazy_definition:
+            w_type.define(pyclass)
+        pyclass._w = w_type
         return pyclass
     return decorator

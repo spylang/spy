@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-@OPERATOR.builtin_type('OpArg')
+@OPERATOR.builtin_type('OpArg', lazy_definition=True)
 class W_OpArg(W_Object):
     """
     A value which carries some extra information.
@@ -74,7 +74,6 @@ class W_OpArg(W_Object):
 
     Blue OpArg always have an associated value.
     """
-    __spy_lazy_init__ = True
     color: Color
     w_static_type: Annotated[W_Type, Member('static_type')]
     loc: Loc
@@ -206,10 +205,8 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 
 
 
-@OPERATOR.builtin_type('OpImpl')
+@OPERATOR.builtin_type('OpImpl', lazy_definition=True)
 class W_OpImpl(W_Object):
-    __spy_lazy_init__ = True
-
     NULL: ClassVar['W_OpImpl']
     _w_func: Optional[W_Func]
     _args_wop: Optional[list[W_OpArg]]

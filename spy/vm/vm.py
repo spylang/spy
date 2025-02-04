@@ -23,16 +23,17 @@ from spy.vm.bluecache import BlueCache
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
-from spy.vm.modules.types import TYPES, W_ForwardRef
+from spy.vm.modules.types import TYPES
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
 
-# lazy init of some some core types. See the docstring for W_Type.lazy_init.
-W_Type._w.lazy_init()
-W_OpImpl._w.lazy_init()
-W_OpArg._w.lazy_init()
-W_FuncType._w.lazy_init()
+# lazy definition of some some core types. See the docstring of W_Type.
+W_Object._w.define(W_Object)
+W_Type._w.define(W_Type)
+W_OpImpl._w.define(W_OpImpl)
+W_OpArg._w.define(W_OpArg)
+W_FuncType._w.define(W_FuncType)
 
 
 class SPyVM:
@@ -128,9 +129,6 @@ class SPyVM:
         w_existing = self.globals_w.get(fqn)
         if w_existing is None:
             self.globals_w[fqn] = w_value
-        elif isinstance(w_existing, W_ForwardRef):
-            assert isinstance(w_value, W_Type)
-            w_existing.become(w_value)
         else:
             raise ValueError(f"'{fqn}' already exists")
 

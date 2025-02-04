@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.function import W_Func
 from spy.vm.primitive import W_I32, W_Void
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, ClassBody, FIELDS_T
 from spy.vm.builtin import builtin_func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from . import UNSAFE
@@ -13,8 +13,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
-FIELDS_T = dict[str, W_Type]
-METHODS_T = dict[str, W_Func]
 OFFSETS_T = dict[str, int]
 
 @UNSAFE.builtin_type('StructType')
@@ -23,14 +21,14 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def __init__(self, fqn: FQN, fields: FIELDS_T, methods: METHODS_T) -> None:
-        super().__init__(fqn, W_Struct)
-        self.fields = fields
-        self.offsets, self.size = calc_layout(fields)
-        assert methods == {}
+    def define_from_classbody(self, body: ClassBody) -> None:
+        super().define(W_Struct)
+        self.fields = body.fields
+        self.offsets, self.size = calc_layout(body.fields)
+        assert body.methods == {}
 
-    def __repr__(self) -> str:
-        return f"<spy type '{self.fqn}' (struct)>"
+    def repr_hints(self) -> list[str]:
+        return super().repr_hints() + ['struct']
 
     def is_struct(self, vm: 'SPyVM') -> bool:
         return True
