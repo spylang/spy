@@ -201,29 +201,17 @@ class AbstractFrame:
 
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
+        from spy.vm.classframe import ClassFrame
+
         # compute the FQN of the class we are defining
         fqn = self.fqn.join(classdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
 
-        # create a frame where to execute the class body statements
+        # create a frame where to execute the class body
         # XXX we should capture only the names actually used in the inner frame
         closure = self.closure + (self._locals,)
         classframe = ClassFrame(self.vm, classdef, fqn, closure)
-
-        # execute field definitions
-        body = ClassBody(fields={}, methods={})
-        for vardef in classdef.fields:
-            assert vardef.kind == 'var'
-            classframe.exec_stmt_VarDef(vardef)
-            body.fields[vardef.name] = classframe.locals_types_w[vardef.name]
-
-        # execute method definitions
-        for funcdef in classdef.methods:
-            name = funcdef.name
-            classframe.exec_stmt_FuncDef(funcdef)
-            w_meth = classframe.load_local(name)
-            assert isinstance(w_meth, W_Func)
-            body.methods[name] = w_meth
+        body = classframe.run()
 
         # finalize type definition: we expect to find a forward-declared type
         # in the locals
@@ -603,20 +591,3 @@ class ASTFrame(AbstractFrame):
         for param, w_arg in zip(params, args_w, strict=True):
             assert self.vm.isinstance(w_arg, param.w_type)
             self.store_local(param.name, w_arg)
-
-
-
-class ClassFrame(AbstractFrame):
-    """
-    A frame to execute a classdef body
-    """
-    classdef: ast.ClassDef
-
-    def __init__(self,
-                 vm: 'SPyVM',
-                 classdef: ast.ClassDef,
-                 fqn: FQN,
-                 closure: CLOSURE
-                 ) -> None:
-        super().__init__(vm, fqn, classdef.symtable, closure)
-        self.classdef = classdef
