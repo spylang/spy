@@ -1,9 +1,11 @@
 from typing import Any
 import py.path
 import spy.ast
+from spy.fqn import FQN
 from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
-from spy.irgen.modgen import ModuleGen
+from spy.vm.modframe import ModFrame
+
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 
@@ -18,5 +20,8 @@ def make_w_mod_from_file(vm: SPyVM, f: py.path.local) -> W_Module:
     modname = f.purebasename
     scopes = ScopeAnalyzer(vm, modname, mod)
     scopes.analyze()
-    modgen = ModuleGen(vm, scopes, modname, mod, f)
-    return modgen.make_w_mod()
+    symtable = scopes.by_module()
+    fqn = FQN(modname)
+    modframe = ModFrame(vm, fqn, symtable, mod)
+    w_mod = modframe.run()
+    return w_mod

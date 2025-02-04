@@ -10,12 +10,12 @@ from spy.vm.b import B
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FuncType, W_ASTFunc
-from spy.vm.astframe import ASTFrame
+from spy.vm.astframe import AbstractFrame
 
 
-class ModuleGen:
+class ModFrame(AbstractFrame):
     """
-    Generate a W_Module, given a ast.Module.
+    A frame to execute the body of a module
     """
     vm: SPyVM
     modname: str
@@ -24,30 +24,16 @@ class ModuleGen:
 
     def __init__(self,
                  vm: SPyVM,
-                 scopes: ScopeAnalyzer,
-                 modname: str,
+                 fqn: FQN,
+                 symtable: SymTable,
                  mod: ast.Module,
-                 file_spy: py.path.local,
                  ) -> None:
-        self.vm = vm
-        self.scopes = scopes
-        self.modname = modname
+        super().__init__(vm, fqn, symtable, closure=())
         self.mod = mod
-        self.file_spy = file_spy
 
-    def make_w_mod(self) -> W_Module:
-        self.w_mod = W_Module(self.vm, self.modname, str(self.file_spy))
-        self.vm.register_module(self.w_mod)
-        #
-        # Synthesize and execute a function where to evaluate module-level
-        # declarations.
-        w_functype = W_FuncType.parse('def() -> void')
-        fqn = FQN(self.modname)
-        modinit_funcdef = self.make_modinit()
-        closure = ()
-        w_INIT = W_ASTFunc(w_functype, fqn, modinit_funcdef, closure)
-        frame = ASTFrame(self.vm, w_INIT)
-        #
+    def run(self) -> W_Module:
+        w_mod = W_Module(self.vm, self.fqn.modname, self.mod.filename)
+        self.vm.register_module(w_mod)
 
         # forward declaration of types
         for decl in self.mod.decls:
@@ -64,61 +50,47 @@ class ModuleGen:
             if isinstance(decl, ast.Import):
                 pass
             elif isinstance(decl, ast.GlobalFuncDef):
-                self.gen_FuncDef(frame, decl.funcdef)
+                self.gen_FuncDef(decl.funcdef)
             elif isinstance(decl, ast.GlobalClassDef):
-                self.gen_ClassDef(frame, decl.classdef)
+                self.gen_ClassDef(decl.classdef)
             elif isinstance(decl, ast.GlobalVarDef):
-                self.gen_GlobalVarDef(frame, decl)
+                self.gen_GlobalVarDef(decl)
             else:
                 assert False
         #
         # call the __INIT__, if present
-        w_init = self.w_mod.getattr_maybe('__INIT__')
+        w_init = w_mod.getattr_maybe('__INIT__')
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             assert w_init.color == "blue"
-            self.vm.fast_call(w_init, [self.w_mod])
+            self.vm.fast_call(w_init, [w_mod])
         #
-        return self.w_mod
+        return w_mod
 
-    def make_modinit(self) -> ast.FuncDef:
-        loc = Loc(str(self.file_spy), 1, 1, 1, 1)
-        return ast.FuncDef(
-            loc = loc,
-            color = 'blue',
-            name = f'@module',
-            args = [],
-            return_type = ast.Name(loc=loc, id='object'),
-            body = [],
-            symtable = self.scopes.by_module(),
-        )
-
-    def gen_FuncDef(self, frame: ASTFrame, funcdef: ast.FuncDef) -> None:
+    def gen_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # sanity check: if it's the global __INIT__, it must be @blue
         if funcdef.name == '__INIT__' and funcdef.color != 'blue':
             err = SPyTypeError("the __INIT__ function must be @blue")
             err.add("error", "function defined here", funcdef.prototype_loc)
             raise err
-        # NOTE: executing the FuncDef automatically add the new w_func to the
-        # globals
-        frame.exec_stmt_FuncDef(funcdef)
+        self.exec_stmt_FuncDef(funcdef)
 
-    def gen_ClassDef(self, frame: ASTFrame, classdef: ast.ClassDef) -> None:
+    def gen_ClassDef(self, classdef: ast.ClassDef) -> None:
         # NOTE: executing the ClassDef automatically add the new w_type to the
         # globals
-        frame.exec_stmt_ClassDef(classdef)
+        self.exec_stmt_ClassDef(classdef)
 
-    def gen_GlobalVarDef(self, frame: ASTFrame, decl: ast.GlobalVarDef) -> None:
+    def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
         fqn = FQN([self.modname, vardef.name])
         if isinstance(vardef.type, ast.Auto):
             # type inference
-            wop = frame.eval_expr(assign.value)
+            wop = self.eval_expr(assign.value)
             self.vm.add_global(fqn, wop.w_val)
         else:
             # eval the type and use it in the globals declaration
             w_type = frame.eval_expr_type(vardef.type)
-            wop = frame.eval_expr(assign.value)
+            wop = self.eval_expr(assign.value)
             assert self.vm.isinstance(wop.w_val, w_type)
             self.vm.add_global(fqn, wop.w_val)
