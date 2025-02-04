@@ -50,9 +50,9 @@ class ModFrame(AbstractFrame):
             if isinstance(decl, ast.Import):
                 pass
             elif isinstance(decl, ast.GlobalFuncDef):
-                self.gen_FuncDef(decl.funcdef)
+                self.exec_stmt_FuncDef(decl.funcdef)
             elif isinstance(decl, ast.GlobalClassDef):
-                self.gen_ClassDef(decl.classdef)
+                self.exec_stmt_ClassDef(decl.classdef)
             elif isinstance(decl, ast.GlobalVarDef):
                 self.gen_GlobalVarDef(decl)
             else:
@@ -66,19 +66,6 @@ class ModFrame(AbstractFrame):
             self.vm.fast_call(w_init, [w_mod])
         #
         return w_mod
-
-    def gen_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # sanity check: if it's the global __INIT__, it must be @blue
-        if funcdef.name == '__INIT__' and funcdef.color != 'blue':
-            err = SPyTypeError("the __INIT__ function must be @blue")
-            err.add("error", "function defined here", funcdef.prototype_loc)
-            raise err
-        self.exec_stmt_FuncDef(funcdef)
-
-    def gen_ClassDef(self, classdef: ast.ClassDef) -> None:
-        # NOTE: executing the ClassDef automatically add the new w_type to the
-        # globals
-        self.exec_stmt_ClassDef(classdef)
 
     def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
