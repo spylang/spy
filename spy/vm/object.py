@@ -386,23 +386,27 @@ class W_Type(W_Object):
         a W_Func.
         """
         from spy.vm.function import W_Func
-        w_obj = self.dict_w.get(name)
-        if w_obj:
+        # look in our dict
+        if w_obj := self.dict_w.get(name):
             assert isinstance(w_obj, W_Func)
             return w_obj
+
+        # look in the superclass
+        w_base = self.w_base
+        if isinstance(w_base, W_Type):
+            return w_base.lookup_func(name)
+
+        # not found
         return None
 
     def lookup_blue_func(self, name: str) -> Optional['W_Func']:
         """
         Like lookup_func, but also check that the function is blue
         """
-        from spy.vm.function import W_Func
-        w_obj = self.dict_w.get(name)
+        w_obj = self.lookup_func(name)
         if w_obj:
-            assert isinstance(w_obj, W_Func)
             assert w_obj.color == 'blue'
-            return w_obj
-        return None
+        return w_obj
 
     # ======== app-level interface ========
 
