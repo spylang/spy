@@ -76,6 +76,14 @@ class ScopeAnalyzer:
 
     # =====
 
+    def new_SymTable(self, name: str) -> SymTable:
+        """
+        Create a new SymTable whose name is derived from its parent
+        """
+        parent = self.stack[-1].name
+        fullname = f'{parent}::{name}'
+        return SymTable(fullname)
+
     def push_scope(self, scope: SymTable) -> None:
         self.stack.append(scope)
 
@@ -179,7 +187,7 @@ class ScopeAnalyzer:
         # declare the func in the "outer" scope
         self.add_name(funcdef.name, 'blue', funcdef.prototype_loc,
                       funcdef.prototype_loc)
-        inner_scope = SymTable(funcdef.name)
+        inner_scope = self.new_SymTable(funcdef.name)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
@@ -193,7 +201,7 @@ class ScopeAnalyzer:
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
         self.add_name(classdef.name, 'blue', classdef.loc, classdef.loc)
-        inner_scope = SymTable(classdef.name)
+        inner_scope = self.new_SymTable(classdef.name)
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
         for vardef in classdef.fields:

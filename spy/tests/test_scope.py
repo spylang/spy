@@ -85,7 +85,7 @@ class TestScopeAnalyzer:
         """)
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
-        assert scope.name == 'foo'
+        assert scope.name == 'test::foo'
         assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
