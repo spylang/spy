@@ -65,7 +65,7 @@ class Arguments:
         help="Generate debug symbols"
     )
     release_mode: bool = Option(False,
-        '-r', '--release',
+        '--release',
         help="enable release mode"
     )
     toolchain: ToolchainType = Option("zig",
@@ -99,7 +99,7 @@ class Arguments:
             self.execute = True
         elif n == 1:
             pass # this is valid
-        elif n == {"execute", "redshift"}:
+        elif actions == {"execute", "redshift"}:
             pass # this is valid
         else:
             msg = "Too many actions specified: "
