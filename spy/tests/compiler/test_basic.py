@@ -612,6 +612,34 @@ class TestBasic(CompilerTest):
                                  "None",
                                  ""])
 
+    def test_deeply_nested_closure(self, capfd):
+        mod = self.compile("""
+        x0 = 0
+
+        @blue
+        def a():
+            x1 = 1
+            @blue
+            def b():
+                x2 = 2
+                def c() -> void:
+                    x3 = 3
+                    print(x0)
+                    print(x1)
+                    print(x2)
+                    print(x3)
+                return c
+            return b
+
+        def foo() -> void:
+            a()()()
+        """)
+        mod.foo()
+        if self.backend == 'C':
+            mod.ll.call('spy_flush')
+        out, err = capfd.readouterr()
+        assert out.split() == ['0', '1', '2', '3']
+
     def test_global_const_type_inference(self):
         mod = self.compile(
         """
