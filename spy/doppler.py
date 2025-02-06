@@ -68,6 +68,11 @@ class DopplerFrame(ASTFrame):
         self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
+        # fwdecl of types
+        for stmt in funcdef.body:
+            if isinstance(stmt, ast.ClassDef):
+                self.fwdecl_ClassDef(stmt)
+
         for stmt in funcdef.body:
             new_body += self.shift_stmt(stmt)
 

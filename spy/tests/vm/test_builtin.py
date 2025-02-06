@@ -120,7 +120,7 @@ class TestBuiltin:
         assert w_make.w_functype.signature == "def() -> test::Foo"
         assert w_make.w_functype.w_restype is W_Foo._w
 
-    def test_builtin_method(self):
+    def test_inherit_method(self):
         @builtin_type('test', 'Super')
         class W_Super(W_Object):
 
