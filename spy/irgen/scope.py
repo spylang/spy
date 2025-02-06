@@ -67,6 +67,13 @@ class ScopeAnalyzer:
     def by_classdef(self, classdef: ast.ClassDef) -> SymTable:
         return self.inner_scopes[classdef]
 
+    def pp(self) -> None:
+        self.by_module().pp()
+        print()
+        for key, symtable in self.inner_scopes.items():
+            symtable.pp()
+            print()
+
     # =====
 
     def push_scope(self, scope: SymTable) -> None:

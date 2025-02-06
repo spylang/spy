@@ -15,6 +15,7 @@ from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain, BUILD_TYPE
+from spy.irgen.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
@@ -37,6 +38,10 @@ class Arguments:
     parse: bool = Option(False,
         "-p", "--parse",
         help="Dump the SPy AST"
+    )
+    symtable: bool = Option(False,
+        "-S", "--symtable",
+        help="Dump the symtables"
     )
     redshift: bool = Option(False,
         "-r", "--redshift",
@@ -86,7 +91,8 @@ class Arguments:
 
     def validate_actions(self) -> None:
         # check that we specify at most one of the following options
-        possible_actions = ["execute", "pyparse", "parse", "redshift", "cwrite", "compile"]
+        possible_actions = ["execute", "pyparse", "parse", "symtable",
+                            "redshift", "cwrite", "compile"]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
         if n == 0:
@@ -135,16 +141,22 @@ def do_main(args: Arguments) -> None:
         do_pyparse(str(args.filename))
         return
 
-    if args.parse:
-        parser = Parser.from_filename(str(args.filename))
-        mod = parser.parse()
-        mod.pp()
-        return
-
     modname = args.filename.stem
     builddir = args.filename.parent
     vm = SPyVM()
     vm.path.append(str(builddir))
+
+    if args.parse or args.symtable:
+        parser = Parser.from_filename(str(args.filename))
+        mod = parser.parse()
+        if args.parse:
+            mod.pp()
+        elif args.symtable:
+            scopes = ScopeAnalyzer(vm, modname, mod)
+            scopes.analyze()
+            scopes.pp()
+        return
+
     w_mod = vm.import_(modname)
 
     if args.execute:
