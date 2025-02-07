@@ -15,10 +15,10 @@ class ScopeAnalyzer:
 
     The scoping rules for SPy are very simple for now:
 
-      - names declared at module-level scopes are always available to all
+      - names defined at module-level scopes are always available to all
         their inner scopes
 
-      - inside a function, assigment declares a local variable ONLY if this
+      - inside a function, assigment defines a local variable ONLY if this
         name does not exist in an outer scope. Note that this is different
         from Python rules. No more 'global' and 'nonlocal' declarations.
 
@@ -27,6 +27,18 @@ class ScopeAnalyzer:
     In the future, we might want to introduce a special compatibility mode to
     use Python's rules to make porting easier, e.g. by using `from __python__
     import scoping_rules`, but for now it's not a priority.
+
+    The analyzer operates in two passes:
+
+      1. declare: find all the statements which introduce new symbols (such as
+         VarDef, Assign, FuncDef, etc.). At the end of the declare() pass,
+         each symtable contains all the names which are directly defined in
+         that scope (i.e., sym.level == 0).
+
+      2. flatten: for each usage of a name, determine in which scope the
+         definition reside (either the current or an outer one). At the end of
+         the flatten() pass, each symtable contains all the names which are
+         defined or referenced in that scope.
     """
     vm: SPyVM
     mod: ast.Module
@@ -97,30 +109,42 @@ class ScopeAnalyzer:
         """
         return self.stack[-1]
 
-    def lookup(self, name: str) -> tuple[int, Optional[Symbol]]:
+    def lookup_ref(self, name: str) -> tuple[int, Optional[Symbol]]:
         """
-        Lookup a name, starting from the innermost scope, towards the outer.
+        Lookup a name reference, starting from the innermost scope,
+        towards the outer.
         """
         for level, scope in enumerate(reversed(self.stack)):
-            if name in scope:
-                return level, scope.lookup(name)
+            if sym := scope.lookup_maybe(name):
+                return level, sym
         # not found
         return -1, None
 
-    def add_name(self,
-                 name: str,
-                 color: ast.Color,
-                 loc: Loc,
-                 type_loc: Loc,
-                 *,
-                 fqn: Optional[FQN] = None
-                 ) -> None:
+    def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
         """
-        Add a name to the current scope.
+        Lookup a name definition, starting from the innermost scope,
+        towards the output.
+        """
+        for level, scope in enumerate(reversed(self.stack)):
+            if sym := scope.lookup_definition_maybe(name):
+                return level, sym
+        # not found
+        return -1, None
+
+    def define_name(self,
+                    name: str,
+                    color: ast.Color,
+                    loc: Loc,
+                    type_loc: Loc,
+                    *,
+                    fqn: Optional[FQN] = None
+                    ) -> None:
+        """
+        Add a name definition to the current scope.
 
         The level of the new symbol will be 0.
         """
-        level, sym = self.lookup(name)
+        level, sym = self.lookup_ref(name)
         if sym and name != '@return':
             if level == 0:
                 # re-declaration in the same scope
@@ -145,15 +169,15 @@ class ScopeAnalyzer:
 
     def declare(self, node: ast.Node) -> None:
         """
-        Visit all the nodes which introduce a new name in the scope, and declare
-        those names.
+        Visit all the nodes which introduce a new name in the scope, and
+        add symbol definitions to the corresponding symtable.
         """
         return node.visit('declare', self)
 
     def declare_Import(self, imp: ast.Import) -> None:
         w_obj = self.vm.lookup_global(imp.fqn)
         if w_obj is not None:
-            self.add_name(imp.asname, 'blue', imp.loc, imp.loc, fqn=imp.fqn)
+            self.define_name(imp.asname, 'blue', imp.loc, imp.loc, fqn=imp.fqn)
             return
         #
         err = SPyImportError(f'cannot import `{imp.fqn.spy_name}`')
@@ -177,30 +201,32 @@ class ScopeAnalyzer:
             color = 'red'
         else:
             color = 'blue'
-        self.add_name(decl.vardef.name, color, decl.loc, decl.vardef.type.loc)
+        self.define_name(decl.vardef.name, color, decl.loc,
+                         decl.vardef.type.loc)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.kind == 'var'
-        self.add_name(vardef.name, 'red', vardef.loc, vardef.type.loc)
+        self.define_name(vardef.name, 'red', vardef.loc, vardef.type.loc)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
-        self.add_name(funcdef.name, 'blue', funcdef.prototype_loc,
-                      funcdef.prototype_loc)
+        self.define_name(funcdef.name, 'blue', funcdef.prototype_loc,
+                         funcdef.prototype_loc)
+        # add function arguments to the "inner" scope
         inner_scope = self.new_SymTable(funcdef.name)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.add_name(arg.name, 'red', arg.loc, arg.type.loc)
-        self.add_name('@return', 'red', funcdef.return_type.loc,
-                      funcdef.return_type.loc)
+            self.define_name(arg.name, 'red', arg.loc, arg.type.loc)
+        self.define_name('@return', 'red', funcdef.return_type.loc,
+                         funcdef.return_type.loc)
         for stmt in funcdef.body:
             self.declare(stmt)
         self.pop_scope()
 
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
-        self.add_name(classdef.name, 'blue', classdef.loc, classdef.loc)
+        self.define_name(classdef.name, 'blue', classdef.loc, classdef.loc)
         inner_scope = self.new_SymTable(classdef.name)
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
@@ -221,25 +247,28 @@ class ScopeAnalyzer:
                               value: ast.Expr) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
-        level, sym = self.lookup(target.value)
+        level, sym = self.lookup_ref(target.value)
         if sym is None:
             # we don't have an explicit type annotation: we consider the
             # "value" to be the type_loc, because it's where the type will be
             # computed from
             type_loc = value.loc
-            self.add_name(target.value, 'red', target.loc, type_loc)
+            self.define_name(target.value, 'red', target.loc, type_loc)
 
     # ===
 
     def capture_maybe(self, varname: str) -> None:
-        level, sym = self.lookup(varname)
+        level, _ = self.lookup_ref(varname)
         if level in (-1, 0):
             # name already in the symtable, or NameError. Nothing to do here.
             return
         # the name was found but in an outer scope. Let's "capture" it.
+        #
+        # find the defintion
+        level, sym = self.lookup_definition(varname)
         assert sym
         new_sym = sym.replace(level=level)
-        assert varname not in self.scope
+        assert not self.scope.has_definition(varname)
         self.scope.add(new_sym)
 
     def flatten(self, node: ast.Node) -> None:
