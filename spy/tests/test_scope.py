@@ -6,7 +6,7 @@ from spy.ast_dump import dump
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
-from spy.irgen.symtable import Symbol, Color
+from spy.irgen.symtable import Symbol, Color, SymTable
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.tests.support import expect_errors, MatchAnnotation
@@ -223,7 +223,7 @@ class TestScopeAnalyzer:
 
         """)
 
-        def get_scope(name):
+        def get_scope(name: str) -> SymTable:
             for funcdef, scope in scopes.inner_scopes.items():
                 if funcdef.name == name:
                     return scope
