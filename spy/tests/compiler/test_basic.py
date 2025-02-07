@@ -612,6 +612,55 @@ class TestBasic(CompilerTest):
                                  "None",
                                  ""])
 
+    def test_deeply_nested_closure(self, capfd):
+        mod = self.compile("""
+        x0 = 0
+
+        @blue
+        def a():
+            x1 = 1
+            @blue
+            def b():
+                x2 = 2
+                def c() -> void:
+                    x3 = 3
+                    print(x0)
+                    print(x1)
+                    print(x2)
+                    print(x3)
+                return c
+            return b
+
+        def foo() -> void:
+            a()()()
+        """)
+        mod.foo()
+        if self.backend == 'C':
+            mod.ll.call('spy_flush')
+        out, err = capfd.readouterr()
+        assert out.split() == ['0', '1', '2', '3']
+
+    def test_capture_across_multiple_scopes(self):
+        # see also the similar test in test_scope.py
+        mod = self.compile("""
+        @blue
+        def a():
+            x = 42  # x is defined in this scope
+            @blue
+            def b():
+                # x is referenced but NOT defined in this scope
+                y = x
+                def c() -> i32:
+                    # x should point TWO levels up
+                    return x
+                return c
+            return b
+
+        def foo() -> i32:
+            return a()()()
+        """)
+        assert mod.foo() == 42
+
     def test_global_const_type_inference(self):
         mod = self.compile(
         """

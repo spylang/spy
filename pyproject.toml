@@ -35,4 +35,5 @@ markers = [
     "doppler: mark tests executed with the 'doppler' backend",
     "C: mark tests executed with the 'C' backend",
     "emscripten: mark tests executed via emscripten",
+    "mypy: check mypy",
 ]

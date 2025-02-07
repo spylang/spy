@@ -402,7 +402,7 @@ class AbstractFrame:
 
     def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_OpArg:
         color: Color = 'blue'  # closed-over variables are always blue
-        namespace = self.closure[sym.level]
+        namespace = self.closure[-sym.level]
         w_val = namespace[sym.name]
         assert w_val is not None
         w_type = self.vm.dynamic_type(w_val)

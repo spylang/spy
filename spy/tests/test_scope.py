@@ -6,7 +6,7 @@ from spy.ast_dump import dump
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.irgen.scope import ScopeAnalyzer
-from spy.irgen.symtable import Symbol, Color
+from spy.irgen.symtable import Symbol, Color, SymTable
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.tests.support import expect_errors, MatchAnnotation
@@ -85,14 +85,14 @@ class TestScopeAnalyzer:
         """)
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
-        assert scope.name == 'foo'
+        assert scope.name == 'test::foo'
         assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
             'z': MatchSymbol('z', 'red'),
             '@return': MatchSymbol('@return', 'red'),
             # captured
-            'i32': MatchSymbol('i32', 'blue', level=1),
+            'i32': MatchSymbol('i32', 'blue', level=2),
         }
         assert funcdef.symtable is scope
 
@@ -206,3 +206,32 @@ class TestScopeAnalyzer:
             'i32': MatchSymbol('i32', 'blue', level=2),
             'void': MatchSymbol('void', 'blue', level=2),
         }
+
+    def test_capture_across_multiple_scopes(self):
+        # see also the similar test in test_basic
+        scopes = self.analyze("""
+        def a() -> dynamic:
+            x = 42  # x is defined in this scope
+            def b() -> dynamic:
+                # x is referenced but NOT defined in this scope
+                y = x
+                def c() -> i32:
+                    # x should point TWO levels up
+                    return x
+                return c
+            return b
+
+        """)
+
+        def get_scope(name: str) -> SymTable:
+            for funcdef, scope in scopes.inner_scopes.items():
+                if funcdef.name == name:
+                    return scope
+            raise KeyError
+
+        a = get_scope('a')
+        b = get_scope('b')
+        c = get_scope('c')
+        assert a._symbols['x'] == MatchSymbol('x', 'red', level=0)
+        assert b._symbols['x'] == MatchSymbol('x', 'red', level=1)
+        assert c._symbols['x'] == MatchSymbol('x', 'red', level=2)
