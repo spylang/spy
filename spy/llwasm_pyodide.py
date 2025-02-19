@@ -50,7 +50,18 @@ class LLWasmInstance:
     def __init__(self, llmod: LLWasmModule,
                  hostmods: list[HostModule]=[]) -> None:
         self.llmod = llmod
-        self.instance = run_sync(llmod.make_instance())
+        def adjust_imports(imports):
+            from js import Object
+            env = imports.env
+            for [name, val] in Object.entries(env):
+                if not val.stub:
+                    continue
+                for hostmod in hostmods:
+                    if x := getattr(hostmod, "env_" + name, None):
+                        setattr(env, name, x)
+                        break
+
+        self.instance = run_sync(llmod.make_instance(adjustWasmImports=adjust_imports))
         self.mem = LLWasmMemoryPyodide(self.instance.HEAP8)
         for hostmod in hostmods:
             hostmod.ll = self
