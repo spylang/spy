@@ -153,9 +153,6 @@ class LLWasmMemoryBase:
             n += 1
         return self.read(addr, n)
 
-    def write(self, addr: int, b: bytes) -> None:
-        self.mem.write(self.store, b, addr)
-
     def write_i32(self, addr: int, v: int) -> None:
         self.write(addr, struct.pack('i', v))
 
@@ -185,3 +182,6 @@ class LLWasmMemoryPyodide(LLWasmMemoryBase):
         Read n bytes of memory at the given address.
         """
         return self.mem.subarray(addr, addr+n).to_py()
+
+    def write(self, addr: int, b: bytes) -> None:
+        self.mem.subarray(addr, addr + len(b)).assign(b)
