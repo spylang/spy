@@ -1,5 +1,4 @@
 import pytest
-from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
 from spy.tests.support import CTest
 from pytest_pyodide import run_in_pyodide
 
@@ -133,7 +132,7 @@ class TestLLWasm(CTest):
         
         fn(selenium, test_wasm)
 
-    def test_HostModule(self):
+    def test_HostModule(self, selenium):
         src = r"""
         #include <stdint.h>
         #include "spy.h"
@@ -149,26 +148,31 @@ class TestLLWasm(CTest):
         }
         """
         test_wasm = self.compile(src, exports=['compute'])
-        llmod = LLWasmModule(test_wasm)
+        @run_in_pyodide
+        def fn(selenium, test_wasm):
+            from spy.llwasm_pyodide import LLWasmInstance, LLWasmModule, HostModule
+            llmod = LLWasmModule(test_wasm)
 
-        class Math(HostModule):
-            def env_add(self, x: int, y: int) -> int:
-                return x + y
+            class Math(HostModule):
+                def env_add(self, x: int, y: int) -> int:
+                    return x + y
 
-            def env_square(self, x: int) -> int:
-                return x * x
+                def env_square(self, x: int) -> int:
+                    return x * x
 
-        class Recorder(HostModule):
-            log: list[int]
+            class Recorder(HostModule):
+                log: list[int]
 
-            def __init__(self, *args, **kwargs) -> None:
-                self.log = []
+                def __init__(self, *args, **kwargs) -> None:
+                    self.log = []
 
-            def env_record(self, x: int) -> None:
-                self.log.append(x)
+                def env_record(self, x: int) -> None:
+                    self.log.append(x)
 
-        math = Math()
-        recorder = Recorder()
-        ll = LLWasmInstance(llmod, [math, recorder])
-        assert ll.call('compute') == 900
-        assert recorder.log == [100, 200]
+            math = Math()
+            recorder = Recorder()
+            ll = LLWasmInstance(llmod, [math, recorder])
+            assert ll.call('compute') == 900
+            assert recorder.log == [100, 200]
+
+        fn(selenium, test_wasm)
