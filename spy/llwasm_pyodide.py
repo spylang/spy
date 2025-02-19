@@ -17,7 +17,7 @@ import py.path
 # import wasmtime as wt
 import struct
 from js_loader import loadModule
-from asyncio import get_event_loop
+from pyodide.ffi import run_sync
 
 LLWasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
 # ENGINE = wt.Engine()
@@ -28,7 +28,8 @@ class LLWasmModule:
 
     def __init__(self, f: py.path.local) -> None:
         self.f = f
-        self.mod = get_event_loop().run_until_complete(loadModule(str(f.new(ext=".mjs"))))
+        # JS function that when called makes an instance of the emscripten module
+        self.make_instance = run_sync(loadModule(str(f.new(ext=".mjs"))))
 
 
 #     def __repr__(self) -> str:
@@ -48,8 +49,11 @@ class LLWasmInstance:
 
     def __init__(self, llmod: LLWasmModule,
                  hostmods: list[HostModule]=[]) -> None:
-        self.instance = llmod
-        self.mem = LLWasmMemoryPyodide(llmod.mod.HEAP8)
+        self.llmod = llmod
+        self.instance = run_sync(llmod.make_instance())
+        self.mem = LLWasmMemoryPyodide(self.instance.HEAP8)
+        for hostmod in hostmods:
+            hostmod.ll = self
 
     @classmethod
     def from_file(cls, f: py.path.local,
@@ -58,11 +62,11 @@ class LLWasmInstance:
         return cls(llmod, hostmods)
 
     def get_export(self, name: str) -> Any:
-        return getattr(self.instance.mod, "_" + name)
+        return getattr(self.instance, "_" + name)
 
     def all_exports(self) -> Any:
         raise NotImplementedError
-        exports = self.instance.mod(self.store)
+        exports = self.instance(self.store)
         return list(exports._extern_map)
 
     def call(self, name: str, *args: Any) -> Any:
@@ -174,14 +178,14 @@ class LLWasmMemoryBase:
 
 
 class LLWasmMemoryPyodide(LLWasmMemoryBase):
-    def __init__(self, mem):
-        self.mem = mem
+    def __init__(self, jsmem):
+        self.jsmem = jsmem
 
     def read(self, addr: int, n: int) -> bytearray:
         """
         Read n bytes of memory at the given address.
         """
-        return self.mem.subarray(addr, addr+n).to_py()
+        return self.jsmem.subarray(addr, addr+n).to_py()
 
     def write(self, addr: int, b: bytes) -> None:
-        self.mem.subarray(addr, addr + len(b)).assign(b)
+        self.jsmem.subarray(addr, addr + len(b)).assign(b)

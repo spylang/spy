@@ -227,7 +227,7 @@ class EmscriptenToolchain(Toolchain):
         return super().LDFLAGS + [
             # "-sEXPORTED_FUNCTIONS=['_main']",
             "-sWASM_BIGINT",
-            f"--extern-post-js={post_js}",
+            # f"--extern-post-js={post_js}",
             # f"--post-js={}"
         ]
 

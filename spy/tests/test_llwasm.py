@@ -108,7 +108,7 @@ class TestLLWasm(CTest):
         fn(selenium, test_wasm)
 
 
-    def test_multiple_instances(self):
+    def test_multiple_instances(self, selenium):
         src = r"""
         int x = 100;
         int inc(void) {
@@ -116,16 +116,22 @@ class TestLLWasm(CTest):
         }
         """
         test_wasm = self.compile(src, exports=['inc'])
-        llmod = LLWasmModule(test_wasm)
-        ll1 = LLWasmInstance(llmod)
-        ll2 = LLWasmInstance(llmod)
-        assert ll1.call('inc') == 101
-        assert ll1.call('inc') == 102
-        assert ll1.call('inc') == 103
-        #
-        assert ll2.call('inc') == 101
-        assert ll2.call('inc') == 102
-        assert ll2.call('inc') == 103
+        @run_in_pyodide
+        def fn(selenium, test_wasm):
+            from spy.llwasm_pyodide import LLWasmInstance, LLWasmModule
+
+            llmod = LLWasmModule(test_wasm)
+            ll1 = LLWasmInstance(llmod)
+            ll2 = LLWasmInstance(llmod)
+            assert ll1.call('inc') == 101
+            assert ll1.call('inc') == 102
+            assert ll1.call('inc') == 103
+            #
+            assert ll2.call('inc') == 101
+            assert ll2.call('inc') == 102
+            assert ll2.call('inc') == 103
+        
+        fn(selenium, test_wasm)
 
     def test_HostModule(self):
         src = r"""
