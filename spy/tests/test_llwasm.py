@@ -61,22 +61,28 @@ class TestLLWasm(CTest):
 
         fn(selenium, test_wasm)
 
-    def test_read_mem(self):
+    def test_read_mem(self, selenium):
         src = r"""
         #include <stdint.h>
         const char *hello = "hello";
         int32_t foo[] = {100, 200};
         """
         test_wasm = self.compile(src, exports=['hello', 'foo'])
-        ll = LLWasmInstance.from_file(test_wasm)
-        ptr = ll.read_global('hello', 'void *')
-        assert ll.mem.read(ptr, 6) == b'hello\0'
-        #
-        ptr = ll.read_global('foo')
-        assert ll.mem.read_i32(ptr) == 100
-        assert ll.mem.read_i32(ptr+4) == 200
+        @run_in_pyodide
+        def fn(selenium, test_wasm):
+            from spy.llwasm_pyodide import LLWasmInstance
 
-    def test_write_mem(self):
+            ll = LLWasmInstance.from_file(test_wasm)
+            ptr = ll.read_global('hello', 'void *')
+            assert ll.mem.read(ptr, 6) == b'hello\0'
+
+            ptr = ll.read_global('foo')
+            assert ll.mem.read_i32(ptr) == 100
+            assert ll.mem.read_i32(ptr+4) == 200
+
+        fn(selenium, test_wasm)
+
+    def test_write_mem(self, selenium):
         src = r"""
         #include <stdint.h>
         int8_t foo[] = {10, 20, 30};
@@ -85,15 +91,22 @@ class TestLLWasm(CTest):
         }
         """
         test_wasm = self.compile(src, exports=['foo', 'foo_total'])
-        ll = LLWasmInstance.from_file(test_wasm)
-        assert ll.call('foo_total') == 60
-        #
-        ptr = ll.read_global('foo')
-        ll.mem.write(ptr, bytearray([40, 50, 60]))
-        assert ll.call('foo_total') == 150
-        #
-        ll.mem.write_i8(ptr, 100)
-        assert ll.call('foo_total') == 210
+        @run_in_pyodide
+        def fn(selenium, test_wasm):
+            from spy.llwasm_pyodide import LLWasmInstance
+
+            ll = LLWasmInstance.from_file(test_wasm)
+            assert ll.call('foo_total') == 60
+            #
+            ptr = ll.read_global('foo')
+            ll.mem.write(ptr, bytearray([40, 50, 60]))
+            assert ll.call('foo_total') == 150
+            #
+            ll.mem.write_i8(ptr, 100)
+            assert ll.call('foo_total') == 210
+
+        fn(selenium, test_wasm)
+
 
     def test_multiple_instances(self):
         src = r"""
