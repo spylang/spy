@@ -15,7 +15,7 @@ class TestLLWasm(CTest):
         @run_in_pyodide
         def fn(selenium, test_wasm):
             from spy.llwasm_pyodide import LLWasmInstance
-            
+
             ll = LLWasmInstance.from_file(test_wasm)
             assert ll.call('add', 4, 8) == 12
 
@@ -30,7 +30,7 @@ class TestLLWasm(CTest):
         int y;
         """
         test_wasm = self.compile(src, exports=['add', 'x', 'y'])
-        
+
         @run_in_pyodide
         def fn(selenium, test_wasm):
             from spy.llwasm_pyodide import LLWasmInstance
@@ -39,10 +39,10 @@ class TestLLWasm(CTest):
             exports = ll.all_exports()
             exports.sort()
             assert exports == ['_initialize', 'add', 'memory', 'x', 'y']
-        
+
         fn(selenium, test_wasm)
 
-    def test_read_global(self):
+    def test_read_global(self, selenium):
         src = r"""
         #include <stdint.h>
         int32_t x = 100;
@@ -50,10 +50,16 @@ class TestLLWasm(CTest):
         int16_t z = 300;
         """
         test_wasm = self.compile(src, exports=['x', 'y', 'z'])
-        ll = LLWasmInstance.from_file(test_wasm)
-        assert ll.read_global('x', 'int32_t') == 100
-        assert ll.read_global('y', 'int16_t') == 200
-        assert ll.read_global('z', 'int16_t') == 300
+        @run_in_pyodide
+        def fn(selenium, test_wasm):
+            from spy.llwasm_pyodide import LLWasmInstance
+
+            ll = LLWasmInstance.from_file(test_wasm)
+            assert ll.read_global('x', 'int32_t') == 100
+            assert ll.read_global('y', 'int16_t') == 200
+            assert ll.read_global('z', 'int16_t') == 300
+
+        fn(selenium, test_wasm)
 
     def test_read_mem(self):
         src = r"""
