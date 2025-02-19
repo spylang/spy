@@ -83,7 +83,7 @@ class Toolchain:
             cmdline += ['-DSPY_DEBUG']
         else:
             assert False
-
+        file_out = file_out.new(ext='.mjs')
         cmdline += [
             '-o', str(file_out),
             str(file_c)
@@ -91,6 +91,7 @@ class Toolchain:
         cmdline += self.LDFLAGS + EXTRA_LDFLAGS
         if FORCE_COLORS:
             cmdline = ['unbuffer'] + cmdline
+        print(" ".join(cmdline))
         proc = subprocess.run(cmdline,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
@@ -222,11 +223,12 @@ class EmscriptenToolchain(Toolchain):
 
     @property
     def LDFLAGS(self) -> list[str]:
-        post_js = spy.libspy.SRC.join('emscripten_post.js')
+        post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
         return super().LDFLAGS + [
-            "-sEXPORTED_FUNCTIONS=['_main']",
+            # "-sEXPORTED_FUNCTIONS=['_main']",
             "-sWASM_BIGINT",
             f"--extern-post-js={post_js}",
+            # f"--post-js={}"
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,

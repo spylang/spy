@@ -3,6 +3,44 @@
 import pytest
 import shutil
 import py
+from pytest_pyodide import get_global_config
+
+
+def call_immediately(f):
+    f()
+    return f
+
+
+@call_immediately
+def set_configs():
+    pytest_pyodide_config = get_global_config()
+    pytest_pyodide_config.set_flags(
+        "node",
+        pytest_pyodide_config.get_flags("node")
+        + ["--experimental-wasm-stack-switching"],
+    )
+    pytest_pyodide_config.set_load_pyodide_script(
+        "node",
+        """
+        let pyodide = await loadPyodide({
+            fullStdLib: false,
+            enableRunUntilComplete: true,
+        });
+        await pyodide.loadPackage(["pytest", "typing-extensions"]);
+        """
+    )
+    pytest_pyodide_config.set_initialize_script(
+        """
+        pyodide.mountNodeFS("/home/rchatham/Documents/programming/spy", "/home/rchatham/Documents/programming/spy");
+        pyodide.runPython("import sys; sys.path.append('/home/rchatham/Documents/programming/spy')");
+        async function loadModule(f) {
+            const res = await import(f.replace("/spy", "."));
+            return await res.emscriptenModule;
+        }
+        pyodide.registerJsModule("js_loader", {loadModule});
+        """
+    )
+
 
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None

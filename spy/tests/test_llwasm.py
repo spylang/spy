@@ -1,20 +1,27 @@
 import pytest
 from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
 from spy.tests.support import CTest
+from pytest_pyodide import run_in_pyodide
 
 class TestLLWasm(CTest):
 
-    def test_call(self):
+    def test_call(self, selenium):
         src = r"""
         int add(int x, int y) {
             return x+y;
         }
         """
         test_wasm = self.compile(src, exports=['add'])
-        ll = LLWasmInstance.from_file(test_wasm)
-        assert ll.call('add', 4, 8) == 12
+        @run_in_pyodide
+        def fn(selenium, test_wasm):
+            from spy.llwasm_pyodide import LLWasmInstance
+            
+            ll = LLWasmInstance.from_file(test_wasm)
+            assert ll.call('add', 4, 8) == 12
 
-    def test_all_exports(self):
+        fn(selenium, test_wasm)
+
+    def test_all_exports(self, selenium):
         src = r"""
         int add(int x, int y) {
             return x+y;
@@ -23,10 +30,17 @@ class TestLLWasm(CTest):
         int y;
         """
         test_wasm = self.compile(src, exports=['add', 'x', 'y'])
-        ll = LLWasmInstance.from_file(test_wasm)
-        exports = ll.all_exports()
-        exports.sort()
-        assert exports == ['_initialize', 'add', 'memory', 'x', 'y']
+        
+        @run_in_pyodide
+        def fn(selenium, test_wasm):
+            from spy.llwasm_pyodide import LLWasmInstance
+
+            ll = LLWasmInstance.from_file(test_wasm)
+            exports = ll.all_exports()
+            exports.sort()
+            assert exports == ['_initialize', 'add', 'memory', 'x', 'y']
+        
+        fn(selenium, test_wasm)
 
     def test_read_global(self):
         src = r"""

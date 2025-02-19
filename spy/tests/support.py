@@ -8,7 +8,7 @@ from spy import ast
 from spy.compiler import Compiler, ToolchainType
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
-from spy.cbuild import Toolchain, ZigToolchain
+from spy.cbuild import Toolchain, ZigToolchain, EmscriptenToolchain
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -297,7 +297,7 @@ class CTest:
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
-        self.toolchain = ZigToolchain('debug')
+        self.toolchain = EmscriptenToolchain('debug')
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:
