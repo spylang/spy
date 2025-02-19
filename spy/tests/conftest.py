@@ -35,7 +35,7 @@ def set_configs():
         pyodide.runPython("import sys; sys.path.append('/home/rchatham/Documents/programming/spy')");
         async function loadModule(f) {
             const res = await import(f.replace("/spy", "."));
-            return await res.emscriptenModule;
+            return res.default;
         }
         pyodide.registerJsModule("js_loader", {loadModule});
         """
