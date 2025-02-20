@@ -82,7 +82,6 @@ def configure_pyodide():
         await pyodide.loadPackage(["pytest", "typing-extensions"]);
         """
     )
-    breakpoint()
     pytest_pyodide_config.set_initialize_script(
         f"""
         pyodide.mountNodeFS("{SPY_ROOT}", "{SPY_ROOT}");
