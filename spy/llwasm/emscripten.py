@@ -46,7 +46,7 @@ class LLWasmInstance(LLWasmInstanceBase):
         else:
             self.instance = instance
 
-        self.mem = LLWasmMemoryPyodide(self.instance.HEAP8)
+        self.mem = LLWasmMemory(self.instance.HEAP8)
         for hostmod in hostmods:
             hostmod.ll = self
 
