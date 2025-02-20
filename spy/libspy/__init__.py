@@ -23,7 +23,7 @@ else:
 # since we always compile them with SPY_DEBUG, but we need to double check
 # what to do when we do e.g. spy -c --release fine sine
 
-IS_IN_BROWSER = IS_PYODIDE and hasattr(sys.modules['js'], 'window')
+IS_IN_BROWSER = IS_PYODIDE and hasattr(sys.modules['js'], 'navigator')
 
 if IS_IN_BROWSER:
     LLMOD = None
