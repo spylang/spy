@@ -1,4 +1,5 @@
+from typing import Iterable
 from tokenize import TokenInfo
 
-def untokenize(tokens: list[TokenInfo]) -> str:
+def untokenize(tokens: Iterable[TokenInfo]) -> str:
     ...
