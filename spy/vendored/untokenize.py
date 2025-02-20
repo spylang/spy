@@ -23,7 +23,6 @@
 """Transform tokens into original source code."""
 
 import tokenize
-from typing import Iterable
 
 
 __version__ = '0.1.1'
@@ -34,7 +33,7 @@ TOKENIZE_HAS_ENCODING = hasattr(tokenize, 'ENCODING')
 WHITESPACE_TOKENS = frozenset([tokenize.INDENT, tokenize.NEWLINE, tokenize.NL])
 
 
-def untokenize(tokens: Iterable[tokenize.TokenInfo]) -> str:
+def untokenize(tokens):
     """Return source code based on tokens.
 
     This is like tokenize.untokenize(), but it preserves spacing between
