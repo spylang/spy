@@ -2,7 +2,8 @@
 
 from unsafe import gc_alloc, ptr
 
-class Vector(struct):
+@struct
+class Vector:
     capacity: i32
     length: i32
     items: ptr[i32]
