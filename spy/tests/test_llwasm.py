@@ -18,7 +18,7 @@ class TestLLWasm(CTest):
         test_wasm = self.compile(src, exports=['add'])
         @run_in_pyodide
         def fn(selenium, test_wasm):
-            from spy.llwasm_pyodide import LLWasmInstance
+            from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
             assert ll.call('add', 4, 8) == 12
@@ -38,7 +38,7 @@ class TestLLWasm(CTest):
 
         @run_in_pyodide
         def fn(selenium, test_wasm):
-            from spy.llwasm_pyodide import LLWasmInstance
+            from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
             exports = ll.all_exports()
@@ -57,7 +57,7 @@ class TestLLWasm(CTest):
         test_wasm = self.compile(src, exports=['x', 'y', 'z'])
         @run_in_pyodide
         def fn(selenium, test_wasm):
-            from spy.llwasm_pyodide import LLWasmInstance
+            from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
             assert ll.read_global('x', 'int32_t') == 100
@@ -75,7 +75,7 @@ class TestLLWasm(CTest):
         test_wasm = self.compile(src, exports=['hello', 'foo'])
         @run_in_pyodide
         def fn(selenium, test_wasm):
-            from spy.llwasm_pyodide import LLWasmInstance
+            from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
             ptr = ll.read_global('hello', 'void *')
@@ -98,7 +98,7 @@ class TestLLWasm(CTest):
         test_wasm = self.compile(src, exports=['foo', 'foo_total'])
         @run_in_pyodide
         def fn(selenium, test_wasm):
-            from spy.llwasm_pyodide import LLWasmInstance
+            from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
             assert ll.call('foo_total') == 60
@@ -123,7 +123,7 @@ class TestLLWasm(CTest):
         test_wasm = self.compile(src, exports=['inc'])
         @run_in_pyodide
         def fn(selenium, test_wasm):
-            from spy.llwasm_pyodide import LLWasmInstance, LLWasmModule
+            from spy.llwasm import LLWasmInstance, LLWasmModule
 
             llmod = LLWasmModule(test_wasm)
             ll1 = LLWasmInstance(llmod)
@@ -156,7 +156,7 @@ class TestLLWasm(CTest):
         test_wasm = self.compile(src, exports=['compute'])
         @run_in_pyodide
         def fn(selenium, test_wasm):
-            from spy.llwasm_pyodide import LLWasmInstance, LLWasmModule, HostModule
+            from spy.llwasm import LLWasmInstance, LLWasmModule, HostModule
             llmod = LLWasmModule(test_wasm)
 
             class Math(HostModule):

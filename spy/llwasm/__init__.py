@@ -12,7 +12,7 @@ It is called 'LL' for two reasons:
 """
 import sys
 
-from .base import HostModule
+from .base import HostModule, LLWasmType
 
 IS_PYODIDE = "_pyodide_core" in sys.modules
 if IS_PYODIDE:
