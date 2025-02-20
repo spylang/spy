@@ -1,6 +1,5 @@
 import sys
 from typing import Any, Optional
-#import wasmtime as wt
 import spy
 
 #from spy.vm.str import ll_spy_Str_read
@@ -15,6 +14,7 @@ if IS_PYODIDE:
     from spy.llwasm_pyodide import LLWasmModule, LLWasmInstance, HostModule
     LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'emscripten', 'debug', 'libspy.mjs')
 else:
+    import wasmtime as wt
     from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
     LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'debug', 'libspy.wasm')
 
@@ -74,6 +74,7 @@ class SPyPanicError(Exception):
     Python-level exception raised when a WASM module aborts with a call to
     spy_panic().
     """
+
 
 class LLSPyInstance(LLWasmInstance):
     """
