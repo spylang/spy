@@ -78,6 +78,9 @@ else ifeq ($(TARGET), emscripten)
 		-Xclang experimental-mv \
 		-mbulk-memory
 
+	LDFLAGS := \
+		-sWASM_BIGINT
+
 	SRCS := \
 		$(SRCS) \
 		src/jsffi/jsffi.c
@@ -87,7 +90,7 @@ else ifeq ($(TARGET), emscripten)
         $(warning Skipping emscripten target - emcc compiler not found in PATH)
         .DEFAULT_GOAL := skip_emscripten
 	else
-        .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.a
+	    .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
     endif
 
 # ---------- native target ----------
@@ -127,6 +130,15 @@ build/wasi/$(BUILD_TYPE)/libspy.wasm: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
         -Wl,--whole-archive \
         build/$(TARGET)/$(BUILD_TYPE)/libspy.a \
         -o $@
+
+# emscripten-specific rules
+build/emscripten/$(BUILD_TYPE)/libspy.mjs: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
+	$(CC) \
+		$(LDFLAGS) \
+        -Wl,--whole-archive \
+		build/$(TARGET)/$(BUILD_TYPE)/libspy.a \
+		-o $@
+
 
 $(BUILD_DIR):
 	mkdir -p $@
