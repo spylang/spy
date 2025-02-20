@@ -6,42 +6,6 @@ import py
 from pytest_pyodide import get_global_config
 
 
-def call_immediately(f):
-    f()
-    return f
-
-
-@call_immediately
-def set_configs():
-    pytest_pyodide_config = get_global_config()
-    pytest_pyodide_config.set_flags(
-        "node",
-        pytest_pyodide_config.get_flags("node")
-        + ["--experimental-wasm-stack-switching"],
-    )
-    pytest_pyodide_config.set_load_pyodide_script(
-        "node",
-        """
-        let pyodide = await loadPyodide({
-            fullStdLib: false,
-            enableRunUntilComplete: true,
-        });
-        await pyodide.loadPackage(["pytest", "typing-extensions"]);
-        """
-    )
-    pytest_pyodide_config.set_initialize_script(
-        """
-        pyodide.mountNodeFS("/home/rchatham/Documents/programming/spy", "/home/rchatham/Documents/programming/spy");
-        pyodide.runPython("import sys; sys.path.append('/home/rchatham/Documents/programming/spy')");
-        async function loadModule(f) {
-            const res = await import(f.replace("/spy", "."));
-            return res.default;
-        }
-        pyodide.registerJsModule("js_loader", {loadModule});
-        """
-    )
-
-
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
 
@@ -88,3 +52,48 @@ def pytest_addoption(parser):
 def skip_if_no_emcc(request):
     if request.node.get_closest_marker("emscripten") and not HAVE_EMCC:
         pytest.skip("Requires emcc")
+
+
+# ===============
+# pyodide config
+# ===============
+
+def call_immediately(f):
+    f()
+    return f
+
+@call_immediately
+def configure_pyodide():
+    SPY_ROOT = ROOT.join('..', '..') # the root of the repo
+
+    pytest_pyodide_config = get_global_config()
+    pytest_pyodide_config.set_flags(
+        "node",
+        pytest_pyodide_config.get_flags("node")
+        + ["--experimental-wasm-stack-switching"],
+    )
+    pytest_pyodide_config.set_load_pyodide_script(
+        "node",
+        """
+        let pyodide = await loadPyodide({
+            fullStdLib: false,
+            enableRunUntilComplete: true,
+        });
+        await pyodide.loadPackage(["pytest", "typing-extensions"]);
+        """
+    )
+    breakpoint()
+    pytest_pyodide_config.set_initialize_script(
+        f"""
+        pyodide.mountNodeFS("{SPY_ROOT}", "{SPY_ROOT}");
+        pyodide.runPython("import sys; sys.path.append('{SPY_ROOT}')");
+        """
+        +
+        """
+        async function loadModule(f) {
+            const res = await import(f.replace("/spy", "."));
+            return res.default;
+        }
+        pyodide.registerJsModule("js_loader", {loadModule});
+        """
+    )

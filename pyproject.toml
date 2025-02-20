@@ -6,7 +6,8 @@ authors = [
 version = "0.1.0"
 
 dependencies = [
-    "pytest==7.3.1",
+    "pytest==8.3.4",
+    "pytest_pyodide==0.58.4",
     "py==1.11.0",
     "wasmtime==8.0.1",
     "fixedint==0.2.0",
@@ -29,6 +30,7 @@ build-backend = "setuptools.build_meta"
 where = ["."]
 
 [tool.pytest.ini_options]
+addopts = "--dist-dir=node_modules/pyodide"
 markers = [
     "interp: mark tests executed with the 'interp' backend",
     "doppler: mark tests executed with the 'doppler' backend",
