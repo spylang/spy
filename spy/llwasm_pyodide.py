@@ -14,6 +14,7 @@ It is called 'LL' for two reasons:
 import sys
 from typing import Any, Optional, Literal
 from typing_extensions import Self
+from asyncio import Future
 import py.path
 import struct
 
@@ -34,14 +35,21 @@ class LLWasmModule:
     f: py.path.local
     # mod: wt.Module
 
-    def __init__(self, f: py.path.local) -> None:
+    def __init__(self, f: py.path.local, *, make_instance=None) -> None:
         self.f = f
-        # JS function that when called makes an instance of the emscripten module
-        self.make_instance = run_sync(loadModule(str(f.new(ext=".mjs"))))
+        if make_instance is None:
+            # JS function that when called makes an instance of the emscripten module
+            self.make_instance = run_sync(loadModule(str(f.new(ext=".mjs"))))
+        else:
+            self.make_instance = make_instance
 
+    @classmethod
+    async def async_new(cls, f: py.path.local):
+        make_instance = await loadModule(str(f.new(ext=".mjs")))
+        return cls(f, make_instance=make_instance)
 
-#     def __repr__(self) -> str:
-#         return f'<LLWasmModule {self.f}>'
+    def __repr__(self) -> str:
+        return f'<LLWasmModule {self.f}>'
 
 
 class HostModule:
@@ -56,8 +64,24 @@ class HostModule:
 class LLWasmInstance:
 
     def __init__(self, llmod: LLWasmModule,
-                 hostmods: list[HostModule]=[]) -> None:
+                 hostmods: list[HostModule]=[], *, instance=None) -> None:
         self.llmod = llmod
+
+        if instance is None:
+            self.instance = run_sync(self._make_instance_promise(llmod, hostmods))
+        else:
+            self.instance = instance
+
+        self.mem = LLWasmMemoryPyodide(self.instance.HEAP8)
+        for hostmod in hostmods:
+            hostmod.ll = self
+
+    @classmethod
+    async def async_new(cls, llmod: LLWasmModule, hostmods: list[HostModule]=[]) -> None:
+        return cls(llmod, hostmods, instance=await cls._make_instance_promise(llmod, hostmods))
+
+    @staticmethod
+    def _make_instance_promise(llmod: LLWasmModule, hostmods: list[HostModule]) -> Future[Any]:
         def adjust_imports(imports):
             from js import Object
             env = imports.env
@@ -68,11 +92,7 @@ class LLWasmInstance:
                     if x := getattr(hostmod, "env_" + name, None):
                         setattr(env, name, x)
                         break
-
-        self.instance = run_sync(llmod.make_instance(adjustWasmImports=adjust_imports))
-        self.mem = LLWasmMemoryPyodide(self.instance.HEAP8)
-        for hostmod in hostmods:
-            hostmod.ll = self
+        return llmod.make_instance(adjustWasmImports=adjust_imports)
 
     @classmethod
     def from_file(cls, f: py.path.local,

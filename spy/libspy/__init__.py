@@ -23,8 +23,19 @@ else:
 # since we always compile them with SPY_DEBUG, but we need to double check
 # what to do when we do e.g. spy -c --release fine sine
 
+IS_IN_BROWSER = IS_PYODIDE and hasattr(sys.modules['js'], 'window')
 
-LLMOD = LLWasmModule(LIBSPY_WASM)
+if IS_IN_BROWSER:
+    LLMOD = None
+else:
+    LLMOD = LLWasmModule(LIBSPY_WASM)
+
+async def async_get_LLMOD():
+    global LLMOD
+    if LLMOD is None:
+        LLMOD = await LLWasmModule.async_new(LIBSPY_WASM)
+    return LLMOD
+
 
 class LibSPyHost(HostModule):
     log: list[str]
