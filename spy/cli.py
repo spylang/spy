@@ -1,5 +1,6 @@
 import sys
 from typing import Annotated, Any, no_type_check, Optional
+import asyncio
 from pathlib import Path
 import time
 import traceback
@@ -129,7 +130,7 @@ def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
 def main(args: Arguments) -> None:
     ""
     try:
-        do_main(args)
+        asyncio.run(do_main(args))
     except SPyError as e:
         print(e.format(use_colors=True))
         if args.pdb:
@@ -144,14 +145,16 @@ def main(args: Arguments) -> None:
         stdlib_pdb.post_mortem(info[2])
 
 
-def do_main(args: Arguments) -> None:
+async def do_main(args: Arguments) -> None:
     if args.pyparse:
         do_pyparse(str(args.filename))
         return
 
     modname = args.filename.stem
     builddir = args.filename.parent
-    vm = SPyVM()
+    #vm = SPyVM()
+    vm = await SPyVM.async_new()
+
     vm.path.append(str(builddir))
 
     if args.parse or args.symtable:

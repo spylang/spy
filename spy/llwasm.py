@@ -133,6 +133,11 @@ class LLWasmInstance:
         for hostmod in hostmods:
             hostmod.ll = self
 
+
+    @classmethod
+    async def async_new(cls, llmod, hostmods=[]):
+        return cls(llmod, hostmods)
+
     @classmethod
     def from_file(cls, f: py.path.local,
                   hostmods: list[HostModule]=[]) -> Self:

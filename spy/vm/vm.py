@@ -49,8 +49,13 @@ class SPyVM:
     path: list[str]
     bluecache: BlueCache
 
-    def __init__(self) -> None:
-        self.ll = libspy.LLSPyInstance(libspy.LLMOD)
+    def __init__(self, ll=None) -> None:
+        if ll is None:
+            #assert not IS_PYODIDE
+            self.ll = libspy.LLSPyInstance(libspy.LLMOD)
+        else:
+            self.ll = ll
+
         self.globals_w = {}
         self.modules_w = {}
         self.path = []
@@ -61,6 +66,13 @@ class SPyVM:
         self.make_module(UNSAFE)     # unsafe::
         self.make_module(RAW_BUFFER) # rawbuffer::
         self.make_module(JSFFI)      # jsffi::
+
+
+    @classmethod
+    async def async_new(cls):
+        llmod = await libspy.async_get_LLMOD()
+        ll = await libspy.LLSPyInstance.async_new(llmod)
+        return SPyVM(ll=ll)
 
     def import_(self, modname: str) -> W_Module:
         from spy.irgen.irgen import make_w_mod_from_file
