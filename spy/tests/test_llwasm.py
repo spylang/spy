@@ -1,7 +1,12 @@
 import pytest
+from spy import ROOT
 from spy.tests.support import CTest
 from pytest_pyodide import run_in_pyodide
 
+PYODIDE = ROOT.join('..', 'node_modules', 'pyodide')
+HAS_PYODIDE = PYODIDE.check(exists=True)
+
+@pytest.mark.skipif(not HAS_PYODIDE, reason="pyodide not fuound, run npm i")
 class TestLLWasm(CTest):
 
     def test_call(self, selenium):
@@ -129,7 +134,7 @@ class TestLLWasm(CTest):
             assert ll2.call('inc') == 101
             assert ll2.call('inc') == 102
             assert ll2.call('inc') == 103
-        
+
         fn(selenium, test_wasm)
 
     def test_HostModule(self, selenium):
