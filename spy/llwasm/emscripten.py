@@ -8,12 +8,18 @@ from typing_extensions import Self
 from asyncio import Future
 import py.path
 from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmType
-
 from pyodide.ffi import run_sync
 from pyodide.code import run_js
+
+class WasmTrap(Exception):
+    # xxx add way to catch only actual aborts
+    pass
+
+
+
 loadModule = run_js("""
     const loadModule = async (f) => {
-        const res = await import(f.replace("/spy", "."));
+        const res = await import(f);
         return res.default;
     };
     loadModule
@@ -52,7 +58,8 @@ class LLWasmInstance(LLWasmInstanceBase):
 
     @classmethod
     async def async_new(cls, llmod: LLWasmModule, hostmods: list[HostModule]=[]) -> None:
-        return cls(llmod, hostmods, instance=await cls._make_instance_promise(llmod, hostmods))
+        instance = await cls._make_instance_promise(llmod, hostmods)
+        return cls(llmod, hostmods, instance=instance)
 
     @staticmethod
     def _make_instance_promise(llmod: LLWasmModule, hostmods: list[HostModule]) -> Future[Any]:
@@ -60,12 +67,13 @@ class LLWasmInstance(LLWasmInstanceBase):
             from js import Object
             env = imports.env
             for [name, val] in Object.entries(env):
-                if not val.stub:
+                if not getattr(val, "stub", False):
                     continue
                 for hostmod in hostmods:
                     if x := getattr(hostmod, "env_" + name, None):
                         setattr(env, name, x)
                         break
+
         return llmod.make_instance(adjustWasmImports=adjust_imports)
 
     @classmethod

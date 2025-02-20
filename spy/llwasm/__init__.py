@@ -16,7 +16,7 @@ from .base import HostModule, LLWasmType
 
 IS_PYODIDE = "_pyodide_core" in sys.modules
 if IS_PYODIDE:
-    from .emscripten import LLWasmModule, LLWasmInstance, LLWasmMemory
+    from .emscripten import LLWasmModule, LLWasmInstance, LLWasmMemory, WasmTrap
 else:
-    from .wasmtime import LLWasmModule, LLWasmInstance, LLWasmMemory
+    from .wasmtime import LLWasmModule, LLWasmInstance, LLWasmMemory, WasmTrap
 

@@ -9,6 +9,8 @@ import wasmtime as wt
 import struct
 from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmType
 
+WasmTrap = wt.Trap
+
 ENGINE = wt.Engine()
 
 class LLWasmModule(LLWasmModuleBase):
