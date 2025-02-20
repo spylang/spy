@@ -12,6 +12,8 @@ It is called 'LL' for two reasons:
 """
 import sys
 
+from .base import HostModule
+
 IS_PYODIDE = "_pyodide_core" in sys.modules
 if IS_PYODIDE:
     from .emscripten import LLWasmModule, LLWasmInstance, LLWasmMemory

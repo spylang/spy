@@ -7,7 +7,6 @@ from typing import Any, Optional, Literal
 from typing_extensions import Self
 from asyncio import Future
 import py.path
-import struct
 from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmType
 
 from pyodide.ffi import run_sync

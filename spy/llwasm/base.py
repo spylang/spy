@@ -1,4 +1,18 @@
+import py.path
+
+from typing import Literal, Any, Self
+import struct
+
 LLWasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
+
+class HostModule:
+    """
+    Base class for host modules.
+
+    Each host module can provide one or more WASM import, used by link().
+    """
+    ll: 'LLWasmInstanceBase' # this attribute is set by LLWasmInstance.__init__
+
 
 class LLWasmModuleBase:
     f: py.path.local
@@ -13,10 +27,6 @@ class LLWasmInstanceBase:
     def all_exports(self) -> list[Any]:
         raise NotImplementedError
     
-    @classmethod
-    async def async_new(cls, llmod: LLWasmModule, hostmods: list[HostModule]=[]) -> None:
-        raise NotImplementedError
-
     @classmethod
     def from_file(cls, f: py.path.local,
                   hostmods: list[HostModule]=[]) -> Self:
@@ -65,15 +75,6 @@ class LLWasmInstanceBase:
             return self.mem.read_i16(addr)
         else:
             assert False, f'Unknown type: {deref}'
-
-
-class HostModule:
-    """
-    Base class for host modules.
-
-    Each host module can provide one or more WASM import, used by link().
-    """
-    ll: 'LLWasmInstanceBase' # this attribute is set by LLWasmInstance.__init__
 
 
 class LLWasmMemoryBase:
