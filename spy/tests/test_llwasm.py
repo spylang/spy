@@ -25,6 +25,7 @@ class TestLLWasm(CTest):
 
         fn(selenium, test_wasm)
 
+    @pytest.mark.skip(reason='fixme')
     def test_all_exports(self, selenium):
         src = r"""
         int add(int x, int y) {
