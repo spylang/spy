@@ -39,6 +39,26 @@ def w_i32_mod(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a % b)
 
 @OP.builtin_func
+def w_i32_lshift(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a << b)
+
+@OP.builtin_func
+def w_i32_rshift(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a >> b)
+
+@OP.builtin_func
+def w_i32_and(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a & b)
+
+@OP.builtin_func
+def w_i32_or(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a | b)
+
+@OP.builtin_func
+def w_i32_xor(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a ^ b)
+
+@OP.builtin_func
 def w_i32_eq(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a == b)
 

@@ -207,6 +207,23 @@ class TestBasic(CompilerTest):
         assert mod.div(10, 3) == 3
         assert mod.mod(10, 3) == 1
 
+    def test_i32_BitwiseOp(self):
+        mod = self.compile("""
+        def shl(x: i32, y: i32) -> i32: return x << y
+        def shr(x: i32, y: i32) -> i32: return x >> y
+        def b_and(x: i32, y: i32) -> i32: return x & y
+        def b_or(x: i32, y: i32) -> i32: return x | y
+        def b_xor(x: i32, y: i32) -> i32: return x ^ y
+        """)
+        assert mod.shl(128, 4) == 128 << 4
+        assert mod.shr(128, 4) == 128 >> 4
+        assert mod.b_and(7, 3) == 7 & 3
+        assert mod.b_and(127, 7) == 127 & 7
+        assert mod.b_or(127, 123) == 127 | 123
+        assert mod.b_or(127, 0) == 127 | 0
+        assert mod.b_xor(16, 15) == 16 ^ 15
+        assert mod.b_xor(16, 0) == 16 ^ 0
+
     def test_void_return(self):
         mod = self.compile("""
         var x: i32 = 0
