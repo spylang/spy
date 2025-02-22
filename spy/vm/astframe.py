@@ -446,6 +446,7 @@ class AbstractFrame:
     eval_expr_Sub = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
     eval_expr_Div = eval_expr_BinOp
+    eval_expr_Mod = eval_expr_BinOp
     eval_expr_Eq = eval_expr_BinOp
     eval_expr_NotEq = eval_expr_BinOp
     eval_expr_Lt = eval_expr_BinOp

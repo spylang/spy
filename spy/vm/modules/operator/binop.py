@@ -16,6 +16,7 @@ MM.register('+',  'i32', 'i32', OP.w_i32_add)
 MM.register('-',  'i32', 'i32', OP.w_i32_sub)
 MM.register('*',  'i32', 'i32', OP.w_i32_mul)
 MM.register('/',  'i32', 'i32', OP.w_i32_div)
+MM.register('%',  'i32', 'i32', OP.w_i32_mod)
 MM.register('==', 'i32', 'i32', OP.w_i32_eq)
 MM.register('!=', 'i32', 'i32', OP.w_i32_ne)
 MM.register('<' , 'i32', 'i32', OP.w_i32_lt)
@@ -91,6 +92,10 @@ def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
 @OP.builtin_func(color='blue')
 def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '/', wop_l, wop_r)
+
+@OP.builtin_func(color='blue')
+def w_MOD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+    return MM.get_opimpl(vm, '%', wop_l, wop_r)
 
 def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     """
