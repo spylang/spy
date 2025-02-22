@@ -22,7 +22,7 @@ dependencies = [
 Homepage = "https://github.com/spylang/spy"
 
 [project.scripts]
-spy = "spy.cli:app"
+spy = "spy.cli:pyproject_entry_point"
 
 [build-system]
 requires = ["setuptools"]
