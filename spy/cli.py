@@ -136,7 +136,10 @@ def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
 def main(args: Arguments) -> None:
     ""
     try:
-        asyncio.create_task(do_main(args))
+        if sys.platform == 'emscripten':
+            asyncio.create_task(do_main(args))
+        else:
+            asyncio.run(do_main(args))
     except SPyError as e:
         print(e.format(use_colors=True))
         if args.pdb:
