@@ -98,7 +98,7 @@ class LLWasmInstance(LLWasmInstanceBase):
     mem: 'LLWasmMemory'
 
     def __init__(self, llmod: LLWasmModule,
-                 hostmods: list[HostModule]=[]) -> None:
+                 hostmods: list[HostModule]=[], *, instance=None) -> None:
         self.llmod = llmod
         self.store = wt.Store(ENGINE)
         linker = get_linker(
@@ -107,7 +107,10 @@ class LLWasmInstance(LLWasmInstanceBase):
             wasi_config = get_wasi_config(),
             hostmods = hostmods
         )
-        self.instance = linker.instantiate(self.store, self.llmod.mod)
+        if instance is None:
+            self.instance = linker.instantiate(self.store, self.llmod.mod)
+        else:
+            self.instance = instance
         memory = self.instance.exports(self.store).get('memory')
         assert isinstance(memory, wt.Memory)
         self.mem = LLWasmMemory(self.store, memory)
@@ -116,7 +119,8 @@ class LLWasmInstance(LLWasmInstanceBase):
 
 
     @classmethod
-    async def async_new(cls, llmod, hostmods=[]):
+    async def async_new(cls, llmod: LLWasmModule,
+                        hostmods: list[HostModule]=[]) -> None:
         return cls(llmod, hostmods)
 
     @classmethod

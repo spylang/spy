@@ -28,8 +28,12 @@ spy = "spy.cli:pyproject_entry_point"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["spy"]
 
 [tool.pytest.ini_options]
 addopts = "--dist-dir=node_modules/pyodide"
