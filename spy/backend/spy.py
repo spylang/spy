@@ -211,6 +211,7 @@ class SPyBackend:
     fmt_expr_Sub = fmt_expr_BinOp
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
+    fmt_expr_Mod = fmt_expr_BinOp
     fmt_expr_Eq = fmt_expr_BinOp
     fmt_expr_NotEq = fmt_expr_BinOp
     fmt_expr_Lt = fmt_expr_BinOp
