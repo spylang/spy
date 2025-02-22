@@ -196,6 +196,7 @@ class TestBasic(CompilerTest):
         def sub(x: i32, y: i32) -> i32: return x - y
         def mul(x: i32, y: i32) -> i32: return x * y
         def div(x: i32, y: i32) -> i32: return x / y
+        def mod(x: i32, y: i32) -> i32: return x % y
 
         # XXX: should i32/i32 return an i32 or a float? For now we just do an
         # integer division
@@ -204,6 +205,7 @@ class TestBasic(CompilerTest):
         assert mod.sub(3, 4) == -1
         assert mod.mul(5, 6) == 30
         assert mod.div(10, 3) == 3
+        assert mod.mod(10, 3) == 1
 
     def test_void_return(self):
         mod = self.compile("""

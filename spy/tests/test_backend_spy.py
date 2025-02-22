@@ -50,6 +50,24 @@ class TestSPyBackend(CompilerTest):
             b = 1 + 2 * 3
             c = (1 + 2) * 3
         """)
+    
+    def test_binop(self):
+        mod = self.compile(r"""
+        def foo() -> void:
+            a + b
+            a - b
+            a * b
+            a / b
+            a % b
+        """)
+        self.assert_dump(r"""
+        def foo() -> void:
+            a + b
+            a - b
+            a * b
+            a / b
+            a % b
+        """)        
 
     def test_vardef(self):
         mod = self.compile("""
