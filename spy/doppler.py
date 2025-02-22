@@ -298,6 +298,11 @@ class DopplerFrame(ASTFrame):
     shift_expr_Mul = shift_expr_BinOp
     shift_expr_Div = shift_expr_BinOp
     shift_expr_Mod = shift_expr_BinOp
+    shift_expr_LShift = shift_expr_BinOp
+    shift_expr_RShift = shift_expr_BinOp
+    shift_expr_BitAnd = shift_expr_BinOp
+    shift_expr_BitOr = shift_expr_BinOp
+    shift_expr_BitXor = shift_expr_BinOp
     shift_expr_Eq = shift_expr_BinOp
     shift_expr_NotEq = shift_expr_BinOp
     shift_expr_Lt = shift_expr_BinOp

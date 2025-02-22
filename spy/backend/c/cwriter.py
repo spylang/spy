@@ -403,6 +403,11 @@ class CFuncWriter:
         FQN('operator::i32_mul'): '*',
         FQN('operator::i32_div'): '/', # XXX: floor or int division?
         FQN('operator::i32_mod'): '%',
+        FQN('operator::i32_lshift'): '<<',
+        FQN('operator::i32_rshift'): '>>',
+        FQN('operator::i32_and'): '&',
+        FQN('operator::i32_or'): '|',
+        FQN('operator::i32_xor'): '^',
         FQN('operator::i32_eq') : '==',
         FQN('operator::i32_ne') : '!=',
         FQN('operator::i32_lt') : '<',

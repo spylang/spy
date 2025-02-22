@@ -59,6 +59,11 @@ class TestSPyBackend(CompilerTest):
             a * b
             a / b
             a % b
+            a << b
+            a >> b
+            a & b
+            a | b
+            a ^ b
         """)
         self.assert_dump(r"""
         def foo() -> void:
@@ -67,6 +72,11 @@ class TestSPyBackend(CompilerTest):
             a * b
             a / b
             a % b
+            a << b
+            a >> b
+            a & b
+            a | b
+            a ^ b
         """)        
 
     def test_vardef(self):
