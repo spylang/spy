@@ -2,6 +2,7 @@ import sys
 from typing import Annotated, Any, no_type_check, Optional
 from pathlib import Path
 import time
+import traceback
 from dataclasses import dataclass
 import click
 import typer
@@ -134,6 +135,13 @@ def main(args: Arguments) -> None:
         if args.pdb:
             info = sys.exc_info()
             stdlib_pdb.post_mortem(info[2])
+    except Exception as e:
+        if not args.pdb:
+            raise
+
+        traceback.print_exc()
+        info = sys.exc_info()
+        stdlib_pdb.post_mortem(info[2])
 
 
 def do_main(args: Arguments) -> None:
