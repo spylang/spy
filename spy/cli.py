@@ -37,62 +37,116 @@ def pyproject_entry_point():
 class Arguments:
     filename: Path
 
-    execute: bool = Option(False,
-        "-x", "--execute",
-        help="Execute the file (default)"
-    )
-    pyparse: bool = Option(False,
-        "-P", "--pyparse",
-        help="Dump the Python AST"
-    )
-    parse: bool = Option(False,
-        "-p", "--parse",
-        help="Dump the SPy AST"
-    )
-    symtable: bool = Option(False,
-        "-S", "--symtable",
-        help="Dump the symtables"
-    )
-    redshift: bool = Option(False,
-        "-r", "--redshift",
-        help="Perform redshift and dump the result"
-    )
-    cwrite: bool = Option(False,
-        "-C", "--cwrite",
-        help="Generate the C code"
-    )
-    compile: bool = Option(False,
-        "-c", "--compile",
-        help="Compile the generated C code"
-    )
-    opt_level: int = Option(0,
-        '-O',
-        metavar='LEVEL',
-        help="Optimization level",
-    )
-    debug_symbols: bool = Option(False,
-        '-g',
-        help="Generate debug symbols"
-    )
-    release_mode: bool = Option(False,
-        '--release',
-        help="enable release mode"
-    )
-    toolchain: ToolchainType = Option("zig",
-        "-t", "--toolchain",
-        help="which compiler to use"
-    )
-    pretty: bool = Option(True,
-        help="Prettify redshifted modules"
-    )
-    timeit: bool = Option(False,
-        "--timeit",
-        help="Print execution time"
-    )
-    pdb: bool = Option(False,
-        "--pdb",
-        help="Enter interp-level debugger in case of error"
-    )
+    execute: Annotated[
+        bool,
+        Option(
+            "-x", "--execute",
+            help="Execute the file (default)"
+        )
+    ] = False
+
+    pyparse: Annotated[
+        bool,
+        Option(
+            "-P", "--pyparse",
+            help="Dump the Python AST"
+        )
+    ] = False
+
+    parse: Annotated[
+        bool,
+        Option(
+            "-p", "--parse",
+            help="Dump the SPy AST"
+        )
+    ] = False
+
+    symtable: Annotated[
+        bool,
+        Option(
+            "-S", "--symtable",
+            help="Dump the symtables"
+        )
+    ] = False
+
+    redshift: Annotated[
+        bool,
+        Option(
+            "-r", "--redshift",
+            help="Perform redshift and dump the result"
+        )
+    ] = False
+
+    cwrite: Annotated[
+        bool,
+        Option(
+            "-C", "--cwrite",
+            help="Generate the C code"
+        )
+    ] = False
+
+    compile: Annotated[
+        bool,
+        Option(
+            "-c", "--compile",
+            help="Compile the generated C code"
+        )
+    ] = False
+
+    opt_level: Annotated[
+        int,
+        Option(
+            '-O', metavar='LEVEL',
+            help="Optimization level",
+        )
+    ] = 0
+
+    debug_symbols: Annotated[
+        bool,
+        Option(
+            '-g',
+            help="Generate debug symbols"
+        )
+    ] = False
+
+    release_mode: Annotated[
+        bool,
+        Option(
+            '--release',
+            help="enable release mode"
+        )
+    ] = False
+
+    toolchain: Annotated[
+        ToolchainType,
+        Option(
+            "-t", "--toolchain",
+            help="which compiler to use"
+        )
+    ] = "zig"
+
+    pretty: Annotated[
+        bool,
+        Option(
+            help="Prettify redshifted modules"
+        )
+    ] = True
+
+    timeit: Annotated[
+        bool,
+        Option(
+            "--timeit",
+            help="Print execution time"
+        )
+    ] = False
+
+    pdb: Annotated[
+        bool,
+        Option(
+            "--pdb",
+            help="Enter interp-level debugger in case of error"
+        )
+    ] = False
 
     def __post_init__(self) -> None:
         self.validate_actions()
