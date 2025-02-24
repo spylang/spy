@@ -32,8 +32,7 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["spy"]
+include = ["spy*"]
 
 [tool.pytest.ini_options]
 addopts = "--dist-dir=node_modules/pyodide"
