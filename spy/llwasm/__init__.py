@@ -10,13 +10,10 @@ It is called 'LL' for two reasons:
   - it's an unused prefix: other prefixes as "Py", "Wasm", "W" etc. would have
     been very confusing :)
 """
-import sys
-
+from spy.platform import IS_PYODIDE
 from .base import HostModule, LLWasmType
 
-IS_PYODIDE = "_pyodide_core" in sys.modules
 if IS_PYODIDE:
     from .emscripten import LLWasmModule, LLWasmInstance, LLWasmMemory, WasmTrap
 else:
     from .wasmtime import LLWasmModule, LLWasmInstance, LLWasmMemory, WasmTrap
-

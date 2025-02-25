@@ -1,30 +1,32 @@
 import sys
 from typing import Any, Optional
 import spy
-
+from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule, WasmTrap
+from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
 #from spy.vm.str import ll_spy_Str_read
 
 SRC = spy.ROOT.join('libspy', 'src')
 INCLUDE = spy.ROOT.join('libspy', 'include')
 BUILD = spy.ROOT.join('libspy', 'build')
 
-from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule, IS_PYODIDE, WasmTrap
 
-if IS_PYODIDE:
-    LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'emscripten', 'debug', 'libspy.mjs')
+
+if IS_NODE:
+    LIBSPY_WASM = BUILD.join('emscripten', 'debug', 'libspy.mjs')
+    LLMOD = None
+elif IS_BROWSER:
+    LIBSPY_WASM = None  # needs to be set by the embedder
 else:
-    import wasmtime as wt
-    LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'debug', 'libspy.wasm')
+    assert not IS_PYODIDE
+    # "normal" python, we can preload LLMOD
+    LIBSPY_WASM = BUILD.join('wasi', 'debug', 'libspy.wasm')
+    LLMOD = LLWasmModule(LIBSPY_WASM)
 
 # XXX ^^^^
 # is it correct to always use debug/libspy.wasm? For tests it's surely fine
 # since we always compile them with SPY_DEBUG, but we need to double check
 # what to do when we do e.g. spy -c --release fine sine
 
-if IS_PYODIDE:
-    LLMOD = None
-else:
-    LLMOD = LLWasmModule(LIBSPY_WASM)
 
 async def async_get_LLMOD():
     global LLMOD
