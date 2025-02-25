@@ -16,6 +16,7 @@ if IS_NODE:
     LLMOD = None
 elif IS_BROWSER:
     LIBSPY_WASM = None  # needs to be set by the embedder
+    LLMOD = None
 else:
     assert not IS_PYODIDE
     # "normal" python, we can preload LLMOD
