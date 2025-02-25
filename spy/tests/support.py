@@ -309,7 +309,10 @@ class CTest:
     def compile(self, src: str, *,
                 exports: Optional[list[str]] = None) -> py.path.local:
         test_c = self.write(src)
-        test_wasm = self.builddir.join('test.wasm')
+        if self.toolchain.TARGET == 'emscripten':
+            test_wasm = self.builddir.join('test.mjs')
+        else:
+            test_wasm = self.builddir.join('test.wasm')
         self.toolchain.c2wasm(
             test_c,
             test_wasm,

@@ -21,7 +21,6 @@ from spy.irgen.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
-from spy.llwasm import IS_PYODIDE
 import traceback
 import functools
 

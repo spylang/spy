@@ -14,12 +14,15 @@ WasmTrap = wt.Trap
 ENGINE = wt.Engine()
 
 class LLWasmModule(LLWasmModuleBase):
-    f: py.path.local
+    filename: str
     mod: wt.Module
 
-    def __init__(self, f: py.path.local) -> None:
-        self.f = f
-        self.mod = wt.Module.from_file(ENGINE, str(f))
+    def __init__(self, filename: str) -> None:
+        self.filename = filename
+        self.mod = wt.Module.from_file(ENGINE, filename)
+
+    def __repr__(self) -> str:
+        return f'<LLWasmModule {self.filename}>'
 
 
 def get_linker(

@@ -26,19 +26,22 @@ loadModule = run_js("""
 """)
 
 class LLWasmModule(LLWasmModuleBase):
-    f: py.path.local
 
-    def __init__(self, f: py.path.local, *, make_instance=None) -> None:
-        self.f = f
+    def __init__(self, url: str, *, make_instance=None) -> None:
+        assert isinstance(url, str)
+        self.url = url
         if make_instance is None:
-            # JS function that when called makes an instance of the emscripten module
-            self.make_instance = run_sync(loadModule(str(f.new(ext=".mjs"))))
+            # JS function that when called makes an instance of the emscripten
+            # module
+            #self.make_instance = run_sync(loadModule(str(f.new(ext=".mjs"))))
+            self.make_instance = run_sync(loadModule(url))
         else:
             self.make_instance = make_instance
 
     @classmethod
-    async def async_new(cls, f: py.path.local):
-        make_instance = await loadModule(str(f.new(ext=".mjs")))
+    async def async_new(cls, url: str):
+        assert isinstance(url, str)
+        make_instance = await loadModule(url)
         return cls(f, make_instance=make_instance)
 
 
@@ -79,7 +82,7 @@ class LLWasmInstance(LLWasmInstanceBase):
     @classmethod
     def from_file(cls, f: py.path.local,
                   hostmods: list[HostModule]=[]) -> Self:
-        llmod = LLWasmModule(f)
+        llmod = LLWasmModule(str(f))
         return cls(llmod, hostmods)
 
     def get_export(self, name: str) -> Any:

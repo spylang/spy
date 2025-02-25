@@ -125,7 +125,7 @@ class TestLLWasm(CTest):
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance, LLWasmModule
 
-            llmod = LLWasmModule(test_wasm)
+            llmod = LLWasmModule(str(test_wasm))
             ll1 = LLWasmInstance(llmod)
             ll2 = LLWasmInstance(llmod)
             assert ll1.call('inc') == 101
@@ -157,7 +157,7 @@ class TestLLWasm(CTest):
         @run_in_pyodide
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance, LLWasmModule, HostModule
-            llmod = LLWasmModule(test_wasm)
+            llmod = LLWasmModule(str(test_wasm))
 
             class Math(HostModule):
                 def env_add(self, x: int, y: int) -> int:

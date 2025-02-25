@@ -15,18 +15,15 @@ class HostModule:
 
 
 class LLWasmModuleBase:
-    f: py.path.local
-
-    def __repr__(self) -> str:
-        return f'<LLWasmModule {self.f}>'
+    pass
 
 class LLWasmInstanceBase:
     def get_export(self, name: str) -> Any:
         raise NotImplementedError
-    
+
     def all_exports(self) -> list[Any]:
         raise NotImplementedError
-    
+
     @classmethod
     def from_file(cls, f: py.path.local,
                   hostmods: list[HostModule]=[]) -> Self:
