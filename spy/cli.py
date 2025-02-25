@@ -268,7 +268,11 @@ async def _do_main(args: Arguments) -> None:
     if args.cwrite:
         build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
         t = get_toolchain(args.toolchain, build_type=build_type)
-        compiler.cwrite(t.TARGET)
+        file_c = compiler.cwrite(t.TARGET)
+        # hack hack hack
+        from spy.util import highlight_C_maybe
+        print(highlight_C_maybe(file_c.read()))
+
     else:
         compiler.cbuild(
             opt_level=args.opt_level,
