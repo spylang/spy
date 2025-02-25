@@ -210,6 +210,13 @@ def main(args: Arguments) -> None:
 
 
 async def do_main(args: Arguments) -> None:
+    try:
+        res = await _do_main(args)
+    except BaseException:
+        traceback.print_exc()
+
+
+async def _do_main(args: Arguments) -> None:
     if args.pyparse:
         do_pyparse(str(args.filename))
         return

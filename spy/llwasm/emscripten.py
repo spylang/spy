@@ -42,7 +42,7 @@ class LLWasmModule(LLWasmModuleBase):
     async def async_new(cls, url: str):
         assert isinstance(url, str)
         make_instance = await loadModule(url)
-        return cls(f, make_instance=make_instance)
+        return cls(url, make_instance=make_instance)
 
 
 class LLWasmInstance(LLWasmInstanceBase):
