@@ -7,7 +7,6 @@ version = "0.1.0"
 
 dependencies = [
     "pytest==8.3.4",
-    "pytest_pyodide==0.58.4",
     "py==1.11.0",
     "wasmtime==8.0.1; sys_platform != 'emscripten'",
     "fixedint==0.2.0",
