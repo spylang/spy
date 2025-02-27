@@ -1,13 +1,23 @@
+import sys
 from typing import Any, Optional
-import wasmtime as wt
+#import wasmtime as wt
 import spy
-from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
+
 #from spy.vm.str import ll_spy_Str_read
 
 SRC = spy.ROOT.join('libspy', 'src')
 INCLUDE = spy.ROOT.join('libspy', 'include')
 BUILD = spy.ROOT.join('libspy', 'build')
-LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'debug', 'libspy.wasm')
+
+
+IS_PYODIDE = sys.platform == "emscripten"
+if IS_PYODIDE:
+    from spy.llwasm_pyodide import LLWasmModule, LLWasmInstance, HostModule
+    LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'emscripten', 'debug', 'libspy.mjs')
+else:
+    from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
+    LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'debug', 'libspy.wasm')
+
 # XXX ^^^^
 # is it correct to always use debug/libspy.wasm? For tests it's surely fine
 # since we always compile them with SPY_DEBUG, but we need to double check

@@ -11,13 +11,21 @@ It is called 'LL' for two reasons:
     been very confusing :)
 """
 
+import sys
 from typing import Any, Optional, Literal
 from typing_extensions import Self
 import py.path
-# import wasmtime as wt
 import struct
-from js_loader import loadModule
+
 from pyodide.ffi import run_sync
+from pyodide.code import run_js
+loadModule = run_js("""
+    const loadModule = async (f) => {
+        const res = await import(f.replace("/spy", "."));
+        return res.default;
+    };
+    loadModule
+""")
 
 LLWasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
 # ENGINE = wt.Engine()

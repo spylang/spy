@@ -87,12 +87,4 @@ def configure_pyodide():
         pyodide.mountNodeFS("{SPY_ROOT}", "{SPY_ROOT}");
         pyodide.runPython("import sys; sys.path.append('{SPY_ROOT}')");
         """
-        +
-        """
-        async function loadModule(f) {
-            const res = await import(f.replace("/spy", "."));
-            return res.default;
-        }
-        pyodide.registerJsModule("js_loader", {loadModule});
-        """
     )
