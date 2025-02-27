@@ -8,14 +8,12 @@ SRC = spy.ROOT.join('libspy', 'src')
 INCLUDE = spy.ROOT.join('libspy', 'include')
 BUILD = spy.ROOT.join('libspy', 'build')
 
+from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule, IS_PYODIDE, WasmTrap
 
-IS_PYODIDE = sys.platform == "emscripten"
 if IS_PYODIDE:
-    from spy.llwasm_pyodide import LLWasmModule, LLWasmInstance, HostModule
     LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'emscripten', 'debug', 'libspy.mjs')
 else:
     import wasmtime as wt
-    from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule
     LIBSPY_WASM = spy.ROOT.join('libspy', 'build', 'wasi', 'debug', 'libspy.wasm')
 
 # XXX ^^^^
@@ -23,9 +21,7 @@ else:
 # since we always compile them with SPY_DEBUG, but we need to double check
 # what to do when we do e.g. spy -c --release fine sine
 
-IS_IN_BROWSER = IS_PYODIDE and hasattr(sys.modules['js'], 'navigator')
-
-if IS_IN_BROWSER:
+if IS_PYODIDE:
     LLMOD = None
 else:
     LLMOD = LLWasmModule(LIBSPY_WASM)
@@ -83,17 +79,15 @@ class LLSPyInstance(LLWasmInstance):
     """
 
     def __init__(self, llmod: LLWasmModule,
-                 hostmods: list[HostModule]=[]) -> None:
+                 hostmods: list[HostModule]=[], *, instance=None) -> None:
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods
-        super().__init__(llmod, hostmods)
+        super().__init__(llmod, hostmods, instance=instance)
 
     def call(self, name: str, *args: Any) -> Any:
-        func = self.get_export(name)
-        assert isinstance(func, wt.Func)
         try:
-            return func(self.store, *args)
-        except wt.Trap:
+            return super().call(name, *args)
+        except WasmTrap:
             if self.libspy.panic_message is not None:
                 raise SPyPanicError(self.libspy.panic_message)
             raise

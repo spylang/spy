@@ -21,6 +21,9 @@ from spy.irgen.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.llwasm import IS_PYODIDE
+import traceback
+import functools
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -124,13 +127,29 @@ def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
+
+if IS_PYODIDE:
+    def maybe_pyodide_typer(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except SystemExit as e:
+                if e.code != 0:
+                    raise
+        return wrapper
+else:
+    def maybe_pyodide_typer(func):
+        return func
+
+@maybe_pyodide_typer
 @no_type_check
 @app.command()
 @dataclass_typer
 def main(args: Arguments) -> None:
     ""
     try:
-        asyncio.run(do_main(args))
+        asyncio.create_task(do_main(args))
     except SPyError as e:
         print(e.format(use_colors=True))
         if args.pdb:
@@ -143,6 +162,8 @@ def main(args: Arguments) -> None:
         traceback.print_exc()
         info = sys.exc_info()
         stdlib_pdb.post_mortem(info[2])
+    except BaseExcept:
+        traceback.print_exc()
 
 
 async def do_main(args: Arguments) -> None:
