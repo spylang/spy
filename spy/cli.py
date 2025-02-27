@@ -27,6 +27,11 @@ import functools
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
+def pyproject_entry_point():
+    if sys.platform == 'emscripten':
+        print("The 'spy' command does not work in a pyodide venv running under node. Please use python -m spy")
+        sys.exit(1)
+    return app()
 
 @dataclass
 class Arguments:
@@ -112,9 +117,6 @@ class Arguments:
             raise typer.BadParameter(msg)
 
 
-
-
-
 def do_pyparse(filename: str) -> None:
     import ast as py_ast
     with open(filename) as f:
@@ -128,24 +130,9 @@ def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
     print(b.dump_mod(modname))
 
 
-if IS_PYODIDE:
-    def maybe_pyodide_typer(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except SystemExit as e:
-                if e.code != 0:
-                    raise
-        return wrapper
-else:
-    def maybe_pyodide_typer(func):
-        return func
-
-@maybe_pyodide_typer
-@no_type_check
 @app.command()
 @dataclass_typer
+@no_type_check
 def main(args: Arguments) -> None:
     ""
     try:
@@ -162,7 +149,7 @@ def main(args: Arguments) -> None:
         traceback.print_exc()
         info = sys.exc_info()
         stdlib_pdb.post_mortem(info[2])
-    except BaseExcept:
+    except BaseException:
         traceback.print_exc()
 
 
