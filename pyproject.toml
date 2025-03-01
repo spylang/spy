@@ -37,9 +37,16 @@ include = ["spy*"]
 [tool.pytest.ini_options]
 addopts = "--dist-dir=node_modules/pyodide"
 markers = [
-    "interp: mark tests executed with the 'interp' backend",
-    "doppler: mark tests executed with the 'doppler' backend",
-    "C: mark tests executed with the 'C' backend",
-    "emscripten: mark tests executed via emscripten",
+    # compiler_backend
+    "interp: use the 'interp' compiler backend",
+    "doppler: use the 'doppler' compiler backend",
+    "C: use the 'C' compiler backend",
+    "emscripten: use the 'C' backend and run via emscripten",
+
+    # llwasm_backend
+    "wasmtime: use the 'wasmtime' llwasm backend",
+    "pyodide: use the 'emscripten' llwasm backend and run the test on pyodide",
+
+    # others
     "mypy: check mypy",
 ]

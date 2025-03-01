@@ -6,24 +6,62 @@ from pytest_pyodide import run_in_pyodide
 PYODIDE = ROOT.join('..', 'node_modules', 'pyodide')
 HAS_PYODIDE = PYODIDE.check(exists=True)
 
-@pytest.mark.skipif(not HAS_PYODIDE, reason="pyodide not fuound, run npm i")
+
+@pytest.mark.usefixtures('init_llwasm')
 class TestLLWasm(CTest):
 
-    def test_call(self, selenium):
+    @pytest.fixture(params=[
+        # "normal" execution, under CPython
+        pytest.param('wasmtime', marks=pytest.mark.wasmtime),
+
+        # run tests inside pyodide, using the 'emscripten' llwasm backend
+        pytest.param('pyodide', marks=[
+            pytest.mark.pyodide,
+            pytest.mark.skipif(
+                not HAS_PYODIDE,
+                reason="pyodide not found, run npm i")
+        ]),
+    ])
+    def llwasm_backend(self, request):
+        return request.param
+
+    @pytest.fixture
+    def init_llwasm(self, request, llwasm_backend, runtime):
+        # XXX: the "runtime" fixture is a temporary hack which hopefully we'll
+        # be able to remove soon.
+        #
+        # It is provided by pytest_pyodide and its valude is "node". Ideally,
+        # we would like to request it ONLY when llwasm_backend=='pyodide', but
+        # we couldn't find a way to do that.
+        #
+        # If we don't require "runtime" in the function signature, the
+        # "getfixturevalue('selenium')" below fails with the following
+        # message:
+        # The requested fixture has no parameter defined for test:
+        #     spy/tests/test_llwasm.py::TestLLWasm::test_call[pyodide]
+        self.llwasm_backend = llwasm_backend
+        if self.llwasm_backend == 'pyodide':
+            self.selenium = request.getfixturevalue('selenium')
+            self.run_in_pyodide_maybe = run_in_pyodide
+        else:
+            self.selenium = None
+            self.run_in_pyodide_maybe = lambda fn: fn
+
+    def test_call(self):
         src = r"""
         int add(int x, int y) {
             return x+y;
         }
         """
         test_wasm = self.compile(src, exports=['add'])
-        @run_in_pyodide
+        @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
             assert ll.call('add', 4, 8) == 12
 
-        fn(selenium, test_wasm)
+        fn(self.selenium, test_wasm)
 
     @pytest.mark.skip(reason='fixme')
     def test_all_exports(self, selenium):
