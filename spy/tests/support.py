@@ -322,7 +322,7 @@ class CTest:
         # XXX: we should make this more similar to compile_wasm
         test_c = self.write(src)
         ext = self.toolchain.EXE_FILENAME_EXT
-        test_exe = self.builddir.join(f'test.{ext}')
+        test_exe = self.builddir.join('test' + ext)
         self.toolchain.c2exe(
             test_c,
             test_exe,
