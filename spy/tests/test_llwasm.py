@@ -65,8 +65,10 @@ class TestLLWasm(CTest):
 
         fn(self.selenium, test_wasm)
 
-    @pytest.mark.skip(reason='fixme')
-    def test_all_exports(self, selenium):
+    def test_all_exports(self):
+        if self.llwasm_backend == 'pyodide':
+            pytest.skip('fixme')
+
         src = r"""
         int add(int x, int y) {
             return x+y;
@@ -74,9 +76,9 @@ class TestLLWasm(CTest):
         int x;
         int y;
         """
-        test_wasm = self.compile(src, exports=['add', 'x', 'y'])
+        test_wasm = self.compile_wasm(src, exports=['add', 'x', 'y'])
 
-        @run_in_pyodide
+        @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
@@ -85,17 +87,18 @@ class TestLLWasm(CTest):
             exports.sort()
             assert exports == ['_initialize', 'add', 'memory', 'x', 'y']
 
-        fn(selenium, test_wasm)
+        fn(self.selenium, test_wasm)
 
-    def test_read_global(self, selenium):
+    def test_read_global(self):
         src = r"""
         #include <stdint.h>
         int32_t x = 100;
         int16_t y = 200;
         int16_t z = 300;
         """
-        test_wasm = self.compile(src, exports=['x', 'y', 'z'])
-        @run_in_pyodide
+        test_wasm = self.compile_wasm(src, exports=['x', 'y', 'z'])
+
+        @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
@@ -104,7 +107,7 @@ class TestLLWasm(CTest):
             assert ll.read_global('y', 'int16_t') == 200
             assert ll.read_global('z', 'int16_t') == 300
 
-        fn(selenium, test_wasm)
+        fn(self.selenium, test_wasm)
 
     def test_read_mem(self, selenium):
         src = r"""

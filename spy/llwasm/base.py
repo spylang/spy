@@ -32,6 +32,15 @@ class LLWasmInstanceBase:
     def call(self, name: str, *args: Any) -> Any:
         raise NotImplementedError
 
+    def get_addr_of_global(self, name: str) -> int:
+        """
+        Return the address associated to the given global.
+
+        See the docstring of read_global for details of what this address
+        means
+        """
+        raise NotImplementedError
+
     def read_global(self, name: str, deref: LLWasmType = None) -> Any:
         r"""
         Read the given global.
@@ -63,7 +72,7 @@ class LLWasmInstanceBase:
             read_global('a', deref='i16') == 0xAAAA
             read_global('b', deref='i16') == 0xBBBB # first item of the array
         """
-        addr = self.get_export(name)
+        addr = self.get_addr_of_global(name)
         if deref is None:
             return addr
         elif deref == 'int32_t' or deref == 'void *':

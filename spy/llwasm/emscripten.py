@@ -88,6 +88,11 @@ class LLWasmInstance(LLWasmInstanceBase):
     def get_export(self, name: str) -> Any:
         return getattr(self.instance, "_" + name)
 
+    def get_addr_of_global(self, name: str) -> int:
+        addr = self.get_export(name)
+        assert isinstance(addr, int)
+        return addr
+
     def call(self, name: str, *args: Any) -> Any:
         func = self.get_export(name)
         return func(*args)

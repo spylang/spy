@@ -143,6 +143,13 @@ class LLWasmInstance(LLWasmInstanceBase):
         exports = self.instance.exports(self.store)
         return list(exports._extern_map)
 
+    def get_addr_of_global(self, name: str) -> int:
+        g = self.get_export(name)
+        assert isinstance(g, wt.Global)
+        addr = g.value(self.store)
+        assert isinstance(addr, int)
+        return addr
+
     def call(self, name: str, *args: Any) -> Any:
         func = self.get_export(name)
         assert isinstance(func, wt.Func)
