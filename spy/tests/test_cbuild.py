@@ -14,7 +14,7 @@ class TestToolchain(CTest):
             return x+y;
         }
         """
-        test_wasm = self.compile(src, exports=['add'])
+        test_wasm = self.compile_wasm(src, exports=['add'])
         ll = LLWasmInstance.from_file(test_wasm)
         assert ll.call('add', 4, 8) == 12
 
