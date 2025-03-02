@@ -35,6 +35,7 @@ class Compiler:
         self.dump_c = dump_c
         self.w_mod = vm.modules_w[modname]
         basename = modname
+        self.builddir = builddir
         self.file_c = builddir.join(f'{basename}.c')
         self.file_wasm = builddir.join(f'{basename}.wasm')
 
@@ -78,10 +79,11 @@ class Compiler:
                 if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
                     isinstance(w_obj, W_I32))
             ]
-            file_wasm = toolchain.c2wasm(file_c, self.file_wasm,
+            file_wasm = toolchain.c2wasm(file_c, self.builddir,
                                          exports=exports,
                                          opt_level=opt_level,
                                          debug_symbols=debug_symbols)
+            assert file_wasm == self.file_wasm
             if DUMP_WASM:
                 print()
                 print(f'---- {self.file_wasm} ----')
