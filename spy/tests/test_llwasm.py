@@ -184,7 +184,7 @@ class TestLLWasm(CTest):
 
         fn(self.selenium, test_wasm)
 
-    def test_HostModule(self, selenium):
+    def test_HostModule(self):
         src = r"""
         #include <stdint.h>
         #include "spy.h"
@@ -199,8 +199,9 @@ class TestLLWasm(CTest):
             return square(add(10, 20));
         }
         """
-        test_wasm = self.compile(src, exports=['compute'])
-        @run_in_pyodide
+        test_wasm = self.compile_wasm(src, exports=['compute'])
+
+        @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance, LLWasmModule, HostModule
             llmod = LLWasmModule(str(test_wasm))
@@ -227,4 +228,4 @@ class TestLLWasm(CTest):
             assert ll.call('compute') == 900
             assert recorder.log == [100, 200]
 
-        fn(selenium, test_wasm)
+        fn(self.selenium, test_wasm)
