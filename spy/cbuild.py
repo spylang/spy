@@ -91,7 +91,7 @@ class Toolchain:
         cmdline += self.LDFLAGS + EXTRA_LDFLAGS
         if FORCE_COLORS:
             cmdline = ['unbuffer'] + cmdline
-        print(" ".join(cmdline))
+        #print(" ".join(cmdline))
         proc = subprocess.run(cmdline,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
