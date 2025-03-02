@@ -158,15 +158,16 @@ class TestLLWasm(CTest):
         fn(self.selenium, test_wasm)
 
 
-    def test_multiple_instances(self, selenium):
+    def test_multiple_instances(self):
         src = r"""
         int x = 100;
         int inc(void) {
             return ++x;
         }
         """
-        test_wasm = self.compile(src, exports=['inc'])
-        @run_in_pyodide
+        test_wasm = self.compile_wasm(src, exports=['inc'])
+
+        @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance, LLWasmModule
 
@@ -181,7 +182,7 @@ class TestLLWasm(CTest):
             assert ll2.call('inc') == 102
             assert ll2.call('inc') == 103
 
-        fn(selenium, test_wasm)
+        fn(self.selenium, test_wasm)
 
     def test_HostModule(self, selenium):
         src = r"""
