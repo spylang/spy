@@ -228,18 +228,24 @@ class EmscriptenToolchain(Toolchain):
     def LDFLAGS(self) -> list[str]:
         return super().LDFLAGS + [
             "-sWASM_BIGINT",
-            "-sERROR_ON_UNDEFINED_SYMBOLS=0"
+            "-sERROR_ON_UNDEFINED_SYMBOLS=0",
+
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               opt_level: int,
               debug_symbols: bool,
               ) -> py.path.local:
-
+        post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
+        EXTRA_LDFLAGS = [
+            "-sEXPORTED_FUNCTIONS=['_main']",
+            f"--extern-post-js={post_js}",
+        ]
         return self.cc(
             file_c,
             file_exe,
             opt_level=opt_level,
             debug_symbols=debug_symbols,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
+            EXTRA_LDFLAGS=EXTRA_LDFLAGS,
         )
