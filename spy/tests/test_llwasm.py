@@ -109,14 +109,15 @@ class TestLLWasm(CTest):
 
         fn(self.selenium, test_wasm)
 
-    def test_read_mem(self, selenium):
+    def test_read_mem(self):
         src = r"""
         #include <stdint.h>
         const char *hello = "hello";
         int32_t foo[] = {100, 200};
         """
-        test_wasm = self.compile(src, exports=['hello', 'foo'])
-        @run_in_pyodide
+        test_wasm = self.compile_wasm(src, exports=['hello', 'foo'])
+
+        @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
@@ -128,9 +129,9 @@ class TestLLWasm(CTest):
             assert ll.mem.read_i32(ptr) == 100
             assert ll.mem.read_i32(ptr+4) == 200
 
-        fn(selenium, test_wasm)
+        fn(self.selenium, test_wasm)
 
-    def test_write_mem(self, selenium):
+    def test_write_mem(self):
         src = r"""
         #include <stdint.h>
         int8_t foo[] = {10, 20, 30};
@@ -138,8 +139,9 @@ class TestLLWasm(CTest):
             return foo[0] + foo[1] + foo[2];
         }
         """
-        test_wasm = self.compile(src, exports=['foo', 'foo_total'])
-        @run_in_pyodide
+        test_wasm = self.compile_wasm(src, exports=['foo', 'foo_total'])
+
+        @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
@@ -153,7 +155,7 @@ class TestLLWasm(CTest):
             ll.mem.write_i8(ptr, 100)
             assert ll.call('foo_total') == 210
 
-        fn(selenium, test_wasm)
+        fn(self.selenium, test_wasm)
 
 
     def test_multiple_instances(self, selenium):
