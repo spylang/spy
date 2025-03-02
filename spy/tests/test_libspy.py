@@ -32,7 +32,7 @@ class TestLibSPy(CTest):
             return buf;
         }
         """
-        test_wasm = self.compile(src)
+        test_wasm = self.compile_wasm(src)
         ll = LLSPyInstance.from_file(test_wasm)
         p1 = ll.call('make_str', ord('A'), ord('B'), ord('C'))
         p2 = ll.call('make_str', ord('X'), ord('Y'), ord('Z'))
@@ -54,7 +54,7 @@ class TestLibSPy(CTest):
             return s;
         }
         """
-        test_wasm = self.compile(src, exports=['H', 'mk_W'])
+        test_wasm = self.compile_wasm(src, exports=['H', 'mk_W'])
         ll = LLSPyInstance.from_file(test_wasm)
         ptr_H = ll.read_global('H')
         assert ll.mem.read(ptr_H, 10) == mk_spy_Str(b'hello ')
@@ -74,7 +74,7 @@ class TestLibSPy(CTest):
             spy_debug_log("world");
         }
         """
-        test_wasm = self.compile(src, exports=['log_hello'])
+        test_wasm = self.compile_wasm(src, exports=['log_hello'])
         llmod = LLWasmModule(test_wasm)
         ll = LLSPyInstance(llmod)
         ll.call('log_hello')
@@ -88,7 +88,7 @@ class TestLibSPy(CTest):
             spy_panic("don't panic!");
         }
         """
-        test_wasm = self.compile(src, exports=['crash'])
+        test_wasm = self.compile_wasm(src, exports=['crash'])
         ll = LLSPyInstance.from_file(test_wasm)
         with pytest.raises(SPyPanicError, match="don't panic!"):
             ll.call('crash')
