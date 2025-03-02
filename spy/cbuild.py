@@ -24,6 +24,7 @@ class Toolchain:
 
     TARGET = '' # 'wasi', 'native', 'emscripten'
     EXE_FILENAME_EXT = ''
+    WASM_FILENAME_EXT = '.wasm'
 
     def __init__(self, build_type: BUILD_TYPE) -> None:
         self.build_type = build_type
@@ -83,7 +84,6 @@ class Toolchain:
             cmdline += ['-DSPY_DEBUG']
         else:
             assert False
-        file_out = file_out.new(ext='.mjs')
         cmdline += [
             '-o', str(file_out),
             str(file_c)
@@ -108,7 +108,7 @@ class Toolchain:
         return file_out
 
 
-    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
+    def c2wasm(self, file_c: py.path.local, builddir: py.path.local, *,
                exports: Optional[list[str]] = None,
                opt_level: int,
                debug_symbols: bool,
@@ -116,6 +116,8 @@ class Toolchain:
         """
         Compile the C code to WASM.
         """
+        assert builddir.isdir()
+        file_wasm = builddir.join(file_c.purebasename + self.WASM_FILENAME_EXT)
         EXTRA_LDFLAGS = []
         if exports:
             for name in exports:
@@ -209,7 +211,8 @@ class NativeToolchain(Toolchain):
 class EmscriptenToolchain(Toolchain):
 
     TARGET = 'emscripten'
-    EXE_FILENAME_EXT = 'mjs'
+    EXE_FILENAME_EXT = '.mjs'
+    WASM_FILENAME_EXT = '.mjs'
 
     def __init__(self, build_type: BUILD_TYPE) -> None:
         super().__init__(build_type)

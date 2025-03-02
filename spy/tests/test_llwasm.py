@@ -1,11 +1,11 @@
 import pytest
 from spy import ROOT
 from spy.tests.support import CTest
+from spy.cbuild import EmscriptenToolchain
 from pytest_pyodide import run_in_pyodide
 
 PYODIDE = ROOT.join('..', 'node_modules', 'pyodide')
 HAS_PYODIDE = PYODIDE.check(exists=True)
-
 
 @pytest.mark.usefixtures('init_llwasm')
 class TestLLWasm(CTest):
@@ -43,6 +43,7 @@ class TestLLWasm(CTest):
         if self.llwasm_backend == 'pyodide':
             self.selenium = request.getfixturevalue('selenium')
             self.run_in_pyodide_maybe = run_in_pyodide
+            self.toolchain = EmscriptenToolchain('debug')
         else:
             self.selenium = None
             self.run_in_pyodide_maybe = lambda fn: fn
@@ -53,7 +54,8 @@ class TestLLWasm(CTest):
             return x+y;
         }
         """
-        test_wasm = self.compile(src, exports=['add'])
+        test_wasm = self.compile_wasm(src, exports=['add'])
+
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
