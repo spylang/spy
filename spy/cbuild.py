@@ -238,7 +238,6 @@ class EmscriptenToolchain(Toolchain):
               ) -> py.path.local:
         post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
         EXTRA_LDFLAGS = [
-            "-sEXPORTED_FUNCTIONS=['_main']",
             f"--extern-post-js={post_js}",
         ]
         return self.cc(
