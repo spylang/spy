@@ -18,6 +18,8 @@ class LLWasmModuleBase:
     pass
 
 class LLWasmInstanceBase:
+    mem: 'LLWasmMemoryBase'
+
     def get_export(self, name: str) -> Any:
         raise NotImplementedError
 
@@ -84,6 +86,15 @@ class LLWasmInstanceBase:
 
 
 class LLWasmMemoryBase:
+    def read(self, addr: int, n: int) -> bytearray:
+        """
+        Read n bytes of memory at the given address.
+        """
+        raise NotImplementedError
+
+    def write(self, addr: int, b: bytes) -> None:
+        raise NotImplementedError
+
     def read_i32(self, addr: int) -> int:
         rawbytes = self.read(addr, 4)
         return struct.unpack('i', rawbytes)[0]

@@ -11,7 +11,13 @@ It is called 'LL' for two reasons:
     been very confusing :)
 """
 from spy.platform import IS_PYODIDE
-from .base import HostModule, LLWasmType
+from .base import (HostModule, LLWasmType, LLWasmModuleBase, LLWasmInstanceBase,
+                   LLWasmMemoryBase)
+
+LLWasmModule: type[LLWasmModuleBase]
+LLWasmInstance: type[LLWasmInstanceBase]
+LLWasmMemory: type[LLWasmMemoryBase]
+WasmTrap: type[Exception]
 
 if IS_PYODIDE:
     from .emscripten import LLWasmModule, LLWasmInstance, LLWasmMemory, WasmTrap

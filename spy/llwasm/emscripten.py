@@ -69,18 +69,25 @@ class LLWasmInstance(LLWasmInstanceBase):
             hostmod.ll = self
 
     @classmethod
-    async def async_new(cls, llmod: LLWasmModule, hostmods: list[HostModule]=[]) -> None:
+    async def async_new(
+            cls,
+            llmod: LLWasmModule,
+            hostmods: list[HostModule] = []
+    ) -> Self:
         instance = await cls.link_and_instantiate(llmod, hostmods)
         return cls(llmod, hostmods, instance=instance)
 
     @staticmethod
-    def link_and_instantiate(llmod: LLWasmModule, hostmods: list[HostModule]) -> Future[Any]:
+    def link_and_instantiate(
+            llmod: LLWasmModule,
+            hostmods: list[HostModule]
+    ) -> Future[Any]:
         """
         Return a PROMISE of the emscripten instance of the given module,
         linking all needed imports
         """
-        def adjust_imports(imports):
-            from js import Object
+        def adjust_imports(imports: Any) -> None:
+            from js import Object  # type: ignore
             env = imports.env
             for [name, val] in Object.entries(env):
                 if not getattr(val, "stub", False):
@@ -89,7 +96,6 @@ class LLWasmInstance(LLWasmInstanceBase):
                     if x := getattr(hostmod, "env_" + name, None):
                         setattr(env, name, x)
                         break
-
         return llmod.instance_factory(adjustWasmImports=adjust_imports)
 
     @classmethod
@@ -112,7 +118,8 @@ class LLWasmInstance(LLWasmInstanceBase):
 
 
 class LLWasmMemory(LLWasmMemoryBase):
-    def __init__(self, jsmem):
+
+    def __init__(self, jsmem: Any) -> None:
         self.jsmem = jsmem
 
     def read(self, addr: int, n: int) -> bytearray:
