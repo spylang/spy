@@ -15,13 +15,13 @@ if IS_NODE:
     LIBSPY_WASM = BUILD.join('emscripten', 'debug', 'libspy.mjs')
     LLMOD = None
 elif IS_BROWSER:
-    LIBSPY_WASM = None  # needs to be set by the embedder
+    LIBSPY_WASM = None # type: ignore    # needs to be set by the embedder
     LLMOD = None
 else:
     assert not IS_PYODIDE
     # "normal" python, we can preload LLMOD
     LIBSPY_WASM = BUILD.join('wasi', 'debug', 'libspy.wasm')
-    LLMOD = LLWasmModule(LIBSPY_WASM)
+    LLMOD = LLWasmModule(LIBSPY_WASM)  # type: ignore
 
 # XXX ^^^^
 # is it correct to always use debug/libspy.wasm? For tests it's surely fine
@@ -29,7 +29,7 @@ else:
 # what to do when we do e.g. spy -c --release fine sine
 
 
-async def async_get_LLMOD():
+async def async_get_LLMOD() -> LLWasmModule:
     global LLMOD
     if LLMOD is None:
         LLMOD = await LLWasmModule.async_new(str(LIBSPY_WASM))
