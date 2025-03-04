@@ -3,12 +3,12 @@ A pythonic way to instantiate Emscripten binaries.
 """
 
 import sys
-from typing import Any, Optional, Literal
+from typing import Any, Optional, Literal, Callable
 from typing_extensions import Self
 from asyncio import Future
 import py.path
 from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmType
-from pyodide.ffi import run_sync
+from pyodide.ffi import run_sync, JsProxy
 from pyodide.code import run_js
 
 class WasmTrap(Exception):
@@ -27,31 +27,40 @@ loadModule = run_js("""
 
 class LLWasmModule(LLWasmModuleBase):
 
-    def __init__(self, url: str, *, make_instance=None) -> None:
+    def __init__(
+            self,
+            url: str,
+            *,
+            instance_factory: Optional[Callable] = None
+    ) -> None:
         assert isinstance(url, str)
         self.url = url
-        if make_instance is None:
-            # JS function that when called makes an instance of the emscripten
-            # module
-            #self.make_instance = run_sync(loadModule(str(f.new(ext=".mjs"))))
-            self.make_instance = run_sync(loadModule(url))
+        if instance_factory is None:
+            # instance_factory the JS function which instantiates the
+            # emscripten module
+            self.instance_factory = run_sync(loadModule(url))
         else:
-            self.make_instance = make_instance
+            self.instance_factory = instance_factory
 
     @classmethod
-    async def async_new(cls, url: str):
+    async def async_new(cls, url: str) -> Self:
         assert isinstance(url, str)
-        make_instance = await loadModule(url)
-        return cls(url, make_instance=make_instance)
+        instance_factory = await loadModule(url)
+        return cls(url, instance_factory=instance_factory)
 
 
 class LLWasmInstance(LLWasmInstanceBase):
-    def __init__(self, llmod: LLWasmModule,
-                 hostmods: list[HostModule]=[], *, instance=None) -> None:
+    def __init__(
+            self,
+            llmod: LLWasmModule,
+            hostmods: list[HostModule] = [],
+            *,
+            instance: Optional[JsProxy] = None
+    ) -> None:
         self.llmod = llmod
 
         if instance is None:
-            self.instance = run_sync(self._make_instance_promise(llmod, hostmods))
+            self.instance = run_sync(self.link_and_instantiate(llmod, hostmods))
         else:
             self.instance = instance
 
@@ -61,11 +70,15 @@ class LLWasmInstance(LLWasmInstanceBase):
 
     @classmethod
     async def async_new(cls, llmod: LLWasmModule, hostmods: list[HostModule]=[]) -> None:
-        instance = await cls._make_instance_promise(llmod, hostmods)
+        instance = await cls.link_and_instantiate(llmod, hostmods)
         return cls(llmod, hostmods, instance=instance)
 
     @staticmethod
-    def _make_instance_promise(llmod: LLWasmModule, hostmods: list[HostModule]) -> Future[Any]:
+    def link_and_instantiate(llmod: LLWasmModule, hostmods: list[HostModule]) -> Future[Any]:
+        """
+        Return a PROMISE of the emscripten instance of the given module,
+        linking all needed imports
+        """
         def adjust_imports(imports):
             from js import Object
             env = imports.env
@@ -77,7 +90,7 @@ class LLWasmInstance(LLWasmInstanceBase):
                         setattr(env, name, x)
                         break
 
-        return llmod.make_instance(adjustWasmImports=adjust_imports)
+        return llmod.instance_factory(adjustWasmImports=adjust_imports)
 
     @classmethod
     def from_file(cls, f: py.path.local,

@@ -100,8 +100,13 @@ class LLWasmInstance(LLWasmInstanceBase):
     instance: wt.Instance
     mem: 'LLWasmMemory'
 
-    def __init__(self, llmod: LLWasmModule,
-                 hostmods: list[HostModule]=[], *, instance=None) -> None:
+    def __init__(
+            self,
+            llmod: LLWasmModule,
+            hostmods: list[HostModule] = [],
+            *,
+            instance: Optional[wt.Instance] = None
+    ) -> None:
         self.llmod = llmod
         self.store = wt.Store(ENGINE)
         linker = get_linker(
@@ -120,16 +125,18 @@ class LLWasmInstance(LLWasmInstanceBase):
         for hostmod in hostmods:
             hostmod.ll = self
 
-
     @classmethod
-    async def async_new(cls, llmod: LLWasmModule,
-                        hostmods: list[HostModule]=[]) -> None:
+    async def async_new(
+            cls,
+            llmod: LLWasmModule,
+            hostmods: list[HostModule] = []
+    ) -> Self:
         return cls(llmod, hostmods)
 
     @classmethod
     def from_file(cls, f: py.path.local,
                   hostmods: list[HostModule]=[]) -> Self:
-        llmod = LLWasmModule(f)
+        llmod = LLWasmModule(str(f))
         return cls(llmod, hostmods)
 
     def get_export(self, name: str) -> Any:

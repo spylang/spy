@@ -32,7 +32,7 @@ else:
 async def async_get_LLMOD():
     global LLMOD
     if LLMOD is None:
-        LLMOD = await LLWasmModule.async_new(LIBSPY_WASM)
+        LLMOD = await LLWasmModule.async_new(str(LIBSPY_WASM))
     return LLMOD
 
 
