@@ -81,8 +81,13 @@ class LLSPyInstance(LLWasmInstance):
     LibSPyHost()
     """
 
-    def __init__(self, llmod: LLWasmModule,
-                 hostmods: list[HostModule]=[], *, instance=None) -> None:
+    def __init__(
+            self,
+            llmod: LLWasmModule,
+            hostmods: list[HostModule] = [],
+            *,
+            instance: Any = None
+    ) -> None:
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods
         super().__init__(llmod, hostmods, instance=instance)

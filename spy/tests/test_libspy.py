@@ -75,7 +75,7 @@ class TestLibSPy(CTest):
         }
         """
         test_wasm = self.compile_wasm(src, exports=['log_hello'])
-        llmod = LLWasmModule(test_wasm)
+        llmod = LLWasmModule(str(test_wasm))
         ll = LLSPyInstance(llmod)
         ll.call('log_hello')
         assert ll.libspy.log == ['hello', 'world']

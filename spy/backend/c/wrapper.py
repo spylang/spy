@@ -32,7 +32,7 @@ class WasmModuleWrapper:
         self.ll = LLSPyInstance.from_file(f)
 
     def __repr__(self) -> str:
-        return f"<WasmModuleWrapper '{self.ll.llmod.f}'>"
+        return f"<WasmModuleWrapper '{self.ll.llmod}'>"
 
     def __getattr__(self, attr: str) -> Any:
         fqn = FQN([self.modname, attr])

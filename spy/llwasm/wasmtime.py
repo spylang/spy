@@ -24,6 +24,10 @@ class LLWasmModule(LLWasmModuleBase):
     def __repr__(self) -> str:
         return f'<LLWasmModule {self.filename}>'
 
+    @classmethod
+    async def async_new(cls, url: str) -> Self:
+        raise NotImplementedError("this is needed only for emscripten")
+
 
 def get_linker(
         store: wt.Store,

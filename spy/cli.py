@@ -26,7 +26,7 @@ import functools
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
-def pyproject_entry_point():
+def pyproject_entry_point() -> Any:
     if sys.platform == 'emscripten':
         print("The 'spy' command does not work in a pyodide venv running under node. Please use python -m spy")
         sys.exit(1)
@@ -122,7 +122,7 @@ class Arguments:
             "-t", "--toolchain",
             help="which compiler to use"
         )
-    ] = "zig"
+    ] = ToolchainType.zig
 
     pretty: Annotated[
         bool,
@@ -211,7 +211,7 @@ def main(args: Arguments) -> None:
 
 async def do_main(args: Arguments) -> None:
     try:
-        res = await _do_main(args)
+        await _do_main(args)
     except BaseException:
         traceback.print_exc()
 

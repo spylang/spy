@@ -42,6 +42,9 @@ class LLWasmModule(LLWasmModuleBase):
         else:
             self.instance_factory = instance_factory
 
+    def __repr__(self) -> str:
+        return f'<LLWasmModule {self.url}>'
+
     @classmethod
     async def async_new(cls, url: str) -> Self:
         assert isinstance(url, str)

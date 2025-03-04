@@ -2,7 +2,7 @@ import pytest
 from spy import ROOT
 from spy.tests.support import CTest
 from spy.cbuild import EmscriptenToolchain
-from pytest_pyodide import run_in_pyodide
+from pytest_pyodide import run_in_pyodide  # type: ignore
 
 PYODIDE = ROOT.join('..', 'node_modules', 'pyodide')
 HAS_PYODIDE = PYODIDE.check(exists=True)
@@ -39,7 +39,7 @@ class TestLLWasm(CTest):
         # message:
         # The requested fixture has no parameter defined for test:
         #     spy/tests/test_llwasm.py::TestLLWasm::test_call[pyodide]
-        self.llwasm_backend = llwasm_backend
+        self.llwasm_backend = llwasm_backend  # type: ignore
         if self.llwasm_backend == 'pyodide':
             self.selenium = request.getfixturevalue('selenium')
             self.run_in_pyodide_maybe = run_in_pyodide

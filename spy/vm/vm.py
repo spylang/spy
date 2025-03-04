@@ -7,6 +7,7 @@ import fixedint
 from spy.fqn import FQN
 from spy.location import Loc
 from spy import libspy
+from spy.libspy import LLSPyInstance
 from spy.doppler import redshift
 from spy.errors import SPyTypeError
 from spy.vm.object import W_Object, W_Type
@@ -43,16 +44,17 @@ class SPyVM:
     Each instance of the VM contains an instance of libspy.wasm: all the
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
-    ll: libspy.LLSPyInstance
+    ll: LLSPyInstance
     globals_w: dict[FQN, W_Object]
     modules_w: dict[str, W_Module]
     path: list[str]
     bluecache: BlueCache
 
-    def __init__(self, ll=None) -> None:
+    def __init__(self, ll: Optional[LLSPyInstance]=None) -> None:
         if ll is None:
             #assert not IS_PYODIDE
-            self.ll = libspy.LLSPyInstance(libspy.LLMOD)
+            assert libspy.LLMOD is not None
+            self.ll = LLSPyInstance(libspy.LLMOD)
         else:
             self.ll = ll
 
@@ -69,9 +71,9 @@ class SPyVM:
 
 
     @classmethod
-    async def async_new(cls):
+    async def async_new(cls) -> 'SPyVM':
         llmod = await libspy.async_get_LLMOD()
-        ll = await libspy.LLSPyInstance.async_new(llmod)
+        ll = await LLSPyInstance.async_new(llmod)
         return SPyVM(ll=ll)
 
     def import_(self, modname: str) -> W_Module:
