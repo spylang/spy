@@ -52,7 +52,6 @@ class SPyVM:
 
     def __init__(self, ll: Optional[LLSPyInstance]=None) -> None:
         if ll is None:
-            #assert not IS_PYODIDE
             assert libspy.LLMOD is not None
             self.ll = LLSPyInstance(libspy.LLMOD)
         else:
