@@ -182,17 +182,29 @@ def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
-
 @app.command()
 @dataclass_typer
-@no_type_check
 def main(args: Arguments) -> None:
-    ""
+    if sys.platform == 'emscripten':
+        asyncio.create_task(pyodide_main(args))
+    else:
+        asyncio.run(real_main(args))
+
+
+async def pyodide_main(args: Arguments) -> None:
+    """
+    For some reasons, it seems that pyodide doesn't print exceptions
+    uncaught exceptions which escapes an asyncio task. This is a small wrapper
+    to ensure that we display a proper traceback in that case
+    """
     try:
-        if sys.platform == 'emscripten':
-            asyncio.create_task(do_main(args))
-        else:
-            asyncio.run(do_main(args))
+        await real_main(args)
+    except BaseException:
+       traceback.print_exc()
+
+async def real_main(args: Arguments) -> None:
+    try:
+        return await inner_main(args)
     except SPyError as e:
         print(e.format(use_colors=True))
         if args.pdb:
@@ -201,22 +213,12 @@ def main(args: Arguments) -> None:
     except Exception as e:
         if not args.pdb:
             raise
-
         traceback.print_exc()
         info = sys.exc_info()
         stdlib_pdb.post_mortem(info[2])
-    except BaseException:
-        traceback.print_exc()
 
 
-async def do_main(args: Arguments) -> None:
-    try:
-        await _do_main(args)
-    except BaseException:
-        traceback.print_exc()
-
-
-async def _do_main(args: Arguments) -> None:
+async def inner_main(args: Arguments) -> None:
     if args.pyparse:
         do_pyparse(str(args.filename))
         return
