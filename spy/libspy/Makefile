@@ -90,7 +90,7 @@ else ifeq ($(TARGET), emscripten)
         $(warning Skipping emscripten target - emcc compiler not found in PATH)
         .DEFAULT_GOAL := skip_emscripten
 	else
-	    .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
+        .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
     endif
 
 # ---------- native target ----------
