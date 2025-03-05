@@ -21,6 +21,7 @@ from spy.irgen.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.util import highlight_C_maybe
 import traceback
 import functools
 
@@ -75,6 +76,14 @@ class Arguments:
         Option(
             "-C", "--cwrite",
             help="Generate the C code"
+        )
+    ] = False
+
+    cdump: Annotated[
+        bool,
+        Option(
+            "--cdump",
+            help="Dump the generated C code to stdout"
         )
     ] = False
 
@@ -281,9 +290,8 @@ async def inner_main(args: Arguments) -> None:
         build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
         t = get_toolchain(args.toolchain, build_type=build_type)
         file_c = compiler.cwrite(t.TARGET)
-        # hack hack hack
-        from spy.util import highlight_C_maybe
-        print(highlight_C_maybe(file_c.read()))
+        if args.cdump:
+            print(highlight_C_maybe(file_c.read()))
 
     else:
         compiler.cbuild(
