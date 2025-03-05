@@ -1,11 +1,16 @@
-from typing import Any
+from typing import Any, Tuple
 import re
 import textwrap
+import subprocess
 from subprocess import getstatusoutput
 import pytest
 from typer.testing import CliRunner
+import spy
 from spy.cli import app
 
+PYODIDE_EXE = spy.ROOT.dirpath().join('pyodide-venv', 'bin', 'python')
+if not PYODIDE_EXE.exists():
+    PYODIDE_EXE = None
 
 # https://stackoverflow.com/a/14693789
 # 7-bit C1 ANSI sequences
@@ -52,6 +57,28 @@ class TestMain:
         if res.exit_code != 0:
             raise res.exception  # type: ignore
         return res, decolorize(res.stdout)
+
+    def run_external(self, python_exe, *args: Any) -> tuple[int, str, str]:
+        args2 = [str(arg) for arg in args]
+        cmd = [str(python_exe), "-E", "-m", "spy"] + args2
+        print(f'run_external: {" ".join(cmd)}')
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=str(self.tmpdir)
+        )
+        stdout, stderr = process.communicate()
+        exit_code = process.returncode
+
+        print(f"exit_code: {exit_code}")
+        print(stdout)
+        print(stderr)
+        if exit_code != 0:
+            raise Exception("run_external failed")
+        return exit_code, decolorize(stdout)
 
     def test_pyparse(self):
         res, stdout = self.run('--pyparse', self.foo_spy)
@@ -110,3 +137,13 @@ class TestMain:
         status, out = getstatusoutput(cmd)
         assert status == 0
         assert out == "hello world"
+
+    @pytest.mark.skipif(PYODIDE_EXE is None, reason='pyodide-venv not found')
+    def test_execute_pyodide(self):
+        # pyodide under node cannot access /tmp/, so we cannot try to execute
+        # files which we wrote to self.tmpdir. Instead, let's try to execute
+        # examples/hello.spy
+        hello_spy = spy.ROOT.dirpath().join('examples', 'hello.spy')
+        assert hello_spy.exists()
+        res, stdout = self.run_external(PYODIDE_EXE, hello_spy)
+        assert stdout == "Hello world!\n"
