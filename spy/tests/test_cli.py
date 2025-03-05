@@ -10,7 +10,7 @@ from spy.cli import app
 
 PYODIDE_EXE = spy.ROOT.dirpath().join('pyodide-venv', 'bin', 'python')
 if not PYODIDE_EXE.exists():
-    PYODIDE_EXE = None
+    PYODIDE_EXE = None # type: ignore
 
 # https://stackoverflow.com/a/14693789
 # 7-bit C1 ANSI sequences
@@ -58,7 +58,7 @@ class TestMain:
             raise res.exception  # type: ignore
         return res, decolorize(res.stdout)
 
-    def run_external(self, python_exe, *args: Any) -> tuple[int, str, str]:
+    def run_external(self, python_exe, *args: Any) -> Any:
         args2 = [str(arg) for arg in args]
         cmd = [str(python_exe), "-E", "-m", "spy"] + args2
         print(f'run_external: {" ".join(cmd)}')
