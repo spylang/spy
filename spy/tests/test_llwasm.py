@@ -4,7 +4,7 @@ from spy.tests.support import CTest
 from spy.cbuild import EmscriptenToolchain
 from pytest_pyodide import run_in_pyodide  # type: ignore
 
-PYODIDE = ROOT.join('..', 'node_modules', 'pyodide')
+PYODIDE = ROOT.join('..', 'pyodide', 'node_modules', 'pyodide')
 HAS_PYODIDE = PYODIDE.check(exists=True)
 
 @pytest.mark.usefixtures('init_llwasm')

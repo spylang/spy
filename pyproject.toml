@@ -35,7 +35,8 @@ include-package-data = true
 include = ["spy*"]
 
 [tool.pytest.ini_options]
-addopts = "--dist-dir=node_modules/pyodide"
+addopts = "--dist-dir=pyodide/node_modules/pyodide"
+
 markers = [
     # compiler_backend
     "interp: use the 'interp' compiler backend",

@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 import spy
 from spy.cli import app
 
-PYODIDE_EXE = spy.ROOT.dirpath().join('pyodide-venv', 'bin', 'python')
+PYODIDE_EXE = spy.ROOT.dirpath().join('pyodide', 'venv', 'bin', 'python')
 if not PYODIDE_EXE.exists():
     PYODIDE_EXE = None # type: ignore
 
@@ -138,7 +138,7 @@ class TestMain:
         assert status == 0
         assert out == "hello world"
 
-    @pytest.mark.skipif(PYODIDE_EXE is None, reason='pyodide-venv not found')
+    @pytest.mark.skipif(PYODIDE_EXE is None, reason='./pyodide/venv not found')
     def test_execute_pyodide(self):
         # pyodide under node cannot access /tmp/, so we cannot try to execute
         # files which we wrote to self.tmpdir. Instead, let's try to execute
