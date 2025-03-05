@@ -72,6 +72,10 @@ class SPyVM:
 
     @classmethod
     async def async_new(cls) -> 'SPyVM':
+        """
+        This is an alternative async ctor for SPyVM. It's needed for when
+        we want to run spy under pyodide
+        """
         llmod = await libspy.async_get_LLMOD()
         ll = await LLSPyInstance.async_new(llmod)
         return SPyVM(ll=ll)
