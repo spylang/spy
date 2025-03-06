@@ -24,6 +24,7 @@ class Toolchain:
 
     TARGET = '' # 'wasi', 'native', 'emscripten'
     EXE_FILENAME_EXT = ''
+    WASM_FILENAME_EXT = '.wasm'
 
     def __init__(self, build_type: BUILD_TYPE) -> None:
         self.build_type = build_type
@@ -83,7 +84,6 @@ class Toolchain:
             cmdline += ['-DSPY_DEBUG']
         else:
             assert False
-
         cmdline += [
             '-o', str(file_out),
             str(file_c)
@@ -91,6 +91,7 @@ class Toolchain:
         cmdline += self.LDFLAGS + EXTRA_LDFLAGS
         if FORCE_COLORS:
             cmdline = ['unbuffer'] + cmdline
+        #print(" ".join(cmdline))
         proc = subprocess.run(cmdline,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
@@ -107,7 +108,7 @@ class Toolchain:
         return file_out
 
 
-    def c2wasm(self, file_c: py.path.local, file_wasm: py.path.local, *,
+    def c2wasm(self, file_c: py.path.local, builddir: py.path.local, *,
                exports: Optional[list[str]] = None,
                opt_level: int,
                debug_symbols: bool,
@@ -115,6 +116,8 @@ class Toolchain:
         """
         Compile the C code to WASM.
         """
+        assert builddir.isdir()
+        file_wasm = builddir.join(file_c.purebasename + self.WASM_FILENAME_EXT)
         EXTRA_LDFLAGS = []
         if exports:
             for name in exports:
@@ -208,7 +211,8 @@ class NativeToolchain(Toolchain):
 class EmscriptenToolchain(Toolchain):
 
     TARGET = 'emscripten'
-    EXE_FILENAME_EXT = 'mjs'
+    EXE_FILENAME_EXT = '.mjs'
+    WASM_FILENAME_EXT = '.mjs'
 
     def __init__(self, build_type: BUILD_TYPE) -> None:
         super().__init__(build_type)
@@ -222,22 +226,25 @@ class EmscriptenToolchain(Toolchain):
 
     @property
     def LDFLAGS(self) -> list[str]:
-        post_js = spy.libspy.SRC.join('emscripten_post.js')
         return super().LDFLAGS + [
-            "-sEXPORTED_FUNCTIONS=['_main']",
             "-sWASM_BIGINT",
-            f"--extern-post-js={post_js}",
+            "-sERROR_ON_UNDEFINED_SYMBOLS=0",
+
         ]
 
     def c2exe(self, file_c: py.path.local, file_exe: py.path.local, *,
               opt_level: int,
               debug_symbols: bool,
               ) -> py.path.local:
-
+        post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
+        EXTRA_LDFLAGS = [
+            f"--extern-post-js={post_js}",
+        ]
         return self.cc(
             file_c,
             file_exe,
             opt_level=opt_level,
             debug_symbols=debug_symbols,
             EXTRA_CFLAGS=self.WASM_CFLAGS,
+            EXTRA_LDFLAGS=EXTRA_LDFLAGS,
         )

@@ -47,6 +47,7 @@ def dataclass_typer(func: Callable) -> Callable:
     wrapped.__signature__ = signature.replace(parameters=parameters)
 
     # The docstring is used for the explainer text in the CLI.
-    wrapped.__doc__ = func.__doc__ + "\n" + ""
+    if func.__doc__ is not None:
+        wrapped.__doc__ = func.__doc__ + "\n" + ""
 
     return wrapped

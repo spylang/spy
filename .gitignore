@@ -17,6 +17,8 @@ examples/jsffi/lldemo.mjs
 examples/jsffi/lldemo.wasm
 examples/jsffi/lldemo.c
 
+pyodide/.pyodide-xbuildenv-*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -177,3 +179,5 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+node_modules
+package-lock.json

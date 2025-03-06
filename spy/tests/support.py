@@ -8,7 +8,7 @@ from spy import ast
 from spy.compiler import Compiler, ToolchainType
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
-from spy.cbuild import Toolchain, ZigToolchain
+from spy.cbuild import Toolchain, ZigToolchain, EmscriptenToolchain
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -297,6 +297,7 @@ class CTest:
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
+        # NOTE: toolchain is overwritten by TestLLWasm.init_llwasm
         self.toolchain = ZigToolchain('debug')
         self.builddir = self.tmpdir.join('build').ensure(dir=True)
 
@@ -306,23 +307,22 @@ class CTest:
         test_c.write(src)
         return test_c
 
-    def compile(self, src: str, *,
-                exports: Optional[list[str]] = None) -> py.path.local:
+    def compile_wasm(self, src: str, *,
+                     exports: Optional[list[str]] = None) -> py.path.local:
         test_c = self.write(src)
-        test_wasm = self.builddir.join('test.wasm')
-        self.toolchain.c2wasm(
+        return self.toolchain.c2wasm(
             test_c,
-            test_wasm,
+            self.builddir,
             exports=exports,
             opt_level=0,
             debug_symbols=True,
         )
-        return test_wasm
 
     def compile_exe(self, src: str) -> py.path.local:
+        # XXX: we should make this more similar to compile_wasm
         test_c = self.write(src)
         ext = self.toolchain.EXE_FILENAME_EXT
-        test_exe = self.builddir.join(f'test.{ext}')
+        test_exe = self.builddir.join('test' + ext)
         self.toolchain.c2exe(
             test_c,
             test_exe,
