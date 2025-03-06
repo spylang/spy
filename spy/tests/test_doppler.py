@@ -133,9 +133,9 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return `test::make_fn::fn#0`(21)
+            return `test::make_fn::fn`(21)
 
-        def `test::make_fn::fn#0`(x: i32) -> i32:
+        def `test::make_fn::fn`(x: i32) -> i32:
             return x * 2
         """)
 
@@ -156,14 +156,14 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def main() -> void:
-            `test::make_foo::foo#0`()
+            `test::make_foo::foo`()
 
-        def `test::make_foo::fn#0`() -> void:
+        def `test::make_foo::fn`() -> void:
             print_str('fn')
 
-        def `test::make_foo::foo#0`() -> void:
-            `test::make_foo::fn#0`()
-            `test::make_foo::fn#0`()
+        def `test::make_foo::foo`() -> void:
+            `test::make_foo::fn`()
+            `test::make_foo::fn`()
         """)
 
     def test_binops(self):

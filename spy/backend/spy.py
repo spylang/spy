@@ -36,7 +36,9 @@ class SPyBackend:
         return self.out.build()
 
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
-        if fqn.suffix == '':
+        # Get the last part to check for a suffix
+        last_part = fqn.parts[-1]
+        if last_part.suffix == 0:
             # this is a global function, we can just use its name
             name = fqn.symbol_name
         else:

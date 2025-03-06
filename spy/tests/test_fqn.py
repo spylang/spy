@@ -18,7 +18,7 @@ def test_FQN_init_parts():
 def test_FQN_suffix():
     a = FQN("aaa::bbb#1")
     assert a.fullname == "aaa::bbb#1"
-    assert a.suffix == '1'
+    assert a.parts[-1].suffix == 1
 
 def test_many_FQNs():
     assert str(FQN("aaa")) == "aaa"
@@ -65,24 +65,24 @@ def test_FQN_join():
     assert e.fullname == "a::e[mod::y]"
 
 def test_FQN_str():
-    a = FQN("aaa::bbb#0")
-    assert str(a) == "aaa::bbb#0"
-    assert a.c_name == "spy_aaa$bbb$0"
+    a = FQN("aaa::bbb#1")  # Use a non-zero suffix
+    assert str(a) == "aaa::bbb#1"
+    assert a.c_name == "spy_aaa$bbb$1"
     b = FQN("aaa::bbb")
     assert str(b) == "aaa::bbb"
     assert b.c_name == "spy_aaa$bbb"
 
 def test_FQN_c_name_dotted():
-    a = FQN("a.b.c::xxx#0")
-    assert a.c_name == "spy_a_b_c$xxx$0"
+    a = FQN("a.b.c::xxx#1") # Use a non-zero suffix
+    assert a.c_name == "spy_a_b_c$xxx$1"
 
 def test_qualifiers_c_name():
-    a = FQN("a::b[x, y]::c#0")
-    assert a.c_name == "spy_a$b__x_y$c$0"
+    a = FQN("a::b[x, y]::c#2") # Use a non-zero suffix
+    assert a.c_name == "spy_a$b__x_y$c$2"
 
 def test_nested_qualifiers_c_name():
-    a = FQN("a::list[Ptr[x, y]]::c#0")
-    assert a.c_name == "spy_a$list__Ptr__x_y$c$0"
+    a = FQN("a::list[Ptr[x, y]]::c#3") # Use a non-zero suffix
+    assert a.c_name == "spy_a$list__Ptr__x_y$c$3"
 
 def test_FQN_human_name():
     assert FQN("a::b").human_name == "a::b"
