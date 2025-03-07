@@ -154,9 +154,19 @@ class FQN:
         """
         Create a new FQN with the specified qualifiers added to the last NSPart.
         """
-        # fix this to avoid mutating the existing FQN, and add a test. AI!
-        res = FQN(self.parts)
-        res.parts[-1].qualifiers.extend(get_qualifiers(qualifiers))
+        new_parts = []
+        for i, part in enumerate(self.parts):
+            if i < len(self.parts) - 1:
+                # For all parts except the last one, create a copy
+                new_part = NSPart(part.name, part.qualifiers.copy(), part.suffix)
+                new_parts.append(new_part)
+            else:
+                # For the last part, create a copy with the new qualifiers added
+                new_quals = part.qualifiers.copy() + get_qualifiers(qualifiers)
+                new_part = NSPart(part.name, new_quals, part.suffix)
+                new_parts.append(new_part)
+        
+        res = FQN(new_parts)
         return res
 
     def __repr__(self) -> str:

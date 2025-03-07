@@ -95,13 +95,19 @@ def test_FQN_with_qualifiers():
     a = FQN("mod::list")
     b = a.with_qualifiers(["i32"])
     assert b.fullname == "mod::list[i32]"
+    # Verify original FQN is not modified
+    assert a.fullname == "mod::list"
 
     # Test adding qualifiers to an FQN that already has qualifiers
     c = FQN("mod::dict[str]")
     d = c.with_qualifiers(["i32"])
     assert d.fullname == "mod::dict[str, i32]"
+    # Verify original FQN is not modified
+    assert c.fullname == "mod::dict[str]"
 
     # Test with FQN objects as qualifiers
     e = FQN("mod::map")
     f = e.with_qualifiers([FQN("mod::key"), FQN("mod::value")])
     assert f.fullname == "mod::map[mod::key, mod::value]"
+    # Verify original FQN is not modified
+    assert e.fullname == "mod::map"
