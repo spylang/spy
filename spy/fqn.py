@@ -202,7 +202,7 @@ class FQN:
 
     @property
     def symbol_name(self) -> str:
-        return self.parts[-1].name
+        return str(self.parts[-1])
 
     def join(self, name: str, qualifiers: QUALIFIERS=None) -> 'FQN':
         """

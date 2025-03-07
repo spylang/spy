@@ -226,7 +226,7 @@ class AbstractFrame:
         # fwdecl_ClassDef. Look it up
         w_type = self.load_local(classdef.name)
         assert isinstance(w_type, W_Type)
-        assert w_type.fqn.symbol_name == classdef.name
+        assert w_type.fqn.parts[-1].name == classdef.name # sanity check
         assert not w_type.is_defined()
 
         # create a frame where to execute the class body

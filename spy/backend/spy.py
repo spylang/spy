@@ -26,8 +26,10 @@ class SPyBackend:
         # these are initialized by dump_w_func
         self.w_func: W_ASTFunc = None       # type: ignore
         self.vars_declared: set[str] = None # type: ignore
+        self.modname = '' # set by dump_mod
 
     def dump_mod(self, modname: str) -> str:
+        self.modname = modname
         w_mod = self.vm.modules_w[modname]
         for fqn, w_obj in w_mod.items_w():
             if isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red':
@@ -36,10 +38,9 @@ class SPyBackend:
         return self.out.build()
 
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
-        # Get the last part to check for a suffix
-        last_part = fqn.parts[-1]
-        if last_part.suffix == 0:
-            # this is a global function, we can just use its name
+        if (len(fqn.parts) == 2 and
+            fqn.modname == self.modname
+            and fqn.parts[-1].suffix == 0):
             name = fqn.symbol_name
         else:
             name = self.fmt_fqn(fqn)
