@@ -150,7 +150,13 @@ class FQN:
         res.parts[-1].suffix = suffix
         return res
 
-    # add a "with_qualifiers" method, and write a test. AI!
+    def with_qualifiers(self, qualifiers: QUALIFIERS) -> 'FQN':
+        """
+        Create a new FQN with the specified qualifiers added to the last NSPart.
+        """
+        res = FQN(self.parts)
+        res.parts[-1].qualifiers.extend(get_qualifiers(qualifiers))
+        return res
 
     def __repr__(self) -> str:
         return f"FQN({self.fullname!r})"

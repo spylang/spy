@@ -90,3 +90,18 @@ def test_FQN_human_name():
     func = FQN("builtins").join('def', ['builtins::i32', 'builtins::f64',
                                         'builtins::str'])
     assert func.human_name == 'def(i32, f64) -> str'
+
+def test_FQN_with_qualifiers():
+    a = FQN("mod::list")
+    b = a.with_qualifiers(["i32"])
+    assert b.fullname == "mod::list[i32]"
+
+    # Test adding qualifiers to an FQN that already has qualifiers
+    c = FQN("mod::dict[str]")
+    d = c.with_qualifiers(["i32"])
+    assert d.fullname == "mod::dict[str, i32]"
+
+    # Test with FQN objects as qualifiers
+    e = FQN("mod::map")
+    f = e.with_qualifiers([FQN("mod::key"), FQN("mod::value")])
+    assert f.fullname == "mod::map[mod::key, mod::value]"
