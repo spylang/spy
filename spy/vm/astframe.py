@@ -564,7 +564,7 @@ class ASTFrame(AbstractFrame):
             extra = ' (blue)'
         else:
             extra = ''
-        return f'<{cls} for {self.w_func.fqn}{extra}>'
+        return f'<{cls} for `{self.w_func.fqn}`{extra}>'
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
         self.declare_arguments()

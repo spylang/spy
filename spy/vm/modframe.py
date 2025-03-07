@@ -31,6 +31,10 @@ class ModFrame(AbstractFrame):
         super().__init__(vm, fqn, symtable, closure=())
         self.mod = mod
 
+    def __repr__(self):
+        cls = self.__class__.__name__
+        return f'<{cls} for `{self.fqn}`>'
+
     def run(self) -> W_Module:
         w_mod = W_Module(self.vm, self.fqn.modname, self.mod.filename)
         self.vm.register_module(w_mod)
