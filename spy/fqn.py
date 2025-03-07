@@ -150,6 +150,8 @@ class FQN:
         res.parts[-1].suffix = suffix
         return res
 
+    # add a "with_qualifiers" method, and write a test. AI!
+
     def __repr__(self) -> str:
         return f"FQN({self.fullname!r})"
 
