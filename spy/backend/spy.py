@@ -1,3 +1,4 @@
+import re
 from typing import Literal, Optional
 from spy import ast
 from spy.fqn import FQN
@@ -8,7 +9,10 @@ from spy.vm.list import W_List
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 
-FQN_FORMAT = Literal['full', 'short', 'no']
+FQN_FORMAT = Literal['full', 'short']
+
+# Regex pattern for valid identifiers (alphanumeric + underscore)
+VALID_IDENTIFIER = re.compile(r'^[a-zA-Z0-9_]+$')
 
 class SPyBackend:
     """
@@ -37,10 +41,14 @@ class SPyBackend:
                 self.out.wl()
         return self.out.build()
 
+    def is_module_global(self, fqn: FQN) -> bool:
+        return (len(fqn.parts) == 2 and
+                fqn.modname == self.modname
+                and fqn.parts[-1].suffix == 0)
+
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
-        if (len(fqn.parts) == 2 and
-            fqn.modname == self.modname
-            and fqn.parts[-1].suffix == 0):
+        if self.is_module_global(fqn):
+            # display 'def foo()' instead of 'def `test::foo`()', if possible
             name = fqn.symbol_name
         else:
             name = self.fmt_fqn(fqn)
@@ -73,12 +81,17 @@ class SPyBackend:
         return self.fmt_fqn(fqn)
 
     def fmt_fqn(self, fqn: FQN) -> str:
-        if self.fqn_format == 'no':
-            return fqn.symbol_name # don't show the namespace
-        elif self.fqn_format == 'short' and fqn.modname == 'builtins':
-            return fqn.symbol_name # don't show builtins::
+        if self.fqn_format == 'full':
+            name = str(fqn)
+        elif self.fqn_format == 'short':
+            name = fqn.human_name # don't show builtins::
         else:
-            return f'`{fqn}`'
+            assert False
+        #
+        if VALID_IDENTIFIER.match(name):
+            return name
+        else:
+            return f'`{name}`'
 
     # ==============
 
