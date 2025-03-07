@@ -154,6 +154,7 @@ class FQN:
         """
         Create a new FQN with the specified qualifiers added to the last NSPart.
         """
+        # fix this to avoid mutating the existing FQN, and add a test. AI!
         res = FQN(self.parts)
         res.parts[-1].qualifiers.extend(get_qualifiers(qualifiers))
         return res
