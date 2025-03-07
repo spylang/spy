@@ -47,7 +47,7 @@ class SPyBackend:
                 and fqn.parts[-1].suffix == 0)
 
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
-        if self.is_module_global(fqn):
+        if self.fqn_format == 'short' and self.is_module_global(fqn):
             # display 'def foo()' instead of 'def `test::foo`()', if possible
             name = fqn.symbol_name
         else:

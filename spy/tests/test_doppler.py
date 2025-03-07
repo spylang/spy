@@ -73,7 +73,7 @@ class TestDoppler:
         """
         self.redshift(src)
         expected = """
-        def foo(x: `builtins::i32`) -> `builtins::void`:
+        def `test::foo`(x: `builtins::i32`) -> `builtins::void`:
             y: `builtins::str`
             y = 'hello'
         """
