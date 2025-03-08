@@ -525,10 +525,11 @@ class ASTFrame(AbstractFrame):
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
+                 args_w: Optional[Sequence[W_Object]]) -> None:
         assert isinstance(w_func, W_ASTFunc)
-        super().__init__(vm, w_func.fqn, w_func.funcdef.symtable,
-                         w_func.closure)
+        ns = self.compute_ns(w_func, args_w)
+        super().__init__(vm, ns, w_func.funcdef.symtable, w_func.closure)
         self.w_func = w_func
         self.funcdef = w_func.funcdef
 
@@ -541,6 +542,44 @@ class ASTFrame(AbstractFrame):
         else:
             extra = ''
         return f'<{cls} for `{self.w_func.fqn}`{extra}>'
+
+    def compute_ns(self, w_func: W_ASTFunc,
+                   args_w: Optional[Sequence[W_Object]]) -> FQN:
+        """
+        Try to generate a meaningful namespace for blue functions. The
+        idea is that if we blue func takes type parameters, we want to include
+        them in the qualifiers. E.g.:
+
+            @blue
+            def add(T):
+                def impl(x: T, y: T) -> T:
+                    return x + y
+                return impl
+
+            add(i32) # ==> add[i32]::impl
+            add(str) # ==> add[str]::impl
+
+        At the moment, the implementation is a bit ad-hoc and hackish, as it
+        considers ONLY type params as qualifiers, and ignores everything else.
+
+        Note that this is more about readability than correctness: in case of
+        blue params which are ignored, we might get clashing namespaces, but
+        this is still ok, because uniqueness of FQNs is guaranteed by
+        vm.get_unique_FQN().
+
+        This is fine as long as we don't support separate compilation. For sep
+        comp, we will probably need a deterministic and reproducible way to
+        compute unique FQNs out of a blue call.
+        """
+        if w_func.color == 'red':
+            return w_func.fqn
+        assert args_w is not None
+        ns = w_func.fqn
+        quals = []
+        for w_arg in args_w:
+            if isinstance(w_arg, W_Type):
+                quals.append(w_arg.fqn)
+        return ns.with_qualifiers(quals)
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
         self.declare_arguments()

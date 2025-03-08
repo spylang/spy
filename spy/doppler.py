@@ -55,7 +55,8 @@ class DopplerFrame(ASTFrame):
     opimpl: dict[ast.Node, W_Func]
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
-        super().__init__(vm, w_func)
+        assert w_func.color == 'red'
+        super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
         self.opimpl = {}
 

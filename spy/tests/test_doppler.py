@@ -237,3 +237,29 @@ class TestDoppler:
             if `operator::i32_to_bool`(x):
                 pass
         """)
+
+    def test_blue_namespace(self):
+        self.redshift("""
+        @blue
+        def add(T):
+            def impl(x: T, y: T) -> T:
+                return x + y
+            return impl
+
+        def foo() -> void:
+            x = add(i32)(1, 2)
+            y = add(str)("a", "b")
+        """)
+        self.assert_dump("""
+        def foo() -> void:
+            x: i32
+            x = `test::add[i32]::impl`(1, 2)
+            y: str
+            y = `test::add[str]::impl`('a', 'b')
+
+        def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
+            return x + y
+
+        def `test::add[str]::impl`(x: str, y: str) -> str:
+            return `operator::str_add`(x, y)
+        """)
