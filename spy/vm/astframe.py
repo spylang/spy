@@ -61,22 +61,6 @@ class AbstractFrame:
     def redshifting(self) -> bool:
         return False
 
-    @property
-    def is_module_body(self) -> bool:
-        return self.ns.is_module()
-
-    def get_unique_FQN_maybe(self, fqn: FQN) -> FQN:
-        """
-        Return an unique FQN to use for a type or function.
-
-        If we are executing a module body, we can assume that the FQN is
-        already unique and just return it, else we ask the VM to compute one.
-        """
-        if self.is_module_body:
-            return fqn
-        else:
-            return self.vm.get_unique_FQN(fqn)
-
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_types_w, \
             f'variable already declared: {name}'
@@ -182,7 +166,7 @@ class AbstractFrame:
         w_functype = W_FuncType.new(params, w_restype, color=funcdef.color)
         # create the w_func
         fqn = self.ns.join(funcdef.name)
-        fqn = self.get_unique_FQN_maybe(fqn)
+        fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
@@ -204,7 +188,7 @@ class AbstractFrame:
         Create a forward-declaration for the given classdef
         """
         fqn = self.ns.join(classdef.name)
-        fqn = self.get_unique_FQN_maybe(fqn)
+        fqn = self.vm.get_unique_FQN(fqn)
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
