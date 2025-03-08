@@ -31,7 +31,7 @@ class ModFrame(AbstractFrame):
         super().__init__(vm, ns, symtable, closure=())
         self.mod = mod
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         cls = self.__class__.__name__
         return f'<{cls} for `{self.ns}`>'
 
