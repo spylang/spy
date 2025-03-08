@@ -73,7 +73,7 @@ class TestDoppler:
         """
         self.redshift(src)
         expected = """
-        def foo(x: `builtins::i32`) -> `builtins::void`:
+        def `test::foo`(x: `builtins::i32`) -> `builtins::void`:
             y: `builtins::str`
             y = 'hello'
         """
@@ -133,9 +133,9 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return `test::make_fn::fn#0`(21)
+            return `test::make_fn::fn`(21)
 
-        def `test::make_fn::fn#0`(x: i32) -> i32:
+        def `test::make_fn::fn`(x: i32) -> i32:
             return x * 2
         """)
 
@@ -156,14 +156,14 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def main() -> void:
-            `test::make_foo::foo#0`()
+            `test::make_foo::foo`()
 
-        def `test::make_foo::fn#0`() -> void:
+        def `test::make_foo::fn`() -> void:
             print_str('fn')
 
-        def `test::make_foo::foo#0`() -> void:
-            `test::make_foo::fn#0`()
-            `test::make_foo::fn#0`()
+        def `test::make_foo::foo`() -> void:
+            `test::make_foo::fn`()
+            `test::make_foo::fn`()
         """)
 
     def test_binops(self):
@@ -236,4 +236,30 @@ class TestDoppler:
         def convert_in_conditions(x: i32) -> void:
             if `operator::i32_to_bool`(x):
                 pass
+        """)
+
+    def test_blue_namespace(self):
+        self.redshift("""
+        @blue
+        def add(T):
+            def impl(x: T, y: T) -> T:
+                return x + y
+            return impl
+
+        def foo() -> void:
+            x = add(i32)(1, 2)
+            y = add(str)("a", "b")
+        """)
+        self.assert_dump("""
+        def foo() -> void:
+            x: i32
+            x = `test::add[i32]::impl`(1, 2)
+            y: str
+            y = `test::add[str]::impl`('a', 'b')
+
+        def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
+            return x + y
+
+        def `test::add[str]::impl`(x: str, y: str) -> str:
+            return `operator::str_add`(x, y)
         """)

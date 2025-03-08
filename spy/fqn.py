@@ -97,51 +97,76 @@ def get_qualifiers(x: QUALIFIERS) -> list['FQN']:
 class NSPart:
     name: str
     qualifiers: list['FQN']
+    suffix: int = 0
 
-    def __init__(self, name: str, quals: QUALIFIERS=None) -> None:
+    def __init__(self, name: str, quals: QUALIFIERS=None, suffix: int=0) -> None:
         self.name = name
         self.qualifiers = get_qualifiers(quals)
+        self.suffix = suffix
 
     def __str__(self) -> str:
-        if len(self.qualifiers) == 0:
-            return self.name
-        else:
+        result = self.name
+        if len(self.qualifiers) > 0:
             quals = ', '.join(q.human_name for q in self.qualifiers)
-            return f'{self.name}[{quals}]'
+            result = f'{result}[{quals}]'
+        if self.suffix != 0:
+            result += f'#{self.suffix}'
+        return result
 
     @property
     def c_name(self) -> str:
         name = self.name.replace('.', '_')
-        if len(self.qualifiers) == 0:
-            return name
-        else:
+        result = name
+        if len(self.qualifiers) > 0:
             quals = '_'.join(fqn.c_name_plain for fqn in self.qualifiers)
-            return f'{name}__{quals}'
+            result = f'{result}__{quals}'
+        if self.suffix != 0:
+            result += f'${self.suffix}'
+        return result
 
 
 class FQN:
     parts: list[NSPart]
-    suffix: str
 
-    def __new__(cls, x: str | PARTS, *, suffix: str = '') -> 'FQN':
+    def __new__(cls, x: str | PARTS) -> 'FQN':
         """
         Supported overloads:
             FQN(x: str)
-            FQN(x: PARTS, *, suffix='')
+            FQN(x: PARTS)
         """
         from .fqn_parser import FQNParser
         if isinstance(x, str):
-            assert suffix == ''
             return FQNParser(x).parse()
         else:
             fqn = super().__new__(cls)
             fqn.parts = get_parts(x)
-            fqn.suffix = suffix
             return fqn
 
-    def with_suffix(self, suffix: str) -> 'FQN':
+    def with_suffix(self, suffix: int) -> 'FQN':
+        """
+        Create a new FQN with the specified suffix on the last NSPart.
+        """
         res = FQN(self.parts)
-        res.suffix = suffix
+        res.parts[-1].suffix = suffix
+        return res
+
+    def with_qualifiers(self, qualifiers: QUALIFIERS) -> 'FQN':
+        """
+        Create a new FQN with the specified qualifiers added to the last NSPart.
+        """
+        new_parts = []
+        for i, part in enumerate(self.parts):
+            if i < len(self.parts) - 1:
+                # For all parts except the last one, create a copy
+                new_part = NSPart(part.name, part.qualifiers.copy(), part.suffix)
+                new_parts.append(new_part)
+            else:
+                # For the last part, create a copy with the new qualifiers added
+                new_quals = part.qualifiers.copy() + get_qualifiers(qualifiers)
+                new_part = NSPart(part.name, new_quals, part.suffix)
+                new_parts.append(new_part)
+        
+        res = FQN(new_parts)
         return res
 
     def __repr__(self) -> str:
@@ -163,9 +188,6 @@ class FQN:
         if human and str(parts[0]) == 'builtins':
             parts = parts[1:]
         s = '::'.join(str(part) for part in parts)
-
-        if self.suffix != '':
-            s += f'#{self.suffix}'
         return s
 
     @property
@@ -246,8 +268,6 @@ class FQN:
         """
         parts = [part.c_name for part in self.parts]
         cn = '$'.join(parts)
-        if self.suffix != '':
-            cn += '$' + self.suffix
         return cn
 
     @property

@@ -40,17 +40,17 @@ class AbstractFrame:
     ClassFrame.
     """
     vm: 'SPyVM'
-    fqn: FQN
+    ns: FQN
     closure: CLOSURE
     symtable: SymTable
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', fqn: FQN, symtable: SymTable,
+    def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:
         assert type(self) is not AbstractFrame, 'abstract class'
         self.vm = vm
-        self.fqn = fqn
+        self.ns = ns
         self.symtable = symtable
         self.closure = closure
         self._locals = {}
@@ -60,22 +60,6 @@ class AbstractFrame:
     @property
     def redshifting(self) -> bool:
         return False
-
-    @property
-    def is_module_body(self) -> bool:
-        return self.fqn.is_module()
-
-    def get_unique_FQN_maybe(self, fqn: FQN) -> FQN:
-        """
-        Return an unique FQN to use for a type or function.
-
-        If we are executing a module body, we can assume that the FQN is
-        already unique and just return it, else we ask the VM to compute one.
-        """
-        if self.is_module_body:
-            return fqn
-        else:
-            return self.vm.get_unique_FQN(fqn)
 
     def declare_local(self, name: str, w_type: W_Type) -> None:
         assert name not in self.locals_types_w, \
@@ -168,14 +152,6 @@ class AbstractFrame:
         raise Return(wop.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # sanity check: if it's the global __INIT__, it must be @blue
-        if (self.is_module_body and
-            funcdef.name == '__INIT__' and
-            funcdef.color != 'blue'):
-            err = SPyTypeError("the __INIT__ function must be @blue")
-            err.add("error", "function defined here", funcdef.prototype_loc)
-            raise err
-
         # evaluate the functype
         params = []
         for arg in funcdef.args:
@@ -189,8 +165,8 @@ class AbstractFrame:
         w_restype = self.eval_expr_type(funcdef.return_type)
         w_functype = W_FuncType.new(params, w_restype, color=funcdef.color)
         # create the w_func
-        fqn = self.fqn.join(funcdef.name)
-        fqn = self.get_unique_FQN_maybe(fqn)
+        fqn = self.ns.join(funcdef.name)
+        fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
@@ -211,8 +187,8 @@ class AbstractFrame:
         """
         Create a forward-declaration for the given classdef
         """
-        fqn = self.fqn.join(classdef.name)
-        fqn = self.get_unique_FQN_maybe(fqn)
+        fqn = self.ns.join(classdef.name)
+        fqn = self.vm.get_unique_FQN(fqn)
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
@@ -226,7 +202,7 @@ class AbstractFrame:
         # fwdecl_ClassDef. Look it up
         w_type = self.load_local(classdef.name)
         assert isinstance(w_type, W_Type)
-        assert w_type.fqn.symbol_name == classdef.name
+        assert w_type.fqn.parts[-1].name == classdef.name # sanity check
         assert not w_type.is_defined()
 
         # create a frame where to execute the class body
@@ -549,10 +525,11 @@ class ASTFrame(AbstractFrame):
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
+                 args_w: Optional[Sequence[W_Object]]) -> None:
         assert isinstance(w_func, W_ASTFunc)
-        super().__init__(vm, w_func.fqn, w_func.funcdef.symtable,
-                         w_func.closure)
+        ns = self.compute_ns(w_func, args_w)
+        super().__init__(vm, ns, w_func.funcdef.symtable, w_func.closure)
         self.w_func = w_func
         self.funcdef = w_func.funcdef
 
@@ -564,7 +541,45 @@ class ASTFrame(AbstractFrame):
             extra = ' (blue)'
         else:
             extra = ''
-        return f'<{cls} for {self.w_func.fqn}{extra}>'
+        return f'<{cls} for `{self.w_func.fqn}`{extra}>'
+
+    def compute_ns(self, w_func: W_ASTFunc,
+                   args_w: Optional[Sequence[W_Object]]) -> FQN:
+        """
+        Try to generate a meaningful namespace for blue functions. The
+        idea is that if we blue func takes type parameters, we want to include
+        them in the qualifiers. E.g.:
+
+            @blue
+            def add(T):
+                def impl(x: T, y: T) -> T:
+                    return x + y
+                return impl
+
+            add(i32) # ==> add[i32]::impl
+            add(str) # ==> add[str]::impl
+
+        At the moment, the implementation is a bit ad-hoc and hackish, as it
+        considers ONLY type params as qualifiers, and ignores everything else.
+
+        Note that this is more about readability than correctness: in case of
+        blue params which are ignored, we might get clashing namespaces, but
+        this is still ok, because uniqueness of FQNs is guaranteed by
+        vm.get_unique_FQN().
+
+        This is fine as long as we don't support separate compilation. For sep
+        comp, we will probably need a deterministic and reproducible way to
+        compute unique FQNs out of a blue call.
+        """
+        if w_func.color == 'red':
+            return w_func.fqn
+        assert args_w is not None
+        ns = w_func.fqn
+        quals = []
+        for w_arg in args_w:
+            if isinstance(w_arg, W_Type):
+                quals.append(w_arg.fqn)
+        return ns.with_qualifiers(quals)
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
         self.declare_arguments()

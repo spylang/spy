@@ -127,12 +127,13 @@ class Arguments:
         )
     ] = ToolchainType.zig
 
-    pretty: Annotated[
+    full_fqn: Annotated[
         bool,
         Option(
-            help="Prettify redshifted modules"
+            "--full-fqn",
+            help="Show full FQNs in redshifted modules"
         )
-    ] = True
+    ] = False
 
     timeit: Annotated[
         bool,
@@ -180,8 +181,8 @@ def do_pyparse(filename: str) -> None:
     mod = magic_py_parse(src)
     mod.pp()
 
-def dump_spy_mod(vm: SPyVM, modname: str, pretty: bool) -> None:
-    fqn_format: FQN_FORMAT = 'short' if pretty else 'full'
+def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
+    fqn_format: FQN_FORMAT = 'full' if full_fqn else 'short'
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
@@ -281,7 +282,7 @@ async def inner_main(args: Arguments) -> None:
 
     vm.redshift()
     if args.redshift:
-        dump_spy_mod(vm, modname, args.pretty)
+        dump_spy_mod(vm, modname, args.full_fqn)
         return
 
     compiler = Compiler(vm, modname, py.path.local(builddir),

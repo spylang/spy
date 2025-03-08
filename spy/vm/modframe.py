@@ -24,15 +24,19 @@ class ModFrame(AbstractFrame):
 
     def __init__(self,
                  vm: SPyVM,
-                 fqn: FQN,
+                 ns: FQN,
                  symtable: SymTable,
                  mod: ast.Module,
                  ) -> None:
-        super().__init__(vm, fqn, symtable, closure=())
+        super().__init__(vm, ns, symtable, closure=())
         self.mod = mod
 
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        return f'<{cls} for `{self.ns}`>'
+
     def run(self) -> W_Module:
-        w_mod = W_Module(self.vm, self.fqn.modname, self.mod.filename)
+        w_mod = W_Module(self.vm, self.ns.modname, self.mod.filename)
         self.vm.register_module(w_mod)
 
         # forward declaration of types
@@ -56,7 +60,10 @@ class ModFrame(AbstractFrame):
         w_init = w_mod.getattr_maybe('__INIT__')
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
-            assert w_init.color == "blue"
+            if w_init.color != "blue":
+                err = SPyTypeError("the __INIT__ function must be @blue")
+                err.add("error", "function defined here", w_init.def_loc)
+                raise err
             self.vm.fast_call(w_init, [w_mod])
         #
         return w_mod
@@ -64,7 +71,7 @@ class ModFrame(AbstractFrame):
     def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        fqn = self.fqn.join(vardef.name)
+        fqn = self.ns.join(vardef.name)
 
         # evaluate the vardef in the current frame
         if not isinstance(vardef.type, ast.Auto):

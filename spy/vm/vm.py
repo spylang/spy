@@ -136,7 +136,7 @@ class SPyVM:
         # XXX this is potentially quadratic if we create tons of
         # conflicting FQNs, but for now we don't care
         for n in itertools.count():
-            fqn2 = fqn.with_suffix(str(n))
+            fqn2 = fqn.with_suffix(n)
             if fqn2 not in self.globals_w:
                 return fqn2
         assert False, 'unreachable'

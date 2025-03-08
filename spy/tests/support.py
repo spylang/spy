@@ -193,7 +193,7 @@ class CompilerTest:
         from spy.cli import dump_spy_mod
         print()
         print()
-        dump_spy_mod(self.vm, modname, pretty=True)
+        dump_spy_mod(self.vm, modname, full_fqn=False)
 
     def compile_raises(self, src: str, funcname: str, ctx: Any,
                        *,
