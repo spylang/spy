@@ -168,14 +168,6 @@ class AbstractFrame:
         raise Return(wop.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # sanity check: if it's the global __INIT__, it must be @blue
-        if (self.is_module_body and
-            funcdef.name == '__INIT__' and
-            funcdef.color != 'blue'):
-            err = SPyTypeError("the __INIT__ function must be @blue")
-            err.add("error", "function defined here", funcdef.prototype_loc)
-            raise err
-
         # evaluate the functype
         params = []
         for arg in funcdef.args:
