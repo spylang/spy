@@ -33,10 +33,10 @@ class ModFrame(AbstractFrame):
 
     def __repr__(self):
         cls = self.__class__.__name__
-        return f'<{cls} for `{self.fqn}`>'
+        return f'<{cls} for `{self.ns}`>'
 
     def run(self) -> W_Module:
-        w_mod = W_Module(self.vm, self.fqn.modname, self.mod.filename)
+        w_mod = W_Module(self.vm, self.ns.modname, self.mod.filename)
         self.vm.register_module(w_mod)
 
         # forward declaration of types
@@ -68,7 +68,7 @@ class ModFrame(AbstractFrame):
     def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
-        fqn = self.fqn.join(vardef.name)
+        fqn = self.ns.join(vardef.name)
 
         # evaluate the vardef in the current frame
         if not isinstance(vardef.type, ast.Auto):

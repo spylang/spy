@@ -40,17 +40,17 @@ class AbstractFrame:
     ClassFrame.
     """
     vm: 'SPyVM'
-    fqn: FQN
+    ns: FQN
     closure: CLOSURE
     symtable: SymTable
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
 
-    def __init__(self, vm: 'SPyVM', fqn: FQN, symtable: SymTable,
+    def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:
         assert type(self) is not AbstractFrame, 'abstract class'
         self.vm = vm
-        self.fqn = fqn
+        self.ns = ns
         self.symtable = symtable
         self.closure = closure
         self._locals = {}
@@ -63,7 +63,7 @@ class AbstractFrame:
 
     @property
     def is_module_body(self) -> bool:
-        return self.fqn.is_module()
+        return self.ns.is_module()
 
     def get_unique_FQN_maybe(self, fqn: FQN) -> FQN:
         """
@@ -189,7 +189,7 @@ class AbstractFrame:
         w_restype = self.eval_expr_type(funcdef.return_type)
         w_functype = W_FuncType.new(params, w_restype, color=funcdef.color)
         # create the w_func
-        fqn = self.fqn.join(funcdef.name)
+        fqn = self.ns.join(funcdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self._locals,)
@@ -211,7 +211,7 @@ class AbstractFrame:
         """
         Create a forward-declaration for the given classdef
         """
-        fqn = self.fqn.join(classdef.name)
+        fqn = self.ns.join(classdef.name)
         fqn = self.get_unique_FQN_maybe(fqn)
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
