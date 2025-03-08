@@ -24,11 +24,11 @@ class ModFrame(AbstractFrame):
 
     def __init__(self,
                  vm: SPyVM,
-                 fqn: FQN,
+                 ns: FQN,
                  symtable: SymTable,
                  mod: ast.Module,
                  ) -> None:
-        super().__init__(vm, fqn, symtable, closure=())
+        super().__init__(vm, ns, symtable, closure=())
         self.mod = mod
 
     def __repr__(self):

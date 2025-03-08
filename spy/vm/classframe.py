@@ -18,10 +18,10 @@ class ClassFrame(AbstractFrame):
     def __init__(self,
                  vm: 'SPyVM',
                  classdef: ast.ClassDef,
-                 fqn: FQN,
+                 ns: FQN,
                  closure: CLOSURE
                  ) -> None:
-        super().__init__(vm, fqn, classdef.symtable, closure)
+        super().__init__(vm, ns, classdef.symtable, closure)
         self.classdef = classdef
 
     def run(self) -> ClassBody:
