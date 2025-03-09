@@ -417,7 +417,7 @@ class W_Type(W_Object):
         """
         Calling a type means to instantiate it.
 
-        We support instantiation of types only if they define a __new__.
+        First try to use __NEW__ if defined, otherwise fall back to __new__.
         """
         from spy.vm.function import W_Func
         from spy.vm.opimpl import W_OpImpl
@@ -430,18 +430,28 @@ class W_Type(W_Object):
 
         w_type = wop_t.w_blueval
         assert isinstance(w_type, W_Type)
-        w_new = w_type.dict_w.get('__new__')
-        if w_new is None:
-            clsname = w_type.fqn.human_name
-            err = SPyTypeError(f"cannot instantiate `{clsname}`")
-            err.add('error', f"`{clsname}` does not have a method `__new__`",
-                    loc=wop_t.loc)
-            if wop_t.sym:
-                err.add('note', f"{clsname} defined here", wop_t.sym.loc)
-            raise err
 
-        assert isinstance(w_new, W_Func), 'XXX raise proper exception'
-        return W_OpImpl(w_new)
+        # Call __NEW__, if present
+        w_NEW = w_type.dict_w.get('__NEW__')
+        if w_NEW is not None:
+            assert isinstance(w_NEW, W_Func), 'XXX raise proper exception'
+            return vm.fast_call(w_NEW, [wop_t] + list(args_wop))
+
+        # else, fall back to __new__
+        w_new = w_type.dict_w.get('__new__')
+        if w_new is not None:
+            assert isinstance(w_new, W_Func), 'XXX raise proper exception'
+            return W_OpImpl(w_new)
+
+        # no __NEW__ nor __new__, error out
+        clsname = w_type.fqn.human_name
+        err = SPyTypeError(f"cannot instantiate `{clsname}`")
+        err.add('error', f"`{clsname}` does not have a method `__new__`",
+                loc=wop_t.loc)
+        if wop_t.sym:
+            err.add('note', f"{clsname} defined here", wop_t.sym.loc)
+        raise err
+
 
 
 # helpers

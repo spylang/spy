@@ -137,6 +137,62 @@ class TestCallOp(CompilerTest):
         res = mod.foo(3, 6)
         assert res == 36
 
+    def test__NEW__(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('Point')
+        class W_Point(W_Object):
+            w_x: Annotated[W_I32, Member('x')]
+            w_y: Annotated[W_I32, Member('y')]
+
+            def __init__(self, w_x: W_I32, w_y: W_I32) -> None:
+                self.w_x = w_x
+                self.w_y = w_y
+
+            @builtin_method('__NEW__', color='blue')
+            @staticmethod
+            def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg,
+                     *args_wop: W_OpArg) -> W_OpImpl:
+                # Support overloading based on argument count
+                if len(args_wop) == 1:
+                    # Point(x) -> Point(x, x)
+                    @builtin_func('ext', 'new_point_single')
+                    def w_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Point:
+                        return W_Point(w_x, w_x)
+                    return W_OpImpl(w_new)
+                else:
+                    # Normal Point(x, y)
+                    @builtin_func('ext', 'new_point')
+                    def w_new(vm: 'SPyVM', w_cls: W_Type,
+                              w_x: W_I32, w_y: W_I32) -> W_Point:
+                        return W_Point(w_x, w_y)
+                    return W_OpImpl(w_new)
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import Point
+
+        @blue
+        def test_two_args(x: i32, y: i32) -> i32:
+            p = Point(x, y)
+            return p.x * 10 + p.y
+
+        @blue
+        def test_one_arg(x: i32) -> i32:
+            p = Point(x)
+            return p.x * 10 + p.y
+        """)
+
+        # Test with two args
+        res = mod.test_two_args(3, 6)
+        assert res == 36
+
+        # Test with one arg (x=7)
+        # Should create Point(7, 7)
+        res = mod.test_one_arg(7)
+        assert res == 77  # 7*10 + 7 = 77
+
 
     def test_call_method(self):
         # ========== EXT module for this test ==========
