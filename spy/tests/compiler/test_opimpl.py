@@ -80,3 +80,16 @@ class TestOpImpl(CompilerTest):
         assert w_red_oparg.color == 'red'
         assert w_red_oparg.w_static_type is B.w_i32
         assert w_red_oparg._w_val is None
+        
+    def test_oparg_properties(self):
+        mod = self.compile(
+        """
+        from operator import OpArg
+        
+        def test_properties() -> tuple:
+            arg = OpArg('blue', i32, 42)
+            return (arg.color, arg.blueval)
+        """)
+        color, blueval = mod.test_properties()
+        assert color == "blue"
+        assert blueval == 42
