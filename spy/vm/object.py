@@ -499,7 +499,8 @@ class Member:
                 return meta
         return None
 
-def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
+def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object],
+                         lazy_definition: bool) -> Type[W_Type]:
     """
     Synthesize an app-level metaclass for the corresponding interp-level
     pyclass, if needed.
@@ -540,7 +541,8 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
     from spy.vm.builtin import builtin_method
     if (not hasattr(pyclass, 'w_meta_CALL') and
-        not hasattr(pyclass, 'w_meta_GETITEM')):
+        not hasattr(pyclass, 'w_meta_GETITEM') and
+        not hasattr(pyclass, 'w_meta_GETATTR')):
         # no metaclass needed
         return W_Type
 
@@ -559,8 +561,15 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
         fn = pyclass.w_meta_GETITEM
         decorator = builtin_method('__GETITEM__', color='blue')
         W_MetaType.w_GETITEM = decorator(staticmethod(fn))  # type: ignore
+    if hasattr(pyclass, 'w_meta_GETATTR'):
+        fn = pyclass.w_meta_GETATTR
+        decorator = builtin_method('__GETATTR__', color='blue')
+        W_MetaType.w_GETATTR = decorator(staticmethod(fn))  # type: ignore
 
-    W_MetaType._w = W_Type.from_pyclass(metafqn, W_MetaType)
+    if lazy_definition:
+        W_MetaType._w = W_Type.declare(metafqn)
+    else:
+        W_MetaType._w = W_Type.from_pyclass(metafqn, W_MetaType)
     return W_MetaType
 
 

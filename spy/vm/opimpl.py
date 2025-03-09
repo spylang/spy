@@ -305,6 +305,26 @@ class W_OpImpl(W_Object):
 
     # ======== app-level interface ========
 
+    @builtin_method('__meta_GETATTR__', color='blue')
+    @staticmethod
+    def w_meta_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpImpl':
+        """
+        Handle class attribute lookups on OpImpl, like OpImpl.NULL
+        """
+        from spy.vm.str import W_Str
+
+        attr_name = wop_attr.blue_unwrap_str(vm)
+
+        if attr_name == 'NULL':
+            # Return the NULL instance directly
+            @builtin_func(W_OpImpl._w.fqn, 'get_null')
+            def w_get_null(vm: 'SPyVM', w_cls: W_Type) -> W_OpImpl:
+                return W_OpImpl.NULL
+
+            return W_OpImpl(w_get_null, [wop_cls])
+
+        return W_OpImpl.NULL
+
     @builtin_method('__NEW__', color='blue')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpImpl':

@@ -95,3 +95,15 @@ class TestOpImpl(CompilerTest):
         assert self.vm.unwrap_str(w_color) == 'blue'
         assert w_type is B.w_i32
         assert self.vm.unwrap_i32(w_blueval) == 42
+
+    def test_opimpl_null(self):
+        mod = self.compile(
+        """
+        from operator import OpImpl
+
+        @blue
+        def get_null() -> OpImpl:
+            return OpImpl.NULL
+        """)
+        w_null = mod.get_null(unwrap=False)
+        assert w_null is W_OpImpl.NULL

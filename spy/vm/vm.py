@@ -36,6 +36,10 @@ W_OpImpl._w.define(W_OpImpl)
 W_OpArg._w.define(W_OpArg)
 W_FuncType._w.define(W_FuncType)
 
+# W_OpImpl has w_meta_GETATTR, which means it creates a lazily-defined
+# metaclass. Initialize it as well
+W_OpImplType = type(W_OpImpl._w)
+W_OpImplType._w.define(W_OpImplType)
 
 class SPyVM:
     """
