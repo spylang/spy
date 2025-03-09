@@ -287,16 +287,19 @@ class W_OpImpl(W_Object):
         from spy.vm.function import W_Func
         from spy.vm.list import W_OpArgList
 
+        w_type = wop_cls.w_blueval
+        assert isinstance(w_type, W_Type)
+        
         if len(args_wop) == 1:
             # Simple case: OpImpl(func)
-            @builtin_func('operator')
+            @builtin_func(w_type.fqn, 'new1')
             def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpImpl:
                 return W_OpImpl(w_func)
             return W_OpImpl(w_new1)
 
         elif len(args_wop) == 2:
             # OpImpl(func, args) case
-            @builtin_func('operator')
+            @builtin_func(w_type.fqn, 'new2')
             def w_new2(vm: 'SPyVM', w_cls: W_Type,
                        w_func: W_Func, w_args: W_OpArgList) -> W_OpImpl:
                 # Convert from applevel w_args into interp-level args_w
