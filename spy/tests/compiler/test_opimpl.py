@@ -26,6 +26,33 @@ class TestOpImpl(CompilerTest):
         assert w_opimpl._w_func is mod.bar.w_func
         assert w_opimpl.is_simple()
 
+    def test_OpImpl_with_args(self):
+        mod = self.compile(
+        """
+        from operator import OpImpl, OpArg
+
+        def bar(x: i32) -> i32:
+            return x * 2
+
+        @blue
+        def foo() -> OpImpl:
+            # Create an OpImpl with an argument list
+            arg = OpArg('blue', i32, 42)
+            return OpImpl(bar, [arg])
+        """)
+        w_opimpl = mod.foo(unwrap=False)
+        assert isinstance(w_opimpl, W_OpImpl)
+        assert not w_opimpl.is_simple()
+        assert len(w_opimpl._args_wop) == 1
+
+        # Check the OpArg stored in the arguments list
+        wop = w_opimpl._args_wop[0]
+        assert isinstance(wop, W_OpArg)
+        assert wop.color == 'blue'
+        assert wop.w_static_type is B.w_i32
+        assert wop.is_blue()
+        assert self.vm.unwrap_i32(wop._w_val) == 42
+
     def test_new_OpArg(self):
         mod = self.compile(
         """

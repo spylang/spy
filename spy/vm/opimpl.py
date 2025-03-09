@@ -276,10 +276,40 @@ class W_OpImpl(W_Object):
 
     # ======== app-level interface ========
 
-    @builtin_method('__new__')
+    @builtin_method('__NEW__', color='blue')
     @staticmethod
-    def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> 'W_OpImpl':
-        return W_OpImpl(w_func)
+    def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpImpl':
+        """
+        Operator for creating OpImpl instances with different argument counts.
+        - OpImpl(func) -> Simple OpImpl
+        - OpImpl(func, args) -> OpImpl with pre-filled arguments
+        """
+        from spy.vm.function import W_Func
+        from spy.vm.list import W_OpArgList
+
+        if len(args_wop) == 1:
+            # Simple case: OpImpl(func)
+            @builtin_func('operator')
+            def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpImpl:
+                return W_OpImpl(w_func)
+            return W_OpImpl(w_new1)
+
+        elif len(args_wop) == 2:
+            # OpImpl(func, args) case
+            @builtin_func('operator')
+            def w_new2(vm: 'SPyVM', w_cls: W_Type,
+                       w_func: W_Func, w_args: W_OpArgList) -> W_OpImpl:
+                # Convert from applevel w_args into interp-level args_w
+                args_w = w_args.items_w[:]
+                return W_OpImpl(w_func, args_w)
+            return W_OpImpl(w_new2)
+        else:
+            return W_OpImpl.NULL
+
+    ## @builtin_method('__new__')
+    ## @staticmethod
+    ## def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> 'W_OpImpl':
+    ##     return W_OpImpl(w_func)
 
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore
