@@ -435,7 +435,9 @@ class W_Type(W_Object):
         w_NEW = w_type.dict_w.get('__NEW__')
         if w_NEW is not None:
             assert isinstance(w_NEW, W_Func), 'XXX raise proper exception'
-            return vm.fast_call(w_NEW, [wop_t] + list(args_wop))
+            w_res = vm.fast_call(w_NEW, [wop_t] + list(args_wop))
+            assert isinstance(w_res, W_OpImpl)
+            return w_res
 
         # else, fall back to __new__
         w_new = w_type.dict_w.get('__new__')

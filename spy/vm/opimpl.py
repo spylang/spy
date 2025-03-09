@@ -25,11 +25,11 @@ blue and can be optimized away during redshifting.
 """
 
 from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
-                    TYPE_CHECKING)
+                    TYPE_CHECKING, Literal)
 from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Symbol, Color
-from spy.errors import SPyTypeError
+from spy.errors import SPyTypeError, SPyRuntimeError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object, builtin_method
 from spy.vm.function import W_Func, W_FuncType
@@ -119,19 +119,21 @@ class W_OpArg(W_Object):
         if w_type is not B.w_str:
             raise SPyTypeError(f"OpArg color must be a string, got {w_type.fqn.human_name}")
 
-        color = vm.unwrap_str(w_color)
+        color: Color = vm.unwrap_str(w_color)  # type: ignore
         if color not in ('red', 'blue'):
             raise SPyTypeError(f"OpArg color must be 'red' or 'blue', got '{color}'")
 
         # Convert B.w_None to Python None
         if w_val is B.w_None:
-            w_val = None
+            w_val2 = None
+        else:
+            w_val2 = w_val
 
         if color == 'blue' and w_val is None:
             raise SPyTypeError("Blue OpArg requires a value")
 
         loc = Loc.here(-2)  # approximate source location
-        return W_OpArg(vm, color, w_static_type, w_val, loc)
+        return W_OpArg(vm, color, w_static_type, w_val2, loc)
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
@@ -220,7 +222,7 @@ class W_OpArg(W_Object):
 
         @builtin_func(W_OpArg._w.fqn, 'get_color')
         def w_get_color(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Str:
-            return vm.wrap(w_oparg.color)
+            return vm.wrap(w_oparg.color)  # type: ignore
 
         return W_OpImpl(w_get_color, [wop_x])
 

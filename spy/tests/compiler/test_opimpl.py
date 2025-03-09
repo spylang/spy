@@ -43,6 +43,7 @@ class TestOpImpl(CompilerTest):
         w_opimpl = mod.foo(unwrap=False)
         assert isinstance(w_opimpl, W_OpImpl)
         assert not w_opimpl.is_simple()
+        assert w_opimpl._args_wop is not None
         assert len(w_opimpl._args_wop) == 1
 
         # Check the OpArg stored in the arguments list
@@ -51,6 +52,7 @@ class TestOpImpl(CompilerTest):
         assert wop.color == 'blue'
         assert wop.w_static_type is B.w_i32
         assert wop.is_blue()
+        assert wop._w_val is not None
         assert self.vm.unwrap_i32(wop._w_val) == 42
 
     def test_new_OpArg(self):
