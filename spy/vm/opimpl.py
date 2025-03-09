@@ -102,6 +102,37 @@ class W_OpArg(W_Object):
         self.loc = loc
         self.sym = sym
 
+    @builtin_method('__new__')
+    @staticmethod
+    def w_spy_new(vm: 'SPyVM', w_cls: W_Type,
+                 w_color: W_Object, w_static_type: W_Type,
+                 w_val: W_Object) -> 'W_OpArg':
+        """
+        Create a new OpArg from SPy code:
+        - color: 'red' or 'blue'
+        - static_type: the static type of the argument
+        - val: the value (optional for red OpArg, required for blue)
+        """
+        from spy.vm.str import W_Str
+        # Check that w_color is a string
+        w_type = vm.dynamic_type(w_color)
+        if w_type is not B.w_str:
+            raise SPyTypeError(f"OpArg color must be a string, got {w_type.fqn.human_name}")
+
+        color = vm.unwrap_str(w_color)
+        if color not in ('red', 'blue'):
+            raise SPyTypeError(f"OpArg color must be 'red' or 'blue', got '{color}'")
+
+        # Convert B.w_None to Python None
+        if w_val is B.w_None:
+            w_val = None
+
+        if color == 'blue' and w_val is None:
+            raise SPyTypeError("Blue OpArg requires a value")
+
+        loc = Loc.here(-2)  # approximate source location
+        return W_OpArg(vm, color, w_static_type, w_val, loc)
+
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
         w_type = vm.dynamic_type(w_obj)
