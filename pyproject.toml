@@ -36,6 +36,8 @@ include = ["spy*"]
 
 [tool.pytest.ini_options]
 addopts = "--dist-dir=pyodide/node_modules/pyodide"
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 
 markers = [
     # compiler_backend
