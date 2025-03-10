@@ -178,9 +178,9 @@ class W_List(W_BaseList, Generic[T]):
 # The following commented-out code makes an interp-level type W_OpArgList
 # which corresponds to the interp-level type `list[OpArg]`.
 
-## w_oparglist_type = _make_list_type(OP.w_OpArg)
-## PREBUILT_LIST_TYPES[OP.w_OpArg] = w_oparglist_type
+w_oparglist_type = _make_list_type(OP.w_OpArg)
+PREBUILT_LIST_TYPES[OP.w_OpArg] = w_oparglist_type
 
-## W_OpArgList = Annotated[W_List[W_OpArg], w_oparglist_type]
-## def make_oparg_list(args_wop: list[W_OpArg]) -> W_OpArgList:
-##    return W_List(w_oparglist_type, args_wop)  # type: ignore
+W_OpArgList = Annotated[W_List[W_OpArg], w_oparglist_type]
+def make_oparg_list(args_wop: list[W_OpArg]) -> W_OpArgList:
+   return W_List(w_oparglist_type, args_wop)  # type: ignore

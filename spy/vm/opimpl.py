@@ -25,16 +25,16 @@ blue and can be optimized away during redshifting.
 """
 
 from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
-                    TYPE_CHECKING)
+                    TYPE_CHECKING, Literal)
 from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Symbol, Color
-from spy.errors import SPyTypeError
+from spy.errors import SPyTypeError, SPyRuntimeError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object, builtin_method
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.builtin import builtin_func, builtin_type
-from spy.vm.primitive import W_Bool
+from spy.vm.primitive import W_Bool, W_Dynamic
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -101,6 +101,39 @@ class W_OpArg(W_Object):
         self._w_val = w_val
         self.loc = loc
         self.sym = sym
+
+    @builtin_method('__new__')
+    @staticmethod
+    def w_spy_new(vm: 'SPyVM', w_cls: W_Type,
+                 w_color: W_Object, w_static_type: W_Type,
+                 w_val: W_Object) -> 'W_OpArg':
+        """
+        Create a new OpArg from SPy code:
+        - color: 'red' or 'blue'
+        - static_type: the static type of the argument
+        - val: the value (optional for red OpArg, required for blue)
+        """
+        from spy.vm.str import W_Str
+        # Check that w_color is a string
+        w_type = vm.dynamic_type(w_color)
+        if w_type is not B.w_str:
+            raise SPyTypeError(f"OpArg color must be a string, got {w_type.fqn.human_name}")
+
+        color: Color = vm.unwrap_str(w_color)  # type: ignore
+        if color not in ('red', 'blue'):
+            raise SPyTypeError(f"OpArg color must be 'red' or 'blue', got '{color}'")
+
+        # Convert B.w_None to Python None
+        if w_val is B.w_None:
+            w_val2 = None
+        else:
+            w_val2 = w_val
+
+        if color == 'blue' and w_val is None:
+            raise SPyTypeError("Blue OpArg requires a value")
+
+        loc = Loc.here(-2)  # approximate source location
+        return W_OpArg(vm, color, w_static_type, w_val2, loc)
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
@@ -180,6 +213,35 @@ class W_OpArg(W_Object):
         else:
             return W_OpImpl.NULL
 
+    @builtin_method('__GET_color__', color='blue')
+    @staticmethod
+    def w_GET_color(vm: 'SPyVM', wop_x: 'W_OpArg',
+                    wop_attr: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.builtin import builtin_func
+        from spy.vm.str import W_Str
+
+        @builtin_func(W_OpArg._w.fqn, 'get_color')
+        def w_get_color(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Str:
+            return vm.wrap(w_oparg.color)  # type: ignore
+
+        return W_OpImpl(w_get_color, [wop_x])
+
+    @builtin_method('__GET_blueval__', color='blue')
+    @staticmethod
+    def w_GET_blueval(vm: 'SPyVM', wop_x: 'W_OpArg',
+                      wop_attr: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.builtin import builtin_func
+        from spy.vm.primitive import W_Dynamic
+
+        @builtin_func(W_OpArg._w.fqn, 'get_blueval')
+        def w_get_blueval(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Dynamic:
+            if w_oparg.color != 'blue':
+                raise SPyRuntimeError('oparg is not blue')
+            return w_oparg.w_blueval
+
+        return W_OpImpl(w_get_blueval, [wop_x])
+
+
 
 @no_type_check
 @builtin_func('operator')
@@ -245,10 +307,58 @@ class W_OpImpl(W_Object):
 
     # ======== app-level interface ========
 
-    @builtin_method('__new__')
+    @builtin_method('__meta_GETATTR__', color='blue')
     @staticmethod
-    def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> 'W_OpImpl':
-        return W_OpImpl(w_func)
+    def w_meta_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpImpl':
+        """
+        Handle class attribute lookups on OpImpl, like OpImpl.NULL
+        """
+        from spy.vm.str import W_Str
+
+        attr_name = wop_attr.blue_unwrap_str(vm)
+
+        if attr_name == 'NULL':
+            # Return the NULL instance directly
+            @builtin_func(W_OpImpl._w.fqn, 'get_null')
+            def w_get_null(vm: 'SPyVM', w_cls: W_Type) -> W_OpImpl:
+                return W_OpImpl.NULL
+
+            return W_OpImpl(w_get_null, [wop_cls])
+
+        return W_OpImpl.NULL
+
+    @builtin_method('__NEW__', color='blue')
+    @staticmethod
+    def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpImpl':
+        """
+        Operator for creating OpImpl instances with different argument counts.
+        - OpImpl(func) -> Simple OpImpl
+        - OpImpl(func, args) -> OpImpl with pre-filled arguments
+        """
+        from spy.vm.function import W_Func
+        from spy.vm.list import W_OpArgList
+
+        w_type = wop_cls.w_blueval
+        assert isinstance(w_type, W_Type)
+
+        if len(args_wop) == 1:
+            # Simple case: OpImpl(func)
+            @builtin_func(w_type.fqn, 'new1')
+            def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpImpl:
+                return W_OpImpl(w_func)
+            return W_OpImpl(w_new1)
+
+        elif len(args_wop) == 2:
+            # OpImpl(func, args) case
+            @builtin_func(w_type.fqn, 'new2')
+            def w_new2(vm: 'SPyVM', w_cls: W_Type,
+                       w_func: W_Func, w_args: W_OpArgList) -> W_OpImpl:
+                # Convert from applevel w_args into interp-level args_w
+                args_w = w_args.items_w[:]
+                return W_OpImpl(w_func, args_w)
+            return W_OpImpl(w_new2)
+        else:
+            return W_OpImpl.NULL
 
 
 W_OpImpl.NULL = W_OpImpl(None)  # type: ignore

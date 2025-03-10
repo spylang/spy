@@ -417,7 +417,7 @@ class W_Type(W_Object):
         """
         Calling a type means to instantiate it.
 
-        We support instantiation of types only if they define a __new__.
+        First try to use __NEW__ if defined, otherwise fall back to __new__.
         """
         from spy.vm.function import W_Func
         from spy.vm.opimpl import W_OpImpl
@@ -430,18 +430,30 @@ class W_Type(W_Object):
 
         w_type = wop_t.w_blueval
         assert isinstance(w_type, W_Type)
-        w_new = w_type.dict_w.get('__new__')
-        if w_new is None:
-            clsname = w_type.fqn.human_name
-            err = SPyTypeError(f"cannot instantiate `{clsname}`")
-            err.add('error', f"`{clsname}` does not have a method `__new__`",
-                    loc=wop_t.loc)
-            if wop_t.sym:
-                err.add('note', f"{clsname} defined here", wop_t.sym.loc)
-            raise err
 
-        assert isinstance(w_new, W_Func), 'XXX raise proper exception'
-        return W_OpImpl(w_new)
+        # Call __NEW__, if present
+        w_NEW = w_type.dict_w.get('__NEW__')
+        if w_NEW is not None:
+            assert isinstance(w_NEW, W_Func), 'XXX raise proper exception'
+            w_res = vm.fast_call(w_NEW, [wop_t] + list(args_wop))
+            assert isinstance(w_res, W_OpImpl)
+            return w_res
+
+        # else, fall back to __new__
+        w_new = w_type.dict_w.get('__new__')
+        if w_new is not None:
+            assert isinstance(w_new, W_Func), 'XXX raise proper exception'
+            return W_OpImpl(w_new)
+
+        # no __NEW__ nor __new__, error out
+        clsname = w_type.fqn.human_name
+        err = SPyTypeError(f"cannot instantiate `{clsname}`")
+        err.add('error', f"`{clsname}` does not have a method `__new__`",
+                loc=wop_t.loc)
+        if wop_t.sym:
+            err.add('note', f"{clsname} defined here", wop_t.sym.loc)
+        raise err
+
 
 
 # helpers
@@ -489,7 +501,8 @@ class Member:
                 return meta
         return None
 
-def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
+def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object],
+                         lazy_definition: bool) -> Type[W_Type]:
     """
     Synthesize an app-level metaclass for the corresponding interp-level
     pyclass, if needed.
@@ -530,7 +543,8 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
     """
     from spy.vm.builtin import builtin_method
     if (not hasattr(pyclass, 'w_meta_CALL') and
-        not hasattr(pyclass, 'w_meta_GETITEM')):
+        not hasattr(pyclass, 'w_meta_GETITEM') and
+        not hasattr(pyclass, 'w_meta_GETATTR')):
         # no metaclass needed
         return W_Type
 
@@ -549,8 +563,15 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object]) -> Type[W_Type]:
         fn = pyclass.w_meta_GETITEM
         decorator = builtin_method('__GETITEM__', color='blue')
         W_MetaType.w_GETITEM = decorator(staticmethod(fn))  # type: ignore
+    if hasattr(pyclass, 'w_meta_GETATTR'):
+        fn = pyclass.w_meta_GETATTR
+        decorator = builtin_method('__GETATTR__', color='blue')
+        W_MetaType.w_GETATTR = decorator(staticmethod(fn))  # type: ignore
 
-    W_MetaType._w = W_Type.from_pyclass(metafqn, W_MetaType)
+    if lazy_definition:
+        W_MetaType._w = W_Type.declare(metafqn)
+    else:
+        W_MetaType._w = W_Type.from_pyclass(metafqn, W_MetaType)
     return W_MetaType
 
 
