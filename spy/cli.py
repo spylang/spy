@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 import time
 import traceback
+import tempfile
 from dataclasses import dataclass
 import click
 import typer
@@ -94,6 +95,14 @@ class Arguments:
             help="Compile the generated C code"
         )
     ] = False
+
+    build_dir: Annotated[
+        Optional[Path],
+        Option(
+            "-b", "--build-dir",
+            help="Directory to store generated files (defaults to a temp directory)"
+        )
+    ] = None
 
     opt_level: Annotated[
         int,
@@ -245,10 +254,23 @@ async def inner_main(args: Arguments) -> None:
         return
 
     modname = args.filename.stem
-    builddir = args.filename.parent
+    srcdir = args.filename.parent
     vm = await SPyVM.async_new()
 
-    vm.path.append(str(builddir))
+    vm.path.append(str(srcdir))
+
+    # Determine build directory
+    if args.build_dir is not None:
+        builddir = args.build_dir
+        builddir.mkdir(exist_ok=True, parents=True)
+    elif args.cwrite or args.compile:
+        # Create a temporary directory for build artifacts
+        temp_dir = tempfile.mkdtemp(prefix="spy-build-")
+        builddir = Path(temp_dir)
+        print(f"Using build directory: {builddir}")
+    else:
+        # For non-build operations, use the source directory
+        builddir = srcdir
 
     if args.parse or args.symtable:
         parser = Parser.from_filename(str(args.filename))
@@ -285,19 +307,21 @@ async def inner_main(args: Arguments) -> None:
         dump_spy_mod(vm, modname, args.full_fqn)
         return
 
-    compiler = Compiler(vm, modname, py.path.local(builddir),
+    compiler = Compiler(vm, modname, py.path.local(str(builddir)),
                         dump_c=False)
     if args.cwrite:
         build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
         t = get_toolchain(args.toolchain, build_type=build_type)
         file_c = compiler.cwrite(t.TARGET)
+        print(f"Generated {file_c}")
         if args.cdump:
             print(highlight_C_maybe(file_c.read()))
 
     else:
-        compiler.cbuild(
+        executable = compiler.cbuild(
             opt_level=args.opt_level,
             debug_symbols=args.debug_symbols,
             toolchain_type=args.toolchain,
             release_mode=args.release_mode,
         )
+        print(f"Generated {executable}")

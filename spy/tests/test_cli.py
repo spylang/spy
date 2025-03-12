@@ -101,14 +101,14 @@ class TestMain:
         assert stdout.startswith('def add(x: i32, y: i32) -> i32:')
 
     def test_cwrite(self):
-        res, stdout = self.run('--cwrite', self.foo_spy)
+        res, stdout = self.run('--cwrite', '--build-dir', self.tmpdir, self.foo_spy)
         foo_c = self.tmpdir.join('foo.c')
         assert foo_c.exists()
         csrc = foo_c.read()
         assert csrc.startswith('#include <spy.h>')
 
     def test_build_wasm(self):
-        res, stdout = self.run("--compile", self.foo_spy)
+        res, stdout = self.run("--compile", '--build-dir', self.tmpdir, self.foo_spy)
         foo_wasm = self.tmpdir.join('foo.wasm')
         assert foo_wasm.exists()
         wasm_bytes = foo_wasm.read_binary()
@@ -121,6 +121,7 @@ class TestMain:
     def test_build(self, toolchain):
         res, stdout = self.run("--compile",
                                "--toolchain", toolchain,
+                               "--build-dir", self.tmpdir,
                                self.main_spy)
         if toolchain == 'native':
             main_exe = self.tmpdir.join('main')
