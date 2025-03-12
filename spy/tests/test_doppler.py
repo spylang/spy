@@ -263,3 +263,14 @@ class TestDoppler:
         def `test::add[str]::impl`(x: str, y: str) -> str:
             return `operator::str_add`(x, y)
         """)
+
+    def test_store_outer_var(self):
+        self.redshift("""
+        var x: i32 = 0
+        def foo() -> void:
+            x = 1
+        """)
+        self.assert_dump("""
+        def foo() -> void:
+            x = 1
+        """)
