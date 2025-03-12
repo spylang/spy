@@ -6,6 +6,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, FuncParam
 from spy.vm.list import W_List
+from spy.irgen.scope import SymTable
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 
@@ -31,6 +32,7 @@ class SPyBackend:
         self.w_func: W_ASTFunc = None       # type: ignore
         self.vars_declared: set[str] = None # type: ignore
         self.modname = '' # set by dump_mod
+        self.scope_stack: list[SymTable] = []
 
     def dump_mod(self, modname: str) -> str:
         self.modname = modname
@@ -57,10 +59,12 @@ class SPyBackend:
         w_functype = w_func.w_functype
         params = self.fmt_params(w_functype.params)
         ret = self.fmt_w_obj(w_functype.w_restype)
+        self.scope_stack.append(w_func.funcdef.symtable)
         self.wl(f'def {name}({params}) -> {ret}:')
         with self.out.indent():
             for stmt in w_func.funcdef.body:
                 self.emit_stmt(stmt)
+        self.scope_stack.pop()
 
     def fmt_params(self, params: list[FuncParam]) -> str:
         l = []
@@ -112,7 +116,9 @@ class SPyBackend:
     # statements
 
     def emit_declare_var_maybe(self, varname: str) -> None:
-        if self.w_func.redshifted and varname not in self.vars_declared:
+        symtable = self.scope_stack[-1]
+        sym = symtable.lookup(varname)
+        if self.w_func.redshifted and sym.level == 0 and varname not in self.vars_declared:
             assert self.w_func.locals_types_w is not None
             w_type = self.w_func.locals_types_w[varname]
             t = self.fmt_w_obj(w_type)
@@ -128,19 +134,23 @@ class SPyBackend:
             paramlist.append(f'{n}: {t}')
         params = ', '.join(paramlist)
         ret = self.fmt_expr(funcdef.return_type)
+        self.scope_stack.append(funcdef.symtable)
         self.wl(f'def {name}({params}) -> {ret}:')
         with self.out.indent():
             for stmt in funcdef.body:
                 self.emit_stmt(stmt)
+        self.scope_stack.pop()
 
     def emit_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         assert classdef.kind == 'struct', 'IMPLEMENT ME'
         name = classdef.name
+        self.scope_stack.append(classdef.symtable)
         self.wl('@struct')
         self.wl(f'class {name}:')
         with self.out.indent():
             for field in classdef.fields:
                 self.emit_stmt_VarDef(field)
+        self.scope_stack.pop()
 
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
         self.wl('pass')
