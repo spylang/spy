@@ -187,12 +187,11 @@ class CModuleWriter:
             """)
 
     def emit_jsffi_error(self) -> None:
-        # inside "err", emit an #ifdef which fails if the target is not emscripten. AI!
         err = """
-
-        """
-
-        err = '#error "jsffi is available only for emscripten targets"'
+#ifndef SPY_TARGET_EMSCRIPTEN
+#error "jsffi is available only for emscripten targets"
+#endif
+"""
         if err not in self.tbh_warnings.lines:
             self.tbh_warnings.wl(err)
 
