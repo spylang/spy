@@ -23,12 +23,21 @@ class CModuleWriter:
     w_mod: W_Module
     spyfile: py.path.local
     cfile: py.path.local
-    target: str
-    out: TextBuilder          # main builder
-    out_warnings: TextBuilder # nested builder
-    out_types: TextBuilder    # nested builder
-    out_globals: TextBuilder  # nested builder for global declarations
+    hfile: py.path.local
     global_vars: set[str]
+    jsffi_error_emitted: bool = False
+
+    # main TextBuilder for the whole .h and .c
+    tbh: TextBuilder
+    tbc: TextBuilder
+    # nested builders
+    tbh_warnings: TextBuilder
+    tbh_types_decl: TextBuilder  # forward type declarations
+    tbh_types_def: TextBuilder   # type definitions
+    tbh_ptrs_def: TextBuilder    # ptr and typelift accessors
+    tbh_funcs: TextBuilder       # function declarations
+    tbh_globals: TextBuilder     # global var declarations (.h)
+    tbc_globals: TextBuilder     # global var definition (.c)
 
     def __init__(self, vm: SPyVM, w_mod: W_Module,
                  spyfile: py.path.local,
@@ -38,16 +47,17 @@ class CModuleWriter:
         self.w_mod = w_mod
         self.spyfile = spyfile
         self.cfile = cfile
-        self.target = target
-        self.out = TextBuilder(use_colors=False)
-        self.out_warnings = None  # type: ignore
-        self.out_types = None     # type: ignore
-        self.out_globals = None   # type: ignore
+        self.hfile = cfile.new(ext='.h')
+        self.tbc = TextBuilder(use_colors=False)
+        self.tbh = TextBuilder(use_colors=False)
+        # nested builders are initialized lazily
         self.global_vars = set()
 
     def write_c_source(self) -> None:
-        c_src = self.emit_module()
-        self.cfile.write(c_src)
+        self.emit_header()
+        self.emit_c()
+        self.hfile.write(self.tbh.build())
+        self.cfile.write(self.tbc.build())
 
     def new_global_var(self, prefix: str) -> str:
         """
@@ -61,48 +71,56 @@ class CModuleWriter:
         self.global_vars.add(varname)
         return varname
 
-    def emit_module(self) -> str:
-        self.out.wb(f"""
+    def emit_header(self) -> None:
+        """
+        Generate header file content (.h)
+        """
+        header_guard = f"SPY_{self.w_mod.name.upper()}_H"
+        self.tbh.wb(f"""
+        #ifndef {header_guard}
+        #define {header_guard}
+
         #include <spy.h>
 
-        #ifdef SPY_DEBUG_C
-        #    define SPY_LINE(SPY, C) C "{self.cfile}"
-        #else
-        #    define SPY_LINE(SPY, C) SPY "{self.spyfile}"
+        #ifdef __cplusplus
+        extern "C" {{
         #endif
-
         """)
-        self.out_warnings = self.out.make_nested_builder()
-        self.out.wl()
-        self.out.wl('// forward type declarations')
-        self.out_types_decl = self.out.make_nested_builder()
-        self.out.wl()
-        self.out.wl('// type definitions')
-        self.out_types_def = self.out.make_nested_builder()
-        self.out.wl()
-        self.out.wl('// ptr and typelift accessors')
-        self.out_ptrs_def = self.out.make_nested_builder()
-        self.out.wl()
-        self.out.wl('// constants and functions')
-        self.out_globals = self.out.make_nested_builder()
-        self.out.wl()
+        self.tbh.wl()
+        self.tbh_warnings = self.tbh.make_nested_builder()
+        self.tbh.wl()
 
-        # this is a bit of a hack, but too bad
-        self.ctx.out_types_decl = self.out_types_decl
-        self.ctx.out_ptrs_def = self.out_ptrs_def
-        self.ctx.out_types_def = self.out_types_def
+        self.tbh.wl('// forward type declarations')
+        self.tbh_types_decl = self.tbh.make_nested_builder()
+        self.tbh.wl()
 
-        self.out.wb("""
-        // content of the module
-        """)
-        #
+        self.tbh.wl('// type definitions')
+        self.tbh_types_def = self.tbh.make_nested_builder()
+        self.tbh.wl()
+
+        self.tbh.wl('// ptr and typelift accessors')
+        self.tbh_ptrs_def = self.tbh.make_nested_builder()
+        self.tbh.wl()
+
+        self.tbh.wl('// function declarations')
+        self.tbh_funcs = self.tbh.make_nested_builder()
+        self.tbh.wl()
+
+        self.tbh.wl('// global variable declarations')
+        self.tbh_globals = self.tbh.make_nested_builder()
+        self.tbh.wl()
+
+        # Register the builders with the context
+        self.ctx.tbh_types_decl = self.tbh_types_decl
+        self.ctx.tbh_ptrs_def = self.tbh_ptrs_def
+        self.ctx.tbh_types_def = self.tbh_types_def
+
+        # Process module contents for header declarations
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
-            # XXX we should mangle the name somehow
             if isinstance(w_obj, W_ASTFunc):
                 if w_obj.color == 'red':
-                    self.declare_function(fqn, w_obj)
-                    self.emit_function(fqn, w_obj)
+                    self.declare_func(fqn, w_obj)
             elif isinstance(w_obj, W_BuiltinFunc):
                 # this is a hack. We have a variable holding a builtin
                 # function: we don't support function pointers yet, so this
@@ -113,50 +131,119 @@ class CModuleWriter:
                 # of the module content are red and blue.
                 pass
             else:
-                self.declare_variable(fqn, w_obj)
+                self.declare_var(fqn, w_obj)
 
-        # XXX: this is probably broken in case we are compiling together
-        # multiple modules with a 'main' function, but it's ok for now
+        # Close header file
+        self.tbh.wl()
+        self.tbh.wb("""
+        #ifdef __cplusplus
+        }  // extern "C"
+        #endif
+
+        #endif  // Header guard
+        """)
+
+    def emit_c(self) -> None:
+        """
+        Generate implementation file content (.c)
+        """
+        header_name = self.hfile.basename
+        self.tbc.wb(f"""
+        #include "{header_name}"
+
+        #ifdef SPY_DEBUG_C
+        #    define SPY_LINE(SPY, C) C "{self.cfile}"
+        #else
+        #    define SPY_LINE(SPY, C) SPY "{self.spyfile}"
+        #endif
+        """)
+        self.tbc.wl()
+        self.tbc.wl('// constants and globals')
+        self.tbc_globals = self.tbc.make_nested_builder()
+        self.tbc.wl()
+        self.tbc.wl('// content of the module')
+        self.tbc.wl()
+
+        # Process module contents for implementation
+        for fqn, w_obj in self.w_mod.items_w():
+            assert w_obj is not None, 'uninitialized global?'
+            if isinstance(w_obj, W_ASTFunc):
+                if w_obj.color == 'red':
+                    self.emit_func(fqn, w_obj)
+            elif isinstance(w_obj, W_BuiltinFunc):
+                # this is a hack: see the equivalent comment in emit_header
+                pass
+            else:
+                # Variable definitions go in the .c file
+                self.emit_var(fqn, w_obj)
+
+        # Main function
         fqn_main = FQN([self.w_mod.name, 'main'])
         if fqn_main in self.ctx.vm.globals_w:
-            self.out.wb(f"""
+            self.tbc.wb(f"""
                 int main(void) {{
                     {fqn_main.c_name}();
                     return 0;
                 }}
             """)
-        return self.out.build()
 
-    def emit_jsffi_error(self) -> None:
-        err = '#error "jsffi is available only for emscripten targets"'
-        if err not in self.out_warnings.lines:
-            self.out_warnings.wl(err)
+    def emit_jsffi_error_maybe(self) -> None:
+        if self.jsffi_error_emitted:
+            return
+        self.tbh_warnings.wb("""
+        #ifndef SPY_TARGET_EMSCRIPTEN
+        #  error "jsffi is available only for emscripten targets"
+        #endif
+        """)
+        self.jsffi_error_emitted = True
 
-    def declare_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
+    def declare_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
+        """
+        Generate function declaration in mod.h
+        """
         c_func = self.ctx.c_function(fqn.c_name, w_func.w_functype)
-        self.out_globals.wl(c_func.decl() + ';')
+        self.tbh_funcs.wl(c_func.decl() + ';')
 
-    def emit_function(self, fqn: FQN, w_func: W_ASTFunc) -> None:
+    def emit_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
+        """
+        Generate function implementation in mod.c
+        """
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
 
-    def declare_variable(self, fqn: FQN, w_obj: W_Object) -> None:
+    def declare_var(self, fqn: FQN, w_obj: W_Object) -> None:
+        """
+        Generate variable declaration in mod.h
+        """
         w_type = self.ctx.vm.dynamic_type(w_obj)
         if w_type is B.w_i32:
-            intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
-            self.out_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
+            self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
         elif isinstance(w_obj, (W_StructType, W_LiftedType)):
             # this forces ctx to emit the struct definition
             self.ctx.w2c(w_obj)
         else:
             raise NotImplementedError('WIP')
 
+    def emit_var(self, fqn: FQN, w_obj: W_Object) -> None:
+        """
+        Generate variable definition in mod.c
+        """
+        w_type = self.ctx.vm.dynamic_type(w_obj)
+        if w_type is B.w_i32:
+            intval = self.ctx.vm.unwrap(w_obj)
+            c_type = self.ctx.w2c(w_type)
+            self.tbc.wl(f'{c_type} {fqn.c_name} = {intval};')
+        # struct types are already handled in the header
+        elif not isinstance(w_obj, (W_StructType, W_LiftedType)):
+            raise NotImplementedError('WIP')
+
+
 
 class CFuncWriter:
     ctx: Context
     cmod: CModuleWriter
-    out: TextBuilder
+    tbc: TextBuilder
     fqn: FQN
     w_func: W_ASTFunc
     last_emitted_linenos: tuple[int, int]
@@ -168,7 +255,7 @@ class CFuncWriter:
                  w_func: W_ASTFunc) -> None:
         self.ctx = ctx
         self.cmod = cmod
-        self.out = cmod.out
+        self.tbc = cmod.tbc
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1) # see emit_lineno_maybe
@@ -177,7 +264,7 @@ class CFuncWriter:
         """
         Pretty print the C code generated so far
         """
-        print(self.out.build())
+        print(self.tbc.build())
 
     def ppast(self) -> None:
         """
@@ -192,8 +279,8 @@ class CFuncWriter:
         self.emit_lineno(self.w_func.funcdef.loc.line_start)
         c_func = self.ctx.c_function(self.fqn.c_name,
                                      self.w_func.w_functype)
-        self.out.wl(c_func.decl() + ' {')
-        with self.out.indent():
+        self.tbc.wl(c_func.decl() + ' {')
+        with self.tbc.indent():
             self.emit_local_vars()
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
@@ -204,8 +291,8 @@ class CFuncWriter:
                 # we would like to also report an error message, but for now
                 # we just abort.
                 msg = 'reached the end of the function without a `return`'
-                self.out.wl(f'abort(); /* {msg} */')
-        self.out.wl('}')
+                self.tbc.wl(f'abort(); /* {msg} */')
+        self.tbc.wl('}')
 
     def emit_local_vars(self) -> None:
         """
@@ -221,7 +308,7 @@ class CFuncWriter:
             c_type = self.ctx.w2c(w_type)
             if (varname not in ('@return', '@if', '@while') and
                 varname not in param_names):
-                self.out.wl(f'{c_type} {varname};')
+                self.tbc.wl(f'{c_type} {varname};')
 
     # ==============
 
@@ -234,7 +321,7 @@ class CFuncWriter:
         #
         # line numbers as they are understood by the C compiler, i.e. what
         # goes to debuginfo if we don't emit a new #line
-        cur_c = self.out.lineno
+        cur_c = self.tbc.lineno
         cur_spy = last_spy + (cur_c - last_c) - 1
         #
         # desired spy line number, i.e. what we would like it to be
@@ -247,8 +334,8 @@ class CFuncWriter:
         """
         Emit a #line directive, unconditionally
         """
-        cline = self.out.lineno
-        self.out.wl(f'#line SPY_LINE({spyline}, {cline})')
+        cline = self.tbc.lineno
+        self.tbc.wl(f'#line SPY_LINE({spyline}, {cline})')
         self.last_emitted_linenos = (spyline, cline)
 
     def emit_stmt(self, stmt: ast.Stmt) -> None:
@@ -271,9 +358,9 @@ class CFuncWriter:
     def emit_stmt_Return(self, ret: ast.Return) -> None:
         v = self.fmt_expr(ret.value)
         if v is C.Void():
-            self.out.wl('return;')
+            self.tbc.wl('return;')
         else:
-            self.out.wl(f'return {v};')
+            self.tbc.wl(f'return {v};')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         # all local vars have already been declared, nothing to do
@@ -287,34 +374,34 @@ class CFuncWriter:
             target = varname
         else:
             target = sym.fqn.c_name
-        self.out.wl(f'{target} = {v};')
+        self.tbc.wl(f'{target} = {v};')
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value);
-        self.out.wl(f'{v};')
+        self.tbc.wl(f'{v};')
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
-        self.out.wl(f'if ({test})' + '{')
-        with self.out.indent():
+        self.tbc.wl(f'if ({test})' + '{')
+        with self.tbc.indent():
             for stmt in if_node.then_body:
                 self.emit_stmt(stmt)
         #
         if if_node.else_body:
-            self.out.wl('} else {')
-            with self.out.indent():
+            self.tbc.wl('} else {')
+            with self.tbc.indent():
                 for stmt in if_node.else_body:
                     self.emit_stmt(stmt)
         #
-        self.out.wl('}')
+        self.tbc.wl('}')
 
     def emit_stmt_While(self, while_node: ast.While) -> None:
         test = self.fmt_expr(while_node.test)
-        self.out.wl(f'while ({test}) ' + '{')
-        with self.out.indent():
+        self.tbc.wl(f'while ({test}) ' + '{')
+        with self.tbc.indent():
             for stmt in while_node.body:
                 self.emit_stmt(stmt)
-        self.out.wl('}')
+        self.tbc.wl('}')
 
     # ===== expressions =====
 
@@ -355,7 +442,7 @@ class CFuncWriter:
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
         init = '{%d, %s}' % (n, lit)
-        self.cmod.out_globals.wl(f'static spy_Str {v} = {init};')
+        self.cmod.tbc_globals.wl(f'static spy_Str {v} = {init};')
         #
         # shortstr is what we show in the comment, with a length limit
         comment = shortrepr(utf8.decode('utf-8'), 15)
@@ -438,9 +525,8 @@ class CFuncWriter:
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
-        if (call.func.fqn.modname == "jsffi" and
-            self.cmod.target != 'emscripten'):
-            self.cmod.emit_jsffi_error()
+        if call.func.fqn.modname == "jsffi":
+            self.cmod.emit_jsffi_error_maybe()
 
         fqn = call.func.fqn
         if str(fqn).startswith("unsafe::getfield_by"):
