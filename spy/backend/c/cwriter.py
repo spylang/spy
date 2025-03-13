@@ -222,6 +222,12 @@ class CModuleWriter:
         elif isinstance(w_obj, (W_StructType, W_LiftedType)):
             # this forces ctx to emit the struct definition
             self.ctx.w2c(w_obj)
+        elif isinstance(w_type, W_PtrType):
+            # for now, we only support NULL constnts
+            assert isinstance(w_obj, W_Ptr)
+            assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
+            c_type = self.ctx.w2c(w_type)
+            self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
         else:
             raise NotImplementedError('WIP')
 
@@ -234,8 +240,16 @@ class CModuleWriter:
             intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.tbc.wl(f'{c_type} {fqn.c_name} = {intval};')
-        # struct types are already handled in the header
-        elif not isinstance(w_obj, (W_StructType, W_LiftedType)):
+        elif isinstance(w_obj, (W_StructType, W_LiftedType)):
+            pass
+        elif isinstance(w_type, W_PtrType):
+            # for now, we only support NULL constnts
+            assert isinstance(w_obj, W_Ptr)
+            assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
+            c_type = self.ctx.w2c(w_type)
+            self.tbh_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
+        else:
+            # struct types are already handled in the header
             raise NotImplementedError('WIP')
 
 
