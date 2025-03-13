@@ -4,7 +4,6 @@ import asyncio
 from pathlib import Path
 import time
 import traceback
-import tempfile
 from dataclasses import dataclass
 import click
 import typer
@@ -100,7 +99,7 @@ class Arguments:
         Optional[Path],
         Option(
             "-b", "--build-dir",
-            help="Directory to store generated files (defaults to a temp directory)"
+            help="Directory to store generated files (defaults to build/ next to the .spy file)"
         )
     ] = None
 
@@ -264,9 +263,9 @@ async def inner_main(args: Arguments) -> None:
         builddir = args.build_dir
         builddir.mkdir(exist_ok=True, parents=True)
     elif args.cwrite or args.compile:
-        # Create a temporary directory for build artifacts
-        temp_dir = tempfile.mkdtemp(prefix="spy-build-")
-        builddir = Path(temp_dir)
+        # Create a build directory next to the .spy file
+        builddir = srcdir / "build"
+        builddir.mkdir(exist_ok=True, parents=True)
         print(f"Using build directory: {builddir}")
     else:
         # For non-build operations, use the source directory
