@@ -230,6 +230,18 @@ class TestUnsafe(CompilerTest):
             assert w_p.addr == 0
             assert w_p.length == 0
 
+    def test_NULL_in_global(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        global_ptr: ptr[i32] = ptr[i32].NULL
+
+        def is_null() -> bool:
+            return global_ptr == ptr[i32].NULL
+        """)
+        assert mod.is_null() is True
+
+
     def test_ptr_truth(self):
         mod = self.compile("""
         from unsafe import ptr, gc_alloc
