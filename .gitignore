@@ -6,6 +6,10 @@ tmp_*
 all.sh
 comp.sh
 basic.sh
+fast.sh
+
+# ignore all build directories inside examples and its subfolders
+examples/**/build/
 
 examples/jsffi/demo.c
 examples/jsffi/demo.mjs
