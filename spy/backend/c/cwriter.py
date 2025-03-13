@@ -25,6 +25,7 @@ class CModuleWriter:
     cfile: py.path.local
     hfile: py.path.local
     global_vars: set[str]
+    jsffi_error_emitted: bool = False
 
     # main TextBuilder for the whole .h and .c
     tbh: TextBuilder
@@ -186,14 +187,15 @@ class CModuleWriter:
                 }}
             """)
 
-    def emit_jsffi_error(self) -> None:
-        err = """
-#ifndef SPY_TARGET_EMSCRIPTEN
-#error "jsffi is available only for emscripten targets"
-#endif
-"""
-        if err not in self.tbh_warnings.lines:
-            self.tbh_warnings.wl(err)
+    def emit_jsffi_error_maybe(self) -> None:
+        if self.jsffi_error_emitted:
+            return
+        self.tbh_warnings.wb("""
+        #ifndef SPY_TARGET_EMSCRIPTEN
+        #  error "jsffi is available only for emscripten targets"
+        #endif
+        """)
+        self.jsffi_error_emitted = True
 
     def declare_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         """
@@ -523,9 +525,8 @@ class CFuncWriter:
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
-        if (call.func.fqn.modname == "jsffi" and
-            self.cmod.target != 'emscripten'):
-            self.cmod.emit_jsffi_error()
+        if call.func.fqn.modname == "jsffi":
+            self.cmod.emit_jsffi_error_maybe()
 
         fqn = call.func.fqn
         if str(fqn).startswith("unsafe::getfield_by"):
