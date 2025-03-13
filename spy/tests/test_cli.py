@@ -105,7 +105,7 @@ class TestMain:
         foo_c = self.tmpdir.join('foo.c')
         assert foo_c.exists()
         csrc = foo_c.read()
-        assert csrc.startswith('#include <spy.h>')
+        assert csrc.startswith('#include "foo.h"')
 
     def test_build_wasm(self):
         res, stdout = self.run("--compile", '--build-dir', self.tmpdir, self.foo_spy)
@@ -140,6 +140,7 @@ class TestMain:
         assert out == "hello world"
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason='./pyodide/venv not found')
+    @pytest.mark.pyodide
     def test_execute_pyodide(self):
         # pyodide under node cannot access /tmp/, so we cannot try to execute
         # files which we wrote to self.tmpdir. Instead, let's try to execute

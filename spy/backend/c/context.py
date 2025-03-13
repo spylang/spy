@@ -56,17 +56,17 @@ class Context:
     Keep track of things like the mapping from W_* types to C types.
     """
     vm: SPyVM
-    out_types_decl: TextBuilder
-    out_ptrs_def: TextBuilder
-    out_types_def: TextBuilder
+    tbh_types_decl: TextBuilder
+    tbh_ptrs_def: TextBuilder
+    tbh_types_def: TextBuilder
     _d: dict[W_Type, C_Type]
 
     def __init__(self, vm: SPyVM) -> None:
         self.vm = vm
         # set by CModuleWriter.emit_module
-        self.out_types_decl = None # type: ignore
-        self.out_ptrs_def = None   # type: ignore
-        self.out_types_def = None  # type: ignore
+        self.tbh_types_decl = None # type: ignore
+        self.tbh_ptrs_def = None   # type: ignore
+        self.tbh_types_def = None  # type: ignore
         self._d = {}
         self._d[B.w_void] = C_Type('void')
         self._d[B.w_i32] = C_Type('int32_t')
@@ -105,7 +105,7 @@ class Context:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemtype = w_ptrtype.w_itemtype
         c_itemtype = self.w2c(w_itemtype)
-        self.out_types_decl.wb(f"""
+        self.tbh_types_decl.wb(f"""
         typedef struct {c_ptrtype} {{
             {c_itemtype} *p;
         #ifdef SPY_DEBUG
@@ -113,7 +113,7 @@ class Context:
         #endif
         }} {c_ptrtype};
         """)
-        self.out_ptrs_def.wb(f"""
+        self.tbh_ptrs_def.wb(f"""
         SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
@@ -124,7 +124,7 @@ class Context:
         c_struct_type = C_Type(w_st.fqn.c_name)
         # forward declaration
         self._d[w_st] = c_struct_type
-        self.out_types_decl.wl(f'typedef struct {c_struct_type} {c_struct_type};')
+        self.tbh_types_decl.wl(f'typedef struct {c_struct_type} {c_struct_type};')
 
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
@@ -135,7 +135,7 @@ class Context:
         # because the call to w2c might trigger OTHER type definitions, so we
         # must ensure that we write the whole "struct { ... }" block
         # atomically.
-        out = self.out_types_def.make_nested_builder(detached=True)
+        out = self.tbh_types_def.make_nested_builder(detached=True)
         out.wl("struct %s {" % c_struct_type)
         with out.indent():
             for field, w_fieldtype in w_st.fields.items():
@@ -143,20 +143,20 @@ class Context:
                 out.wl(f"{c_fieldtype} {field};")
         out.wl("};")
         out.wl("")
-        self.out_types_def.attach_nested_builder(out)
+        self.tbh_types_def.attach_nested_builder(out)
         return c_struct_type
 
     def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
         c_hltype = C_Type(w_hltype.fqn.c_name)
         w_lltype = w_hltype.w_lltype
         c_lltype = self.w2c(w_lltype)
-        self.out_types_decl.wb(f"""
+        self.tbh_types_decl.wb(f"""
         typedef struct {c_hltype} {{
             {c_lltype} ll;
         }} {c_hltype};
         """)
         LIFT = w_hltype.fqn.join('__lift__').c_name
-        self.out_ptrs_def.wb(f"""
+        self.tbh_ptrs_def.wb(f"""
         SPY_TYPELIFT_FUNCTIONS({c_hltype}, {c_lltype});
         """)
         self._d[w_hltype] = c_hltype
