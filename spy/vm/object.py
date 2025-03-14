@@ -443,7 +443,7 @@ class W_Type(W_Object):
         w_new = w_type.dict_w.get('__new__')
         if w_new is not None:
             assert isinstance(w_new, W_Func), 'XXX raise proper exception'
-            return W_OpImpl(w_new)
+            return W_OpImpl(w_new, list(args_wop))
 
         # no __NEW__ nor __new__, error out
         clsname = w_type.fqn.human_name
