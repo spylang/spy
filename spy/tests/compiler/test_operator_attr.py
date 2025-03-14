@@ -27,7 +27,7 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -53,7 +53,7 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
             @builtin_method('__GET_x__', color='blue')
@@ -91,7 +91,7 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
             @builtin_method('__GETATTR__', color='blue')

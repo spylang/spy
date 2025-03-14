@@ -104,9 +104,12 @@ class W_OpArg(W_Object):
 
     @builtin_method('__new__')
     @staticmethod
-    def w_spy_new(vm: 'SPyVM', w_cls: W_Type,
-                 w_color: W_Object, w_static_type: W_Type,
-                 w_val: W_Object) -> 'W_OpArg':
+    def w_spy_new(
+            vm: 'SPyVM',
+            w_color: W_Object,
+            w_static_type: W_Type,
+            w_val: W_Object
+    ) -> 'W_OpArg':
         """
         Create a new OpArg from SPy code:
         - color: 'red' or 'blue'

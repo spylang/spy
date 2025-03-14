@@ -13,7 +13,7 @@ def ndarray1(DTYPE):
     class ndarray:
         __ll__: ptr[ArrayData]
 
-        def __new__(cls: type, length: i32) -> ndarray:
+        def __new__(length: i32) -> ndarray:
             data = gc_alloc(ArrayData)(1)
             data.length = length
             data.items = gc_alloc(DTYPE)(length)

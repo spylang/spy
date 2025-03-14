@@ -60,7 +60,7 @@ class TestOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
             @builtin_method('__GETITEM__', color='blue')
@@ -97,7 +97,7 @@ class TestOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_cls: W_Type) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
             @builtin_method('__GETITEM__', color='blue')
@@ -135,7 +135,7 @@ class TestOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> 'W_MyClass':
+            def w_spy_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
                 return W_MyClass(w_x)
 
             @builtin_method('__GETITEM__', color='blue')
