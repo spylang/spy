@@ -977,3 +977,14 @@ class TestBasic(CompilerTest):
             return cls+1
         """)
         assert mod.foo(3) == 4
+
+    def test_raise(self):
+        mod = self.compile("""
+        def foo(x: i32) -> i32:
+            if x > 0:
+                return x+1
+            else:
+                raise Exception("hello")
+        """)
+        assert mod.foo(3) == 6
+        mod.foo(-1)
