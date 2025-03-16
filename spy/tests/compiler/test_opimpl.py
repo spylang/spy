@@ -4,6 +4,7 @@ import pytest
 from spy.libspy import SPyPanicError
 from spy.vm.b import B
 from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.func_adapter import W_FuncAdapter
 from spy.tests.support import CompilerTest, skip_backends, only_interp
 
 @only_interp
@@ -109,3 +110,29 @@ class TestOpImpl(CompilerTest):
         """)
         w_null = mod.get_null(unwrap=False)
         assert w_null is W_OpImpl.NULL
+
+    def test_oparg_from_type(self):
+        mod = self.compile(
+        """
+        from operator import OpArg
+
+        def foo() -> OpArg:
+            return i32
+        """)
+        wop_x = mod.foo(unwrap=False)
+        assert wop_x.color == 'red'
+        assert wop_x.w_static_type is B.w_i32
+        assert wop_x._w_val is None
+
+    def test_call_OP_with_types(self):
+        from spy.vm.modules.operator import OP
+        mod = self.compile(
+        """
+        from operator import ADD, OpImpl
+
+        def foo() -> dynamic:
+            return ADD(i32, i32)
+        """)
+        w_adapter = mod.foo(unwrap=False)
+        assert isinstance(w_adapter, W_FuncAdapter)
+        assert w_adapter.w_func is OP.w_i32_add
