@@ -736,6 +736,24 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Raise(self):
+        mod = self.parse("""
+        def foo() -> void:
+            raise ValueError("error message")
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        Raise(
+            exc=Call(
+                func=Name(id='ValueError'),
+                args=[
+                    StrConst(value='error message'),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_from_import(self):
         mod = self.parse("""
         from testmod import a, b as b2
