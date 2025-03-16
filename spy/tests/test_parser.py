@@ -754,6 +754,28 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Raise_from(self):
+        src = """
+        def foo() -> void:
+            raise ValueError("error") from TypeError("cause")
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: raise ... from ...",
+            ("this is not supported", "raise ValueError(\"error\") from TypeError(\"cause\")"),
+        )
+
+    def test_Raise_bare(self):
+        src = """
+        def foo() -> void:
+            raise
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: bare raise",
+            ("this is not supported", "raise"),
+        )
+
     def test_from_import(self):
         mod = self.parse("""
         from testmod import a, b as b2
