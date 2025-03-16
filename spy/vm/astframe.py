@@ -3,7 +3,7 @@ from types import NoneType
 from dataclasses import dataclass
 from spy import ast
 from spy.location import Loc
-from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
+from spy.errors import (SPyPanicError, SPyTypeError, SPyNameError,
                         SPyRuntimeError, maybe_plural)
 from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
@@ -15,6 +15,7 @@ from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
+from spy.vm.modules.builtins import W_Exception
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
@@ -327,6 +328,18 @@ class AbstractFrame:
                 break
             for stmt in while_node.body:
                 self.exec_stmt(stmt)
+
+    def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
+        # for now, raising an exception always result in a panic
+        wop_exc = self.eval_expr(raise_node.exc)
+        w_exc = wop_exc.w_val
+        # XXX raise proper exception
+        assert isinstance(w_exc, W_Exception)
+        # ad-hoc stringify logic. Eventually, we should have __STR__
+        w_exc_type = self.vm.dynamic_type(w_exc)
+        t = w_exc_type.fqn.symbol_name
+        m = self.vm.unwrap_str(w_exc.w_message)
+        raise SPyPanicError(f'{t}: {m}')
 
     # ==== expressions ====
 

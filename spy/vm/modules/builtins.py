@@ -4,10 +4,10 @@ Second half of the `builtins` module.
 The first half is in vm/b.py. See its docstring for more details.
 """
 
-from typing import TYPE_CHECKING, Any
-from spy.vm.builtin import builtin_func
+from typing import TYPE_CHECKING, Any, Annotated, Self
+from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_Void
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object, W_Type, Member
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
 from spy.vm.b import BUILTINS, B
@@ -74,3 +74,16 @@ def w_print_str(vm: 'SPyVM', w_x: W_Str) -> W_Void:
 @builtin_func('builtins')
 def w_functype_eq(vm: 'SPyVM', w_ft1: W_FuncType, w_ft2: W_FuncType) -> W_Bool:
     return vm.wrap(w_ft1 == w_ft2)  # type: ignore
+
+
+@BUILTINS.builtin_type('Exception')
+class W_Exception(W_Object):
+    w_message: Annotated[W_Str, Member('message')]
+
+    def __init__(self, w_message: W_Str) -> None:
+        self.w_message = w_message
+
+    @builtin_method('__new__')
+    @staticmethod
+    def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
+        return W_Exception(w_message)

@@ -1,6 +1,6 @@
 import pytest
 from spy.fqn import FQN
-from spy.errors import SPyTypeError
+from spy.errors import SPyTypeError, SPyPanicError
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
@@ -979,6 +979,8 @@ class TestBasic(CompilerTest):
         assert mod.foo(3) == 4
 
     def test_raise(self):
+        # for now, we don't support "except:", and raising an exception result
+        # in a panic.
         mod = self.compile("""
         def foo(x: i32) -> i32:
             if x > 0:
@@ -986,5 +988,6 @@ class TestBasic(CompilerTest):
             else:
                 raise Exception("hello")
         """)
-        assert mod.foo(3) == 6
-        mod.foo(-1)
+        assert mod.foo(3) == 4
+        with pytest.raises(SPyPanicError, match="Exception: hello"):
+            mod.foo(-1)
