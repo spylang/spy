@@ -162,6 +162,10 @@ class DopplerFrame(ASTFrame):
             body = newbody
         )]
 
+    def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
+        new_exc = self.eval_and_shift(raise_node.exc)
+        return [raise_node.replace(exc=new_exc)]
+
     # ==== expressions ====
 
     def eval_and_shift(self, expr: ast.Expr,
