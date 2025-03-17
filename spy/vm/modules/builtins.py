@@ -83,7 +83,26 @@ class W_Exception(W_Object):
     def __init__(self, w_message: W_Str) -> None:
         self.w_message = w_message
 
-    @builtin_method('__new__')
+    # the whole "raise Exception(...)" is a bit of a hack at the moment: the C
+    # backend can raise only BLUE exceptions, so here we make sure that
+    # Exception("...") is blue
+    @builtin_method('__new__', color='blue')
     @staticmethod
     def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
         return W_Exception(w_message)
+
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        return f'{cls}({self.w_message})'
+
+    def applevel_str(self, vm: 'SPyVM') -> str:
+        """
+        Ad-hoc stringify logic. Eventually, we should have __STR__
+
+        Return an interp-level str formatted like this:
+            Exception: hello
+        """
+        w_exc_type = vm.dynamic_type(self)
+        t = w_exc_type.fqn.symbol_name
+        m = vm.unwrap_str(self.w_message)
+        return f'{t}: {m}'

@@ -164,6 +164,7 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         new_exc = self.eval_and_shift(raise_node.exc)
+        assert isinstance(new_exc, ast.FQNConst) # XXX raise proper exception
         return [raise_node.replace(exc=new_exc)]
 
     # ==== expressions ====

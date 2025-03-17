@@ -22,7 +22,7 @@ from spy.vm.opimpl import W_OpImpl, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
-from spy.vm.modules.builtins import BUILTINS
+from spy.vm.modules.builtins import BUILTINS, W_Exception
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.types import TYPES
 from spy.vm.modules.unsafe import UNSAFE
@@ -196,6 +196,16 @@ class SPyVM:
             # we might need to change this when we introduce custom types
             fqn = w_val.fqn
             assert w_val.fqn not in self.globals_w
+        elif isinstance(w_val, W_Exception):
+            # this is a bit of a temporary hack: it's needed to support this:
+            #     raise Exception("...")
+
+            # the argument to "raise" must be blue for now (see also
+            # W_Exception.w_spy_new). Eventually, we will have proper support
+            # for prebuilt constants, but for now we special case W_Exception.
+            w_type = self.dynamic_type(w_val)
+            fqn = w_type.fqn.join('prebuilt')
+            fqn = self.get_unique_FQN(fqn)
         else:
             assert False, 'implement me'
 

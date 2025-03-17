@@ -335,11 +335,7 @@ class AbstractFrame:
         w_exc = wop_exc.w_val
         # XXX raise proper exception
         assert isinstance(w_exc, W_Exception)
-        # ad-hoc stringify logic. Eventually, we should have __STR__
-        w_exc_type = self.vm.dynamic_type(w_exc)
-        t = w_exc_type.fqn.symbol_name
-        m = self.vm.unwrap_str(w_exc.w_message)
-        raise SPyPanicError(f'{t}: {m}')
+        raise SPyPanicError(w_exc.applevel_str(self.vm))
 
     # ==== expressions ====
 
