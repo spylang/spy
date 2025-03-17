@@ -90,6 +90,7 @@ class W_Exception(W_Object):
     def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
         # we cannot use the default __new__ because we want to pass w_cls
         w_cls = wop_cls.w_blueval
+        assert isinstance(w_cls, W_Type)
         fqn = w_cls.fqn
         T = Annotated[W_Exception, w_cls]
 
@@ -98,7 +99,9 @@ class W_Exception(W_Object):
         # that Exception("...") is blue
         @builtin_func(fqn, '__new__', color='blue')
         def w_new(vm: 'SPyVM', w_cls: W_Type, w_message: W_Str) -> T:
-            return w_cls.pyclass(w_message)
+            pyclass = w_cls.pyclass
+            assert issubclass(pyclass, W_Exception)
+            return pyclass(w_message)
         return W_OpImpl(w_new, [wop_cls] + list(args_wop))
 
 

@@ -440,7 +440,7 @@ class W_Type(W_Object):
             return w_res
 
         # else, fall back to __new__
-        w_new = w_type.lookup_blue_func('__new__')
+        w_new = w_type.lookup_func('__new__')
         if w_new is not None:
             assert isinstance(w_new, W_Func), 'XXX raise proper exception'
             return W_OpImpl(w_new, list(args_wop))
