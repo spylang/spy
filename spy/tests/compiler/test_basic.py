@@ -983,14 +983,18 @@ class TestBasic(CompilerTest):
         # in a panic.
         mod = self.compile("""
         def foo(x: i32) -> i32:
-            if x > 0:
-                return x+1
-            else:
+            if x < 0:
+                return 42
+            elif x == 0:
                 raise Exception("hello")
+            else:
+                raise ValueError("world")
         """)
-        assert mod.foo(3) == 4
+        assert mod.foo(-1) == 42
         with pytest.raises(SPyPanicError, match="Exception: hello"):
-            mod.foo(-1)
+            mod.foo(0)
+        with pytest.raises(SPyPanicError, match="ValueError: world"):
+            mod.foo(1)
 
     def test_cannot_raise_red(self):
         src = """

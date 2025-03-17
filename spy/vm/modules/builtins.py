@@ -5,6 +5,7 @@ The first half is in vm/b.py. See its docstring for more details.
 """
 
 from typing import TYPE_CHECKING, Any, Annotated, Self
+from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_Void
 from spy.vm.object import W_Object, W_Type, Member
@@ -83,9 +84,24 @@ class W_Exception(W_Object):
     def __init__(self, w_message: W_Str) -> None:
         self.w_message = w_message
 
-    # the whole "raise Exception(...)" is a bit of a hack at the moment: the C
-    # backend can raise only BLUE exceptions, so here we make sure that
-    # Exception("...") is blue
+
+    @builtin_method('__NEW__', color='blue')
+    @staticmethod
+    def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
+        # we cannot use the default __new__ because we want to pass w_cls
+        w_cls = wop_cls.w_blueval
+        fqn = w_cls.fqn
+        T = Annotated[W_Exception, w_cls]
+
+        # the whole "raise Exception(...)" is a bit of a hack at the moment:
+        # the C backend can raise only BLUE exceptions, so here we make sure
+        # that Exception("...") is blue
+        @builtin_func(fqn, '__new__', color='blue')
+        def w_new(vm: 'SPyVM', w_cls: W_Type, w_message: W_Str) -> T:
+            return w_cls.pyclass(w_message)
+        return W_OpImpl(w_new, [wop_cls] + list(args_wop))
+
+
     @builtin_method('__new__', color='blue')
     @staticmethod
     def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
@@ -106,3 +122,16 @@ class W_Exception(W_Object):
         t = w_exc_type.fqn.symbol_name
         m = vm.unwrap_str(self.w_message)
         return f'{t}: {m}'
+
+
+@BUILTINS.builtin_type('ValueError')
+class W_ValueError(W_Exception):
+    pass
+
+@BUILTINS.builtin_type('TypeError')
+class W_TypeError(W_Exception):
+    pass
+
+@BUILTINS.builtin_type('IndexError')
+class W_IndexError(W_Exception):
+    pass
