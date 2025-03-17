@@ -991,3 +991,15 @@ class TestBasic(CompilerTest):
         assert mod.foo(3) == 4
         with pytest.raises(SPyPanicError, match="Exception: hello"):
             mod.foo(-1)
+
+    def test_cannot_raise_red(self):
+        src = """
+        def foo() -> void:
+            exc = Exception("hello")
+            raise exc
+        """
+        errors = expect_errors(
+            "`raise` only accepts blue values for now",
+            ('this is red', 'exc'),
+            )
+        self.compile_raises(src, "foo", errors)

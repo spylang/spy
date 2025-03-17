@@ -332,6 +332,12 @@ class AbstractFrame:
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         # for now, raising an exception always result in a panic
         wop_exc = self.eval_expr(raise_node.exc)
+        if wop_exc.color != 'blue':
+            # if you modify this code, you should also modify the equivalent
+            # one in doppler.py
+            err = SPyTypeError("`raise` only accepts blue values for now")
+            err.add('error', 'this is red', raise_node.exc.loc)
+            raise err
         w_exc = wop_exc.w_val
         # XXX raise proper exception
         assert isinstance(w_exc, W_Exception)
