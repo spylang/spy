@@ -6,6 +6,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, FuncParam
 from spy.vm.list import W_List
+from spy.vm.modules.builtins import W_Exception
 from spy.irgen.scope import SymTable
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
@@ -210,6 +211,10 @@ class SPyBackend:
                 for stmt in if_node.else_body:
                     self.emit_stmt(stmt)
 
+    def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
+        exc = self.fmt_expr(raise_node.exc)
+        self.wl(f'raise {exc}')
+
     # expressions
 
     def fmt_expr_Constant(self, const: ast.Constant) -> str:
@@ -219,6 +224,15 @@ class SPyBackend:
         return repr(const.value)
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
+        # hack hack hack: in case of prebuilt exceptions, let's emit a more
+        # readable form. This is needed because for now raise supports only
+        # blue exceptions, and so all of them are turned into FQNConst.
+        if str(const.fqn).startswith("builtins::Exception::prebuilt"):
+            w_exc = self.vm.lookup_global(const.fqn)
+            assert isinstance(w_exc, W_Exception)
+            t = self.vm.dynamic_type(w_exc).fqn.symbol_name # e.g. 'Exception'
+            m = self.vm.unwrap_str(w_exc.w_message)
+            return f'{t}({m!r})'
         return self.fmt_fqn(const.fqn)
 
     def fmt_expr_Name(self, name: ast.Name) -> str:

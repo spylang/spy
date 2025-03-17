@@ -274,3 +274,19 @@ class TestDoppler:
         def foo() -> void:
             x = 1
         """)
+
+    def test_format_prebuilt_exception(self):
+        self.redshift("""
+        def foo(x: bool) -> void:
+            if x:
+                raise Exception('foo')
+            else:
+                raise Exception('bar')
+        """)
+        self.assert_dump("""
+        def foo(x: bool) -> void:
+            if x:
+                raise Exception('foo')
+            else:
+                raise Exception('bar')
+        """)
