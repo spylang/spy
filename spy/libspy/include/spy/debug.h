@@ -21,10 +21,16 @@ void IMP(spy_debug_log)(const char *s);
 void IMP(spy_debug_log_i32)(const char *s, int32_t n);
 void IMP(spy_debug_set_panic_message)(const char *s);
 
+
+#ifdef SPY_TARGET_WASI
 static void inline spy_panic(const char *s) {
     spy_debug_log(s);
     spy_debug_set_panic_message(s);
     __builtin_trap();
 }
+#else
+void spy_panic(const char *s); // defined in debug.c
+#endif
+
 
 #endif /* SPY_DEBUG_H */
