@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Optional, Literal, ClassVar
 from dataclasses import dataclass
 import linecache
 from spy.location import Loc
@@ -69,7 +69,7 @@ class ErrorFormatter:
 
 
 class SPyError(Exception):
-    LEVEL = 'error'
+    LEVEL: ClassVar[Level] = 'error'
 
     message: str
     annotations: list[Annotation]
@@ -142,5 +142,6 @@ class SPyPanicError(SPyError):
         super().__init__(message)
         self.filename = fname
         self.lineno = lineno
-        loc = Loc(fname, lineno, lineno, 1, -1)
-        self.add('panic', '', loc)
+        if fname is not None:
+            loc = Loc(fname, lineno, lineno, 1, -1)
+            self.add('panic', '', loc)
