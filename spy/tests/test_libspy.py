@@ -85,10 +85,12 @@ class TestLibSPy(CTest):
         #include <spy.h>
 
         void crash(void) {
-            spy_panic("don't panic!");
+            spy_panic("don't panic!", "myfile", 42);
         }
         """
         test_wasm = self.compile_wasm(src, exports=['crash'])
         ll = LLSPyInstance.from_file(test_wasm)
-        with pytest.raises(SPyPanicError, match="don't panic!"):
+        with pytest.raises(SPyPanicError, match="don't panic!") as exc:
             ll.call('crash')
+        assert exc.value.filename == 'myfile'
+        assert exc.value.lineno == 42

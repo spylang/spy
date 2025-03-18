@@ -274,3 +274,20 @@ class TestDoppler:
         def foo() -> void:
             x = 1
         """)
+
+    def test_format_prebuilt_exception(self):
+        fname = str(self.tmpdir.join('test.spy'))
+        self.redshift("""
+        def foo(x: bool) -> void:
+            if x:
+                raise TypeError('foo')  # line 4
+            else:
+                raise ValueError('bar') # line 6
+        """)
+        self.assert_dump(f"""
+        def foo(x: bool) -> void:
+            if x:
+                `operator::panic`('TypeError: foo', '{fname}', 4)
+            else:
+                `operator::panic`('ValueError: bar', '{fname}', 6)
+        """)

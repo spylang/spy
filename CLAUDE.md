@@ -1,6 +1,15 @@
 # SPy Language - Dev Reference
 
+## General behavior of claude code
+- NEVER run tests automatically unless explicitly asked
+- when asked to write a test, write just the test without trying to fix it
+- avoid writing useless comments: if you need to write a comment, explain WHY
+  the code does something instead of WHAT it does
+
+
+
 ## Common Commands
+- When running tests, always use the venv: e.g. `./venv/bin/pytest'
 - Run all tests: `pytest`
 - Run single test: `pytest spy/tests/path/to/test_file.py::TestClass::test_function`
 - Run backend-specific tests: `pytest -m interp` or `-m C` or `-m doppler`

@@ -432,7 +432,7 @@ class W_Type(W_Object):
         assert isinstance(w_type, W_Type)
 
         # Call __NEW__, if present
-        w_NEW = w_type.dict_w.get('__NEW__')
+        w_NEW = w_type.lookup_blue_func('__NEW__')
         if w_NEW is not None:
             assert isinstance(w_NEW, W_Func), 'XXX raise proper exception'
             w_res = vm.fast_call(w_NEW, [wop_t] + list(args_wop))
@@ -440,7 +440,7 @@ class W_Type(W_Object):
             return w_res
 
         # else, fall back to __new__
-        w_new = w_type.dict_w.get('__new__')
+        w_new = w_type.lookup_func('__new__')
         if w_new is not None:
             assert isinstance(w_new, W_Func), 'XXX raise proper exception'
             return W_OpImpl(w_new, list(args_wop))

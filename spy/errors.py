@@ -1,11 +1,10 @@
-from typing import Optional, Literal
+from typing import Optional, Literal, ClassVar
 from dataclasses import dataclass
 import linecache
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
-from spy.libspy import SPyPanicError
 
-Level = Literal["error", "note"]
+Level = Literal["error", "note", "panic"]
 
 def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
     if n == 1:
@@ -32,6 +31,7 @@ class ErrorFormatter:
         # add "custom colors" to ColorFormatter, so that we can do
         # self.color.set('error', 'hello')
         self.color.error = self.color.red  # type: ignore
+        self.color.panic = self.color.red  # type: ignore
         self.color.note = self.color.green # type: ignore
         self.lines = []
 
@@ -69,6 +69,8 @@ class ErrorFormatter:
 
 
 class SPyError(Exception):
+    LEVEL: ClassVar[Level] = 'error'
+
     message: str
     annotations: list[Annotation]
 
@@ -91,7 +93,7 @@ class SPyError(Exception):
 
     def format(self, use_colors: bool = True) -> str:
         fmt = ErrorFormatter(self, use_colors)
-        fmt.emit_message('error', self.message)
+        fmt.emit_message(self.LEVEL, self.message)
         for ann in self.annotations:
             fmt.emit_annotation(ann)
         return fmt.build()
@@ -127,3 +129,19 @@ class SPyRuntimeError(Exception):
 
 class SPyRuntimeAbort(SPyRuntimeError):
     pass
+
+
+class SPyPanicError(SPyError):
+    """
+    Python-level exception raised when a WASM module aborts with a call to
+    spy_panic().
+    """
+    LEVEL = 'panic'
+
+    def __init__(self, message: str, fname: str, lineno: int) -> None:
+        super().__init__(message)
+        self.filename = fname
+        self.lineno = lineno
+        if fname is not None:
+            loc = Loc(fname, lineno, lineno, 1, -1)
+            self.add('panic', '', loc)

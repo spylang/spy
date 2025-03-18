@@ -420,6 +420,19 @@ class Parser:
             body = self.from_py_body(py_node.body)
         )
 
+    def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:
+        if py_node.cause:
+            self.unsupported(py_node, 'raise ... from ...')
+
+        if py_node.exc is None:
+            self.unsupported(py_node, 'bare raise')
+
+        exc = self.from_py_expr(py_node.exc)
+        return spy.ast.Raise(
+            loc = py_node.loc,
+            exc = exc
+        )
+
     # ====== spy.ast.Expr ======
 
     def from_py_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:

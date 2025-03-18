@@ -1,6 +1,6 @@
 import pytest
 from spy.fqn import FQN
-from spy.errors import SPyTypeError
+from spy.errors import SPyTypeError, SPyPanicError
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
@@ -977,3 +977,40 @@ class TestBasic(CompilerTest):
             return cls+1
         """)
         assert mod.foo(3) == 4
+
+    def test_raise(self):
+        # for now, we don't support "except:", and raising an exception result
+        # in a panic.
+        mod = self.compile("""
+        def foo(x: i32) -> i32:
+            if x == 0:
+                return 42
+            elif x == 1:
+                raise Exception("hello")   # <-- line 6
+            elif x == 2:
+                raise ValueError("world")
+            else:
+                raise IndexError
+        """)
+        assert mod.foo(0) == 42
+        with pytest.raises(SPyPanicError, match="Exception: hello") as exc:
+            mod.foo(1)
+        assert exc.value.filename == str(self.tmpdir.join('test.spy'))
+        assert exc.value.lineno == 6
+
+        with pytest.raises(SPyPanicError, match="ValueError: world"):
+            mod.foo(2)
+        with pytest.raises(SPyPanicError, match="IndexError"):
+            mod.foo(3)
+
+    def test_cannot_raise_red(self):
+        src = """
+        def foo() -> void:
+            exc = Exception("hello")
+            raise exc
+        """
+        errors = expect_errors(
+            "`raise` only accepts blue values for now",
+            ('this is red', 'exc'),
+            )
+        self.compile_raises(src, "foo", errors)

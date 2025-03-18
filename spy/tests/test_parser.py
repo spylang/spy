@@ -736,6 +736,46 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Raise(self):
+        mod = self.parse("""
+        def foo() -> void:
+            raise ValueError("error message")
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        Raise(
+            exc=Call(
+                func=Name(id='ValueError'),
+                args=[
+                    StrConst(value='error message'),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Raise_from(self):
+        src = """
+        def foo() -> void:
+            raise ValueError("error") from TypeError("cause")
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: raise ... from ...",
+            ("this is not supported", "raise ValueError(\"error\") from TypeError(\"cause\")"),
+        )
+
+    def test_Raise_bare(self):
+        src = """
+        def foo() -> void:
+            raise
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: bare raise",
+            ("this is not supported", "raise"),
+        )
+
     def test_from_import(self):
         mod = self.parse("""
         from testmod import a, b as b2

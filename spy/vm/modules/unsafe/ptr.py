@@ -157,6 +157,8 @@ class W_Ptr(W_BasePtr):
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
         T = Annotated[W_Object, w_T]
+        filename = wop_ptr.loc.filename
+        lineno = wop_ptr.loc.line_start
 
         @builtin_func(w_ptrtype.fqn, 'load')
         def w_ptr_load_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32) -> T:
@@ -167,7 +169,7 @@ class W_Ptr(W_BasePtr):
             if i >= length:
                 msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
-                raise SPyPanicError(msg)
+                raise SPyPanicError(msg, filename, lineno)
             return vm.call_generic(
                 UNSAFE.w_mem_read,
                 [w_T],
@@ -184,6 +186,8 @@ class W_Ptr(W_BasePtr):
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
         T = Annotated[W_Object, w_T]
+        filename = wop_ptr.loc.filename
+        lineno = wop_ptr.loc.line_start
 
         @builtin_func(w_ptrtype.fqn, 'store')
         def w_ptr_store_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32, w_v: T)-> None:
@@ -194,7 +198,7 @@ class W_Ptr(W_BasePtr):
             if i >= length:
                 msg = (f"ptr_store out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
-                raise SPyPanicError(msg)
+                raise SPyPanicError(msg, filename, lineno)
             vm.call_generic(
                 UNSAFE.w_mem_write,
                 [w_T],

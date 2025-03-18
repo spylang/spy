@@ -50,7 +50,7 @@ class TestSPyBackend(CompilerTest):
             b = 1 + 2 * 3
             c = (1 + 2) * 3
         """)
-    
+
     def test_binop(self):
         mod = self.compile(r"""
         def foo() -> void:
@@ -77,7 +77,7 @@ class TestSPyBackend(CompilerTest):
             a & b
             a | b
             a ^ b
-        """)        
+        """)
 
     def test_vardef(self):
         mod = self.compile("""
@@ -253,6 +253,14 @@ class TestSPyBackend(CompilerTest):
             class Point:
                 x: i32
                 y: i32
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
+    def test_raise(self):
+        src = """
+        def foo() -> void:
+            raise Exception('foo')
         """
         self.compile(src)
         self.assert_dump(src)

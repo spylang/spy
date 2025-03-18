@@ -3,8 +3,7 @@ from types import NoneType
 from dataclasses import dataclass
 from spy import ast
 from spy.location import Loc
-from spy.errors import (SPyRuntimeAbort, SPyTypeError, SPyNameError,
-                        SPyRuntimeError, maybe_plural)
+from spy.errors import SPyTypeError, SPyNameError, SPyRuntimeError
 from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
@@ -327,6 +326,11 @@ class AbstractFrame:
                 break
             for stmt in while_node.body:
                 self.exec_stmt(stmt)
+
+    def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
+        wop_exc = self.eval_expr(raise_node.exc)
+        w_opimpl = self.vm.call_OP(OP.w_RAISE, [wop_exc])
+        self.eval_opimpl(raise_node, w_opimpl, [wop_exc])
 
     # ==== expressions ====
 

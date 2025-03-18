@@ -210,6 +210,10 @@ class SPyBackend:
                 for stmt in if_node.else_body:
                     self.emit_stmt(stmt)
 
+    def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
+        exc = self.fmt_expr(raise_node.exc)
+        self.wl(f'raise {exc}')
+
     # expressions
 
     def fmt_expr_Constant(self, const: ast.Constant) -> str:

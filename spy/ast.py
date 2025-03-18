@@ -516,6 +516,10 @@ class While(Stmt):
     test: Expr
     body: list[Stmt]
 
+@dataclass(eq=False)
+class Raise(Stmt):
+    exc: Expr
+
 
 # ====== Doppler-specific nodes ======
 #
