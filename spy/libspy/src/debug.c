@@ -13,12 +13,11 @@ void spy_debug_log_i32(const char *s, int32_t n) {
     printf("%s %d\n", s, n);
 }
 
-void spy_debug_set_panic_message(const char *s) {
-    printf("PANIC: %s\n", s);
-}
-
-void spy_panic(const char *s) {
-    fprintf(stderr, "%s\n", s);
+void spy_panic(const char *s, const char *fname, int32_t lineno) {
+    if (fname != NULL)
+        fprintf(stderr, "%s at %s:%d\n", s, fname, lineno);
+    else
+        fprintf(stderr, "%s\n", s);
     abort();
 }
 
