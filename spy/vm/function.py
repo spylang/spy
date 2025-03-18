@@ -186,7 +186,8 @@ class W_Func(W_Object):
         this info on the w_functype.
         """
         # this is a hack, but good enough to constant-fold arithmetic ops
-        return self.fqn.modname == 'operator'
+        return (self.fqn.modname == 'operator'
+                and self.fqn.symbol_name != 'panic')
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_functype

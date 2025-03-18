@@ -389,7 +389,8 @@ class SPyVM:
         new_args_wop = [wop.as_red(self) for wop in args_wop]
 
         if w_OP in (OP.w_CALL, OP.w_CALL_METHOD, OP.w_GETATTR,
-                    OP.w_GETITEM, OP.w_SETATTR, OP.w_SETITEM):
+                    OP.w_GETITEM, OP.w_SETATTR, OP.w_SETITEM,
+                    OP.w_RAISE):
             new_args_wop[0] = args_wop[0]
         if w_OP in (OP.w_GETATTR, OP.w_SETATTR, OP.w_CALL_METHOD):
             new_args_wop[1] = args_wop[1]

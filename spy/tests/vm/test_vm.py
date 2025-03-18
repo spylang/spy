@@ -131,6 +131,27 @@ class TestVM:
                 match="Cannot wrap interp-level objects of type Foo"):
             vm.wrap(Foo())
 
+    def test_exception_eq(self):
+        """Test equality between W_Exception instances."""
+        vm = SPyVM()
+        from spy.vm.modules.builtins import W_Exception
+
+        # Create exceptions with the same message
+        w_msg1 = vm.wrap("hello")
+        w_msg2 = vm.wrap("hello")
+        w_exc1 = W_Exception(w_msg1)
+        w_exc2 = W_Exception(w_msg2)
+
+        # Create an exception with a different message
+        w_msg3 = vm.wrap("world")
+        w_exc3 = W_Exception(w_msg3)
+
+        # Test equality
+        assert vm.is_True(vm.eq(w_exc1, w_exc2))
+        assert vm.is_False(vm.eq(w_exc1, w_exc3))
+        assert vm.is_False(vm.ne(w_exc1, w_exc2))
+        assert vm.is_True(vm.ne(w_exc1, w_exc3))
+
     def test_w_None(self):
         vm = SPyVM()
         w_None = B.w_None

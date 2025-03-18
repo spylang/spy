@@ -279,14 +279,14 @@ class TestDoppler:
         self.redshift("""
         def foo(x: bool) -> void:
             if x:
-                raise Exception('foo')
+                raise TypeError('foo')
             else:
-                raise Exception('bar')
+                raise ValueError('bar')
         """)
         self.assert_dump("""
         def foo(x: bool) -> void:
             if x:
-                raise Exception('foo')
+                `operator::panic`('TypeError: foo')
             else:
-                raise Exception('bar')
+                `operator::panic`('ValueError: bar')
         """)

@@ -418,18 +418,6 @@ class CFuncWriter:
                 self.emit_stmt(stmt)
         self.tbc.wl('}')
 
-    def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
-        # for now, "raise" is always translated into a panic. Also, for now we
-        # can raise only blue/constant exceptions.
-        exc = raise_node.exc
-        assert isinstance(exc, ast.FQNConst)
-        w_exc = self.ctx.vm.lookup_global(exc.fqn)
-        assert isinstance(w_exc, W_Exception)
-        msg = w_exc.applevel_str(self.ctx.vm)
-        # use c_ast.Literal so that it takes case of escaping
-        c_msg = C.Literal.from_bytes(msg.encode('utf-8'))
-        self.tbc.wl(f'spy_panic({c_msg});')
-
     # ===== expressions =====
 
     def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:

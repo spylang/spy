@@ -105,6 +105,44 @@ class W_Exception(W_Object):
         return W_OpImpl(w_new, [wop_cls] + list(args_wop))
 
 
+    @builtin_method('__EQ__', color='blue')
+    @staticmethod
+    def w_EQ(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpImpl:
+        from spy.vm.opimpl import W_OpImpl
+
+        w_atype = wop_a.w_static_type
+        w_btype = wop_b.w_static_type
+
+        # If different exception types, return null implementation
+        if w_atype is not w_btype:
+            return W_OpImpl.NULL
+
+        @builtin_func(w_atype.fqn)
+        def w_eq(vm: 'SPyVM', w_exc1: W_Exception, w_exc2: W_Exception) -> W_Bool:
+            # Compare the message fields
+            return vm.eq(w_exc1.w_message, w_exc2.w_message)
+
+        return W_OpImpl(w_eq)
+
+    @builtin_method('__NE__', color='blue')
+    @staticmethod
+    def w_NE(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpImpl:
+        from spy.vm.opimpl import W_OpImpl
+
+        w_atype = wop_a.w_static_type
+        w_btype = wop_b.w_static_type
+
+        # If different exception types, return null implementation
+        if w_atype is not w_btype:
+            return W_OpImpl.NULL
+
+        @builtin_func(w_atype.fqn)
+        def w_ne(vm: 'SPyVM', w_exc1: W_Exception, w_exc2: W_Exception) -> W_Bool:
+            # Compare the message fields and negate the result
+            return vm.ne(w_exc1.w_message, w_exc2.w_message)
+
+        return W_OpImpl(w_ne)
+
     @builtin_method('__new__', color='blue')
     @staticmethod
     def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
@@ -114,7 +152,7 @@ class W_Exception(W_Object):
         cls = self.__class__.__name__
         return f'{cls}({self.w_message})'
 
-    def applevel_str(self, vm: 'SPyVM') -> str:
+    def spy_str(self, vm: 'SPyVM') -> str:
         """
         Ad-hoc stringify logic. Eventually, we should have __STR__
 
