@@ -9,7 +9,7 @@ static inline double spy_operator$i32_to_f64(int32_t x) { return x; }
 static inline bool spy_operator$i32_to_bool(int32_t x) { return x; }
 
 static inline void spy_operator$panic(spy_Str *s) {
-    spy_panic(s->utf8);
+    spy_panic(s->utf8, NULL, 0);
 }
 
 #endif /* SPY_OPERATOR_H */

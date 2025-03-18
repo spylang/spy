@@ -39,10 +39,14 @@ async def async_get_LLMOD() -> LLWasmModule:
 class LibSPyHost(HostModule):
     log: list[str]
     panic_message: Optional[str]
+    panic_filename: Optional[str]
+    panic_lineno: int
 
     def __init__(self) -> None:
         self.log = []
         self.panic_message = None
+        self.panic_filename = None
+        self.panic_lineno = 0
 
     def _read_str(self, ptr: int) -> str:
         # ptr is const char*
@@ -62,17 +66,29 @@ class LibSPyHost(HostModule):
         self.log.append(msg)
         print('[log]', msg)
 
-    def env_spy_debug_set_panic_message(self, ptr: int) -> None:
-        # ptr is const char*
-        ba = self.ll.mem.read_cstr(ptr)
-        self.panic_message = ba.decode('utf-8')
-
+    def env_spy_debug_set_panic_message(
+            self,
+            ptr_msg: int,
+            ptr_fname: int,
+            lineno: int
+    ) -> None:
+        # ptr_* are const char*
+        self.panic_message = self._read_str(ptr_msg)
+        if ptr_fname == 0:
+            self.panic_filename = None
+        else:
+            self.panic_filename = self._read_str(ptr_fname)
+        self.panic_lineno = lineno
 
 class SPyPanicError(Exception):
     """
     Python-level exception raised when a WASM module aborts with a call to
     spy_panic().
     """
+    def __init__(self, message: str, fname: Optional[str], lineno: int) -> None:
+        super().__init__(message)
+        self.filename = fname
+        self.lineno = lineno
 
 
 class LLSPyInstance(LLWasmInstance):
@@ -97,5 +113,9 @@ class LLSPyInstance(LLWasmInstance):
             return super().call(name, *args)
         except WasmTrap:
             if self.libspy.panic_message is not None:
-                raise SPyPanicError(self.libspy.panic_message)
+                raise SPyPanicError(
+                    self.libspy.panic_message,
+                    self.libspy.panic_filename,
+                    self.libspy.panic_lineno
+                )
             raise

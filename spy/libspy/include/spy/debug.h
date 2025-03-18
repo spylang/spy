@@ -19,13 +19,14 @@ TODO: ideally, we want TWO different WASI modes:
 
 void IMP(spy_debug_log)(const char *s);
 void IMP(spy_debug_log_i32)(const char *s, int32_t n);
-void IMP(spy_debug_set_panic_message)(const char *s);
+void IMP(spy_debug_set_panic_message)
+     (const char *s, const char *fname, int32_t lineno);
 
 
 #ifdef SPY_TARGET_WASI
-static void inline spy_panic(const char *s) {
+static void inline spy_panic(const char *s, const char *fname, int32_t lineno) {
     spy_debug_log(s);
-    spy_debug_set_panic_message(s);
+    spy_debug_set_panic_message(s, fname, lineno);
     __builtin_trap();
 }
 #else
