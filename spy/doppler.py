@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-def redshift(vm: 'SPyVM', w_func: W_ASTFunc) -> W_ASTFunc:
-    dop = DopplerFrame(vm, w_func)
+def redshift(vm: 'SPyVM', w_func: W_ASTFunc, lazy_errors: bool) -> W_ASTFunc:
+    dop = DopplerFrame(vm, w_func, lazy_errors)
     return dop.redshift()
 
 
@@ -54,12 +54,15 @@ class DopplerFrame(ASTFrame):
     """
     shifted_expr: dict[ast.Expr, ast.Expr]
     opimpl: dict[ast.Node, W_Func]
+    lazy_errors: bool
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
+                 lazy_errors: bool) -> None:
         assert w_func.color == 'red'
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
         self.opimpl = {}
+        self.lazy_errors = lazy_errors
 
     # overridden
     @property
@@ -98,8 +101,7 @@ class DopplerFrame(ASTFrame):
     # ==== statements ====
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
-        LAZY_ERRORS = True
-        if LAZY_ERRORS:
+        if self.lazy_errors:
             try:
                 return magic_dispatch(self, 'shift_stmt', stmt)
             except SPyTypeError as exc:

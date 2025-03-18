@@ -96,7 +96,7 @@ class SPyVM:
         self.modules_w[modname] = w_mod
         return w_mod
 
-    def redshift(self) -> None:
+    def redshift(self, lazy_errors: bool) -> None:
         """
         Perform a redshift on all W_ASTFunc.
         """
@@ -113,13 +113,17 @@ class SPyVM:
             funcs = list(get_funcs())
             if not funcs:
                 break
-            self._redshift_some(funcs)
+            self._redshift_some(funcs, lazy_errors)
 
-    def _redshift_some(self, funcs: list[tuple[FQN, W_ASTFunc]]) -> None:
+    def _redshift_some(
+            self,
+            funcs: list[tuple[FQN, W_ASTFunc]],
+            lazy_errors: bool
+    ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != 'blue'
             assert not w_func.redshifted
-            w_newfunc = redshift(self, w_func)
+            w_newfunc = redshift(self, w_func, lazy_errors)
             assert w_newfunc.redshifted
             self.globals_w[fqn] = w_newfunc
 

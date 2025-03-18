@@ -143,6 +143,14 @@ class Arguments:
         )
     ] = False
 
+    lazy_errors: Annotated[
+        bool,
+        Option(
+            "--lazy-errors",
+            help="DOCUMENT ME"
+        )
+    ] = False
+
     timeit: Annotated[
         bool,
         Option(
@@ -301,7 +309,7 @@ async def inner_main(args: Arguments) -> None:
 
         return
 
-    vm.redshift()
+    vm.redshift(lazy_errors=args.lazy_errors)
     if args.redshift:
         dump_spy_mod(vm, modname, args.full_fqn)
         return
