@@ -139,12 +139,12 @@ class TestVM:
         # Create exceptions with the same message
         w_msg1 = vm.wrap("hello")
         w_msg2 = vm.wrap("hello")
-        w_exc1 = W_Exception(w_msg1)
-        w_exc2 = W_Exception(w_msg2)
+        w_exc1 = W_Exception(w_msg1)  # type: ignore
+        w_exc2 = W_Exception(w_msg2)  # type: ignore
 
         # Create an exception with a different message
         w_msg3 = vm.wrap("world")
-        w_exc3 = W_Exception(w_msg3)
+        w_exc3 = W_Exception(w_msg3)  # type: ignore
 
         # Test equality
         assert vm.is_True(vm.eq(w_exc1, w_exc2))

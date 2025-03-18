@@ -332,7 +332,7 @@ class AbstractFrame:
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wop_exc = self.eval_expr(raise_node.exc)
         w_opimpl = self.vm.call_OP(OP.w_RAISE, [wop_exc])
-        return self.eval_opimpl(raise_node, w_opimpl, [wop_exc])
+        self.eval_opimpl(raise_node, w_opimpl, [wop_exc])
 
     # ==== expressions ====
 
