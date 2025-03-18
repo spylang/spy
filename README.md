@@ -1,5 +1,28 @@
 # spy
-SPy language
+
+## What is SPy?
+
+TL;DR: SPy is a subset/variant of Python specifically designed to be
+statically compilable **while** retaining a lot of the "useful" dynamic parts
+of Python.
+
+It consists of:
+
+  1. an interpreter (so that you can have the usual nice "development
+     experience" that you have in Python)
+
+  2. a compiler (for speed)
+
+The documentation is very scarce at the moment, but the best source to
+understand the ideas behind SPy are probably the
+[slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and
+[recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS) of
+the talk which [Antonio Cuni](github.com/antocuni/) gave at PyCon US 2024.
+
+Additional info can be found on:
+
+  - Antonio Cuni's [blog](http://antocuni.eu/tags/#tag:spy)
+  - [A peek into a possible future of Python in the browser](https://lukasz.langa.pl/f37aa97a-9ea3-4aeb-b6a0-9daeea5a7505/) by Łukasz Langa.
 
 
 ## Local development setup
