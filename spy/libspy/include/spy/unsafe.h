@@ -71,7 +71,7 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     }                                                            \
     static inline void PTR##$store(PTR p, size_t i, T v) {       \
         if (i >= p.length)                                       \
-            spy_panic("ptr_store ouf of bounds" __FILE__, __LINE__);    \
+            spy_panic("ptr_store ouf of bounds", __FILE__, __LINE__);   \
         p.p[i] = v;                                              \
     }                                                            \
     static inline bool PTR##$eq(PTR p0, PTR p1) {                \
