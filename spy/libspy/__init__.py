@@ -1,6 +1,7 @@
 import sys
 from typing import Any, Optional
 import spy
+from spy.errors import SPyPanicError
 from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule, WasmTrap
 from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
 #from spy.vm.str import ll_spy_Str_read
@@ -80,15 +81,6 @@ class LibSPyHost(HostModule):
             self.panic_filename = self._read_str(ptr_fname)
         self.panic_lineno = lineno
 
-class SPyPanicError(Exception):
-    """
-    Python-level exception raised when a WASM module aborts with a call to
-    spy_panic().
-    """
-    def __init__(self, message: str, fname: Optional[str], lineno: int) -> None:
-        super().__init__(message)
-        self.filename = fname
-        self.lineno = lineno
 
 
 class LLSPyInstance(LLWasmInstance):
