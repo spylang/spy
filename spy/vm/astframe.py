@@ -3,8 +3,7 @@ from types import NoneType
 from dataclasses import dataclass
 from spy import ast
 from spy.location import Loc
-from spy.errors import (SPyPanicError, SPyTypeError, SPyNameError,
-                        SPyRuntimeError, maybe_plural)
+from spy.errors import SPyTypeError, SPyNameError, SPyRuntimeError
 from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
@@ -15,7 +14,6 @@ from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.list import W_List, W_ListType
 from spy.vm.tuple import W_Tuple
-from spy.vm.modules.builtins import W_Exception
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
