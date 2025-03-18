@@ -986,15 +986,18 @@ class TestBasic(CompilerTest):
             if x == 0:
                 return 42
             elif x == 1:
-                raise Exception("hello")
+                raise Exception("hello")   # <-- line 6
             elif x == 2:
                 raise ValueError("world")
             else:
                 raise IndexError
         """)
         assert mod.foo(0) == 42
-        with pytest.raises(SPyPanicError, match="Exception: hello"):
+        with pytest.raises(SPyPanicError, match="Exception: hello") as exc:
             mod.foo(1)
+        assert exc.value.filename == str(self.tmpdir.join('test.spy'))
+        assert exc.value.lineno == 6
+
         with pytest.raises(SPyPanicError, match="ValueError: world"):
             mod.foo(2)
         with pytest.raises(SPyPanicError, match="IndexError"):

@@ -5,7 +5,7 @@ from spy.vm.object import W_Type
 from spy.vm.str import W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.function import W_Func
-from spy.vm.primitive import W_Dynamic
+from spy.vm.primitive import W_Dynamic, W_I32
 from spy.vm.modules.builtins import W_Exception
 
 from . import OP, op_fast_call
@@ -13,9 +13,12 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @OP.builtin_func
-def w_panic(vm: 'SPyVM', w_message: W_Str) -> None:
+def w_panic(vm: 'SPyVM', w_message: W_Str,
+            w_filename: W_Str, w_lineno: W_I32) -> None:
     msg = vm.unwrap_str(w_message)
-    raise SPyPanicError(msg)
+    fname = vm.unwrap_str(w_filename)
+    lineno = vm.unwrap_i32(w_lineno)
+    raise SPyPanicError(msg, fname, lineno)
 
 @OP.builtin_func(color='blue')
 def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
@@ -43,7 +46,14 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
 
     w_msg = vm.wrap(msg)
     wop_msg = W_OpArg.from_w_obj(vm, w_msg)
-    w_opimpl = W_OpImpl(OP.w_panic, [wop_msg])
+
+    w_fname = vm.wrap(wop_exc.loc.filename)
+    wop_fname = W_OpArg.from_w_obj(vm, w_fname)
+
+    w_lineno = vm.wrap(wop_exc.loc.line_start)
+    wop_lineno = W_OpArg.from_w_obj(vm, w_lineno)
+
+    w_opimpl = W_OpImpl(OP.w_panic, [wop_msg, wop_fname, wop_lineno])
 
     return typecheck_opimpl(
         vm,

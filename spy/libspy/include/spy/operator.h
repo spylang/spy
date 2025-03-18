@@ -8,8 +8,8 @@ static inline int32_t spy_operator$f64_to_i32(double x) { return x; }
 static inline double spy_operator$i32_to_f64(int32_t x) { return x; }
 static inline bool spy_operator$i32_to_bool(int32_t x) { return x; }
 
-static inline void spy_operator$panic(spy_Str *s) {
-    spy_panic(s->utf8, NULL, 0);
+static inline void spy_operator$panic(spy_Str *m, spy_Str *f, int32_t lineno) {
+    spy_panic(m->utf8, f->utf8, lineno);
 }
 
 #endif /* SPY_OPERATOR_H */
