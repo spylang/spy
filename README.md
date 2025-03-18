@@ -17,7 +17,7 @@ The documentation is very scarce at the moment, but the best source to
 understand the ideas behind SPy are probably the
 [slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and
 [recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS) of
-the talk which [Antonio Cuni](github.com/antocuni/) gave at PyCon US 2024.
+the talk which [Antonio Cuni](https://github.com/antocuni/) gave at PyCon US 2024.
 
 Additional info can be found on:
 
