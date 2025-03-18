@@ -138,7 +138,7 @@ class SPyPanicError(SPyError):
     """
     LEVEL = 'panic'
 
-    def __init__(self, message: str, fname: Optional[str], lineno: int) -> None:
+    def __init__(self, message: str, fname: str, lineno: int) -> None:
         super().__init__(message)
         self.filename = fname
         self.lineno = lineno

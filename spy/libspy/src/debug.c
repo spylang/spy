@@ -56,28 +56,25 @@ void spy_panic(const char *s, const char *fname, int32_t lineno) {
               |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     */
     fprintf(stderr, "panic: %s\n", s);
+    fprintf(stderr, "   --> %s:%d\n", fname, lineno);
 
-    if (fname != NULL) {
-        fprintf(stderr, "   --> %s:%d\n", fname, lineno);
+    char *line_content = read_line_from_file(fname, lineno);
+    if (line_content != NULL) {
+        fprintf(stderr, "%3d | %s\n", lineno, line_content);
 
-        char *line_content = read_line_from_file(fname, lineno);
-        if (line_content != NULL) {
-            fprintf(stderr, "  %d | %s\n", lineno, line_content);
-
-            /* Print the indicator line with carets */
-            fprintf(stderr, "    | ");
-            int i;
-            for (i = 0; i < strlen(line_content); i++) {
-                fprintf(stderr, "^");
-            }
-            fprintf(stderr, "\n");
-
-            free(line_content);
-        } else {
-            /* Couldn't read the line, just show line number */
-            fprintf(stderr, "  %d | <unable to read source line>\n", lineno);
-            fprintf(stderr, "    | ^\n");
+        /* Print the indicator line with carets */
+        fprintf(stderr, "    | ");
+        int i;
+        for (i = 0; i < strlen(line_content); i++) {
+            fprintf(stderr, "^");
         }
+        fprintf(stderr, "\n");
+
+        free(line_content);
+    } else {
+        /* Couldn't read the line, just show line number */
+        fprintf(stderr, "%3d | <unable to read source line>\n", lineno);
+        fprintf(stderr, "    | ^\n");
     }
 
     abort();

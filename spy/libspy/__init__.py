@@ -74,14 +74,11 @@ class LibSPyHost(HostModule):
             lineno: int
     ) -> None:
         # ptr_* are const char*
+        assert ptr_msg != 0
+        assert ptr_fname != 0
         self.panic_message = self._read_str(ptr_msg)
-        if ptr_fname == 0:
-            self.panic_filename = None
-        else:
-            self.panic_filename = self._read_str(ptr_fname)
+        self.panic_filename = self._read_str(ptr_fname)
         self.panic_lineno = lineno
-
-
 
 class LLSPyInstance(LLWasmInstance):
     """
@@ -105,6 +102,7 @@ class LLSPyInstance(LLWasmInstance):
             return super().call(name, *args)
         except WasmTrap:
             if self.libspy.panic_message is not None:
+                assert self.libspy.panic_filename is not None
                 raise SPyPanicError(
                     self.libspy.panic_message,
                     self.libspy.panic_filename,
