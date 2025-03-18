@@ -30,8 +30,7 @@ def ndarray1(DTYPE):
             def getitem(arr: ndarray, i: i32) -> DTYPE:
                 ll = arr.__ll__
                 if i >= ll.length:
-                    print('IndexError')
-                    # raise...
+                    raise IndexError
                 return ll.items[i]
 
             return OpImpl(getitem)
