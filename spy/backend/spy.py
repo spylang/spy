@@ -6,6 +6,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, FuncParam
 from spy.vm.list import W_List
+from spy.vm.modules.builtins import W_Exception
 from spy.irgen.scope import SymTable
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
@@ -223,6 +224,14 @@ class SPyBackend:
         return repr(const.value)
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
+        # hack hack hack: in case of prebuilt exceptions, let's emit a more
+        # readable form. This is needed because for now raise supports only
+        # blue exceptions, and so all of them are turned into FQNConst.
+        w_val = self.vm.lookup_global(const.fqn)
+        if isinstance(w_val, W_Exception):
+            t = self.vm.dynamic_type(w_val).fqn.symbol_name # e.g. 'Exception'
+            m = self.vm.unwrap_str(w_val.w_message)
+            return f'{t}({m!r})'
         return self.fmt_fqn(const.fqn)
 
     def fmt_expr_Name(self, name: ast.Name) -> str:

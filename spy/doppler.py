@@ -11,6 +11,7 @@ from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.modules.builtins import W_TypeError
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 
@@ -97,7 +98,23 @@ class DopplerFrame(ASTFrame):
     # ==== statements ====
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
-        return magic_dispatch(self, 'shift_stmt', stmt)
+        LAZY_ERRORS = True
+        if LAZY_ERRORS:
+            try:
+                return magic_dispatch(self, 'shift_stmt', stmt)
+            except SPyTypeError as exc:
+                # XXX: we should have a "SPyStaticError" or something like that
+
+                # hack hack hack, turn this into an applevel error
+                # XXX what about filename and lineno?
+                w_message = self.vm.wrap(exc.message)
+                w_exc = W_TypeError(w_message)
+                fqn = self.vm.make_fqn_const(w_exc)
+                exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+                return [ast.Raise(exc=exc, loc=stmt.loc)]
+
+        else:
+            return magic_dispatch(self, 'shift_stmt', stmt)
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         newvalue = self.eval_and_shift(ret.value, varname='@return')
