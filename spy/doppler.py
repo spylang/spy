@@ -4,14 +4,14 @@ from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
-from spy.errors import SPyTypeError
+from spy.errors import SPyTypeError, SPyPanicError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.modules.builtins import W_TypeError
+from spy.vm.modules.builtins import W_TypeError, W_StaticError
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 
@@ -101,19 +101,29 @@ class DopplerFrame(ASTFrame):
     # ==== statements ====
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        def make_raise(py_exc_class, message):
+            # hack hack hack, turn this into an applevel error
+            # XXX what about filename and lineno?
+            w_message = self.vm.wrap(message)
+            w_exc = py_exc_class(w_message)
+            fqn = self.vm.make_fqn_const(w_exc)
+            exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+            #return [ast.Raise(exc=exc, loc=stmt.loc)]
+            return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
+
         if self.lazy_errors:
             try:
                 return magic_dispatch(self, 'shift_stmt', stmt)
             except SPyTypeError as exc:
-                # XXX: we should have a "SPyStaticError" or something like that
-
-                # hack hack hack, turn this into an applevel error
-                # XXX what about filename and lineno?
-                w_message = self.vm.wrap(exc.message)
-                w_exc = W_TypeError(w_message)
-                fqn = self.vm.make_fqn_const(w_exc)
-                exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
-                return [ast.Raise(exc=exc, loc=stmt.loc)]
+                return make_raise(W_TypeError, exc.message)
+            except SPyPanicError as exc:
+                # hack hack hack
+                if exc.message.startswith('StaticError: '):
+                    n = len('StaticError: ')
+                    message = exc.message[n:]
+                    return make_raise(W_StaticError, message)
+                else:
+                    raise
 
         else:
             return magic_dispatch(self, 'shift_stmt', stmt)

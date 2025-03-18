@@ -176,3 +176,8 @@ class W_TypeError(W_Exception):
 @BUILTINS.builtin_type('IndexError')
 class W_IndexError(W_Exception):
     pass
+
+
+@BUILTINS.builtin_type('StaticError')
+class W_StaticError(W_Exception):
+    pass
