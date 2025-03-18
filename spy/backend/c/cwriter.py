@@ -10,7 +10,6 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.modules.builtins import W_Exception
 from spy.vm.modules.types import TYPES, W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_Ptr
 from spy.vm.modules.unsafe.struct import W_StructType
