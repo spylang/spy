@@ -30,10 +30,17 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
         err.add('error', 'this is red', wop_exc.loc)
         raise err
 
+    # we support two syntaxes:
+    #   raise IndexError            # raise a type
+    #   raise IndexError("hello")   # raise an instance
     w_exc = wop_exc.w_val
-    assert isinstance(w_exc, W_Exception) # XXX raise proper exception
+    if isinstance(w_exc, W_Type) and issubclass(w_exc.pyclass, W_Exception):
+        # we are in the "raise IndexError" case
+        msg = w_exc.fqn.symbol_name
+    elif isinstance(w_exc, W_Exception):
+        # we are in the "raise IndexError('hello')" case
+        msg = w_exc.spy_str(vm) # ==>  "IndexError: hello"
 
-    msg = w_exc.spy_str(vm) # this is e.g. "Exception: hello"
     w_msg = vm.wrap(msg)
     wop_msg = W_OpArg.from_w_obj(vm, w_msg)
     w_opimpl = W_OpImpl(OP.w_panic, [wop_msg])
