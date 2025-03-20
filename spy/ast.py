@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Iterator, Any, Literal
+from typing import Optional, Iterator, Any, Literal, no_type_check
 import pprint
 import ast as py_ast
 import dataclasses
@@ -28,6 +28,7 @@ class AST:
             return self._loc
         raise ValueError(f'{self.__class__.__name__} does not have a location')
 
+    @no_type_check
     def compute_all_locs(self, filename: str) -> None:
         """
         Compute .loc for itself and all its descendants.
