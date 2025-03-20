@@ -21,7 +21,7 @@ class TestDoppler:
         src = textwrap.dedent(src)
         f.write(src)
         w_mod = self.vm.import_('test')
-        self.vm.redshift()
+        self.vm.redshift(lazy_errors=False)
 
     def assert_dump(self, expected: str,
                     *, fqn_format: FQN_FORMAT='short') -> None:

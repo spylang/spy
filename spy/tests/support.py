@@ -157,13 +157,13 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'doppler':
-            self.vm.redshift()
+            self.vm.redshift(lazy_errors=False)
             if self.dump_redshift:
                 self.dump_module(modname)
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
-            self.vm.redshift()
+            self.vm.redshift(lazy_errors=False)
             compiler = Compiler(self.vm, modname, self.builddir,
                                 dump_c=self.dump_c)
             file_wasm = compiler.cbuild(
@@ -174,7 +174,7 @@ class CompilerTest:
             )
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
-            self.vm.redshift()
+            self.vm.redshift(lazy_errors=False)
             if self.dump_redshift:
                 self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir,
