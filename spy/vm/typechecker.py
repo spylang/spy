@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence, Literal
 from types import NoneType
 from spy import ast
 from spy.irgen.symtable import Symbol, Color
-from spy.errors import (SPyTypeError, SPyNameError, maybe_plural)
+from spy.errors import SPyTypeError, SPyNameError
 from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Object, W_Type
@@ -23,6 +23,14 @@ if TYPE_CHECKING:
 #   - 'multi' is the opimpl depends on the types of all operands (e.g., all
 #     binary operators)
 DispatchKind = Literal['single', 'multi']
+
+def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
+    if n == 1:
+        return singular
+    elif plural is None:
+        return singular + 's'
+    else:
+        return plural
 
 
 def typecheck_opimpl(
