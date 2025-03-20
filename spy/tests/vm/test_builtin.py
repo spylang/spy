@@ -149,6 +149,6 @@ class TestBuiltin:
                 return W_Foo()
 
         msg = "method `test::Foo.__GETITEM__` should be blue, but it's red"
-        with pytest.raises(SPyError, match=msg):
+        with SPyError.raises('TypeError', match=msg):
             # simulate @decorator application
             builtin_type('test', 'Foo')(W_Foo)

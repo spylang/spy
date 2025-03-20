@@ -1,5 +1,6 @@
 from typing import ClassVar, TYPE_CHECKING
 from dataclasses import dataclass
+from contextlib import contextmanager
 from spy.location import Loc
 from spy.errfmt import ErrorFormatter, Level, Annotation
 
@@ -16,6 +17,7 @@ def get_pyclass(etype: str) -> type['W_Exception']:
 
 
 class SPyError(Exception):
+    etype: str
     w_exc: 'W_Exception'
 
     def __init__(
@@ -25,6 +27,7 @@ class SPyError(Exception):
             etype: str = 'Exception'
     ) -> None:
         pyclass = get_pyclass(etype)
+        self.etype = etype
         self.w_exc = pyclass(message)
         super().__init__(message)
 
@@ -52,6 +55,22 @@ class SPyError(Exception):
 
     def format(self, use_colors: bool = True) -> str:
         return self.w_exc.format(use_colors)
+
+    @contextmanager
+    @staticmethod
+    def raises(etype: str, match=None) -> None:
+        """
+        Equivalent to pytest.raises(SPyError, ...), but also checks the
+        etype.
+        """
+        import pytest
+        with pytest.raises(SPyError, match=match) as excinfo:
+            yield excinfo
+        exc = excinfo.value
+        assert isinstance(exc, SPyError)
+        if exc.etype != etype:
+            msg = f"Expected SPyError of type {etype}, but got {exc.etype}"
+            pytest.fail(msg)
 
 # ======
 

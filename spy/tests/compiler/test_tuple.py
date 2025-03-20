@@ -52,7 +52,7 @@ class TestTuple(CompilerTest):
             a, b, c = make_tuple()
         """)
         msg = "Wrong number of values to unpack: expected 3, got 2"
-        with pytest.raises(SPyError, match=msg):
+        with SPyError.raises('ValueError', match=msg):
             mod.foo()
 
     def test_unpacking_wrong_type(self):

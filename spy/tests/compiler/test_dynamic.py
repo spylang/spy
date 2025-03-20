@@ -28,7 +28,7 @@ class TestDynamic(CompilerTest):
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"
-        with pytest.raises(SPyError, match=msg):
+        with SPyError.raises('TypeError', match=msg):
             mod.foo()
 
     def test_dynamic_dispatch_ok(self):
@@ -48,7 +48,7 @@ class TestDynamic(CompilerTest):
             return x + y
         """)
         msg = re.escape('cannot do `i32` + `str`')
-        with pytest.raises(SPyError, match=msg):
+        with SPyError.raises('TypeError', match=msg):
             mod.foo()
 
     def test_mixed_dispatch(self):
@@ -116,7 +116,7 @@ class TestDynamic(CompilerTest):
             return get_inc()(7)
         """)
         msg = 'cannot call objects of type `str`'
-        with pytest.raises(SPyError, match=msg):
+        with SPyError.raises('TypeError', match=msg):
             mod.foo()
 
     def test_setattr(self):
@@ -142,7 +142,7 @@ class TestDynamic(CompilerTest):
             obj.x = 42
         """)
         msg = "type `str` does not support assignment to attribute 'x'"
-        with pytest.raises(SPyError, match=msg):
+        with SPyError.raises('TypeError', match=msg):
             mod.foo()
 
     def test_getattr(self):
