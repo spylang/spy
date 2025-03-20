@@ -3,16 +3,20 @@ from dataclasses import dataclass
 from spy.location import Loc
 from spy.errfmt import ErrorFormatter, Level, Annotation
 
+if TYPE_CHECKING:
+    from spy.vm.w_exc import W_Exception
+
 
 class SPyError(Exception):
-    LEVEL: ClassVar[Level] = 'error'
+    #LEVEL: ClassVar[Level] = 'error'
+    w_exc: 'W_Exception'
 
     message: str
     annotations: list[Annotation]
 
     def __init__(self, message: str) -> None:
-        self.message = message
-        self.annotations = []
+        from spy.vm.exc import W_Exception
+        self.w_exc = W_Exception(message)
         super().__init__(message)
 
     @classmethod
@@ -22,17 +26,13 @@ class SPyError(Exception):
         return err
 
     def __str__(self) -> str:
-        return self.format(use_colors=False)
+        return self.w_exc.format(use_colors=False)
 
     def add(self, level: Level, message: str, loc: Loc) -> None:
-        self.annotations.append(Annotation(level, message, loc))
+        self.w_exc.add(level, message, loc)
 
     def format(self, use_colors: bool = True) -> str:
-        fmt = ErrorFormatter(self, use_colors)
-        fmt.emit_message(self.LEVEL, self.message)
-        for ann in self.annotations:
-            fmt.emit_annotation(ann)
-        return fmt.build()
+        return self.w_exc.format(use_colors)
 
 
 class SPyParseError(SPyError):
@@ -72,7 +72,7 @@ class SPyPanicError(SPyError):
     Python-level exception raised when a WASM module aborts with a call to
     spy_panic().
     """
-    LEVEL = 'panic'
+    #LEVEL = 'panic'
 
     def __init__(self, message: str, fname: str, lineno: int) -> None:
         super().__init__(message)

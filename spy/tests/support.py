@@ -258,13 +258,13 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
         pytest.fail(f'Error message not found: {msg}')
 
     def match_one_annotation(expected_msg: str, expected_src: str) -> bool:
-        for ann in err.annotations:
+        for ann in err.w_exc.annotations:
             got_src = ann.loc.get_src()
             if ann.message == expected_msg and expected_src == got_src:
                 return True
         return False
 
-    if err.message != main:
+    if err.w_exc.message != main:
         fail(main, '')
 
     for msg, src in anns_to_match:

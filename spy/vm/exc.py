@@ -1,4 +1,8 @@
+# NOTE: W_Exception is NOT a subclass of Exception. If you want to raise a
+# W_Exception, you need to wrap it into SPyError.
+
 from typing import TYPE_CHECKING, Annotated
+from spy.location import Loc
 from spy.errfmt import ErrorFormatter, Level, Annotation
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_method
@@ -13,10 +17,43 @@ if TYPE_CHECKING:
 @BUILTINS.builtin_type('Exception')
 class W_Exception(W_Object):
     message: str
+    annotations: list[Annotation]
+
+    # interp-level interface
 
     def __init__(self, message: str) -> None:
+        assert isinstance(message, str)
         self.message = message
+        self.annotations = []
 
+    def add(self, level: Level, message: str, loc: Loc) -> None:
+        self.annotations.append(Annotation(level, message, loc))
+
+    def format(self, use_colors: bool = True) -> str:
+        fmt = ErrorFormatter(self, use_colors)
+        #fmt.emit_message(self.LEVEL, self.message)
+        fmt.emit_message('error', self.message)
+        for ann in self.annotations:
+            fmt.emit_annotation(ann)
+        return fmt.build()
+
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        return f'{cls}({self.message!r})'
+
+    def spy_str(self, vm: 'SPyVM') -> str:
+        """
+        Ad-hoc stringify logic. Eventually, we should have __STR__
+
+        Return an interp-level str formatted like this:
+            Exception: hello
+        """
+        w_exc_type = vm.dynamic_type(self)
+        t = w_exc_type.fqn.symbol_name
+        m = self.message
+        return f'{t}: {m}'
+
+    # app-level interface
 
     @builtin_method('__NEW__', color='blue')
     @staticmethod
@@ -52,9 +89,10 @@ class W_Exception(W_Object):
             return W_OpImpl.NULL
 
         @builtin_func(w_atype.fqn)
-        def w_eq(vm: 'SPyVM', w_exc1: W_Exception, w_exc2: W_Exception) -> W_Bool:
-            # Compare the message fields
-            return vm.eq(w_exc1.w_message, w_exc2.w_message)
+        def w_eq(vm: 'SPyVM', w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
+            res =  (w_e1.message == w_e2.message and
+                    w_e1.annotations == w_e2.annotations)
+            return vm.wrap(bool(res))  # type: ignore
 
         return W_OpImpl(w_eq)
 
@@ -71,9 +109,10 @@ class W_Exception(W_Object):
             return W_OpImpl.NULL
 
         @builtin_func(w_atype.fqn)
-        def w_ne(vm: 'SPyVM', w_exc1: W_Exception, w_exc2: W_Exception) -> W_Bool:
-            # Compare the message fields and negate the result
-            return vm.ne(w_exc1.w_message, w_exc2.w_message)
+        def w_ne(vm: 'SPyVM', w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
+            res = not (w_e1.message == w_e2.message and
+                       w_e1.annotations == w_e2.annotations)
+            return vm.wrap(bool(res))  # type: ignore
 
         return W_OpImpl(w_ne)
 
@@ -82,21 +121,6 @@ class W_Exception(W_Object):
     def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
         return W_Exception(w_message)
 
-    def __repr__(self) -> str:
-        cls = self.__class__.__name__
-        return f'{cls}({self.w_message})'
-
-    def spy_str(self, vm: 'SPyVM') -> str:
-        """
-        Ad-hoc stringify logic. Eventually, we should have __STR__
-
-        Return an interp-level str formatted like this:
-            Exception: hello
-        """
-        w_exc_type = vm.dynamic_type(self)
-        t = w_exc_type.fqn.symbol_name
-        m = self.message
-        return f'{t}: {m}'
 
 
 @BUILTINS.builtin_type('ValueError')
