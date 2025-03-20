@@ -4,9 +4,6 @@ import linecache
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
 
-if TYPE_CHECKING:
-    from spy.vm.exc import W_Exception
-
 Level = Literal["error", "note", "panic"]
 
 @dataclass

@@ -7,6 +7,7 @@ from spy.fqn import FQN
 from spy.errors import SPyPanicError, SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
+from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
@@ -108,8 +109,7 @@ class DopplerFrame(ASTFrame):
         ) -> list[ast.Stmt]:
             # hack hack hack, turn this into an applevel error
             # XXX what about filename and lineno?
-            w_message = self.vm.wrap(message)
-            w_exc = py_exc_class(w_message)
+            w_exc = py_exc_class(message)
             fqn = self.vm.make_fqn_const(w_exc)
             exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
             #return [ast.Raise(exc=exc, loc=stmt.loc)]

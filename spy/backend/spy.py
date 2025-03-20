@@ -230,7 +230,7 @@ class SPyBackend:
         w_val = self.vm.lookup_global(const.fqn)
         if isinstance(w_val, W_Exception):
             t = self.vm.dynamic_type(w_val).fqn.symbol_name # e.g. 'Exception'
-            m = self.vm.unwrap_str(w_val.w_message)
+            m = w_val.message
             return f'{t}({m!r})'
         return self.fmt_fqn(const.fqn)
 
