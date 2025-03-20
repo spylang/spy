@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, TYPE_CHECKING
 from dataclasses import dataclass
 from spy.location import Loc
 from spy.errfmt import ErrorFormatter, Level, Annotation

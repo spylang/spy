@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Annotated
+from spy.errfmt import ErrorFormatter, Level, Annotation
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.primitive import W_Bool
@@ -11,10 +12,10 @@ if TYPE_CHECKING:
 
 @BUILTINS.builtin_type('Exception')
 class W_Exception(W_Object):
-    w_message: Annotated[W_Str, Member('message')]
+    message: str
 
-    def __init__(self, w_message: W_Str) -> None:
-        self.w_message = w_message
+    def __init__(self, message: str) -> None:
+        self.message = message
 
 
     @builtin_method('__NEW__', color='blue')
@@ -33,7 +34,8 @@ class W_Exception(W_Object):
         def w_new(vm: 'SPyVM', w_cls: W_Type, w_message: W_Str) -> T:
             pyclass = w_cls.pyclass
             assert issubclass(pyclass, W_Exception)
-            return pyclass(w_message)
+            message = vm.unwrap_str(w_message)
+            return pyclass(message)
         return W_OpImpl(w_new, [wop_cls] + list(args_wop))
 
 
@@ -93,7 +95,7 @@ class W_Exception(W_Object):
         """
         w_exc_type = vm.dynamic_type(self)
         t = w_exc_type.fqn.symbol_name
-        m = vm.unwrap_str(self.w_message)
+        m = self.message
         return f'{t}: {m}'
 
 
