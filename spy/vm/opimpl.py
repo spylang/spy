@@ -122,14 +122,14 @@ class W_OpArg(W_Object):
         if w_type is not B.w_str:
             raise SPyError(
                 f"OpArg color must be a string, got {w_type.fqn.human_name}",
-                etype='TypeError'
+                etype='W_TypeError'
             )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
         if color not in ('red', 'blue'):
             raise SPyError(
                 f"OpArg color must be 'red' or 'blue', got '{color}'",
-                etype='TypeError'
+                etype='W_TypeError'
             )
 
         # Convert B.w_None to Python None
@@ -139,7 +139,7 @@ class W_OpArg(W_Object):
             w_val2 = w_val
 
         if color == 'blue' and w_val is None:
-            raise SPyError("Blue OpArg requires a value", etype='TypeError')
+            raise SPyError("Blue OpArg requires a value", etype='W_TypeError')
 
         loc = Loc.here(-2)  # approximate source location
         return W_OpArg(vm, color, w_static_type, w_val2, loc)
@@ -188,7 +188,7 @@ class W_OpArg(W_Object):
                 'expected blue argument',
                 'this is red',
                 self.loc,
-                etype='TypeError'
+                etype='W_TypeError'
             )
 
         # check that the blueval has the expected type. If not, we should
@@ -264,7 +264,7 @@ class W_OpArg(W_Object):
         @builtin_func(W_OpArg._w.fqn, 'get_blueval')
         def w_get_blueval(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Dynamic:
             if w_oparg.color != 'blue':
-                raise SPyError('oparg is not blue', etype='ValueError')
+                raise SPyError('oparg is not blue', etype='W_ValueError')
             return w_oparg.w_blueval
 
         return W_OpImpl(w_get_blueval, [wop_x])

@@ -46,7 +46,7 @@ class Parser:
         return self.from_py_Module(py_mod)
 
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
-        raise SPyError.simple(primary, secondary, loc, etype='ParseError')
+        raise SPyError.simple(primary, secondary, loc, etype='W_ParseError')
 
     def unsupported(self, node: py_ast.AST,
                     reason: Optional[str] = None) -> NoReturn:

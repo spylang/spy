@@ -1,4 +1,4 @@
-from typing import ClassVar, TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING, Any, Optional
 from dataclasses import dataclass
 from contextlib import contextmanager
 from spy.location import Loc
@@ -8,12 +8,15 @@ if TYPE_CHECKING:
     from spy.vm.exc import W_Exception
 
 def get_pyclass(etype: str) -> type['W_Exception']:
-    from spy.vm.exc import (
-        W_Exception, W_ParseError, W_TypeError, W_ImportError,
-        W_ScopeError, W_NameError, W_ValueError
-    )
-    clsname = f'W_{etype}'
-    return locals()[clsname]
+    """
+    Perform a lazy lookup of app-level exception classes.
+
+    Example:
+        get_pyclass('W_TypeError') --> spy.vm.exc.W_TypeError
+    """
+    import spy.vm.exc
+    assert etype.startswith('W_')
+    return getattr(spy.vm.exc, etype)
 
 
 class SPyError(Exception):
@@ -24,7 +27,7 @@ class SPyError(Exception):
             self,
             message: str,
             *,
-            etype: str = 'Exception'
+            etype: str = 'W_Exception'
     ) -> None:
         pyclass = get_pyclass(etype)
         self.etype = etype
@@ -38,7 +41,7 @@ class SPyError(Exception):
             secondary: str,
             loc: Loc,
             *,
-            etype: str = 'Exception'
+            etype: str = 'W_Exception'
     ) -> 'SPyError':
         err = cls(primary, etype=etype)
         err.add('error', secondary, loc)
@@ -58,7 +61,7 @@ class SPyError(Exception):
 
     @contextmanager
     @staticmethod
-    def raises(etype: str, match=None) -> None:
+    def raises(etype: str, match: Optional[str]=None) -> Any:
         """
         Equivalent to pytest.raises(SPyError, ...), but also checks the
         etype.

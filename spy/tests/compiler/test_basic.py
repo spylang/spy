@@ -129,7 +129,7 @@ class TestBasic(CompilerTest):
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"
-        with SPyError.raises('ValueError', match=msg):
+        with SPyError.raises('W_TypeError', match=msg):
             mod.foo()
 
 
@@ -258,7 +258,7 @@ class TestBasic(CompilerTest):
         if self.backend != 'C':
             # in the C backend we just abort without reporting an error, for now
             msg = 'reached the end of the function without a `return`'
-            with SPyError.raises('TypeError', match=msg):
+            with SPyError.raises('W_TypeError', match=msg):
                 mod.implicit_return_i32()
 
     def test_BinOp_error(self):
@@ -838,11 +838,11 @@ class TestBasic(CompilerTest):
         assert mod.eq_with_conversion(1, 2.0) == False
         #
         msg = "cannot do `i32` == `str`"
-        with SPyError.raises('TypeError', match=msg):
+        with SPyError.raises('W_TypeError', match=msg):
             mod.eq_wrong_types(1, 'hello')
         #
         msg = "cannot do `object` == `object`"
-        with SPyError.raises('TypeError', match=msg):
+        with SPyError.raises('W_TypeError', match=msg):
             mod.eq_objects(1, 2)
         #
         # `dynamic` == `dynamic` uses universal equality, so comparison

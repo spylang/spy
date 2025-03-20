@@ -30,7 +30,7 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
     #      ignoring the actual wop_exc
     if wop_exc.color != 'blue':
         err = SPyError("`raise` only accepts blue values for now",
-                       etype='TypeError')
+                       etype='W_TypeError')
         err.add('error', 'this is red', wop_exc.loc)
         raise err
 

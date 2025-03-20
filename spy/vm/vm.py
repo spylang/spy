@@ -267,7 +267,7 @@ class SPyVM:
             exp = w_type.fqn.human_name
             got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
-            raise SPyError(msg, etype='TypeError')
+            raise SPyError(msg, etype='W_TypeError')
 
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)

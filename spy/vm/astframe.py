@@ -143,7 +143,7 @@ class AbstractFrame:
         w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.fqn.human_name}`'
         raise SPyError.simple(msg, "expected `type`", expr.loc,
-                              etype='TypeError')
+                              etype='W_TypeError')
 
     # ==== statements ====
 
@@ -255,7 +255,7 @@ class AbstractFrame:
         varname = target.value
         sym = self.symtable.lookup(varname)
         if sym.color == 'blue':
-            err = SPyError("invalid assignment target", etype='TypeError')
+            err = SPyError("invalid assignment target", etype='W_TypeError')
             err.add('error', f'{sym.name} is const', target.loc)
             err.add('note', 'const declared here', sym.loc)
             err.add('note',
@@ -272,7 +272,7 @@ class AbstractFrame:
         if wop_tup.w_static_type is not B.w_tuple:
             t = wop_tup.w_static_type.fqn.human_name
             err = SPyError(f'`{t}` does not support unpacking',
-                           etype='TypeError')
+                           etype='W_TypeError')
             err.add('error', f'this is `{t}`', unpack.value.loc)
             raise err
 
@@ -283,7 +283,7 @@ class AbstractFrame:
         if exp != got:
             raise SPyError(
                 f"Wrong number of values to unpack: expected {exp}, got {got}",
-                etype='ValueError'
+                etype='W_ValueError'
             )
         for i, target in enumerate(unpack.targets):
             # fabricate an expr to get an individual item of the tuple
@@ -364,7 +364,7 @@ class AbstractFrame:
         if sym is None:
             msg = f"name `{name.id}` is not defined"
             raise SPyError.simple(msg, "not found in this scope", name.loc,
-                                  etype='NameError')
+                                  etype='W_NameError')
         if sym.fqn is not None:
             return self.eval_Name_global(name, sym)
         elif sym.is_local:
@@ -462,7 +462,7 @@ class AbstractFrame:
                 E = arg.__class__.__name__
                 raise SPyError.simple(
                     msg, f'{E} not allowed here', arg.loc,
-                    etype='TypeError'
+                    etype='W_TypeError'
                 )
 
         args_wop = [self.eval_expr(arg) for arg in call.args]
@@ -628,7 +628,7 @@ class ASTFrame(AbstractFrame):
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()
                 msg = 'reached the end of the function without a `return`'
-                raise SPyError.simple(msg, 'no return', loc, etype='TypeError')
+                raise SPyError.simple(msg, 'no return', loc, etype='W_TypeError')
 
         except Return as e:
             return e.w_value

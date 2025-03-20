@@ -153,7 +153,7 @@ class ScopeAnalyzer:
                 # shadowing a name in an outer scope
                 msg = (f'variable `{name}` shadows a name declared ' +
                        "in an outer scope")
-            err = SPyError(msg, etype='ScopeError')
+            err = SPyError(msg, etype='W_ScopeError')
             err.add('error', 'this is the new declaration', loc)
             err.add('note', 'this is the previous declaration', sym.loc)
             raise err
@@ -181,7 +181,7 @@ class ScopeAnalyzer:
             return
         #
         err = SPyError(f'cannot import `{imp.fqn.spy_name}`',
-                       etype='ImportError')
+                       etype='W_ImportError')
         if imp.fqn.modname not in self.vm.modules_w:
             # module not found
             err.add('error',

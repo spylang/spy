@@ -154,7 +154,7 @@ def _opimpl_null_error(
     """
     typenames = [wop.w_static_type.fqn.human_name for wop in in_args_wop]
     errmsg = errmsg.format(*typenames)
-    err = SPyError(errmsg, etype='TypeError')
+    err = SPyError(errmsg, etype='W_TypeError')
     if dispatch == 'single':
         wop_target = in_args_wop[0]
         t = wop_target.w_static_type.fqn.human_name
@@ -182,7 +182,7 @@ def _call_error_wrong_argcount(
     supplied = maybe_plural(got,
                             f'1 argument was supplied',
                             f'{got} arguments were supplied')
-    err = SPyError(f'this function {takes} but {supplied}', etype='TypeError')
+    err = SPyError(f'this function {takes} but {supplied}', etype='W_TypeError')
     #
     # if we know the call_loc, we can add more detailed errors
     if call_loc:
