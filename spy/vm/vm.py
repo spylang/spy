@@ -15,6 +15,7 @@ from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.list import W_ListType
 from spy.vm.b import B
+from spy.vm.exc import W_Exception
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.module import W_Module
@@ -22,7 +23,7 @@ from spy.vm.opimpl import W_OpImpl, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
-from spy.vm.modules.builtins import BUILTINS, W_Exception
+from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.types import TYPES
 from spy.vm.modules.unsafe import UNSAFE

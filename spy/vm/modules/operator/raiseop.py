@@ -6,7 +6,7 @@ from spy.vm.str import W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.function import W_Func
 from spy.vm.primitive import W_Dynamic, W_I32
-from spy.vm.modules.builtins import W_Exception
+from spy.vm.exc import W_Exception
 
 from . import OP, op_fast_call
 if TYPE_CHECKING:

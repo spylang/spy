@@ -9,6 +9,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
+from spy.vm.exc import W_Exception
 from spy.vm.builtin import builtin_type
 from spy.tests.support import expect_errors
 
@@ -134,7 +135,6 @@ class TestVM:
     def test_exception_eq(self):
         """Test equality between W_Exception instances."""
         vm = SPyVM()
-        from spy.vm.modules.builtins import W_Exception
 
         # Create exceptions with the same message
         w_msg1 = vm.wrap("hello")

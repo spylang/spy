@@ -11,7 +11,7 @@ from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.modules.builtins import W_TypeError, W_StaticError
+from spy.vm.exc import W_TypeError, W_StaticError
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 
