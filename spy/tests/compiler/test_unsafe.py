@@ -1,7 +1,7 @@
 #-*- encoding: utf-8 -*-
 
 import pytest
-from spy.errors import SPyPanicError
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
@@ -63,7 +63,7 @@ class TestUnsafe(CompilerTest):
             return buf[i]
         """)
         assert mod.foo(1) == 100
-        with pytest.raises(SPyPanicError, match="ptr_load out of bounds"):
+        with SPyError.raises("W_PanicError", match="ptr_load out of bounds"):
             mod.foo(3)
 
     def test_struct(self):

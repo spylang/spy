@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 from spy.location import Loc
-from spy.errors import SPyError, SPyPanicError
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.str import W_Str

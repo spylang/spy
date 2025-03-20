@@ -1,7 +1,6 @@
 #-*- encoding: utf-8 -*-
 
 import pytest
-from spy.libspy import SPyPanicError
 from spy.vm.b import B
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.func_adapter import W_FuncAdapter
