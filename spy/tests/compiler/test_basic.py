@@ -993,14 +993,15 @@ class TestBasic(CompilerTest):
                 raise IndexError
         """)
         assert mod.foo(0) == 42
-        with pytest.raises(SPyPanicError, match="Exception: hello") as exc:
+        with SPyError.raises('W_Exception', match="hello") as excinfo:
             mod.foo(1)
-        assert exc.value.filename == str(self.tmpdir.join('test.spy'))
-        assert exc.value.lineno == 6
+        loc = excinfo.value.w_exc.annotations[0].loc
+        assert loc.filename == str(self.tmpdir.join('test.spy'))
+        assert loc.line_start == 6
 
-        with pytest.raises(SPyPanicError, match="ValueError: world"):
+        with SPyError.raises('W_ValueError', match="world"):
             mod.foo(2)
-        with pytest.raises(SPyPanicError, match="IndexError"):
+        with SPyError.raises('W_IndexError'):
             mod.foo(3)
 
     def test_cannot_raise_red(self):

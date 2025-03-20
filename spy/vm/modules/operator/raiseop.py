@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from spy.location import Loc
 from spy.errors import SPyError, SPyPanicError
 from spy.vm.b import B
 from spy.vm.object import W_Type
@@ -15,10 +16,18 @@ if TYPE_CHECKING:
 @OP.builtin_func
 def w_panic(vm: 'SPyVM', w_message: W_Str,
             w_filename: W_Str, w_lineno: W_I32) -> None:
+    # temporary hack to get the exception type from the message
     msg = vm.unwrap_str(w_message)
+    if ': ' in msg:
+        etype, msg = msg.split(': ', 1)
+    else:
+        etype = msg
+        msg = ''
+    etype = 'W_' + etype
     fname = vm.unwrap_str(w_filename)
     lineno = vm.unwrap_i32(w_lineno)
-    raise SPyPanicError(msg, fname, lineno)
+    loc = Loc(fname, lineno, lineno, 1, -1)
+    raise SPyError.simple(msg, '', loc, etype=etype)
 
 @OP.builtin_func(color='blue')
 def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
