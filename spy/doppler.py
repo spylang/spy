@@ -101,7 +101,11 @@ class DopplerFrame(ASTFrame):
     # ==== statements ====
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
-        def make_raise(py_exc_class, message):
+
+        def make_raise(
+                py_exc_class: type['W_Exception'],
+                message: str
+        ) -> list[ast.Stmt]:
             # hack hack hack, turn this into an applevel error
             # XXX what about filename and lineno?
             w_message = self.vm.wrap(message)
@@ -117,12 +121,12 @@ class DopplerFrame(ASTFrame):
             except SPyError as exc:
                 if not exc.match(W_TypeError):
                     raise
-                return make_raise(W_TypeError, exc.message)
+                return make_raise(W_TypeError, exc.w_exc.message)
             except SPyPanicError as exc:
                 # hack hack hack
-                if exc.message.startswith('StaticError: '):
+                if exc.message.startswith('StaticError: '): # type: ignore
                     n = len('StaticError: ')
-                    message = exc.message[n:]
+                    message = exc.message[n:] # type: ignore
                     return make_raise(W_StaticError, message)
                 else:
                     raise

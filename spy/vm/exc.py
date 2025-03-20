@@ -30,7 +30,7 @@ class W_Exception(W_Object):
         self.annotations.append(Annotation(level, message, loc))
 
     def format(self, use_colors: bool = True) -> str:
-        fmt = ErrorFormatter(self, use_colors)
+        fmt = ErrorFormatter(use_colors)
         #fmt.emit_message(self.LEVEL, self.message)
         fmt.emit_message('error', self.message)
         for ann in self.annotations:
@@ -116,10 +116,10 @@ class W_Exception(W_Object):
 
         return W_OpImpl(w_ne)
 
-    @builtin_method('__new__', color='blue')
-    @staticmethod
-    def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
-        return W_Exception(w_message)
+    ## @builtin_method('__new__', color='blue')
+    ## @staticmethod
+    ## def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
+    ##     return W_Exception(w_message)
 
 
 

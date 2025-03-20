@@ -4,7 +4,7 @@ from spy.location import Loc
 from spy.errfmt import ErrorFormatter, Level, Annotation
 
 if TYPE_CHECKING:
-    from spy.vm.w_exc import W_Exception
+    from spy.vm.exc import W_Exception
 
 def get_pyclass(etype: str) -> type['W_Exception']:
     from spy.vm.exc import (

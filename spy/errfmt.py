@@ -5,7 +5,7 @@ from spy.location import Loc
 from spy.textbuilder import ColorFormatter
 
 if TYPE_CHECKING:
-    from spy.errors import SPyError
+    from spy.vm.exc import W_Exception
 
 Level = Literal["error", "note", "panic"]
 
@@ -17,11 +17,9 @@ class Annotation:
 
 
 class ErrorFormatter:
-    err: 'SPyError'
     lines: list[str]
 
-    def __init__(self, err: 'SPyError', use_colors: bool) -> None:
-        self.err = err
+    def __init__(self, use_colors: bool) -> None:
         self.color = ColorFormatter(use_colors)
         # add "custom colors" to ColorFormatter, so that we can do
         # self.color.set('error', 'hello')

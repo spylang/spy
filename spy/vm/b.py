@@ -19,8 +19,8 @@ we also need it very early.
 
 from spy.vm.registry import ModuleRegistry
 
-BUILTINS = ModuleRegistry('builtins')
-B = BUILTINS
+BUILTINS: ModuleRegistry = ModuleRegistry('builtins')
+B: ModuleRegistry = BUILTINS
 
-OPERATOR = ModuleRegistry('operator')
-OP = OPERATOR
+OPERATOR: ModuleRegistry = ModuleRegistry('operator')
+OP: ModuleRegistry = OPERATOR
