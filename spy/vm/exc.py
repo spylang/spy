@@ -31,7 +31,8 @@ class W_Exception(W_Object):
 
     def format(self, use_colors: bool = True) -> str:
         fmt = ErrorFormatter(use_colors)
-        fmt.emit_message('error', self.message)
+        etype = self.__class__.__name__[2:]
+        fmt.emit_message('error', etype, self.message)
         for ann in self.annotations:
             fmt.emit_annotation(ann)
         return fmt.build()

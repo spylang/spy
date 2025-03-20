@@ -31,15 +31,15 @@ class ErrorFormatter:
     def build(self) -> str:
         return '\n'.join(self.lines)
 
-    def emit_message(self, level: Level, message: str) -> None:
-        prefix = self.color.set(level, level)
+    def emit_message(self, level: Level, etype: str, message: str) -> None:
+        prefix = self.color.set(level, etype)
         message = self.color.set('default', message)
         self.w(f'{prefix}: {message}')
 
     def emit_annotation(self, ann: Annotation) -> None:
         filename = ann.loc.filename
         line = ann.loc.line_start
-        col = ann.loc.col_start + 1  # Loc columns are 0-based but we want 1-based
+        col = ann.loc.col_start + 1 # Loc columns are 0-based but we want 1-based
         srcline = linecache.getline(filename, line).rstrip('\n')
         carets = self.make_carets(srcline, ann.loc, ann.message)
         carets = self.color.set(ann.level, carets)
