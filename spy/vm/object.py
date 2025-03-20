@@ -357,6 +357,7 @@ class W_Type(W_Object):
         if self is B.w_object or self is B.w_dynamic:
             return B.w_None
         basecls = self.pyclass.__base__
+        assert basecls is not None
         assert issubclass(basecls, W_Object)
         assert isinstance(basecls._w, W_Type)
         return basecls._w

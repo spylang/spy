@@ -3,7 +3,7 @@ import inspect
 import linecache
 import dataclasses
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Any
 
 @dataclass
 class Loc:
@@ -74,7 +74,7 @@ class Loc:
             col_end = -1 # whole line
         )
 
-    def replace(self, **kwargs: int) -> 'Loc':
+    def replace(self, **kwargs: Any) -> 'Loc':
         return dataclasses.replace(self, **kwargs)
 
     def make_end_loc(self) -> 'Loc':
