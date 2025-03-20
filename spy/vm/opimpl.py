@@ -29,7 +29,7 @@ from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
 from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Symbol, Color
-from spy.errors import SPyRuntimeError, SPyError
+from spy.errors import SPyError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object, builtin_method
 from spy.vm.function import W_Func, W_FuncType
@@ -264,7 +264,7 @@ class W_OpArg(W_Object):
         @builtin_func(W_OpArg._w.fqn, 'get_blueval')
         def w_get_blueval(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Dynamic:
             if w_oparg.color != 'blue':
-                raise SPyRuntimeError('oparg is not blue')
+                raise SPyError('oparg is not blue', etype='ValueError')
             return w_oparg.w_blueval
 
         return W_OpImpl(w_get_blueval, [wop_x])

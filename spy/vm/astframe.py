@@ -3,7 +3,7 @@ from types import NoneType
 from dataclasses import dataclass
 from spy import ast
 from spy.location import Loc
-from spy.errors import SPyError, SPyRuntimeError
+from spy.errors import SPyError
 from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
@@ -74,7 +74,7 @@ class AbstractFrame:
     def load_local(self, name: str) -> W_Object:
         w_obj = self._locals.get(name)
         if w_obj is None:
-            raise SPyRuntimeError('read from uninitialized local')
+            raise SPyError('read from uninitialized local')
         return w_obj
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
@@ -281,8 +281,9 @@ class AbstractFrame:
         exp = len(unpack.targets)
         got = len(w_tup.items_w)
         if exp != got:
-            raise SPyRuntimeError(
-                f"Wrong number of values to unpack: expected {exp}, got {got}"
+            raise SPyError(
+                f"Wrong number of values to unpack: expected {exp}, got {got}",
+                etype='ValueError'
             )
         for i, target in enumerate(unpack.targets):
             # fabricate an expr to get an individual item of the tuple

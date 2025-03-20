@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 def get_pyclass(etype: str) -> type['W_Exception']:
     from spy.vm.exc import (
         W_Exception, W_ParseError, W_TypeError, W_ImportError,
-        W_ScopeError, W_NameError
+        W_ScopeError, W_NameError, W_ValueError
     )
     clsname = f'W_{etype}'
     return locals()[clsname]
@@ -54,13 +54,6 @@ class SPyError(Exception):
         return self.w_exc.format(use_colors)
 
 # ======
-
-class SPyRuntimeError(Exception):
-    pass
-
-class SPyRuntimeAbort(SPyRuntimeError):
-    pass
-
 
 class SPyPanicError(SPyError):
     """
