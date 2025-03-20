@@ -4,7 +4,7 @@ from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
-from spy.errors import SPyPanicError, SPyError
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.exc import W_Exception
@@ -119,18 +119,10 @@ class DopplerFrame(ASTFrame):
             try:
                 return magic_dispatch(self, 'shift_stmt', stmt)
             except SPyError as exc:
+                # XXX we need to write a test for this
                 if not exc.match(W_TypeError):
                     raise
                 return make_raise(W_TypeError, exc.w_exc.message)
-            except SPyPanicError as exc:
-                # hack hack hack
-                if exc.message.startswith('StaticError: '): # type: ignore
-                    n = len('StaticError: ')
-                    message = exc.message[n:] # type: ignore
-                    return make_raise(W_StaticError, message)
-                else:
-                    raise
-
         else:
             return magic_dispatch(self, 'shift_stmt', stmt)
 

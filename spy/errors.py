@@ -63,20 +63,3 @@ class SPyError(Exception):
         if exc.etype != etype:
             msg = f"Expected SPyError of type {etype}, but got {exc.etype}"
             pytest.fail(msg)
-
-# ======
-
-class SPyPanicError(Exception):
-    """
-    Python-level exception raised when a WASM module aborts with a call to
-    spy_panic().
-    """
-    #LEVEL = 'panic'
-
-    def __init__(self, message: str, fname: str, lineno: int) -> None:
-        super().__init__(message)
-        self.filename = fname
-        self.lineno = lineno
-        ## if fname is not None:
-        ##     loc = Loc(fname, lineno, lineno, 1, -1)
-        ##     self.add('panic', '', loc)
