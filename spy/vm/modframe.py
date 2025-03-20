@@ -4,7 +4,7 @@ from spy.location import Loc
 from spy.fqn import FQN
 from spy.irgen.scope import ScopeAnalyzer
 from spy.irgen.symtable import SymTable
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.module import W_Module
@@ -61,7 +61,8 @@ class ModFrame(AbstractFrame):
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             if w_init.color != "blue":
-                err = SPyTypeError("the __INIT__ function must be @blue")
+                err = SPyError("the __INIT__ function must be @blue",
+                               etype='TypeError')
                 err.add("error", "function defined here", w_init.def_loc)
                 raise err
             self.vm.fast_call(w_init, [w_mod])

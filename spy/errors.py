@@ -6,24 +6,43 @@ from spy.errfmt import ErrorFormatter, Level, Annotation
 if TYPE_CHECKING:
     from spy.vm.w_exc import W_Exception
 
+def get_pyclass(etype: str) -> type['W_Exception']:
+    from spy.vm.exc import (
+        W_Exception, W_ParseError, W_TypeError, W_ImportError,
+        W_ScopeError, W_NameError
+    )
+    clsname = f'W_{etype}'
+    return locals()[clsname]
+
 
 class SPyError(Exception):
-    #LEVEL: ClassVar[Level] = 'error'
     w_exc: 'W_Exception'
 
-    message: str
-    annotations: list[Annotation]
-
-    def __init__(self, message: str) -> None:
-        from spy.vm.exc import W_Exception
-        self.w_exc = W_Exception(message)
+    def __init__(
+            self,
+            message: str,
+            *,
+            etype: str = 'Exception'
+    ) -> None:
+        pyclass = get_pyclass(etype)
+        self.w_exc = pyclass(message)
         super().__init__(message)
 
     @classmethod
-    def simple(cls, primary: str, secondary: str, loc: Loc) -> 'SPyError':
-        err = cls(primary)
+    def simple(
+            cls,
+            primary: str,
+            secondary: str,
+            loc: Loc,
+            *,
+            etype: str = 'Exception'
+    ) -> 'SPyError':
+        err = cls(primary, etype=etype)
         err.add('error', secondary, loc)
         return err
+
+    def match(self, pyclass: type['W_Exception']) -> bool:
+        return isinstance(self.w_exc, pyclass)
 
     def __str__(self) -> str:
         return self.w_exc.format(use_colors=False)
@@ -33,30 +52,6 @@ class SPyError(Exception):
 
     def format(self, use_colors: bool = True) -> str:
         return self.w_exc.format(use_colors)
-
-
-class SPyParseError(SPyError):
-    pass
-
-
-class SPyTypeError(SPyError):
-    pass
-
-
-class SPyImportError(SPyError):
-    pass
-
-
-class SPyScopeError(SPyError):
-    """
-    Raised if a variable declaration redeclares or shadows a name, see
-    symtable.py
-    """
-
-class SPyNameError(SPyError):
-    """
-    Raised if we try to access a variable which is not defined
-    """
 
 # ======
 

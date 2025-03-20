@@ -4,7 +4,7 @@ from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.fqn import FQN
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
@@ -214,7 +214,7 @@ class TestVM:
         # if we use vm.call(), we get proper type checking and SPyTypeError
         # XXX implement vm.call!
         ## msg = 'Invalid cast. Expected `i32`, got `str`'
-        ## with pytest.raises(SPyTypeError, match=msg):
+        ## with pytest.raises(SPyError, match=msg):
         ##     vm.call(w_abs, [w_x])
         #
         # if we use vm.fast_call(), we don't get proper type checking, but we

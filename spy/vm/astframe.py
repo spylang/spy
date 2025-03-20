@@ -3,10 +3,11 @@ from types import NoneType
 from dataclasses import dataclass
 from spy import ast
 from spy.location import Loc
-from spy.errors import SPyTypeError, SPyNameError, SPyRuntimeError
+from spy.errors import SPyError, SPyRuntimeError
 from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
+from spy.vm.exc import W_TypeError
 from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.primitive import W_Bool
 from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
@@ -86,7 +87,9 @@ class AbstractFrame:
         w_exp_type = self.locals_types_w[varname]
         try:
             w_typeconv = CONVERT_maybe(self.vm, w_exp_type, wop)
-        except SPyTypeError as err:
+        except SPyError as err:
+            if not err.match(W_TypeError):
+                raise
             exp = w_exp_type.fqn.human_name
             exp_loc = self.symtable.lookup(varname).type_loc
             if varname == '@return':
@@ -139,7 +142,8 @@ class AbstractFrame:
             return w_val
         w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.fqn.human_name}`'
-        raise SPyTypeError.simple(msg, "expected `type`", expr.loc)
+        raise SPyError.simple(msg, "expected `type`", expr.loc,
+                              etype='TypeError')
 
     # ==== statements ====
 
@@ -251,7 +255,7 @@ class AbstractFrame:
         varname = target.value
         sym = self.symtable.lookup(varname)
         if sym.color == 'blue':
-            err = SPyTypeError("invalid assignment target")
+            err = SPyError("invalid assignment target", etype='TypeError')
             err.add('error', f'{sym.name} is const', target.loc)
             err.add('note', 'const declared here', sym.loc)
             err.add('note',
@@ -267,7 +271,8 @@ class AbstractFrame:
         wop_tup = self.eval_expr(unpack.value)
         if wop_tup.w_static_type is not B.w_tuple:
             t = wop_tup.w_static_type.fqn.human_name
-            err = SPyTypeError(f'`{t}` does not support unpacking')
+            err = SPyError(f'`{t}` does not support unpacking',
+                           etype='TypeError')
             err.add('error', f'this is `{t}`', unpack.value.loc)
             raise err
 
@@ -357,7 +362,8 @@ class AbstractFrame:
         sym = self.symtable.lookup_maybe(varname)
         if sym is None:
             msg = f"name `{name.id}` is not defined"
-            raise SPyNameError.simple(msg, "not found in this scope", name.loc)
+            raise SPyError.simple(msg, "not found in this scope", name.loc,
+                                  etype='NameError')
         if sym.fqn is not None:
             return self.eval_Name_global(name, sym)
         elif sym.is_local:
@@ -453,7 +459,10 @@ class AbstractFrame:
             if not isinstance(arg, (ast.Name, ast.Constant, ast.StrConst)):
                 msg = 'STATIC_TYPE works only on simple expressions'
                 E = arg.__class__.__name__
-                raise SPyTypeError.simple(msg, f'{E} not allowed here', arg.loc)
+                raise SPyError.simple(
+                    msg, f'{E} not allowed here', arg.loc,
+                    etype='TypeError'
+                )
 
         args_wop = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
@@ -618,7 +627,7 @@ class ASTFrame(AbstractFrame):
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()
                 msg = 'reached the end of the function without a `return`'
-                raise SPyTypeError.simple(msg, 'no return', loc)
+                raise SPyError.simple(msg, 'no return', loc, etype='TypeError')
 
         except Return as e:
             return e.w_value

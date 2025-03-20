@@ -29,7 +29,7 @@ from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
 from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Symbol, Color
-from spy.errors import SPyTypeError, SPyRuntimeError
+from spy.errors import SPyRuntimeError, SPyError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object, builtin_method
 from spy.vm.function import W_Func, W_FuncType
@@ -120,11 +120,17 @@ class W_OpArg(W_Object):
         # Check that w_color is a string
         w_type = vm.dynamic_type(w_color)
         if w_type is not B.w_str:
-            raise SPyTypeError(f"OpArg color must be a string, got {w_type.fqn.human_name}")
+            raise SPyError(
+                f"OpArg color must be a string, got {w_type.fqn.human_name}",
+                etype='TypeError'
+            )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
         if color not in ('red', 'blue'):
-            raise SPyTypeError(f"OpArg color must be 'red' or 'blue', got '{color}'")
+            raise SPyError(
+                f"OpArg color must be 'red' or 'blue', got '{color}'",
+                etype='TypeError'
+            )
 
         # Convert B.w_None to Python None
         if w_val is B.w_None:
@@ -133,7 +139,7 @@ class W_OpArg(W_Object):
             w_val2 = w_val
 
         if color == 'blue' and w_val is None:
-            raise SPyTypeError("Blue OpArg requires a value")
+            raise SPyError("Blue OpArg requires a value", etype='TypeError')
 
         loc = Loc.here(-2)  # approximate source location
         return W_OpArg(vm, color, w_static_type, w_val2, loc)
@@ -174,14 +180,16 @@ class W_OpArg(W_Object):
     def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
         """
         Ensure that the W_OpArg is blue and of the expected type.
-        Raise SPyTypeError if not.
+        Raise SPyError(W_TypeError) if not.
         """
         from spy.vm.modules.operator.convop import CONVERT_maybe
         if self.color != 'blue':
-            raise SPyTypeError.simple(
+            raise SPyError.simple(
                 'expected blue argument',
                 'this is red',
-                self.loc)
+                self.loc,
+                etype='TypeError'
+            )
 
         # check that the blueval has the expected type. If not, we should
         # probably raise a better error, but for now we just fail with

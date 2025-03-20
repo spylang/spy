@@ -4,7 +4,7 @@ from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
-from spy.errors import SPyTypeError, SPyPanicError
+from spy.errors import SPyPanicError, SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
@@ -114,7 +114,9 @@ class DopplerFrame(ASTFrame):
         if self.lazy_errors:
             try:
                 return magic_dispatch(self, 'shift_stmt', stmt)
-            except SPyTypeError as exc:
+            except SPyError as exc:
+                if not exc.match(W_TypeError):
+                    raise
                 return make_raise(W_TypeError, exc.message)
             except SPyPanicError as exc:
                 # hack hack hack
@@ -384,7 +386,7 @@ class DopplerFrame(ASTFrame):
         if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
             fqn = FQN(f'builtins::print_{t}')
         else:
-            raise SPyTypeError(f"Invalid type for print(): {t}")
+            raise SPyError(f"Invalid type for print(): {t}", etype='TypeError')
 
         newfunc = call.func.replace(fqn=fqn)
         return call.replace(func=newfunc)

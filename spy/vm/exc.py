@@ -135,6 +135,22 @@ class W_TypeError(W_Exception):
 class W_IndexError(W_Exception):
     pass
 
+@BUILTINS.builtin_type('ParseError')
+class W_ParseError(W_Exception):
+    pass
+
+@BUILTINS.builtin_type('ImportError')
+class W_ImportError(W_Exception):
+    pass
+
+@BUILTINS.builtin_type('ScopeError')
+class W_ScopeError(W_Exception):
+    pass
+
+@BUILTINS.builtin_type('NameError')
+class W_NameError(W_Exception):
+    pass
+
 
 @BUILTINS.builtin_type('StaticError')
 class W_StaticError(W_Exception):

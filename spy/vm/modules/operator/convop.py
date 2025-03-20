@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Annotated, Optional
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.operator import OP
@@ -20,7 +20,7 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
     """
     Return a w_func which can convert the given OpArg to the desired type.
 
-    If the types are not compatible, raise SPyTypeError. In this case,
+    If the types are not compatible, raise SPyError. In this case,
     the caller can catch the error, add extra info and re-raise.
     """
     w_opimpl = get_opimpl(vm, w_exp, wop_x)
@@ -29,7 +29,7 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
         return w_opimpl._w_func  # type: ignore
 
     # mismatched types
-    err = SPyTypeError('mismatched types')
+    err = SPyError('mismatched types', etype='TypeError')
     got = wop_x.w_static_type.fqn.human_name
     exp = w_exp.fqn.human_name
     err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)

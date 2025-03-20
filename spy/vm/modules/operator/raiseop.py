@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from spy.errors import SPyTypeError, SPyPanicError
+from spy.errors import SPyError, SPyPanicError
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.str import W_Str
@@ -29,7 +29,8 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
     #   2. return an w_opimpl which calls w_panic with the hardcoded message,
     #      ignoring the actual wop_exc
     if wop_exc.color != 'blue':
-        err = SPyTypeError("`raise` only accepts blue values for now")
+        err = SPyError("`raise` only accepts blue values for now",
+                       etype='TypeError')
         err.add('error', 'this is red', wop_exc.loc)
         raise err
 

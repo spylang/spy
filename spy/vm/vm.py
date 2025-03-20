@@ -9,13 +9,13 @@ from spy.location import Loc
 from spy import libspy
 from spy.libspy import LLSPyInstance
 from spy.doppler import redshift
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.list import W_ListType
 from spy.vm.b import B
-from spy.vm.exc import W_Exception
+from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.module import W_Module
@@ -267,7 +267,7 @@ class SPyVM:
             exp = w_type.fqn.human_name
             got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
-            raise SPyTypeError(msg)
+            raise SPyError(msg, etype='TypeError')
 
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
@@ -511,7 +511,9 @@ class SPyVM:
         wop_b = self._w_oparg(w_b)
         try:
             w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
-        except SPyTypeError:
+        except SPyError as err:
+            if not err.match(W_TypeError):
+                raise
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
             w_ta = wop_a.w_static_type

@@ -6,7 +6,7 @@ import spy.ast
 from spy.magic_py_parse import magic_py_parse
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.errors import SPyError, SPyParseError
+from spy.errors import SPyError
 from spy.util import magic_dispatch
 
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
@@ -46,7 +46,7 @@ class Parser:
         return self.from_py_Module(py_mod)
 
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
-        raise SPyParseError.simple(primary, secondary, loc)
+        raise SPyError.simple(primary, secondary, loc, etype='ParseError')
 
     def unsupported(self, node: py_ast.AST,
                     reason: Optional[str] = None) -> NoReturn:

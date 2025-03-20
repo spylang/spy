@@ -2,11 +2,12 @@ from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence, Literal
 from types import NoneType
 from spy import ast
 from spy.irgen.symtable import Symbol, Color
-from spy.errors import SPyTypeError, SPyNameError
+from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.exc import W_TypeError
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType, FuncParam
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.b import B
@@ -127,7 +128,9 @@ def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
     """
     try:
         return CONVERT_maybe(vm, w_type, wop_arg)
-    except SPyTypeError as err:
+    except SPyError as err:
+        if not err.match(W_TypeError):
+            raise
         if def_loc:
             err.add('note', 'function defined here', def_loc)
         raise
@@ -151,7 +154,7 @@ def _opimpl_null_error(
     """
     typenames = [wop.w_static_type.fqn.human_name for wop in in_args_wop]
     errmsg = errmsg.format(*typenames)
-    err = SPyTypeError(errmsg)
+    err = SPyError(errmsg, etype='TypeError')
     if dispatch == 'single':
         wop_target = in_args_wop[0]
         t = wop_target.w_static_type.fqn.human_name
@@ -179,7 +182,7 @@ def _call_error_wrong_argcount(
     supplied = maybe_plural(got,
                             f'1 argument was supplied',
                             f'{got} arguments were supplied')
-    err = SPyTypeError(f'this function {takes} but {supplied}')
+    err = SPyError(f'this function {takes} but {supplied}', etype='TypeError')
     #
     # if we know the call_loc, we can add more detailed errors
     if call_loc:

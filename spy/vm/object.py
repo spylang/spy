@@ -50,7 +50,7 @@ from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.b import B
 
 if TYPE_CHECKING:
@@ -330,7 +330,7 @@ class W_Type(W_Object):
             # XXX we should raise a more detailed exception
             fqn = self.fqn.human_name
             msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
-            raise SPyTypeError(msg)
+            raise SPyError(msg, etype='TypeError')
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations
@@ -424,8 +424,9 @@ class W_Type(W_Object):
         from spy.vm.opimpl import W_OpImpl
 
         if wop_t.color != 'blue':
-            err = SPyTypeError(
-                f"instantiation of red types is not yet supported")
+            err = SPyError(
+                f"instantiation of red types is not yet supported",
+                etype='TypeError')
             err.add('error', f"this is red", loc=wop_t.loc)
             raise err
 
@@ -448,7 +449,7 @@ class W_Type(W_Object):
 
         # no __NEW__ nor __new__, error out
         clsname = w_type.fqn.human_name
-        err = SPyTypeError(f"cannot instantiate `{clsname}`")
+        err = SPyError(f"cannot instantiate `{clsname}`", etype='TypeError')
         err.add('error', f"`{clsname}` does not have a method `__new__`",
                 loc=wop_t.loc)
         if wop_t.sym:
