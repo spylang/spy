@@ -1,7 +1,7 @@
 import struct
 import pytest
 from spy.llwasm import LLWasmModule
-from spy.libspy import LLSPyInstance, SPyPanicError
+from spy.libspy import LLSPyInstance, SPyError
 from spy.tests.support import CTest
 
 def mk_spy_Str(utf8: bytes) -> bytes:
@@ -85,12 +85,13 @@ class TestLibSPy(CTest):
         #include <spy.h>
 
         void crash(void) {
-            spy_panic("don't panic!", "myfile", 42);
+            spy_panic("PanicError", "don't panic!", "myfile", 42);
         }
         """
         test_wasm = self.compile_wasm(src, exports=['crash'])
         ll = LLSPyInstance.from_file(test_wasm)
-        with pytest.raises(SPyPanicError, match="don't panic!") as exc:
+        with SPyError.raises('W_PanicError', match="don't panic!") as excinfo:
             ll.call('crash')
-        assert exc.value.filename == 'myfile'
-        assert exc.value.lineno == 42
+        loc = excinfo.value.w_exc.annotations[0].loc
+        assert loc.filename == 'myfile'
+        assert loc.line_start == 42

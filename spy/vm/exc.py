@@ -132,6 +132,9 @@ class W_ScopeError(W_Exception):
 class W_NameError(W_Exception):
     pass
 
+@BUILTINS.builtin_type('PanicError')
+class W_PanicError(W_Exception):
+    pass
 
 @BUILTINS.builtin_type('StaticError')
 class W_StaticError(W_Exception):
