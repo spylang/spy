@@ -23,27 +23,16 @@ class SPyError(Exception):
     etype: str
     w_exc: 'W_Exception'
 
-    def __init__(
-            self,
-            message: str,
-            *,
-            etype: str = 'W_Exception'
-    ) -> None:
+    def __init__(self, etype: str, message: str) -> None:
         pyclass = get_pyclass(etype)
         self.etype = etype
         self.w_exc = pyclass(message)
         super().__init__(message)
 
     @classmethod
-    def simple(
-            cls,
-            primary: str,
-            secondary: str,
-            loc: Loc,
-            *,
-            etype: str = 'W_Exception'
-    ) -> 'SPyError':
-        err = cls(primary, etype=etype)
+    def simple(cls, etype: str, primary: str,
+               secondary: str,loc: Loc) -> 'SPyError':
+        err = cls(etype, primary)
         err.add('error', secondary, loc)
         return err
 
@@ -77,7 +66,7 @@ class SPyError(Exception):
 
 # ======
 
-class SPyPanicError(SPyError):
+class SPyPanicError(Exception):
     """
     Python-level exception raised when a WASM module aborts with a call to
     spy_panic().
@@ -88,6 +77,6 @@ class SPyPanicError(SPyError):
         super().__init__(message)
         self.filename = fname
         self.lineno = lineno
-        if fname is not None:
-            loc = Loc(fname, lineno, lineno, 1, -1)
-            self.add('panic', '', loc)
+        ## if fname is not None:
+        ##     loc = Loc(fname, lineno, lineno, 1, -1)
+        ##     self.add('panic', '', loc)

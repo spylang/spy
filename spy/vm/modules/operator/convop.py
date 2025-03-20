@@ -29,7 +29,7 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
         return w_opimpl._w_func  # type: ignore
 
     # mismatched types
-    err = SPyError('mismatched types', etype='W_TypeError')
+    err = SPyError('W_TypeError', 'mismatched types')
     got = wop_x.w_static_type.fqn.human_name
     exp = w_exp.fqn.human_name
     err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)

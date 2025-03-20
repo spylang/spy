@@ -61,8 +61,10 @@ class ModFrame(AbstractFrame):
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             if w_init.color != "blue":
-                err = SPyError("the __INIT__ function must be @blue",
-                               etype='W_TypeError')
+                err = SPyError(
+                    'W_TypeError',
+                    "the __INIT__ function must be @blue",
+                )
                 err.add("error", "function defined here", w_init.def_loc)
                 raise err
             self.vm.fast_call(w_init, [w_mod])

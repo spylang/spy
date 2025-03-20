@@ -74,7 +74,7 @@ class AbstractFrame:
     def load_local(self, name: str) -> W_Object:
         w_obj = self._locals.get(name)
         if w_obj is None:
-            raise SPyError('read from uninitialized local')
+            raise SPyError("W_Exception", 'read from uninitialized local')
         return w_obj
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
@@ -142,8 +142,7 @@ class AbstractFrame:
             return w_val
         w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.fqn.human_name}`'
-        raise SPyError.simple(msg, "expected `type`", expr.loc,
-                              etype='W_TypeError')
+        raise SPyError.simple("W_TypeError", msg, "expected `type`", expr.loc)
 
     # ==== statements ====
 
@@ -255,7 +254,7 @@ class AbstractFrame:
         varname = target.value
         sym = self.symtable.lookup(varname)
         if sym.color == 'blue':
-            err = SPyError("invalid assignment target", etype='W_TypeError')
+            err = SPyError('W_TypeError', "invalid assignment target")
             err.add('error', f'{sym.name} is const', target.loc)
             err.add('note', 'const declared here', sym.loc)
             err.add('note',
@@ -271,8 +270,10 @@ class AbstractFrame:
         wop_tup = self.eval_expr(unpack.value)
         if wop_tup.w_static_type is not B.w_tuple:
             t = wop_tup.w_static_type.fqn.human_name
-            err = SPyError(f'`{t}` does not support unpacking',
-                           etype='W_TypeError')
+            err = SPyError(
+                'W_TypeError',
+                f'`{t}` does not support unpacking',
+            )
             err.add('error', f'this is `{t}`', unpack.value.loc)
             raise err
 
@@ -282,8 +283,8 @@ class AbstractFrame:
         got = len(w_tup.items_w)
         if exp != got:
             raise SPyError(
+                'W_ValueError',
                 f"Wrong number of values to unpack: expected {exp}, got {got}",
-                etype='W_ValueError'
             )
         for i, target in enumerate(unpack.targets):
             # fabricate an expr to get an individual item of the tuple
@@ -363,8 +364,9 @@ class AbstractFrame:
         sym = self.symtable.lookup_maybe(varname)
         if sym is None:
             msg = f"name `{name.id}` is not defined"
-            raise SPyError.simple(msg, "not found in this scope", name.loc,
-                                  etype='W_NameError')
+            raise SPyError.simple(
+                "W_NameError", msg, "not found in this scope", name.loc,
+            )
         if sym.fqn is not None:
             return self.eval_Name_global(name, sym)
         elif sym.is_local:
@@ -461,8 +463,8 @@ class AbstractFrame:
                 msg = 'STATIC_TYPE works only on simple expressions'
                 E = arg.__class__.__name__
                 raise SPyError.simple(
+                    "W_TypeError",
                     msg, f'{E} not allowed here', arg.loc,
-                    etype='W_TypeError'
                 )
 
         args_wop = [self.eval_expr(arg) for arg in call.args]
@@ -628,7 +630,7 @@ class ASTFrame(AbstractFrame):
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()
                 msg = 'reached the end of the function without a `return`'
-                raise SPyError.simple(msg, 'no return', loc, etype='W_TypeError')
+                raise SPyError.simple('W_TypeError', msg, 'no return', loc)
 
         except Return as e:
             return e.w_value

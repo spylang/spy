@@ -121,15 +121,15 @@ class W_OpArg(W_Object):
         w_type = vm.dynamic_type(w_color)
         if w_type is not B.w_str:
             raise SPyError(
+                'W_TypeError',
                 f"OpArg color must be a string, got {w_type.fqn.human_name}",
-                etype='W_TypeError'
             )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
         if color not in ('red', 'blue'):
             raise SPyError(
+                'W_TypeError',
                 f"OpArg color must be 'red' or 'blue', got '{color}'",
-                etype='W_TypeError'
             )
 
         # Convert B.w_None to Python None
@@ -185,10 +185,10 @@ class W_OpArg(W_Object):
         from spy.vm.modules.operator.convop import CONVERT_maybe
         if self.color != 'blue':
             raise SPyError.simple(
+                'W_TypeError',
                 'expected blue argument',
                 'this is red',
                 self.loc,
-                etype='W_TypeError'
             )
 
         # check that the blueval has the expected type. If not, we should
@@ -264,7 +264,7 @@ class W_OpArg(W_Object):
         @builtin_func(W_OpArg._w.fqn, 'get_blueval')
         def w_get_blueval(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Dynamic:
             if w_oparg.color != 'blue':
-                raise SPyError('oparg is not blue', etype='W_ValueError')
+                raise SPyError('W_ValueError', 'oparg is not blue')
             return w_oparg.w_blueval
 
         return W_OpImpl(w_get_blueval, [wop_x])

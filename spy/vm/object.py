@@ -330,7 +330,7 @@ class W_Type(W_Object):
             # XXX we should raise a more detailed exception
             fqn = self.fqn.human_name
             msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
-            raise SPyError(msg, etype='W_TypeError')
+            raise SPyError('W_TypeError', msg)
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations
@@ -425,8 +425,9 @@ class W_Type(W_Object):
 
         if wop_t.color != 'blue':
             err = SPyError(
+                'W_TypeError',
                 f"instantiation of red types is not yet supported",
-                etype='W_TypeError')
+            )
             err.add('error', f"this is red", loc=wop_t.loc)
             raise err
 
@@ -449,7 +450,7 @@ class W_Type(W_Object):
 
         # no __NEW__ nor __new__, error out
         clsname = w_type.fqn.human_name
-        err = SPyError(f"cannot instantiate `{clsname}`", etype='W_TypeError')
+        err = SPyError('W_TypeError', f"cannot instantiate `{clsname}`")
         err.add('error', f"`{clsname}` does not have a method `__new__`",
                 loc=wop_t.loc)
         if wop_t.sym:

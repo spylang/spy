@@ -16,12 +16,12 @@ if TYPE_CHECKING:
 @OP.builtin_func
 def w_panic(vm: 'SPyVM', w_etype: W_Str, w_message: W_Str,
             w_filename: W_Str, w_lineno: W_I32) -> None:
-    etype = vm.unwrap_str(w_etype)
+    etype = 'W_' + vm.unwrap_str(w_etype)
     msg = vm.unwrap_str(w_message)
     fname = vm.unwrap_str(w_filename)
     lineno = vm.unwrap_i32(w_lineno)
     loc = Loc(fname, lineno, lineno, 1, -1)
-    raise SPyError.simple(msg, '', loc, etype=f'W_{etype}')
+    raise SPyError.simple(etype, msg, '', loc)
 
 @OP.builtin_func(color='blue')
 def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
@@ -32,8 +32,10 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
     #   2. return an w_opimpl which calls w_panic with the hardcoded message,
     #      ignoring the actual wop_exc
     if wop_exc.color != 'blue':
-        err = SPyError("`raise` only accepts blue values for now",
-                       etype='W_TypeError')
+        err = SPyError(
+            'W_TypeError',
+            "`raise` only accepts blue values for now",
+        )
         err.add('error', 'this is red', wop_exc.loc)
         raise err
 

@@ -112,5 +112,5 @@ class LLSPyInstance(LLWasmInstance):
                 fname = self.libspy.panic_filename
                 lineno = self.libspy.panic_lineno
                 loc = Loc(fname, lineno, lineno, 1, -1)
-                raise SPyError.simple(message, '', loc, etype=etype)
+                raise SPyError.simple(etype, message, '', loc)
             raise

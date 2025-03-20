@@ -171,7 +171,7 @@ class W_Ptr(W_BasePtr):
                 msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
                 loc = Loc(filename, lineno, lineno, 1, -1)
-                raise SPyError.simple(msg, "", loc, etype="W_PanicError")
+                raise SPyError.simple("W_PanicError", msg, "", loc)
             return vm.call_generic(
                 UNSAFE.w_mem_read,
                 [w_T],
@@ -201,7 +201,7 @@ class W_Ptr(W_BasePtr):
                 msg = (f"ptr_store out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
                 loc = Loc(filename, lineno, lineno, 1, -1)
-                raise SPyError.simple(msg, "", loc, etype="W_PanicError")
+                raise SPyError.simple("W_PanicError", msg, "", loc)
             vm.call_generic(
                 UNSAFE.w_mem_write,
                 [w_T],
