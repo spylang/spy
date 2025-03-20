@@ -25,19 +25,26 @@ void IMP(spy_debug_log_i32)(const char *s, int32_t n);
 
 // for WASI/reactor targets, we expect the host to provide
 // spy_debug_set_panic_message
-void IMP(spy_debug_set_panic_message)
-     (const char *s, const char *fname, int32_t lineno);
+void IMP(spy_debug_set_panic_message)(const char *etype,
+                                      const char *message,
+                                      const char *fname,
+                                      int32_t lineno);
 
-static void inline spy_panic(const char *s, const char *fname, int32_t lineno) {
-    spy_debug_log(s);
-    spy_debug_set_panic_message(s, fname, lineno);
+static void inline spy_panic(const char *etype,
+                             const char *message,
+                             const char *fname,
+                             int32_t lineno) {
+    spy_debug_log(etype);
+    spy_debug_log(message);
+    spy_debug_set_panic_message(etype, message, fname, lineno);
     __builtin_trap();
 }
 
 #else
 
 // for other targets, we define spy_panic in debug.c
-void spy_panic(const char *s, const char *fname, int32_t lineno);
+void spy_panic(const char *etype, const char *message,
+               const char *fname, int32_t lineno);
 
 #endif
 

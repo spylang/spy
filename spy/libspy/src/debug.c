@@ -48,14 +48,15 @@ static char* read_line_from_file(const char *filename, int line_number) {
     return NULL;
 }
 
-void spy_panic(const char *s, const char *fname, int32_t lineno) {
+void spy_panic(const char *etype, const char *message,
+               const char *fname, int32_t lineno) {
     /* write the error message to stderr, formatted line this:
           panic: IndexError: hello
              --> /tmp/prova.spy:2:2
             2 |     raise IndexError("hello")
               |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     */
-    fprintf(stderr, "panic: %s\n", s);
+    fprintf(stderr, "%s: %s\n", etype, message);
     fprintf(stderr, "   --> %s:%d\n", fname, lineno);
 
     char *line_content = read_line_from_file(fname, lineno);

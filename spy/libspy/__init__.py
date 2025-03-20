@@ -1,7 +1,8 @@
 import sys
 from typing import Any, Optional
 import spy
-from spy.errors import SPyPanicError
+from spy.location import Loc
+from spy.errors import SPyError
 from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule, WasmTrap
 from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
 #from spy.vm.str import ll_spy_Str_read
@@ -69,13 +70,16 @@ class LibSPyHost(HostModule):
 
     def env_spy_debug_set_panic_message(
             self,
+            ptr_etype: int,
             ptr_msg: int,
             ptr_fname: int,
             lineno: int
     ) -> None:
         # ptr_* are const char*
+        assert ptr_etype != 0
         assert ptr_msg != 0
         assert ptr_fname != 0
+        self.panic_etype = self._read_str(ptr_etype)
         self.panic_message = self._read_str(ptr_msg)
         self.panic_filename = self._read_str(ptr_fname)
         self.panic_lineno = lineno
@@ -103,9 +107,10 @@ class LLSPyInstance(LLWasmInstance):
         except WasmTrap:
             if self.libspy.panic_message is not None:
                 assert self.libspy.panic_filename is not None
-                raise SPyPanicError(
-                    self.libspy.panic_message,
-                    self.libspy.panic_filename,
-                    self.libspy.panic_lineno
-                )
+                etype = 'W_' + self.libspy.panic_etype
+                message = self.libspy.panic_message
+                fname = self.libspy.panic_filename
+                lineno = self.libspy.panic_lineno
+                loc = Loc(fname, lineno, lineno, 1, -1)
+                raise SPyError.simple(message, '', loc, etype=etype)
             raise

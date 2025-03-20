@@ -14,20 +14,14 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @OP.builtin_func
-def w_panic(vm: 'SPyVM', w_message: W_Str,
+def w_panic(vm: 'SPyVM', w_etype: W_Str, w_message: W_Str,
             w_filename: W_Str, w_lineno: W_I32) -> None:
-    # temporary hack to get the exception type from the message
+    etype = vm.unwrap_str(w_etype)
     msg = vm.unwrap_str(w_message)
-    if ': ' in msg:
-        etype, msg = msg.split(': ', 1)
-    else:
-        etype = msg
-        msg = ''
-    etype = 'W_' + etype
     fname = vm.unwrap_str(w_filename)
     lineno = vm.unwrap_i32(w_lineno)
     loc = Loc(fname, lineno, lineno, 1, -1)
-    raise SPyError.simple(msg, '', loc, etype=etype)
+    raise SPyError.simple(msg, '', loc, etype=f'W_{etype}')
 
 @OP.builtin_func(color='blue')
 def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
@@ -49,10 +43,17 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
     w_exc = wop_exc.w_val
     if isinstance(w_exc, W_Type) and issubclass(w_exc.pyclass, W_Exception):
         # we are in the "raise IndexError" case
-        msg = w_exc.fqn.symbol_name
+        etype = w_exc.pyclass.__name__ # "W_IndexError"
+        msg = ""
     elif isinstance(w_exc, W_Exception):
         # we are in the "raise IndexError('hello')" case
-        msg = w_exc.spy_str(vm) # ==>  "IndexError: hello"
+        etype = w_exc.__class__.__name__
+        msg = w_exc.message
+
+    assert etype.startswith('W_')
+    etype = etype[2:]
+    w_etype = vm.wrap(etype)
+    wop_etype = W_OpArg.from_w_obj(vm, w_etype)
 
     w_msg = vm.wrap(msg)
     wop_msg = W_OpArg.from_w_obj(vm, w_msg)
@@ -63,7 +64,7 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
     w_lineno = vm.wrap(wop_exc.loc.line_start)
     wop_lineno = W_OpArg.from_w_obj(vm, w_lineno)
 
-    w_opimpl = W_OpImpl(OP.w_panic, [wop_msg, wop_fname, wop_lineno])
+    w_opimpl = W_OpImpl(OP.w_panic, [wop_etype, wop_msg, wop_fname, wop_lineno])
 
     return typecheck_opimpl(
         vm,

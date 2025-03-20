@@ -31,7 +31,6 @@ class W_Exception(W_Object):
 
     def format(self, use_colors: bool = True) -> str:
         fmt = ErrorFormatter(use_colors)
-        #fmt.emit_message(self.LEVEL, self.message)
         fmt.emit_message('error', self.message)
         for ann in self.annotations:
             fmt.emit_annotation(ann)
@@ -40,18 +39,6 @@ class W_Exception(W_Object):
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         return f'{cls}({self.message!r})'
-
-    def spy_str(self, vm: 'SPyVM') -> str:
-        """
-        Ad-hoc stringify logic. Eventually, we should have __STR__
-
-        Return an interp-level str formatted like this:
-            Exception: hello
-        """
-        w_exc_type = vm.dynamic_type(self)
-        t = w_exc_type.fqn.symbol_name
-        m = self.message
-        return f'{t}: {m}'
 
     # app-level interface
 
@@ -115,12 +102,6 @@ class W_Exception(W_Object):
             return vm.wrap(bool(res))  # type: ignore
 
         return W_OpImpl(w_ne)
-
-    ## @builtin_method('__new__', color='blue')
-    ## @staticmethod
-    ## def w_spy_new(vm: 'SPyVM', w_message: W_Str) -> 'W_Exception':
-    ##     return W_Exception(w_message)
-
 
 
 @BUILTINS.builtin_type('ValueError')
