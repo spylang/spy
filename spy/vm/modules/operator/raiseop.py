@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @OP.builtin_func
-def w_panic(vm: 'SPyVM', w_etype: W_Str, w_message: W_Str,
+def w_raise(vm: 'SPyVM', w_etype: W_Str, w_message: W_Str,
             w_filename: W_Str, w_lineno: W_I32) -> None:
     etype = 'W_' + vm.unwrap_str(w_etype)
     msg = vm.unwrap_str(w_message)
@@ -29,7 +29,7 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
 
     # We are doing a bit of magic here:
     #   1. manually turn the blue wop_exc into an hardcoded message
-    #   2. return an w_opimpl which calls w_panic with the hardcoded message,
+    #   2. return an w_opimpl which calls w_raise with the hardcoded message,
     #      ignoring the actual wop_exc
     if wop_exc.color != 'blue':
         err = SPyError(
@@ -66,7 +66,7 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
     w_lineno = vm.wrap(wop_exc.loc.line_start)
     wop_lineno = W_OpArg.from_w_obj(vm, w_lineno)
 
-    w_opimpl = W_OpImpl(OP.w_panic, [wop_etype, wop_msg, wop_fname, wop_lineno])
+    w_opimpl = W_OpImpl(OP.w_raise, [wop_etype, wop_msg, wop_fname, wop_lineno])
 
     return typecheck_opimpl(
         vm,

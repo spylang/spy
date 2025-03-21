@@ -287,7 +287,7 @@ class TestDoppler:
         self.assert_dump(f"""
         def foo(x: bool) -> void:
             if x:
-                `operator::panic`('TypeError', 'foo', '{fname}', 4)
+                `operator::raise`('TypeError', 'foo', '{fname}', 4)
             else:
-                `operator::panic`('ValueError', 'bar', '{fname}', 6)
+                `operator::raise`('ValueError', 'bar', '{fname}', 6)
         """)
