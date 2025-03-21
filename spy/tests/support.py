@@ -138,7 +138,11 @@ class CompilerTest:
     SKIP_SPY_BACKEND_SANITY_CHECK = False
     ALL_COMPILED_SOURCES: set[str] = set()
 
-    def compile(self, src: str, modname: str = 'test', *, opt_level=0) -> Any:
+    def compile(
+            self, src: str, modname: str = 'test',
+            *,
+            opt_level=0, lazy_errors=False
+    ) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
         tests.
@@ -157,13 +161,13 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'doppler':
-            self.vm.redshift(lazy_errors=False)
+            self.vm.redshift(lazy_errors=lazy_errors)
             if self.dump_redshift:
                 self.dump_module(modname)
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
-            self.vm.redshift(lazy_errors=False)
+            self.vm.redshift(lazy_errors=lazy_errors)
             compiler = Compiler(self.vm, modname, self.builddir,
                                 dump_c=self.dump_c)
             file_wasm = compiler.cbuild(
@@ -174,7 +178,7 @@ class CompilerTest:
             )
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
-            self.vm.redshift(lazy_errors=False)
+            self.vm.redshift(lazy_errors=lazy_errors)
             if self.dump_redshift:
                 self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir,

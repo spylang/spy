@@ -1015,3 +1015,12 @@ class TestBasic(CompilerTest):
             ('this is red', 'exc'),
             )
         self.compile_raises(src, "foo", errors)
+
+    def test_lazy_error(self):
+        src = """
+        def foo() -> void:
+            1 + "hello"
+        """
+        mod = self.compile(src, lazy_errors=True)
+        with SPyError.raises('W_TypeError', match=r"cannot do `i32` \+ `str`"):
+            mod.foo()
