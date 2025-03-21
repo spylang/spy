@@ -288,21 +288,41 @@ class SPyBackend:
         FQN('operator::f64_ge'): ast.GtE,
     }
 
-    def get_binop_maybe(self, func: ast.Expr) -> Optional[type[ast.BinOp]]:
-        """
-        Some opimpl are special-cased and turned back into a BinOp
-        """
-        if isinstance(func, ast.FQNConst):
-            return self.FQN2BinOp.get(func.fqn)
+    def pprint_call_maybe(self, call: ast.Call) -> Optional[str]:
+        if not isinstance(call.func, ast.FQNConst):
+            # don't pretty print
+            return None
+        fqn = call.func.fqn
+
+        if fqn in self.FQN2BinOp:
+            # `operator::i32_add`(a, b) --> "a + b"
+            assert len(call.args) == 2
+            opclass = self.FQN2BinOp[fqn]
+            binop = opclass(call.loc, call.args[0], call.args[1])
+            return self.fmt_expr_BinOp(binop)
+        elif fqn == FQN('operator::raise'):
+            # `operator::raise('TypeError', ...)` -->."raise TypeError(...)"
+            assert len(call.args) == 4
+            etype, msg, fname, lineno = call.args
+            assert isinstance(etype, ast.StrConst)
+            assert isinstance(msg, ast.StrConst)
+            assert isinstance(fname, ast.StrConst)
+            assert isinstance(lineno, ast.Constant)
+            E = etype.value
+            m = self.fmt_expr(msg)
+            # show only the last part of the filename
+            f = fname.value.split('/')[-1]
+            l = lineno.value
+            if m == "''":
+                return f'raise {etype.value} # /.../{f}:{l}'
+            else:
+                return f'raise {etype.value}({m}) # /.../{f}:{l}'
         return None
 
     def fmt_expr_Call(self, call: ast.Call) -> str:
-        opclass = self.get_binop_maybe(call.func)
-        if self.fqn_format == 'short' and opclass:
-            # special case
-            assert len(call.args) == 2
-            binop = opclass(call.loc, call.args[0], call.args[1])
-            return self.fmt_expr_BinOp(binop)
+        if self.fqn_format == 'short' and (res := self.pprint_call_maybe(call)):
+            # pretty print
+            return res
         else:
             # standard case
             name = self.fmt_expr(call.func)

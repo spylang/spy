@@ -278,16 +278,21 @@ class TestDoppler:
     def test_format_prebuilt_exception(self):
         fname = str(self.tmpdir.join('test.spy'))
         self.redshift("""
-        def foo(x: bool) -> void:
-            if x:
-                raise TypeError('foo')  # line 4
-            else:
-                raise ValueError('bar') # line 6
+        def foo() -> void:
+            raise TypeError('foo')
+            raise ValueError
         """)
-        self.assert_dump(f"""
-        def foo(x: bool) -> void:
-            if x:
-                `operator::raise`('TypeError', 'foo', '{fname}', 4)
-            else:
-                `operator::raise`('ValueError', 'bar', '{fname}', 6)
+        # in full mode, we show a call to operator::raise
+        expected = f"""
+        def `test::foo`() -> `builtins::void`:
+            `operator::raise`('TypeError', 'foo', '{fname}', 3)
+            `operator::raise`('ValueError', '', '{fname}', 4)
+        """
+        self.assert_dump(expected, fqn_format='full')
+
+        # in short mode, we show just a raise
+        self.assert_dump("""
+        def foo() -> void:
+            raise TypeError('foo') # /.../test.spy:3
+            raise ValueError # /.../test.spy:4
         """)
