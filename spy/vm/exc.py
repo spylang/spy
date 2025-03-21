@@ -105,12 +105,26 @@ class W_Exception(W_Object):
         return W_OpImpl(w_ne)
 
 
-@BUILTINS.builtin_type('ValueError')
-class W_ValueError(W_Exception):
+@BUILTINS.builtin_type('StaticError')
+class W_StaticError(W_Exception):
+    """
+    Static errors are those who can be turned into lazy errors during
+    redshifting.
+
+    All the other exceptions are immediately reported and abort redshiting.
+    """
     pass
 
+
 @BUILTINS.builtin_type('TypeError')
-class W_TypeError(W_Exception):
+class W_TypeError(W_StaticError):
+    """
+    Note that TypeError is a subclass of StaticError
+    """
+    pass
+
+@BUILTINS.builtin_type('ValueError')
+class W_ValueError(W_Exception):
     pass
 
 @BUILTINS.builtin_type('IndexError')
@@ -135,8 +149,4 @@ class W_NameError(W_Exception):
 
 @BUILTINS.builtin_type('PanicError')
 class W_PanicError(W_Exception):
-    pass
-
-@BUILTINS.builtin_type('StaticError')
-class W_StaticError(W_Exception):
     pass

@@ -119,10 +119,11 @@ class DopplerFrame(ASTFrame):
             try:
                 return magic_dispatch(self, 'shift_stmt', stmt)
             except SPyError as exc:
-                # XXX we need to write a test for this
-                if not exc.match(W_TypeError):
+                if not exc.match(W_StaticError):
                     raise
-                return make_raise(W_TypeError, exc.w_exc.message)
+                from spy.errors import get_pyclass
+                py_exc_class = get_pyclass(exc.etype)
+                return make_raise(py_exc_class, exc.w_exc.message)
         else:
             return magic_dispatch(self, 'shift_stmt', stmt)
 

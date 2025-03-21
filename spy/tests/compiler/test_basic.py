@@ -1024,3 +1024,34 @@ class TestBasic(CompilerTest):
         mod = self.compile(src, lazy_errors=True)
         with SPyError.raises('W_TypeError', match=r"cannot do `i32` \+ `str`"):
             mod.foo()
+
+    @pytest.mark.parametrize("errors", ["lazy", "eager"])
+    def test_static_error(self, errors):
+        src = """
+        @blue
+        def get_message(lang):
+            if lang == "en":
+                return "hello"
+            raise StaticError("unsupported lang: " + lang)
+
+        def print_message(also_italian: i32) -> i32:
+            print(get_message("en"))
+            if also_italian:
+                print(get_message("it"))
+            return 42
+
+        def foo() -> i32:
+            return print_message(1)
+        """
+
+        if self.backend in ('doppler', 'C') and errors == "eager":
+            # eager errors and we are redshifting: we expect a compile time error
+            errs = expect_errors("unsupported lang: it")
+            self.compile_raises(src, "foo", errs)
+        else:
+            # interp mode or lazy errors
+            lazy_errors = (errors == "lazy")
+            mod = self.compile(src, lazy_errors=lazy_errors)
+            assert mod.print_message(0) == 42 # works
+            with SPyError.raises('W_StaticError', match="unsupported lang: it"):
+                mod.print_message(1)
