@@ -102,30 +102,24 @@ class DopplerFrame(ASTFrame):
     # ==== statements ====
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
-
-        def make_raise(
-                py_exc_class: type['W_Exception'],
-                message: str
-        ) -> list[ast.Stmt]:
-            # hack hack hack, turn this into an applevel error
-            # XXX what about filename and lineno?
-            w_exc = py_exc_class(message)
-            fqn = self.vm.make_fqn_const(w_exc)
-            exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
-            #return [ast.Raise(exc=exc, loc=stmt.loc)]
-            return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
-
-        if self.lazy_errors:
-            try:
-                return magic_dispatch(self, 'shift_stmt', stmt)
-            except SPyError as exc:
-                if not exc.match(W_StaticError):
-                    raise
-                from spy.errors import get_pyclass
-                py_exc_class = get_pyclass(exc.etype)
-                return make_raise(py_exc_class, exc.w_exc.message)
-        else:
+        try:
             return magic_dispatch(self, 'shift_stmt', stmt)
+        except SPyError as err:
+            if self.lazy_errors and err.match(W_StaticError):
+                # turn the exception into a lazy "raise" statement
+                return self.make_raise_from_SPyError(stmt, err)
+            else:
+                # else, just raise the exception as usual
+                raise
+
+    def make_raise_from_SPyError(self, stmt: ast.Stmt,
+                                 err: SPyError) -> list[ast.Stmt]:
+        """
+        Turn the given stmt into a "raise"
+        """
+        fqn = self.vm.make_fqn_const(err.w_exc)
+        exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+        return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         newvalue = self.eval_and_shift(ret.value, varname='@return')
