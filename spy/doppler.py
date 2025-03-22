@@ -1,4 +1,4 @@
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, Literal, TYPE_CHECKING
 from types import NoneType
 from fixedint import FixedInt
 from spy import ast
@@ -19,9 +19,11 @@ from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+ErrorMode = Literal['eager', 'lazy']
 
-def redshift(vm: 'SPyVM', w_func: W_ASTFunc, lazy_errors: bool) -> W_ASTFunc:
-    dop = DopplerFrame(vm, w_func, lazy_errors)
+def redshift(vm: 'SPyVM', w_func: W_ASTFunc,
+             error_mode: ErrorMode) -> W_ASTFunc:
+    dop = DopplerFrame(vm, w_func, error_mode)
     return dop.redshift()
 
 
@@ -55,15 +57,15 @@ class DopplerFrame(ASTFrame):
     """
     shifted_expr: dict[ast.Expr, ast.Expr]
     opimpl: dict[ast.Node, W_Func]
-    lazy_errors: bool
+    error_mode: ErrorMode
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
-                 lazy_errors: bool) -> None:
+                 error_mode: ErrorMode) -> None:
         assert w_func.color == 'red'
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
         self.opimpl = {}
-        self.lazy_errors = lazy_errors
+        self.error_mode = error_mode
 
     # overridden
     @property
@@ -105,7 +107,7 @@ class DopplerFrame(ASTFrame):
         try:
             return magic_dispatch(self, 'shift_stmt', stmt)
         except SPyError as err:
-            if self.lazy_errors and err.match(W_StaticError):
+            if self.error_mode == 'lazy' and err.match(W_StaticError):
                 # turn the exception into a lazy "raise" statement
                 return self.make_raise_from_SPyError(stmt, err)
             else:

@@ -15,6 +15,7 @@ from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
+from spy.doppler import ErrorMode
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain, BUILD_TYPE
 from spy.irgen.scope import ScopeAnalyzer
@@ -135,19 +136,20 @@ class Arguments:
         )
     ] = ToolchainType.zig
 
+    error_mode: Annotated[
+        ErrorMode,
+        Option(
+            "-E", "--error-mode",
+            help="Handling strategy for static errors",
+            click_type=click.Choice(ErrorMode.__args__),
+        )
+    ] = 'eager'
+
     full_fqn: Annotated[
         bool,
         Option(
             "--full-fqn",
             help="Show full FQNs in redshifted modules"
-        )
-    ] = False
-
-    lazy_errors: Annotated[
-        bool,
-        Option(
-            "--lazy-errors",
-            help="DOCUMENT ME"
         )
     ] = False
 
@@ -309,7 +311,7 @@ async def inner_main(args: Arguments) -> None:
 
         return
 
-    vm.redshift(lazy_errors=args.lazy_errors)
+    vm.redshift(error_mode=args.error_mode)
     if args.redshift:
         dump_spy_mod(vm, modname, args.full_fqn)
         return

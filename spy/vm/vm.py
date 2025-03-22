@@ -8,7 +8,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy import libspy
 from spy.libspy import LLSPyInstance
-from spy.doppler import redshift
+from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
@@ -97,7 +97,7 @@ class SPyVM:
         self.modules_w[modname] = w_mod
         return w_mod
 
-    def redshift(self, lazy_errors: bool) -> None:
+    def redshift(self, error_mode: ErrorMode) -> None:
         """
         Perform a redshift on all W_ASTFunc.
         """
@@ -114,17 +114,17 @@ class SPyVM:
             funcs = list(get_funcs())
             if not funcs:
                 break
-            self._redshift_some(funcs, lazy_errors)
+            self._redshift_some(funcs, error_mode)
 
     def _redshift_some(
             self,
             funcs: list[tuple[FQN, W_ASTFunc]],
-            lazy_errors: bool
+            error_mode: ErrorMode,
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != 'blue'
             assert not w_func.redshifted
-            w_newfunc = redshift(self, w_func, lazy_errors)
+            w_newfunc = redshift(self, w_func, error_mode)
             assert w_newfunc.redshifted
             self.globals_w[fqn] = w_newfunc
 

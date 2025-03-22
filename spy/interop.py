@@ -18,7 +18,7 @@ def redshift(filename: str|Path) -> tuple[SPyVM, W_Module]:
     vm = SPyVM()
     vm.path.append(str(builddir))
     w_mod = vm.import_(modname)
-    vm.redshift(lazy_errors=False)
+    vm.redshift(error_mode='eager')
     return vm, w_mod
 
 
