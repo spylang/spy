@@ -1,6 +1,6 @@
 import pytest
 from typing import Annotated
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.vm import SPyVM
@@ -149,6 +149,6 @@ class TestBuiltin:
                 return W_Foo()
 
         msg = "method `test::Foo.__GETITEM__` should be blue, but it's red"
-        with pytest.raises(SPyTypeError, match=msg):
+        with SPyError.raises('W_TypeError', match=msg):
             # simulate @decorator application
             builtin_type('test', 'Foo')(W_Foo)

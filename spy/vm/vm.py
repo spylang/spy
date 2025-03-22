@@ -1,5 +1,5 @@
 import py
-from typing import Any, Optional, Iterable, Sequence
+from typing import Any, Optional, Iterable, Sequence, Callable
 import itertools
 from dataclasses import dataclass
 from types import FunctionType
@@ -8,13 +8,14 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy import libspy
 from spy.libspy import LLSPyInstance
-from spy.doppler import redshift
-from spy.errors import SPyTypeError
+from spy.doppler import ErrorMode, redshift
+from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.list import W_ListType
 from spy.vm.b import B
+from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.vm.module import W_Module
@@ -22,7 +23,7 @@ from spy.vm.opimpl import W_OpImpl, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
-from spy.vm.modules.builtins import BUILTINS, W_Exception
+from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.types import TYPES
 from spy.vm.modules.unsafe import UNSAFE
@@ -53,6 +54,7 @@ class SPyVM:
     modules_w: dict[str, W_Module]
     path: list[str]
     bluecache: BlueCache
+    emit_warning: Callable[[SPyError], None]
 
     def __init__(self, ll: Optional[LLSPyInstance]=None) -> None:
         if ll is None:
@@ -65,6 +67,7 @@ class SPyVM:
         self.modules_w = {}
         self.path = []
         self.bluecache = BlueCache(self)
+        self.emit_warning = lambda err: None
         self.make_module(BUILTINS)   # builtins::
         self.make_module(OPERATOR)   # operator::
         self.make_module(TYPES)      # types::
@@ -96,7 +99,7 @@ class SPyVM:
         self.modules_w[modname] = w_mod
         return w_mod
 
-    def redshift(self) -> None:
+    def redshift(self, error_mode: ErrorMode) -> None:
         """
         Perform a redshift on all W_ASTFunc.
         """
@@ -113,13 +116,17 @@ class SPyVM:
             funcs = list(get_funcs())
             if not funcs:
                 break
-            self._redshift_some(funcs)
+            self._redshift_some(funcs, error_mode)
 
-    def _redshift_some(self, funcs: list[tuple[FQN, W_ASTFunc]]) -> None:
+    def _redshift_some(
+            self,
+            funcs: list[tuple[FQN, W_ASTFunc]],
+            error_mode: ErrorMode,
+    ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != 'blue'
             assert not w_func.redshifted
-            w_newfunc = redshift(self, w_func)
+            w_newfunc = redshift(self, w_func, error_mode)
             assert w_newfunc.redshifted
             self.globals_w[fqn] = w_newfunc
 
@@ -262,7 +269,7 @@ class SPyVM:
             exp = w_type.fqn.human_name
             got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
-            raise SPyTypeError(msg)
+            raise SPyError('W_TypeError', msg)
 
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
@@ -506,7 +513,9 @@ class SPyVM:
         wop_b = self._w_oparg(w_b)
         try:
             w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
-        except SPyTypeError:
+        except SPyError as err:
+            if not err.match(W_TypeError):
+                raise
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
             w_ta = wop_a.w_static_type

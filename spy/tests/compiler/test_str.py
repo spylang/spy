@@ -1,7 +1,7 @@
 #-*- encoding: utf-8 -*-
 
 import pytest
-from spy.libspy import SPyPanicError
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest, skip_backends, no_backend
 
 class TestStr(CompilerTest):
@@ -59,9 +59,9 @@ class TestStr(CompilerTest):
         assert mod.foo('ABCDE', 0) == 'A'
         assert mod.foo('ABCDE', 1) == 'B'
         assert mod.foo('ABCDE', -1) == 'E'
-        with pytest.raises(SPyPanicError, match="string index out of bound"):
+        with SPyError.raises("W_IndexError", match="string index out of bound"):
             mod.foo('ABCDE', 5)
-        with pytest.raises(SPyPanicError, match="string index out of bound"):
+        with SPyError.raises("W_IndexError", match="string index out of bound"):
             mod.foo('ABCDE', -6)
 
     def test_compare(self):

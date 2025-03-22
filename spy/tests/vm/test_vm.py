@@ -4,11 +4,12 @@ from spy.vm.primitive import W_I32, W_Bool, W_Void
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.fqn import FQN
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_BuiltinFunc
 from spy.vm.module import W_Module
+from spy.vm.exc import W_Exception
 from spy.vm.builtin import builtin_type
 from spy.tests.support import expect_errors
 
@@ -134,19 +135,10 @@ class TestVM:
     def test_exception_eq(self):
         """Test equality between W_Exception instances."""
         vm = SPyVM()
-        from spy.vm.modules.builtins import W_Exception
+        w_exc1 = W_Exception("hello")
+        w_exc2 = W_Exception("hello")
+        w_exc3 = W_Exception("world")
 
-        # Create exceptions with the same message
-        w_msg1 = vm.wrap("hello")
-        w_msg2 = vm.wrap("hello")
-        w_exc1 = W_Exception(w_msg1)  # type: ignore
-        w_exc2 = W_Exception(w_msg2)  # type: ignore
-
-        # Create an exception with a different message
-        w_msg3 = vm.wrap("world")
-        w_exc3 = W_Exception(w_msg3)  # type: ignore
-
-        # Test equality
         assert vm.is_True(vm.eq(w_exc1, w_exc2))
         assert vm.is_False(vm.eq(w_exc1, w_exc3))
         assert vm.is_False(vm.ne(w_exc1, w_exc2))
@@ -222,7 +214,7 @@ class TestVM:
         # if we use vm.call(), we get proper type checking and SPyTypeError
         # XXX implement vm.call!
         ## msg = 'Invalid cast. Expected `i32`, got `str`'
-        ## with pytest.raises(SPyTypeError, match=msg):
+        ## with pytest.raises(SPyError, match=msg):
         ##     vm.call(w_abs, [w_x])
         #
         # if we use vm.fast_call(), we don't get proper type checking, but we

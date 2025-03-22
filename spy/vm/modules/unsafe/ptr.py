@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, ClassVar, Optional, Annotated, Self
 import fixedint
-from spy.errors import SPyPanicError
+from spy.location import Loc
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Void, W_Bool
 from spy.vm.object import Member
@@ -169,7 +170,8 @@ class W_Ptr(W_BasePtr):
             if i >= length:
                 msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
-                raise SPyPanicError(msg, filename, lineno)
+                loc = Loc(filename, lineno, lineno, 1, -1)
+                raise SPyError.simple("W_PanicError", msg, "", loc)
             return vm.call_generic(
                 UNSAFE.w_mem_read,
                 [w_T],
@@ -198,7 +200,8 @@ class W_Ptr(W_BasePtr):
             if i >= length:
                 msg = (f"ptr_store out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
-                raise SPyPanicError(msg, filename, lineno)
+                loc = Loc(filename, lineno, lineno, 1, -1)
+                raise SPyError.simple("W_PanicError", msg, "", loc)
             vm.call_generic(
                 UNSAFE.w_mem_write,
                 [w_T],

@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, Any
-from spy.errors import SPyTypeError
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.primitive import W_Dynamic

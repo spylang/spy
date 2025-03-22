@@ -2,7 +2,6 @@ from typing import Optional, Literal, TYPE_CHECKING, Any
 from dataclasses import dataclass, KW_ONLY, replace
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.errors import SPyScopeError
 from spy.textbuilder import ColorFormatter
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

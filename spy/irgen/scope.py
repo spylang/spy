@@ -3,7 +3,7 @@ from spy import ast
 from spy.location import Loc
 from spy.irgen.symtable import Color
 from spy.fqn import FQN
-from spy.errors import SPyImportError, SPyScopeError
+from spy.errors import SPyError
 from spy.irgen.symtable import SymTable, Symbol
 from spy.vm.vm import SPyVM
 from spy.util import magic_dispatch
@@ -153,7 +153,7 @@ class ScopeAnalyzer:
                 # shadowing a name in an outer scope
                 msg = (f'variable `{name}` shadows a name declared ' +
                        "in an outer scope")
-            err = SPyScopeError(msg)
+            err = SPyError('W_ScopeError', msg)
             err.add('error', 'this is the new declaration', loc)
             err.add('note', 'this is the previous declaration', sym.loc)
             raise err
@@ -180,7 +180,10 @@ class ScopeAnalyzer:
             self.define_name(imp.asname, 'blue', imp.loc, imp.loc, fqn=imp.fqn)
             return
         #
-        err = SPyImportError(f'cannot import `{imp.fqn.spy_name}`')
+        err = SPyError(
+            'W_ImportError',
+            f'cannot import `{imp.fqn.spy_name}`',
+        )
         if imp.fqn.modname not in self.vm.modules_w:
             # module not found
             err.add('error',

@@ -15,8 +15,10 @@ from spy.magic_py_parse import magic_py_parse
 from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
+from spy.doppler import ErrorMode
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain, BUILD_TYPE
+from spy.textbuilder import Color
 from spy.irgen.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
@@ -135,6 +137,15 @@ class Arguments:
         )
     ] = ToolchainType.zig
 
+    error_mode: Annotated[
+        ErrorMode,
+        Option(
+            "-E", "--error-mode",
+            help="Handling strategy for static errors",
+            click_type=click.Choice(ErrorMode.__args__),
+        )
+    ] = 'eager'
+
     full_fqn: Annotated[
         bool,
         Option(
@@ -244,6 +255,10 @@ async def real_main(args: Arguments) -> None:
         stdlib_pdb.post_mortem(info[2])
 
 
+def emit_warning(err: SPyError) -> None:
+    print(Color.set('yellow', '[warning] '), end='')
+    print(err.format())
+
 async def inner_main(args: Arguments) -> None:
     """
     The actual code for the spy executable
@@ -257,6 +272,9 @@ async def inner_main(args: Arguments) -> None:
     vm = await SPyVM.async_new()
 
     vm.path.append(str(srcdir))
+    if args.error_mode == 'warn':
+        args.error_mode = 'lazy'
+        vm.emit_warning = emit_warning
 
     # Determine build directory
     if args.build_dir is not None:
@@ -301,7 +319,7 @@ async def inner_main(args: Arguments) -> None:
 
         return
 
-    vm.redshift()
+    vm.redshift(error_mode=args.error_mode)
     if args.redshift:
         dump_spy_mod(vm, modname, args.full_fqn)
         return

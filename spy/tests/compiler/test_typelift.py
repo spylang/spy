@@ -1,6 +1,5 @@
 import re
 import pytest
-from spy.errors import SPyTypeError
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.function import W_ASTFunc

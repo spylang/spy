@@ -8,6 +8,7 @@ from spy import ast
 from spy.compiler import Compiler, ToolchainType
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
+from spy.doppler import ErrorMode
 from spy.cbuild import Toolchain, ZigToolchain, EmscriptenToolchain
 from spy.errors import SPyError
 from spy.fqn import FQN
@@ -138,7 +139,11 @@ class CompilerTest:
     SKIP_SPY_BACKEND_SANITY_CHECK = False
     ALL_COMPILED_SOURCES: set[str] = set()
 
-    def compile(self, src: str, modname: str = 'test', *, opt_level=0) -> Any:
+    def compile(
+            self, src: str, modname: str = 'test',
+            *,
+            opt_level=0, error_mode: ErrorMode='eager',
+    ) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
         tests.
@@ -157,13 +162,13 @@ class CompilerTest:
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'doppler':
-            self.vm.redshift()
+            self.vm.redshift(error_mode=error_mode)
             if self.dump_redshift:
                 self.dump_module(modname)
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
         elif self.backend == 'C':
-            self.vm.redshift()
+            self.vm.redshift(error_mode=error_mode)
             compiler = Compiler(self.vm, modname, self.builddir,
                                 dump_c=self.dump_c)
             file_wasm = compiler.cbuild(
@@ -174,7 +179,7 @@ class CompilerTest:
             )
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
-            self.vm.redshift()
+            self.vm.redshift(error_mode=error_mode)
             if self.dump_redshift:
                 self.dump_module(modname)
             compiler = Compiler(self.vm, modname, self.builddir,
@@ -258,13 +263,13 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
         pytest.fail(f'Error message not found: {msg}')
 
     def match_one_annotation(expected_msg: str, expected_src: str) -> bool:
-        for ann in err.annotations:
+        for ann in err.w_exc.annotations:
             got_src = ann.loc.get_src()
             if ann.message == expected_msg and expected_src == got_src:
                 return True
         return False
 
-    if err.message != main:
+    if err.w_exc.message != main:
         fail(main, '')
 
     for msg, src in anns_to_match:

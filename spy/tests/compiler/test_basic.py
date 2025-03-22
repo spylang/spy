@@ -1,6 +1,6 @@
 import pytest
 from spy.fqn import FQN
-from spy.errors import SPyTypeError, SPyPanicError
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
@@ -129,7 +129,7 @@ class TestBasic(CompilerTest):
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"
-        with pytest.raises(SPyTypeError, match=msg):
+        with SPyError.raises('W_TypeError', match=msg):
             mod.foo()
 
 
@@ -258,7 +258,7 @@ class TestBasic(CompilerTest):
         if self.backend != 'C':
             # in the C backend we just abort without reporting an error, for now
             msg = 'reached the end of the function without a `return`'
-            with pytest.raises(SPyTypeError, match=msg):
+            with SPyError.raises('W_TypeError', match=msg):
                 mod.implicit_return_i32()
 
     def test_BinOp_error(self):
@@ -838,11 +838,11 @@ class TestBasic(CompilerTest):
         assert mod.eq_with_conversion(1, 2.0) == False
         #
         msg = "cannot do `i32` == `str`"
-        with pytest.raises(SPyTypeError, match=msg):
+        with SPyError.raises('W_TypeError', match=msg):
             mod.eq_wrong_types(1, 'hello')
         #
         msg = "cannot do `object` == `object`"
-        with pytest.raises(SPyTypeError, match=msg):
+        with SPyError.raises('W_TypeError', match=msg):
             mod.eq_objects(1, 2)
         #
         # `dynamic` == `dynamic` uses universal equality, so comparison
@@ -993,14 +993,15 @@ class TestBasic(CompilerTest):
                 raise IndexError
         """)
         assert mod.foo(0) == 42
-        with pytest.raises(SPyPanicError, match="Exception: hello") as exc:
+        with SPyError.raises('W_Exception', match="hello") as excinfo:
             mod.foo(1)
-        assert exc.value.filename == str(self.tmpdir.join('test.spy'))
-        assert exc.value.lineno == 6
+        loc = excinfo.value.w_exc.annotations[0].loc
+        assert loc.filename == str(self.tmpdir.join('test.spy'))
+        assert loc.line_start == 6
 
-        with pytest.raises(SPyPanicError, match="ValueError: world"):
+        with SPyError.raises('W_ValueError', match="world"):
             mod.foo(2)
-        with pytest.raises(SPyPanicError, match="IndexError"):
+        with SPyError.raises('W_IndexError'):
             mod.foo(3)
 
     def test_cannot_raise_red(self):
@@ -1014,3 +1015,42 @@ class TestBasic(CompilerTest):
             ('this is red', 'exc'),
             )
         self.compile_raises(src, "foo", errors)
+
+    def test_lazy_error(self):
+        src = """
+        def foo() -> void:
+            1 + "hello"
+        """
+        mod = self.compile(src, error_mode='lazy')
+        with SPyError.raises('W_TypeError', match=r"cannot do `i32` \+ `str`"):
+            mod.foo()
+
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_static_error(self, error_mode):
+        src = """
+        @blue
+        def get_message(lang):
+            if lang == "en":
+                return "hello"
+            raise StaticError("unsupported lang: " + lang)
+
+        def print_message(also_italian: i32) -> i32:
+            print(get_message("en"))
+            if also_italian:
+                print(get_message("it"))
+            return 42
+
+        def foo() -> i32:
+            return print_message(1)
+        """
+
+        if self.backend in ('doppler', 'C') and error_mode == "eager":
+            # eager errors and we are redshifting: expect a comptime error
+            errors = expect_errors("unsupported lang: it")
+            self.compile_raises(src, "foo", errors)
+        else:
+            # interp mode or lazy errors
+            mod = self.compile(src, error_mode=error_mode)
+            assert mod.print_message(0) == 42 # works
+            with SPyError.raises('W_StaticError', match="unsupported lang: it"):
+                mod.print_message(1)

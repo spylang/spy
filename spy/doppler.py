@@ -1,25 +1,29 @@
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, Literal, TYPE_CHECKING
 from types import NoneType
 from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
-from spy.errors import SPyTypeError
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
+from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.exc import W_TypeError, W_StaticError
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+ErrorMode = Literal['eager', 'lazy', 'warn']
 
-def redshift(vm: 'SPyVM', w_func: W_ASTFunc) -> W_ASTFunc:
-    dop = DopplerFrame(vm, w_func)
+def redshift(vm: 'SPyVM', w_func: W_ASTFunc,
+             error_mode: ErrorMode) -> W_ASTFunc:
+    dop = DopplerFrame(vm, w_func, error_mode)
     return dop.redshift()
 
 
@@ -53,12 +57,16 @@ class DopplerFrame(ASTFrame):
     """
     shifted_expr: dict[ast.Expr, ast.Expr]
     opimpl: dict[ast.Node, W_Func]
+    error_mode: ErrorMode
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc) -> None:
+    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
+                 error_mode: ErrorMode) -> None:
         assert w_func.color == 'red'
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
         self.opimpl = {}
+        assert error_mode != 'warn'
+        self.error_mode = error_mode
 
     # overridden
     @property
@@ -97,7 +105,25 @@ class DopplerFrame(ASTFrame):
     # ==== statements ====
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
-        return magic_dispatch(self, 'shift_stmt', stmt)
+        try:
+            return magic_dispatch(self, 'shift_stmt', stmt)
+        except SPyError as err:
+            if self.error_mode == 'lazy' and err.match(W_StaticError):
+                # turn the exception into a lazy "raise" statement
+                self.vm.emit_warning(err)
+                return self.make_raise_from_SPyError(stmt, err)
+            else:
+                # else, just raise the exception as usual
+                raise
+
+    def make_raise_from_SPyError(self, stmt: ast.Stmt,
+                                 err: SPyError) -> list[ast.Stmt]:
+        """
+        Turn the given stmt into a "raise"
+        """
+        fqn = self.vm.make_fqn_const(err.w_exc)
+        exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+        return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         newvalue = self.eval_and_shift(ret.value, varname='@return')
@@ -355,7 +381,7 @@ class DopplerFrame(ASTFrame):
         if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
             fqn = FQN(f'builtins::print_{t}')
         else:
-            raise SPyTypeError(f"Invalid type for print(): {t}")
+            raise SPyError('W_TypeError', f"Invalid type for print(): {t}")
 
         newfunc = call.func.replace(fqn=fqn)
         return call.replace(func=newfunc)

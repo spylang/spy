@@ -46,7 +46,8 @@ spy_str_getitem(spy_Str *s, int32_t i) {
         i += l;
     }
     if (i >= l || i < 0) {
-        spy_panic("string index out of bound", __FILE__, __LINE__);
+        spy_panic("IndexError", "string index out of bound",
+                  __FILE__, __LINE__);
         return NULL;
     }
     spy_Str *res = spy_str_alloc(1);

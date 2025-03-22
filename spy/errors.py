@@ -1,147 +1,65 @@
-from typing import Optional, Literal, ClassVar
+from typing import ClassVar, TYPE_CHECKING, Any, Optional
 from dataclasses import dataclass
-import linecache
+from contextlib import contextmanager
 from spy.location import Loc
-from spy.textbuilder import ColorFormatter
+from spy.errfmt import ErrorFormatter, Level, Annotation
 
-Level = Literal["error", "note", "panic"]
+if TYPE_CHECKING:
+    from spy.vm.exc import W_Exception
 
-def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
-    if n == 1:
-        return singular
-    elif plural is None:
-        return singular + 's'
-    else:
-        return plural
+def get_pyclass(etype: str) -> type['W_Exception']:
+    """
+    Perform a lazy lookup of app-level exception classes.
 
-@dataclass
-class Annotation:
-    level: Level
-    message: str
-    loc: Loc
-
-
-class ErrorFormatter:
-    err: 'SPyError'
-    lines: list[str]
-
-    def __init__(self, err: 'SPyError', use_colors: bool) -> None:
-        self.err = err
-        self.color = ColorFormatter(use_colors)
-        # add "custom colors" to ColorFormatter, so that we can do
-        # self.color.set('error', 'hello')
-        self.color.error = self.color.red  # type: ignore
-        self.color.panic = self.color.red  # type: ignore
-        self.color.note = self.color.green # type: ignore
-        self.lines = []
-
-    def w(self, s: str) -> None:
-        self.lines.append(s)
-
-    def build(self) -> str:
-        return '\n'.join(self.lines)
-
-    def emit_message(self, level: Level, message: str) -> None:
-        prefix = self.color.set(level, level)
-        message = self.color.set('default', message)
-        self.w(f'{prefix}: {message}')
-
-    def emit_annotation(self, ann: Annotation) -> None:
-        filename = ann.loc.filename
-        line = ann.loc.line_start
-        col = ann.loc.col_start + 1  # Loc columns are 0-based but we want 1-based
-        srcline = linecache.getline(filename, line).rstrip('\n')
-        carets = self.make_carets(srcline, ann.loc, ann.message)
-        carets = self.color.set(ann.level, carets)
-        self.w(f'   --> {filename}:{line}:{col}')
-        self.w(f'{line:>3} | {srcline}')
-        self.w(f'    | {carets}')
-        self.w('')
-
-    def make_carets(self, srcline: str, loc: Loc, message: str) -> str:
-        a = loc.col_start
-        b = loc.col_end
-        if b < 0:
-            b = len(srcline) + b + 1
-        n = b-a
-        line = ' ' * a + '^' * n
-        return line + ' ' + message
+    Example:
+        get_pyclass('W_TypeError') --> spy.vm.exc.W_TypeError
+    """
+    import spy.vm.exc
+    assert etype.startswith('W_')
+    return getattr(spy.vm.exc, etype)
 
 
 class SPyError(Exception):
-    LEVEL: ClassVar[Level] = 'error'
+    etype: str
+    w_exc: 'W_Exception'
 
-    message: str
-    annotations: list[Annotation]
-
-    def __init__(self, message: str) -> None:
-        self.message = message
-        self.annotations = []
+    def __init__(self, etype: str, message: str) -> None:
+        pyclass = get_pyclass(etype)
+        self.etype = etype
+        self.w_exc = pyclass(message)
         super().__init__(message)
 
     @classmethod
-    def simple(cls, primary: str, secondary: str, loc: Loc) -> 'SPyError':
-        err = cls(primary)
+    def simple(cls, etype: str, primary: str,
+               secondary: str,loc: Loc) -> 'SPyError':
+        err = cls(etype, primary)
         err.add('error', secondary, loc)
         return err
 
+    def match(self, pyclass: type['W_Exception']) -> bool:
+        return isinstance(self.w_exc, pyclass)
+
     def __str__(self) -> str:
-        return self.format(use_colors=False)
+        return self.w_exc.format(use_colors=False)
 
     def add(self, level: Level, message: str, loc: Loc) -> None:
-        self.annotations.append(Annotation(level, message, loc))
+        self.w_exc.add(level, message, loc)
 
     def format(self, use_colors: bool = True) -> str:
-        fmt = ErrorFormatter(self, use_colors)
-        fmt.emit_message(self.LEVEL, self.message)
-        for ann in self.annotations:
-            fmt.emit_annotation(ann)
-        return fmt.build()
+        return self.w_exc.format(use_colors)
 
-
-class SPyParseError(SPyError):
-    pass
-
-
-class SPyTypeError(SPyError):
-    pass
-
-
-class SPyImportError(SPyError):
-    pass
-
-
-class SPyScopeError(SPyError):
-    """
-    Raised if a variable declaration redeclares or shadows a name, see
-    symtable.py
-    """
-
-class SPyNameError(SPyError):
-    """
-    Raised if we try to access a variable which is not defined
-    """
-
-# ======
-
-class SPyRuntimeError(Exception):
-    pass
-
-class SPyRuntimeAbort(SPyRuntimeError):
-    pass
-
-
-class SPyPanicError(SPyError):
-    """
-    Python-level exception raised when a WASM module aborts with a call to
-    spy_panic().
-    """
-    LEVEL = 'panic'
-
-    def __init__(self, message: str, fname: str, lineno: int) -> None:
-        super().__init__(message)
-        self.filename = fname
-        self.lineno = lineno
-        if fname is not None:
-            loc = Loc(fname, lineno, lineno, 1, -1)
-            self.add('panic', '', loc)
+    @contextmanager
+    @staticmethod
+    def raises(etype: str, match: Optional[str]=None) -> Any:
+        """
+        Equivalent to pytest.raises(SPyError, ...), but also checks the
+        etype.
+        """
+        import pytest
+        with pytest.raises(SPyError, match=match) as excinfo:
+            yield excinfo
+        exc = excinfo.value
+        assert isinstance(exc, SPyError)
+        if exc.etype != etype:
+            msg = f"Expected SPyError of type {etype}, but got {exc.etype}"
+            pytest.fail(msg)
