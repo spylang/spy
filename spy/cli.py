@@ -18,6 +18,7 @@ from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain, BUILD_TYPE
+from spy.textbuilder import Color
 from spy.irgen.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
@@ -254,6 +255,10 @@ async def real_main(args: Arguments) -> None:
         stdlib_pdb.post_mortem(info[2])
 
 
+def emit_warning(err: SPyError) -> None:
+    print(Color.set('yellow', '[warning] '), end='')
+    print(err.format())
+
 async def inner_main(args: Arguments) -> None:
     """
     The actual code for the spy executable
@@ -267,6 +272,9 @@ async def inner_main(args: Arguments) -> None:
     vm = await SPyVM.async_new()
 
     vm.path.append(str(srcdir))
+    if args.error_mode == 'warn':
+        args.error_mode = 'lazy'
+        vm.emit_warning = emit_warning
 
     # Determine build directory
     if args.build_dir is not None:

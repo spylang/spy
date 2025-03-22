@@ -1,5 +1,5 @@
 import py
-from typing import Any, Optional, Iterable, Sequence
+from typing import Any, Optional, Iterable, Sequence, Callable
 import itertools
 from dataclasses import dataclass
 from types import FunctionType
@@ -54,6 +54,7 @@ class SPyVM:
     modules_w: dict[str, W_Module]
     path: list[str]
     bluecache: BlueCache
+    emit_warning: Callable[[SPyError], None]
 
     def __init__(self, ll: Optional[LLSPyInstance]=None) -> None:
         if ll is None:
@@ -66,6 +67,7 @@ class SPyVM:
         self.modules_w = {}
         self.path = []
         self.bluecache = BlueCache(self)
+        self.emit_warning = lambda err: None
         self.make_module(BUILTINS)   # builtins::
         self.make_module(OPERATOR)   # operator::
         self.make_module(TYPES)      # types::

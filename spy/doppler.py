@@ -19,7 +19,7 @@ from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-ErrorMode = Literal['eager', 'lazy']
+ErrorMode = Literal['eager', 'lazy', 'warn']
 
 def redshift(vm: 'SPyVM', w_func: W_ASTFunc,
              error_mode: ErrorMode) -> W_ASTFunc:
@@ -65,6 +65,7 @@ class DopplerFrame(ASTFrame):
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
         self.opimpl = {}
+        assert error_mode != 'warn'
         self.error_mode = error_mode
 
     # overridden
@@ -109,6 +110,7 @@ class DopplerFrame(ASTFrame):
         except SPyError as err:
             if self.error_mode == 'lazy' and err.match(W_StaticError):
                 # turn the exception into a lazy "raise" statement
+                self.vm.emit_warning(err)
                 return self.make_raise_from_SPyError(stmt, err)
             else:
                 # else, just raise the exception as usual
