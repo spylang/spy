@@ -39,7 +39,6 @@ from spy.vm.primitive import W_Bool, W_Dynamic
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-T = TypeVar('T')
 
 @OPERATOR.builtin_type('OpArg', lazy_definition=True)
 class W_OpArg(W_Object):

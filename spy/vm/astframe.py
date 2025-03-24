@@ -302,14 +302,22 @@ class AbstractFrame:
         wop_obj = self.eval_expr(node.target)
         wop_attr = self.eval_expr(node.attr)
         wop_value = self.eval_expr(node.value)
-        w_opimpl = self.vm.call_OP(OP.w_SETATTR, [wop_obj, wop_attr, wop_value])
+        w_opimpl = self.vm.call_OP(
+            node.loc,
+            OP.w_SETATTR,
+            [wop_obj, wop_attr, wop_value]
+        )
         self.eval_opimpl(node, w_opimpl, [wop_obj, wop_attr, wop_value])
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
         wop_obj = self.eval_expr(node.target)
         wop_i = self.eval_expr(node.index)
         wop_v = self.eval_expr(node.value)
-        w_opimpl = self.vm.call_OP(OP.w_SETITEM, [wop_obj, wop_i, wop_v])
+        w_opimpl = self.vm.call_OP(
+            node.loc,
+            OP.w_SETITEM,
+            [wop_obj, wop_i, wop_v]
+        )
         self.eval_opimpl(node, w_opimpl, [wop_obj, wop_i, wop_v])
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
@@ -336,7 +344,7 @@ class AbstractFrame:
 
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wop_exc = self.eval_expr(raise_node.exc)
-        w_opimpl = self.vm.call_OP(OP.w_RAISE, [wop_exc])
+        w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wop_exc])
         self.eval_opimpl(raise_node, w_opimpl, [wop_exc])
 
     # ==== expressions ====
@@ -424,7 +432,7 @@ class AbstractFrame:
         w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
         wop_l = self.eval_expr(binop.left)
         wop_r = self.eval_expr(binop.right)
-        w_opimpl = self.vm.call_OP(w_OP, [wop_l, wop_r])
+        w_opimpl = self.vm.call_OP(binop.loc, w_OP, [wop_l, wop_r])
         return self.eval_opimpl(
             binop,
             w_opimpl,
@@ -454,7 +462,11 @@ class AbstractFrame:
         if wop_func.color == 'blue' and wop_func.w_val is B.w_STATIC_TYPE:
             return self._eval_STATIC_TYPE(wop_func, call)
         args_wop = [self.eval_expr(arg) for arg in call.args]
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
+        w_opimpl = self.vm.call_OP(
+            call.loc,
+            OP.w_CALL,
+            [wop_func]+args_wop
+        )
         return self.eval_opimpl(call, w_opimpl, [wop_func]+args_wop)
 
     def _eval_STATIC_TYPE(self, wop_func: W_OpArg, call: ast.Call) -> W_OpArg:
@@ -468,7 +480,7 @@ class AbstractFrame:
                 )
 
         args_wop = [self.eval_expr(arg) for arg in call.args]
-        w_opimpl = self.vm.call_OP(OP.w_CALL, [wop_func]+args_wop)
+        w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wop_func]+args_wop)
         assert len(call.args) == 1
         w_argtype = args_wop[0].w_static_type
         return W_OpArg.from_w_obj(self.vm, w_argtype)
@@ -478,6 +490,7 @@ class AbstractFrame:
         wop_meth = self.eval_expr(op.method)
         args_wop = [self.eval_expr(arg) for arg in op.args]
         w_opimpl = self.vm.call_OP(
+            op.loc,
             OP.w_CALL_METHOD,
             [wop_obj, wop_meth] + args_wop
         )
@@ -490,13 +503,13 @@ class AbstractFrame:
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_OpArg:
         wop_obj = self.eval_expr(op.value)
         wop_i = self.eval_expr(op.index)
-        w_opimpl = self.vm.call_OP(OP.w_GETITEM, [wop_obj, wop_i])
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETITEM, [wop_obj, wop_i])
         return self.eval_opimpl(op, w_opimpl, [wop_obj, wop_i])
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_OpArg:
         wop_obj = self.eval_expr(op.value)
         wop_attr = self.eval_expr(op.attr)
-        w_opimpl = self.vm.call_OP(OP.w_GETATTR, [wop_obj, wop_attr])
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wop_obj, wop_attr])
         return self.eval_opimpl(op, w_opimpl, [wop_obj, wop_attr])
 
     def eval_expr_List(self, op: ast.List) -> W_Object:
