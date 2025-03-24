@@ -363,11 +363,14 @@ class SPyVM:
             # for red functions, we just call them
             return self._raw_call(w_func, args_w)
 
-    def call_OP(self, w_OP: W_Func, args_wop: Sequence[W_OpArg]) -> W_Func:
+    def call_OP(
+            self,
+            loc: Optional[Loc],
+            w_OP: W_Func,
+            args_wop: Sequence[W_OpArg]
+    ) -> W_Func:
         """
-        Like vm.fast_call, but ensures that the result is a W_Func.
-
-        Mostly useful to call OPERATORs.
+        Small wrapper around vm.fast_call, suited to call OPERATORs.
         """
         # <TEMPORARY HACK>
         #
@@ -403,9 +406,15 @@ class SPyVM:
             new_args_wop[1] = args_wop[1]
         # </TEMPORARY HACK>
 
-        w_func = self.fast_call(w_OP, new_args_wop)
-        assert isinstance(w_func, W_Func)
-        return w_func
+        try:
+            w_func = self.fast_call(w_OP, new_args_wop)
+            assert isinstance(w_func, W_Func)
+            return w_func
+        except SPyError as err:
+            if loc is not None:
+                opname = w_OP.fqn
+                err.add('note', f'{opname} called here', loc)
+            raise
 
     def call_generic(self, w_func: W_Func,
                      generic_args_w: list[W_Object],
@@ -441,7 +450,7 @@ class SPyVM:
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
-        w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
+        w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
@@ -449,7 +458,7 @@ class SPyVM:
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
-        w_opimpl = self.call_OP(OPERATOR.w_NE, [wop_a, wop_b])
+        w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wop_a, wop_b])
         w_res = self.fast_call(w_opimpl, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
@@ -460,7 +469,7 @@ class SPyVM:
         # ASTFrame. See also vm.ne and vm.getitem
         wop_obj = self._w_oparg(w_obj)
         wop_i = self._w_oparg(w_i)
-        w_opimpl = self.call_OP(OPERATOR.w_GETITEM, [wop_obj, wop_i])
+        w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return self.fast_call(w_opimpl, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
@@ -512,7 +521,7 @@ class SPyVM:
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
         try:
-            w_opimpl = self.call_OP(OPERATOR.w_EQ, [wop_a, wop_b])
+            w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise

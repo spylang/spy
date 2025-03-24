@@ -111,7 +111,7 @@ class Loc:
         Visualize the piece of code which correspond to this Loc
         """
         from spy.errfmt import ErrorFormatter, Annotation
-        fmt = ErrorFormatter(err=None, use_colors=True) # type: ignore
+        fmt = ErrorFormatter(use_colors=True) # type: ignore
         ann = Annotation('note', '', self)
         fmt.emit_annotation(ann)
         print(fmt.build())
