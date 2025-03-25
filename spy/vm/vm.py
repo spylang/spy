@@ -208,7 +208,7 @@ class SPyVM:
             #     raise Exception("...")
 
             # the argument to "raise" must be blue for now (see also
-            # W_Exception.w_spy_new). Eventually, we will have proper support
+            # W_Exception.w_NEW). Eventually, we will have proper support
             # for prebuilt constants, but for now we special case W_Exception.
             w_type = self.dynamic_type(w_val)
             fqn = w_type.fqn.join('prebuilt')

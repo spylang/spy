@@ -18,7 +18,7 @@ class W_MyClass(W_Object):
 
     @builtin_method('__new__')
     @staticmethod
-    def w_spy_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
+    def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
         return W_MyClass(w_x)
 
     @builtin_method('__getitem__')

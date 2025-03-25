@@ -46,7 +46,7 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Adder':
+            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Adder':
                 return W_Adder(vm.unwrap_i32(w_x))
 
             @builtin_method('__CALL__', color='blue')
@@ -121,7 +121,7 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> 'W_Point':
+            def w_new(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> 'W_Point':
                 return W_Point(w_x, w_y)
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -205,7 +205,7 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Calc':
+            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Calc':
                 return W_Calc(vm.unwrap_i32(w_x))
 
             @builtin_method('__CALL_METHOD__', color='blue')
