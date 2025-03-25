@@ -28,6 +28,14 @@ class W_MyClass(W_Object):
         i = vm.unwrap_i32(w_i)
         return vm.wrap(x + i)
 
+    @builtin_method('__setitem__')
+    @staticmethod
+    def w_setitem(vm: 'SPyVM', w_obj: 'W_MyClass', w_i: W_I32, w_v: W_I32) -> W_Void:
+        i = vm.unwrap_i32(w_i)
+        v = vm.unwrap_i32(w_v)
+        w_obj.w_x = vm.wrap(v - i)
+        return W_Void
+
 
 @no_C
 class TestOperatorSimple(CompilerTest):
@@ -46,3 +54,18 @@ class TestOperatorSimple(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(4) == 9
+        
+    def test_setitem(self):
+        EXT = ModuleRegistry('ext')
+        EXT.builtin_type('MyClass')(W_MyClass)
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyClass
+
+        def foo(x: i32, v: i32) -> i32:
+            obj = MyClass(x)
+            obj[3] = v
+            return obj[0]
+        """
+        mod = self.compile(src)
+        assert mod.foo(10, 15) == 12  # obj.x = (v - i) = (15 - 3) = 12
