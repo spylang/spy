@@ -38,6 +38,6 @@ WASM_EXPORT(spy_builtins$int2str)(int32_t x);
 #define spy_operator$str_mul spy_str_mul
 #define spy_operator$str_eq  spy_str_eq
 #define spy_operator$str_ne  spy_str_ne
-#define spy_builtins$str$getitem spy_str_getitem
+#define spy_builtins$str$__getitem__ spy_str_getitem
 
 #endif /* SPY_STR_H */
