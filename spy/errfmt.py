@@ -41,18 +41,28 @@ class ErrorFormatter:
         line = ann.loc.line_start
         col = ann.loc.col_start + 1 # Loc columns are 0-based but we want 1-based
         srcline = linecache.getline(filename, line).rstrip('\n')
-        carets = self.make_carets(srcline, ann.loc, ann.message)
-        carets = self.color.set(ann.level, carets)
+        underline = self.make_underline(srcline, ann.loc, ann.message)
+        underline = self.color.set(ann.level, underline)
         self.w(f'   --> {filename}:{line}:{col}')
         self.w(f'{line:>3} | {srcline}')
-        self.w(f'    | {carets}')
+        self.w(f'    | {underline}')
         self.w('')
 
-    def make_carets(self, srcline: str, loc: Loc, message: str) -> str:
+    def make_underline(self, srcline: str, loc: Loc, message: str) -> str:
         a = loc.col_start
         b = loc.col_end
         if b < 0:
             b = len(srcline) + b + 1
         n = b-a
-        line = ' ' * a + '^' * n
+        # these are various ways to visually display underlines.
+        if n < 2:
+            underline = '^' * max(n, 1)
+        else:
+            #underline = '^' * (n-2)
+            #underline = '└' + '─'*(n-2) + '┴───►'
+            #underline = '└' + '─'*(n-2) + '┘'
+            #underline = '+' + '-'*(n-2) + '+'
+            #underline = '^' + '-'*(n-2) + '^'
+            underline = '|' + '_'*(n-2) + '|'
+        line = ' ' * a + underline
         return line + ' ' + message
