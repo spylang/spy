@@ -27,15 +27,9 @@ class W_Tuple(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> tuple:
         return tuple([vm.unwrap(w_item) for w_item in self.items_w])
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-        return W_OpImpl(w_tuple_getitem)
-
-
-
-@builtin_func('operator')
-def w_tuple_getitem(vm: 'SPyVM', w_tup: W_Tuple, w_i: W_I32) -> W_Dynamic:
-    i = vm.unwrap_i32(w_i)
-    # XXX bound check?
-    return w_tup.items_w[i]
+    def w_getitem(vm: 'SPyVM', w_tup: 'W_Tuple', w_i: W_I32) -> W_Dynamic:
+        i = vm.unwrap_i32(w_i)
+        # XXX bound check?
+        return w_tup.items_w[i]
