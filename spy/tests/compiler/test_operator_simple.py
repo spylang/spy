@@ -26,23 +26,22 @@ class W_MyClass(W_Object):
     def w_getitem(vm: 'SPyVM', w_obj: 'W_MyClass', w_i: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_obj.w_x)
         i = vm.unwrap_i32(w_i)
-        return vm.wrap(x + i)
+        return vm.wrap(x + i)  # type: ignore
 
     @builtin_method('__setitem__')
     @staticmethod
     def w_setitem(vm: 'SPyVM', w_obj: 'W_MyClass', w_i: W_I32,
-                  w_v: W_I32) -> W_Void:
+                  w_v: W_I32) -> None:
         i = vm.unwrap_i32(w_i)
         v = vm.unwrap_i32(w_v)
-        w_obj.w_x = vm.wrap(v - i)
-        return W_Void
+        w_obj.w_x = vm.wrap(v - i)  # type: ignore
 
     @builtin_method('__call__')
     @staticmethod
     def w_call(vm: 'SPyVM', w_obj: 'W_MyClass', w_arg: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_obj.w_x)
         arg = vm.unwrap_i32(w_arg)
-        return vm.wrap(x * arg)
+        return vm.wrap(x * arg)  # type: ignore
 
     @builtin_method('__call_method__')
     @staticmethod
@@ -52,10 +51,10 @@ class W_MyClass(W_Object):
         arg = vm.unwrap_i32(w_arg)
         method = vm.unwrap_str(w_method)
         if method == "add":
-            return vm.wrap(x + arg)
+            return vm.wrap(x + arg)  # type: ignore
         elif method == "mul":
-            return vm.wrap(x * arg)
-        return W_Void
+            return vm.wrap(x * arg)  # type: ignore
+        return vm.wrap(-1)  # type: ignore
 
     @builtin_method('__getattr__')
     @staticmethod
@@ -63,29 +62,29 @@ class W_MyClass(W_Object):
         x = vm.unwrap_i32(w_obj.w_x)
         attr = vm.unwrap_str(w_attr)
         if attr == "value":
-            return vm.wrap(x)
+            return vm.wrap(x)  # type: ignore
         elif attr == "double":
-            return vm.wrap(x * 2)
-        return vm.wrap(0)
+            return vm.wrap(x * 2)  # type: ignore
+        return vm.wrap(-1)  # type: ignore
 
     @builtin_method('__setattr__')
     @staticmethod
     def w_setattr(vm: 'SPyVM', w_obj: 'W_MyClass', w_attr: W_Str,
-                  w_v: W_I32) -> W_Void:
+                  w_v: W_I32) -> None:
         attr = vm.unwrap_str(w_attr)
         v = vm.unwrap_i32(w_v)
         if attr == "value":
-            w_obj.w_x = vm.wrap(v)
+            w_obj.w_x = vm.wrap(v)  # type: ignore
         elif attr == "double":
-            w_obj.w_x = vm.wrap(v // 2)
-        return W_Void
+            w_obj.w_x = vm.wrap(v // 2)  # type: ignore
+        return None
 
 
 @no_C
 class TestOperatorSimple(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
-    def setup_ext(self):
+    def setup_ext(self) -> None:
         EXT = ModuleRegistry('ext')
         EXT.builtin_type('MyClass')(W_MyClass)
         self.vm.make_module(EXT)
