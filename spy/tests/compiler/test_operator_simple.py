@@ -30,10 +30,54 @@ class W_MyClass(W_Object):
 
     @builtin_method('__setitem__')
     @staticmethod
-    def w_setitem(vm: 'SPyVM', w_obj: 'W_MyClass', w_i: W_I32, w_v: W_I32) -> W_Void:
+    def w_setitem(vm: 'SPyVM', w_obj: 'W_MyClass', w_i: W_I32,
+                  w_v: W_I32) -> W_Void:
         i = vm.unwrap_i32(w_i)
         v = vm.unwrap_i32(w_v)
         w_obj.w_x = vm.wrap(v - i)
+        return W_Void
+
+    @builtin_method('__call__')
+    @staticmethod
+    def w_call(vm: 'SPyVM', w_obj: 'W_MyClass', w_arg: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_obj.w_x)
+        arg = vm.unwrap_i32(w_arg)
+        return vm.wrap(x * arg)
+
+    @builtin_method('__call_method__')
+    @staticmethod
+    def w_call_method(vm: 'SPyVM', w_obj: 'W_MyClass', w_method: W_Str,
+                      w_arg: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_obj.w_x)
+        arg = vm.unwrap_i32(w_arg)
+        method = vm.unwrap_str(w_method)
+        if method == "add":
+            return vm.wrap(x + arg)
+        elif method == "mul":
+            return vm.wrap(x * arg)
+        return W_Void
+
+    @builtin_method('__getattr__')
+    @staticmethod
+    def w_getattr(vm: 'SPyVM', w_obj: 'W_MyClass', w_attr: W_Str) -> W_I32:
+        x = vm.unwrap_i32(w_obj.w_x)
+        attr = vm.unwrap_str(w_attr)
+        if attr == "value":
+            return vm.wrap(x)
+        elif attr == "double":
+            return vm.wrap(x * 2)
+        return vm.wrap(0)
+
+    @builtin_method('__setattr__')
+    @staticmethod
+    def w_setattr(vm: 'SPyVM', w_obj: 'W_MyClass', w_attr: W_Str,
+                  w_v: W_I32) -> W_Void:
+        attr = vm.unwrap_str(w_attr)
+        v = vm.unwrap_i32(w_v)
+        if attr == "value":
+            w_obj.w_x = vm.wrap(v)
+        elif attr == "double":
+            w_obj.w_x = vm.wrap(v // 2)
         return W_Void
 
 
@@ -41,10 +85,13 @@ class W_MyClass(W_Object):
 class TestOperatorSimple(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
-    def test_getitem(self):
+    def setup_ext(self):
         EXT = ModuleRegistry('ext')
         EXT.builtin_type('MyClass')(W_MyClass)
         self.vm.make_module(EXT)
+
+    def test_getitem(self):
+        self.setup_ext()
         src = """
         from ext import MyClass
 
@@ -54,11 +101,9 @@ class TestOperatorSimple(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(4) == 9
-        
+
     def test_setitem(self):
-        EXT = ModuleRegistry('ext')
-        EXT.builtin_type('MyClass')(W_MyClass)
-        self.vm.make_module(EXT)
+        self.setup_ext()
         src = """
         from ext import MyClass
 
@@ -69,3 +114,68 @@ class TestOperatorSimple(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(10, 15) == 12  # obj.x = (v - i) = (15 - 3) = 12
+
+    def test_call(self):
+        self.setup_ext()
+        src = """
+        from ext import MyClass
+
+        def foo(x: i32, arg: i32) -> i32:
+            obj = MyClass(x)
+            return obj(arg)
+        """
+        mod = self.compile(src)
+        assert mod.foo(4, 3) == 12  # 4 * 3 = 12
+
+    def test_call_method(self):
+        self.setup_ext()
+        src = """
+        from ext import MyClass
+
+        def foo(x: i32, arg: i32) -> i32:
+            obj = MyClass(x)
+            return obj.add(arg)
+
+        def bar(x: i32, arg: i32) -> i32:
+            obj = MyClass(x)
+            return obj.mul(arg)
+        """
+        mod = self.compile(src)
+        assert mod.foo(4, 3) == 7   # 4 + 3 = 7
+        assert mod.bar(4, 3) == 12  # 4 * 3 = 12
+
+    def test_getattr(self):
+        self.setup_ext()
+        src = """
+        from ext import MyClass
+
+        def foo(x: i32) -> i32:
+            obj = MyClass(x)
+            return obj.value
+
+        def bar(x: i32) -> i32:
+            obj = MyClass(x)
+            return obj.double
+        """
+        mod = self.compile(src)
+        assert mod.foo(4) == 4
+        assert mod.bar(4) == 8  # 4 * 2 = 8
+
+    def test_setattr(self):
+        self.setup_ext()
+        src = """
+        from ext import MyClass
+
+        def foo(x: i32, v: i32) -> i32:
+            obj = MyClass(x)
+            obj.value = v
+            return obj.value
+
+        def bar(x: i32, v: i32) -> i32:
+            obj = MyClass(x)
+            obj.double = v
+            return obj.value
+        """
+        mod = self.compile(src)
+        assert mod.foo(4, 7) == 7
+        assert mod.bar(4, 10) == 5  # v // 2 = 10 // 2 = 5
