@@ -259,16 +259,44 @@ def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
 
 @OP.builtin_func(color='blue')
 def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+    from spy.vm.typechecker import typecheck_opimpl
+    w_ltype = wop_l.w_static_type
+    if w_LT := w_ltype.lookup_blue_func('__LT__'):
+        w_opimpl = op_fast_call(vm, w_LT, [wop_l, wop_r])
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                               dispatch='multi',
+                               errmsg='cannot do `{0}` < `{1}`')
     return MM.get_opimpl(vm, '<', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+    from spy.vm.typechecker import typecheck_opimpl
+    w_ltype = wop_l.w_static_type
+    if w_LE := w_ltype.lookup_blue_func('__LE__'):
+        w_opimpl = op_fast_call(vm, w_LE, [wop_l, wop_r])
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                               dispatch='multi',
+                               errmsg='cannot do `{0}` <= `{1}`')
     return MM.get_opimpl(vm, '<=', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+    from spy.vm.typechecker import typecheck_opimpl
+    w_ltype = wop_l.w_static_type
+    if w_GT := w_ltype.lookup_blue_func('__GT__'):
+        w_opimpl = op_fast_call(vm, w_GT, [wop_l, wop_r])
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                               dispatch='multi',
+                               errmsg='cannot do `{0}` > `{1}`')
     return MM.get_opimpl(vm, '>', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
 def w_GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+    from spy.vm.typechecker import typecheck_opimpl
+    w_ltype = wop_l.w_static_type
+    if w_GE := w_ltype.lookup_blue_func('__GE__'):
+        w_opimpl = op_fast_call(vm, w_GE, [wop_l, wop_r])
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                               dispatch='multi',
+                               errmsg='cannot do `{0}` >= `{1}`')
     return MM.get_opimpl(vm, '>=', wop_l, wop_r)
