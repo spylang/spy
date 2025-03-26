@@ -60,7 +60,7 @@ class TestOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_snew(vm: 'SPyVM') -> 'W_MyClass':
+            def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
             @builtin_method('__GETITEM__', color='blue')
