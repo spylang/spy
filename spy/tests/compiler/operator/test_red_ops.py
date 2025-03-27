@@ -10,7 +10,6 @@ from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
 
-# EXT::MyClass, which is used in all the tests
 class W_MyClass(W_Object):
 
     def __init__(self, w_x: W_I32) -> None:
@@ -81,7 +80,7 @@ class W_MyClass(W_Object):
 
 
 @no_C
-class TestOperatorSimple(CompilerTest):
+class TestRedOperators(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
     def setup_ext(self) -> None:

@@ -14,7 +14,7 @@ from spy.tests.support import CompilerTest, no_C, expect_errors
 class W_MyClass(W_Object):
     def __init__(self, w_base: W_I32) -> None:
         self.w_base = w_base
-        self.w_values = {}  # Simple dictionary to store item values
+        self.w_values: dict[W_I32, W_I32] = {}
 
     @builtin_method('__new__')
     @staticmethod
