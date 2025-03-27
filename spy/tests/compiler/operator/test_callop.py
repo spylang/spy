@@ -214,7 +214,7 @@ class TestCallOp(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_cannot_instante_red_class(self):
+    def test_cannot_instantiate_red_class(self):
         src = """
         def bar(T: type) -> dynamic:
             return T()
