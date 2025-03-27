@@ -45,6 +45,8 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return op_fast_call(vm, w_GET, [wop_obj, wop_attr])
     elif w_GETATTR := w_type.lookup_blue_func(f'__GETATTR__'):
         return op_fast_call(vm, w_GETATTR, [wop_obj, wop_attr])
+    elif w_getattr := w_type.lookup_func(f'__getattr__'):
+        return W_OpImpl(w_getattr, [wop_obj, wop_attr])
     return W_OpImpl.NULL
 
 
@@ -72,6 +74,8 @@ def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return opimpl_member('set', vm, w_type, attr)
     elif w_SETATTR := w_type.lookup_blue_func('__SETATTR__'):
         return op_fast_call(vm, w_SETATTR, [wop_obj, wop_attr, wop_v])
+    elif w_setattr := w_type.lookup_func('__setattr__'):
+        return W_OpImpl(w_setattr, [wop_obj, wop_attr, wop_v])
     return W_OpImpl.NULL
 
 

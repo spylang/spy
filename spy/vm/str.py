@@ -69,16 +69,13 @@ class W_Str(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-        @builtin_func('builtins::str')
-        def w_getitem(vm: 'SPyVM', w_s: W_Str, w_i: W_I32) -> W_Str:
-            assert isinstance(w_s, W_Str)
-            assert isinstance(w_i, W_I32)
-            ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
-            return W_Str.from_ptr(vm, ptr_c)
-        return W_OpImpl(w_getitem)
+    def w_getitem(vm: 'SPyVM', w_s: 'W_Str', w_i: W_I32) -> 'W_Str':
+        assert isinstance(w_s, W_Str)
+        assert isinstance(w_i, W_I32)
+        ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
+        return W_Str.from_ptr(vm, ptr_c)
 
     @staticmethod
     def w_meta_CALL(vm: 'SPyVM', wop_obj: W_OpArg,

@@ -16,17 +16,16 @@ JSFFI = ModuleRegistry('jsffi')
 @JSFFI.builtin_type('JsRef')
 class W_JsRef(W_Object):
 
-    @builtin_method('__GETATTR__', color='blue')
+    @builtin_method('__getattr__')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
-                  wop_attr: W_OpArg) -> W_OpImpl:
-        return W_OpImpl(JSFFI.w_js_getattr)
+    def w_getattr(vm: 'SPyVM', w_self: 'W_JsRef', name: W_Str) -> 'W_JsRef':
+        raise NotImplementedError
 
-    @builtin_method('__SETATTR__', color='blue')
+    @builtin_method('__setattr__')
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                  wop_v: W_OpArg) -> W_OpImpl:
-        return W_OpImpl(JSFFI.w_js_setattr)
+    def w_setattr(vm: 'SPyVM', w_self: 'W_JsRef',
+                  name: W_Str, val: 'W_JsRef') -> None:
+        raise NotImplementedError
 
     @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod
@@ -86,13 +85,4 @@ def w_js_wrap_func(vm: 'SPyVM', w_fn: W_Func) -> W_JsRef:
 @JSFFI.builtin_func
 def w_js_call_method_1(vm: 'SPyVM', w_target: W_JsRef,
                      name: W_Str, arg0: W_JsRef) -> W_JsRef:
-    raise NotImplementedError
-
-@JSFFI.builtin_func
-def w_js_getattr(vm: 'SPyVM', w_target: W_JsRef, name: W_Str) -> W_JsRef:
-    raise NotImplementedError
-
-@JSFFI.builtin_func
-def w_js_setattr(vm: 'SPyVM', w_target: W_JsRef,
-               name: W_Str, val: W_JsRef) -> None:
     raise NotImplementedError

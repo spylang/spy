@@ -30,37 +30,20 @@ class W_Module(W_Object):
     def __repr__(self) -> str:
         return f'<spy module {self.name}>'
 
-    # ==== operator impls =====
+    # ==== applevel interface =====
 
-    @builtin_method('__GETATTR__', color='blue')
+    @builtin_method('__getattr__')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
-        """
-        Ideally, we should create a new subtype for each module, where every
-        member has its own static type.
+    def w_getattr(vm: 'SPyVM', w_mod: 'W_Module', w_attr: W_Str) -> W_Dynamic:
+        attr = vm.unwrap_str(w_attr)
+        return w_mod.getattr(attr)
 
-        For now, we just use dynamic, which is good enough for now, since
-        all the module getattrs are done in blue contexts are redshifted
-        away.
-        """
-        @builtin_func('builtins', 'module_getattr')
-        def w_fn(vm: 'SPyVM', w_mod: W_Module, w_attr: W_Str) -> W_Dynamic:
-            attr = vm.unwrap_str(w_attr)
-            return w_mod.getattr(attr)
-        return W_OpImpl(w_fn)
-
-
-    @builtin_method('__SETATTR__', color='blue')
+    @builtin_method('__setattr__')
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                  wop_v: W_OpArg) -> W_OpImpl:
-        @builtin_func('builtins', 'module_setattr')
-        def w_fn(vm: 'SPyVM', w_mod: W_Module, w_attr:
-                   W_Str, w_val: W_Dynamic) -> W_Void:
-            attr = vm.unwrap_str(w_attr)
-            w_mod.setattr(attr, w_val)
-            return B.w_None
-        return W_OpImpl(w_fn)
+    def w_setattr(vm: 'SPyVM', w_mod: 'W_Module', w_attr:
+                  W_Str, w_val: W_Dynamic) -> None:
+        attr = vm.unwrap_str(w_attr)
+        w_mod.setattr(attr, w_val)
 
     # ==== public interp-level API ====
 

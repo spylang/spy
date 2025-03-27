@@ -8,7 +8,7 @@ from spy.vm.w import W_Type, W_Object, W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C
+from spy.tests.support import CompilerTest, no_C, expect_errors
 
 @no_C
 class TestCallOp(CompilerTest):
@@ -46,7 +46,7 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Adder':
+            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Adder':
                 return W_Adder(vm.unwrap_i32(w_x))
 
             @builtin_method('__CALL__', color='blue')
@@ -121,7 +121,7 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> 'W_Point':
+            def w_new(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> 'W_Point':
                 return W_Point(w_x, w_y)
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -192,6 +192,42 @@ class TestCallOp(CompilerTest):
         res = mod.test_one_arg(7)
         assert res == 77  # 7*10 + 7 = 77
 
+    def test_no_spy_new(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+            pass
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyClass
+
+        def foo() -> MyClass:
+            return MyClass()
+        """
+        errors = expect_errors(
+            'cannot instantiate `ext::MyClass`',
+            ('`ext::MyClass` does not have a method `__new__`', "MyClass"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_cannot_instantiate_red_class(self):
+        src = """
+        def bar(T: type) -> dynamic:
+            return T()
+
+        def foo() -> dynamic:
+            return bar(i32)
+        """
+        errors = expect_errors(
+            'instantiation of red types is not yet supported',
+            ('this is red', "T"),
+        )
+        self.compile_raises(src, "foo", errors)
+
 
     def test_call_method(self):
         # ========== EXT module for this test ==========
@@ -205,7 +241,7 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__new__')
             @staticmethod
-            def w_spy_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Calc':
+            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Calc':
                 return W_Calc(vm.unwrap_i32(w_x))
 
             @builtin_method('__CALL_METHOD__', color='blue')

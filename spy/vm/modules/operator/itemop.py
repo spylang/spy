@@ -18,6 +18,8 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_Func:
 
     if w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
         w_opimpl = op_fast_call(vm, w_GETITEM, [wop_obj, wop_i])
+    elif w_getitem := w_type.lookup_func('__getitem__'):
+        w_opimpl = W_OpImpl(w_getitem, [wop_obj, wop_i])
 
     return typecheck_opimpl(
         vm,
@@ -37,6 +39,8 @@ def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg,
 
     if w_SETITEM := w_type.lookup_blue_func('__SETITEM__'):
         w_opimpl = op_fast_call(vm, w_SETITEM, [wop_obj, wop_i, wop_v])
+    elif w_setitem := w_type.lookup_func('__setitem__'):
+        w_opimpl = W_OpImpl(w_setitem, [wop_obj, wop_i, wop_v])
 
     return typecheck_opimpl(
         vm,
