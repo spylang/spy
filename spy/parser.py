@@ -95,6 +95,7 @@ class Parser:
                                  py_funcdef: py_ast.FunctionDef
                                  ) -> spy.ast.FuncDef:
         color: spy.ast.Color = 'red'
+        func_kind: spy.ast.FuncKind = 'plain'
         for deco in py_funcdef.decorator_list:
             if is_py_Name(deco, 'blue'):
                 # @blue is special-cased
@@ -127,6 +128,7 @@ class Parser:
         return spy.ast.FuncDef(
             loc = py_funcdef.loc,
             color = color,
+            kind = func_kind,
             name = py_funcdef.name,
             args = args,
             return_type = return_type,

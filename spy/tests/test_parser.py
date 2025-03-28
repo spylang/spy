@@ -49,6 +49,7 @@ class TestParser:
                 GlobalFuncDef(
                     funcdef=FuncDef(
                         color='red',
+                        kind='plain',
                         name='foo',
                         args=[],
                         return_type=Name(id='void'),
@@ -74,6 +75,7 @@ class TestParser:
                 GlobalFuncDef(
                     funcdef=FuncDef(
                         color='red',
+                        kind='plain',
                         name='foo',
                         args=[
                             FuncArg(
@@ -195,6 +197,7 @@ class TestParser:
         expected = """
         FuncDef(
             color='red',
+            kind='plain',
             name='foo',
             args=[],
             return_type=Name(id='i32'),
@@ -217,6 +220,7 @@ class TestParser:
         expected = """
         FuncDef(
             color='blue',
+            kind='plain',
             name='foo',
             args=[],
             return_type=Name(id='i32'),
@@ -228,6 +232,29 @@ class TestParser:
         )
         """
         self.assert_dump(funcdef, expected)
+
+    def test_blue_generic_FuncDef(self):
+        mod = self.parse("""
+        @blue.generic
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='blue',
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
 
     def test_empty_return(self):
         mod = self.parse("""
@@ -857,12 +884,14 @@ class TestParser:
                 GlobalFuncDef(
                     funcdef=FuncDef(
                         color='blue',
+                        kind='plain',
                         name='foo',
                         args=[],
                         return_type=Name(id='dynamic'),
                         body=[
                             FuncDef(
                                 color='red',
+                                kind='plain',
                                 name='bar',
                                 args=[],
                                 return_type=Name(id='void'),
@@ -1031,6 +1060,7 @@ class TestParser:
             methods=[
                 FuncDef(
                     color='red',
+                    kind='plain',
                     name='foo',
                     args=[],
                     return_type=Name(id='void'),
