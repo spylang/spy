@@ -12,6 +12,16 @@ from spy.util import magic_dispatch
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
 
+
+def is_blue(py_expr: py_ast.expr) -> bool:
+    return is_py_Name(py_expr, 'blue')
+
+def is_blue_generic(py_expr: py_ast.expr) -> bool:
+    return (isinstance(py_expr, py_ast.Attribute) and
+            isinstance(py_expr.value, py_ast.Name) and
+            py_expr.value.id == "blue" and
+            py_expr.attr == "generic")
+
 class Parser:
     """
     SPy parser: take source code as input, produce a SPy AST as output.
@@ -97,9 +107,13 @@ class Parser:
         color: spy.ast.Color = 'red'
         func_kind: spy.ast.FuncKind = 'plain'
         for deco in py_funcdef.decorator_list:
-            if is_py_Name(deco, 'blue'):
+            if is_blue(deco):
                 # @blue is special-cased
                 color = 'blue'
+            elif is_blue_generic(deco):
+                # @blue.generic is special-cased
+                color = 'blue'
+                func_kind = 'generic'
             else:
                 # other decorators are not supported:
                 self.error('decorators are not supported yet',

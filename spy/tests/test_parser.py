@@ -243,6 +243,7 @@ class TestParser:
         expected = """
         FuncDef(
             color='blue',
+            kind='generic',
             name='foo',
             args=[],
             return_type=Name(id='i32'),
