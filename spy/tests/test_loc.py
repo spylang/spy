@@ -30,3 +30,15 @@ def test_Loc_from_pyfunc():
     loc = Loc.from_pyfunc(bar)
     src = loc.get_src()
     exp = '    def bar():'
+
+def test_get_src_multiline():
+    loc = Loc.here()
+    # 1234567890ABCD
+    #
+    # make a new loc which spans two lines
+    loc2 = loc.replace(line_end=loc.line_end+1)
+    exp = """\
+    loc = Loc.here()
+    # 1234567890ABCD
+    """[:-5]  # remove the last line
+    assert loc2.get_src() == exp

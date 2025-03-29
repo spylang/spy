@@ -99,12 +99,28 @@ class Loc:
         Return the piece of source code pointed by this Loc
         """
         filename = self.filename
-        assert self.line_start == self.line_end, 'multi-line not supported'
-        line = self.line_start
-        a = self.col_start
-        b = self.col_end
-        srcline = linecache.getline(filename, line)
-        return srcline[a:b]
+        if self.line_start == self.line_end:
+            # Single line case
+            line = self.line_start
+            a = self.col_start
+            b = self.col_end
+            srcline = linecache.getline(filename, line)
+            return srcline[a:b]
+        else:
+            # Multi-line case
+            lines = []
+            for line_num in range(self.line_start, self.line_end + 1):
+                srcline = linecache.getline(filename, line_num)
+                if line_num == self.line_start:
+                    # First line - start from col_start
+                    lines.append(srcline[self.col_start:])
+                elif line_num == self.line_end:
+                    # Last line - end at col_end
+                    lines.append(srcline[:self.col_end])
+                else:
+                    # Middle lines - include whole line
+                    lines.append(srcline)
+            return ''.join(lines)
 
     def pp(self) -> None:
         """
