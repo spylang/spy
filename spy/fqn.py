@@ -165,7 +165,7 @@ class FQN:
                 new_quals = part.qualifiers.copy() + get_qualifiers(qualifiers)
                 new_part = NSPart(part.name, new_quals, part.suffix)
                 new_parts.append(new_part)
-        
+
         res = FQN(new_parts)
         return res
 
@@ -200,14 +200,25 @@ class FQN:
         Like fullname, but doesn't show 'builtins::',
         and special-case 'def[...]'
         """
-        is_def = (len(self.parts) == 2 and
-                  self.modname == 'builtins' and
-                  self.parts[1].name == 'def')
+        is_def = (
+            len(self.parts) == 2 and
+            self.modname == 'builtins' and
+            self.parts[1].name in ('def', 'blue.def', 'blue.generic.def')
+        )
         if is_def:
-            quals = [fqn.human_name for fqn in self.parts[1].qualifiers]
+            p1 = self.parts[1]
+            if p1.name == 'def':
+                d = 'def'
+            elif p1.name == 'blue.def':
+                d = '@blue def'
+            elif p1.name == 'blue.generic.def':
+                d = '@blue.generic def'
+            else:
+                assert False
+            quals = [fqn.human_name for fqn in p1.qualifiers]
             p = ', '.join(quals[:-1])
             r = quals[-1]
-            return f'def({p}) -> {r}'
+            return f'{d}({p}) -> {r}'
         else:
             return self._fullname(human=True)
 

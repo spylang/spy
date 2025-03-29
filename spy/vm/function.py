@@ -37,8 +37,6 @@ class W_FuncType(W_Type):
         # sanity check
         if params:
             assert isinstance(params[0], FuncParam)
-        if kind == 'generic':
-            assert color == 'blue'
         # build an artificial FQN for the functype.
         # For 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
@@ -46,26 +44,22 @@ class W_FuncType(W_Type):
         # XXX the FQN is not necessarily unique, we don't take into account
         # param names
         qualifiers = [p.w_type.fqn for p in params] + [w_restype.fqn]
-        fqn = FQN('builtins').join('def', qualifiers)
+        if color == 'red':
+            assert kind == 'plain'
+            t = 'def'
+        elif color == 'blue' and kind == 'plain':
+            t = 'blue.def'
+        elif color == 'blue' and kind == 'generic':
+            t = 'blue.generic.def'
+        else:
+            assert False
+        fqn = FQN('builtins').join(t, qualifiers)
         w_functype = super().from_pyclass(fqn, W_Func)
         w_functype.params = params
         w_functype.w_restype = w_restype
         w_functype.color = color
         w_functype.kind = kind
         return w_functype
-
-    @property
-    def signature(self) -> str:
-        params = [f'{p.name}: {p.w_type.fqn.human_name}' for p in self.params]
-        str_params = ', '.join(params)
-        resname = self.w_restype.fqn.human_name
-        s = f'def({str_params}) -> {resname}'
-        if self.color == 'blue':
-            s = f'@blue {s}'
-        return s
-
-    def __repr__(self) -> str:
-        return f"<spy type '{self.signature}'>"
 
     def __hash__(self) -> int:
         return hash((self.fqn, self.color, tuple(self.params), self.w_restype))
@@ -85,6 +79,7 @@ class W_FuncType(W_Type):
              *,
              w_restype: W_Type,
              color: Color = 'red',
+             kind: FuncKind = 'plain',
              **kwargs: W_Type
              ) -> 'W_FuncType':
         """
@@ -93,7 +88,7 @@ class W_FuncType(W_Type):
         """
         params = [FuncParam(key, w_type, 'simple')
                   for key, w_type in kwargs.items()]
-        return cls.new(params, w_restype, color=color)
+        return cls.new(params, w_restype, color=color, kind=kind)
 
     @classmethod
     def parse(cls, s: str) -> 'W_FuncType':

@@ -12,7 +12,7 @@ class TestFunction:
     def test_FunctionType_repr(self):
         w_functype = W_FuncType.make(x=B.w_i32, y=B.w_i32, w_restype=B.w_bool)
         assert str(w_functype.fqn) == 'builtins::def[i32, i32, bool]'
-        assert repr(w_functype) == "<spy type 'def(x: i32, y: i32) -> bool'>"
+        assert repr(w_functype) == "<spy type 'def(i32, i32) -> bool'>"
 
     def test_FunctionType_parse(self):
         w_ft = W_FuncType.parse('def() -> i32')
@@ -22,9 +22,11 @@ class TestFunction:
         assert w_ft == W_FuncType.make(x=B.w_str, w_restype=B.w_i32)
         #
         w_ft = W_FuncType.parse('def(x: str, y: i32,) -> i32')
-        assert w_ft == W_FuncType.make(x=B.w_str,
-                                           y=B.w_i32,
-                                           w_restype=B.w_i32)
+        assert w_ft == W_FuncType.make(
+            x = B.w_str,
+            y = B.w_i32,
+            w_restype = B.w_i32
+        )
 
     def test_FunctionType_eq(self):
         vm = SPyVM()
@@ -47,3 +49,21 @@ class TestFunction:
         w_b = W_ASTFunc(w_functype, FQN('test::b'), funcdef, closure=None)
         assert vm.eq(w_a, w_a) is B.w_True
         assert vm.eq(w_a, w_b) is B.w_False
+
+    def test_FunctionType_fqn(self):
+        kwargs = dict(
+            x = B.w_i32,
+            y = B.w_i32,
+            w_restype = B.w_str
+        )
+        w_t1 = W_FuncType.make(**kwargs)
+        assert w_t1.fqn == FQN('builtins::def[i32, i32, str]')
+        assert w_t1.fqn.human_name == 'def(i32, i32) -> str'
+
+        w_t2 = W_FuncType.make(color='blue', **kwargs)
+        assert w_t2.fqn == FQN('builtins::blue.def[i32, i32, str]')
+        assert w_t2.fqn.human_name == '@blue def(i32, i32) -> str'
+
+        w_t3 = W_FuncType.make(color='blue', kind='generic', **kwargs)
+        assert w_t3.fqn == FQN('builtins::blue.generic.def[i32, i32, str]')
+        assert w_t3.fqn.human_name == '@blue.generic def(i32, i32) -> str'
