@@ -159,7 +159,6 @@ class AbstractFrame:
         for arg in funcdef.args:
             w_param_type = self.eval_expr_type(arg.type)
             param = FuncParam(
-                name = arg.name,
                 w_type = w_param_type,
                 kind = 'simple'
             )
@@ -654,19 +653,20 @@ class ASTFrame(AbstractFrame):
             return e.w_value
 
     def declare_arguments(self) -> None:
-        w_functype = self.w_func.w_functype
+        w_ft = self.w_func.w_functype
         self.declare_local('@if', B.w_bool)
         self.declare_local('@while', B.w_bool)
-        self.declare_local('@return', w_functype.w_restype)
-        for param in w_functype.params:
-            self.declare_local(param.name, param.w_type)
+        self.declare_local('@return', w_ft.w_restype)
+        for arg, param in zip(self.funcdef.args, w_ft.params, strict=True):
+            self.declare_local(arg.name, param.w_type)
 
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """
         Store the arguments in args_w in the appropriate local var
         """
-        w_functype = self.w_func.w_functype
-        params = self.w_func.w_functype.params
-        for param, w_arg in zip(params, args_w, strict=True):
+        w_ft = self.w_func.w_functype
+        args = self.funcdef.args
+        params = w_ft.params
+        for arg, param, w_arg in zip(args, params, args_w, strict=True):
             assert self.vm.isinstance(w_arg, param.w_type)
-            self.store_local(param.name, w_arg)
+            self.store_local(arg.name, w_arg)

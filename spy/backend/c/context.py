@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.object import W_Type
-from spy.vm.function import W_FuncType, W_Func
+from spy.vm.function import W_FuncType, W_Func, W_ASTFunc
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.jsffi import JSFFI
@@ -93,11 +93,13 @@ class Context:
         w_restype = w_func.w_functype.w_restype
         return self.w2c(w_restype)
 
-    def c_function(self, name: str, w_functype: W_FuncType) -> C_Function:
+    def c_function(self, name: str, w_func: W_ASTFunc) -> C_Function:
+        w_functype = w_func.w_functype
+        argnames = [arg.name for arg in w_func.funcdef.args]
         c_restype = self.w2c(w_functype.w_restype)
         c_params = [
-            C_FuncParam(name=p.name, c_type=self.w2c(p.w_type))
-            for p in w_functype.params
+            C_FuncParam(name=name, c_type=self.w2c(p.w_type))
+            for name, p in zip(argnames, w_functype.params, strict=True)
         ]
         return C_Function(name, c_params, c_restype)
 

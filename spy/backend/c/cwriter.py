@@ -201,7 +201,8 @@ class CModuleWriter:
         """
         Generate function declaration in mod.h
         """
-        c_func = self.ctx.c_function(fqn.c_name, w_func.w_functype)
+        argnames = [arg.name for arg in w_func.funcdef.args]
+        c_func = self.ctx.c_function(fqn.c_name, w_func)
         self.tbh_funcs.wl(c_func.decl() + ';')
 
     def emit_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
@@ -291,8 +292,7 @@ class CFuncWriter:
         Emit the code for the whole function
         """
         self.emit_lineno(self.w_func.funcdef.loc.line_start)
-        c_func = self.ctx.c_function(self.fqn.c_name,
-                                     self.w_func.w_functype)
+        c_func = self.ctx.c_function(self.fqn.c_name, self.w_func)
         self.tbc.wl(c_func.decl() + ' {')
         with self.tbc.indent():
             self.emit_local_vars()
@@ -317,7 +317,7 @@ class CFuncWriter:
         see e.g. a VarDef.
         """
         assert self.w_func.locals_types_w is not None
-        param_names = [p.name for p in self.w_func.w_functype.params]
+        param_names = [arg.name for arg in self.w_func.funcdef.args]
         for varname, w_type in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_type)
             if (varname not in ('@return', '@if', '@while') and

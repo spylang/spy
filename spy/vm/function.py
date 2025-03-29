@@ -19,7 +19,6 @@ FuncParamKind = Literal['simple', 'varargs']
 
 @dataclass(frozen=True, eq=True)
 class FuncParam:
-    name: str
     w_type: W_Type
     kind: FuncParamKind
 
@@ -34,15 +33,9 @@ class W_FuncType(W_Type):
     @classmethod
     def new(cls, params: list[FuncParam], w_restype: W_Type,
             *, color: Color = 'red', kind: FuncKind = 'plain') -> 'Self':
-        # sanity check
-        if params:
-            assert isinstance(params[0], FuncParam)
         # build an artificial FQN for the functype.
-        # For 'def(i32, i32) -> bool', the FQN looks like this:
+        # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
-        #
-        # XXX the FQN is not necessarily unique, we don't take into account
-        # param names
         qualifiers = [p.w_type.fqn for p in params] + [w_restype.fqn]
         if color == 'red':
             assert kind == 'plain'
@@ -54,6 +47,7 @@ class W_FuncType(W_Type):
         else:
             assert False
         fqn = FQN('builtins').join(t, qualifiers)
+
         w_functype = super().from_pyclass(fqn, W_Func)
         w_functype.params = params
         w_functype.w_restype = w_restype
@@ -86,7 +80,7 @@ class W_FuncType(W_Type):
         Small helper to make it easier to build W_FuncType, especially in
         tests
         """
-        params = [FuncParam(key, w_type, 'simple')
+        params = [FuncParam(w_type, 'simple')
                   for key, w_type in kwargs.items()]
         return cls.new(params, w_restype, color=color, kind=kind)
 
