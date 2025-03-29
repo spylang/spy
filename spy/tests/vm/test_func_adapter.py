@@ -36,8 +36,8 @@ def test_shuffle_args():
     assert repr(w_adapter) == r
     #
     expected = textwrap.dedent("""
-    def(n: i32, s: str) -> str:
-        return `test::repeat`(s, n)
+    def(v0: i32, v1: str) -> str:
+        return `test::repeat`(v1, v0)
     """).strip()
     assert w_adapter.render() == expected
 
@@ -53,8 +53,8 @@ def test_const():
     w_s = vm.fast_call(w_adapter, [vm.wrap(3)])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     expected = textwrap.dedent("""
-    def(n: i32) -> str:
-        return `test::repeat`(W_Str('ab '), n)
+    def(v0: i32) -> str:
+        return `test::repeat`(W_Str('ab '), v0)
     """).strip()
     assert w_adapter.render() == expected
 
@@ -70,7 +70,7 @@ def test_converter():
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
     expected = textwrap.dedent("""
-    def(x: f64, s: str) -> str:
-        return `test::repeat`(s, `operator::f64_to_i32`(x))
+    def(v0: f64, v1: str) -> str:
+        return `test::repeat`(v1, `operator::f64_to_i32`(v0))
     """).strip()
     assert w_adapter.render() == expected

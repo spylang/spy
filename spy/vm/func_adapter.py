@@ -80,7 +80,7 @@ class W_FuncAdapter(W_Func):
         """
         Return a human-readable representation of the adapter
         """
-        argnames = [p.name for p in self.w_functype.params]
+        argnames = [f'v{i}' for i, p in enumerate(self.w_functype.params)]
         def fmt(spec: ArgSpec) -> str:
             if isinstance(spec, Arg):
                 arg = argnames[spec.i]
@@ -104,7 +104,10 @@ class W_FuncAdapter(W_Func):
 
     def func_signature(self) -> str:
         w_ft = self.w_functype
-        params = [f'{p.name}: {p.w_type.fqn.human_name}' for p in w_ft.params]
+        params = [
+            f'v{i}: {p.w_type.fqn.human_name}'
+            for i, p in enumerate(w_ft.params)
+        ]
         str_params = ', '.join(params)
         resname = w_ft.w_restype.fqn.human_name
         s = f'def({str_params}) -> {resname}'
