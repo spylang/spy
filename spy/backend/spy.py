@@ -58,7 +58,7 @@ class SPyBackend:
         self.w_func = w_func
         self.vars_declared = set()
         w_functype = w_func.w_functype
-        params = self.fmt_params(w_functype.params)
+        params = self.fmt_params(w_func)
         ret = self.fmt_w_obj(w_functype.w_restype)
         self.scope_stack.append(w_func.funcdef.symtable)
         self.wl(f'def {name}({params}) -> {ret}:')
@@ -67,11 +67,13 @@ class SPyBackend:
                 self.emit_stmt(stmt)
         self.scope_stack.pop()
 
-    def fmt_params(self, params: list[FuncParam]) -> str:
+    def fmt_params(self, w_func: W_ASTFunc) -> str:
+        argnames = [arg.name for arg in w_func.funcdef.args]
+        params = w_func.w_functype.params
         l = []
-        for p in params:
+        for argname, p in zip(argnames, params, strict=True):
             t = self.fmt_w_obj(p.w_type)
-            l.append(f'{p.name}: {t}')
+            l.append(f'{argname}: {t}')
         return ', '.join(l)
 
     def fmt_w_obj(self, w_obj: W_Object) -> str:
