@@ -127,7 +127,23 @@ class Parser:
         if py_returns:
             return_type = self.from_py_expr(py_returns)
         elif color == 'blue':
-            return_type = spy.ast.Name(py_funcdef.loc, 'dynamic')
+            # we need to synthesize a reasonable Loc for the return type. See
+            # also test_FuncDef_prototype_loc.
+            if len(args) == 0:
+                # no arguments: this is though because the python parser
+                # doesn't tell us e.g. where the '()' or ':' are. The only
+                # reasonable thing we can do is to keep the whole line where
+                # the function starts
+                retloc = py_funcdef.loc.replace(
+                    line_end = py_funcdef.loc.line_start,
+                    col_end = -1
+                )
+            else:
+                # we declare the function prototype ends at the end of the
+                # line where the last argument is
+                l = args[-1].loc
+                retloc = l.replace(col_end=-1)
+            return_type = spy.ast.Name(retloc, 'dynamic')
         else:
             # create a loc which points to the 'def foo' part. This is a bit
             # wrong, ideally we would like it to point to the END of the

@@ -256,6 +256,32 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
+    def test_FuncDef_prototype_loc(self):
+        # blue functions without return type, are parsed as if they had a
+        # synthetic '-> dynamic' annotation. We also need to generate a
+        # synthetic Loc for the annotation. This is particularly important
+        # because we use return_type.loc to compute prototype_loc, which is
+        # used e.g. in error messages.
+        mod = self.parse("""
+        @blue
+        def a():
+            pass
+
+        @blue
+        def b(x):
+            pass
+
+        @blue
+        def c(
+              x):
+            pass
+        """)
+        adef = mod.get_funcdef('a')
+        bdef = mod.get_funcdef('b')
+        cdef = mod.get_funcdef('c')
+        assert adef.prototype_loc.get_src() == 'def a():'
+        assert bdef.prototype_loc.get_src() == 'def b(x):'
+        assert cdef.prototype_loc.get_src() == 'def c(\n      x):'
 
     def test_empty_return(self):
         mod = self.parse("""
