@@ -69,22 +69,6 @@ class W_FuncType(W_Type):
             return W_OpImpl.NULL
 
     @classmethod
-    def make(cls,
-             *,
-             w_restype: W_Type,
-             color: Color = 'red',
-             kind: FuncKind = 'plain',
-             **kwargs: W_Type
-             ) -> 'W_FuncType':
-        """
-        Small helper to make it easier to build W_FuncType, especially in
-        tests
-        """
-        params = [FuncParam(w_type, 'simple')
-                  for key, w_type in kwargs.items()]
-        return cls.new(params, w_restype, color=color, kind=kind)
-
-    @classmethod
     def parse(cls, s: str) -> 'W_FuncType':
         """
         Quick & dirty function to parse function types.
@@ -103,16 +87,16 @@ class W_FuncType(W_Type):
         args, res = map(str.strip, s.split('->'))
         assert args.startswith('def(')
         assert args.endswith(')')
-        kwargs = {}
+        params = []
         arglist = args[4:-1].split(',')
-        for arg in arglist:
-            if arg == '':
+        for argtype in arglist:
+            if argtype == '':
                 continue
-            argname, argtype = map(str.strip, arg.split(':'))
-            kwargs[argname] = parse_type(argtype)
+            w_type = parse_type(argtype.strip())
+            params.append(FuncParam(w_type, 'simple'))
         #
         w_restype = parse_type(res)
-        return cls.make(w_restype=w_restype, **kwargs)
+        return cls.new(params, w_restype)
 
     @property
     def is_varargs(self) -> bool:

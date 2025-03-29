@@ -23,7 +23,7 @@ def test_repeat():
 
 def test_shuffle_args():
     vm = SPyVM()
-    w_functype = W_FuncType.parse('def(n: i32, s: str) -> str')
+    w_functype = W_FuncType.parse('def(i32, str) -> str')
     w_adapter = W_FuncAdapter(
         w_functype,
         w_repeat,
@@ -43,7 +43,7 @@ def test_shuffle_args():
 
 def test_const():
     vm = SPyVM()
-    w_functype = W_FuncType.parse('def(n: i32) -> str')
+    w_functype = W_FuncType.parse('def(i32) -> str')
     w_s = vm.wrap('ab ')
     w_adapter = W_FuncAdapter(
         w_functype,
@@ -60,7 +60,7 @@ def test_const():
 
 def test_converter():
     vm = SPyVM()
-    w_functype = W_FuncType.parse('def(x: f64, s: str) -> str')
+    w_functype = W_FuncType.parse('def(f64, str) -> str')
     w_adapter = W_FuncAdapter(
         w_functype,
         w_repeat,

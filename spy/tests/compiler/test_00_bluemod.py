@@ -70,7 +70,7 @@ class TestBlueMod:
         w_foo = w_mod.getattr('foo')
         w_bar = self.vm.fast_call(w_foo, [])
         assert isinstance(w_bar, W_ASTFunc)
-        assert w_bar.w_functype == W_FuncType.parse('def(x: i32) -> i32')
+        assert w_bar.w_functype == W_FuncType.parse('def(i32) -> i32')
         w_42 = self.vm.wrap(42)
         assert self.vm.fast_call(w_bar, [w_42]) is w_42
 
