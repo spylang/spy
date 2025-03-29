@@ -1,0 +1,9 @@
+@blue.generic
+def add(T):
+    def impl(x:T, y: T) -> T:
+        return x + y
+    return impl
+
+def main() -> void:
+    print(add[i32](1, 2))
+    print(add[str]('hello ', 'world'))
