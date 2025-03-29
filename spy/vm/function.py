@@ -3,7 +3,7 @@ from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
                     Iterator, Self)
 from spy import ast
 from spy.location import Loc
-from spy.ast import Color
+from spy.ast import Color, FuncKind
 from spy.fqn import FQN, NSPart
 from spy.vm.object import W_Object, W_Type, builtin_method
 if TYPE_CHECKING:
@@ -27,15 +27,18 @@ class FuncParam:
 @dataclass(repr=False, eq=True)
 class W_FuncType(W_Type):
     color: Color
+    kind: FuncKind
     params: list[FuncParam]
     w_restype: W_Type
 
     @classmethod
     def new(cls, params: list[FuncParam], w_restype: W_Type,
-            *, color: Color = 'red') -> 'Self':
+            *, color: Color = 'red', kind: FuncKind = 'plain') -> 'Self':
         # sanity check
         if params:
             assert isinstance(params[0], FuncParam)
+        if kind == 'generic':
+            assert color == 'blue'
         # build an artificial FQN for the functype.
         # For 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
@@ -48,6 +51,7 @@ class W_FuncType(W_Type):
         w_functype.params = params
         w_functype.w_restype = w_restype
         w_functype.color = color
+        w_functype.kind = kind
         return w_functype
 
     @property
@@ -206,8 +210,10 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
-    # NOTE: we cannot use a w_CALL/__CALL__ here, for bootstrapping
-    # reason. OP.CALL on W_Func objects is special-cased, see callop.w_CALL.
+    # NOTE: we cannot use a w_CALL/__CALL__ or w_GETITEM/__GETITEM__ here, for
+    # bootstrapping reason.
+    # These operators are special cased by callop.w_CALL and itemop.w_GETITEM,
+    # depending on whether w_functype.kind is 'plain' or 'generic'.
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':

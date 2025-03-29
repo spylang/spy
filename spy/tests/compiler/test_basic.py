@@ -606,7 +606,41 @@ class TestBasic(CompilerTest):
         def foo() -> i32:
             return make_adder(3)(6)
         """)
-        mod.foo()
+        assert mod.foo() == 9
+
+    def test_blue_generic(self):
+        mod = self.compile("""
+        @blue.generic
+        def add(T):
+            def impl(x: T, y: T) -> T:
+                return x + y
+            return impl
+
+        def foo() -> i32:
+            return add[i32](1, 2)
+
+        def bar() -> str:
+            return add[str]('hello ', 'world')
+        """)
+        assert mod.foo() == 3
+        assert mod.bar() == 'hello world'
+
+    @pytest.mark.skip(reason="WIP")
+    def test_cannot_call_blue_generic(self):
+        src = """
+        @blue.generic
+        def ident(x):
+            return x
+
+        def foo() -> i32:
+            return ident(42)
+        """
+        errors = expect_errors(
+            'generic functions must be called via `[...]`',
+            ('this is a generic function', 'ident'),
+            ("function defined here", "def ident(x):")
+            )
+        self.compile_raises(src, "foo", errors)
 
     def test_call_func_already_redshifted(self):
         mod = self.compile("""

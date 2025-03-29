@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.function import W_Func
+from spy.vm.function import W_Func, W_FuncType
 from spy.vm.primitive import W_Dynamic
 
 from . import OP, op_fast_call
@@ -16,7 +16,10 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_Func:
     w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type
 
-    if w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
+    if isinstance(w_type, W_FuncType) and w_type.kind == 'generic':
+        # special case: for generic W_Funcs, "[]" means "call"
+        w_opimpl = w_type.pyclass.op_CALL(vm, wop_obj, wop_i) # type: ignore
+    elif w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
         w_opimpl = op_fast_call(vm, w_GETITEM, [wop_obj, wop_i])
     elif w_getitem := w_type.lookup_func('__getitem__'):
         w_opimpl = W_OpImpl(w_getitem, [wop_obj, wop_i])

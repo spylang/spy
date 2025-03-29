@@ -165,7 +165,12 @@ class AbstractFrame:
             )
             params.append(param)
         w_restype = self.eval_expr_type(funcdef.return_type)
-        w_functype = W_FuncType.new(params, w_restype, color=funcdef.color)
+        w_functype = W_FuncType.new(
+            params,
+            w_restype,
+            color=funcdef.color,
+            kind=funcdef.kind
+        )
         # create the w_func
         fqn = self.ns.join(funcdef.name)
         fqn = self.vm.get_unique_FQN(fqn)
