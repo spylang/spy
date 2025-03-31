@@ -21,7 +21,7 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
     errmsg = 'cannot call objects of type `{0}`'
 
     if isinstance(w_type, W_FuncType):
-        # W_Func is a special case, as it have a w_CALL for bootstrapping
+        # W_Func is a special case, as it can't have a w_CALL for bootstrapping
         # reasons. Moreover, while we are at it, we can produce a better error
         # message in case we try to call a plain function with [].
         if w_type.kind == 'plain':
