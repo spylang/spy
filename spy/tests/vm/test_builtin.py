@@ -16,7 +16,7 @@ class TestBuiltin:
         def foo(vm: 'SPyVM', w_x: W_I32) -> W_Str:
             return W_Str(vm, 'this is never called')
         w_functype = functype_from_sig(foo, 'red')
-        assert w_functype == W_FuncType.parse('def(x: i32) -> str')
+        assert w_functype == W_FuncType.parse('def(i32) -> str')
 
     def test_functype_from_sig_extra_types(self):
         def foo(vm: 'SPyVM', w_x: W_I32) -> 'FooBar':  # type: ignore
@@ -25,14 +25,14 @@ class TestBuiltin:
             'FooBar': W_Str
         }
         w_functype = functype_from_sig(foo, 'red', extra_types=extra_types)
-        assert w_functype == W_FuncType.parse('def(x: i32) -> str')
+        assert w_functype == W_FuncType.parse('def(i32) -> str')
 
     def test_annotated_type(self):
         W_MyType = Annotated[W_Object, B.w_i32]
         def foo(vm: 'SPyVM', w_x: W_MyType) -> None:
             pass
         w_functype = functype_from_sig(foo, 'red')
-        assert w_functype == W_FuncType.parse('def(x: i32) -> void')
+        assert w_functype == W_FuncType.parse('def(i32) -> void')
 
     def test_builtin_func(self):
         vm = SPyVM()
@@ -79,14 +79,14 @@ class TestBuiltin:
         @builtin_func('mymod')
         def w_foo(vm: 'SPyVM', w_x: W_Dynamic) -> W_Dynamic:  # type: ignore
             pass
-        assert w_foo.w_functype.signature == 'def(x: dynamic) -> dynamic'
+        assert w_foo.w_functype.fqn.human_name == 'def(dynamic) -> dynamic'
 
     def test_return_None(self):
         vm = SPyVM()
         @builtin_func('mymod')
         def w_foo(vm: 'SPyVM') -> None:
             pass
-        assert w_foo.w_functype.signature == 'def() -> void'
+        assert w_foo.w_functype.fqn.human_name == 'def() -> void'
         assert isinstance(w_foo, W_BuiltinFunc)
         w_res = vm.fast_call(w_foo, [])
         assert w_res is B.w_None
@@ -99,7 +99,7 @@ class TestBuiltin:
             x = vm.unwrap_i32(w_x)
             return vm.wrap(x*2)  # type: ignore
 
-        assert w_foo.w_functype.signature == '@blue def(x: i32) -> i32'
+        assert w_foo.w_functype.fqn.human_name == '@blue def(i32) -> i32'
         w_x = vm.fast_call(w_foo, [vm.wrap(21)])
         w_y = vm.fast_call(w_foo, [vm.wrap(21)])
         assert w_x is w_y
@@ -117,7 +117,7 @@ class TestBuiltin:
         w_make = w_foo.dict_w['make']
         assert w_foo.lookup_func('make') is w_make
         assert isinstance(w_make, W_BuiltinFunc)
-        assert w_make.w_functype.signature == "def() -> test::Foo"
+        assert w_make.w_functype.fqn.human_name == "def() -> test::Foo"
         assert w_make.w_functype.w_restype is W_Foo._w
 
     def test_inherit_method(self):

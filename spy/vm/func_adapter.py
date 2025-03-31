@@ -51,7 +51,7 @@ class W_FuncAdapter(W_Func):
         self.args = args
 
     def __repr__(self) -> str:
-        sig = self.w_functype.signature
+        sig = self.w_functype.fqn.human_name
         fqn = self.w_func.fqn
         return f'<spy adapter `{sig}` for `{fqn}`>'
 
@@ -80,7 +80,7 @@ class W_FuncAdapter(W_Func):
         """
         Return a human-readable representation of the adapter
         """
-        argnames = [p.name for p in self.w_functype.params]
+        argnames = [f'v{i}' for i, p in enumerate(self.w_functype.params)]
         def fmt(spec: ArgSpec) -> str:
             if isinstance(spec, Arg):
                 arg = argnames[spec.i]
@@ -94,9 +94,21 @@ class W_FuncAdapter(W_Func):
             else:
                 assert False
 
+        sig = self.func_signature()
         args = [fmt(spec) for spec in self.args]
         arglist = ', '.join(args)
         return textwrap.dedent(f"""
-        {self.w_functype.signature}:
+        {sig}:
             return `{self.w_func.fqn}`({arglist})
         """).strip()
+
+    def func_signature(self) -> str:
+        w_ft = self.w_functype
+        params = [
+            f'v{i}: {p.w_type.fqn.human_name}'
+            for i, p in enumerate(w_ft.params)
+        ]
+        str_params = ', '.join(params)
+        resname = w_ft.w_restype.fqn.human_name
+        s = f'def({str_params}) -> {resname}'
+        return s

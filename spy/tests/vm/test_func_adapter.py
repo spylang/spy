@@ -23,7 +23,7 @@ def test_repeat():
 
 def test_shuffle_args():
     vm = SPyVM()
-    w_functype = W_FuncType.parse('def(n: i32, s: str) -> str')
+    w_functype = W_FuncType.parse('def(i32, str) -> str')
     w_adapter = W_FuncAdapter(
         w_functype,
         w_repeat,
@@ -32,18 +32,18 @@ def test_shuffle_args():
     w_s = vm.fast_call(w_adapter, [vm.wrap(3), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
-    r = '<spy adapter `def(n: i32, s: str) -> str` for `test::repeat`>'
+    r = '<spy adapter `def(i32, str) -> str` for `test::repeat`>'
     assert repr(w_adapter) == r
     #
     expected = textwrap.dedent("""
-    def(n: i32, s: str) -> str:
-        return `test::repeat`(s, n)
+    def(v0: i32, v1: str) -> str:
+        return `test::repeat`(v1, v0)
     """).strip()
     assert w_adapter.render() == expected
 
 def test_const():
     vm = SPyVM()
-    w_functype = W_FuncType.parse('def(n: i32) -> str')
+    w_functype = W_FuncType.parse('def(i32) -> str')
     w_s = vm.wrap('ab ')
     w_adapter = W_FuncAdapter(
         w_functype,
@@ -53,14 +53,14 @@ def test_const():
     w_s = vm.fast_call(w_adapter, [vm.wrap(3)])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     expected = textwrap.dedent("""
-    def(n: i32) -> str:
-        return `test::repeat`(W_Str('ab '), n)
+    def(v0: i32) -> str:
+        return `test::repeat`(W_Str('ab '), v0)
     """).strip()
     assert w_adapter.render() == expected
 
 def test_converter():
     vm = SPyVM()
-    w_functype = W_FuncType.parse('def(x: f64, s: str) -> str')
+    w_functype = W_FuncType.parse('def(f64, str) -> str')
     w_adapter = W_FuncAdapter(
         w_functype,
         w_repeat,
@@ -70,7 +70,7 @@ def test_converter():
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
     expected = textwrap.dedent("""
-    def(x: f64, s: str) -> str:
-        return `test::repeat`(s, `operator::f64_to_i32`(x))
+    def(v0: f64, v1: str) -> str:
+        return `test::repeat`(v1, `operator::f64_to_i32`(v0))
     """).strip()
     assert w_adapter.render() == expected

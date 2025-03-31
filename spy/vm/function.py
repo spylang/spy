@@ -3,7 +3,7 @@ from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
                     Iterator, Self)
 from spy import ast
 from spy.location import Loc
-from spy.ast import Color
+from spy.ast import Color, FuncKind
 from spy.fqn import FQN, NSPart
 from spy.vm.object import W_Object, W_Type, builtin_method
 if TYPE_CHECKING:
@@ -19,7 +19,6 @@ FuncParamKind = Literal['simple', 'varargs']
 
 @dataclass(frozen=True, eq=True)
 class FuncParam:
-    name: str
     w_type: W_Type
     kind: FuncParamKind
 
@@ -27,41 +26,34 @@ class FuncParam:
 @dataclass(repr=False, eq=True)
 class W_FuncType(W_Type):
     color: Color
+    kind: FuncKind
     params: list[FuncParam]
     w_restype: W_Type
 
     @classmethod
     def new(cls, params: list[FuncParam], w_restype: W_Type,
-            *, color: Color = 'red') -> 'Self':
-        # sanity check
-        if params:
-            assert isinstance(params[0], FuncParam)
+            *, color: Color = 'red', kind: FuncKind = 'plain') -> 'Self':
         # build an artificial FQN for the functype.
-        # For 'def(i32, i32) -> bool', the FQN looks like this:
+        # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
-        #
-        # XXX the FQN is not necessarily unique, we don't take into account
-        # param names
         qualifiers = [p.w_type.fqn for p in params] + [w_restype.fqn]
-        fqn = FQN('builtins').join('def', qualifiers)
+        if color == 'red':
+            assert kind == 'plain'
+            t = 'def'
+        elif color == 'blue' and kind == 'plain':
+            t = 'blue.def'
+        elif color == 'blue' and kind == 'generic':
+            t = 'blue.generic.def'
+        else:
+            assert False
+        fqn = FQN('builtins').join(t, qualifiers)
+
         w_functype = super().from_pyclass(fqn, W_Func)
         w_functype.params = params
         w_functype.w_restype = w_restype
         w_functype.color = color
+        w_functype.kind = kind
         return w_functype
-
-    @property
-    def signature(self) -> str:
-        params = [f'{p.name}: {p.w_type.fqn.human_name}' for p in self.params]
-        str_params = ', '.join(params)
-        resname = self.w_restype.fqn.human_name
-        s = f'def({str_params}) -> {resname}'
-        if self.color == 'blue':
-            s = f'@blue {s}'
-        return s
-
-    def __repr__(self) -> str:
-        return f"<spy type '{self.signature}'>"
 
     def __hash__(self) -> int:
         return hash((self.fqn, self.color, tuple(self.params), self.w_restype))
@@ -75,21 +67,6 @@ class W_FuncType(W_Type):
             return W_OpImpl(w_functype_eq)
         else:
             return W_OpImpl.NULL
-
-    @classmethod
-    def make(cls,
-             *,
-             w_restype: W_Type,
-             color: Color = 'red',
-             **kwargs: W_Type
-             ) -> 'W_FuncType':
-        """
-        Small helper to make it easier to build W_FuncType, especially in
-        tests
-        """
-        params = [FuncParam(key, w_type, 'simple')
-                  for key, w_type in kwargs.items()]
-        return cls.new(params, w_restype, color=color)
 
     @classmethod
     def parse(cls, s: str) -> 'W_FuncType':
@@ -110,16 +87,16 @@ class W_FuncType(W_Type):
         args, res = map(str.strip, s.split('->'))
         assert args.startswith('def(')
         assert args.endswith(')')
-        kwargs = {}
+        params = []
         arglist = args[4:-1].split(',')
-        for arg in arglist:
-            if arg == '':
+        for argtype in arglist:
+            if argtype == '':
                 continue
-            argname, argtype = map(str.strip, arg.split(':'))
-            kwargs[argname] = parse_type(argtype)
+            w_type = parse_type(argtype.strip())
+            params.append(FuncParam(w_type, 'simple'))
         #
         w_restype = parse_type(res)
-        return cls.make(w_restype=w_restype, **kwargs)
+        return cls.new(params, w_restype)
 
     @property
     def is_varargs(self) -> bool:
@@ -206,8 +183,10 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
-    # NOTE: we cannot use a w_CALL/__CALL__ here, for bootstrapping
-    # reason. OP.CALL on W_Func objects is special-cased, see callop.w_CALL.
+    # NOTE: we cannot use a w_CALL/__CALL__ or w_GETITEM/__GETITEM__ here, for
+    # bootstrapping reason.
+    # These operators are special cased by callop.w_CALL and itemop.w_GETITEM,
+    # depending on whether w_functype.kind is 'plain' or 'generic'.
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpImpl':

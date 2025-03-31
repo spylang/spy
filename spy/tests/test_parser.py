@@ -49,6 +49,7 @@ class TestParser:
                 GlobalFuncDef(
                     funcdef=FuncDef(
                         color='red',
+                        kind='plain',
                         name='foo',
                         args=[],
                         return_type=Name(id='void'),
@@ -74,6 +75,7 @@ class TestParser:
                 GlobalFuncDef(
                     funcdef=FuncDef(
                         color='red',
+                        kind='plain',
                         name='foo',
                         args=[
                             FuncArg(
@@ -195,6 +197,7 @@ class TestParser:
         expected = """
         FuncDef(
             color='red',
+            kind='plain',
             name='foo',
             args=[],
             return_type=Name(id='i32'),
@@ -217,6 +220,7 @@ class TestParser:
         expected = """
         FuncDef(
             color='blue',
+            kind='plain',
             name='foo',
             args=[],
             return_type=Name(id='i32'),
@@ -228,6 +232,56 @@ class TestParser:
         )
         """
         self.assert_dump(funcdef, expected)
+
+    def test_blue_generic_FuncDef(self):
+        mod = self.parse("""
+        @blue.generic
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='blue',
+            kind='generic',
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_FuncDef_prototype_loc(self):
+        # blue functions without return type, are parsed as if they had a
+        # synthetic '-> dynamic' annotation. We also need to generate a
+        # synthetic Loc for the annotation. This is particularly important
+        # because we use return_type.loc to compute prototype_loc, which is
+        # used e.g. in error messages.
+        mod = self.parse("""
+        @blue
+        def a():
+            pass
+
+        @blue
+        def b(x):
+            pass
+
+        @blue
+        def c(
+              x):
+            pass
+        """)
+        adef = mod.get_funcdef('a')
+        bdef = mod.get_funcdef('b')
+        cdef = mod.get_funcdef('c')
+        assert adef.prototype_loc.get_src() == 'def a():'
+        assert bdef.prototype_loc.get_src() == 'def b(x):'
+        assert cdef.prototype_loc.get_src() == 'def c(\n      x):'
 
     def test_empty_return(self):
         mod = self.parse("""
@@ -857,12 +911,14 @@ class TestParser:
                 GlobalFuncDef(
                     funcdef=FuncDef(
                         color='blue',
+                        kind='plain',
                         name='foo',
                         args=[],
                         return_type=Name(id='dynamic'),
                         body=[
                             FuncDef(
                                 color='red',
+                                kind='plain',
                                 name='bar',
                                 args=[],
                                 return_type=Name(id='void'),
@@ -1031,6 +1087,7 @@ class TestParser:
             methods=[
                 FuncDef(
                     color='red',
+                    kind='plain',
                     name='foo',
                     args=[],
                     return_type=Name(id='void'),

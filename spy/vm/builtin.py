@@ -47,11 +47,6 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
     raise ValueError(f"Invalid @builtin_func annotation: {ann}")
 
 def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
-    if p.name.startswith('w_'):
-        name = p.name[2:]
-    else:
-        name = p.name
-    #
     annotation = extra_types.get(p.annotation, p.annotation)
     w_type = to_spy_type(annotation)
     kind: FuncParamKind
@@ -61,7 +56,7 @@ def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
         kind = 'varargs'
     else:
         assert False
-    return FuncParam(name, w_type, kind)
+    return FuncParam(w_type, kind)
 
 
 def functype_from_sig(fn: Callable, color: Color, *,

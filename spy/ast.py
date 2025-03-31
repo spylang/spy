@@ -12,6 +12,7 @@ from spy.util import extend
 AnyNode = typing.Union[py_ast.AST, 'Node']
 VarKind = typing.Literal['const', 'var']
 ClassKind = typing.Literal['class', 'struct', 'typelift']
+FuncKind = typing.Literal['plain', 'generic']
 
 @extend(py_ast.AST)
 class AST:
@@ -436,6 +437,7 @@ class FuncArg(Node):
 @dataclass(eq=False)
 class FuncDef(Stmt):
     color: Color
+    kind: FuncKind
     name: str
     args: list[FuncArg]
     return_type: 'Expr'

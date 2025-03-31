@@ -114,10 +114,7 @@ def typecheck_opimpl(
 
 def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
                          color: Color) -> W_FuncType:
-    params = [
-        FuncParam(f'v{i}', wop.w_static_type, 'simple')
-        for i, wop in enumerate(args_wop)
-    ]
+    params = [FuncParam(wop.w_static_type, 'simple') for wop in args_wop]
     return W_FuncType.new(params, w_restype, color=color)
 
 

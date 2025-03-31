@@ -12,6 +12,16 @@ from spy.util import magic_dispatch
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
 
+
+def is_blue(py_expr: py_ast.expr) -> bool:
+    return is_py_Name(py_expr, 'blue')
+
+def is_blue_generic(py_expr: py_ast.expr) -> bool:
+    return (isinstance(py_expr, py_ast.Attribute) and
+            isinstance(py_expr.value, py_ast.Name) and
+            py_expr.value.id == "blue" and
+            py_expr.attr == "generic")
+
 class Parser:
     """
     SPy parser: take source code as input, produce a SPy AST as output.
@@ -95,10 +105,15 @@ class Parser:
                                  py_funcdef: py_ast.FunctionDef
                                  ) -> spy.ast.FuncDef:
         color: spy.ast.Color = 'red'
+        func_kind: spy.ast.FuncKind = 'plain'
         for deco in py_funcdef.decorator_list:
-            if is_py_Name(deco, 'blue'):
+            if is_blue(deco):
                 # @blue is special-cased
                 color = 'blue'
+            elif is_blue_generic(deco):
+                # @blue.generic is special-cased
+                color = 'blue'
+                func_kind = 'generic'
             else:
                 # other decorators are not supported:
                 self.error('decorators are not supported yet',
@@ -112,7 +127,23 @@ class Parser:
         if py_returns:
             return_type = self.from_py_expr(py_returns)
         elif color == 'blue':
-            return_type = spy.ast.Name(py_funcdef.loc, 'dynamic')
+            # we need to synthesize a reasonable Loc for the return type. See
+            # also test_FuncDef_prototype_loc.
+            if len(args) == 0:
+                # no arguments: this is though because the python parser
+                # doesn't tell us e.g. where the '()' or ':' are. The only
+                # reasonable thing we can do is to keep the whole line where
+                # the function starts
+                retloc = py_funcdef.loc.replace(
+                    line_end = py_funcdef.loc.line_start,
+                    col_end = -1
+                )
+            else:
+                # we declare the function prototype ends at the end of the
+                # line where the last argument is
+                l = args[-1].loc
+                retloc = l.replace(col_end=-1)
+            return_type = spy.ast.Name(retloc, 'dynamic')
         else:
             # create a loc which points to the 'def foo' part. This is a bit
             # wrong, ideally we would like it to point to the END of the
@@ -127,6 +158,7 @@ class Parser:
         return spy.ast.FuncDef(
             loc = py_funcdef.loc,
             color = color,
+            kind = func_kind,
             name = py_funcdef.name,
             args = args,
             return_type = return_type,
