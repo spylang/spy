@@ -190,6 +190,19 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "set_x", errors)
 
+    @only_interp
+    def test_int_float(self):
+        mod = self.compile("""
+        def try_int() -> bool:
+            return int == i32
+
+        def try_float() -> bool:
+            return float == f64
+        """)
+        assert mod.try_int()
+        assert mod.try_float()
+
+
     def test_i32_BinOp(self):
         mod = self.compile("""
         def add(x: i32, y: i32) -> i32: return x + y

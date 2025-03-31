@@ -75,3 +75,13 @@ def w_print_str(vm: 'SPyVM', w_x: W_Str) -> W_Void:
 @builtin_func('builtins')
 def w_functype_eq(vm: 'SPyVM', w_ft1: W_FuncType, w_ft2: W_FuncType) -> W_Bool:
     return vm.wrap(w_ft1 == w_ft2)  # type: ignore
+
+
+# add aliases for common types. For now we map:
+#   int -> i32
+#   float -> f64
+#
+# We might want to map int to different concrete types, depending on the
+# platform? Or maybe have some kind of "configure step"?
+BUILTINS.add('int', BUILTINS.w_i32)
+BUILTINS.add('float', BUILTINS.w_f64)
