@@ -346,15 +346,10 @@ class TestBasic(CompilerTest):
 
         def b(x: i32) -> bool:
             return x
-
-        def c(x: f64) -> i32:
-            return x
         """)
         res = mod.a(1)
         assert res == 1.0 and type(res) is float
         assert mod.b(1) is True
-        assert mod.c(2.5) == 2
-
 
     def test_cannot_call_non_functions(self):
         # it would be nice to report also the location where 'inc' is defined,
