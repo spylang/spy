@@ -119,4 +119,8 @@ def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 
 MM.register('convert', 'i32', 'f64', OP.w_i32_to_f64)
 MM.register('convert', 'i32', 'bool', OP.w_i32_to_bool)
-MM.register('convert', 'f64', 'i32', OP.w_f64_to_i32)
+
+# this is wrong: we don't want implicit truncation from float to int. Maybe
+# eventually we will want a distinction between implicit and explicit
+# conversions?
+#MM.register('convert', 'f64', 'i32', OP.w_f64_to_i32)
