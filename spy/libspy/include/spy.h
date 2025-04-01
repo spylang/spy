@@ -29,6 +29,7 @@
 
 #include "spy/builtins.h"
 #include "spy/operator.h"
+#include "spy/math.h"
 #include "spy/str.h"
 #include "spy/gc.h"
 #include "spy/unsafe.h"

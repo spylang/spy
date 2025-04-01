@@ -26,6 +26,7 @@ from spy.vm.bluecache import BlueCache
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.types import TYPES
+from spy.vm.modules.math import MATH
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
@@ -68,13 +69,14 @@ class SPyVM:
         self.path = []
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
-        self.make_module(BUILTINS)   # builtins::
-        self.make_module(OPERATOR)   # operator::
-        self.make_module(TYPES)      # types::
-        self.make_module(UNSAFE)     # unsafe::
-        self.make_module(RAW_BUFFER) # rawbuffer::
-        self.make_module(JSFFI)      # jsffi::
-
+        self.make_module(BUILTINS)
+        self.make_module(OPERATOR)
+        self.make_module(TYPES)
+        self.make_module(MATH)
+        self.make_module(UNSAFE)
+        self.make_module(RAW_BUFFER)
+        self.make_module(JSFFI)
+        self.call_INITs()
 
     @classmethod
     async def async_new(cls) -> 'SPyVM':
@@ -139,6 +141,14 @@ class SPyVM:
         self.register_module(w_mod)
         for fqn, w_obj in reg.content:
             self.add_global(fqn, w_obj)
+
+    def call_INITs(self) -> None:
+        for modname in self.modules_w:
+            init_fqn = FQN(modname).join('__INIT__')
+            w_init = self.globals_w.get(init_fqn)
+            if w_init is not None:
+                assert isinstance(w_init, W_Func)
+                self.fast_call(w_init, [])
 
     def get_unique_FQN(self, fqn: FQN) -> FQN:
         """
