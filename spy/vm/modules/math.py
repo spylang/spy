@@ -17,3 +17,27 @@ def w_sqrt(vm: 'SPyVM', w_x: W_F64) -> W_F64:
     x = vm.unwrap_f64(w_x)
     res = math.sqrt(x)
     return vm.wrap(res)  # type: ignore
+
+@MATH.builtin_func
+def w_cos(vm: 'SPyVM', w_x: W_F64) -> W_F64:
+    x = vm.unwrap_f64(w_x)
+    res = math.cos(x)
+    return vm.wrap(res)  # type: ignore
+
+@MATH.builtin_func
+def w_sin(vm: 'SPyVM', w_x: W_F64) -> W_F64:
+    x = vm.unwrap_f64(w_x)
+    res = math.sin(x)
+    return vm.wrap(res)  # type: ignore
+
+@MATH.builtin_func
+def w_tan(vm: 'SPyVM', w_x: W_F64) -> W_F64:
+    x = vm.unwrap_f64(w_x)
+    res = math.tan(x)
+    return vm.wrap(res)  # type: ignore
+
+@MATH.builtin_func
+def w_log(vm: 'SPyVM', w_x: W_F64) -> W_F64:
+    x = vm.unwrap_f64(w_x)
+    res = math.log(x)
+    return vm.wrap(res)  # type: ignore
