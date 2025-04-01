@@ -76,6 +76,7 @@ class SPyVM:
         self.make_module(UNSAFE)
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)
+        self.call_INITs()
 
     @classmethod
     async def async_new(cls) -> 'SPyVM':
@@ -140,6 +141,14 @@ class SPyVM:
         self.register_module(w_mod)
         for fqn, w_obj in reg.content:
             self.add_global(fqn, w_obj)
+
+    def call_INITs(self) -> None:
+        for modname in self.modules_w:
+            init_fqn = FQN(modname).join('__INIT__')
+            w_init = self.globals_w.get(init_fqn)
+            if w_init is not None:
+                assert isinstance(w_init, W_Func)
+                self.fast_call(w_init, [])
 
     def get_unique_FQN(self, fqn: FQN) -> FQN:
         """

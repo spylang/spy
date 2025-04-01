@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Annotated
 import math
+from spy.fqn import FQN
 from spy.vm.primitive import W_F64, W_I32, W_Dynamic, W_Void
 from spy.vm.b import B
 from spy.vm.object import Member
@@ -11,6 +12,13 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 MATH = ModuleRegistry('math')
+
+@MATH.builtin_func('__INIT__', color='blue')
+def w_INIT(vm: 'SPyVM') -> None:
+    vm.add_global(FQN('math::pi'), vm.wrap(math.pi))
+    vm.add_global(FQN('math::tau'), vm.wrap(math.tau))
+    vm.add_global(FQN('math::e'), vm.wrap(math.e))
+
 
 @MATH.builtin_func
 def w_sqrt(vm: 'SPyVM', w_x: W_F64) -> W_F64:

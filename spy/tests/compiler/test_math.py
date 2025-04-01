@@ -16,6 +16,24 @@ class TestMath(CompilerTest):
         assert mod.foo(64.0) == 8
         assert mod.foo(2.0) == math.sqrt(2)
 
+    def test_constants(self):
+        mod = self.compile(
+        """
+        from math import pi, e, tau
+
+        def get_pi() -> f64:
+            return pi
+
+        def get_e() -> f64:
+            return e
+
+        def get_tau() -> f64:
+            return tau
+        """)
+        assert mod.get_pi() == math.pi
+        assert mod.get_e() == math.e
+        assert mod.get_tau() == math.tau
+
     def test_cos(self):
         mod = self.compile(
         """
