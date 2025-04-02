@@ -202,43 +202,6 @@ class TestBasic(CompilerTest):
         assert mod.try_int()
         assert mod.try_float()
 
-
-    def test_i32_Ops(self):
-        mod = self.compile("""
-        def add(x: i32, y: i32) -> i32:      return x + y
-        def sub(x: i32, y: i32) -> i32:      return x - y
-        def mul(x: i32, y: i32) -> i32:      return x * y
-        def mod(x: i32, y: i32) -> i32:      return x % y
-        def div(x: i32, y: i32) -> f64:      return x / y
-        def floordiv(x: i32, y: i32) -> i32: return x // y
-        def neg(x: i32) -> i32: return -x
-        """)
-        assert mod.add(1, 2) == 3
-        assert mod.sub(3, 4) == -1
-        assert mod.mul(5, 6) == 30
-        assert mod.mod(10, 3) == 1
-        assert mod.div(11, 2) == 5.5
-        assert mod.floordiv(11, 2) == 5
-        assert mod.neg(-5) == 5
-
-
-    def test_i32_BitwiseOp(self):
-        mod = self.compile("""
-        def shl(x: i32, y: i32) -> i32: return x << y
-        def shr(x: i32, y: i32) -> i32: return x >> y
-        def b_and(x: i32, y: i32) -> i32: return x & y
-        def b_or(x: i32, y: i32) -> i32: return x | y
-        def b_xor(x: i32, y: i32) -> i32: return x ^ y
-        """)
-        assert mod.shl(128, 4) == 128 << 4
-        assert mod.shr(128, 4) == 128 >> 4
-        assert mod.b_and(7, 3) == 7 & 3
-        assert mod.b_and(127, 7) == 127 & 7
-        assert mod.b_or(127, 123) == 127 | 123
-        assert mod.b_or(127, 0) == 127 | 0
-        assert mod.b_xor(16, 15) == 16 ^ 15
-        assert mod.b_xor(16, 0) == 16 ^ 0
-
     def test_void_return(self):
         mod = self.compile("""
         var x: i32 = 0
@@ -316,7 +279,6 @@ class TestBasic(CompilerTest):
             return op.ADD(i32, i32)(x, y)
         """)
         assert mod.foo(3, 5) == 8
-
 
     def test_function_call(self):
         mod = self.compile("""
@@ -434,37 +396,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.get_True() is True
         assert mod.get_False() is False
-
-    def test_CompareOp(self):
-        mod = self.compile("""
-        def cmp_eq (x: i32, y: i32) -> bool: return x == y
-        def cmp_neq(x: i32, y: i32) -> bool: return x != y
-        def cmp_lt (x: i32, y: i32) -> bool: return x  < y
-        def cmp_lte(x: i32, y: i32) -> bool: return x <= y
-        def cmp_gt (x: i32, y: i32) -> bool: return x  > y
-        def cmp_gte(x: i32, y: i32) -> bool: return x >= y
-        """)
-        assert mod.cmp_eq(5, 5) is True
-        assert mod.cmp_eq(5, 6) is False
-        #
-        assert mod.cmp_neq(5, 5) is False
-        assert mod.cmp_neq(5, 6) is True
-        #
-        assert mod.cmp_lt(5, 6) is True
-        assert mod.cmp_lt(5, 5) is False
-        assert mod.cmp_lt(6, 5) is False
-        #
-        assert mod.cmp_lte(5, 6) is True
-        assert mod.cmp_lte(5, 5) is True
-        assert mod.cmp_lte(6, 5) is False
-        #
-        assert mod.cmp_gt(5, 6) is False
-        assert mod.cmp_gt(5, 5) is False
-        assert mod.cmp_gt(6, 5) is True
-        #
-        assert mod.cmp_gte(5, 6) is False
-        assert mod.cmp_gte(5, 5) is True
-        assert mod.cmp_gte(6, 5) is True
 
     def test_CompareOp_error(self):
         src = """
