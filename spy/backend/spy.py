@@ -252,6 +252,7 @@ class SPyBackend:
     fmt_expr_Sub = fmt_expr_BinOp
     fmt_expr_Mul = fmt_expr_BinOp
     fmt_expr_Div = fmt_expr_BinOp
+    fmt_expr_FloorDiv = fmt_expr_BinOp
     fmt_expr_Mod = fmt_expr_BinOp
     fmt_expr_LShift = fmt_expr_BinOp
     fmt_expr_RShift = fmt_expr_BinOp
@@ -265,12 +266,21 @@ class SPyBackend:
     fmt_expr_Gt = fmt_expr_BinOp
     fmt_expr_GtE = fmt_expr_BinOp
 
+    def fmt_expr_UnaryOp(self, unary: ast.UnaryOp) -> str:
+        v = self.fmt_expr(unary.value)
+        if unary.value.precedence < unary.precedence:
+            v = f'({v})'
+        return f'{unary.op}{v}'
+
+    fmt_expr_UnaryNeg = fmt_expr_UnaryOp
+
     # special cases
     FQN2BinOp = {
         FQN('operator::i32_add'): ast.Add,
         FQN('operator::i32_sub'): ast.Sub,
         FQN('operator::i32_mul'): ast.Mul,
         FQN('operator::i32_div'): ast.Div,
+        FQN('operator::i32_floordiv'): ast.FloorDiv,
         FQN('operator::i32_eq'): ast.Eq,
         FQN('operator::i32_ne'): ast.NotEq,
         FQN('operator::i32_lt'): ast.Lt,
@@ -282,6 +292,7 @@ class SPyBackend:
         FQN('operator::f64_sub'): ast.Sub,
         FQN('operator::f64_mul'): ast.Mul,
         FQN('operator::f64_div'): ast.Div,
+        FQN('operator::f64_floordiv'): ast.FloorDiv,
         FQN('operator::f64_eq'): ast.Eq,
         FQN('operator::f64_ne'): ast.NotEq,
         FQN('operator::f64_lt'): ast.Lt,
