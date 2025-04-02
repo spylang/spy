@@ -90,5 +90,5 @@ class MultiMethodTable:
             w_opimpl,
             [wop_v],
             dispatch = 'single',
-            errmsg = 'cannot do %s `{0}`' % op
+            errmsg = 'cannot do %s`{0}`' % op
         )

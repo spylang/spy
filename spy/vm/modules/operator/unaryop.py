@@ -14,12 +14,12 @@ MM = MultiMethodTable()
 @OP.builtin_func(color='blue')
 def w_NEG(vm: 'SPyVM', wop_v: W_OpArg) -> W_Func:
     from spy.vm.typechecker import typecheck_opimpl
-    ## w_xtype = wop_x.w_static_type
-    ## if w_NEG := w_ltype.lookup_blue_func('__NEG__'):
-    ##     w_opimpl = op_fast_call(vm, w_NEG, [wop_l, wop_r])
-    ##     return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
-    ##                             dispatch='sing',
-    ##                             errmsg='cannot do -`{0}`')
+    w_vtype = wop_v.w_static_type
+    if w_NEG := w_vtype.lookup_blue_func('__NEG__'):
+        w_opimpl = op_fast_call(vm, w_NEG, [wop_v])
+        return typecheck_opimpl(vm, w_opimpl, [wop_v],
+                                dispatch='single',
+                                errmsg='cannot do -`{0}`')
     return MM.get_unary_opimpl(vm, '-', wop_v)
 
 MM.register('-', 'i32', None, OP.w_i32_neg)
