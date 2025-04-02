@@ -54,7 +54,12 @@ class MultiMethodTable:
         self.register(op, atype, None, w_func)
         self.register(op, None, atype, w_func)
 
-    def lookup(self, op: str, w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+    def lookup(
+            self,
+            op: str,
+            w_ltype: Optional[W_Type],
+            w_rtype: Optional[W_Type]
+    ) -> W_OpImpl:
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
             (op, w_ltype, None),     # less precise ones
