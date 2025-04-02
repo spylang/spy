@@ -79,3 +79,16 @@ class MultiMethodTable:
             dispatch = 'multi',
             errmsg = 'cannot do `{0}` %s `{1}`' % op
         )
+
+    def get_unary_opimpl(self, vm: 'SPyVM', op: str,
+                         wop_v: W_OpArg) -> W_Func:
+        from spy.vm.typechecker import typecheck_opimpl
+        w_vtype = wop_v.w_static_type
+        w_opimpl = self.lookup(op, w_vtype, None)
+        return typecheck_opimpl(
+            vm,
+            w_opimpl,
+            [wop_v],
+            dispatch = 'single',
+            errmsg = 'cannot do %s `{0}`' % op
+        )

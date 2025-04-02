@@ -64,6 +64,7 @@ from . import opimpl_f64     # side effects
 from . import opimpl_str     # side effects
 from . import opimpl_object  # side effects
 from . import opimpl_dynamic # side effects
+from . import unaryop        # side effects
 from . import binop          # side effects
 from . import attrop         # side effects
 from . import itemop         # side effects
@@ -93,6 +94,10 @@ _from_token: dict[str, W_Func] = {
     '<universal_ne>': OP.w_UNIVERSAL_NE,
 }
 
+_unary_from_token: dict[str, W_Func] = {
+    '-': OP.w_NEG,
+}
+
 def OP_from_token(token: str) -> W_Func:
     """
     Return the generic operator corresponding to the given token.
@@ -100,6 +105,9 @@ def OP_from_token(token: str) -> W_Func:
     E.g., OPS.from_token('+') returns OPS.w_ADD.
     """
     return _from_token[token]
+
+def OP_unary_from_token(token: str) -> W_Func:
+    return _unary_from_token[token]
 
 def print_all_OPERATORS() -> None:
     """

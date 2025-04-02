@@ -17,6 +17,11 @@ def _i32_op(vm: 'SPyVM', w_a: W_Object, w_b: W_Object, fn: Any) -> Any:
     res = fn(a, b)
     return vm.wrap(res)
 
+def _i32_unary_op(vm: 'SPyVM', w_a: W_Object, fn: Any) -> Any:
+    a = vm.unwrap_i32(w_a)
+    res = fn(a)
+    return vm.wrap(res)
+
 @OP.builtin_func
 def w_i32_add(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a + b)
@@ -81,3 +86,7 @@ def w_i32_gt(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
 @OP.builtin_func
 def w_i32_ge(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_Bool:
     return _i32_op(vm, w_a, w_b, lambda a, b: a >= b)
+
+@OP.builtin_func
+def w_i32_neg(vm: 'SPyVM', w_a: W_I32) -> W_I32:
+    return _i32_unary_op(vm, w_a, lambda a: -a)
