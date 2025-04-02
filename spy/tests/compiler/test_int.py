@@ -63,12 +63,13 @@ class TestInt(CompilerTest):
         T = {int_type}
         def neg(x: T) -> T:
             return -x
-        """,
+        """
         mod = self.compile(src, error_mode='lazy')
         #
         is_unsigned = int_type.startswith('u')
         if is_unsigned:
-            mod.neg(-5)
+            with SPyError.raises('W_TypeError', match="cannot do -`u8`"):
+                mod.neg(-5)
         else:
             assert mod.neg(-5) == 5
 
