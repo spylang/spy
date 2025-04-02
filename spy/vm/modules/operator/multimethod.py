@@ -54,7 +54,12 @@ class MultiMethodTable:
         self.register(op, atype, None, w_func)
         self.register(op, None, atype, w_func)
 
-    def lookup(self, op: str, w_ltype: W_Type, w_rtype: W_Type) -> W_OpImpl:
+    def lookup(
+            self,
+            op: str,
+            w_ltype: Optional[W_Type],
+            w_rtype: Optional[W_Type]
+    ) -> W_OpImpl:
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
             (op, w_ltype, None),     # less precise ones
@@ -78,4 +83,17 @@ class MultiMethodTable:
             [wop_l, wop_r],
             dispatch = 'multi',
             errmsg = 'cannot do `{0}` %s `{1}`' % op
+        )
+
+    def get_unary_opimpl(self, vm: 'SPyVM', op: str,
+                         wop_v: W_OpArg) -> W_Func:
+        from spy.vm.typechecker import typecheck_opimpl
+        w_vtype = wop_v.w_static_type
+        w_opimpl = self.lookup(op, w_vtype, None)
+        return typecheck_opimpl(
+            vm,
+            w_opimpl,
+            [wop_v],
+            dispatch = 'single',
+            errmsg = 'cannot do %s`{0}`' % op
         )

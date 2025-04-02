@@ -16,6 +16,7 @@ MM.register('+',  'i32', 'i32', OP.w_i32_add)
 MM.register('-',  'i32', 'i32', OP.w_i32_sub)
 MM.register('*',  'i32', 'i32', OP.w_i32_mul)
 MM.register('/',  'i32', 'i32', OP.w_i32_div)
+MM.register('//',  'i32', 'i32', OP.w_i32_floordiv)
 MM.register('%',  'i32', 'i32', OP.w_i32_mod)
 MM.register('<<',  'i32', 'i32', OP.w_i32_lshift)
 MM.register('>>',  'i32', 'i32', OP.w_i32_rshift)
@@ -34,6 +35,7 @@ MM.register('+',  'f64', 'f64', OP.w_f64_add)
 MM.register('-',  'f64', 'f64', OP.w_f64_sub)
 MM.register('*',  'f64', 'f64', OP.w_f64_mul)
 MM.register('/',  'f64', 'f64', OP.w_f64_div)
+MM.register('//',  'f64', 'f64', OP.w_f64_floordiv)
 MM.register('==', 'f64', 'f64', OP.w_f64_eq)
 MM.register('!=', 'f64', 'f64', OP.w_f64_ne)
 MM.register('<' , 'f64', 'f64', OP.w_f64_lt)
@@ -125,6 +127,18 @@ def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` / `{1}`')
     return MM.get_opimpl(vm, '/', wop_l, wop_r)
+
+@OP.builtin_func(color='blue')
+def w_FLOORDIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+    from spy.vm.typechecker import typecheck_opimpl
+    w_ltype = wop_l.w_static_type
+    if w_FLOORDIV := w_ltype.lookup_blue_func('__FLOORDIV__'):
+        w_opimpl = op_fast_call(vm, w_FLOORDIV, [wop_l, wop_r])
+        return typecheck_opimpl(vm, w_opimpl, [wop_l, wop_r],
+                                dispatch='multi',
+                                errmsg='cannot do `{0}` // `{1}`')
+    return MM.get_opimpl(vm, '//', wop_l, wop_r)
+
 
 @OP.builtin_func(color='blue')
 def w_MOD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:

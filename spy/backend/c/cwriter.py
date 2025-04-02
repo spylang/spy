@@ -497,12 +497,11 @@ class CFuncWriter:
     fmt_expr_Gt = fmt_expr_BinOp
     fmt_expr_GtE = fmt_expr_BinOp
 
-
     FQN2BinOp = {
         FQN('operator::i32_add'): '+',
         FQN('operator::i32_sub'): '-',
         FQN('operator::i32_mul'): '*',
-        FQN('operator::i32_div'): '/', # XXX: floor or int division?
+        FQN('operator::i32_floordiv'): '/',
         FQN('operator::i32_mod'): '%',
         FQN('operator::i32_lshift'): '<<',
         FQN('operator::i32_rshift'): '>>',
@@ -526,6 +525,16 @@ class CFuncWriter:
         FQN('operator::f64_le') : '<=',
         FQN('operator::f64_gt') : '>',
         FQN('operator::f64_ge') : '>=',
+
+        # the following are NOT special cased, and are implemented in
+        # operator.h. They are listed here to make emphasize that they are not
+        # omitted from above by mistake:
+        # FQN('operator::i32_div')
+        # FQN('operator::f64_floordiv')
+    }
+
+    FQN2UnaryOp = {
+        FQN('operator::i32_neg'): '-',
     }
 
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
@@ -533,11 +542,15 @@ class CFuncWriter:
             'indirect calls are not supported yet'
 
         # some calls are special-cased and transformed into a C binop
-        op = self.FQN2BinOp.get(call.func.fqn)
-        if op is not None:
+        if op := self.FQN2BinOp.get(call.func.fqn):
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
+
+        if op := self.FQN2UnaryOp.get(call.func.fqn):
+            assert len(call.args) == 1
+            v = self.fmt_expr(call.args[0])
+            return C.UnaryOp(op, v)
 
         if call.func.fqn.modname == "jsffi":
             self.cmod.emit_jsffi_error_maybe()

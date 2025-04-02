@@ -18,7 +18,7 @@ from spy.vm.tuple import W_Tuple
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.modules.operator import OP, OP_from_token
+from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
@@ -447,6 +447,7 @@ class AbstractFrame:
     eval_expr_Sub = eval_expr_BinOp
     eval_expr_Mul = eval_expr_BinOp
     eval_expr_Div = eval_expr_BinOp
+    eval_expr_FloorDiv = eval_expr_BinOp
     eval_expr_Mod = eval_expr_BinOp
     eval_expr_LShift = eval_expr_BinOp
     eval_expr_RShift = eval_expr_BinOp
@@ -459,6 +460,15 @@ class AbstractFrame:
     eval_expr_LtE = eval_expr_BinOp
     eval_expr_Gt = eval_expr_BinOp
     eval_expr_GtE = eval_expr_BinOp
+
+    def eval_expr_UnaryOp(self, unop: ast.UnaryOp) -> W_OpArg:
+        w_OP = OP_unary_from_token(unop.op)
+        wop_v = self.eval_expr(unop.value)
+        w_opimpl = self.vm.call_OP(unop.loc, w_OP, [wop_v])
+        return self.eval_opimpl(unop, w_opimpl, [wop_v])
+
+    eval_expr_UnaryNeg = eval_expr_UnaryOp
+
 
     def eval_expr_Call(self, call: ast.Call) -> W_OpArg:
         wop_func = self.eval_expr(call.func)

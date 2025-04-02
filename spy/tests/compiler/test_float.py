@@ -16,15 +16,17 @@ class TestFloat(CompilerTest):
     def test_BinOp(self):
         mod = self.compile(
         """
-        def add(x: f64, y: f64) -> f64: return x + y
-        def sub(x: f64, y: f64) -> f64: return x - y
-        def mul(x: f64, y: f64) -> f64: return x * y
-        def div(x: f64, y: f64) -> f64: return x / y
+        def add(x: f64, y: f64) -> f64:      return x + y
+        def sub(x: f64, y: f64) -> f64:      return x - y
+        def mul(x: f64, y: f64) -> f64:      return x * y
+        def div(x: f64, y: f64) -> f64:      return x / y
+        def floordiv(x: f64, y: f64) -> f64: return x // y
         """)
         assert mod.add(1.5, 2.6) == 4.1
         assert mod.sub(1.5, 0.2) == 1.3
         assert mod.mul(1.5, 0.5) == 0.75
         assert mod.div(1.5, 2.0)   == 0.75
+        assert mod.floordiv(10.0, 3.0) == 3.0
 
     def test_CompareOp(self):
         mod = self.compile("""
