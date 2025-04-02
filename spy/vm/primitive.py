@@ -1,9 +1,16 @@
 from typing import Annotated, ClassVar, TYPE_CHECKING
 import fixedint
-from fixedint import FixedInt
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type
 from spy.vm.b import B
+
+# fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a
+# function. Let's convince it back that it's a type
+if TYPE_CHECKING:
+    from fixedint import _FixedInt as FixedInt
+else:
+    from fixedint import FixedInt
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
