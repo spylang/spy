@@ -6,7 +6,7 @@ from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors, only_interp, no_C)
 
-class TestNumeric(CompilerTest):
+class TestInt(CompilerTest):
 
     def test_i32_ops(self):
         mod = self.compile("""
