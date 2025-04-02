@@ -59,6 +59,7 @@ def op_fast_call(vm: 'SPyVM', w_func: W_Func,
 
 
 # the folloing imports register all the various objects on OP
+from . import opimpl_i8      # side effects
 from . import opimpl_i32     # side effects
 from . import opimpl_f64     # side effects
 from . import opimpl_str     # side effects

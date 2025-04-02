@@ -508,6 +508,23 @@ class CFuncWriter:
     fmt_expr_GtE = fmt_expr_BinOp
 
     FQN2BinOp = {
+        FQN('operator::i8_add'): '+',
+        FQN('operator::i8_sub'): '-',
+        FQN('operator::i8_mul'): '*',
+        FQN('operator::i8_floordiv'): '/',
+        FQN('operator::i8_mod'): '%',
+        FQN('operator::i8_lshift'): '<<',
+        FQN('operator::i8_rshift'): '>>',
+        FQN('operator::i8_and'): '&',
+        FQN('operator::i8_or'): '|',
+        FQN('operator::i8_xor'): '^',
+        FQN('operator::i8_eq') : '==',
+        FQN('operator::i8_ne') : '!=',
+        FQN('operator::i8_lt') : '<',
+        FQN('operator::i8_le') : '<=',
+        FQN('operator::i8_gt') : '>',
+        FQN('operator::i8_ge') : '>=',
+        #
         FQN('operator::i32_add'): '+',
         FQN('operator::i32_sub'): '-',
         FQN('operator::i32_mul'): '*',
@@ -539,11 +556,13 @@ class CFuncWriter:
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
+        # FQN('operator::i8_div')
         # FQN('operator::i32_div')
         # FQN('operator::f64_floordiv')
     }
 
     FQN2UnaryOp = {
+        FQN('operator::i8_neg'): '-',
         FQN('operator::i32_neg'): '-',
     }
 
