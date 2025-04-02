@@ -331,6 +331,7 @@ class DopplerFrame(ASTFrame):
     shift_expr_Sub = shift_expr_BinOp
     shift_expr_Mul = shift_expr_BinOp
     shift_expr_Div = shift_expr_BinOp
+    shift_expr_FloorDiv = shift_expr_BinOp
     shift_expr_Mod = shift_expr_BinOp
     shift_expr_LShift = shift_expr_BinOp
     shift_expr_RShift = shift_expr_BinOp

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.primitive import W_I32, W_Bool
+from spy.vm.primitive import W_I32, W_F64, W_Bool
 from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -34,9 +34,12 @@ def w_i32_sub(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
 def w_i32_mul(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a * b)
 
-# XXX: should we do floor division or float division?
 @OP.builtin_func
-def w_i32_div(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
+def w_i32_div(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_F64:
+    return _i32_op(vm, w_a, w_b, lambda a, b: a / b)
+
+@OP.builtin_func
+def w_i32_floordiv(vm: 'SPyVM', w_a: W_I32, w_b: W_I32) -> W_I32:
     return _i32_op(vm, w_a, w_b, lambda a, b: a // b)
 
 @OP.builtin_func

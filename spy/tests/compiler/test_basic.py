@@ -205,22 +205,22 @@ class TestBasic(CompilerTest):
 
     def test_i32_Ops(self):
         mod = self.compile("""
-        def add(x: i32, y: i32) -> i32: return x + y
-        def sub(x: i32, y: i32) -> i32: return x - y
-        def mul(x: i32, y: i32) -> i32: return x * y
-        def div(x: i32, y: i32) -> i32: return x / y
-        def mod(x: i32, y: i32) -> i32: return x % y
+        def add(x: i32, y: i32) -> i32:      return x + y
+        def sub(x: i32, y: i32) -> i32:      return x - y
+        def mul(x: i32, y: i32) -> i32:      return x * y
+        def mod(x: i32, y: i32) -> i32:      return x % y
+        def div(x: i32, y: i32) -> f64:      return x / y
+        def floordiv(x: i32, y: i32) -> i32: return x // y
         def neg(x: i32) -> i32: return -x
-
-        # XXX: should i32/i32 return an i32 or a float? For now we just do an
-        # integer division
         """)
         assert mod.add(1, 2) == 3
         assert mod.sub(3, 4) == -1
         assert mod.mul(5, 6) == 30
-        assert mod.div(10, 3) == 3
         assert mod.mod(10, 3) == 1
+        assert mod.div(11, 2) == 5.5
+        assert mod.floordiv(11, 2) == 5
         assert mod.neg(-5) == 5
+
 
     def test_i32_BitwiseOp(self):
         mod = self.compile("""

@@ -501,7 +501,7 @@ class CFuncWriter:
         FQN('operator::i32_add'): '+',
         FQN('operator::i32_sub'): '-',
         FQN('operator::i32_mul'): '*',
-        FQN('operator::i32_div'): '/', # XXX: floor or int division?
+        FQN('operator::i32_floordiv'): '/',
         FQN('operator::i32_mod'): '%',
         FQN('operator::i32_lshift'): '<<',
         FQN('operator::i32_rshift'): '>>',
@@ -525,6 +525,12 @@ class CFuncWriter:
         FQN('operator::f64_le') : '<=',
         FQN('operator::f64_gt') : '>',
         FQN('operator::f64_ge') : '>=',
+
+        # the following are NOT special cased, and are implemented in
+        # operator.h. They are listed here to make emphasize that they are not
+        # omitted from above by mistake:
+        # FQN('operator::i32_div')
+        # FQN('operator::f64_floordiv')
     }
 
     FQN2UnaryOp = {
