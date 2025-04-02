@@ -11,7 +11,7 @@ from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type
-from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic
+from spy.vm.primitive import W_F64, W_I32, W_I8, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.list import W_ListType
 from spy.vm.b import B
@@ -303,6 +303,8 @@ class SPyVM:
             return B.w_None
         elif T in (int, fixedint.Int32):
             return W_I32(value)
+        elif T is fixedint.Int8:
+            return W_I8(value)
         elif T is float:
             return W_F64(value)
         elif T is bool:
@@ -330,6 +332,11 @@ class SPyVM:
 
     def unwrap_i32(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_I32):
+            raise Exception('Type mismatch')
+        return w_value.value
+
+    def unwrap_i8(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_I8):
             raise Exception('Type mismatch')
         return w_value.value
 
