@@ -6,17 +6,22 @@ from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors, only_interp, no_C)
 
+@pytest.fixture(params=["i32", "i8"])
+def int_type(request):
+    return request.param
+
 class TestInt(CompilerTest):
 
-    def test_i32_ops(self):
-        mod = self.compile("""
-        def add(x: i32, y: i32) -> i32:      return x + y
-        def sub(x: i32, y: i32) -> i32:      return x - y
-        def mul(x: i32, y: i32) -> i32:      return x * y
-        def mod(x: i32, y: i32) -> i32:      return x % y
-        def div(x: i32, y: i32) -> f64:      return x / y
-        def floordiv(x: i32, y: i32) -> i32: return x // y
-        def neg(x: i32) -> i32: return -x
+    def test_ops(self, int_type):
+        mod = self.compile(f"""
+        T = {int_type}
+        def add(x: T, y: T) -> T:      return x + y
+        def sub(x: T, y: T) -> T:      return x - y
+        def mul(x: T, y: T) -> T:      return x * y
+        def mod(x: T, y: T) -> T:      return x % y
+        def div(x: T, y: T) -> f64:    return x / y
+        def floordiv(x: T, y: T) -> T: return x // y
+        def neg(x: T) -> T:            return -x
         """)
         assert mod.add(1, 2) == 3
         assert mod.sub(3, 4) == -1
@@ -74,7 +79,6 @@ class TestInt(CompilerTest):
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
 
-
     def test_i8_simple(self):
         mod = self.compile(
         """
@@ -89,72 +93,3 @@ class TestInt(CompilerTest):
         assert mod.bar(42) == 42
         assert mod.bar(-1) == -1
         assert mod.bar(128) == -128
-
-    @pytest.mark.skip
-    def test_i8_ops(self):
-        mod = self.compile(
-        """
-        def add(x: i8, y: i8) -> i8:
-            return x + y
-
-        def sub(x: i8, y: i8) -> i8:
-            return x - y
-
-        def mul(x: i8, y: i8) -> i8:
-            return x * y
-
-        def div(x: i8, y: i8) -> i8:
-            return x // y
-
-        def mod(x: i8, y: i8) -> i8:
-            return x % y
-
-        def neg(x: i8) -> i8:
-            return -x
-        """)
-
-        assert mod.add(127, 1) == -128
-        assert mod.sub(-128, 1) == 127
-        assert mod.mul(4, 8) == 32
-        assert mod.mul(64, 4) == 0
-        assert mod.div(100, 3) == 33
-        assert mod.mod(100, 3) == 1
-        assert mod.neg(127) == -127
-        assert mod.neg(-128) == -128
-
-    @pytest.mark.skip
-    def test_i8_comparisons(self):
-        from fixedint import Int8
-        mod = self.compile(
-        """
-        def eq(x: i8, y: i8) -> bool:
-            return x == y
-
-        def ne(x: i8, y: i8) -> bool:
-            return x != y
-
-        def lt(x: i8, y: i8) -> bool:
-            return x < y
-
-        def le(x: i8, y: i8) -> bool:
-            return x <= y
-
-        def gt(x: i8, y: i8) -> bool:
-            return x > y
-
-        def ge(x: i8, y: i8) -> bool:
-            return x >= y
-        """)
-
-        assert mod.eq(42, 42)
-        assert not mod.eq(42, 43)
-        assert mod.ne(42, 43)
-        assert not mod.ne(42, 42)
-        assert mod.lt(-10, 10)
-        assert not mod.lt(10, -10)
-        assert mod.le(42, 42)
-        assert mod.le(41, 42)
-        assert mod.gt(43, 42)
-        assert not mod.gt(42, 42)
-        assert mod.ge(42, 42)
-        assert mod.ge(43, 42)

@@ -229,6 +229,11 @@ class CModuleWriter:
             assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
             c_type = self.ctx.w2c(w_type)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
+        elif isinstance(w_type, W_Type) and w_type.fqn.modname == 'builtins':
+            # this is an ad-hoc hack to support things like this at
+            # module-level:
+            #    T = i32
+            pass
         else:
             raise NotImplementedError('WIP')
 
@@ -249,6 +254,11 @@ class CModuleWriter:
             assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
             c_type = self.ctx.w2c(w_type)
             self.tbh_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
+        elif isinstance(w_type, W_Type) and w_type.fqn.modname == 'builtins':
+            # this is an ad-hoc hack to support things like this at
+            # module-level:
+            #    T = i32
+            pass
         else:
             # struct types are already handled in the header
             raise NotImplementedError('WIP')
