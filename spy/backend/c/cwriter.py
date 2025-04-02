@@ -497,7 +497,6 @@ class CFuncWriter:
     fmt_expr_Gt = fmt_expr_BinOp
     fmt_expr_GtE = fmt_expr_BinOp
 
-
     FQN2BinOp = {
         FQN('operator::i32_add'): '+',
         FQN('operator::i32_sub'): '-',
@@ -528,16 +527,24 @@ class CFuncWriter:
         FQN('operator::f64_ge') : '>=',
     }
 
+    FQN2UnaryOp = {
+        FQN('operator::i32_neg'): '-',
+    }
+
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.func, ast.FQNConst), \
             'indirect calls are not supported yet'
 
         # some calls are special-cased and transformed into a C binop
-        op = self.FQN2BinOp.get(call.func.fqn)
-        if op is not None:
+        if op := self.FQN2BinOp.get(call.func.fqn):
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
+
+        if op := self.FQN2UnaryOp.get(call.func.fqn):
+            assert len(call.args) == 1
+            v = self.fmt_expr(call.args[0])
+            return C.UnaryOp(op, v)
 
         if call.func.fqn.modname == "jsffi":
             self.cmod.emit_jsffi_error_maybe()
