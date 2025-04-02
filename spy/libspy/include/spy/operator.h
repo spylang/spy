@@ -40,6 +40,10 @@ static inline double spy_operator$i8_div(int8_t x, int8_t y) {
     return (double)x / y;
 }
 
+static inline double spy_operator$u8_div(uint8_t x, uint8_t y) {
+    return (double)x / y;
+}
+
 static inline double spy_operator$i32_div(int32_t x, int32_t y) {
     return (double)x / y;
 }
