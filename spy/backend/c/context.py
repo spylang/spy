@@ -69,6 +69,7 @@ class Context:
         self.tbh_types_def = None  # type: ignore
         self._d = {}
         self._d[B.w_void] = C_Type('void')
+        self._d[B.w_i8] = C_Type('int8_t')
         self._d[B.w_i32] = C_Type('int32_t')
         self._d[B.w_f64] = C_Type('double')
         self._d[B.w_bool] = C_Type('bool')

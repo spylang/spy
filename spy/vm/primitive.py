@@ -1,5 +1,6 @@
 from typing import Annotated, ClassVar, TYPE_CHECKING
 import fixedint
+from fixedint import FixedInt
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type
 from spy.vm.b import B
@@ -32,14 +33,27 @@ B.add('None', W_Void.__new__(W_Void))
 class W_I32(W_Object):
     value: fixedint.Int32
 
-    def __init__(self, value: int | fixedint.Int32) -> None:
-        assert type(value) in (int, fixedint.Int32)
+    def __init__(self, value: int | FixedInt) -> None:
         self.value = fixedint.Int32(value)
 
     def __repr__(self) -> str:
         return f'W_I32({self.value})'
 
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
+        return self.value
+
+
+@B.builtin_type('i8')
+class W_I8(W_Object):
+    value: fixedint.Int8
+
+    def __init__(self, value: int | FixedInt) -> None:
+        self.value = fixedint.Int8(value)
+
+    def __repr__(self) -> str:
+        return f'W_I8({self.value})'
+
+    def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int8:
         return self.value
 
 

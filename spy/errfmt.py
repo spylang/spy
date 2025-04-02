@@ -55,7 +55,7 @@ class ErrorFormatter:
             b = len(srcline) + b + 1
         n = b-a
         # these are various ways to visually display underlines.
-        if n < 2:
+        if n <= 2:
             underline = '^' * max(n, 1)
         else:
             #underline = '^' * (n-2)
