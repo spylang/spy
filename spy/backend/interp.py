@@ -10,9 +10,11 @@ Python objects are automatically converted into their SPy equivalent and
 vice-versa, by using vm.wrap and vm.unwrap.
 """
 from typing import Any
+import fixedint
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_Func, W_FuncType
+from spy.vm.b import B
 
 
 class InterpModuleWrapper:
@@ -52,7 +54,14 @@ class InterpFuncWrapper:
     def __call__(self, *args: Any, unwrap: bool = True) -> Any:
         # *args contains python-level objs. We want to wrap them into args_w
         # *and to call the func, and unwrap the result
-        args_w = [self.vm.wrap(arg) for arg in args]
+        args_w = []
+        for arg, param in zip(args, self.w_functype.params, strict=True):
+            w_type = param.w_type
+            if w_type is B.w_i8:
+                arg = fixedint.Int8(arg)
+            w_arg = self.vm.wrap(arg)
+            args_w.append(w_arg)
+
         w_res = self.vm.fast_call(self.w_func, args_w)
         if unwrap:
             return self.vm.unwrap(w_res)
