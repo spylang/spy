@@ -342,6 +342,11 @@ class SPyVM:
             raise Exception('Type mismatch')
         return w_value.value
 
+    def unwrap_u8(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_U8):
+            raise Exception('Type mismatch')
+        return w_value.value
+
     def unwrap_f64(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_F64):
             raise Exception('Type mismatch')
