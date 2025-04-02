@@ -6,7 +6,7 @@ from spy.vm.modules.operator import OP
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.opimpl import W_OpArg, W_OpImpl
-from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8
+from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8, W_U8
 from spy.vm.builtin import builtin_func
 from . import OP, op_fast_call
 from .multimethod import MultiMethodTable
@@ -95,6 +95,14 @@ def w_i32_to_i8(vm: 'SPyVM', w_x: W_I32) -> W_I8:
 def w_i8_to_i32(vm: 'SPyVM', w_x: W_I8) -> W_I32:
     return W_I32(w_x.value)
 
+@OP.builtin_func
+def w_i32_to_u8(vm: 'SPyVM', w_x: W_I32) -> W_U8:
+    return W_U8(w_x.value)
+
+@OP.builtin_func
+def w_u8_to_i32(vm: 'SPyVM', w_x: W_U8) -> W_I32:
+    return W_I32(w_x.value)
+
 
 @OP.builtin_func
 def w_f64_to_i32(vm: 'SPyVM', w_x: W_F64) -> W_I32:
@@ -140,3 +148,5 @@ MM.register('convert', 'i32', 'bool', OP.w_i32_to_bool)
 # this probably requires to introduce a new type "literal".
 MM.register('convert', 'i32', 'i8', OP.w_i32_to_i8)
 MM.register('convert', 'i8', 'i32', OP.w_i8_to_i32)
+MM.register('convert', 'i32', 'u8', OP.w_i32_to_u8)
+MM.register('convert', 'u8', 'i32', OP.w_u8_to_i32)

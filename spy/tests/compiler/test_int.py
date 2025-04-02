@@ -6,7 +6,7 @@ from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors, only_interp, no_C)
 
-@pytest.fixture(params=["i32", "i8"])
+@pytest.fixture(params=["i32", "i8", "u8"])
 def int_type(request):
     return request.param
 
@@ -26,6 +26,20 @@ class TestInt(CompilerTest):
         assert mod.bar(42) == 42
         assert mod.bar(-1) == -1
         assert mod.bar(128) == -128
+
+    def test_u8_conversion(self):
+        mod = self.compile(
+        """
+        def foo(x: i32) -> u8:
+            return x
+
+        def bar(x: u8) -> i32:
+            return x
+        """)
+        assert mod.foo(42) == 42
+        assert mod.foo(256 + 10) == 10
+        assert mod.bar(42) == 42
+        assert mod.bar(-1) == 255
 
     def test_ops(self, int_type):
         mod = self.compile(f"""

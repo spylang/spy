@@ -64,6 +64,20 @@ class W_I8(W_Object):
         return self.value
 
 
+@B.builtin_type('u8')
+class W_U8(W_Object):
+    value: fixedint.UInt8
+
+    def __init__(self, value: int | FixedInt) -> None:
+        self.value = fixedint.UInt8(value)
+
+    def __repr__(self) -> str:
+        return f'W_U8({self.value})'
+
+    def spy_unwrap(self, vm: 'SPyVM') -> fixedint.UInt8:
+        return self.value
+
+
 @B.builtin_type('f64')
 class W_F64(W_Object):
     value: float
