@@ -564,6 +564,7 @@ class CFuncWriter:
     FQN2UnaryOp = {
         FQN('operator::i8_neg'): '-',
         FQN('operator::i32_neg'): '-',
+        FQN('operator::f64_neg'): '-',
     }
 
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:

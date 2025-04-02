@@ -24,3 +24,4 @@ def w_NEG(vm: 'SPyVM', wop_v: W_OpArg) -> W_Func:
 
 MM.register('-', 'i8',  None, OP.w_i8_neg)
 MM.register('-', 'i32', None, OP.w_i32_neg)
+MM.register('-', 'f64', None, OP.w_f64_neg)

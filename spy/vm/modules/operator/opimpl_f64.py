@@ -17,6 +17,11 @@ def _f64_op(vm: 'SPyVM', w_a: W_Object, w_b: W_Object, fn: Any) -> Any:
     res = fn(a, b)
     return vm.wrap(res)
 
+def _f64_unary_op(vm: 'SPyVM', w_a: W_Object, fn: Any) -> Any:
+    a = vm.unwrap_f64(w_a)
+    res = fn(a)
+    return vm.wrap(res)
+
 @OP.builtin_func
 def w_f64_add(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a + b)
@@ -60,3 +65,7 @@ def w_f64_gt(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
 @OP.builtin_func
 def w_f64_ge(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a >= b)
+
+@OP.builtin_func
+def w_f64_neg(vm: 'SPyVM', w_a: W_F64) -> W_F64:
+    return _f64_unary_op(vm, w_a, lambda a: -a)
