@@ -31,7 +31,7 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
 #  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_UNCHECKED
 #endif
 
-#define _SPY_PTR_FUNCTIONS__UNCHECKED(PTR, T)                    \
+#define _SPY_PTR_FUNCTIONS_UNCHECKED(PTR, T)                     \
     static inline PTR PTR##_from_addr(T *p) {                    \
         return (PTR){p};                                         \
     }                                                            \
