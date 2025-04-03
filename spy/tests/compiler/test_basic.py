@@ -511,6 +511,20 @@ class TestBasic(CompilerTest):
         assert mod.foo(10) == 10
         assert mod.foo(-20) == 20
 
+    def test_max_min(self):
+        mod = self.compile("""
+        def mymax(x: i32, y: i32) -> i32: return max(x, y)
+        def mymin(x: i32, y: i32) -> i32: return min(x, y)
+        """)
+        #
+        assert mod.mymax(10, 20) == 20
+        assert mod.mymax(20, 10) == 20
+        assert mod.mymax(-5, 5) == 5
+
+        assert mod.mymin(10, 20) == 10
+        assert mod.mymin(20, 10) == 10
+        assert mod.mymin(-5, 5) == -5
+
     def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int

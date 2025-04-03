@@ -31,6 +31,21 @@ def w_abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:
     return vm.wrap(res) # type: ignore
 
 @BUILTINS.builtin_func
+def w_max(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
+    x = vm.unwrap_i32(w_x)
+    y = vm.unwrap_i32(w_y)
+    res = vm.ll.call('spy_builtins$max', x, y)
+    return vm.wrap(res) # type: ignore
+
+@BUILTINS.builtin_func
+def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
+    x = vm.unwrap_i32(w_x)
+    y = vm.unwrap_i32(w_y)
+    res = vm.ll.call('spy_builtins$min', x, y)
+    return vm.wrap(res) # type: ignore
+
+
+@BUILTINS.builtin_func
 def w_print(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
     """
     Super minimal implementation of print().
