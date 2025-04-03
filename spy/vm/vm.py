@@ -37,6 +37,8 @@ W_Type._w.define(W_Type)
 W_OpImpl._w.define(W_OpImpl)
 W_OpArg._w.define(W_OpArg)
 W_FuncType._w.define(W_FuncType)
+W_I32._w.define(W_I32)
+W_F64._w.define(W_F64)
 
 # W_OpImpl has w_meta_GETATTR, which means it creates a lazily-defined
 # metaclass. Initialize it as well

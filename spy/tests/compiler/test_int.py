@@ -41,6 +41,17 @@ class TestInt(CompilerTest):
         assert mod.bar(42) == 42
         assert mod.bar(-1) == 255
 
+    def test_float_to_int(self):
+        mod = self.compile(
+        """
+        def to_i32(x: f64) -> i32: return i32(x)
+        """)
+        MAX = 2**31 - 1
+        assert mod.to_i32(12.5) == 12
+        assert mod.to_i32(float(MAX*2)) == MAX
+        assert mod.to_i32(float("inf")) == MAX
+        assert mod.to_i32(float("nan")) == 0
+
     def test_binop(self, int_type):
         mod = self.compile(f"""
         T = {int_type}

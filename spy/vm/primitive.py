@@ -2,7 +2,8 @@ from typing import Annotated, ClassVar, TYPE_CHECKING
 import fixedint
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type
-from spy.vm.b import B
+from spy.vm.b import B, OP
+from spy.vm.builtin import builtin_method
 
 # fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a
 # function. Let's convince it back that it's a type
@@ -13,6 +14,7 @@ else:
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.opimpl import W_OpArg, W_OpImpl
 
 @B.builtin_type('void')
 class W_Void(W_Object):
@@ -36,12 +38,24 @@ class W_Void(W_Object):
 B.add('None', W_Void.__new__(W_Void))
 
 
-@B.builtin_type('i32')
+@B.builtin_type('i32', lazy_definition=True)
 class W_I32(W_Object):
     value: fixedint.Int32
 
     def __init__(self, value: int | FixedInt) -> None:
         self.value = fixedint.Int32(value)
+
+    @builtin_method('__NEW__', color='blue')
+    @staticmethod
+    def w_NEW(vm: 'SPyVM', wop_cls: 'W_OpArg',
+              *args_wop: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        if len(args_wop) != 1:
+            return W_OpImpl.NULL
+        wop_arg = args_wop[0]
+        if wop_arg.w_static_type == B.w_f64:
+            return W_OpImpl(OP.w_f64_to_i32, [wop_arg])
+        return W_OpImpl.NULL
 
     def __repr__(self) -> str:
         return f'W_I32({self.value})'
@@ -78,13 +92,26 @@ class W_U8(W_Object):
         return self.value
 
 
-@B.builtin_type('f64')
+@B.builtin_type('f64', lazy_definition=True)
 class W_F64(W_Object):
     value: float
 
     def __init__(self, value: float) -> None:
         assert type(value) is float
         self.value = value
+
+    @builtin_method('__NEW__', color='blue')
+    @staticmethod
+    def w_NEW(vm: 'SPyVM', wop_cls: 'W_OpArg',
+              *args_wop: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        if len(args_wop) != 1:
+            return W_OpImpl.NULL
+        wop_arg = args_wop[0]
+        if wop_arg.w_static_type == B.w_i32:
+            return W_OpImpl(OP.w_i32_to_f64, [wop_arg])
+        return W_OpImpl.NULL
+
 
     def __repr__(self) -> str:
         return f'W_F64({self.value})'

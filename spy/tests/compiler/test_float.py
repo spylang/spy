@@ -71,3 +71,12 @@ class TestFloat(CompilerTest):
         assert mod.add(1.5, 2) == 3.5
         assert mod.sub(10, 0.5) == 9.5
         assert mod.div(1.5, 2) == 0.75
+
+    def test_int_to_float(self):
+        mod = self.compile(
+        """
+        def to_f64(x: i32) -> f64:
+            res = f64(x)
+            return res
+        """)
+        assert mod.to_f64(42) == 42.0

@@ -8,6 +8,19 @@ spy_builtins$abs(int32_t x) {
     return x;
 }
 
+int32_t
+spy_builtins$min(int32_t x, int32_t y) {
+    if (x < y)
+        return x;
+    return y;
+}
+
+int32_t
+spy_builtins$max(int32_t x, int32_t y) {
+    if (x > y)
+        return x;
+    return y;
+}
 
 void spy_builtins$print_i32(int32_t x) {
     printf("%d\n", x);

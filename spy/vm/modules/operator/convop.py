@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Annotated, Optional
+import math
 from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.modules.jsffi import JSFFI
@@ -106,7 +107,12 @@ def w_u8_to_i32(vm: 'SPyVM', w_x: W_U8) -> W_I32:
 
 @OP.builtin_func
 def w_f64_to_i32(vm: 'SPyVM', w_x: W_F64) -> W_I32:
+    i32_MAX = 2**31 - 1
     val = vm.unwrap_f64(w_x)
+    if val > i32_MAX:
+        val = i32_MAX
+    elif math.isnan(val):
+        val = 0
     return vm.wrap(int(val))  # type: ignore
 
 

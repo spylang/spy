@@ -7,6 +7,12 @@
 int32_t
 WASM_EXPORT(spy_builtins$abs)(int32_t x);
 
+int32_t
+WASM_EXPORT(spy_builtins$min)(int32_t x, int32_t y);
+
+int32_t
+WASM_EXPORT(spy_builtins$max)(int32_t x, int32_t y);
+
 void
 WASM_EXPORT(spy_builtins$print_i32)(int32_t x);
 

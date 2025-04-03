@@ -22,12 +22,24 @@ DEFINE_CONV(i32, u8)
 DEFINE_CONV(i32, f64)
 DEFINE_CONV(i8, i32)
 DEFINE_CONV(u8, i32)
-DEFINE_CONV(f64, i32)
 
 #undef i8
 #undef u8
 #undef i32
 #undef f64
+
+// implement rust-like saturating conversion.
+static inline int32_t spy_operator$f64_to_i32(double x) {
+    // Ideally, we would like to use compiler intrinsics and/or CPU
+    // instruction which implement this exact logic: with gcc/clang on x86_64
+    // it seems that a simple C-level cast does the trick, but notably this
+    // doesn't work on WASM32. So for now, we just implement the logic
+    // explicitly.
+    if (isnan(x)) return 0;
+    if (x > INT32_MAX) return INT32_MAX;
+    if (x < INT32_MIN) return INT32_MIN;
+    return (int32_t)x;  // Safe since we handled out-of-range cases
+}
 
 static inline void spy_operator$raise(spy_Str *etype,
                                       spy_Str *message,
