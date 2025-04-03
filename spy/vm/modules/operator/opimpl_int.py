@@ -1,15 +1,18 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Annotated, Protocol
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.primitive import W_I32, W_F64, W_Bool
+from spy.vm.primitive import W_I32, W_I8, W_U8, W_F64, W_Bool
 from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-# the following style is a bit too verbose, but probably its not worth to
-# overly coplicate things with metaprogramming.
+class W_IntLike(Protocol):
+    "mypy protocol which works for W_I32, W_I8, etc."
+    value: Any
 
-def register_ops(T: str, WT: type[W_Object]):
+def make_ops(T: str, pyclass: type[W_Object]) -> None:
+    w_type = pyclass._w  # e.g. B.w_i32
+    WT = Annotated[W_IntLike, w_type]
 
     def _binop(vm: 'SPyVM', w_a: WT, w_b: WT, fn: Any) -> Any:
         a = w_a.value
@@ -20,7 +23,12 @@ def register_ops(T: str, WT: type[W_Object]):
     def _unary_op(vm: 'SPyVM', w_a: WT, fn: Any) -> Any:
         a = w_a.value
         res = fn(a)
-        return WT(res)
+        return vm.wrap(res)
+
+    # If T is 'i32', the following @OP.builtin_func define functions like these:
+    #     builtins::i32_add
+    #     builtins::i32_sub
+    #     ...
 
     @OP.builtin_func(f'{T}_add')
     def w_add(vm: 'SPyVM', w_a: WT, w_b: WT) -> WT:
@@ -95,4 +103,6 @@ def register_ops(T: str, WT: type[W_Object]):
         return _unary_op(vm, w_a, lambda a: -a)
 
 
-register_ops('i32', W_I32)
+make_ops('i32', W_I32)
+make_ops('i8', W_I8)
+make_ops('u8', W_U8)
