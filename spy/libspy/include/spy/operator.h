@@ -12,16 +12,20 @@
     static inline TO spy_operator$##FROM##_to_##TO(FROM x) { return x; }
 
 #define i8 int8_t
+#define u8 uint8_t
 #define i32 int32_t
 #define f64 double
 
 DEFINE_CONV(i32, bool)
 DEFINE_CONV(i32, i8)
+DEFINE_CONV(i32, u8)
 DEFINE_CONV(i32, f64)
 DEFINE_CONV(i8, i32)
+DEFINE_CONV(u8, i32)
 DEFINE_CONV(f64, i32)
 
 #undef i8
+#undef u8
 #undef i32
 #undef f64
 
@@ -33,6 +37,10 @@ static inline void spy_operator$raise(spy_Str *etype,
 }
 
 static inline double spy_operator$i8_div(int8_t x, int8_t y) {
+    return (double)x / y;
+}
+
+static inline double spy_operator$u8_div(uint8_t x, uint8_t y) {
     return (double)x / y;
 }
 

@@ -59,6 +59,8 @@ class InterpFuncWrapper:
             w_type = param.w_type
             if w_type is B.w_i8:
                 arg = fixedint.Int8(arg)
+            elif w_type is B.w_u8:
+                arg = fixedint.UInt8(arg)
             w_arg = self.vm.wrap(arg)
             args_w.append(w_arg)
 

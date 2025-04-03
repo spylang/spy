@@ -6,7 +6,7 @@ from spy.fqn import FQN
 from spy.tests.support import (CompilerTest, skip_backends, no_backend,
                                expect_errors, only_interp, no_C)
 
-@pytest.fixture(params=["i32", "i8"])
+@pytest.fixture(params=["i32", "i8", "u8"])
 def int_type(request):
     return request.param
 
@@ -27,7 +27,21 @@ class TestInt(CompilerTest):
         assert mod.bar(-1) == -1
         assert mod.bar(128) == -128
 
-    def test_ops(self, int_type):
+    def test_u8_conversion(self):
+        mod = self.compile(
+        """
+        def foo(x: i32) -> u8:
+            return x
+
+        def bar(x: u8) -> i32:
+            return x
+        """)
+        assert mod.foo(42) == 42
+        assert mod.foo(256 + 10) == 10
+        assert mod.bar(42) == 42
+        assert mod.bar(-1) == 255
+
+    def test_binop(self, int_type):
         mod = self.compile(f"""
         T = {int_type}
         def add(x: T, y: T) -> T:      return x + y
@@ -36,15 +50,28 @@ class TestInt(CompilerTest):
         def mod(x: T, y: T) -> T:      return x % y
         def div(x: T, y: T) -> f64:    return x / y
         def floordiv(x: T, y: T) -> T: return x // y
-        def neg(x: T) -> T:            return -x
         """)
         assert mod.add(1, 2) == 3
-        assert mod.sub(3, 4) == -1
+        assert mod.sub(7, 3) == 4
         assert mod.mul(5, 6) == 30
         assert mod.mod(10, 3) == 1
         assert mod.div(11, 2) == 5.5
         assert mod.floordiv(11, 2) == 5
-        assert mod.neg(-5) == 5
+
+    def test_neg(self, int_type):
+        src = f"""
+        T = {int_type}
+        def neg(x: T) -> T:
+            return -x
+        """
+        mod = self.compile(src, error_mode='lazy')
+        #
+        is_unsigned = int_type.startswith('u')
+        if is_unsigned:
+            with SPyError.raises('W_TypeError', match="cannot do -`u8`"):
+                mod.neg(-5)
+        else:
+            assert mod.neg(-5) == 5
 
     def test_bitwise(self, int_type):
         mod = self.compile(f"""
