@@ -92,13 +92,26 @@ class W_U8(W_Object):
         return self.value
 
 
-@B.builtin_type('f64')
+@B.builtin_type('f64', lazy_definition=True)
 class W_F64(W_Object):
     value: float
 
     def __init__(self, value: float) -> None:
         assert type(value) is float
         self.value = value
+
+    @builtin_method('__NEW__', color='blue')
+    @staticmethod
+    def w_NEW(vm: 'SPyVM', wop_cls: 'W_OpArg',
+              *args_wop: 'W_OpArg') -> 'W_OpImpl':
+        from spy.vm.opimpl import W_OpImpl
+        if len(args_wop) != 1:
+            return W_OpImpl.NULL
+        wop_arg = args_wop[0]
+        if wop_arg.w_static_type == B.w_i32:
+            return W_OpImpl(OP.w_i32_to_f64, [wop_arg])
+        return W_OpImpl.NULL
+
 
     def __repr__(self) -> str:
         return f'W_F64({self.value})'
