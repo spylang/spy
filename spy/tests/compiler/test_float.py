@@ -67,10 +67,15 @@ class TestFloat(CompilerTest):
         def add(x: f64, y: i32) -> f64: return x + y
         def sub(x: i32, y: f64) -> f64: return x - y
         def div(x: f64, y: i32) -> f64: return x / y
+
+        def add_i8(x: f64, y: i8) -> f64: return x + y
+        def add_u8(x: f64, y: u8) -> f64: return x + y
         """)
         assert mod.add(1.5, 2) == 3.5
         assert mod.sub(10, 0.5) == 9.5
         assert mod.div(1.5, 2) == 0.75
+        assert mod.add_i8(1.5, 2) == 3.5
+        assert mod.add_u8(1.5, 2) == 3.5
 
     def test_int_to_float(self):
         mod = self.compile(

@@ -18,9 +18,14 @@ EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 SRCS = src/str.c src/builtins.c src/debug.c src/unsafe.c
 
 # Base CFLAGS without optimization or debug settings
+#
+# XXX: do we really want -fPIC all the time? This is needed to generate CFFI
+# bindings, but it seems a waste in case of statically linked
+# executable. Maybe we should produce two versions, libspy.a and libspy-pic.a?
 CFLAGS := \
     -fvisibility=hidden \
-    -Iinclude
+    -Iinclude \
+    -fPIC
 
 # uncomment to enable debugging
 #CFLAGS := $(CFLAGS) -O0 -g
