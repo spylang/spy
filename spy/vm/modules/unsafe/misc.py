@@ -5,7 +5,9 @@ def sizeof(w_T: W_Type) -> int:
     from .struct import W_StructType
     from .ptr import W_PtrType
 
-    if w_T is B.w_i32:
+    if w_T in (B.w_i8, B.w_u8):
+        return 1
+    elif w_T is B.w_i32:
         return 4
     elif w_T is B.w_f64:
         return 8

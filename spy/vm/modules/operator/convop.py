@@ -84,6 +84,16 @@ def w_i32_to_f64(vm: 'SPyVM', w_x: W_I32) -> W_F64:
     return vm.wrap(float(val))  # type: ignore
 
 @OP.builtin_func
+def w_i8_to_f64(vm: 'SPyVM', w_x: W_I8) -> W_F64:
+    val = vm.unwrap_i8(w_x)
+    return vm.wrap(float(val))  # type: ignore
+
+@OP.builtin_func
+def w_u8_to_f64(vm: 'SPyVM', w_x: W_U8) -> W_F64:
+    val = vm.unwrap_u8(w_x)
+    return vm.wrap(float(val))  # type: ignore
+
+@OP.builtin_func
 def w_i32_to_bool(vm: 'SPyVM', w_x: W_I32) -> W_Bool:
     val = vm.unwrap_i32(w_x)
     return vm.wrap(bool(val))  # type: ignore
@@ -140,7 +150,9 @@ def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     vm.add_global(w_from_dynamic_T.fqn, w_from_dynamic_T)
     return w_from_dynamic_T
 
-MM.register('convert', 'i32', 'f64', OP.w_i32_to_f64)
+MM.register('convert',  'i8', 'f64',  OP.w_i8_to_f64)
+MM.register('convert',  'u8', 'f64',  OP.w_u8_to_f64)
+MM.register('convert', 'i32', 'f64',  OP.w_i32_to_f64)
 MM.register('convert', 'i32', 'bool', OP.w_i32_to_bool)
 
 # this is wrong: we don't want implicit truncation from float to int. Maybe
