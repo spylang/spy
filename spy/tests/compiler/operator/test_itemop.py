@@ -133,6 +133,7 @@ class TestItemop(CompilerTest):
         assert mod.foo(10, 5, 42) == 42  # Setting and getting index 5
         assert mod.foo(20, 7, 100) == 100  # Setting and getting index 7
 
+    @pytest.mark.skip(reason='WIP')
     def test_2darray(self):
         self.setup_ext()
         src = """

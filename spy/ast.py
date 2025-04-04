@@ -240,7 +240,7 @@ class StrConst(Expr):
 class GetItem(Expr):
     precedence = 16
     value: Expr
-    index: Expr
+    args: list[Expr]
 
 @dataclass(eq=False)
 class List(Expr):
@@ -501,7 +501,7 @@ class SetAttr(Stmt):
 @dataclass(eq=False)
 class SetItem(Stmt):
     target: Expr
-    index: Expr
+    args: list[Expr]
     value: Expr
 
 @dataclass(eq=False)

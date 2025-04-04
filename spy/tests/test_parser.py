@@ -326,14 +326,17 @@ class TestParser:
     def test_GetItem(self):
         mod = self.parse("""
         def foo() -> void:
-            return mylist[0]
+            return mylist[0, 1]
         """)
         stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
             value=GetItem(
                 value=Name(id='mylist'),
-                index=Constant(value=0),
+                args=[
+                    Constant(value=0),
+                    Constant(value=1),
+                ],
             ),
         )
         """
@@ -342,13 +345,16 @@ class TestParser:
     def test_SetItem(self):
         mod = self.parse("""
         def foo() -> void:
-            mylist[0] = 42
+            mylist[0, 1] = 42
         """)
         stmt = mod.get_funcdef('foo').body[0]
         expected = """
         SetItem(
             target=Name(id='mylist'),
-            index=Constant(value=0),
+            args=[
+                Constant(value=0),
+                Constant(value=1),
+            ],
             value=Constant(value=42),
         )
         """
