@@ -75,8 +75,8 @@ class W_2DArray(W_Object):
                       w_i: W_I32, w_j: W_I32) -> W_I32:
             i = vm.unwrap_i32(w_i)
             j = vm.unwrap_i32(w_j)
-            k = i * (j*self.W)
-            val = w_self.data[i]
+            k = i + (j * w_self.W)
+            val = w_self.data[k]
             return vm.wrap(val)
         return W_OpImpl(w_getitem)
 
@@ -90,7 +90,7 @@ class W_2DArray(W_Object):
             i = vm.unwrap_i32(w_i)
             j = vm.unwrap_i32(w_j)
             v = vm.unwrap_i32(w_v)
-            k = i * (j*self.W)
+            k = i + (j * w_self.W)
             w_self.data[k] = v
         return W_OpImpl(w_setitem)
 
@@ -133,7 +133,6 @@ class TestItemop(CompilerTest):
         assert mod.foo(10, 5, 42) == 42  # Setting and getting index 5
         assert mod.foo(20, 7, 100) == 100  # Setting and getting index 7
 
-    @pytest.mark.skip(reason='WIP')
     def test_2darray(self):
         self.setup_ext()
         src = """
