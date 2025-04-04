@@ -170,7 +170,7 @@ class TestSPyBackend(CompilerTest):
     def test_getitem(self):
         src = """
         def foo() -> void:
-            return x[i]
+            return x[i, 1]
         """
         self.compile(src)
         self.assert_dump(src)
@@ -178,7 +178,7 @@ class TestSPyBackend(CompilerTest):
     def test_setitem(self):
         src = """
         def foo() -> void:
-            x[i] = 0
+            x[i, 1] = 0
         """
         self.compile(src)
         self.assert_dump(src)

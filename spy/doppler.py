@@ -155,9 +155,9 @@ class DopplerFrame(ASTFrame):
         self.exec_stmt(node)
         w_opimpl = self.opimpl[node]
         v_target = self.shifted_expr[node.target]
-        v_index = self.shifted_expr[node.index]
+        args_v = [self.shifted_expr[arg] for arg in node.args]
         v_value = self.shifted_expr[node.value]
-        call = self.shift_opimpl(node, w_opimpl, [v_target, v_index, v_value])
+        call = self.shift_opimpl(node, w_opimpl,[v_target] + args_v + [v_value])
         return [ast.StmtExpr(node.loc, call)]
 
     def shift_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
@@ -359,8 +359,8 @@ class DopplerFrame(ASTFrame):
     def shift_expr_GetItem(self, op: ast.GetItem) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
-        i = self.shifted_expr[op.index]
-        return self.shift_opimpl(op, w_opimpl, [v, i])
+        args = [self.shifted_expr[arg] for arg in op.args]
+        return self.shift_opimpl(op, w_opimpl, [v] + args)
 
     def shift_expr_GetAttr(self, op: ast.GetAttr) -> ast.Expr:
         w_opimpl = self.opimpl[op]

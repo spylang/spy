@@ -416,11 +416,18 @@ class Parser:
                 value = self.from_py_expr(py_node.value)
             )
         elif isinstance(py_target, py_ast.Subscript):
+            target = self.from_py_expr(py_target.value)
+            index = self.from_py_expr(py_target.slice)
+            value = self.from_py_expr(py_node.value)
+            if isinstance(index, spy.ast.Tuple):
+                args = index.items
+            else:
+                args = [index]
             return spy.ast.SetItem(
                 loc = py_node.loc,
-                target = self.from_py_expr(py_target.value),
-                index = self.from_py_expr(py_target.slice),
-                value = self.from_py_expr(py_node.value)
+                target = target,
+                args = args,
+                value = value,
             )
         elif isinstance(py_target, py_ast.Tuple):
             targets = []
@@ -495,8 +502,12 @@ class Parser:
 
     def from_py_expr_Subscript(self, py_node: py_ast.Subscript) -> spy.ast.GetItem:
         value = self.from_py_expr(py_node.value)
-        index = self.from_py_expr(py_node.slice)
-        return spy.ast.GetItem(py_node.loc, value, index)
+        v = self.from_py_expr(py_node.slice)
+        if isinstance(v, spy.ast.Tuple):
+            args = v.items
+        else:
+            args = [v]
+        return spy.ast.GetItem(py_node.loc, value, args)
 
     def from_py_expr_Attribute(self,
                                py_node: py_ast.Attribute) -> spy.ast.GetAttr:
