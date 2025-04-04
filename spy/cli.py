@@ -247,12 +247,14 @@ async def real_main(args: Arguments) -> None:
         if args.pdb:
             info = sys.exc_info()
             stdlib_pdb.post_mortem(info[2])
+        sys.exit(1)
     except Exception as e:
         if not args.pdb:
             raise
         traceback.print_exc()
         info = sys.exc_info()
         stdlib_pdb.post_mortem(info[2])
+        sys.exit(1)
 
 
 def emit_warning(err: SPyError) -> None:
