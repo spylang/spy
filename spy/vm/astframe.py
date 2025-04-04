@@ -315,14 +315,15 @@ class AbstractFrame:
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
         wop_obj = self.eval_expr(node.target)
-        wop_i = self.eval_expr(node.index)
+        args_wop = [self.eval_expr(arg) for arg in node.args]
         wop_v = self.eval_expr(node.value)
+        wops = [wop_obj] + args_wop + [wop_v]
         w_opimpl = self.vm.call_OP(
             node.loc,
             OP.w_SETITEM,
-            [wop_obj, wop_i, wop_v]
+            wops,
         )
-        self.eval_opimpl(node, w_opimpl, [wop_obj, wop_i, wop_v])
+        self.eval_opimpl(node, w_opimpl, wops)
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
@@ -516,9 +517,9 @@ class AbstractFrame:
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_OpArg:
         wop_obj = self.eval_expr(op.value)
-        wop_i = self.eval_expr(op.index)
-        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETITEM, [wop_obj, wop_i])
-        return self.eval_opimpl(op, w_opimpl, [wop_obj, wop_i])
+        args_wop = [self.eval_expr(arg) for arg in op.args]
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETITEM, [wop_obj] + args_wop)
+        return self.eval_opimpl(op, w_opimpl, [wop_obj] + args_wop)
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_OpArg:
         wop_obj = self.eval_expr(op.value)
