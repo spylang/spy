@@ -295,10 +295,12 @@ class AbstractFrame:
             expr = ast.GetItem(
                 loc = unpack.value.loc,
                 value = unpack.value,
-                index = ast.Constant(
-                    loc = unpack.value.loc,
-                    value = i
-                )
+                args = [
+                    ast.Constant(
+                        loc = unpack.value.loc,
+                        value = i
+                    )
+                ]
             )
             self._exec_assign(target, expr)
 

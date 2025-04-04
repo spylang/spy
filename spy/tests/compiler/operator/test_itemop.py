@@ -77,7 +77,7 @@ class W_2DArray(W_Object):
             j = vm.unwrap_i32(w_j)
             k = i + (j * w_self.W)
             val = w_self.data[k]
-            return vm.wrap(val)
+            return vm.wrap(val)  # type: ignore
         return W_OpImpl(w_getitem)
 
     @builtin_method('__SETITEM__', color='blue')
