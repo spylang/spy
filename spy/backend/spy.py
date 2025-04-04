@@ -181,9 +181,10 @@ class SPyBackend:
 
     def emit_stmt_SetItem(self, node: ast.SetItem) -> None:
         t = self.fmt_expr(node.target)
-        i = self.fmt_expr(node.index)
+        arglist = [self.fmt_expr(arg) for arg in node.args]
+        args = ', '.join(arglist)
         v = self.fmt_expr(node.value)
-        self.wl(f'{t}[i] = {v}')
+        self.wl(f'{t}[{args}] = {v}')
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         t = self.fmt_expr(vardef.type)
@@ -352,8 +353,9 @@ class SPyBackend:
 
     def fmt_expr_GetItem(self, getitem: ast.GetItem) -> str:
         v = self.fmt_expr(getitem.value)
-        i = self.fmt_expr(getitem.index)
-        return f'{v}[{i}]'
+        arglist = [self.fmt_expr(arg) for arg in getitem.args]
+        args = ', '.join(arglist)
+        return f'{v}[{args}]'
 
     def fmt_expr_GetAttr(self, node: ast.GetAttr) -> str:
         v = self.fmt_expr(node.value)
