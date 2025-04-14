@@ -130,6 +130,34 @@ class TestSPyBackend(CompilerTest):
             pass
         """)
 
+    def test_dont_dump_func_references(self):
+        mod = self.compile("""
+        @blue.generic
+        def add(T):
+            def impl(x: T, y: T) -> T:
+                return x + y
+            return impl
+
+        add_i32 = add[i32]
+        add_f64 = add[f64]
+
+        def foo() -> void:
+            add_i32(1, 2)
+            add_f64(3.4, 5.6)
+        """)
+        self.assert_dump("""
+        def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
+            return x + y
+
+        def `test::add[f64]::impl`(x: f64, y: f64) -> f64:
+            return x + y
+
+        def foo() -> void:
+            add_i32(1, 2)
+            add_f64(3.4, 5.6)
+        """)
+
+
     def test_while(self):
         src = """
         def foo() -> void:

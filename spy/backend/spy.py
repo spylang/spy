@@ -39,7 +39,9 @@ class SPyBackend:
         self.modname = modname
         w_mod = self.vm.modules_w[modname]
         for fqn, w_obj in w_mod.items_w():
-            if isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red':
+            if (isinstance(w_obj, W_ASTFunc) and
+                w_obj.color == 'red' and
+                w_obj.fqn == fqn):
                 self.dump_w_func(fqn, w_obj)
                 self.out.wl()
         return self.out.build()
