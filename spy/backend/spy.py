@@ -251,13 +251,20 @@ class SPyBackend:
             r = f'({r})'
         return f'{l} {binop.op} {r}'
 
+    def fmt_expr_CmpOp(self, op: ast.CmpOp) -> str:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        if op.left.precedence < op.precedence:
+            l = f'({l})'
+        if op.right.precedence < op.precedence:
+            r = f'({r})'
+        return f'{l} {op.op} {r}'
+
     def fmt_expr_UnaryOp(self, unary: ast.UnaryOp) -> str:
         v = self.fmt_expr(unary.value)
         if unary.value.precedence < unary.precedence:
             v = f'({v})'
         return f'{unary.op}{v}'
-
-    fmt_expr_UnaryNeg = fmt_expr_UnaryOp
 
     # special cases
     FQN2BinOp = {
@@ -266,18 +273,20 @@ class SPyBackend:
         FQN('operator::i32_mul'): '*',
         FQN('operator::i32_div'): '/',
         FQN('operator::i32_floordiv'): '//',
+        FQN('operator::f64_add'): '+',
+        FQN('operator::f64_sub'): '-',
+        FQN('operator::f64_mul'): '*',
+        FQN('operator::f64_div'): '/',
+        FQN('operator::f64_floordiv'): '//',
+    }
+
+    FQN2CmpOp = {
         FQN('operator::i32_eq'): '==',
         FQN('operator::i32_ne'): '!=',
         FQN('operator::i32_lt'): '<',
         FQN('operator::i32_le'): '<=',
         FQN('operator::i32_gt'): '>',
         FQN('operator::i32_ge'): '>=',
-        #
-        FQN('operator::f64_add'): '+',
-        FQN('operator::f64_sub'): '-',
-        FQN('operator::f64_mul'): '*',
-        FQN('operator::f64_div'): '/',
-        FQN('operator::f64_floordiv'): '//',
         FQN('operator::f64_eq'): '==',
         FQN('operator::f64_ne'): '!=',
         FQN('operator::f64_lt'): '<',
@@ -296,8 +305,13 @@ class SPyBackend:
             # `operator::i32_add`(a, b) --> "a + b"
             assert len(call.args) == 2
             op = self.FQN2BinOp[fqn]
-            binop = opclass(call.loc, op, call.args[0], call.args[1])
+            binop = ast.BinOp(call.loc, op, call.args[0], call.args[1])
             return self.fmt_expr_BinOp(binop)
+        elif fqn in self.FQN2CmpOp:
+            assert len(call.args) == 2
+            op = self.FQN2CmpOp[fqn]
+            cmpop = ast.CmpOp(call.loc, op, call.args[0], call.args[1])
+            return self.fmt_expr_CmpOp(cmpop)
         elif fqn == FQN('operator::raise'):
             # `operator::raise('TypeError', ...)` -->."raise TypeError(...)"
             assert len(call.args) == 4
