@@ -271,156 +271,91 @@ class GetAttr(Expr):
     value: Expr
     attr: StrConst
 
-# ====== BinOp sub-hierarchy ======
 
 @dataclass(eq=False)
 class BinOp(Expr):
-    op = ''
+    op: str
     left: Expr
     right: Expr
 
+    _precendece = {
+        '|':   7,
+        '^':   8,
+        '&':   9,
+        '<<': 10,
+        '>>': 10,
+        '+':  11,
+        '-':  11,
+        '*':  12,
+        '/':  12,
+        '//': 12,
+        '%':  12,
+        '@':  12,
+        '**': 14,
+    }
+
+    @property
+    def precedence(self) -> int:
+        return self._precendece[self.op]
+
+    # this is just to make mypy happy
+    @precedence.setter
+    def precedence(self, newval: int) -> None:
+        raise TypeError('readonly attribute')
+
+
+# eventually this should allow chained comparisons, but for now we support
+# only binary ones
 @dataclass(eq=False)
-class Eq(BinOp):
-    precedence = 6
-    op = '=='
+class CmpOp(Expr):
+    op: str
+    left: Expr
+    right: Expr
 
-@dataclass(eq=False)
-class NotEq(BinOp):
-    precedence = 6
-    op = '!='
+    _precendece = {
+        '==':  6,
+        '!=':  6,
+        '<':   6,
+        '<=':  6,
+        '>':   6,
+        '>=':  6,
+        'is':  6,
+        'in':  6,
+        'is not': 6,
+        'not in': 6,
+    }
 
-@dataclass(eq=False)
-class Lt(BinOp):
-    precedence = 6
-    op = '<'
+    @property
+    def precedence(self) -> int:
+        return self._precendece[self.op]
 
-@dataclass(eq=False)
-class LtE(BinOp):
-    precedence = 6
-    op = '<='
+    # this is just to make mypy happy
+    @precedence.setter
+    def precedence(self, newval: int) -> None:
+        raise TypeError('readonly attribute')
 
-@dataclass(eq=False)
-class Gt(BinOp):
-    precedence = 6
-    op = '>'
-
-@dataclass(eq=False)
-class GtE(BinOp):
-    precedence = 6
-    op = '>='
-
-@dataclass(eq=False)
-class Is(BinOp):
-    precedence = 6
-    op = 'is'
-
-@dataclass(eq=False)
-class IsNot(BinOp):
-    precedence = 6
-    op = 'is not'
-
-@dataclass(eq=False)
-class In(BinOp):
-    precedence = 6
-    op = 'in'
-
-@dataclass(eq=False)
-class NotIn(BinOp):
-    precedence = 6
-    op = 'not in'
-
-@dataclass(eq=False)
-class Add(BinOp):
-    precedence = 11
-    op = '+'
-
-@dataclass(eq=False)
-class Sub(BinOp):
-    precedence = 11
-    op = '-'
-
-@dataclass(eq=False)
-class Mul(BinOp):
-    precedence = 12
-    op = '*'
-
-@dataclass(eq=False)
-class Div(BinOp):
-    precedence = 12
-    op = '/'
-
-@dataclass(eq=False)
-class FloorDiv(BinOp):
-    precedence = 12
-    op = '//'
-
-@dataclass(eq=False)
-class Mod(BinOp):
-    precedence = 12
-    op = '%'
-
-@dataclass(eq=False)
-class Pow(BinOp):
-    precedence = 14
-    op = '**'
-
-@dataclass(eq=False)
-class LShift(BinOp):
-    precedence = 10
-    op = '<<'
-
-@dataclass(eq=False)
-class RShift(BinOp):
-    precedence = 10
-    op = '>>'
-
-@dataclass(eq=False)
-class BitXor(BinOp):
-    precedence = 8
-    op = '^'
-
-@dataclass(eq=False)
-class BitOr(BinOp):
-    precedence = 7
-    op = '|'
-
-@dataclass(eq=False)
-class BitAnd(BinOp):
-    precedence = 9
-    op = '&'
-
-@dataclass(eq=False)
-class MatMul(BinOp):
-    precedence = 12
-    op = '@'
-
-
-# ====== UnaryOp sub-hierarchy ======
 
 @dataclass(eq=False)
 class UnaryOp(Expr):
-    op = ''
+    op: str
     value: Expr
 
-@dataclass(eq=False)
-class UnaryPos(UnaryOp):
-    precedence = 13
-    op = '+'
+    _precendece = {
+        'not': 5,
+        '+':  13,
+        '-':  13,
+        '~':  13,
+    }
 
-@dataclass(eq=False)
-class UnaryNeg(UnaryOp):
-    precedence = 13
-    op = '-'
+    @property
+    def precedence(self) -> int:
+        return self._precendece[self.op]
 
-@dataclass(eq=False)
-class Invert(UnaryOp):
-    precedence = 13
-    op = '~'
+    # this is just to make mypy happy
+    @precedence.setter
+    def precedence(self, newval: int) -> None:
+        raise TypeError('readonly attribute')
 
-@dataclass(eq=False)
-class Not(UnaryOp):
-    precedence = 5
-    op = 'not'
 
 
 # ====== Stmt hierarchy ======

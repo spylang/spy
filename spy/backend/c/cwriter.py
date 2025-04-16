@@ -496,17 +496,6 @@ class CFuncWriter:
         raise NotImplementedError(
             'ast.BinOp not supported. It should have been redshifted away')
 
-    fmt_expr_Add = fmt_expr_BinOp
-    fmt_expr_Sub = fmt_expr_BinOp
-    fmt_expr_Mul = fmt_expr_BinOp
-    fmt_expr_Div = fmt_expr_BinOp
-    fmt_expr_Eq = fmt_expr_BinOp
-    fmt_expr_NotEq = fmt_expr_BinOp
-    fmt_expr_Lt = fmt_expr_BinOp
-    fmt_expr_LtE = fmt_expr_BinOp
-    fmt_expr_Gt = fmt_expr_BinOp
-    fmt_expr_GtE = fmt_expr_BinOp
-
     FQN2BinOp = {
         FQN('operator::i8_add'): '+',
         FQN('operator::i8_sub'): '-',

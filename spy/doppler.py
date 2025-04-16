@@ -327,30 +327,16 @@ class DopplerFrame(ASTFrame):
         r = self.shifted_expr[binop.right]
         return self.shift_opimpl(binop, w_opimpl, [l, r])
 
-    shift_expr_Add = shift_expr_BinOp
-    shift_expr_Sub = shift_expr_BinOp
-    shift_expr_Mul = shift_expr_BinOp
-    shift_expr_Div = shift_expr_BinOp
-    shift_expr_FloorDiv = shift_expr_BinOp
-    shift_expr_Mod = shift_expr_BinOp
-    shift_expr_LShift = shift_expr_BinOp
-    shift_expr_RShift = shift_expr_BinOp
-    shift_expr_BitAnd = shift_expr_BinOp
-    shift_expr_BitOr = shift_expr_BinOp
-    shift_expr_BitXor = shift_expr_BinOp
-    shift_expr_Eq = shift_expr_BinOp
-    shift_expr_NotEq = shift_expr_BinOp
-    shift_expr_Lt = shift_expr_BinOp
-    shift_expr_LtE = shift_expr_BinOp
-    shift_expr_Gt = shift_expr_BinOp
-    shift_expr_GtE = shift_expr_BinOp
+    def shift_expr_CmpOp(self, op: ast.CmpOp) -> ast.Expr:
+        w_opimpl = self.opimpl[op]
+        l = self.shifted_expr[op.left]
+        r = self.shifted_expr[op.right]
+        return self.shift_opimpl(op, w_opimpl, [l, r])
 
     def shift_expr_UnaryOp(self, unop: ast.UnaryOp) -> ast.Expr:
         w_opimpl = self.opimpl[unop]
         v = self.shifted_expr[unop.value]
         return self.shift_opimpl(unop, w_opimpl, [v])
-
-    shift_expr_UnaryNeg = shift_expr_UnaryOp
 
     def shift_expr_List(self, lst: ast.List) -> ast.Expr:
         items = [self.shifted_expr[item] for item in lst.items]
