@@ -566,7 +566,7 @@ class Parser:
         right = self.from_py_expr(py_node.right)
         return spy.ast.BinOp(py_node.loc, op, left, right)
 
-    def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.BinOp:
+    def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.CmpOp:
         if len(py_node.comparators) > 1:
             self.unsupported(py_node.comparators[1], 'chained comparisons')
         opname = type(py_node.ops[0]).__name__
