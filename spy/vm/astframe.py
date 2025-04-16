@@ -446,14 +446,22 @@ class AbstractFrame:
             [wop_l, wop_r]
         )
 
+    def eval_expr_CmpOp(self, op: ast.CmpOp) -> W_OpArg:
+        w_OP = OP_from_token(op.op) # e.g., w_ADD, w_MUL, etc.
+        wop_l = self.eval_expr(op.left)
+        wop_r = self.eval_expr(op.right)
+        w_opimpl = self.vm.call_OP(op.loc, w_OP, [wop_l, wop_r])
+        return self.eval_opimpl(
+            op,
+            w_opimpl,
+            [wop_l, wop_r]
+        )
+
     def eval_expr_UnaryOp(self, unop: ast.UnaryOp) -> W_OpArg:
         w_OP = OP_unary_from_token(unop.op)
         wop_v = self.eval_expr(unop.value)
         w_opimpl = self.vm.call_OP(unop.loc, w_OP, [wop_v])
         return self.eval_opimpl(unop, w_opimpl, [wop_v])
-
-    eval_expr_UnaryNeg = eval_expr_UnaryOp
-
 
     def eval_expr_Call(self, call: ast.Call) -> W_OpArg:
         wop_func = self.eval_expr(call.func)

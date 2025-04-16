@@ -327,12 +327,16 @@ class DopplerFrame(ASTFrame):
         r = self.shifted_expr[binop.right]
         return self.shift_opimpl(binop, w_opimpl, [l, r])
 
+    def shift_expr_CmpOp(self, op: ast.CmpOp) -> ast.Expr:
+        w_opimpl = self.opimpl[op]
+        l = self.shifted_expr[op.left]
+        r = self.shifted_expr[op.right]
+        return self.shift_opimpl(op, w_opimpl, [l, r])
+
     def shift_expr_UnaryOp(self, unop: ast.UnaryOp) -> ast.Expr:
         w_opimpl = self.opimpl[unop]
         v = self.shifted_expr[unop.value]
         return self.shift_opimpl(unop, w_opimpl, [v])
-
-    shift_expr_UnaryNeg = shift_expr_UnaryOp
 
     def shift_expr_List(self, lst: ast.List) -> ast.Expr:
         items = [self.shifted_expr[item] for item in lst.items]
