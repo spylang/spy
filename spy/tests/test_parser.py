@@ -518,24 +518,6 @@ class TestParser:
 
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_BinOp(self, op):
-        # map the operator to the spy.ast class name
-        binops = {
-            '+':  'Add',
-            '-':  'Sub',
-            '*':  'Mul',
-            '/':  'Div',
-            '//': 'FloorDiv',
-            '%':  'Mod',
-            '**': 'Pow',
-            '<<': 'LShift',
-            '>>': 'RShift',
-            '|':  'BitOr',
-            '^':  'BitXor',
-            '&':  'BitAnd',
-            '@':  'MatMul',
-        }
-        OpClass = binops[op]
-        #
         mod = self.parse(f"""
         def foo() -> i32:
             return x {op} 1
@@ -543,7 +525,8 @@ class TestParser:
         stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
-            value={OpClass}(
+            value=BinOp(
+                op='{op}',
                 left=Name(id='x'),
                 right=Constant(value=1),
             ),
@@ -553,15 +536,6 @@ class TestParser:
 
     @pytest.mark.parametrize("op", "+ - ~ not".split())
     def test_UnaryOp(self, op):
-        # map the operator to the spy.ast class name
-        unops = {
-            '+': 'UnaryPos',
-            '-': 'UnaryNeg',
-            '~': 'Invert',
-            'not': 'Not',
-        }
-        OpClass = unops[op]
-        #
         mod = self.parse(f"""
         def foo() -> i32:
             return {op} x
@@ -569,7 +543,8 @@ class TestParser:
         stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
-            value={OpClass}(
+            value=UnaryOp(
+                op='{op}',
                 value=Name(id='x'),
             ),
         )
@@ -593,22 +568,6 @@ class TestParser:
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
         op = op.replace('_', ' ')  # is_not ==> is not
-        # map the operator to the spy.ast class name
-        cmpops = {
-            '==':     'Eq',
-            '!=':     'NotEq',
-            '<':      'Lt',
-            '<=':     'LtE',
-            '>':      'Gt',
-            '>=':     'GtE',
-            'is':     'Is',
-            'is not': 'IsNot',
-            'in':     'In',
-            'not in': 'NotIn',
-
-        }
-        OpClass = cmpops[op]
-        #
         mod = self.parse(f"""
         def foo() -> i32:
             return x {op} 1
@@ -616,7 +575,8 @@ class TestParser:
         stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
         Return(
-            value={OpClass}(
+            value=CmpOp(
+                op='{op}',
                 left=Name(id='x'),
                 right=Constant(value=1),
             ),
@@ -890,7 +850,7 @@ class TestParser:
         assert isclass(nodes[5], 'Constant') and nodes[5].value is True
         assert isclass(nodes[6], 'Assign')
         assert isclass(nodes[7], 'StrConst') and nodes[7].value == 'x'
-        assert isclass(nodes[8], 'Add')
+        assert isclass(nodes[8], 'BinOp')
         assert isclass(nodes[9], 'Name') and nodes[9].id == 'y'
         assert isclass(nodes[10], 'Constant') and nodes[10].value == 1
         assert len(nodes) == 11

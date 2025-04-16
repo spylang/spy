@@ -446,24 +446,6 @@ class AbstractFrame:
             [wop_l, wop_r]
         )
 
-    eval_expr_Add = eval_expr_BinOp
-    eval_expr_Sub = eval_expr_BinOp
-    eval_expr_Mul = eval_expr_BinOp
-    eval_expr_Div = eval_expr_BinOp
-    eval_expr_FloorDiv = eval_expr_BinOp
-    eval_expr_Mod = eval_expr_BinOp
-    eval_expr_LShift = eval_expr_BinOp
-    eval_expr_RShift = eval_expr_BinOp
-    eval_expr_BitAnd = eval_expr_BinOp
-    eval_expr_BitOr = eval_expr_BinOp
-    eval_expr_BitXor = eval_expr_BinOp
-    eval_expr_Eq = eval_expr_BinOp
-    eval_expr_NotEq = eval_expr_BinOp
-    eval_expr_Lt = eval_expr_BinOp
-    eval_expr_LtE = eval_expr_BinOp
-    eval_expr_Gt = eval_expr_BinOp
-    eval_expr_GtE = eval_expr_BinOp
-
     def eval_expr_UnaryOp(self, unop: ast.UnaryOp) -> W_OpArg:
         w_OP = OP_unary_from_token(unop.op)
         wop_v = self.eval_expr(unop.value)

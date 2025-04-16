@@ -251,24 +251,6 @@ class SPyBackend:
             r = f'({r})'
         return f'{l} {binop.op} {r}'
 
-    fmt_expr_Add = fmt_expr_BinOp
-    fmt_expr_Sub = fmt_expr_BinOp
-    fmt_expr_Mul = fmt_expr_BinOp
-    fmt_expr_Div = fmt_expr_BinOp
-    fmt_expr_FloorDiv = fmt_expr_BinOp
-    fmt_expr_Mod = fmt_expr_BinOp
-    fmt_expr_LShift = fmt_expr_BinOp
-    fmt_expr_RShift = fmt_expr_BinOp
-    fmt_expr_BitAnd = fmt_expr_BinOp
-    fmt_expr_BitOr = fmt_expr_BinOp
-    fmt_expr_BitXor = fmt_expr_BinOp
-    fmt_expr_Eq = fmt_expr_BinOp
-    fmt_expr_NotEq = fmt_expr_BinOp
-    fmt_expr_Lt = fmt_expr_BinOp
-    fmt_expr_LtE = fmt_expr_BinOp
-    fmt_expr_Gt = fmt_expr_BinOp
-    fmt_expr_GtE = fmt_expr_BinOp
-
     def fmt_expr_UnaryOp(self, unary: ast.UnaryOp) -> str:
         v = self.fmt_expr(unary.value)
         if unary.value.precedence < unary.precedence:
@@ -279,29 +261,29 @@ class SPyBackend:
 
     # special cases
     FQN2BinOp = {
-        FQN('operator::i32_add'): ast.Add,
-        FQN('operator::i32_sub'): ast.Sub,
-        FQN('operator::i32_mul'): ast.Mul,
-        FQN('operator::i32_div'): ast.Div,
-        FQN('operator::i32_floordiv'): ast.FloorDiv,
-        FQN('operator::i32_eq'): ast.Eq,
-        FQN('operator::i32_ne'): ast.NotEq,
-        FQN('operator::i32_lt'): ast.Lt,
-        FQN('operator::i32_le'): ast.LtE,
-        FQN('operator::i32_gt'): ast.Gt,
-        FQN('operator::i32_ge'): ast.GtE,
+        FQN('operator::i32_add'): '+',
+        FQN('operator::i32_sub'): '-',
+        FQN('operator::i32_mul'): '*',
+        FQN('operator::i32_div'): '/',
+        FQN('operator::i32_floordiv'): '//',
+        FQN('operator::i32_eq'): '==',
+        FQN('operator::i32_ne'): '!=',
+        FQN('operator::i32_lt'): '<',
+        FQN('operator::i32_le'): '<=',
+        FQN('operator::i32_gt'): '>',
+        FQN('operator::i32_ge'): '>=',
         #
-        FQN('operator::f64_add'): ast.Add,
-        FQN('operator::f64_sub'): ast.Sub,
-        FQN('operator::f64_mul'): ast.Mul,
-        FQN('operator::f64_div'): ast.Div,
-        FQN('operator::f64_floordiv'): ast.FloorDiv,
-        FQN('operator::f64_eq'): ast.Eq,
-        FQN('operator::f64_ne'): ast.NotEq,
-        FQN('operator::f64_lt'): ast.Lt,
-        FQN('operator::f64_le'): ast.LtE,
-        FQN('operator::f64_gt'): ast.Gt,
-        FQN('operator::f64_ge'): ast.GtE,
+        FQN('operator::f64_add'): '+',
+        FQN('operator::f64_sub'): '-',
+        FQN('operator::f64_mul'): '*',
+        FQN('operator::f64_div'): '/',
+        FQN('operator::f64_floordiv'): '//',
+        FQN('operator::f64_eq'): '==',
+        FQN('operator::f64_ne'): '!=',
+        FQN('operator::f64_lt'): '<',
+        FQN('operator::f64_le'): '<=',
+        FQN('operator::f64_gt'): '>',
+        FQN('operator::f64_ge'): '>=',
     }
 
     def pprint_call_maybe(self, call: ast.Call) -> Optional[str]:
@@ -313,8 +295,8 @@ class SPyBackend:
         if fqn in self.FQN2BinOp:
             # `operator::i32_add`(a, b) --> "a + b"
             assert len(call.args) == 2
-            opclass = self.FQN2BinOp[fqn]
-            binop = opclass(call.loc, call.args[0], call.args[1])
+            op = self.FQN2BinOp[fqn]
+            binop = opclass(call.loc, op, call.args[0], call.args[1])
             return self.fmt_expr_BinOp(binop)
         elif fqn == FQN('operator::raise'):
             # `operator::raise('TypeError', ...)` -->."raise TypeError(...)"
