@@ -582,7 +582,7 @@ class Parser:
         # special-case -NUM
         if (opname == 'USub' and
             isinstance(value, spy.ast.Constant) and
-            isinstance(value.value, int)):
+            isinstance(value.value, (int, float))):
             return spy.ast.Constant(value.loc, -value.value)
         return spy.ast.UnaryOp(py_node.loc, op, value)
 

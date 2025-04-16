@@ -552,15 +552,20 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_negative_const(self):
-        # special case -NUM, so that it's seen as a constant by the rest of the code
+        # special case -NUM, so that it's seen as a constant by the rest of
+        # the code
         mod = self.parse(f"""
-        def foo() -> i32:
-            return -123
+        def foo() -> f64:
+            return -123 * -1.0
         """)
         stmt = mod.get_funcdef('foo').body[0]
         expected = """
         Return(
-            value=Constant(value=-123),
+            value=BinOp(
+                op='*',
+                left=Constant(value=-123),
+                right=Constant(value=-1.0),
+            ),
         )
         """
         self.assert_dump(stmt, expected)
