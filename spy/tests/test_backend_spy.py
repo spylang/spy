@@ -264,6 +264,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_aug_assign(self):
+        src = """
+        def foo() -> void:
+            x += 1
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_ptr(self):
         src = """
         from unsafe import ptr
