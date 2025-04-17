@@ -96,9 +96,13 @@ class TestMain:
         res, stdout = self.run(self.foo_spy)
         assert stdout == "hello world\n"
 
-    def test_redshift(self):
+    def test_redshift_dump_spy(self):
         res, stdout = self.run('--redshift', self.foo_spy)
         assert stdout.startswith('def add(x: i32, y: i32) -> i32:')
+
+    def test_redshift_dump_ast(self):
+        res, stdout = self.run('--redshift', '--parse', self.foo_spy)
+        assert stdout.startswith('`foo::add` = FuncDef(')
 
     def test_cwrite(self):
         res, stdout = self.run('--cwrite', '--build-dir', self.tmpdir, self.foo_spy)

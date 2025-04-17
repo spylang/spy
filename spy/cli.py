@@ -185,8 +185,8 @@ class Arguments:
             self.execute = True
         elif n == 1:
             pass # this is valid
-        elif actions == {"execute", "redshift"}:
-            pass # this is valid
+        elif actions == {"redshift", "execute"} or actions == {"redshift", "parse"}:
+            pass # these are valid
         else:
             msg = "Too many actions specified: "
             msg += " ".join(["--" + a for a in actions])
@@ -204,6 +204,16 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = 'full' if full_fqn else 'short'
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
+
+def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
+    w_mod = vm.modules_w[modname]
+    for fqn, w_obj in w_mod.items_w():
+        if (isinstance(w_obj, W_ASTFunc) and
+            w_obj.color == 'red' and
+            w_obj.fqn == fqn):
+            print(f'`{fqn}` = ', end='')
+            w_obj.funcdef.pp()
+            print()
 
 def pyproject_entry_point() -> Any:
     """
@@ -291,7 +301,7 @@ async def inner_main(args: Arguments) -> None:
         # For non-build operations, use the source directory
         builddir = srcdir
 
-    if args.parse or args.symtable:
+    if (args.parse and not args.redshift) or args.symtable:
         parser = Parser.from_filename(str(args.filename))
         mod = parser.parse()
         if args.parse:
@@ -323,7 +333,10 @@ async def inner_main(args: Arguments) -> None:
 
     vm.redshift(error_mode=args.error_mode)
     if args.redshift:
-        dump_spy_mod(vm, modname, args.full_fqn)
+        if args.parse:
+            dump_spy_mod_ast(vm, modname)
+        else:
+            dump_spy_mod(vm, modname, args.full_fqn)
         return
 
     compiler = Compiler(vm, modname, py.path.local(str(builddir)),
