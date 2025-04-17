@@ -442,7 +442,7 @@ class Parser:
         else:
             self.unsupported(py_target, 'assign to complex expressions')
 
-    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign):
+    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.AugAssign:
         py_target = py_node.target
         if isinstance(py_target, py_ast.Name):
             opname = type(py_node.op).__name__
