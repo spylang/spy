@@ -304,6 +304,28 @@ class AbstractFrame:
             )
             self._exec_assign(target, expr)
 
+    def exec_stmt_AugAssign(self, node: ast.AugAssign) -> None:
+        # XXX: eventually we want to support things like __IADD__ etc, but for
+        # now we just delegate to _ADD__.
+        assign = self._desugar_AugAssign(node)
+        self.exec_stmt_Assign(assign)
+
+    def _desugar_AugAssign(self, node: ast.AugAssign) -> ast.Assign:
+        # transform "x += 1" into "x = x + 1"
+        return ast.Assign(
+            loc = node.loc,
+            target = node.target,
+            value = ast.BinOp(
+                loc = node.loc,
+                op = node.op,
+                left = ast.Name(
+                    loc = node.target.loc,
+                    id = node.target.value
+                ),
+                right = node.value
+            )
+        )
+
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         wop_obj = self.eval_expr(node.target)
         wop_attr = self.eval_expr(node.attr)

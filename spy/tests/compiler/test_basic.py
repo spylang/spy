@@ -525,6 +525,16 @@ class TestBasic(CompilerTest):
         assert mod.mymin(20, 10) == 10
         assert mod.mymin(-5, 5) == -5
 
+    def test_aug_assign(self):
+        mod = self.compile("""
+        def foo(x: i32) -> i32:
+            x += 1
+            x *= 2
+            x -= 3
+            return x
+        """)
+        assert mod.foo(10) == ((10 + 1) * 2) - 3
+
     def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int

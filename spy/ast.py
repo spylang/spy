@@ -426,6 +426,11 @@ class UnpackAssign(Stmt):
     targets: list[StrConst]
     value: Expr
 
+@dataclass(eq=False)
+class AugAssign(Stmt):
+    op: str
+    target: StrConst
+    value: Expr
 
 @dataclass(eq=False)
 class SetAttr(Stmt):

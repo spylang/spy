@@ -442,6 +442,20 @@ class Parser:
         else:
             self.unsupported(py_target, 'assign to complex expressions')
 
+    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.AugAssign:
+        py_target = py_node.target
+        if isinstance(py_target, py_ast.Name):
+            opname = type(py_node.op).__name__
+            op = self._binops[opname]
+            return spy.ast.AugAssign(
+                loc = py_node.loc,
+                op = op,
+                target = spy.ast.StrConst(py_target.loc, py_target.id),
+                value = self.from_py_expr(py_node.value)
+            )
+        else:
+            self.unsupported(py_target, 'assign to complex expressions')
+
     def from_py_stmt_If(self, py_node: py_ast.If) -> spy.ast.If:
         return spy.ast.If(
             loc = py_node.loc,
