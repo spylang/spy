@@ -525,7 +525,7 @@ class TestBasic(CompilerTest):
         assert mod.mymin(20, 10) == 10
         assert mod.mymin(-5, 5) == -5
 
-    def test_inplace_assign(self):
+    def test_aug_assign(self):
         mod = self.compile("""
         def foo(x: i32) -> i32:
             x += 1

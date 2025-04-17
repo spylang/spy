@@ -427,7 +427,7 @@ class UnpackAssign(Stmt):
     value: Expr
 
 @dataclass(eq=False)
-class InplaceAssign(Stmt):
+class AugAssign(Stmt):
     op: str
     target: StrConst
     value: Expr

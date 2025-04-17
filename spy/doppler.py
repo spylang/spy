@@ -142,6 +142,10 @@ class DopplerFrame(ASTFrame):
         newvalue = self.shifted_expr[assign.value]
         return [assign.replace(value=newvalue)]
 
+    def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
+        assign = self._desugar_AugAssign(node)
+        return self.shift_stmt_Assign(assign)
+
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
         w_opimpl = self.opimpl[node]

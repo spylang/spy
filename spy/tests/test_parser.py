@@ -535,14 +535,14 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
-    def test_InplaceAssign(self, op):
+    def test_AugAssign(self, op):
         mod = self.parse(f"""
         def foo() -> void:
             x {op}= 42
         """)
         stmt = mod.get_funcdef('foo').body[0]
         expected = f"""
-        InplaceAssign(
+        AugAssign(
             op='{op}',
             target=StrConst(value='x'),
             value=Constant(value=42),

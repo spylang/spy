@@ -447,7 +447,7 @@ class Parser:
         if isinstance(py_target, py_ast.Name):
             opname = type(py_node.op).__name__
             op = self._binops[opname]
-            return spy.ast.InplaceAssign(
+            return spy.ast.AugAssign(
                 loc = py_node.loc,
                 op = op,
                 target = spy.ast.StrConst(py_target.loc, py_target.id),
