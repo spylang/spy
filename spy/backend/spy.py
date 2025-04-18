@@ -7,7 +7,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc, FuncParam
 from spy.vm.list import W_List
 from spy.vm.exc import W_Exception
-from spy.irgen.scope import SymTable
+from spy.analyze.scope import SymTable
 from spy.util import magic_dispatch
 from spy.textbuilder import TextBuilder
 

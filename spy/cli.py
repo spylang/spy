@@ -19,7 +19,7 @@ from spy.doppler import ErrorMode
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain, BUILD_TYPE
 from spy.textbuilder import Color
-from spy.irgen.scope import ScopeAnalyzer
+from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType

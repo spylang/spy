@@ -6,7 +6,7 @@ import dataclasses
 from dataclasses import dataclass, field
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.irgen.symtable import SymTable, Color
+from spy.analyze.symtable import SymTable, Color
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']

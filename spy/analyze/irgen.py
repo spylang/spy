@@ -3,7 +3,7 @@ import py.path
 import spy.ast
 from spy.fqn import FQN
 from spy.parser import Parser
-from spy.irgen.scope import ScopeAnalyzer
+from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.modframe import ModFrame
 
 from spy.vm.vm import SPyVM

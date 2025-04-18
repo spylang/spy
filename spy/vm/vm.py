@@ -91,7 +91,7 @@ class SPyVM:
         return SPyVM(ll=ll)
 
     def import_(self, modname: str) -> W_Module:
-        from spy.irgen.irgen import make_w_mod_from_file
+        from spy.analyze.irgen import make_w_mod_from_file
         if modname in self.modules_w:
             return self.modules_w[modname]
         # XXX for now we assume that we find the module as a single file in

@@ -28,7 +28,7 @@ from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
                     TYPE_CHECKING, Literal)
 from spy import ast
 from spy.location import Loc
-from spy.irgen.symtable import Symbol, Color
+from spy.analyze.symtable import Symbol, Color
 from spy.errors import SPyError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object, builtin_method

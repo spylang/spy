@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence, Literal
 from types import NoneType
 from spy import ast
-from spy.irgen.symtable import Symbol, Color
+from spy.analyze.symtable import Symbol, Color
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
