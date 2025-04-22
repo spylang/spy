@@ -1,7 +1,7 @@
 import pytest
 from spy.tests.support import CompilerTest, no_C, expect_errors
 
-class TestBasic(CompilerTest):
+class TestImporting(CompilerTest):
 
     def test_import(self):
         mod = self.compile("""
