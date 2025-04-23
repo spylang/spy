@@ -36,6 +36,7 @@ class NinjaWriter:
         self.target = target
         self.build_type = build_type
         self.build_dir = build_dir
+        self.out = None
 
     def libdir(self):
         t = self.target
@@ -65,13 +66,13 @@ class NinjaWriter:
         # target specific flags
         if self.target == 'native':
             CC = 'cc'
-            out = basename
+            self.out = basename
             extra_cflags = []
             extra_ldflags = []
 
         elif self.target == 'wasi-reactor':
             CC = 'zig cc'
-            out = basename + '.wasm'
+            self.out = basename + '.wasm'
             extra_cflags = WASM_CFLAGS + [
                 '--target=wasm32-wasi-musl',
                 '-mexec-model=reactor'
@@ -80,7 +81,7 @@ class NinjaWriter:
 
         elif self.target == 'wasi':
             CC = 'zig cc'
-            out = basename + '.wasm'
+            self.out = basename + '.wasm'
             extra_cflags = WASM_CFLAGS + [
                 '--target=wasm32-wasi-musl'
             ]
@@ -88,7 +89,7 @@ class NinjaWriter:
 
         elif self.target == 'emscripten':
             CC = 'emcc'
-            out = basename + '.mjs'
+            self.out = basename + '.mjs'
             post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
             extra_cflags = WASM_CFLAGS[:]
             extra_ldflags = [
@@ -138,10 +139,10 @@ class NinjaWriter:
                 f.write(f'build {o}: cc {c}\n')
 
             s_ofiles = ' '.join(ofiles)
-            f.write(f'build {out}: link {s_ofiles}\n')
-            f.write(f'default {out}\n')
+            f.write(f'build {self.out}: link {s_ofiles}\n')
+            f.write(f'default {self.out}\n')
 
-    def build(self) -> None:
+    def build(self) -> py.path.local:
         cmdline = ['ninja', '-C', str(self.build_dir)]
         #print(" ".join(cmdline))
         proc = subprocess.run(
@@ -160,4 +161,4 @@ class NinjaWriter:
             lines += errlines
             msg = '\n'.join(lines)
             raise Exception(msg)
-        #return file_out
+        return self.build_dir.join(self.out)

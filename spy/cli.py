@@ -360,12 +360,6 @@ async def inner_main(args: Arguments) -> None:
 
         cfiles = [file_c]
         ninja.write(basename, cfiles, wasm_exports=[])
-        ninja.build()
-
-        ## executable = compiler.cbuild(
-        ##     opt_level=args.opt_level,
-        ##     debug_symbols=args.debug_symbols,
-        ##     toolchain_type=args.toolchain,
-        ##     release_mode=args.release_mode,
-        ## )
-        ## print(f"Generated {executable}")
+        cwd = py.path.local('.')
+        executable = ninja.build().relto(cwd)
+        print(f"Generated {executable}")
