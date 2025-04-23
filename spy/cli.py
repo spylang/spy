@@ -18,6 +18,7 @@ from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain, BUILD_TYPE
+from spy.build.ninja import NinjaWriter
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
@@ -341,19 +342,30 @@ async def inner_main(args: Arguments) -> None:
 
     compiler = Compiler(vm, modname, py.path.local(str(builddir)),
                         dump_c=False)
+    build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
+    t = get_toolchain(args.toolchain, build_type=build_type)
+    file_c = compiler.cwrite(t.TARGET)
+
     if args.cwrite:
-        build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
-        t = get_toolchain(args.toolchain, build_type=build_type)
-        file_c = compiler.cwrite(t.TARGET)
         print(f"Generated {file_c}")
         if args.cdump:
             print(highlight_C_maybe(file_c.read()))
-
     else:
-        executable = compiler.cbuild(
-            opt_level=args.opt_level,
-            debug_symbols=args.debug_symbols,
-            toolchain_type=args.toolchain,
-            release_mode=args.release_mode,
+        basename = file_c.purebasename
+        ninja = NinjaWriter(
+            target = t.TARGET,
+            build_type = build_type,
+            build_dir = py.path.local(builddir),
         )
-        print(f"Generated {executable}")
+
+        cfiles = [file_c]
+        ninja.write(basename, cfiles, wasm_exports=[])
+        ninja.build()
+
+        ## executable = compiler.cbuild(
+        ##     opt_level=args.opt_level,
+        ##     debug_symbols=args.debug_symbols,
+        ##     toolchain_type=args.toolchain,
+        ##     release_mode=args.release_mode,
+        ## )
+        ## print(f"Generated {executable}")
