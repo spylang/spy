@@ -1,10 +1,10 @@
-from typing import Literal, Self
+from typing import Literal, Self, Optional
 import subprocess
 import textwrap
 import shlex
 import py.path
 import spy.libspy
-from spy.textbuilder import Color
+from spy.textbuilder import TextBuilder, Color
 
 TARGET = Literal['native', 'wasi', 'wasi-reactor', 'emscripten']
 BUILD_TYPE = Literal['release', 'debug']
@@ -28,6 +28,9 @@ class Flags:
 
     def __init__(self, *items: str) -> None:
         self._items = list(items)
+
+    def append(self, s: str) -> None:
+        self._items.append(s)
 
     def __iadd__(self, others: list[str]|Self) -> Self:
         if isinstance(others, Flags):
@@ -64,6 +67,13 @@ WASM_CFLAGS = Flags(
 
 
 class NinjaWriter:
+    target: TARGET
+    build_type: BUILD_TYPE
+    build_dir: py.path.local
+    CC: Optional[str]
+    out: Optional[str]
+    cflags: Flags
+    ldflags: Flags
 
     def __init__(
             self,
@@ -74,7 +84,10 @@ class NinjaWriter:
         self.target = target
         self.build_type = build_type
         self.build_dir = build_dir
+        self.cc = None
         self.out = None
+        self.cflags = Flags()
+        self.ldflags = Flags()
 
     def libdir(self):
         t = self.target
@@ -90,107 +103,127 @@ class NinjaWriter:
             wasm_exports: list[str] = [],
     ) -> None:
         # ======== compute cflags and ldflags ========
-        cflags = Flags()
-        ldflags = Flags()
-        extra_cflags = Flags()
-        extra_ldflags = Flags()
 
-        cflags += CFLAGS
+        self.cflags += CFLAGS
         if self.build_type == 'release':
-            cflags += RELEASE_CFLAGS
+            self.cflags += RELEASE_CFLAGS
         else:
-            cflags += DEBUG_CFLAGS
+            self.cflags += DEBUG_CFLAGS
 
         # XXX: we are abusing 'target' here: we should have the notion of
         # 'platform' (wasi, native, etc) and 'output_kind' (exe or lib)
         t = self.target
         if t == 'wasi-reactor':
             t = 'wasi'
-        cflags += [
+        self.cflags += [
             f'-DSPY_TARGET_{t.upper()}'
         ]
 
-        ldflags += [
+        self.ldflags += [
             '-L', str(self.libdir()),
             '-lspy'
         ]
 
         # target specific flags
         if self.target == 'native':
-            CC = 'cc'
+            self.CC = 'cc'
             self.out = basename
 
         elif self.target == 'wasi-reactor':
-            CC = 'zig cc'
+            self.CC = 'zig cc'
             self.out = basename + '.wasm'
-            extra_cflags += WASM_CFLAGS
-            extra_cflags += [
+            self.cflags += WASM_CFLAGS
+            self.cflags += [
                 '--target=wasm32-wasi-musl',
             ]
-            extra_ldflags += [
+            self.ldflags += [
                 '--target=wasm32-wasi-musl',
                 '-mexec-model=reactor'
             ]
-            extra_ldflags += [f'-Wl,--export={name}' for name in wasm_exports]
+            self.ldflags += [f'-Wl,--export={name}' for name in wasm_exports]
 
         elif self.target == 'wasi':
-            CC = 'zig cc'
+            self.CC = 'zig cc'
             self.out = basename + '.wasm'
-            extra_cflags = WASM_CFLAGS
-            extra_cflags += [
+            self.cflags += WASM_CFLAGS
+            self.cflags += [
                 '--target=wasm32-wasi-musl'
             ]
-            extra_ldflags += [
+            self.ldflags += [
                 '--target=wasm32-wasi-musl'
             ]
 
         elif self.target == 'emscripten':
-            CC = 'emcc'
+            self.CC = 'emcc'
             self.out = basename + '.mjs'
             post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
-            extra_cflags += WASM_CFLAGS
-            extra_ldflags += [
+            self.cflags += WASM_CFLAGS
+            self.ldflags += [
                 "-sWASM_BIGINT",
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 f"--extern-post-js={post_js}",
             ]
 
-        # ===== generate build.ninja =======
-
+        # generate build.ninja
         build_ninja = self.build_dir.join('build.ninja')
         with build_ninja.open('w') as f:
-            f.write(textwrap.dedent(f"""
-            cc = {CC}
+            if len(cfiles) == 1:
+                s = self.gen_build_ninja_single(cfiles[0])
+            else:
+                s = self.gen_build_ninja_many(cfiles)
+            f.write(s)
 
-            cflags = {cflags}
-            cflags = $cflags {extra_cflags}
+    def gen_build_ninja_single(self, cfile: py.path.local) -> str:
+        """
+        Generate a build.ninja optimized for a single .c file.
 
-            ldflags = {ldflags}
-            ldflags = $ldflags {extra_ldflags}
+        It collapses CC and LINK together, so avoid invoking it twice. This is
+        a tiny optimization but it's important because it's used by almost all
+        the tests, so it shaves several seconds from total testing time.
+        """
+        tb = TextBuilder()
+        tb.wb(f"""
+        cc = {self.CC}
+        cflags = {self.cflags}
+        ldflags = {self.ldflags}
 
-            rule cc
-              command = $cc $cflags -MMD -MF $out.d -c $in -o $out
-              description = CC $out
-              depfile = $out.d
-              deps = gcc
+        rule cc
+          command = $cc $in -o $out $cflags $ldflags
+          description = CC $out
+        """)
+        c = cfile.relto(self.build_dir)
+        tb.wl('')
+        tb.wl(f'build {self.out}: cc {c}')
+        tb.wl(f'default {self.out}')
+        return tb.build()
 
-            rule link
-              command = $cc $in -o $out $ldflags
-              description = LINK $out
-            """))
-            f.write('\n')
+    def gen_build_ninja_many(self, cfiles: list[py.path.local]) -> str:
+        tb = TextBuilder()
+        tb.wb(f"""
+        cc = {self.CC}
+        cflags = {self.cflags}
+        ldflags = {self.ldflags}
 
-            ofiles = []
-            for cfile in cfiles:
-                ofile = cfile.new(ext='.o')
-                c = cfile.relto(self.build_dir)
-                o = ofile.relto(self.build_dir)
-                ofiles.append(o)
-                f.write(f'build {o}: cc {c}\n')
+        rule cc
+          command = $cc $cflags -MMD -MF $out.d -c $in -o $out
+          description = CC $out
+          depfile = $out.d
+          deps = gcc
 
-            s_ofiles = ' '.join(ofiles)
-            f.write(f'build {self.out}: link {s_ofiles}\n')
-            f.write(f'default {self.out}\n')
+        rule link
+          command = $cc $in -o $out $ldflags
+          description = LINK $out
+        """)
+        tb.wl('')
+        ofiles = Flags()
+        for cfile in cfiles:
+            ofile = cfile.new(ext='.o')
+            c = cfile.relto(self.build_dir)
+            o = ofile.relto(self.build_dir)
+            ofiles.append(o)
+            tb.wl(f'build {o}: cc {c}')
+        tb.wl(f'build {self.out}: link {ofiles}')
+        tb.wl(f'default {self.out}')
 
     def build(self) -> py.path.local:
         cmdline = ['ninja', '-C', str(self.build_dir)]
