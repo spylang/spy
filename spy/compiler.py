@@ -57,19 +57,19 @@ class Compiler:
         return self.file_c
 
     def cbuild(self, *,
-               opt_level: int,
                build_target,
                build_type,
+               opt_level: int,
                ) -> py.path.local:
         """
         Build the .c file into a .wasm file or an executable
         """
         # XXX some of this logic is duplicated with cli.py
-        # XXX opt_level is ignored
         ninja = NinjaWriter(
             target = build_target,
             build_type = build_type,
-            build_dir = self.builddir
+            build_dir = self.builddir,
+            opt_level = opt_level,
         )
 
         file_c = self.cwrite(build_target)

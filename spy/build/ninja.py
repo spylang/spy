@@ -70,6 +70,7 @@ class NinjaWriter:
     target: TARGET
     build_type: BUILD_TYPE
     build_dir: py.path.local
+    opt_level: Optional[int]
     CC: Optional[str]
     out: Optional[str]
     cflags: Flags
@@ -77,13 +78,16 @@ class NinjaWriter:
 
     def __init__(
             self,
+            *,
             target: TARGET,
             build_type: BUILD_TYPE,
-            build_dir: py.path.local
+            build_dir: py.path.local,
+            opt_level: Optional[int] = None,
     ) -> None:
         self.target = target
         self.build_type = build_type
         self.build_dir = build_dir
+        self.opt_level = opt_level
         self.cc = None
         self.out = None
         self.cflags = Flags()
@@ -163,6 +167,9 @@ class NinjaWriter:
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 f"--extern-post-js={post_js}",
             ]
+
+        if self.opt_level is not None:
+            self.cflags += [f'-O{self.opt_level}']
 
         # generate build.ninja
         build_ninja = self.build_dir.join('build.ninja')

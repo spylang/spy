@@ -99,7 +99,7 @@ class CompilerTest:
     backend: Backend
     vm: SPyVM
 
-    OPT_LEVEL = 0
+    OPT_LEVEL: Optional[int] = None
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
@@ -142,7 +142,7 @@ class CompilerTest:
     def compile(
             self, src: str, modname: str = 'test',
             *,
-            opt_level=0, error_mode: ErrorMode='eager',
+            error_mode: ErrorMode='eager',
     ) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
