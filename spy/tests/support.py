@@ -173,9 +173,8 @@ class CompilerTest:
                                 dump_c=self.dump_c)
             file_wasm = compiler.cbuild(
                 opt_level=self.OPT_LEVEL,
-                debug_symbols=True,
-                release_mode=False,
-                toolchain_type=ToolchainType.zig,
+                build_target='wasi-reactor',
+                build_type='debug',
             )
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':

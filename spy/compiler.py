@@ -3,6 +3,7 @@ from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
 from spy.cbuild import get_toolchain, BUILD_TYPE
+from spy.build.ninja import NinjaWriter
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc
@@ -57,41 +58,45 @@ class Compiler:
 
     def cbuild(self, *,
                opt_level: int,
-               debug_symbols: bool,
-               release_mode: bool,
-               toolchain_type: ToolchainType,
+               build_target,
+               build_type,
                ) -> py.path.local:
         """
         Build the .c file into a .wasm file or an executable
         """
-        build_type: BUILD_TYPE = 'release' if release_mode else 'debug'
-        toolchain = get_toolchain(toolchain_type, build_type=build_type)
-        file_c = self.cwrite(toolchain.TARGET)
-        if toolchain.TARGET == 'wasi':
+        # XXX some of this logic is duplicated with cli.py
+        # XXX opt_level is ignored
+        ninja = NinjaWriter(
+            target = build_target,
+            build_type = build_type,
+            build_dir = self.builddir
+        )
+
+        file_c = self.cwrite(build_target)
+        basename = file_c.purebasename
+        cfiles = [file_c]
+
+        if build_target == 'wasi-reactor':
             # ok, this logic is wrong: we cannot know which names we want to
             # export by simply looking at their type: for example, in case of
             # variables we want to export "red variables" but we don't want to
             # export "blue variabes" (I guess?). For now, let's just include
             # red functions and integers
-            exports = [
+            wasm_exports = [
                 fqn.c_name
                 for fqn, w_obj in self.w_mod.items_w()
                 if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
                     isinstance(w_obj, W_I32))
             ]
-            file_wasm = toolchain.c2wasm(file_c, self.builddir,
-                                         exports=exports,
-                                         opt_level=opt_level,
-                                         debug_symbols=debug_symbols)
-            assert file_wasm == self.file_wasm
-            if DUMP_WASM:
-                print()
-                print(f'---- {self.file_wasm} ----')
-                os.system(f'wasm2wat {file_wasm}')
-            return file_wasm
         else:
-            file_exe = self.file_wasm.new(ext=toolchain.EXE_FILENAME_EXT)
-            toolchain.c2exe(file_c, file_exe,
-                            opt_level=opt_level,
-                            debug_symbols=debug_symbols)
-            return file_exe
+            wasm_exports = []
+
+        ninja.write(basename, cfiles, wasm_exports=wasm_exports)
+        cwd = py.path.local('.')
+        file_wasm = ninja.build()
+        assert file_wasm == self.file_wasm
+        if DUMP_WASM:
+            print()
+            print(f'---- {self.file_wasm} ----')
+            os.system(f'wasm2wat {file_wasm}')
+        return file_wasm

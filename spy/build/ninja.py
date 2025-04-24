@@ -1,6 +1,7 @@
-from typing import Literal
+from typing import Literal, Self
 import subprocess
 import textwrap
+import shlex
 import py.path
 import spy.libspy
 from spy.textbuilder import Color
@@ -8,21 +9,58 @@ from spy.textbuilder import Color
 TARGET = Literal['native', 'wasi', 'wasi-reactor', 'emscripten']
 BUILD_TYPE = Literal['release', 'debug']
 
-CFLAGS = [
+class Flags:
+    """
+    List of flags.
+
+    Notable features:
+      - str(l) returns a space-separated string of its items
+      - individual items are escaped for ninja syntax
+      - individual items are escaped ALSO for shell syntax.
+
+    E.g.:
+        flags = Flags(["a", "b", "c"])
+        assert str(flags) == "a b c"
+
+        flags = Flags(["spy_foo$bar"])
+        assert str(flags) == "'spy_foo$$bar'"
+    """
+
+    def __init__(self, *items: str) -> None:
+        self._items = list(items)
+
+    def __iadd__(self, others: list[str]|Self) -> Self:
+        if isinstance(others, Flags):
+            self._items += others._items
+        else:
+            self._items += others
+        return self
+
+    def __repr__(self) -> None:
+        return f'Flags({self._items})'
+
+    def __str__(self) -> str:
+        def escape(s: str) -> str:
+            return shlex.quote(s.replace('$', '$$'))
+        return ' '.join([escape(item) for item in self._items])
+
+
+CFLAGS = Flags(
     '--std=c99',
     '-Werror=implicit-function-declaration',
     '-Wfatal-errors',
     '-fdiagnostics-color=always', # force colors
     '-I', str(spy.libspy.INCLUDE),
-]
-RELEASE_CFLAGS = ['-DSPY_RELEASE', '-O3']
-DEBUG_CFLAGS   = ['-DSPY_DEBUG',   '-O0', '-g']
+)
+RELEASE_CFLAGS = Flags('-DSPY_RELEASE', '-O3')
+DEBUG_CFLAGS   = Flags('-DSPY_DEBUG',   '-O0', '-g')
 
-WASM_CFLAGS = [
+WASM_CFLAGS = Flags(
     '-mmultivalue',
     '-Xclang', '-target-abi',
     '-Xclang', 'experimental-mv'
-]
+)
+
 
 
 class NinjaWriter:
@@ -52,47 +90,66 @@ class NinjaWriter:
             wasm_exports: list[str] = [],
     ) -> None:
         # ======== compute cflags and ldflags ========
-        cflags = CFLAGS[:]
+        cflags = Flags()
+        ldflags = Flags()
+        extra_cflags = Flags()
+        extra_ldflags = Flags()
+
+        cflags += CFLAGS
         if self.build_type == 'release':
             cflags += RELEASE_CFLAGS
         else:
             cflags += DEBUG_CFLAGS
+
+        # XXX: we are abusing 'target' here: we should have the notion of
+        # 'platform' (wasi, native, etc) and 'output_kind' (exe or lib)
+        t = self.target
+        if t == 'wasi-reactor':
+            t = 'wasi'
         cflags += [
-            f'-DSPY_TARGET_{self.target.upper()}'
+            f'-DSPY_TARGET_{t.upper()}'
         ]
 
-        ldflags = ['-L', str(self.libdir()), '-lspy']
+        ldflags += [
+            '-L', str(self.libdir()),
+            '-lspy'
+        ]
 
         # target specific flags
         if self.target == 'native':
             CC = 'cc'
             self.out = basename
-            extra_cflags = []
-            extra_ldflags = []
 
         elif self.target == 'wasi-reactor':
             CC = 'zig cc'
             self.out = basename + '.wasm'
-            extra_cflags = WASM_CFLAGS + [
+            extra_cflags += WASM_CFLAGS
+            extra_cflags += [
+                '--target=wasm32-wasi-musl',
+            ]
+            extra_ldflags += [
                 '--target=wasm32-wasi-musl',
                 '-mexec-model=reactor'
             ]
-            extra_ldflags = [f'-Wl,--export={name}' for name in wasm_exports]
+            extra_ldflags += [f'-Wl,--export={name}' for name in wasm_exports]
 
         elif self.target == 'wasi':
             CC = 'zig cc'
             self.out = basename + '.wasm'
-            extra_cflags = WASM_CFLAGS + [
+            extra_cflags = WASM_CFLAGS
+            extra_cflags += [
                 '--target=wasm32-wasi-musl'
             ]
-            extra_ldflags = []
+            extra_ldflags += [
+                '--target=wasm32-wasi-musl'
+            ]
 
         elif self.target == 'emscripten':
             CC = 'emcc'
             self.out = basename + '.mjs'
             post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
-            extra_cflags = WASM_CFLAGS[:]
-            extra_ldflags = [
+            extra_cflags += WASM_CFLAGS
+            extra_ldflags += [
                 "-sWASM_BIGINT",
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 f"--extern-post-js={post_js}",
@@ -101,22 +158,15 @@ class NinjaWriter:
         # ===== generate build.ninja =======
 
         build_ninja = self.build_dir.join('build.ninja')
-        #cfiles = [f.relto(self.build_dir) for f in cfiles]
-
-        s_cflags = ' '.join(cflags)
-        s_ldflags = ' '.join(ldflags)
-        s_extra_cflags = ' '.join(extra_cflags)
-        s_extra_ldflags = ' '.join(extra_ldflags)
-
         with build_ninja.open('w') as f:
             f.write(textwrap.dedent(f"""
             cc = {CC}
 
-            cflags = {s_cflags}
-            cflags = $cflags {s_extra_cflags}
+            cflags = {cflags}
+            cflags = $cflags {extra_cflags}
 
-            ldflags = {s_ldflags}
-            ldflags = $ldflags {s_extra_ldflags}
+            ldflags = {ldflags}
+            ldflags = $ldflags {extra_ldflags}
 
             rule cc
               command = $cc $cflags -MMD -MF $out.d -c $in -o $out
