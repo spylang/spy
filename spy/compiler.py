@@ -3,7 +3,7 @@ from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
 from spy.cbuild import get_toolchain, BUILD_TYPE
-from spy.build.ninja import NinjaWriter
+from spy.build.ninja import NinjaWriter, BuildConfig
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_ASTFunc
@@ -56,27 +56,21 @@ class Compiler:
         #
         return self.file_c
 
-    def cbuild(self, *,
-               build_target,
-               build_type,
-               opt_level: int,
-               ) -> py.path.local:
+    def cbuild(self, *, config: BuildConfig) -> py.path.local:
         """
         Build the .c file into a .wasm file or an executable
         """
         # XXX some of this logic is duplicated with cli.py
         ninja = NinjaWriter(
-            target = build_target,
-            build_type = build_type,
+            config = config,
             build_dir = self.builddir,
-            opt_level = opt_level,
         )
 
-        file_c = self.cwrite(build_target)
+        file_c = self.cwrite(config.target)
         basename = file_c.purebasename
         cfiles = [file_c]
 
-        if build_target == 'wasi-reactor':
+        if config.target == 'wasi' and config.kind == 'lib':
             # ok, this logic is wrong: we cannot know which names we want to
             # export by simply looking at their type: for example, in case of
             # variables we want to export "red variables" but we don't want to
@@ -92,7 +86,6 @@ class Compiler:
             wasm_exports = []
 
         ninja.write(basename, cfiles, wasm_exports=wasm_exports)
-        cwd = py.path.local('.')
         file_wasm = ninja.build()
         assert file_wasm == self.file_wasm
         if DUMP_WASM:

@@ -6,6 +6,7 @@ import pytest
 import py.path
 from spy import ast
 from spy.compiler import Compiler, ToolchainType
+from spy.build.ninja import BuildConfig
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.doppler import ErrorMode
@@ -172,9 +173,12 @@ class CompilerTest:
             compiler = Compiler(self.vm, modname, self.builddir,
                                 dump_c=self.dump_c)
             file_wasm = compiler.cbuild(
-                opt_level=self.OPT_LEVEL,
-                build_target='wasi-reactor',
-                build_type='debug',
+                config = BuildConfig(
+                    target = 'wasi',
+                    kind = 'lib',
+                    build_type = 'debug',
+                    opt_level = self.OPT_LEVEL,
+                ),
             )
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':

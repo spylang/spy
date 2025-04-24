@@ -1,4 +1,5 @@
 from typing import Literal, Self, Optional
+from dataclasses import dataclass
 import subprocess
 import textwrap
 import shlex
@@ -6,8 +7,13 @@ import py.path
 import spy.libspy
 from spy.textbuilder import TextBuilder, Color
 
-TARGET = Literal['native', 'wasi', 'wasi-reactor', 'emscripten']
-BUILD_TYPE = Literal['release', 'debug']
+@dataclass
+class BuildConfig:
+    target: Literal['native', 'wasi', 'emscripten']
+    kind: Literal['exe', 'lib']
+    build_type: Literal['release', 'debug']
+    opt_level: Optional[int] = None
+
 
 class Flags:
     """
@@ -67,37 +73,26 @@ WASM_CFLAGS = Flags(
 
 
 class NinjaWriter:
-    target: TARGET
-    build_type: BUILD_TYPE
+    config: BuildConfig
     build_dir: py.path.local
-    opt_level: Optional[int]
     CC: Optional[str]
     out: Optional[str]
     cflags: Flags
     ldflags: Flags
 
-    def __init__(
-            self,
-            *,
-            target: TARGET,
-            build_type: BUILD_TYPE,
-            build_dir: py.path.local,
-            opt_level: Optional[int] = None,
-    ) -> None:
-        self.target = target
-        self.build_type = build_type
+    def __init__(self, config: BuildConfig, build_dir: py.path.local) -> None:
+        # for now, we support only some combinations of target/kind
+        if config.kind == 'lib':
+            assert config.target == 'wasi'
+        self.config = config
         self.build_dir = build_dir
-        self.opt_level = opt_level
         self.cc = None
         self.out = None
         self.cflags = Flags()
         self.ldflags = Flags()
 
     def libdir(self):
-        t = self.target
-        if t == 'wasi-reactor':
-            t = 'wasi'
-        return spy.libspy.BUILD.join(t, self.build_type)
+        return spy.libspy.BUILD.join(self.config.target, self.config.build_type)
 
     def write(
             self,
@@ -109,19 +104,13 @@ class NinjaWriter:
         # ======== compute cflags and ldflags ========
 
         self.cflags += CFLAGS
-        if self.build_type == 'release':
+        self.cflags += [
+            f'-DSPY_TARGET_{self.config.target.upper()}'
+        ]
+        if self.config.build_type == 'release':
             self.cflags += RELEASE_CFLAGS
         else:
             self.cflags += DEBUG_CFLAGS
-
-        # XXX: we are abusing 'target' here: we should have the notion of
-        # 'platform' (wasi, native, etc) and 'output_kind' (exe or lib)
-        t = self.target
-        if t == 'wasi-reactor':
-            t = 'wasi'
-        self.cflags += [
-            f'-DSPY_TARGET_{t.upper()}'
-        ]
 
         self.ldflags += [
             '-L', str(self.libdir()),
@@ -129,24 +118,11 @@ class NinjaWriter:
         ]
 
         # target specific flags
-        if self.target == 'native':
+        if self.config.target == 'native':
             self.CC = 'cc'
             self.out = basename
 
-        elif self.target == 'wasi-reactor':
-            self.CC = 'zig cc'
-            self.out = basename + '.wasm'
-            self.cflags += WASM_CFLAGS
-            self.cflags += [
-                '--target=wasm32-wasi-musl',
-            ]
-            self.ldflags += [
-                '--target=wasm32-wasi-musl',
-                '-mexec-model=reactor'
-            ]
-            self.ldflags += [f'-Wl,--export={name}' for name in wasm_exports]
-
-        elif self.target == 'wasi':
+        elif self.config.target == 'wasi':
             self.CC = 'zig cc'
             self.out = basename + '.wasm'
             self.cflags += WASM_CFLAGS
@@ -156,8 +132,15 @@ class NinjaWriter:
             self.ldflags += [
                 '--target=wasm32-wasi-musl'
             ]
+            if self.config.kind == 'lib':
+                self.ldflags += [
+                    '-mexec-model=reactor'
+                ]
+                self.ldflags += [
+                    f'-Wl,--export={name}' for name in wasm_exports
+                ]
 
-        elif self.target == 'emscripten':
+        elif self.config.target == 'emscripten':
             self.CC = 'emcc'
             self.out = basename + '.mjs'
             post_js = spy.libspy.SRC.join('emscripten_extern_post.js')
@@ -168,7 +151,7 @@ class NinjaWriter:
                 f"--extern-post-js={post_js}",
             ]
 
-        if self.opt_level is not None:
+        if self.config.opt_level is not None:
             self.cflags += [f'-O{self.opt_level}']
 
         # generate build.ninja
