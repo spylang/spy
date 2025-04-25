@@ -41,8 +41,7 @@ class CModuleWriter:
 
     def __init__(self, vm: SPyVM, w_mod: W_Module,
                  spyfile: py.path.local,
-                 cfile: py.path.local,
-                 target: str) -> None:
+                 cfile: py.path.local) -> None:
         self.ctx = Context(vm)
         self.w_mod = w_mod
         self.spyfile = spyfile

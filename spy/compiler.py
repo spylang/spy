@@ -23,73 +23,74 @@ class Compiler:
     Take a module inside a VM and compile it to C/WASM.
     """
     vm: SPyVM
-    w_mod: W_Module
-    builddir: py.path.local
-    file_c: py.path.local    # output file
-    file_wasm: py.path.local # output file
+    build_dir: py.path.local
+    outname: str
+    dump_c: bool
 
-    def __init__(self, vm: SPyVM, modname: str,
-                 builddir: py.path.local,
-                 *,
-                 dump_c: bool) -> None:
+    def __init__(
+            self,
+            vm: SPyVM,
+            build_dir: py.path.local,
+            *,
+            outname: str,
+            dump_c: bool
+    ) -> None:
         self.vm = vm
+        self.build_dir = build_dir
+        self.outname = outname
         self.dump_c = dump_c
-        self.w_mod = vm.modules_w[modname]
-        basename = modname
-        self.builddir = builddir
-        self.file_c = builddir.join(f'{basename}.c')
-        self.file_wasm = builddir.join(f'{basename}.wasm')
 
-    def cwrite(self, target: str) -> py.path.local:
+    def cwrite(self) -> py.path.local:
         """
-        Convert the W_Module into a .c file
+        Convert all non-builtins modules into .c files
         """
-        file_spy = py.path.local(self.w_mod.filepath)
-        self.cwriter = CModuleWriter(self.vm, self.w_mod, file_spy, self.file_c,
-                                     target)
-        self.cwriter.write_c_source()
-        #
-        if self.dump_c:
-            print()
-            print(f'---- {self.file_c} ----')
-            print(highlight_C_maybe(self.file_c.read()))
-        #
-        return self.file_c
+        cfiles = []
+        for modname, w_mod in self.vm.modules_w.items():
+            if w_mod.is_builtin():
+                continue
 
-    def cbuild(self, *, config: BuildConfig) -> py.path.local:
-        """
-        Build the .c file into a .wasm file or an executable
-        """
-        # XXX some of this logic is duplicated with cli.py
-        ninja = NinjaWriter(
-            config = config,
-            build_dir = self.builddir,
-        )
+            file_spy = py.path.local(w_mod.filepath)
+            basename = file_spy.purebasename
+            file_c = self.build_dir.join(f'{basename}.c')
+            cwriter = CModuleWriter(self.vm, w_mod, file_spy, file_c)
+            cwriter.write_c_source()
+            cfiles.append(file_c)
+            #
+            if self.dump_c:
+                print()
+                print(f'---- {file_c} ----')
+                print(highlight_C_maybe(file_c.read()))
+        return cfiles
 
-        file_c = self.cwrite(config.target)
-        basename = file_c.purebasename
-        cfiles = [file_c]
-
+    def build(self, config: BuildConfig) -> py.path.local:
+        wasm_exports = []
         if config.target == 'wasi' and config.kind == 'lib':
-            # ok, this logic is wrong: we cannot know which names we want to
-            # export by simply looking at their type: for example, in case of
-            # variables we want to export "red variables" but we don't want to
-            # export "blue variabes" (I guess?). For now, let's just include
-            # red functions and integers
-            wasm_exports = [
+            wasm_exports = self.get_wasm_exports()
+        cfiles = self.cwrite()
+
+        ninja = NinjaWriter(config, self.build_dir)
+        ninja.write(self.outname, cfiles, wasm_exports=wasm_exports)
+        outfile = ninja.build()
+        if DUMP_WASM and outfile.ext == '.wasm':
+            print()
+            print(f'---- {outfile} ----')
+            os.system(f'wasm2wat {outfile}')
+        return outfile
+
+    def get_wasm_exports(self) -> list[str]:
+        # ok, this logic is wrong: we cannot know which names we want to
+        # export by simply looking at their type: for example, in case of
+        # variables we want to export "red variables" but we don't want to
+        # export "blue variabes" (I guess?). For now, let's just include
+        # red functions and integers
+        wasm_exports = []
+        for modname, w_mod in self.vm.modules_w.items():
+            if w_mod.is_builtin():
+                continue
+            wasm_exports += [
                 fqn.c_name
-                for fqn, w_obj in self.w_mod.items_w()
+                for fqn, w_obj in w_mod.items_w()
                 if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
                     isinstance(w_obj, W_I32))
             ]
-        else:
-            wasm_exports = []
-
-        ninja.write(basename, cfiles, wasm_exports=wasm_exports)
-        file_wasm = ninja.build()
-        assert file_wasm == self.file_wasm
-        if DUMP_WASM:
-            print()
-            print(f'---- {self.file_wasm} ----')
-            os.system(f'wasm2wat {file_wasm}')
-        return file_wasm
+        return wasm_exports

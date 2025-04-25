@@ -18,17 +18,23 @@ if TYPE_CHECKING:
 class W_Module(W_Object):
     vm: 'SPyVM'
     name: str
-    filepath: str
+    filepath: Optional[str]
     _frozen: bool
     __spy_storage_category__ = 'reference'
 
-    def __init__(self, vm: 'SPyVM', name: str, filepath: str) -> None:
+    def __init__(self, vm: 'SPyVM', name: str, filepath: Optional[str]) -> None:
         self.vm = vm
         self.name = name
         self.filepath = filepath
 
     def __repr__(self) -> str:
-        return f'<spy module {self.name}>'
+        if self.filepath is None:
+            return f'<spy module {self.name} (builtin)>'
+        else:
+            return f'<spy module {self.name}>'
+
+    def is_builtin(self) -> bool:
+        return self.filepath is None
 
     # ==== applevel interface =====
 

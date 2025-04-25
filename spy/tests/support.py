@@ -170,16 +170,19 @@ class CompilerTest:
             return interp_mod
         elif self.backend == 'C':
             self.vm.redshift(error_mode=error_mode)
-            compiler = Compiler(self.vm, modname, self.builddir,
-                                dump_c=self.dump_c)
-            file_wasm = compiler.cbuild(
-                config = BuildConfig(
-                    target = 'wasi',
-                    kind = 'lib',
-                    build_type = 'debug',
-                    opt_level = self.OPT_LEVEL,
-                ),
+            config = BuildConfig(
+                target = 'wasi',
+                kind = 'lib',
+                build_type = 'debug',
+                opt_level = self.OPT_LEVEL,
             )
+            compiler = Compiler(
+                self.vm,
+                self.builddir,
+                outname=modname,
+                dump_c=self.dump_c
+            )
+            file_wasm = compiler.build(config)
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift(error_mode=error_mode)
