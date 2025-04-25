@@ -186,17 +186,20 @@ class CompilerTest:
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift(error_mode=error_mode)
-            if self.dump_redshift:
-                self.dump_module(modname)
-            compiler = Compiler(self.vm, modname, self.builddir,
-                                dump_c=self.dump_c)
-            file_js = compiler.cbuild(
-                opt_level=self.OPT_LEVEL,
-                debug_symbols=True,
-                release_mode=False,
-                toolchain_type = 'emscripten'
+            config = BuildConfig(
+                target = 'emscripten',
+                kind = 'exe',
+                build_type = 'debug',
+                opt_level = self.OPT_LEVEL
             )
-            return ExeWrapper(file_js)
+            compiler = Compiler(
+                self.vm,
+                modname,
+                self.builddir,
+                dump_c=self.dump_c
+            )
+            file_mjs = compiler.build(config)
+            return ExeWrapper(file_mjs)
         else:
             assert False, f'Unknown backend: {self.backend}'
 
