@@ -38,11 +38,6 @@ class TestMain:
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         self.runner = CliRunner()
-        self.foo_spy = tmpdir.join('foo.spy')
-        self.foo_spy.write(textwrap.dedent("""
-        def add(x: i32, y: i32) -> i32:
-            return x + y
-        """))
         self.main_spy = tmpdir.join('main.spy')
         self.main_spy.write(textwrap.dedent("""
         def main() -> void:
@@ -81,56 +76,56 @@ class TestMain:
         return exit_code, decolorize(stdout)
 
     def test_pyparse(self):
-        res, stdout = self.run('--pyparse', self.foo_spy)
+        res, stdout = self.run('--pyparse', self.main_spy)
         assert stdout.startswith('py:Module(')
 
     def test_parse(self):
-        res, stdout = self.run('--parse', self.foo_spy)
+        res, stdout = self.run('--parse', self.main_spy)
         assert stdout.startswith('Module(')
 
     def test_execute(self):
-        self.foo_spy.write(textwrap.dedent("""
-        def main() -> void:
-            print("hello world")
-        """))
-        res, stdout = self.run(self.foo_spy)
+        res, stdout = self.run(self.main_spy)
         assert stdout == "hello world\n"
 
     def test_redshift_dump_spy(self):
-        res, stdout = self.run('--redshift', self.foo_spy)
-        assert stdout.startswith('def add(x: i32, y: i32) -> i32:')
+        res, stdout = self.run('--redshift', self.main_spy)
+        assert stdout.startswith('def main() -> void:')
 
     def test_redshift_dump_ast(self):
-        res, stdout = self.run('--redshift', '--parse', self.foo_spy)
-        assert stdout.startswith('`foo::add` = FuncDef(')
+        res, stdout = self.run('--redshift', '--parse', self.main_spy)
+        assert stdout.startswith('`main::main` = FuncDef(')
 
     def test_cwrite(self):
-        res, stdout = self.run('--cwrite', '--build-dir', self.tmpdir, self.foo_spy)
-        foo_c = self.tmpdir.join('foo.c')
-        assert foo_c.exists()
-        csrc = foo_c.read()
-        assert csrc.startswith('#include "foo.h"')
+        res, stdout = self.run(
+            '--cwrite',
+            '--build-dir', self.tmpdir,
+            self.main_spy
+        )
+        main_c = self.tmpdir.join('main.c')
+        assert main_c.exists()
+        csrc = main_c.read()
+        assert csrc.startswith('#include "main.h"')
 
-    def test_build_wasm(self):
-        res, stdout = self.run("--compile", '--build-dir', self.tmpdir, self.foo_spy)
-        foo_wasm = self.tmpdir.join('foo.wasm')
-        assert foo_wasm.exists()
-        wasm_bytes = foo_wasm.read_binary()
-        assert wasm_bytes.startswith(b'\0asm')
-
-    @pytest.mark.parametrize("toolchain", [
+    @pytest.mark.parametrize("target", [
         pytest.param("native"),
+        pytest.param("wasi"),
         pytest.param("emscripten", marks=pytest.mark.emscripten)
     ])
-    def test_build(self, toolchain):
-        res, stdout = self.run("--compile",
-                               "--toolchain", toolchain,
-                               "--build-dir", self.tmpdir,
-                               self.main_spy)
-        if toolchain == 'native':
+    def test_build(self, target):
+        res, stdout = self.run(
+            "--compile",
+            "--target", target,
+            "--build-dir", self.tmpdir,
+            self.main_spy
+        )
+        if target == 'native':
             main_exe = self.tmpdir.join('main')
             assert main_exe.exists()
             cmd = str(main_exe)
+        elif target == 'wasi':
+            main_wasm = self.tmpdir.join('main.wasm')
+            assert main_wasm.exists()
+            cmd = f'wasmtime {main_wasm}'
         else:
             main_js = self.tmpdir.join('main.mjs')
             main_wasm = self.tmpdir.join('main.wasm')
