@@ -7,13 +7,13 @@ import py.path
 import spy.libspy
 from spy.textbuilder import TextBuilder, Color
 
-TargetType = Literal['native', 'wasi', 'emscripten']
+BuildTarget = Literal['native', 'wasi', 'emscripten']
 OutputKind = Literal['exe', 'lib']
 BuildType = Literal['release', 'debug']
 
 @dataclass
 class BuildConfig:
-    target: TargetType
+    target: BuildTarget
     kind: OutputKind
     build_type: BuildType
     opt_level: Optional[int] = None
@@ -85,7 +85,7 @@ class NinjaWriter:
     def __init__(self, config: BuildConfig, build_dir: py.path.local) -> None:
         # for now, we support only some combinations of target/kind
         if config.kind == 'lib':
-            assert config.target == 'wasi'
+            assert config.target in ('wasi', 'emscripten')
         self.config = config
         self.build_dir = build_dir
         self.CC = None
@@ -104,7 +104,6 @@ class NinjaWriter:
             wasm_exports: list[str] = [],
     ) -> None:
         # ======== compute cflags and ldflags ========
-
         self.cflags += CFLAGS
         self.cflags += [
             f'-DSPY_TARGET_{self.config.target.upper()}'
@@ -152,6 +151,10 @@ class NinjaWriter:
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 f"--extern-post-js={post_js}",
             ]
+            if self.config.kind == 'lib':
+                self.ldflags += [
+                    f'-Wl,--export={name}' for name in wasm_exports
+                ]
 
         else:
             assert False, f'Invalid target: {self.config.target}'
@@ -187,6 +190,9 @@ class NinjaWriter:
           description = CC $out
         """)
         c = cfile.relto(self.build_dir)
+        if c == '':
+            # this means that cfile is not inside build_dir, use abspath
+            c = str(cfile)
         tb.wl('')
         tb.wl(f'build {self.out}: cc {c}')
         tb.wl(f'default {self.out}')

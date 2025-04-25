@@ -6,11 +6,10 @@ import pytest
 import py.path
 from spy import ast
 from spy.compiler import Compiler
-from spy.build.ninja import BuildConfig
+from spy.build.ninja import BuildConfig, OutputKind, BuildTarget, NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.doppler import ErrorMode
-from spy.cbuild import Toolchain, ZigToolchain, EmscriptenToolchain
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -306,14 +305,14 @@ class ExeWrapper:
 @pytest.mark.usefixtures('init')
 class CTest:
     tmpdir: Any
-    toolchain: Toolchain
+    target: BuildTarget
 
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
-        # NOTE: toolchain is overwritten by TestLLWasm.init_llwasm
-        self.toolchain = ZigToolchain('debug')
-        self.builddir = self.tmpdir.join('build').ensure(dir=True)
+        # NOTE: target is overwritten by TestLLWasm.init_llwasm
+        self.target = 'wasi'
+        self.build_dir = self.tmpdir.join('build').ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:
         src = textwrap.dedent(src)
@@ -321,26 +320,13 @@ class CTest:
         test_c.write(src)
         return test_c
 
-    def compile_wasm(self, src: str, *,
-                     exports: Optional[list[str]] = None) -> py.path.local:
-        test_c = self.write(src)
-        return self.toolchain.c2wasm(
-            test_c,
-            self.builddir,
-            exports=exports,
-            opt_level=0,
-            debug_symbols=True,
+    def c_compile(self, src: str, *, exports: list[str] = []) -> py.path.local:
+        config = BuildConfig(
+            target = self.target,
+            kind = 'lib',
+            build_type = 'debug'
         )
-
-    def compile_exe(self, src: str) -> py.path.local:
-        # XXX: we should make this more similar to compile_wasm
         test_c = self.write(src)
-        ext = self.toolchain.EXE_FILENAME_EXT
-        test_exe = self.builddir.join('test' + ext)
-        self.toolchain.c2exe(
-            test_c,
-            test_exe,
-            opt_level=0,
-            debug_symbols=True,
-        )
-        return test_exe
+        ninja = NinjaWriter(config, self.build_dir)
+        ninja.write('test', [test_c], wasm_exports=exports)
+        return ninja.build()

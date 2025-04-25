@@ -17,7 +17,7 @@ from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.compiler import Compiler
-from spy.build.ninja import BuildConfig, TargetType
+from spy.build.ninja import BuildConfig, BuildTarget
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
@@ -130,11 +130,11 @@ class Arguments:
     ] = False
 
     target: Annotated[
-        TargetType,
+        BuildTarget,
         Option(
             "-t", "--target",
             help="Compilation target",
-            click_type=click.Choice(TargetType.__args__),
+            click_type=click.Choice(BuildTarget.__args__),
         )
     ] = 'native'
 
