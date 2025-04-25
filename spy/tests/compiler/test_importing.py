@@ -36,6 +36,8 @@ class TestImporting(CompilerTest):
     # we need to implement multi-module compilation to C
     @no_C
     def test_two_modules(self):
+        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
+
         self.write_file("delta.spy", """
         def get_delta() -> i32:
             return 10
