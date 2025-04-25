@@ -18,7 +18,7 @@ from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.compiler import Compiler, ToolchainType
 from spy.cbuild import get_toolchain, BUILD_TYPE
-from spy.build.ninja import NinjaWriter
+from spy.build.ninja import BuildConfig, TargetType
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
@@ -130,13 +130,14 @@ class Arguments:
         )
     ] = False
 
-    toolchain: Annotated[
-        ToolchainType,
+    target: Annotated[
+        TargetType,
         Option(
-            "-t", "--toolchain",
-            help="which compiler to use"
+            "-t", "--target",
+            help="Compilation target",
+            click_type=click.Choice(TargetType.__args__),
         )
-    ] = ToolchainType.zig
+    ] = 'native'
 
     error_mode: Annotated[
         ErrorMode,
@@ -340,26 +341,25 @@ async def inner_main(args: Arguments) -> None:
             dump_spy_mod(vm, modname, args.full_fqn)
         return
 
-    compiler = Compiler(vm, modname, py.path.local(str(builddir)),
-                        dump_c=False)
-    build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
-    t = get_toolchain(args.toolchain, build_type=build_type)
-    file_c = compiler.cwrite(t.TARGET)
+    dump_c = args.cwrite and args.cdump
+    compiler = Compiler(
+        vm,
+        modname,
+        py.path.local(str(builddir)),
+        dump_c=dump_c
+    )
+    cfiles = compiler.cwrite()
+    cwd = py.path.local('.')
 
     if args.cwrite:
-        print(f"Generated {file_c}")
-        if args.cdump:
-            print(highlight_C_maybe(file_c.read()))
+        cfiles_s = ', '.join([f.relto(cwd) for f in cfiles])
+        print(f"Generated {cfiles_s}")
     else:
-        basename = file_c.purebasename
-        ninja = NinjaWriter(
-            target = t.TARGET,
-            build_type = build_type,
-            build_dir = py.path.local(builddir),
+        config = BuildConfig(
+            target = args.target,
+            kind = 'exe',
+            build_type = "release" if args.release_mode else "debug"
         )
-
-        cfiles = [file_c]
-        ninja.write(basename, cfiles, wasm_exports=[])
-        cwd = py.path.local('.')
-        executable = ninja.build().relto(cwd)
+        outfile = compiler.build(config)
+        executable = outfile.relto(cwd)
         print(f"Generated {executable}")

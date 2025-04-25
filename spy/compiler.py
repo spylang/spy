@@ -30,9 +30,9 @@ class Compiler:
     def __init__(
             self,
             vm: SPyVM,
+            outname: str,
             build_dir: py.path.local,
             *,
-            outname: str,
             dump_c: bool
     ) -> None:
         self.vm = vm

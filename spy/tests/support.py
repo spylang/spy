@@ -178,8 +178,8 @@ class CompilerTest:
             )
             compiler = Compiler(
                 self.vm,
+                modname,
                 self.builddir,
-                outname=modname,
                 dump_c=self.dump_c
             )
             file_wasm = compiler.build(config)

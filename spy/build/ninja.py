@@ -7,11 +7,15 @@ import py.path
 import spy.libspy
 from spy.textbuilder import TextBuilder, Color
 
+TargetType = Literal['native', 'wasi', 'emscripten']
+OutputKind = Literal['exe', 'lib']
+BuildType = Literal['release', 'debug']
+
 @dataclass
 class BuildConfig:
-    target: Literal['native', 'wasi', 'emscripten']
-    kind: Literal['exe', 'lib']
-    build_type: Literal['release', 'debug']
+    target: TargetType
+    kind: OutputKind
+    build_type: BuildType
     opt_level: Optional[int] = None
 
 
@@ -70,8 +74,6 @@ WASM_CFLAGS = Flags(
     '-Xclang', 'experimental-mv'
 )
 
-
-
 class NinjaWriter:
     config: BuildConfig
     build_dir: py.path.local
@@ -86,7 +88,7 @@ class NinjaWriter:
             assert config.target == 'wasi'
         self.config = config
         self.build_dir = build_dir
-        self.cc = None
+        self.CC = None
         self.out = None
         self.cflags = Flags()
         self.ldflags = Flags()
@@ -150,6 +152,9 @@ class NinjaWriter:
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 f"--extern-post-js={post_js}",
             ]
+
+        else:
+            assert False, f'Invalid target: {self.config.target}'
 
         if self.config.opt_level is not None:
             self.cflags += [f'-O{self.opt_level}']
