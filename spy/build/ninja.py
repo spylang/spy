@@ -157,7 +157,7 @@ class NinjaWriter:
             assert False, f'Invalid target: {self.config.target}'
 
         if self.config.opt_level is not None:
-            self.cflags += [f'-O{self.opt_level}']
+            self.cflags += [f'-O{self.config.opt_level}']
 
         # generate build.ninja
         build_ninja = self.build_dir.join('build.ninja')
