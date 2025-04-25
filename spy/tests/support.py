@@ -5,7 +5,7 @@ import subprocess
 import pytest
 import py.path
 from spy import ast
-from spy.compiler import Compiler, ToolchainType
+from spy.compiler import Compiler
 from spy.build.ninja import BuildConfig
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper

@@ -2,7 +2,6 @@ import os
 from enum import Enum
 import py.path
 from spy.backend.c.cwriter import CModuleWriter
-from spy.cbuild import get_toolchain, BUILD_TYPE
 from spy.build.ninja import NinjaWriter, BuildConfig
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
@@ -11,12 +10,6 @@ from spy.vm.primitive import W_I32
 from spy.util import highlight_C_maybe
 
 DUMP_WASM = False
-
-class ToolchainType(str, Enum):
-    zig = "zig"
-    clang = "clang"
-    emscripten = "emscripten"
-    native = "native"
 
 class Compiler:
     """

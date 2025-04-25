@@ -16,8 +16,7 @@ from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
-from spy.compiler import Compiler, ToolchainType
-from spy.cbuild import get_toolchain, BUILD_TYPE
+from spy.compiler import Compiler
 from spy.build.ninja import BuildConfig, TargetType
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
