@@ -33,8 +33,8 @@ class TestImporting(CompilerTest):
             from xxx import aaa
             """)
 
-    # we need to implement multi-module compilation to C
-    @no_C
+    # TODO: implement multifile C compilation
+    #@no_C
     def test_two_modules(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
 

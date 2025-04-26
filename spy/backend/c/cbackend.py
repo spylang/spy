@@ -11,9 +11,9 @@ from spy.util import highlight_C_maybe
 
 DUMP_WASM = False
 
-class Compiler:
+class CBackend:
     """
-    Take a module inside a VM and compile it to C/WASM.
+    Convert SPy modules into C files
     """
     vm: SPyVM
     build_dir: py.path.local

@@ -16,7 +16,7 @@ from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
-from spy.compiler import Compiler
+from spy.backend.c.cbackend import CBackend
 from spy.build.ninja import BuildConfig, BuildTarget
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
@@ -341,7 +341,7 @@ async def inner_main(args: Arguments) -> None:
         return
 
     dump_c = args.cwrite and args.cdump
-    compiler = Compiler(
+    compiler = CBackend(
         vm,
         modname,
         py.path.local(str(builddir)),

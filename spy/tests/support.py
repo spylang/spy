@@ -5,7 +5,7 @@ import subprocess
 import pytest
 import py.path
 from spy import ast
-from spy.compiler import Compiler
+from spy.backend.c.cbackend import CBackend
 from spy.build.ninja import BuildConfig, OutputKind, BuildTarget, NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
@@ -175,7 +175,7 @@ class CompilerTest:
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL,
             )
-            compiler = Compiler(
+            compiler = CBackend(
                 self.vm,
                 modname,
                 self.builddir,
@@ -191,7 +191,7 @@ class CompilerTest:
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL
             )
-            compiler = Compiler(
+            compiler = CBackend(
                 self.vm,
                 modname,
                 self.builddir,

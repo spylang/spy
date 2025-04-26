@@ -225,6 +225,7 @@ class NinjaWriter:
             tb.wl(f'build {o}: cc {c}')
         tb.wl(f'build {self.out}: link {ofiles}')
         tb.wl(f'default {self.out}')
+        return tb.build()
 
     def build(self) -> py.path.local:
         cmdline = ['ninja', '-C', str(self.build_dir)]
