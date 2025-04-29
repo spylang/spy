@@ -191,7 +191,7 @@ class CModuleWriter:
             intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
-            self.tbc.wl(f'{c_type} {fqn.c_name} = {intval};')
+            self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
 
         elif isinstance(w_obj, (W_StructType, W_LiftedType)):
             # this forces ctx to emit the struct definition
@@ -203,14 +203,14 @@ class CModuleWriter:
             assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
             c_type = self.ctx.w2c(w_type)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
-            # XXX tbc?
-            self.tbh_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
+            self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
 
         elif isinstance(w_type, W_Type) and w_type.fqn.modname == 'builtins':
             # this is an ad-hoc hack to support things like this at
             # module-level:
             #    T = i32
             pass
+
         else:
             # struct types are already handled in the header
             raise NotImplementedError('WIP')
