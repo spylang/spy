@@ -129,28 +129,7 @@ class Context:
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
         c_struct_type = C_Type(w_st.fqn.c_name)
-        # forward declaration
         self._d[w_st] = c_struct_type
-        self.tbh_types_decl.wl(f'typedef struct {c_struct_type} {c_struct_type};')
-
-        # XXX this is VERY wrong: it assumes that the standard C layout
-        # matches the layout computed by struct.calc_layout: as long as we use
-        # only 32-bit types it should work, but eventually we need to do it
-        # properly.
-        #
-        # Write the struct definition in a detached builder. This is necessary
-        # because the call to w2c might trigger OTHER type definitions, so we
-        # must ensure that we write the whole "struct { ... }" block
-        # atomically.
-        out = self.tbh_types_def.make_nested_builder(detached=True)
-        out.wl("struct %s {" % c_struct_type)
-        with out.indent():
-            for field, w_fieldtype in w_st.fields.items():
-                c_fieldtype = self.w2c(w_fieldtype)
-                out.wl(f"{c_fieldtype} {field};")
-        out.wl("};")
-        out.wl("")
-        self.tbh_types_def.attach_nested_builder(out)
         return c_struct_type
 
     def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
