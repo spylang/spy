@@ -7,6 +7,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.object import W_Type, W_Object
 from spy.vm.module import W_Module
+from spy.vm.primitive import W_I32
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
@@ -169,86 +170,42 @@ class CModuleWriter:
         """)
         self.jsffi_error_emitted = True
 
-    def emit_content(self):
+    def emit_content(self) -> None:
         for fqn, w_obj in self.w_mod.items_w():
             assert w_obj is not None, 'uninitialized global?'
+            self.emit_obj(fqn, w_obj)
 
-            if isinstance(w_obj, W_ASTFunc):
-                if w_obj.color == 'red':
-                    self.declare_func(fqn, w_obj)
-                    self.emit_func(fqn, w_obj)
-
-            elif isinstance(w_obj, W_BuiltinFunc):
-                # this is a hack. We have a variable holding a builtin
-                # function: we don't support function pointers yet, so this
-                # MUST be a blue variable, which we don't want to declare, so
-                # we just skip it.
-                #
-                # Ideally, we should have a more direct way of knowing which
-                # of the module content are red and blue.
-                pass
-
-            else:
-                self.declare_var(fqn, w_obj)
-                self.emit_var(fqn, w_obj)
-
-    def declare_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
-        """
-        Generate function declaration in mod.h
-        """
-        argnames = [arg.name for arg in w_func.funcdef.args]
-        c_func = self.ctx.c_function(fqn.c_name, w_func)
-        self.tbh_funcs.wl(c_func.decl() + ';')
-
-    def emit_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
-        """
-        Generate function implementation in mod.c
-        """
-        fw = CFuncWriter(self.ctx, self, fqn, w_func)
-        fw.emit()
-
-    def declare_var(self, fqn: FQN, w_obj: W_Object) -> None:
-        """
-        Generate variable declaration in mod.h
-        """
+    def emit_obj(self, fqn: FQN, w_obj: W_Object) -> None:
         w_type = self.ctx.vm.dynamic_type(w_obj)
-        if w_type is B.w_i32:
+
+        if isinstance(w_obj, W_ASTFunc):
+            # emit red functions, ignore blue ones
+            if w_obj.color == 'red':
+                self.emit_func(fqn, w_obj)
+
+        elif isinstance(w_obj, W_BuiltinFunc):
+            # ignore builtin functions
+            pass
+
+        elif isinstance(w_obj, W_I32):
+            intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
+            self.tbc.wl(f'{c_type} {fqn.c_name} = {intval};')
+
         elif isinstance(w_obj, (W_StructType, W_LiftedType)):
             # this forces ctx to emit the struct definition
             self.ctx.w2c(w_obj)
+
         elif isinstance(w_type, W_PtrType):
             # for now, we only support NULL constnts
             assert isinstance(w_obj, W_Ptr)
             assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
             c_type = self.ctx.w2c(w_type)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
-        elif isinstance(w_type, W_Type) and w_type.fqn.modname == 'builtins':
-            # this is an ad-hoc hack to support things like this at
-            # module-level:
-            #    T = i32
-            pass
-        else:
-            raise NotImplementedError('WIP')
-
-    def emit_var(self, fqn: FQN, w_obj: W_Object) -> None:
-        """
-        Generate variable definition in mod.c
-        """
-        w_type = self.ctx.vm.dynamic_type(w_obj)
-        if w_type is B.w_i32:
-            intval = self.ctx.vm.unwrap(w_obj)
-            c_type = self.ctx.w2c(w_type)
-            self.tbc.wl(f'{c_type} {fqn.c_name} = {intval};')
-        elif isinstance(w_obj, (W_StructType, W_LiftedType)):
-            pass
-        elif isinstance(w_type, W_PtrType):
-            # for now, we only support NULL constnts
-            assert isinstance(w_obj, W_Ptr)
-            assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
-            c_type = self.ctx.w2c(w_type)
+            # XXX tbc?
             self.tbh_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
+
         elif isinstance(w_type, W_Type) and w_type.fqn.modname == 'builtins':
             # this is an ad-hoc hack to support things like this at
             # module-level:
@@ -257,3 +214,13 @@ class CModuleWriter:
         else:
             # struct types are already handled in the header
             raise NotImplementedError('WIP')
+
+    def emit_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
+        # func prototype in .h
+        argnames = [arg.name for arg in w_func.funcdef.args]
+        c_func = self.ctx.c_function(fqn.c_name, w_func)
+        self.tbh_funcs.wl(c_func.decl() + ';')
+
+        # func body in .c
+        fw = CFuncWriter(self.ctx, self, fqn, w_func)
+        fw.emit()
