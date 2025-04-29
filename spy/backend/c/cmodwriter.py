@@ -197,7 +197,6 @@ class CModuleWriter:
             self.emit_StructType(fqn, w_obj)
 
         elif isinstance(w_obj, W_LiftedType):
-            # this forces ctx to emit the struct definition
             self.ctx.w2c(w_obj)
 
         elif isinstance(w_type, W_PtrType):
@@ -234,27 +233,17 @@ class CModuleWriter:
             return
 
         c_st = C_Type(w_st.fqn.c_name)
-        # forward declaration
         self.tbh_types_decl.wl(f'typedef struct {c_st} {c_st}; // XXX')
 
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
         # properly.
-        #
-        # Write the struct definition in a detached builder. This is necessary
-        # because the call to w2c might trigger OTHER type definitions, so we
-        # must ensure that we write the whole "struct { ... }" block
-        # atomically.
-
-        # ^^^^ XXX this hack is probably no longer needed
-
-        out = self.tbh_types_def.make_nested_builder(detached=True)
-        out.wl("struct %s {" % c_st)
-        with out.indent():
+        tb = self.tbh_types_def
+        tb.wl("struct %s {" % c_st)
+        with tb.indent():
             for field, w_fieldtype in w_st.fields.items():
                 c_fieldtype = self.ctx.w2c(w_fieldtype)
-                out.wl(f"{c_fieldtype} {field};")
-        out.wl("};")
-        out.wl("")
-        self.tbh_types_def.attach_nested_builder(out)
+                tb.wl(f"{c_fieldtype} {field};")
+        tb.wl("};")
+        tb.wl("")
