@@ -28,16 +28,18 @@ class CModuleWriter:
     global_vars: set[str]
     jsffi_error_emitted: bool = False
 
-    # main TextBuilder for the whole .h and .c
+    # main and nested TextBuilders for .h
     tbh: TextBuilder
-    tbc: TextBuilder
-    # nested builders
     tbh_warnings: TextBuilder
     tbh_types_decl: TextBuilder  # forward type declarations
     tbh_types_def: TextBuilder   # type definitions
     tbh_ptrs_def: TextBuilder    # ptr and typelift accessors
     tbh_funcs: TextBuilder       # function declarations
     tbh_globals: TextBuilder     # global var declarations (.h)
+
+    # main and nested TextBuilders for .c
+    tbc: TextBuilder
+    tbc_funcs: TextBuilder       # functions
     tbc_globals: TextBuilder     # global var definition (.c)
 
     def __init__(self, vm: SPyVM, w_mod: W_Module,
@@ -54,8 +56,9 @@ class CModuleWriter:
         self.global_vars = set()
 
     def write_c_source(self) -> None:
-        self.emit_header()
-        self.emit_c()
+        self.init_h()
+        self.init_c()
+        self.emit_content()
         self.hfile.write(self.tbh.build())
         self.cfile.write(self.tbc.build())
 
@@ -71,10 +74,7 @@ class CModuleWriter:
         self.global_vars.add(varname)
         return varname
 
-    def emit_header(self) -> None:
-        """
-        Generate header file content (.h)
-        """
+    def init_h(self) -> None:
         header_guard = f"SPY_{self.w_mod.name.upper()}_H"
         self.tbh.wb(f"""
         #ifndef {header_guard}
@@ -120,24 +120,6 @@ class CModuleWriter:
         self.ctx.tbh_ptrs_def = self.tbh_ptrs_def
         self.ctx.tbh_types_def = self.tbh_types_def
 
-        # Process module contents for header declarations
-        for fqn, w_obj in self.w_mod.items_w():
-            assert w_obj is not None, 'uninitialized global?'
-            if isinstance(w_obj, W_ASTFunc):
-                if w_obj.color == 'red':
-                    self.declare_func(fqn, w_obj)
-            elif isinstance(w_obj, W_BuiltinFunc):
-                # this is a hack. We have a variable holding a builtin
-                # function: we don't support function pointers yet, so this
-                # MUST be a blue variable, which we don't want to declare, so
-                # we just skip it.
-                #
-                # Ideally, we should have a more direct way of knowing which
-                # of the module content are red and blue.
-                pass
-            else:
-                self.declare_var(fqn, w_obj)
-
         # Close header file
         self.tbh.wl()
         self.tbh.wb("""
@@ -148,10 +130,7 @@ class CModuleWriter:
         #endif  // Header guard
         """)
 
-    def emit_c(self) -> None:
-        """
-        Generate implementation file content (.c)
-        """
+    def init_c(self) -> None:
         header_name = self.hfile.basename
         self.tbc.wb(f"""
         #include "{header_name}"
@@ -168,19 +147,7 @@ class CModuleWriter:
         self.tbc.wl()
         self.tbc.wl('// content of the module')
         self.tbc.wl()
-
-        # Process module contents for implementation
-        for fqn, w_obj in self.w_mod.items_w():
-            assert w_obj is not None, 'uninitialized global?'
-            if isinstance(w_obj, W_ASTFunc):
-                if w_obj.color == 'red':
-                    self.emit_func(fqn, w_obj)
-            elif isinstance(w_obj, W_BuiltinFunc):
-                # this is a hack: see the equivalent comment in emit_header
-                pass
-            else:
-                # Variable definitions go in the .c file
-                self.emit_var(fqn, w_obj)
+        self.tbc_content = self.tbc.make_nested_builder()
 
         # Main function
         fqn_main = FQN([self.w_mod.name, 'main'])
@@ -201,6 +168,29 @@ class CModuleWriter:
         #endif
         """)
         self.jsffi_error_emitted = True
+
+    def emit_content(self):
+        for fqn, w_obj in self.w_mod.items_w():
+            assert w_obj is not None, 'uninitialized global?'
+
+            if isinstance(w_obj, W_ASTFunc):
+                if w_obj.color == 'red':
+                    self.declare_func(fqn, w_obj)
+                    self.emit_func(fqn, w_obj)
+
+            elif isinstance(w_obj, W_BuiltinFunc):
+                # this is a hack. We have a variable holding a builtin
+                # function: we don't support function pointers yet, so this
+                # MUST be a blue variable, which we don't want to declare, so
+                # we just skip it.
+                #
+                # Ideally, we should have a more direct way of knowing which
+                # of the module content are red and blue.
+                pass
+
+            else:
+                self.declare_var(fqn, w_obj)
+                self.emit_var(fqn, w_obj)
 
     def declare_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         """
