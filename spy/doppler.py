@@ -376,7 +376,8 @@ class DopplerFrame(ASTFrame):
         assert len(call.args) == 1
         w_argtype = w_opimpl.w_functype.params[1].w_type
         t = w_argtype.fqn.symbol_name
-        if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str):
+        if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str,
+                         B.w_dynamic):
             fqn = FQN(f'builtins::print_{t}')
         else:
             raise SPyError('W_TypeError', f"Invalid type for print(): {t}")

@@ -158,3 +158,24 @@ class TestDynamic(CompilerTest):
         vm = self.vm
         assert mod.x == 42
         assert mod.y == 43
+
+    def test_print(self, capfd):
+        mod = self.compile("""
+        def dyn(x: dynamic) -> dynamic:
+            return x
+
+        def foo() -> void:
+            print(dyn("hello world"))
+            print(dyn(42))
+            print(dyn(12.3))
+            print(dyn(True))
+            print(dyn(None))
+        """)
+        mod.foo()
+        out, err = capfd.readouterr()
+        assert out == '\n'.join(["hello world",
+                                 "42",
+                                 "12.3",
+                                 "True",
+                                 "None",
+                                 ""])

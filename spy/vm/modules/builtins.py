@@ -84,6 +84,10 @@ def w_print_str(vm: 'SPyVM', w_x: W_Str) -> W_Void:
     PY_PRINT(vm.unwrap(w_x))
     return B.w_None
 
+@BUILTINS.builtin_func
+def w_print_dynamic(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
+    PY_PRINT(vm.unwrap(w_x))
+    return B.w_None
 
 # this should belong to function.py, but we cannot put it there because of
 # circular import issues
