@@ -197,7 +197,7 @@ class CModuleWriter:
             self.emit_StructType(fqn, w_obj)
 
         elif isinstance(w_obj, W_LiftedType):
-            self.ctx.w2c(w_obj)
+            self.emit_LiftedType(fqn, w_obj)
 
         elif isinstance(w_type, W_PtrType):
             # for now, we only support NULL constnts
@@ -233,7 +233,7 @@ class CModuleWriter:
             return
 
         c_st = C_Type(w_st.fqn.c_name)
-        self.tbh_types_decl.wl(f'typedef struct {c_st} {c_st}; // XXX')
+        self.tbh_types_decl.wl(f'typedef struct {c_st} {c_st};')
 
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
@@ -247,3 +247,16 @@ class CModuleWriter:
                 tb.wl(f"{c_fieldtype} {field};")
         tb.wl("};")
         tb.wl("")
+
+    def emit_LiftedType(self, fqn: FQN, w_hltype: W_LiftedType) -> None:
+        c_hltype = C_Type(w_hltype.fqn.c_name)
+        w_lltype = w_hltype.w_lltype
+        c_lltype = self.ctx.w2c(w_lltype)
+        self.tbh_types_decl.wb(f"""
+        typedef struct {c_hltype} {{
+            {c_lltype} ll;
+        }} {c_hltype};
+        """)
+        self.tbh_ptrs_def.wb(f"""
+        SPY_TYPELIFT_FUNCTIONS({c_hltype}, {c_lltype});
+        """)
