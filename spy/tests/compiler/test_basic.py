@@ -647,6 +647,16 @@ class TestBasic(CompilerTest):
                                  "None",
                                  ""])
 
+    @no_C
+    def test_print_type(self, capfd):
+        mod = self.compile("""
+        def foo() -> void:
+            print(i32)
+        """)
+        mod.foo()
+        out, err = capfd.readouterr()
+        assert out == "<spy type 'i32'>\n"
+
     def test_deeply_nested_closure(self, capfd):
         mod = self.compile("""
         x0 = 0
