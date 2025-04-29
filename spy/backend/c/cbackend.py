@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 import py.path
-from spy.backend.c.cwriter import CModuleWriter
+from spy.backend.c.cmodwriter import CModuleWriter
 from spy.build.ninja import NinjaWriter, BuildConfig
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
