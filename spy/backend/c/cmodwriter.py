@@ -178,7 +178,12 @@ class CModuleWriter:
     def emit_obj(self, fqn: FQN, w_obj: W_Object) -> None:
         w_type = self.ctx.vm.dynamic_type(w_obj)
 
-        if isinstance(w_obj, W_ASTFunc):
+        if hasattr(w_obj, 'fqn') and w_obj.fqn != fqn:
+            # just a reference to a function/type defined elsewhere, we can
+            # ignore it
+            return
+
+        elif isinstance(w_obj, W_ASTFunc):
             # emit red functions, ignore blue ones
             if w_obj.color == 'red':
                 self.emit_func(fqn, w_obj)
@@ -228,10 +233,6 @@ class CModuleWriter:
         fw.emit()
 
     def emit_StructType(self, fqn: FQN, w_st: W_StructType) -> None:
-        if w_st.fqn != fqn:
-            # this is just a reference, not the "real" type definition
-            return
-
         c_st = C_Type(w_st.fqn.c_name)
         self.tbh_types_decl.wl(f'typedef struct {c_st} {c_st};')
 
