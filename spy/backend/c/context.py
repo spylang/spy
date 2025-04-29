@@ -59,11 +59,14 @@ class Context:
     tbh_types_decl: TextBuilder
     tbh_ptrs_def: TextBuilder
     tbh_types_def: TextBuilder
+    seen_modules: set[str]
     _d: dict[W_Type, C_Type]
 
     def __init__(self, vm: SPyVM) -> None:
         self.vm = vm
-        # set by CModuleWriter.emit_module
+        self.seen_modules = set()
+        # set by CModuleWriter.emit_header
+        self.tbh_includes = None   # type: ignore
         self.tbh_types_decl = None # type: ignore
         self.tbh_ptrs_def = None   # type: ignore
         self.tbh_types_def = None  # type: ignore
@@ -165,3 +168,14 @@ class Context:
         """)
         self._d[w_hltype] = c_hltype
         return c_hltype
+
+    def add_include_maybe(self, fqn: FQN) -> None:
+        modname = fqn.modname
+        if modname in self.seen_modules:
+            # we already encountered this module, nothing to do
+            return
+
+        self.seen_modules.add(modname)
+        w_mod = self.vm.modules_w[modname]
+        if not w_mod.is_builtin():
+            self.tbh_includes.wl(f'#include "{modname}.h"')

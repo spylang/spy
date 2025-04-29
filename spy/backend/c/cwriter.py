@@ -89,6 +89,10 @@ class CModuleWriter:
         self.tbh_warnings = self.tbh.make_nested_builder()
         self.tbh.wl()
 
+        self.tbh.wl('// includes')
+        self.tbh_includes = self.tbh.make_nested_builder()
+        self.tbh.wl()
+
         self.tbh.wl('// forward type declarations')
         self.tbh_types_decl = self.tbh.make_nested_builder()
         self.tbh.wl()
@@ -110,6 +114,7 @@ class CModuleWriter:
         self.tbh.wl()
 
         # Register the builders with the context
+        self.ctx.tbh_includes = self.tbh_includes
         self.ctx.tbh_types_decl = self.tbh_types_decl
         self.ctx.tbh_ptrs_def = self.tbh_ptrs_def
         self.ctx.tbh_types_def = self.tbh_types_def
@@ -598,6 +603,7 @@ class CFuncWriter:
             return self.fmt_setfield(fqn, call)
 
         # the default case is to call a function with the corresponding name
+        self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
