@@ -33,11 +33,8 @@ class TestImporting(CompilerTest):
             from xxx import aaa
             """)
 
-    # TODO: implement multifile C compilation
-    #@no_C
-    def test_two_modules(self):
+    def test_function_in_other_module(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
-
         self.write_file("delta.spy", """
         def get_delta() -> i32:
             return 10
@@ -50,3 +47,32 @@ class TestImporting(CompilerTest):
         """)
 
         assert mod.inc(4) == 14
+
+    @pytest.mark.skip(reason='FIXME')
+    def test_type_in_other_module(self):
+        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
+        self.write_file("point.spy", """
+        from unsafe import struct
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+        """)
+
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+        from point import Point
+
+        def make_point(x: i32, y: i32) -> ptr[Point]:
+            p = gc_alloc(Point)(1)
+            p.x = x
+            p.y = y
+            return p
+
+        def foo(x: i32, y: i32) -> f64:
+            p = make_point(x, y)
+            return p.x + p.y
+        """)
+
+        assert mod.foo(3, 4) == 7
