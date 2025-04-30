@@ -108,6 +108,9 @@ class CFuncWriter:
         """
         Emit a #line directive, unconditionally
         """
+        if self.cmod.spyfile is None:
+            # we don't have an associated spyfile, so we cannot emit SPY_LINE
+            return
         cline = self.tbc.lineno
         self.tbc.wl(f'#line SPY_LINE({spyline}, {cline})')
         self.last_emitted_linenos = (spyline, cline)

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+ModItem = tuple[FQN, W_Object]
 
 
 @B.builtin_type('module')
@@ -78,7 +79,7 @@ class W_Module(W_Object):
             if fqn.modname == self.name:
                 yield fqn
 
-    def items_w(self) -> Iterable[tuple[FQN, W_Object]]:
+    def items_w(self) -> Iterable[ModItem]:
         for fqn, w_obj in self.vm.globals_w.items():
             if fqn.modname == self.name:
                 yield fqn, w_obj

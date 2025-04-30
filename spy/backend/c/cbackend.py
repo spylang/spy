@@ -4,9 +4,11 @@ import py.path
 from spy.backend.c.cmodwriter import CModuleWriter
 from spy.build.ninja import NinjaWriter, BuildConfig
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
+from spy.vm.object import W_Object
+from spy.vm.module import W_Module, ModItem
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import W_I32
+from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.util import highlight_C_maybe
 
 DUMP_WASM = False
@@ -37,15 +39,18 @@ class CBackend:
         """
         Convert all non-builtins modules into .c files
         """
+        self.cwrite_builtins_extra()
+
         cfiles = []
         for modname, w_mod in self.vm.modules_w.items():
             if w_mod.is_builtin():
                 continue
-
+            #
             file_spy = py.path.local(w_mod.filepath)
             basename = file_spy.purebasename
             file_c = self.build_dir.join(f'{basename}.c')
-            cwriter = CModuleWriter(self.vm, w_mod, file_spy, file_c)
+            file_h = self.build_dir.join(f'{basename}.h')
+            cwriter = CModuleWriter(self.vm, w_mod, file_spy, file_h, file_c)
             cwriter.write_c_source()
             cfiles.append(file_c)
             #
@@ -53,7 +58,29 @@ class CBackend:
                 print()
                 print(f'---- {file_c} ----')
                 print(highlight_C_maybe(file_c.read()))
+
         return cfiles
+
+    def cwrite_builtins_extra(self) -> None:
+        # find all the unsafe::ptr to a builtin
+        def is_ptr_to_builtin(w_obj: W_Object) -> bool:
+            return (
+                isinstance(w_obj, W_PtrType) and
+                w_obj.w_itemtype.fqn.modname == 'builtins'
+            )
+        mod_items = [
+            (fqn, w_obj)
+            for fqn, w_obj in self.vm.globals_w.items()
+            if is_ptr_to_builtin(w_obj)
+        ]
+
+        w_mod = self.vm.modules_w['builtins']
+        file_h = self.build_dir.join('builtins_extra.h')
+        cwriter = CModuleWriter(
+            self.vm, w_mod, None, file_h, None,
+            mod_items=mod_items
+        )
+        cwriter.write_c_source()
 
     def build(self, config: BuildConfig) -> py.path.local:
         wasm_exports = []

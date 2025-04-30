@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.object import W_Type
+from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.rawbuffer import RB
@@ -110,20 +110,6 @@ class Context:
 
     def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        w_itemtype = w_ptrtype.w_itemtype
-        c_itemtype = self.w2c(w_itemtype)
-        self.tbh_types_decl.wb(f"""
-        typedef struct {c_ptrtype} {{
-            {c_itemtype} *p;
-        #ifdef SPY_DEBUG
-            size_t length;
-        #endif
-        }} {c_ptrtype};
-        """)
-        self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
-        #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
-        """)
         self._d[w_ptrtype] = c_ptrtype
         return c_ptrtype
 

@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Iterable
 from types import NoneType
 import itertools
 import py.path
@@ -6,7 +6,7 @@ from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.object import W_Type, W_Object
-from spy.vm.module import W_Module
+from spy.vm.module import W_Module, ModItem
 from spy.vm.primitive import W_I32
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
 from spy.vm.vm import SPyVM
@@ -20,13 +20,15 @@ from spy.backend.c import c_ast as C
 from spy.backend.c.cwriter import CFuncWriter
 from spy.util import shortrepr, magic_dispatch
 
+
 class CModuleWriter:
     ctx: Context
     w_mod: W_Module
-    spyfile: py.path.local
-    cfile: py.path.local
-    hfile: py.path.local
+    spyfile: Optional[py.path.local]
+    hfile: Optional[py.path.local]
+    cfile: Optional[py.path.local]
     global_vars: set[str]
+    mod_items: Iterable[ModItem]
     jsffi_error_emitted: bool = False
 
     # main and nested TextBuilders for .h
@@ -43,25 +45,41 @@ class CModuleWriter:
     tbc_funcs: TextBuilder       # functions
     tbc_globals: TextBuilder     # global var definition (.c)
 
-    def __init__(self, vm: SPyVM, w_mod: W_Module,
-                 spyfile: py.path.local,
-                 cfile: py.path.local) -> None:
+    def __init__(
+            self,
+            vm: SPyVM,
+            w_mod: W_Module,
+            spyfile: Optional[py.path.local],
+            hfile: Optional[py.path.local],
+            cfile: Optional[py.path.local],
+            *,
+            mod_items: Optional[Iterable[ModItem]] = None,
+    ) -> None:
         self.ctx = Context(vm)
         self.w_mod = w_mod
+        if mod_items is None:
+            self.mod_items = w_mod.items_w()
+        else:
+            self.mod_items = mod_items
         self.spyfile = spyfile
+        self.hfile = hfile
         self.cfile = cfile
-        self.hfile = cfile.new(ext='.h')
-        self.tbc = TextBuilder(use_colors=False)
         self.tbh = TextBuilder(use_colors=False)
+        self.tbc = TextBuilder(use_colors=False)
         # nested builders are initialized lazily
         self.global_vars = set()
-
-    def write_c_source(self) -> None:
         self.init_h()
         self.init_c()
+
+    def __repr__(self) -> str:
+        return f'<CModuleWriter for {self.w_mod}>'
+
+    def write_c_source(self) -> None:
         self.emit_content()
-        self.hfile.write(self.tbh.build())
-        self.cfile.write(self.tbc.build())
+        if self.hfile:
+            self.hfile.write(self.tbh.build())
+        if self.cfile:
+            self.cfile.write(self.tbc.build())
 
     def new_global_var(self, prefix: str) -> str:
         """
@@ -76,7 +94,7 @@ class CModuleWriter:
         return varname
 
     def init_h(self) -> None:
-        header_guard = f"SPY_{self.w_mod.name.upper()}_H"
+        header_guard = f"SPY_{self.hfile.purebasename.upper()}_H"
         self.tbh.wb(f"""
         #ifndef {header_guard}
         #define {header_guard}
@@ -92,6 +110,7 @@ class CModuleWriter:
         self.tbh.wl()
 
         self.tbh.wl('// includes')
+        self.tbh.wl('#include "builtins_extra.h"')
         self.tbh_includes = self.tbh.make_nested_builder()
         self.tbh.wl()
 
@@ -135,13 +154,15 @@ class CModuleWriter:
         header_name = self.hfile.basename
         self.tbc.wb(f"""
         #include "{header_name}"
-
-        #ifdef SPY_DEBUG_C
-        #    define SPY_LINE(SPY, C) C "{self.cfile}"
-        #else
-        #    define SPY_LINE(SPY, C) SPY "{self.spyfile}"
-        #endif
         """)
+        if self.spyfile is not None:
+            self.tbc.wb(f"""
+            #ifdef SPY_DEBUG_C
+            #    define SPY_LINE(SPY, C) C "{self.cfile}"
+            #else
+            #    define SPY_LINE(SPY, C) SPY "{self.spyfile}"
+            #endif
+            """)
         self.tbc.wl()
         self.tbc.wl('// constants and globals')
         self.tbc_globals = self.tbc.make_nested_builder()
@@ -171,7 +192,7 @@ class CModuleWriter:
         self.jsffi_error_emitted = True
 
     def emit_content(self) -> None:
-        for fqn, w_obj in self.w_mod.items_w():
+        for fqn, w_obj in self.mod_items:
             assert w_obj is not None, 'uninitialized global?'
             self.emit_obj(fqn, w_obj)
 
@@ -183,6 +204,7 @@ class CModuleWriter:
             # ignore it
             return
 
+        # ==== functions ====
         elif isinstance(w_obj, W_ASTFunc):
             # emit red functions, ignore blue ones
             if w_obj.color == 'red':
@@ -192,17 +214,22 @@ class CModuleWriter:
             # ignore builtin functions
             pass
 
+        # ==== types ====
+        elif isinstance(w_obj, W_StructType):
+            self.emit_StructType(fqn, w_obj)
+
+        elif isinstance(w_obj, W_PtrType):
+            self.emit_PtrType(fqn, w_obj)
+
+        elif isinstance(w_obj, W_LiftedType):
+            self.emit_LiftedType(fqn, w_obj)
+
+        # ==== vars/consts ====
         elif isinstance(w_obj, W_I32):
             intval = self.ctx.vm.unwrap(w_obj)
             c_type = self.ctx.w2c(w_type)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
             self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
-
-        elif isinstance(w_obj, W_StructType):
-            self.emit_StructType(fqn, w_obj)
-
-        elif isinstance(w_obj, W_LiftedType):
-            self.emit_LiftedType(fqn, w_obj)
 
         elif isinstance(w_type, W_PtrType):
             # for now, we only support NULL constnts
@@ -249,6 +276,26 @@ class CModuleWriter:
         tb.wl("};")
         tb.wl("")
 
+    def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
+        c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
+        w_itemtype = w_ptrtype.w_itemtype
+        c_itemtype = self.ctx.w2c(w_itemtype)
+        self.tbh_types_decl.wb(f"""
+        typedef struct {c_ptrtype} {{
+            {c_itemtype} *p;
+        #ifdef SPY_DEBUG
+            size_t length;
+        #endif
+        }} {c_ptrtype};
+        """)
+        self.tbh_types_decl.wl()
+
+        self.tbh_ptrs_def.wb(f"""
+        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
+        #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
+        """)
+        self.tbh_ptrs_def.wl()
+
     def emit_LiftedType(self, fqn: FQN, w_hltype: W_LiftedType) -> None:
         c_hltype = C_Type(w_hltype.fqn.c_name)
         w_lltype = w_hltype.w_lltype
@@ -258,6 +305,8 @@ class CModuleWriter:
             {c_lltype} ll;
         }} {c_hltype};
         """)
+        self.tbh_types_decl.wl()
+
         self.tbh_ptrs_def.wb(f"""
         SPY_TYPELIFT_FUNCTIONS({c_hltype}, {c_lltype});
         """)

@@ -228,7 +228,7 @@ class NinjaWriter:
         return tb.build()
 
     def build(self) -> py.path.local:
-        cmdline = ['ninja', '-C', str(self.build_dir)]
+        cmdline = ['unbuffer', 'ninja', '-C', str(self.build_dir)]
         #print(" ".join(cmdline))
         proc = subprocess.run(
             cmdline,
