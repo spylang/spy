@@ -58,6 +58,14 @@ class Arguments:
         )
     ] = False
 
+    imports: Annotated[
+        bool,
+        Option(
+            "-I", "--imports",
+            help="Dump the (recursive) list of imports"
+        )
+    ] = False
+
     symtable: Annotated[
         bool,
         Option(
@@ -179,7 +187,8 @@ class Arguments:
 
     def validate_actions(self) -> None:
         # check that we specify at most one of the following options
-        possible_actions = ["execute", "pyparse", "parse", "symtable",
+        possible_actions = ["execute", "pyparse", "parse",
+                            "imports", "symtable",
                             "redshift", "cwrite", "compile"]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
@@ -309,6 +318,10 @@ async def inner_main(args: Arguments) -> None:
     if args.parse and not args.redshift:
         mod = importer.mods[modname]
         mod.pp()
+        return
+
+    if args.imports:
+        importer.pp()
         return
 
     if args.symtable:
