@@ -6,6 +6,7 @@ from spy.fqn import FQN
 from spy.parser import Parser
 from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.modframe import ModFrame
+from spy.textbuilder import ColorFormatter
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -85,6 +86,11 @@ class ImportAnalizyer:
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
 
+    def getmod(self, modname: str) -> ast.Module:
+        mod = self.mods[modname]
+        assert isinstance(mod, ast.Module)
+        return mod
+
     def parse_all(self) -> None:
         while self.queue:
             modname = self.queue.popleft()
@@ -124,7 +130,7 @@ class ImportAnalizyer:
 
     def analyze_scopes(self, modname: str) -> ScopeAnalyzer:
         assert self.mods, 'call .parse_all() first'
-        mod = self.mods[modname]
+        mod = self.getmod(modname)
         scopes = ScopeAnalyzer(self.vm, modname, mod)
         scopes.analyze()
         return scopes
@@ -148,15 +154,20 @@ class ImportAnalizyer:
 
     def pp(self) -> None:
         from spy.vm.module import W_Module
+        color = ColorFormatter(use_colors=True)
+        n = max(len(modname) for modname in self.mods)
         for modname, mod in self.mods.items():
             if isinstance(mod, ast.Module):
-                print(f'{modname} -> {mod.filename}')
+                what = color.set('green', mod.filename)
             elif isinstance(mod, W_Module):
-                print(f'{modname} -> <builtin>')
+                what = color.set('blue', str(mod)) + ' (already imported)'
             elif mod is None:
-                print(f'{modname} -> ImportError')
+                c = 'red'
+                what = color.set('red', 'ImportError')
             else:
                 assert False
+            print(f'{modname:>{n}s} => {what}')
+
 
     # ===========================================================
     # visitor pattern to recurively find all "import" statements

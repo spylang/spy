@@ -316,7 +316,7 @@ async def inner_main(args: Arguments) -> None:
     importer.parse_all()
 
     if args.parse and not args.redshift:
-        mod = importer.mods[modname]
+        mod = importer.getmod(modname)
         mod.pp()
         return
 
