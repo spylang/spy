@@ -273,6 +273,19 @@ def emit_warning(err: SPyError) -> None:
     print(Color.set('yellow', '[warning] '), end='')
     print(err.format())
 
+def get_build_dir(args: Arguments) -> py.path.local:
+    if args.build_dir is not None:
+        build_dir = args.build_dir
+    else:
+        # Create a build directory next to the .spy file
+        srcdir = args.filename.parent
+        build_dir = srcdir / "build"
+        print(f"Using build directory: {build_dir}")
+
+    build_dir.mkdir(exist_ok=True, parents=True)
+    return py.path.local(str(build_dir))
+
+
 async def inner_main(args: Arguments) -> None:
     """
     The actual code for the spy executable
@@ -289,19 +302,6 @@ async def inner_main(args: Arguments) -> None:
     if args.error_mode == 'warn':
         args.error_mode = 'lazy'
         vm.emit_warning = emit_warning
-
-    # Determine build directory
-    if args.build_dir is not None:
-        builddir = args.build_dir
-        builddir.mkdir(exist_ok=True, parents=True)
-    elif args.cwrite or args.compile:
-        # Create a build directory next to the .spy file
-        builddir = srcdir / "build"
-        builddir.mkdir(exist_ok=True, parents=True)
-        print(f"Using build directory: {builddir}")
-    else:
-        # For non-build operations, use the source directory
-        builddir = srcdir
 
     importer = ImportAnalizyer(vm, modname)
     importer.parse_all()
@@ -343,11 +343,12 @@ async def inner_main(args: Arguments) -> None:
             dump_spy_mod(vm, modname, args.full_fqn)
         return
 
+    build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
     compiler = CBackend(
         vm,
         modname,
-        py.path.local(str(builddir)),
+        build_dir,
         dump_c=dump_c
     )
     cfiles = compiler.cwrite()
