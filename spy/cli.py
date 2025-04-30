@@ -303,20 +303,17 @@ async def inner_main(args: Arguments) -> None:
         # For non-build operations, use the source directory
         builddir = srcdir
 
-    if args.symtable:
-        parser = Parser.from_filename(str(args.filename))
-        mod = parser.parse()
-        scopes = ScopeAnalyzer(vm, modname, mod)
-        scopes.analyze()
-        scopes.pp()
-        return
-
     importer = ImportAnalizyer(vm, modname)
     importer.parse_all()
 
     if args.parse and not args.redshift:
         mod = importer.mods[modname]
         mod.pp()
+        return
+
+    if args.symtable:
+        scopes = importer.analyze_scopes(modname)
+        scopes.pp()
         return
 
     importer.import_all()
@@ -336,7 +333,6 @@ async def inner_main(args: Arguments) -> None:
         if args.timeit:
             print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
         assert w_res is B.w_None
-
         return
 
     vm.redshift(error_mode=args.error_mode)

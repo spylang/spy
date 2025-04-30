@@ -122,9 +122,15 @@ class ImportAnalizyer:
         else:
             return None
 
-    def import_all(self) -> None:
-        assert not self.queue, 'call .parse_all() first'
+    def analyze_scopes(self, modname: str) -> ScopeAnalyzer:
+        assert self.mods, 'call .parse_all() first'
+        mod = self.mods[modname]
+        scopes = ScopeAnalyzer(self.vm, modname, mod)
+        scopes.analyze()
+        return scopes
 
+    def import_all(self) -> None:
+        assert self.mods, 'call .parse_all() first'
         # XXX: the following logic is broken and doesn't do what the class
         # docstring says
         all_mods = reversed(self.mods.items())
@@ -132,10 +138,8 @@ class ImportAnalizyer:
             if isinstance(mod, ast.Module):
                 self.import_one(modname, mod)
 
-
     def import_one(self, modname: str, mod: ast.Module) -> None:
-        scopes = ScopeAnalyzer(self.vm, modname, mod)
-        scopes.analyze()
+        scopes = self.analyze_scopes(modname)
         symtable = scopes.by_module()
         fqn = FQN(modname)
         modframe = ModFrame(self.vm, fqn, symtable, mod)
