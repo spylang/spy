@@ -110,16 +110,19 @@ class Context:
         return C_Function(name, c_params, c_restype)
 
     def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
+        self.add_include_maybe(w_ptrtype.w_itemtype.fqn)
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         self._d[w_ptrtype] = c_ptrtype
         return c_ptrtype
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
+        self.add_include_maybe(w_st.fqn)
         c_struct_type = C_Type(w_st.fqn.c_name)
         self._d[w_st] = c_struct_type
         return c_struct_type
 
     def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
+        self.add_include_maybe(w_hltype.fqn)
         c_hltype = C_Type(w_hltype.fqn.c_name)
         self._d[w_hltype] = c_hltype
         return c_hltype
