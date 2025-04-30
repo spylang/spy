@@ -94,10 +94,12 @@ class CModuleWriter:
         return varname
 
     def init_h(self) -> None:
-        header_guard = f"SPY_{self.hfile.purebasename.upper()}_H"
+        assert self.hfile is not None
+        GUARD = self.hfile.purebasename.upper()
+        header_guard = f"SPY_{GUARD}_H"
         self.tbh.wb(f"""
-        #ifndef {header_guard}
-        #define {header_guard}
+        #ifndef SPY_{GUARD}_H
+        #define SPY_{GUARD}_H
 
         #include <spy.h>
 
@@ -151,6 +153,7 @@ class CModuleWriter:
         """)
 
     def init_c(self) -> None:
+        assert self.hfile is not None
         header_name = self.hfile.basename
         self.tbc.wb(f"""
         #include "{header_name}"

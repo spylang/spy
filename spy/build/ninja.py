@@ -49,7 +49,7 @@ class Flags:
             self._items += others
         return self
 
-    def __repr__(self) -> None:
+    def __repr__(self) -> str:
         return f'Flags({self._items})'
 
     def __str__(self) -> str:
@@ -93,7 +93,7 @@ class NinjaWriter:
         self.cflags = Flags()
         self.ldflags = Flags()
 
-    def libdir(self):
+    def libdir(self) -> py.path.local:
         return spy.libspy.BUILD.join(self.config.target, self.config.build_type)
 
     def write(
@@ -228,6 +228,7 @@ class NinjaWriter:
         return tb.build()
 
     def build(self) -> py.path.local:
+        assert self.out is not None
         cmdline = ['unbuffer', 'ninja', '-C', str(self.build_dir)]
         #print(" ".join(cmdline))
         proc = subprocess.run(

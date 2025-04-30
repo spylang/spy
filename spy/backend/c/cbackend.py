@@ -35,7 +35,7 @@ class CBackend:
         self.outname = outname
         self.dump_c = dump_c
 
-    def cwrite(self) -> py.path.local:
+    def cwrite(self) -> list[py.path.local]:
         """
         Convert all non-builtins modules into .c files
         """
@@ -45,7 +45,7 @@ class CBackend:
         for modname, w_mod in self.vm.modules_w.items():
             if w_mod.is_builtin():
                 continue
-            #
+            assert w_mod.filepath is not None
             file_spy = py.path.local(w_mod.filepath)
             basename = file_spy.purebasename
             file_c = self.build_dir.join(f'{basename}.c')

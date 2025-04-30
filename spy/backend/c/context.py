@@ -56,6 +56,7 @@ class Context:
     Keep track of things like the mapping from W_* types to C types.
     """
     vm: SPyVM
+    tbh_includes: TextBuilder
     tbh_types_decl: TextBuilder
     tbh_ptrs_def: TextBuilder
     tbh_types_def: TextBuilder
