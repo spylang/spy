@@ -276,6 +276,15 @@ class CModuleWriter:
         tb.wl("};")
         tb.wl("")
 
+        # unsafe::ptr to struct are a special case: in theory the belong to
+        # the 'unsafe' module, but it makes more sense to emit them in the
+        # same module as their struct
+        fqn_ptr = FQN('unsafe').join('ptr', [fqn])
+        w_ptrtype = self.ctx.vm.lookup_global(fqn_ptr)
+        if w_ptrtype is not None:
+            assert isinstance(w_ptrtype, W_PtrType)
+            self.emit_PtrType(fqn_ptr, w_ptrtype)
+
     def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemtype = w_ptrtype.w_itemtype
