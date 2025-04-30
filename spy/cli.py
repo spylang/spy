@@ -12,6 +12,7 @@ import py.path
 import pdb as stdlib_pdb # to distinguish from the "--pdb" option
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.magic_py_parse import magic_py_parse
+from spy.analyze.importing import ImportAnalizyer
 from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
@@ -302,18 +303,24 @@ async def inner_main(args: Arguments) -> None:
         # For non-build operations, use the source directory
         builddir = srcdir
 
-    if (args.parse and not args.redshift) or args.symtable:
+    if args.symtable:
         parser = Parser.from_filename(str(args.filename))
         mod = parser.parse()
-        if args.parse:
-            mod.pp()
-        elif args.symtable:
-            scopes = ScopeAnalyzer(vm, modname, mod)
-            scopes.analyze()
-            scopes.pp()
+        scopes = ScopeAnalyzer(vm, modname, mod)
+        scopes.analyze()
+        scopes.pp()
         return
 
-    w_mod = vm.import_(modname)
+    importer = ImportAnalizyer(vm, modname)
+    importer.parse_all()
+
+    if args.parse and not args.redshift:
+        mod = importer.mods[modname]
+        mod.pp()
+        return
+
+    importer.import_all()
+    w_mod = vm.modules_w[modname]
 
     if args.execute:
         w_main_functype = W_FuncType.parse('def() -> void')

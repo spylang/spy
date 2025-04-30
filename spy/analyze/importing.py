@@ -85,7 +85,7 @@ class ImportAnalizyer:
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
 
-    def analyze(self) -> None:
+    def parse_all(self) -> None:
         while self.queue:
             modname = self.queue.popleft()
 
@@ -123,7 +123,7 @@ class ImportAnalizyer:
             return None
 
     def import_all(self) -> None:
-        assert not self.queue, 'call .analyze() first'
+        assert not self.queue, 'call .parse_all() first'
 
         # XXX: the following logic is broken and doesn't do what the class
         # docstring says

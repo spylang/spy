@@ -96,7 +96,7 @@ class SPyVM:
             return self.modules_w[modname]
 
         importer = ImportAnalizyer(self, modname)
-        importer.analyze()
+        importer.parse_all()
         #importer.pp()
         importer.import_all()
         w_mod = self.modules_w[modname]
