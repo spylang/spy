@@ -124,7 +124,8 @@ class NinjaWriter:
             self.out = basename
 
         elif self.config.target == 'wasi':
-            self.CC = 'zig cc'
+            #self.CC = 'zig cc'
+            self.CC = 'python -m ziglang cc'
             self.out = basename + '.wasm'
             self.cflags += WASM_CFLAGS
             self.cflags += [
