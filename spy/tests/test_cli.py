@@ -135,7 +135,9 @@ class TestMain:
 
         # NOTE: getstatusoutput automatically strips the trailing \n
         status, out = getstatusoutput(cmd)
-        assert status == 0
+        if status != 0:
+            print(out)
+            assert False, f'command failed: {cmd}'
         assert out == "hello world"
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason='./pyodide/venv not found')
