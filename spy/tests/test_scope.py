@@ -5,8 +5,8 @@ from spy import ast
 from spy.ast_dump import dump
 from spy.fqn import FQN
 from spy.parser import Parser
-from spy.irgen.scope import ScopeAnalyzer
-from spy.irgen.symtable import Symbol, Color, SymTable
+from spy.analyze.scope import ScopeAnalyzer
+from spy.analyze.symtable import Symbol, Color, SymTable
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.tests.support import expect_errors, MatchAnnotation

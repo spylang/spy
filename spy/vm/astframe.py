@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from spy import ast
 from spy.location import Loc
 from spy.errors import SPyError
-from spy.irgen.symtable import SymTable, Symbol, Color, maybe_blue
+from spy.analyze.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.exc import W_TypeError

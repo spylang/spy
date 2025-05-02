@@ -1,7 +1,6 @@
 import pytest
 from spy import ROOT
 from spy.tests.support import CTest
-from spy.cbuild import EmscriptenToolchain
 from pytest_pyodide import run_in_pyodide  # type: ignore
 
 PYODIDE = ROOT.join('..', 'pyodide', 'node_modules', 'pyodide')
@@ -43,7 +42,7 @@ class TestLLWasm(CTest):
         if self.llwasm_backend == 'pyodide':
             self.selenium = request.getfixturevalue('selenium')
             self.run_in_pyodide_maybe = run_in_pyodide
-            self.toolchain = EmscriptenToolchain('debug')
+            self.target = 'emscripten'
         else:
             self.selenium = None
             self.run_in_pyodide_maybe = lambda fn: fn
@@ -54,7 +53,7 @@ class TestLLWasm(CTest):
             return x+y;
         }
         """
-        test_wasm = self.compile_wasm(src, exports=['add'])
+        test_wasm = self.c_compile(src, exports=['add'])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -76,7 +75,7 @@ class TestLLWasm(CTest):
         int x;
         int y;
         """
-        test_wasm = self.compile_wasm(src, exports=['add', 'x', 'y'])
+        test_wasm = self.c_compile(src, exports=['add', 'x', 'y'])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -96,7 +95,7 @@ class TestLLWasm(CTest):
         int16_t y = 200;
         int16_t z = 300;
         """
-        test_wasm = self.compile_wasm(src, exports=['x', 'y', 'z'])
+        test_wasm = self.c_compile(src, exports=['x', 'y', 'z'])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -115,7 +114,7 @@ class TestLLWasm(CTest):
         const char *hello = "hello";
         int32_t foo[] = {100, 200};
         """
-        test_wasm = self.compile_wasm(src, exports=['hello', 'foo'])
+        test_wasm = self.c_compile(src, exports=['hello', 'foo'])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -139,7 +138,7 @@ class TestLLWasm(CTest):
             return foo[0] + foo[1] + foo[2];
         }
         """
-        test_wasm = self.compile_wasm(src, exports=['foo', 'foo_total'])
+        test_wasm = self.c_compile(src, exports=['foo', 'foo_total'])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -165,7 +164,7 @@ class TestLLWasm(CTest):
             return ++x;
         }
         """
-        test_wasm = self.compile_wasm(src, exports=['inc'])
+        test_wasm = self.c_compile(src, exports=['inc'])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -199,7 +198,7 @@ class TestLLWasm(CTest):
             return square(add(10, 20));
         }
         """
-        test_wasm = self.compile_wasm(src, exports=['compute'])
+        test_wasm = self.c_compile(src, exports=['compute'])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):

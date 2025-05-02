@@ -2,8 +2,8 @@ import py
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
-from spy.irgen.scope import ScopeAnalyzer
-from spy.irgen.symtable import SymTable
+from spy.analyze.scope import ScopeAnalyzer
+from spy.analyze.symtable import SymTable
 from spy.errors import SPyError
 from spy.vm.vm import SPyVM
 from spy.vm.b import B

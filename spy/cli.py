@@ -12,14 +12,15 @@ import py.path
 import pdb as stdlib_pdb # to distinguish from the "--pdb" option
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.magic_py_parse import magic_py_parse
+from spy.analyze.importing import ImportAnalizyer
 from spy.errors import SPyError
 from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
-from spy.compiler import Compiler, ToolchainType
-from spy.cbuild import get_toolchain, BUILD_TYPE
+from spy.backend.c.cbackend import CBackend
+from spy.build.ninja import BuildConfig, BuildTarget
 from spy.textbuilder import Color
-from spy.irgen.scope import ScopeAnalyzer
+from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
@@ -54,6 +55,14 @@ class Arguments:
         Option(
             "-p", "--parse",
             help="Dump the SPy AST"
+        )
+    ] = False
+
+    imports: Annotated[
+        bool,
+        Option(
+            "-I", "--imports",
+            help="Dump the (recursive) list of imports"
         )
     ] = False
 
@@ -129,13 +138,14 @@ class Arguments:
         )
     ] = False
 
-    toolchain: Annotated[
-        ToolchainType,
+    target: Annotated[
+        BuildTarget,
         Option(
-            "-t", "--toolchain",
-            help="which compiler to use"
+            "-t", "--target",
+            help="Compilation target",
+            click_type=click.Choice(BuildTarget.__args__),
         )
-    ] = ToolchainType.zig
+    ] = 'native'
 
     error_mode: Annotated[
         ErrorMode,
@@ -177,7 +187,8 @@ class Arguments:
 
     def validate_actions(self) -> None:
         # check that we specify at most one of the following options
-        possible_actions = ["execute", "pyparse", "parse", "symtable",
+        possible_actions = ["execute", "pyparse", "parse",
+                            "imports", "symtable",
                             "redshift", "cwrite", "compile"]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
@@ -271,6 +282,19 @@ def emit_warning(err: SPyError) -> None:
     print(Color.set('yellow', '[warning] '), end='')
     print(err.format())
 
+def get_build_dir(args: Arguments) -> py.path.local:
+    if args.build_dir is not None:
+        build_dir = args.build_dir
+    else:
+        # Create a build directory next to the .spy file
+        srcdir = args.filename.parent
+        build_dir = srcdir / "build"
+        print(f"Using build directory: {build_dir}")
+
+    build_dir.mkdir(exist_ok=True, parents=True)
+    return py.path.local(str(build_dir))
+
+
 async def inner_main(args: Arguments) -> None:
     """
     The actual code for the spy executable
@@ -288,31 +312,25 @@ async def inner_main(args: Arguments) -> None:
         args.error_mode = 'lazy'
         vm.emit_warning = emit_warning
 
-    # Determine build directory
-    if args.build_dir is not None:
-        builddir = args.build_dir
-        builddir.mkdir(exist_ok=True, parents=True)
-    elif args.cwrite or args.compile:
-        # Create a build directory next to the .spy file
-        builddir = srcdir / "build"
-        builddir.mkdir(exist_ok=True, parents=True)
-        print(f"Using build directory: {builddir}")
-    else:
-        # For non-build operations, use the source directory
-        builddir = srcdir
+    importer = ImportAnalizyer(vm, modname)
+    importer.parse_all()
 
-    if (args.parse and not args.redshift) or args.symtable:
-        parser = Parser.from_filename(str(args.filename))
-        mod = parser.parse()
-        if args.parse:
-            mod.pp()
-        elif args.symtable:
-            scopes = ScopeAnalyzer(vm, modname, mod)
-            scopes.analyze()
-            scopes.pp()
+    if args.parse and not args.redshift:
+        mod = importer.getmod(modname)
+        mod.pp()
         return
 
-    w_mod = vm.import_(modname)
+    if args.imports:
+        importer.pp()
+        return
+
+    if args.symtable:
+        scopes = importer.analyze_scopes(modname)
+        scopes.pp()
+        return
+
+    importer.import_all()
+    w_mod = vm.modules_w[modname]
 
     if args.execute:
         w_main_functype = W_FuncType.parse('def() -> void')
@@ -328,7 +346,6 @@ async def inner_main(args: Arguments) -> None:
         if args.timeit:
             print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
         assert w_res is B.w_None
-
         return
 
     vm.redshift(error_mode=args.error_mode)
@@ -339,21 +356,26 @@ async def inner_main(args: Arguments) -> None:
             dump_spy_mod(vm, modname, args.full_fqn)
         return
 
-    compiler = Compiler(vm, modname, py.path.local(str(builddir)),
-                        dump_c=False)
-    if args.cwrite:
-        build_type: BUILD_TYPE = "release" if args.release_mode else "debug"
-        t = get_toolchain(args.toolchain, build_type=build_type)
-        file_c = compiler.cwrite(t.TARGET)
-        print(f"Generated {file_c}")
-        if args.cdump:
-            print(highlight_C_maybe(file_c.read()))
+    build_dir = get_build_dir(args)
+    dump_c = args.cwrite and args.cdump
+    compiler = CBackend(
+        vm,
+        modname,
+        build_dir,
+        dump_c=dump_c
+    )
+    cfiles = compiler.cwrite()
+    cwd = py.path.local('.')
 
+    if args.cwrite:
+        cfiles_s = ', '.join([f.relto(cwd) for f in cfiles])
+        print(f"Generated {cfiles_s}")
     else:
-        executable = compiler.cbuild(
-            opt_level=args.opt_level,
-            debug_symbols=args.debug_symbols,
-            toolchain_type=args.toolchain,
-            release_mode=args.release_mode,
+        config = BuildConfig(
+            target = args.target,
+            kind = 'exe',
+            build_type = "release" if args.release_mode else "debug"
         )
+        outfile = compiler.build(config)
+        executable = outfile.relto(cwd)
         print(f"Generated {executable}")

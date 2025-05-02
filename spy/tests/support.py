@@ -5,11 +5,11 @@ import subprocess
 import pytest
 import py.path
 from spy import ast
-from spy.compiler import Compiler, ToolchainType
+from spy.backend.c.cbackend import CBackend
+from spy.build.ninja import BuildConfig, OutputKind, BuildTarget, NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.doppler import ErrorMode
-from spy.cbuild import Toolchain, ZigToolchain, EmscriptenToolchain
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -99,7 +99,7 @@ class CompilerTest:
     backend: Backend
     vm: SPyVM
 
-    OPT_LEVEL = 0
+    OPT_LEVEL: Optional[int] = None
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
@@ -142,7 +142,7 @@ class CompilerTest:
     def compile(
             self, src: str, modname: str = 'test',
             *,
-            opt_level=0, error_mode: ErrorMode='eager',
+            error_mode: ErrorMode='eager',
     ) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
@@ -169,28 +169,36 @@ class CompilerTest:
             return interp_mod
         elif self.backend == 'C':
             self.vm.redshift(error_mode=error_mode)
-            compiler = Compiler(self.vm, modname, self.builddir,
-                                dump_c=self.dump_c)
-            file_wasm = compiler.cbuild(
-                opt_level=self.OPT_LEVEL,
-                debug_symbols=True,
-                release_mode=False,
-                toolchain_type=ToolchainType.zig,
+            config = BuildConfig(
+                target = 'wasi',
+                kind = 'lib',
+                build_type = 'debug',
+                opt_level = self.OPT_LEVEL,
             )
+            compiler = CBackend(
+                self.vm,
+                modname,
+                self.builddir,
+                dump_c=self.dump_c
+            )
+            file_wasm = compiler.build(config)
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift(error_mode=error_mode)
-            if self.dump_redshift:
-                self.dump_module(modname)
-            compiler = Compiler(self.vm, modname, self.builddir,
-                                dump_c=self.dump_c)
-            file_js = compiler.cbuild(
-                opt_level=self.OPT_LEVEL,
-                debug_symbols=True,
-                release_mode=False,
-                toolchain_type = 'emscripten'
+            config = BuildConfig(
+                target = 'emscripten',
+                kind = 'exe',
+                build_type = 'debug',
+                opt_level = self.OPT_LEVEL
             )
-            return ExeWrapper(file_js)
+            compiler = CBackend(
+                self.vm,
+                modname,
+                self.builddir,
+                dump_c=self.dump_c
+            )
+            file_mjs = compiler.build(config)
+            return ExeWrapper(file_mjs)
         else:
             assert False, f'Unknown backend: {self.backend}'
 
@@ -297,14 +305,14 @@ class ExeWrapper:
 @pytest.mark.usefixtures('init')
 class CTest:
     tmpdir: Any
-    toolchain: Toolchain
+    target: BuildTarget
 
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
-        # NOTE: toolchain is overwritten by TestLLWasm.init_llwasm
-        self.toolchain = ZigToolchain('debug')
-        self.builddir = self.tmpdir.join('build').ensure(dir=True)
+        # NOTE: target is overwritten by TestLLWasm.init_llwasm
+        self.target = 'wasi'
+        self.build_dir = self.tmpdir.join('build').ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:
         src = textwrap.dedent(src)
@@ -312,26 +320,13 @@ class CTest:
         test_c.write(src)
         return test_c
 
-    def compile_wasm(self, src: str, *,
-                     exports: Optional[list[str]] = None) -> py.path.local:
-        test_c = self.write(src)
-        return self.toolchain.c2wasm(
-            test_c,
-            self.builddir,
-            exports=exports,
-            opt_level=0,
-            debug_symbols=True,
+    def c_compile(self, src: str, *, exports: list[str] = []) -> py.path.local:
+        config = BuildConfig(
+            target = self.target,
+            kind = 'lib',
+            build_type = 'debug'
         )
-
-    def compile_exe(self, src: str) -> py.path.local:
-        # XXX: we should make this more similar to compile_wasm
         test_c = self.write(src)
-        ext = self.toolchain.EXE_FILENAME_EXT
-        test_exe = self.builddir.join('test' + ext)
-        self.toolchain.c2exe(
-            test_c,
-            test_exe,
-            opt_level=0,
-            debug_symbols=True,
-        )
-        return test_exe
+        ninja = NinjaWriter(config, self.build_dir)
+        ninja.write('test', [test_c], wasm_exports=exports)
+        return ninja.build()

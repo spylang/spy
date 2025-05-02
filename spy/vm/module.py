@@ -12,23 +12,30 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+ModItem = tuple[FQN, W_Object]
 
 
 @B.builtin_type('module')
 class W_Module(W_Object):
     vm: 'SPyVM'
     name: str
-    filepath: str
+    filepath: Optional[str]
     _frozen: bool
     __spy_storage_category__ = 'reference'
 
-    def __init__(self, vm: 'SPyVM', name: str, filepath: str) -> None:
+    def __init__(self, vm: 'SPyVM', name: str, filepath: Optional[str]) -> None:
         self.vm = vm
         self.name = name
         self.filepath = filepath
 
     def __repr__(self) -> str:
-        return f'<spy module {self.name}>'
+        if self.filepath is None:
+            return f'<spy module {self.name} (builtin)>'
+        else:
+            return f'<spy module {self.name}>'
+
+    def is_builtin(self) -> bool:
+        return self.filepath is None
 
     # ==== applevel interface =====
 
@@ -72,7 +79,7 @@ class W_Module(W_Object):
             if fqn.modname == self.name:
                 yield fqn
 
-    def items_w(self) -> Iterable[tuple[FQN, W_Object]]:
+    def items_w(self) -> Iterable[ModItem]:
         for fqn, w_obj in self.vm.globals_w.items():
             if fqn.modname == self.name:
                 yield fqn, w_obj

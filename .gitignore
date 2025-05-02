@@ -1,3 +1,4 @@
+
 libspy.a
 libspy.wasm
 *.o
@@ -34,6 +35,10 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+
+# spy/build should be tracked
+!spy/build/
+
 develop-eggs/
 dist/
 downloads/

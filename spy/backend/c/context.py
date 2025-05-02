@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.object import W_Type
+from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.rawbuffer import RB
@@ -56,14 +56,18 @@ class Context:
     Keep track of things like the mapping from W_* types to C types.
     """
     vm: SPyVM
+    tbh_includes: TextBuilder
     tbh_types_decl: TextBuilder
     tbh_ptrs_def: TextBuilder
     tbh_types_def: TextBuilder
+    seen_modules: set[str]
     _d: dict[W_Type, C_Type]
 
     def __init__(self, vm: SPyVM) -> None:
         self.vm = vm
-        # set by CModuleWriter.emit_module
+        self.seen_modules = set()
+        # set by CModuleWriter.emit_header
+        self.tbh_includes = None   # type: ignore
         self.tbh_types_decl = None # type: ignore
         self.tbh_ptrs_def = None   # type: ignore
         self.tbh_types_def = None  # type: ignore
@@ -106,62 +110,30 @@ class Context:
         return C_Function(name, c_params, c_restype)
 
     def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
+        self.add_include_maybe(w_ptrtype.w_itemtype.fqn)
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        w_itemtype = w_ptrtype.w_itemtype
-        c_itemtype = self.w2c(w_itemtype)
-        self.tbh_types_decl.wb(f"""
-        typedef struct {c_ptrtype} {{
-            {c_itemtype} *p;
-        #ifdef SPY_DEBUG
-            size_t length;
-        #endif
-        }} {c_ptrtype};
-        """)
-        self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
-        #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
-        """)
         self._d[w_ptrtype] = c_ptrtype
         return c_ptrtype
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
+        self.add_include_maybe(w_st.fqn)
         c_struct_type = C_Type(w_st.fqn.c_name)
-        # forward declaration
         self._d[w_st] = c_struct_type
-        self.tbh_types_decl.wl(f'typedef struct {c_struct_type} {c_struct_type};')
-
-        # XXX this is VERY wrong: it assumes that the standard C layout
-        # matches the layout computed by struct.calc_layout: as long as we use
-        # only 32-bit types it should work, but eventually we need to do it
-        # properly.
-        #
-        # Write the struct definition in a detached builder. This is necessary
-        # because the call to w2c might trigger OTHER type definitions, so we
-        # must ensure that we write the whole "struct { ... }" block
-        # atomically.
-        out = self.tbh_types_def.make_nested_builder(detached=True)
-        out.wl("struct %s {" % c_struct_type)
-        with out.indent():
-            for field, w_fieldtype in w_st.fields.items():
-                c_fieldtype = self.w2c(w_fieldtype)
-                out.wl(f"{c_fieldtype} {field};")
-        out.wl("};")
-        out.wl("")
-        self.tbh_types_def.attach_nested_builder(out)
         return c_struct_type
 
     def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
+        self.add_include_maybe(w_hltype.fqn)
         c_hltype = C_Type(w_hltype.fqn.c_name)
-        w_lltype = w_hltype.w_lltype
-        c_lltype = self.w2c(w_lltype)
-        self.tbh_types_decl.wb(f"""
-        typedef struct {c_hltype} {{
-            {c_lltype} ll;
-        }} {c_hltype};
-        """)
-        LIFT = w_hltype.fqn.join('__lift__').c_name
-        self.tbh_ptrs_def.wb(f"""
-        SPY_TYPELIFT_FUNCTIONS({c_hltype}, {c_lltype});
-        """)
         self._d[w_hltype] = c_hltype
         return c_hltype
+
+    def add_include_maybe(self, fqn: FQN) -> None:
+        modname = fqn.modname
+        if modname in self.seen_modules:
+            # we already encountered this module, nothing to do
+            return
+
+        self.seen_modules.add(modname)
+        w_mod = self.vm.modules_w[modname]
+        if not w_mod.is_builtin():
+            self.tbh_includes.wl(f'#include "{modname}.h"')
