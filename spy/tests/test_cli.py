@@ -125,7 +125,7 @@ class TestMain:
         elif target == 'wasi':
             main_wasm = self.tmpdir.join('main.wasm')
             assert main_wasm.exists()
-            cmd = f'wasmtime {main_wasm}'
+            cmd = f'python -m spy.tool.wasmtime {main_wasm}'
         else:
             main_js = self.tmpdir.join('main.mjs')
             main_wasm = self.tmpdir.join('main.wasm')
