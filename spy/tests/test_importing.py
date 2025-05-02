@@ -97,7 +97,7 @@ class TestImportAnalizyer:
 
         # Pre-import mod1 into the VM
         dummy_module = object()
-        self.vm.modules_w['mod1'] = dummy_module
+        self.vm.modules_w['mod1'] = dummy_module  # type: ignore
 
         analyzer = ImportAnalizyer(self.vm, 'main')
         analyzer.parse_all()

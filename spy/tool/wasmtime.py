@@ -9,10 +9,9 @@ Mostly useful for tests.
 
 import sys
 import argparse
-import wasmtime
-from wasmtime import Store, Module, Instance, WasiConfig, Linker
+import wasmtime as wt
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run a WASI-enabled WebAssembly module using wasmtime."
     )
@@ -22,8 +21,8 @@ def main():
     args = parser.parse_args()
 
     # Set up WASI configuration
-    store = Store()
-    wasi_config = WasiConfig()
+    store = wt.Store()
+    wasi_config = wt.WasiConfig()
     wasi_config.argv = [args.wasm_file] + args.args
     wasi_config.inherit_stdout()
     wasi_config.inherit_stderr()
@@ -31,8 +30,8 @@ def main():
     store.set_wasi(wasi_config)
 
     # Load and instantiate the module
-    module = Module.from_file(store.engine, args.wasm_file)
-    linker = Linker(store.engine)
+    module = wt.Module.from_file(store.engine, args.wasm_file)
+    linker = wt.Linker(store.engine)
     linker.define_wasi()
 
     instance = linker.instantiate(store, module)
@@ -40,8 +39,9 @@ def main():
     # Run the `_start` function
     try:
         start = instance.exports(store)["_start"]
+        assert isinstance(start, wt.Func)
         start(store)
-    except wasmtime.WasmtimeError as e:
+    except wt.WasmtimeError as e:
         print(f"Error: {e}")
         sys.exit(1)
 
