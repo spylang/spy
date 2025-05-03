@@ -128,6 +128,7 @@ class Node:
 @dataclass(eq=False)
 class Module(Node):
     filename: str
+    docstring: Optional[str]
     decls: list['Decl']
 
     def get_funcdef(self, name: str) -> 'FuncDef':
@@ -376,6 +377,7 @@ class FuncDef(Stmt):
     name: str
     args: list[FuncArg]
     return_type: 'Expr'
+    docstring: Optional[str]
     body: list['Stmt']
     symtable: Any = field(repr=False, default=None)
 
@@ -391,6 +393,7 @@ class FuncDef(Stmt):
 class ClassDef(Stmt):
     name: str
     kind: ClassKind
+    docstring: Optional[str]
     fields: list['VarDef']
     methods: list['FuncDef']
     symtable: Any = field(repr=False, default=None)

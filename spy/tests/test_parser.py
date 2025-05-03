@@ -45,6 +45,7 @@ class TestParser:
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
@@ -53,6 +54,7 @@ class TestParser:
                         name='foo',
                         args=[],
                         return_type=Name(id='void'),
+                        docstring=None,
                         body=[
                             Pass(),
                         ],
@@ -71,6 +73,7 @@ class TestParser:
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
@@ -88,6 +91,7 @@ class TestParser:
                             ),
                         ],
                         return_type=Name(id='void'),
+                        docstring=None,
                         body=[
                             Pass(),
                         ],
@@ -201,6 +205,31 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            docstring=None,
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_FuncDef_docstring(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            "hello"
+            return 42
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            docstring='hello',
             body=[
                 Return(
                     value=Constant(value=42),
@@ -224,6 +253,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            docstring=None,
             body=[
                 Return(
                     value=Constant(value=42),
@@ -247,6 +277,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            docstring=None,
             body=[
                 Return(
                     value=Constant(value=42),
@@ -389,6 +420,7 @@ class TestParser:
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
@@ -413,6 +445,7 @@ class TestParser:
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
@@ -437,6 +470,7 @@ class TestParser:
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
@@ -461,6 +495,7 @@ class TestParser:
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
@@ -825,6 +860,7 @@ class TestParser:
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 Import(fqn=FQN('testmod::a'), asname='a'),
                 Import(fqn=FQN('testmod::b'), asname='b2'),
@@ -843,11 +879,39 @@ class TestParser:
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 Import(fqn=FQN('aaa'), asname='aaa'),
                 Import(fqn=FQN('bbb'), asname='BBB'),
                 Import(fqn=FQN('ccc'), asname='ccc'),
                 Import(fqn=FQN('ddd'), asname='DDD'),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
+    def test_module_docstring(self):
+        mod = self.parse('''
+        "hello"
+        x = 42
+        ''')
+        #
+        expected = """
+        Module(
+            filename='{tmpdir}/test.spy',
+            docstring='hello',
+            decls=[
+                GlobalVarDef(
+                    vardef=VarDef(
+                        kind='const',
+                        name='x',
+                        type=Auto(),
+                    ),
+                    assign=Assign(
+                        target=StrConst(value='x'),
+                        value=Constant(value=42),
+                    ),
+                ),
             ],
         )
         """
@@ -894,6 +958,7 @@ class TestParser:
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
+            docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
@@ -902,6 +967,7 @@ class TestParser:
                         name='foo',
                         args=[],
                         return_type=Name(id='dynamic'),
+                        docstring=None,
                         body=[
                             FuncDef(
                                 color='red',
@@ -909,6 +975,7 @@ class TestParser:
                                 name='bar',
                                 args=[],
                                 return_type=Name(id='void'),
+                                docstring=None,
                                 body=[
                                     Pass(),
                                 ],
@@ -962,6 +1029,7 @@ class TestParser:
         ClassDef(
             name='Foo',
             kind='class',
+            docstring=None,
             fields=[],
             methods=[],
         )
@@ -979,7 +1047,33 @@ class TestParser:
         ClassDef(
             name='Foo',
             kind='struct',
+            docstring=None,
             fields=[],
+            methods=[],
+        )
+        """
+        self.assert_dump(classdef, expected)
+
+    def test_Class_docstring(self):
+        mod = self.parse("""
+        class Foo:
+            "hello"
+            x: i32
+        """)
+        classdef = mod.get_classdef('Foo')
+
+        expected = """
+        ClassDef(
+            name='Foo',
+            kind='class',
+            docstring='hello',
+            fields=[
+                VarDef(
+                    kind='var',
+                    name='x',
+                    type=Name(id='i32'),
+                ),
+            ],
             methods=[],
         )
         """
@@ -997,6 +1091,7 @@ class TestParser:
         ClassDef(
             name='Point',
             kind='struct',
+            docstring=None,
             fields=[
                 VarDef(
                     kind='var',
@@ -1025,6 +1120,7 @@ class TestParser:
         ClassDef(
             name='Foo',
             kind='typelift',
+            docstring=None,
             fields=[
                 VarDef(
                     kind='var',
@@ -1064,6 +1160,7 @@ class TestParser:
         ClassDef(
             name='Foo',
             kind='typelift',
+            docstring=None,
             fields=[
                 VarDef(
                     kind='var',
@@ -1078,6 +1175,7 @@ class TestParser:
                     name='foo',
                     args=[],
                     return_type=Name(id='void'),
+                    docstring=None,
                     body=[
                         Pass(),
                     ],
