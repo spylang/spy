@@ -1,4 +1,4 @@
-from typing import Literal, Self, Optional
+from typing import Self, Optional
 from dataclasses import dataclass
 import subprocess
 import textwrap
@@ -6,17 +6,7 @@ import shlex
 import py.path
 import spy.libspy
 from spy.textbuilder import TextBuilder, Color
-
-BuildTarget = Literal['native', 'wasi', 'emscripten']
-OutputKind = Literal['exe', 'lib']
-BuildType = Literal['release', 'debug']
-
-@dataclass
-class BuildConfig:
-    target: BuildTarget
-    kind: OutputKind
-    build_type: BuildType
-    opt_level: Optional[int] = None
+from spy.build.config import BuildConfig, BuildTarget, BuildType, OutputKind
 
 
 class Flags:

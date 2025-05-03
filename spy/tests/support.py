@@ -6,7 +6,8 @@ import pytest
 import py.path
 from spy import ast
 from spy.backend.c.cbackend import CBackend
-from spy.build.ninja import BuildConfig, OutputKind, BuildTarget, NinjaWriter
+from spy.build.config import OutputKind
+from spy.build.ninja import BuildConfig, BuildTarget, NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.doppler import ErrorMode

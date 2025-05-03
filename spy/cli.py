@@ -18,7 +18,7 @@ from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.backend.c.cbackend import CBackend
-from spy.build.ninja import BuildConfig, BuildTarget
+from spy.build.config import BuildConfig, BuildTarget
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
