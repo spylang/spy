@@ -68,10 +68,35 @@ class Parser:
         self.error(f'not implemented yet: {reason}',
                    'this is not supported', node.loc)
 
+    def get_docstring_maybe(
+            self,
+            body: list[py_ast.stmt]
+    ) -> tuple[Optional[str], list[py_ast.stmt]]:
+        """
+        Extract the docstring from a list of statements.
+        """
+        if not body:
+            return None, body
+
+        # Check if the first statement is an expression with a string constant
+        first_stmt = body[0]
+        if (isinstance(first_stmt, py_ast.Expr) and
+            isinstance(first_stmt.value, py_ast.Constant) and
+            isinstance(first_stmt.value.value, str)):
+
+            return first_stmt.value.value, body[1:]
+
+        return None, body
+
     def from_py_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
         loc = Loc(self.filename, 1, 1, 0, -1)
-        mod = spy.ast.Module(loc=loc, filename=self.filename, decls=[])
-        for py_stmt in py_mod.body:
+
+        # Extract module docstring
+        docstring, py_body = self.get_docstring_maybe(py_mod.body)
+
+        mod = spy.ast.Module(loc=loc, filename=self.filename, decls=[], docstring=docstring)
+
+        for py_stmt in py_body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
                 globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
@@ -153,8 +178,10 @@ class Parser:
                 col_end = len('def ') + len(name)
             )
             self.error('missing return type', '', func_loc)
-        #
-        body = self.from_py_body(py_funcdef.body)
+
+        docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
+        body = self.from_py_body(py_body)
+
         return spy.ast.FuncDef(
             loc = py_funcdef.loc,
             color = color,
@@ -163,6 +190,7 @@ class Parser:
             args = args,
             return_type = return_type,
             body = body,
+            docstring = docstring,
         )
 
     def from_py_arguments(self,
@@ -245,10 +273,12 @@ class Parser:
         else:
             kind = 'class'
 
+        docstring, py_class_body = self.get_docstring_maybe(py_classdef.body)
+
         # only few kind of declarations are supported inside a "class:" block
         fields: list[spy.ast.VarDef] = []
         methods: list[spy.ast.FuncDef] = []
-        for py_stmt in py_classdef.body:
+        for py_stmt in py_class_body:
             if isinstance(py_stmt, py_ast.Pass):
                 pass
             elif isinstance(py_stmt, py_ast.AnnAssign):
@@ -271,6 +301,7 @@ class Parser:
             kind = kind,
             fields = fields,
             methods = methods,
+            docstring = docstring,
         )
 
 
