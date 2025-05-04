@@ -32,6 +32,7 @@ class CBackend:
     ) -> None:
         self.vm = vm
         self.build_dir = build_dir
+        self.build_dir.join('src').ensure(dir=True)
         self.outname = outname
         self.dump_c = dump_c
 
@@ -48,8 +49,8 @@ class CBackend:
             assert w_mod.filepath is not None
             file_spy = py.path.local(w_mod.filepath)
             basename = file_spy.purebasename
-            file_c = self.build_dir.join(f'{basename}.c')
-            file_h = self.build_dir.join(f'{basename}.h')
+            file_c = self.build_dir.join('src', f'{basename}.c')
+            file_h = self.build_dir.join('src', f'{basename}.h')
             cwriter = CModuleWriter(self.vm, w_mod, file_spy, file_h, file_c)
             cwriter.write_c_source()
             cfiles.append(file_c)
@@ -75,7 +76,7 @@ class CBackend:
         ]
 
         w_mod = self.vm.modules_w['builtins']
-        file_h = self.build_dir.join('builtins_extra.h')
+        file_h = self.build_dir.join('src', 'builtins_extra.h')
         cwriter = CModuleWriter(
             self.vm, w_mod, None, file_h, None,
             mod_items=mod_items
