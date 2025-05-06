@@ -18,7 +18,7 @@ from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.backend.c.cbackend import CBackend
-from spy.build.config import BuildConfig, BuildTarget
+from spy.build.config import BuildConfig, BuildTarget, OutputKind
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
@@ -146,6 +146,15 @@ class Arguments:
             click_type=click.Choice(BuildTarget.__args__),
         )
     ] = 'native'
+
+    output_kind: Annotated[
+        OutputKind,
+        Option(
+            "-k", "--output-kind",
+            help="Output kind",
+            click_type=click.Choice(OutputKind.__args__),
+        )
+    ] = 'exe'
 
     error_mode: Annotated[
         ErrorMode,
@@ -361,13 +370,13 @@ async def inner_main(args: Arguments) -> None:
 
     build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
-    compiler = CBackend(
+    backend = CBackend(
         vm,
         modname,
         build_dir,
         dump_c=dump_c
     )
-    cfiles = compiler.cwrite()
+    cfiles = backend.cwrite()
     cwd = py.path.local('.')
 
     if args.cwrite:
@@ -376,9 +385,9 @@ async def inner_main(args: Arguments) -> None:
     else:
         config = BuildConfig(
             target = args.target,
-            kind = 'exe',
+            kind = args.output_kind,
             build_type = "release" if args.release_mode else "debug"
         )
-        outfile = compiler.build(config)
+        outfile = backend.build(config)
         executable = outfile.relto(cwd)
         print(f"Generated {executable}")
