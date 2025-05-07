@@ -6,8 +6,8 @@ import pytest
 import py.path
 from spy import ast
 from spy.backend.c.cbackend import CBackend
-from spy.build.config import OutputKind
-from spy.build.ninja import BuildConfig, BuildTarget, NinjaWriter
+from spy.build.config import BuildConfig, BuildTarget
+from spy.build.ninja import NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
 from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.doppler import ErrorMode
@@ -179,10 +179,11 @@ class CompilerTest:
             compiler = CBackend(
                 self.vm,
                 modname,
+                config,
                 self.builddir,
                 dump_c=self.dump_c
             )
-            file_wasm = compiler.build(config)
+            file_wasm = compiler.build()
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift(error_mode=error_mode)
@@ -195,10 +196,11 @@ class CompilerTest:
             compiler = CBackend(
                 self.vm,
                 modname,
+                config,
                 self.builddir,
                 dump_c=self.dump_c
             )
-            file_mjs = compiler.build(config)
+            file_mjs = compiler.build()
             return ExeWrapper(file_mjs)
         else:
             assert False, f'Unknown backend: {self.backend}'

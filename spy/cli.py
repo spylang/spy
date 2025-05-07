@@ -368,11 +368,18 @@ async def inner_main(args: Arguments) -> None:
             dump_spy_mod(vm, modname, args.full_fqn)
         return
 
+    config = BuildConfig(
+        target = args.target,
+        kind = args.output_kind,
+        build_type = "release" if args.release_mode else "debug"
+    )
+
     build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
     backend = CBackend(
         vm,
         modname,
+        config,
         build_dir,
         dump_c=dump_c
     )
@@ -383,11 +390,6 @@ async def inner_main(args: Arguments) -> None:
         cfiles_s = ', '.join([f.relto(cwd) for f in cfiles])
         print(f"Generated {cfiles_s}")
     else:
-        config = BuildConfig(
-            target = args.target,
-            kind = args.output_kind,
-            build_type = "release" if args.release_mode else "debug"
-        )
-        outfile = backend.build(config)
+        outfile = backend.build()
         executable = outfile.relto(cwd)
         print(f"Generated {executable}")

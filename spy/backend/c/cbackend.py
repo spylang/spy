@@ -2,7 +2,8 @@ import os
 from enum import Enum
 import py.path
 from spy.backend.c.cmodwriter import CModuleWriter
-from spy.build.ninja import NinjaWriter, BuildConfig
+from spy.build.config import BuildConfig
+from spy.build.ninja import NinjaWriter
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object
 from spy.vm.module import W_Module, ModItem
@@ -18,22 +19,25 @@ class CBackend:
     Convert SPy modules into C files
     """
     vm: SPyVM
-    build_dir: py.path.local
     outname: str
+    config: BuildConfig
+    build_dir: py.path.local
     dump_c: bool
 
     def __init__(
             self,
             vm: SPyVM,
             outname: str,
+            config: BuildConfig,
             build_dir: py.path.local,
             *,
             dump_c: bool
     ) -> None:
         self.vm = vm
+        self.outname = outname
+        self.config = config
         self.build_dir = build_dir
         self.build_dir.join('src').ensure(dir=True)
-        self.outname = outname
         self.dump_c = dump_c
 
     def cwrite(self) -> list[py.path.local]:
@@ -83,13 +87,13 @@ class CBackend:
         )
         cwriter.write_c_source()
 
-    def build(self, config: BuildConfig) -> py.path.local:
+    def build(self) -> py.path.local:
         wasm_exports = []
-        if config.target == 'wasi' and config.kind == 'lib':
+        if self.config.target == 'wasi' and self.config.kind == 'lib':
             wasm_exports = self.get_wasm_exports()
         cfiles = self.cwrite()
 
-        ninja = NinjaWriter(config, self.build_dir)
+        ninja = NinjaWriter(self.config, self.build_dir)
         ninja.write(self.outname, cfiles, wasm_exports=wasm_exports)
         outfile = ninja.build()
         if DUMP_WASM and outfile.ext == '.wasm':

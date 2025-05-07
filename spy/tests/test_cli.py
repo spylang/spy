@@ -101,7 +101,7 @@ class TestMain:
             '--build-dir', self.tmpdir,
             self.main_spy
         )
-        main_c = self.tmpdir.join('main.c')
+        main_c = self.tmpdir.join('src', 'main.c')
         assert main_c.exists()
         csrc = main_c.read()
         assert csrc.startswith('#include "main.h"')
