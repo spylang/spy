@@ -383,13 +383,14 @@ async def inner_main(args: Arguments) -> None:
         build_dir,
         dump_c=dump_c
     )
-    cfiles = backend.cwrite()
     cwd = py.path.local('.')
 
     if args.cwrite:
+        cfiles = backend.cwrite()
         cfiles_s = ', '.join([f.relto(cwd) for f in cfiles])
         print(f"Generated {cfiles_s}")
-    else:
-        outfile = backend.build()
-        executable = outfile.relto(cwd)
-        print(f"Generated {executable}")
+        return
+
+    outfile = backend.build()
+    executable = outfile.relto(cwd)
+    print(f"Generated {executable}")

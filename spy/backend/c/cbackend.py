@@ -4,6 +4,7 @@ import py.path
 from spy.backend.c.cmodwriter import CModuleWriter
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
+from spy.build.cffiwriter import CFFIWriter
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object
 from spy.vm.module import W_Module, ModItem
@@ -93,9 +94,16 @@ class CBackend:
             wasm_exports = self.get_wasm_exports()
         cfiles = self.cwrite()
 
-        ninja = NinjaWriter(self.config, self.build_dir)
-        ninja.write(self.outname, cfiles, wasm_exports=wasm_exports)
-        outfile = ninja.build()
+        if self.config.kind == 'py:cffi':
+            assert wasm_exports == []
+            cffi_writer = CFFIWriter(self.config, self.build_dir)
+            outfile = cffi_writer.write(self.outname, cfiles)
+            #cffi_writer.build() # ???
+        else:
+            ninja = NinjaWriter(self.config, self.build_dir)
+            ninja.write(self.outname, cfiles, wasm_exports=wasm_exports)
+            outfile = ninja.build()
+
         if DUMP_WASM and outfile.ext == '.wasm':
             print()
             print(f'---- {outfile} ----')
