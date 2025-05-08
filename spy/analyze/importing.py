@@ -85,6 +85,8 @@ class ImportAnalizyer:
         self.vm = vm
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
+        self.deps: dict[str, list[str]] = {}  # modname -> list_of_imports
+        self.cur_modname: Optional[str] = None
 
     def getmod(self, modname: str) -> ast.Module:
         mod = self.mods[modname]
@@ -110,7 +112,14 @@ class ImportAnalizyer:
                 parser = Parser.from_filename(str(f))
                 mod = parser.parse()
                 self.mods[modname] = mod
+
+                # Initialize the dependency list for this module
+                if modname not in self.deps:
+                    self.deps[modname] = []
+
+                self.cur_modname = modname
                 self.visit(mod)
+                self.cur_modname = None
 
             else:
                 # we couldn't find .spy for this modname
@@ -136,9 +145,33 @@ class ImportAnalizyer:
         return scopes
 
     def get_import_list(self) -> list[str]:
-        # XXX: the following logic is broken and doesn't do what the class
-        # docstring says
-        return list(reversed(self.mods))
+        """
+        Return a list of module names in the order they should be imported.
+
+        This implements a depth-first post-order traversal of the import tree,
+        which corresponds to the order described in the class docstring.
+        """
+        # Perform depth-first post-order traversal using the dependency graph
+        result = []
+        visited = set()
+
+        def visit(modname):
+            if modname in visited:
+                return
+            visited.add(modname)
+
+            # Visit all dependencies first
+            for dep in self.deps.get(modname, []):
+                visit(dep)
+
+            # Then add this module
+            result.append(modname)
+
+        # Start with all modules to ensure we cover everything
+        for modname in self.mods:
+            visit(modname)
+
+        return result
 
     def import_all(self) -> None:
         assert self.mods, 'call .parse_all() first'
@@ -182,6 +215,10 @@ class ImportAnalizyer:
         mod.visit('visit', self)
 
     def visit_Import(self, imp: ast.Import) -> None:
-        self.queue.append(imp.fqn.modname)
+        modname = imp.fqn.modname
+        assert self.cur_modname is not None
+        # Record the dependency relationship
+        self.deps[self.cur_modname].append(modname)
+        self.queue.append(modname)
 
     # ===========================================================
