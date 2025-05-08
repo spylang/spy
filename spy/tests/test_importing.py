@@ -42,26 +42,35 @@ class TestImportAnalizyer:
 
     def test_nested_imports(self):
         self.write("main.spy", """
-        import mod1
-        import mod2
+        import aaa
+        import bbb
         """)
-        self.write("mod1.spy", """
-        import mod3
+        self.write("aaa.spy", """
+        import a1
+        import a2
         """)
-        self.write("mod2.spy", """
-        import mod3
-        import mod4
+        self.write("bbb.spy", """
+        import aaa
+        import b1
+        import b2
         """)
-        self.write("mod3.spy", """
-        x: i32 = 42
+        self.write("a1.spy", """
+        x = 'a1'
         """)
-        self.write("mod4.spy", """
-        y: i32 = 43
+        self.write("a2.spy", """
+        x = 'a2'
+        """)
+        self.write("b1.spy", """
+        x = 'b1'
+        """)
+        self.write("b2.spy", """
+        x = 'b2'
         """)
 
         analyzer = ImportAnalizyer(self.vm, 'main')
         analyzer.parse_all()
-        assert list(analyzer.mods) == ['main', 'mod1', 'mod2', 'mod3', 'mod4']
+        mods = analyzer.get_import_list()
+        assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']
 
     @pytest.mark.skip(reason="parser does not support this")
     def test_import_in_function(self):

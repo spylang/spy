@@ -135,12 +135,16 @@ class ImportAnalizyer:
         scopes.analyze()
         return scopes
 
-    def import_all(self) -> None:
-        assert self.mods, 'call .parse_all() first'
+    def get_import_list(self) -> list[str]:
         # XXX: the following logic is broken and doesn't do what the class
         # docstring says
-        all_mods = reversed(self.mods.items())
-        for modname, mod in all_mods:
+        return list(reversed(self.mods))
+
+    def import_all(self) -> None:
+        assert self.mods, 'call .parse_all() first'
+        import_list = self.get_import_list()
+        for modname in import_list:
+            mod = self.mods[modname]
             if isinstance(mod, ast.Module):
                 self.import_one(modname, mod)
 
@@ -156,7 +160,9 @@ class ImportAnalizyer:
         from spy.vm.module import W_Module
         color = ColorFormatter(use_colors=True)
         n = max(len(modname) for modname in self.mods)
-        for modname, mod in self.mods.items():
+        import_list = self.get_import_list()
+        for modname in import_list:
+            mod = self.mods[modname]
             if isinstance(mod, ast.Module):
                 what = color.set('green', mod.filename)
             elif isinstance(mod, W_Module):
