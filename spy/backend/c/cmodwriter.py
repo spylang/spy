@@ -18,6 +18,7 @@ from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import c_ast as C
 from spy.backend.c.cwriter import CFuncWriter
+from spy.backend.c.cffidef import CFFIDef
 from spy.util import shortrepr, magic_dispatch
 
 
@@ -52,6 +53,7 @@ class CModuleWriter:
             spyfile: Optional[py.path.local],
             hfile: Optional[py.path.local],
             cfile: Optional[py.path.local],
+            cffidef: CFFIDef,
             *,
             mod_items: Optional[Iterable[ModItem]] = None,
     ) -> None:
@@ -64,6 +66,7 @@ class CModuleWriter:
         self.spyfile = spyfile
         self.hfile = hfile
         self.cfile = cfile
+        self.cffidef = cffidef
         self.tbh = TextBuilder(use_colors=False)
         self.tbc = TextBuilder(use_colors=False)
         # nested builders are initialized lazily
@@ -155,6 +158,9 @@ class CModuleWriter:
     def init_c(self) -> None:
         assert self.hfile is not None
         header_name = self.hfile.basename
+        self.cffidef.tb_src.wb(f"""
+        #include "{header_name}"
+        """)
         self.tbc.wb(f"""
         #include "{header_name}"
         """)
@@ -257,6 +263,13 @@ class CModuleWriter:
         argnames = [arg.name for arg in w_func.funcdef.args]
         c_func = self.ctx.c_function(fqn.c_name, w_func)
         self.tbh_funcs.wl(c_func.decl() + ';')
+
+        # XXX explain
+        c_name2 = fqn.c_name.replace('$', '_')
+        c_func2 = self.ctx.c_function(c_name2, w_func)
+        self.cffidef.tb_cdef.wl(c_func2.decl() + ';')
+        self.cffidef.tb_src.wl(f'#define {c_name2} {fqn.c_name}')
+
 
         # func body in .c
         fw = CFuncWriter(self.ctx, self, fqn, w_func)

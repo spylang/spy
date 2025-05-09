@@ -2,6 +2,7 @@ import os
 from enum import Enum
 import py.path
 from spy.backend.c.cmodwriter import CModuleWriter
+from spy.backend.c.cffidef import CFFIDef
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.build.cffiwriter import CFFIWriter
@@ -24,6 +25,7 @@ class CBackend:
     config: BuildConfig
     build_dir: py.path.local
     dump_c: bool
+    cffidef: CFFIDef
 
     def __init__(
             self,
@@ -40,6 +42,7 @@ class CBackend:
         self.build_dir = build_dir
         self.build_dir.join('src').ensure(dir=True)
         self.dump_c = dump_c
+        self.cffidef = CFFIDef()
 
     def cwrite(self) -> list[py.path.local]:
         """
@@ -56,7 +59,10 @@ class CBackend:
             basename = file_spy.purebasename
             file_c = self.build_dir.join('src', f'{basename}.c')
             file_h = self.build_dir.join('src', f'{basename}.h')
-            cwriter = CModuleWriter(self.vm, w_mod, file_spy, file_h, file_c)
+            cwriter = CModuleWriter(
+                self.vm, w_mod, file_spy, file_h, file_c,
+                self.cffidef
+            )
             cwriter.write_c_source()
             cfiles.append(file_c)
             #
@@ -83,7 +89,7 @@ class CBackend:
         w_mod = self.vm.modules_w['builtins']
         file_h = self.build_dir.join('src', 'builtins_extra.h')
         cwriter = CModuleWriter(
-            self.vm, w_mod, None, file_h, None,
+            self.vm, w_mod, None, file_h, None, self.cffidef,
             mod_items=mod_items
         )
         cwriter.write_c_source()
@@ -96,7 +102,7 @@ class CBackend:
 
         if self.config.kind == 'py:cffi':
             assert wasm_exports == []
-            cffi_writer = CFFIWriter(self.config, self.build_dir)
+            cffi_writer = CFFIWriter(self.cffidef, self.config, self.build_dir)
             outfile = cffi_writer.write(self.outname, cfiles)
             #cffi_writer.build() # ???
         else:

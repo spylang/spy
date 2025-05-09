@@ -4,7 +4,9 @@ import py.path
 from spy.build.config import BuildConfig, CompilerConfig
 from spy.vm.vm import SPyVM
 from spy.textbuilder import TextBuilder, Color
+from spy.backend.c.cffidef import CFFIDef
 
+# XXX fix this!
 # XXX: for now we hardcode it for 'add.spy', but of course we need to do it
 # properly
 CDEF = """
@@ -20,8 +22,14 @@ class CFFIWriter:
     config: BuildConfig
     build_dir: py.path.local
 
-    def __init__(self, config: BuildConfig, build_dir: py.path.local) -> None:
+    def __init__(
+            self,
+            cffidef: CFFIDef,
+            config: BuildConfig,
+            build_dir: py.path.local
+    ) -> None:
         assert config.kind == 'py:cffi'
+        self.cffidef = cffidef
         self.config = config
         self.build_dir = build_dir
         self.cffi_dir = self.build_dir.join('cffi')
@@ -31,8 +39,11 @@ class CFFIWriter:
         comp = CompilerConfig(self.config)
         outfile = self.cffi_dir.join('cffi-build.py')
 
-        CDEF2 = textwrap.indent(CDEF, " " * 8)
-        SRC2 = textwrap.indent(SRC, " " * 8)
+        cffi_cdef = self.cffidef.tb_cdef.build()
+        cffi_cdef = textwrap.indent(cffi_cdef, " " * 8)
+
+        cffi_src = self.cffidef.tb_src.build()
+        cffi_src = textwrap.indent(cffi_src, " " * 8)
 
         SOURCES = [str(f) for f in cfiles]
         CFLAGS = comp.cflags
@@ -51,10 +62,10 @@ class CFFIWriter:
 
         ffibuilder = FFI()
         ffibuilder.cdef('''
-        {CDEF2}
+        {cffi_cdef}
         ''')
         src = '''
-        {SRC2}
+        {cffi_src}
         '''
 
         ffibuilder.set_source(
