@@ -1,5 +1,5 @@
 import pytest
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
 
 class TestImporting(CompilerTest):
 
@@ -75,3 +75,55 @@ class TestImporting(CompilerTest):
         """)
 
         assert mod.foo(3, 4) == 7
+
+    @only_interp
+    def test_nested_imports(self, capsys):
+        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
+        self.write_file("aaa.spy", """
+        import a1
+        import a2
+
+        @blue
+        def __INIT__(mod):
+            print('aaa')
+        """)
+        self.write_file("bbb.spy", """
+        import aaa
+        import b1
+        import b2
+
+        @blue
+        def __INIT__(mod):
+            print('bbb')
+        """)
+        self.write_file("a1.spy", """
+        @blue
+        def __INIT__(mod):
+            print('a1')
+        """)
+        self.write_file("a2.spy", """
+        @blue
+        def __INIT__(mod):
+            print('a2')
+        """)
+        self.write_file("b1.spy", """
+        @blue
+        def __INIT__(mod):
+            print('b1')
+        """)
+        self.write_file("b2.spy", """
+        @blue
+        def __INIT__(mod):
+            print('b2')
+        """)
+        mod = self.compile("""
+        import aaa
+        import bbb
+
+        @blue
+        def __INIT__(mod):
+            print('main')
+        """)
+        out, err = capsys.readouterr()
+        mods = out.strip().split('\n')
+        assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']

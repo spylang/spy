@@ -332,6 +332,9 @@ async def inner_main(args: Arguments) -> None:
     importer.import_all()
     w_mod = vm.modules_w[modname]
 
+    #vm.pp_globals()
+    #vm.pp_modules()
+
     if args.execute:
         w_main_functype = W_FuncType.parse('def() -> void')
         w_main = w_mod.getattr_maybe('main')

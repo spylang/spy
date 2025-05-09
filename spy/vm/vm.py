@@ -185,6 +185,16 @@ class SPyVM:
                 return fqn
         return None
 
+    def pp_globals(self) -> None:
+        all_fqns = sorted(self.globals_w, key=lambda fqn: str(fqn))
+        for fqn in all_fqns:
+            print(fqn)
+
+    def pp_modules(self) -> None:
+        for modname, w_mod in self.modules_w.items():
+            w_mod.pp()
+            print()
+
     def make_fqn_const(self, w_val: W_Object) -> FQN:
         """
         Check whether the given w_val has a corresponding FQN, and create
