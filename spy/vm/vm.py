@@ -195,7 +195,6 @@ class SPyVM:
             w_mod.pp()
             print()
 
-
     def make_fqn_const(self, w_val: W_Object) -> FQN:
         """
         Check whether the given w_val has a corresponding FQN, and create

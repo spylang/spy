@@ -190,25 +190,51 @@ class ImportAnalizyer:
         self.vm.modules_w[modname] = w_mod
 
     def pp(self) -> None:
-        print('Import tree')
+        print('Import tree:')
         self.pp_tree()
         print()
-        print('Import order')
+        print('vm.path:')
+        self.pp_path()
+        print()
+        print('Import order:')
         self.pp_list()
+
+    def pp_path(self) -> None:
+        color = ColorFormatter(use_colors=True)
+        for i, p in enumerate(self.vm.path):
+            print(f'  p{i} = {p}')
 
     def pp_list(self) -> None:
         from spy.vm.module import W_Module
         color = ColorFormatter(use_colors=True)
         n = max(len(modname) for modname in self.mods)
         import_list = self.get_import_list()
+
+        # identify common paths
+        paths = {}
+        if self.vm.path:
+            for i, path in enumerate(self.vm.path):
+                paths[path+'/'] = f'$p{i}'
+
+        def shorten_path(path):
+            if not path:
+                return path
+            for base_path, alias in paths.items():
+                if path.startswith(base_path):
+                    suffix = path[len(base_path):]
+                    suffix = color.set('green', suffix)
+                    return f"{alias}/{suffix}"
+            return path
+
+        # Print import list with shortened paths
         for i, modname in enumerate(import_list):
             mod = self.mods[modname]
             if isinstance(mod, ast.Module):
-                what = color.set('green', mod.filename)
+                # The alias is already colored in shorten_path
+                what = shorten_path(mod.filename)
             elif isinstance(mod, W_Module):
                 what = color.set('blue', str(mod)) + ' (already imported)'
             elif mod is None:
-                c = 'red'
                 what = color.set('red', 'ImportError')
             else:
                 assert False
