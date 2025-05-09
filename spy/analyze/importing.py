@@ -298,7 +298,7 @@ class ImportAnalizyer:
 
         # Print each root
         for root in roots:
-            print_tree(root, prefix='', indent='', marker='', visited=set())
+            print_tree(root, prefix='  ', indent='', marker='', visited=set())
 
 
     # ===========================================================
