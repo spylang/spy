@@ -53,14 +53,14 @@ class ImportAnalizyer:
 
     This gives us an import tree which looks like that:
 
-    +-- main
-        +-- aaa
-        |   +-- a1
-        |   +-- a2
-        +-- bbb
-            +-- aaa
-            +-- b1
-            +-- b2
+        main
+        ├── aaa
+        │   ├── a1
+        │   └── a2
+        └── bbb
+            ├── aaa (already seen)
+            ├── b1
+            └── b2
 
     The import order is determined by doing a *depth-first, post-order
     traversal of the tree, with memoization*. In the example above, it
@@ -190,11 +190,18 @@ class ImportAnalizyer:
         self.vm.modules_w[modname] = w_mod
 
     def pp(self) -> None:
+        print('Import tree')
+        self.pp_tree()
+        print()
+        print('Import order')
+        self.pp_list()
+
+    def pp_list(self) -> None:
         from spy.vm.module import W_Module
         color = ColorFormatter(use_colors=True)
         n = max(len(modname) for modname in self.mods)
         import_list = self.get_import_list()
-        for modname in import_list:
+        for i, modname in enumerate(import_list):
             mod = self.mods[modname]
             if isinstance(mod, ast.Module):
                 what = color.set('green', mod.filename)
@@ -205,7 +212,67 @@ class ImportAnalizyer:
                 what = color.set('red', 'ImportError')
             else:
                 assert False
-            print(f'{modname:>{n}s} => {what}')
+            print(f'{i:>3d} {modname:>{n}s} => {what}')
+
+    def pp_tree(self) -> None:
+        """
+        Print the import tree using tree-like format similar to the 'tree' command.
+
+        Example:
+        main
+        ├── aaa
+        │   ├── a1
+        │   └── a2
+        └── bbb
+            ├── aaa (already seen)
+            ├── b1
+            └── b2
+        """
+        assert self.mods, 'call .parse_all() first'
+
+        # Constants for tree formatting
+        CROSS  = "├── "
+        BAR    = "│   "
+        CORNER = "└── "
+        SPACE  = "    "
+
+        # Find the root module(s) - those that are not imported by any other module
+        all_imports = set()
+        for imports in self.deps.values():
+            all_imports.update(imports)
+
+        roots = [mod for mod in self.mods if mod not in all_imports]
+
+        # We expect at least one root (the entry point)
+        if not roots:
+            roots = [next(iter(self.mods))]
+
+        # Define recursive printer function
+        def print_tree(modname: str, prefix: str, indent: str, marker: str, visited: set) -> None:
+            if modname in visited:
+                print(f'{prefix}{marker}{modname} (already seen)')
+                return
+
+            print(f'{prefix}{marker}{modname}')
+            visited.add(modname)
+
+            # Get the dependencies of this module
+            deps = self.deps.get(modname, [])
+            if not deps:
+                return
+
+            new_prefix = prefix + indent
+
+            # Process all child modules
+            for dep in deps[:-1]:  # All but the last
+                print_tree(dep, new_prefix, BAR, CROSS, visited)
+
+            # Last child gets a corner marker
+            print_tree(deps[-1], new_prefix, SPACE, CORNER, visited)
+
+        # Print each root
+        for root in roots:
+            print_tree(root, prefix='', indent='', marker='', visited=set())
 
 
     # ===========================================================
