@@ -155,7 +155,7 @@ class ImportAnalizyer:
         result = []
         visited = set()
 
-        def visit(modname):
+        def visit(modname: str) -> None:
             if modname in visited:
                 return
             visited.add(modname)
@@ -216,7 +216,7 @@ class ImportAnalizyer:
             for i, path in enumerate(self.vm.path):
                 paths[path+'/'] = f'$p{i}'
 
-        def shorten_path(path):
+        def shorten_path(path: str) -> str:
             if not path:
                 return path
             for base_path, alias in paths.items():

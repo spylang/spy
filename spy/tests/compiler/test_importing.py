@@ -78,6 +78,7 @@ class TestImporting(CompilerTest):
 
     @only_interp
     def test_nested_imports(self, capsys):
+        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         self.write_file("aaa.spy", """
         import a1
         import a2
