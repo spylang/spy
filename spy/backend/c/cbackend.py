@@ -2,10 +2,9 @@ import os
 from enum import Enum
 import py.path
 from spy.backend.c.cmodwriter import CModuleWriter
-from spy.backend.c.cffidef import CFFIDef
+from spy.backend.c.cffiwriter import CFFIWriter
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
-from spy.build.cffiwriter import CFFIWriter
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object
 from spy.vm.module import W_Module, ModItem
@@ -23,7 +22,7 @@ class CBackend:
     config: BuildConfig
     build_dir: py.path.local
     dump_c: bool
-    cffidef: CFFIDef
+    cffiwriter: CFFIWriter
 
     def __init__(
             self,
@@ -41,7 +40,7 @@ class CBackend:
         self.build_dir.join('src').ensure(dir=True)
         self.dump_c = dump_c
         #
-        self.cffidef = CFFIDef()
+        self.cffi = CFFIWriter(config, build_dir)
         self.cfiles = [] # generated C files
         self.build_script = None
         self.ninja = None
@@ -61,7 +60,7 @@ class CBackend:
             file_h = self.build_dir.join('src', f'{basename}.h')
             cwriter = CModuleWriter(
                 self.vm, w_mod, file_spy, file_h, file_c,
-                self.cffidef
+                self.cffi,
             )
             cwriter.write_c_source()
             self.cfiles.append(file_c)
@@ -88,7 +87,7 @@ class CBackend:
         w_mod = self.vm.modules_w['builtins']
         file_h = self.build_dir.join('src', 'builtins_extra.h')
         cwriter = CModuleWriter(
-            self.vm, w_mod, None, file_h, None, self.cffidef,
+            self.vm, w_mod, None, file_h, None, self.cffi,
             mod_items=mod_items
         )
         cwriter.write_c_source()
@@ -101,8 +100,7 @@ class CBackend:
 
         if self.config.kind == 'py:cffi':
             assert wasm_exports == []
-            cffi_writer = CFFIWriter(self.config, self.build_dir)
-            self.build_script = cffi_writer.write(self.outname, self.cfiles)
+            self.build_script = self.cffi.write(self.outname, self.cfiles)
         else:
             self.ninja = NinjaWriter(self.config, self.build_dir)
             self.ninja.write(self.outname, self.cfiles,
@@ -112,7 +110,9 @@ class CBackend:
 
     def build(self) -> py.path.local:
         if self.config.kind == 'py:cffi':
-            raise NotImplementedError
+            #raise NotImplementedError
+            return self.build_script # XXX
+
         else:
             assert self.ninja is not None
             return self.ninja.build()
