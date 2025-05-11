@@ -9,13 +9,13 @@ from spy.backend.c.cbackend import CBackend
 from spy.build.config import BuildConfig, BuildTarget
 from spy.build.ninja import NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
-from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_FuncType
+from spy.tests.wasm_wrapper import WasmModuleWrapper
 
 Backend = Literal['interp', 'doppler', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -195,7 +195,7 @@ class CompilerTest:
             WrapperClass = ExeWrapper
         elif self.backend == 'py:cffi':
             config = BuildConfig(
-                target = 'native'
+                target = 'native',
                 kind = 'py:cffi',
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL
