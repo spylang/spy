@@ -1,7 +1,6 @@
 from typing import Any, Literal, Optional, no_type_check
 import textwrap
 from contextlib import contextmanager
-import subprocess
 import pytest
 import py.path
 from spy import ast
@@ -16,6 +15,7 @@ from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_FuncType
 from spy.tests.wasm_wrapper import WasmModuleWrapper
+from spy.tests.exe_wrapper import ExeWrapper
 
 Backend = Literal['interp', 'doppler', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -305,19 +305,6 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
     print(formatted_error)
 
 
-class ExeWrapper:
-
-    def __init__(self, vm: SPyVM, modname: str, f: py.path.local) -> None:
-        # vm and modname are ignored
-        self.f = f
-
-    def run(self, *args):
-        if self.f.ext == '.mjs':
-            # run with node
-            out = subprocess.check_output(['node', self.f] + list(args))
-            return out.decode('utf-8')
-        else:
-            raise NotImplementedError
 
 @pytest.mark.usefixtures('init')
 class CTest:
