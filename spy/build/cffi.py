@@ -1,0 +1,26 @@
+import sys
+import os
+import py.path
+import contextlib
+from spy.util import robust_run
+
+@contextlib.contextmanager
+def chdir(path):
+    """Context manager to temporarily change directory."""
+    old_dir = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(old_dir)
+
+
+def cffi_build(build_script: py.path.local) -> py.path.local:
+    cmdline = [sys.executable, build_script]
+    d = build_script.dirpath()
+    with chdir(d):
+        proc = robust_run(cmdline)
+    out = proc.stdout.decode('utf-8')
+    sofile = py.path.local(out.strip())
+    assert sofile.exists()
+    return sofile

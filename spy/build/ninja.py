@@ -6,6 +6,7 @@ import shlex
 import py.path
 from spy.textbuilder import TextBuilder, Color
 from spy.build.config import BuildConfig, CompilerConfig
+from spy.util import robust_run
 
 
 def fmt_flags(flags: list[str]) -> str:
@@ -142,21 +143,5 @@ class NinjaWriter:
     def build(self) -> py.path.local:
         assert self.out is not None
         cmdline = ['unbuffer', 'ninja', '-C', str(self.build_dir)]
-        #print(" ".join(cmdline))
-        proc = subprocess.run(
-            cmdline,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
-        )
-        if proc.returncode != 0:
-            FORCE_COLORS = True
-            lines = ["Compilation failed!"]
-            lines.append(' '.join(cmdline))
-            lines.append('')
-            errlines = proc.stdout.decode('utf-8').splitlines()
-            if FORCE_COLORS:
-                errlines = [Color.set('default', line) for line in errlines]
-            lines += errlines
-            msg = '\n'.join(lines)
-            raise Exception(msg)
+        robust_run(cmdline)
         return self.build_dir.join(self.out)

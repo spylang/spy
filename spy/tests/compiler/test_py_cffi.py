@@ -10,4 +10,6 @@ class TestPyCFFI(CompilerTest):
         def add(x: i32, y: i32) -> i32:
             return x + y
         """)
-        breakpoint()
+        # XXX: this is WIP, we want to generate also 'test.py' which
+        # automatically maps FQN spy names into non-qualified names
+        assert mod.pymod.lib.spy_test_add(4, 6) == 10

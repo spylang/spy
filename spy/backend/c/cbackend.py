@@ -5,6 +5,7 @@ from spy.backend.c.cmodwriter import CModuleWriter
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
+from spy.build.cffi import cffi_build
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object
 from spy.vm.module import W_Module, ModItem
@@ -110,9 +111,7 @@ class CBackend:
 
     def build(self) -> py.path.local:
         if self.config.kind == 'py:cffi':
-            #raise NotImplementedError
-            return self.build_script # XXX
-
+            return cffi_build(self.build_script)
         else:
             assert self.ninja is not None
             return self.ninja.build()

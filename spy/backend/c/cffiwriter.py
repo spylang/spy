@@ -65,7 +65,8 @@ class CFFIWriter:
         )
 
         if __name__ == "__main__":
-            ffibuilder.compile(verbose=True)
+            sofile = ffibuilder.compile(verbose=False)
+            print(sofile)
         """)
 
     def write(self, modname: str, cfiles: list[py.path.local]) -> py.path.local:

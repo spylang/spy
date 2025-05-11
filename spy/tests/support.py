@@ -16,6 +16,7 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_FuncType
 from spy.tests.wasm_wrapper import WasmModuleWrapper
 from spy.tests.exe_wrapper import ExeWrapper
+from spy.tests.cffi_wrapper import CFFIWrapper
 
 Backend = Literal['interp', 'doppler', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -200,7 +201,6 @@ class CompilerTest:
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL
             )
-            XXX
             WrapperClass = CFFIWrapper
         else:
             assert False, f'Unknown backend: {self.backend}'
