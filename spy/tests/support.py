@@ -176,16 +176,16 @@ class CompilerTest:
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL,
             )
-            compiler = CBackend(
+            backend = CBackend(
                 self.vm,
                 modname,
                 config,
                 self.builddir,
                 dump_c=self.dump_c
             )
-            compiler.cwrite()
-            compiler.write_build_script()
-            file_wasm = compiler.build()
+            backend.cwrite()
+            backend.write_build_script()
+            file_wasm = backend.build()
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
             self.vm.redshift(error_mode=error_mode)
@@ -195,16 +195,16 @@ class CompilerTest:
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL
             )
-            compiler = CBackend(
+            backend = CBackend(
                 self.vm,
                 modname,
                 config,
                 self.builddir,
                 dump_c=self.dump_c
             )
-            compiler.cwrite()
-            compiler.write_build_script()
-            file_mjs = compiler.build()
+            backend.cwrite()
+            backend.write_build_script()
+            file_mjs = backend.build()
             return ExeWrapper(file_mjs)
         else:
             assert False, f'Unknown backend: {self.backend}'
