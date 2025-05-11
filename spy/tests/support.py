@@ -157,57 +157,54 @@ class CompilerTest:
         self.w_mod = self.vm.import_(modname)
         if not self.SKIP_SPY_BACKEND_SANITY_CHECK:
             self.ALL_COMPILED_SOURCES.add(src)
+
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
-        elif self.backend == 'interp':
+
+        if self.backend == 'interp':
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
-        elif self.backend == 'doppler':
-            self.vm.redshift(error_mode=error_mode)
-            if self.dump_redshift:
-                self.dump_module(modname)
+
+        # all backends apart 'interp' require redshifting
+        self.vm.redshift(error_mode=error_mode)
+        if self.dump_redshift:
+            self.dump_module(modname)
+
+        if self.backend == 'doppler':
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
-        elif self.backend == 'C':
-            self.vm.redshift(error_mode=error_mode)
+
+        if self.backend == 'C':
             config = BuildConfig(
                 target = 'wasi',
                 kind = 'lib',
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL,
             )
-            backend = CBackend(
-                self.vm,
-                modname,
-                config,
-                self.builddir,
-                dump_c=self.dump_c
-            )
-            backend.cwrite()
-            backend.write_build_script()
-            file_wasm = backend.build()
-            return WasmModuleWrapper(self.vm, modname, file_wasm)
+            WrapperClass = WasmModuleWrapper
         elif self.backend == 'emscripten':
-            self.vm.redshift(error_mode=error_mode)
             config = BuildConfig(
                 target = 'emscripten',
                 kind = 'exe',
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL
             )
-            backend = CBackend(
-                self.vm,
-                modname,
-                config,
-                self.builddir,
-                dump_c=self.dump_c
-            )
-            backend.cwrite()
-            backend.write_build_script()
-            file_mjs = backend.build()
-            return ExeWrapper(file_mjs)
+            WrapperClass = ExeWrapper
         else:
             assert False, f'Unknown backend: {self.backend}'
+
+        backend = CBackend(
+            self.vm,
+            modname,
+            config,
+            self.builddir,
+            dump_c=self.dump_c
+        )
+        backend.cwrite()
+        backend.write_build_script()
+        outfile = backend.build() # e.g. 'test.wasm' or 'test.mjs'
+        return WrapperClass(self.vm, modname, outfile)
+
 
     def dump_module(self, modname: str) -> None:
         from spy.cli import dump_spy_mod
@@ -298,7 +295,8 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
 
 class ExeWrapper:
 
-    def __init__(self, f):
+    def __init__(self, vm: SPyVM, modname: str, f: py.path.local) -> None:
+        # vm and modname are ignored
         self.f = f
 
     def run(self, *args):
