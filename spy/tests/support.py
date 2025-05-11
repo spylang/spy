@@ -90,6 +90,9 @@ def only_C(func):
 def only_emscripten(func):
     return parametrize_compiler_backend(['emscripten'], func)
 
+def only_py_cffi(func):
+    return parametrize_compiler_backend(['py:cffi'], func)
+
 def no_C(func):
     return parametrize_compiler_backend(['interp', 'doppler'], func)
 
@@ -190,6 +193,15 @@ class CompilerTest:
                 opt_level = self.OPT_LEVEL
             )
             WrapperClass = ExeWrapper
+        elif self.backend == 'py:cffi':
+            config = BuildConfig(
+                target = 'native'
+                kind = 'py:cffi',
+                build_type = 'debug',
+                opt_level = self.OPT_LEVEL
+            )
+            XXX
+            WrapperClass = CFFIWrapper
         else:
             assert False, f'Unknown backend: {self.backend}'
 
