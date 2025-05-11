@@ -298,8 +298,8 @@ def get_build_dir(args: Arguments) -> py.path.local:
         # Create a build directory next to the .spy file
         srcdir = args.filename.parent
         build_dir = srcdir / "build"
-        print(f"Using build directory: {build_dir}")
 
+    print(f"Build dir:    {build_dir}")
     build_dir.mkdir(exist_ok=True, parents=True)
     return py.path.local(str(build_dir))
 
@@ -389,8 +389,8 @@ async def inner_main(args: Arguments) -> None:
     backend.write_build_script()
 
     if args.cwrite:
-        cfiles = ', '.join([f.relto(cwd) for f in backend.cfiles])
-        build_script = backend.build_script.relto(cwd)
+        cfiles = ', '.join([f.relto(build_dir) for f in backend.cfiles])
+        build_script = backend.build_script.relto(build_dir)
         print(f"C files:      {cfiles}")
         print(f"Build script: {build_script}")
         return
