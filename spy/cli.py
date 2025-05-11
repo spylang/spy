@@ -374,6 +374,7 @@ async def inner_main(args: Arguments) -> None:
         build_type = "release" if args.release_mode else "debug"
     )
 
+    cwd = py.path.local('.')
     build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
     backend = CBackend(
@@ -383,14 +384,17 @@ async def inner_main(args: Arguments) -> None:
         build_dir,
         dump_c=dump_c
     )
-    cwd = py.path.local('.')
+
+    backend.cwrite()
+    backend.write_build_script()
 
     if args.cwrite:
-        cfiles = backend.cwrite()
-        cfiles_s = ', '.join([f.relto(cwd) for f in cfiles])
-        print(f"Generated {cfiles_s}")
+        cfiles = ', '.join([f.relto(cwd) for f in backend.cfiles])
+        build_script = backend.build_script.relto(cwd)
+        print(f"C files:      {cfiles}")
+        print(f"Build script: {build_script}")
         return
 
     outfile = backend.build()
     executable = outfile.relto(cwd)
-    print(f"Generated {executable}")
+    print(f"==> {executable}")

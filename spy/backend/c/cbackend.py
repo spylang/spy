@@ -14,8 +14,6 @@ from spy.vm.primitive import W_I32
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.util import highlight_C_maybe
 
-DUMP_WASM = False
-
 class CBackend:
     """
     Convert SPy modules into C files
@@ -42,15 +40,17 @@ class CBackend:
         self.build_dir = build_dir
         self.build_dir.join('src').ensure(dir=True)
         self.dump_c = dump_c
+        #
         self.cffidef = CFFIDef()
+        self.cfiles = [] # generated C files
+        self.build_script = None
+        self.ninja = None
 
-    def cwrite(self) -> list[py.path.local]:
+    def cwrite(self) -> None:
         """
         Convert all non-builtins modules into .c files
         """
         self.cwrite_builtins_extra()
-
-        cfiles = []
         for modname, w_mod in self.vm.modules_w.items():
             if w_mod.is_builtin():
                 continue
@@ -64,14 +64,13 @@ class CBackend:
                 self.cffidef
             )
             cwriter.write_c_source()
-            cfiles.append(file_c)
+            self.cfiles.append(file_c)
             #
             if self.dump_c:
                 print()
                 print(f'---- {file_c} ----')
                 print(highlight_C_maybe(file_c.read()))
 
-        return cfiles
 
     def cwrite_builtins_extra(self) -> None:
         # find all the unsafe::ptr to a builtin
@@ -94,27 +93,30 @@ class CBackend:
         )
         cwriter.write_c_source()
 
-    def build(self) -> py.path.local:
+    def write_build_script(self) -> None:
+        assert self.cfiles != [], 'call .cwrite() first'
         wasm_exports = []
         if self.config.target == 'wasi' and self.config.kind == 'lib':
             wasm_exports = self.get_wasm_exports()
-        cfiles = self.cwrite()
 
         if self.config.kind == 'py:cffi':
             assert wasm_exports == []
-            cffi_writer = CFFIWriter(self.cffidef, self.config, self.build_dir)
-            outfile = cffi_writer.write(self.outname, cfiles)
-            #cffi_writer.build() # ???
+            cffi_writer = CFFIWriter(self.config, self.build_dir)
+            self.build_script = cffi_writer.write(self.outname, self.cfiles)
         else:
-            ninja = NinjaWriter(self.config, self.build_dir)
-            ninja.write(self.outname, cfiles, wasm_exports=wasm_exports)
-            outfile = ninja.build()
+            self.ninja = NinjaWriter(self.config, self.build_dir)
+            self.ninja.write(self.outname, self.cfiles,
+                             wasm_exports=wasm_exports)
+            self.build_script = self.build_dir.join('build.ninja')
 
-        if DUMP_WASM and outfile.ext == '.wasm':
-            print()
-            print(f'---- {outfile} ----')
-            os.system(f'wasm2wat {outfile}')
-        return outfile
+
+    def build(self) -> py.path.local:
+        if self.config.kind == 'py:cffi':
+            raise NotImplementedError
+        else:
+            assert self.ninja is not None
+            return self.ninja.build()
+
 
     def get_wasm_exports(self) -> list[str]:
         # ok, this logic is wrong: we cannot know which names we want to

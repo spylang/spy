@@ -183,6 +183,8 @@ class CompilerTest:
                 self.builddir,
                 dump_c=self.dump_c
             )
+            compiler.cwrite()
+            compiler.write_build_script()
             file_wasm = compiler.build()
             return WasmModuleWrapper(self.vm, modname, file_wasm)
         elif self.backend == 'emscripten':
@@ -200,6 +202,8 @@ class CompilerTest:
                 self.builddir,
                 dump_c=self.dump_c
             )
+            compiler.cwrite()
+            compiler.write_build_script()
             file_mjs = compiler.build()
             return ExeWrapper(file_mjs)
         else:
