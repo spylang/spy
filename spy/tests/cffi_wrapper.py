@@ -5,38 +5,31 @@ import sysconfig
 import py.path
 from spy.vm.vm import SPyVM
 
-def import_sofile(path):
+
+def isolated_import(modname: str, sofile: py.path.local):
     """
-    Import a .so extension module from an arbitrary path,
-    using the correct module name by stripping the ABI tag.
-
-    Args:
-        path (str): Path to the .so file.
-
-    Returns:
-        module: The imported Python extension module.
+    Import the given modules in isolation, without leaving trace in
+    sys.modules
     """
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"No such file: '{path}'")
-    if not path.endswith(".so"):
-        raise ValueError(f"Expected a .so file, got: '{path}'")
+    assert modname not in sys.modules
+    before_mods = set(sys.modules.keys())
 
-    abi_tag = sysconfig.get_config_var("SOABI")  # e.g., cpython-312-x86_64-linux-gnu
-    filename = os.path.basename(path)
+    d = sofile.dirpath()
+    sys.path.insert(0, str(d))
+    try:
+        mod = __import__(modname)
+    finally:
+        sys.path.pop(0)
 
-    suffix = f".{abi_tag}.so"
-    if not filename.endswith(suffix):
-        raise ImportError(f"Expected filename to end with '{suffix}', got '{filename}'")
+    assert modname in sys.modules
+    after_mods = set(sys.modules.keys())
+    new_mods = after_mods - before_mods - {'_cffi_backend'}
+    breakpoint()
+    for modname in new_mods:
+        del sys.modules[modname]
 
-    module_name = filename[: -len(suffix)]
+    return mod
 
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not create a spec for module from: '{path}'")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 class CFFIWrapper:
@@ -45,7 +38,7 @@ class CFFIWrapper:
         self.vm = vm
         self.modname = modname
         self.sofile = sofile
-        self.pymod = import_sofile(str(sofile))
+        self.pymod = isolated_import(modname, sofile)
 
     def __repr__(self) -> str:
         return f"<CFFIWrapper '{self.modname}' ({self.sofile})>"
