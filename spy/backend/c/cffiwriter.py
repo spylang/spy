@@ -12,7 +12,43 @@ from spy.textbuilder import TextBuilder, Color
 class CFFIWriter:
     """
     Generate a script *-cffi-build.py which contains all the necessary info
-    to build cffi wrappers around a set of SPy modules
+    to build cffi wrappers around a set of SPy modules.
+
+    Imagine to compile `foo.spy`, which contains two functions `add` and
+    `sub`. CFFIWriter produces more or less the following:
+
+        ### foo.py
+        import _foo
+        add = _foo.lib.spy_foo_add
+        sub = _foo.lib.spy_foo_sub
+
+        ### _foo-cffi-build.py
+        [...]
+        ffibuilder.cdef('''
+            int spy_foo_add(int x, int y);
+            int spy_foo_sub(int x, int y);
+        ''')
+        src = '''
+            #define spy_foo_add spy_foo$add
+            #define spy_foo_sub spy_foo$sub
+        '''
+
+        ffibuilder.set_source(
+            "_add",
+            src,
+            extra_sources=[...],        # list of all necessary .c files
+            extra_compile_args=[...],   # cflags
+            extra_link_args=[...],      # ldflags
+            ...
+        )
+
+        if __name__ == '__main__':
+            ffibuilder.compile()
+
+    To generate `_add.so`, you can manually call `_add-cffi-build.py`, or
+    integrate it inside a broader python packaging solution, e.g. by using the
+    CFFI "Setuptools integration" as described here:
+    https://cffi.readthedocs.io/en/latest/cdef.html
     """
     modname: str
     config: BuildConfig
