@@ -76,9 +76,6 @@ class CompilerConfig:
                 self.ldflags += [
                     '-mexec-model=reactor'
                 ]
-                ## self.ldflags += [
-                ##     f'-Wl,--export={name}' for name in wasm_exports
-                ## ]
 
         elif config.target == 'emscripten':
             self.CC = 'emcc'
@@ -90,10 +87,6 @@ class CompilerConfig:
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 f"--extern-post-js={post_js}",
             ]
-            ## if config.kind == 'lib':
-            ##     self.ldflags += [
-            ##         f'-Wl,--export={name}' for name in wasm_exports
-            ##     ]
 
         else:
             assert False, f'Invalid target: {config.target}'
