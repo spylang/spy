@@ -14,6 +14,10 @@ dependencies = [
     "typer==0.15.1",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
 
+    # the followings are needed for "tests/compiler/test_cffi.py"
+    "cffi",
+    "setuptools",
+
     "pytest_pyodide==0.58.4; sys_platform != 'emscripten'",
     "pyodide-py==0.27.2; sys_platform != 'emscripten'",
 ]
@@ -45,6 +49,7 @@ markers = [
     "doppler: use the 'doppler' compiler backend",
     "C: use the 'C' compiler backend",
     "emscripten: use the 'C' backend and run via emscripten",
+    "py-cffi: build cffi-based CPython extensions",
 
     # llwasm_backend
     "wasmtime: use the 'wasmtime' llwasm backend",

@@ -1,20 +1,22 @@
 from typing import Any, Literal, Optional, no_type_check
 import textwrap
 from contextlib import contextmanager
-import subprocess
 import pytest
 import py.path
 from spy import ast
 from spy.backend.c.cbackend import CBackend
-from spy.build.ninja import BuildConfig, OutputKind, BuildTarget, NinjaWriter
+from spy.build.config import BuildConfig, BuildTarget
+from spy.build.ninja import NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
-from spy.backend.c.wrapper import WasmModuleWrapper
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
 from spy.vm.function import W_FuncType
+from spy.tests.wasm_wrapper import WasmModuleWrapper
+from spy.tests.exe_wrapper import ExeWrapper
+from spy.tests.cffi_wrapper import load_cffi_module
 
 Backend = Literal['interp', 'doppler', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -89,6 +91,9 @@ def only_C(func):
 def only_emscripten(func):
     return parametrize_compiler_backend(['emscripten'], func)
 
+def only_py_cffi(func):
+    return parametrize_compiler_backend(['py-cffi'], func)
+
 def no_C(func):
     return parametrize_compiler_backend(['interp', 'doppler'], func)
 
@@ -156,51 +161,62 @@ class CompilerTest:
         self.w_mod = self.vm.import_(modname)
         if not self.SKIP_SPY_BACKEND_SANITY_CHECK:
             self.ALL_COMPILED_SOURCES.add(src)
+
         if self.backend == '':
             pytest.fail('Cannot call self.compile() on @no_backend tests')
-        elif self.backend == 'interp':
+
+        if self.backend == 'interp':
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
-        elif self.backend == 'doppler':
-            self.vm.redshift(error_mode=error_mode)
-            if self.dump_redshift:
-                self.dump_module(modname)
+
+        # all backends apart 'interp' require redshifting
+        self.vm.redshift(error_mode=error_mode)
+        if self.dump_redshift:
+            self.dump_module(modname)
+
+        if self.backend == 'doppler':
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
-        elif self.backend == 'C':
-            self.vm.redshift(error_mode=error_mode)
+
+        if self.backend == 'C':
             config = BuildConfig(
                 target = 'wasi',
                 kind = 'lib',
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL,
             )
-            compiler = CBackend(
-                self.vm,
-                modname,
-                self.builddir,
-                dump_c=self.dump_c
-            )
-            file_wasm = compiler.build(config)
-            return WasmModuleWrapper(self.vm, modname, file_wasm)
+            WrapperClass = WasmModuleWrapper
         elif self.backend == 'emscripten':
-            self.vm.redshift(error_mode=error_mode)
             config = BuildConfig(
                 target = 'emscripten',
                 kind = 'exe',
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL
             )
-            compiler = CBackend(
-                self.vm,
-                modname,
-                self.builddir,
-                dump_c=self.dump_c
+            WrapperClass = ExeWrapper
+        elif self.backend == 'py-cffi':
+            config = BuildConfig(
+                target = 'native',
+                kind = 'py-cffi',
+                build_type = 'debug',
+                opt_level = self.OPT_LEVEL
             )
-            file_mjs = compiler.build(config)
-            return ExeWrapper(file_mjs)
+            WrapperClass = load_cffi_module
         else:
             assert False, f'Unknown backend: {self.backend}'
+
+        backend = CBackend(
+            self.vm,
+            modname,
+            config,
+            self.builddir,
+            dump_c=self.dump_c
+        )
+        backend.cwrite()
+        backend.write_build_script()
+        outfile = backend.build() # e.g. 'test.wasm' or 'test.mjs'
+        return WrapperClass(self.vm, modname, outfile)
+
 
     def dump_module(self, modname: str) -> None:
         from spy.cli import dump_spy_mod
@@ -289,18 +305,6 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
     print(formatted_error)
 
 
-class ExeWrapper:
-
-    def __init__(self, f):
-        self.f = f
-
-    def run(self, *args):
-        if self.f.ext == '.mjs':
-            # run with node
-            out = subprocess.check_output(['node', self.f] + list(args))
-            return out.decode('utf-8')
-        else:
-            raise NotImplementedError
 
 @pytest.mark.usefixtures('init')
 class CTest:

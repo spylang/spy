@@ -18,7 +18,7 @@ from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.backend.c.cbackend import CBackend
-from spy.build.ninja import BuildConfig, BuildTarget
+from spy.build.config import BuildConfig, BuildTarget, OutputKind
 from spy.textbuilder import Color
 from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
@@ -146,6 +146,15 @@ class Arguments:
             click_type=click.Choice(BuildTarget.__args__),
         )
     ] = 'native'
+
+    output_kind: Annotated[
+        OutputKind,
+        Option(
+            "-k", "--output-kind",
+            help="Output kind",
+            click_type=click.Choice(OutputKind.__args__),
+        )
+    ] = 'exe'
 
     error_mode: Annotated[
         ErrorMode,
@@ -289,8 +298,8 @@ def get_build_dir(args: Arguments) -> py.path.local:
         # Create a build directory next to the .spy file
         srcdir = args.filename.parent
         build_dir = srcdir / "build"
-        print(f"Using build directory: {build_dir}")
 
+    #print(f"Build dir:    {build_dir}")
     build_dir.mkdir(exist_ok=True, parents=True)
     return py.path.local(str(build_dir))
 
@@ -359,26 +368,34 @@ async def inner_main(args: Arguments) -> None:
             dump_spy_mod(vm, modname, args.full_fqn)
         return
 
+    config = BuildConfig(
+        target = args.target,
+        kind = args.output_kind,
+        build_type = "release" if args.release_mode else "debug"
+    )
+
+    cwd = py.path.local('.')
     build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
-    compiler = CBackend(
+    backend = CBackend(
         vm,
         modname,
+        config,
         build_dir,
         dump_c=dump_c
     )
-    cfiles = compiler.cwrite()
-    cwd = py.path.local('.')
+
+    backend.cwrite()
+    backend.write_build_script()
+    assert backend.build_script is not None
 
     if args.cwrite:
-        cfiles_s = ', '.join([f.relto(cwd) for f in cfiles])
-        print(f"Generated {cfiles_s}")
-    else:
-        config = BuildConfig(
-            target = args.target,
-            kind = 'exe',
-            build_type = "release" if args.release_mode else "debug"
-        )
-        outfile = compiler.build(config)
-        executable = outfile.relto(cwd)
-        print(f"Generated {executable}")
+        cfiles = ', '.join([f.relto(cwd) for f in backend.cfiles])
+        build_script = backend.build_script.relto(cwd)
+        print(f"C files:      {cfiles}")
+        print(f"Build script: {build_script}")
+        return
+
+    outfile = backend.build()
+    executable = outfile.relto(cwd)
+    print(f"==> {executable}")

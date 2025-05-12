@@ -18,6 +18,7 @@ from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type, C_Function
 from spy.backend.c import c_ast as C
 from spy.backend.c.cwriter import CFuncWriter
+from spy.backend.c.cffiwriter import CFFIWriter
 from spy.util import shortrepr, magic_dispatch
 
 
@@ -52,6 +53,7 @@ class CModuleWriter:
             spyfile: Optional[py.path.local],
             hfile: Optional[py.path.local],
             cfile: Optional[py.path.local],
+            cffi: CFFIWriter,
             *,
             mod_items: Optional[Iterable[ModItem]] = None,
     ) -> None:
@@ -64,6 +66,7 @@ class CModuleWriter:
         self.spyfile = spyfile
         self.hfile = hfile
         self.cfile = cfile
+        self.cffi = cffi
         self.tbh = TextBuilder(use_colors=False)
         self.tbc = TextBuilder(use_colors=False)
         # nested builders are initialized lazily
@@ -155,6 +158,7 @@ class CModuleWriter:
     def init_c(self) -> None:
         assert self.hfile is not None
         header_name = self.hfile.basename
+        self.cffi.emit_include(header_name)
         self.tbc.wb(f"""
         #include "{header_name}"
         """)
@@ -254,13 +258,15 @@ class CModuleWriter:
 
     def emit_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         # func prototype in .h
-        argnames = [arg.name for arg in w_func.funcdef.args]
         c_func = self.ctx.c_function(fqn.c_name, w_func)
         self.tbh_funcs.wl(c_func.decl() + ';')
 
         # func body in .c
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
+
+        # cffi wrapper
+        self.cffi.emit_func(self.ctx, fqn, w_func)
 
     def emit_StructType(self, fqn: FQN, w_st: W_StructType) -> None:
         c_st = C_Type(w_st.fqn.c_name)

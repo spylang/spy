@@ -1,7 +1,9 @@
 #-*- encoding: utf-8 -*-
 import typing
-from typing import Optional
+from typing import Optional, Sequence
 import difflib
+import subprocess
+import py.path
 from spy.textbuilder import Color
 
 class AnythingClass:
@@ -115,6 +117,37 @@ def shortrepr(s: str, n: int) -> str:
     if len(s) > n:
         s = s[:n-2] + '...'
     return repr(s)
+
+def robust_run(
+        cmdline: Sequence[str|py.path.local]
+) -> subprocess.CompletedProcess:
+    """
+    Similar to subprocess.run, but raise an Exception with the content of
+    stdout+stderr in case of failure.
+    """
+    cmdline_s = [str(x) for x in cmdline]
+    #print(" ".join(cmdline_s))
+    proc = subprocess.run(
+        cmdline_s,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT
+    )
+    if proc.returncode != 0:
+        FORCE_COLORS = True
+        lines = ["subprocess failed:"]
+        lines.append(' '.join(cmdline_s))
+        lines.append('')
+        errlines = []
+        if proc.stdout:
+            errlines += proc.stdout.decode('utf-8').splitlines()
+        if proc.stderr:
+            errlines += proc.stderr.decode('utf-8').splitlines()
+        if FORCE_COLORS:
+            errlines = [Color.set('default', line) for line in errlines]
+        lines += errlines
+        msg = '\n'.join(lines)
+        raise Exception(msg)
+    return proc
 
 
 if __name__ == '__main__':
