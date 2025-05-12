@@ -299,7 +299,7 @@ def get_build_dir(args: Arguments) -> py.path.local:
         srcdir = args.filename.parent
         build_dir = srcdir / "build"
 
-    print(f"Build dir:    {build_dir}")
+    #print(f"Build dir:    {build_dir}")
     build_dir.mkdir(exist_ok=True, parents=True)
     return py.path.local(str(build_dir))
 
@@ -390,8 +390,8 @@ async def inner_main(args: Arguments) -> None:
     assert backend.build_script is not None
 
     if args.cwrite:
-        cfiles = ', '.join([f.relto(build_dir) for f in backend.cfiles])
-        build_script = backend.build_script.relto(build_dir)
+        cfiles = ', '.join([f.relto(cwd) for f in backend.cfiles])
+        build_script = backend.build_script.relto(cwd)
         print(f"C files:      {cfiles}")
         print(f"Build script: {build_script}")
         return

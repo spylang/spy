@@ -1,5 +1,8 @@
 from setuptools import setup
 
+# this assumes that you already invoked 'spy' to generate the bindings, see
+# README
+
 setup(
     name="spydemo",
     setup_requires=['cffi'],
