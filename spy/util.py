@@ -137,8 +137,11 @@ def robust_run(
         lines = ["subprocess failed:"]
         lines.append(' '.join(cmdline_s))
         lines.append('')
-        errlines = proc.stdout.decode('utf-8').splitlines()
-        errlines += proc.stderr.decode('utf-8').splitlines()
+        errlines = []
+        if proc.stdout:
+            errlines += proc.stdout.decode('utf-8').splitlines()
+        if proc.stderr:
+            errlines += proc.stderr.decode('utf-8').splitlines()
         if FORCE_COLORS:
             errlines = [Color.set('default', line) for line in errlines]
         lines += errlines
