@@ -126,7 +126,7 @@ def robust_run(
     stdout+stderr in case of failure.
     """
     cmdline_s = [str(x) for x in cmdline]
-    print(" ".join(cmdline_s))
+    #print(" ".join(cmdline_s))
     proc = subprocess.run(
         cmdline_s,
         stdout=subprocess.PIPE,
