@@ -387,6 +387,7 @@ async def inner_main(args: Arguments) -> None:
 
     backend.cwrite()
     backend.write_build_script()
+    assert backend.build_script is not None
 
     if args.cwrite:
         cfiles = ', '.join([f.relto(build_dir) for f in backend.cfiles])

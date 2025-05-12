@@ -1,3 +1,4 @@
+from typing import Optional
 import os
 from enum import Enum
 import py.path
@@ -23,7 +24,10 @@ class CBackend:
     config: BuildConfig
     build_dir: py.path.local
     dump_c: bool
-    cffiwriter: CFFIWriter
+    cffi: CFFIWriter
+    ninja: Optional[NinjaWriter]
+    cfiles: list[py.path.local]
+    build_script: Optional[py.path.local]
 
     def __init__(
             self,
@@ -42,9 +46,9 @@ class CBackend:
         self.dump_c = dump_c
         #
         self.cffi = CFFIWriter(outname, config, build_dir)
+        self.ninja = None
         self.cfiles = [] # generated C files
         self.build_script = None
-        self.ninja = None
 
     def cwrite(self) -> None:
         """
@@ -111,6 +115,7 @@ class CBackend:
 
     def build(self) -> py.path.local:
         if self.config.kind == 'py-cffi':
+            assert self.build_script is not None
             return cffi_build(self.build_script)
         else:
             assert self.ninja is not None

@@ -5,7 +5,7 @@ from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
-from spy.backend.c.wasm_wrapper import WasmPtr
+from spy.tests.wasm_wrapper import WasmPtr
 from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
 
 class TestUnsafe(CompilerTest):

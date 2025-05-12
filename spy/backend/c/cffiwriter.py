@@ -72,12 +72,12 @@ class CFFIWriter:
         self.init_py()
         self.init_cffi_build()
 
-    def init_py(self):
+    def init_py(self) -> None:
         self.tb_py.wb(f"""
         import _{self.modname}
         """)
 
-    def init_cffi_build(self):
+    def init_cffi_build(self) -> None:
         tb = self.tb_build
         tb.wb("""
         from cffi import FFI
