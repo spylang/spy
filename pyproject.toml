@@ -12,8 +12,11 @@ dependencies = [
     "fixedint==0.2.0",
     "mypy==1.15.0",
     "typer==0.15.1",
-    "cffi",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
+
+    # the followings are needed for "tests/compiler/test_cffi.py"
+    "cffi",
+    "setuptools",
 
     "pytest_pyodide==0.58.4; sys_platform != 'emscripten'",
     "pyodide-py==0.27.2; sys_platform != 'emscripten'",
