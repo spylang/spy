@@ -136,6 +136,11 @@ class CFFIWriter:
         build_script.write(self.tb_build.build())
         return build_script
 
+    def emit_include(self, header_name: str) -> None:
+        self.tb_src.wb(f"""
+        #include "{header_name}"
+        """)
+
     def emit_func(self, ctx: Context, fqn: FQN, w_func: W_ASTFunc) -> None:
         """
         Emit CFFI declaration for the function

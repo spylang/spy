@@ -158,9 +158,7 @@ class CModuleWriter:
     def init_c(self) -> None:
         assert self.hfile is not None
         header_name = self.hfile.basename
-        self.cffi.tb_src.wb(f"""
-        #include "{header_name}"
-        """)
+        self.cffi.emit_include(header_name)
         self.tbc.wb(f"""
         #include "{header_name}"
         """)
