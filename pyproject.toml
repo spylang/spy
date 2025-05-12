@@ -45,6 +45,7 @@ markers = [
     "doppler: use the 'doppler' compiler backend",
     "C: use the 'C' compiler backend",
     "emscripten: use the 'C' backend and run via emscripten",
+    "py-cffi: build cffi-based CPython extensions",
 
     # llwasm_backend
     "wasmtime: use the 'wasmtime' llwasm backend",

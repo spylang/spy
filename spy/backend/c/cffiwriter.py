@@ -1,47 +1,64 @@
 import os
 import textwrap
 import py.path
-from spy.build.config import BuildConfig, CompilerConfig
+from spy.fqn import FQN
+from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
+from spy.backend.c.context import Context
+from spy.build.config import BuildConfig, CompilerConfig
 from spy.textbuilder import TextBuilder, Color
 
 
 class CFFIWriter:
     """
-    Generate a script cffi-build.py which contains all the necessary info
+    Generate a script *-cffi-build.py which contains all the necessary info
     to build cffi wrappers around a set of SPy modules
     """
+    modname: str
     config: BuildConfig
     build_dir: py.path.local
+    tb_py: TextBuilder
+    tb_build: TextBuilder
+    tb_cdef: TextBuilder
+    tb_src: TextBuilder
 
     def __init__(
             self,
+            modname: str,
             config: BuildConfig,
             build_dir: py.path.local
     ) -> None:
+        self.modname = modname
         self.config = config
         self.build_dir = build_dir
-        self.tb = TextBuilder()
+        self.tb_py = TextBuilder()     # {modname}.py
+        self.tb_build = TextBuilder()  # _{modname-cffi-build}.py
+        self.init_py()
         self.init_cffi_build()
 
+    def init_py(self):
+        self.tb_py.wb(f"""
+        import _{self.modname}
+        """)
+
     def init_cffi_build(self):
-        self.tb.wb("""
+        tb = self.tb_build
+        tb.wb("""
         from cffi import FFI
         """)
         #
-        self.tb.wl()
-        self.tb.wl('CDEF = """')
-        self.tb_cdef = self.tb.make_nested_builder()
-        self.tb.wl('"""')
-        self.tb.wl()
-        self.tb.wl('SRC = """')
-        self.tb_src = self.tb.make_nested_builder()
-        self.tb.wl('"""')
-        self.tb.wl()
+        tb.wl()
+        tb.wl('CDEF = """')
+        self.tb_cdef = tb.make_nested_builder()
+        tb.wl('"""')
+        tb.wl()
+        tb.wl('SRC = """')
+        self.tb_src = tb.make_nested_builder()
+        tb.wl('"""')
+        tb.wl()
 
     def finalize_cffi_build(
             self,
-            modname: str,
             cfiles: list[py.path.local]
     ) -> None:
         srcdir = self.build_dir.join('src')
@@ -53,11 +70,11 @@ class CFFIWriter:
         ]
         LDFLAGS = comp.ldflags
 
-        self.tb.wb(f"""
+        self.tb_build.wb(f"""
         ffibuilder = FFI()
         ffibuilder.cdef(CDEF)
         ffibuilder.set_source(
-            "{modname}",
+            "_{self.modname}",
             SRC,
             sources={SOURCES},
             extra_compile_args={CFLAGS},
@@ -69,12 +86,34 @@ class CFFIWriter:
             print(sofile)
         """)
 
-    def write(self, modname: str, cfiles: list[py.path.local]) -> py.path.local:
-        assert self.config.kind == 'py:cffi'
-        self.finalize_cffi_build(modname, cfiles)
+    def write(self, cfiles: list[py.path.local]) -> py.path.local:
+        assert self.config.kind == 'py-cffi'
+        self.finalize_cffi_build(cfiles)
 
         self.cffi_dir = self.build_dir.join('cffi')
         self.cffi_dir.ensure(dir=True)
-        outfile = self.cffi_dir.join('cffi-build.py')
-        outfile.write(self.tb.build())
-        return outfile
+
+        pyfile = self.cffi_dir.join(f'{self.modname}.py')
+        pyfile.write(self.tb_py.build())
+
+        build_script = self.cffi_dir.join(f'_{self.modname}-cffi-build.py')
+        build_script.write(self.tb_build.build())
+        return build_script
+
+    def emit_func(self, ctx: Context, fqn: FQN, w_func: W_ASTFunc) -> None:
+        """
+        Emit CFFI declaration for the function
+        """
+        # fqn.c_name is something like 'spy_test$add'. The workaround is to
+        # use a different name in cdef, and a #define in src, like this:
+        #     ffibuilder.cdef("void spy_test_add(...)");
+        #     src = "#define spy_test_add spy_test$add"
+        real_name = fqn.c_name
+        cdef_name = real_name.replace('$', '_')
+        c_func = ctx.c_function(cdef_name, w_func)
+        self.tb_cdef.wl(c_func.decl() + ';')
+        self.tb_src.wl(f'#define {cdef_name} {real_name}')
+        #
+        # XXX explain
+        py_name = fqn.symbol_name
+        self.tb_py.wl(f'{py_name} = _{self.modname}.lib.{cdef_name}')

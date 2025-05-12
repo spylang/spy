@@ -16,6 +16,10 @@ def chdir(path):
 
 
 def cffi_build(build_script: py.path.local) -> py.path.local:
+    """
+    Generate a CPython extension module by running the cffi-build.py
+    script produced by spy.backend.c.cffiwriter.
+    """
     cmdline = [sys.executable, build_script]
     d = build_script.dirpath()
     with chdir(d):

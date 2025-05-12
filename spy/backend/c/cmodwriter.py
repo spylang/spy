@@ -260,20 +260,15 @@ class CModuleWriter:
 
     def emit_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         # func prototype in .h
-        argnames = [arg.name for arg in w_func.funcdef.args]
         c_func = self.ctx.c_function(fqn.c_name, w_func)
         self.tbh_funcs.wl(c_func.decl() + ';')
-
-        # XXX explain
-        c_name2 = fqn.c_name.replace('$', '_')
-        c_func2 = self.ctx.c_function(c_name2, w_func)
-        self.cffi.tb_cdef.wl(c_func2.decl() + ';')
-        self.cffi.tb_src.wl(f'#define {c_name2} {fqn.c_name}')
-
 
         # func body in .c
         fw = CFuncWriter(self.ctx, self, fqn, w_func)
         fw.emit()
+
+        # cffi wrapper
+        self.cffi.emit_func(self.ctx, fqn, w_func)
 
     def emit_StructType(self, fqn: FQN, w_st: W_StructType) -> None:
         c_st = C_Type(w_st.fqn.c_name)

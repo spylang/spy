@@ -1,3 +1,4 @@
+from typing import Any
 import sys
 import os
 import importlib.util
@@ -24,21 +25,11 @@ def isolated_import(modname: str, sofile: py.path.local):
     assert modname in sys.modules
     after_mods = set(sys.modules.keys())
     new_mods = after_mods - before_mods - {'_cffi_backend'}
-    breakpoint()
     for modname in new_mods:
         del sys.modules[modname]
 
     return mod
 
 
-
-class CFFIWrapper:
-
-    def __init__(self, vm: SPyVM, modname: str, sofile: py.path.local) -> None:
-        self.vm = vm
-        self.modname = modname
-        self.sofile = sofile
-        self.pymod = isolated_import(modname, sofile)
-
-    def __repr__(self) -> str:
-        return f"<CFFIWrapper '{self.modname}' ({self.sofile})>"
+def load_cffi_module(vm: SPyVM, modname: str, sofile: py.path.local) -> Any:
+    return isolated_import(modname, sofile)

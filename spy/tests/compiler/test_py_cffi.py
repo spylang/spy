@@ -10,6 +10,7 @@ class TestPyCFFI(CompilerTest):
         def add(x: i32, y: i32) -> i32:
             return x + y
         """)
-        # XXX: this is WIP, we want to generate also 'test.py' which
-        # automatically maps FQN spy names into non-qualified names
-        assert mod.pymod.lib.spy_test_add(4, 6) == 10
+        assert mod.__name__ == 'test' # this is 'pyfile'
+        assert hasattr(mod._test, 'ffi') # this is the cffi ext mode
+        assert mod.add is mod._test.lib.spy_test_add
+        assert mod.add(4, 5) == 9

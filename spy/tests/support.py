@@ -16,7 +16,7 @@ from spy.vm.module import W_Module
 from spy.vm.function import W_FuncType
 from spy.tests.wasm_wrapper import WasmModuleWrapper
 from spy.tests.exe_wrapper import ExeWrapper
-from spy.tests.cffi_wrapper import CFFIWrapper
+from spy.tests.cffi_wrapper import load_cffi_module
 
 Backend = Literal['interp', 'doppler', 'C']
 ALL_BACKENDS = Backend.__args__  # type: ignore
@@ -92,7 +92,7 @@ def only_emscripten(func):
     return parametrize_compiler_backend(['emscripten'], func)
 
 def only_py_cffi(func):
-    return parametrize_compiler_backend(['py:cffi'], func)
+    return parametrize_compiler_backend(['py-cffi'], func)
 
 def no_C(func):
     return parametrize_compiler_backend(['interp', 'doppler'], func)
@@ -194,14 +194,14 @@ class CompilerTest:
                 opt_level = self.OPT_LEVEL
             )
             WrapperClass = ExeWrapper
-        elif self.backend == 'py:cffi':
+        elif self.backend == 'py-cffi':
             config = BuildConfig(
                 target = 'native',
-                kind = 'py:cffi',
+                kind = 'py-cffi',
                 build_type = 'debug',
                 opt_level = self.OPT_LEVEL
             )
-            WrapperClass = CFFIWrapper
+            WrapperClass = load_cffi_module
         else:
             assert False, f'Unknown backend: {self.backend}'
 

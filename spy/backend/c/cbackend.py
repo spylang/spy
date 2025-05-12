@@ -41,7 +41,7 @@ class CBackend:
         self.build_dir.join('src').ensure(dir=True)
         self.dump_c = dump_c
         #
-        self.cffi = CFFIWriter(config, build_dir)
+        self.cffi = CFFIWriter(outname, config, build_dir)
         self.cfiles = [] # generated C files
         self.build_script = None
         self.ninja = None
@@ -99,9 +99,9 @@ class CBackend:
         if self.config.target == 'wasi' and self.config.kind == 'lib':
             wasm_exports = self.get_wasm_exports()
 
-        if self.config.kind == 'py:cffi':
+        if self.config.kind == 'py-cffi':
             assert wasm_exports == []
-            self.build_script = self.cffi.write(self.outname, self.cfiles)
+            self.build_script = self.cffi.write(self.cfiles)
         else:
             self.ninja = NinjaWriter(self.config, self.build_dir)
             self.ninja.write(self.outname, self.cfiles,
@@ -110,7 +110,7 @@ class CBackend:
 
 
     def build(self) -> py.path.local:
-        if self.config.kind == 'py:cffi':
+        if self.config.kind == 'py-cffi':
             return cffi_build(self.build_script)
         else:
             assert self.ninja is not None

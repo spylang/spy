@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import spy.libspy
 
 BuildTarget = Literal['native', 'wasi', 'emscripten']
-OutputKind = Literal['exe', 'lib', 'py:cffi']
+OutputKind = Literal['exe', 'lib', 'py-cffi']
 BuildType = Literal['release', 'debug']
 
 @dataclass
