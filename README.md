@@ -108,7 +108,7 @@ The full compilation pipeline is:
 
   - `pyparse`: source code -> generate Python AST
   - `parse`: Python AST -> SPy AST
-  - `symtable`: Analize the SPy AST and produce a symbol table for each scope
+  - `symtable`: Analyze the SPy AST and produce a symbol table for each scope
   - `redshift`: SPy AST -> redshifted SPy AST
   - `cwrite`: redshifted SPy AST -> C code
   - `compile`: C code -> executable
