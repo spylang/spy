@@ -36,12 +36,6 @@ Prerequisites:
 
   - Python 3.12
 
-  - [wasi-sdk](https://github.com/WebAssembly/wasi-sdk): this is used by some
-    tests to check that we can compile to WASM using `wasi-sdk`. Currently,
-    **the test suite expects that `clang` points to
-    `/path/to/wask-sdk/bin/clang`** (PRs to improve the situation are
-    welcome).
-
   - `unbuffer` (`apt install expect`), which is used to force gcc to emit
     colored error messages
 
