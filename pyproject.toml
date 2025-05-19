@@ -4,6 +4,7 @@ authors = [
     { name = "Antonio Cuni", email = "anto.cuni@gmail.com" }
 ]
 version = "0.1.0"
+requires-python = ">=3.12"
 
 dependencies = [
     "pytest==8.3.4",
@@ -13,6 +14,7 @@ dependencies = [
     "mypy==1.15.0",
     "typer==0.15.1",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
+    "ninja==1.11.1.4",
 
     # the followings are needed for "tests/compiler/test_cffi.py"
     "cffi",
