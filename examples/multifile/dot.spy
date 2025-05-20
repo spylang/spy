@@ -1,0 +1,25 @@
+from array import array1d, array2d
+
+@blue.generic
+def dot(T):
+
+    def impl(a: array1d[T], b: array2d[T]) -> array1d[T]:
+        result = array1d[T](b.h)
+        i = 0
+        while i < b.h:
+            sum = 0
+            j = 0
+            while j < b.w:
+                sum += b[i, j] * a[j]
+                j += 1
+            result[i] = sum
+            i += 1
+        return result
+
+    return impl
+
+
+
+@blue
+def __INIT__(mod):
+    print('dot.__INIT__')

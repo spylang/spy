@@ -1,0 +1,38 @@
+from array import array, array1d, array2d
+from dot import dot
+
+
+def main() -> void:
+    # Create a vector [1, 2, 3]
+    vec = array1d[i32](3)
+    vec[0] = 1
+    vec[1] = 2
+    vec[2] = 3
+
+    # Create a 2D matrix:
+    # [1, 0, 0]
+    # [0, 1, 0]
+    # [0, 0, 1]
+    mat = array2d[int](3, 3)
+    i = 0
+    while i < mat.h:
+        j = 0
+        while j < mat.w:
+            if i == j:
+                mat[i, j] = 1
+            else:
+                mat[i, j] = 0
+            j += 1
+        i += 1
+
+    result = dot[int](vec, mat)
+
+    i = 0
+    while i < result.l:
+        print(result[i])
+        i += 1
+
+
+@blue
+def __INIT__(mod):
+    print('main.__INIT__')

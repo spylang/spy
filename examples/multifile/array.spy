@@ -1,0 +1,119 @@
+from operator import OpImpl, OpArg
+from unsafe import gc_alloc, ptr
+
+a = [1, 2, 3]
+
+
+@blue.generic
+def array1d(DTYPE):
+
+    @struct
+    class ArrayData:
+        l: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(l: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.l = l
+            data.items = gc_alloc(DTYPE)(l)
+            return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.l:
+                raise IndexError
+            return ll.items[i]
+
+        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> void:
+            ll = self.__ll__
+            if i >= ll.l:
+                raise IndexError
+            ll.items[i] = v
+
+        @blue
+        def __GET_l__(v_self: OpArg, v_attr: OpArg):
+            def get(self: ndarray) -> i32:
+                return self.__ll__.l
+            return OpImpl(get, [v_self])
+
+
+    return ndarray
+
+
+@blue.generic
+def array2d(DTYPE):
+
+    @struct
+    class ArrayData:
+        h: i32
+        w: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.h = h
+            data.w = w
+            data.items = gc_alloc(DTYPE)(h*w)
+            return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.h:
+                raise IndexError
+            if j >= ll.w:
+                raise IndexError
+            idx = (i * ll.w) + j
+            return ll.items[idx]
+
+        def __setitem__(self: ndarray, i: i32, j: i32, v: DTYPE) -> void:
+            ll = self.__ll__
+            if i >= ll.h:
+                raise IndexError
+            if j >= ll.w:
+                raise IndexError
+            idx = (i * ll.w) + j
+            ll.items[idx] = v
+
+        @blue
+        def __GET_h__(v_self: OpArg, v_attr: OpArg):
+            def get(self: ndarray) -> i32:
+                return self.__ll__.h
+            return OpImpl(get, [v_self])
+
+        @blue
+        def __GET_w__(v_self: OpArg, v_attr: OpArg):
+            def get(self: ndarray) -> i32:
+                return self.__ll__.w
+            return OpImpl(get, [v_self])
+
+
+        def print_flatten(self: ndarray) -> void:
+            ll = self.__ll__
+            i = 0
+            while i < ll.h * ll.w:
+                print(ll.items[i])
+                i = i + 1
+
+    return ndarray
+
+
+@blue.generic
+def array(DTYPE, NDIM):
+    if NDIM == 1:
+        return array1d[DTYPE]
+    if NDIM == 2:
+        return array2d[DTYPE]
+    raise StaticError("number of dimensions not supported")
+
+
+@blue
+def __INIT__(mod):
+    print('array.__INIT__')
