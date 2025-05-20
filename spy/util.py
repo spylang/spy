@@ -127,11 +127,8 @@ def robust_run(
     """
     cmdline_s = [str(x) for x in cmdline]
     #print(" ".join(cmdline_s))
-    proc = subprocess.run(
-        cmdline_s,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT
-    )
+    # Use capture_output=True to capture stdout and stderr separately
+    proc = subprocess.run(cmdline_s, capture_output=True)
     if proc.returncode != 0:
         FORCE_COLORS = True
         lines = ["subprocess failed:"]
