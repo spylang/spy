@@ -16,14 +16,16 @@ on:
         required: false
         default: false
 
-
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name:  test-${{ matrix.os }}-${{ matrix.python-version}}
+    runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.12]
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12"]
 
     steps:
     - name: Setup tmate session
@@ -41,6 +43,16 @@ jobs:
         # expect provides "unbuffer"
         tools: expect
         method: timestamp
+      if: runner.os == 'Linux'
+
+    - name: Install Homebrew packages
+      uses: tecolicom/actions-use-homebrew-tools@v1
+      with:
+        tools: 'expect'
+        cache: 'yes'
+        verbose: true
+      if: runner.os == 'macOS'
+
 
     # - name: Install wasi-sdk
     #   run: |
