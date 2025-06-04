@@ -1,0 +1,9 @@
+@blue.generic
+def hash(T):
+    def hash_i32(v: i32):
+        # this mimics the implementation of CPython's hash(int)
+        return v
+    if T is i32:
+        return hash_i32
+
+    raise TypeError("unsupported type for hash()")
