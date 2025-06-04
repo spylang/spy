@@ -14,10 +14,12 @@ It consists of:
   2. a compiler (for speed)
 
 The documentation is very scarce at the moment, but the best source to
-understand the ideas behind SPy are probably the
-[slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and
-[recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS) of
-the talk which [Antonio Cuni](https://github.com/antocuni/) gave at PyCon US 2024.
+understand the ideas behind SPy are probably the talks which [Antonio Cuni](https://github.com/antocuni/) gave:
+
+  - at [PyCon Italy 2025](https://antocuni.eu/2025/05/31/spy--pycon-it-2025/)
+
+  - at PyCon US 2024: [slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and[recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS).
+
 
 Additional info can be found on:
 
