@@ -1,0 +1,26 @@
+from dict import dict
+
+
+def test() -> void:
+    # d = dict[int, int]()
+    d = dict[i32, i32]()
+    d[1] = 1
+    # assert d[1] == 1  # [Antonio]: ParseError: not implemented yet: Assert :(
+    if d[1] == 1:
+        print("✅")
+    else:
+        print("❌")
+
+# [Antonio]: have also seen this error.
+# it's quite confusing not to have a reference to my spy file and
+# having just "<string>" instead :/
+#   File "<string>", line 22
+#                 value: Value
+#                             ^
+# TabError: inconsistent use of tabs and spaces in indentation
+
+# [Antonio]: it's quite annoying in general when I get ParseErrors one at a
+# time. I'd rather see them all and resolve them in one shot.
+
+def main() -> void:
+    test()
