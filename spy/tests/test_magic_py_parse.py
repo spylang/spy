@@ -62,8 +62,8 @@ def test_magic_py_parse_error(tmpdir):
     f.write(src)
     parser = Parser(src, str(f))
     with expect_errors(
-            "expected an indented block after 'if' statement on line 2",
-            ("", "    if 1:")
+        "expected an indented block after 'if' statement on line 2",
+        ("", "    if 1:")
     ):
         parser.parse()
 
@@ -74,7 +74,7 @@ def test_magic_py_parse_tabs(tmpdir):
     f.write(src)
     parser = Parser(src, str(f))
     with expect_errors(
-            "inconsistent use of tabs and spaces in indentation",
-            ("", "\tprint('world')")
+        "inconsistent use of tabs and spaces in indentation (<string>, line 3)",
+        ("", "\tprint('world')")
     ):
         parser.parse()
