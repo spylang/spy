@@ -32,6 +32,9 @@ from dataclasses import dataclass
 import ast as py_ast
 from tokenize import tokenize, NUMBER, STRING, NAME, OP, TokenInfo
 from io import BytesIO
+
+from spy.errors import SPyError
+from spy.location import Loc
 from spy.vendored import untokenize
 import spy.ast_dump
 
@@ -42,13 +45,18 @@ class LocInfo:
     col_offset: int
     end_col_offset: int
 
-def magic_py_parse(src: str) -> py_ast.Module:
+def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     """
     Like ast.parse, but supports the new "var" syntax. See the module
     docstring for more info.
     """
     src2, var_locs = preprocess(src)
-    py_mod = py_ast.parse(src2)
+    try:
+        py_mod = py_ast.parse(src2, filename=filename)
+    except SyntaxError as e:
+        lineno = e.lineno or 1
+        loc = Loc(filename, lineno, lineno, 0, -1)
+        raise SPyError.simple("W_ParseError", e.msg, "", loc)
 
     for node in py_ast.walk(py_mod):
         if isinstance(node, py_ast.Name):
