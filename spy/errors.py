@@ -63,3 +63,7 @@ class SPyError(Exception):
         if exc.etype != etype:
             msg = f"Expected SPyError of type {etype}, but got {exc.etype}"
             pytest.fail(msg)
+
+
+def WIP(message: str) -> SPyError:
+    return SPyError('W_WIP', message)

@@ -1,3 +1,4 @@
+from spy.errors import WIP
 from spy.vm.b import B
 from spy.vm.object import W_Type
 
@@ -19,4 +20,4 @@ def sizeof(w_T: W_Type) -> int:
         # preemptively choose the target platform BEFORE redshifting?
         return 4 + 4 # in debug mode we store both addr and length
     else:
-        assert False
+        raise WIP(f'sizeof({w_T}) not implemented')

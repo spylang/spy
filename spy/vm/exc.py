@@ -150,3 +150,9 @@ class W_NameError(W_Exception):
 @BUILTINS.builtin_type('PanicError')
 class W_PanicError(W_Exception):
     pass
+
+@BUILTINS.builtin_type('WIP')
+class W_WIP(W_Exception):
+    """
+    Raised when something is supposed to work but has not been implemented yet
+    """
