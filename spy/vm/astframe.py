@@ -105,7 +105,13 @@ class AbstractFrame:
     def eval_expr(self, expr: ast.Expr, *,
                   varname: Optional[str] = None
                   ) -> W_OpArg:
-        wop = magic_dispatch(self, 'eval_expr', expr)
+
+        try:
+            wop = magic_dispatch(self, 'eval_expr', expr)
+        except SPyError as exc:
+            exc.add_location_maybe(expr.loc)
+            raise
+
         w_typeconv = self.typecheck_maybe(wop, varname)
 
         if isinstance(self, ASTFrame) and self.w_func.redshifted:

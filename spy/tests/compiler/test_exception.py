@@ -1,6 +1,6 @@
 import pytest
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors
+from spy.tests.support import CompilerTest, expect_errors, no_C
 
 class TestException(CompilerTest):
 
@@ -80,3 +80,19 @@ class TestException(CompilerTest):
             assert mod.print_message(0) == 42 # works
             with SPyError.raises('W_StaticError', match="unsupported lang: it"):
                 mod.print_message(1)
+
+    @no_C
+    def test_add_location_if_missing(self):
+        mod = self.compile("""
+        from _testing_helpers import raise_no_loc
+
+        def foo() -> void:
+            raise_no_loc()
+        """)
+
+        errors = expect_errors(
+            "this is some error",
+            ('called from here', 'raise_no_loc()'),
+            )
+        with errors:
+            mod.foo()
