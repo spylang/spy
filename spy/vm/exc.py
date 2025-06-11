@@ -29,6 +29,14 @@ class W_Exception(W_Object):
     def add(self, level: Level, message: str, loc: Loc) -> None:
         self.annotations.append(Annotation(level, message, loc))
 
+    def add_location_maybe(self, loc: Loc) -> None:
+        """
+        Add "generic" location info to the exception, but only if there
+        isn't any yet.
+        """
+        if self.annotations == []:
+            self.add('error', 'called from here', loc)
+
     def format(self, use_colors: bool = True) -> str:
         fmt = ErrorFormatter(use_colors)
         etype = self.__class__.__name__[2:]
@@ -150,3 +158,9 @@ class W_NameError(W_Exception):
 @BUILTINS.builtin_type('PanicError')
 class W_PanicError(W_Exception):
     pass
+
+@BUILTINS.builtin_type('WIP')
+class W_WIP(W_Exception):
+    """
+    Raised when something is supposed to work but has not been implemented yet
+    """

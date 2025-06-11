@@ -29,13 +29,13 @@ class ClassFrame(AbstractFrame):
         body = ClassBody(fields={}, methods={})
         for vardef in self.classdef.fields:
             assert vardef.kind == 'var'
-            self.exec_stmt_VarDef(vardef)
+            self.exec_stmt(vardef)
             body.fields[vardef.name] = self.locals_types_w[vardef.name]
 
         # execute method definitions
         for funcdef in self.classdef.methods:
             name = funcdef.name
-            self.exec_stmt_FuncDef(funcdef)
+            self.exec_stmt(funcdef)
             w_meth = self.load_local(name)
             assert isinstance(w_meth, W_Func)
             body.methods[name] = w_meth

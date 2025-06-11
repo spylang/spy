@@ -40,6 +40,7 @@ re-exported here.
 """
 
 from typing import TYPE_CHECKING, Sequence
+from spy.errors import WIP
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
 from spy.vm.opimpl import W_OpImpl
@@ -105,7 +106,10 @@ def OP_from_token(token: str) -> W_Func:
 
     E.g., OPS.from_token('+') returns OPS.w_ADD.
     """
-    return _from_token[token]
+    if token in _from_token:
+        return _from_token[token]
+    else:
+        raise WIP(f"Operator not implemented yet: {token}")
 
 def OP_unary_from_token(token: str) -> W_Func:
     return _unary_from_token[token]
