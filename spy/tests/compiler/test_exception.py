@@ -96,3 +96,26 @@ class TestException(CompilerTest):
             )
         with errors:
             mod.foo()
+
+    def test_add_location_to_stmt(self):
+        # here we test that we add _some_ location info to SPyErrors generated
+        # while executing ASTFrame.exec_stmt(). However, it's not trivial to
+        # write a test, becuase most stmt don't raise at all.
+        #
+        # The trick is to abuse what happens inside the @struct decorator,
+        # which is indirectly called by exec_stmt_ClassDef: at the moment of
+        # writing, it raises a WIP with bool fields, so we can use that. When
+        # we implement bool fields, we will need to find another way to
+        # generate a raise.
+        src = """
+        @struct
+        class X:
+            flag: bool
+        """
+
+        errors = expect_errors(
+            "sizeof(<spy type 'bool'>) not implemented",
+            ('called from here', 'class X:\n    flag: bool'),
+            )
+        with errors:
+            self.compile(src)

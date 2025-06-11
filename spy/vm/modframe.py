@@ -48,9 +48,9 @@ class ModFrame(AbstractFrame):
             if isinstance(decl, ast.Import):
                 pass
             elif isinstance(decl, ast.GlobalFuncDef):
-                self.exec_stmt_FuncDef(decl.funcdef)
+                self.exec_stmt(decl.funcdef)
             elif isinstance(decl, ast.GlobalClassDef):
-                self.exec_stmt_ClassDef(decl.classdef)
+                self.exec_stmt(decl.classdef)
             elif isinstance(decl, ast.GlobalVarDef):
                 self.gen_GlobalVarDef(decl)
             else:
@@ -78,8 +78,8 @@ class ModFrame(AbstractFrame):
 
         # evaluate the vardef in the current frame
         if not isinstance(vardef.type, ast.Auto):
-            self.exec_stmt_VarDef(vardef)
-        self.exec_stmt_Assign(assign)
+            self.exec_stmt(vardef)
+        self.exec_stmt(assign)
 
         # add it to the globals
         w_val = self.load_local(vardef.name)

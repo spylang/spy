@@ -78,7 +78,11 @@ class AbstractFrame:
         return w_obj
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
-        return magic_dispatch(self, 'exec_stmt', stmt)
+        try:
+            return magic_dispatch(self, 'exec_stmt', stmt)
+        except SPyError as exc:
+            exc.add_location_maybe(stmt.loc)
+            raise
 
     def typecheck_maybe(self, wop: W_OpArg,
                         varname: Optional[str]) -> Optional[W_Func]:
@@ -314,7 +318,7 @@ class AbstractFrame:
         # XXX: eventually we want to support things like __IADD__ etc, but for
         # now we just delegate to _ADD__.
         assign = self._desugar_AugAssign(node)
-        self.exec_stmt_Assign(assign)
+        self.exec_stmt(assign)
 
     def _desugar_AugAssign(self, node: ast.AugAssign) -> ast.Assign:
         # transform "x += 1" into "x = x + 1"
