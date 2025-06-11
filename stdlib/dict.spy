@@ -1,0 +1,187 @@
+from hash import hash
+from unsafe import gc_alloc, ptr
+
+
+DKIX_EMPTY = 0
+# DKIX_DUMMY = 2 ** 32 - 1
+DKIX_DUMMY = 1 << 32 - 1
+# DKIX_ERROR = 2 ** 32 - 2
+DKIX_ERROR = 1 << 32 - 2
+# DKIX_KEY_CHANGED = 2 ** 32 - 3
+DKIX_KEY_CHANGED = 1 << 32 - 3
+
+MIN_LOG_SIZE = 6
+MAX_LOG_SIZE = 31
+MAX_FILL_RATIO = 2 / 3
+
+
+@blue.generic
+def dict(Key, Value):
+    hash_key = hash[Key]
+
+    @struct
+    class Entry:
+        # empty: bool
+        empty: i32
+        key: Key
+        value: Value
+
+
+    @struct
+    class DictData:
+        index: ptr[i32]
+        log_size: i32  # capacity
+        length: i32  # number of items stored
+        entries: ptr[Entry]
+
+
+    def new_data(log_size: i32) -> ptr[DictData]:
+        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
+        data = gc_alloc(DictData)(1)
+        index = gc_alloc(i32)(1 << log_size)
+        data.index = index
+        data.log_size = 1 << log_size
+        data.length = 0
+        i = 0
+        while i < 1 << log_size:
+            data.index[i] = DKIX_EMPTY
+            # data.entries[i].empty = True
+            i += 1
+        return data
+
+    def capacity(self: _dict) -> i32:
+        data: ptr[DictData] = self.__ll__.data
+        return 1 << data.log_size
+
+    def mask(self: _dict) -> i32:
+        data: ptr[DictData] = self.__ll__.data
+        return 1 << data.log_size - 1
+
+    def distance_0(self: _dict, key: Key) -> i32:
+        # the first slot in the index to probe when looking up key
+        return hash_key(key) & mask(self)
+
+    def get_entry_at(self: _dict, position: i32) -> Entry:
+        data: DictData = self.__ll__.data
+        return data.entries[position]
+
+    def lookup(self: _dict, key: Key) -> i32:
+        data: ptr[DictData] = self.__ll__.data
+        d0 = distance_0(self, key)
+        distance = -1
+        while distance < capacity(self):
+            distance += 1
+            ix = data.index[(d0 + distance) & capacity(self)]
+            # [Antonio]: another confusing error:
+            #   File "/Users/dp/.pyenv/versions/3.13.2/envs/spy/lib/python3.13/site-packages/fixedint/base.py", line 391, in _f
+            #     return nt(intfunc(int(self), int(other)))
+            #               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+            # ZeroDivisionError: integer modulo by zero
+            # I guess this is saying that capacity() might return 0?
+            if ix == DKIX_EMPTY:
+                return DKIX_EMPTY
+            if ix == DKIX_DUMMY:
+                # continue
+                pass
+            else:
+                entry = get_entry_at(self, ix)
+                if not entry.empty:
+                    # continue (I'd rather remove the `not` and use `continue` here)
+                    hash_entry = hash_key(entry.key)  # might raise exception
+                    hash_lookup = hash_key(key)  # might raise exception
+                    if not (hash_entry != hash_lookup):
+                        # continue (ibid.)
+                        if entry.key is key:
+                            return ix
+                        cmp = entry.key == key  # might raise exception
+                        if cmp:
+                            return ix
+        return DKIX_EMPTY
+
+    def insert(self: _dict, key: Key, value: Value) -> void:
+        data: DictData = self.__ll__.data[0]
+        # [Antonio]: another confusing error
+        #   File "/Users/dp/repos/spy/spy/vm/function.py", line 265, in raw_call
+        #     w_res = self._pyfunc(vm, *args_w)
+        #   File "/Users/dp/repos/spy/spy/vm/modules/unsafe/mem.py", line 47, in w_mem_read_T
+        #     assert False
+        #            ^^^^^
+        # AssertionError
+        # does this mean that structs cannot be dereferenced?
+        entry = data.entries[data.length]
+        # data.length += 1
+        data.length = data.length + 1
+        entry.key = key
+        entry.value = value
+        entry.empty = False
+        d0 = distance_0(self, key)
+        distance = -1
+        while distance < capacity(self):
+            distance += 1
+            ix = data.index[(d0 + distance) & capacity(self)]
+            if ix == DKIX_EMPTY:
+                data.index[d0 + distance] = data.length - 1
+                return
+        raise Exception("aargh!")
+        # assert False  # must not loop through the entire index
+        # without finding a free slot
+
+    def resize(self: _dict) -> i32:
+        # The resize operation never decreases the memory used by dict;
+        # i.e., we never resize to decrease the size of dict.
+        # This follows the CPython implementation.
+        old_data: DictData = self.__ll__.data
+        # assert old_data.log_size < MAX_LOG_SIZE
+        new = new_data(old_data.log_size + 1)
+        new.length = old_data.length
+        i = 0
+        while i < old_data.length:
+            entry = old_data.entries[i]
+            new.entries[i] = entry
+            i += 1
+        self.__ll__.data = new
+
+
+    @struct
+    class __dict:
+        data: ptr[DictData]
+
+
+    @typelift
+    class _dict:
+        __ll__: ptr[__dict]
+
+        def __new__() -> _dict:
+            data = new_data(MIN_LOG_SIZE)
+            d = gc_alloc(__dict)(1)
+            d.data = data
+            return _dict.__lift__(d)
+
+        def __getitem__(self: _dict, key: Key) -> Value:
+            data: DictData = self.__ll__.data
+            ix = lookup(self, key)
+            if ix == DKIX_EMPTY:
+                raise KeyError(key)
+            return data.entries[ix].value
+
+        def __setitem__(self: _dict, key: Key, value: Value) -> void:
+            data: ptr[DictData] = self.__ll__.data
+            ix = lookup(self, key)
+            if ix == DKIX_EMPTY:
+                insert(self, key, value)
+                if data.length >= capacity(self) * MAX_FILL_RATIO:
+                    resize(self)
+            else:
+                entry = get_entry_at(self, ix)
+                # assert not entry.empty
+                entry.value = value
+
+        def __delitem__(self: _dict, key: Key) -> void:
+            pass
+
+        def __len__(self: _dict) -> i32:
+            data: DictData = self.__ll__.data
+            return data.length
+
+
+    return _dict
