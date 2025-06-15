@@ -49,15 +49,31 @@ def dict(Key, Value):
             i += 1
         return data
 
-    def new_index(data: ptr[DictData], log_size: i32) -> void:
+    def new_index(log_size: i32) -> ptr[i32]:
         # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
         index = gc_alloc(i32)(1 << log_size)
-        data.log_size = log_size
         i = 0
         while i < 1 << log_size:
             index[i] = DKIX_EMPTY
             i += 1
-        data.index = index
+        return index
+
+    # @blue
+    def new_entries(log_size: i32) -> ptr[Entry]:
+        entries = gc_alloc(Entry)(1 << log_size)
+        i = 0
+        while i < 1 << log_size:
+            entries[i].empty = True
+            # ^ WIP: Cannot read struct by value: `dict::dict[i32, i32]::Entry`
+            # [Antonio]: not sure what to do here, I'm leaning towards removing
+            # the Entry struct in favor of having three different arrays.
+            # It degrades cache friendliness, but that's fine.
+            # Do you think there's a way around this WIP error now?
+            # I also tried blueing the function, but it didn't help.
+            entries[i].key = None
+            entries[i].value = None
+            i += 1
+        return entries
 
     def capacity(self: _dict) -> i32:
         data: ptr[DictData] = self.__ll__
@@ -144,13 +160,10 @@ def dict(Key, Value):
 
         def __new__() -> _dict:
             data = gc_alloc(DictData)(1)
+            data.log_size = MIN_LOG_SIZE
             data.length = 0
-            new_index(data, MIN_LOG_SIZE)
-            data.entries = gc_alloc(Entry)(1 << data.log_size)
-            i = 0
-            while i < 1 << data.log_size:
-                data.entries[i].empty = True
-                i += 1
+            data.index = new_index(data.log_size)
+            data.entries = new_entries(data.log_size)
             return _dict.__lift__(data)
 
         def __getitem__(self: _dict, key: Key) -> Value:
