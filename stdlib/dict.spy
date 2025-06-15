@@ -49,12 +49,22 @@ def dict(Key, Value):
             i += 1
         return data
 
+    def new_index(data: ptr[DictData], log_size: i32) -> void:
+        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
+        index = gc_alloc(i32)(1 << log_size)
+        data.log_size = log_size
+        i = 0
+        while i < 1 << log_size:
+            index[i] = DKIX_EMPTY
+            i += 1
+        data.index = index
+
     def capacity(self: _dict) -> i32:
-        data: ptr[DictData] = self.__ll__.data
+        data: ptr[DictData] = self.__ll__
         return 1 << data.log_size
 
     def mask(self: _dict) -> i32:
-        data: ptr[DictData] = self.__ll__.data
+        data: ptr[DictData] = self.__ll__
         return 1 << data.log_size - 1
 
     def distance_0(self: _dict, key: Key) -> i32:
@@ -62,22 +72,16 @@ def dict(Key, Value):
         return hash_key(key) & mask(self)
 
     def get_entry_at(self: _dict, position: i32) -> Entry:
-        data: DictData = self.__ll__.data
+        data: DictData = self.__ll__
         return data.entries[position]
 
     def lookup(self: _dict, key: Key) -> i32:
-        data: ptr[DictData] = self.__ll__.data
+        data: ptr[DictData] = self.__ll__
         d0 = distance_0(self, key)
         distance = -1
         while distance < capacity(self):
             distance += 1
             ix = data.index[(d0 + distance) & capacity(self)]
-            # [Antonio]: another confusing error:
-            #   File "/Users/dp/.pyenv/versions/3.13.2/envs/spy/lib/python3.13/site-packages/fixedint/base.py", line 391, in _f
-            #     return nt(intfunc(int(self), int(other)))
-            #               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-            # ZeroDivisionError: integer modulo by zero
-            # I guess this is saying that capacity() might return 0?
             if ix == DKIX_EMPTY:
                 return DKIX_EMPTY
             if ix == DKIX_DUMMY:
@@ -99,15 +103,7 @@ def dict(Key, Value):
         return DKIX_EMPTY
 
     def insert(self: _dict, key: Key, value: Value) -> void:
-        data: DictData = self.__ll__.data[0]
-        # [Antonio]: another confusing error
-        #   File "/Users/dp/repos/spy/spy/vm/function.py", line 265, in raw_call
-        #     w_res = self._pyfunc(vm, *args_w)
-        #   File "/Users/dp/repos/spy/spy/vm/modules/unsafe/mem.py", line 47, in w_mem_read_T
-        #     assert False
-        #            ^^^^^
-        # AssertionError
-        # does this mean that structs cannot be dereferenced?
+        data: ptr[DictData] = self.__ll__
         entry = data.entries[data.length]
         # data.length += 1
         data.length = data.length + 1
@@ -130,7 +126,7 @@ def dict(Key, Value):
         # The resize operation never decreases the memory used by dict;
         # i.e., we never resize to decrease the size of dict.
         # This follows the CPython implementation.
-        old_data: DictData = self.__ll__.data
+        old_data: ptr[DictData] = self.__ll__
         # assert old_data.log_size < MAX_LOG_SIZE
         new = new_data(old_data.log_size + 1)
         new.length = old_data.length
@@ -142,30 +138,30 @@ def dict(Key, Value):
         self.__ll__.data = new
 
 
-    @struct
-    class __dict:
-        data: ptr[DictData]
-
-
     @typelift
     class _dict:
-        __ll__: ptr[__dict]
+        __ll__: ptr[DictData]
 
         def __new__() -> _dict:
-            data = new_data(MIN_LOG_SIZE)
-            d = gc_alloc(__dict)(1)
-            d.data = data
-            return _dict.__lift__(d)
+            data = gc_alloc(DictData)(1)
+            data.length = 0
+            new_index(data, MIN_LOG_SIZE)
+            data.entries = gc_alloc(Entry)(1 << data.log_size)
+            i = 0
+            while i < 1 << data.log_size:
+                data.entries[i].empty = True
+                i += 1
+            return _dict.__lift__(data)
 
         def __getitem__(self: _dict, key: Key) -> Value:
-            data: DictData = self.__ll__.data
+            data: ptr[DictData] = self.__ll__
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
                 raise KeyError(key)
             return data.entries[ix].value
 
         def __setitem__(self: _dict, key: Key, value: Value) -> void:
-            data: ptr[DictData] = self.__ll__.data
+            data: ptr[DictData] = self.__ll__
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
                 insert(self, key, value)
@@ -180,7 +176,7 @@ def dict(Key, Value):
             pass
 
         def __len__(self: _dict) -> i32:
-            data: DictData = self.__ll__.data
+            data: ptr[DictData] = self.__ll__
             return data.length
 
 
