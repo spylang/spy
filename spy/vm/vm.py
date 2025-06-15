@@ -30,6 +30,7 @@ from spy.vm.modules.math import MATH
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
+from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)
@@ -78,6 +79,7 @@ class SPyVM:
         self.make_module(UNSAFE)
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)
+        self.make_module(_TESTING_HELPERS)
         self.call_INITs()
 
     @classmethod

@@ -3,7 +3,7 @@ from types import NoneType
 from dataclasses import dataclass
 from spy import ast
 from spy.location import Loc
-from spy.errors import SPyError
+from spy.errors import SPyError, WIP
 from spy.analyze.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
@@ -78,7 +78,11 @@ class AbstractFrame:
         return w_obj
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
-        return magic_dispatch(self, 'exec_stmt', stmt)
+        try:
+            return magic_dispatch(self, 'exec_stmt', stmt)
+        except SPyError as exc:
+            exc.add_location_maybe(stmt.loc)
+            raise
 
     def typecheck_maybe(self, wop: W_OpArg,
                         varname: Optional[str]) -> Optional[W_Func]:
@@ -105,7 +109,13 @@ class AbstractFrame:
     def eval_expr(self, expr: ast.Expr, *,
                   varname: Optional[str] = None
                   ) -> W_OpArg:
-        wop = magic_dispatch(self, 'eval_expr', expr)
+
+        try:
+            wop = magic_dispatch(self, 'eval_expr', expr)
+        except SPyError as exc:
+            exc.add_location_maybe(expr.loc)
+            raise
+
         w_typeconv = self.typecheck_maybe(wop, varname)
 
         if isinstance(self, ASTFrame) and self.w_func.redshifted:
@@ -236,7 +246,7 @@ class AbstractFrame:
         elif sym.is_global:
             self._exec_assign_global(target, expr)
         else:
-            assert False, 'assignment to outer scopes not implemented yet'
+            raise WIP('assignment to outer scopes not implemented yet')
 
     def _exec_assign_local(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value
@@ -308,7 +318,7 @@ class AbstractFrame:
         # XXX: eventually we want to support things like __IADD__ etc, but for
         # now we just delegate to _ADD__.
         assign = self._desugar_AugAssign(node)
-        self.exec_stmt_Assign(assign)
+        self.exec_stmt(assign)
 
     def _desugar_AugAssign(self, node: ast.AugAssign) -> ast.Assign:
         # transform "x += 1" into "x = x + 1"

@@ -1,11 +1,13 @@
 from typing import TYPE_CHECKING, Annotated
 import fixedint
+from spy.errors import WIP
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.w import W_Func, W_Type, W_Object
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
 from .ptr import W_Ptr, w_make_ptr_type, W_PtrType
+from .struct import W_StructType
 from .misc import sizeof
 
 if TYPE_CHECKING:
@@ -43,8 +45,10 @@ def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         elif isinstance(w_T, W_PtrType):
             v_addr, v_length = vm.ll.mem.read_ptr(addr)
             return W_Ptr(w_T, v_addr, v_length)
+        elif isinstance(w_T, W_StructType):
+            raise WIP(f"Cannot read struct by value: `{w_T.fqn.human_name}`")
         else:
-            assert False
+            raise WIP(f"Cannot read memory of type `{w_T.fqn.human_name}`")
 
     return w_mem_read_T
 
@@ -65,7 +69,9 @@ def w_mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         elif isinstance(w_T, W_PtrType):
             assert isinstance(w_val, W_Ptr)
             vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)
+        elif isinstance(w_T, W_StructType):
+            raise WIP(f"Cannot write struct by value: `{w_T.fqn.human_name}`")
         else:
-            assert False
+            raise WIP(f"Cannot write memory of type `{w_T.fqn.human_name}`")
 
     return w_mem_write_T
