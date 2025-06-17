@@ -1,4 +1,4 @@
-# spy
+# SPy
 
 ## What is SPy?
 
@@ -18,7 +18,7 @@ understand the ideas behind SPy are probably the talks which [Antonio Cuni](http
 
   - at [PyCon Italy 2025](https://antocuni.eu/2025/05/31/spy--pycon-it-2025/)
 
-  - at PyCon US 2024: [slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and[recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS).
+  - at PyCon US 2024: [slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and [recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS).
 
 
 Additional info can be found on:
@@ -30,9 +30,9 @@ Additional info can be found on:
 ## Local development setup
 
 At the moment, the only supported installation method for SPy is by doing an
-"editable install" of the git repo checkout.
+"editable install" of the Git repo checkout.
 
-The most up to date version of the requirements and the installation steps is the [Github action workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
+The most up-to-date version of the requirements and the installation steps is the [GitHub action workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
 
 Prerequisites:
 
@@ -65,7 +65,7 @@ All the tests in `spy/tests/compiler/` are executed in three modes:
   - `interp`: run the SPy code via the interpreter
   - `doppler`: perform redshift, then run the redshifted code via the
     interpreter
-  - `C`: generate C code, compile to WASM, then run it using `wasmtime`.
+  - `C`: generate C code, compile to WASM, then run it using `wasmtime`
 
 ## Basic usage examples
 
@@ -109,7 +109,7 @@ The full compilation pipeline is:
   - `cwrite`: redshifted SPy AST -> C code
   - `compile`: C code -> executable
 
-Each of this step has a corresponding command line option which stops the
+Each step has a corresponding command line option which stops the
 compiler at that stage and dumps human-readable results.
 
 Examples:
