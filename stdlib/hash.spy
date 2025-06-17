@@ -6,4 +6,23 @@ def hash(T):
     if T == i32:
         return hash_i32
 
-    raise TypeError("unsupported type for hash()")
+    raise TypeError("unhashable type: 'XXX'")
+    # todo: find a way to print(T)
+    # I would like hash() to show "TypeError: unhashable type: 'list'",
+    # but I get:
+    # TypeError: cannot call objects of type `strType`
+    #    --> /Users/dp/repos/spy/stdlib/hash.spy:9:44
+    #   9 |     raise TypeError("unhashable type: '" + str(T) + "'")
+    #     |                                            |_| this is `strType`
+    #
+    #    --> <builtins>:0:1
+    #   0 |
+    #     | ^ `str` defined here
+    #
+    #    --> /Users/dp/repos/spy/stdlib/hash.spy:9:44
+    #   9 |     raise TypeError("unhashable type: '" + str(T) + "'")
+    #     |                                            |____| operator::CALL called here
+
+def main() -> void:
+    print(hash[i32](123))
+    print(hash[str]("ciao"))
