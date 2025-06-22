@@ -153,9 +153,19 @@ class CompilerTest:
         Compile the W_Module into something which can be accessed and called by
         tests.
 
-        Currently, the only support backend is 'interp', which is a fake
-        backend: the IR code is not compiled and function are executed by the
-        VM.
+        Depending on the `self.backend` value, it returns different objects. By default
+        the following backends are supported:
+        - `interp`: InterpModuleWrapper which, when called, runs the module in the
+                    interpreter
+        - `doppler`: Perform the redshift and then wraps the result in an
+                     InterpModuleWrapper object.
+        - `C`: compiles the module to C and then builds it to a WASM and wraps the
+               result in a WasmModuleWrapper object.
+        unless while using @only_emscripten decorator, in which case the following
+        backend is used:
+        - `emscripten`: compiles the module to C and then builds it to a JS
+                        executable, wrapping the result in an ExeWrapper object.
+
         """
         self.write_file(f'{modname}.spy', src)
         self.w_mod = self.vm.import_(modname)
