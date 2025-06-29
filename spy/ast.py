@@ -71,9 +71,9 @@ del AST
 class Node:
     loc: Loc = field(repr=False)
 
-    def pp(self, hl: Any=None) -> None:
+    def pp(self, hl: Any=None, colorize: bool = False) -> None:
         import spy.ast_dump
-        spy.ast_dump.pprint(self, hl=hl)
+        spy.ast_dump.pprint(self, hl=hl, colorize=colorize)
 
     @typing.no_type_check
     def ppc(self) -> None:

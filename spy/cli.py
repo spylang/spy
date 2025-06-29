@@ -54,6 +54,14 @@ class Arguments:
         )
     ] = False
 
+    colorize: Annotated[
+        bool,
+        Option(
+            "-C", "--colorize",
+            help="Output the redshifted AST with blue / red text colors."
+        )
+    ] = False
+
     imports: Annotated[
         bool,
         Option(
@@ -220,7 +228,8 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
-def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
+def dump_spy_mod_ast(vm: SPyVM, modname: str, colorize: bool=False) -> None:
+    print(f"{colorize=}")
     w_mod = vm.modules_w[modname]
     for fqn, w_obj in w_mod.items_w():
         if (isinstance(w_obj, W_ASTFunc) and
@@ -321,7 +330,8 @@ async def inner_main(args: Arguments) -> None:
 
     if args.parse and not args.redshift:
         mod = importer.getmod(modname)
-        mod.pp()
+        print(f"{mod=}")
+        mod.pp(colorize=args.colorize)
         return
 
     if args.imports:
@@ -358,7 +368,7 @@ async def inner_main(args: Arguments) -> None:
     vm.redshift(error_mode=args.error_mode)
     if args.redshift:
         if args.parse:
-            dump_spy_mod_ast(vm, modname)
+            dump_spy_mod_ast(vm, modname, colorize=args.colorize)
         else:
             dump_spy_mod(vm, modname, args.full_fqn)
         return
