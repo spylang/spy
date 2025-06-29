@@ -4,6 +4,7 @@ import itertools
 from dataclasses import dataclass
 from types import FunctionType
 import fixedint
+from spy import ROOT
 from spy.fqn import FQN
 from spy.location import Loc
 from spy import libspy
@@ -46,6 +47,8 @@ W_F64._w.define(W_F64)
 W_OpImplType = type(W_OpImpl._w)
 W_OpImplType._w.define(W_OpImplType)
 
+STDLIB = ROOT.join('..', 'stdlib')
+
 class SPyVM:
     """
     A Virtual Machine to execute SPy code.
@@ -69,7 +72,7 @@ class SPyVM:
 
         self.globals_w = {}
         self.modules_w = {}
-        self.path = []
+        self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
         self.make_module(BUILTINS)

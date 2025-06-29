@@ -23,6 +23,7 @@ class TestImportAnalizyer:
     def write(self, filename: str, src: str) -> py.path.local:
         src = textwrap.dedent(src)
         f = self.tmpdir.join(filename)
+        f.dirpath().ensure(dir=True) # create directories, if needed
         f.write(src)
         return f
 
@@ -130,3 +131,18 @@ class TestImportAnalizyer:
         filename = analyzer.get_filename('main')
         assert filename == self.tmpdir.join('main.spy')
         assert analyzer.get_filename('nonexistent') is None
+
+    def test_vm_path(self):
+        # we write mod1 in an unrelated dir, which is the added to vm.path
+        self.write("mylib/mod1.spy", """
+        x: i32 = 42
+        """)
+        self.write("main.spy", """
+        import mod1
+        """)
+
+        self.vm.path.append(self.tmpdir.join('mylib'))
+        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer.parse_all()
+        assert list(analyzer.mods) == ['main', 'mod1']
+        assert analyzer.mods['mod1'] is not None # check that we found it

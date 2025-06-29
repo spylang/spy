@@ -130,12 +130,14 @@ class ImportAnalizyer:
         # the only vm.path entry. Eventually we will need a proper import
         # mechanism and support for packages
         assert self.vm.path, 'vm.path not set'
-        f = py.path.local(self.vm.path[0]).join(f'{modname}.spy')
+        for d in self.vm.path:
+            # XXX write test for this
+            f = py.path.local(d).join(f'{modname}.spy')
+            if f.exists():
+                return f
+
         # XXX maybe THIS is the right place where to raise SPyImportError?
-        if f.exists():
-            return f
-        else:
-            return None
+        return None
 
     def analyze_scopes(self, modname: str) -> ScopeAnalyzer:
         assert self.mods, 'call .parse_all() first'
