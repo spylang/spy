@@ -19,6 +19,14 @@ class TestBasic(CompilerTest):
         elif self.backend == 'doppler':
             assert mod.foo.w_func.redshifted
 
+    def test_return_None(self):
+        mod = self.compile(
+        """
+        def foo() -> None:
+            pass
+        """)
+        assert mod.foo() is None
+
     def test_NameError(self):
         src = """
         def foo() -> i32:

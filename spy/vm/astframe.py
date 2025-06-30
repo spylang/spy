@@ -147,6 +147,9 @@ class AbstractFrame:
         if isinstance(w_val, W_Type):
             self.vm.make_fqn_const(w_val)
             return w_val
+        elif w_val is B.w_None:
+            # special case None and allow to use it as a type even if it's not
+            return B.w_void
         w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.fqn.human_name}`'
         raise SPyError.simple("W_TypeError", msg, "expected `type`", expr.loc)
