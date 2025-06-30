@@ -54,7 +54,7 @@ def array3d(DTYPE):
         @blue
         def __SETITEM__(v_arr: OpArg, v_i: OpArg, v_j: OpArg, v_k: OpArg,
                         v_v: OpArg) -> OpImpl:
-            def setitem(arr: ndarray, i: i32, j: i32, k: i32, v: DTYPE) -> void:
+            def setitem(arr: ndarray, i: i32, j: i32, k: i32, v: DTYPE) -> None:
                 ll = arr.__ll__
                 if i >= ll.h:
                     raise IndexError
@@ -66,7 +66,7 @@ def array3d(DTYPE):
                 ll.items[idx] = v
             return OpImpl(setitem)
 
-        def print_flatten(self: ndarray) -> void:
+        def print_flatten(self: ndarray) -> None:
             ll = self.__ll__
             i = 0
             while i < ll.h * ll.w * ll.d:
@@ -75,7 +75,7 @@ def array3d(DTYPE):
 
     return ndarray
 
-def main() -> void:
+def main() -> None:
     buf = gc_alloc(i32)(4*3*2)
     i = 0
     while i < 4*3*2:

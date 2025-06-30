@@ -12,11 +12,11 @@ from jsffi import (
     js_setattr)
 
 
-def onclick() -> void:
+def onclick() -> None:
     console = get_Console()
     js_call_method_1(console, "log", js_string("onclick!"))
 
-def main() -> void:
+def main() -> None:
     js_init()
     js_debug("hello world")
     window = get_GlobalThis()

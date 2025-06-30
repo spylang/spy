@@ -4,13 +4,13 @@ from jsffi import init as js_init, get_GlobalThis, get_Console
 
 var counter: i32 = 0
 
-def onclick() -> void:
+def onclick() -> None:
     counter = counter + 1
     window = get_GlobalThis()
     message = window.document.getElementById("message")
     message.innerText = "onclick " + str(counter)
 
-def main() -> void:
+def main() -> None:
     # initialization
     js_init()
     window = get_GlobalThis()

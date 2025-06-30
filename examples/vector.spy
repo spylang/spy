@@ -23,7 +23,7 @@ def vector_new(capacity: i32) -> ptr[Vector]:
     v.items = gc_alloc(i32)(capacity)
     return v
 
-def vector_append(v: ptr[Vector], item: i32) -> void:
+def vector_append(v: ptr[Vector], item: i32) -> None:
     if v.length >= v.capacity:
         new_capacity = v.capacity * 2
         new_items: ptr[i32] = gc_alloc(i32)(new_capacity)
@@ -43,7 +43,7 @@ def vector_get(v: ptr[Vector], index: i32) -> i32:
         print("Index out of bounds")
     return v.items[index]
 
-def vector_set(v: ptr[Vector], index: i32, item: i32) -> void:
+def vector_set(v: ptr[Vector], index: i32, item: i32) -> None:
     if index < 0:
         print("Index out of bounds")
 
@@ -54,13 +54,13 @@ def vector_set(v: ptr[Vector], index: i32, item: i32) -> void:
 def vector_len(v: ptr[Vector]) -> i32:
     return v.length
 
-def vector_print(v: ptr[Vector]) -> void:
+def vector_print(v: ptr[Vector]) -> None:
     i = 0
     while i < v.length:
         print(v.items[i])
         i = i+1
 
-def test_vector() -> void:
+def test_vector() -> None:
     v = vector_new(2)
     if vector_len(v) != 0:
         print("Test failed: Initial length should be 0")
@@ -92,7 +92,7 @@ def test_vector() -> void:
     print("All tests completed")
 
 
-def test_squares(n: i32) -> void:
+def test_squares(n: i32) -> None:
     v = vector_new(n)
     i = 0
     while i < n:
@@ -100,6 +100,6 @@ def test_squares(n: i32) -> void:
         i = i+1
     vector_print(v)
 
-def main() -> void:
+def main() -> None:
     #test_vector()
     test_squares(100)
