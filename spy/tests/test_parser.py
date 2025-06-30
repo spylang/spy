@@ -53,7 +53,7 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
-                        return_type=Name(id='void'),
+                        return_type=Constant(value=None),
                         docstring=None,
                         body=[
                             Pass(),
@@ -90,7 +90,7 @@ class TestParser:
                                 type=Name(id='float'),
                             ),
                         ],
-                        return_type=Name(id='void'),
+                        return_type=Constant(value=None),
                         docstring=None,
                         body=[
                             Pass(),
@@ -930,7 +930,7 @@ class TestParser:
         assert isclass(nodes[0], 'Module')
         assert isclass(nodes[1], 'GlobalFuncDef')
         assert isclass(nodes[2], 'FuncDef')
-        assert isclass(nodes[3], 'Name') and nodes[3].id == 'void'
+        assert isclass(nodes[3], 'Constant') and nodes[3].value is None
         assert isclass(nodes[4], 'If')
         assert isclass(nodes[5], 'Constant') and nodes[5].value is True
         assert isclass(nodes[6], 'Assign')
@@ -974,7 +974,7 @@ class TestParser:
                                 kind='plain',
                                 name='bar',
                                 args=[],
-                                return_type=Name(id='void'),
+                                return_type=Constant(value=None),
                                 docstring=None,
                                 body=[
                                     Pass(),
@@ -1174,7 +1174,7 @@ class TestParser:
                     kind='plain',
                     name='foo',
                     args=[],
-                    return_type=Name(id='void'),
+                    return_type=Constant(value=None),
                     docstring=None,
                     body=[
                         Pass(),
