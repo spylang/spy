@@ -58,10 +58,10 @@ class TestScopeAnalyzer:
         x: i32 = 0
         var y: i32 = 0
 
-        def foo() -> void:
+        def foo() -> None:
             pass
 
-        def bar() -> void:
+        def bar() -> None:
             pass
         """)
         scope = scopes.by_module()
@@ -96,7 +96,7 @@ class TestScopeAnalyzer:
 
     def test_assign_does_not_redeclare(self):
         scopes = self.analyze("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32 = 0
             x = 1
         """)
@@ -136,7 +136,7 @@ class TestScopeAnalyzer:
 
     def test_inner_funcdef(self):
         scopes = self.analyze("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32 = 0
             def bar(y: i32) -> i32:
                 return x + y
@@ -189,7 +189,7 @@ class TestScopeAnalyzer:
             x: i32
             y: i32
 
-            def foo() -> void:
+            def foo() -> None:
                 pass
         """)
         mod_scope = scopes.by_module()

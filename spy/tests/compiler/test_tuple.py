@@ -46,7 +46,7 @@ class TestTuple(CompilerTest):
         def make_tuple() -> tuple:
             return 1, 2
 
-        def foo() -> void:
+        def foo() -> None:
             a, b, c = make_tuple()
         """)
         msg = "Wrong number of values to unpack: expected 3, got 2"
@@ -55,7 +55,7 @@ class TestTuple(CompilerTest):
 
     def test_unpacking_wrong_type(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             a, b, c = 42
         """
         errors = expect_errors(

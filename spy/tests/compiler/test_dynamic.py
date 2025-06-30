@@ -136,7 +136,7 @@ class TestDynamic(CompilerTest):
 
         mod = self.compile(
         """
-        def foo() -> void:
+        def foo() -> None:
             obj: dynamic = "hello"
             obj.x = 42
         """)
@@ -163,7 +163,7 @@ class TestDynamic(CompilerTest):
         def dyn(x: dynamic) -> dynamic:
             return x
 
-        def foo() -> void:
+        def foo() -> None:
             print(dyn("hello world"))
             print(dyn(42))
             print(dyn(12.3))

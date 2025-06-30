@@ -66,7 +66,7 @@ class TestDoppler:
 
     def test_fqn_format(self):
         src = """
-        def foo(x: i32) -> void:
+        def foo(x: i32) -> None:
             y: str = 'hello'
         """
         self.redshift(src)
@@ -141,32 +141,32 @@ class TestDoppler:
         self.redshift("""
         @blue
         def make_foo():
-            def fn() -> void:
+            def fn() -> None:
                 print('fn')
 
-            def foo() -> void:
+            def foo() -> None:
                 fn()
                 fn()
             return foo
 
-        def main() -> void:
+        def main() -> None:
             make_foo()()
         """)
         self.assert_dump("""
-        def main() -> void:
+        def main() -> None:
             `test::make_foo::foo`()
 
-        def `test::make_foo::fn`() -> void:
+        def `test::make_foo::fn`() -> None:
             print_str('fn')
 
-        def `test::make_foo::foo`() -> void:
+        def `test::make_foo::foo`() -> None:
             `test::make_foo::fn`()
             `test::make_foo::fn`()
         """)
 
     def test_binops(self):
         src = """
-        def foo(i: i32, f: f64) -> void:
+        def foo(i: i32, f: f64) -> None:
             i + i
             i - i
             i * i
@@ -204,26 +204,26 @@ class TestDoppler:
 
     def test_type_conversion(self):
         src = """
-        def foo(x: f64) -> void:
+        def foo(x: f64) -> None:
             pass
 
-        def convert_in_call() -> void:
+        def convert_in_call() -> None:
             foo(42)
 
         def convert_in_locals(x: i32) -> bool:
             flag: bool = x
             return x
 
-        def convert_in_conditions(x: i32) -> void:
+        def convert_in_conditions(x: i32) -> None:
             if x:
                 pass
         """
         self.redshift(src)
         self.assert_dump("""
-        def foo(x: f64) -> void:
+        def foo(x: f64) -> None:
             pass
 
-        def convert_in_call() -> void:
+        def convert_in_call() -> None:
             `test::foo`(`operator::i32_to_f64`(42))
 
         def convert_in_locals(x: i32) -> bool:
@@ -231,7 +231,7 @@ class TestDoppler:
             flag = `operator::i32_to_bool`(x)
             return `operator::i32_to_bool`(x)
 
-        def convert_in_conditions(x: i32) -> void:
+        def convert_in_conditions(x: i32) -> None:
             if `operator::i32_to_bool`(x):
                 pass
         """)
@@ -244,12 +244,12 @@ class TestDoppler:
                 return x + y
             return impl
 
-        def foo() -> void:
+        def foo() -> None:
             x = add(i32)(1, 2)
             y = add(str)("a", "b")
         """)
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32
             x = `test::add[i32]::impl`(1, 2)
             y: str
@@ -265,18 +265,18 @@ class TestDoppler:
     def test_store_outer_var(self):
         self.redshift("""
         var x: i32 = 0
-        def foo() -> void:
+        def foo() -> None:
             x = 1
         """)
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             x = 1
         """)
 
     def test_format_prebuilt_exception(self):
         fname = str(self.tmpdir.join('test.spy'))
         self.redshift("""
-        def foo() -> void:
+        def foo() -> None:
             raise TypeError('foo')
             raise ValueError
         """)
@@ -290,7 +290,7 @@ class TestDoppler:
 
         # in short mode, we show just a raise
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             raise TypeError('foo') # /.../test.spy:3
             raise ValueError # /.../test.spy:4
         """)

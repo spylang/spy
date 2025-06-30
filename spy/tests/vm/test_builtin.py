@@ -32,7 +32,7 @@ class TestBuiltin:
         def foo(vm: 'SPyVM', w_x: W_MyType) -> None:
             pass
         w_functype = functype_from_sig(foo, 'red')
-        assert w_functype == W_FuncType.parse('def(i32) -> void')
+        assert w_functype == W_FuncType.parse('def(i32) -> None')
 
     def test_builtin_func(self):
         vm = SPyVM()
@@ -86,7 +86,7 @@ class TestBuiltin:
         @builtin_func('mymod')
         def w_foo(vm: 'SPyVM') -> None:
             pass
-        assert w_foo.w_functype.fqn.human_name == 'def() -> void'
+        assert w_foo.w_functype.fqn.human_name == 'def() -> None'
         assert isinstance(w_foo, W_BuiltinFunc)
         w_res = vm.fast_call(w_foo, [])
         assert w_res is B.w_None

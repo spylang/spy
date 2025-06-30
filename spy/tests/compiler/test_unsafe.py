@@ -96,7 +96,7 @@ class TestUnsafe(CompilerTest):
             x: i32
             y: i32
 
-        def foo() -> void:
+        def foo() -> None:
             p = gc_alloc(Point)(1)
             p.z = 42
         """
@@ -283,7 +283,7 @@ class TestUnsafe(CompilerTest):
             lst.next.next = new_node(c)
             return lst
 
-        def print_list(n: ptr[Node]) -> void:
+        def print_list(n: ptr[Node]) -> None:
             if n:
                 print(n.val)
                 print_list(n.next)

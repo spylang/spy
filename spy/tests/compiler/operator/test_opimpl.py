@@ -133,7 +133,7 @@ class TestOpImpl(CompilerTest):
         mod = self.compile("""
         from operator import OpImpl
 
-        def bar() -> void:
+        def bar() -> None:
             pass
 
         def foo() -> dynamic:

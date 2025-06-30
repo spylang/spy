@@ -340,7 +340,7 @@ async def inner_main(args: Arguments) -> None:
     #vm.pp_modules()
 
     if args.execute:
-        w_main_functype = W_FuncType.parse('def() -> void')
+        w_main_functype = W_FuncType.parse('def() -> None')
         w_main = w_mod.getattr_maybe('main')
         if w_main is None:
             print('Cannot find function main()')
