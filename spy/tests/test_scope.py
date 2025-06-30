@@ -202,7 +202,6 @@ class TestScopeAnalyzer:
             'y': MatchSymbol('y', 'red'),
             'foo': MatchSymbol('foo', 'blue'),
             'i32': MatchSymbol('i32', 'blue', level=2),
-            'void': MatchSymbol('void', 'blue', level=2),
         }
 
     def test_capture_across_multiple_scopes(self):

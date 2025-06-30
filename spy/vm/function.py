@@ -96,6 +96,9 @@ class W_FuncType(W_Type):
             params.append(FuncParam(w_type, 'simple'))
         #
         w_restype = parse_type(res)
+        if w_restype is B.w_None:
+            # special case None and allow to use it as a type even if it's not
+            w_restype = B.w_NoneType
         return cls.new(params, w_restype)
 
     @property

@@ -71,7 +71,7 @@ class TestDoppler:
         """
         self.redshift(src)
         expected = """
-        def `test::foo`(x: `builtins::i32`) -> `builtins::void`:
+        def `test::foo`(x: `builtins::i32`) -> `builtins::NoneType`:
             y: `builtins::str`
             y = 'hello'
         """
@@ -282,7 +282,7 @@ class TestDoppler:
         """)
         # in full mode, we show a call to operator::raise
         expected = f"""
-        def `test::foo`() -> `builtins::void`:
+        def `test::foo`() -> `builtins::NoneType`:
             `operator::raise`('TypeError', 'foo', '{fname}', 3)
             `operator::raise`('ValueError', '', '{fname}', 4)
         """
