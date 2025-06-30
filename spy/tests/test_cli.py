@@ -40,7 +40,7 @@ class TestMain:
         self.runner = CliRunner()
         self.main_spy = tmpdir.join('main.spy')
         self.main_spy.write(textwrap.dedent("""
-        def main() -> void:
+        def main() -> None:
             print("hello world")
         """))
 
@@ -89,7 +89,7 @@ class TestMain:
 
     def test_redshift_dump_spy(self):
         res, stdout = self.run('--redshift', self.main_spy)
-        assert stdout.startswith('def main() -> void:')
+        assert stdout.startswith('def main() -> None:')
 
     def test_redshift_dump_ast(self):
         res, stdout = self.run('--redshift', '--parse', self.main_spy)

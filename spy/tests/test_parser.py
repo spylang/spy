@@ -39,7 +39,7 @@ class TestParser:
 
     def test_Module(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             pass
         """)
         expected = """
@@ -53,7 +53,7 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
-                        return_type=Name(id='void'),
+                        return_type=Constant(value=None),
                         docstring=None,
                         body=[
                             Pass(),
@@ -67,7 +67,7 @@ class TestParser:
 
     def test_FuncDef_arguments(self):
         mod = self.parse("""
-        def foo(a: i32, b: float) -> void:
+        def foo(a: i32, b: float) -> None:
             pass
         """)
         expected = """
@@ -90,7 +90,7 @@ class TestParser:
                                 type=Name(id='float'),
                             ),
                         ],
-                        return_type=Name(id='void'),
+                        return_type=Constant(value=None),
                         docstring=None,
                         body=[
                             Pass(),
@@ -116,7 +116,7 @@ class TestParser:
 
     def test_FuncDef_errors_2(self):
         src = """
-        def foo(*args) -> void:
+        def foo(*args) -> None:
             pass
         """
         self.expect_errors(
@@ -127,7 +127,7 @@ class TestParser:
 
     def test_FuncDef_errors_3(self):
         src = """
-        def foo(**kwargs) -> void:
+        def foo(**kwargs) -> None:
             pass
         """
         self.expect_errors(
@@ -138,7 +138,7 @@ class TestParser:
 
     def test_FuncDef_errors_4(self):
         src = """
-        def foo(a: i32 = 42) -> void:
+        def foo(a: i32 = 42) -> None:
             pass
         """
         self.expect_errors(
@@ -149,7 +149,7 @@ class TestParser:
 
     def test_FuncDef_errors_5(self):
         src = """
-        def foo(a: i32, /, b: i32) -> void:
+        def foo(a: i32, /, b: i32) -> None:
             pass
         """
         self.expect_errors(
@@ -160,7 +160,7 @@ class TestParser:
 
     def test_FuncDef_errors_6(self):
         src = """
-        def foo(a: i32, *, b: i32) -> void:
+        def foo(a: i32, *, b: i32) -> None:
             pass
         """
         self.expect_errors(
@@ -171,7 +171,7 @@ class TestParser:
 
     def test_FuncDef_errors_7(self):
         src = """
-        def foo(a, b) -> void:
+        def foo(a, b) -> None:
             pass
         """
         self.expect_errors(
@@ -183,7 +183,7 @@ class TestParser:
     def test_FuncDef_errors_8(self):
         src = """
         @mydecorator
-        def foo() -> void:
+        def foo() -> None:
             pass
         """
         self.expect_errors(
@@ -316,7 +316,7 @@ class TestParser:
 
     def test_empty_return(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             return
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -356,7 +356,7 @@ class TestParser:
 
     def test_GetItem(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             return mylist[0, 1]
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -375,7 +375,7 @@ class TestParser:
 
     def test_SetItem(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             mylist[0, 1] = 42
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -393,7 +393,7 @@ class TestParser:
 
     def test_VarDef(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32 = 42
         """)
         vardef, assign = mod.get_funcdef('foo').body[:2]
@@ -515,7 +515,7 @@ class TestParser:
 
     def test_List(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             return [1, 2, 3]
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -534,7 +534,7 @@ class TestParser:
 
     def test_Tuple(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             return 1, 2, 3
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -572,7 +572,7 @@ class TestParser:
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_AugAssign(self, op):
         mod = self.parse(f"""
-        def foo() -> void:
+        def foo() -> None:
             x {op}= 42
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -653,7 +653,7 @@ class TestParser:
 
     def test_Assign(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             x = 42
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -667,7 +667,7 @@ class TestParser:
 
     def test_Assign_unsupported_1(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             a = b = 1
         """
         self.expect_errors(
@@ -678,7 +678,7 @@ class TestParser:
 
     def test_Assign_unsupported_2(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             [a, b] = 1, 2
         """
         self.expect_errors(
@@ -689,7 +689,7 @@ class TestParser:
 
     def test_UnpackAssign(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             a, b, c = x
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -784,7 +784,7 @@ class TestParser:
 
     def test_StmtExpr(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             42
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -797,7 +797,7 @@ class TestParser:
 
     def test_While(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             while True:
                 pass
         """)
@@ -814,7 +814,7 @@ class TestParser:
 
     def test_Raise(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             raise ValueError("error message")
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -832,7 +832,7 @@ class TestParser:
 
     def test_Raise_from(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             raise ValueError("error") from TypeError("cause")
         """
         self.expect_errors(
@@ -843,7 +843,7 @@ class TestParser:
 
     def test_Raise_bare(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             raise
         """
         self.expect_errors(
@@ -922,7 +922,7 @@ class TestParser:
             return x.__class__.__name__ == name
 
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             if True:
                 x = y + 1
         """)
@@ -930,7 +930,7 @@ class TestParser:
         assert isclass(nodes[0], 'Module')
         assert isclass(nodes[1], 'GlobalFuncDef')
         assert isclass(nodes[2], 'FuncDef')
-        assert isclass(nodes[3], 'Name') and nodes[3].id == 'void'
+        assert isclass(nodes[3], 'Constant') and nodes[3].value is None
         assert isclass(nodes[4], 'If')
         assert isclass(nodes[5], 'Constant') and nodes[5].value is True
         assert isclass(nodes[6], 'Assign')
@@ -952,7 +952,7 @@ class TestParser:
         mod = self.parse("""
         @blue
         def foo():
-            def bar() -> void:
+            def bar() -> None:
                 pass
         """)
         expected = """
@@ -974,7 +974,7 @@ class TestParser:
                                 kind='plain',
                                 name='bar',
                                 args=[],
-                                return_type=Name(id='void'),
+                                return_type=Constant(value=None),
                                 docstring=None,
                                 body=[
                                     Pass(),
@@ -990,7 +990,7 @@ class TestParser:
 
     def test_GetAttr(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             a.b
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -1006,7 +1006,7 @@ class TestParser:
 
     def test_SetAttr(self):
         mod = self.parse("""
-        def foo() -> void:
+        def foo() -> None:
             a.b = 42
         """)
         stmt = mod.get_funcdef('foo').body[0]
@@ -1152,7 +1152,7 @@ class TestParser:
         class Foo:
             __ll__: i32
 
-            def foo() -> void:
+            def foo() -> None:
                 pass
         """)
         classdef = mod.get_classdef('Foo')
@@ -1174,7 +1174,7 @@ class TestParser:
                     kind='plain',
                     name='foo',
                     args=[],
-                    return_type=Name(id='void'),
+                    return_type=Constant(value=None),
                     docstring=None,
                     body=[
                         Pass(),

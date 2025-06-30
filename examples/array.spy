@@ -37,7 +37,7 @@ def ndarray1(DTYPE):
 
     return ndarray
 
-def main() -> void:
+def main() -> None:
     a_floats = ndarray1[f64](10)
     a_ints = ndarray1[i32](4)
     print(a_floats[3])

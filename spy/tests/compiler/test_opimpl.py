@@ -13,7 +13,7 @@ class TestOpImpl(CompilerTest):
         """
         from operator import OpImpl
 
-        def bar() -> void:
+        def bar() -> None:
             pass
 
         @blue

@@ -147,6 +147,9 @@ class AbstractFrame:
         if isinstance(w_val, W_Type):
             self.vm.make_fqn_const(w_val)
             return w_val
+        elif w_val is B.w_None:
+            # special case None and allow to use it as a type even if it's not
+            return B.w_NoneType
         w_valtype = self.vm.dynamic_type(w_val)
         msg = f'expected `type`, got `{w_valtype.fqn.human_name}`'
         raise SPyError.simple("W_TypeError", msg, "expected `type`", expr.loc)
@@ -674,7 +677,7 @@ class ASTFrame(AbstractFrame):
             #
             # we reached the end of the function. If it's void, we can return
             # None, else it's an error.
-            if self.w_func.w_functype.w_restype in (B.w_void, B.w_dynamic):
+            if self.w_func.w_functype.w_restype in (B.w_NoneType, B.w_dynamic):
                 return B.w_None
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()

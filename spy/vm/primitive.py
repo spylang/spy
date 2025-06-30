@@ -16,18 +16,16 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opimpl import W_OpArg, W_OpImpl
 
-@B.builtin_type('void')
-class W_Void(W_Object):
+@B.builtin_type('NoneType')
+class W_NoneType(W_Object):
     """
-    Equivalent of Python's NoneType.
-
     This is a singleton: there should be only one instance of this class,
     which is w_None.
     """
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
-        # create additional instances of W_Void
-        raise Exception("You cannot instantiate W_Void")
+        # create additional <None>s
+        raise Exception("You cannot instantiate W_NoneType")
 
     def __repr__(self) -> str:
         return '<spy None>'
@@ -35,7 +33,7 @@ class W_Void(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> None:
         return None
 
-B.add('None', W_Void.__new__(W_Void))
+B.add('None', W_NoneType.__new__(W_NoneType))
 
 
 @B.builtin_type('i32', lazy_definition=True)

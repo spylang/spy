@@ -80,7 +80,7 @@ class SmallPoint:
             return OpImpl.NULL
 
 
-def main() -> void:
+def main() -> None:
     # all these become super fast bitwise operations. After redshifting, there
     # is ZERO memory allocation as everything is just an i32.
     p = SmallPoint(1, 2)

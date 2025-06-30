@@ -45,7 +45,7 @@ class W_JsRef(W_Object):
         elif w_T is B.w_i32:
             return W_OpImpl(JSFFI.w_js_i32)
         elif isinstance(w_T, W_FuncType):
-            assert w_T == W_FuncType.parse('def() -> void')
+            assert w_T == W_FuncType.parse('def() -> None')
             return W_OpImpl(JSFFI.w_js_wrap_func)
         else:
             return W_OpImpl.NULL

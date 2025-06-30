@@ -55,7 +55,7 @@ from spy.vm.b import B
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.primitive import W_Void
+    from spy.vm.primitive import W_NoneType
     from spy.vm.function import W_Func
     from spy.vm.opimpl import W_OpImpl, W_OpArg
 
@@ -350,9 +350,9 @@ class W_Type(W_Object):
         w_meth = decorator(pyfunc)
         self.dict_w[appname] = w_meth
 
-    # Union[W_Type, W_Void] means "either a W_Type or B.w_None"
+    # Union[W_Type, W_NoneType] means "either a W_Type or B.w_None"
     @property
-    def w_base(self) -> Union['W_Type', 'W_Void']:
+    def w_base(self) -> Union['W_Type', 'W_NoneType']:
         from spy.vm.b import B
         if self is B.w_object or self is B.w_dynamic:
             return B.w_None

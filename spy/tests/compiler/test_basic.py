@@ -19,6 +19,14 @@ class TestBasic(CompilerTest):
         elif self.backend == 'doppler':
             assert mod.foo.w_func.redshifted
 
+    def test_return_None(self):
+        mod = self.compile(
+        """
+        def foo() -> None:
+            pass
+        """)
+        assert mod.foo() is None
+
     def test_NameError(self):
         src = """
         def foo() -> i32:
@@ -165,7 +173,7 @@ class TestBasic(CompilerTest):
         var x: i32 = 42
         def get_x() -> i32:
             return x
-        def set_x(newval: i32) -> void:
+        def set_x(newval: i32) -> None:
             x = newval
         """)
         vm = self.vm
@@ -178,7 +186,7 @@ class TestBasic(CompilerTest):
     def test_cannot_assign_to_const_globals(self):
         src = """
         x: i32 = 42
-        def set_x() -> void:
+        def set_x() -> None:
             x = 100
         """
         errors = expect_errors(
@@ -204,12 +212,12 @@ class TestBasic(CompilerTest):
     def test_void_return(self):
         mod = self.compile("""
         var x: i32 = 0
-        def foo() -> void:
+        def foo() -> None:
             x = 1
             return
             x = 2
 
-        def bar() -> void:
+        def bar() -> None:
             x = 3
             return None
             x = 4
@@ -222,7 +230,7 @@ class TestBasic(CompilerTest):
     def test_implicit_return(self):
         mod = self.compile("""
         var x: i32 = 0
-        def implicit_return_void() -> void:
+        def implicit_return_void() -> None:
             x = 1
 
         def implicit_return_i32() -> i32:
@@ -240,10 +248,10 @@ class TestBasic(CompilerTest):
 
     def test_BinOp_error(self):
         src = """
-        def bar(a: i32, b: str) -> void:
+        def bar(a: i32, b: str) -> None:
             return a + b
 
-        def foo() -> void:
+        def foo() -> None:
             bar(1, "hello")
         """
         errors = expect_errors(
@@ -320,7 +328,7 @@ class TestBasic(CompilerTest):
         # for improvement
         src = """
         x: i32 = 0
-        def foo() -> void:
+        def foo() -> None:
             return x(0)
         """
         errors = expect_errors(
@@ -334,7 +342,7 @@ class TestBasic(CompilerTest):
         src = """
         def inc(x: i32) -> i32:
             return x+1
-        def foo() -> void:
+        def foo() -> None:
             return inc()
         """
         errors = expect_errors(
@@ -348,7 +356,7 @@ class TestBasic(CompilerTest):
         src = """
         def inc(x: i32) -> i32:
             return x+1
-        def foo() -> void:
+        def foo() -> None:
             return inc(1, 2, 3)
         """
         errors = expect_errors(
@@ -375,10 +383,10 @@ class TestBasic(CompilerTest):
     def test_StmtExpr(self):
         mod = self.compile("""
         var x: i32 = 0
-        def inc() -> void:
+        def inc() -> None:
             x = x + 1
 
-        def foo() -> void:
+        def foo() -> None:
             inc()
             inc()
         """)
@@ -401,7 +409,7 @@ class TestBasic(CompilerTest):
         def bar(a: i32, b: str) -> bool:
             return a == b
 
-        def foo() -> void:
+        def foo() -> None:
             bar(1, "hello")
         """
         errors = expect_errors(
@@ -417,17 +425,17 @@ class TestBasic(CompilerTest):
         var b: i32 = 0
         var c: i32 = 0
 
-        def reset() -> void:
+        def reset() -> None:
             a = 0
             b = 0
             c = 0
 
-        def if_then(x: i32) -> void:
+        def if_then(x: i32) -> None:
             if x == 0:
                 a = 100
             c = 300
 
-        def if_then_else(x: i32) -> void:
+        def if_then_else(x: i32) -> None:
             if x == 0:
                 a = 100
             else:
@@ -472,7 +480,7 @@ class TestBasic(CompilerTest):
 
     def test_pass(self):
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             pass
         """)
         assert mod.foo() is None
@@ -489,10 +497,10 @@ class TestBasic(CompilerTest):
 
     def test_getitem_error_1(self):
         src = """
-        def bar(a: i32, i: bool) -> void:
+        def bar(a: i32, i: bool) -> None:
             a[i]
 
-        def foo() -> void:
+        def foo() -> None:
             bar(42, True)
         """
         errors = expect_errors(
@@ -623,7 +631,7 @@ class TestBasic(CompilerTest):
 
     def test_print(self, capfd):
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             print("hello world")
             print(42)
             print(12.3)
@@ -649,7 +657,7 @@ class TestBasic(CompilerTest):
     @no_C
     def test_print_type(self, capfd):
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             print(i32)
         """)
         mod.foo()
@@ -666,7 +674,7 @@ class TestBasic(CompilerTest):
             @blue
             def b():
                 x2 = 2
-                def c() -> void:
+                def c() -> None:
                     x3 = 3
                     print(x0)
                     print(x1)
@@ -675,7 +683,7 @@ class TestBasic(CompilerTest):
                 return c
             return b
 
-        def foo() -> void:
+        def foo() -> None:
             a()()()
         """)
         mod.foo()
@@ -730,7 +738,7 @@ class TestBasic(CompilerTest):
 
     def test_getattr_error(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             x: object = 1
             x.foo
         """
@@ -759,18 +767,18 @@ class TestBasic(CompilerTest):
     def test_wrong__INIT__(self):
         # NOTE: this error is always eager because it happens at import time
         src = """
-        def __INIT__(mod: dynamic) -> void:
+        def __INIT__(mod: dynamic) -> None:
             pass
         """
         errors = expect_errors(
             "the __INIT__ function must be @blue",
-            ("function defined here", "def __INIT__(mod: dynamic) -> void")
+            ("function defined here", "def __INIT__(mod: dynamic) -> None")
         )
         self.compile_raises(src, "", errors, error_reporting="eager")
 
     def test_setattr_error(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             s: str = "hello"
             s.x = 42
 
@@ -922,7 +930,7 @@ class TestBasic(CompilerTest):
         from unsafe import ptr
 
         # we can use S even if it's declared later
-        def foo(s: S, p: ptr[S]) -> void:
+        def foo(s: S, p: ptr[S]) -> None:
             pass
 
         ptr_S1 = ptr[S] # using the forward decl
@@ -939,7 +947,7 @@ class TestBasic(CompilerTest):
         w_ptr_S1 = w_mod.getattr('ptr_S1')
         w_ptr_S2 = w_mod.getattr('ptr_S2')
         #
-        expected_sig = 'def(test::S, unsafe::ptr[test::S]) -> void'
+        expected_sig = 'def(test::S, unsafe::ptr[test::S]) -> None'
         assert w_foo.w_functype.fqn.human_name == expected_sig
         params = w_foo.w_functype.params
         assert params[0].w_type is w_S

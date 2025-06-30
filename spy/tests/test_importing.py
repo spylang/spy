@@ -71,7 +71,7 @@ class TestImportAnalizyer:
     @pytest.mark.skip(reason="parser does not support this")
     def test_import_in_function(self):
         self.write("main.spy", """
-        def foo() -> void:
+        def foo() -> None:
             import mod1
         """)
         self.write("mod1.spy", """

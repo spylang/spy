@@ -58,10 +58,10 @@ class TestScopeAnalyzer:
         x: i32 = 0
         var y: i32 = 0
 
-        def foo() -> void:
+        def foo() -> None:
             pass
 
-        def bar() -> void:
+        def bar() -> None:
             pass
         """)
         scope = scopes.by_module()
@@ -72,7 +72,6 @@ class TestScopeAnalyzer:
             'bar': MatchSymbol('bar', 'blue'),
             # captured
             'i32': MatchSymbol('i32', 'blue', level=1),
-            'void': MatchSymbol('void', 'blue', level=1),
         }
 
     def test_funcargs_and_locals(self):
@@ -96,7 +95,7 @@ class TestScopeAnalyzer:
 
     def test_assign_does_not_redeclare(self):
         scopes = self.analyze("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32 = 0
             x = 1
         """)
@@ -136,7 +135,7 @@ class TestScopeAnalyzer:
 
     def test_inner_funcdef(self):
         scopes = self.analyze("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32 = 0
             def bar(y: i32) -> i32:
                 return x + y
@@ -189,7 +188,7 @@ class TestScopeAnalyzer:
             x: i32
             y: i32
 
-            def foo() -> void:
+            def foo() -> None:
                 pass
         """)
         mod_scope = scopes.by_module()
@@ -202,7 +201,6 @@ class TestScopeAnalyzer:
             'y': MatchSymbol('y', 'red'),
             'foo': MatchSymbol('foo', 'blue'),
             'i32': MatchSymbol('i32', 'blue', level=2),
-            'void': MatchSymbol('void', 'blue', level=2),
         }
 
     def test_capture_across_multiple_scopes(self):

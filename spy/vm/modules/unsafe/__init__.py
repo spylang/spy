@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 import fixedint
-from spy.vm.primitive import W_I32, W_Void
+from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.w import W_Object, W_Type

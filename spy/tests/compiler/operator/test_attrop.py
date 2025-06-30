@@ -1,5 +1,5 @@
 from typing import Annotated
-from spy.vm.primitive import W_I32, W_Void
+from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.object import Member
 from spy.vm.builtin import builtin_func, builtin_method
@@ -119,9 +119,8 @@ class TestAttrOp(CompilerTest):
                 if attr == 'x':
                     @builtin_func('ext')
                     def w_setx(vm: 'SPyVM', w_obj: W_MyClass,
-                               w_attr: W_Str, w_val: W_I32) -> W_Void:
+                               w_attr: W_Str, w_val: W_I32) -> None:
                         w_obj.x = vm.unwrap_i32(w_val)
-                        return B.w_None
                     return W_OpImpl(w_setx)
                 else:
                     return W_OpImpl.NULL

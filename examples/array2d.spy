@@ -40,7 +40,7 @@ def array2d(DTYPE):
         @blue
         def __SETITEM__(v_arr: OpArg, v_i: OpArg, v_j: OpArg,
                         v_v: OpArg) -> OpImpl:
-            def setitem(arr: ndarray, i: i32, j: i32, v: DTYPE) -> void:
+            def setitem(arr: ndarray, i: i32, j: i32, v: DTYPE) -> None:
                 ll = arr.__ll__
                 if i >= ll.h:
                     raise IndexError
@@ -50,7 +50,7 @@ def array2d(DTYPE):
                 ll.items[idx] = v
             return OpImpl(setitem)
 
-        def print_flatten(self: ndarray) -> void:
+        def print_flatten(self: ndarray) -> None:
             ll = self.__ll__
             i = 0
             while i < ll.h * ll.w:
@@ -59,7 +59,7 @@ def array2d(DTYPE):
 
     return ndarray
 
-def main() -> void:
+def main() -> None:
     a = array2d[i32](2, 4)
     a[1, 2] = 6
     print(a[1, 2])

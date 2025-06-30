@@ -28,7 +28,7 @@ def array1d(DTYPE):
                 raise IndexError
             return ll.items[i]
 
-        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> void:
+        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.l:
                 raise IndexError
@@ -73,7 +73,7 @@ def array2d(DTYPE):
             idx = (i * ll.w) + j
             return ll.items[idx]
 
-        def __setitem__(self: ndarray, i: i32, j: i32, v: DTYPE) -> void:
+        def __setitem__(self: ndarray, i: i32, j: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.h:
                 raise IndexError
@@ -95,7 +95,7 @@ def array2d(DTYPE):
             return OpImpl(get, [v_self])
 
 
-        def print_flatten(self: ndarray) -> void:
+        def print_flatten(self: ndarray) -> None:
             ll = self.__ll__
             i = 0
             while i < ll.h * ll.w:

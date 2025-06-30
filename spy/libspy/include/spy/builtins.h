@@ -23,7 +23,7 @@ void
 WASM_EXPORT(spy_builtins$print_bool)(bool x);
 
 void
-WASM_EXPORT(spy_builtins$print_void)(void);
+WASM_EXPORT(spy_builtins$print_NoneType)(void);
 
 void
 WASM_EXPORT(spy_builtins$print_str)(spy_Str *s);
