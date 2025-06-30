@@ -217,7 +217,7 @@ class FQN:
             quals = [fqn.human_name for fqn in p1.qualifiers]
             p = ', '.join(quals[:-1])
             r = quals[-1]
-            if r == 'void':
+            if r == 'NoneType':
                 r = 'None'
             return f'{d}({p}) -> {r}'
         else:

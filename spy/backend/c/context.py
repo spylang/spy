@@ -72,7 +72,7 @@ class Context:
         self.tbh_ptrs_def = None   # type: ignore
         self.tbh_types_def = None  # type: ignore
         self._d = {}
-        self._d[B.w_void] = C_Type('void')
+        self._d[B.w_NoneType] = C_Type('void')
         self._d[B.w_i8] = C_Type('int8_t')
         self._d[B.w_u8] = C_Type('uint8_t')
         self._d[B.w_i32] = C_Type('int32_t')

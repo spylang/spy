@@ -34,11 +34,11 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
       W_I32 -> B.w_i32
       W_Dynamic -> B.w_dynamic
       Annotated[W_Object, w_mytype] -> w_mytype
-      None -> B.w_void
+      None -> B.w_NoneType
     """
     from spy.vm.b import B
     if allow_None and ann is None:
-        return B.w_void
+        return B.w_NoneType
     elif is_W_class(ann):
         return ann._w
     elif w_t := get_spy_type_annotation(ann):

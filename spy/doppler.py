@@ -33,7 +33,7 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
     return ast.FQNConst.
     """
     w_type = vm.dynamic_type(w_val)
-    if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_void):
+    if w_type in (B.w_i32, B.w_f64, B.w_bool, B.w_NoneType):
         # this is a primitive, we can just use ast.Constant
         value = vm.unwrap(w_val)
         if isinstance(value, FixedInt): # type: ignore
@@ -373,7 +373,7 @@ class DopplerFrame(ASTFrame):
         assert len(call.args) == 1
         w_argtype = w_opimpl.w_functype.params[1].w_type
         t = w_argtype.fqn.symbol_name
-        if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_void, B.w_str,
+        if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_NoneType, B.w_str,
                          B.w_dynamic, B.w_type):
             fqn = FQN(f'builtins::print_{t}')
         else:

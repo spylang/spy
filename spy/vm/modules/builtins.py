@@ -6,7 +6,7 @@ The first half is in vm/b.py. See its docstring for more details.
 
 from typing import TYPE_CHECKING
 from spy.vm.builtin import builtin_func
-from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_Void
+from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
@@ -51,7 +51,7 @@ def w_print(vm: 'SPyVM', w_x: W_Dynamic) -> None:
 
     It takes just one argument.
     """
-    if isinstance(w_x, (W_I32, W_F64, W_Bool, W_Str, W_Void)):
+    if isinstance(w_x, (W_I32, W_F64, W_Bool, W_Str, W_NoneType)):
         PY_PRINT(vm.unwrap(w_x))
     else:
         PY_PRINT(w_x)
@@ -71,7 +71,7 @@ def w_print_bool(vm: 'SPyVM', w_x: W_Bool) -> None:
     PY_PRINT(vm.unwrap(w_x))
 
 @BUILTINS.builtin_func
-def w_print_void(vm: 'SPyVM', w_x: W_Void) -> None:
+def w_print_NoneType(vm: 'SPyVM', w_x: W_NoneType) -> None:
     PY_PRINT(vm.unwrap(w_x))
 
 @BUILTINS.builtin_func

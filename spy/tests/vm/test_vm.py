@@ -1,6 +1,6 @@
 import fixedint
 import pytest
-from spy.vm.primitive import W_I32, W_Bool, W_Void
+from spy.vm.primitive import W_I32, W_Bool, W_NoneType
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.fqn import FQN
@@ -144,8 +144,8 @@ class TestVM:
     def test_w_None(self):
         vm = SPyVM()
         w_None = B.w_None
-        assert isinstance(w_None, W_Void)
-        assert vm.dynamic_type(w_None).fqn == FQN('builtins::void')
+        assert isinstance(w_None, W_NoneType)
+        assert vm.dynamic_type(w_None).fqn == FQN('builtins::NoneType')
         assert repr(w_None) == '<spy None>'
         #
         assert vm.wrap(None) is w_None

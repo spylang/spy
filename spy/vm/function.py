@@ -263,6 +263,6 @@ class W_BuiltinFunc(W_Func):
     def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.b import B
         w_res = self._pyfunc(vm, *args_w)
-        if w_res is None and self.w_functype.w_restype is B.w_void:
+        if w_res is None and self.w_functype.w_restype is B.w_NoneType:
             return vm.wrap(None)
         return w_res

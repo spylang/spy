@@ -104,7 +104,7 @@ class WasmFuncWrapper:
         return wasm_args
 
     def to_py_result(self, w_type: W_Type, res: Any) -> Any:
-        if w_type is B.w_void:
+        if w_type is B.w_NoneType:
             assert res is None
             return None
         elif w_type in (B.w_i8, B.w_i32, B.w_f64, B.w_u8):
