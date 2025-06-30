@@ -45,7 +45,7 @@ def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
 
 
 @BUILTINS.builtin_func
-def w_print(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
+def w_print(vm: 'SPyVM', w_x: W_Dynamic) -> None:
     """
     Super minimal implementation of print().
 
@@ -59,39 +59,32 @@ def w_print(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
 
 
 @BUILTINS.builtin_func
-def w_print_i32(vm: 'SPyVM', w_x: W_I32) -> W_Void:
+def w_print_i32(vm: 'SPyVM', w_x: W_I32) -> None:
     PY_PRINT(vm.unwrap(w_x))
-    return B.w_None
 
 @BUILTINS.builtin_func
-def w_print_f64(vm: 'SPyVM', w_x: W_F64) -> W_Void:
+def w_print_f64(vm: 'SPyVM', w_x: W_F64) -> None:
     PY_PRINT(vm.unwrap(w_x))
-    return B.w_None
 
 @BUILTINS.builtin_func
-def w_print_bool(vm: 'SPyVM', w_x: W_Bool) -> W_Void:
+def w_print_bool(vm: 'SPyVM', w_x: W_Bool) -> None:
     PY_PRINT(vm.unwrap(w_x))
-    return B.w_None
 
 @BUILTINS.builtin_func
-def w_print_void(vm: 'SPyVM', w_x: W_Void) -> W_Void:
+def w_print_void(vm: 'SPyVM', w_x: W_Void) -> None:
     PY_PRINT(vm.unwrap(w_x))
-    return B.w_None
 
 @BUILTINS.builtin_func
-def w_print_str(vm: 'SPyVM', w_x: W_Str) -> W_Void:
+def w_print_str(vm: 'SPyVM', w_x: W_Str) -> None:
     PY_PRINT(vm.unwrap(w_x))
-    return B.w_None
 
 @BUILTINS.builtin_func
-def w_print_dynamic(vm: 'SPyVM', w_x: W_Dynamic) -> W_Void:
+def w_print_dynamic(vm: 'SPyVM', w_x: W_Dynamic) -> None:
     PY_PRINT(vm.unwrap(w_x))
-    return B.w_None
 
 @BUILTINS.builtin_func
-def w_print_type(vm: 'SPyVM', w_x: W_Type) -> W_Void:
+def w_print_type(vm: 'SPyVM', w_x: W_Type) -> None:
     PY_PRINT(str(w_x))
-    return B.w_None
 
 
 # this should belong to function.py, but we cannot put it there because of
