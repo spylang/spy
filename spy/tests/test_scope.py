@@ -72,7 +72,6 @@ class TestScopeAnalyzer:
             'bar': MatchSymbol('bar', 'blue'),
             # captured
             'i32': MatchSymbol('i32', 'blue', level=1),
-            'void': MatchSymbol('void', 'blue', level=1),
         }
 
     def test_funcargs_and_locals(self):

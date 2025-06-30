@@ -37,7 +37,7 @@ void spy_builtins$print_bool(bool x) {
         printf("False\n");
 }
 
-void spy_builtins$print_void(void) {
+void spy_builtins$print_NoneType(void) {
     printf("None\n");
 }
 
