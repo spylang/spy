@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object
-from spy.vm.function import W_FuncType, W_Func, W_ASTFunc
+from spy.vm.object import W_Type
+from spy.vm.function import W_Func, W_ASTFunc
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.jsffi import JSFFI

@@ -1,14 +1,9 @@
-from typing import Any, Optional
 import textwrap
 import pytest
 import py.path
 from spy import ast
-from spy.fqn import FQN
-from spy.parser import Parser
 from spy.analyze.importing import ImportAnalizyer
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
-from spy.tests.support import expect_errors
 
 
 @pytest.mark.usefixtures('init')

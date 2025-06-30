@@ -1,8 +1,7 @@
-from typing import Any, Iterator, Optional
-from contextlib import contextmanager
+from typing import Any, Optional
 import ast as py_ast
 import spy.ast
-from spy.textbuilder import TextBuilder, ColorFormatter
+from spy.textbuilder import TextBuilder
 
 def dump(node: Any,
          *,

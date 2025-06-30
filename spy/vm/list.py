@@ -1,11 +1,10 @@
-from typing import (TYPE_CHECKING, Any, Optional, Type, ClassVar,
-                    TypeVar, Generic, Annotated, Self)
+from typing import (TYPE_CHECKING, Any, TypeVar, Generic, Annotated, Self)
 from spy.fqn import FQN
 from spy.vm.b import B, OP
-from spy.vm.primitive import W_I32, W_Bool, W_Dynamic, W_Void
+from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
+from spy.vm.builtin import builtin_func, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

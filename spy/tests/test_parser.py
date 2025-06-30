@@ -5,7 +5,7 @@ from spy import ast
 from spy.parser import Parser
 from spy.ast_dump import dump
 from spy.util import print_diff
-from spy.tests.support import CompilerTest, expect_errors, MatchAnnotation
+from spy.tests.support import expect_errors, MatchAnnotation
 
 @pytest.mark.usefixtures('init')
 class TestParser:

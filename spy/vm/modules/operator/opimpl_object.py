@@ -1,5 +1,4 @@
-from typing import TYPE_CHECKING, Any
-from spy.vm.b import B
+from typing import TYPE_CHECKING
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_Bool
 from . import OP

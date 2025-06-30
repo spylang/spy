@@ -1,6 +1,5 @@
-from typing import Callable, Optional, TYPE_CHECKING, Any, Type
+from typing import Callable, TYPE_CHECKING, Any, Type
 from types import FunctionType
-from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN, QUALIFIERS
 

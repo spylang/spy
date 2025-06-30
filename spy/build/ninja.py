@@ -1,10 +1,7 @@
-from typing import Self, Optional
-from dataclasses import dataclass
-import subprocess
-import textwrap
+from typing import Optional
 import shlex
 import py.path
-from spy.textbuilder import TextBuilder, Color
+from spy.textbuilder import TextBuilder
 from spy.build.config import BuildConfig, CompilerConfig
 from spy.util import robust_run
 

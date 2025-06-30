@@ -1,12 +1,11 @@
 from typing import TYPE_CHECKING, Optional, Iterable
 from spy.fqn import FQN
-from spy.vm.primitive import W_Dynamic, W_Void
+from spy.vm.primitive import W_Dynamic
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc
-from spy.vm.builtin import builtin_func, builtin_method
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.builtin import builtin_method
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from spy.llwasm import LLWasmInstance
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
+from spy.vm.object import W_Object
+from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.primitive import W_I32, W_Dynamic
+from spy.vm.primitive import W_I32
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

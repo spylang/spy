@@ -1,5 +1,4 @@
-import pytest
-from spy.fqn_parser import FQN, NSPart, tokenize
+from spy.fqn_parser import FQN, tokenize
 
 def test_tokenizer():
     assert tokenize("foo") == ["foo"]

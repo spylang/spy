@@ -1,4 +1,3 @@
-import pytest
 from spy.fqn import NSPart, FQN
 
 def test_FQN_init_fullname():

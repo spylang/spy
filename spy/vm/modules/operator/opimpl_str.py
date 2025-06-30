@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING
-from spy.vm.b import B
 from spy.vm.primitive import W_I32
 from spy.vm.str import W_Str
 from spy.vm.primitive import W_Bool

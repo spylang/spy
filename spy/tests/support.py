@@ -3,17 +3,13 @@ import textwrap
 from contextlib import contextmanager
 import pytest
 import py.path
-from spy import ast
 from spy.backend.c.cbackend import CBackend
 from spy.build.config import BuildConfig, BuildTarget
 from spy.build.ninja import NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
-from spy.fqn import FQN
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
-from spy.vm.function import W_FuncType
 from spy.tests.wasm_wrapper import WasmModuleWrapper
 from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.cffi_wrapper import load_cffi_module

@@ -1,6 +1,6 @@
 #-*- encoding: utf-8 -*-
 import typing
-from typing import Optional, Sequence
+from typing import Sequence
 import difflib
 import subprocess
 import py.path

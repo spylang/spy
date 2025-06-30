@@ -1,8 +1,6 @@
-import pytest
 from typing import no_type_check
 from spy.fqn import FQN
 from spy.vm.object import W_Type
-from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.w import W_FuncType

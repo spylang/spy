@@ -1,8 +1,7 @@
 #-*- encoding: utf-8 -*-
 
 import struct
-import pytest
-from spy.tests.support import CompilerTest, skip_backends, no_backend
+from spy.tests.support import CompilerTest
 
 class TestRawBuffer(CompilerTest):
 

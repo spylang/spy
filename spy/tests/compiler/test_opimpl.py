@@ -1,10 +1,9 @@
 #-*- encoding: utf-8 -*-
 
-import pytest
 from spy.vm.b import B
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.func_adapter import W_FuncAdapter
-from spy.tests.support import CompilerTest, skip_backends, only_interp
+from spy.tests.support import CompilerTest, only_interp
 
 @only_interp
 class TestOpImpl(CompilerTest):

@@ -1,15 +1,11 @@
-import py
 from spy import ast
-from spy.location import Loc
 from spy.fqn import FQN
 from spy.analyze.scope import ScopeAnalyzer
 from spy.analyze.symtable import SymTable
 from spy.errors import SPyError
 from spy.vm.vm import SPyVM
-from spy.vm.b import B
 from spy.vm.module import W_Module
-from spy.vm.object import W_Type, W_Object
-from spy.vm.function import W_FuncType, W_ASTFunc
+from spy.vm.function import W_ASTFunc
 from spy.vm.astframe import AbstractFrame
 
 

@@ -1,5 +1,4 @@
 from collections import defaultdict
-import operator
 from typing import TYPE_CHECKING, Optional, Sequence
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func

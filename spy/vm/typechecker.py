@@ -1,18 +1,13 @@
-from typing import TYPE_CHECKING, Optional, NoReturn, Any, Sequence, Literal
-from types import NoneType
-from spy import ast
-from spy.analyze.symtable import Symbol, Color
+from typing import TYPE_CHECKING, Optional, NoReturn, Literal
+from spy.analyze.symtable import Color
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.exc import W_TypeError
-from spy.vm.function import W_ASTFunc, W_Func, W_FuncType, FuncParam
+from spy.vm.function import W_Func, W_FuncType, FuncParam
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
-from spy.vm.b import B
-from spy.vm.modules.operator import OP, OP_from_token
-from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

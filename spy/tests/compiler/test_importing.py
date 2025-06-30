@@ -1,5 +1,4 @@
-import pytest
-from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
+from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 class TestImporting(CompilerTest):
 

@@ -1,8 +1,5 @@
-from typing import TYPE_CHECKING, Annotated
-from spy.fqn import FQN
+from typing import TYPE_CHECKING
 from spy.errors import SPyError
-from spy.vm.b import B
-from spy.vm.builtin import builtin_func
 from spy.vm.registry import ModuleRegistry
 
 if TYPE_CHECKING:

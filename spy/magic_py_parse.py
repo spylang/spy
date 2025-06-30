@@ -30,10 +30,9 @@ does exactly that.
 
 from dataclasses import dataclass
 import ast as py_ast
-from tokenize import tokenize, NUMBER, STRING, NAME, OP, TokenInfo
+from tokenize import tokenize, NAME, TokenInfo
 from io import BytesIO
 from spy.vendored import untokenize
-import spy.ast_dump
 
 @dataclass(frozen=True)
 class LocInfo:

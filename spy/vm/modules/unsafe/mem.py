@@ -1,9 +1,8 @@
 from typing import TYPE_CHECKING, Annotated
-import fixedint
 from spy.errors import WIP
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Dynamic
-from spy.vm.w import W_Func, W_Type, W_Object
+from spy.vm.w import W_Type, W_Object
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
 from .ptr import W_Ptr, w_make_ptr_type, W_PtrType

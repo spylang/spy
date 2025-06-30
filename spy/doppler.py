@@ -1,19 +1,16 @@
-from typing import Any, Optional, Literal, TYPE_CHECKING
-from types import NoneType
+from typing import Optional, Literal, TYPE_CHECKING
 from fixedint import FixedInt
 from spy import ast
 from spy.location import Loc
 from spy.fqn import FQN
 from spy.errors import SPyError
 from spy.vm.b import B
-from spy.vm.object import W_Object, W_Type
-from spy.vm.exc import W_Exception
-from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func
+from spy.vm.object import W_Object
+from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
 from spy.vm.astframe import ASTFrame
-from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.exc import W_TypeError, W_StaticError
-from spy.vm.modules.operator.convop import CONVERT_maybe
+from spy.vm.opimpl import W_OpArg
+from spy.vm.exc import W_StaticError
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:

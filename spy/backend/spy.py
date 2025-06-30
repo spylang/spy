@@ -4,7 +4,7 @@ from spy import ast
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_ASTFunc, FuncParam
+from spy.vm.function import W_ASTFunc
 from spy.vm.list import W_List
 from spy.vm.exc import W_Exception
 from spy.analyze.scope import SymTable

@@ -1,7 +1,6 @@
 #-*- encoding: utf-8 -*-
 
-import pytest
-from spy.tests.support import CompilerTest, skip_backends, only_emscripten
+from spy.tests.support import CompilerTest, only_emscripten
 
 @only_emscripten
 class TestJsFFI(CompilerTest):

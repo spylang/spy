@@ -1,11 +1,7 @@
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 import math
 from spy.fqn import FQN
-from spy.vm.primitive import W_F64, W_I32, W_Dynamic, W_Void
-from spy.vm.b import B
-from spy.vm.object import Member
-from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
+from spy.vm.primitive import W_F64
 from spy.vm.registry import ModuleRegistry
 
 if TYPE_CHECKING:

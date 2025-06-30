@@ -1,11 +1,5 @@
-import re
-import pytest
-from spy.fqn import FQN
 from spy.errors import SPyError
-from spy.vm.b import B
-from spy.vm.function import W_ASTFunc
-from spy.tests.support import (CompilerTest, skip_backends,  expect_errors,
-                               only_interp)
+from spy.tests.support import (CompilerTest, only_interp)
 
 class TestTypelift(CompilerTest):
 

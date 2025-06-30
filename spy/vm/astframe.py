@@ -1,23 +1,20 @@
-from typing import TYPE_CHECKING, Any, Optional, NoReturn, Sequence
+from typing import TYPE_CHECKING, Optional, Sequence
 from types import NoneType
-from dataclasses import dataclass
 from spy import ast
-from spy.location import Loc
 from spy.errors import SPyError, WIP
 from spy.analyze.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.exc import W_TypeError
-from spy.vm.object import W_Object, W_Type, ClassBody
+from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_Bool
 from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
                              FuncParam)
-from spy.vm.func_adapter import W_FuncAdapter
-from spy.vm.list import W_List, W_ListType
+from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opimpl import W_OpArg
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch

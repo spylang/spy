@@ -1,6 +1,5 @@
 import pytest
 import textwrap
-from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc
 from spy.backend.spy import SPyBackend
 from spy.util import print_diff

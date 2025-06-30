@@ -1,12 +1,12 @@
-from typing import TYPE_CHECKING, ClassVar, Optional, Annotated, Self
+from typing import TYPE_CHECKING, Optional, Annotated, Self
 import fixedint
 from spy.location import Loc
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.vm.primitive import W_I32, W_Dynamic, W_Void, W_Bool
+from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
 from spy.vm.object import Member
 from spy.vm.b import B
-from spy.vm.builtin import builtin_type, builtin_method
+from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func
