@@ -1,25 +1,19 @@
-from typing import Optional, Any, Iterable
-from types import NoneType
+from typing import Optional, Iterable
 import itertools
 import py.path
-from spy import ast
 from spy.fqn import FQN
-from spy.location import Loc
 from spy.vm.object import W_Type, W_Object
 from spy.vm.module import W_Module, ModItem
 from spy.vm.primitive import W_I32
-from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_FuncType, W_Func
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.vm import SPyVM
-from spy.vm.b import B
-from spy.vm.modules.types import TYPES, W_LiftedType
+from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_Ptr
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.textbuilder import TextBuilder
-from spy.backend.c.context import Context, C_Type, C_Function
-from spy.backend.c import c_ast as C
+from spy.backend.c.context import Context, C_Type
 from spy.backend.c.cwriter import CFuncWriter
 from spy.backend.c.cffiwriter import CFFIWriter
-from spy.util import shortrepr, magic_dispatch
 
 
 class CModuleWriter:

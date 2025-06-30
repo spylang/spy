@@ -1,5 +1,5 @@
 import sys
-from typing import Annotated, Any, no_type_check, Optional
+from typing import Annotated, Any, Optional
 import asyncio
 from pathlib import Path
 import time
@@ -14,19 +14,15 @@ from spy.vendored.dataclass_typer import dataclass_typer
 from spy.magic_py_parse import magic_py_parse
 from spy.analyze.importing import ImportAnalizyer
 from spy.errors import SPyError
-from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.backend.c.cbackend import CBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
 from spy.textbuilder import Color
-from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
-from spy.util import highlight_C_maybe
 import traceback
-import functools
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -214,7 +210,6 @@ class Arguments:
 
 
 def do_pyparse(filename: str) -> None:
-    import ast as py_ast
     with open(filename) as f:
         src = f.read()
     mod = magic_py_parse(src)

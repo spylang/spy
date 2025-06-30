@@ -24,17 +24,16 @@ This scheme is designed in such a way that the call to OPERATOR() is always
 blue and can be optimized away during redshifting.
 """
 
-from typing import (Annotated, Optional, ClassVar, no_type_check, TypeVar, Any,
-                    TYPE_CHECKING, Literal)
-from spy import ast
+from typing import (Annotated, Optional, ClassVar, no_type_check, Any,
+                    TYPE_CHECKING)
 from spy.location import Loc
 from spy.analyze.symtable import Symbol, Color
 from spy.errors import SPyError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object, builtin_method
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.builtin import builtin_func, builtin_type
-from spy.vm.primitive import W_Bool, W_Dynamic
+from spy.vm.builtin import builtin_func
+from spy.vm.primitive import W_Bool
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -115,7 +114,6 @@ class W_OpArg(W_Object):
         - static_type: the static type of the argument
         - val: the value (optional for red OpArg, required for blue)
         """
-        from spy.vm.str import W_Str
         # Check that w_color is a string
         w_type = vm.dynamic_type(w_color)
         if w_type is not B.w_str:
@@ -340,7 +338,6 @@ class W_OpImpl(W_Object):
         """
         Handle class attribute lookups on OpImpl, like OpImpl.NULL
         """
-        from spy.vm.str import W_Str
 
         attr_name = wop_attr.blue_unwrap_str(vm)
 

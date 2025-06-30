@@ -1,5 +1,4 @@
 from spy.location import Loc
-from spy.errors import Annotation
 
 def myfunc() -> Loc:
     loc = Loc.here()

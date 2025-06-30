@@ -1,6 +1,4 @@
-import pytest
 from spy.errors import SPyError
-from spy.vm.b import B
 from spy.tests.support import CompilerTest, only_interp, expect_errors
 
 # Eventually we want to remove the @only_interp, but for now the C backend

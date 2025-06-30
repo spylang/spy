@@ -4,7 +4,7 @@ from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
 from spy import ast
 from spy.location import Loc
 from spy.ast import Color, FuncKind
-from spy.fqn import FQN, NSPart
+from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

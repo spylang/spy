@@ -1,5 +1,4 @@
-import struct
-from typing import Any, Optional
+from typing import Any
 from dataclasses import dataclass
 import py.path
 import wasmtime
@@ -8,7 +7,6 @@ from spy.llwasm import LLWasmType
 from spy.libspy import LLSPyInstance
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
-from spy.vm.module import W_Module
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.vm import SPyVM
 from spy.vm.b import B

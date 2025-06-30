@@ -1,14 +1,13 @@
 from typing import Annotated
-import pytest
-from spy.vm.primitive import W_I32, W_F64, W_Dynamic, W_Bool, W_Void
+from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
+from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.tests.support import CompilerTest, no_C
 
 
 class W_MyClass(W_Object):

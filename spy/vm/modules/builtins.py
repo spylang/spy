@@ -4,11 +4,10 @@ Second half of the `builtins` module.
 The first half is in vm/b.py. See its docstring for more details.
 """
 
-from typing import TYPE_CHECKING, Any, Annotated, Self
-from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_method
+from typing import TYPE_CHECKING
+from spy.vm.builtin import builtin_func
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_Void
-from spy.vm.object import W_Object, W_Type, Member
+from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
 from spy.vm.b import BUILTINS, B

@@ -1,11 +1,9 @@
 from typing import TYPE_CHECKING, Annotated, Optional
 import math
 from spy.errors import SPyError
-from spy.vm.b import B
-from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.operator import OP
 from spy.vm.object import W_Type, W_Object
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.function import W_Func
 from spy.vm.opimpl import W_OpArg, W_OpImpl
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8, W_U8
 from spy.vm.builtin import builtin_func

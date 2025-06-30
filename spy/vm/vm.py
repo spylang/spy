@@ -1,7 +1,5 @@
-import py
 from typing import Any, Optional, Iterable, Sequence, Callable
 import itertools
-from dataclasses import dataclass
 from types import FunctionType
 import fixedint
 from spy import ROOT

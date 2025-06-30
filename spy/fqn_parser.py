@@ -1,6 +1,4 @@
 from typing import Optional
-import re
-from dataclasses import dataclass
 from .fqn import NSPart, FQN
 
 

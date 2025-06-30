@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Sequence, Optional, ClassVar
+from typing import TYPE_CHECKING, Sequence, ClassVar
 from dataclasses import dataclass
 import textwrap
 from spy.fqn import FQN

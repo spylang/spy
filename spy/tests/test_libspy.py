@@ -1,5 +1,4 @@
 import struct
-import pytest
 from spy.llwasm import LLWasmModule
 from spy.libspy import LLSPyInstance, SPyError
 from spy.tests.support import CTest

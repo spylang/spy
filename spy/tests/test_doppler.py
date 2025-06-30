@@ -1,8 +1,6 @@
 import textwrap
 import pytest
-from spy import ast
 from spy.vm.vm import SPyVM
-from spy.vm.function import W_ASTFunc
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.util import print_diff
 

@@ -1,8 +1,7 @@
 import pytest
-from spy.vm.primitive import W_I32, W_Dynamic
-from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
-from spy.vm.w import W_Type, W_Object
+from spy.vm.primitive import W_I32
+from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.w import W_Object
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM

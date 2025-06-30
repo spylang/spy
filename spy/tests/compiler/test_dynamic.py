@@ -1,8 +1,7 @@
 import re
 import pytest
 from spy.errors import SPyError
-from spy.vm.b import B
-from spy.tests.support import CompilerTest, skip_backends,  expect_errors
+from spy.tests.support import CompilerTest, skip_backends
 
 @skip_backends('C', reason='dynamic not supported')
 class TestDynamic(CompilerTest):

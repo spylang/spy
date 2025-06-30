@@ -11,10 +11,9 @@ from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
                     Annotated)
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color
-from spy.vm.object import W_Object, W_Type, make_metaclass_maybe, builtin_method
+from spy.vm.object import W_Object, W_Type, make_metaclass_maybe
+from spy.vm.object import builtin_method # noqa: F401
 from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
-if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
 
 TYPES_DICT = dict[str, W_Type]
 

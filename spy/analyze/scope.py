@@ -6,7 +6,6 @@ from spy.fqn import FQN
 from spy.errors import SPyError
 from spy.analyze.symtable import SymTable, Symbol
 from spy.vm.vm import SPyVM
-from spy.util import magic_dispatch
 
 
 class ScopeAnalyzer:

@@ -1,4 +1,3 @@
-import pytest
 import textwrap
 from spy.location import Loc
 from spy.vm.vm import SPyVM

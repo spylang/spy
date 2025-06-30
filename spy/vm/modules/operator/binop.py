@@ -3,7 +3,6 @@ from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.function import W_Func
-from spy.vm.primitive import W_Dynamic
 from . import OP, op_fast_call
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:

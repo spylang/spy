@@ -1,4 +1,4 @@
-from typing import Annotated, ClassVar, TYPE_CHECKING
+from typing import Annotated, TYPE_CHECKING
 import fixedint
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type

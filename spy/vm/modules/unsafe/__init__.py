@@ -14,5 +14,5 @@ if TYPE_CHECKING:
 # something like that. But for now, it's just a normal module.
 UNSAFE = ModuleRegistry('unsafe')
 
-from . import ptr     # side effects
-from . import mem     # side effects
+from . import ptr     # noqa: F401 -- side effects
+from . import mem     # noqa: F401 -- side effects

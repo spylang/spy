@@ -7,7 +7,7 @@ from spy.errfmt import ErrorFormatter, Level, Annotation
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.primitive import W_Bool
-from spy.vm.object import W_Object, W_Type, Member
+from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.b import BUILTINS
 

@@ -65,7 +65,6 @@ See also vm.get_unique_FQN.
 
 from typing import Optional, Any, Union, Sequence
 from dataclasses import dataclass
-import re
 
 PARTS = Sequence[Union[str, 'NSPart']]
 QUALIFIERS = Optional[Sequence[Union[str, 'FQN']]]

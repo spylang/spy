@@ -1,12 +1,11 @@
 import typing
-from typing import Optional, Iterator, Any, Literal, no_type_check
-import pprint
+from typing import Optional, Iterator, Any, no_type_check
 import ast as py_ast
 import dataclasses
 from dataclasses import dataclass, field
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.analyze.symtable import SymTable, Color
+from spy.analyze.symtable import Color
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']

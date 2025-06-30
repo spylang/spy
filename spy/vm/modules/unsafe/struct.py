@@ -1,17 +1,8 @@
-from typing import TYPE_CHECKING, Any, Optional, Type, ClassVar
-from dataclasses import dataclass
-import fixedint
-from spy.fqn import FQN
-from spy.vm.function import W_Func
-from spy.vm.primitive import W_I32, W_Void
-from spy.vm.b import B
+from typing import TYPE_CHECKING
 from spy.vm.object import W_Object, W_Type, ClassBody, FIELDS_T
-from spy.vm.builtin import builtin_func
-from spy.vm.opimpl import W_OpImpl, W_OpArg
 from . import UNSAFE
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpImpl, W_OpArg
 
 OFFSETS_T = dict[str, int]
 

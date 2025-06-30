@@ -1,11 +1,9 @@
 #-*- encoding: utf-8 -*-
 
-import pytest
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Type
-from spy.vm.opimpl import W_OpArg
-from spy.vm.list import W_List, W_ListType
+from spy.vm.list import W_ListType
 from spy.tests.support import CompilerTest, no_C
 
 # Eventually we want to remove the @no_C, but for now the C backend
