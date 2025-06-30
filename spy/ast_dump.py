@@ -79,6 +79,8 @@ class Dumper(TextBuilder):
             self.writeline('')
         with self.indent():
             for field, value in zip(fields, values):
+                if field == 'color' and value is None:
+                    continue
                 is_last = (field is fields[-1])
                 self.write(f'{field}=')
                 self.dump_anything(value)

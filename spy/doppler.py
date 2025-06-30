@@ -251,6 +251,7 @@ class DopplerFrame(ASTFrame):
         """
         wop = super().eval_expr(expr, varname=varname)
         self.expr_color[expr] = wop.color
+        expr.color = wop.color
         if wop.color == 'blue':
             new_expr = make_const(self.vm, expr.loc, wop.w_val)
         else:

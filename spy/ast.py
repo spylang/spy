@@ -206,6 +206,7 @@ class Expr(Node):
     # precedence must be overriden by subclasses. The weird type comment is
     # needed to make mypy happy
     precedence = '<Expr.precedence not set>' # type: int # type: ignore
+    color: Color | None = field(default=None, kw_only=True)
 
 
 @dataclass(eq=False)
