@@ -1,0 +1,42 @@
+from operator import OpImpl, OpArg
+from unsafe import gc_alloc, ptr
+
+@blue.generic
+def array1(DTYPE):
+
+    @struct
+    class ArrayData:
+        l: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(l: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.l = l
+            data.items = gc_alloc(DTYPE)(l)
+            return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.l:
+                raise IndexError
+            return ll.items[i]
+
+        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.l:
+                raise IndexError
+            ll.items[i] = v
+
+    return ndarray
+
+
+
+@blue.generic
+def array(DTYPE, NDIM):
+    if NDIM == 1:
+        return array1[DTYPE]
+    raise StaticError("number of dimensions not supported")
