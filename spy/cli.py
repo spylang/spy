@@ -218,6 +218,7 @@ class Arguments:
 
 
 def do_pyparse(filename: str) -> None:
+    import ast as py_ast
     with open(filename) as f:
         src = f.read()
     mod = magic_py_parse(src)
@@ -328,10 +329,9 @@ async def inner_main(args: Arguments) -> None:
     importer = ImportAnalizyer(vm, modname)
     importer.parse_all()
 
+    spy_mod = importer.getmod(modname)
     if args.parse and not args.redshift:
-        mod = importer.getmod(modname)
-        print(f"{mod=}")
-        mod.pp(colorize=args.colorize)
+        spy_mod.pp(colorize=args.colorize)
         return
 
     if args.imports:
@@ -367,8 +367,10 @@ async def inner_main(args: Arguments) -> None:
 
     vm.redshift(error_mode=args.error_mode)
     if args.redshift:
-        if args.parse:
-            dump_spy_mod_ast(vm, modname, colorize=args.colorize)
+        if args.colorize:
+            spy_mod.pp(colorize=args.colorize)
+        elif args.parse:
+            dump_spy_mod_ast(vm, modname)
         else:
             dump_spy_mod(vm, modname, args.full_fqn)
         return
