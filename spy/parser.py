@@ -11,13 +11,12 @@ from spy.util import magic_dispatch
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
 
-
-def parse_special_decorator(py_expr) -> Optional[str]:
+def parse_special_decorator(py_expr: py_ast.expr) -> Optional[str]:
     """
     If the decorator is a simple @name or @name.attr, return them as
     strings. Else, return None.
     """
-    if is_py_Name(py_expr, 'blue'):
+    if isinstance(py_expr, py_ast.Name):
         return py_expr.id
 
     if (isinstance(py_expr, py_ast.Attribute) and
