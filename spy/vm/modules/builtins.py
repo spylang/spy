@@ -46,18 +46,31 @@ def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
     return vm.wrap(res) # type: ignore
 
 
-@BUILTINS.builtin_func
-def w_print(vm: 'SPyVM', w_x: W_Dynamic) -> None:
-    """
-    Super minimal implementation of print().
+@BUILTINS.builtin_func(color='blue', kind='metafunc')
+def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
+    w_type = wop_obj.w_static_type
+    if w_type is B.w_i32:
+        return W_OpImpl(B.w_print_i32)
+    elif w_type is B.w_f64:
+        return W_OpImpl(B.w_print_f64)
+    elif w_type is B.w_bool:
+        return W_OpImpl(B.w_print_bool)
+    elif w_type is B.w_NoneType:
+        return W_OpImpl(B.w_print_NoneType)
+    elif w_type is B.w_str:
+        return W_OpImpl(B.w_print_str)
+    elif w_type is B.w_dynamic:
+        return W_OpImpl(B.w_print_dynamic)
+    elif w_type is B.w_type:
+        return W_OpImpl(B.w_print_type)
 
-    It takes just one argument.
-    """
-    if isinstance(w_x, (W_I32, W_F64, W_Bool, W_Str, W_NoneType)):
-        PY_PRINT(vm.unwrap(w_x))
-    else:
-        PY_PRINT(w_x)
-    return B.w_None
+    t = w_type.fqn.human_name
+    raise SPyError.simple(
+        'W_TypeError',
+        f'cannot call print(`{t}`)',
+        f'this is `{t}`',
+        wop_obj.loc
+    )
 
 
 @BUILTINS.builtin_func
@@ -91,7 +104,6 @@ def w_print_type(vm: 'SPyVM', w_x: W_Type) -> None:
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
 def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
     from spy.vm.modules.operator import op_fast_call
-    w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type
 
     if w_LEN := w_type.lookup_blue_func('__LEN__'):
