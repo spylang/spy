@@ -11,7 +11,7 @@ from spy.util import extend
 AnyNode = typing.Union[py_ast.AST, 'Node']
 VarKind = typing.Literal['const', 'var']
 ClassKind = typing.Literal['class', 'struct', 'typelift']
-FuncKind = typing.Literal['plain', 'generic']
+FuncKind = typing.Literal['plain', 'generic', 'metafunc']
 
 @extend(py_ast.AST)
 class AST:
