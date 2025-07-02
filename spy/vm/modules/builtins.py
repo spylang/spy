@@ -5,7 +5,7 @@ The first half is in vm/b.py. See its docstring for more details.
 """
 
 from typing import TYPE_CHECKING
-from spy.errors import WIP
+from spy.errors import SPyError
 from spy.vm.builtin import builtin_func
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
 from spy.vm.opimpl import W_OpArg, W_OpImpl
@@ -101,7 +101,13 @@ def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
         w_opimpl = W_OpImpl(w_fn, [wop_obj])
         return w_opimpl
 
-    raise WIP('better error message for missing __len__')
+    t = w_type.fqn.human_name
+    raise SPyError.simple(
+        'W_TypeError',
+        f'cannot call len(`{t}`)',
+        f'this is `{t}`',
+        wop_obj.loc
+    )
 
 
 # this should belong to function.py, but we cannot put it there because of

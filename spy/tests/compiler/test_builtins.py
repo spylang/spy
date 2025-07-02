@@ -4,7 +4,7 @@ from spy.vm.w import W_Object
 from spy.vm.opimpl import W_OpImpl, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C
+from spy.tests.support import CompilerTest, no_C, expect_errors
 
 
 class W_MySequence(W_Object):
@@ -50,3 +50,14 @@ class TestBuiltins(CompilerTest):
         assert mod.foo(5) == 5
         assert mod.foo(42) == 42
         assert mod.foo(0) == 0
+
+    def test_len_not_supported(self):
+        src = """
+        def foo() -> None:
+            return len(42)
+        """
+        errors = expect_errors(
+            'cannot call len(`i32`)',
+            ('this is `i32`', '42'),
+        )
+        self.compile_raises(src, "foo", errors)
