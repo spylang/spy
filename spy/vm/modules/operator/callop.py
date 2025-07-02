@@ -14,33 +14,43 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
     w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type
 
+    newargs_wop = [wop_obj] + list(args_wop)
     errmsg = 'cannot call objects of type `{0}`'
 
     if isinstance(w_type, W_FuncType):
         # W_Func is a special case, as it can't have a w_CALL for bootstrapping
         # reasons. Moreover, while we are at it, we can produce a better error
         # message in case we try to call a plain function with [].
-        if w_type.kind in ('plain', 'metafunc'):
+        if w_type.kind == 'plain':
             assert w_type.pyclass is W_Func
             w_opimpl = W_Func.op_CALL(vm, wop_obj, *args_wop) # type: ignore
+
+        elif w_type.kind == 'metafunc':
+            assert w_type.pyclass is W_Func
+            w_opimpl = W_Func.op_CALL(vm, wop_obj, *args_wop) # type: ignore
+            # this is a bit of a hack: without this, by default we call the
+            # w_opimpl with ALL the newargs_wop, including the function object
+            # itself. But for metafunc it makes more sense that the default
+            # calling convention is to pass only the rest of the wops
+            if w_opimpl.is_simple():
+                w_opimpl._args_wop = list(args_wop)
+
         elif w_type.kind == 'generic':
             errmsg = 'generic functions must be called via `[...]`'
         else:
             assert False, f'unknown FuncKind: {w_type.kind}'
 
-    if w_type is B.w_dynamic:
+    elif w_type is B.w_dynamic:
         w_opimpl = W_OpImpl(OP.w_dynamic_call)
     elif w_CALL := w_type.lookup_blue_func('__CALL__'):
-        newargs_wop = [wop_obj] + list(args_wop)
         w_opimpl = op_fast_call(vm, w_CALL, newargs_wop)
     elif w_call := w_type.lookup_func('__call__'):
-        newargs_wop = [wop_obj] + list(args_wop)
         w_opimpl = W_OpImpl(w_call, newargs_wop)
 
     return typecheck_opimpl(
         vm,
         w_opimpl,
-        [wop_obj] + list(args_wop),
+        newargs_wop,
         dispatch = 'single',
         errmsg = errmsg,
     )

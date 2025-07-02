@@ -90,13 +90,16 @@ def w_print_type(vm: 'SPyVM', w_x: W_Type) -> None:
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
 def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
+    from spy.vm.modules.operator import op_fast_call
     w_opimpl = W_OpImpl.NULL
     w_type = wop_obj.w_static_type
 
     if w_LEN := w_type.lookup_blue_func('__LEN__'):
-        raise WIP('support for __LEN__')
+        w_opimpl = op_fast_call(vm, w_LEN, [wop_obj])
+        return w_opimpl
     elif w_fn := w_type.lookup_func('__len__'):
-        return W_OpImpl(w_fn, [wop_obj])
+        w_opimpl = W_OpImpl(w_fn, [wop_obj])
+        return w_opimpl
 
     raise WIP('better error message for missing __len__')
 
