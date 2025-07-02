@@ -20,11 +20,14 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
         # W_Func is a special case, as it can't have a w_CALL for bootstrapping
         # reasons. Moreover, while we are at it, we can produce a better error
         # message in case we try to call a plain function with [].
-        if w_type.kind == 'plain':
+        if w_type.kind in ('plain', 'metafunc'):
             assert w_type.pyclass is W_Func
             w_opimpl = W_Func.op_CALL(vm, wop_obj, *args_wop) # type: ignore
-        else:
+        elif w_type.kind == 'generic':
             errmsg = 'generic functions must be called via `[...]`'
+        else:
+            assert False, f'unknown FuncKind: {w_type.kind}'
+
     if w_type is B.w_dynamic:
         w_opimpl = W_OpImpl(OP.w_dynamic_call)
     elif w_CALL := w_type.lookup_blue_func('__CALL__'):

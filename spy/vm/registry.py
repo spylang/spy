@@ -1,6 +1,6 @@
 from typing import Callable, TYPE_CHECKING, Any, Type
 from types import FunctionType
-from spy.ast import Color
+from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 
 if TYPE_CHECKING:
@@ -78,7 +78,9 @@ class ModuleRegistry:
                      pyfunc_or_funcname: Callable|str|None = None,
                      qualifiers: QUALIFIERS = None,
                      *,
-                     color: Color = 'red') -> Any:
+                     color: Color = 'red',
+                     kind: FuncKind = 'plain',
+                     ) -> Any:
         """
         Register a builtin function on the module. We support three
         different syntaxes:
@@ -117,7 +119,8 @@ class ModuleRegistry:
                 namespace=namespace,
                 funcname=funcname,
                 qualifiers=qualifiers,
-                color=color
+                color=color,
+                kind=kind,
             )(pyfunc)
             setattr(self, f'w_{w_func.fqn.symbol_name}', w_func)
             self.content.append((w_func.fqn, w_func))
