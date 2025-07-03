@@ -56,6 +56,11 @@ spy_str_getitem(spy_Str *s, int32_t i) {
     return res;
 }
 
+int32_t
+spy_str_len(spy_Str *s) {
+    return (int32_t)s->length;
+}
+
 // XXX probably it would be better to implement it directly, instead of
 // bringing in all the code needed to support sprintf()
 spy_Str *

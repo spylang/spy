@@ -77,6 +77,13 @@ class W_Str(W_Object):
         ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
         return W_Str.from_ptr(vm, ptr_c)
 
+    @builtin_method('__len__')
+    @staticmethod
+    def w_len(vm: 'SPyVM', w_s: 'W_Str') -> W_I32:
+        assert isinstance(w_s, W_Str)
+        length = vm.ll.call('spy_str_len', w_s.ptr)
+        return vm.wrap(length)  # type: ignore
+
     @staticmethod
     def w_meta_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
                     *args_wop: W_OpArg) -> W_OpImpl:

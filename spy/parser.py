@@ -11,15 +11,22 @@ from spy.util import magic_dispatch
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
 
+def parse_special_decorator(py_expr: py_ast.expr) -> Optional[str]:
+    """
+    If the decorator is a simple @name or @name.attr, return them as
+    strings. Else, return None.
+    """
+    if isinstance(py_expr, py_ast.Name):
+        return py_expr.id
 
-def is_blue(py_expr: py_ast.expr) -> bool:
-    return is_py_Name(py_expr, 'blue')
+    if (isinstance(py_expr, py_ast.Attribute) and
+        isinstance(py_expr.value, py_ast.Name)):
+        a = py_expr.value.id
+        b = py_expr.attr
+        return f'{a}.{b}'
 
-def is_blue_generic(py_expr: py_ast.expr) -> bool:
-    return (isinstance(py_expr, py_ast.Attribute) and
-            isinstance(py_expr.value, py_ast.Name) and
-            py_expr.value.id == "blue" and
-            py_expr.attr == "generic")
+    return None
+
 
 class Parser:
     """
@@ -131,13 +138,16 @@ class Parser:
         color: spy.ast.Color = 'red'
         func_kind: spy.ast.FuncKind = 'plain'
         for deco in py_funcdef.decorator_list:
-            if is_blue(deco):
-                # @blue is special-cased
+            d = parse_special_decorator(deco)
+            # @blue.* are special cased
+            if d == 'blue':
                 color = 'blue'
-            elif is_blue_generic(deco):
-                # @blue.generic is special-cased
+            elif d == 'blue.generic':
                 color = 'blue'
                 func_kind = 'generic'
+            elif d == 'blue.metafunc':
+                color = 'blue'
+                func_kind = 'metafunc'
             else:
                 # other decorators are not supported:
                 self.error('decorators are not supported yet',

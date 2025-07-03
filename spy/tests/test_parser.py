@@ -287,6 +287,31 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
+    def test_blue_metafunc_FuncDef(self):
+        mod = self.parse("""
+        @blue.metafunc
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='blue',
+            kind='metafunc',
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            docstring=None,
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+
     def test_FuncDef_prototype_loc(self):
         # blue functions without return type, are parsed as if they had a
         # synthetic '-> dynamic' annotation. We also need to generate a

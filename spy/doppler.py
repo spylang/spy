@@ -360,27 +360,7 @@ class DopplerFrame(ASTFrame):
         newfunc = self.shifted_expr[call.func]
         newargs = [self.shifted_expr[arg] for arg in call.args]
         newcall = self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
-        if (isinstance(newcall.func, ast.FQNConst) and
-            newcall.func.fqn == FQN('builtins::print')):
-            return self.specialize_print(w_opimpl, newcall)
         return newcall
-
-    def specialize_print(self, w_opimpl: W_Func, call: ast.Call) -> ast.Expr:
-        """
-        This is a temporary hack. We specialize print() based on the type
-        of its first argument
-        """
-        assert len(call.args) == 1
-        w_argtype = w_opimpl.w_functype.params[1].w_type
-        t = w_argtype.fqn.symbol_name
-        if w_argtype in (B.w_i32, B.w_f64, B.w_bool, B.w_NoneType, B.w_str,
-                         B.w_dynamic, B.w_type):
-            fqn = FQN(f'builtins::print_{t}')
-        else:
-            raise SPyError('W_TypeError', f"Invalid type for print(): {t}")
-
-        newfunc = call.func.replace(fqn=fqn)
-        return call.replace(func=newfunc)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
         w_opimpl = self.opimpl[op]

@@ -76,3 +76,13 @@ class TestStr(CompilerTest):
         assert not mod.eq("aaa", "bbb")
         assert mod.ne("aaa", "bbb")
         assert not mod.ne("aaa", "aaa")
+
+    def test_len(self):
+        src = """
+        def foo(s: str) -> i32:
+            return len(s)
+        """
+        mod = self.compile(src)
+        assert mod.foo("") == 0
+        assert mod.foo("abc") == 3
+        assert mod.foo("hello world") == 11

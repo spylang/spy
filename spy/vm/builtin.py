@@ -10,7 +10,7 @@ import inspect
 from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
                     Annotated)
 from spy.fqn import FQN, QUALIFIERS
-from spy.ast import Color
+from spy.ast import Color, FuncKind
 from spy.vm.object import W_Object, W_Type, make_metaclass_maybe
 from spy.vm.object import builtin_method # noqa: F401
 from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
@@ -58,7 +58,7 @@ def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     return FuncParam(w_type, kind)
 
 
-def functype_from_sig(fn: Callable, color: Color, *,
+def functype_from_sig(fn: Callable, color: Color, kind: FuncKind, *,
                       extra_types: dict = {}) -> W_FuncType:
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
@@ -73,7 +73,7 @@ def functype_from_sig(fn: Callable, color: Color, *,
     func_params = [to_spy_FuncParam(p, extra_types) for p in params[1:]]
     ret_ann = extra_types.get(sig.return_annotation, sig.return_annotation)
     w_restype = to_spy_type(ret_ann, allow_None=True)
-    return W_FuncType.new(func_params, w_restype, color=color)
+    return W_FuncType.new(func_params, w_restype, color=color, kind=kind)
 
 
 def builtin_func(namespace: FQN|str,
@@ -81,6 +81,7 @@ def builtin_func(namespace: FQN|str,
                  qualifiers: QUALIFIERS = None,
                  *,
                  color: Color = 'red',
+                 kind: FuncKind = 'plain',
                  extra_types: dict = {},
                  ) -> Callable:
     """
@@ -119,7 +120,7 @@ def builtin_func(namespace: FQN|str,
             fname = fn.__name__[2:]
         assert isinstance(namespace, FQN)
         fqn = namespace.join(fname, qualifiers)
-        w_functype = functype_from_sig(fn, color, extra_types=extra_types)
+        w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)
         return W_BuiltinFunc(w_functype, fqn, fn)
     return decorator
 

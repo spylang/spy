@@ -37,13 +37,14 @@ class W_FuncType(W_Type):
         # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
         qualifiers = [p.w_type.fqn for p in params] + [w_restype.fqn]
-        if color == 'red':
-            assert kind == 'plain'
+        if color == 'red' and kind == 'plain':
             t = 'def'
         elif color == 'blue' and kind == 'plain':
             t = 'blue.def'
         elif color == 'blue' and kind == 'generic':
             t = 'blue.generic.def'
+        elif color == 'blue' and kind == 'metafunc':
+            t = 'blue.metafunc.def'
         else:
             assert False
         fqn = FQN('builtins').join(t, qualifiers)
@@ -196,11 +197,19 @@ class W_Func(W_Object):
         from spy.vm.opimpl import W_OpImpl
         w_func = wop_func.w_blueval
         assert isinstance(w_func, W_Func)
-        return W_OpImpl(
-            w_func,
-            list(args_wop),
-            is_direct_call = True,
-        )
+
+        if w_func.w_functype.kind == 'metafunc':
+            # call the metafunc to get the opimpl
+            w_opimpl = vm.fast_call(w_func, list(args_wop))
+            assert isinstance(w_opimpl, W_OpImpl)
+            return w_opimpl
+        else:
+            # return the func as the opimpl
+            return W_OpImpl(
+                w_func,
+                list(args_wop),
+                is_direct_call = True,
+            )
 
 
 class W_ASTFunc(W_Func):
