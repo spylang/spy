@@ -17,7 +17,6 @@ class TestArray(CompilerTest):
         mod = self.compile(src)
         assert mod.test() == 6
 
-    @pytest.mark.skip
     def test_len(self):
         src = """
         from array import array1
