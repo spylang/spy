@@ -31,6 +31,9 @@ def array1(DTYPE):
                 raise IndexError
             ll.items[i] = v
 
+        def __len__(self: ndarray) -> i32:
+            return self.__ll__.l
+
     return ndarray
 
 
