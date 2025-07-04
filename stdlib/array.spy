@@ -18,7 +18,18 @@ from operator import OpImpl, OpArg
 from unsafe import gc_alloc, ptr
 
 @blue.generic
+def ArrayData1(DTYPE):
+    @struct
+    class S:
+        l: i32
+        items: ptr[DTYPE]
+    return S
+
+
+@blue.generic
 def array1(DTYPE):
+
+    #ArrayData = ArrayData1[DTYPE]
 
     @struct
     class ArrayData:
