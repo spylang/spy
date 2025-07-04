@@ -1,3 +1,19 @@
+"""
+SPy array module
+
+The end goal is to have something which can be used in place of Python's
+array.array and numpy.ndarray types. At the moment is VERY limited in terms of
+functionalities.
+
+Some functionalities are just not implemented.
+
+Others are implemented but in a suboptimal way, because SPy misses the tools
+needed to do it properly.
+
+In particular:
+  - ...
+"""
+
 from operator import OpImpl, OpArg
 from unsafe import gc_alloc, ptr
 
