@@ -5,10 +5,10 @@ class TestArray(CompilerTest):
 
     def test_array1_simple(self):
         src = """
-        from array import array1
+        from array import array
 
         def test() -> int:
-            a = array1[int](3)
+            a = array[int, 1](3)
             a[0] = 1
             a[1] = 2
             a[2] = 3
@@ -19,10 +19,10 @@ class TestArray(CompilerTest):
 
     def test_len(self):
         src = """
-        from array import array1
+        from array import array
 
         def test() -> int:
-            a = array1[int](3)
+            a = array[int, 1](3)
             return len(a)
         """
         mod = self.compile(src)
