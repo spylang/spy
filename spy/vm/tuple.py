@@ -27,6 +27,9 @@ class W_Tuple(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> tuple:
         return tuple([vm.unwrap(w_item) for w_item in self.items_w])
 
+    def __repr__(self) -> str:
+        return f'W_Tuple({self.items_w})'
+
     @builtin_method('__getitem__')
     @staticmethod
     def w_getitem(vm: 'SPyVM', w_tup: 'W_Tuple', w_i: W_I32) -> W_Dynamic:
