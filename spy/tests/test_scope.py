@@ -65,6 +65,8 @@ class TestScopeAnalyzer:
             pass
         """)
         scope = scopes.by_module()
+        assert scope.name == 'test'
+        assert scope.color == 'blue'
         assert scope._symbols == {
             'x': MatchSymbol('x', 'blue'),
             'y': MatchSymbol('y', 'red'),
@@ -83,6 +85,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope.name == 'test::foo'
+        assert scope.color == 'red'
         assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
@@ -92,6 +95,17 @@ class TestScopeAnalyzer:
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
         assert funcdef.symtable is scope
+
+    def test_blue_func(self):
+        scopes = self.analyze("""
+        @blue
+        def foo() -> None:
+            pass
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == 'test::foo'
+        assert scope.color == 'blue'
 
     def test_assign_does_not_redeclare(self):
         scopes = self.analyze("""

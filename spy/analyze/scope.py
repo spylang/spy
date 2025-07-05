@@ -48,7 +48,7 @@ class ScopeAnalyzer:
         self.vm = vm
         self.mod = mod
         self.builtins_scope = SymTable.from_builtins(vm)
-        self.mod_scope = SymTable(modname)
+        self.mod_scope = SymTable(modname, 'blue')
         self.stack = []
         self.inner_scopes = {}
         self.push_scope(self.builtins_scope)
@@ -87,13 +87,13 @@ class ScopeAnalyzer:
 
     # =====
 
-    def new_SymTable(self, name: str) -> SymTable:
+    def new_SymTable(self, name: str, color: Color) -> SymTable:
         """
         Create a new SymTable whose name is derived from its parent
         """
         parent = self.stack[-1].name
         fullname = f'{parent}::{name}'
-        return SymTable(fullname)
+        return SymTable(fullname, color)
 
     def push_scope(self, scope: SymTable) -> None:
         self.stack.append(scope)
@@ -215,7 +215,7 @@ class ScopeAnalyzer:
         self.define_name(funcdef.name, 'blue', funcdef.prototype_loc,
                          funcdef.prototype_loc)
         # add function arguments to the "inner" scope
-        inner_scope = self.new_SymTable(funcdef.name)
+        inner_scope = self.new_SymTable(funcdef.name, funcdef.color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
@@ -229,7 +229,7 @@ class ScopeAnalyzer:
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
         self.define_name(classdef.name, 'blue', classdef.loc, classdef.loc)
-        inner_scope = self.new_SymTable(classdef.name)
+        inner_scope = self.new_SymTable(classdef.name, 'blue')
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
         for vardef in classdef.fields:

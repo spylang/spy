@@ -102,6 +102,19 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
+    def test_cannot_redeclare(self):
+        src = """
+        def foo() -> i32:
+            x: i32 = 1
+            x: i32 = 2
+        """
+        errors = expect_errors(
+            'variable `x` already declared',
+            ('this is the new declaration', "x: i32 = 2"),
+            ('this is the previous declaration', "x: i32 = 1"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_local_typecheck(self):
         src = """
         def foo() -> i32:
