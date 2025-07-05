@@ -18,18 +18,7 @@ from operator import OpImpl, OpArg
 from unsafe import gc_alloc, ptr
 
 @blue.generic
-def ArrayData1(DTYPE):
-    @struct
-    class S:
-        l: i32
-        items: ptr[DTYPE]
-    return S
-
-
-@blue.generic
-def array1(DTYPE):
-
-    #ArrayData = ArrayData1[DTYPE]
+def _array1(DTYPE):
 
     @struct
     class ArrayData:
@@ -61,12 +50,22 @@ def array1(DTYPE):
         def __len__(self: ndarray) -> i32:
             return self.__ll__.l
 
-    return ndarray
+
+    # ideally this should be a classmethod, but we don't have them yet
+    def from_pointer(buf: ptr[DTYPE], l: i32) -> ndarray:
+        data = gc_alloc(ArrayData)(1)
+        data.items = buf
+        data.l = l
+        return ndarray.__lift__(data)
+
+    return ndarray, from_pointer
 
 
 
 @blue.generic
 def array(DTYPE, NDIM):
     if NDIM == 1:
-        return array1[DTYPE]
+        ndarray, from_pointer = _array1[DTYPE]
+        return ndarray
+
     raise StaticError("number of dimensions not supported")
