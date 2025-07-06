@@ -121,7 +121,7 @@ class TestScopeAnalyzer:
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
 
-    def test_cannot_redeclare(self):
+    def test_red_cannot_redeclare(self):
         src = """
         def foo() -> i32:
             x: i32 = 1
@@ -133,6 +133,24 @@ class TestScopeAnalyzer:
             ('this is the new declaration', "x: i32 = 2"),
             ('this is the previous declaration', "x: i32 = 1"),
         )
+
+    def test_blue_can_redeclare(self):
+        src = """
+        @blue
+        def foo(FLAG):
+            if FLAG:
+                x = 1
+            else:
+                x = 'hello'
+        """
+        scopes = self.analyze(src)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            'FLAG': MatchSymbol('FLAG', 'red'), # XXX should this be blue?
+            'x': MatchSymbol('x', 'red'),
+            '@return': MatchSymbol('@return', 'red'),
+        }
 
     def test_no_shadowing(self):
         src = """

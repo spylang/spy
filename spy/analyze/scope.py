@@ -108,16 +108,16 @@ class ScopeAnalyzer:
         """
         return self.stack[-1]
 
-    def lookup_ref(self, name: str) -> tuple[int, Optional[Symbol]]:
+    def lookup_ref(self, name: str) -> tuple[int, Optional[SymTable], Optional[Symbol]]:
         """
         Lookup a name reference, starting from the innermost scope,
         towards the outer.
         """
         for level, scope in enumerate(reversed(self.stack)):
             if sym := scope.lookup_maybe(name):
-                return level, sym
+                return level, scope, sym
         # not found
-        return -1, None
+        return -1, None, None
 
     def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
         """
@@ -143,11 +143,20 @@ class ScopeAnalyzer:
 
         The level of the new symbol will be 0.
         """
-        level, sym = self.lookup_ref(name)
+        level, scope, sym = self.lookup_ref(name)
         if sym and name != '@return':
-            if level == 0:
+            if level == 0 and scope.color == 'blue':
+                # XXX do something
+                #
+                # this happens if we have e.g. the same name defined in two
+                # branches of an "if". We don't do anything for now, but we
+                # should at least record all the locs, not just the first one
+                return
+
+            elif level == 0:
                 # re-declaration in the same scope
                 msg = f'variable `{name}` already declared'
+
             else:
                 # shadowing a name in an outer scope
                 msg = (f'variable `{name}` shadows a name declared ' +
@@ -249,7 +258,7 @@ class ScopeAnalyzer:
                               value: ast.Expr) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
-        level, sym = self.lookup_ref(target.value)
+        level, scope, sym = self.lookup_ref(target.value)
         if sym is None:
             # we don't have an explicit type annotation: we consider the
             # "value" to be the type_loc, because it's where the type will be
@@ -260,7 +269,7 @@ class ScopeAnalyzer:
     # ===
 
     def capture_maybe(self, varname: str) -> None:
-        level, _ = self.lookup_ref(varname)
+        level, _, _ = self.lookup_ref(varname)
         if level in (-1, 0):
             # name already in the symtable, or NameError. Nothing to do here.
             return
