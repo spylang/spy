@@ -151,6 +151,9 @@ class ScopeAnalyzer:
                 # this happens if we have e.g. the same name defined in two
                 # branches of an "if". We don't do anything for now, but we
                 # should at least record all the locs, not just the first one
+                #
+                # Note that if the redeclaration happens at runtime, it's
+                # still an error, but it's caught by astframe.
                 return
 
             elif level == 0:

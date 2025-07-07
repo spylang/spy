@@ -102,8 +102,12 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    def test_cannot_redeclare(self):
+    @only_interp
+    def test_blue_cannot_redeclare(self):
+        # see also the equivalent test
+        # TestScopeAnalyzer.test_red_cannot_redeclare
         src = """
+        @blue
         def foo() -> i32:
             x: i32 = 1
             x: i32 = 2

@@ -122,6 +122,8 @@ class TestScopeAnalyzer:
         }
 
     def test_red_cannot_redeclare(self):
+        # see also the equivalent test
+        # TestBasic.test_blue_cannot_redeclare
         src = """
         def foo() -> i32:
             x: i32 = 1
@@ -135,6 +137,12 @@ class TestScopeAnalyzer:
         )
 
     def test_blue_can_redeclare(self):
+        # see also the related test
+        # TestBasic.test_blue_cannot_redeclare
+
+        # The difference is that at ScopeAnalyzer time, we allow POTENTIAL
+        # multiple declarations inside @blue functions, but if we actually
+        # redeclare it, we catch it at runtime.
         src = """
         @blue
         def foo(FLAG):
