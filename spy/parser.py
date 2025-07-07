@@ -286,30 +286,36 @@ class Parser:
 
         # only few kind of declarations are supported inside a "class:" block
         fields: list[spy.ast.VarDef] = []
-        methods: list[spy.ast.FuncDef] = []
+        body: list[spy.ast.Stmt] = []
         for py_stmt in py_class_body:
-            if isinstance(py_stmt, py_ast.Pass):
-                pass
-            elif isinstance(py_stmt, py_ast.AnnAssign):
+            if isinstance(py_stmt, py_ast.AnnAssign):
                 vardef, assign = self.from_py_AnnAssign(py_stmt)
                 if assign is not None:
                     self.error('default values in fields not supported yet',
                                'this is not supported',
                                assign.loc)
                 fields.append(vardef)
-            elif isinstance(py_stmt, py_ast.FunctionDef):
-                funcdef = self.from_py_stmt_FunctionDef(py_stmt)
-                methods.append(funcdef)
             else:
-                msg = 'only fields are allowed inside a class def'
-                self.error(msg, 'this is not allowed here', py_stmt.loc)
+                stmt = self.from_py_stmt(py_stmt)
+                if isinstance(stmt, (spy.ast.FuncDef,
+                                     spy.ast.If,
+                                     spy.ast.Pass)):
+                    body.append(stmt)
+                else:
+                    STMT = stmt.__class__.__name__
+                    msg = f'`{STMT}` not supported inside a classdef'
+                    self.error(
+                        msg,
+                        'this is not supported',
+                        stmt.loc
+                    )
 
         return spy.ast.ClassDef(
             loc = py_classdef.loc,
             name = py_classdef.name,
             kind = kind,
             fields = fields,
-            methods = methods,
+            body = body,
             docstring = docstring,
         )
 

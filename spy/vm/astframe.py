@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Optional, Sequence
 from types import NoneType
 from spy import ast
+from spy.location import Loc
 from spy.errors import SPyError, WIP
 from spy.analyze.symtable import SymTable, Symbol, Color, maybe_blue
 from spy.fqn import FQN
@@ -42,6 +43,7 @@ class AbstractFrame:
     symtable: SymTable
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
+    locals_decl_loc: dict[str, Loc]
 
     def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:
@@ -52,18 +54,30 @@ class AbstractFrame:
         self.closure = closure
         self._locals = {}
         self.locals_types_w = {}
+        self.locals_decl_loc = {}
 
     # overridden by DopplerFrame
     @property
     def redshifting(self) -> bool:
         return False
 
-    def declare_local(self, name: str, w_type: W_Type) -> None:
-        assert name not in self.locals_types_w, \
-            f'variable already declared: {name}'
+    def declare_local(self, name: str, w_type: W_Type, loc: Loc) -> None:
+        if name in self.locals_types_w:
+            # this is the same check that we already do in
+            # ScopeAnalyzer.define_name. This logic is duplicated because for
+            # RED frames we raise the error eagerly in the analyzer, but for
+            # BLUE frames we raise it here
+            old_loc = self.locals_decl_loc[name]
+            msg = f'variable `{name}` already declared'
+            err = SPyError('W_ScopeError', msg)
+            err.add('error', 'this is the new declaration', loc)
+            err.add('note', 'this is the previous declaration', old_loc)
+            raise err
+
         if not isinstance(w_type, W_FuncType):
             self.vm.make_fqn_const(w_type)
         self.locals_types_w[name] = w_type
+        self.locals_decl_loc[name] = loc
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         self._locals[name] = w_value
@@ -186,7 +200,7 @@ class AbstractFrame:
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self._locals,)
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
-        self.declare_local(funcdef.name, w_functype)
+        self.declare_local(funcdef.name, w_functype, funcdef.prototype_loc)
         self.store_local(funcdef.name, w_func)
         self.vm.add_global(fqn, w_func)
 
@@ -208,7 +222,7 @@ class AbstractFrame:
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
-        self.declare_local(classdef.name, w_meta_type)
+        self.declare_local(classdef.name, w_meta_type, classdef.loc)
         self.store_local(classdef.name, w_typedecl)
         self.vm.add_global(fqn, w_typedecl)
 
@@ -233,7 +247,7 @@ class AbstractFrame:
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_type = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.name, w_type)
+        self.declare_local(vardef.name, w_type, vardef.loc)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         self._exec_assign(assign.target, assign.value)
@@ -256,7 +270,7 @@ class AbstractFrame:
         else:
             # first assignment, implicit declaration
             wop = self.eval_expr(expr)
-            self.declare_local(varname, wop.w_static_type)
+            self.declare_local(varname, wop.w_static_type, target.loc)
 
         if not self.redshifting:
             self.store_local(varname, wop.w_val)
@@ -689,11 +703,12 @@ class ASTFrame(AbstractFrame):
 
     def declare_arguments(self) -> None:
         w_ft = self.w_func.w_functype
-        self.declare_local('@if', B.w_bool)
-        self.declare_local('@while', B.w_bool)
-        self.declare_local('@return', w_ft.w_restype)
+        funcdef = self.funcdef
+        self.declare_local('@if', B.w_bool, Loc.fake())
+        self.declare_local('@while', B.w_bool, Loc.fake())
+        self.declare_local('@return', w_ft.w_restype, funcdef.return_type.loc)
         for arg, param in zip(self.funcdef.args, w_ft.params, strict=True):
-            self.declare_local(arg.name, param.w_type)
+            self.declare_local(arg.name, param.w_type, arg.loc)
 
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """

@@ -1056,7 +1056,9 @@ class TestParser:
             kind='class',
             docstring=None,
             fields=[],
-            methods=[],
+            body=[
+                Pass(),
+            ],
         )
         """
         self.assert_dump(classdef, expected)
@@ -1074,7 +1076,9 @@ class TestParser:
             kind='struct',
             docstring=None,
             fields=[],
-            methods=[],
+            body=[
+                Pass(),
+            ],
         )
         """
         self.assert_dump(classdef, expected)
@@ -1099,7 +1103,7 @@ class TestParser:
                     type=Name(id='i32'),
                 ),
             ],
-            methods=[],
+            body=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -1129,10 +1133,23 @@ class TestParser:
                     type=Name(id='i32'),
                 ),
             ],
-            methods=[],
+            body=[],
         )
         """
         self.assert_dump(classdef, expected)
+
+
+    def test_class_no_assignments(self):
+        src = """
+        @struct
+        class Foo:
+            x = 42
+        """
+        self.expect_errors(
+            src,
+            '`Assign` not supported inside a classdef',
+            ('this is not supported', 'x = 42'),
+        )
 
     def test_typelift(self):
         mod = self.parse("""
@@ -1153,7 +1170,7 @@ class TestParser:
                     type=Name(id='i32'),
                 ),
             ],
-            methods=[],
+            body=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -1193,7 +1210,7 @@ class TestParser:
                     type=Name(id='i32'),
                 ),
             ],
-            methods=[
+            body=[
                 FuncDef(
                     color='red',
                     kind='plain',

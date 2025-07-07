@@ -327,7 +327,7 @@ class TestSPyBackend(CompilerTest):
             modname = f'test_backend_spy_{i}'
             mod = self.compile(src, modname=modname)
             for fqn, w_obj in mod.w_mod.items_w():
-                if isinstance(w_obj, W_ASTFunc):
+                if isinstance(w_obj, W_ASTFunc) and w_obj.funcdef.color == 'red':
                     try:
                         b.dump_w_func(fqn, w_obj)
                     except NotImplementedError as exc:

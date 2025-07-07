@@ -65,6 +65,8 @@ class TestScopeAnalyzer:
             pass
         """)
         scope = scopes.by_module()
+        assert scope.name == 'test'
+        assert scope.color == 'blue'
         assert scope._symbols == {
             'x': MatchSymbol('x', 'blue'),
             'y': MatchSymbol('y', 'red'),
@@ -83,6 +85,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope.name == 'test::foo'
+        assert scope.color == 'red'
         assert scope._symbols == {
             'x': MatchSymbol('x', 'red'),
             'y': MatchSymbol('y', 'red'),
@@ -92,6 +95,17 @@ class TestScopeAnalyzer:
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
         assert funcdef.symtable is scope
+
+    def test_blue_func(self):
+        scopes = self.analyze("""
+        @blue
+        def foo() -> None:
+            pass
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == 'test::foo'
+        assert scope.color == 'blue'
 
     def test_assign_does_not_redeclare(self):
         scopes = self.analyze("""
@@ -107,7 +121,9 @@ class TestScopeAnalyzer:
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
 
-    def test_cannot_redeclare(self):
+    def test_red_cannot_redeclare(self):
+        # see also the equivalent test
+        # TestBasic.test_blue_cannot_redeclare
         src = """
         def foo() -> i32:
             x: i32 = 1
@@ -119,6 +135,30 @@ class TestScopeAnalyzer:
             ('this is the new declaration', "x: i32 = 2"),
             ('this is the previous declaration', "x: i32 = 1"),
         )
+
+    def test_blue_can_redeclare(self):
+        # see also the related test
+        # TestBasic.test_blue_cannot_redeclare
+
+        # The difference is that at ScopeAnalyzer time, we allow POTENTIAL
+        # multiple declarations inside @blue functions, but if we actually
+        # redeclare it, we catch it at runtime.
+        src = """
+        @blue
+        def foo(FLAG):
+            if FLAG:
+                x = 1
+            else:
+                x = 'hello'
+        """
+        scopes = self.analyze(src)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            'FLAG': MatchSymbol('FLAG', 'red'), # XXX should this be blue?
+            'x': MatchSymbol('x', 'red'),
+            '@return': MatchSymbol('@return', 'red'),
+        }
 
     def test_no_shadowing(self):
         src = """

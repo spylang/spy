@@ -48,7 +48,7 @@ class ScopeAnalyzer:
         self.vm = vm
         self.mod = mod
         self.builtins_scope = SymTable.from_builtins(vm)
-        self.mod_scope = SymTable(modname)
+        self.mod_scope = SymTable(modname, 'blue')
         self.stack = []
         self.inner_scopes = {}
         self.push_scope(self.builtins_scope)
@@ -87,13 +87,13 @@ class ScopeAnalyzer:
 
     # =====
 
-    def new_SymTable(self, name: str) -> SymTable:
+    def new_SymTable(self, name: str, color: Color) -> SymTable:
         """
         Create a new SymTable whose name is derived from its parent
         """
         parent = self.stack[-1].name
         fullname = f'{parent}::{name}'
-        return SymTable(fullname)
+        return SymTable(fullname, color)
 
     def push_scope(self, scope: SymTable) -> None:
         self.stack.append(scope)
@@ -108,16 +108,16 @@ class ScopeAnalyzer:
         """
         return self.stack[-1]
 
-    def lookup_ref(self, name: str) -> tuple[int, Optional[Symbol]]:
+    def lookup_ref(self, name: str) -> tuple[int, Optional[SymTable], Optional[Symbol]]:
         """
         Lookup a name reference, starting from the innermost scope,
         towards the outer.
         """
         for level, scope in enumerate(reversed(self.stack)):
             if sym := scope.lookup_maybe(name):
-                return level, sym
+                return level, scope, sym
         # not found
-        return -1, None
+        return -1, None, None
 
     def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
         """
@@ -143,11 +143,20 @@ class ScopeAnalyzer:
 
         The level of the new symbol will be 0.
         """
-        level, sym = self.lookup_ref(name)
+        level, scope, sym = self.lookup_ref(name)
         if sym and name != '@return':
-            if level == 0:
+            assert scope is not None
+            if level == 0 and scope.color == 'blue':
+                # this happens if we have e.g. the same name defined in two
+                # branches of an "if".
+                # Note that if the redeclaration happens at runtime, it's
+                # still an error, but it's caught by astframe.
+                return
+
+            elif level == 0:
                 # re-declaration in the same scope
                 msg = f'variable `{name}` already declared'
+
             else:
                 # shadowing a name in an outer scope
                 msg = (f'variable `{name}` shadows a name declared ' +
@@ -215,7 +224,7 @@ class ScopeAnalyzer:
         self.define_name(funcdef.name, 'blue', funcdef.prototype_loc,
                          funcdef.prototype_loc)
         # add function arguments to the "inner" scope
-        inner_scope = self.new_SymTable(funcdef.name)
+        inner_scope = self.new_SymTable(funcdef.name, funcdef.color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
@@ -229,13 +238,13 @@ class ScopeAnalyzer:
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
         self.define_name(classdef.name, 'blue', classdef.loc, classdef.loc)
-        inner_scope = self.new_SymTable(classdef.name)
+        inner_scope = self.new_SymTable(classdef.name, 'blue')
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
         for vardef in classdef.fields:
             self.declare_VarDef(vardef)
-        for funcdef in classdef.methods:
-            self.declare_FuncDef(funcdef)
+        for stmt in classdef.body:
+            self.declare(stmt)
         self.pop_scope()
 
     def declare_Assign(self, assign: ast.Assign) -> None:
@@ -249,7 +258,7 @@ class ScopeAnalyzer:
                               value: ast.Expr) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
-        level, sym = self.lookup_ref(target.value)
+        level, scope, sym = self.lookup_ref(target.value)
         if sym is None:
             # we don't have an explicit type annotation: we consider the
             # "value" to be the type_loc, because it's where the type will be
@@ -260,7 +269,7 @@ class ScopeAnalyzer:
     # ===
 
     def capture_maybe(self, varname: str) -> None:
-        level, _ = self.lookup_ref(varname)
+        level, _, _ = self.lookup_ref(varname)
         if level in (-1, 0):
             # name already in the symtable, or NameError. Nothing to do here.
             return
@@ -303,8 +312,8 @@ class ScopeAnalyzer:
         self.push_scope(inner_scope)
         for vardef in classdef.fields:
             self.flatten(vardef)
-        for funcdef in classdef.methods:
-            self.flatten(funcdef)
+        for stmt in classdef.body:
+            self.flatten(stmt)
         self.pop_scope()
         #
         classdef.symtable = inner_scope
