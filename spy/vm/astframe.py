@@ -43,6 +43,7 @@ class AbstractFrame:
     symtable: SymTable
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
+    locals_decl_loc: dict[str, Loc]
 
     def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:

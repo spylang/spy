@@ -145,6 +145,7 @@ class ScopeAnalyzer:
         """
         level, scope, sym = self.lookup_ref(name)
         if sym and name != '@return':
+            assert scope is not None
             if level == 0 and scope.color == 'blue':
                 # XXX do something
                 #
