@@ -68,4 +68,12 @@ static inline double spy_operator$f64_floordiv(double x, double y) {
     return floor(x / y);
 }
 
+static inline bool spy_operator$bool_eq(bool x, bool y) {
+    return x == y;
+}
+
+static inline bool spy_operator$bool_ne(bool x, bool y) {
+    return x != y;
+}
+
 #endif /* SPY_OPERATOR_H */

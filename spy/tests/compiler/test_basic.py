@@ -420,6 +420,24 @@ class TestBasic(CompilerTest):
         """)
         assert mod.get_True() is True
         assert mod.get_False() is False
+        
+    def test_bool_equality(self):
+        mod = self.compile("""
+        def eq_bool(a: bool, b: bool) -> bool:
+            return a == b
+            
+        def ne_bool(a: bool, b: bool) -> bool:
+            return a != b
+        """)
+        assert mod.eq_bool(True, True) is True
+        assert mod.eq_bool(True, False) is False
+        assert mod.eq_bool(False, True) is False
+        assert mod.eq_bool(False, False) is True
+        
+        assert mod.ne_bool(True, True) is False
+        assert mod.ne_bool(True, False) is True
+        assert mod.ne_bool(False, True) is True
+        assert mod.ne_bool(False, False) is False
 
     def test_CompareOp_error(self):
         src = """
