@@ -65,6 +65,7 @@ from . import opimpl_f64     # noqa: F401 -- side effects
 from . import opimpl_str     # noqa: F401 -- side effects
 from . import opimpl_object  # noqa: F401 -- side effects
 from . import opimpl_dynamic # noqa: F401 -- side effects
+from . import opimpl_bool    # noqa: F401 -- side effects
 from . import unaryop        # noqa: F401 -- side effects
 from . import binop          # noqa: F401 -- side effects
 from . import attrop         # noqa: F401 -- side effects

@@ -420,6 +420,90 @@ class TestBasic(CompilerTest):
         """)
         assert mod.get_True() is True
         assert mod.get_False() is False
+        
+    def test_bool_equality(self):
+        mod = self.compile("""
+        def eq_bool(a: bool, b: bool) -> bool:
+            return a == b
+            
+        def ne_bool(a: bool, b: bool) -> bool:
+            return a != b
+        """)
+        assert mod.eq_bool(True, True) is True
+        assert mod.eq_bool(True, False) is False
+        assert mod.eq_bool(False, True) is False
+        assert mod.eq_bool(False, False) is True
+        
+        assert mod.ne_bool(True, True) is False
+        assert mod.ne_bool(True, False) is True
+        assert mod.ne_bool(False, True) is True
+        assert mod.ne_bool(False, False) is False
+        
+    def test_bool_operations(self):
+        mod = self.compile("""
+        def and_bool(a: bool, b: bool) -> bool:
+            return a & b
+            
+        def or_bool(a: bool, b: bool) -> bool:
+            return a | b
+            
+        def xor_bool(a: bool, b: bool) -> bool:
+            return a ^ b
+            
+        def lt_bool(a: bool, b: bool) -> bool:
+            return a < b
+            
+        def le_bool(a: bool, b: bool) -> bool:
+            return a <= b
+            
+        def gt_bool(a: bool, b: bool) -> bool:
+            return a > b
+            
+        def ge_bool(a: bool, b: bool) -> bool:
+            return a >= b
+        """)
+        
+        # Test AND
+        assert mod.and_bool(True, True) is True
+        assert mod.and_bool(True, False) is False
+        assert mod.and_bool(False, True) is False
+        assert mod.and_bool(False, False) is False
+        
+        # Test OR
+        assert mod.or_bool(True, True) is True
+        assert mod.or_bool(True, False) is True
+        assert mod.or_bool(False, True) is True
+        assert mod.or_bool(False, False) is False
+        
+        # Test XOR
+        assert mod.xor_bool(True, True) is False
+        assert mod.xor_bool(True, False) is True
+        assert mod.xor_bool(False, True) is True
+        assert mod.xor_bool(False, False) is False
+        
+        # Test <
+        assert mod.lt_bool(True, True) is False
+        assert mod.lt_bool(True, False) is False
+        assert mod.lt_bool(False, True) is True
+        assert mod.lt_bool(False, False) is False
+        
+        # Test <=
+        assert mod.le_bool(True, True) is True
+        assert mod.le_bool(True, False) is False
+        assert mod.le_bool(False, True) is True
+        assert mod.le_bool(False, False) is True
+        
+        # Test >
+        assert mod.gt_bool(True, True) is False
+        assert mod.gt_bool(True, False) is True
+        assert mod.gt_bool(False, True) is False
+        assert mod.gt_bool(False, False) is False
+        
+        # Test >=
+        assert mod.ge_bool(True, True) is True
+        assert mod.ge_bool(True, False) is True
+        assert mod.ge_bool(False, True) is False
+        assert mod.ge_bool(False, False) is True
 
     def test_CompareOp_error(self):
         src = """

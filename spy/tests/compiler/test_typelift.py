@@ -98,7 +98,7 @@ class TestTypelift(CompilerTest):
     def test_if_inside_classdef(self):
         src = """
         @blue
-        def make_Foo(K):
+        def make_Foo(DOUBLE):
             @typelift
             class Foo:
                 __ll__: i32
@@ -106,7 +106,7 @@ class TestTypelift(CompilerTest):
                 def __new__(i: i32) -> Foo:
                     return Foo.__lift__(i)
 
-                if K == 2:
+                if DOUBLE:
                     def get(self: Foo) -> i32:
                         return self.__ll__ * 2
                 else:
@@ -116,13 +116,13 @@ class TestTypelift(CompilerTest):
             return Foo
 
         def test1(x: i32) -> i32:
-            a = make_Foo(1)(x)
+            a = make_Foo(True)(x)
             return a.get()
 
         def test2(x: i32) -> i32:
-            b = make_Foo(2)(x)
+            b = make_Foo(False)(x)
             return b.get()
         """
         mod = self.compile(src)
-        assert mod.test1(10) == 10
-        assert mod.test2(10) == 20
+        assert mod.test1(10) == 20
+        assert mod.test2(10) == 10

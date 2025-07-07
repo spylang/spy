@@ -111,6 +111,17 @@ MM.register('*',  'str', 'i32', OP.w_str_mul)
 MM.register('==', 'str', 'str', OP.w_str_eq)
 MM.register('!=', 'str', 'str', OP.w_str_ne)
 
+# bool ops
+MM.register('==', 'bool', 'bool', OP.w_bool_eq)
+MM.register('!=', 'bool', 'bool', OP.w_bool_ne)
+MM.register('&',  'bool', 'bool', OP.w_bool_and)
+MM.register('|',  'bool', 'bool', OP.w_bool_or)
+MM.register('^',  'bool', 'bool', OP.w_bool_xor)
+MM.register('<',  'bool', 'bool', OP.w_bool_lt)
+MM.register('<=', 'bool', 'bool', OP.w_bool_le)
+MM.register('>',  'bool', 'bool', OP.w_bool_gt)
+MM.register('>=', 'bool', 'bool', OP.w_bool_ge)
+
 # dynamic ops
 MM.register_partial('+',  'dynamic', OP.w_dynamic_add)
 MM.register_partial('*',  'dynamic', OP.w_dynamic_mul)
