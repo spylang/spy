@@ -76,4 +76,32 @@ static inline bool spy_operator$bool_ne(bool x, bool y) {
     return x != y;
 }
 
+static inline bool spy_operator$bool_and(bool x, bool y) {
+    return x && y;
+}
+
+static inline bool spy_operator$bool_or(bool x, bool y) {
+    return x || y;
+}
+
+static inline bool spy_operator$bool_xor(bool x, bool y) {
+    return x != y;
+}
+
+static inline bool spy_operator$bool_lt(bool x, bool y) {
+    return !x && y;
+}
+
+static inline bool spy_operator$bool_le(bool x, bool y) {
+    return !x || y;
+}
+
+static inline bool spy_operator$bool_gt(bool x, bool y) {
+    return x && !y;
+}
+
+static inline bool spy_operator$bool_ge(bool x, bool y) {
+    return x || !y;
+}
+
 #endif /* SPY_OPERATOR_H */
