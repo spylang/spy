@@ -221,7 +221,7 @@ class AbstractFrame:
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
-        self.declare_local(classdef.name, w_meta_type)
+        self.declare_local(classdef.name, w_meta_type, classdef.loc)
         self.store_local(classdef.name, w_typedecl)
         self.vm.add_global(fqn, w_typedecl)
 
@@ -269,7 +269,7 @@ class AbstractFrame:
         else:
             # first assignment, implicit declaration
             wop = self.eval_expr(expr)
-            self.declare_local(varname, wop.w_static_type)
+            self.declare_local(varname, wop.w_static_type, target.loc)
 
         if not self.redshifting:
             self.store_local(varname, wop.w_val)
@@ -707,7 +707,7 @@ class ASTFrame(AbstractFrame):
         self.declare_local('@while', B.w_bool, Loc.fake())
         self.declare_local('@return', w_ft.w_restype, funcdef.return_type.loc)
         for arg, param in zip(self.funcdef.args, w_ft.params, strict=True):
-            self.declare_local(arg.name, param.w_type)
+            self.declare_local(arg.name, param.w_type, arg.loc)
 
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """
