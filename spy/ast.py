@@ -394,7 +394,7 @@ class ClassDef(Stmt):
     kind: ClassKind
     docstring: Optional[str]
     fields: list['VarDef']
-    methods: list['FuncDef']
+    body: list['Stmt']
     symtable: Any = field(repr=False, default=None)
 
 @dataclass(eq=False)

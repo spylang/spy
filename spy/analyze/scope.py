@@ -246,8 +246,8 @@ class ScopeAnalyzer:
         self.inner_scopes[classdef] = inner_scope
         for vardef in classdef.fields:
             self.declare_VarDef(vardef)
-        for funcdef in classdef.methods:
-            self.declare_FuncDef(funcdef)
+        for stmt in classdef.body:
+            self.declare(stmt)
         self.pop_scope()
 
     def declare_Assign(self, assign: ast.Assign) -> None:
@@ -315,8 +315,8 @@ class ScopeAnalyzer:
         self.push_scope(inner_scope)
         for vardef in classdef.fields:
             self.flatten(vardef)
-        for funcdef in classdef.methods:
-            self.flatten(funcdef)
+        for stmt in classdef.body:
+            self.flatten(stmt)
         self.pop_scope()
         #
         classdef.symtable = inner_scope

@@ -1134,6 +1134,19 @@ class TestParser:
         """
         self.assert_dump(classdef, expected)
 
+
+    def test_class_no_assignments(self):
+        src = """
+        @struct
+        class Foo:
+            x = 42
+        """
+        self.expect_errors(
+            src,
+            '`Assign` not supported inside a classdef',
+            ('this is not supported', 'x = 42'),
+        )
+
     def test_typelift(self):
         mod = self.parse("""
         @typelift

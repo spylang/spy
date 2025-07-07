@@ -99,7 +99,7 @@ class TestTypelift(CompilerTest):
     def test_if_inside_classdef(self):
         src = """
         @blue
-        def make_foo(DOUBLE):
+        def make_Foo(DOUBLE):
             @typelift
             class Foo:
                 __ll__: i32

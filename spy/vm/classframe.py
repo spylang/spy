@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 from spy import ast
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.object import ClassBody
 from spy.vm.astframe import AbstractFrame
@@ -33,11 +34,17 @@ class ClassFrame(AbstractFrame):
             body.fields[vardef.name] = self.locals_types_w[vardef.name]
 
         # execute method definitions
-        for funcdef in self.classdef.methods:
-            name = funcdef.name
-            self.exec_stmt(funcdef)
-            w_meth = self.load_local(name)
-            assert isinstance(w_meth, W_Func)
-            body.methods[name] = w_meth
+        for stmt in self.classdef.body:
+            self.exec_stmt(stmt)
+
+        for name, w_val in self._locals.items():
+            if isinstance(w_val, W_Func):
+                body.methods[name] = w_val
+            else:
+                msg = ('Only field decls and methods are allowed ' +
+                       'inside a classdef')
+                raise SPyError.simple(
+                    'W_WIP', msg, 'class defined here', self.classdef.loc
+                )
 
         return body
