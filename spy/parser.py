@@ -297,7 +297,9 @@ class Parser:
                 fields.append(vardef)
             else:
                 stmt = self.from_py_stmt(py_stmt)
-                if isinstance(stmt, (spy.ast.FuncDef, spy.ast.If)):
+                if isinstance(stmt, (spy.ast.FuncDef,
+                                     spy.ast.If,
+                                     spy.ast.Pass)):
                     body.append(stmt)
                 else:
                     STMT = stmt.__class__.__name__
