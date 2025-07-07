@@ -147,12 +147,8 @@ class ScopeAnalyzer:
         if sym and name != '@return':
             assert scope is not None
             if level == 0 and scope.color == 'blue':
-                # XXX do something
-                #
                 # this happens if we have e.g. the same name defined in two
-                # branches of an "if". We don't do anything for now, but we
-                # should at least record all the locs, not just the first one
-                #
+                # branches of an "if".
                 # Note that if the redeclaration happens at runtime, it's
                 # still an error, but it's caught by astframe.
                 return
