@@ -1,7 +1,9 @@
 from typing import TYPE_CHECKING
 from spy import ast
+from spy.location import Loc
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.vm.b import B
 from spy.vm.object import ClassBody
 from spy.vm.astframe import AbstractFrame
 from spy.vm.function import W_Func, CLOSURE
@@ -27,6 +29,7 @@ class ClassFrame(AbstractFrame):
 
     def run(self) -> ClassBody:
         # execute field definitions
+        self.declare_local('@if', B.w_bool, Loc.fake())
         body = ClassBody(fields={}, methods={})
         for vardef in self.classdef.fields:
             assert vardef.kind == 'var'

@@ -95,11 +95,10 @@ class TestTypelift(CompilerTest):
         with SPyError.raises('W_TypeError', match=msg):
             mod.wrong_meth(10)
 
-    @pytest.mark.skip(reason='implement me')
     def test_if_inside_classdef(self):
         src = """
         @blue
-        def make_Foo(DOUBLE):
+        def make_Foo(K):
             @typelift
             class Foo:
                 __ll__: i32
@@ -107,7 +106,7 @@ class TestTypelift(CompilerTest):
                 def __new__(i: i32) -> Foo:
                     return Foo.__lift__(i)
 
-                if DOUBLE:
+                if K == 2:
                     def get(self: Foo) -> i32:
                         return self.__ll__ * 2
                 else:
@@ -116,12 +115,12 @@ class TestTypelift(CompilerTest):
 
             return Foo
 
-        def test1(x: i32) -> None:
-            a = make_Foo(False)(x)
+        def test1(x: i32) -> i32:
+            a = make_Foo(1)(x)
             return a.get()
 
-        def test2(x: i32) -> None:
-            b = make_Foo(True)(x)
+        def test2(x: i32) -> i32:
+            b = make_Foo(2)(x)
             return b.get()
         """
         mod = self.compile(src)
