@@ -168,14 +168,14 @@ class W_Ptr(W_BasePtr):
 
         T = Annotated[W_Object, w_T]
 
-        @builtin_func(w_ptrtype.fqn, f'load_{by}')
-        def w_ptr_load_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32) -> T:
+        @builtin_func(w_ptrtype.fqn, f'getitem_{by}')
+        def w_ptr_getitem_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32) -> T:
             base = w_ptr.addr
             length = w_ptr.length
             i = vm.unwrap_i32(w_i)
             addr = base + ITEMSIZE * i
             if i >= length:
-                msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
+                msg = (f"ptr_getitem out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
                 loc = Loc(filename, lineno, lineno, 1, -1)
                 raise SPyError.simple("W_PanicError", msg, "", loc)
@@ -190,7 +190,7 @@ class W_Ptr(W_BasePtr):
                     [vm.wrap(addr)]
                 )
 
-        return W_OpImpl(w_ptr_load_T)
+        return W_OpImpl(w_ptr_getitem_T)
 
     @builtin_method('__SETITEM__', color='blue')
     @staticmethod

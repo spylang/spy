@@ -62,7 +62,7 @@ class TestUnsafe(CompilerTest):
             return buf[i]
         """)
         assert mod.foo(1) == 100
-        with SPyError.raises("W_PanicError", match="ptr_load out of bounds"):
+        with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
             mod.foo(3)
 
     def test_struct(self):

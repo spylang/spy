@@ -39,10 +39,10 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p };                                 \
     }                                                            \
-    static inline T PTR##$load_byval(PTR p, size_t i) {          \
+    static inline T PTR##getitem_byval(PTR p, size_t i) {        \
         return p.p[i];                                           \
     }                                                            \
-    static inline PTR PTR##$load_byref(PTR p, size_t i) {        \
+    static inline PTR PTR##getitem_byref(PTR p, size_t i) {      \
         return PTR##_from_addr(p.p + i);                         \
     }                                                            \
     static inline void PTR##$store(PTR p, size_t i, T v) {       \
@@ -67,15 +67,15 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p, n };                              \
     }                                                            \
-    static inline T PTR##$load_byval(PTR p, size_t i) {          \
+    static inline T PTR##$getitem_byval(PTR p, size_t i) {       \
         if (i >= p.length)                                       \
-            spy_panic("PanicError", "ptr_load out of bounds",    \
+            spy_panic("PanicError", "ptr_getitem out of bounds", \
                       __FILE__, __LINE__);                       \
         return p.p[i];                                           \
     }                                                            \
-    static inline PTR PTR##$load_byref(PTR p, size_t i) {        \
+    static inline PTR PTR##$getitem_byref(PTR p, size_t i) {     \
         if (i >= p.length)                                       \
-            spy_panic("PanicError", "ptr_load out of bounds",    \
+            spy_panic("PanicError", "ptr_getitem out of bounds", \
                       __FILE__, __LINE__);                       \
         return PTR##_from_addr(p.p + i);                         \
     }                                                            \
