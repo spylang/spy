@@ -64,6 +64,11 @@ def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
     elif w_type is B.w_type:
         return W_OpImpl(B.w_print_type)
 
+
+    else:
+        # ???
+        return W_OpImpl(B.w_print_dynamic)
+
     t = w_type.fqn.human_name
     raise SPyError.simple(
         'W_TypeError',

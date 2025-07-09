@@ -294,3 +294,28 @@ class TestUnsafe(CompilerTest):
             mod.ll.call('spy_flush')
         out, err = capfd.readouterr()
         assert out.splitlines() == ['1', '2', '3']
+
+    def test_array_of_struct(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> ptr[Point]:
+            arr = gc_alloc(Point)(2)
+            arr[0].x = 1
+            arr[0].y = 2
+            arr[1].x = 3
+            arr[1].y = 4
+            return arr
+        """)
+        p = mod.foo()
+        addr = p.addr
+        self.vm.ll.mem.read_i32(p.addr)      == 1
+        self.vm.ll.mem.read_i32(p.addr + 4)  == 2
+        self.vm.ll.mem.read_i32(p.addr + 8)  == 3
+        self.vm.ll.mem.read_i32(p.addr + 12) == 4
