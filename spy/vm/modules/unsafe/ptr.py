@@ -157,27 +157,40 @@ class W_Ptr(W_BasePtr):
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
-        T = Annotated[W_Object, w_T]
         filename = wop_ptr.loc.filename
         lineno = wop_ptr.loc.line_start
 
-        @builtin_func(w_ptrtype.fqn, 'load')
-        def w_ptr_load_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32) -> T:
+        if w_T.is_struct(vm):
+            w_T = vm.fast_call(w_make_ptr_type, [w_T])  # type: ignore
+            by = 'byref'
+        else:
+            by = 'byval'
+
+        T = Annotated[W_Object, w_T]
+
+        @builtin_func(w_ptrtype.fqn, f'getitem_{by}')
+        def w_ptr_getitem_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32) -> T:
             base = w_ptr.addr
             length = w_ptr.length
             i = vm.unwrap_i32(w_i)
             addr = base + ITEMSIZE * i
             if i >= length:
-                msg = (f"ptr_load out of bounds: 0x{addr:x}[{i}] "
+                msg = (f"ptr_getitem out of bounds: 0x{addr:x}[{i}] "
                        f"(upper bound: {length})")
                 loc = Loc(filename, lineno, lineno, 1, -1)
                 raise SPyError.simple("W_PanicError", msg, "", loc)
-            return vm.call_generic(
-                UNSAFE.w_mem_read,
-                [w_T],
-                [vm.wrap(addr)]
-            )
-        return W_OpImpl(w_ptr_load_T)
+
+            if by == 'byref':
+                assert isinstance(w_T, W_PtrType)
+                return W_Ptr(w_T, addr, length-i)
+            else:
+                return vm.call_generic(
+                    UNSAFE.w_mem_read,
+                    [w_T],
+                    [vm.wrap(addr)]
+                )
+
+        return W_OpImpl(w_ptr_getitem_T)
 
     @builtin_method('__SETITEM__', color='blue')
     @staticmethod
