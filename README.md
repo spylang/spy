@@ -1,5 +1,8 @@
 # SPy
 
+**Discord server**&nbsp;&nbsp;&nbsp;[![](https://dcbadge.limes.pink/api/server/https://discord.gg/wRb29FGZpP)](https://discord.gg/wRb29FGZpP)
+
+
 ## What is SPy?
 
 TL;DR: SPy is a subset/variant of Python specifically designed to be
