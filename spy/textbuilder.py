@@ -128,7 +128,10 @@ class ColorFormatter:
     def __init__(self, use_colors: bool) -> None:
         self._use_colors = use_colors
 
-    def set(self, color: Optional[str], s: str) -> str:
+    def set(self, color: Optional[str], s: str = '') -> str:
+        """
+        Set output to the given color, and print the string s
+        """
         if color is None or not self._use_colors:
             return s
         try:
