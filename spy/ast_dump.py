@@ -1,23 +1,28 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 import ast as py_ast
 import spy.ast
 from spy.textbuilder import TextBuilder
+
+# Supported types of text coloring in AST printing
+#  - Multi means red /blue / green / purple, done down to the token level.
+#  - Redshift means only red and blue, at the expression level.
+ColorMode = Literal['multi', 'redshift']
 
 def dump(node: Any,
          *,
          use_colors: bool = True,
          fields_to_ignore: Any = (),
          hl: Any = None,
-         colorize: bool = False,
+         color_mode: ColorMode = 'multi',
          ) -> str:
-    dumper = Dumper(use_colors=use_colors, highlight=hl, colorize=colorize)
+    dumper = Dumper(use_colors=use_colors, highlight=hl, color_mode=color_mode)
     dumper.fields_to_ignore += fields_to_ignore
     dumper.dump_anything(node)
     return dumper.build()
 
 def pprint(node: Any, *, copy_to_clipboard: bool = False,
-           hl: Optional[spy.ast.Node]=None, colorize: bool = False) -> None:
-    print(dump(node, hl=hl, colorize=colorize))
+           hl: Optional[spy.ast.Node]=None, color_mode: ColorMode='multi') -> None:
+    print(dump(node, hl=hl, color_mode=color_mode))
     if copy_to_clipboard:
         import pyperclip  # type: ignore
         out = dump(node, use_colors=False)
@@ -30,12 +35,13 @@ class Dumper(TextBuilder):
     def __init__(self, *,
                  use_colors: bool,
                  highlight: Optional[spy.ast.Node] = None,
-                 colorize: bool = False
+                 color_mode: ColorMode = 'multi'
                  ) -> None:
         super().__init__(use_colors=use_colors)
         self.highlight = highlight
         self.fields_to_ignore = ('loc', 'target_loc', 'target_locs',
                                  'loc_asname')
+        self.color_mode = color_mode
 
     def dump_anything(self, obj: Any) -> None:
         if isinstance(obj, spy.ast.Node):
@@ -54,8 +60,10 @@ class Dumper(TextBuilder):
         fields = list(node.__class__.__dataclass_fields__)
         fields = [f for f in fields if f not in self.fields_to_ignore]
         color = 'blue'
-        if isinstance(node, spy.ast.Expr):
-            color = node.color
+        # If color_mode is redshift, use node.color if available as saved
+        # during redshifting
+        if isinstance(node, spy.ast.Expr) and self.color_mode == 'redshift':
+            color = node.color or color
         self._dump_node(node, name, fields, color=color)
 
     def dump_py_node(self, node: py_ast.AST) -> None:
@@ -64,7 +72,8 @@ class Dumper(TextBuilder):
         fields = [f for f in fields if f not in self.fields_to_ignore]
         if isinstance(node, py_ast.Name):
             fields.append('is_var')
-        self._dump_node(node, name, fields, color='turquoise')
+        color = 'turquoise' if self.color_mode == 'multi' else None
+        self._dump_node(node, name, fields, color=color)
 
     def _dump_node(self, node: Any, name: str, fields: list[str], color: str) -> None:
         def is_complex(obj: Any) -> bool:
@@ -74,7 +83,7 @@ class Dumper(TextBuilder):
         is_complex_field = [is_complex(value) for value in values]
         multiline = any(is_complex_field)
         #
-        if node is self.highlight:
+        if node is self.highlight and self.color_mode == 'multi':
             color = 'red'
         self.write(name, color=color)
         self.write('(')
