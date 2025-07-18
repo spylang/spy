@@ -128,17 +128,17 @@ class ColorFormatter:
     def __init__(self, use_colors: bool) -> None:
         self._use_colors = use_colors
 
-    def set(self, color: Optional[str], s: str = '') -> str:
+    def set(self, text_color: Optional[str], s: str = '') -> str:
         """
         Set output to the given color, and print the string s
         """
-        if color is None or not self._use_colors:
+        if text_color is None or not self._use_colors:
             return s
         try:
-            color = getattr(self, color)
+            text_color = getattr(self, text_color)
         except AttributeError:
             pass
-        return '\x1b[%sm%s\x1b[00m' % (color, s)
+        return '\x1b[%sm%s\x1b[00m' % (text_color, s)
 
 # create a global instance, so that you can just do Color.set('red', ....)
 Color = ColorFormatter(use_colors=True)
