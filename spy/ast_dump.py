@@ -57,14 +57,13 @@ class Dumper(TextBuilder):
         else:
             self.write(repr(obj))
 
-    def dump_spy_node(self, node: spy.ast.Node) -> None:
+    def dump_spy_node(self, node: spy.ast.Node, text_color: str | None = None) -> None:
         name = node.__class__.__name__
         fields = list(node.__class__.__dataclass_fields__)
         fields = [f for f in fields if f not in self.fields_to_ignore]
-        text_color = 'blue'
-        node_color = getattr(node, 'color', None)
-        if node_color and self.color_mode == 'redshift':
-            text_color = node_color
+        if self.color_mode == 'redshift':
+            # In redshift coloring, assume nodes are blue by default.
+            text_color = getattr(node, 'color', 'blue')
         self._dump_node(node, name, fields, text_color=text_color)
 
     def dump_py_node(self, node: py_ast.AST) -> None:
@@ -97,7 +96,7 @@ class Dumper(TextBuilder):
                     continue
                 is_last = (field is fields[-1])
                 self.write(f'{field}=')
-                self.dump_anything(value)
+                self.dump_anything(value, text_color=text_color)
                 if multiline:
                     self.writeline(',')
                 elif not is_last:
@@ -114,6 +113,6 @@ class Dumper(TextBuilder):
         self.writeline('[')
         with self.indent():
             for item in lst:
-                self.dump_anything(item)
+                self.dump_anything(item, text_color=text_color)
                 self.writeline(',')
         self.write(']')
