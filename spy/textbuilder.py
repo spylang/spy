@@ -11,7 +11,7 @@ class TextBuilder:
         self.level = 0
         self.lines = ['']
         self.use_colors = use_colors
-        self.color = ColorFormatter(use_colors)
+        self.color_formatter = ColorFormatter(use_colors)
 
     @property
     def lineno(self) -> int:
@@ -69,7 +69,7 @@ class TextBuilder:
     def write(self, s: str, *, color: Optional[str] = None) -> None:
         assert '\n' not in s
         assert isinstance(self.lines[-1], str)
-        s = self.color.set(color, s)
+        s = self.color_formatter.set(color, s)
         if self.lines[-1] == '':
             # add the indentation
             spaces = ' ' * (self.level * 4)

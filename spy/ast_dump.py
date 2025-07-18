@@ -87,7 +87,7 @@ class Dumper(TextBuilder):
         if node is self.highlight and self.color_mode == 'multi':
             text_color = 'red'
         if self.color_mode == 'redshift' and text_color is not None:
-            self.color.set(text_color)
+            self.color_formatter.set(text_color)
         self.write(name)
         self.write('(')
         if multiline:
@@ -108,7 +108,7 @@ class Dumper(TextBuilder):
 
     def dump_list(self, lst: list[Any], text_color: str | None = None) -> None:
         if self.color_mode == 'redshift' and text_color is not None:
-            self.color.set(text_color)
+            self.color_formatter.set(text_color)
         if lst == []:
             self.write('[]')
             return
