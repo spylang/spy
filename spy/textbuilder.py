@@ -31,6 +31,16 @@ class TextBuilder:
         yield
         self.level -= 1
 
+    @contextmanager
+    def color_block(self, text_color: str, reset: bool = True) -> Iterator[None]:
+        self.set_color(text_color)
+        yield
+        if self.use_colors and reset:
+            self.writeraw(self.color_formatter.reset)
+
+    def set_color(self, text_color: str) -> None:
+        self.writeraw(self.color_formatter.start(text_color))
+
     def make_nested_builder(self, *, detached: bool = False) -> 'TextBuilder':
         """
         Create a new nested TextBuilder.
@@ -65,6 +75,14 @@ class TextBuilder:
         nested.level = self.level
         self.lines[-1] = nested
         self.lines.append('')
+
+    def writeraw(self, s: str) -> None:
+        """
+        Append a string, without any indentation or color formatting.
+        """
+        assert '\n' not in s
+        assert isinstance(self.lines[-1], str)
+        self.lines[-1] += s
 
     def write(self, s: str, *, color: Optional[str] = None) -> None:
         assert '\n' not in s
@@ -124,9 +142,22 @@ class ColorFormatter:
     fuchsia = '35;01'
     turquoise = '36;01'
     white = '37;01'
+    reset = '\x1b[00m'
 
     def __init__(self, use_colors: bool) -> None:
         self._use_colors = use_colors
+
+    def start(self, text_color: Optional[str]) -> str:
+        """
+        Set output to the given color only
+        """
+        if text_color is None or not self._use_colors:
+            return ''
+        try:
+            text_color = getattr(self, text_color)
+        except AttributeError:
+            pass
+        return '\x1b[%sm' % (text_color)
 
     def set(self, text_color: Optional[str], s: str = '') -> str:
         """

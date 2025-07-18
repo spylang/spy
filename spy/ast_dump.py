@@ -62,10 +62,9 @@ class Dumper(TextBuilder):
         fields = list(node.__class__.__dataclass_fields__)
         fields = [f for f in fields if f not in self.fields_to_ignore]
         text_color = 'blue'
-        # If color_mode is redshift, use node.color if available as saved
-        # during redshifting
-        if isinstance(node, spy.ast.Expr) and self.color_mode == 'redshift':
-            text_color = node.color or text_color
+        node_color = getattr(node, 'color', None)
+        if node_color and self.color_mode == 'redshift':
+            text_color = node_color
         self._dump_node(node, name, fields, text_color=text_color)
 
     def dump_py_node(self, node: py_ast.AST) -> None:
@@ -87,7 +86,7 @@ class Dumper(TextBuilder):
         if node is self.highlight and self.color_mode == 'multi':
             text_color = 'red'
         if self.color_mode == 'redshift' and text_color is not None:
-            self.color_formatter.set(text_color)
+            self.set_color(text_color)
         self.write(name)
         self.write('(')
         if multiline:
@@ -108,7 +107,7 @@ class Dumper(TextBuilder):
 
     def dump_list(self, lst: list[Any], text_color: str | None = None) -> None:
         if self.color_mode == 'redshift' and text_color is not None:
-            self.color_formatter.set(text_color)
+            self.set_color(text_color)
         if lst == []:
             self.write('[]')
             return
