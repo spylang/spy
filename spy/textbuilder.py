@@ -1,17 +1,23 @@
+import re
 from typing import Optional, Iterator, Union
 import textwrap
 from contextlib import contextmanager
+
 
 class TextBuilder:
     level: int  # indentation level
     lines: list[Union[str, 'TextBuilder']]
     use_colors: bool
+    _ansi_escape_re = re.compile(r'\x1b\[[0-9;]*m')
 
     def __init__(self, *, use_colors: bool = False) -> None:
         self.level = 0
         self.lines = ['']
         self.use_colors = use_colors
         self.color_formatter = ColorFormatter(use_colors)
+
+    def visible_length(self, s: str) -> int:
+        return len(self._ansi_escape_re.sub('', s))
 
     @property
     def lineno(self) -> int:
@@ -88,7 +94,7 @@ class TextBuilder:
         assert '\n' not in s
         assert isinstance(self.lines[-1], str)
         s = self.color_formatter.set(color, s)
-        if self.lines[-1] == '':
+        if self.visible_length(self.lines[-1]) == 0:
             # add the indentation
             spaces = ' ' * (self.level * 4)
             self.lines[-1] = spaces
