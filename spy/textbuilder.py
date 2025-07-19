@@ -15,6 +15,7 @@ class TextBuilder:
         self.lines = ['']
         self.use_colors = use_colors
         self.color_formatter = ColorFormatter(use_colors)
+        self.active_text_color: Optional[str] = None
 
     def visible_length(self, s: str) -> int:
         return len(self._ansi_escape_re.sub('', s))
@@ -46,6 +47,17 @@ class TextBuilder:
 
     def set_color(self, text_color: str) -> None:
         self.writeraw(self.color_formatter.start(text_color))
+
+    def set_active_text_color(self, text_color: str) -> None:
+        """Set the active text color for persistent coloring in redshift mode"""
+        self.active_text_color = text_color
+        self.set_color(text_color)
+
+    def clear_active_text_color(self) -> None:
+        """Clear the active text color and reset to no color"""
+        self.active_text_color = None
+        if self.use_colors:
+            self.writeraw(self.color_formatter.reset)
 
     def make_nested_builder(self, *, detached: bool = False) -> 'TextBuilder':
         """
@@ -93,7 +105,11 @@ class TextBuilder:
     def write(self, s: str, *, color: Optional[str] = None) -> None:
         assert '\n' not in s
         assert isinstance(self.lines[-1], str)
-        s = self.color_formatter.set(color, s)
+        
+        # Use active text color if no explicit color is provided
+        effective_color = color if color is not None else self.active_text_color
+        s = self.color_formatter.set(effective_color, s)
+        
         if self.visible_length(self.lines[-1]) == 0:
             # add the indentation
             spaces = ' ' * (self.level * 4)
