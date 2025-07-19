@@ -88,7 +88,14 @@ class Dumper(TextBuilder):
         multiline = any(is_complex_field)
         if node is self.highlight and self.color_mode == 'multi':
             text_color = 'red'
-        self.write(name, color=text_color)
+        
+        if self.color_mode == 'redshift' and text_color is not None:
+            # In redshift mode, set persistent color for the node and its children
+            self.set_active_text_color(text_color)
+            self.write(name)
+        else:
+            # In multi mode, use inline color that resets immediately
+            self.write(name, color=text_color)
         self.write('(')
         if multiline:
             self.writeline('')
