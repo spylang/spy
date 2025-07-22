@@ -75,6 +75,16 @@ class TestMain:
             raise Exception("run_external failed")
         return exit_code, decolorize(stdout)
 
+    def test_py_file_error(self):
+        # Create a .py file instead of .spy
+        py_file = self.tmpdir.join('test.py')
+        py_file.write("print('This is a Python file')")
+
+        # Test that passing a .py file produces an error
+        res = self.runner.invoke(app, [str(py_file)])
+        assert res.exit_code == 1
+        assert "Error:" in res.output and ".py file, not a .spy file" in res.output
+
     def test_pyparse(self):
         res, stdout = self.run('--pyparse', self.main_spy)
         assert stdout.startswith('py:Module(')
