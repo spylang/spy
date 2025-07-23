@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opspec import W_OpSpec, W_OpArg
-from spy.vm.function import W_Func
+from spy.vm.opimpl import W_OpImpl
 from . import OP, op_fast_call
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
@@ -134,7 +134,7 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 
 
 @OP.builtin_func(color='blue')
-def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_ADD := w_ltype.lookup_blue_func('__ADD__'):
@@ -145,7 +145,7 @@ def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '+', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_SUB := w_ltype.lookup_blue_func('__SUB__'):
@@ -156,7 +156,7 @@ def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '-', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_MUL := w_ltype.lookup_blue_func('__MUL__'):
@@ -167,7 +167,7 @@ def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '*', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_DIV := w_ltype.lookup_blue_func('__DIV__'):
@@ -178,7 +178,7 @@ def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '/', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_FLOORDIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_FLOORDIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_FLOORDIV := w_ltype.lookup_blue_func('__FLOORDIV__'):
@@ -190,7 +190,7 @@ def w_FLOORDIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
 
 
 @OP.builtin_func(color='blue')
-def w_MOD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_MOD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_MOD := w_ltype.lookup_blue_func('__MOD__'):
@@ -201,7 +201,7 @@ def w_MOD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '%', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_LSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_LSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_SHL := w_ltype.lookup_blue_func('__SHL__'):
@@ -212,7 +212,7 @@ def w_LSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '<<', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_RSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_RSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_SHR := w_ltype.lookup_blue_func('__SHR__'):
@@ -223,7 +223,7 @@ def w_RSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '>>', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_AND(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_AND(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_AND := w_ltype.lookup_blue_func('__AND__'):
@@ -234,7 +234,7 @@ def w_AND(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '&', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_OR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_OR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_OR := w_ltype.lookup_blue_func('__OR__'):
@@ -245,7 +245,7 @@ def w_OR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '|', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_XOR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_XOR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_XOR := w_ltype.lookup_blue_func('__XOR__'):
@@ -265,7 +265,7 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
     return w_common is not B.w_object and w_common.is_reference_type(vm)
 
 @OP.builtin_func(color='blue')
-def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
@@ -283,7 +283,7 @@ def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
         return MM.get_opimpl(vm, '==', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
@@ -300,7 +300,7 @@ def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '!=', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     # XXX this seems wrong: if we do universal_eq(i32, i32), we should get the
     # same as eq(i32, i32), not "w_object_universal_eq". In practice, it's not
@@ -312,7 +312,7 @@ def w_UNIVERSAL_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
                             errmsg='cannot do `{0}` <universal_eq> `{1}`')
 
 @OP.builtin_func(color='blue')
-def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     # XXX: see the commet in UNIVERSAL_EQ
     w_opimpl = W_OpSpec(OP.w_object_universal_ne)
@@ -321,7 +321,7 @@ def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
                             errmsg='cannot do `{0}` <universal_ne> `{1}`')
 
 @OP.builtin_func(color='blue')
-def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_LT := w_ltype.lookup_blue_func('__LT__'):
@@ -332,7 +332,7 @@ def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '<', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_LE := w_ltype.lookup_blue_func('__LE__'):
@@ -343,7 +343,7 @@ def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '<=', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_GT := w_ltype.lookup_blue_func('__GT__'):
@@ -354,7 +354,7 @@ def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
     return MM.get_opimpl(vm, '>', wop_l, wop_r)
 
 @OP.builtin_func(color='blue')
-def w_GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+def w_GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     if w_GE := w_ltype.lookup_blue_func('__GE__'):

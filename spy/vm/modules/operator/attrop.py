@@ -2,9 +2,9 @@ from typing import TYPE_CHECKING, Literal, Annotated
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
-from spy.vm.function import W_Func
 from spy.vm.builtin import builtin_func
 from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opimpl import W_OpImpl
 
 from . import OP, op_fast_call
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ def unwrap_attr_maybe(vm: 'SPyVM', wop_attr: W_OpArg) -> str:
         return '<unknown>'
 
 @OP.builtin_func(color='blue')
-def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_Func:
+def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     attr = unwrap_attr_maybe(vm, wop_attr)
     w_opimpl = _get_GETATTR_opimpl(vm, wop_obj, wop_attr, attr)
@@ -49,7 +49,7 @@ def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 
 @OP.builtin_func(color='blue')
 def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-            wop_v: W_OpArg) -> W_Func:
+            wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     attr = unwrap_attr_maybe(vm, wop_attr)
     w_opimpl = _get_SETATTR_opimpl(vm, wop_obj, wop_attr, wop_v, attr)

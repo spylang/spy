@@ -36,11 +36,11 @@ def typecheck_opspec(
         *,
         dispatch: DispatchKind,
         errmsg: str,
-) -> W_Func:
+) -> W_OpImpl:
     """
-    Turn the W_OpSpec into a W_Func which can be called using fast_call.
+    Turn the W_OpSpec into a W_OpImpl, ready to be execute()d.
 
-    Check the arg types that we are passing to the opspec, and insert
+    Check the arg types that we are passing to the OpSpec, and insert
     appropriate type conversions if needed.
 
     `dispatch` is used only for diagnostics: if it's 'single' we will

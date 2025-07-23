@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 from spy.vm.opspec import W_OpSpec, W_OpArg
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.opimpl import W_OpImpl
+from spy.vm.function import W_FuncType
 
 from . import OP, op_fast_call
 if TYPE_CHECKING:
@@ -8,7 +9,7 @@ if TYPE_CHECKING:
 
 
 @OP.builtin_func(color='blue')
-def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
+def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opimpl = W_OpSpec.NULL
     w_type = wop_obj.w_static_type
@@ -32,7 +33,7 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
 
 
 @OP.builtin_func(color='blue')
-def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
+def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opimpl = W_OpSpec.NULL
     w_type = wop_obj.w_static_type

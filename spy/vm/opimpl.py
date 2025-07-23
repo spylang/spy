@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Sequence, ClassVar
 from dataclasses import dataclass
 import textwrap
+from spy.vm.b import OPERATOR
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.object import W_Object
@@ -32,7 +33,8 @@ ArgSpec.Arg = Arg          # type: ignore
 ArgSpec.Const = Const      # type: ignore
 ArgSpec.Convert = Convert  # type: ignore
 
-class W_OpImpl:
+@OPERATOR.builtin_type('OpImpl')
+class W_OpImpl(W_Object):
     """
     XXX write me
     Adapt another w_func to a different signature.
@@ -78,7 +80,7 @@ class W_OpImpl:
 
     def render(self) -> str:
         """
-        Return a human-readable representation of the adapter
+        Return a human-readable representation of the OpImpl
         """
         argnames = [f'v{i}' for i, p in enumerate(self.w_functype.params)]
         def fmt(spec: ArgSpec) -> str:

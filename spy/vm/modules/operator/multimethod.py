@@ -20,6 +20,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
 from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opimpl import W_OpImpl
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -72,7 +73,7 @@ class MultiMethodTable:
         return W_OpSpec.NULL
 
     def get_opimpl(self, vm: 'SPyVM', op: str,
-                   wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
+                   wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
         from spy.vm.typechecker import typecheck_opspec
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
@@ -86,7 +87,7 @@ class MultiMethodTable:
         )
 
     def get_unary_opimpl(self, vm: 'SPyVM', op: str,
-                         wop_v: W_OpArg) -> W_Func:
+                         wop_v: W_OpArg) -> W_OpImpl:
         from spy.vm.typechecker import typecheck_opspec
         w_vtype = wop_v.w_static_type
         w_opimpl = self.lookup(op, w_vtype, None)
