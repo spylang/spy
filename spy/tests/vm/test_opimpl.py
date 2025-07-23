@@ -31,7 +31,7 @@ def test_shuffle_args():
     w_s = w_opimpl.execute(vm, [vm.wrap(3), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
-    r = '<spy adapter `def(i32, str) -> str` for `test::repeat`>'
+    r = '<OpImpl `def(i32, str) -> str` for `test::repeat`>'
     assert repr(w_opimpl) == r
     #
     expected = textwrap.dedent("""
@@ -44,32 +44,32 @@ def test_const():
     vm = SPyVM()
     w_functype = W_FuncType.parse('def(i32) -> str')
     w_s = vm.wrap('ab ')
-    w_adapter = W_OpImpl(
+    w_opimpl = W_OpImpl(
         w_functype,
         w_repeat,
         [ArgSpec.Const(w_s, Loc.here()), ArgSpec.Arg(0)]
     )
-    w_s = vm.fast_call(w_adapter, [vm.wrap(3)])
+    w_s = w_opimpl.execute(vm, [vm.wrap(3)])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     expected = textwrap.dedent("""
     def(v0: i32) -> str:
         return `test::repeat`(W_Str('ab '), v0)
     """).strip()
-    assert w_adapter.render() == expected
+    assert w_opimpl.render() == expected
 
 def test_converter():
     vm = SPyVM()
     w_functype = W_FuncType.parse('def(f64, str) -> str')
-    w_adapter = W_OpImpl(
+    w_opimpl = W_OpImpl(
         w_functype,
         w_repeat,
         [ArgSpec.Arg(1), ArgSpec.Convert(OP.w_f64_to_i32, ArgSpec.Arg(0))]
     )
-    w_s = vm.fast_call(w_adapter, [vm.wrap(3.5), vm.wrap('ab ')])
+    w_s = w_opimpl.execute(vm, [vm.wrap(3.5), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
     expected = textwrap.dedent("""
     def(v0: f64, v1: str) -> str:
         return `test::repeat`(v1, `operator::f64_to_i32`(v0))
     """).strip()
-    assert w_adapter.render() == expected
+    assert w_opimpl.render() == expected

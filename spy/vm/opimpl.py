@@ -43,7 +43,6 @@ class W_OpImpl:
     The transformation rules are stored into a list of ArgSpec, which
     effectively encodes a mini-AST.
     """
-    fqn = FQN('builtins::__adapter__')
 
     def __init__(self, w_functype: W_FuncType, w_func: W_Func,
                  args: list[ArgSpec]) -> None:
@@ -54,7 +53,7 @@ class W_OpImpl:
     def __repr__(self) -> str:
         sig = self.w_functype.fqn.human_name
         fqn = self.w_func.fqn
-        return f'<spy adapter `{sig}` for `{fqn}`>'
+        return f'<OpImpl `{sig}` for `{fqn}`>'
 
     def is_pure(self) -> bool:
         return self.w_func.is_pure()
