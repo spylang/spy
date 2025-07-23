@@ -50,9 +50,9 @@ def typecheck_opspec(
         _opspec_null_error(in_args_wop, dispatch, errmsg)
     assert w_opspec._w_func is not None
 
-    # the want to make an adapter that:
-    #   - behaves like a function of type w_in_functype
-    #   - calls an opspec of type w_out_functype
+    # the final goal is to create an OpImpl which:
+    #   - when executed behaves like a function of type w_in_functype
+    #   - calls a function of type w_out_functype
     w_out_functype = w_opspec.w_functype
     w_in_functype = functype_from_opargs(
         in_args_wop,
@@ -85,7 +85,7 @@ def typecheck_opspec(
             def_loc = def_loc,
             call_loc = call_loc)
 
-    # build the argspec for the W_FuncAdapter
+    # build the argspec for the W_OpImpl
     args = []
     for param, wop_out_arg in zip(w_out_functype.all_params(), out_args_wop):
         # add a converter if needed (this might raise SPyTypeError)
@@ -103,8 +103,8 @@ def typecheck_opspec(
         args.append(arg)
 
     # everything good!
-    w_adapter = W_OpImpl(w_in_functype, w_opspec._w_func, args)
-    return w_adapter
+    w_opimpl = W_OpImpl(w_in_functype, w_opspec._w_func, args)
+    return w_opimpl
 
 
 def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,

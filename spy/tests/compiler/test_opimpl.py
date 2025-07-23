@@ -131,6 +131,6 @@ class TestOpSpec(CompilerTest):
         def foo() -> dynamic:
             return ADD(i32, i32)
         """)
-        w_adapter = mod.foo(unwrap=False)
-        assert isinstance(w_adapter, W_OpImpl)
-        assert w_adapter.w_func is OP.w_i32_add
+        w_opimpl = mod.foo(unwrap=False)
+        assert isinstance(w_opimpl, W_OpImpl)
+        assert w_opimpl.w_func is OP.w_i32_add

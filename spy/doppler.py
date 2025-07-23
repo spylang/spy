@@ -291,10 +291,10 @@ class DopplerFrame(ASTFrame):
                      ) -> ast.Call:
         assert isinstance(w_opimpl, W_OpImpl)
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
-        real_args = self._shift_adapter_args(w_opimpl, orig_args)
+        real_args = self._shift_opimpl_args(w_opimpl, orig_args)
         return ast.Call(op.loc, func, real_args)
 
-    def _shift_adapter_args(self, w_adapter: W_OpImpl,
+    def _shift_opimpl_args(self, w_opimpl: W_OpImpl,
                             orig_args: list[ast.Expr]) -> list[ast.Expr]:
         def getarg(spec: ArgSpec) -> ast.Expr:
             if isinstance(spec, ArgSpec.Arg):
@@ -313,7 +313,7 @@ class DopplerFrame(ASTFrame):
                 )
             else:
                 assert False
-        real_args = [getarg(spec) for spec in w_adapter.args]
+        real_args = [getarg(spec) for spec in w_opimpl.args]
         return real_args
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:
