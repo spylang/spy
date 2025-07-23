@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from spy.vm.primitive import W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpArg
+from spy.vm.opspec import W_OpArg
 from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

@@ -1,7 +1,7 @@
 from spy.vm.primitive import W_I32
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Object
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
@@ -20,11 +20,11 @@ class W_MySequence(W_Object):
 
     @builtin_method('__LEN__', color='blue')
     @staticmethod
-    def w_LEN(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpImpl:
+    def w_LEN(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_len(vm: 'SPyVM', w_self: W_MySequence) -> W_I32:
             return w_self.w_size
-        return W_OpImpl(w_len)
+        return W_OpSpec(w_len)
 
 
 

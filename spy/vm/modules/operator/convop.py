@@ -4,7 +4,7 @@ from spy.errors import SPyError
 from spy.vm.modules.operator import OP
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpArg, W_OpImpl
+from spy.vm.opspec import W_OpArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8, W_U8
 from spy.vm.builtin import builtin_func
 from . import OP, op_fast_call
@@ -24,7 +24,7 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
     """
     w_opimpl = get_opimpl(vm, w_exp, wop_x)
     if not w_opimpl.is_null():
-        # XXX: maybe we should return a W_OpImpl?
+        # XXX: maybe we should return a W_OpSpec?
         return w_opimpl._w_func  # type: ignore
 
     # mismatched types
@@ -35,7 +35,7 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
     raise err
 
 
-def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpSpec:
     # this condition is checked by CONVERT_maybe. If we want this function to
     # become more generally usable, we might want to return an identity func
     # here.
@@ -50,7 +50,7 @@ def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
         #                 into one
         w_from_dynamic_T = vm.fast_call(OP.w_from_dynamic, [w_exp])
         assert isinstance(w_from_dynamic_T, W_Func)
-        return W_OpImpl(w_from_dynamic_T)
+        return W_OpSpec(w_from_dynamic_T)
 
     w_opimpl = MM.lookup('convert', w_got, w_exp)
     if not w_opimpl.is_null():
@@ -61,7 +61,7 @@ def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpImpl:
     elif w_CONV_FROM := w_exp.lookup_blue_func('__CONVERT_FROM__'):
         return op_fast_call(vm, w_CONV_FROM, [w_got, wop_x])
 
-    return W_OpImpl.NULL
+    return W_OpSpec.NULL
 
 
 def CONVERT_maybe(

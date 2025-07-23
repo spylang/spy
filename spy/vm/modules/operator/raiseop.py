@@ -3,7 +3,7 @@ from spy.location import Loc
 from spy.errors import SPyError
 from spy.vm.object import W_Type
 from spy.vm.str import W_Str
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.function import W_Func
 from spy.vm.primitive import W_I32
 from spy.vm.exc import W_Exception
@@ -24,7 +24,7 @@ def w_raise(vm: 'SPyVM', w_etype: W_Str, w_message: W_Str,
 
 @OP.builtin_func(color='blue')
 def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
+    from spy.vm.typechecker import typecheck_opspec
 
     # We are doing a bit of magic here:
     #   1. manually turn the blue wop_exc into an hardcoded message
@@ -65,9 +65,9 @@ def w_RAISE(vm: 'SPyVM', wop_exc: W_OpArg) -> W_Func:
     w_lineno = vm.wrap(wop_exc.loc.line_start)
     wop_lineno = W_OpArg.from_w_obj(vm, w_lineno)
 
-    w_opimpl = W_OpImpl(OP.w_raise, [wop_etype, wop_msg, wop_fname, wop_lineno])
+    w_opimpl = W_OpSpec(OP.w_raise, [wop_etype, wop_msg, wop_fname, wop_lineno])
 
-    return typecheck_opimpl(
+    return typecheck_opspec(
         vm,
         w_opimpl,
         [wop_exc],

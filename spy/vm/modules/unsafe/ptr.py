@@ -8,7 +8,7 @@ from spy.vm.object import Member
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.builtin import builtin_func
 from . import UNSAFE
 from .misc import sizeof
@@ -63,7 +63,7 @@ class W_PtrType(W_Type):
 
     @builtin_method('__GETATTR__', color='blue')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
+    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg) -> W_OpSpec:
         attr = wop_attr.blue_unwrap_str(vm)
         if attr == 'NULL':
             # NOTE: the precise spelling of the FQN of NULL matters! The
@@ -76,10 +76,10 @@ class W_PtrType(W_Type):
             @builtin_func(w_self.fqn, color='blue')  # ptr[i32]::get_NULL
             def w_get_NULL(vm: 'SPyVM') -> Annotated['W_Ptr', w_self]:
                 return w_NULL
-            return W_OpImpl(w_get_NULL, [])
+            return W_OpSpec(w_get_NULL, [])
 
         else:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
 
 
@@ -97,8 +97,8 @@ class W_BasePtr(W_Object):
         raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
 
     @staticmethod
-    def w_meta_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpImpl:
-        return W_OpImpl(w_make_ptr_type, [wop_T])
+    def w_meta_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpSpec:
+        return W_OpSpec(w_make_ptr_type, [wop_T])
 
 
 class W_Ptr(W_BasePtr):
@@ -152,7 +152,7 @@ class W_Ptr(W_BasePtr):
 
     @builtin_method('__GETITEM__', color='blue')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+    def w_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
@@ -190,12 +190,12 @@ class W_Ptr(W_BasePtr):
                     [vm.wrap(addr)]
                 )
 
-        return W_OpImpl(w_ptr_getitem_T)
+        return W_OpSpec(w_ptr_getitem_T)
 
     @builtin_method('__SETITEM__', color='blue')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
-                  wop_v: W_OpArg) -> W_OpImpl:
+                  wop_v: W_OpArg) -> W_OpSpec:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
@@ -220,15 +220,15 @@ class W_Ptr(W_BasePtr):
                 [w_T],
                 [vm.wrap(addr), w_v]
             )
-        return W_OpImpl(w_ptr_store_T)
+        return W_OpSpec(w_ptr_store_T)
 
     @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         if w_ltype is not w_rtype:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_l)
         PTR = Annotated[W_Ptr, w_ptrtype]
 
@@ -238,15 +238,15 @@ class W_Ptr(W_BasePtr):
                 w_ptr1.addr == w_ptr2.addr and
                 w_ptr1.length == w_ptr1.length
             )  # type: ignore
-        return W_OpImpl(w_ptr_eq)
+        return W_OpSpec(w_ptr_eq)
 
     @builtin_method('__NE__', color='blue')
     @staticmethod
-    def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+    def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         if w_ltype is not w_rtype:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_l)
         PTR = Annotated[W_Ptr, w_ptrtype]
 
@@ -256,13 +256,13 @@ class W_Ptr(W_BasePtr):
                 w_ptr1.addr != w_ptr2.addr or
                 w_ptr1.length != w_ptr1.length
             )  # type: ignore
-        return W_OpImpl(w_ptr_ne)
+        return W_OpSpec(w_ptr_ne)
 
     @builtin_method('__CONVERT_TO__', color='blue')
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+    def w_CONVERT_TO(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpSpec:
         if w_T is not B.w_bool:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_x)
         PTR = Annotated[W_Ptr, w_ptrtype]
 
@@ -273,23 +273,23 @@ class W_Ptr(W_BasePtr):
             return B.w_True
 
         vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
-        return W_OpImpl(w_ptr_to_bool)
+        return W_OpSpec(w_ptr_to_bool)
 
     @builtin_method('__GETATTR__', color='blue')
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
-                  wop_attr: W_OpArg) -> W_OpImpl:
+                  wop_attr: W_OpArg) -> W_OpSpec:
         return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
     @builtin_method('__SETATTR__', color='blue')
     @staticmethod
     def w_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                  wop_v: W_OpArg) -> W_OpImpl:
+                  wop_v: W_OpArg) -> W_OpSpec:
         return W_Ptr.op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
 
     @staticmethod
     def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
-                wop_v: Optional[W_OpArg]) -> W_OpImpl:
+                wop_v: Optional[W_OpArg]) -> W_OpSpec:
         """
         Implement both w_GETATTR and w_SETATTR.
         """
@@ -298,12 +298,12 @@ class W_Ptr(W_BasePtr):
         w_T = w_ptrtype.w_itemtype
         # attributes are supported only on ptr-to-structs
         if not w_T.is_struct(vm):
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
         assert isinstance(w_T, W_StructType)
         attr = wop_attr.blue_unwrap_str(vm)
         if attr not in w_T.fields:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
         w_field_T = w_T.fields[attr]
         offset = w_T.offsets[attr]
@@ -314,13 +314,13 @@ class W_Ptr(W_BasePtr):
             assert wop_v is None
             w_func = vm.fast_call(UNSAFE.w_getfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset])
+            return W_OpSpec(w_func, [wop_ptr, wop_attr, wop_offset])
         else:
             # setfield[field_T](ptr, attr, offset, v)
             assert wop_v is not None
             w_func = vm.fast_call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpImpl(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
+            return W_OpSpec(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
 
 
 

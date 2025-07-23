@@ -1,5 +1,5 @@
 """
-OpImpl is the central concept to understand of SPy operators work.
+OpSpec and OpImpl is the central concept to understand of SPy operators work.
 
 Conceptually, the following SPy code:
    c = a + b
@@ -10,9 +10,12 @@ is roughly equivalent to:
    opimpl = operator.ADD(arg_a, arg_b)
    c = opimpl(a, b)
 
-I.e., the execution of an operator happens in two-steps:
-  1. first, we call the OPERATOR to determine the opimpl
-  2. then, we call the opimpl to determine the final results.
+I.e., the execution of an operator happens in three-steps:
+  1. We call the OPERATOR to determine the OpSpec
+  2. The VM convert the OpSpec into an executable OpImpl
+  3. We call the OpImpl to determine the final results.
+
+Point (2) is where typechecking happens and can fail.
 
 Note that OPERATORTs don't receive the actual values of operands. Instead,
 they receive OpArgs, which represents "abstract values", of which we know only
@@ -57,7 +60,7 @@ class W_OpArg(W_Object):
     The main job of OpArgs is to keep track of the color and the static type
     of objects inside the ASTFrame.  As the name suggests, they are then
     passed as arguments to OPERATORs, which can then use the static type to
-    dispatch to the proper OpImpl.
+    dispatch to the proper OpSpec.
 
     Moreover, they carry around extra information which are used to produce
     better error messages, when needed:
@@ -212,7 +215,7 @@ class W_OpArg(W_Object):
     @builtin_method('__CONVERT_FROM__', color='blue')
     @staticmethod
     def w_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type,
-                       wop_x: 'W_OpArg') -> 'W_OpImpl':
+                       wop_x: 'W_OpArg') -> 'W_OpSpec':
         if vm.isinstance(w_T, B.w_type):
             @builtin_func(W_OpArg._w.fqn, 'from_type')
             def w_from_type(vm: 'SPyVM', w_type: W_Type) -> W_OpArg:
@@ -223,25 +226,25 @@ class W_OpArg(W_Object):
                     w_val=None,
                     loc=Loc.here()
                 )
-            return W_OpImpl(w_from_type)
-        return W_OpImpl.NULL
+            return W_OpSpec(w_from_type)
+        return W_OpSpec.NULL
 
     @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
+    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         assert w_ltype.pyclass is W_OpArg
 
         if w_ltype is w_rtype:
-            return W_OpImpl(w_oparg_eq)
+            return W_OpSpec(w_oparg_eq)
         else:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
     @builtin_method('__GET_color__', color='blue')
     @staticmethod
     def w_GET_color(vm: 'SPyVM', wop_x: 'W_OpArg',
-                    wop_attr: 'W_OpArg') -> 'W_OpImpl':
+                    wop_attr: 'W_OpArg') -> 'W_OpSpec':
         from spy.vm.builtin import builtin_func
         from spy.vm.str import W_Str
 
@@ -249,12 +252,12 @@ class W_OpArg(W_Object):
         def w_get_color(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Str:
             return vm.wrap(w_oparg.color)  # type: ignore
 
-        return W_OpImpl(w_get_color, [wop_x])
+        return W_OpSpec(w_get_color, [wop_x])
 
     @builtin_method('__GET_blueval__', color='blue')
     @staticmethod
     def w_GET_blueval(vm: 'SPyVM', wop_x: 'W_OpArg',
-                      wop_attr: 'W_OpArg') -> 'W_OpImpl':
+                      wop_attr: 'W_OpArg') -> 'W_OpSpec':
         from spy.vm.builtin import builtin_func
         from spy.vm.primitive import W_Dynamic
 
@@ -264,7 +267,7 @@ class W_OpArg(W_Object):
                 raise SPyError('W_ValueError', 'oparg is not blue')
             return w_oparg.w_blueval
 
-        return W_OpImpl(w_get_blueval, [wop_x])
+        return W_OpSpec(w_get_blueval, [wop_x])
 
 
 
@@ -292,9 +295,9 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 
 
 
-@OPERATOR.builtin_type('OpImpl', lazy_definition=True)
-class W_OpImpl(W_Object):
-    NULL: ClassVar['W_OpImpl']
+@OPERATOR.builtin_type('OpSpec', lazy_definition=True)
+class W_OpSpec(W_Object):
+    NULL: ClassVar['W_OpSpec']
     _w_func: Optional[W_Func]
     _args_wop: Optional[list[W_OpArg]]
     is_direct_call: bool
@@ -311,13 +314,13 @@ class W_OpImpl(W_Object):
 
     def __repr__(self) -> str:
         if self._w_func is None:
-            return f"<spy OpImpl NULL>"
+            return f"<spy OpSpec NULL>"
         elif self._args_wop is None:
             fqn = self._w_func.fqn
-            return f"<spy OpImpl {fqn}>"
+            return f"<spy OpSpec {fqn}>"
         else:
             fqn = self._w_func.fqn
-            return f"<spy OpImpl {fqn}(...)>"
+            return f"<spy OpSpec {fqn}(...)>"
 
     def is_null(self) -> bool:
         return self._w_func is None
@@ -334,30 +337,30 @@ class W_OpImpl(W_Object):
 
     @builtin_method('__meta_GETATTR__', color='blue')
     @staticmethod
-    def w_meta_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpImpl':
+    def w_meta_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpSpec':
         """
-        Handle class attribute lookups on OpImpl, like OpImpl.NULL
+        Handle class attribute lookups on OpSpec, like OpSpec.NULL
         """
 
         attr_name = wop_attr.blue_unwrap_str(vm)
 
         if attr_name == 'NULL':
             # Return the NULL instance directly
-            @builtin_func(W_OpImpl._w.fqn, 'get_null')
-            def w_get_null(vm: 'SPyVM', w_cls: W_Type) -> W_OpImpl:
-                return W_OpImpl.NULL
+            @builtin_func(W_OpSpec._w.fqn, 'get_null')
+            def w_get_null(vm: 'SPyVM', w_cls: W_Type) -> W_OpSpec:
+                return W_OpSpec.NULL
 
-            return W_OpImpl(w_get_null, [wop_cls])
+            return W_OpSpec(w_get_null, [wop_cls])
 
-        return W_OpImpl.NULL
+        return W_OpSpec.NULL
 
     @builtin_method('__NEW__', color='blue')
     @staticmethod
-    def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpImpl':
+    def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpSpec':
         """
-        Operator for creating OpImpl instances with different argument counts.
-        - OpImpl(func) -> Simple OpImpl
-        - OpImpl(func, args) -> OpImpl with pre-filled arguments
+        Operator for creating OpSpec instances with different argument counts.
+        - OpSpec(func) -> Simple OpSpec
+        - OpSpec(func, args) -> OpSpec with pre-filled arguments
         """
         from spy.vm.function import W_Func
         from spy.vm.list import W_OpArgList
@@ -366,23 +369,23 @@ class W_OpImpl(W_Object):
         assert isinstance(w_type, W_Type)
 
         if len(args_wop) == 1:
-            # Simple case: OpImpl(func)
+            # Simple case: OpSpec(func)
             @builtin_func(w_type.fqn, 'new1')
-            def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpImpl:
-                return W_OpImpl(w_func)
-            return W_OpImpl(w_new1)
+            def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpSpec:
+                return W_OpSpec(w_func)
+            return W_OpSpec(w_new1)
 
         elif len(args_wop) == 2:
-            # OpImpl(func, args) case
+            # OpSpec(func, args) case
             @builtin_func(w_type.fqn, 'new2')
             def w_new2(vm: 'SPyVM', w_cls: W_Type,
-                       w_func: W_Func, w_args: W_OpArgList) -> W_OpImpl:
+                       w_func: W_Func, w_args: W_OpArgList) -> W_OpSpec:
                 # Convert from applevel w_args into interp-level args_w
                 args_w = w_args.items_w[:]
-                return W_OpImpl(w_func, args_w)
-            return W_OpImpl(w_new2)
+                return W_OpSpec(w_func, args_w)
+            return W_OpSpec(w_new2)
         else:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
 
-W_OpImpl.NULL = W_OpImpl(None)  # type: ignore
+W_OpSpec.NULL = W_OpSpec(None)  # type: ignore

@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.function import W_Func, W_FuncType
 
 from . import OP, op_fast_call
@@ -9,8 +9,8 @@ if TYPE_CHECKING:
 
 @OP.builtin_func(color='blue')
 def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    w_opimpl = W_OpImpl.NULL
+    from spy.vm.typechecker import typecheck_opspec
+    w_opimpl = W_OpSpec.NULL
     w_type = wop_obj.w_static_type
 
     newargs_wop = [wop_obj] + list(args_wop)
@@ -20,9 +20,9 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
     elif w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
         w_opimpl = op_fast_call(vm, w_GETITEM, newargs_wop)
     elif w_getitem := w_type.lookup_func('__getitem__'):
-        w_opimpl = W_OpImpl(w_getitem, newargs_wop)
+        w_opimpl = W_OpSpec(w_getitem, newargs_wop)
 
-    return typecheck_opimpl(
+    return typecheck_opspec(
         vm,
         w_opimpl,
         newargs_wop,
@@ -33,17 +33,17 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
 
 @OP.builtin_func(color='blue')
 def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    w_opimpl = W_OpImpl.NULL
+    from spy.vm.typechecker import typecheck_opspec
+    w_opimpl = W_OpSpec.NULL
     w_type = wop_obj.w_static_type
 
     newargs_wop = [wop_obj] + list(args_wop)
     if w_SETITEM := w_type.lookup_blue_func('__SETITEM__'):
         w_opimpl = op_fast_call(vm, w_SETITEM, newargs_wop)
     elif w_setitem := w_type.lookup_func('__setitem__'):
-        w_opimpl = W_OpImpl(w_setitem, newargs_wop)
+        w_opimpl = W_OpSpec(w_setitem, newargs_wop)
 
-    return typecheck_opimpl(
+    return typecheck_opspec(
         vm,
         w_opimpl,
         newargs_wop,

@@ -15,7 +15,7 @@ from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
-from spy.vm.opimpl import W_OpArg
+from spy.vm.opspec import W_OpArg
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch

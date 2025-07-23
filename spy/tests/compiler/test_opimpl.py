@@ -1,52 +1,52 @@
 #-*- encoding: utf-8 -*-
 
 from spy.vm.b import B
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.func_adapter import W_FuncAdapter
 from spy.tests.support import CompilerTest, only_interp
 
 @only_interp
-class TestOpImpl(CompilerTest):
+class TestOpSpec(CompilerTest):
 
-    def test_new_OpImpl(self):
+    def test_new_OpSpec(self):
         mod = self.compile(
         """
-        from operator import OpImpl
+        from operator import OpSpec
 
         def bar() -> None:
             pass
 
         @blue
-        def foo() -> OpImpl:
-            return OpImpl(bar)
+        def foo() -> OpSpec:
+            return OpSpec(bar)
         """)
-        w_opimpl = mod.foo(unwrap=False)
-        assert isinstance(w_opimpl, W_OpImpl)
-        assert w_opimpl._w_func is mod.bar.w_func
-        assert w_opimpl.is_simple()
+        w_opspec = mod.foo(unwrap=False)
+        assert isinstance(w_opspec, W_OpSpec)
+        assert w_opspec._w_func is mod.bar.w_func
+        assert w_opspec.is_simple()
 
-    def test_OpImpl_with_args(self):
+    def test_OpSpec_with_args(self):
         mod = self.compile(
         """
-        from operator import OpImpl, OpArg
+        from operator import OpSpec, OpArg
 
         def bar(x: i32) -> i32:
             return x * 2
 
         @blue
-        def foo() -> OpImpl:
-            # Create an OpImpl with an argument list
+        def foo() -> OpSpec:
+            # Create an OpSpec with an argument list
             arg = OpArg('blue', i32, 42)
-            return OpImpl(bar, [arg])
+            return OpSpec(bar, [arg])
         """)
-        w_opimpl = mod.foo(unwrap=False)
-        assert isinstance(w_opimpl, W_OpImpl)
-        assert not w_opimpl.is_simple()
-        assert w_opimpl._args_wop is not None
-        assert len(w_opimpl._args_wop) == 1
+        w_opspec = mod.foo(unwrap=False)
+        assert isinstance(w_opspec, W_OpSpec)
+        assert not w_opspec.is_simple()
+        assert w_opspec._args_wop is not None
+        assert len(w_opspec._args_wop) == 1
 
         # Check the OpArg stored in the arguments list
-        wop = w_opimpl._args_wop[0]
+        wop = w_opspec._args_wop[0]
         assert isinstance(wop, W_OpArg)
         assert wop.color == 'blue'
         assert wop.w_static_type is B.w_i32
@@ -97,17 +97,17 @@ class TestOpImpl(CompilerTest):
         assert w_type is B.w_i32
         assert self.vm.unwrap_i32(w_blueval) == 42
 
-    def test_opimpl_null(self):
+    def test_opspec_null(self):
         mod = self.compile(
         """
-        from operator import OpImpl
+        from operator import OpSpec
 
         @blue
-        def get_null() -> OpImpl:
-            return OpImpl.NULL
+        def get_null() -> OpSpec:
+            return OpSpec.NULL
         """)
         w_null = mod.get_null(unwrap=False)
-        assert w_null is W_OpImpl.NULL
+        assert w_null is W_OpSpec.NULL
 
     def test_oparg_from_type(self):
         mod = self.compile(
@@ -126,7 +126,7 @@ class TestOpImpl(CompilerTest):
         from spy.vm.modules.operator import OP
         mod = self.compile(
         """
-        from operator import ADD, OpImpl
+        from operator import ADD, OpSpec
 
         def foo() -> dynamic:
             return ADD(i32, i32)

@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import Member
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -24,7 +24,7 @@ class W_MyClass(W_Object):
     @builtin_method('__CONVERT_TO__', color='blue')
     @staticmethod
     def w_CONVERT_TO(vm: 'SPyVM', w_target_type: W_Type,
-                     wop_self: W_OpArg) -> W_OpImpl:
+                     wop_self: W_OpArg) -> W_OpSpec:
 
         @builtin_func('ext')
         def w_to_i32(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
@@ -37,16 +37,16 @@ class W_MyClass(W_Object):
 
         if w_target_type is B.w_i32:
             vm.add_global(w_to_i32.fqn, w_to_i32)
-            return W_OpImpl(w_to_i32)
+            return W_OpSpec(w_to_i32)
         elif w_target_type is B.w_str:
             vm.add_global(w_to_str.fqn, w_to_str)
-            return W_OpImpl(w_to_str)
-        return W_OpImpl.NULL
+            return W_OpSpec(w_to_str)
+        return W_OpSpec.NULL
 
     @builtin_method('__CONVERT_FROM__', color='blue')
     @staticmethod
     def w_CONVERT_FROM(vm: 'SPyVM', w_source_type: W_Type,
-                       wop_val: W_OpArg) -> W_OpImpl:
+                       wop_val: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_from_str(vm: 'SPyVM', w_val: W_Str) -> W_MyClass:
             s = vm.unwrap_str(w_val)
@@ -55,8 +55,8 @@ class W_MyClass(W_Object):
 
         if w_source_type is B.w_str:
             vm.add_global(w_from_str.fqn, w_from_str)
-            return W_OpImpl(w_from_str)
-        return W_OpImpl.NULL
+            return W_OpSpec(w_from_str)
+        return W_OpSpec.NULL
 
 
 @no_C

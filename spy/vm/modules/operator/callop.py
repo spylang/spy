@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 from spy.vm.b import B
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.function import W_FuncType, W_Func
 
 from . import OP, op_fast_call
@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 @OP.builtin_func(color='blue')
 def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    w_opimpl = W_OpImpl.NULL
+    from spy.vm.typechecker import typecheck_opspec
+    w_opimpl = W_OpSpec.NULL
     w_type = wop_obj.w_static_type
 
     newargs_wop = [wop_obj] + list(args_wop)
@@ -41,13 +41,13 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
             assert False, f'unknown FuncKind: {w_type.kind}'
 
     elif w_type is B.w_dynamic:
-        w_opimpl = W_OpImpl(OP.w_dynamic_call)
+        w_opimpl = W_OpSpec(OP.w_dynamic_call)
     elif w_CALL := w_type.lookup_blue_func('__CALL__'):
         w_opimpl = op_fast_call(vm, w_CALL, newargs_wop)
     elif w_call := w_type.lookup_func('__call__'):
-        w_opimpl = W_OpImpl(w_call, newargs_wop)
+        w_opimpl = W_OpSpec(w_call, newargs_wop)
 
-    return typecheck_opimpl(
+    return typecheck_opspec(
         vm,
         w_opimpl,
         newargs_wop,
@@ -59,8 +59,8 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
 @OP.builtin_func(color='blue')
 def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
                   *args_wop: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    w_opimpl = W_OpImpl.NULL
+    from spy.vm.typechecker import typecheck_opspec
+    w_opimpl = W_OpSpec.NULL
     w_type = wop_obj.w_static_type
 
     # if the type provides __CALL_METHOD__, use it
@@ -69,7 +69,7 @@ def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
         w_opimpl = op_fast_call(vm, w_CALL_METHOD, newargs_wop)
     elif w_call_method := w_type.lookup_func('__call_method__'):
         newargs_wop = [wop_obj, wop_method] + list(args_wop)
-        w_opimpl = W_OpImpl(w_call_method, newargs_wop)
+        w_opimpl = W_OpSpec(w_call_method, newargs_wop)
 
     # else, the default implementation is to look into the type dict
     # XXX: is it correct here to assume that we get a blue string?
@@ -80,9 +80,9 @@ def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
         # non-methods in the type dict
         assert isinstance(w_func, W_Func)
         # call the w_func, passing wop_obj as the implicit self
-        w_opimpl = W_OpImpl(w_func, [wop_obj] + list(args_wop))
+        w_opimpl = W_OpSpec(w_func, [wop_obj] + list(args_wop))
 
-    return typecheck_opimpl(
+    return typecheck_opspec(
         vm,
         w_opimpl,
         [wop_obj, wop_method] + list(args_wop),

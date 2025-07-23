@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from spy.errors import SPyError
 from spy.vm.builtin import builtin_func
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
-from spy.vm.opimpl import W_OpArg, W_OpImpl
+from spy.vm.opspec import W_OpArg, W_OpSpec
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
@@ -47,27 +47,27 @@ def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
 
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
+def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
     w_type = wop_obj.w_static_type
     if w_type is B.w_i32:
-        return W_OpImpl(B.w_print_i32)
+        return W_OpSpec(B.w_print_i32)
     elif w_type is B.w_f64:
-        return W_OpImpl(B.w_print_f64)
+        return W_OpSpec(B.w_print_f64)
     elif w_type is B.w_bool:
-        return W_OpImpl(B.w_print_bool)
+        return W_OpSpec(B.w_print_bool)
     elif w_type is B.w_NoneType:
-        return W_OpImpl(B.w_print_NoneType)
+        return W_OpSpec(B.w_print_NoneType)
     elif w_type is B.w_str:
-        return W_OpImpl(B.w_print_str)
+        return W_OpSpec(B.w_print_str)
     elif w_type is B.w_dynamic:
-        return W_OpImpl(B.w_print_dynamic)
+        return W_OpSpec(B.w_print_dynamic)
     elif w_type is B.w_type:
-        return W_OpImpl(B.w_print_type)
+        return W_OpSpec(B.w_print_type)
 
 
     else:
         # ???
-        return W_OpImpl(B.w_print_dynamic)
+        return W_OpSpec(B.w_print_dynamic)
 
     t = w_type.fqn.human_name
     raise SPyError.simple(
@@ -107,7 +107,7 @@ def w_print_type(vm: 'SPyVM', w_x: W_Type) -> None:
     PY_PRINT(str(w_x))
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
+def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
     from spy.vm.modules.operator import op_fast_call
     w_type = wop_obj.w_static_type
 
@@ -115,7 +115,7 @@ def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpImpl:
         w_opimpl = op_fast_call(vm, w_LEN, [wop_obj])
         return w_opimpl
     elif w_fn := w_type.lookup_func('__len__'):
-        w_opimpl = W_OpImpl(w_fn, [wop_obj])
+        w_opimpl = W_OpSpec(w_fn, [wop_obj])
         return w_opimpl
 
     t = w_type.fqn.human_name

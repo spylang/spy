@@ -3,7 +3,7 @@ from spy.fqn import FQN
 from spy.vm.b import B, OP
 from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.object import W_Object, W_Type
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -73,9 +73,9 @@ class W_BaseList(W_Object):
 
     @staticmethod
     def w_meta_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                       wop_i: W_OpArg) -> W_OpImpl:
-        from spy.vm.opimpl import W_OpImpl
-        return W_OpImpl(w_make_list_type)
+                       wop_i: W_OpArg) -> W_OpSpec:
+        from spy.vm.opspec import W_OpSpec
+        return W_OpSpec(w_make_list_type)
 
 
 T = TypeVar('T', bound='W_Object')
@@ -113,8 +113,8 @@ class W_List(W_BaseList, Generic[T]):
 
     @builtin_method('__GETITEM__', color='blue')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
-        from spy.vm.opimpl import W_OpImpl
+    def w_GETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
+        from spy.vm.opspec import W_OpSpec
         w_listtype = W_List._get_listtype(wop_list)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_List, w_listtype]
@@ -125,13 +125,13 @@ class W_List(W_BaseList, Generic[T]):
             i = vm.unwrap_i32(w_i)
             # XXX bound check?
             return w_list.items_w[i]
-        return W_OpImpl(w_getitem)
+        return W_OpSpec(w_getitem)
 
     @builtin_method('__SETITEM__', color='blue')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
-                  wop_v: W_OpArg) -> W_OpImpl:
-        from spy.vm.opimpl import W_OpImpl
+                  wop_v: W_OpArg) -> W_OpSpec:
+        from spy.vm.opspec import W_OpSpec
         w_listtype = W_List._get_listtype(wop_list)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_List, w_listtype]
@@ -142,16 +142,16 @@ class W_List(W_BaseList, Generic[T]):
             i = vm.unwrap_i32(w_i)
             # XXX bound check?
             w_list.items_w[i] = w_v
-        return W_OpImpl(w_setitem)
+        return W_OpSpec(w_setitem)
 
     @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
-        from spy.vm.opimpl import W_OpImpl
+    def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
+        from spy.vm.opspec import W_OpSpec
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
         if w_ltype is not w_rtype:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
         w_listtype = W_List._get_listtype(wop_l)
         LIST = Annotated[W_List, w_listtype]
 
@@ -165,7 +165,7 @@ class W_List(W_BaseList, Generic[T]):
                 if vm.is_False(vm.eq(w_1, w_2)):
                     return B.w_False
             return B.w_True
-        return W_OpImpl(w_eq)
+        return W_OpSpec(w_eq)
 
 
 # prebuilt list types

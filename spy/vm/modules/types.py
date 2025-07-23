@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type, W_Object, ClassBody
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
@@ -40,10 +40,10 @@ class W_LiftedType(W_Type):
     @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod
     def w_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
-                      *args_wop: W_OpArg) -> W_OpImpl:
+                      *args_wop: W_OpArg) -> W_OpSpec:
         meth = wop_method.blue_unwrap_str(vm)
         if meth != '__lift__':
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
         w_hltype = wop_self.w_blueval
         assert isinstance(w_hltype, W_LiftedType)
@@ -55,7 +55,7 @@ class W_LiftedType(W_Type):
             assert isinstance(w_hltype, W_LiftedType)
             return W_LiftedObject(w_hltype, w_ll)
 
-        return W_OpImpl(w_lift, list(args_wop))
+        return W_OpSpec(w_lift, list(args_wop))
 
 
 @dataclass
@@ -94,7 +94,7 @@ class W_LiftedObject(W_Object):
     @builtin_method('__GET___ll____', color='blue')
     @staticmethod
     def w_GET___ll__(vm: 'SPyVM', wop_hl: W_OpArg,
-                      wop_attr: W_OpArg) -> W_OpImpl:
+                      wop_attr: W_OpArg) -> W_OpSpec:
         w_hltype = wop_hl.w_static_type
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]
@@ -102,4 +102,4 @@ class W_LiftedObject(W_Object):
         @builtin_func(w_hltype.fqn, '__unlift__')
         def w_unlift(vm: 'SPyVM', w_hl: HL) -> LL:
             return w_hl.w_ll
-        return W_OpImpl(w_unlift, [wop_hl])
+        return W_OpSpec(w_unlift, [wop_hl])

@@ -1,7 +1,7 @@
 from spy.vm.primitive import W_I32
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Object
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -19,163 +19,163 @@ class W_BinOpClass(W_Object):
 
     @builtin_method('__ADD__', color='blue')
     @staticmethod
-    def w_ADD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_ADD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_add(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x + other)  # type: ignore
-        return W_OpImpl(w_add)
+        return W_OpSpec(w_add)
 
     @builtin_method('__SUB__', color='blue')
     @staticmethod
-    def w_SUB(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_SUB(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_sub(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x - other)  # type: ignore
-        return W_OpImpl(w_sub)
+        return W_OpSpec(w_sub)
 
     @builtin_method('__MUL__', color='blue')
     @staticmethod
-    def w_MUL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_MUL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_mul(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x * other)  # type: ignore
-        return W_OpImpl(w_mul)
+        return W_OpSpec(w_mul)
 
     @builtin_method('__DIV__', color='blue')
     @staticmethod
-    def w_DIV(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_DIV(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_div(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x // other)  # type: ignore
-        return W_OpImpl(w_div)
+        return W_OpSpec(w_div)
 
     @builtin_method('__MOD__', color='blue')
     @staticmethod
-    def w_MOD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_MOD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_mod(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x % other)  # type: ignore
-        return W_OpImpl(w_mod)
+        return W_OpSpec(w_mod)
 
     @builtin_method('__AND__', color='blue')
     @staticmethod
-    def w_AND(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_AND(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_and(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x & other)  # type: ignore
-        return W_OpImpl(w_and)
+        return W_OpSpec(w_and)
 
     @builtin_method('__OR__', color='blue')
     @staticmethod
-    def w_OR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_OR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_or(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x | other)  # type: ignore
-        return W_OpImpl(w_or)
+        return W_OpSpec(w_or)
 
     @builtin_method('__XOR__', color='blue')
     @staticmethod
-    def w_XOR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_XOR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_xor(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x ^ other)  # type: ignore
-        return W_OpImpl(w_xor)
+        return W_OpSpec(w_xor)
 
     @builtin_method('__SHL__', color='blue')
     @staticmethod
-    def w_SHL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_SHL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_shl(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x << other)  # type: ignore
-        return W_OpImpl(w_shl)
+        return W_OpSpec(w_shl)
 
     @builtin_method('__SHR__', color='blue')
     @staticmethod
-    def w_SHR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_SHR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_shr(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(x >> other)  # type: ignore
-        return W_OpImpl(w_shr)
-        
+        return W_OpSpec(w_shr)
+
     @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_EQ(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_eq(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(1 if x == other else 0)  # type: ignore
-        return W_OpImpl(w_eq)
-        
+        return W_OpSpec(w_eq)
+
     @builtin_method('__NE__', color='blue')
     @staticmethod
-    def w_NE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_NE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_ne(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(1 if x != other else 0)  # type: ignore
-        return W_OpImpl(w_ne)
-        
+        return W_OpSpec(w_ne)
+
     @builtin_method('__LT__', color='blue')
     @staticmethod
-    def w_LT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_LT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_lt(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(1 if x < other else 0)  # type: ignore
-        return W_OpImpl(w_lt)
-        
+        return W_OpSpec(w_lt)
+
     @builtin_method('__LE__', color='blue')
     @staticmethod
-    def w_LE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_LE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_le(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(1 if x <= other else 0)  # type: ignore
-        return W_OpImpl(w_le)
-        
+        return W_OpSpec(w_le)
+
     @builtin_method('__GT__', color='blue')
     @staticmethod
-    def w_GT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_GT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_gt(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(1 if x > other else 0)  # type: ignore
-        return W_OpImpl(w_gt)
-        
+        return W_OpSpec(w_gt)
+
     @builtin_method('__GE__', color='blue')
     @staticmethod
-    def w_GE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpImpl:
+    def w_GE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_ge(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             other = vm.unwrap_i32(w_other)
             return vm.wrap(1 if x >= other else 0)  # type: ignore
-        return W_OpImpl(w_ge)
+        return W_OpSpec(w_ge)
 
 
 @no_C
@@ -255,11 +255,11 @@ class TestOperatorBinop(CompilerTest):
         def test_and(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj & y
-            
+
         def test_or(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj | y
-            
+
         def test_xor(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj ^ y
@@ -277,7 +277,7 @@ class TestOperatorBinop(CompilerTest):
         def test_shl(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj << y
-            
+
         def test_shr(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj >> y
@@ -285,16 +285,16 @@ class TestOperatorBinop(CompilerTest):
         mod = self.compile(src)
         assert mod.test_shl(5, 2) == 20   # 5 << 2 = 20
         assert mod.test_shr(20, 2) == 5   # 20 >> 2 = 5
-        
+
     def test_eq_ne(self):
         self.setup_ext()
         src = """
         from ext import BinOpClass
-        
+
         def test_eq(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj == y
-            
+
         def test_ne(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj != y
@@ -304,16 +304,16 @@ class TestOperatorBinop(CompilerTest):
         assert mod.test_eq(5, 6) == 0   # 5 == 6 is False (0)
         assert mod.test_ne(5, 5) == 0   # 5 != 5 is False (0)
         assert mod.test_ne(5, 6) == 1   # 5 != 6 is True (1)
-        
+
     def test_lt_le(self):
         self.setup_ext()
         src = """
         from ext import BinOpClass
-        
+
         def test_lt(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj < y
-            
+
         def test_le(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj <= y
@@ -322,20 +322,20 @@ class TestOperatorBinop(CompilerTest):
         assert mod.test_lt(5, 6) == 1   # 5 < 6 is True (1)
         assert mod.test_lt(6, 5) == 0   # 6 < 5 is False (0)
         assert mod.test_lt(5, 5) == 0   # 5 < 5 is False (0)
-        
+
         assert mod.test_le(5, 6) == 1   # 5 <= 6 is True (1)
         assert mod.test_le(6, 5) == 0   # 6 <= 5 is False (0)
         assert mod.test_le(5, 5) == 1   # 5 <= 5 is True (1)
-        
+
     def test_gt_ge(self):
         self.setup_ext()
         src = """
         from ext import BinOpClass
-        
+
         def test_gt(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj > y
-            
+
         def test_ge(x: i32, y: i32) -> i32:
             obj = BinOpClass(x)
             return obj >= y
@@ -344,7 +344,7 @@ class TestOperatorBinop(CompilerTest):
         assert mod.test_gt(6, 5) == 1   # 6 > 5 is True (1)
         assert mod.test_gt(5, 6) == 0   # 5 > 6 is False (0)
         assert mod.test_gt(5, 5) == 0   # 5 > 5 is False (0)
-        
+
         assert mod.test_ge(6, 5) == 1   # 6 >= 5 is True (1)
-        assert mod.test_ge(5, 6) == 0   # 5 >= 6 is False (0) 
+        assert mod.test_ge(5, 6) == 0   # 5 >= 6 is False (0)
         assert mod.test_ge(5, 5) == 1   # 5 >= 5 is True (1)

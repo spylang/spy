@@ -3,7 +3,7 @@ from spy.llwasm import LLWasmInstance
 from spy.vm.b import B
 from spy.vm.object import W_Object
 from spy.vm.builtin import builtin_func, builtin_method
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.primitive import W_I32
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -86,13 +86,13 @@ class W_Str(W_Object):
 
     @staticmethod
     def w_meta_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                    *args_wop: W_OpArg) -> W_OpImpl:
+                    *args_wop: W_OpArg) -> W_OpSpec:
         from spy.vm.b import B
         if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
             wop_i = args_wop[0]
-            return W_OpImpl(w_int2str, [wop_i])
+            return W_OpSpec(w_int2str, [wop_i])
         else:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
 
 @builtin_func('builtins')

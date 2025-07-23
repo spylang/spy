@@ -8,7 +8,7 @@ from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpImpl, W_OpArg
+    from spy.vm.opspec import W_OpSpec, W_OpArg
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
@@ -61,13 +61,13 @@ class W_FuncType(W_Type):
 
     @builtin_method('__EQ__', color='blue')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpImpl':
-        from spy.vm.opimpl import W_OpImpl
+    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
         from spy.vm.modules.builtins import w_functype_eq
         if wop_l.w_static_type is wop_r.w_static_type:
-            return W_OpImpl(w_functype_eq)
+            return W_OpSpec(w_functype_eq)
         else:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
     @classmethod
     def parse(cls, s: str) -> 'W_FuncType':
@@ -193,19 +193,19 @@ class W_Func(W_Object):
     # depending on whether w_functype.kind is 'plain' or 'generic'.
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
-                *args_wop: 'W_OpArg') -> 'W_OpImpl':
-        from spy.vm.opimpl import W_OpImpl
+                *args_wop: 'W_OpArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
         w_func = wop_func.w_blueval
         assert isinstance(w_func, W_Func)
 
         if w_func.w_functype.kind == 'metafunc':
             # call the metafunc to get the opimpl
             w_opimpl = vm.fast_call(w_func, list(args_wop))
-            assert isinstance(w_opimpl, W_OpImpl)
+            assert isinstance(w_opimpl, W_OpSpec)
             return w_opimpl
         else:
             # return the func as the opimpl
-            return W_OpImpl(
+            return W_OpSpec(
                 w_func,
                 list(args_wop),
                 is_direct_call = True,

@@ -3,7 +3,7 @@
 from spy.vm.primitive import W_I32
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Object
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -20,12 +20,12 @@ class W_MyClass(W_Object):
 
     @builtin_method('__NEG__', color='blue')
     @staticmethod
-    def w_NEG(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpImpl:
+    def w_NEG(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_neg(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
             x = vm.unwrap_i32(w_self.w_x)
             return vm.wrap(-x)  # type: ignore
-        return W_OpImpl(w_neg)
+        return W_OpSpec(w_neg)
 
 
 @no_C
