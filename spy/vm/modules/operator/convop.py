@@ -22,10 +22,10 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
     If the types are not compatible, raise SPyError. In this case,
     the caller can catch the error, add extra info and re-raise.
     """
-    w_opimpl = get_opimpl(vm, w_exp, wop_x)
-    if not w_opimpl.is_null():
-        # XXX: maybe we should return a W_OpSpec?
-        return w_opimpl._w_func  # type: ignore
+    w_opspec = get_opspec(vm, w_exp, wop_x)
+    if not w_opspec.is_null():
+        # XXX: maybe we should return a W_OpImpl?
+        return w_opspec._w_func  # type: ignore
 
     # mismatched types
     err = SPyError('W_TypeError', 'mismatched types')
@@ -35,7 +35,7 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
     raise err
 
 
-def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpSpec:
+def get_opspec(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpSpec:
     # this condition is checked by CONVERT_maybe. If we want this function to
     # become more generally usable, we might want to return an identity func
     # here.
@@ -52,9 +52,9 @@ def get_opimpl(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpSpec:
         assert isinstance(w_from_dynamic_T, W_Func)
         return W_OpSpec(w_from_dynamic_T)
 
-    w_opimpl = MM.lookup('convert', w_got, w_exp)
-    if not w_opimpl.is_null():
-        return w_opimpl
+    w_opspec = MM.lookup('convert', w_got, w_exp)
+    if not w_opspec.is_null():
+        return w_opspec
 
     if w_CONV_TO := w_got.lookup_blue_func('__CONVERT_TO__'):
         return op_fast_call(vm, w_CONV_TO, [w_exp, wop_x])

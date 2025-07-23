@@ -194,8 +194,8 @@ class W_OpArg(W_Object):
         # check that the blueval has the expected type. If not, we should
         # probably raise a better error, but for now we just fail with
         # AssertionError.
-        w_opimpl = CONVERT_maybe(vm, w_expected_type, self)
-        assert w_opimpl is None
+        w_func = CONVERT_maybe(vm, w_expected_type, self)
+        assert w_func is None
         assert self.w_val is not None
         return self.w_val
 

@@ -199,12 +199,12 @@ class W_Func(W_Object):
         assert isinstance(w_func, W_Func)
 
         if w_func.w_functype.kind == 'metafunc':
-            # call the metafunc to get the opimpl
-            w_opimpl = vm.fast_call(w_func, list(args_wop))
-            assert isinstance(w_opimpl, W_OpSpec)
-            return w_opimpl
+            # call the metafunc to get the opspec
+            w_opspec = vm.fast_call(w_func, list(args_wop))
+            assert isinstance(w_opspec, W_OpSpec)
+            return w_opspec
         else:
-            # return the func as the opimpl
+            # return the func as the opspec
             return W_OpSpec(
                 w_func,
                 list(args_wop),

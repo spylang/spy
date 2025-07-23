@@ -77,10 +77,10 @@ class MultiMethodTable:
         from spy.vm.typechecker import typecheck_opspec
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
-        w_opimpl = self.lookup(op, w_ltype, w_rtype)
+        w_opspec = self.lookup(op, w_ltype, w_rtype)
         return typecheck_opspec(
             vm,
-            w_opimpl,
+            w_opspec,
             [wop_l, wop_r],
             dispatch = 'multi',
             errmsg = 'cannot do `{0}` %s `{1}`' % op
@@ -90,10 +90,10 @@ class MultiMethodTable:
                          wop_v: W_OpArg) -> W_OpImpl:
         from spy.vm.typechecker import typecheck_opspec
         w_vtype = wop_v.w_static_type
-        w_opimpl = self.lookup(op, w_vtype, None)
+        w_opspec = self.lookup(op, w_vtype, None)
         return typecheck_opspec(
             vm,
-            w_opimpl,
+            w_opspec,
             [wop_v],
             dispatch = 'single',
             errmsg = 'cannot do %s`{0}`' % op

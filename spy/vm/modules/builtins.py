@@ -112,11 +112,11 @@ def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
     w_type = wop_obj.w_static_type
 
     if w_LEN := w_type.lookup_blue_func('__LEN__'):
-        w_opimpl = op_fast_call(vm, w_LEN, [wop_obj])
-        return w_opimpl
+        w_opspec = op_fast_call(vm, w_LEN, [wop_obj])
+        return w_opspec
     elif w_fn := w_type.lookup_func('__len__'):
-        w_opimpl = W_OpSpec(w_fn, [wop_obj])
-        return w_opimpl
+        w_opspec = W_OpSpec(w_fn, [wop_obj])
+        return w_opspec
 
     t = w_type.fqn.human_name
     raise SPyError.simple(

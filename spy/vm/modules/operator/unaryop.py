@@ -13,8 +13,8 @@ def w_NEG(vm: 'SPyVM', wop_v: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_vtype = wop_v.w_static_type
     if w_NEG := w_vtype.lookup_blue_func('__NEG__'):
-        w_opimpl = op_fast_call(vm, w_NEG, [wop_v])
-        return typecheck_opspec(vm, w_opimpl, [wop_v],
+        w_opspec = op_fast_call(vm, w_NEG, [wop_v])
+        return typecheck_opspec(vm, w_opspec, [wop_v],
                                 dispatch='single',
                                 errmsg='cannot do -`{0}`')
     return MM.get_unary_opimpl(vm, '-', wop_v)
