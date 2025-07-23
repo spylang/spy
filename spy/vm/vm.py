@@ -490,7 +490,7 @@ class SPyVM:
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
-        w_res = self.fast_call(w_opimpl, [w_a, w_b])
+        w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -498,7 +498,7 @@ class SPyVM:
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wop_a, wop_b])
-        w_res = self.fast_call(w_opimpl, [w_a, w_b])
+        w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

@@ -23,22 +23,22 @@ def test_repeat():
 def test_shuffle_args():
     vm = SPyVM()
     w_functype = W_FuncType.parse('def(i32, str) -> str')
-    w_adapter = W_OpImpl(
+    w_opimpl = W_OpImpl(
         w_functype,
         w_repeat,
         [ArgSpec.Arg(1), ArgSpec.Arg(0)]
     )
-    w_s = vm.fast_call(w_adapter, [vm.wrap(3), vm.wrap('ab ')])
+    w_s = w_opimpl.execute(vm, [vm.wrap(3), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
     r = '<spy adapter `def(i32, str) -> str` for `test::repeat`>'
-    assert repr(w_adapter) == r
+    assert repr(w_opimpl) == r
     #
     expected = textwrap.dedent("""
     def(v0: i32, v1: str) -> str:
         return `test::repeat`(v1, v0)
     """).strip()
-    assert w_adapter.render() == expected
+    assert w_opimpl.render() == expected
 
 def test_const():
     vm = SPyVM()
