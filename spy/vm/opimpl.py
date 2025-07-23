@@ -36,10 +36,17 @@ ArgSpec.Convert = Convert  # type: ignore
 @OPERATOR.builtin_type('OpImpl')
 class W_OpImpl(W_Object):
     """
-    XXX write me
-    Adapt another w_func to a different signature.
+    The typechecked counterpart of OpSpec.
 
-    When called, W_FuncAdapter transforms the input args_w into the "real"
+    OpSpec specifies how an operation must be done, e.g. "call this function
+    with these two arguments".
+
+    typechecker.typecheck() transforms an OpSpec into an OpImpl, which is
+    ready to be executed. In particular, OpImpl contains all the conversions
+    which might be necessary to perform, in case the signature of the function
+    doesn't match the type of the OpArgs.
+
+    When execute()d, W_OpImpl transforms the input args_w into the "real"
     args_w which is passed to w_func.
 
     The transformation rules are stored into a list of ArgSpec, which
