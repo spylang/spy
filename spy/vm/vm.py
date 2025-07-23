@@ -509,7 +509,7 @@ class SPyVM:
         wop_obj = self._w_oparg(w_obj)
         wop_i = self._w_oparg(w_i)
         w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wop_obj, wop_i])
-        return self.fast_call(w_opimpl, [w_obj, w_i])
+        return w_opimpl.execute(self, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
