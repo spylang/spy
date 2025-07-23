@@ -1,4 +1,4 @@
-from operator import OpImpl, OpArg
+from operator import OpSpec, OpArg
 from unsafe import gc_alloc, ptr
 
 @blue.generic
@@ -25,7 +25,7 @@ def ndarray1(DTYPE):
 
 
         @blue
-        def __GETITEM__(v_arr: OpArg, v_i: OpArg) -> OpImpl:
+        def __GETITEM__(v_arr: OpArg, v_i: OpArg) -> OpSpec:
 
             def getitem(arr: ndarray, i: i32) -> DTYPE:
                 ll = arr.__ll__
@@ -33,7 +33,7 @@ def ndarray1(DTYPE):
                     raise IndexError
                 return ll.items[i]
 
-            return OpImpl(getitem)
+            return OpSpec(getitem)
 
     return ndarray
 
