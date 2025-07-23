@@ -16,7 +16,7 @@ from spy.vm.list import W_ListType
 from spy.vm.b import B
 from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
-from spy.vm.func_adapter import W_FuncAdapter
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.module import W_Module
 from spy.vm.opspec import W_OpSpec, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
@@ -389,7 +389,8 @@ class SPyVM:
 
         Blue functions are cached, as expected.
         """
-        if w_func.color == 'blue' and not isinstance(w_func, W_FuncAdapter):
+        assert not isinstance(w_func, W_OpImpl) # XXX remove me after the PR
+        if w_func.color == 'blue' and not isinstance(w_func, W_OpImpl):
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
             if w_result is not None:
@@ -406,7 +407,7 @@ class SPyVM:
             loc: Optional[Loc],
             w_OP: W_Func,
             args_wop: Sequence[W_OpArg]
-    ) -> W_Func:
+    ) -> W_OpImpl:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
         """
@@ -446,7 +447,7 @@ class SPyVM:
 
         try:
             w_opimpl = self.fast_call(w_OP, new_args_wop)
-            assert isinstance(w_opimpl, W_Func)
+            assert isinstance(w_opimpl, W_OpImpl)
             return w_opimpl
         except SPyError as err:
             if loc is not None:
@@ -570,7 +571,7 @@ class SPyVM:
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 
-        w_res = self.fast_call(w_opimpl, [w_a, w_b])
+        w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

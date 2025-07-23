@@ -7,7 +7,7 @@ from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc, W_Func
-from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
+from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opspec import W_OpArg
 from spy.vm.exc import W_StaticError
@@ -289,12 +289,12 @@ class DopplerFrame(ASTFrame):
                      w_opimpl: W_Func,
                      orig_args: list[ast.Expr]
                      ) -> ast.Call:
-        assert isinstance(w_opimpl, W_FuncAdapter)
+        assert isinstance(w_opimpl, W_OpImpl)
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
         real_args = self._shift_adapter_args(w_opimpl, orig_args)
         return ast.Call(op.loc, func, real_args)
 
-    def _shift_adapter_args(self, w_adapter: W_FuncAdapter,
+    def _shift_adapter_args(self, w_adapter: W_OpImpl,
                             orig_args: list[ast.Expr]) -> list[ast.Expr]:
         def getarg(spec: ArgSpec) -> ast.Expr:
             if isinstance(spec, ArgSpec.Arg):

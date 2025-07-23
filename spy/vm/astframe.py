@@ -16,6 +16,7 @@ from spy.vm.tuple import W_Tuple
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opspec import W_OpArg
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.util import magic_dispatch
@@ -458,7 +459,7 @@ class AbstractFrame:
         w_type = self.vm.dynamic_type(w_val)
         return W_OpArg(self.vm, color, w_type, w_val, name.loc, sym=sym)
 
-    def eval_opimpl(self, op: ast.Node, w_opimpl: W_Func,
+    def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
                     args_wop: list[W_OpArg]) -> W_OpArg:
         # hack hack hack
         # result color:
@@ -477,7 +478,8 @@ class AbstractFrame:
             w_res = None
         else:
             args_w = [wop.w_val for wop in args_wop]
-            w_res = self.vm.fast_call(w_opimpl, args_w)
+            #w_res = self.vm.fast_call(w_opimpl, args_w)
+            w_res = w_opimpl.execute(self.vm, args_w)
 
         return W_OpArg(self.vm, color, w_functype.w_restype, w_res, op.loc)
 

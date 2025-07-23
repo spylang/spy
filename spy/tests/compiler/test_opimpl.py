@@ -2,7 +2,7 @@
 
 from spy.vm.b import B
 from spy.vm.opspec import W_OpSpec, W_OpArg
-from spy.vm.func_adapter import W_FuncAdapter
+from spy.vm.opimpl import W_OpImpl
 from spy.tests.support import CompilerTest, only_interp
 
 @only_interp
@@ -132,5 +132,5 @@ class TestOpSpec(CompilerTest):
             return ADD(i32, i32)
         """)
         w_adapter = mod.foo(unwrap=False)
-        assert isinstance(w_adapter, W_FuncAdapter)
+        assert isinstance(w_adapter, W_OpImpl)
         assert w_adapter.w_func is OP.w_i32_add

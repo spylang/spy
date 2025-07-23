@@ -7,7 +7,7 @@ from spy.vm.object import W_Type
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.exc import W_TypeError
 from spy.vm.function import W_Func, W_FuncType, FuncParam
-from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
+from spy.vm.opimpl import W_OpImpl, ArgSpec
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -103,7 +103,7 @@ def typecheck_opspec(
         args.append(arg)
 
     # everything good!
-    w_adapter = W_FuncAdapter(w_in_functype, w_opspec._w_func, args)
+    w_adapter = W_OpImpl(w_in_functype, w_opspec._w_func, args)
     return w_adapter
 
 

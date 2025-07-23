@@ -32,8 +32,9 @@ ArgSpec.Arg = Arg          # type: ignore
 ArgSpec.Const = Const      # type: ignore
 ArgSpec.Convert = Convert  # type: ignore
 
-class W_FuncAdapter(W_Func):
+class W_OpImpl:
     """
+    XXX write me
     Adapt another w_func to a different signature.
 
     When called, W_FuncAdapter transforms the input args_w into the "real"
@@ -58,7 +59,7 @@ class W_FuncAdapter(W_Func):
     def is_pure(self) -> bool:
         return self.w_func.is_pure()
 
-    def raw_call(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def execute(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
         def getarg(spec: ArgSpec) -> W_Object:
             if isinstance(spec, Arg):
                 return args_w[spec.i]

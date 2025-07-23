@@ -2,7 +2,7 @@ import textwrap
 from spy.location import Loc
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_FuncType
-from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
+from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.primitive import W_I32
 from spy.vm.str import W_Str
 from spy.vm.builtin import builtin_func
@@ -23,7 +23,7 @@ def test_repeat():
 def test_shuffle_args():
     vm = SPyVM()
     w_functype = W_FuncType.parse('def(i32, str) -> str')
-    w_adapter = W_FuncAdapter(
+    w_adapter = W_OpImpl(
         w_functype,
         w_repeat,
         [ArgSpec.Arg(1), ArgSpec.Arg(0)]
@@ -44,7 +44,7 @@ def test_const():
     vm = SPyVM()
     w_functype = W_FuncType.parse('def(i32) -> str')
     w_s = vm.wrap('ab ')
-    w_adapter = W_FuncAdapter(
+    w_adapter = W_OpImpl(
         w_functype,
         w_repeat,
         [ArgSpec.Const(w_s, Loc.here()), ArgSpec.Arg(0)]
@@ -60,7 +60,7 @@ def test_const():
 def test_converter():
     vm = SPyVM()
     w_functype = W_FuncType.parse('def(f64, str) -> str')
-    w_adapter = W_FuncAdapter(
+    w_adapter = W_OpImpl(
         w_functype,
         w_repeat,
         [ArgSpec.Arg(1), ArgSpec.Convert(OP.w_f64_to_i32, ArgSpec.Arg(0))]
