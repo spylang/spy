@@ -389,7 +389,6 @@ class SPyVM:
 
         Blue functions are cached, as expected.
         """
-        assert not isinstance(w_func, W_OpImpl) # XXX remove me after the PR
         if w_func.color == 'blue' and not isinstance(w_func, W_OpImpl):
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
