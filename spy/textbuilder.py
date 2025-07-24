@@ -6,12 +6,14 @@ class TextBuilder:
     level: int  # indentation level
     lines: list[Union[str, 'TextBuilder']]
     use_colors: bool
+    color_level: list[tuple[Optional[str], Optional[str]]]  # stack of (color, bg) pairs
 
     def __init__(self, *, use_colors: bool = False) -> None:
         self.level = 0
         self.lines = ['']
         self.use_colors = use_colors
-        self.color = ColorFormatter(use_colors)
+        self.fmt = ColorFormatter(use_colors)
+        self.color_level = [(None, None)]  # Start with no color
 
     @property
     def lineno(self) -> int:
@@ -30,6 +32,27 @@ class TextBuilder:
         self.level += 1
         yield
         self.level -= 1
+
+    @contextmanager
+    def color(self, color: Optional[str] = None, *, bg: Optional[str] = None) -> Iterator[None]:
+        """
+        Context manager to set text color for all writes within the block.
+
+        Args:
+            color: The foreground color to use
+            bg: The background color to use
+
+        If a color is None, it will inherit the color from the parent context.
+        """
+        current_color, current_bg = self.color_level[-1]
+        new_color = color if color is not None else current_color
+        new_bg = bg if bg is not None else current_bg
+
+        self.color_level.append((new_color, new_bg))
+        try:
+            yield
+        finally:
+            self.color_level.pop()
 
     def make_nested_builder(self, *, detached: bool = False) -> 'TextBuilder':
         """
@@ -70,7 +93,15 @@ class TextBuilder:
               bg: Optional[str] = None) -> None:
         assert '\n' not in s
         assert isinstance(self.lines[-1], str)
-        s = self.color.set(color, s, bg=bg)
+
+        # If colors are explicitly provided, use them
+        # Otherwise, use the current color context
+        if color is None and bg is None and len(self.color_level) > 0:
+            current_color, current_bg = self.color_level[-1]
+            s = self.fmt.set(current_color, s, bg=current_bg)
+        else:
+            s = self.fmt.set(color, s, bg=bg)
+
         if self.lines[-1] == '':
             # add the indentation
             spaces = ' ' * (self.level * 4)
@@ -142,7 +173,7 @@ class ColorFormatter:
     bg_red = '101'
     bg_green = '102'
     bg_yellow = '103'
-    bg_blue = '44'  # Using 44 to match the test expectation
+    bg_blue = '104'
     bg_fuchsia = '105'
     bg_turquoise = '106'
     bg_white = '107'
@@ -230,6 +261,19 @@ def main():
         with multiple lines
         in green on dark red
     """, color='green', bg='darkred')
+
+    # Test color contextmanager
+    print("\nTextBuilder with color contextmanager:")
+    b = TextBuilder(use_colors=True)
+    b.wl("Normal text")
+    with b.color('red'):
+        b.write('This is red text. ')
+        with b.color(bg='green'):
+            b.write('This is red on green. ')
+            with b.color('blue'):
+                b.write('This is blue on green.')
+        b.writeline()
+    b.wl("Back to normal text")
 
     print(b.build())
 
