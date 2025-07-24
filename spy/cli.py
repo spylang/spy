@@ -307,6 +307,10 @@ async def inner_main(args: Arguments) -> None:
         do_pyparse(str(args.filename))
         return
 
+    if args.filename.suffix == '.py':
+        print(f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr)
+        sys.exit(1)
+
     modname = args.filename.stem
     srcdir = args.filename.parent
     vm = await SPyVM.async_new()
