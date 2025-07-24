@@ -218,7 +218,7 @@ Color = ColorFormatter(use_colors=True)
 
 # run it with python -m spy.textbuilder
 
-def main():
+def main() -> None:
     print("Visual test of ColorFormatter functionality")
     print("==========================================")
 
