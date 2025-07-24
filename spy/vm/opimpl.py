@@ -46,6 +46,12 @@ class W_OpImpl(W_Object):
     which might be necessary to perform, in case the signature of the function
     doesn't match the type of the OpArgs.
 
+    OpImpl is not a function, but behaves like one: it expects a certain
+    number of positional arguments with certain types, and it has a return
+    type and a color. For simplicity, we use `w_functype` for this purpose,
+    but it's important to understand that it's not a function (in particular,
+    it cannot be called by normal means).
+
     When execute()d, W_OpImpl transforms the input args_w into the "real"
     args_w which is passed to w_func.
 

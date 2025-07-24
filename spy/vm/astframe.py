@@ -478,7 +478,6 @@ class AbstractFrame:
             w_res = None
         else:
             args_w = [wop.w_val for wop in args_wop]
-            #w_res = self.vm.fast_call(w_opimpl, args_w)
             w_res = w_opimpl.execute(self.vm, args_w)
 
         return W_OpArg(self.vm, color, w_functype.w_restype, w_res, op.loc)

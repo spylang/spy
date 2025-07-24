@@ -10,7 +10,6 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opspec import W_OpArg
-from spy.vm.opimpl import W_OpImpl
 from spy.vm.exc import W_StaticError
 from spy.util import magic_dispatch
 
