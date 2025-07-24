@@ -94,13 +94,11 @@ class TextBuilder:
         assert '\n' not in s
         assert isinstance(self.lines[-1], str)
 
-        # If colors are explicitly provided, use them
-        # Otherwise, use the current color context
-        if color is None and bg is None and len(self.color_level) > 0:
-            current_color, current_bg = self.color_level[-1]
-            s = self.fmt.set(current_color, s, bg=current_bg)
-        else:
-            s = self.fmt.set(color, s, bg=bg)
+        # Get current color context and override with any explicit values
+        current_color, current_bg = self.color_level[-1] if self.color_level else (None, None)
+        final_color = color if color is not None else current_color
+        final_bg = bg if bg is not None else current_bg
+        s = self.fmt.set(final_color, s, bg=final_bg)
 
         if self.lines[-1] == '':
             # add the indentation
@@ -267,11 +265,12 @@ def main() -> None:
     b = TextBuilder(use_colors=True)
     b.wl("Normal text")
     with b.color('red'):
-        b.write('This is red text. ')
+        b.wl('This is red text. ')
         with b.color(bg='green'):
-            b.write('This is red on green. ')
+            b.wl('This is red on green.')
+            b.wl('This is purple on green.', color='purple')
             with b.color('blue'):
-                b.write('This is blue on green.')
+                b.wl('This is blue on green.')
         b.writeline()
     b.wl("Back to normal text")
 

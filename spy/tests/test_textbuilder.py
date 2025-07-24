@@ -226,6 +226,7 @@ class TestColorFormatter:
             b.write('red text ')
             with b.color(bg='green'):
                 b.write('red on green ')
+                b.wl('This is purple on green.', color='purple')
                 with b.color('blue'):
                     b.write('blue on green')
         b.writeline()
@@ -258,6 +259,7 @@ class TestColorFormatter:
         assert '\x1b[31;01mred text\x1b[00m' in s
         assert '\x1b[31;01mred text \x1b[00m' in s
         assert '\x1b[31;01;102mred on green \x1b[00m' in s
+        assert '\x1b[35;102mThis is purple on green.\x1b[00m' in s
         assert '\x1b[34;01;102mblue on green\x1b[00m' in s
         assert '\x1b[33;01myellow text \x1b[00m' in s
         assert '\x1b[33;01;104myellow on blue \x1b[00m' in s
@@ -281,3 +283,4 @@ class TestColorFormatter:
 
         s = b.build().rstrip('\n')
         assert s == 'red text red on green blue on green'
+
