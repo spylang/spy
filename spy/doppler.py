@@ -1,6 +1,7 @@
 from typing import Optional, Literal, TYPE_CHECKING
 from fixedint import FixedInt
 from spy import ast
+from spy.analyze.symtable import Color
 from spy.location import Loc
 from spy.fqn import FQN
 from spy.errors import SPyError
@@ -55,6 +56,9 @@ class DopplerFrame(ASTFrame):
     shifted_expr: dict[ast.Expr, ast.Expr]
     opimpl: dict[ast.Node, W_OpImpl]
     error_mode: ErrorMode
+    # The original color before redshifting.
+    expr_color: dict[ast.Expr, Color]
+
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
                  error_mode: ErrorMode) -> None:
@@ -64,6 +68,7 @@ class DopplerFrame(ASTFrame):
         self.opimpl = {}
         assert error_mode != 'warn'
         self.error_mode = error_mode
+        self.expr_color = {}
 
     # overridden
     @property
@@ -245,6 +250,8 @@ class DopplerFrame(ASTFrame):
                   -> compute shited binop (stored in .shifted_expr)
         """
         wop = super().eval_expr(expr, varname=varname)
+        self.expr_color[expr] = wop.color
+        expr.color = wop.color
         if wop.color == 'blue':
             new_expr = make_const(self.vm, expr.loc, wop.w_val)
         else:

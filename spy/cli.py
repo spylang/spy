@@ -10,6 +10,7 @@ import typer
 from typer import Option
 import py.path
 import pdb as stdlib_pdb # to distinguish from the "--pdb" option
+from spy.ast_dump import ColorMode
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.magic_py_parse import magic_py_parse
 from spy.analyze.importing import ImportAnalizyer
@@ -51,6 +52,14 @@ class Arguments:
         Option(
             "-p", "--parse",
             help="Dump the SPy AST"
+        )
+    ] = False
+
+    colorize: Annotated[
+        bool,
+        Option(
+            "-C", "--colorize",
+            help="Output the redshifted AST with blue / red text colors."
         )
     ] = False
 
@@ -210,6 +219,7 @@ class Arguments:
 
 
 def do_pyparse(filename: str) -> None:
+    import ast as py_ast
     with open(filename) as f:
         src = f.read()
     mod = magic_py_parse(src)
@@ -220,14 +230,14 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
-def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
+def dump_spy_mod_ast(vm: SPyVM, modname: str, color_mode: ColorMode = 'multi') -> None:
     w_mod = vm.modules_w[modname]
     for fqn, w_obj in w_mod.items_w():
         if (isinstance(w_obj, W_ASTFunc) and
             w_obj.color == 'red' and
             w_obj.fqn == fqn):
             print(f'`{fqn}` = ', end='')
-            w_obj.funcdef.pp()
+            w_obj.funcdef.pp(color_mode=color_mode)
             print()
 
 def pyproject_entry_point() -> Any:
@@ -319,9 +329,9 @@ async def inner_main(args: Arguments) -> None:
     importer = ImportAnalizyer(vm, modname)
     importer.parse_all()
 
+    spy_mod = importer.getmod(modname)
     if args.parse and not args.redshift:
-        mod = importer.getmod(modname)
-        mod.pp()
+        spy_mod.pp()
         return
 
     if args.imports:
@@ -357,7 +367,9 @@ async def inner_main(args: Arguments) -> None:
 
     vm.redshift(error_mode=args.error_mode)
     if args.redshift:
-        if args.parse:
+        if args.colorize:
+            spy_mod.pp(color_mode='redshift')
+        elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
             dump_spy_mod(vm, modname, args.full_fqn)

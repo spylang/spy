@@ -1,17 +1,24 @@
+import re
 from typing import Optional, Iterator, Union
 import textwrap
 from contextlib import contextmanager
+
 
 class TextBuilder:
     level: int  # indentation level
     lines: list[Union[str, 'TextBuilder']]
     use_colors: bool
+    _ansi_escape_re = re.compile(r'\x1b\[[0-9;]*m')
 
     def __init__(self, *, use_colors: bool = False) -> None:
         self.level = 0
         self.lines = ['']
         self.use_colors = use_colors
-        self.color = ColorFormatter(use_colors)
+        self.color_formatter = ColorFormatter(use_colors)
+        self.active_text_color: Optional[str] = None
+
+    def visible_length(self, s: str) -> int:
+        return len(self._ansi_escape_re.sub('', s))
 
     @property
     def lineno(self) -> int:
@@ -30,6 +37,27 @@ class TextBuilder:
         self.level += 1
         yield
         self.level -= 1
+
+    @contextmanager
+    def color_block(self, text_color: str, reset: bool = True) -> Iterator[None]:
+        self.set_color(text_color)
+        yield
+        if self.use_colors and reset:
+            self.writeraw(self.color_formatter.reset)
+
+    def set_color(self, text_color: str) -> None:
+        self.writeraw(self.color_formatter.start(text_color))
+
+    def set_active_text_color(self, text_color: str) -> None:
+        """Set the active text color for persistent coloring in redshift mode"""
+        self.active_text_color = text_color
+        self.set_color(text_color)
+
+    def clear_active_text_color(self) -> None:
+        """Clear the active text color and reset to no color"""
+        self.active_text_color = None
+        if self.use_colors:
+            self.writeraw(self.color_formatter.reset)
 
     def make_nested_builder(self, *, detached: bool = False) -> 'TextBuilder':
         """
@@ -66,11 +94,23 @@ class TextBuilder:
         self.lines[-1] = nested
         self.lines.append('')
 
+    def writeraw(self, s: str) -> None:
+        """
+        Append a string, without any indentation or color formatting.
+        """
+        assert '\n' not in s
+        assert isinstance(self.lines[-1], str)
+        self.lines[-1] += s
+
     def write(self, s: str, *, color: Optional[str] = None) -> None:
         assert '\n' not in s
         assert isinstance(self.lines[-1], str)
-        s = self.color.set(color, s)
-        if self.lines[-1] == '':
+        
+        # Use active text color if no explicit color is provided
+        effective_color = color if color is not None else self.active_text_color
+        s = self.color_formatter.set(effective_color, s)
+        
+        if self.visible_length(self.lines[-1]) == 0:
             # add the indentation
             spaces = ' ' * (self.level * 4)
             self.lines[-1] = spaces
@@ -124,18 +164,34 @@ class ColorFormatter:
     fuchsia = '35;01'
     turquoise = '36;01'
     white = '37;01'
+    reset = '\x1b[00m'
 
     def __init__(self, use_colors: bool) -> None:
         self._use_colors = use_colors
 
-    def set(self, color: Optional[str], s: str) -> str:
-        if color is None or not self._use_colors:
-            return s
+    def start(self, text_color: Optional[str]) -> str:
+        """
+        Set output to the given color only
+        """
+        if text_color is None or not self._use_colors:
+            return ''
         try:
-            color = getattr(self, color)
+            text_color = getattr(self, text_color)
         except AttributeError:
             pass
-        return '\x1b[%sm%s\x1b[00m' % (color, s)
+        return '\x1b[%sm' % (text_color)
+
+    def set(self, text_color: Optional[str], s: str = '') -> str:
+        """
+        Set output to the given color, and print the string s
+        """
+        if text_color is None or not self._use_colors:
+            return s
+        try:
+            text_color = getattr(self, text_color)
+        except AttributeError:
+            pass
+        return '\x1b[%sm%s\x1b[00m' % (text_color, s)
 
 # create a global instance, so that you can just do Color.set('red', ....)
 Color = ColorFormatter(use_colors=True)

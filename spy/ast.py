@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Iterator, Any, no_type_check
+from typing import Optional, Iterator, Any, no_type_check, TYPE_CHECKING
 import ast as py_ast
 import dataclasses
 from dataclasses import dataclass, field
@@ -7,6 +7,9 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.analyze.symtable import Color
 from spy.util import extend
+
+if TYPE_CHECKING:
+    from spy.ast_dump import ColorMode
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
 VarKind = typing.Literal['const', 'var']
@@ -47,9 +50,9 @@ class AST:
                 py_node._loc = loc
 
     @typing.no_type_check
-    def pp(self, *, hl=None) -> None:
+    def pp(self, *, hl=None, color_mode: 'ColorMode' = 'multi') -> None:
         import spy.ast_dump
-        spy.ast_dump.pprint(self, hl=hl)
+        spy.ast_dump.pprint(self, hl=hl, color_mode=color_mode)
 
 del AST
 
@@ -71,9 +74,9 @@ del AST
 class Node:
     loc: Loc = field(repr=False)
 
-    def pp(self, hl: Any=None) -> None:
+    def pp(self, hl: Any=None, color_mode: 'ColorMode' = 'multi') -> None:
         import spy.ast_dump
-        spy.ast_dump.pprint(self, hl=hl)
+        spy.ast_dump.pprint(self, hl=hl, color_mode=color_mode)
 
     @typing.no_type_check
     def ppc(self) -> None:
@@ -206,6 +209,7 @@ class Expr(Node):
     # precedence must be overriden by subclasses. The weird type comment is
     # needed to make mypy happy
     precedence = '<Expr.precedence not set>' # type: int # type: ignore
+    color: Color | None = field(default=None, kw_only=True)
 
 
 @dataclass(eq=False)
