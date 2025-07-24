@@ -57,7 +57,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.primitive import W_NoneType
     from spy.vm.function import W_Func
-    from spy.vm.opimpl import W_OpImpl, W_OpArg
+    from spy.vm.opspec import W_OpSpec, W_OpArg
 
 def builtin_method(name: str, *, color: Color = 'red') -> Any:
     """
@@ -159,51 +159,51 @@ class W_Object:
         return True
 
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
+    def w_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_NE(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpImpl':
+    def w_NE(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                  wop_attr: 'W_OpArg') -> 'W_OpImpl':
+                  wop_attr: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
-                  wop_v: 'W_OpArg') -> 'W_OpImpl':
+                  wop_v: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                  wop_i: 'W_OpArg') -> 'W_OpImpl':
+                  wop_i: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_i: 'W_OpArg',
-                  wop_v: 'W_OpArg') -> 'W_OpImpl':
+                  wop_v: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_CALL(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                *args_wop: 'W_OpArg') -> 'W_OpImpl':
+                *args_wop: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_CALL_METHOD(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_method: 'W_OpArg',
-                      *args_wop: 'W_OpArg') -> 'W_OpImpl':
+                      *args_wop: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_CONVERT_FROM(vm: 'SPyVM', w_T: 'W_Type',
-                       wop_x: 'W_OpArg') -> 'W_OpImpl':
+                       wop_x: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
     def w_CONVERT_TO(vm: 'SPyVM', w_T: 'W_Type',
-                     wop_x: 'W_OpArg') -> 'W_OpImpl':
+                     wop_x: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
 
@@ -231,7 +231,7 @@ class W_Type(W_Object):
 
     This can be achieved by declaring the W_Type manually (as done e.g. by
     W_Object and W_Type itself) or by calling
-    @builtin_type(lazy_definition=True) (as done e.g. by W_OpImpl). By
+    @builtin_type(lazy_definition=True) (as done e.g. by W_OpSpec). By
     convention, the .define() is called at the beginning of vm.py.
     """
     __spy_storage_category__ = 'reference'
@@ -314,7 +314,7 @@ class W_Type(W_Object):
     def _init_builtin_method(self, statmeth: staticmethod) -> None:
         "Turn the @builtin_method into a W_BuiltinFunc"
         from spy.vm.builtin import builtin_func
-        from spy.vm.opimpl import W_OpArg, W_OpImpl
+        from spy.vm.opspec import W_OpArg, W_OpSpec
         appname, color = statmeth.spy_builtin_method  # type: ignore
         pyfunc = statmeth.__func__
 
@@ -337,7 +337,7 @@ class W_Type(W_Object):
         extra_types = {
             self.pyclass.__name__: Annotated[self.pyclass, self],
             'W_OpArg': W_OpArg,
-            'W_OpImpl': W_OpImpl,
+            'W_OpSpec': W_OpSpec,
         }
         decorator = builtin_func(
             namespace = self.fqn,
@@ -414,14 +414,14 @@ class W_Type(W_Object):
     @builtin_method('__CALL__', color='blue')
     @staticmethod
     def w_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
-               *args_wop: 'W_OpArg') -> 'W_OpImpl':
+               *args_wop: 'W_OpArg') -> 'W_OpSpec':
         """
         Calling a type means to instantiate it.
 
         First try to use __NEW__ if defined, otherwise fall back to __new__.
         """
         from spy.vm.function import W_Func
-        from spy.vm.opimpl import W_OpImpl
+        from spy.vm.opspec import W_OpSpec
 
         if wop_t.color != 'blue':
             err = SPyError(
@@ -439,14 +439,14 @@ class W_Type(W_Object):
         if w_NEW is not None:
             assert isinstance(w_NEW, W_Func), 'XXX raise proper exception'
             w_res = vm.fast_call(w_NEW, [wop_t] + list(args_wop))
-            assert isinstance(w_res, W_OpImpl)
+            assert isinstance(w_res, W_OpSpec)
             return w_res
 
         # else, fall back to __new__
         w_new = w_type.lookup_func('__new__')
         if w_new is not None:
             assert isinstance(w_new, W_Func), 'XXX raise proper exception'
-            return W_OpImpl(w_new, list(args_wop))
+            return W_OpSpec(w_new, list(args_wop))
 
         # no __NEW__ nor __new__, error out
         clsname = w_type.fqn.human_name

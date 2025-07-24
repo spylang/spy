@@ -1,7 +1,7 @@
 from spy.vm.primitive import W_I32
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Object
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -19,7 +19,7 @@ class W_MyClass(W_Object):
 
     @builtin_method('__GETITEM__', color='blue')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+    def w_GETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
 
         @builtin_func('ext')
         def w_getitem(vm: 'SPyVM', w_self: W_MyClass, w_i: W_I32) -> W_I32:
@@ -33,12 +33,12 @@ class W_MyClass(W_Object):
             # Otherwise calculate a value based on base and index
             return vm.wrap(base + idx)  # type: ignore
 
-        return W_OpImpl(w_getitem)
+        return W_OpSpec(w_getitem)
 
     @builtin_method('__SETITEM__', color='blue')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg,
-                  wop_v: W_OpArg) -> W_OpImpl:
+                  wop_v: W_OpArg) -> W_OpSpec:
 
         @builtin_func('ext')
         def w_setitem(vm: 'SPyVM', w_self: W_MyClass, w_i: W_I32,
@@ -46,7 +46,7 @@ class W_MyClass(W_Object):
             idx = vm.unwrap_i32(w_i)
             w_self.w_values[idx] = w_v
 
-        return W_OpImpl(w_setitem)
+        return W_OpSpec(w_setitem)
 
 
 class W_2DArray(W_Object):
@@ -65,7 +65,7 @@ class W_2DArray(W_Object):
     @builtin_method('__GETITEM__', color='blue')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_self: W_OpArg,
-                  wop_i: W_OpArg, wop_j: W_OpArg) -> W_OpImpl:
+                  wop_i: W_OpArg, wop_j: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_getitem(vm: 'SPyVM', w_self: W_2DArray,
                       w_i: W_I32, w_j: W_I32) -> W_I32:
@@ -74,12 +74,12 @@ class W_2DArray(W_Object):
             k = i + (j * w_self.W)
             val = w_self.data[k]
             return vm.wrap(val)  # type: ignore
-        return W_OpImpl(w_getitem)
+        return W_OpSpec(w_getitem)
 
     @builtin_method('__SETITEM__', color='blue')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg,
-                  wop_j: W_OpArg, wop_v: W_OpArg) -> W_OpImpl:
+                  wop_j: W_OpArg, wop_v: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
         def w_setitem(vm: 'SPyVM', w_self: W_2DArray, w_i: W_I32,
                       w_j: W_I32, w_v: W_I32) -> None:
@@ -88,7 +88,7 @@ class W_2DArray(W_Object):
             v = vm.unwrap_i32(w_v)
             k = i + (j * w_self.W)
             w_self.data[k] = v
-        return W_OpImpl(w_setitem)
+        return W_OpSpec(w_setitem)
 
 
 

@@ -4,19 +4,19 @@ from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Type
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.exc import W_TypeError
 from spy.vm.function import W_Func, W_FuncType, FuncParam
-from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
+from spy.vm.opimpl import W_OpImpl, ArgSpec
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 # DispatchKind is a property of an OPERATOR and can be:
 #
-#   - 'single' if the opimpl depends only on the type of the first operand
+#   - 'single' if the opspec depends only on the type of the first operand
 #     (e.g., CALL, GETATTR, etc.)
 #
-#   - 'multi' is the opimpl depends on the types of all operands (e.g., all
+#   - 'multi' is the opspec depends on the types of all operands (e.g., all
 #     binary operators)
 DispatchKind = Literal['single', 'multi']
 
@@ -29,48 +29,48 @@ def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
         return plural
 
 
-def typecheck_opimpl(
+def typecheck_opspec(
         vm: 'SPyVM',
-        w_opimpl: W_OpImpl,
+        w_opspec: W_OpSpec,
         in_args_wop: list[W_OpArg],
         *,
         dispatch: DispatchKind,
         errmsg: str,
-) -> W_Func:
+) -> W_OpImpl:
     """
-    Turn the W_OpImpl into a W_Func which can be called using fast_call.
+    Turn the W_OpSpec into a W_OpImpl, ready to be execute()d.
 
-    Check the arg types that we are passing to the opimpl, and insert
+    Check the arg types that we are passing to the OpSpec, and insert
     appropriate type conversions if needed.
 
     `dispatch` is used only for diagnostics: if it's 'single' we will
     report the type of the first operand, else of all operands.
     """
-    if w_opimpl.is_null():
-        _opimpl_null_error(in_args_wop, dispatch, errmsg)
-    assert w_opimpl._w_func is not None
+    if w_opspec.is_null():
+        _opspec_null_error(in_args_wop, dispatch, errmsg)
+    assert w_opspec._w_func is not None
 
-    # the want to make an adapter that:
-    #   - behaves like a function of type w_in_functype
-    #   - calls an opimpl of type w_out_functype
-    w_out_functype = w_opimpl.w_functype
+    # the final goal is to create an OpImpl which:
+    #   - when executed behaves like a function of type w_in_functype
+    #   - calls a function of type w_out_functype
+    w_out_functype = w_opspec.w_functype
     w_in_functype = functype_from_opargs(
         in_args_wop,
         w_out_functype.w_restype,
         color=w_out_functype.color
     )
 
-    # if it's a simple OpImpl, we automatically pass the in_args_wop in order
-    if w_opimpl.is_simple():
+    # if it's a simple OpSpec, we automatically pass the in_args_wop in order
+    if w_opspec.is_simple():
         out_args_wop = in_args_wop
     else:
-        assert w_opimpl._args_wop is not None
-        out_args_wop = w_opimpl._args_wop
+        assert w_opspec._args_wop is not None
+        out_args_wop = w_opspec._args_wop
 
     # if it's a direct call, we can display extra info about call location
-    def_loc = w_opimpl._w_func.def_loc
+    def_loc = w_opspec._w_func.def_loc
     call_loc = None
-    if w_opimpl.is_direct_call:
+    if w_opspec.is_direct_call:
         wop_func = in_args_wop[0]
         call_loc = wop_func.loc
 
@@ -85,7 +85,7 @@ def typecheck_opimpl(
             def_loc = def_loc,
             call_loc = call_loc)
 
-    # build the argspec for the W_FuncAdapter
+    # build the argspec for the W_OpImpl
     args = []
     for param, wop_out_arg in zip(w_out_functype.all_params(), out_args_wop):
         # add a converter if needed (this might raise SPyTypeError)
@@ -103,8 +103,8 @@ def typecheck_opimpl(
         args.append(arg)
 
     # everything good!
-    w_adapter = W_FuncAdapter(w_in_functype, w_opimpl._w_func, args)
-    return w_adapter
+    w_opimpl = W_OpImpl(w_in_functype, w_opspec._w_func, args)
+    return w_opimpl
 
 
 def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
@@ -128,13 +128,13 @@ def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
         raise
 
 
-def _opimpl_null_error(
+def _opspec_null_error(
         in_args_wop: list[W_OpArg],
         dispatch: DispatchKind,
         errmsg: str
 ) -> NoReturn:
     """
-    We couldn't find an OpImpl for this OPERATOR.
+    We couldn't find an OpSpec for this OPERATOR.
     The details of the error message depends on the DispatchKind:
 
      - single dispatch means that the target (argument 0) doesn't

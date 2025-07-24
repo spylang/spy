@@ -40,7 +40,7 @@ class TestTypelift(CompilerTest):
 
     def test_operator(self):
         mod = self.compile("""
-        from operator import OpImpl
+        from operator import OpSpec
 
         @typelift
         class MyInt:
@@ -50,7 +50,7 @@ class TestTypelift(CompilerTest):
             def __GETITEM__(v_obj, v_i):
                 def getitem(m: MyInt, i: i32) -> i32:
                     return m.__ll__ + i*2
-                return OpImpl(getitem)
+                return OpSpec(getitem)
 
         def foo(x: i32, y: i32) -> i32:
             m = MyInt.__lift__(x)
@@ -60,7 +60,7 @@ class TestTypelift(CompilerTest):
 
     def test_method(self):
         src = """
-        from operator import OpImpl
+        from operator import OpSpec
 
         @typelift
         class MyInt:

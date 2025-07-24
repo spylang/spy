@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.object import Member
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Object, W_Str
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -58,12 +58,12 @@ class TestAttrOp(CompilerTest):
             @builtin_method('__GET_x__', color='blue')
             @staticmethod
             def w_GET_x(vm: 'SPyVM', wop_obj: W_OpArg,
-                         wop_attr: W_OpArg) -> W_OpImpl:
+                         wop_attr: W_OpArg) -> W_OpSpec:
                 w_t = wop_obj.w_static_type
                 @builtin_func(w_t.fqn, 'get_x')
                 def w_get_x(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
-                return W_OpImpl(w_get_x, [wop_obj])
+                return W_OpSpec(w_get_x, [wop_obj])
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -96,7 +96,7 @@ class TestAttrOp(CompilerTest):
             @builtin_method('__GETATTR__', color='blue')
             @staticmethod
             def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_attr: W_OpArg) -> W_OpImpl:
+                          wop_attr: W_OpArg) -> W_OpSpec:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func('ext', 'getx')
@@ -109,21 +109,21 @@ class TestAttrOp(CompilerTest):
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
                         return vm.wrap(attr.upper() + '--42')  # type: ignore
-                return W_OpImpl(w_fn)
+                return W_OpSpec(w_fn)
 
             @builtin_method('__SETATTR__', color='blue')
             @staticmethod
             def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                          wop_v: W_OpArg) -> W_OpImpl:
+                          wop_v: W_OpArg) -> W_OpSpec:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func('ext')
                     def w_setx(vm: 'SPyVM', w_obj: W_MyClass,
                                w_attr: W_Str, w_val: W_I32) -> None:
                         w_obj.x = vm.unwrap_i32(w_val)
-                    return W_OpImpl(w_setx)
+                    return W_OpSpec(w_setx)
                 else:
-                    return W_OpImpl.NULL
+                    return W_OpSpec.NULL
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

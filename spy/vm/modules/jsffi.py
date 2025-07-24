@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.builtin import builtin_method
 from spy.vm.registry import ModuleRegistry
 
@@ -28,10 +28,10 @@ class W_JsRef(W_Object):
     @builtin_method('__CALL_METHOD__', color='blue')
     @staticmethod
     def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                      *args_wop: W_OpArg) -> W_OpImpl:
+                      *args_wop: W_OpArg) -> W_OpSpec:
         n = len(args_wop)
         if n == 1:
-            return W_OpImpl(JSFFI.w_js_call_method_1)
+            return W_OpSpec(JSFFI.w_js_call_method_1)
         else:
             raise Exception(
                 f"unsupported number of arguments for CALL_METHOD: {n}"
@@ -39,16 +39,16 @@ class W_JsRef(W_Object):
 
     @builtin_method('__CONVERT_FROM__', color='blue')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+    def w_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpSpec:
         if w_T is B.w_str:
-            return W_OpImpl(JSFFI.w_js_string)
+            return W_OpSpec(JSFFI.w_js_string)
         elif w_T is B.w_i32:
-            return W_OpImpl(JSFFI.w_js_i32)
+            return W_OpSpec(JSFFI.w_js_i32)
         elif isinstance(w_T, W_FuncType):
             assert w_T == W_FuncType.parse('def() -> None')
-            return W_OpImpl(JSFFI.w_js_wrap_func)
+            return W_OpSpec(JSFFI.w_js_wrap_func)
         else:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
 
 @JSFFI.builtin_func

@@ -16,9 +16,9 @@ from spy.vm.list import W_ListType
 from spy.vm.b import B
 from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
-from spy.vm.func_adapter import W_FuncAdapter
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.module import W_Module
-from spy.vm.opimpl import W_OpImpl, W_OpArg, w_oparg_eq
+from spy.vm.opspec import W_OpSpec, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -34,16 +34,16 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)
 W_Type._w.define(W_Type)
-W_OpImpl._w.define(W_OpImpl)
+W_OpSpec._w.define(W_OpSpec)
 W_OpArg._w.define(W_OpArg)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
 W_F64._w.define(W_F64)
 
-# W_OpImpl has w_meta_GETATTR, which means it creates a lazily-defined
+# W_OpSpec has w_meta_GETATTR, which means it creates a lazily-defined
 # metaclass. Initialize it as well
-W_OpImplType = type(W_OpImpl._w)
-W_OpImplType._w.define(W_OpImplType)
+W_OpSpecType = type(W_OpSpec._w)
+W_OpSpecType._w.define(W_OpSpecType)
 
 STDLIB = ROOT.join('..', 'stdlib')
 
@@ -389,7 +389,7 @@ class SPyVM:
 
         Blue functions are cached, as expected.
         """
-        if w_func.color == 'blue' and not isinstance(w_func, W_FuncAdapter):
+        if w_func.color == 'blue':
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
             if w_result is not None:
@@ -406,7 +406,7 @@ class SPyVM:
             loc: Optional[Loc],
             w_OP: W_Func,
             args_wop: Sequence[W_OpArg]
-    ) -> W_Func:
+    ) -> W_OpImpl:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
         """
@@ -445,9 +445,9 @@ class SPyVM:
         # </TEMPORARY HACK>
 
         try:
-            w_func = self.fast_call(w_OP, new_args_wop)
-            assert isinstance(w_func, W_Func)
-            return w_func
+            w_opimpl = self.fast_call(w_OP, new_args_wop)
+            assert isinstance(w_opimpl, W_OpImpl)
+            return w_opimpl
         except SPyError as err:
             if loc is not None:
                 opname = w_OP.fqn
@@ -489,7 +489,7 @@ class SPyVM:
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
-        w_res = self.fast_call(w_opimpl, [w_a, w_b])
+        w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -497,7 +497,7 @@ class SPyVM:
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wop_a, wop_b])
-        w_res = self.fast_call(w_opimpl, [w_a, w_b])
+        w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -508,7 +508,7 @@ class SPyVM:
         wop_obj = self._w_oparg(w_obj)
         wop_i = self._w_oparg(w_i)
         w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wop_obj, wop_i])
-        return self.fast_call(w_opimpl, [w_obj, w_i])
+        return w_opimpl.execute(self, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -570,7 +570,7 @@ class SPyVM:
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 
-        w_res = self.fast_call(w_opimpl, [w_a, w_b])
+        w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 

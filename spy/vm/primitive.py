@@ -14,7 +14,7 @@ else:
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opimpl import W_OpArg, W_OpImpl
+    from spy.vm.opspec import W_OpArg, W_OpSpec
 
 @B.builtin_type('NoneType')
 class W_NoneType(W_Object):
@@ -46,14 +46,14 @@ class W_I32(W_Object):
     @builtin_method('__NEW__', color='blue')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wop_cls: 'W_OpArg',
-              *args_wop: 'W_OpArg') -> 'W_OpImpl':
-        from spy.vm.opimpl import W_OpImpl
+              *args_wop: 'W_OpArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
         if len(args_wop) != 1:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
         wop_arg = args_wop[0]
         if wop_arg.w_static_type == B.w_f64:
-            return W_OpImpl(OP.w_f64_to_i32, [wop_arg])
-        return W_OpImpl.NULL
+            return W_OpSpec(OP.w_f64_to_i32, [wop_arg])
+        return W_OpSpec.NULL
 
     def __repr__(self) -> str:
         return f'W_I32({self.value})'
@@ -101,14 +101,14 @@ class W_F64(W_Object):
     @builtin_method('__NEW__', color='blue')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wop_cls: 'W_OpArg',
-              *args_wop: 'W_OpArg') -> 'W_OpImpl':
-        from spy.vm.opimpl import W_OpImpl
+              *args_wop: 'W_OpArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
         if len(args_wop) != 1:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
         wop_arg = args_wop[0]
         if wop_arg.w_static_type == B.w_i32:
-            return W_OpImpl(OP.w_i32_to_f64, [wop_arg])
-        return W_OpImpl.NULL
+            return W_OpSpec(OP.w_i32_to_f64, [wop_arg])
+        return W_OpSpec.NULL
 
 
     def __repr__(self) -> str:

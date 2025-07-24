@@ -19,7 +19,8 @@ from typing import Optional, TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opimpl import W_OpImpl
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -59,7 +60,7 @@ class MultiMethodTable:
             op: str,
             w_ltype: Optional[W_Type],
             w_rtype: Optional[W_Type]
-    ) -> W_OpImpl:
+    ) -> W_OpSpec:
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
             (op, w_ltype, None),     # less precise ones
@@ -68,31 +69,31 @@ class MultiMethodTable:
         for key in keys:
             w_func = self.impls.get(key)
             if w_func:
-                return W_OpImpl(w_func)
-        return W_OpImpl.NULL
+                return W_OpSpec(w_func)
+        return W_OpSpec.NULL
 
     def get_opimpl(self, vm: 'SPyVM', op: str,
-                   wop_l: W_OpArg, wop_r: W_OpArg) -> W_Func:
-        from spy.vm.typechecker import typecheck_opimpl
+                   wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
+        from spy.vm.typechecker import typecheck_opspec
         w_ltype = wop_l.w_static_type
         w_rtype = wop_r.w_static_type
-        w_opimpl = self.lookup(op, w_ltype, w_rtype)
-        return typecheck_opimpl(
+        w_opspec = self.lookup(op, w_ltype, w_rtype)
+        return typecheck_opspec(
             vm,
-            w_opimpl,
+            w_opspec,
             [wop_l, wop_r],
             dispatch = 'multi',
             errmsg = 'cannot do `{0}` %s `{1}`' % op
         )
 
     def get_unary_opimpl(self, vm: 'SPyVM', op: str,
-                         wop_v: W_OpArg) -> W_Func:
-        from spy.vm.typechecker import typecheck_opimpl
+                         wop_v: W_OpArg) -> W_OpImpl:
+        from spy.vm.typechecker import typecheck_opspec
         w_vtype = wop_v.w_static_type
-        w_opimpl = self.lookup(op, w_vtype, None)
-        return typecheck_opimpl(
+        w_opspec = self.lookup(op, w_vtype, None)
+        return typecheck_opspec(
             vm,
-            w_opimpl,
+            w_opspec,
             [wop_v],
             dispatch = 'single',
             errmsg = 'cannot do %s`{0}`' % op

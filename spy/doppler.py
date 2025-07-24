@@ -7,9 +7,9 @@ from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc, W_Func
-from spy.vm.func_adapter import W_FuncAdapter, ArgSpec
+from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.astframe import ASTFrame
-from spy.vm.opimpl import W_OpArg
+from spy.vm.opspec import W_OpArg
 from spy.vm.exc import W_StaticError
 from spy.util import magic_dispatch
 
@@ -53,7 +53,7 @@ class DopplerFrame(ASTFrame):
     Perform redshift on a W_ASTFunc
     """
     shifted_expr: dict[ast.Expr, ast.Expr]
-    opimpl: dict[ast.Node, W_Func]
+    opimpl: dict[ast.Node, W_OpImpl]
     error_mode: ErrorMode
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
@@ -264,7 +264,7 @@ class DopplerFrame(ASTFrame):
         self.shifted_expr[expr] = new_expr
         return wop
 
-    def eval_opimpl(self, op: ast.Node, w_opimpl: W_Func,
+    def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
                     args_wop: list[W_OpArg]) -> W_OpArg:
         """
         Override ASTFrame.eval_opimpl.
@@ -286,15 +286,14 @@ class DopplerFrame(ASTFrame):
         return new_expr
 
     def shift_opimpl(self, op: ast.Node,
-                     w_opimpl: W_Func,
+                     w_opimpl: W_OpImpl,
                      orig_args: list[ast.Expr]
                      ) -> ast.Call:
-        assert isinstance(w_opimpl, W_FuncAdapter)
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
-        real_args = self._shift_adapter_args(w_opimpl, orig_args)
+        real_args = self._shift_opimpl_args(w_opimpl, orig_args)
         return ast.Call(op.loc, func, real_args)
 
-    def _shift_adapter_args(self, w_adapter: W_FuncAdapter,
+    def _shift_opimpl_args(self, w_opimpl: W_OpImpl,
                             orig_args: list[ast.Expr]) -> list[ast.Expr]:
         def getarg(spec: ArgSpec) -> ast.Expr:
             if isinstance(spec, ArgSpec.Arg):
@@ -313,7 +312,7 @@ class DopplerFrame(ASTFrame):
                 )
             else:
                 assert False
-        real_args = [getarg(spec) for spec in w_adapter.args]
+        real_args = [getarg(spec) for spec in w_opimpl.args]
         return real_args
 
     def shift_expr_Constant(self, const: ast.Constant) -> ast.Expr:

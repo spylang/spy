@@ -1,4 +1,4 @@
-from operator import OpImpl, OpArg
+from operator import OpSpec, OpArg
 from unsafe import gc_alloc, ptr
 
 @struct
@@ -31,7 +31,7 @@ class Range:
         return ll.start + i*ll.step
 
     @blue
-    def __GETATTR__(v_obj: OpArg, v_attr: OpArg) -> OpImpl:
+    def __GETATTR__(v_obj: OpArg, v_attr: OpArg) -> OpSpec:
         #print(v_obj)
         #print(v_attr)
         #print(v_attr.static_type)
@@ -45,14 +45,14 @@ class Range:
         if attr == 'start':
             def getstart(r: Range, a: str) -> i32:
                 return r.__ll__.start
-            return OpImpl(getstart)
+            return OpSpec(getstart)
 
         elif attr == 'stop':
             def getstop(r: Range, a: str) -> i32:
                 return r.__ll__.stop
-            return OpImpl(getstop)
+            return OpSpec(getstop)
 
-        return OpImpl.NULL
+        return OpSpec.NULL
 
 
 def main() -> None:

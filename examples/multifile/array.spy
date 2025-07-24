@@ -1,4 +1,4 @@
-from operator import OpImpl, OpArg
+from operator import OpSpec, OpArg
 from unsafe import gc_alloc, ptr
 
 a = [1, 2, 3]
@@ -38,7 +38,7 @@ def array1d(DTYPE):
         def __GET_l__(v_self: OpArg, v_attr: OpArg):
             def get(self: ndarray) -> i32:
                 return self.__ll__.l
-            return OpImpl(get, [v_self])
+            return OpSpec(get, [v_self])
 
 
     return ndarray
@@ -86,13 +86,13 @@ def array2d(DTYPE):
         def __GET_h__(v_self: OpArg, v_attr: OpArg):
             def get(self: ndarray) -> i32:
                 return self.__ll__.h
-            return OpImpl(get, [v_self])
+            return OpSpec(get, [v_self])
 
         @blue
         def __GET_w__(v_self: OpArg, v_attr: OpArg):
             def get(self: ndarray) -> i32:
                 return self.__ll__.w
-            return OpImpl(get, [v_self])
+            return OpSpec(get, [v_self])
 
 
         def print_flatten(self: ndarray) -> None:
