@@ -177,3 +177,38 @@ class TestColorFormatter:
         fmt = ColorFormatter(use_colors=True)
         assert fmt.set('red', 'hello') == '\x1b[31;01mhello\x1b[00m'
         assert fmt.set(None, 'hello') == 'hello'
+
+    def test_ColorFormatter_bg(self):
+        fmt = ColorFormatter(use_colors=False)
+        assert fmt.set('red', 'hello', bg='blue') == 'hello'
+        #
+        fmt = ColorFormatter(use_colors=True)
+        assert fmt.set('red', 'hello', bg='blue') == '\x1b[31;01;44mhello\x1b[00m'
+        assert fmt.set(None, 'hello', bg='blue') == '\x1b[44mhello\x1b[00m'
+        assert fmt.set('red', 'hello', bg=None) == '\x1b[31;01mhello\x1b[00m'
+
+    def test_TextBuilder_bg(self):
+        b = TextBuilder(use_colors=True)
+        b.wl('hello')
+        b.wl('world', color='red', bg='blue')
+        s = b.build()
+        expected = textwrap.dedent("""\
+        hello
+        \x1b[31;01;44mworld\x1b[00m
+        """)
+        assert s == expected
+
+    def test_writeblock_bg(self):
+        b = TextBuilder(use_colors=True)
+        b.wl('hello')
+        b.wb("""
+            one
+            two
+        """, color='green', bg='darkred')
+        s = b.build()
+        expected = textwrap.dedent("""\
+        hello
+        \x1b[32;01;41mone\x1b[00m
+        \x1b[32;01;41mtwo\x1b[00m
+        """)
+        assert s == expected
