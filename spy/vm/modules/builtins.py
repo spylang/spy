@@ -61,13 +61,9 @@ def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
         return W_OpSpec(B.w_print_str)
     elif w_type is B.w_dynamic:
         return W_OpSpec(B.w_print_dynamic)
-    elif w_type is B.w_type:
-        return W_OpSpec(B.w_print_type)
-
-
     else:
-        # ???
-        return W_OpSpec(B.w_print_dynamic)
+        # NOTE: this doesn't work in the C backend
+        return W_OpSpec(B.w_print_object)
 
     t = w_type.fqn.human_name
     raise SPyError.simple(
@@ -103,7 +99,7 @@ def w_print_dynamic(vm: 'SPyVM', w_x: W_Dynamic) -> None:
     PY_PRINT(vm.unwrap(w_x))
 
 @BUILTINS.builtin_func
-def w_print_type(vm: 'SPyVM', w_x: W_Type) -> None:
+def w_print_object(vm: 'SPyVM', w_x: W_Object) -> None:
     PY_PRINT(str(w_x))
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')

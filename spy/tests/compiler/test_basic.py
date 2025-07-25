@@ -756,7 +756,7 @@ class TestBasic(CompilerTest):
                                  ""])
 
     @no_C
-    def test_print_type(self, capfd):
+    def test_print_object(self, capfd):
         mod = self.compile("""
         def foo() -> None:
             print(i32)
