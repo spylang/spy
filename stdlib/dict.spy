@@ -1,0 +1,223 @@
+from hash import hash
+from unsafe import gc_alloc, ptr
+
+
+DKIX_EMPTY = 0
+# DKIX_DUMMY = 2 ** 32 - 1
+DKIX_DUMMY = 1 << 32 - 1
+# DKIX_ERROR = 2 ** 32 - 2
+DKIX_ERROR = 1 << 32 - 2
+# DKIX_KEY_CHANGED = 2 ** 32 - 3
+DKIX_KEY_CHANGED = 1 << 32 - 3
+
+MIN_LOG_SIZE = 6
+MAX_LOG_SIZE = 31
+MAX_FILL_RATIO = 2 / 3
+
+
+@blue.generic
+def dict(Key, Value):
+    hash_key = hash[Key]
+
+    @struct
+    class Entry:
+        # empty: bool
+        empty: i32
+        key: Key
+        value: Value
+
+
+    @struct
+    class DictData:
+        index: ptr[i32]
+        log_size: i32  # capacity
+        length: i32  # number of items stored
+        # entries: ptr[Entry]  # array of structs is WIP
+        entries_empty: ptr[i32]
+        entries_key: ptr[Key]
+        entries_value: ptr[Value]
+
+
+    def new_data(log_size: i32) -> ptr[DictData]:
+        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
+        data = gc_alloc(DictData)(1)
+        index = gc_alloc(i32)(1 << log_size)
+        data.index = index
+        data.log_size = 1 << log_size
+        data.length = 0
+        i = 0
+        while i < 1 << log_size:
+            data.index[i] = DKIX_EMPTY
+            # data.entries[i].empty = True
+            i += 1
+        return data
+
+    def new_index(log_size: i32) -> ptr[i32]:
+        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
+        index = gc_alloc(i32)(1 << log_size)
+        i = 0
+        while i < 1 << log_size:
+            index[i] = DKIX_EMPTY
+            i += 1
+        return index
+
+    # def new_entries(log_size: i32) -> ptr[Entry]:
+    def new_entries(log_size: i32, data: ptr[DictData]) -> void:
+        # entries = gc_alloc(Entry)(1 << log_size)
+        entries_empty = gc_alloc(i32)(1 << log_size)
+        entries_key = gc_alloc(Key)(1 << log_size)
+        entries_value = gc_alloc(Value)(1 << log_size)
+        i = 0
+        while i < 1 << log_size:
+            # entries_empty[i] = True
+            entries_empty[i] = 1
+            # entries_key[i] = None
+            # entries_value[i] = None
+            i += 1
+        # return entries
+        data.entries_empty = entries_empty
+        data.entries_key = entries_key
+        data.entries_value = entries_value
+
+    def capacity(self: _dict) -> i32:
+        data: ptr[DictData] = self.__ll__
+        return 1 << data.log_size
+
+    def mask(self: _dict) -> i32:
+        data: ptr[DictData] = self.__ll__
+        return 1 << data.log_size - 1
+
+    def distance_0(self: _dict, key: Key) -> i32:
+        # the first slot in the index to probe when looking up key
+        return hash_key(key) & mask(self)
+
+    # def get_entry_at(self: _dict, position: i32) -> Entry:
+    #     data: DictData = self.__ll__
+    #     return data.entries[position]
+
+    def lookup(self: _dict, key: Key) -> i32:
+        data: ptr[DictData] = self.__ll__
+        d0 = distance_0(self, key)
+        distance = -1
+        while distance < capacity(self):
+            distance += 1
+            ix = data.index[(d0 + distance) & capacity(self)]
+            if ix == DKIX_EMPTY:
+                return DKIX_EMPTY
+            if ix == DKIX_DUMMY:
+                # continue
+                pass
+            else:
+                # entry = get_entry_at(self, ix)
+                entry_empty = data.entries_empty[ix]
+                # if not entry_empty:
+                    # [Antonio]: another hard-to-read error. I think it says there's no `not`?
+                    #   File "/Users/dp/repos/spy/spy/vm/modules/operator/__init__.py", line 115, in OP_unary_from_token
+                    #     return _unary_from_token[token]
+                    #            ~~~~~~~~~~~~~~~~~^^^^^^^
+                    # KeyError: 'not'
+                if entry_empty:
+                    pass
+                else:
+                    entry_key = data.entries_key[ix]
+                    # continue (I'd rather remove the `not` and use `continue` here)
+                    hash_entry = hash_key(entry_key)  # might raise exception
+                    hash_lookup = hash_key(key)  # might raise exception
+                    if hash_entry == hash_lookup:
+                        # if entry_key is key:
+                        #     return ix
+                        # WIP: Operator not implemented yet: is
+                        cmp = entry_key == key  # might raise exception
+                        if cmp:
+                            return ix
+        return DKIX_EMPTY
+
+    def insert(self: _dict, key: Key, value: Value) -> void:
+        data: ptr[DictData] = self.__ll__
+        # entry = data.entries[data.length]
+        l = data.length + 1
+        # data.length += 1
+        data.length = l
+        data.entries_key[l] = key
+        data.entries_value[l] = value
+        data.entries_empty[l] = 0
+        d0 = distance_0(self, key)
+        distance = -1
+        while distance < capacity(self):
+            distance += 1
+            ix = data.index[(d0 + distance) % capacity(self)]
+            if ix == DKIX_EMPTY:
+                data.index[d0 + distance] = l
+                return
+        raise Exception("aargh!")
+        # assert False  # must not loop through the entire index
+        # without finding a free slot
+
+    def resize(self: _dict) -> i32:
+        # The resize operation never decreases the memory used by dict;
+        # i.e., we never resize to decrease the size of dict.
+        # This follows the CPython implementation.
+        old_data: ptr[DictData] = self.__ll__
+        # assert old_data.log_size < MAX_LOG_SIZE
+        new = new_data(old_data.log_size + 1)
+        new.length = old_data.length
+        i = 0
+        while i < old_data.length:
+            # entry = old_data.entries[i]
+            # new.entries[i] = entry
+            new.entries_empty[i] = old_data.entries_empty[i]
+            new.entries_key[i] = old_data.entries_key[i]
+            new.entries_value[i] = old_data.entries_value[i]
+            i += 1
+        self.__ll__.data = new
+
+
+    @typelift
+    class _dict:
+        __ll__: ptr[DictData]
+
+        def __new__() -> _dict:
+            data = gc_alloc(DictData)(1)
+            data.log_size = MIN_LOG_SIZE
+            data.length = 0
+            data.index = new_index(data.log_size)
+            # data.entries = new_entries(data.log_size)
+            new_entries(data.log_size, data)
+            return _dict.__lift__(data)
+
+        def __getitem__(self: _dict, key: Key) -> Value:
+            data: ptr[DictData] = self.__ll__
+            ix = lookup(self, key)
+            if ix == DKIX_EMPTY:
+                # raise KeyError(key)
+                # [Antonio]: no KeyError? :(
+                # NameError: name `KeyError` is not defined
+                #    --> /Users/dp/repos/spy/stdlib/dict.spy:184:23
+                # 184 |                 raise KeyError(key)
+                #     |                       |______| not found in this scope
+                raise Exception(str(key))
+            # return data.entries[ix].value
+            return data.entries_value[ix]
+
+        def __setitem__(self: _dict, key: Key, value: Value) -> void:
+            data: ptr[DictData] = self.__ll__
+            ix = lookup(self, key)
+            if ix == DKIX_EMPTY:
+                insert(self, key, value)
+                if data.length >= capacity(self) * MAX_FILL_RATIO:
+                    resize(self)
+            else:
+                # entry = get_entry_at(self, ix)
+                # assert not entry.empty
+                # entry.value = value
+                data.entries_value[ix] = value
+
+        def __delitem__(self: _dict, key: Key) -> void:
+            pass
+
+        def __len__(self: _dict) -> i32:
+            data: ptr[DictData] = self.__ll__
+            return data.length
+
+
+    return _dict
