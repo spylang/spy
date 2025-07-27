@@ -18,7 +18,7 @@ from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.module import W_Module
-from spy.vm.opspec import W_OpSpec, W_OpArg, w_oparg_eq
+from spy.vm.opspec import W_MetaOpSpec, W_OpSpec, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -34,16 +34,12 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)
 W_Type._w.define(W_Type)
+W_MetaOpSpec._w.define(W_MetaOpSpec)
 W_OpSpec._w.define(W_OpSpec)
 W_OpArg._w.define(W_OpArg)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
 W_F64._w.define(W_F64)
-
-# W_OpSpec has w_meta_GETATTR, which means it creates a lazily-defined
-# metaclass. Initialize it as well
-W_OpSpecType = type(W_OpSpec._w)
-W_OpSpecType._w.define(W_OpSpecType)
 
 STDLIB = ROOT.join('..', 'stdlib')
 

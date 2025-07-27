@@ -293,9 +293,31 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     return B.w_True
 
 
+@OPERATOR.builtin_type('MetaOpSpec', lazy_definition=True)
+class W_MetaOpSpec(W_Type):
+    """
+    This exists solely to implement OpSpec.NULL.
+
+    I hope to be able to kill it as soon as we have descriptors
+    """
+
+    @builtin_method('__GETATTR__', color='blue')
+    @staticmethod
+    def w_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpSpec':
+        """
+        Handle class attribute lookups on OpSpec, like OpSpec.NULL
+        """
+        attr_name = wop_attr.blue_unwrap_str(vm)
+        if attr_name == 'NULL':
+            # Return the NULL instance directly
+            @builtin_func(W_OpSpec._w.fqn, 'get_null')
+            def w_get_null(vm: 'SPyVM', w_cls: W_Type) -> W_OpSpec:
+                return W_OpSpec.NULL
+            return W_OpSpec(w_get_null, [wop_cls])
+        return W_OpSpec.NULL
 
 
-@OPERATOR.builtin_type('OpSpec', lazy_definition=True)
+@OPERATOR.builtin_type('OpSpec', W_MetaClass=W_MetaOpSpec, lazy_definition=True)
 class W_OpSpec(W_Object):
     NULL: ClassVar['W_OpSpec']
     _w_func: Optional[W_Func]
@@ -334,25 +356,6 @@ class W_OpSpec(W_Object):
         return self._w_func.w_functype
 
     # ======== app-level interface ========
-
-    @builtin_method('__meta_GETATTR__', color='blue')
-    @staticmethod
-    def w_meta_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpSpec':
-        """
-        Handle class attribute lookups on OpSpec, like OpSpec.NULL
-        """
-
-        attr_name = wop_attr.blue_unwrap_str(vm)
-
-        if attr_name == 'NULL':
-            # Return the NULL instance directly
-            @builtin_func(W_OpSpec._w.fqn, 'get_null')
-            def w_get_null(vm: 'SPyVM', w_cls: W_Type) -> W_OpSpec:
-                return W_OpSpec.NULL
-
-            return W_OpSpec(w_get_null, [wop_cls])
-
-        return W_OpSpec.NULL
 
     @builtin_method('__NEW__', color='blue')
     @staticmethod

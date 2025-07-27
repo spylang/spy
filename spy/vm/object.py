@@ -551,6 +551,8 @@ def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object],
         # no metaclass needed
         return W_Type
 
+    assert False
+
     metaname = f'{fqn.symbol_name}Type'
     metafqn = fqn.namespace.join(metaname)
 
