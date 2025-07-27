@@ -145,7 +145,7 @@ class W_List(W_BaseList, Generic[T]):
             w_list.items_w[i] = w_v
         return W_OpSpec(w_setitem)
 
-    @builtin_method('__EQ__', color='blue')
+    @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec

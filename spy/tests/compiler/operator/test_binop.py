@@ -17,7 +17,7 @@ class W_BinOpClass(W_Object):
     def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_BinOpClass':
         return W_BinOpClass(w_x)
 
-    @builtin_method('__ADD__', color='blue')
+    @builtin_method('__add__', color='blue', kind='metafunc')
     @staticmethod
     def w_ADD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -27,7 +27,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x + other)  # type: ignore
         return W_OpSpec(w_add)
 
-    @builtin_method('__SUB__', color='blue')
+    @builtin_method('__sub__', color='blue', kind='metafunc')
     @staticmethod
     def w_SUB(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -37,7 +37,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x - other)  # type: ignore
         return W_OpSpec(w_sub)
 
-    @builtin_method('__MUL__', color='blue')
+    @builtin_method('__mul__', color='blue', kind='metafunc')
     @staticmethod
     def w_MUL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -47,7 +47,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x * other)  # type: ignore
         return W_OpSpec(w_mul)
 
-    @builtin_method('__DIV__', color='blue')
+    @builtin_method('__div__', color='blue', kind='metafunc')
     @staticmethod
     def w_DIV(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -57,7 +57,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x // other)  # type: ignore
         return W_OpSpec(w_div)
 
-    @builtin_method('__MOD__', color='blue')
+    @builtin_method('__mod__', color='blue', kind='metafunc')
     @staticmethod
     def w_MOD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -67,7 +67,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x % other)  # type: ignore
         return W_OpSpec(w_mod)
 
-    @builtin_method('__AND__', color='blue')
+    @builtin_method('__and__', color='blue', kind='metafunc')
     @staticmethod
     def w_AND(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -77,7 +77,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x & other)  # type: ignore
         return W_OpSpec(w_and)
 
-    @builtin_method('__OR__', color='blue')
+    @builtin_method('__or__', color='blue', kind='metafunc')
     @staticmethod
     def w_OR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -87,7 +87,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x | other)  # type: ignore
         return W_OpSpec(w_or)
 
-    @builtin_method('__XOR__', color='blue')
+    @builtin_method('__xor__', color='blue', kind='metafunc')
     @staticmethod
     def w_XOR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -97,7 +97,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x ^ other)  # type: ignore
         return W_OpSpec(w_xor)
 
-    @builtin_method('__SHL__', color='blue')
+    @builtin_method('__lshift__', color='blue', kind='metafunc')
     @staticmethod
     def w_SHL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -107,7 +107,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x << other)  # type: ignore
         return W_OpSpec(w_shl)
 
-    @builtin_method('__SHR__', color='blue')
+    @builtin_method('__rshift__', color='blue', kind='metafunc')
     @staticmethod
     def w_SHR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -117,7 +117,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(x >> other)  # type: ignore
         return W_OpSpec(w_shr)
 
-    @builtin_method('__EQ__', color='blue')
+    @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -127,7 +127,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(1 if x == other else 0)  # type: ignore
         return W_OpSpec(w_eq)
 
-    @builtin_method('__NE__', color='blue')
+    @builtin_method('__ne__', color='blue', kind='metafunc')
     @staticmethod
     def w_NE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -137,7 +137,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(1 if x != other else 0)  # type: ignore
         return W_OpSpec(w_ne)
 
-    @builtin_method('__LT__', color='blue')
+    @builtin_method('__lt__', color='blue', kind='metafunc')
     @staticmethod
     def w_LT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -147,7 +147,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(1 if x < other else 0)  # type: ignore
         return W_OpSpec(w_lt)
 
-    @builtin_method('__LE__', color='blue')
+    @builtin_method('__le__', color='blue', kind='metafunc')
     @staticmethod
     def w_LE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -157,7 +157,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(1 if x <= other else 0)  # type: ignore
         return W_OpSpec(w_le)
 
-    @builtin_method('__GT__', color='blue')
+    @builtin_method('__gt__', color='blue', kind='metafunc')
     @staticmethod
     def w_GT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
@@ -167,7 +167,7 @@ class W_BinOpClass(W_Object):
             return vm.wrap(1 if x > other else 0)  # type: ignore
         return W_OpSpec(w_gt)
 
-    @builtin_method('__GE__', color='blue')
+    @builtin_method('__ge__', color='blue', kind='metafunc')
     @staticmethod
     def w_GE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')

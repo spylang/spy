@@ -72,7 +72,7 @@ class W_Exception(W_Object):
         return W_OpSpec(w_new, [wop_cls] + list(args_wop))
 
 
-    @builtin_method('__EQ__', color='blue')
+    @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
@@ -92,7 +92,7 @@ class W_Exception(W_Object):
 
         return W_OpSpec(w_eq)
 
-    @builtin_method('__NE__', color='blue')
+    @builtin_method('__ne__', color='blue', kind='metafunc')
     @staticmethod
     def w_NE(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec

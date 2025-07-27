@@ -3,7 +3,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
-from . import OP, op_fast_call
+from . import OP, op_fast_call, op_fast_metacall
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -137,8 +137,8 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_ADD := w_ltype.lookup_blue_func('__ADD__'):
-        w_opspec = op_fast_call(vm, w_ADD, [wop_l, wop_r])
+    if w_add := w_ltype.lookup_func('__add__'):
+        w_opspec = op_fast_metacall(vm, w_add, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` + `{1}`')
@@ -148,8 +148,8 @@ def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_SUB := w_ltype.lookup_blue_func('__SUB__'):
-        w_opspec = op_fast_call(vm, w_SUB, [wop_l, wop_r])
+    if w_sub := w_ltype.lookup_func('__sub__'):
+        w_opspec = op_fast_metacall(vm, w_sub, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` - `{1}`')
@@ -159,8 +159,8 @@ def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_MUL := w_ltype.lookup_blue_func('__MUL__'):
-        w_opspec = op_fast_call(vm, w_MUL, [wop_l, wop_r])
+    if w_mul := w_ltype.lookup_func('__mul__'):
+        w_opspec = op_fast_metacall(vm, w_mul, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` * `{1}`')
@@ -170,8 +170,8 @@ def w_MUL(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_DIV := w_ltype.lookup_blue_func('__DIV__'):
-        w_opspec = op_fast_call(vm, w_DIV, [wop_l, wop_r])
+    if w_div := w_ltype.lookup_func('__div__'):
+        w_opspec = op_fast_metacall(vm, w_div, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` / `{1}`')
@@ -181,8 +181,8 @@ def w_DIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_FLOORDIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_FLOORDIV := w_ltype.lookup_blue_func('__FLOORDIV__'):
-        w_opspec = op_fast_call(vm, w_FLOORDIV, [wop_l, wop_r])
+    if w_floordiv := w_ltype.lookup_func('__floordiv__'):
+        w_opspec = op_fast_metacall(vm, w_floordiv, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` // `{1}`')
@@ -193,8 +193,8 @@ def w_FLOORDIV(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_MOD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_MOD := w_ltype.lookup_blue_func('__MOD__'):
-        w_opspec = op_fast_call(vm, w_MOD, [wop_l, wop_r])
+    if w_mod := w_ltype.lookup_func('__mod__'):
+        w_opspec = op_fast_metacall(vm, w_mod, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` % `{1}`')
@@ -204,8 +204,8 @@ def w_MOD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_LSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_SHL := w_ltype.lookup_blue_func('__SHL__'):
-        w_opspec = op_fast_call(vm, w_SHL, [wop_l, wop_r])
+    if w_lshift := w_ltype.lookup_func('__lshift__'):
+        w_opspec = op_fast_metacall(vm, w_lshift, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` << `{1}`')
@@ -215,8 +215,8 @@ def w_LSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_RSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_SHR := w_ltype.lookup_blue_func('__SHR__'):
-        w_opspec = op_fast_call(vm, w_SHR, [wop_l, wop_r])
+    if w_rshift := w_ltype.lookup_func('__rshift__'):
+        w_opspec = op_fast_metacall(vm, w_rshift, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` >> `{1}`')
@@ -226,8 +226,8 @@ def w_RSHIFT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_AND(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_AND := w_ltype.lookup_blue_func('__AND__'):
-        w_opspec = op_fast_call(vm, w_AND, [wop_l, wop_r])
+    if w_and := w_ltype.lookup_func('__and__'):
+        w_opspec = op_fast_metacall(vm, w_and, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` & `{1}`')
@@ -237,8 +237,8 @@ def w_AND(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_OR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_OR := w_ltype.lookup_blue_func('__OR__'):
-        w_opspec = op_fast_call(vm, w_OR, [wop_l, wop_r])
+    if w_or := w_ltype.lookup_func('__or__'):
+        w_opspec = op_fast_metacall(vm, w_or, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` | `{1}`')
@@ -248,8 +248,8 @@ def w_OR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_XOR(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_XOR := w_ltype.lookup_blue_func('__XOR__'):
-        w_opspec = op_fast_call(vm, w_XOR, [wop_l, wop_r])
+    if w_xor := w_ltype.lookup_func('__xor__'):
+        w_opspec = op_fast_metacall(vm, w_xor, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` ^ `{1}`')
@@ -269,8 +269,8 @@ def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
-    if w_EQ := w_ltype.lookup_blue_func('__EQ__'):
-        w_opspec = op_fast_call(vm, w_EQ, [wop_l, wop_r])
+    if w_eq := w_ltype.lookup_func('__eq__'):
+        w_opspec = op_fast_metacall(vm, w_eq, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` == `{1}`')
@@ -287,8 +287,8 @@ def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
     w_rtype = wop_r.w_static_type
-    if w_NE := w_ltype.lookup_blue_func('__NE__'):
-        w_opspec = op_fast_call(vm, w_NE, [wop_l, wop_r])
+    if w_ne := w_ltype.lookup_func('__ne__'):
+        w_opspec = op_fast_metacall(vm, w_ne, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                 dispatch='multi',
                                 errmsg='cannot do `{0}` != `{1}`')
@@ -324,8 +324,8 @@ def w_UNIVERSAL_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_LT := w_ltype.lookup_blue_func('__LT__'):
-        w_opspec = op_fast_call(vm, w_LT, [wop_l, wop_r])
+    if w_lt := w_ltype.lookup_func('__lt__'):
+        w_opspec = op_fast_metacall(vm, w_lt, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                dispatch='multi',
                                errmsg='cannot do `{0}` < `{1}`')
@@ -335,8 +335,8 @@ def w_LT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_LE := w_ltype.lookup_blue_func('__LE__'):
-        w_opspec = op_fast_call(vm, w_LE, [wop_l, wop_r])
+    if w_le := w_ltype.lookup_func('__le__'):
+        w_opspec = op_fast_metacall(vm, w_le, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                dispatch='multi',
                                errmsg='cannot do `{0}` <= `{1}`')
@@ -346,8 +346,8 @@ def w_LE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_GT := w_ltype.lookup_blue_func('__GT__'):
-        w_opspec = op_fast_call(vm, w_GT, [wop_l, wop_r])
+    if w_gt := w_ltype.lookup_func('__gt__'):
+        w_opspec = op_fast_metacall(vm, w_gt, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                dispatch='multi',
                                errmsg='cannot do `{0}` > `{1}`')
@@ -357,8 +357,8 @@ def w_GT(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
 def w_GE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_type
-    if w_GE := w_ltype.lookup_blue_func('__GE__'):
-        w_opspec = op_fast_call(vm, w_GE, [wop_l, wop_r])
+    if w_ge := w_ltype.lookup_func('__ge__'):
+        w_opspec = op_fast_metacall(vm, w_ge, [wop_l, wop_r])
         return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
                                dispatch='multi',
                                errmsg='cannot do `{0}` >= `{1}`')

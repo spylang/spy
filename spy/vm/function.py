@@ -59,7 +59,7 @@ class W_FuncType(W_Type):
     def __hash__(self) -> int:
         return hash((self.fqn, self.color, tuple(self.params), self.w_restype))
 
-    @builtin_method('__EQ__', color='blue')
+    @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec

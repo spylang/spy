@@ -227,7 +227,7 @@ class W_Ptr(W_BasePtr):
             )
         return W_OpSpec(w_ptr_store_T)
 
-    @builtin_method('__EQ__', color='blue')
+    @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         w_ltype = wop_l.w_static_type
@@ -245,7 +245,7 @@ class W_Ptr(W_BasePtr):
             )  # type: ignore
         return W_OpSpec(w_ptr_eq)
 
-    @builtin_method('__NE__', color='blue')
+    @builtin_method('__ne__', color='blue', kind='metafunc')
     @staticmethod
     def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         w_ltype = wop_l.w_static_type
