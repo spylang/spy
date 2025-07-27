@@ -82,9 +82,19 @@ class W_PtrType(W_Type):
             return W_OpSpec.NULL
 
 
+@UNSAFE.builtin_type('MetaBasePtr')
+class W_MetaBasePtr(W_Type):
+    """
+    This exist solely to be able to do ptr[...]
+    """
+
+    @builtin_method('__GETITEM__', color='blue')
+    @staticmethod
+    def w_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpSpec:
+        return W_OpSpec(w_make_ptr_type, [wop_T])
 
 
-@UNSAFE.builtin_type('ptr')
+@UNSAFE.builtin_type('ptr', W_MetaClass=W_MetaBasePtr)
 class W_BasePtr(W_Object):
     """
     This is the app-level 'ptr' type.
@@ -96,9 +106,6 @@ class W_BasePtr(W_Object):
     def __init__(self) -> None:
         raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
 
-    @staticmethod
-    def w_meta_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpSpec:
-        return W_OpSpec(w_make_ptr_type, [wop_T])
 
 
 class W_Ptr(W_BasePtr):
