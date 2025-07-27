@@ -6,7 +6,7 @@ from spy.vm.builtin import builtin_func
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
 
-from . import OP, op_fast_call
+from . import OP, op_fast_call, op_fast_metacall
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -40,10 +40,8 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return opspec_member('get', vm, w_type, attr)
     elif w_GET := w_type.lookup_blue_func(f'__GET_{attr}__'):
         return op_fast_call(vm, w_GET, [wop_obj, wop_attr])
-    elif w_GETATTR := w_type.lookup_blue_func(f'__GETATTR__'):
-        return op_fast_call(vm, w_GETATTR, [wop_obj, wop_attr])
     elif w_getattr := w_type.lookup_func(f'__getattr__'):
-        return W_OpSpec(w_getattr, [wop_obj, wop_attr])
+        return op_fast_metacall(vm, w_getattr, [wop_obj, wop_attr])
     return W_OpSpec.NULL
 
 
@@ -69,10 +67,8 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return W_OpSpec(OP.w_dynamic_setattr)
     elif attr in w_type.spy_members:
         return opspec_member('set', vm, w_type, attr)
-    elif w_SETATTR := w_type.lookup_blue_func('__SETATTR__'):
-        return op_fast_call(vm, w_SETATTR, [wop_obj, wop_attr, wop_v])
     elif w_setattr := w_type.lookup_func('__setattr__'):
-        return W_OpSpec(w_setattr, [wop_obj, wop_attr, wop_v])
+        return op_fast_metacall(vm, w_setattr, [wop_obj, wop_attr, wop_v])
     return W_OpSpec.NULL
 
 

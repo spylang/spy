@@ -52,10 +52,10 @@ class SmallPoint:
         val =  (x << 16) | (y & 0xFFFF)
         return SmallPoint.__lift__(val)
 
-    @blue
-    def __GETATTR__(v_obj: OpArg, v_attr: OpArg) -> OpSpec:
+    @blue.metafunc
+    def __getattr__(v_obj: OpArg, v_attr: OpArg) -> OpSpec:
         # p.x is vaguely equivalent to:
-        #     operator.__GETATTR__(STATIC_TYPE(p), "x")
+        #     operator.__getattr__(STATIC_TYPE(p), "x")
         #
         # Note that `p` is red and its actual value is unknown here. But "x"
         # is BLUE, so we can know which attribute we are reading and behave

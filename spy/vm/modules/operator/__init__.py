@@ -69,7 +69,7 @@ def op_fast_metacall(vm: 'SPyVM', w_func: W_Func,
         assert isinstance(w_res, W_OpSpec)
         return w_res
     else:
-        return W_OpSpec(w_func, args_wop)
+        return W_OpSpec(w_func, list(args_wop))
 
 
 # the folloing imports register all the various objects on OP

@@ -301,7 +301,7 @@ class W_MetaOpSpec(W_Type):
     I hope to be able to kill it as soon as we have descriptors
     """
 
-    @builtin_method('__GETATTR__', color='blue')
+    @builtin_method('__getattr__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpSpec':
         """

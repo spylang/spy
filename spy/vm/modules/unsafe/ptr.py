@@ -61,7 +61,7 @@ class W_PtrType(W_Type):
         w_type.w_itemtype = w_itemtype
         return w_type
 
-    @builtin_method('__GETATTR__', color='blue')
+    @builtin_method('__getattr__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg) -> W_OpSpec:
         attr = wop_attr.blue_unwrap_str(vm)
@@ -280,13 +280,13 @@ class W_Ptr(W_BasePtr):
         vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
         return W_OpSpec(w_ptr_to_bool)
 
-    @builtin_method('__GETATTR__', color='blue')
+    @builtin_method('__getattr__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
                   wop_attr: W_OpArg) -> W_OpSpec:
         return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
-    @builtin_method('__SETATTR__', color='blue')
+    @builtin_method('__setattr__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:

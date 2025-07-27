@@ -155,12 +155,12 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
+    def w_getattr(vm: 'SPyVM', wop_obj: 'W_OpArg',
                   wop_attr: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
+    def w_setattr(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
                   wop_v: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
@@ -312,7 +312,6 @@ class W_Type(W_Object):
         if appname in (
                 '__ADD__', '__SUB__', '__MUL__', '__DIV__',
                 '__EQ__', '__NE__', '__LT__', '__LE__', '__GT__', '__GE__',
-                '__GETATTR__', '__SETATTR__',
                 '__CALL__', '__CALL_METHOD__',
                 '__CONVERT_FROM__', '__CONVERT_TO__',
         ) and color != 'blue':
