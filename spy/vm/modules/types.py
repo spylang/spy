@@ -37,7 +37,7 @@ class W_LiftedType(W_Type):
         h = f"lifted from '{lltype}'"
         return [h]
 
-    @builtin_method('__CALL_METHOD__', color='blue')
+    @builtin_method('__call_method__', color='blue', kind='metafunc')
     @staticmethod
     def w_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
                       *args_wop: W_OpArg) -> W_OpSpec:

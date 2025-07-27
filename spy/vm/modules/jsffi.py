@@ -25,7 +25,7 @@ class W_JsRef(W_Object):
                   name: W_Str, val: 'W_JsRef') -> None:
         raise NotImplementedError
 
-    @builtin_method('__CALL_METHOD__', color='blue')
+    @builtin_method('__call_method__', color='blue', kind='metafunc')
     @staticmethod
     def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
                       *args_wop: W_OpArg) -> W_OpSpec:
@@ -34,7 +34,7 @@ class W_JsRef(W_Object):
             return W_OpSpec(JSFFI.w_js_call_method_1)
         else:
             raise Exception(
-                f"unsupported number of arguments for CALL_METHOD: {n}"
+                f"unsupported number of arguments for __call_method__: {n}"
             )
 
     @builtin_method('__CONVERT_FROM__', color='blue')

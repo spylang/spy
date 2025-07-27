@@ -310,7 +310,7 @@ class W_Type(W_Object):
         # sanity check: __MAGIC__ methods should be blue
         # XXX: this code should be deleted when we are done with this branch
         if appname in (
-                '__CALL__', '__CALL_METHOD__',
+                '__CALL__',
                 '__CONVERT_FROM__', '__CONVERT_TO__',
         ) and color != 'blue':
             # XXX we should raise a more detailed exception

@@ -4,7 +4,7 @@ from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.function import W_FuncType, W_Func
 
-from . import OP, op_fast_call
+from . import OP, op_fast_call, op_fast_metacall
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -64,13 +64,10 @@ def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
     w_opspec = W_OpSpec.NULL
     w_type = wop_obj.w_static_type
 
-    # if the type provides __CALL_METHOD__, use it
-    if w_CALL_METHOD := w_type.lookup_blue_func('__CALL_METHOD__'):
+    # if the type provides __call_method__, use it
+    if w_call_method := w_type.lookup_func('__call_method__'):
         newargs_wop = [wop_obj, wop_method] + list(args_wop)
-        w_opspec = op_fast_call(vm, w_CALL_METHOD, newargs_wop)
-    elif w_call_method := w_type.lookup_func('__call_method__'):
-        newargs_wop = [wop_obj, wop_method] + list(args_wop)
-        w_opspec = W_OpSpec(w_call_method, newargs_wop)
+        w_opspec = op_fast_metacall(vm, w_call_method, newargs_wop)
 
     # else, the default implementation is to look into the type dict
     # XXX: is it correct here to assume that we get a blue string?

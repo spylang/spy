@@ -208,7 +208,7 @@ class TestCallOp(CompilerTest):
             def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Calc':
                 return W_Calc(vm.unwrap_i32(w_x))
 
-            @builtin_method('__CALL_METHOD__', color='blue')
+            @builtin_method('__call_method__', color='blue', kind='metafunc')
             @staticmethod
             def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg,
                               wop_method: W_OpArg,
