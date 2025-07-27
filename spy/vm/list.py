@@ -54,7 +54,7 @@ class W_MetaBaseList(W_Type):
     This exist solely to be able to do list[...]
     """
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
@@ -112,7 +112,7 @@ class W_List(W_BaseList, Generic[T]):
             # opposed to e.g. 'list[i32]'
             assert False, 'FIXME: raise a nice error'
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec

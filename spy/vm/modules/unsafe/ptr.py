@@ -88,7 +88,7 @@ class W_MetaBasePtr(W_Type):
     This exist solely to be able to do ptr[...]
     """
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpSpec:
         return W_OpSpec(w_make_ptr_type, [wop_T])
@@ -155,7 +155,7 @@ class W_Ptr(W_BasePtr):
             # opposed to e.g. 'ptr[i32]'
             assert False, 'FIXME: raise a nice error'
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)

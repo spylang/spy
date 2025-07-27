@@ -46,8 +46,8 @@ class TestTypelift(CompilerTest):
         class MyInt:
             __ll__: i32
 
-            @blue
-            def __GETITEM__(v_obj, v_i):
+            @blue.metafunc
+            def __getitem__(v_obj, v_i):
                 def getitem(m: MyInt, i: i32) -> i32:
                     return m.__ll__ + i*2
                 return OpSpec(getitem)

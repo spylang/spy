@@ -140,15 +140,16 @@ class TestBuiltin:
         assert w_super.lookup_func('foo') is w_foo
         assert w_sub.lookup_func('foo') is w_foo
 
-    def test_builtin_method_wrong_color(self):
+    def test_metafunc_wrong_color(self):
         class W_Foo(W_Object):
 
-            @builtin_method('__GETITEM__')
+            @builtin_method('__getitem__', kind='metafunc')
             @staticmethod
             def w_GETITEM(vm: 'SPyVM') -> 'W_Foo':
                 return W_Foo()
 
-        msg = "method `test::Foo.__GETITEM__` should be blue, but it's red"
+        msg = ("wrong color for metafunc `test::Foo::__getitem__`: "
+               "expected `blue`, got `red`")
         with SPyError.raises('W_TypeError', match=msg):
             # simulate @decorator application
             builtin_type('test', 'Foo')(W_Foo)

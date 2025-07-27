@@ -58,8 +58,10 @@ if TYPE_CHECKING:
     from spy.vm.primitive import W_NoneType
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_OpSpec, W_OpArg
+    from spy.vm.builtin import FuncKind
 
-def builtin_method(name: str, *, color: Color = 'red') -> Any:
+def builtin_method(name: str, *, color: Color = 'red',
+                   kind: 'FuncKind' = 'plain') -> Any:
     """
     Turn an interp-level method into an app-level one.
 
@@ -68,7 +70,7 @@ def builtin_method(name: str, *, color: Color = 'red') -> Any:
     """
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), 'missing @staticmethod'
-        fn.spy_builtin_method = (name, color)  # type: ignore
+        fn.spy_builtin_method = (name, color, kind)  # type: ignore
         return fn
     return decorator
 
@@ -301,15 +303,17 @@ class W_Type(W_Object):
         "Turn the @builtin_method into a W_BuiltinFunc"
         from spy.vm.builtin import builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
-        appname, color = statmeth.spy_builtin_method  # type: ignore
+        appname, color, kind = statmeth.spy_builtin_method  # type: ignore
+
         pyfunc = statmeth.__func__
 
         # sanity check: __MAGIC__ methods should be blue
+        # XXX: this code should be deleted when we are done with this branch
         if appname in (
                 '__ADD__', '__SUB__', '__MUL__', '__DIV__',
                 '__EQ__', '__NE__', '__LT__', '__LE__', '__GT__', '__GE__',
                 '__GETATTR__', '__SETATTR__',
-                '__GETITEM__', '__SETITEM__',
+                '__SETITEM__',
                 '__CALL__', '__CALL_METHOD__',
                 '__CONVERT_FROM__', '__CONVERT_TO__',
         ) and color != 'blue':
@@ -330,6 +334,7 @@ class W_Type(W_Object):
             funcname = appname,
             qualifiers = [],
             color = color,
+            kind = kind,
             extra_types = extra_types,
         )
         # apply the decorator and store the method in the applevel dict

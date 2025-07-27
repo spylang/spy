@@ -43,7 +43,7 @@ from typing import TYPE_CHECKING, Sequence
 from spy.errors import WIP
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
-from spy.vm.opspec import W_OpSpec
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.b import OPERATOR, OP
 
 if TYPE_CHECKING:
@@ -57,6 +57,19 @@ def op_fast_call(vm: 'SPyVM', w_func: W_Func,
     w_res = vm.fast_call(w_func, args_w)
     assert isinstance(w_res, W_OpSpec)
     return w_res
+
+def op_fast_metacall(vm: 'SPyVM', w_func: W_Func,
+                     args_wop: Sequence[W_OpArg]) -> W_OpSpec:
+    """
+    If w_func is a metafunc, call it.
+    Else, just wrap it inside a W_OpSpec.
+    """
+    if w_func.w_functype.kind == 'metafunc':
+        w_res = vm.fast_call(w_func, args_wop)
+        assert isinstance(w_res, W_OpSpec)
+        return w_res
+    else:
+        return W_OpSpec(w_func, args_wop)
 
 
 # the folloing imports register all the various objects on OP

@@ -17,7 +17,7 @@ class W_MyClass(W_Object):
     def w_new(vm: 'SPyVM', w_base: W_I32) -> 'W_MyClass':
         return W_MyClass(w_base)
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
 
@@ -62,7 +62,7 @@ class W_2DArray(W_Object):
     def w_new(vm: 'SPyVM') -> 'W_2DArray':
         return W_2DArray()
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_self: W_OpArg,
                   wop_i: W_OpArg, wop_j: W_OpArg) -> W_OpSpec:
