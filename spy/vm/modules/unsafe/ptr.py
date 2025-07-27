@@ -106,8 +106,6 @@ class W_BasePtr(W_Object):
     def __init__(self) -> None:
         raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
 
-
-
 class W_Ptr(W_BasePtr):
     """
     An actual ptr
