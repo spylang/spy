@@ -11,7 +11,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
                     Annotated)
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color, FuncKind
-from spy.vm.object import W_Object, W_Type, make_metaclass_maybe
+from spy.vm.object import W_Object, W_Type
 from spy.vm.object import builtin_method # noqa: F401
 from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
 
@@ -140,15 +140,13 @@ def builtin_type(namespace: FQN|str,
     """
     if isinstance(namespace, str):
         namespace = FQN(namespace)
+    if W_MetaClass is None:
+        W_MetaClass = W_Type
     fqn = namespace.join(typename, qualifiers)
+
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         assert issubclass(pyclass, W_Object)
-        if W_MetaClass is None:
-            # XXX remove this eventually
-            W_MetaClass2 = make_metaclass_maybe(fqn, pyclass, lazy_definition)
-        else:
-            W_MetaClass2 = W_MetaClass
-        w_type = W_MetaClass2.declare(fqn)
+        w_type = W_MetaClass.declare(fqn)
         if not lazy_definition:
             w_type.define(pyclass)
         pyclass._w = w_type

@@ -133,20 +133,6 @@ class W_Object:
     #
     # The actual logic for the SPy VM resides in the 'operator' module (see
     # spy/vm/modules/operator).
-    #
-    # For convenience, pyclasses can also implement meta_op_*: these will be
-    # automatically used as operators for their applevel metaclass:
-    # strictly-speaking this is not necessary, because one could just write a
-    # metaclass manually with all the needed operators, but this makes it much
-    # easier. For example:
-    #
-    #    @spytype('Foo')
-    #    class W_Foo(W_Object):
-    #        @staticmethod
-    #        def w_meta_CALL(...): ...
-    #
-    # Here spytype will automatically create the metaclass W_Meta_Foo, and it
-    # will assign W_Meta_Foo.w_CALL = W_Foo.w_meta_CALL
 
     @classmethod
     def has_meth_overriden(cls, name: str) -> bool:
@@ -503,81 +489,6 @@ class Member:
             if isinstance(meta, Member):
                 return meta
         return None
-
-def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object],
-                         lazy_definition: bool) -> Type[W_Type]:
-    """
-    Synthesize an app-level metaclass for the corresponding interp-level
-    pyclass, if needed.
-
-    Normally, for each interp-level class W_Foo, we create an app-level type
-    which is an instance of W_Type.
-
-    However, W_Foo can request the creation of a custom metaclass by
-    implementing any of the supported w_meta_* methods.
-
-    Example:
-
-    @builtin_type('ext', 'Foo')
-    class W_Foo(W_Object):
-        pass
-    ==> creates:
-    w_footype = W_Type('ext::Foo', pyclass=W_Foo)
-
-
-    @builtin_type('ext', 'Bar')
-    class W_Bar(W_Object):
-        @staticmethod
-        def w_meta_GETITEM(...):
-            ..
-    ==> creates:
-    class W_BarType(W_Type):
-        @builtin_method('__GETITEM__', color='blue')
-        @staticmethod
-        def w_GETITEM(...):
-            ...
-    w_bartype = W_BarType('ext::Bar', pyclass=W_Bar)
-
-    The relationship between W_Bar and W_BarType is the following:
-
-    w_Bar = vm.wrap(W_Bar)
-    w_bar_type = vm.wrap(W_BarType)
-    assert vm.dynamic_type(w_Bar) is w_bar_type
-    """
-    from spy.vm.builtin import builtin_method
-    if (not hasattr(pyclass, 'w_meta_CALL') and
-        not hasattr(pyclass, 'w_meta_GETITEM') and
-        not hasattr(pyclass, 'w_meta_GETATTR')):
-        # no metaclass needed
-        return W_Type
-
-    assert False
-
-    metaname = f'{fqn.symbol_name}Type'
-    metafqn = fqn.namespace.join(metaname)
-
-    class W_MetaType(W_Type):
-        __name__ = f'W_{metaname}'
-        __qualname__ = __name__
-
-    if hasattr(pyclass, 'w_meta_CALL'):
-        fn = pyclass.w_meta_CALL
-        decorator = builtin_method('__CALL__', color='blue')
-        W_MetaType.w_CALL = decorator(staticmethod(fn))  # type: ignore
-    if hasattr(pyclass, 'w_meta_GETITEM'):
-        fn = pyclass.w_meta_GETITEM
-        decorator = builtin_method('__GETITEM__', color='blue')
-        W_MetaType.w_GETITEM = decorator(staticmethod(fn))  # type: ignore
-    if hasattr(pyclass, 'w_meta_GETATTR'):
-        fn = pyclass.w_meta_GETATTR
-        decorator = builtin_method('__GETATTR__', color='blue')
-        W_MetaType.w_GETATTR = decorator(staticmethod(fn))  # type: ignore
-
-    if lazy_definition:
-        W_MetaType._w = W_Type.declare(metafqn)
-    else:
-        W_MetaType._w = W_Type.from_pyclass(metafqn, W_MetaType)
-    return W_MetaType
 
 
 # Initial setup of the 'builtins' module
