@@ -22,25 +22,8 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     ll.mem.write(ptr+4, utf8)
     return ptr
 
-@B.builtin_type('MetaStr')
-class W_MetaStr(W_Type):
-    # XXX we can probably remove this metaclass altogether and use __NEW__
-    # instead
 
-    @builtin_method('__CALL__', color='blue')
-    @staticmethod
-    def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                    *args_wop: W_OpArg) -> W_OpSpec:
-        from spy.vm.b import B
-        if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
-            wop_i = args_wop[0]
-            return W_OpSpec(w_int2str, [wop_i])
-        else:
-            return W_OpSpec.NULL
-
-
-
-@B.builtin_type('str', W_MetaClass=W_MetaStr)
+@B.builtin_type('str')
 class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.
@@ -84,6 +67,16 @@ class W_Str(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()
+
+    @builtin_method('__NEW__', color='blue')
+    @staticmethod
+    def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpSpec':
+        from spy.vm.b import B
+        if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
+            wop_i = args_wop[0]
+            return W_OpSpec(w_int2str, [wop_i])
+        else:
+            return W_OpSpec.NULL
 
     @builtin_method('__getitem__')
     @staticmethod
