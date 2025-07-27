@@ -1,10 +1,10 @@
-from typing import Callable, TYPE_CHECKING, Any, Type
+from typing import Callable, TYPE_CHECKING, Any, Type, Optional
 from types import FunctionType
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Object
+    from spy.vm.object import W_Object, W_Type
     from spy.vm.function import W_BuiltinFunc
 
 class ModuleRegistry:
@@ -50,6 +50,7 @@ class ModuleRegistry:
                      qualifiers: QUALIFIERS = None,
                      *,
                      lazy_definition: bool = False,
+                     W_MetaClass: Optional[Type['W_Type']] = None,
                      ) -> Callable:
         """
         Register a type on the module.
@@ -68,7 +69,8 @@ class ModuleRegistry:
         from spy.vm.builtin import builtin_type
         def decorator(pyclass: Type['W_Object']) -> Type['W_Object']:
             bt_deco = builtin_type(self.fqn, typename, qualifiers,
-                                   lazy_definition=lazy_definition)
+                                   lazy_definition=lazy_definition,
+                                   W_MetaClass=W_MetaClass)
             W_class = bt_deco(pyclass)
             self.add(typename, W_class._w)
             return W_class

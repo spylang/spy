@@ -129,7 +129,8 @@ def builtin_type(namespace: FQN|str,
                  typename: str,
                  qualifiers: QUALIFIERS = None,
                  *,
-                 lazy_definition: bool = False
+                 lazy_definition: bool = False,
+                 W_MetaClass: Optional[Type[W_Type]] = None,
                  ) -> Any:
     """
     Class decorator to simplify the creation of builtin SPy types.
@@ -142,8 +143,12 @@ def builtin_type(namespace: FQN|str,
     fqn = namespace.join(typename, qualifiers)
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         assert issubclass(pyclass, W_Object)
-        W_MetaClass = make_metaclass_maybe(fqn, pyclass, lazy_definition)
-        w_type = W_MetaClass.declare(fqn)
+        if W_MetaClass is None:
+            # XXX remove this eventually
+            W_MetaClass2 = make_metaclass_maybe(fqn, pyclass, lazy_definition)
+        else:
+            W_MetaClass2 = W_MetaClass
+        w_type = W_MetaClass2.declare(fqn)
         if not lazy_definition:
             w_type.define(pyclass)
         pyclass._w = w_type
