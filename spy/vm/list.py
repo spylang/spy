@@ -128,7 +128,7 @@ class W_List(W_BaseList, Generic[T]):
             return w_list.items_w[i]
         return W_OpSpec(w_getitem)
 
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:

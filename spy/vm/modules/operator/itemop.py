@@ -37,10 +37,8 @@ def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     w_type = wop_obj.w_static_type
 
     newargs_wop = [wop_obj] + list(args_wop)
-    if w_SETITEM := w_type.lookup_blue_func('__SETITEM__'):
-        w_opspec = op_fast_call(vm, w_SETITEM, newargs_wop)
-    elif w_setitem := w_type.lookup_func('__setitem__'):
-        w_opspec = W_OpSpec(w_setitem, newargs_wop)
+    if w_setitem := w_type.lookup_func('__setitem__'):
+        w_opspec = op_fast_metacall(vm, w_setitem, newargs_wop)
 
     return typecheck_opspec(
         vm,

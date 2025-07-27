@@ -197,7 +197,7 @@ class W_Ptr(W_BasePtr):
 
         return W_OpSpec(w_ptr_getitem_T)
 
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:

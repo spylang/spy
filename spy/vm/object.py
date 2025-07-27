@@ -313,7 +313,6 @@ class W_Type(W_Object):
                 '__ADD__', '__SUB__', '__MUL__', '__DIV__',
                 '__EQ__', '__NE__', '__LT__', '__LE__', '__GT__', '__GE__',
                 '__GETATTR__', '__SETATTR__',
-                '__SETITEM__',
                 '__CALL__', '__CALL_METHOD__',
                 '__CONVERT_FROM__', '__CONVERT_TO__',
         ) and color != 'blue':

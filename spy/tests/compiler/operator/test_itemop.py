@@ -35,7 +35,7 @@ class W_MyClass(W_Object):
 
         return W_OpSpec(w_getitem)
 
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:
@@ -76,7 +76,7 @@ class W_2DArray(W_Object):
             return vm.wrap(val)  # type: ignore
         return W_OpSpec(w_getitem)
 
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg,
                   wop_j: W_OpArg, wop_v: W_OpArg) -> W_OpSpec:
