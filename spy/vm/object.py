@@ -310,7 +310,6 @@ class W_Type(W_Object):
         # sanity check: __MAGIC__ methods should be blue
         # XXX: this code should be deleted when we are done with this branch
         if appname in (
-                '__CALL__',
                 '__CONVERT_FROM__', '__CONVERT_TO__',
         ) and color != 'blue':
             # XXX we should raise a more detailed exception
@@ -398,7 +397,7 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
-    @builtin_method('__CALL__', color='blue')
+    @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod
     def w_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                *args_wop: 'W_OpArg') -> 'W_OpSpec':

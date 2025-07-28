@@ -43,10 +43,8 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
 
     elif w_type is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_call)
-    elif w_CALL := w_type.lookup_blue_func('__CALL__'):
-        w_opspec = op_fast_call(vm, w_CALL, newargs_wop)
     elif w_call := w_type.lookup_func('__call__'):
-        w_opspec = W_OpSpec(w_call, newargs_wop)
+        w_opspec = op_fast_metacall(vm, w_call, newargs_wop)
 
     return typecheck_opspec(
         vm,
