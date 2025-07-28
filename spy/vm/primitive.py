@@ -43,7 +43,7 @@ class W_I32(W_Object):
     def __init__(self, value: int | FixedInt) -> None:
         self.value = fixedint.Int32(value)
 
-    @builtin_method('__NEW__', color='blue')
+    @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wop_cls: 'W_OpArg',
               *args_wop: 'W_OpArg') -> 'W_OpSpec':
@@ -98,7 +98,7 @@ class W_F64(W_Object):
         assert type(value) is float
         self.value = value
 
-    @builtin_method('__NEW__', color='blue')
+    @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wop_cls: 'W_OpArg',
               *args_wop: 'W_OpArg') -> 'W_OpSpec':

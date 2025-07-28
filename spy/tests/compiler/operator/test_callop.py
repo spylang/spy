@@ -70,7 +70,7 @@ class TestCallOp(CompilerTest):
         assert x == 12
 
 
-    def test_spy_new(self):
+    def test_w_new_simple(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
@@ -100,7 +100,7 @@ class TestCallOp(CompilerTest):
         res = mod.foo(3, 6)
         assert res == 36
 
-    def test__NEW__(self):
+    def test_w_new_metafunc(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
@@ -113,7 +113,7 @@ class TestCallOp(CompilerTest):
                 self.w_x = w_x
                 self.w_y = w_y
 
-            @builtin_method('__NEW__', color='blue')
+            @builtin_method('__new__', color='blue', kind='metafunc')
             @staticmethod
             def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg,
                      *args_wop: W_OpArg) -> W_OpSpec:
@@ -156,7 +156,7 @@ class TestCallOp(CompilerTest):
         res = mod.test_one_arg(7)
         assert res == 77  # 7*10 + 7 = 77
 
-    def test_no_spy_new(self):
+    def test_no_w_new(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 

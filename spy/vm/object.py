@@ -402,12 +402,11 @@ class W_Type(W_Object):
     def w_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                *args_wop: 'W_OpArg') -> 'W_OpSpec':
         """
-        Calling a type means to instantiate it.
-
-        First try to use __NEW__ if defined, otherwise fall back to __new__.
+        Calling a type means to instantiate it, by calling its __new__
         """
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
+        from spy.vm.modules.operator import op_fast_metacall
 
         if wop_t.color != 'blue':
             err = SPyError(
@@ -420,21 +419,22 @@ class W_Type(W_Object):
         w_type = wop_t.w_blueval
         assert isinstance(w_type, W_Type)
 
-        # Call __NEW__, if present
-        w_NEW = w_type.lookup_blue_func('__NEW__')
-        if w_NEW is not None:
-            assert isinstance(w_NEW, W_Func), 'XXX raise proper exception'
-            w_res = vm.fast_call(w_NEW, [wop_t] + list(args_wop))
-            assert isinstance(w_res, W_OpSpec)
-            return w_res
+        # try to call __new__
+        if w_new := w_type.lookup_func('__new__'):
+            # this is a bit of ad-hoc logic around normal __new__ vs metafunc
+            # __new__: when it's a metafunc we also want to pass the OpArg of
+            # the type itself (so that the function can reach
+            # e.g. wop_p.w_blueval), but for normal __new__ by default we
+            # don't pass it (because usually it's not needed0
+            if w_new.w_functype.kind == 'metafunc':
+                new_args_wop = [wop_t] + list(args_wop)
+            else:
+                new_args_wop = list(args_wop)
 
-        # else, fall back to __new__
-        w_new = w_type.lookup_func('__new__')
-        if w_new is not None:
-            assert isinstance(w_new, W_Func), 'XXX raise proper exception'
-            return W_OpSpec(w_new, list(args_wop))
+            w_opspec = op_fast_metacall(vm, w_new, new_args_wop)
+            return w_opspec
 
-        # no __NEW__ nor __new__, error out
+        # no __new__, error out
         clsname = w_type.fqn.human_name
         err = SPyError('W_TypeError', f"cannot instantiate `{clsname}`")
         err.add('error', f"`{clsname}` does not have a method `__new__`",
