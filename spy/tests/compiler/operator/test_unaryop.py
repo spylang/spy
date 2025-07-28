@@ -18,7 +18,7 @@ class W_MyClass(W_Object):
     def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
         return W_MyClass(w_x)
 
-    @builtin_method('__NEG__', color='blue')
+    @builtin_method('__neg__', color='blue', kind='metafunc')
     @staticmethod
     def w_NEG(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpSpec:
         @builtin_func('ext')
