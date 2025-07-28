@@ -4,7 +4,7 @@ from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.function import W_FuncType, W_Func
 
-from . import OP, op_fast_call, op_fast_metacall
+from . import OP, op_fast_metacall
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

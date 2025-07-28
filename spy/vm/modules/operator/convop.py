@@ -7,7 +7,7 @@ from spy.vm.function import W_Func
 from spy.vm.opspec import W_OpArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8, W_U8
 from spy.vm.builtin import builtin_func
-from . import OP, op_fast_call, op_fast_metacall
+from . import OP, op_fast_metacall
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

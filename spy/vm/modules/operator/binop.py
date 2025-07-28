@@ -3,7 +3,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
-from . import OP, op_fast_call, op_fast_metacall
+from . import OP, op_fast_metacall
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

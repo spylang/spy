@@ -6,7 +6,7 @@ from spy.vm.builtin import builtin_func
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
 
-from . import OP, op_fast_call, op_fast_metacall
+from . import OP, op_fast_metacall
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -39,7 +39,10 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     elif attr in w_type.spy_members:
         return opspec_member('get', vm, w_type, attr)
     elif w_GET := w_type.lookup_blue_func(f'__GET_{attr}__'):
-        return op_fast_call(vm, w_GET, [wop_obj, wop_attr])
+        # XXX this should be killed and become a descriptor
+        w_opspec = vm.fast_call(w_GET, [wop_obj, wop_attr])
+        assert isinstance(w_opspec, W_OpSpec)
+        return w_opspec
     elif w_getattr := w_type.lookup_func(f'__getattr__'):
         return op_fast_metacall(vm, w_getattr, [wop_obj, wop_attr])
     return W_OpSpec.NULL
