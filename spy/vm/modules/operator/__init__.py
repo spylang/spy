@@ -50,20 +50,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-def op_fast_metacall(vm: 'SPyVM', w_func: W_Func,
-                     args_wop: Sequence[W_OpArg]) -> W_OpSpec:
-    """
-    If w_func is a metafunc, call it.
-    Else, just wrap it inside a W_OpSpec.
-    """
-    if w_func.w_functype.kind == 'metafunc':
-        w_res = vm.fast_call(w_func, args_wop)
-        assert isinstance(w_res, W_OpSpec)
-        return w_res
-    else:
-        return W_OpSpec(w_func, list(args_wop))
-
-
 # the folloing imports register all the various objects on OP
 from . import opimpl_int     # noqa: F401 -- side effects
 from . import opimpl_f64     # noqa: F401 -- side effects

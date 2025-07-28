@@ -397,6 +397,24 @@ class SPyVM:
             # for red functions, we just call them
             return self._raw_call(w_func, args_w)
 
+    def fast_metacall(vm: 'SPyVM', w_func: W_Func,
+                      args_wop: Sequence[W_OpArg]) -> W_OpSpec:
+        """
+        Return the OpSpec needed to call the given function.
+
+        If w_func is a normal function --> OpSpec(w_func)
+
+        If w_func is a metafunc, we call it and return whatever OpSpec it
+        returns.
+        """
+        if w_func.w_functype.kind == 'metafunc':
+            w_res = vm.fast_call(w_func, args_wop)
+            assert isinstance(w_res, W_OpSpec)
+            return w_res
+        else:
+            return W_OpSpec(w_func, list(args_wop))
+
+
     def call_OP(
             self,
             loc: Optional[Loc],

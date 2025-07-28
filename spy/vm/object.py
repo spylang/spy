@@ -395,7 +395,6 @@ class W_Type(W_Object):
         """
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
-        from spy.vm.modules.operator import op_fast_metacall
 
         if wop_t.color != 'blue':
             err = SPyError(
@@ -420,7 +419,7 @@ class W_Type(W_Object):
             else:
                 new_args_wop = list(args_wop)
 
-            w_opspec = op_fast_metacall(vm, w_new, new_args_wop)
+            w_opspec = vm.fast_metacall(w_new, new_args_wop)
             return w_opspec
 
         # no __new__, error out

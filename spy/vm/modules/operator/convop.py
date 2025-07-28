@@ -7,7 +7,7 @@ from spy.vm.function import W_Func
 from spy.vm.opspec import W_OpArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8, W_U8
 from spy.vm.builtin import builtin_func
-from . import OP, op_fast_metacall
+from . import OP
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -58,12 +58,12 @@ def get_opspec(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpSpec:
 
     if w_conv_to := w_got.lookup_func('__convert_to__'):
         wop_exp = W_OpArg.from_w_obj(vm, w_exp)
-        w_opspec = op_fast_metacall(vm, w_conv_to, [wop_exp, wop_x])
+        w_opspec = vm.fast_metacall(w_conv_to, [wop_exp, wop_x])
         return w_opspec
 
     elif w_conv_from := w_exp.lookup_func('__convert_from__'):
         wop_got = W_OpArg.from_w_obj(vm, w_got)
-        w_opspec = op_fast_metacall(vm, w_conv_from, [wop_got, wop_x])
+        w_opspec = vm.fast_metacall(w_conv_from, [wop_got, wop_x])
         return w_opspec
 
     return W_OpSpec.NULL
