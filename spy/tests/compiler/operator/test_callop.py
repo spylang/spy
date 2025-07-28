@@ -12,64 +12,6 @@ from spy.tests.support import CompilerTest, no_C, expect_errors
 class TestCallOp(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
-    def test_call_varargs(self):
-        # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
-
-        @EXT.builtin_func
-        def w_sum(vm: 'SPyVM', *args_w: W_I32) -> W_I32:
-            tot = 0
-            for w_x in args_w:
-                tot += vm.unwrap_i32(w_x)
-            return vm.wrap(tot)  # type: ignore
-        # ========== /EXT module for this test =========
-        self.vm.make_module(EXT)
-        mod = self.compile("""
-        from ext import sum
-
-        def foo(x: i32) -> i32:
-            return sum(x, 1, 2, 3)
-        """)
-        assert mod.foo(10) == 16
-
-    def test_call_instance(self):
-        # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
-
-        @EXT.builtin_type('Adder')
-        class W_Adder(W_Object):
-
-            def __init__(self, x: int) -> None:
-                self.x = x
-
-            @builtin_method('__new__')
-            @staticmethod
-            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Adder':
-                return W_Adder(vm.unwrap_i32(w_x))
-
-            @builtin_method('__call__', color='blue', kind='metafunc')
-            @staticmethod
-            def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                        *args_wop: W_OpArg) -> W_OpSpec:
-                @builtin_func('ext')
-                def w_call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
-                    y = vm.unwrap_i32(w_y)
-                    res = w_obj.x + y
-                    return vm.wrap(res) # type: ignore
-                return W_OpSpec(w_call)
-        # ========== /EXT module for this test =========
-        self.vm.make_module(EXT)
-        mod = self.compile("""
-        from ext import Adder
-
-        def foo(x: i32, y: i32) -> i32:
-            obj = Adder(x)
-            return obj(y)
-        """)
-        x = mod.foo(5, 7)
-        assert x == 12
-
-
     def test_w_new_simple(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
@@ -192,6 +134,62 @@ class TestCallOp(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_call_varargs(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_func
+        def w_sum(vm: 'SPyVM', *args_w: W_I32) -> W_I32:
+            tot = 0
+            for w_x in args_w:
+                tot += vm.unwrap_i32(w_x)
+            return vm.wrap(tot)  # type: ignore
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import sum
+
+        def foo(x: i32) -> i32:
+            return sum(x, 1, 2, 3)
+        """)
+        assert mod.foo(10) == 16
+
+    def test_call_instance(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('Adder')
+        class W_Adder(W_Object):
+
+            def __init__(self, x: int) -> None:
+                self.x = x
+
+            @builtin_method('__new__')
+            @staticmethod
+            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Adder':
+                return W_Adder(vm.unwrap_i32(w_x))
+
+            @builtin_method('__call__', color='blue', kind='metafunc')
+            @staticmethod
+            def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
+                        *args_wop: W_OpArg) -> W_OpSpec:
+                @builtin_func('ext')
+                def w_call(vm: 'SPyVM', w_obj: W_Adder, w_y: W_I32) -> W_I32:
+                    y = vm.unwrap_i32(w_y)
+                    res = w_obj.x + y
+                    return vm.wrap(res) # type: ignore
+                return W_OpSpec(w_call)
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import Adder
+
+        def foo(x: i32, y: i32) -> i32:
+            obj = Adder(x)
+            return obj(y)
+        """)
+        x = mod.foo(5, 7)
+        assert x == 12
 
     def test_call_method(self):
         # ========== EXT module for this test ==========
