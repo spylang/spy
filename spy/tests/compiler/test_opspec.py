@@ -3,7 +3,7 @@
 from spy.vm.b import B
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, only_interp, expect_errors
 
 @only_interp
 class TestOpSpec(CompilerTest):
@@ -116,11 +116,21 @@ class TestOpSpec(CompilerTest):
 
         def foo() -> OpArg:
             return i32
+
+        def bar() -> OpArg:
+            return 42
         """)
         wop_x = mod.foo(unwrap=False)
         assert wop_x.color == 'red'
         assert wop_x.w_static_type is B.w_i32
         assert wop_x._w_val is None
+
+        errors = expect_errors(
+            'mismatched types',
+            ('expected `operator::OpArg`, got `i32`', '42')
+        )
+        with errors:
+            mod.bar()
 
     def test_call_OP_with_types(self):
         from spy.vm.modules.operator import OP

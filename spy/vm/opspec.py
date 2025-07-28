@@ -217,7 +217,7 @@ class W_OpArg(W_Object):
     def w_CONVERT_FROM(vm: 'SPyVM', wop_T: 'W_OpArg',
                        wop_x: 'W_OpArg') -> 'W_OpSpec':
         w_T = wop_T.w_blueval
-        if vm.isinstance(w_T, B.w_type):
+        if vm.issubclass(w_T, B.w_type):
             @builtin_func(W_OpArg._w.fqn, 'from_type')
             def w_from_type(vm: 'SPyVM', w_type: W_Type) -> W_OpArg:
                 return W_OpArg(
@@ -225,7 +225,7 @@ class W_OpArg(W_Object):
                     color='red',
                     w_static_type=w_type,
                     w_val=None,
-                    loc=Loc.here()
+                    loc=Loc.here()  # w_from_type
                 )
             return W_OpSpec(w_from_type)
         return W_OpSpec.NULL
