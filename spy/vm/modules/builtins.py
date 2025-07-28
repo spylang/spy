@@ -104,14 +104,10 @@ def w_print_object(vm: 'SPyVM', w_x: W_Object) -> None:
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
 def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    from spy.vm.modules.operator import op_fast_call
+    from spy.vm.modules.operator import op_fast_metacall
     w_type = wop_obj.w_static_type
-
-    if w_LEN := w_type.lookup_blue_func('__LEN__'):
-        w_opspec = op_fast_call(vm, w_LEN, [wop_obj])
-        return w_opspec
-    elif w_fn := w_type.lookup_func('__len__'):
-        w_opspec = W_OpSpec(w_fn, [wop_obj])
+    if w_fn := w_type.lookup_func('__len__'):
+        w_opspec = op_fast_metacall(vm, w_fn, [wop_obj])
         return w_opspec
 
     t = w_type.fqn.human_name
