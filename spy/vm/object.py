@@ -185,12 +185,12 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', w_T: 'W_Type',
+    def w_CONVERT_FROM(vm: 'SPyVM', wop_T: 'W_OpArg',
                        wop_x: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', w_T: 'W_Type',
+    def w_CONVERT_TO(vm: 'SPyVM', wop_T: 'W_OpArg',
                      wop_x: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
@@ -304,18 +304,7 @@ class W_Type(W_Object):
         from spy.vm.builtin import builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
         appname, color, kind = statmeth.spy_builtin_method  # type: ignore
-
         pyfunc = statmeth.__func__
-
-        # sanity check: __MAGIC__ methods should be blue
-        # XXX: this code should be deleted when we are done with this branch
-        if appname in (
-                '__CONVERT_FROM__', '__CONVERT_TO__',
-        ) and color != 'blue':
-            # XXX we should raise a more detailed exception
-            fqn = self.fqn.human_name
-            msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
-            raise SPyError('W_TypeError', msg)
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations

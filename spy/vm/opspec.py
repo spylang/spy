@@ -212,10 +212,11 @@ class W_OpArg(W_Object):
         assert self.w_val is not None
         return vm.unwrap_str(self.w_val)
 
-    @builtin_method('__CONVERT_FROM__', color='blue')
+    @builtin_method('__convert_from__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type,
+    def w_CONVERT_FROM(vm: 'SPyVM', wop_T: 'W_OpArg',
                        wop_x: 'W_OpArg') -> 'W_OpSpec':
+        w_T = wop_T.w_blueval
         if vm.isinstance(w_T, B.w_type):
             @builtin_func(W_OpArg._w.fqn, 'from_type')
             def w_from_type(vm: 'SPyVM', w_type: W_Type) -> W_OpArg:

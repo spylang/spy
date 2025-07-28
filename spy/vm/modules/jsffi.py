@@ -37,9 +37,10 @@ class W_JsRef(W_Object):
                 f"unsupported number of arguments for __call_method__: {n}"
             )
 
-    @builtin_method('__CONVERT_FROM__', color='blue')
+    @builtin_method('__convert_from__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpSpec:
+    def w_CONVERT_FROM(vm: 'SPyVM', wop_T: W_OpArg, wop_x: W_OpArg) -> W_OpSpec:
+        w_T = wop_T.w_blueval
         if w_T is B.w_str:
             return W_OpSpec(JSFFI.w_js_string)
         elif w_T is B.w_i32:

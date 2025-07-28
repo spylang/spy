@@ -263,9 +263,11 @@ class W_Ptr(W_BasePtr):
             )  # type: ignore
         return W_OpSpec(w_ptr_ne)
 
-    @builtin_method('__CONVERT_TO__', color='blue')
+    @builtin_method('__convert_to__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpSpec:
+    def w_CONVERT_TO(vm: 'SPyVM', wop_T: W_OpArg, wop_x: W_OpArg) -> W_OpSpec:
+        w_T = wop_T.w_blueval
+
         if w_T is not B.w_bool:
             return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_x)
