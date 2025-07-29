@@ -217,6 +217,7 @@ class W_OpArg(W_Object):
     def w_CONVERT_FROM(vm: 'SPyVM', wop_T: 'W_OpArg',
                        wop_x: 'W_OpArg') -> 'W_OpSpec':
         w_T = wop_T.w_blueval
+        assert isinstance(w_T, W_Type)
         if vm.issubclass(w_T, B.w_type):
             @builtin_func(W_OpArg._w.fqn, 'from_type')
             def w_from_type(vm: 'SPyVM', w_type: W_Type) -> W_OpArg:
