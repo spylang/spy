@@ -688,7 +688,6 @@ class ASTFrame(AbstractFrame):
                     self.fwdecl_ClassDef(stmt)
 
             for stmt in self.funcdef.body:
-                #breakpoint()
                 self.exec_stmt(stmt)
             #
             # we reached the end of the function. If it's void, we can return
