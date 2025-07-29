@@ -113,28 +113,70 @@ class W_Object:
 
     # ==== OPERATOR SUPPORT ====
     #
-    # operators are the central concept which drives the semantic of SPy
-    # objects. Operators are @blue functions which receive the *types* of the
-    # operands, and return an "opimpl", which is a red function which
-    # performn the actual operation on the *values*.
+    # Operators are the central concept which drives the semantic of SPy
+    # objects, because they map syntactic constructs into runtime behavior.
+    #
+    # There is a 1:1 mapping between syntax and its corresponding function in
+    # the `operator` module. For example:
+    #
+    #     a + b ==> operator.add(a, b)
+    #     a.b   ==> operator.getattr(a, "b")
+    #
+    # Types can implement each operator by implementing __special__ methods
+    # such as `__add__` or `__getattr__`.
+    #
+    # __special__ methods can be defined as normal functions and executed as
+    # expected.
+    #
+    # Additionally, __special__ methods can be defined as *metafunctions*. In
+    # that case, they obey to the standard three-phase metacall protocol:
+    #
+    #   1. [blue] metacall: invoke the metafunction, which returns an OpSpec
+    #   2. [blue] typecheck: the OpSpec is typechecked and turned into an OpImpl
+    #   3. [red]  execution: the OpImpl is executed
+    #
+    # Metafunctions don't receive the concrete values, but receive abstract
+    # OpArgs, which carry the static_type, the color, the definition location,
+    # etc.
     #
     # For example, consider the following expression:
     #     return obj.a
     #
-    # In normal Python,  this roughly maps to the following:
-    #     return type(obj).__getattribute__(obj, 'a')
+    # If __getattr__ is a metafunction, this is more or less what happens:
     #
-    # In SPy, it maps to the following:
-    #     opimpl = operator.GETATTR(static_type(obj), 'a')
-    #     return opimpl(obj, 'a')
-    #
-    # Subclasses of W_Object can implement their own operator by overriding
-    # the various w_GETATTR & co.  These must be *static methods* on the
-    # class, and must return an opimpl.
-    #
+    #     T = STATIC_TYPE(obj)
+    #     v_obj = OpArg('red', T, ...)
+    #     v_attr = OpArg('blue', str, "a")
+    #     opimpl = operator.GETATTR(v_obj, v_attr)
+    #     opimpl.execute(obj)
     #
     # The actual logic for the SPy VM resides in the 'operator' module (see
     # spy/vm/modules/operator).
+    #
+    # Subclasses of W_Object can implement their own __special__ methods in
+    # this way:
+    #
+    # class W_Myclass(W_Object):
+    #
+    #     # implement __getitem__ as a normal function
+    #     @builtin_method('__getitem__')
+    #     @staticmethod
+    #     def w_getitem(vm: 'SPyVM', w_self: 'W_MyClass', w_i: W_I32) -> W_I32:
+    #         ...
+    #
+    #     # implement __getattr__ as a metafunc
+    #     @builtin_method('__getattr__', color='blue', kind='metafunc')
+    #     def w_GETATTR(vm: 'SPyVM', wop_self: W_OpArg,
+    #                   wop_attr: W_OpArg) -> W_OpSpec:
+    #         ...
+    #
+    # The naming convention at interp-level is the following:
+    #   - for normal functions, we use w_getitem, w_getattr, etc.
+    #   - for meta functions, we use w_GETITEM, w_GETATTR, etc.
+    #
+    # The following declarations are not strictly needed, but they are
+    # provided so that in case a subclass decides to override them, mypy can
+    # check the signatures
 
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':

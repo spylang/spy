@@ -187,10 +187,11 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
-    # NOTE: we cannot use a w_CALL/__CALL__ or w_GETITEM/__GETITEM__ here, for
+    # NOTE: we cannot use applevel '__call__' or '__getitem__' here, for
     # bootstrapping reason.
-    # These operators are special cased by callop.w_CALL and itemop.w_GETITEM,
-    # depending on whether w_functype.kind is 'plain' or 'generic'.
+    # These operators are special cased by
+    # callop.w_CALL and itemop.w_GETITEM, depending on whether w_functype.kind
+    # is 'plain' or 'generic'.
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpSpec':
