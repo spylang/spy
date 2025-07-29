@@ -17,165 +17,117 @@ class W_BinOpClass(W_Object):
     def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_BinOpClass':
         return W_BinOpClass(w_x)
 
-    @builtin_method('__add__', color='blue', kind='metafunc')
+    @builtin_method('__add__')
     @staticmethod
-    def w_ADD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_add(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x + other)  # type: ignore
-        return W_OpSpec(w_add)
+    def w_add(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x + other)  # type: ignore
 
-    @builtin_method('__sub__', color='blue', kind='metafunc')
+    @builtin_method('__sub__')
     @staticmethod
-    def w_SUB(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_sub(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x - other)  # type: ignore
-        return W_OpSpec(w_sub)
+    def w_sub(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x - other)  # type: ignore
 
-    @builtin_method('__mul__', color='blue', kind='metafunc')
+    @builtin_method('__mul__')
     @staticmethod
-    def w_MUL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_mul(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x * other)  # type: ignore
-        return W_OpSpec(w_mul)
+    def w_mul(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x * other)  # type: ignore
 
-    @builtin_method('__div__', color='blue', kind='metafunc')
+    @builtin_method('__div__')
     @staticmethod
-    def w_DIV(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_div(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x // other)  # type: ignore
-        return W_OpSpec(w_div)
+    def w_div(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x // other)  # type: ignore
 
-    @builtin_method('__mod__', color='blue', kind='metafunc')
+    @builtin_method('__mod__')
     @staticmethod
-    def w_MOD(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_mod(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x % other)  # type: ignore
-        return W_OpSpec(w_mod)
+    def w_mod(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x % other)  # type: ignore
 
-    @builtin_method('__and__', color='blue', kind='metafunc')
+    @builtin_method('__and__')
     @staticmethod
-    def w_AND(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_and(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x & other)  # type: ignore
-        return W_OpSpec(w_and)
+    def w_and(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x & other)  # type: ignore
 
-    @builtin_method('__or__', color='blue', kind='metafunc')
+    @builtin_method('__or__')
     @staticmethod
-    def w_OR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_or(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x | other)  # type: ignore
-        return W_OpSpec(w_or)
+    def w_or(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x | other)  # type: ignore
 
-    @builtin_method('__xor__', color='blue', kind='metafunc')
+    @builtin_method('__xor__')
     @staticmethod
-    def w_XOR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_xor(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x ^ other)  # type: ignore
-        return W_OpSpec(w_xor)
+    def w_xor(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x ^ other)  # type: ignore
 
-    @builtin_method('__lshift__', color='blue', kind='metafunc')
+    @builtin_method('__lshift__')
     @staticmethod
-    def w_SHL(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_shl(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x << other)  # type: ignore
-        return W_OpSpec(w_shl)
+    def w_shl(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x << other)  # type: ignore
 
-    @builtin_method('__rshift__', color='blue', kind='metafunc')
+    @builtin_method('__rshift__')
     @staticmethod
-    def w_SHR(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_shr(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(x >> other)  # type: ignore
-        return W_OpSpec(w_shr)
+    def w_shr(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x >> other)  # type: ignore
 
-    @builtin_method('__eq__', color='blue', kind='metafunc')
+    @builtin_method('__eq__')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_eq(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(1 if x == other else 0)  # type: ignore
-        return W_OpSpec(w_eq)
+    def w_eq(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(1 if x == other else 0)  # type: ignore
 
-    @builtin_method('__ne__', color='blue', kind='metafunc')
+    @builtin_method('__ne__')
     @staticmethod
-    def w_NE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_ne(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(1 if x != other else 0)  # type: ignore
-        return W_OpSpec(w_ne)
+    def w_ne(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(1 if x != other else 0)  # type: ignore
 
-    @builtin_method('__lt__', color='blue', kind='metafunc')
+    @builtin_method('__lt__')
     @staticmethod
-    def w_LT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_lt(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(1 if x < other else 0)  # type: ignore
-        return W_OpSpec(w_lt)
+    def w_lt(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(1 if x < other else 0)  # type: ignore
 
-    @builtin_method('__le__', color='blue', kind='metafunc')
+    @builtin_method('__le__')
     @staticmethod
-    def w_LE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_le(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(1 if x <= other else 0)  # type: ignore
-        return W_OpSpec(w_le)
+    def w_le(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(1 if x <= other else 0)  # type: ignore
 
-    @builtin_method('__gt__', color='blue', kind='metafunc')
+    @builtin_method('__gt__')
     @staticmethod
-    def w_GT(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_gt(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(1 if x > other else 0)  # type: ignore
-        return W_OpSpec(w_gt)
+    def w_gt(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(1 if x > other else 0)  # type: ignore
 
-    @builtin_method('__ge__', color='blue', kind='metafunc')
+    @builtin_method('__ge__')
     @staticmethod
-    def w_GE(vm: 'SPyVM', wop_self: W_OpArg, wop_other: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_ge(vm: 'SPyVM', w_self: W_BinOpClass, w_other: W_I32) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            other = vm.unwrap_i32(w_other)
-            return vm.wrap(1 if x >= other else 0)  # type: ignore
-        return W_OpSpec(w_ge)
+    def w_ge(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(1 if x >= other else 0)  # type: ignore
 
 
 @no_C
