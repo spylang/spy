@@ -30,8 +30,8 @@ class Range:
 
         return ll.start + i*ll.step
 
-    @blue
-    def __GETATTR__(v_obj: OpArg, v_attr: OpArg) -> OpSpec:
+    @blue.metafunc
+    def __getattr__(v_obj: OpArg, v_attr: OpArg) -> OpSpec:
         #print(v_obj)
         #print(v_attr)
         #print(v_attr.static_type)

@@ -43,20 +43,11 @@ from typing import TYPE_CHECKING, Sequence
 from spy.errors import WIP
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
-from spy.vm.opspec import W_OpSpec
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.b import OPERATOR, OP
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-
-def op_fast_call(vm: 'SPyVM', w_func: W_Func,
-                 args_w: Sequence[W_Object]) -> W_OpSpec:
-    """
-    Like vm.fast_call, but ensure that the result is a W_OpSpec
-    """
-    w_res = vm.fast_call(w_func, args_w)
-    assert isinstance(w_res, W_OpSpec)
-    return w_res
 
 
 # the folloing imports register all the various objects on OP

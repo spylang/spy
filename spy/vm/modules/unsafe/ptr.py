@@ -61,7 +61,7 @@ class W_PtrType(W_Type):
         w_type.w_itemtype = w_itemtype
         return w_type
 
-    @builtin_method('__GETATTR__', color='blue')
+    @builtin_method('__getattr__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg) -> W_OpSpec:
         attr = wop_attr.blue_unwrap_str(vm)
@@ -82,9 +82,19 @@ class W_PtrType(W_Type):
             return W_OpSpec.NULL
 
 
+@UNSAFE.builtin_type('MetaBasePtr')
+class W_MetaBasePtr(W_Type):
+    """
+    This exist solely to be able to do ptr[...]
+    """
+
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpSpec:
+        return W_OpSpec(w_make_ptr_type, [wop_T])
 
 
-@UNSAFE.builtin_type('ptr')
+@UNSAFE.builtin_type('ptr', W_MetaClass=W_MetaBasePtr)
 class W_BasePtr(W_Object):
     """
     This is the app-level 'ptr' type.
@@ -95,11 +105,6 @@ class W_BasePtr(W_Object):
 
     def __init__(self) -> None:
         raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
-
-    @staticmethod
-    def w_meta_GETITEM(vm: 'SPyVM', wop_p: W_OpArg, wop_T: W_OpArg)-> W_OpSpec:
-        return W_OpSpec(w_make_ptr_type, [wop_T])
-
 
 class W_Ptr(W_BasePtr):
     """
@@ -150,7 +155,7 @@ class W_Ptr(W_BasePtr):
             # opposed to e.g. 'ptr[i32]'
             assert False, 'FIXME: raise a nice error'
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
@@ -192,7 +197,7 @@ class W_Ptr(W_BasePtr):
 
         return W_OpSpec(w_ptr_getitem_T)
 
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_ptr: W_OpArg, wop_i: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:
@@ -222,7 +227,7 @@ class W_Ptr(W_BasePtr):
             )
         return W_OpSpec(w_ptr_store_T)
 
-    @builtin_method('__EQ__', color='blue')
+    @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         w_ltype = wop_l.w_static_type
@@ -240,7 +245,7 @@ class W_Ptr(W_BasePtr):
             )  # type: ignore
         return W_OpSpec(w_ptr_eq)
 
-    @builtin_method('__NE__', color='blue')
+    @builtin_method('__ne__', color='blue', kind='metafunc')
     @staticmethod
     def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         w_ltype = wop_l.w_static_type
@@ -258,9 +263,11 @@ class W_Ptr(W_BasePtr):
             )  # type: ignore
         return W_OpSpec(w_ptr_ne)
 
-    @builtin_method('__CONVERT_TO__', color='blue')
+    @builtin_method('__convert_to__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpSpec:
+    def w_CONVERT_TO(vm: 'SPyVM', wop_T: W_OpArg, wop_x: W_OpArg) -> W_OpSpec:
+        w_T = wop_T.w_blueval
+
         if w_T is not B.w_bool:
             return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_x)
@@ -275,13 +282,13 @@ class W_Ptr(W_BasePtr):
         vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
         return W_OpSpec(w_ptr_to_bool)
 
-    @builtin_method('__GETATTR__', color='blue')
+    @builtin_method('__getattr__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
                   wop_attr: W_OpArg) -> W_OpSpec:
         return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
-    @builtin_method('__SETATTR__', color='blue')
+    @builtin_method('__setattr__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:

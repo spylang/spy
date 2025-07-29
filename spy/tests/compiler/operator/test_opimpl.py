@@ -23,15 +23,10 @@ class TestOpSpec(CompilerTest):
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
-            @builtin_method('__GETITEM__', color='blue')
+            @builtin_method('__getitem__')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_i: W_OpArg) -> W_OpSpec:
-                @builtin_func('ext')
-                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
-                              w_i: W_I32) -> W_I32:
-                    return w_i
-                return W_OpSpec(w_getitem)
+            def w_getitem(vm: 'SPyVM', w_obj: 'W_MyClass', w_i: W_I32) -> W_I32:
+                return w_i
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -60,14 +55,10 @@ class TestOpSpec(CompilerTest):
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
-            @builtin_method('__GETITEM__', color='blue')
+            @builtin_method('__getitem__')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_i: W_OpArg) -> W_OpSpec:
-                @builtin_func('ext')
-                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
-                    return vm.wrap(42)  # type: ignore
-                return W_OpSpec(w_getitem)
+            def w_getitem(vm: 'SPyVM', w_obj: 'W_MyClass') -> W_I32:
+                return vm.wrap(42)  # type: ignore
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -98,7 +89,7 @@ class TestOpSpec(CompilerTest):
             def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
                 return W_MyClass(w_x)
 
-            @builtin_method('__GETITEM__', color='blue')
+            @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
             def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                           wop_i: W_OpArg) -> W_OpSpec:

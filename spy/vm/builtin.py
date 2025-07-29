@@ -10,8 +10,9 @@ import inspect
 from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
                     Annotated)
 from spy.fqn import FQN, QUALIFIERS
+from spy.errors import SPyError
 from spy.ast import Color, FuncKind
-from spy.vm.object import W_Object, W_Type, make_metaclass_maybe
+from spy.vm.object import W_Object, W_Type
 from spy.vm.object import builtin_method # noqa: F401
 from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
 
@@ -120,6 +121,11 @@ def builtin_func(namespace: FQN|str,
             fname = fn.__name__[2:]
         assert isinstance(namespace, FQN)
         fqn = namespace.join(fname, qualifiers)
+
+        if kind == 'metafunc' and color != 'blue':
+            msg = f"wrong color for metafunc `{fqn.human_name}`: expected `blue`, got `{color}`"
+            raise SPyError('W_TypeError', msg)
+
         w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)
         return W_BuiltinFunc(w_functype, fqn, fn)
     return decorator
@@ -129,7 +135,8 @@ def builtin_type(namespace: FQN|str,
                  typename: str,
                  qualifiers: QUALIFIERS = None,
                  *,
-                 lazy_definition: bool = False
+                 lazy_definition: bool = False,
+                 W_MetaClass: Optional[Type[W_Type]] = None,
                  ) -> Any:
     """
     Class decorator to simplify the creation of builtin SPy types.
@@ -139,10 +146,12 @@ def builtin_type(namespace: FQN|str,
     """
     if isinstance(namespace, str):
         namespace = FQN(namespace)
+    if W_MetaClass is None:
+        W_MetaClass = W_Type
     fqn = namespace.join(typename, qualifiers)
+
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         assert issubclass(pyclass, W_Object)
-        W_MetaClass = make_metaclass_maybe(fqn, pyclass, lazy_definition)
         w_type = W_MetaClass.declare(fqn)
         if not lazy_definition:
             w_type.define(pyclass)

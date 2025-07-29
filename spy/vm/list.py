@@ -48,20 +48,26 @@ def _make_list_type(w_T: W_Type) -> W_ListType:
     fqn = FQN('builtins').join('list', [w_T.fqn])  # builtins::list[i32]
     return W_ListType.from_itemtype(fqn, w_T)
 
+@B.builtin_type('MetaBaseList')
+class W_MetaBaseList(W_Type):
+    """
+    This exist solely to be able to do list[...]
+    """
 
-@B.builtin_type('list')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
+        from spy.vm.opspec import W_OpSpec
+        return W_OpSpec(w_make_list_type)
+
+
+@B.builtin_type('list', W_MetaClass=W_MetaBaseList)
 class W_BaseList(W_Object):
     """
     The 'list' type.
 
-    It has two purposes:
-
-      - it's the base type for all lists
-
-      - by implementing w_meta_GETITEM, it can be used to create
-       _specialized_ list types, e.g. `list[i32]`.
-
-    In other words, `list[i32]` inherits from `list`.
+    It's the base type for all lists.  In other words, `list[i32]` inherits
+    from `list`.
 
     The specialized types are created by calling the builtin make_list_type:
     see its docstring for details.
@@ -71,11 +77,6 @@ class W_BaseList(W_Object):
     def __init__(self, items_w: Any) -> None:
         raise Exception("You cannot instantiate W_BaseList, use W_List")
 
-    @staticmethod
-    def w_meta_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                       wop_i: W_OpArg) -> W_OpSpec:
-        from spy.vm.opspec import W_OpSpec
-        return W_OpSpec(w_make_list_type)
 
 
 T = TypeVar('T', bound='W_Object')
@@ -111,7 +112,7 @@ class W_List(W_BaseList, Generic[T]):
             # opposed to e.g. 'list[i32]'
             assert False, 'FIXME: raise a nice error'
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
@@ -127,7 +128,7 @@ class W_List(W_BaseList, Generic[T]):
             return w_list.items_w[i]
         return W_OpSpec(w_getitem)
 
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
     def w_SETITEM(vm: 'SPyVM', wop_list: W_OpArg, wop_i: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:
@@ -144,7 +145,7 @@ class W_List(W_BaseList, Generic[T]):
             w_list.items_w[i] = w_v
         return W_OpSpec(w_setitem)
 
-    @builtin_method('__EQ__', color='blue')
+    @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec

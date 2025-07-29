@@ -3,7 +3,7 @@ from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.function import W_FuncType
 
-from . import OP, op_fast_call
+from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -18,10 +18,8 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     if isinstance(w_type, W_FuncType) and w_type.kind == 'generic':
         # special case: for generic W_Funcs, "[]" means "call"
         w_opspec = w_type.pyclass.op_CALL(vm, wop_obj, *args_wop) # type: ignore
-    elif w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
-        w_opspec = op_fast_call(vm, w_GETITEM, newargs_wop)
     elif w_getitem := w_type.lookup_func('__getitem__'):
-        w_opspec = W_OpSpec(w_getitem, newargs_wop)
+        w_opspec = vm.fast_metacall(w_getitem, newargs_wop)
 
     return typecheck_opspec(
         vm,
@@ -39,10 +37,8 @@ def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     w_type = wop_obj.w_static_type
 
     newargs_wop = [wop_obj] + list(args_wop)
-    if w_SETITEM := w_type.lookup_blue_func('__SETITEM__'):
-        w_opspec = op_fast_call(vm, w_SETITEM, newargs_wop)
-    elif w_setitem := w_type.lookup_func('__setitem__'):
-        w_opspec = W_OpSpec(w_setitem, newargs_wop)
+    if w_setitem := w_type.lookup_func('__setitem__'):
+        w_opspec = vm.fast_metacall(w_setitem, newargs_wop)
 
     return typecheck_opspec(
         vm,

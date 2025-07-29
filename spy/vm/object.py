@@ -58,8 +58,10 @@ if TYPE_CHECKING:
     from spy.vm.primitive import W_NoneType
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_OpSpec, W_OpArg
+    from spy.vm.builtin import FuncKind
 
-def builtin_method(name: str, *, color: Color = 'red') -> Any:
+def builtin_method(name: str, *, color: Color = 'red',
+                   kind: 'FuncKind' = 'plain') -> Any:
     """
     Turn an interp-level method into an app-level one.
 
@@ -68,7 +70,7 @@ def builtin_method(name: str, *, color: Color = 'red') -> Any:
     """
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), 'missing @staticmethod'
-        fn.spy_builtin_method = (name, color)  # type: ignore
+        fn.spy_builtin_method = (name, color, kind)  # type: ignore
         return fn
     return decorator
 
@@ -111,52 +113,70 @@ class W_Object:
 
     # ==== OPERATOR SUPPORT ====
     #
-    # operators are the central concept which drives the semantic of SPy
-    # objects. Operators are @blue functions which receive the *types* of the
-    # operands, and return an "opimpl", which is a red function which
-    # performn the actual operation on the *values*.
+    # Operators are the central concept which drives the semantic of SPy
+    # objects, because they map syntactic constructs into runtime behavior.
+    #
+    # There is a 1:1 mapping between syntax and its corresponding function in
+    # the `operator` module. For example:
+    #
+    #     a + b ==> operator.add(a, b)
+    #     a.b   ==> operator.getattr(a, "b")
+    #
+    # Types can implement each operator by implementing __special__ methods
+    # such as `__add__` or `__getattr__`.
+    #
+    # __special__ methods can be defined as normal functions and executed as
+    # expected.
+    #
+    # Additionally, __special__ methods can be defined as *metafunctions*. In
+    # that case, they obey to the standard three-phase metacall protocol:
+    #
+    #   1. [blue] metacall: invoke the metafunction, which returns an OpSpec
+    #   2. [blue] typecheck: the OpSpec is typechecked and turned into an OpImpl
+    #   3. [red]  execution: the OpImpl is executed
+    #
+    # Metafunctions don't receive the concrete values, but receive abstract
+    # OpArgs, which carry the static_type, the color, the definition location,
+    # etc.
     #
     # For example, consider the following expression:
     #     return obj.a
     #
-    # In normal Python,  this roughly maps to the following:
-    #     return type(obj).__getattribute__(obj, 'a')
+    # If __getattr__ is a metafunction, this is more or less what happens:
     #
-    # In SPy, it maps to the following:
-    #     opimpl = operator.GETATTR(static_type(obj), 'a')
-    #     return opimpl(obj, 'a')
-    #
-    # Subclasses of W_Object can implement their own operator by overriding
-    # the various w_GETATTR & co.  These must be *static methods* on the
-    # class, and must return an opimpl.
-    #
+    #     T = STATIC_TYPE(obj)
+    #     v_obj = OpArg('red', T, ...)
+    #     v_attr = OpArg('blue', str, "a")
+    #     opimpl = operator.GETATTR(v_obj, v_attr)
+    #     opimpl.execute(obj)
     #
     # The actual logic for the SPy VM resides in the 'operator' module (see
     # spy/vm/modules/operator).
     #
-    # For convenience, pyclasses can also implement meta_op_*: these will be
-    # automatically used as operators for their applevel metaclass:
-    # strictly-speaking this is not necessary, because one could just write a
-    # metaclass manually with all the needed operators, but this makes it much
-    # easier. For example:
+    # Subclasses of W_Object can implement their own __special__ methods in
+    # this way:
     #
-    #    @spytype('Foo')
-    #    class W_Foo(W_Object):
-    #        @staticmethod
-    #        def w_meta_CALL(...): ...
+    # class W_Myclass(W_Object):
     #
-    # Here spytype will automatically create the metaclass W_Meta_Foo, and it
-    # will assign W_Meta_Foo.w_CALL = W_Foo.w_meta_CALL
-
-    @classmethod
-    def has_meth_overriden(cls, name: str) -> bool:
-        default_meth = getattr(W_Object, name, None)
-        meth = getattr(cls, name, None)
-        if default_meth is None or meth is None:
-            raise ValueError(f'Invalid method name: {name}')
-        if default_meth is meth:
-            return False
-        return True
+    #     # implement __getitem__ as a normal function
+    #     @builtin_method('__getitem__')
+    #     @staticmethod
+    #     def w_getitem(vm: 'SPyVM', w_self: 'W_MyClass', w_i: W_I32) -> W_I32:
+    #         ...
+    #
+    #     # implement __getattr__ as a metafunc
+    #     @builtin_method('__getattr__', color='blue', kind='metafunc')
+    #     def w_GETATTR(vm: 'SPyVM', wop_self: W_OpArg,
+    #                   wop_attr: W_OpArg) -> W_OpSpec:
+    #         ...
+    #
+    # The naming convention at interp-level is the following:
+    #   - for normal functions, we use w_getitem, w_getattr, etc.
+    #   - for meta functions, we use w_GETITEM, w_GETATTR, etc.
+    #
+    # The following declarations are not strictly needed, but they are
+    # provided so that in case a subclass decides to override them, mypy can
+    # check the signatures
 
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':
@@ -197,12 +217,12 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', w_T: 'W_Type',
+    def w_CONVERT_FROM(vm: 'SPyVM', wop_T: 'W_OpArg',
                        wop_x: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', w_T: 'W_Type',
+    def w_CONVERT_TO(vm: 'SPyVM', wop_T: 'W_OpArg',
                      wop_x: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
@@ -315,22 +335,8 @@ class W_Type(W_Object):
         "Turn the @builtin_method into a W_BuiltinFunc"
         from spy.vm.builtin import builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
-        appname, color = statmeth.spy_builtin_method  # type: ignore
+        appname, color, kind = statmeth.spy_builtin_method  # type: ignore
         pyfunc = statmeth.__func__
-
-        # sanity check: __MAGIC__ methods should be blue
-        if appname in (
-                '__ADD__', '__SUB__', '__MUL__', '__DIV__',
-                '__EQ__', '__NE__', '__LT__', '__LE__', '__GT__', '__GE__',
-                '__GETATTR__', '__SETATTR__',
-                '__GETITEM__', '__SETITEM__',
-                '__CALL__', '__CALL_METHOD__',
-                '__CONVERT_FROM__', '__CONVERT_TO__',
-        ) and color != 'blue':
-            # XXX we should raise a more detailed exception
-            fqn = self.fqn.human_name
-            msg = f"method `{fqn}.{appname}` should be blue, but it's {color}"
-            raise SPyError('W_TypeError', msg)
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations
@@ -344,6 +350,7 @@ class W_Type(W_Object):
             funcname = appname,
             qualifiers = [],
             color = color,
+            kind = kind,
             extra_types = extra_types,
         )
         # apply the decorator and store the method in the applevel dict
@@ -411,14 +418,12 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
-    @builtin_method('__CALL__', color='blue')
+    @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod
     def w_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',
                *args_wop: 'W_OpArg') -> 'W_OpSpec':
         """
-        Calling a type means to instantiate it.
-
-        First try to use __NEW__ if defined, otherwise fall back to __new__.
+        Calling a type means to instantiate it, by calling its __new__
         """
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
@@ -434,21 +439,22 @@ class W_Type(W_Object):
         w_type = wop_t.w_blueval
         assert isinstance(w_type, W_Type)
 
-        # Call __NEW__, if present
-        w_NEW = w_type.lookup_blue_func('__NEW__')
-        if w_NEW is not None:
-            assert isinstance(w_NEW, W_Func), 'XXX raise proper exception'
-            w_res = vm.fast_call(w_NEW, [wop_t] + list(args_wop))
-            assert isinstance(w_res, W_OpSpec)
-            return w_res
+        # try to call __new__
+        if w_new := w_type.lookup_func('__new__'):
+            # this is a bit of ad-hoc logic around normal __new__ vs metafunc
+            # __new__: when it's a metafunc we also want to pass the OpArg of
+            # the type itself (so that the function can reach
+            # e.g. wop_p.w_blueval), but for normal __new__ by default we
+            # don't pass it (because usually it's not needed0
+            if w_new.w_functype.kind == 'metafunc':
+                new_args_wop = [wop_t] + list(args_wop)
+            else:
+                new_args_wop = list(args_wop)
 
-        # else, fall back to __new__
-        w_new = w_type.lookup_func('__new__')
-        if w_new is not None:
-            assert isinstance(w_new, W_Func), 'XXX raise proper exception'
-            return W_OpSpec(w_new, list(args_wop))
+            w_opspec = vm.fast_metacall(w_new, new_args_wop)
+            return w_opspec
 
-        # no __NEW__ nor __new__, error out
+        # no __new__, error out
         clsname = w_type.fqn.human_name
         err = SPyError('W_TypeError', f"cannot instantiate `{clsname}`")
         err.add('error', f"`{clsname}` does not have a method `__new__`",
@@ -503,79 +509,6 @@ class Member:
             if isinstance(meta, Member):
                 return meta
         return None
-
-def make_metaclass_maybe(fqn: FQN, pyclass: Type[W_Object],
-                         lazy_definition: bool) -> Type[W_Type]:
-    """
-    Synthesize an app-level metaclass for the corresponding interp-level
-    pyclass, if needed.
-
-    Normally, for each interp-level class W_Foo, we create an app-level type
-    which is an instance of W_Type.
-
-    However, W_Foo can request the creation of a custom metaclass by
-    implementing any of the supported w_meta_* methods.
-
-    Example:
-
-    @builtin_type('ext', 'Foo')
-    class W_Foo(W_Object):
-        pass
-    ==> creates:
-    w_footype = W_Type('ext::Foo', pyclass=W_Foo)
-
-
-    @builtin_type('ext', 'Bar')
-    class W_Bar(W_Object):
-        @staticmethod
-        def w_meta_GETITEM(...):
-            ..
-    ==> creates:
-    class W_BarType(W_Type):
-        @builtin_method('__GETITEM__', color='blue')
-        @staticmethod
-        def w_GETITEM(...):
-            ...
-    w_bartype = W_BarType('ext::Bar', pyclass=W_Bar)
-
-    The relationship between W_Bar and W_BarType is the following:
-
-    w_Bar = vm.wrap(W_Bar)
-    w_bar_type = vm.wrap(W_BarType)
-    assert vm.dynamic_type(w_Bar) is w_bar_type
-    """
-    from spy.vm.builtin import builtin_method
-    if (not hasattr(pyclass, 'w_meta_CALL') and
-        not hasattr(pyclass, 'w_meta_GETITEM') and
-        not hasattr(pyclass, 'w_meta_GETATTR')):
-        # no metaclass needed
-        return W_Type
-
-    metaname = f'{fqn.symbol_name}Type'
-    metafqn = fqn.namespace.join(metaname)
-
-    class W_MetaType(W_Type):
-        __name__ = f'W_{metaname}'
-        __qualname__ = __name__
-
-    if hasattr(pyclass, 'w_meta_CALL'):
-        fn = pyclass.w_meta_CALL
-        decorator = builtin_method('__CALL__', color='blue')
-        W_MetaType.w_CALL = decorator(staticmethod(fn))  # type: ignore
-    if hasattr(pyclass, 'w_meta_GETITEM'):
-        fn = pyclass.w_meta_GETITEM
-        decorator = builtin_method('__GETITEM__', color='blue')
-        W_MetaType.w_GETITEM = decorator(staticmethod(fn))  # type: ignore
-    if hasattr(pyclass, 'w_meta_GETATTR'):
-        fn = pyclass.w_meta_GETATTR
-        decorator = builtin_method('__GETATTR__', color='blue')
-        W_MetaType.w_GETATTR = decorator(staticmethod(fn))  # type: ignore
-
-    if lazy_definition:
-        W_MetaType._w = W_Type.declare(metafqn)
-    else:
-        W_MetaType._w = W_Type.from_pyclass(metafqn, W_MetaType)
-    return W_MetaType
 
 
 # Initial setup of the 'builtins' module

@@ -93,7 +93,7 @@ class TestAttrOp(CompilerTest):
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
-            @builtin_method('__GETATTR__', color='blue')
+            @builtin_method('__getattr__', color='blue', kind='metafunc')
             @staticmethod
             def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
                           wop_attr: W_OpArg) -> W_OpSpec:
@@ -111,7 +111,7 @@ class TestAttrOp(CompilerTest):
                         return vm.wrap(attr.upper() + '--42')  # type: ignore
                 return W_OpSpec(w_fn)
 
-            @builtin_method('__SETATTR__', color='blue')
+            @builtin_method('__setattr__', color='blue', kind='metafunc')
             @staticmethod
             def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                           wop_v: W_OpArg) -> W_OpSpec:

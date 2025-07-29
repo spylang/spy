@@ -18,14 +18,11 @@ class W_MyClass(W_Object):
     def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
         return W_MyClass(w_x)
 
-    @builtin_method('__NEG__', color='blue')
+    @builtin_method('__neg__')
     @staticmethod
-    def w_NEG(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
-        def w_neg(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            return vm.wrap(-x)  # type: ignore
-        return W_OpSpec(w_neg)
+    def w_neg(vm: 'SPyVM', w_self: 'W_MyClass') -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        return vm.wrap(-x)  # type: ignore
 
 
 @no_C
