@@ -136,31 +136,21 @@ class W_Object:
     # The actual logic for the SPy VM resides in the 'operator' module (see
     # spy/vm/modules/operator).
 
-    @classmethod
-    def has_meth_overriden(cls, name: str) -> bool:
-        default_meth = getattr(W_Object, name, None)
-        meth = getattr(cls, name, None)
-        if default_meth is None or meth is None:
-            raise ValueError(f'Invalid method name: {name}')
-        if default_meth is meth:
-            return False
-        return True
-
     @staticmethod
-    def W_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':
+    def w_EQ(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def W_NE(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':
+    def w_NE(vm: 'SPyVM', wop_a: 'W_OpArg', wop_b: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def W_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
+    def w_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
                   wop_attr: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def W_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
+    def w_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
                   wop_v: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
