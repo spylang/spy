@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING, Literal, Annotated
+from typing import TYPE_CHECKING, Literal, Annotated, Optional
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
+from spy.vm.function import W_Func
 from spy.vm.builtin import builtin_func
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
@@ -31,13 +32,34 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         errmsg = "type `{0}` has no attribute '%s'" % attr
     )
 
+DESCR = Literal['__get__', '__set__']
+def lookup_descriptor(vm: 'SPyVM', w_type: W_Type,
+                      attr: str, what: DESCR) -> Optional[W_Func]:
+    w_member = w_type.lookup(attr)
+    if not w_member:
+        return None
+
+    w_member_type = vm.dynamic_type(w_member)
+    return w_member_type.lookup_func('__get__')
+
 def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpSpec:
+
     w_type = wop_obj.w_static_type
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
     elif attr in w_type.spy_members:
         return opspec_member('get', vm, w_type, attr)
+
+    # try to find a descriptor with a __get__ method
+    elif w_member := w_type.lookup(attr):
+        w_member_type = vm.dynamic_type(w_member)
+        w_get = w_member_type.lookup_func('__get__')
+        if w_get:
+            # w_member is a descriptor! We can call its __get__
+            wop_member = W_OpArg.from_w_obj(vm, w_member)
+            return vm.fast_metacall(w_get, [wop_member, wop_obj])
+
     elif w_GET := w_type.lookup_blue_func(f'__GET_{attr}__'):
         # XXX this should be killed and become a descriptor
         w_opspec = vm.fast_call(w_GET, [wop_obj, wop_attr])

@@ -388,15 +388,12 @@ class W_Type(W_Object):
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
 
-    def lookup_func(self, name: str) -> Optional['W_Func']:
+    def lookup(self, name: str) -> Optional[W_Object]:
         """
-        Lookup the given attribute into the applevel dict, and ensure it's
-        a W_Func.
+        Lookup the given attribute into the applevel dict
         """
-        from spy.vm.function import W_Func
         # look in our dict
         if w_obj := self.dict_w.get(name):
-            assert isinstance(w_obj, W_Func)
             return w_obj
 
         # look in the superclass
@@ -407,14 +404,28 @@ class W_Type(W_Object):
         # not found
         return None
 
+    def lookup_func(self, name: str) -> Optional['W_Func']:
+        """
+        Like lookup, but ensure it's a W_Func.
+        """
+        from spy.vm.function import W_Func
+        w_obj = self.lookup(name)
+        if w_obj:
+            assert isinstance(w_obj, W_Func)
+            return w_obj
+        return None
+
     def lookup_blue_func(self, name: str) -> Optional['W_Func']:
         """
         Like lookup_func, but also check that the function is blue
         """
-        w_obj = self.lookup_func(name)
+        from spy.vm.function import W_Func
+        w_obj = self.lookup(name)
         if w_obj:
+            assert isinstance(w_obj, W_Func)
             assert w_obj.color == 'blue'
-        return w_obj
+            return w_obj
+        return None
 
     # ======== app-level interface ========
 
@@ -445,7 +456,7 @@ class W_Type(W_Object):
             # __new__: when it's a metafunc we also want to pass the OpArg of
             # the type itself (so that the function can reach
             # e.g. wop_p.w_blueval), but for normal __new__ by default we
-            # don't pass it (because usually it's not needed0
+            # don't pass it (because usually it's not needed)
             if w_new.w_functype.kind == 'metafunc':
                 new_args_wop = [wop_t] + list(args_wop)
             else:

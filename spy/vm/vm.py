@@ -8,7 +8,7 @@ from spy.location import Loc
 from spy import libspy
 from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
-from spy.errors import SPyError
+from spy.errors import SPyError, WIP
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic
 from spy.vm.str import W_Str
@@ -234,6 +234,10 @@ class SPyVM:
             fqn = w_type.fqn.join('prebuilt')
             fqn = self.get_unique_FQN(fqn)
         else:
+            w_type = self.dynamic_type(w_val)
+            T = w_type.fqn.human_name
+            msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"
+            raise WIP(msg)
             assert False, 'implement me'
 
         assert fqn is not None

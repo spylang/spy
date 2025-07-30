@@ -1,4 +1,5 @@
 from typing import Annotated
+import pytest
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.object import Member
@@ -42,6 +43,47 @@ class TestAttrOp(CompilerTest):
         x = mod.foo()
         assert x == 123
 
+    def test_descriptor_get(self):
+        if self.backend == 'doppler':
+            pytest.skip('XXX think about this')
+
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyProxy')
+        class W_MyProxy(W_Object):
+            w_val: W_Str
+
+            def __init__(self, w_val: W_Str) -> None:
+                self.w_val = w_val
+
+            @builtin_method('__get__')
+            @staticmethod
+            def w_get(vm: 'SPyVM', w_self: 'W_MyProxy',
+                      w_obj: W_Object) -> W_Str:
+                return w_self.w_val
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+
+            @builtin_method('__new__')
+            @staticmethod
+            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+                return W_MyClass()
+
+        W_MyClass._w.dict_w['x'] = W_MyProxy(W_Str(self.vm, 'hello'))
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import MyClass
+
+        def foo() -> str:
+            obj =  MyClass()
+            return obj.x
+        """)
+        x = mod.foo()
+        assert x == 'hello'
 
     def test_op_GET(self):
         # ========== EXT module for this test ==========
