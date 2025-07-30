@@ -74,6 +74,23 @@ def builtin_method(name: str, *, color: Color = 'red',
         return fn
     return decorator
 
+class builtin_class_attr:
+    """
+    Turn an interp-level class attribute into an app-level one.
+
+    See test_builtin.py::test_builtin_class_attr for usage.
+    """
+
+    def __init__(self, name: str, w_val: 'W_Object') -> None:
+        self.name = name
+        self.w_val = w_val
+
+    def __repr__(self) -> str:
+        return f"<builtin_class_attr '{self.name}' = {self.w_val}>"
+
+    def __get__(self, instance, owner) -> 'W_Object':
+        return self.w_val
+
 # Basic setup of the object model: <object> and <type>
 # =====================================================
 
@@ -327,6 +344,8 @@ class W_Type(W_Object):
         for name, value in self._pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
                 self._init_builtin_method(value)
+            elif isinstance(value, builtin_class_attr):
+                self._dict_w[value.name] = value.w_val
 
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError

@@ -3,7 +3,7 @@ import pytest
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.builtin import builtin_func, builtin_method, builtin_class_attr
 from spy.vm.w import W_Object, W_Str
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -65,13 +65,12 @@ class TestAttrOp(CompilerTest):
 
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
+            w_x = builtin_class_attr('x', W_MyProxy(self.vm.wrap('hello')))
 
             @builtin_method('__new__')
             @staticmethod
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
-
-        W_MyClass._w.dict_w['x'] = W_MyProxy(W_Str(self.vm, 'hello'))
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
