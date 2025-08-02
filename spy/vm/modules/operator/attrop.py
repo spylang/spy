@@ -60,11 +60,6 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
             wop_member = W_OpArg.from_w_obj(vm, w_member)
             return vm.fast_metacall(w_get, [wop_member, wop_obj])
 
-    elif w_GET := w_type.lookup_blue_func(f'__GET_{attr}__'):
-        # XXX this should be killed and become a descriptor
-        w_opspec = vm.fast_call(w_GET, [wop_obj, wop_attr])
-        assert isinstance(w_opspec, W_OpSpec)
-        return w_opspec
     elif w_getattr := w_type.lookup_func(f'__getattr__'):
         return vm.fast_metacall(w_getattr, [wop_obj, wop_attr])
     return W_OpSpec.NULL
