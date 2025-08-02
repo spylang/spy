@@ -46,7 +46,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
-                    Callable, Annotated, Self)
+                    Callable, Annotated, Self, Literal)
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
@@ -352,51 +352,35 @@ class W_Type(W_Object):
         # lazy evaluation of @builtin methods decorators
         for name, value in self._pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
-                self._init_builtin_method(value)
+                self._init_builtin_method(value, 'method')
             elif hasattr(value, 'spy_builtin_property'):
-                self._init_builtin_property(value)
+                self._init_builtin_method(value, 'property')
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError
 
-    def _init_builtin_method(self, statmeth: staticmethod) -> None:
-        "Turn the @builtin_method into a W_BuiltinFunc"
-        from spy.vm.builtin import builtin_func
-        from spy.vm.opspec import W_OpArg, W_OpSpec
-        appname, color, kind = statmeth.spy_builtin_method  # type: ignore
-        pyfunc = statmeth.__func__
-
-        # create the @builtin_func decorator, and make it possible to use the
-        # string 'W_MyClass' in annotations
-        extra_types = {
-            self.pyclass.__name__: Annotated[self.pyclass, self],
-            'W_OpArg': W_OpArg,
-            'W_OpSpec': W_OpSpec,
-        }
-        decorator = builtin_func(
-            namespace = self.fqn,
-            funcname = appname,
-            qualifiers = [],
-            color = color,
-            kind = kind,
-            extra_types = extra_types,
-        )
-        # apply the decorator and store the method in the applevel dict
-        w_meth = decorator(pyfunc)
-        self.dict_w[appname] = w_meth
-
-    # XXX reduce code duplication
-    def _init_builtin_property(self, statmeth: staticmethod) -> None:
-        "Turn the @builtin_property into a W_Property"
+    def _init_builtin_method(
+            self,
+            statmeth: staticmethod,
+            what: Literal['method', 'property']
+    ) -> None:
+        """
+        Turn @builtin_method into a W_BuiltinFunc and @builtin_property
+        into a W_Property
+        """
         from spy.vm.builtin import builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
         from spy.vm.str import W_Str
         from spy.vm.primitive import W_Dynamic
         from spy.vm.property import W_Property
-        appname, color, kind = statmeth.spy_builtin_property  # type: ignore
+
         pyfunc = statmeth.__func__
+        if what == 'method':
+            appname, color, kind = statmeth.spy_builtin_method   # type: ignore
+        else:
+            appname, color, kind = statmeth.spy_builtin_property # type: ignore
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations
@@ -415,10 +399,12 @@ class W_Type(W_Object):
             kind = kind,
             extra_types = extra_types,
         )
-        # apply the decorator and store the method in the applevel dict
+        # apply the decorator and get a W_BuiltinFunc
         w_func = decorator(pyfunc)
-        self.dict_w[appname] = W_Property(w_func)
-
+        if what == 'method':
+            self.dict_w[appname] = w_func
+        else:
+            self.dict_w[appname] = W_Property(w_func)
 
 
     # Union[W_Type, W_NoneType] means "either a W_Type or B.w_None"

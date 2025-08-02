@@ -42,6 +42,7 @@ W_Property._w.define(W_Property)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
 W_F64._w.define(W_F64)
+W_Str._w.define(W_Str)
 
 STDLIB = ROOT.join('..', 'stdlib')
 
