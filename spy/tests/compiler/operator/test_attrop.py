@@ -44,9 +44,6 @@ class TestAttrOp(CompilerTest):
         assert x == 123
 
     def test_descriptor_get(self):
-        if self.backend == 'doppler':
-            pytest.skip('XXX think about this')
-
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
@@ -77,6 +74,7 @@ class TestAttrOp(CompilerTest):
         mod = self.compile("""
         from ext import MyClass
 
+        @blue
         def foo() -> str:
             obj =  MyClass()
             return obj.x
