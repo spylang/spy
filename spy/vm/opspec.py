@@ -33,13 +33,15 @@ from spy.location import Loc
 from spy.analyze.symtable import Symbol, Color
 from spy.errors import SPyError
 from spy.vm.b import OPERATOR, B
-from spy.vm.object import Member, W_Type, W_Object, builtin_method
+from spy.vm.object import Member, W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.builtin import builtin_func
+from spy.vm.builtin import builtin_func, builtin_method, builtin_property
 from spy.vm.primitive import W_Bool
+from spy.vm.property import W_Property
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.str import W_Str
 
 
 @OPERATOR.builtin_type('OpArg', lazy_definition=True)
@@ -243,34 +245,27 @@ class W_OpArg(W_Object):
         else:
             return W_OpSpec.NULL
 
-    @builtin_method('__GET_color__', color='blue')
+    @builtin_property('color')
     @staticmethod
-    def w_GET_color(vm: 'SPyVM', wop_x: 'W_OpArg',
-                    wop_attr: 'W_OpArg') -> 'W_OpSpec':
-        from spy.vm.builtin import builtin_func
-        from spy.vm.str import W_Str
+    def w_get_color(vm: 'SPyVM', w_self: 'W_OpArg') -> 'W_Str':
+        """
+        Applevel property to get the color. We cannot use a simple Member
+        because the applevel type (W_Str) doesn't match the interp-level type
+        (Color).
+        """
+        return vm.wrap(w_self.color)
 
-        @builtin_func(W_OpArg._w.fqn, 'get_color')
-        def w_get_color(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Str:
-            return vm.wrap(w_oparg.color)  # type: ignore
-
-        return W_OpSpec(w_get_color, [wop_x])
-
-    @builtin_method('__GET_blueval__', color='blue')
+    @builtin_property('blueval')
     @staticmethod
-    def w_GET_blueval(vm: 'SPyVM', wop_x: 'W_OpArg',
-                      wop_attr: 'W_OpArg') -> 'W_OpSpec':
-        from spy.vm.builtin import builtin_func
-        from spy.vm.primitive import W_Dynamic
-
-        @builtin_func(W_OpArg._w.fqn, 'get_blueval')
-        def w_get_blueval(vm: 'SPyVM', w_oparg: W_OpArg) -> W_Dynamic:
-            if w_oparg.color != 'blue':
-                raise SPyError('W_ValueError', 'oparg is not blue')
-            return w_oparg.w_blueval
-
-        return W_OpSpec(w_get_blueval, [wop_x])
-
+    def w_get_blueval(vm: 'SPyVM', w_self: 'W_OpArg') -> 'W_Dynamic':
+        """
+        Applevel property to get the blueval. We cannot use a simple
+        Member because we want to do an extra check and raise W_ValueError if
+        the color is not blue.
+        """
+        if w_self.color != 'blue':
+            raise SPyError('W_ValueError', 'oparg is not blue')
+        return w_self.w_blueval
 
 
 @no_type_check

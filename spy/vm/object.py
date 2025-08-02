@@ -74,6 +74,15 @@ def builtin_method(name: str, *, color: Color = 'red',
         return fn
     return decorator
 
+def builtin_property(name: str, *, color: Color = 'red',
+                     kind: 'FuncKind' = 'plain') -> Any:
+    def decorator(fn: Callable) -> Callable:
+        assert isinstance(fn, staticmethod), 'missing @staticmethod'
+        fn.spy_builtin_property = (name, color, kind)  # type: ignore
+        return fn
+    return decorator
+
+
 class builtin_class_attr:
     """
     Turn an interp-level class attribute into an app-level one.
@@ -344,6 +353,8 @@ class W_Type(W_Object):
         for name, value in self._pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
                 self._init_builtin_method(value)
+            elif hasattr(value, 'spy_builtin_property'):
+                self._init_builtin_property(value)
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
@@ -375,6 +386,40 @@ class W_Type(W_Object):
         # apply the decorator and store the method in the applevel dict
         w_meth = decorator(pyfunc)
         self.dict_w[appname] = w_meth
+
+    # XXX reduce code duplication
+    def _init_builtin_property(self, statmeth: staticmethod) -> None:
+        "Turn the @builtin_property into a W_Property"
+        from spy.vm.builtin import builtin_func
+        from spy.vm.opspec import W_OpArg, W_OpSpec
+        from spy.vm.str import W_Str
+        from spy.vm.primitive import W_Dynamic
+        from spy.vm.property import W_Property
+        appname, color, kind = statmeth.spy_builtin_property  # type: ignore
+        pyfunc = statmeth.__func__
+
+        # create the @builtin_func decorator, and make it possible to use the
+        # string 'W_MyClass' in annotations
+        extra_types = {
+            self.pyclass.__name__: Annotated[self.pyclass, self],
+            'W_OpArg': W_OpArg,
+            'W_OpSpec': W_OpSpec,
+            'W_Str': W_Str,
+            'W_Dynamic': W_Dynamic,
+        }
+        decorator = builtin_func(
+            namespace = self.fqn,
+            funcname = appname,
+            qualifiers = [],
+            color = color,
+            kind = kind,
+            extra_types = extra_types,
+        )
+        # apply the decorator and store the method in the applevel dict
+        w_func = decorator(pyfunc)
+        self.dict_w[appname] = W_Property(w_func)
+
+
 
     # Union[W_Type, W_NoneType] means "either a W_Type or B.w_None"
     @property
