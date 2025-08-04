@@ -1,4 +1,4 @@
-from typing import Any, Optional, Iterable, Sequence, Callable
+from typing import Any, Optional, Iterable, Sequence, Callable, overload
 import itertools
 from types import FunctionType
 import fixedint
@@ -307,6 +307,13 @@ class SPyVM:
 
     def is_False(self, w_obj: W_Bool) -> bool:
         return w_obj is B.w_False
+
+    @overload
+    def wrap(self, value: int) -> W_I32: ...
+
+    @overload
+    def wrap(self, value: Any) -> W_Object: ...
+
 
     def wrap(self, value: Any) -> W_Object:
         """

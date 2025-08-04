@@ -22,7 +22,7 @@ class W_MyClass(W_Object):
     @staticmethod
     def w_neg(vm: 'SPyVM', w_self: 'W_MyClass') -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
-        return vm.wrap(-x)  # type: ignore
+        return vm.wrap(-x)
 
 
 @no_C
