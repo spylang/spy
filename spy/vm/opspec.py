@@ -41,6 +41,7 @@ from spy.vm.property import W_Property
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+    from spy.vm.primitive import W_Dynamic
     from spy.vm.str import W_Str
 
 
@@ -253,7 +254,7 @@ class W_OpArg(W_Object):
         because the applevel type (W_Str) doesn't match the interp-level type
         (Color).
         """
-        return vm.wrap(w_self.color)
+        return vm.wrap(w_self.color)  # type: ignore
 
     @builtin_property('blueval')
     @staticmethod
@@ -295,7 +296,9 @@ class W_MetaOpSpec(W_Type):
     """
     This exists solely to implement OpSpec.NULL.
 
-    I hope to be able to kill it as soon as we have descriptors
+    Hopefully we should be able to kill this as soon as we have class
+    properties / class attributes. See e.g. test_attrop::test_class_property
+    (now skipped)
     """
 
     @builtin_method('__getattr__', color='blue', kind='metafunc')

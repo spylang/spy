@@ -97,8 +97,9 @@ class builtin_class_attr:
     def __repr__(self) -> str:
         return f"<builtin_class_attr '{self.name}' = {self.w_val}>"
 
-    def __get__(self, instance, owner) -> 'W_Object':
+    def __get__(self, instance: Any, owner: type) -> 'W_Object':
         return self.w_val
+
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================

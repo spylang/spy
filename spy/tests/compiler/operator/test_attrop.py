@@ -46,6 +46,7 @@ class TestAttrOp(CompilerTest):
 
     def test_descriptor_get(self):
         # ========== EXT module for this test ==========
+        w_hello: W_Str = self.vm.wrap('hello')  # type: ignore
         EXT = ModuleRegistry('ext')
 
         @EXT.builtin_type('MyProxy')
@@ -63,7 +64,7 @@ class TestAttrOp(CompilerTest):
 
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
-            w_x = builtin_class_attr('x', W_MyProxy(self.vm.wrap('hello')))
+            w_x = builtin_class_attr('x', W_MyProxy(w_hello))
 
             @builtin_method('__new__')
             @staticmethod
@@ -115,7 +116,7 @@ class TestAttrOp(CompilerTest):
                 assert W_MyClass._w is w_t
                 @builtin_func(w_t.fqn, 'get_y')
                 def w_get_x2(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
-                    return vm.wrap(w_self.x * 2)
+                    return vm.wrap(w_self.x * 2)  # type: ignore
                 return W_OpSpec(w_get_x2, [wop_self])
 
 
@@ -157,7 +158,7 @@ class TestAttrOp(CompilerTest):
             @builtin_property('NULL', color='blue', kind='metafunc')
             @staticmethod
             def w_GET_NULL(vm: 'SPyVM', wop_self: 'W_OpArg') -> W_OpSpec:
-                breakpoint()
+                raise NotImplementedError('WIP')
 
 
         # ========== /EXT module for this test =========

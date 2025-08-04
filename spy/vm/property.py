@@ -2,8 +2,10 @@ from typing import TYPE_CHECKING
 from spy.vm.b import BUILTINS
 from spy.vm.object import W_Object
 from spy.vm.builtin import builtin_method
+from spy.vm.function import W_Func
 
 if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
     from spy.vm.opspec import W_OpArg, W_OpSpec
 
 
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
 class W_Property(W_Object):
     __spy_storage_category__ = 'reference'
 
-    def __init__(self, w_func):
+    def __init__(self, w_func: W_Func) -> None:
         self.w_func = w_func
 
     @builtin_method('__get__', color='blue', kind='metafunc')
