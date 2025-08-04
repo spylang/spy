@@ -75,7 +75,7 @@ class TestAttrOp(CompilerTest):
         )
         self.compile_raises(src2, 'get_foobar', errors, modname='test2')
 
-    def test_descriptor_get(self):
+    def test_descriptor_get_set(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
@@ -92,6 +92,15 @@ class TestAttrOp(CompilerTest):
                       w_obj: W_Object) -> W_I32:
                 assert isinstance(w_obj, W_MyClass)
                 return vm.wrap(w_obj.val + w_self.n)
+
+            @builtin_method('__set__')
+            @staticmethod
+            def w_set(vm: 'SPyVM', w_self: 'W_Adder',
+                      w_obj: W_Object, w_val: W_I32) -> None:
+                assert isinstance(w_obj, W_MyClass)
+                val = vm.unwrap_i32(w_val)
+                w_obj.val = val - w_self.n
+
 
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
@@ -121,10 +130,16 @@ class TestAttrOp(CompilerTest):
         def get_x():
             obj = MyClass()
             return obj.x
+
+        @blue
+        def set_x_and_get_val():
+            obj = MyClass()
+            obj.x = 32
+            return obj.val
         """)
         assert mod.get_val() == 10
         assert mod.get_x() == 42
-
+        assert mod.set_x_and_get_val() == 0
 
     def test_instance_property(self):
         # ========== EXT module for this test ==========

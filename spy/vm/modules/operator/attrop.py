@@ -87,6 +87,20 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         return W_OpSpec(OP.w_dynamic_setattr)
     elif attr in w_type.spy_members:
         return opspec_member('set', vm, w_type, attr)
+
+    # XXX: this logic is not fully sound: what happens if we find a member
+    # which has a __get__ but not a __set__? I think we should raise an error,
+    # but the current logic falls back to __setattr__
+
+    # try to find a descriptor with a __set__ method
+    elif w_member := w_type.lookup(attr):
+        w_member_type = vm.dynamic_type(w_member)
+        w_set = w_member_type.lookup_func('__set__')
+        if w_set:
+            # w_member is a descriptor! We can call its __set__
+            wop_member = W_OpArg.from_w_obj(vm, w_member)
+            return vm.fast_metacall(w_set, [wop_member, wop_obj, wop_v])
+
     elif w_setattr := w_type.lookup_func('__setattr__'):
         return vm.fast_metacall(w_setattr, [wop_obj, wop_attr, wop_v])
     return W_OpSpec.NULL
