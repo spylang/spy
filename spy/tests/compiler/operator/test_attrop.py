@@ -80,26 +80,32 @@ class TestAttrOp(CompilerTest):
         EXT = ModuleRegistry('ext')
 
         @EXT.builtin_type('MyProxy')
-        class W_MyProxy(W_Object):
-            w_val: W_Str
+        class W_Adder(W_Object):
+            n: int
 
-            def __init__(self, w_val: W_Str) -> None:
-                self.w_val = w_val
+            def __init__(self, n: int) -> None:
+                self.n = n
 
             @builtin_method('__get__')
             @staticmethod
-            def w_get(vm: 'SPyVM', w_self: 'W_MyProxy',
-                      w_obj: W_Object) -> W_Str:
-                return w_self.w_val
+            def w_get(vm: 'SPyVM', w_self: 'W_Adder',
+                      w_obj: W_Object) -> W_I32:
+                assert isinstance(w_obj, W_MyClass)
+                return vm.wrap(w_obj.val + w_self.n)
 
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
-            w_x = builtin_class_attr('x', W_MyProxy(self.vm.wrap('hello')))
+            w_val = builtin_class_attr('val', W_Adder(0))
+            w_x = builtin_class_attr('x', W_Adder(32))
+
+            def __init__(self) -> None:
+                self.val = 10
 
             @builtin_method('__new__')
             @staticmethod
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
+
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -107,12 +113,18 @@ class TestAttrOp(CompilerTest):
         from ext import MyClass
 
         @blue
-        def foo() -> str:
-            obj =  MyClass()
+        def get_val():
+            obj = MyClass()
+            return obj.val
+
+        @blue
+        def get_x():
+            obj = MyClass()
             return obj.x
         """)
-        x = mod.foo()
-        assert x == 'hello'
+        assert mod.get_val() == 10
+        assert mod.get_x() == 42
+
 
     def test_instance_property(self):
         # ========== EXT module for this test ==========
