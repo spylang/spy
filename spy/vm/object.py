@@ -478,6 +478,37 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
+    @builtin_method('__getattr__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_GETATTR(vm: 'SPyVM', wop_self: 'W_OpArg',
+                  wop_attr: 'W_OpArg') -> 'W_OpSpec':
+        # type instances have a dict, so they can have arbitrary
+        # attributes. If we are doing a getattr on a blue instance, we can
+        # check whether the attribute exists, and return it in that case.
+        #
+        # If the type instance is red or the attribute doesn't exist, we
+        # return OpSpec.NULL so that operator.GETATTR can raise the
+        # appropriate error.
+        from spy.vm.opspec import W_OpSpec
+        from spy.vm.primitive import W_Dynamic
+        from spy.vm.builtin import builtin_func
+
+        if wop_self.color != 'blue':
+            return W_OpSpec.NULL
+
+        w_self = wop_self.w_blueval
+        assert isinstance(w_self, W_Type)
+        attr = wop_attr.blue_unwrap_str(vm)
+        w_val = w_self.lookup(attr)
+        if w_val is None:
+            return W_OpSpec.NULL
+
+        @builtin_func(w_self.fqn, f'get_{attr}', color='blue')
+        def w_get_attr(vm: 'SPyVM') -> W_Dynamic:
+            return w_val
+
+        return W_OpSpec(w_get_attr, [])
+
     @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod
     def w_CALL(vm: 'SPyVM', wop_t: 'W_OpArg',

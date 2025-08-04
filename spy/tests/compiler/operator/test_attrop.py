@@ -9,7 +9,7 @@ from spy.vm.w import W_Object, W_Str
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C
+from spy.tests.support import CompilerTest, no_C, expect_errors
 
 @no_C
 class TestAttrOp(CompilerTest):
@@ -43,6 +43,37 @@ class TestAttrOp(CompilerTest):
         """)
         x = mod.foo()
         assert x == 123
+
+    def test_class_attribute(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+            w_x = builtin_class_attr('x', self.vm.wrap(42))
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+
+        src1 = """
+        from ext import MyClass
+        def get_x() -> i32:
+            return MyClass.x
+        """
+        mod1 = self.compile(src1, modname='test1')
+        assert mod1.get_x() == 42
+
+        src2 = """
+        from ext import MyClass
+        def get_foobar() -> i32:
+            # foobar doesn't exist
+            return MyClass.foobar
+        """
+        errors = expect_errors(
+            "type `type` has no attribute 'foobar'",
+            ('this is `type`', 'MyClass'),
+        )
+        self.compile_raises(src2, 'get_foobar', errors, modname='test2')
 
     def test_descriptor_get(self):
         # ========== EXT module for this test ==========

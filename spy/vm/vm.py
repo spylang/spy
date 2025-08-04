@@ -20,7 +20,7 @@ from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.property import W_Property
 from spy.vm.module import W_Module
-from spy.vm.opspec import W_MetaOpSpec, W_OpSpec, W_OpArg, w_oparg_eq
+from spy.vm.opspec import W_OpSpec, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -36,7 +36,6 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)
 W_Type._w.define(W_Type)
-W_MetaOpSpec._w.define(W_MetaOpSpec)
 W_OpSpec._w.define(W_OpSpec)
 W_OpArg._w.define(W_OpArg)
 W_Property._w.define(W_Property)
