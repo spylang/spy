@@ -14,7 +14,7 @@ from spy.vm.b import OP
 def w_repeat(vm: 'SPyVM', w_s: W_Str, w_n: W_I32) -> W_Str:
     s = vm.unwrap_str(w_s)
     n = vm.unwrap_i32(w_n)
-    return vm.wrap(s * int(n))  # type: ignore
+    return vm.wrap(s * int(n))
 
 def test_repeat():
     vm = SPyVM()

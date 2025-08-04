@@ -174,7 +174,7 @@ class TestCallOp(CompilerTest):
             def w_call(vm: 'SPyVM', w_obj: 'W_Adder', w_y: W_I32) -> W_I32:
                 y = vm.unwrap_i32(w_y)
                 res = w_obj.x + y
-                return vm.wrap(res) # type: ignore
+                return vm.wrap(res)
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)

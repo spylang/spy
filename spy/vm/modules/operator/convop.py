@@ -84,22 +84,22 @@ def CONVERT_maybe(
 @OP.builtin_func
 def w_i32_to_f64(vm: 'SPyVM', w_x: W_I32) -> W_F64:
     val = vm.unwrap_i32(w_x)
-    return vm.wrap(float(val))  # type: ignore
+    return vm.wrap(float(val))
 
 @OP.builtin_func
 def w_i8_to_f64(vm: 'SPyVM', w_x: W_I8) -> W_F64:
     val = vm.unwrap_i8(w_x)
-    return vm.wrap(float(val))  # type: ignore
+    return vm.wrap(float(val))
 
 @OP.builtin_func
 def w_u8_to_f64(vm: 'SPyVM', w_x: W_U8) -> W_F64:
     val = vm.unwrap_u8(w_x)
-    return vm.wrap(float(val))  # type: ignore
+    return vm.wrap(float(val))
 
 @OP.builtin_func
 def w_i32_to_bool(vm: 'SPyVM', w_x: W_I32) -> W_Bool:
     val = vm.unwrap_i32(w_x)
-    return vm.wrap(bool(val))  # type: ignore
+    return vm.wrap(bool(val))
 
 @OP.builtin_func
 def w_i32_to_i8(vm: 'SPyVM', w_x: W_I32) -> W_I8:
@@ -126,7 +126,7 @@ def w_f64_to_i32(vm: 'SPyVM', w_x: W_F64) -> W_I32:
         val = i32_MAX
     elif math.isnan(val):
         val = 0
-    return vm.wrap(int(val))  # type: ignore
+    return vm.wrap(int(val))
 
 
 @OP.builtin_func(color='blue')

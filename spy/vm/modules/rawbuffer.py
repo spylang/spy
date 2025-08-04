@@ -40,7 +40,7 @@ def w_rb_set_i32(vm: 'SPyVM', w_rb: W_RawBuffer,
 def w_rb_get_i32(vm: 'SPyVM', w_rb: W_RawBuffer, w_offset: W_I32) -> W_I32:
     offset = vm.unwrap_i32(w_offset)
     val = struct.unpack_from('i', w_rb.buf, offset)[0]
-    return vm.wrap(val)  # type: ignore
+    return vm.wrap(val)
 
 @RB.builtin_func
 def w_rb_set_f64(vm: 'SPyVM', w_rb: W_RawBuffer,
@@ -53,4 +53,4 @@ def w_rb_set_f64(vm: 'SPyVM', w_rb: W_RawBuffer,
 def w_rb_get_f64(vm: 'SPyVM', w_rb: W_RawBuffer, w_offset: W_I32) -> W_F64:
     offset = vm.unwrap_i32(w_offset)
     val = struct.unpack_from('d', w_rb.buf, offset)[0]
-    return vm.wrap(val)  # type: ignore
+    return vm.wrap(val)

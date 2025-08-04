@@ -29,21 +29,21 @@ def w_STATIC_TYPE(vm: 'SPyVM', w_expr: W_Object) -> W_Type:
 def w_abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
     res = vm.ll.call('spy_builtins$abs', x)
-    return vm.wrap(res) # type: ignore
+    return vm.wrap(res)
 
 @BUILTINS.builtin_func
 def w_max(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
     y = vm.unwrap_i32(w_y)
     res = vm.ll.call('spy_builtins$max', x, y)
-    return vm.wrap(res) # type: ignore
+    return vm.wrap(res)
 
 @BUILTINS.builtin_func
 def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
     y = vm.unwrap_i32(w_y)
     res = vm.ll.call('spy_builtins$min', x, y)
-    return vm.wrap(res) # type: ignore
+    return vm.wrap(res)
 
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
@@ -122,7 +122,7 @@ def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
 # circular import issues
 @builtin_func('builtins')
 def w_functype_eq(vm: 'SPyVM', w_ft1: W_FuncType, w_ft2: W_FuncType) -> W_Bool:
-    return vm.wrap(w_ft1 == w_ft2)  # type: ignore
+    return vm.wrap(w_ft1 == w_ft2)
 
 
 # add aliases for common types. For now we map:

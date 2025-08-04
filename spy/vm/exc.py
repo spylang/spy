@@ -88,7 +88,7 @@ class W_Exception(W_Object):
         def w_eq(vm: 'SPyVM', w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
             res =  (w_e1.message == w_e2.message and
                     w_e1.annotations == w_e2.annotations)
-            return vm.wrap(bool(res))  # type: ignore
+            return vm.wrap(bool(res))
 
         return W_OpSpec(w_eq)
 
@@ -108,7 +108,7 @@ class W_Exception(W_Object):
         def w_ne(vm: 'SPyVM', w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
             res = not (w_e1.message == w_e2.message and
                        w_e1.annotations == w_e2.annotations)
-            return vm.wrap(bool(res))  # type: ignore
+            return vm.wrap(bool(res))
 
         return W_OpSpec(w_ne)
 

@@ -46,7 +46,6 @@ class TestAttrOp(CompilerTest):
 
     def test_descriptor_get(self):
         # ========== EXT module for this test ==========
-        w_hello: W_Str = self.vm.wrap('hello')  # type: ignore
         EXT = ModuleRegistry('ext')
 
         @EXT.builtin_type('MyProxy')
@@ -64,7 +63,7 @@ class TestAttrOp(CompilerTest):
 
         @EXT.builtin_type('MyClass')
         class W_MyClass(W_Object):
-            w_x = builtin_class_attr('x', W_MyProxy(w_hello))
+            w_x = builtin_class_attr('x', W_MyProxy(self.vm.wrap('hello')))
 
             @builtin_method('__new__')
             @staticmethod
@@ -103,7 +102,7 @@ class TestAttrOp(CompilerTest):
             @builtin_property('x')
             @staticmethod
             def w_get_x(vm: 'SPyVM', w_self: 'W_MyClass') -> W_I32:
-                return vm.wrap(w_self.x)  # type: ignore
+                return vm.wrap(w_self.x)
 
             @builtin_property('x2', color='blue', kind='metafunc')
             @staticmethod
@@ -116,7 +115,7 @@ class TestAttrOp(CompilerTest):
                 assert W_MyClass._w is w_t
                 @builtin_func(w_t.fqn, 'get_y')
                 def w_get_x2(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
-                    return vm.wrap(w_self.x * 2)  # type: ignore
+                    return vm.wrap(w_self.x * 2)
                 return W_OpSpec(w_get_x2, [wop_self])
 
 
@@ -199,13 +198,13 @@ class TestAttrOp(CompilerTest):
                     @builtin_func('ext', 'getx')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                            w_attr: W_Str) -> W_I32:
-                        return vm.wrap(w_obj.x)  # type: ignore
+                        return vm.wrap(w_obj.x)
                 else:
                     @builtin_func('ext', 'getany')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
-                        return vm.wrap(attr.upper() + '--42')  # type: ignore
+                        return vm.wrap(attr.upper() + '--42')
                 return W_OpSpec(w_fn)
 
             @builtin_method('__setattr__', color='blue', kind='metafunc')
