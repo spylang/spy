@@ -23,7 +23,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     return ptr
 
 
-@B.builtin_type('str')
+@B.builtin_type('str', lazy_definition=True)
 class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.

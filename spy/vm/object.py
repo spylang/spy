@@ -46,7 +46,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
-                    Callable, Annotated, Self)
+                    Callable, Annotated, Self, Literal)
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
@@ -65,14 +65,47 @@ def builtin_method(name: str, *, color: Color = 'red',
     """
     Turn an interp-level method into an app-level one.
 
-    This decorator just put a mark on the method. The actual job is done by
+    This decorator just puts a mark on the function, the actual job is done by
     W_Type._init_builtin_method().
     """
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), 'missing @staticmethod'
-        fn.spy_builtin_method = (name, color, kind)  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, 'method')  # type: ignore
         return fn
     return decorator
+
+def builtin_property(name: str, *, color: Color = 'red',
+                     kind: 'FuncKind' = 'plain') -> Any:
+    """
+    Turn an interp-level getter method into an app-level property.
+
+    This decorator just puts a mark on the function, the actual job is done by
+    W_Type._init_builtin_method().
+    """
+    def decorator(fn: Callable) -> Callable:
+        assert isinstance(fn, staticmethod), 'missing @staticmethod'
+        fn.spy_builtin_method = (name, color, kind, 'property')  # type: ignore
+        return fn
+    return decorator
+
+
+class builtin_class_attr:
+    """
+    Turn an interp-level class attribute into an app-level one.
+
+    See test_builtin.py::test_builtin_class_attr for usage.
+    """
+
+    def __init__(self, name: str, w_val: 'W_Object') -> None:
+        self.name = name
+        self.w_val = w_val
+
+    def __repr__(self) -> str:
+        return f"<builtin_class_attr '{self.name}' = {self.w_val}>"
+
+    def __get__(self, instance: Any, owner: type) -> 'W_Object':
+        return self.w_val
+
 
 # Basic setup of the object model: <object> and <type>
 # =====================================================
@@ -327,16 +360,26 @@ class W_Type(W_Object):
         for name, value in self._pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
                 self._init_builtin_method(value)
+            elif isinstance(value, builtin_class_attr):
+                self._dict_w[value.name] = value.w_val
 
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError
 
     def _init_builtin_method(self, statmeth: staticmethod) -> None:
-        "Turn the @builtin_method into a W_BuiltinFunc"
+        """
+        Turn @builtin_method into a W_BuiltinFunc and @builtin_property
+        into a W_Property
+        """
         from spy.vm.builtin import builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
-        appname, color, kind = statmeth.spy_builtin_method  # type: ignore
+        from spy.vm.str import W_Str
+        from spy.vm.primitive import W_Dynamic
+        from spy.vm.property import W_Property
+
         pyfunc = statmeth.__func__
+        appname, color, kind, what = statmeth.spy_builtin_method # type: ignore
+        assert what in ('method', 'property')
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations
@@ -344,6 +387,8 @@ class W_Type(W_Object):
             self.pyclass.__name__: Annotated[self.pyclass, self],
             'W_OpArg': W_OpArg,
             'W_OpSpec': W_OpSpec,
+            'W_Str': W_Str,
+            'W_Dynamic': W_Dynamic,
         }
         decorator = builtin_func(
             namespace = self.fqn,
@@ -353,9 +398,13 @@ class W_Type(W_Object):
             kind = kind,
             extra_types = extra_types,
         )
-        # apply the decorator and store the method in the applevel dict
-        w_meth = decorator(pyfunc)
-        self.dict_w[appname] = w_meth
+        # apply the decorator and get a W_BuiltinFunc
+        w_func = decorator(pyfunc)
+        if what == 'method':
+            self.dict_w[appname] = w_func
+        else:
+            self.dict_w[appname] = W_Property(w_func)
+
 
     # Union[W_Type, W_NoneType] means "either a W_Type or B.w_None"
     @property
@@ -388,15 +437,12 @@ class W_Type(W_Object):
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
 
-    def lookup_func(self, name: str) -> Optional['W_Func']:
+    def lookup(self, name: str) -> Optional[W_Object]:
         """
-        Lookup the given attribute into the applevel dict, and ensure it's
-        a W_Func.
+        Lookup the given attribute into the applevel dict
         """
-        from spy.vm.function import W_Func
         # look in our dict
         if w_obj := self.dict_w.get(name):
-            assert isinstance(w_obj, W_Func)
             return w_obj
 
         # look in the superclass
@@ -407,14 +453,28 @@ class W_Type(W_Object):
         # not found
         return None
 
+    def lookup_func(self, name: str) -> Optional['W_Func']:
+        """
+        Like lookup, but ensure it's a W_Func.
+        """
+        from spy.vm.function import W_Func
+        w_obj = self.lookup(name)
+        if w_obj:
+            assert isinstance(w_obj, W_Func)
+            return w_obj
+        return None
+
     def lookup_blue_func(self, name: str) -> Optional['W_Func']:
         """
         Like lookup_func, but also check that the function is blue
         """
-        w_obj = self.lookup_func(name)
+        from spy.vm.function import W_Func
+        w_obj = self.lookup(name)
         if w_obj:
+            assert isinstance(w_obj, W_Func)
             assert w_obj.color == 'blue'
-        return w_obj
+            return w_obj
+        return None
 
     # ======== app-level interface ========
 
@@ -445,7 +505,7 @@ class W_Type(W_Object):
             # __new__: when it's a metafunc we also want to pass the OpArg of
             # the type itself (so that the function can reach
             # e.g. wop_p.w_blueval), but for normal __new__ by default we
-            # don't pass it (because usually it's not needed0
+            # don't pass it (because usually it's not needed)
             if w_new.w_functype.kind == 'metafunc':
                 new_args_wop = [wop_t] + list(args_wop)
             else:

@@ -8,7 +8,7 @@ from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Str
 from spy.vm.b import B
 from spy.fqn import FQN
 from spy.vm.builtin import (builtin_func, functype_from_sig,
-                            builtin_type, builtin_method)
+                            builtin_type, builtin_method, builtin_class_attr)
 
 class TestBuiltin:
 
@@ -119,6 +119,18 @@ class TestBuiltin:
         assert isinstance(w_make, W_BuiltinFunc)
         assert w_make.w_functype.fqn.human_name == "def() -> test::Foo"
         assert w_make.w_functype.w_restype is W_Foo._w
+
+    def test_builtin_class_attr(self):
+        vm = SPyVM()
+        w_42 = vm.wrap(42)
+
+        @builtin_type('test', 'Foo')
+        class W_Foo(W_Object):
+            w_attr = builtin_class_attr('attr', w_42)
+
+        assert W_Foo.w_attr is w_42
+        assert W_Foo._w.dict_w['attr'] is w_42
+
 
     def test_inherit_method(self):
         @builtin_type('test', 'Super')
