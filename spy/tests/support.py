@@ -232,6 +232,7 @@ class CompilerTest:
 
     def compile_raises(self, src: str, funcname: str, ctx: Any,
                        *,
+                       modname: str = 'test',
                        error_reporting: Optional[str] = None) -> None:
         """
         Compile the given src and run the function with the given funcname.
@@ -251,7 +252,7 @@ class CompilerTest:
 
         if error_reporting == 'eager':
             with ctx:
-                mod = self.compile(src)
+                mod = self.compile(src, modname=modname)
         else:
             mod = self.compile(src)
             with ctx:
