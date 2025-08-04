@@ -35,7 +35,8 @@ from spy.errors import SPyError
 from spy.vm.b import OPERATOR, B
 from spy.vm.object import Member, W_Type, W_Object
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.builtin import builtin_func, builtin_method, builtin_property
+from spy.vm.builtin import (builtin_func, builtin_method, builtin_property,
+                            builtin_class_attr)
 from spy.vm.primitive import W_Bool
 from spy.vm.property import W_Property
 
@@ -291,33 +292,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     return B.w_True
 
 
-@OPERATOR.builtin_type('MetaOpSpec', lazy_definition=True)
-class W_MetaOpSpec(W_Type):
-    """
-    This exists solely to implement OpSpec.NULL.
-
-    Hopefully we should be able to kill this as soon as we have class
-    properties / class attributes. See e.g. test_attrop::test_class_property
-    (now skipped)
-    """
-
-    @builtin_method('__getattr__', color='blue', kind='metafunc')
-    @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_cls: W_OpArg, wop_attr: W_OpArg) -> 'W_OpSpec':
-        """
-        Handle class attribute lookups on OpSpec, like OpSpec.NULL
-        """
-        attr_name = wop_attr.blue_unwrap_str(vm)
-        if attr_name == 'NULL':
-            # Return the NULL instance directly
-            @builtin_func(W_OpSpec._w.fqn, 'get_null')
-            def w_get_null(vm: 'SPyVM', w_cls: W_Type) -> W_OpSpec:
-                return W_OpSpec.NULL
-            return W_OpSpec(w_get_null, [wop_cls])
-        return W_OpSpec.NULL
-
-
-@OPERATOR.builtin_type('OpSpec', W_MetaClass=W_MetaOpSpec, lazy_definition=True)
+@OPERATOR.builtin_type('OpSpec', lazy_definition=True)
 class W_OpSpec(W_Object):
     NULL: ClassVar['W_OpSpec']
     _w_func: Optional[W_Func]
@@ -390,5 +365,5 @@ class W_OpSpec(W_Object):
         else:
             return W_OpSpec.NULL
 
-
-W_OpSpec.NULL = W_OpSpec(None)  # type: ignore
+# make W_OpSpec.NULL available also at applevel, thanks to builtin_class_attr
+W_OpSpec.NULL = builtin_class_attr('NULL', W_OpSpec(None))  # type: ignore
