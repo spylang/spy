@@ -22,112 +22,112 @@ class W_BinOpClass(W_Object):
     def w_add(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x + other)  # type: ignore
+        return vm.wrap(x + other)
 
     @builtin_method('__sub__')
     @staticmethod
     def w_sub(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x - other)  # type: ignore
+        return vm.wrap(x - other)
 
     @builtin_method('__mul__')
     @staticmethod
     def w_mul(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x * other)  # type: ignore
+        return vm.wrap(x * other)
 
     @builtin_method('__div__')
     @staticmethod
     def w_div(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x // other)  # type: ignore
+        return vm.wrap(x // other)
 
     @builtin_method('__mod__')
     @staticmethod
     def w_mod(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x % other)  # type: ignore
+        return vm.wrap(x % other)
 
     @builtin_method('__and__')
     @staticmethod
     def w_and(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x & other)  # type: ignore
+        return vm.wrap(x & other)
 
     @builtin_method('__or__')
     @staticmethod
     def w_or(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x | other)  # type: ignore
+        return vm.wrap(x | other)
 
     @builtin_method('__xor__')
     @staticmethod
     def w_xor(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x ^ other)  # type: ignore
+        return vm.wrap(x ^ other)
 
     @builtin_method('__lshift__')
     @staticmethod
     def w_shl(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x << other)  # type: ignore
+        return vm.wrap(x << other)
 
     @builtin_method('__rshift__')
     @staticmethod
     def w_shr(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(x >> other)  # type: ignore
+        return vm.wrap(x >> other)
 
     @builtin_method('__eq__')
     @staticmethod
     def w_eq(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(1 if x == other else 0)  # type: ignore
+        return vm.wrap(1 if x == other else 0)
 
     @builtin_method('__ne__')
     @staticmethod
     def w_ne(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(1 if x != other else 0)  # type: ignore
+        return vm.wrap(1 if x != other else 0)
 
     @builtin_method('__lt__')
     @staticmethod
     def w_lt(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(1 if x < other else 0)  # type: ignore
+        return vm.wrap(1 if x < other else 0)
 
     @builtin_method('__le__')
     @staticmethod
     def w_le(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(1 if x <= other else 0)  # type: ignore
+        return vm.wrap(1 if x <= other else 0)
 
     @builtin_method('__gt__')
     @staticmethod
     def w_gt(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(1 if x > other else 0)  # type: ignore
+        return vm.wrap(1 if x > other else 0)
 
     @builtin_method('__ge__')
     @staticmethod
     def w_ge(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
-        return vm.wrap(1 if x >= other else 0)  # type: ignore
+        return vm.wrap(1 if x >= other else 0)
 
 
 @no_C

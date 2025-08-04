@@ -58,7 +58,7 @@ class TestOpSpec(CompilerTest):
             @builtin_method('__getitem__')
             @staticmethod
             def w_getitem(vm: 'SPyVM', w_obj: 'W_MyClass') -> W_I32:
-                return vm.wrap(42)  # type: ignore
+                return vm.wrap(42)
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -104,7 +104,7 @@ class TestOpSpec(CompilerTest):
             assert isinstance(w_obj, W_MyClass)
             a = vm.unwrap_i32(w_i)
             b = vm.unwrap_i32(w_obj.w_x)
-            return vm.wrap(a+b)  # type: ignore
+            return vm.wrap(a+b)
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

@@ -143,7 +143,7 @@ class TestCallOp(CompilerTest):
             tot = 0
             for w_x in args_w:
                 tot += vm.unwrap_i32(w_x)
-            return vm.wrap(tot)  # type: ignore
+            return vm.wrap(tot)
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -174,7 +174,7 @@ class TestCallOp(CompilerTest):
             def w_call(vm: 'SPyVM', w_obj: 'W_Adder', w_y: W_I32) -> W_I32:
                 y = vm.unwrap_i32(w_y)
                 res = w_obj.x + y
-                return vm.wrap(res) # type: ignore
+                return vm.wrap(res)
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -214,7 +214,7 @@ class TestCallOp(CompilerTest):
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
-                        return vm.wrap(w_self.x + y)  # type: ignore
+                        return vm.wrap(w_self.x + y)
                     return W_OpSpec(w_fn, [wop_obj] + list(args_wop))
 
                 elif meth == 'sub':
@@ -222,7 +222,7 @@ class TestCallOp(CompilerTest):
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
-                        return vm.wrap(w_self.x - y)  # type: ignore
+                        return vm.wrap(w_self.x - y)
                     return W_OpSpec(w_fn, [wop_obj] + list(args_wop))
                 else:
                     return W_OpSpec.NULL

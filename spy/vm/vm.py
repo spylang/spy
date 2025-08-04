@@ -1,4 +1,4 @@
-from typing import Any, Optional, Iterable, Sequence, Callable
+from typing import Any, Optional, Iterable, Sequence, Callable, overload, Union
 import itertools
 from types import FunctionType
 import fixedint
@@ -10,7 +10,8 @@ from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError, WIP
 from spy.vm.object import W_Object, W_Type
-from spy.vm.primitive import W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic
+from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
+                              W_NoneType)
 from spy.vm.str import W_Str
 from spy.vm.list import W_ListType
 from spy.vm.b import B
@@ -307,6 +308,41 @@ class SPyVM:
 
     def is_False(self, w_obj: W_Bool) -> bool:
         return w_obj is B.w_False
+
+
+    # ======== <vm.wrap typing> =========
+    # The return type of vm.wrap depends on the type of the argument.
+    #
+    # The following series of @overload try to capture the runtime logic done
+    # by vm.wrap. Note that bool, Int8, UInt8 etc are subclasses of int, so we
+    # need extra care for that. In particular, we need to make sure that they
+    # are listed *before* the overload wrap(int), and we need to ignore
+    # overload-overlap.
+
+    @overload
+    def wrap(self, value: None) -> W_NoneType: ...
+
+    @overload
+    def wrap(self, value: bool) -> W_Bool: ... # type: ignore[overload-overlap]
+
+    @overload
+    def wrap(self, value: fixedint.Int8) -> W_I8: ... # type: ignore[overload-overlap]
+
+    @overload
+    def wrap(self, value: fixedint.UInt8) -> W_U8: ... # type: ignore[overload-overlap]
+
+    @overload
+    def wrap(self, value: Union[fixedint.Int32, int]) -> W_I32: ...
+
+    @overload
+    def wrap(self, value: float) -> W_F64: ...
+
+    @overload
+    def wrap(self, value: str) -> W_Str: ...
+
+    @overload
+    def wrap(self, value: Any) -> W_Object: ...
+    # ======== </vm.wrap typing> =========
 
     def wrap(self, value: Any) -> W_Object:
         """

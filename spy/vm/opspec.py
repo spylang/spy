@@ -254,7 +254,7 @@ class W_OpArg(W_Object):
         because the applevel type (W_Str) doesn't match the interp-level type
         (Color).
         """
-        return vm.wrap(w_self.color)  # type: ignore
+        return vm.wrap(w_self.color)
 
     @builtin_property('blueval')
     @staticmethod

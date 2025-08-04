@@ -40,7 +40,7 @@ class TestBuiltin:
         @builtin_func('mymod')
         def w_foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
-            return vm.wrap(x*2)  # type: ignore
+            return vm.wrap(x*2)
 
         assert isinstance(w_foo, W_BuiltinFunc)
         assert w_foo.fqn == FQN('mymod::foo')
@@ -97,7 +97,7 @@ class TestBuiltin:
         @builtin_func('mymod', color='blue')
         def w_foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
-            return vm.wrap(x*2)  # type: ignore
+            return vm.wrap(x*2)
 
         assert w_foo.w_functype.fqn.human_name == '@blue def(i32) -> i32'
         w_x = vm.fast_call(w_foo, [vm.wrap(21)])

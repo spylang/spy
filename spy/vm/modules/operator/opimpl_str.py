@@ -26,11 +26,11 @@ def w_str_eq(vm: 'SPyVM', w_a: W_Str, w_b: W_Str) -> W_Bool:
     assert isinstance(w_a, W_Str)
     assert isinstance(w_b, W_Str)
     res = vm.ll.call('spy_str_eq', w_a.ptr, w_b.ptr)
-    return vm.wrap(bool(res))  # type: ignore
+    return vm.wrap(bool(res))
 
 @OP.builtin_func
 def w_str_ne(vm: 'SPyVM', w_a: W_Str, w_b: W_Str) -> W_Bool:
     assert isinstance(w_a, W_Str)
     assert isinstance(w_b, W_Str)
     res = vm.ll.call('spy_str_eq', w_a.ptr, w_b.ptr)
-    return vm.wrap(bool(not res))  # type: ignore
+    return vm.wrap(bool(not res))

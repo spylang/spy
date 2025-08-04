@@ -91,10 +91,10 @@ class W_Str(W_Object):
     def w_len(vm: 'SPyVM', w_s: 'W_Str') -> W_I32:
         assert isinstance(w_s, W_Str)
         length = vm.ll.call('spy_str_len', w_s.ptr)
-        return vm.wrap(length)  # type: ignore
+        return vm.wrap(length)
 
 
 @builtin_func('builtins')
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
-    return vm.wrap(str(i))  # type: ignore
+    return vm.wrap(str(i))
