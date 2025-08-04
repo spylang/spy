@@ -83,7 +83,7 @@ class TestAttrOp(CompilerTest):
         x = mod.foo()
         assert x == 'hello'
 
-    def test_property(self):
+    def test_instance_property(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
@@ -139,6 +139,40 @@ class TestAttrOp(CompilerTest):
         assert x == 42
         x2 = mod.get_x2()
         assert x2 == 86
+
+
+    @pytest.mark.skip(reason='implement me')
+    def test_class_property(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+
+            @builtin_method('__new__')
+            @staticmethod
+            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+                return W_MyClass()
+
+            @builtin_property('NULL', color='blue', kind='metafunc')
+            @staticmethod
+            def w_GET_NULL(vm: 'SPyVM', wop_self: 'W_OpArg') -> W_OpSpec:
+                breakpoint()
+
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        mod = self.compile(
+                """
+        from ext import MyClass
+
+        @blue
+        def get_NULL():
+            return MyClass.NULL
+
+        """)
+        x = mod.get_NULL()
+        breakpoint()
 
     def test_getattr_setattr_custom(self):
         # ========== EXT module for this test ==========
