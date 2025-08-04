@@ -1,4 +1,4 @@
-from typing import Any, Optional, Iterable, Sequence, Callable, overload
+from typing import Any, Optional, Iterable, Sequence, Callable, overload, Union
 import itertools
 from types import FunctionType
 import fixedint
@@ -309,11 +309,11 @@ class SPyVM:
         return w_obj is B.w_False
 
     @overload
-    def wrap(self, value: int) -> W_I32: ...
-
+    def wrap(self, value: Union[int, fixedint.Int32]) -> W_I32: ...
+    @overload
+    def wrap(self, value: str) -> W_Str: ...
     @overload
     def wrap(self, value: Any) -> W_Object: ...
-
 
     def wrap(self, value: Any) -> W_Object:
         """

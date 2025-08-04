@@ -1,6 +1,7 @@
 import textwrap
 from spy.location import Loc
 from spy.vm.vm import SPyVM
+from spy.vm.object import W_Object
 from spy.vm.function import W_FuncType
 from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.primitive import W_I32
@@ -43,7 +44,7 @@ def test_shuffle_args():
 def test_const():
     vm = SPyVM()
     w_functype = W_FuncType.parse('def(i32) -> str')
-    w_s = vm.wrap('ab ')
+    w_s: W_Object = vm.wrap('ab ')
     w_opimpl = W_OpImpl(
         w_functype,
         w_repeat,

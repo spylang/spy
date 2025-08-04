@@ -28,7 +28,7 @@ class W_MyClass(W_Object):
             return w_self.w_values[idx]
 
         # Otherwise calculate a value based on base and index
-        return vm.wrap(base + idx)  # type: ignore
+        return vm.wrap(base + idx)
 
     @builtin_method('__setitem__')
     @staticmethod
@@ -59,7 +59,7 @@ class W_2DArray(W_Object):
         j = vm.unwrap_i32(w_j)
         k = i + (j * w_self.W)
         val = w_self.data[k]
-        return vm.wrap(val)  # type: ignore
+        return vm.wrap(val)
 
     @builtin_method('__setitem__')
     @staticmethod

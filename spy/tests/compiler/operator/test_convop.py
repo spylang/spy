@@ -37,7 +37,7 @@ class W_MyClass(W_Object):
         @builtin_func('ext')
         def w_to_str(vm: 'SPyVM', w_self: W_MyClass) -> W_Str:
             x = vm.unwrap_i32(w_self.w_x)
-            return vm.wrap(str(x))  # type: ignore
+            return vm.wrap(str(x))
 
         if w_target_type is B.w_i32:
             vm.add_global(w_to_i32.fqn, w_to_i32)
@@ -60,7 +60,7 @@ class W_MyClass(W_Object):
         def w_from_str(vm: 'SPyVM', w_val: W_Str) -> W_MyClass:
             s = vm.unwrap_str(w_val)
             w_x = vm.wrap(int(s))
-            return W_MyClass(w_x)  # type: ignore
+            return W_MyClass(w_x)
 
         if w_source_type is B.w_str:
             vm.add_global(w_from_str.fqn, w_from_str)
