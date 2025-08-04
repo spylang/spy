@@ -65,20 +65,26 @@ def builtin_method(name: str, *, color: Color = 'red',
     """
     Turn an interp-level method into an app-level one.
 
-    This decorator just put a mark on the method. The actual job is done by
+    This decorator just puts a mark on the function, the actual job is done by
     W_Type._init_builtin_method().
     """
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), 'missing @staticmethod'
-        fn.spy_builtin_method = (name, color, kind)  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, 'method')  # type: ignore
         return fn
     return decorator
 
 def builtin_property(name: str, *, color: Color = 'red',
                      kind: 'FuncKind' = 'plain') -> Any:
+    """
+    Turn an interp-level getter method into an app-level property.
+
+    This decorator just puts a mark on the function, the actual job is done by
+    W_Type._init_builtin_method().
+    """
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), 'missing @staticmethod'
-        fn.spy_builtin_property = (name, color, kind)  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, 'property')  # type: ignore
         return fn
     return decorator
 
@@ -353,20 +359,14 @@ class W_Type(W_Object):
         # lazy evaluation of @builtin methods decorators
         for name, value in self._pyclass.__dict__.items():
             if hasattr(value, 'spy_builtin_method'):
-                self._init_builtin_method(value, 'method')
-            elif hasattr(value, 'spy_builtin_property'):
-                self._init_builtin_method(value, 'property')
+                self._init_builtin_method(value)
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError
 
-    def _init_builtin_method(
-            self,
-            statmeth: staticmethod,
-            what: Literal['method', 'property']
-    ) -> None:
+    def _init_builtin_method(self, statmeth: staticmethod) -> None:
         """
         Turn @builtin_method into a W_BuiltinFunc and @builtin_property
         into a W_Property
@@ -378,10 +378,8 @@ class W_Type(W_Object):
         from spy.vm.property import W_Property
 
         pyfunc = statmeth.__func__
-        if what == 'method':
-            appname, color, kind = statmeth.spy_builtin_method   # type: ignore
-        else:
-            appname, color, kind = statmeth.spy_builtin_property # type: ignore
+        appname, color, kind, what = statmeth.spy_builtin_method # type: ignore
+        assert what in ('method', 'property')
 
         # create the @builtin_func decorator, and make it possible to use the
         # string 'W_MyClass' in annotations

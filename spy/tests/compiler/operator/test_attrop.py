@@ -123,7 +123,7 @@ class TestAttrOp(CompilerTest):
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile(
-                """
+        """
         from ext import MyClass
 
         @blue
@@ -164,7 +164,7 @@ class TestAttrOp(CompilerTest):
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile(
-                """
+        """
         from ext import MyClass
 
         @blue
