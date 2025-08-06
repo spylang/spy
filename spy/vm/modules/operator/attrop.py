@@ -32,24 +32,12 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         errmsg = "type `{0}` has no attribute '%s'" % attr
     )
 
-DESCR = Literal['__get__', '__set__']
-def lookup_descriptor(vm: 'SPyVM', w_type: W_Type,
-                      attr: str, what: DESCR) -> Optional[W_Func]:
-    w_member = w_type.lookup(attr)
-    if not w_member:
-        return None
-
-    w_member_type = vm.dynamic_type(w_member)
-    return w_member_type.lookup_func('__get__')
-
 def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpSpec:
-
     w_type = wop_obj.w_static_type
+
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
-    elif attr in w_type.spy_members:
-        return opspec_member('get', vm, w_type, attr)
 
     # try to find a descriptor with a __get__ method
     elif w_member := w_type.lookup(attr):
@@ -62,6 +50,7 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 
     elif w_getattr := w_type.lookup_func(f'__getattr__'):
         return vm.fast_metacall(w_getattr, [wop_obj, wop_attr])
+
     return W_OpSpec.NULL
 
 
@@ -83,35 +72,20 @@ def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         wop_v: W_OpArg, attr: str) -> W_OpSpec:
     w_type = wop_obj.w_static_type
+
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_setattr)
-    elif attr in w_type.spy_members:
-        return opspec_member('set', vm, w_type, attr)
+
+    # try to find a descriptor with a __set__ method
+    elif w_member := w_type.lookup(attr):
+        w_member_type = vm.dynamic_type(w_member)
+        w_set = w_member_type.lookup_func('__set__')
+        if w_set:
+            # w_member is a descriptor! We can call its __set__
+            wop_member = W_OpArg.from_w_obj(vm, w_member)
+            return vm.fast_metacall(w_set, [wop_member, wop_obj, wop_v])
+
     elif w_setattr := w_type.lookup_func('__setattr__'):
         return vm.fast_metacall(w_setattr, [wop_obj, wop_attr, wop_v])
+
     return W_OpSpec.NULL
-
-
-def opspec_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
-                  attr: str) -> W_OpSpec:
-    member = w_type.spy_members[attr]
-    field = member.field # the interp-level name of the attr (e.g, 'w_x')
-    T = Annotated[W_Object, w_type]        # type of the object
-    V = Annotated[W_Object, member.w_type] # type of the attribute
-
-    if kind == 'get':
-        @builtin_func(w_type.fqn, f"__get_{attr}__")
-        def w_opimpl_get(vm: 'SPyVM', w_obj: T, w_attr: W_Str) -> V:
-            return getattr(w_obj, field)
-
-        return W_OpSpec(w_opimpl_get)
-
-    elif kind == 'set':
-        @builtin_func(w_type.fqn, f"__set_{attr}__")
-        def w_opimpl_set(vm: 'SPyVM', w_obj: T, w_attr: W_Str, w_val: V)-> None:
-            setattr(w_obj, field, w_val)
-
-        return W_OpSpec(w_opimpl_set)
-
-    else:
-        assert False, f'Invalid OpKind: {kind}'

@@ -1,7 +1,7 @@
 from typing import Annotated
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
-from spy.vm.object import Member
+from spy.vm.member import Member
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
 from spy.vm.opspec import W_OpSpec, W_OpArg
