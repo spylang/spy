@@ -32,16 +32,6 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
         errmsg = "type `{0}` has no attribute '%s'" % attr
     )
 
-DESCR = Literal['__get__', '__set__']
-def lookup_descriptor(vm: 'SPyVM', w_type: W_Type,
-                      attr: str, what: DESCR) -> Optional[W_Func]:
-    w_member = w_type.lookup(attr)
-    if not w_member:
-        return None
-
-    w_member_type = vm.dynamic_type(w_member)
-    return w_member_type.lookup_func('__get__')
-
 def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpSpec:
 
