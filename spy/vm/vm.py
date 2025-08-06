@@ -19,6 +19,7 @@ from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.property import W_Property
+from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.opspec import W_OpSpec, W_OpArg, w_oparg_eq
 from spy.vm.registry import ModuleRegistry
@@ -39,6 +40,7 @@ W_Type._w.define(W_Type)
 W_OpSpec._w.define(W_OpSpec)
 W_OpArg._w.define(W_OpArg)
 W_Property._w.define(W_Property)
+W_Member._w.define(W_Member)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
 W_F64._w.define(W_F64)

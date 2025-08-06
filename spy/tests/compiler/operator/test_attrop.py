@@ -2,7 +2,7 @@ from typing import Annotated
 import pytest
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
-from spy.vm.object import Member
+from spy.vm.member import Member
 from spy.vm.builtin import (builtin_func, builtin_method, builtin_class_attr,
                             builtin_property)
 from spy.vm.w import W_Object, W_Str

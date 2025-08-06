@@ -134,7 +134,9 @@ class W_Object:
 
     def spy_get_w_type(self, vm: 'SPyVM') -> 'W_Type':
         pyclass = type(self)
-        assert pyclass.__dict__['_w'] is not None, 'missing @builtin_type?'
+        T = pyclass.__name__
+        _w = pyclass.__dict__.get('_w')
+        assert _w is not None, f'class {T} misses @builtin_type'
         return pyclass._w
 
     def spy_unwrap(self, vm: 'SPyVM') -> Any:
@@ -290,7 +292,6 @@ class W_Type(W_Object):
     __spy_storage_category__ = 'reference'
     fqn: FQN
     _pyclass: Optional[Type[W_Object]]
-    spy_members: dict[str, 'Member']
     _dict_w: Optional[dict[str, W_Object]]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -343,18 +344,23 @@ class W_Type(W_Object):
         """
         Turn a declared type into a defined type, using the given pyclass.
         """
+        from spy.vm.member import Member, W_Member
         assert not self.is_defined(), 'cannot call W_Type.setup() twice'
         self._pyclass = pyclass
         self._dict_w = {}
 
-        # setup spy_members
-        self.spy_members = {}
+        # initialize W_Member
         for field, t in self._pyclass.__annotations__.items():
-            member = Member.from_annotation_maybe(t)
-            if member is not None:
-                member.field = field
-                member.w_type = typing.get_args(t)[0]._w
-                self.spy_members[member.name] = member
+            if member := Member.from_annotation(t):
+                # if we have this declaration:
+                #    w_x: Annotated[W_I32, Member('x')]
+                #
+                # member == Member('x')
+                # field == 'w_x'
+                # w_T is B.w_i32
+                w_T = typing.get_args(t)[0]._w  # W_I32
+                w_member = W_Member(member.name, field, w_T)
+                self._dict_w[member.name] = w_member
 
         # lazy evaluation of @builtin methods decorators
         for name, value in self._pyclass.__dict__.items():
@@ -572,34 +578,6 @@ class ClassBody:
     fields: FIELDS_T
     methods: METHODS_T
 
-
-class Member:
-    """
-    Represent a property of a W_ class. Use it like this:
-
-    @builtin_type('MyClass')
-    class W_MyClass(W_Object):
-        w_x: Annotated[W_I32, Member('x')]
-
-    This will add an app-level attribute "x" to the class, corresponding to
-    the interp-level attribute "w_x".
-    """
-    name: str
-    field: str        # set later by W_Type.__init__
-    w_type: 'W_Type'  # set later by W_Type.__init__
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-    @staticmethod
-    def from_annotation_maybe(t: Any) -> Optional['Member']:
-        """
-        Return the Member instance found in the annotation metadata, if any.
-        """
-        for meta in getattr(t, '__metadata__', []):
-            if isinstance(meta, Member):
-                return meta
-        return None
 
 
 # Initial setup of the 'builtins' module

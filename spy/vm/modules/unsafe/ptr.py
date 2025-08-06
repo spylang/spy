@@ -4,7 +4,7 @@ from spy.location import Loc
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
-from spy.vm.object import Member
+from spy.vm.member import Member
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func

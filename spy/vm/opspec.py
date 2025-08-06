@@ -33,7 +33,8 @@ from spy.location import Loc
 from spy.analyze.symtable import Symbol, Color
 from spy.errors import SPyError
 from spy.vm.b import OPERATOR, B
-from spy.vm.object import Member, W_Type, W_Object
+from spy.vm.object import W_Type, W_Object
+from spy.vm.member import Member
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.builtin import (builtin_func, builtin_method, builtin_property,
                             builtin_class_attr)

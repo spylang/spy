@@ -48,8 +48,6 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     w_type = wop_obj.w_static_type
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
-    elif attr in w_type.spy_members:
-        return opspec_member('get', vm, w_type, attr)
 
     # try to find a descriptor with a __get__ method
     elif w_member := w_type.lookup(attr):
@@ -85,13 +83,11 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     w_type = wop_obj.w_static_type
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_setattr)
-    elif attr in w_type.spy_members:
-        return opspec_member('set', vm, w_type, attr)
 
     # XXX: this logic is not fully sound: what happens if we find a member
     # which has a __get__ but not a __set__? I think we should raise an error,
     # but the current logic falls back to __setattr__
-
+    #
     # try to find a descriptor with a __set__ method
     elif w_member := w_type.lookup(attr):
         w_member_type = vm.dynamic_type(w_member)
@@ -104,28 +100,3 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     elif w_setattr := w_type.lookup_func('__setattr__'):
         return vm.fast_metacall(w_setattr, [wop_obj, wop_attr, wop_v])
     return W_OpSpec.NULL
-
-
-def opspec_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
-                  attr: str) -> W_OpSpec:
-    member = w_type.spy_members[attr]
-    field = member.field # the interp-level name of the attr (e.g, 'w_x')
-    T = Annotated[W_Object, w_type]        # type of the object
-    V = Annotated[W_Object, member.w_type] # type of the attribute
-
-    if kind == 'get':
-        @builtin_func(w_type.fqn, f"__get_{attr}__")
-        def w_opimpl_get(vm: 'SPyVM', w_obj: T, w_attr: W_Str) -> V:
-            return getattr(w_obj, field)
-
-        return W_OpSpec(w_opimpl_get)
-
-    elif kind == 'set':
-        @builtin_func(w_type.fqn, f"__set_{attr}__")
-        def w_opimpl_set(vm: 'SPyVM', w_obj: T, w_attr: W_Str, w_val: V)-> None:
-            setattr(w_obj, field, w_val)
-
-        return W_OpSpec(w_opimpl_set)
-
-    else:
-        assert False, f'Invalid OpKind: {kind}'
