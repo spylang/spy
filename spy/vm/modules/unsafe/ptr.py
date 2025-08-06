@@ -6,10 +6,9 @@ from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
 from spy.vm.member import Member
 from spy.vm.b import B
-from spy.vm.builtin import builtin_method
+from spy.vm.builtin import builtin_method, builtin_property, builtin_func
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
 from spy.vm.opspec import W_OpSpec, W_OpArg
-from spy.vm.builtin import builtin_func
 from . import UNSAFE
 from .misc import sizeof
 if TYPE_CHECKING:
@@ -53,7 +52,7 @@ class W_PtrType(W_Type):
     # type PtrType(T), and AFAIK there is no syntax to denote that.
     #
     # The workaround is not to use a Member, but to implement .NULL as a
-    # special case of w_GETATTR.
+    # property.
 
     @classmethod
     def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
@@ -61,25 +60,20 @@ class W_PtrType(W_Type):
         w_type.w_itemtype = w_itemtype
         return w_type
 
-    @builtin_method('__getattr__', color='blue', kind='metafunc')
+    @builtin_property('NULL', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg) -> W_OpSpec:
-        attr = wop_attr.blue_unwrap_str(vm)
-        if attr == 'NULL':
-            # NOTE: the precise spelling of the FQN of NULL matters! The
-            # C backend emits a #define to match it, see Context.new_ptr_type
-            w_self = wop_ptr.blue_ensure(vm, UNSAFE.w_ptrtype)
-            assert isinstance(w_self, W_PtrType)
-            w_NULL = W_Ptr(w_self, 0, 0)
-            vm.add_global(w_self.fqn.join('NULL'), w_NULL)
+    def w_GET_NULL(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpSpec:
+        # NOTE: the precise spelling of the FQN of NULL matters! The
+        # C backend emits a #define to match it, see Context.new_ptr_type
+        w_self = wop_self.blue_ensure(vm, UNSAFE.w_ptrtype)
+        assert isinstance(w_self, W_PtrType)
+        w_NULL = W_Ptr(w_self, 0, 0)
+        vm.add_global(w_self.fqn.join('NULL'), w_NULL)
 
-            @builtin_func(w_self.fqn, color='blue')  # ptr[i32]::get_NULL
-            def w_get_NULL(vm: 'SPyVM') -> Annotated['W_Ptr', w_self]:
-                return w_NULL
-            return W_OpSpec(w_get_NULL, [])
-
-        else:
-            return W_OpSpec.NULL
+        @builtin_func(w_self.fqn, color='blue')  # ptr[i32]::get_NULL
+        def w_get_NULL(vm: 'SPyVM') -> Annotated['W_Ptr', w_self]:
+            return w_NULL
+        return W_OpSpec(w_get_NULL, [])
 
 
 @UNSAFE.builtin_type('MetaBasePtr')
