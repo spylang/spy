@@ -34,8 +34,8 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
 
 def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpSpec:
-
     w_type = wop_obj.w_static_type
+
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
 
@@ -50,6 +50,7 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 
     elif w_getattr := w_type.lookup_func(f'__getattr__'):
         return vm.fast_metacall(w_getattr, [wop_obj, wop_attr])
+
     return W_OpSpec.NULL
 
 
@@ -71,13 +72,10 @@ def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         wop_v: W_OpArg, attr: str) -> W_OpSpec:
     w_type = wop_obj.w_static_type
+
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_setattr)
 
-    # XXX: this logic is not fully sound: what happens if we find a member
-    # which has a __get__ but not a __set__? I think we should raise an error,
-    # but the current logic falls back to __setattr__
-    #
     # try to find a descriptor with a __set__ method
     elif w_member := w_type.lookup(attr):
         w_member_type = vm.dynamic_type(w_member)
@@ -89,4 +87,5 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
 
     elif w_setattr := w_type.lookup_func('__setattr__'):
         return vm.fast_metacall(w_setattr, [wop_obj, wop_attr, wop_v])
+
     return W_OpSpec.NULL
