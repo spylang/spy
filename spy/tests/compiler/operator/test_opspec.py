@@ -142,3 +142,34 @@ class TestOpSpec(CompilerTest):
         w_opspec = mod.foo(unwrap=False)
         assert isinstance(w_opspec, W_OpSpec)
         assert w_opspec._w_func is mod.bar.w_func
+
+    @pytest.mark.skip(reason='WIP')
+    def test_opspec_const(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+
+            @builtin_method('__new__')
+            @staticmethod
+            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+                return W_MyClass()
+
+            @builtin_method('__getitem__', color='blue', kind='metafunc')
+            @staticmethod
+            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                          wop_i: W_OpArg) -> W_OpSpec:
+                return W_OpSpec.const(vm.wrap(42))
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyClass
+
+        def foo() -> i32:
+            obj = MyClass()
+            return obj['hello']
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
