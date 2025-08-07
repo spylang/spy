@@ -314,7 +314,7 @@ class W_OpSpec(W_Object):
 
     # default constructor, for "NULL", "simple" and "complex" cases
     def __init__(self,
-                 w_func: W_Func,
+                 w_func: Optional[W_Func],
                  args_wop: Optional[list[W_OpArg]] = None,
                  *,
                  is_direct_call: bool = False,

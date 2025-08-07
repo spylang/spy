@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Sequence, ClassVar, Optional
+from typing import TYPE_CHECKING, Sequence, ClassVar, Optional, TypeGuard
 from dataclasses import dataclass
 import textwrap
 from spy.vm.b import OPERATOR
@@ -64,33 +64,51 @@ class W_OpImpl(W_Object):
     #
     # Invariants:
     #   - w_functype is always present
-    #   - either w_func or w_const is present
-    #   - w_args is present only if w_func is present
+    #   - either _w_func or _w_const is present
+    #   - _args is present only if _w_func is present
     w_functype: W_FuncType
-    w_func: Optional[W_Func]
-    w_args: Optional[list[ArgSpec]]
-    w_const: Optional[W_Object]
+    _w_func: Optional[W_Func]
+    _args: Optional[list[ArgSpec]]
+    _w_const: Optional[W_Object]
 
-    def __init__(self, w_functype: W_FuncType, w_func: W_Func,
-                 args: list[ArgSpec]) -> None:
+    def __init__(self, w_functype: W_FuncType, w_func: Optional[W_Func],
+                 args: Optional[list[ArgSpec]]) -> None:
         self.w_functype = w_functype
-        self.w_func = w_func
-        self.args = args
-        self.w_const = None
+        self._w_func = w_func
+        self._args = args
+        self._w_const = None
 
     @staticmethod
     def const(vm: 'SPyVM', w_const: W_Object) -> 'W_OpImpl':
         w_T = vm.dynamic_type(w_const)
         w_functype = W_FuncType.new([], w_T, color='blue')
         w_opimpl = W_OpImpl(w_functype, None, None)
-        w_opimpl.w_const = w_const
+        w_opimpl._w_const = w_const
         return w_opimpl
 
     def is_func_call(self) -> bool:
-        return self.w_func is not None
+        if self._w_func is not None:
+            assert self._args is not None
+            return True
+        return False
 
     def is_const(self) -> bool:
-        return self.w_const is not None
+        return self._w_const is not None
+
+    @property
+    def w_func(self) -> W_Func:
+        assert self._w_func is not None
+        return self._w_func
+
+    @property
+    def args(self) -> list[ArgSpec]:
+        assert self._args is not None
+        return self._args
+
+    @property
+    def w_const(self) -> W_Object:
+        assert self._w_const is not None
+        return self._w_const
 
     def __repr__(self) -> str:
         if self.is_const():

@@ -288,7 +288,7 @@ class DopplerFrame(ASTFrame):
     def shift_opimpl(self, op: ast.Node,
                      w_opimpl: W_OpImpl,
                      orig_args: list[ast.Expr]
-                     ) -> ast.Call:
+                     ) -> ast.Expr:
         if w_opimpl.is_const():
             assert w_opimpl.w_const is not None
             return make_const(self.vm, op.loc, w_opimpl.w_const)
