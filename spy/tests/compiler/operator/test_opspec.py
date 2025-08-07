@@ -143,7 +143,6 @@ class TestOpSpec(CompilerTest):
         assert isinstance(w_opspec, W_OpSpec)
         assert w_opspec._w_func is mod.bar.w_func
 
-    @pytest.mark.skip(reason='WIP')
     def test_opspec_const(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')

@@ -289,6 +289,11 @@ class DopplerFrame(ASTFrame):
                      w_opimpl: W_OpImpl,
                      orig_args: list[ast.Expr]
                      ) -> ast.Call:
+        if w_opimpl.is_const():
+            assert w_opimpl.w_const is not None
+            return make_const(self.vm, op.loc, w_opimpl.w_const)
+
+        assert w_opimpl.is_func_call()
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
         real_args = self._shift_opimpl_args(w_opimpl, orig_args)
         return ast.Call(op.loc, func, real_args)

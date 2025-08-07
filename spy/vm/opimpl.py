@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Sequence, ClassVar
+from typing import TYPE_CHECKING, Sequence, ClassVar, Optional
 from dataclasses import dataclass
 import textwrap
 from spy.vm.b import OPERATOR
@@ -59,21 +59,55 @@ class W_OpImpl(W_Object):
     effectively encodes a mini-AST.
     """
 
+    # This is a mess, because we can either represent a function call or a
+    # single constant. Eventually, we need to turn it into a real AST.
+    #
+    # Invariants:
+    #   - w_functype is always present
+    #   - either w_func or w_const is present
+    #   - w_args is present only if w_func is present
+    w_functype: W_FuncType
+    w_func: Optional[W_Func]
+    w_args: Optional[list[ArgSpec]]
+    w_const: Optional[W_Object]
+
     def __init__(self, w_functype: W_FuncType, w_func: W_Func,
                  args: list[ArgSpec]) -> None:
         self.w_functype = w_functype
         self.w_func = w_func
         self.args = args
+        self.w_const = None
+
+    @staticmethod
+    def const(vm: 'SPyVM', w_const: W_Object) -> 'W_OpImpl':
+        w_T = vm.dynamic_type(w_const)
+        w_functype = W_FuncType.new([], w_T, color='blue')
+        w_opimpl = W_OpImpl(w_functype, None, None)
+        w_opimpl.w_const = w_const
+        return w_opimpl
+
+    def is_func_call(self) -> bool:
+        return self.w_func is not None
+
+    def is_const(self) -> bool:
+        return self.w_const is not None
 
     def __repr__(self) -> str:
-        sig = self.w_functype.fqn.human_name
-        fqn = self.w_func.fqn
-        return f'<OpImpl `{sig}` for `{fqn}`>'
+        if self.is_const():
+            return f'<OpImpl const {self.w_const}>'
+        else:
+            assert self.is_func_call()
+            sig = self.w_functype.fqn.human_name
+            fqn = self.w_func.fqn
+            return f'<OpImpl `{sig}` for `{fqn}`>'
 
     def is_pure(self) -> bool:
-        return self.w_func.is_pure()
+        return self.is_const() or self.w_func.is_pure()
 
     def execute(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+        if self.is_const():
+            return self.w_const
+
         def getarg(spec: ArgSpec) -> W_Object:
             if isinstance(spec, Arg):
                 return args_w[spec.i]

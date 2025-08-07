@@ -296,10 +296,23 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
 @OPERATOR.builtin_type('OpSpec', lazy_definition=True)
 class W_OpSpec(W_Object):
     NULL: ClassVar['W_OpSpec']
+
+    # this is a mess: depending on the presence of some of these attributes
+    # the OpSpec can be "NULL", "simple", "complex" and "const". Ideally, we
+    # we would like a proper sum type with disjoint attributes, but
+    # Python/mypy support for it is very limited and makes things more
+    # complicated.
+    #
+    # The invariants are
+    #    - at most one of _w_func and _w_const should be non None
+    #    - _args_wop makes sense only if _w_func is non None
+    #    - is_direct_call makes sense only if _w_const is None
     _w_func: Optional[W_Func]
     _args_wop: Optional[list[W_OpArg]]
+    _w_const: Optional[W_Object]
     is_direct_call: bool
 
+    # default constructor, for "NULL", "simple" and "complex" cases
     def __init__(self,
                  w_func: W_Func,
                  args_wop: Optional[list[W_OpArg]] = None,
@@ -309,6 +322,14 @@ class W_OpSpec(W_Object):
         self._w_func = w_func
         self._args_wop = args_wop
         self.is_direct_call = is_direct_call
+        self._w_const = None
+
+    # constructor for the "const" case
+    @staticmethod
+    def const(w_obj: W_Object) -> 'W_OpSpec':
+        w_opspec = W_OpSpec(None, None)
+        w_opspec._w_const = w_obj
+        return w_opspec
 
     def __repr__(self) -> str:
         if self._w_func is None:
@@ -316,15 +337,23 @@ class W_OpSpec(W_Object):
         elif self._args_wop is None:
             fqn = self._w_func.fqn
             return f"<spy OpSpec {fqn}>"
+        elif self._w_const is not None:
+            return f"<spy OpSpec const {self._w_const}>"
         else:
             fqn = self._w_func.fqn
             return f"<spy OpSpec {fqn}(...)>"
 
     def is_null(self) -> bool:
-        return self._w_func is None
+        return self._w_func is None and self._w_const is None
 
     def is_simple(self) -> bool:
-        return self._args_wop is None
+        return self._w_func is not None and self._args_wop is None
+
+    def is_complex(self) -> bool:
+        return self._w_func is not None and self._args_wop is not None
+
+    def is_const(self) -> bool:
+        return self._w_const is not None
 
     @property
     def w_functype(self) -> W_FuncType:
