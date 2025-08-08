@@ -508,12 +508,8 @@ class W_Type(W_Object):
         w_val = w_self.lookup(attr)
         if w_val is None:
             return W_OpSpec.NULL
-
-        @builtin_func(w_self.fqn, f'get_{attr}', color='blue')
-        def w_get_attr(vm: 'SPyVM') -> W_Dynamic:
-            return w_val
-
-        return W_OpSpec(w_get_attr, [])
+        else:
+            return W_OpSpec.const(w_val)
 
     @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod
