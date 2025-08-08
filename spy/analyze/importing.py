@@ -106,7 +106,7 @@ class ImportAnalizyer:
                 w_mod = self.vm.modules_w[modname]
                 self.mods[modname] = w_mod
 
-            elif f := self.get_filename(modname):
+            elif f := self.vm.get_filename(modname):
                 # new module to visit: parse it and recursively visit it. This
                 # might append more mods to self.queue.
                 parser = Parser.from_filename(str(f))
@@ -124,20 +124,6 @@ class ImportAnalizyer:
             else:
                 # we couldn't find .spy for this modname
                 self.mods[modname] = None
-
-    def get_filename(self, modname: str) -> Optional[py.path.local]:
-        # XXX for now we assume that we find the module as a single file in
-        # the only vm.path entry. Eventually we will need a proper import
-        # mechanism and support for packages
-        assert self.vm.path, 'vm.path not set'
-        for d in self.vm.path:
-            # XXX write test for this
-            f = py.path.local(d).join(f'{modname}.spy')
-            if f.exists():
-                return f
-
-        # XXX maybe THIS is the right place where to raise SPyImportError?
-        return None
 
     def analyze_scopes(self, modname: str) -> ScopeAnalyzer:
         assert self.mods, 'call .parse_all() first'
