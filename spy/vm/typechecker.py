@@ -49,7 +49,8 @@ def typecheck_opspec(
     if w_opspec.is_null():
         _opspec_null_error(in_args_wop, dispatch, errmsg)
 
-    if w_opspec._w_const is not None:
+    if w_opspec.is_const():
+        assert w_opspec._w_const is not None
         return W_OpImpl.const(vm, w_opspec._w_const)
 
     assert w_opspec._w_func is not None
