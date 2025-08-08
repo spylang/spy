@@ -39,14 +39,16 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
     if w_type is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
 
-    # try to find a descriptor with a __get__ method
-    elif w_member := w_type.lookup(attr):
-        w_member_type = vm.dynamic_type(w_member)
-        w_get = w_member_type.lookup_func('__get__')
+    # try to find the attribute on the type
+    elif w_val := w_type.lookup(attr):
+        w_val_type = vm.dynamic_type(w_val)
+        w_get = w_val_type.lookup_func('__get__')
         if w_get:
-            # w_member is a descriptor! We can call its __get__
-            wop_member = W_OpArg.from_w_obj(vm, w_member)
+            # w_val is a descriptor! We can call its __get__
+            wop_member = W_OpArg.from_w_obj(vm, w_val)
             return vm.fast_metacall(w_get, [wop_member, wop_obj])
+        else:
+            return W_OpSpec.const(w_val)
 
     elif w_getattr := w_type.lookup_func(f'__getattr__'):
         return vm.fast_metacall(w_getattr, [wop_obj, wop_attr])

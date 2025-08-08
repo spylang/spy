@@ -52,16 +52,25 @@ class TestAttrOp(CompilerTest):
         class W_MyClass(W_Object):
             w_x = builtin_class_attr('x', self.vm.wrap(42))
 
+            @builtin_method('__new__')
+            @staticmethod
+            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+                return W_MyClass()
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
 
         src1 = """
         from ext import MyClass
-        def get_x() -> i32:
+        def get_MyClass_x() -> i32:
             return MyClass.x
+
+        def get_instance_x() -> i32:
+            obj = MyClass()
+            return obj.x
         """
         mod1 = self.compile(src1, modname='test1')
-        assert mod1.get_x() == 42
+        assert mod1.get_MyClass_x() == 42
+        assert mod1.get_instance_x() == 42
 
         src2 = """
         from ext import MyClass
