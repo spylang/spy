@@ -23,10 +23,15 @@ class TestOpSpec(CompilerTest):
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
-            @builtin_method('__getitem__')
+            @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_getitem(vm: 'SPyVM', w_obj: 'W_MyClass', w_i: W_I32) -> W_I32:
-                return w_i
+            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                          wop_i: W_OpArg) -> W_OpSpec:
+                @builtin_func('ext')
+                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
+                              w_i: W_I32) -> W_I32:
+                    return w_i
+                return W_OpSpec(w_getitem)
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -55,10 +60,14 @@ class TestOpSpec(CompilerTest):
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
-            @builtin_method('__getitem__')
+            @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_getitem(vm: 'SPyVM', w_obj: 'W_MyClass') -> W_I32:
-                return vm.wrap(42)
+            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                          wop_i: W_OpArg) -> W_OpSpec:
+                @builtin_func('ext')
+                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
+                    return vm.wrap(42)  # type: ignore
+                return W_OpSpec(w_getitem)
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -133,3 +142,33 @@ class TestOpSpec(CompilerTest):
         w_opspec = mod.foo(unwrap=False)
         assert isinstance(w_opspec, W_OpSpec)
         assert w_opspec._w_func is mod.bar.w_func
+
+    def test_opspec_const(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_type('MyClass')
+        class W_MyClass(W_Object):
+
+            @builtin_method('__new__')
+            @staticmethod
+            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+                return W_MyClass()
+
+            @builtin_method('__getitem__', color='blue', kind='metafunc')
+            @staticmethod
+            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
+                          wop_i: W_OpArg) -> W_OpSpec:
+                return W_OpSpec.const(vm.wrap(42))
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyClass
+
+        def foo() -> i32:
+            obj = MyClass()
+            return obj['hello']
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
