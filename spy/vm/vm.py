@@ -107,7 +107,7 @@ class SPyVM:
         w_mod = self.modules_w[modname]
         return w_mod
 
-    def get_filename(self, modname: str) -> Optional[py.path.local]:
+    def get_filename(self, modname: str, check_py: bool = False) -> Optional[py.path.local]:
         # XXX for now we assume that we find the module as a single file in
         # the only vm.path entry. Eventually we will need a proper import
         # mechanism and support for packages
@@ -117,6 +117,10 @@ class SPyVM:
             f = py.path.local(d).join(f'{modname}.spy')
             if f.exists():
                 return f
+            if check_py:
+                py_f = f.new(ext='.py')
+                if py_f.exists():
+                    return py_f
 
         # XXX maybe THIS is the right place where to raise SPyImportError?
         return None

@@ -264,3 +264,7 @@ class TestVM:
         filename = vm.get_filename('main')
         assert filename == tmpdir.join('main.spy')
         assert vm.get_filename('nonexistent') is None
+        py_file = tmpdir.join('py.py')
+        py_file.write('i = 42\n')
+        assert vm.get_filename('py') is None
+        assert vm.get_filename('py', check_py=True) == tmpdir.join('py.py')
