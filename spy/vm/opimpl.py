@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Sequence, ClassVar, Optional, TypeGuard
+from typing import TYPE_CHECKING, Sequence, ClassVar, Optional
 from dataclasses import dataclass
 import textwrap
 from spy.vm.b import OPERATOR
