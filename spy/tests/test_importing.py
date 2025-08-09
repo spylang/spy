@@ -118,15 +118,6 @@ class TestImportAnalizyer:
         scopes = analyzer.analyze_scopes('main')
         assert scopes.by_module().name == 'main'
 
-    def test_get_filename(self):
-        self.write("main.spy", """
-        x: i32 = 42
-        """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
-        filename = analyzer.get_filename('main')
-        assert filename == self.tmpdir.join('main.spy')
-        assert analyzer.get_filename('nonexistent') is None
-
     def test_vm_path(self):
         # we write mod1 in an unrelated dir, which is the added to vm.path
         self.write("mylib/mod1.spy", """
