@@ -194,8 +194,8 @@ class ScopeAnalyzer:
         )
         if imp.fqn.modname not in self.vm.modules_w:
             # See if there is a matching .py file
-            if self.vm.get_filename(
-                imp.fqn.modname, check_py=True
+            if self.vm.find_file_on_path(
+                imp.fqn.modname, allow_py_files=True
             ):
                 err.add(
                     "error",

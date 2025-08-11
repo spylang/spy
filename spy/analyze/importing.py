@@ -106,7 +106,7 @@ class ImportAnalizyer:
                 w_mod = self.vm.modules_w[modname]
                 self.mods[modname] = w_mod
 
-            elif f := self.vm.get_filename(modname):
+            elif f := self.vm.find_file_on_path(modname):
                 # new module to visit: parse it and recursively visit it. This
                 # might append more mods to self.queue.
                 parser = Parser.from_filename(str(f))
