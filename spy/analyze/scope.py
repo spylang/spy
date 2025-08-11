@@ -193,10 +193,20 @@ class ScopeAnalyzer:
             f'cannot import `{imp.fqn.spy_name}`',
         )
         if imp.fqn.modname not in self.vm.modules_w:
-            # module not found
-            err.add('error',
-                    f'module `{imp.fqn.modname}` does not exist',
-                    loc=imp.loc)
+            # See if there is a matching .py file
+            if self.vm.find_file_on_path(
+                imp.fqn.modname, allow_py_files=True
+            ):
+                err.add(
+                    "error",
+                    f"file `{imp.fqn.modname}.py` exists, but py files cannot be imported",
+                    loc=imp.loc,
+                )
+            else:
+                # module not found
+                err.add(
+                    "error", f"module `{imp.fqn.modname}` does not exist", loc=imp.loc
+                )
         else:
             # attribute not found
             attr = str(imp.fqn.symbol_name)

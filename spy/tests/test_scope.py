@@ -222,6 +222,19 @@ class TestScopeAnalyzer:
             ('module `xxx` does not exist', 'from xxx import aaa')
         )
 
+    def test_import_wrong_py_module(self):
+        # Create a .py file that would match the import
+        py_file = self.tmpdir.join('mymodule.py')
+        py_file.write('x = 42\n')
+
+        self.vm.path.append(str(self.tmpdir))
+        src = "from mymodule import x"
+        self.expect_errors(
+            src,
+            'cannot import `mymodule.x`',
+            ('file `mymodule.py` exists, but py files cannot be imported', 'from mymodule import x')
+        )
+
     def test_class(self):
         scopes = self.analyze("""
         class Foo:

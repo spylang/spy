@@ -2,6 +2,7 @@ from typing import Any, Optional, Iterable, Sequence, Callable, overload, Union
 import itertools
 from types import FunctionType
 import fixedint
+import py.path
 from spy import ROOT
 from spy.fqn import FQN
 from spy.location import Loc
@@ -105,6 +106,24 @@ class SPyVM:
         importer.import_all()
         w_mod = self.modules_w[modname]
         return w_mod
+
+    def find_file_on_path(self, modname: str, allow_py_files: bool = False) -> Optional[py.path.local]:
+        # XXX for now we assume that we find the module as a single file in
+        # the only vm.path entry. Eventually we will need a proper import
+        # mechanism and support for packages
+        assert self.path, 'vm.path not set'
+        for d in self.path:
+            # XXX write test for this
+            f = py.path.local(d).join(f'{modname}.spy')
+            if f.exists():
+                return f
+            if allow_py_files:
+                py_f = f.new(ext='.py')
+                if py_f.exists():
+                    return py_f
+
+        # XXX maybe THIS is the right place where to raise SPyImportError?
+        return None
 
     def redshift(self, error_mode: ErrorMode) -> None:
         """

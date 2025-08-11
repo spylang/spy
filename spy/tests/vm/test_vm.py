@@ -254,3 +254,17 @@ class TestVM:
         assert vm.lookup_global(fqn) is w_x
         with pytest.raises(ValueError, match="'builtins::x' already exists"):
             vm.add_global(fqn, vm.wrap(43))
+
+    def test_get_filename(self, tmpdir):
+        vm = SPyVM()
+        vm.path = [str(tmpdir)]
+        spy_file = tmpdir.join('main.spy')
+        spy_file.write('x: i32 = 42\n')
+
+        filename = vm.find_file_on_path('main')
+        assert filename == tmpdir.join('main.spy')
+        assert vm.find_file_on_path('nonexistent') is None
+        py_file = tmpdir.join('py.py')
+        py_file.write('i = 42\n')
+        assert vm.find_file_on_path('py') is None
+        assert vm.find_file_on_path('py', allow_py_files=True) == tmpdir.join('py.py')
