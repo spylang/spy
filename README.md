@@ -41,9 +41,6 @@ Prerequisites:
 
   - Python 3.12
 
-  - `unbuffer` (`apt install expect`), which is used to force gcc to emit
-    colored error messages
-
 Installation:
 
   1. Install the `spy` package in editable mode:
