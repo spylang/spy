@@ -50,7 +50,7 @@ from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
-from spy.errors import SPyError
+from spy.errors import SPyError, WIP
 from spy.vm.b import B
 
 if TYPE_CHECKING:
@@ -202,7 +202,7 @@ class W_Object:
     #     # implement __getattribute__ as a metafunc
     #     @builtin_method('__getattribute__', color='blue', kind='metafunc')
     #     def w_GETATTRIBUTE(vm: 'SPyVM', wop_self: W_OpArg,
-    #                        wop_attr: W_OpArg) -> W_OpSpec:
+    #                        wop_name: W_OpArg) -> W_OpSpec:
     #         ...
     #
     # The naming convention at interp-level is the following:
@@ -223,11 +223,11 @@ class W_Object:
 
     @staticmethod
     def w_GETATTRIBUTE(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                       wop_attr: 'W_OpArg') -> 'W_OpSpec':
+                       wop_name: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
+    def w_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_name: 'W_OpArg',
                   wop_v: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
@@ -491,30 +491,24 @@ class W_Type(W_Object):
 
     @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTRIBUTE(vm: 'SPyVM', wop_self: 'W_OpArg',
-                       wop_attr: 'W_OpArg') -> 'W_OpSpec':
-        # type instances have a dict, so they can have arbitrary
-        # attributes. If we are doing a getattr on a blue instance, we can
-        # check whether the attribute exists, and return it in that case.
-        #
-        # If the type instance is red or the attribute doesn't exist, we
-        # return OpSpec.NULL so that operator.GETATTR can raise the
-        # appropriate error.
+    def w_GETATTRIBUTE(vm: 'SPyVM', wop_T: 'W_OpArg',
+                       wop_name: 'W_OpArg') -> 'W_OpSpec':
+        # this is the equivalent of CPython's typeobject.c:type_getattro
         from spy.vm.opspec import W_OpSpec
-        from spy.vm.primitive import W_Dynamic
-        from spy.vm.builtin import builtin_func
 
-        if wop_self.color != 'blue':
-            return W_OpSpec.NULL
+        if wop_T.color != 'blue':
+            # it's unclear how to implement getattr on red types, since we
+            # need to have access to their dict.
+            raise WIP('getattr on red types')
 
-        w_self = wop_self.w_blueval
-        assert isinstance(w_self, W_Type)
-        attr = wop_attr.blue_unwrap_str(vm)
-        w_val = w_self.lookup(attr)
-        if w_val is None:
+        w_T = wop_T.w_blueval
+        assert isinstance(w_T, W_Type)
+        name = wop_name.blue_unwrap_str(vm)
+        w_attr = w_T.lookup(name)
+        if w_attr is None:
             return W_OpSpec.NULL
         else:
-            return W_OpSpec.const(w_val)
+            return W_OpSpec.const(w_attr)
 
     @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod

@@ -49,21 +49,21 @@ def w_dynamic_ge(vm: 'SPyVM', w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_GE, w_a, w_b)
 
 @OP.builtin_func
-def w_dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_attr: W_Str,
+def w_dynamic_setattr(vm: 'SPyVM', w_obj: W_Dynamic, w_name: W_Str,
                     w_value: W_Dynamic) -> W_Dynamic:
     wop_obj = W_OpArg.from_w_obj(vm, w_obj)
-    wop_attr = W_OpArg.from_w_obj(vm, w_attr)
+    wop_name = W_OpArg.from_w_obj(vm, w_name)
     wop_v = W_OpArg.from_w_obj(vm, w_value)
-    w_opimpl = vm.call_OP(None, OP.w_SETATTR, [wop_obj, wop_attr, wop_v])
-    return w_opimpl.execute(vm, [w_obj, w_attr, w_value])
+    w_opimpl = vm.call_OP(None, OP.w_SETATTR, [wop_obj, wop_name, wop_v])
+    return w_opimpl.execute(vm, [w_obj, w_name, w_value])
 
 @OP.builtin_func
 def w_dynamic_getattr(vm: 'SPyVM', w_obj: W_Dynamic,
-                      w_attr: W_Str) -> W_Dynamic:
+                      w_name: W_Str) -> W_Dynamic:
     wop_obj = W_OpArg.from_w_obj(vm, w_obj)
-    wop_attr = W_OpArg.from_w_obj(vm, w_attr)
-    w_opimpl = vm.call_OP(None, OP.w_GETATTR, [wop_obj, wop_attr])
-    return w_opimpl.execute(vm, [w_obj, w_attr])
+    wop_name = W_OpArg.from_w_obj(vm, w_name)
+    w_opimpl = vm.call_OP(None, OP.w_GETATTR, [wop_obj, wop_name])
+    return w_opimpl.execute(vm, [w_obj, w_name])
 
 @OP.builtin_func
 def w_dynamic_call(vm: 'SPyVM', w_obj: W_Dynamic,

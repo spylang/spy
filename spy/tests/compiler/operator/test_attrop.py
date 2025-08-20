@@ -259,8 +259,8 @@ class TestAttrOp(CompilerTest):
             @builtin_method('__getattribute__', color='blue', kind='metafunc')
             @staticmethod
             def w_GETATTRIBUTE(vm: 'SPyVM', wop_obj: W_OpArg,
-                               wop_attr: W_OpArg) -> W_OpSpec:
-                attr = wop_attr.blue_unwrap_str(vm)
+                               wop_name: W_OpArg) -> W_OpSpec:
+                attr = wop_name.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func('ext', 'getx')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
@@ -276,9 +276,9 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method('__setattr__', color='blue', kind='metafunc')
             @staticmethod
-            def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
+            def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
                           wop_v: W_OpArg) -> W_OpSpec:
-                attr = wop_attr.blue_unwrap_str(vm)
+                attr = wop_name.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func('ext')
                     def w_setx(vm: 'SPyVM', w_obj: W_MyClass,
