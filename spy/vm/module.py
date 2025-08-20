@@ -63,6 +63,7 @@ class W_Module(W_Object):
             raise WIP('__call_method__ on red modules')
 
         w_mod = wop_mod.w_blueval
+        assert isinstance(w_mod, W_Module)
         name = wop_name.blue_unwrap_str(vm)
         w_func = w_mod.getattr_maybe(name)
         if w_func is None:
