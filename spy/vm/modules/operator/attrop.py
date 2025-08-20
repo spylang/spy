@@ -34,13 +34,20 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_OpImpl:
 
 def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
                         attr: str) -> W_OpSpec:
-    w_type = wop_obj.w_static_type
+    w_T = wop_obj.w_static_type
 
-    if w_type is B.w_dynamic:
+    if w_T is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
 
-    # try to find the attribute on the type
-    elif w_val := w_type.lookup(attr):
+    # this is more or less the equivalent to object.__getattribute__, with a
+    # big difference: in Python, obj.__dict__ has precedence over
+    # type(obj).__dict__. In SPy, it's the opposite, because we want to be
+    # able to do attribute/method resolution on the static type (and thus
+    # obj.__dict__ is completely unknown).
+    #
+    # The nice result is that the logic is much simpler now, because we don't
+    # have to worry about data/non-data descriptors.
+    elif w_val := w_T.lookup(attr):
         w_val_type = vm.dynamic_type(w_val)
         w_get = w_val_type.lookup_func('__get__')
         if w_get:
@@ -50,7 +57,7 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         else:
             return W_OpSpec.const(w_val)
 
-    elif w_getattr := w_type.lookup_func(f'__getattr__'):
+    elif w_getattr := w_T.lookup_func(f'__getattr__'):
         return vm.fast_metacall(w_getattr, [wop_obj, wop_attr])
 
     return W_OpSpec.NULL

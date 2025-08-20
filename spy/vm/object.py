@@ -46,7 +46,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
-                    Callable, Annotated, Self, Literal)
+                    Callable, Annotated, Self, Literal, Sequence)
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
@@ -443,20 +443,26 @@ class W_Type(W_Object):
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
 
+
+    def get_mro(self) -> Sequence['W_Type']:
+        """
+        Return a list of all the supertypes.
+        """
+        mro = []
+        w_T = self
+        while w_T is not B.w_None:
+            assert isinstance(w_T, W_Type)
+            mro.append(w_T)
+            w_T = w_T.w_base
+        return mro
+
     def lookup(self, name: str) -> Optional[W_Object]:
         """
         Lookup the given attribute into the applevel dict
         """
-        # look in our dict
-        if w_obj := self.dict_w.get(name):
-            return w_obj
-
-        # look in the superclass
-        w_base = self.w_base
-        if isinstance(w_base, W_Type):
-            return w_base.lookup_func(name)
-
-        # not found
+        for w_T in self.get_mro():
+            if w_obj := w_T.dict_w.get(name):
+                return w_obj
         return None
 
     def lookup_func(self, name: str) -> Optional['W_Func']:
