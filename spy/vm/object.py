@@ -489,13 +489,12 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
+    # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
     def w_GETATTRIBUTE(vm: 'SPyVM', wop_T: 'W_OpArg',
                        wop_name: 'W_OpArg') -> 'W_OpSpec':
-        # this is the equivalent of CPython's typeobject.c:type_getattro
-        from spy.vm.opspec import W_OpSpec
-
+        from spy.vm.opspec import W_OpSpec, W_OpArg
         if wop_T.color != 'blue':
             # it's unclear how to implement getattr on red types, since we
             # need to have access to their dict.
@@ -504,11 +503,33 @@ class W_Type(W_Object):
         w_T = wop_T.w_blueval
         assert isinstance(w_T, W_Type)
         name = wop_name.blue_unwrap_str(vm)
+
+        # 1. try to lookup the attribute on the metatype. If it's a
+        # descriptor, call it.
+        w_meta_T = vm.dynamic_type(w_T)
+        w_meta_attr = w_meta_T.lookup(name)
+        if w_meta_attr is not None:
+            if w_get := vm.dynamic_type(w_meta_attr).lookup_func('__get__'):
+                wop_meta_attr = W_OpArg.from_w_obj(vm, w_meta_attr)
+                return vm.fast_metacall(w_get, [wop_meta_attr, wop_T])
+
+        # 2. Look in the __dict__ of this type and its bases
         w_attr = w_T.lookup(name)
-        if w_attr is None:
-            return W_OpSpec.NULL
-        else:
+        if w_attr is not None:
+            # implement descriptor functionality, if any
+            if w_get := vm.dynamic_type(w_attr).lookup_func('__get__'):
+                raise WIP('implement me: descriptor accessed via class')
+
+            # normal attribute in the class body, just return it
             return W_OpSpec.const(w_attr)
+
+        # 3. if we found a normal attribute on the metatype, return it
+        if w_meta_attr is not None:
+            raise WIP('implement me: normal attribute on the metatype')
+
+        # 4. attribute not found
+        return W_OpSpec.NULL
+
 
     @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod

@@ -39,6 +39,10 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
     if w_T is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
 
+    if w_getattribute := w_T.lookup_func(f'__getattribute__'):
+        return vm.fast_metacall(w_getattribute, [wop_obj, wop_name])
+
+
     # this is more or less the equivalent to object.__getattribute__, with a
     # big difference: in Python, obj.__dict__ has precedence over
     # type(obj).__dict__. In SPy, it's the opposite, because we want to be
@@ -56,9 +60,6 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
             return vm.fast_metacall(w_get, [wop_member, wop_obj])
         else:
             return W_OpSpec.const(w_val)
-
-    elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
-        return vm.fast_metacall(w_getattribute, [wop_obj, wop_name])
 
     return W_OpSpec.NULL
 
