@@ -158,7 +158,9 @@ class SPyVM:
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
+        assert w_mod.fqn not in self.globals_w
         self.modules_w[w_mod.name] = w_mod
+        self.globals_w[w_mod.fqn] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
         w_mod = W_Module(self, reg.fqn.modname, None)

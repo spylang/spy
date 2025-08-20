@@ -1,11 +1,13 @@
 from typing import TYPE_CHECKING, Optional, Iterable
 from spy.fqn import FQN
+from spy.errors import WIP
 from spy.vm.primitive import W_Dynamic
 from spy.vm.b import B
 from spy.vm.object import W_Object
 from spy.vm.str import W_Str
-from spy.vm.function import W_ASTFunc
+from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.builtin import builtin_method
+from spy.vm.opspec import W_OpSpec, W_OpArg
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -24,7 +26,8 @@ class W_Module(W_Object):
 
     def __init__(self, vm: 'SPyVM', name: str, filepath: Optional[str]) -> None:
         self.vm = vm
-        self.name = name
+        self.name = name # XXX should we kill name?
+        self.fqn = FQN(name)
         self.filepath = filepath
 
     def __repr__(self) -> str:
@@ -51,6 +54,25 @@ class W_Module(W_Object):
                   W_Str, w_val: W_Dynamic) -> None:
         attr = vm.unwrap_str(w_attr)
         w_mod.setattr(attr, w_val)
+
+    @builtin_method('__call_method__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_CALL_METHOD(vm: 'SPyVM', wop_mod: W_OpArg, wop_name: W_OpArg,
+                      *args_wop: W_OpArg) -> W_OpSpec:
+        if wop_mod.color != 'blue':
+            raise WIP('__call_method__ on red modules')
+
+        w_mod = wop_mod.w_blueval
+        name = wop_name.blue_unwrap_str(vm)
+        w_func = w_mod.getattr_maybe(name)
+        if w_func is None:
+            return W_OpSpec.NULL
+
+        if isinstance(w_func, W_Func):
+            return W_OpSpec(w_func, list(args_wop))
+        else:
+            raise WIP('trying to call a non-function (we should emit a better error)')
+
 
     # ==== public interp-level API ====
 

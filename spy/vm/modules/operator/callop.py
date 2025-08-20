@@ -70,6 +70,7 @@ def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
     # else, the default implementation is to look into the type dict
     # XXX: is it correct here to assume that we get a blue string?
     meth = wop_method.blue_unwrap_str(vm)
+
     if w_func := w_type.dict_w.get(meth):
         # XXX: this should be turned into a proper exception, but for now we
         # cannot even write a test because we don't any way to inject

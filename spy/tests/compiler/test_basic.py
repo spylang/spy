@@ -1119,8 +1119,7 @@ class TestBasic(CompilerTest):
         assert mod.test1() == 10
         assert mod.test2() == 'hello world'
 
-    @pytest.mark.skip(reason='implement me')
-    def test_getattr_call(self):
+    def test_call_module_attr(self):
         mod = self.compile("""
         import math
 
