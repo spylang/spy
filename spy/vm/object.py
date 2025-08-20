@@ -46,11 +46,11 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
-                    Callable, Annotated, Self, Literal)
+                    Callable, Annotated, Self, Literal, Sequence)
 from dataclasses import dataclass
 from spy.ast import Color
 from spy.fqn import FQN
-from spy.errors import SPyError
+from spy.errors import SPyError, WIP
 from spy.vm.b import B
 
 if TYPE_CHECKING:
@@ -158,7 +158,7 @@ class W_Object:
     #     a.b   ==> operator.getattr(a, "b")
     #
     # Types can implement each operator by implementing __special__ methods
-    # such as `__add__` or `__getattr__`.
+    # such as `__add__` or `__getattribute__`.
     #
     # __special__ methods can be defined as normal functions and executed as
     # expected.
@@ -177,7 +177,7 @@ class W_Object:
     # For example, consider the following expression:
     #     return obj.a
     #
-    # If __getattr__ is a metafunction, this is more or less what happens:
+    # If __getattribute__ is a metafunction, this is more or less what happens:
     #
     #     T = STATIC_TYPE(obj)
     #     v_obj = OpArg('red', T, ...)
@@ -199,15 +199,15 @@ class W_Object:
     #     def w_getitem(vm: 'SPyVM', w_self: 'W_MyClass', w_i: W_I32) -> W_I32:
     #         ...
     #
-    #     # implement __getattr__ as a metafunc
-    #     @builtin_method('__getattr__', color='blue', kind='metafunc')
-    #     def w_GETATTR(vm: 'SPyVM', wop_self: W_OpArg,
-    #                   wop_attr: W_OpArg) -> W_OpSpec:
+    #     # implement __getattribute__ as a metafunc
+    #     @builtin_method('__getattribute__', color='blue', kind='metafunc')
+    #     def w_GETATTRIBUTE(vm: 'SPyVM', wop_self: W_OpArg,
+    #                        wop_name: W_OpArg) -> W_OpSpec:
     #         ...
     #
     # The naming convention at interp-level is the following:
-    #   - for normal functions, we use w_getitem, w_getattr, etc.
-    #   - for meta functions, we use w_GETITEM, w_GETATTR, etc.
+    #   - for normal functions, we use w_getitem, w_getattribute, etc.
+    #   - for meta functions, we use w_GETITEM, w_GETATTRIBUTE, etc.
     #
     # The following declarations are not strictly needed, but they are
     # provided so that in case a subclass decides to override them, mypy can
@@ -222,12 +222,12 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                  wop_attr: 'W_OpArg') -> 'W_OpSpec':
+    def w_GETATTRIBUTE(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                       wop_name: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_attr: 'W_OpArg',
+    def w_SETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg', wop_name: 'W_OpArg',
                   wop_v: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
@@ -443,20 +443,25 @@ class W_Type(W_Object):
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
 
+    def get_mro(self) -> Sequence['W_Type']:
+        """
+        Return a list of all the supertypes.
+        """
+        mro = []
+        w_T: Union['W_Type', 'W_NoneType'] = self
+        while w_T is not B.w_None:
+            assert isinstance(w_T, W_Type)
+            mro.append(w_T)
+            w_T = w_T.w_base
+        return mro
+
     def lookup(self, name: str) -> Optional[W_Object]:
         """
         Lookup the given attribute into the applevel dict
         """
-        # look in our dict
-        if w_obj := self.dict_w.get(name):
-            return w_obj
-
-        # look in the superclass
-        w_base = self.w_base
-        if isinstance(w_base, W_Type):
-            return w_base.lookup_func(name)
-
-        # not found
+        for w_T in self.get_mro():
+            if w_obj := w_T.dict_w.get(name):
+                return w_obj
         return None
 
     def lookup_func(self, name: str) -> Optional['W_Func']:
@@ -484,32 +489,47 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
-    @builtin_method('__getattr__', color='blue', kind='metafunc')
+    # this is the equivalent of CPython's typeobject.c:type_getattro
+    @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_self: 'W_OpArg',
-                  wop_attr: 'W_OpArg') -> 'W_OpSpec':
-        # type instances have a dict, so they can have arbitrary
-        # attributes. If we are doing a getattr on a blue instance, we can
-        # check whether the attribute exists, and return it in that case.
-        #
-        # If the type instance is red or the attribute doesn't exist, we
-        # return OpSpec.NULL so that operator.GETATTR can raise the
-        # appropriate error.
-        from spy.vm.opspec import W_OpSpec
-        from spy.vm.primitive import W_Dynamic
-        from spy.vm.builtin import builtin_func
+    def w_GETATTRIBUTE(vm: 'SPyVM', wop_T: 'W_OpArg',
+                       wop_name: 'W_OpArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec, W_OpArg
+        if wop_T.color != 'blue':
+            # it's unclear how to implement getattr on red types, since we
+            # need to have access to their dict.
+            raise WIP('getattr on red types')
 
-        if wop_self.color != 'blue':
-            return W_OpSpec.NULL
+        w_T = wop_T.w_blueval
+        assert isinstance(w_T, W_Type)
+        name = wop_name.blue_unwrap_str(vm)
 
-        w_self = wop_self.w_blueval
-        assert isinstance(w_self, W_Type)
-        attr = wop_attr.blue_unwrap_str(vm)
-        w_val = w_self.lookup(attr)
-        if w_val is None:
-            return W_OpSpec.NULL
-        else:
-            return W_OpSpec.const(w_val)
+        # 1. try to lookup the attribute on the metatype. If it's a
+        # descriptor, call it.
+        w_meta_T = vm.dynamic_type(w_T)
+        w_meta_attr = w_meta_T.lookup(name)
+        if w_meta_attr is not None:
+            if w_get := vm.dynamic_type(w_meta_attr).lookup_func('__get__'):
+                wop_meta_attr = W_OpArg.from_w_obj(vm, w_meta_attr)
+                return vm.fast_metacall(w_get, [wop_meta_attr, wop_T])
+
+        # 2. Look in the __dict__ of this type and its bases
+        w_attr = w_T.lookup(name)
+        if w_attr is not None:
+            # implement descriptor functionality, if any
+            if w_get := vm.dynamic_type(w_attr).lookup_func('__get__'):
+                raise WIP('implement me: descriptor accessed via class')
+
+            # normal attribute in the class body, just return it
+            return W_OpSpec.const(w_attr)
+
+        # 3. if we found a normal attribute on the metatype, return it
+        if w_meta_attr is not None:
+            raise WIP('implement me: normal attribute on the metatype')
+
+        # 4. attribute not found
+        return W_OpSpec.NULL
+
 
     @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod

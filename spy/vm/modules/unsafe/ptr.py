@@ -276,23 +276,23 @@ class W_Ptr(W_BasePtr):
         vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
         return W_OpSpec(w_ptr_to_bool)
 
-    @builtin_method('__getattr__', color='blue', kind='metafunc')
+    @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
-                  wop_attr: W_OpArg) -> W_OpSpec:
-        return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_attr, None)
+    def w_GETATTRIBUTE(vm: 'SPyVM', wop_ptr: W_OpArg,
+                       wop_name: W_OpArg) -> W_OpSpec:
+        return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_name, None)
 
     @builtin_method('__setattr__', color='blue', kind='metafunc')
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+    def w_SETATTR(vm: 'SPyVM', wop_ptr: W_OpArg, wop_name: W_OpArg,
                   wop_v: W_OpArg) -> W_OpSpec:
-        return W_Ptr.op_ATTR('set', vm, wop_ptr, wop_attr, wop_v)
+        return W_Ptr.op_ATTR('set', vm, wop_ptr, wop_name, wop_v)
 
     @staticmethod
-    def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
+    def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_name: W_OpArg,
                 wop_v: Optional[W_OpArg]) -> W_OpSpec:
         """
-        Implement both w_GETATTR and w_SETATTR.
+        Implement both w_GETATTRIBUTE and w_SETATTR.
         """
         from .struct import W_StructType
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)
@@ -302,26 +302,26 @@ class W_Ptr(W_BasePtr):
             return W_OpSpec.NULL
 
         assert isinstance(w_T, W_StructType)
-        attr = wop_attr.blue_unwrap_str(vm)
-        if attr not in w_T.fields:
+        name = wop_name.blue_unwrap_str(vm)
+        if name not in w_T.fields:
             return W_OpSpec.NULL
 
-        w_field_T = w_T.fields[attr]
-        offset = w_T.offsets[attr]
+        w_field_T = w_T.fields[name]
+        offset = w_T.offsets[name]
         wop_offset = W_OpArg.from_w_obj(vm, vm.wrap(offset))
 
         if opkind == 'get':
-            # getfield[field_T](ptr, attr, offset)
+            # getfield[field_T](ptr, name, offset)
             assert wop_v is None
             w_func = vm.fast_call(UNSAFE.w_getfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wop_ptr, wop_attr, wop_offset])
+            return W_OpSpec(w_func, [wop_ptr, wop_name, wop_offset])
         else:
-            # setfield[field_T](ptr, attr, offset, v)
+            # setfield[field_T](ptr, name, offset, v)
             assert wop_v is not None
             w_func = vm.fast_call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wop_ptr, wop_attr, wop_offset, wop_v])
+            return W_OpSpec(w_func, [wop_ptr, wop_name, wop_offset, wop_v])
 
 
 
@@ -342,10 +342,10 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
     @builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
-    def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+    def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
                      w_offset: W_I32) -> T:
         """
-        NOTE: w_attr is ignored here, but it's used by the C backend
+        NOTE: w_name is ignored here, but it's used by the C backend
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
         if by == 'byref':
@@ -365,10 +365,10 @@ def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
 
     @builtin_func('unsafe', 'setfield', [w_T.fqn])  # unsafe::setfield[i32]
-    def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_attr: W_Str,
+    def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
                      w_offset: W_I32, w_val: T) -> None:
         """
-        NOTE: w_attr is ignored here, but it's used by the C backend
+        NOTE: w_name is ignored here, but it's used by the C backend
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
         vm.call_generic(
