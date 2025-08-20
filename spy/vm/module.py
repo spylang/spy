@@ -98,12 +98,12 @@ class W_Module(W_Object):
 
     def keys(self) -> Iterable[FQN]:
         for fqn in self.vm.globals_w.keys():
-            if fqn.modname == self.name:
+            if fqn.modname == self.name and len(fqn.parts) > 1:
                 yield fqn
 
     def items_w(self) -> Iterable[ModItem]:
         for fqn, w_obj in self.vm.globals_w.items():
-            if fqn.modname == self.name:
+            if fqn.modname == self.name and len(fqn.parts) > 1:
                 yield fqn, w_obj
 
     def pp(self) -> None:
