@@ -158,7 +158,7 @@ class W_Object:
     #     a.b   ==> operator.getattr(a, "b")
     #
     # Types can implement each operator by implementing __special__ methods
-    # such as `__add__` or `__getattr__`.
+    # such as `__add__` or `__getattribute__`.
     #
     # __special__ methods can be defined as normal functions and executed as
     # expected.
@@ -177,7 +177,7 @@ class W_Object:
     # For example, consider the following expression:
     #     return obj.a
     #
-    # If __getattr__ is a metafunction, this is more or less what happens:
+    # If __getattribute__ is a metafunction, this is more or less what happens:
     #
     #     T = STATIC_TYPE(obj)
     #     v_obj = OpArg('red', T, ...)
@@ -199,15 +199,15 @@ class W_Object:
     #     def w_getitem(vm: 'SPyVM', w_self: 'W_MyClass', w_i: W_I32) -> W_I32:
     #         ...
     #
-    #     # implement __getattr__ as a metafunc
-    #     @builtin_method('__getattr__', color='blue', kind='metafunc')
-    #     def w_GETATTR(vm: 'SPyVM', wop_self: W_OpArg,
-    #                   wop_attr: W_OpArg) -> W_OpSpec:
+    #     # implement __getattribute__ as a metafunc
+    #     @builtin_method('__getattribute__', color='blue', kind='metafunc')
+    #     def w_GETATTRIBUTE(vm: 'SPyVM', wop_self: W_OpArg,
+    #                        wop_attr: W_OpArg) -> W_OpSpec:
     #         ...
     #
     # The naming convention at interp-level is the following:
-    #   - for normal functions, we use w_getitem, w_getattr, etc.
-    #   - for meta functions, we use w_GETITEM, w_GETATTR, etc.
+    #   - for normal functions, we use w_getitem, w_getattribute, etc.
+    #   - for meta functions, we use w_GETITEM, w_GETATTRIBUTE, etc.
     #
     # The following declarations are not strictly needed, but they are
     # provided so that in case a subclass decides to override them, mypy can
@@ -222,8 +222,8 @@ class W_Object:
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_obj: 'W_OpArg',
-                  wop_attr: 'W_OpArg') -> 'W_OpSpec':
+    def w_GETATTRIBUTE(vm: 'SPyVM', wop_obj: 'W_OpArg',
+                       wop_attr: 'W_OpArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
@@ -443,7 +443,6 @@ class W_Type(W_Object):
     def is_struct(self, vm: 'SPyVM') -> bool:
         return False
 
-
     def get_mro(self) -> Sequence['W_Type']:
         """
         Return a list of all the supertypes.
@@ -490,10 +489,10 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
-    @builtin_method('__getattr__', color='blue', kind='metafunc')
+    @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_self: 'W_OpArg',
-                  wop_attr: 'W_OpArg') -> 'W_OpSpec':
+    def w_GETATTRIBUTE(vm: 'SPyVM', wop_self: 'W_OpArg',
+                       wop_attr: 'W_OpArg') -> 'W_OpSpec':
         # type instances have a dict, so they can have arbitrary
         # attributes. If we are doing a getattr on a blue instance, we can
         # check whether the attribute exists, and return it in that case.

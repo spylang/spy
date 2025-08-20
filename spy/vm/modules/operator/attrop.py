@@ -57,8 +57,8 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
         else:
             return W_OpSpec.const(w_val)
 
-    elif w_getattr := w_T.lookup_func(f'__getattr__'):
-        return vm.fast_metacall(w_getattr, [wop_obj, wop_attr])
+    elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
+        return vm.fast_metacall(w_getattribute, [wop_obj, wop_attr])
 
     return W_OpSpec.NULL
 

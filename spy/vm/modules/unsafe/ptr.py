@@ -276,10 +276,10 @@ class W_Ptr(W_BasePtr):
         vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
         return W_OpSpec(w_ptr_to_bool)
 
-    @builtin_method('__getattr__', color='blue', kind='metafunc')
+    @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTR(vm: 'SPyVM', wop_ptr: W_OpArg,
-                  wop_attr: W_OpArg) -> W_OpSpec:
+    def w_GETATTRIBUTE(vm: 'SPyVM', wop_ptr: W_OpArg,
+                       wop_attr: W_OpArg) -> W_OpSpec:
         return W_Ptr.op_ATTR('get', vm, wop_ptr, wop_attr, None)
 
     @builtin_method('__setattr__', color='blue', kind='metafunc')
@@ -292,7 +292,7 @@ class W_Ptr(W_BasePtr):
     def op_ATTR(opkind: str, vm: 'SPyVM', wop_ptr: W_OpArg, wop_attr: W_OpArg,
                 wop_v: Optional[W_OpArg]) -> W_OpSpec:
         """
-        Implement both w_GETATTR and w_SETATTR.
+        Implement both w_GETATTRIBUTE and w_SETATTR.
         """
         from .struct import W_StructType
         w_ptrtype = W_Ptr._get_ptrtype(wop_ptr)

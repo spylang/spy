@@ -38,9 +38,10 @@ class W_Module(W_Object):
 
     # ==== applevel interface =====
 
-    @builtin_method('__getattr__')
+    @builtin_method('__getattribute__')
     @staticmethod
-    def w_getattr(vm: 'SPyVM', w_mod: 'W_Module', w_attr: W_Str) -> W_Dynamic:
+    def w_getattribute(vm: 'SPyVM', w_mod: 'W_Module',
+                       w_attr: W_Str) -> W_Dynamic:
         attr = vm.unwrap_str(w_attr)
         return w_mod.getattr(attr)
 

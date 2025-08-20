@@ -14,9 +14,9 @@ JSFFI = ModuleRegistry('jsffi')
 @JSFFI.builtin_type('JsRef')
 class W_JsRef(W_Object):
 
-    @builtin_method('__getattr__')
+    @builtin_method('__getattribute__')
     @staticmethod
-    def w_getattr(vm: 'SPyVM', w_self: 'W_JsRef', name: W_Str) -> 'W_JsRef':
+    def w_getattribute(vm: 'SPyVM', w_self: 'W_JsRef', name: W_Str) -> 'W_JsRef':
         raise NotImplementedError
 
     @builtin_method('__setattr__')

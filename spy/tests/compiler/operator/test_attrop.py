@@ -256,10 +256,10 @@ class TestAttrOp(CompilerTest):
             def w_new(vm: 'SPyVM') -> 'W_MyClass':
                 return W_MyClass()
 
-            @builtin_method('__getattr__', color='blue', kind='metafunc')
+            @builtin_method('__getattribute__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_attr: W_OpArg) -> W_OpSpec:
+            def w_GETATTRIBUTE(vm: 'SPyVM', wop_obj: W_OpArg,
+                               wop_attr: W_OpArg) -> W_OpSpec:
                 attr = wop_attr.blue_unwrap_str(vm)
                 if attr == 'x':
                     @builtin_func('ext', 'getx')
