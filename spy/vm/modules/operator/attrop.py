@@ -23,7 +23,15 @@ def unwrap_name_maybe(vm: 'SPyVM', wop_name: W_OpArg) -> str:
 def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     name = unwrap_name_maybe(vm, wop_name)
-    w_opspec = _get_GETATTR_opspec(vm, wop_obj, wop_name, name)
+
+    w_T = wop_obj.w_static_type
+    if w_T is B.w_dynamic:
+        w_opspec = W_OpSpec(OP.w_dynamic_getattr)
+    elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
+        w_opspec = vm.fast_metacall(w_getattribute, [wop_obj, wop_name])
+    else:
+        w_opspec = default_getattribute(vm, wop_obj, wop_name, name)
+
     return typecheck_opspec(
         vm,
         w_opspec,
@@ -31,17 +39,6 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg) -> W_OpImpl:
         dispatch = 'single',
         errmsg = "type `{0}` has no attribute '%s'" % name
     )
-
-def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
-                        name: str) -> W_OpSpec:
-    w_T = wop_obj.w_static_type
-
-    if w_T is B.w_dynamic:
-        return W_OpSpec(OP.w_dynamic_getattr)
-    elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
-        return vm.fast_metacall(w_getattribute, [wop_obj, wop_name])
-    else:
-        return default_getattribute(vm, wop_obj, wop_name, name)
 
 
 def default_getattribute(
