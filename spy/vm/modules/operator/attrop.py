@@ -38,29 +38,66 @@ def _get_GETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
 
     if w_T is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_getattr)
-
-    if w_getattribute := w_T.lookup_func(f'__getattribute__'):
+    elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
         return vm.fast_metacall(w_getattribute, [wop_obj, wop_name])
+    else:
+        return default_getattribute(vm, wop_obj, wop_name, name)
 
 
-    # this is more or less the equivalent to object.__getattribute__, with a
-    # big difference: in Python, obj.__dict__ has precedence over
-    # type(obj).__dict__. In SPy, it's the opposite, because we want to be
-    # able to do attribute/method resolution on the static type (and thus
-    # obj.__dict__ is completely unknown).
+def default_getattribute(
+    vm: 'SPyVM',
+    wop_obj: W_OpArg,
+    wop_name: W_OpArg,
+    name: str
+) -> W_OpSpec:
+    # default logic for objects which don't implement __getattribute__. This
+    # is the equivalent of CPython's object.c:PyObject_GenericGetAttr, and
+    # corresponds more or less to object.__getattribute__.
     #
-    # The nice result is that the logic is much simpler now, because we don't
-    # have to worry about data/non-data descriptors.
-    elif w_val := w_T.lookup(name):
-        w_val_type = vm.dynamic_type(w_val)
-        w_get = w_val_type.lookup_func('__get__')
-        if w_get:
-            # w_val is a descriptor! We can call its __get__
-            wop_member = W_OpArg.from_w_obj(vm, w_val)
-            return vm.fast_metacall(w_get, [wop_member, wop_obj])
-        else:
-            return W_OpSpec.const(w_val)
+    # There is a big difference compared to Python, though.
+    #   <python>
+    #     1. try to find a data descriptor on the type
+    #     2. try to look inside obj.__dict__
+    #     3. try to find a non-data descriptor on the type
+    #     4. try to find a normal attribute on the type
+    #     5. AttributeError
+    #   </python>
+    #
+    # This means that e.g. an instance can override methods via its __dict__.
+    #
+    # The SPy logic must be different, because we want to be able to resolve
+    # the getattribute during redshift: in particular, during redshift we know
+    # the static types but we DO NOT know the content of obj.__dict__ (if obj
+    # is red). So, we tweak the logic:
+    #   <spy>
+    #     1. try to find a descriptor on the type
+    #     2. try to find a normal attribute on the type
+    #     3. try to look inside obj.__dict__ (if present)
+    #     4. AttributeError
+    #   </spy>
+    #
+    # This means that individual instances can NEVER override attributes
+    # provided by their type. This also means that we no longer need the
+    # distinction between data and non-data descriptors (as all descriptors
+    # have the precedence anyway).
+    #
+    # Also note that contrarily to Python, in SPy instances don't have a
+    # __dict__ by default. (__dict__ support not implemented yet ATM).
 
+    w_T = wop_obj.w_static_type
+    if w_attr := w_T.lookup(name):
+        if w_get := vm.dynamic_type(w_attr).lookup_func('__get__'):
+            # 1. found a descriptor on the type
+            wop_attr = W_OpArg.from_w_obj(vm, w_attr)
+            return vm.fast_metacall(w_get, [wop_attr, wop_obj])
+        else:
+            # 2. found a normal attribute on the type
+            return W_OpSpec.const(w_attr)
+
+    # 3. look inside obj.__dict__
+    # IMPLEMENT ME
+
+    # 4. AttributeError
     return W_OpSpec.NULL
 
 
