@@ -448,7 +448,7 @@ class W_Type(W_Object):
         Return a list of all the supertypes.
         """
         mro = []
-        w_T = self
+        w_T: Union['W_Type', 'W_NoneType'] = self
         while w_T is not B.w_None:
             assert isinstance(w_T, W_Type)
             mro.append(w_T)
