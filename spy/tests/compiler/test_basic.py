@@ -1118,3 +1118,12 @@ class TestBasic(CompilerTest):
         """)
         assert mod.test1() == 10
         assert mod.test2() == 'hello world'
+
+    def test_call_module_attr(self):
+        mod = self.compile("""
+        import math
+
+        def foo(x: f64) -> f64:
+            return math.fabs(x)
+        """)
+        assert mod.foo(-3.5) == 3.5
