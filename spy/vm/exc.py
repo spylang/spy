@@ -77,8 +77,8 @@ class W_Exception(W_Object):
     def w_EQ(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
 
-        w_atype = wop_a.w_static_type
-        w_btype = wop_b.w_static_type
+        w_atype = wop_a.w_static_T
+        w_btype = wop_b.w_static_T
 
         # If different exception types, return null implementation
         if w_atype is not w_btype:
@@ -97,8 +97,8 @@ class W_Exception(W_Object):
     def w_NE(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
 
-        w_atype = wop_a.w_static_type
-        w_btype = wop_b.w_static_type
+        w_atype = wop_a.w_static_T
+        w_btype = wop_b.w_static_T
 
         # If different exception types, return null implementation
         if w_atype is not w_btype:

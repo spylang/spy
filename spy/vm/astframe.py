@@ -100,13 +100,13 @@ class AbstractFrame:
                         varname: Optional[str]) -> Optional[W_Func]:
         if varname is None:
             return None # no typecheck needed
-        w_exp_type = self.locals_types_w[varname]
+        w_exp_T = self.locals_types_w[varname]
         try:
-            w_typeconv = CONVERT_maybe(self.vm, w_exp_type, wop)
+            w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wop)
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
-            exp = w_exp_type.fqn.human_name
+            exp = w_exp_T.fqn.human_name
             exp_loc = self.symtable.lookup(varname).type_loc
             if varname == '@return':
                 because = ' because of return type'
@@ -184,7 +184,7 @@ class AbstractFrame:
         for arg in funcdef.args:
             w_param_type = self.eval_expr_type(arg.type)
             param = FuncParam(
-                w_type = w_param_type,
+                w_T = w_param_type,
                 kind = 'simple'
             )
             params.append(param)
@@ -231,24 +231,24 @@ class AbstractFrame:
         from spy.vm.classframe import ClassFrame
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
-        w_type = self.load_local(classdef.name)
-        assert isinstance(w_type, W_Type)
-        assert w_type.fqn.parts[-1].name == classdef.name # sanity check
-        assert not w_type.is_defined()
+        w_T = self.load_local(classdef.name)
+        assert isinstance(w_T, W_Type)
+        assert w_T.fqn.parts[-1].name == classdef.name # sanity check
+        assert not w_T.is_defined()
 
         # create a frame where to execute the class body
         # XXX we should capture only the names actually used in the inner frame
         closure = self.closure + (self._locals,)
-        classframe = ClassFrame(self.vm, classdef, w_type.fqn, closure)
+        classframe = ClassFrame(self.vm, classdef, w_T.fqn, closure)
         body = classframe.run()
 
         # finalize type definition
-        w_type.define_from_classbody(body)
-        assert w_type.is_defined()
+        w_T.define_from_classbody(body)
+        assert w_T.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        w_type = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.name, w_type, vardef.loc)
+        w_T = self.eval_expr_type(vardef.type)
+        self.declare_local(vardef.name, w_T, vardef.loc)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         self._exec_assign(assign.target, assign.value)
@@ -271,7 +271,7 @@ class AbstractFrame:
         else:
             # first assignment, implicit declaration
             wop = self.eval_expr(expr)
-            self.declare_local(varname, wop.w_static_type, target.loc)
+            self.declare_local(varname, wop.w_static_T, target.loc)
 
         if not self.redshifting:
             self.store_local(varname, wop.w_val)
@@ -297,8 +297,8 @@ class AbstractFrame:
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wop_tup = self.eval_expr(unpack.value)
-        if wop_tup.w_static_type is not B.w_tuple:
-            t = wop_tup.w_static_type.fqn.human_name
+        if wop_tup.w_static_T is not B.w_tuple:
+            t = wop_tup.w_static_T.fqn.human_name
             err = SPyError(
                 'W_TypeError',
                 f'`{t}` does not support unpacking',
@@ -409,8 +409,8 @@ class AbstractFrame:
         T = type(const.value)
         assert T in (int, float, bool, NoneType)
         w_val = self.vm.wrap(const.value)
-        w_type = self.vm.dynamic_type(w_val)
-        return W_OpArg(self.vm, 'blue', w_type, w_val, const.loc)
+        w_T = self.vm.dynamic_type(w_val)
+        return W_OpArg(self.vm, 'blue', w_T, w_val, const.loc)
 
     def eval_expr_StrConst(self, const: ast.StrConst) -> W_OpArg:
         w_val = self.vm.wrap(const.value)
@@ -440,24 +440,24 @@ class AbstractFrame:
         assert sym.fqn is not None
         w_val = self.vm.lookup_global(sym.fqn)
         assert w_val is not None
-        w_type = self.vm.dynamic_type(w_val)
-        return W_OpArg(self.vm, sym.color, w_type, w_val, name.loc, sym=sym)
+        w_T = self.vm.dynamic_type(w_val)
+        return W_OpArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_Name_local(self, name: ast.Name, sym: Symbol) -> W_OpArg:
-        w_type = self.locals_types_w[name.id]
+        w_T = self.locals_types_w[name.id]
         if sym.color == 'red' and self.redshifting:
             w_val = None
         else:
             w_val = self.load_local(name.id)
-        return W_OpArg(self.vm, sym.color, w_type, w_val, name.loc, sym=sym)
+        return W_OpArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_OpArg:
         color: Color = 'blue'  # closed-over variables are always blue
         namespace = self.closure[-sym.level]
         w_val = namespace[sym.name]
         assert w_val is not None
-        w_type = self.vm.dynamic_type(w_val)
-        return W_OpArg(self.vm, color, w_type, w_val, name.loc, sym=sym)
+        w_T = self.vm.dynamic_type(w_val)
+        return W_OpArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
                     args_wop: list[W_OpArg]) -> W_OpArg:
@@ -536,7 +536,7 @@ class AbstractFrame:
         args_wop = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wop_func]+args_wop)
         assert len(call.args) == 1
-        w_argtype = args_wop[0].w_static_type
+        w_argtype = args_wop[0].w_static_T
         return W_OpArg.from_w_obj(self.vm, w_argtype)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
@@ -575,8 +575,8 @@ class AbstractFrame:
             items_wop.append(wop_item)
             color = maybe_blue(color, wop_item.color)
             if w_itemtype is None:
-                w_itemtype = wop_item.w_static_type
-            w_itemtype = self.vm.union_type(w_itemtype, wop_item.w_static_type)
+                w_itemtype = wop_item.w_static_T
+            w_itemtype = self.vm.union_type(w_itemtype, wop_item.w_static_T)
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None
@@ -709,7 +709,7 @@ class ASTFrame(AbstractFrame):
         self.declare_local('@while', B.w_bool, Loc.fake())
         self.declare_local('@return', w_ft.w_restype, funcdef.return_type.loc)
         for arg, param in zip(self.funcdef.args, w_ft.params, strict=True):
-            self.declare_local(arg.name, param.w_type, arg.loc)
+            self.declare_local(arg.name, param.w_T, arg.loc)
 
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """
@@ -719,5 +719,5 @@ class ASTFrame(AbstractFrame):
         args = self.funcdef.args
         params = w_ft.params
         for arg, param, w_arg in zip(args, params, args_w, strict=True):
-            assert self.vm.isinstance(w_arg, param.w_type)
+            assert self.vm.isinstance(w_arg, param.w_T)
             self.store_local(arg.name, w_arg)

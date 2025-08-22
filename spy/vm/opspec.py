@@ -81,7 +81,7 @@ class W_OpArg(W_Object):
     Blue OpArg always have an associated value.
     """
     color: Color
-    w_static_type: Annotated[W_Type, Member('static_type')]
+    w_static_T: Annotated[W_Type, Member('static_type')]
     loc: Loc
     _w_val: Optional[W_Object]
     sym: Optional[Symbol]
@@ -89,7 +89,7 @@ class W_OpArg(W_Object):
     def __init__(self,
                  vm: 'SPyVM',
                  color: Color,
-                 w_static_type: W_Type,
+                 w_static_T: W_Type,
                  w_val: Optional[W_Object],
                  loc: Loc,
                  *,
@@ -97,13 +97,13 @@ class W_OpArg(W_Object):
                  ) -> None:
         if color == 'blue':
             assert w_val is not None
-            if w_static_type is B.w_dynamic:
+            if w_static_T is B.w_dynamic:
                 # "dynamic blue" doesn't make sense: if it's blue, we
                 # precisely know its type, and we can eagerly evaluate it.
                 # See test_basic::test_eager_blue_eval
-                w_static_type = vm.dynamic_type(w_val)
+                w_static_T = vm.dynamic_type(w_val)
         self.color = color
-        self.w_static_type = w_static_type
+        self.w_static_T = w_static_T
         self._w_val = w_val
         self.loc = loc
         self.sym = sym
@@ -113,7 +113,7 @@ class W_OpArg(W_Object):
     def w_new(
             vm: 'SPyVM',
             w_color: W_Object,
-            w_static_type: W_Type,
+            w_static_T: W_Type,
             w_val: W_Object
     ) -> 'W_OpArg':
         """
@@ -123,11 +123,11 @@ class W_OpArg(W_Object):
         - val: the value (optional for red OpArg, required for blue)
         """
         # Check that w_color is a string
-        w_type = vm.dynamic_type(w_color)
-        if w_type is not B.w_str:
+        w_T = vm.dynamic_type(w_color)
+        if w_T is not B.w_str:
             raise SPyError(
                 'W_TypeError',
-                f"OpArg color must be a string, got {w_type.fqn.human_name}",
+                f"OpArg color must be a string, got {w_T.fqn.human_name}",
             )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
@@ -147,19 +147,19 @@ class W_OpArg(W_Object):
             raise SPyError("Blue OpArg requires a value", etype='W_TypeError')
 
         loc = Loc.here(-2)  # approximate source location
-        return W_OpArg(vm, color, w_static_type, w_val2, loc)
+        return W_OpArg(vm, color, w_static_T, w_val2, loc)
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
-        w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(vm, 'blue', w_type, w_obj, Loc.here(-2))
+        w_T = vm.dynamic_type(w_obj)
+        return W_OpArg(vm, 'blue', w_T, w_obj, Loc.here(-2))
 
     def __repr__(self) -> str:
         if self.is_blue():
             extra = f' = {self.w_val}'
         else:
             extra = ''
-        t = self.w_static_type.fqn.human_name
+        t = self.w_static_T.fqn.human_name
         return f'<W_OpArg {self.color} {t}{extra}>'
 
     def is_blue(self) -> bool:
@@ -168,7 +168,7 @@ class W_OpArg(W_Object):
     def as_red(self, vm: 'SPyVM') -> 'W_OpArg':
         if self.color == 'red':
             return self
-        return W_OpArg(vm, 'red', self.w_static_type, self._w_val, self.loc,
+        return W_OpArg(vm, 'red', self.w_static_T, self._w_val, self.loc,
                        sym=self.sym)
 
     @property
@@ -182,7 +182,7 @@ class W_OpArg(W_Object):
         assert self._w_val is not None
         return self._w_val
 
-    def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
+    def blue_ensure(self, vm: 'SPyVM', w_expected_T: W_Type) -> W_Object:
         """
         Ensure that the W_OpArg is blue and of the expected type.
         Raise SPyError(W_TypeError) if not.
@@ -199,16 +199,16 @@ class W_OpArg(W_Object):
         # check that the blueval has the expected type. If not, we should
         # probably raise a better error, but for now we just fail with
         # AssertionError.
-        w_func = CONVERT_maybe(vm, w_expected_type, self)
+        w_func = CONVERT_maybe(vm, w_expected_T, self)
         assert w_func is None
         assert self.w_val is not None
         return self.w_val
 
-    def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
+    def blue_unwrap(self, vm: 'SPyVM', w_expected_T: W_Type) -> Any:
         """
         Like ensure_blue, but also unwrap.
         """
-        w_obj = self.blue_ensure(vm, w_expected_type)
+        w_obj = self.blue_ensure(vm, w_expected_T)
         return vm.unwrap(w_obj)
 
     def blue_unwrap_str(self, vm: 'SPyVM') -> str:
@@ -229,7 +229,7 @@ class W_OpArg(W_Object):
                 return W_OpArg(
                     vm,
                     color='red',
-                    w_static_type=w_type,
+                    w_static_T=w_type,
                     w_val=None,
                     loc=Loc.here()  # w_from_type
                 )
@@ -239,8 +239,8 @@ class W_OpArg(W_Object):
     @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
-        w_ltype = wop_l.w_static_type
-        w_rtype = wop_r.w_static_type
+        w_ltype = wop_l.w_static_T
+        w_rtype = wop_r.w_static_T
         assert w_ltype.pyclass is W_OpArg
 
         if w_ltype is w_rtype:
@@ -281,7 +281,7 @@ def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     from spy.vm.b import B
     # note that the prefix is NOT considered for equality, is purely for
     # description
-    if wop1.w_static_type is not wop2.w_static_type:
+    if wop1.w_static_T is not wop2.w_static_T:
         return B.w_False
     # we need to think what to do in this case
     ## if wop1.is_blue() != wop2.is_blue():
@@ -373,19 +373,19 @@ class W_OpSpec(W_Object):
         from spy.vm.function import W_Func
         from spy.vm.list import W_OpArgList
 
-        w_type = wop_cls.w_blueval
-        assert isinstance(w_type, W_Type)
+        w_T = wop_cls.w_blueval
+        assert isinstance(w_T, W_Type)
 
         if len(args_wop) == 1:
             # Simple case: OpSpec(func)
-            @builtin_func(w_type.fqn, 'new1')
+            @builtin_func(w_T.fqn, 'new1')
             def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpSpec:
                 return W_OpSpec(w_func)
             return W_OpSpec(w_new1)
 
         elif len(args_wop) == 2:
             # OpSpec(func, args) case
-            @builtin_func(w_type.fqn, 'new2')
+            @builtin_func(w_T.fqn, 'new2')
             def w_new2(vm: 'SPyVM', w_cls: W_Type,
                        w_func: W_Func, w_args: W_OpArgList) -> W_OpSpec:
                 # Convert from applevel w_args into interp-level args_w

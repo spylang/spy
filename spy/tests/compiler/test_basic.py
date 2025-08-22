@@ -977,8 +977,8 @@ class TestBasic(CompilerTest):
             x = 42
             return STATIC_TYPE(x)
         """)
-        w_type = mod.foo(unwrap=False)
-        assert w_type is B.w_i32
+        w_T = mod.foo(unwrap=False)
+        assert w_T is B.w_i32
 
     @no_C
     def test_STATIC_TYPE_wrong_argcount(self):
@@ -1051,8 +1051,8 @@ class TestBasic(CompilerTest):
         expected_sig = 'def(test::S, unsafe::ptr[test::S]) -> None'
         assert w_foo.w_functype.fqn.human_name == expected_sig
         params = w_foo.w_functype.params
-        assert params[0].w_type is w_S
-        assert params[1].w_type is w_ptr_S1 is w_ptr_S2
+        assert params[0].w_T is w_S
+        assert params[1].w_T is w_ptr_S1 is w_ptr_S2
 
     @only_interp
     def test_forward_declaration_in_funcdef(self):
@@ -1084,8 +1084,8 @@ class TestBasic(CompilerTest):
             x = bar()
             return STATIC_TYPE(x)
         """)
-        w_type = mod.foo(unwrap=False)
-        assert w_type is B.w_i32
+        w_T = mod.foo(unwrap=False)
+        assert w_T is B.w_i32
 
     def test_cls_as_param_name(self):
         mod = self.compile("""

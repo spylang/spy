@@ -28,7 +28,7 @@ class W_MyClass(W_Object):
             wop_target_type: W_OpArg,
             wop_self: W_OpArg
     ) -> W_OpSpec:
-        w_target_type = wop_target_type.w_blueval
+        w_target_T = wop_target_type.w_blueval
 
         @builtin_func('ext')
         def w_to_i32(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
@@ -39,10 +39,10 @@ class W_MyClass(W_Object):
             x = vm.unwrap_i32(w_self.w_x)
             return vm.wrap(str(x))
 
-        if w_target_type is B.w_i32:
+        if w_target_T is B.w_i32:
             vm.add_global(w_to_i32.fqn, w_to_i32)
             return W_OpSpec(w_to_i32)
-        elif w_target_type is B.w_str:
+        elif w_target_T is B.w_str:
             vm.add_global(w_to_str.fqn, w_to_str)
             return W_OpSpec(w_to_str)
         return W_OpSpec.NULL
@@ -54,7 +54,7 @@ class W_MyClass(W_Object):
             wop_source_type: W_OpArg,
             wop_val: W_OpArg
     ) -> W_OpSpec:
-        w_source_type = wop_source_type.w_blueval
+        w_src_T = wop_source_type.w_blueval
 
         @builtin_func('ext')
         def w_from_str(vm: 'SPyVM', w_val: W_Str) -> W_MyClass:
@@ -62,7 +62,7 @@ class W_MyClass(W_Object):
             w_x = vm.wrap(int(s))
             return W_MyClass(w_x)
 
-        if w_source_type is B.w_str:
+        if w_src_T is B.w_str:
             vm.add_global(w_from_str.fqn, w_from_str)
             return W_OpSpec(w_from_str)
         return W_OpSpec.NULL

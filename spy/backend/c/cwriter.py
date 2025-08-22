@@ -78,8 +78,8 @@ class CFuncWriter:
         """
         assert self.w_func.locals_types_w is not None
         param_names = [arg.name for arg in self.w_func.funcdef.args]
-        for varname, w_type in self.w_func.locals_types_w.items():
-            c_type = self.ctx.w2c(w_type)
+        for varname, w_T in self.w_func.locals_types_w.items():
+            c_type = self.ctx.w2c(w_T)
             if (varname not in ('@return', '@if', '@while') and
                 varname not in param_names):
                 self.tbc.wl(f'{c_type} {varname};')

@@ -78,7 +78,7 @@ class SPyBackend:
         params = w_func.w_functype.params
         l = []
         for argname, p in zip(argnames, params, strict=True):
-            t = self.fmt_w_obj(p.w_type)
+            t = self.fmt_w_obj(p.w_T)
             l.append(f'{argname}: {t}')
         return ', '.join(l)
 
@@ -129,8 +129,8 @@ class SPyBackend:
         sym = symtable.lookup(varname)
         if self.w_func.redshifted and sym.level == 0 and varname not in self.vars_declared:
             assert self.w_func.locals_types_w is not None
-            w_type = self.w_func.locals_types_w[varname]
-            t = self.fmt_w_obj(w_type)
+            w_T = self.w_func.locals_types_w[varname]
+            t = self.fmt_w_obj(w_T)
             self.wl(f'{varname}: {t}')
             self.vars_declared.add(varname)
 

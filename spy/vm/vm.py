@@ -256,12 +256,12 @@ class SPyVM:
             # the argument to "raise" must be blue for now (see also
             # W_Exception.w_NEW). Eventually, we will have proper support
             # for prebuilt constants, but for now we special case W_Exception.
-            w_type = self.dynamic_type(w_val)
-            fqn = w_type.fqn.join('prebuilt')
+            w_T = self.dynamic_type(w_val)
+            fqn = w_T.fqn.join('prebuilt')
             fqn = self.get_unique_FQN(fqn)
         else:
-            w_type = self.dynamic_type(w_val)
-            T = w_type.fqn.human_name
+            w_T = self.dynamic_type(w_val)
+            T = w_T.fqn.human_name
             msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"
             raise WIP(msg)
             assert False, 'implement me'
@@ -558,7 +558,7 @@ class SPyVM:
         w_functype = w_func.w_functype
         assert w_functype.is_argcount_ok(len(args_w))
         for param, w_arg in zip(w_functype.all_params(), args_w):
-            assert self.isinstance(w_arg, param.w_type)
+            assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
     def _w_oparg(self, w_x: W_Dynamic) -> W_OpArg:
@@ -644,8 +644,8 @@ class SPyVM:
                 raise
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
-            w_ta = wop_a.w_static_type
-            w_tb = wop_b.w_static_type
+            w_ta = wop_a.w_static_T
+            w_tb = wop_b.w_static_T
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 

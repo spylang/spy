@@ -82,16 +82,16 @@ class Context:
         self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer *')
         self._d[JSFFI.w_JsRef] = C_Type('JsRef')
 
-    def w2c(self, w_type: W_Type) -> C_Type:
-        if w_type in self._d:
-            return self._d[w_type]
-        elif isinstance(w_type, W_PtrType):
-            return self.new_ptr_type(w_type)
-        elif isinstance(w_type, W_StructType):
-            return self.new_struct_type(w_type)
-        elif isinstance(w_type, W_LiftedType):
-            return self.new_lifted_type(w_type)
-        raise NotImplementedError(f'Cannot translate type {w_type} to C')
+    def w2c(self, w_T: W_Type) -> C_Type:
+        if w_T in self._d:
+            return self._d[w_T]
+        elif isinstance(w_T, W_PtrType):
+            return self.new_ptr_type(w_T)
+        elif isinstance(w_T, W_StructType):
+            return self.new_struct_type(w_T)
+        elif isinstance(w_T, W_LiftedType):
+            return self.new_lifted_type(w_T)
+        raise NotImplementedError(f'Cannot translate type {w_T} to C')
 
     def c_restype_by_fqn(self, fqn: FQN) -> C_Type:
         w_func = self.vm.lookup_global(fqn)
@@ -104,7 +104,7 @@ class Context:
         argnames = [arg.name for arg in w_func.funcdef.args]
         c_restype = self.w2c(w_functype.w_restype)
         c_params = [
-            C_FuncParam(name=name, c_type=self.w2c(p.w_type))
+            C_FuncParam(name=name, c_type=self.w2c(p.w_T))
             for name, p in zip(argnames, w_functype.params, strict=True)
         ]
         return C_Function(name, c_params, c_restype)

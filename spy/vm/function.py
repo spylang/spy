@@ -19,7 +19,7 @@ FuncParamKind = Literal['simple', 'varargs']
 
 @dataclass(frozen=True, eq=True)
 class FuncParam:
-    w_type: W_Type
+    w_T: W_Type
     kind: FuncParamKind
 
 
@@ -36,7 +36,7 @@ class W_FuncType(W_Type):
         # build an artificial FQN for the functype.
         # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
-        qualifiers = [p.w_type.fqn for p in params] + [w_restype.fqn]
+        qualifiers = [p.w_T.fqn for p in params] + [w_restype.fqn]
         if color == 'red' and kind == 'plain':
             t = 'def'
         elif color == 'blue' and kind == 'plain':
@@ -64,7 +64,7 @@ class W_FuncType(W_Type):
     def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec
         from spy.vm.modules.builtins import w_functype_eq
-        if wop_l.w_static_type is wop_r.w_static_type:
+        if wop_l.w_static_T is wop_r.w_static_T:
             return W_OpSpec(w_functype_eq)
         else:
             return W_OpSpec.NULL
@@ -93,8 +93,8 @@ class W_FuncType(W_Type):
         for argtype in arglist:
             if argtype == '':
                 continue
-            w_type = parse_type(argtype.strip())
-            params.append(FuncParam(w_type, 'simple'))
+            w_T = parse_type(argtype.strip())
+            params.append(FuncParam(w_T, 'simple'))
         #
         w_restype = parse_type(res)
         if w_restype is B.w_None:

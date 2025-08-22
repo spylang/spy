@@ -178,7 +178,7 @@ class TestAttrOp(CompilerTest):
                 This exist just to test that we can have a metafunc as a
                 @builtin_property
                 """
-                w_t = wop_self.w_static_type
+                w_t = wop_self.w_static_T
                 assert W_MyClass._w is w_t
                 @builtin_func(w_t.fqn, 'get_y')
                 def w_get_x2(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
