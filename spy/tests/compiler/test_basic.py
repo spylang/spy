@@ -1051,8 +1051,8 @@ class TestBasic(CompilerTest):
         expected_sig = 'def(test::S, unsafe::ptr[test::S]) -> None'
         assert w_foo.w_functype.fqn.human_name == expected_sig
         params = w_foo.w_functype.params
-        assert params[0].w_type is w_S
-        assert params[1].w_type is w_ptr_S1 is w_ptr_S2
+        assert params[0].w_T is w_S
+        assert params[1].w_T is w_ptr_S1 is w_ptr_S2
 
     @only_interp
     def test_forward_declaration_in_funcdef(self):

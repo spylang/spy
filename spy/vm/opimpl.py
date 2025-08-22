@@ -172,7 +172,7 @@ class W_OpImpl(W_Object):
     def func_signature(self) -> str:
         w_ft = self.w_functype
         params = [
-            f'v{i}: {p.w_type.fqn.human_name}'
+            f'v{i}: {p.w_T.fqn.human_name}'
             for i, p in enumerate(w_ft.params)
         ]
         str_params = ', '.join(params)

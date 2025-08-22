@@ -104,7 +104,7 @@ class Context:
         argnames = [arg.name for arg in w_func.funcdef.args]
         c_restype = self.w2c(w_functype.w_restype)
         c_params = [
-            C_FuncParam(name=name, c_type=self.w2c(p.w_type))
+            C_FuncParam(name=name, c_type=self.w2c(p.w_T))
             for name, p in zip(argnames, w_functype.params, strict=True)
         ]
         return C_Function(name, c_params, c_restype)

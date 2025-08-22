@@ -558,7 +558,7 @@ class SPyVM:
         w_functype = w_func.w_functype
         assert w_functype.is_argcount_ok(len(args_w))
         for param, w_arg in zip(w_functype.all_params(), args_w):
-            assert self.isinstance(w_arg, param.w_type)
+            assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
     def _w_oparg(self, w_x: W_Dynamic) -> W_OpArg:

@@ -184,7 +184,7 @@ class AbstractFrame:
         for arg in funcdef.args:
             w_param_type = self.eval_expr_type(arg.type)
             param = FuncParam(
-                w_type = w_param_type,
+                w_T = w_param_type,
                 kind = 'simple'
             )
             params.append(param)
@@ -709,7 +709,7 @@ class ASTFrame(AbstractFrame):
         self.declare_local('@while', B.w_bool, Loc.fake())
         self.declare_local('@return', w_ft.w_restype, funcdef.return_type.loc)
         for arg, param in zip(self.funcdef.args, w_ft.params, strict=True):
-            self.declare_local(arg.name, param.w_type, arg.loc)
+            self.declare_local(arg.name, param.w_T, arg.loc)
 
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """
@@ -719,5 +719,5 @@ class ASTFrame(AbstractFrame):
         args = self.funcdef.args
         params = w_ft.params
         for arg, param, w_arg in zip(args, params, args_w, strict=True):
-            assert self.vm.isinstance(w_arg, param.w_type)
+            assert self.vm.isinstance(w_arg, param.w_T)
             self.store_local(arg.name, w_arg)

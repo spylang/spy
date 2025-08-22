@@ -19,7 +19,7 @@ FuncParamKind = Literal['simple', 'varargs']
 
 @dataclass(frozen=True, eq=True)
 class FuncParam:
-    w_type: W_Type
+    w_T: W_Type
     kind: FuncParamKind
 
 
@@ -36,7 +36,7 @@ class W_FuncType(W_Type):
         # build an artificial FQN for the functype.
         # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
-        qualifiers = [p.w_type.fqn for p in params] + [w_restype.fqn]
+        qualifiers = [p.w_T.fqn for p in params] + [w_restype.fqn]
         if color == 'red' and kind == 'plain':
             t = 'def'
         elif color == 'blue' and kind == 'plain':

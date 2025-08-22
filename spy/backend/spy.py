@@ -78,7 +78,7 @@ class SPyBackend:
         params = w_func.w_functype.params
         l = []
         for argname, p in zip(argnames, params, strict=True):
-            t = self.fmt_w_obj(p.w_type)
+            t = self.fmt_w_obj(p.w_T)
             l.append(f'{argname}: {t}')
         return ', '.join(l)
 

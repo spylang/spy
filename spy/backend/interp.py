@@ -56,7 +56,7 @@ class InterpFuncWrapper:
         # *and to call the func, and unwrap the result
         args_w = []
         for arg, param in zip(args, self.w_functype.params, strict=True):
-            w_T = param.w_type
+            w_T = param.w_T
             if w_T is B.w_i8:
                 arg = fixedint.Int8(arg)
             elif w_T is B.w_u8:

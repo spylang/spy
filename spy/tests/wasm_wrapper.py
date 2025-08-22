@@ -95,7 +95,7 @@ class WasmFuncWrapper:
         #
         wasm_args: list[Any] = []
         for py_arg, param in zip(py_args, self.w_functype.params):
-            wasm_arg = self.py2wasm(py_arg, param.w_type)
+            wasm_arg = self.py2wasm(py_arg, param.w_T)
             if type(wasm_arg) is tuple:
                 # special case for multivalue
                 wasm_args += wasm_arg

@@ -94,7 +94,7 @@ def typecheck_opspec(
     args = []
     for param, wop_out_arg in zip(w_out_functype.all_params(), out_args_wop):
         # add a converter if needed (this might raise SPyTypeError)
-        w_conv = get_w_conv(vm, param.w_type, wop_out_arg, def_loc)
+        w_conv = get_w_conv(vm, param.w_T, wop_out_arg, def_loc)
         arg: ArgSpec
         if wop_out_arg.is_blue():
             arg = ArgSpec.Const(wop_out_arg.w_blueval, wop_out_arg.loc)
