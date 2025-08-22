@@ -93,8 +93,8 @@ class W_FuncType(W_Type):
         for argtype in arglist:
             if argtype == '':
                 continue
-            w_type = parse_type(argtype.strip())
-            params.append(FuncParam(w_type, 'simple'))
+            w_T = parse_type(argtype.strip())
+            params.append(FuncParam(w_T, 'simple'))
         #
         w_restype = parse_type(res)
         if w_restype is B.w_None:

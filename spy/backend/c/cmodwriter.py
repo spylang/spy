@@ -198,7 +198,7 @@ class CModuleWriter:
             self.emit_obj(fqn, w_obj)
 
     def emit_obj(self, fqn: FQN, w_obj: W_Object) -> None:
-        w_type = self.ctx.vm.dynamic_type(w_obj)
+        w_T = self.ctx.vm.dynamic_type(w_obj)
 
         if hasattr(w_obj, 'fqn') and w_obj.fqn != fqn:
             # just a reference to a function/type defined elsewhere, we can
@@ -228,19 +228,19 @@ class CModuleWriter:
         # ==== vars/consts ====
         elif isinstance(w_obj, W_I32):
             intval = self.ctx.vm.unwrap(w_obj)
-            c_type = self.ctx.w2c(w_type)
+            c_type = self.ctx.w2c(w_T)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
             self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
 
-        elif isinstance(w_type, W_PtrType):
+        elif isinstance(w_T, W_PtrType):
             # for now, we only support NULL constnts
             assert isinstance(w_obj, W_Ptr)
             assert w_obj.addr == 0, 'only NULL pointers can be stored in constants for now'
-            c_type = self.ctx.w2c(w_type)
+            c_type = self.ctx.w2c(w_T)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
             self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
 
-        elif isinstance(w_type, W_Type) and w_type.fqn.modname == 'builtins':
+        elif isinstance(w_T, W_Type) and w_T.fqn.modname == 'builtins':
             # this is an ad-hoc hack to support things like this at
             # module-level:
             #    T = i32

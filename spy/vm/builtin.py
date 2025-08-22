@@ -50,7 +50,7 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
 
 def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     annotation = extra_types.get(p.annotation, p.annotation)
-    w_type = to_spy_type(annotation)
+    w_T = to_spy_type(annotation)
     kind: FuncParamKind
     if p.kind == p.POSITIONAL_OR_KEYWORD:
         kind = 'simple'
@@ -58,7 +58,7 @@ def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
         kind = 'varargs'
     else:
         assert False
-    return FuncParam(w_type, kind)
+    return FuncParam(w_T, kind)
 
 
 def functype_from_sig(fn: Callable, color: Color, kind: FuncKind, *,
@@ -154,9 +154,9 @@ def builtin_type(namespace: FQN|str,
 
     def decorator(pyclass: Type[W_Object]) -> Type[W_Object]:
         assert issubclass(pyclass, W_Object)
-        w_type = W_MetaClass.declare(fqn)
+        w_T = W_MetaClass.declare(fqn)
         if not lazy_definition:
-            w_type.define(pyclass)
-        pyclass._w = w_type
+            w_T.define(pyclass)
+        pyclass._w = w_T
         return pyclass
     return decorator

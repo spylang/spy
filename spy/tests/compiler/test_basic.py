@@ -977,8 +977,8 @@ class TestBasic(CompilerTest):
             x = 42
             return STATIC_TYPE(x)
         """)
-        w_type = mod.foo(unwrap=False)
-        assert w_type is B.w_i32
+        w_T = mod.foo(unwrap=False)
+        assert w_T is B.w_i32
 
     @no_C
     def test_STATIC_TYPE_wrong_argcount(self):
@@ -1084,8 +1084,8 @@ class TestBasic(CompilerTest):
             x = bar()
             return STATIC_TYPE(x)
         """)
-        w_type = mod.foo(unwrap=False)
-        assert w_type is B.w_i32
+        w_T = mod.foo(unwrap=False)
+        assert w_T is B.w_i32
 
     def test_cls_as_param_name(self):
         mod = self.compile("""

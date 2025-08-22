@@ -35,8 +35,8 @@ def main(argv: list[str]) -> None:
             print('functype:', w_obj.w_functype)
             print('locals:')
             assert w_obj.locals_types_w is not None
-            for varname, w_type in w_obj.locals_types_w.items():
-                print('   ', varname, w_type)
+            for varname, w_T in w_obj.locals_types_w.items():
+                print('   ', varname, w_T)
             print('AST:')
             w_obj.funcdef.pp()
             print()

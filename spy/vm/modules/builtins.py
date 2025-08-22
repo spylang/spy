@@ -48,24 +48,24 @@ def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
 def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    w_type = wop_obj.w_static_type
-    if w_type is B.w_i32:
+    w_T = wop_obj.w_static_type
+    if w_T is B.w_i32:
         return W_OpSpec(B.w_print_i32)
-    elif w_type is B.w_f64:
+    elif w_T is B.w_f64:
         return W_OpSpec(B.w_print_f64)
-    elif w_type is B.w_bool:
+    elif w_T is B.w_bool:
         return W_OpSpec(B.w_print_bool)
-    elif w_type is B.w_NoneType:
+    elif w_T is B.w_NoneType:
         return W_OpSpec(B.w_print_NoneType)
-    elif w_type is B.w_str:
+    elif w_T is B.w_str:
         return W_OpSpec(B.w_print_str)
-    elif w_type is B.w_dynamic:
+    elif w_T is B.w_dynamic:
         return W_OpSpec(B.w_print_dynamic)
     else:
         # NOTE: this doesn't work in the C backend
         return W_OpSpec(B.w_print_object)
 
-    t = w_type.fqn.human_name
+    t = w_T.fqn.human_name
     raise SPyError.simple(
         'W_TypeError',
         f'cannot call print(`{t}`)',
@@ -104,12 +104,12 @@ def w_print_object(vm: 'SPyVM', w_x: W_Object) -> None:
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
 def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    w_type = wop_obj.w_static_type
-    if w_fn := w_type.lookup_func('__len__'):
+    w_T = wop_obj.w_static_type
+    if w_fn := w_T.lookup_func('__len__'):
         w_opspec = vm.fast_metacall(w_fn, [wop_obj])
         return w_opspec
 
-    t = w_type.fqn.human_name
+    t = w_T.fqn.human_name
     raise SPyError.simple(
         'W_TypeError',
         f'cannot call len(`{t}`)',

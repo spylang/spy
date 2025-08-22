@@ -19,9 +19,9 @@ class W_ListType(W_Type):
 
     @classmethod
     def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
-        w_type = cls.from_pyclass(fqn, W_List)
-        w_type.w_itemtype = w_itemtype
-        return w_type
+        w_T = cls.from_pyclass(fqn, W_List)
+        w_T.w_itemtype = w_itemtype
+        return w_T
 
 
 # PREBUILT list types are instantiated the end of the file

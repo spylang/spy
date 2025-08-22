@@ -123,11 +123,11 @@ class W_OpArg(W_Object):
         - val: the value (optional for red OpArg, required for blue)
         """
         # Check that w_color is a string
-        w_type = vm.dynamic_type(w_color)
-        if w_type is not B.w_str:
+        w_T = vm.dynamic_type(w_color)
+        if w_T is not B.w_str:
             raise SPyError(
                 'W_TypeError',
-                f"OpArg color must be a string, got {w_type.fqn.human_name}",
+                f"OpArg color must be a string, got {w_T.fqn.human_name}",
             )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
@@ -151,8 +151,8 @@ class W_OpArg(W_Object):
 
     @classmethod
     def from_w_obj(cls, vm: 'SPyVM', w_obj: W_Object) -> 'W_OpArg':
-        w_type = vm.dynamic_type(w_obj)
-        return W_OpArg(vm, 'blue', w_type, w_obj, Loc.here(-2))
+        w_T = vm.dynamic_type(w_obj)
+        return W_OpArg(vm, 'blue', w_T, w_obj, Loc.here(-2))
 
     def __repr__(self) -> str:
         if self.is_blue():
@@ -373,19 +373,19 @@ class W_OpSpec(W_Object):
         from spy.vm.function import W_Func
         from spy.vm.list import W_OpArgList
 
-        w_type = wop_cls.w_blueval
-        assert isinstance(w_type, W_Type)
+        w_T = wop_cls.w_blueval
+        assert isinstance(w_T, W_Type)
 
         if len(args_wop) == 1:
             # Simple case: OpSpec(func)
-            @builtin_func(w_type.fqn, 'new1')
+            @builtin_func(w_T.fqn, 'new1')
             def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpSpec:
                 return W_OpSpec(w_func)
             return W_OpSpec(w_new1)
 
         elif len(args_wop) == 2:
             # OpSpec(func, args) case
-            @builtin_func(w_type.fqn, 'new2')
+            @builtin_func(w_T.fqn, 'new2')
             def w_new2(vm: 'SPyVM', w_cls: W_Type,
                        w_func: W_Func, w_args: W_OpArgList) -> W_OpSpec:
                 # Convert from applevel w_args into interp-level args_w

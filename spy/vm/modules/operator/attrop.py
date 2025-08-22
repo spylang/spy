@@ -115,13 +115,13 @@ def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
 
 def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
                         wop_v: W_OpArg, name: str) -> W_OpSpec:
-    w_type = wop_obj.w_static_type
+    w_T = wop_obj.w_static_type
 
-    if w_type is B.w_dynamic:
+    if w_T is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_setattr)
 
     # try to find a descriptor with a __set__ method
-    elif w_member := w_type.lookup(name):
+    elif w_member := w_T.lookup(name):
         w_member_type = vm.dynamic_type(w_member)
         w_set = w_member_type.lookup_func('__set__')
         if w_set:
@@ -129,7 +129,7 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
             wop_member = W_OpArg.from_w_obj(vm, w_member)
             return vm.fast_metacall(w_set, [wop_member, wop_obj, wop_v])
 
-    elif w_setattr := w_type.lookup_func('__setattr__'):
+    elif w_setattr := w_T.lookup_func('__setattr__'):
         return vm.fast_metacall(w_setattr, [wop_obj, wop_name, wop_v])
 
     return W_OpSpec.NULL

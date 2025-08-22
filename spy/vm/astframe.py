@@ -231,24 +231,24 @@ class AbstractFrame:
         from spy.vm.classframe import ClassFrame
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
-        w_type = self.load_local(classdef.name)
-        assert isinstance(w_type, W_Type)
-        assert w_type.fqn.parts[-1].name == classdef.name # sanity check
-        assert not w_type.is_defined()
+        w_T = self.load_local(classdef.name)
+        assert isinstance(w_T, W_Type)
+        assert w_T.fqn.parts[-1].name == classdef.name # sanity check
+        assert not w_T.is_defined()
 
         # create a frame where to execute the class body
         # XXX we should capture only the names actually used in the inner frame
         closure = self.closure + (self._locals,)
-        classframe = ClassFrame(self.vm, classdef, w_type.fqn, closure)
+        classframe = ClassFrame(self.vm, classdef, w_T.fqn, closure)
         body = classframe.run()
 
         # finalize type definition
-        w_type.define_from_classbody(body)
-        assert w_type.is_defined()
+        w_T.define_from_classbody(body)
+        assert w_T.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        w_type = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.name, w_type, vardef.loc)
+        w_T = self.eval_expr_type(vardef.type)
+        self.declare_local(vardef.name, w_T, vardef.loc)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         self._exec_assign(assign.target, assign.value)
@@ -409,8 +409,8 @@ class AbstractFrame:
         T = type(const.value)
         assert T in (int, float, bool, NoneType)
         w_val = self.vm.wrap(const.value)
-        w_type = self.vm.dynamic_type(w_val)
-        return W_OpArg(self.vm, 'blue', w_type, w_val, const.loc)
+        w_T = self.vm.dynamic_type(w_val)
+        return W_OpArg(self.vm, 'blue', w_T, w_val, const.loc)
 
     def eval_expr_StrConst(self, const: ast.StrConst) -> W_OpArg:
         w_val = self.vm.wrap(const.value)
@@ -440,24 +440,24 @@ class AbstractFrame:
         assert sym.fqn is not None
         w_val = self.vm.lookup_global(sym.fqn)
         assert w_val is not None
-        w_type = self.vm.dynamic_type(w_val)
-        return W_OpArg(self.vm, sym.color, w_type, w_val, name.loc, sym=sym)
+        w_T = self.vm.dynamic_type(w_val)
+        return W_OpArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_Name_local(self, name: ast.Name, sym: Symbol) -> W_OpArg:
-        w_type = self.locals_types_w[name.id]
+        w_T = self.locals_types_w[name.id]
         if sym.color == 'red' and self.redshifting:
             w_val = None
         else:
             w_val = self.load_local(name.id)
-        return W_OpArg(self.vm, sym.color, w_type, w_val, name.loc, sym=sym)
+        return W_OpArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_OpArg:
         color: Color = 'blue'  # closed-over variables are always blue
         namespace = self.closure[-sym.level]
         w_val = namespace[sym.name]
         assert w_val is not None
-        w_type = self.vm.dynamic_type(w_val)
-        return W_OpArg(self.vm, color, w_type, w_val, name.loc, sym=sym)
+        w_T = self.vm.dynamic_type(w_val)
+        return W_OpArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
                     args_wop: list[W_OpArg]) -> W_OpArg:

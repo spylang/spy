@@ -256,12 +256,12 @@ class SPyVM:
             # the argument to "raise" must be blue for now (see also
             # W_Exception.w_NEW). Eventually, we will have proper support
             # for prebuilt constants, but for now we special case W_Exception.
-            w_type = self.dynamic_type(w_val)
-            fqn = w_type.fqn.join('prebuilt')
+            w_T = self.dynamic_type(w_val)
+            fqn = w_T.fqn.join('prebuilt')
             fqn = self.get_unique_FQN(fqn)
         else:
-            w_type = self.dynamic_type(w_val)
-            T = w_type.fqn.human_name
+            w_T = self.dynamic_type(w_val)
+            T = w_T.fqn.human_name
             msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"
             raise WIP(msg)
             assert False, 'implement me'

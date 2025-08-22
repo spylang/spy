@@ -325,20 +325,20 @@ class W_Type(W_Object):
         """
         Create a new type in the "forward declaration" state
         """
-        w_type = super().__new__(cls)
-        w_type.fqn = fqn
-        w_type._pyclass = None
-        w_type._dict_w = None
-        return w_type
+        w_T = super().__new__(cls)
+        w_T.fqn = fqn
+        w_T._pyclass = None
+        w_T._dict_w = None
+        return w_T
 
     @classmethod
     def from_pyclass(cls, fqn: FQN, pyclass: Type[W_Object]) -> Self:
         """
         Declare AND define a new builtin type.
         """
-        w_type = cls.declare(fqn)
-        w_type.define(pyclass)
-        return w_type
+        w_T = cls.declare(fqn)
+        w_T.define(pyclass)
+        return w_T
 
     def define(self, pyclass: Type[W_Object]) -> None:
         """
@@ -549,11 +549,11 @@ class W_Type(W_Object):
             err.add('error', f"this is red", loc=wop_t.loc)
             raise err
 
-        w_type = wop_t.w_blueval
-        assert isinstance(w_type, W_Type)
+        w_T = wop_t.w_blueval
+        assert isinstance(w_T, W_Type)
 
         # try to call __new__
-        if w_new := w_type.lookup_func('__new__'):
+        if w_new := w_T.lookup_func('__new__'):
             # this is a bit of ad-hoc logic around normal __new__ vs metafunc
             # __new__: when it's a metafunc we also want to pass the OpArg of
             # the type itself (so that the function can reach
@@ -568,7 +568,7 @@ class W_Type(W_Object):
             return w_opspec
 
         # no __new__, error out
-        clsname = w_type.fqn.human_name
+        clsname = w_T.fqn.human_name
         err = SPyError('W_TypeError', f"cannot instantiate `{clsname}`")
         err.add('error', f"`{clsname}` does not have a method `__new__`",
                 loc=wop_t.loc)

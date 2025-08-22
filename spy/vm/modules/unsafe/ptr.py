@@ -56,9 +56,9 @@ class W_PtrType(W_Type):
 
     @classmethod
     def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
-        w_type = cls.from_pyclass(fqn, W_Ptr)
-        w_type.w_itemtype = w_itemtype
-        return w_type
+        w_T = cls.from_pyclass(fqn, W_Ptr)
+        w_T.w_itemtype = w_itemtype
+        return w_T
 
     @builtin_property('NULL', color='blue', kind='metafunc')
     @staticmethod
