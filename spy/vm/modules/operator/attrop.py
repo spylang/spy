@@ -122,8 +122,8 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
 
     # try to find a descriptor with a __set__ method
     elif w_member := w_T.lookup(name):
-        w_member_type = vm.dynamic_type(w_member)
-        w_set = w_member_type.lookup_func('__set__')
+        w_member_T = vm.dynamic_type(w_member)
+        w_set = w_member_T.lookup_func('__set__')
         if w_set:
             # w_member is a descriptor! We can call its __set__
             wop_member = W_OpArg.from_w_obj(vm, w_member)

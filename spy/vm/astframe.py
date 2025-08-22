@@ -100,13 +100,13 @@ class AbstractFrame:
                         varname: Optional[str]) -> Optional[W_Func]:
         if varname is None:
             return None # no typecheck needed
-        w_exp_type = self.locals_types_w[varname]
+        w_exp_T = self.locals_types_w[varname]
         try:
-            w_typeconv = CONVERT_maybe(self.vm, w_exp_type, wop)
+            w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wop)
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
-            exp = w_exp_type.fqn.human_name
+            exp = w_exp_T.fqn.human_name
             exp_loc = self.symtable.lookup(varname).type_loc
             if varname == '@return':
                 because = ' because of return type'

@@ -182,7 +182,7 @@ class W_OpArg(W_Object):
         assert self._w_val is not None
         return self._w_val
 
-    def blue_ensure(self, vm: 'SPyVM', w_expected_type: W_Type) -> W_Object:
+    def blue_ensure(self, vm: 'SPyVM', w_expected_T: W_Type) -> W_Object:
         """
         Ensure that the W_OpArg is blue and of the expected type.
         Raise SPyError(W_TypeError) if not.
@@ -199,16 +199,16 @@ class W_OpArg(W_Object):
         # check that the blueval has the expected type. If not, we should
         # probably raise a better error, but for now we just fail with
         # AssertionError.
-        w_func = CONVERT_maybe(vm, w_expected_type, self)
+        w_func = CONVERT_maybe(vm, w_expected_T, self)
         assert w_func is None
         assert self.w_val is not None
         return self.w_val
 
-    def blue_unwrap(self, vm: 'SPyVM', w_expected_type: W_Type) -> Any:
+    def blue_unwrap(self, vm: 'SPyVM', w_expected_T: W_Type) -> Any:
         """
         Like ensure_blue, but also unwrap.
         """
-        w_obj = self.blue_ensure(vm, w_expected_type)
+        w_obj = self.blue_ensure(vm, w_expected_T)
         return vm.unwrap(w_obj)
 
     def blue_unwrap_str(self, vm: 'SPyVM') -> str:
