@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opspec = W_OpSpec.NULL
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
 
     newargs_wop = [wop_obj] + list(args_wop)
     errmsg = 'cannot call objects of type `{0}`'
@@ -60,7 +60,7 @@ def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
                   *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opspec = W_OpSpec.NULL
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
 
     # if the type provides __call_method__, use it
     if w_call_method := w_T.lookup_func('__call_method__'):

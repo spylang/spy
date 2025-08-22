@@ -51,7 +51,7 @@ class W_I32(W_Object):
         if len(args_wop) != 1:
             return W_OpSpec.NULL
         wop_arg = args_wop[0]
-        if wop_arg.w_static_type == B.w_f64:
+        if wop_arg.w_static_T == B.w_f64:
             return W_OpSpec(OP.w_f64_to_i32, [wop_arg])
         return W_OpSpec.NULL
 
@@ -106,7 +106,7 @@ class W_F64(W_Object):
         if len(args_wop) != 1:
             return W_OpSpec.NULL
         wop_arg = args_wop[0]
-        if wop_arg.w_static_type == B.w_i32:
+        if wop_arg.w_static_T == B.w_i32:
             return W_OpSpec(OP.w_i32_to_f64, [wop_arg])
         return W_OpSpec.NULL
 

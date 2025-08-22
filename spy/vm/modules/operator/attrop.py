@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 OpKind = Literal['get', 'set']
 
 def unwrap_name_maybe(vm: 'SPyVM', wop_name: W_OpArg) -> str:
-    if wop_name.is_blue() and wop_name.w_static_type is B.w_str:
+    if wop_name.is_blue() and wop_name.w_static_T is B.w_str:
         return vm.unwrap_str(wop_name.w_blueval)
     else:
         return '<unknown>'
@@ -24,7 +24,7 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     name = unwrap_name_maybe(vm, wop_name)
 
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
     if w_T is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_getattr)
     elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
@@ -81,7 +81,7 @@ def default_getattribute(
     # Also note that contrarily to Python, in SPy instances don't have a
     # __dict__ by default. (__dict__ support not implemented yet ATM).
 
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
     if w_attr := w_T.lookup(name):
         if w_get := vm.dynamic_type(w_attr).lookup_func('__get__'):
             # 1. found a descriptor on the type
@@ -115,7 +115,7 @@ def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
 
 def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
                         wop_v: W_OpArg, name: str) -> W_OpSpec:
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
 
     if w_T is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_setattr)

@@ -64,7 +64,7 @@ class W_FuncType(W_Type):
     def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec
         from spy.vm.modules.builtins import w_functype_eq
-        if wop_l.w_static_type is wop_r.w_static_type:
+        if wop_l.w_static_T is wop_r.w_static_T:
             return W_OpSpec(w_functype_eq)
         else:
             return W_OpSpec.NULL

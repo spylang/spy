@@ -68,7 +68,7 @@ class W_Member(W_Object):
         from spy.vm.opspec import W_OpSpec
         w_self = wop_self.w_blueval
         assert isinstance(w_self, W_Member)
-        w_T = wop_obj.w_static_type
+        w_T = wop_obj.w_static_T
         field = w_self.field # the interp-level name of the attr (e.g, 'w_x')
         T = Annotated[W_Object, w_T]           # type of the object
         V = Annotated[W_Object, w_self.w_type] # type of the attribute
@@ -89,7 +89,7 @@ class W_Member(W_Object):
         from spy.vm.builtin import builtin_func
         w_self = wop_self.w_blueval
         assert isinstance(w_self, W_Member)
-        w_T = wop_obj.w_static_type
+        w_T = wop_obj.w_static_T
         field = w_self.field # the interp-level name of the attr (e.g, 'w_x')
         T = Annotated[W_Object, w_T]           # type of the object
         V = Annotated[W_Object, w_self.w_type] # type of the attribute

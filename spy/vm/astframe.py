@@ -271,7 +271,7 @@ class AbstractFrame:
         else:
             # first assignment, implicit declaration
             wop = self.eval_expr(expr)
-            self.declare_local(varname, wop.w_static_type, target.loc)
+            self.declare_local(varname, wop.w_static_T, target.loc)
 
         if not self.redshifting:
             self.store_local(varname, wop.w_val)
@@ -297,8 +297,8 @@ class AbstractFrame:
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wop_tup = self.eval_expr(unpack.value)
-        if wop_tup.w_static_type is not B.w_tuple:
-            t = wop_tup.w_static_type.fqn.human_name
+        if wop_tup.w_static_T is not B.w_tuple:
+            t = wop_tup.w_static_T.fqn.human_name
             err = SPyError(
                 'W_TypeError',
                 f'`{t}` does not support unpacking',
@@ -536,7 +536,7 @@ class AbstractFrame:
         args_wop = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wop_func]+args_wop)
         assert len(call.args) == 1
-        w_argtype = args_wop[0].w_static_type
+        w_argtype = args_wop[0].w_static_T
         return W_OpArg.from_w_obj(self.vm, w_argtype)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
@@ -575,8 +575,8 @@ class AbstractFrame:
             items_wop.append(wop_item)
             color = maybe_blue(color, wop_item.color)
             if w_itemtype is None:
-                w_itemtype = wop_item.w_static_type
-            w_itemtype = self.vm.union_type(w_itemtype, wop_item.w_static_type)
+                w_itemtype = wop_item.w_static_T
+            w_itemtype = self.vm.union_type(w_itemtype, wop_item.w_static_T)
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None

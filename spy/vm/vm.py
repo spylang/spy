@@ -644,8 +644,8 @@ class SPyVM:
                 raise
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
-            w_ta = wop_a.w_static_type
-            w_tb = wop_b.w_static_type
+            w_ta = wop_a.w_static_T
+            w_tb = wop_b.w_static_T
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 

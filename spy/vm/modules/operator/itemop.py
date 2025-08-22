@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opspec = W_OpSpec.NULL
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
 
     newargs_wop = [wop_obj] + list(args_wop)
     if isinstance(w_T, W_FuncType) and w_T.kind == 'generic':
@@ -34,7 +34,7 @@ def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
 def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opspec = W_OpSpec.NULL
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
 
     newargs_wop = [wop_obj] + list(args_wop)
     if w_setitem := w_T.lookup_func('__setitem__'):

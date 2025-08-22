@@ -104,7 +104,7 @@ class W_List(W_BaseList, Generic[T]):
 
     @staticmethod
     def _get_listtype(wop_list: W_OpArg) -> W_ListType:
-        w_listtype = wop_list.w_static_type
+        w_listtype = wop_list.w_static_T
         if isinstance(w_listtype, W_ListType):
             return w_listtype
         else:
@@ -149,8 +149,8 @@ class W_List(W_BaseList, Generic[T]):
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
-        w_ltype = wop_l.w_static_type
-        w_rtype = wop_r.w_static_type
+        w_ltype = wop_l.w_static_T
+        w_rtype = wop_r.w_static_T
         if w_ltype is not w_rtype:
             return W_OpSpec.NULL
         w_listtype = W_List._get_listtype(wop_l)

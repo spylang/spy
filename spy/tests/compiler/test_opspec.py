@@ -49,7 +49,7 @@ class TestOpSpec(CompilerTest):
         wop = w_opspec._args_wop[0]
         assert isinstance(wop, W_OpArg)
         assert wop.color == 'blue'
-        assert wop.w_static_type is B.w_i32
+        assert wop.w_static_T is B.w_i32
         assert wop.is_blue()
         assert wop._w_val is not None
         assert self.vm.unwrap_i32(wop._w_val) == 42
@@ -72,14 +72,14 @@ class TestOpSpec(CompilerTest):
         w_blue_oparg = mod.create_blue_oparg(42, unwrap=False)
         assert isinstance(w_blue_oparg, W_OpArg)
         assert w_blue_oparg.color == 'blue'
-        assert w_blue_oparg.w_static_type is B.w_i32
+        assert w_blue_oparg.w_static_T is B.w_i32
         assert w_blue_oparg._w_val is not None
 
         # Test red OpArg creation
         w_red_oparg = mod.create_red_oparg(unwrap=False)
         assert isinstance(w_red_oparg, W_OpArg)
         assert w_red_oparg.color == 'red'
-        assert w_red_oparg.w_static_type is B.w_i32
+        assert w_red_oparg.w_static_T is B.w_i32
         assert w_red_oparg._w_val is None
 
     def test_oparg_properties(self):
@@ -122,7 +122,7 @@ class TestOpSpec(CompilerTest):
         """)
         wop_x = mod.foo(unwrap=False)
         assert wop_x.color == 'red'
-        assert wop_x.w_static_type is B.w_i32
+        assert wop_x.w_static_T is B.w_i32
         assert wop_x._w_val is None
 
         errors = expect_errors(

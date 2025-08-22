@@ -114,7 +114,7 @@ def typecheck_opspec(
 
 def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
                          color: Color) -> W_FuncType:
-    params = [FuncParam(wop.w_static_type, 'simple') for wop in args_wop]
+    params = [FuncParam(wop.w_static_T, 'simple') for wop in args_wop]
     return W_FuncType.new(params, w_restype, color=color)
 
 
@@ -149,12 +149,12 @@ def _opspec_null_error(
        determining whether an operation is supported, so we report all
        of them
     """
-    typenames = [wop.w_static_type.fqn.human_name for wop in in_args_wop]
+    typenames = [wop.w_static_T.fqn.human_name for wop in in_args_wop]
     errmsg = errmsg.format(*typenames)
     err = SPyError('W_TypeError', errmsg)
     if dispatch == 'single':
         wop_target = in_args_wop[0]
-        t = wop_target.w_static_type.fqn.human_name
+        t = wop_target.w_static_T.fqn.human_name
         if wop_target.loc:
             err.add('error', f'this is `{t}`', wop_target.loc)
         if wop_target.sym:
@@ -162,7 +162,7 @@ def _opspec_null_error(
             err.add('note', f'`{sym.name}` defined here', sym.loc)
     else:
         for wop_arg in in_args_wop:
-            t = wop_arg.w_static_type.fqn.human_name
+            t = wop_arg.w_static_T.fqn.human_name
             err.add('error', f'this is `{t}`', wop_arg.loc)
     raise err
 

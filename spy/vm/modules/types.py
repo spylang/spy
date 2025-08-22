@@ -94,7 +94,7 @@ class W_LiftedObject(W_Object):
     @builtin_property('__ll__', color='blue', kind='metafunc')
     @staticmethod
     def w_GET_ll(vm: 'SPyVM', wop_hl: W_OpArg) -> W_OpSpec:
-        w_hltype = wop_hl.w_static_type
+        w_hltype = wop_hl.w_static_T
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]
 

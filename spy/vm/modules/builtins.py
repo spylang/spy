@@ -48,7 +48,7 @@ def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
 def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
     if w_T is B.w_i32:
         return W_OpSpec(B.w_print_i32)
     elif w_T is B.w_f64:
@@ -104,7 +104,7 @@ def w_print_object(vm: 'SPyVM', w_x: W_Object) -> None:
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
 def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    w_T = wop_obj.w_static_type
+    w_T = wop_obj.w_static_T
     if w_fn := w_T.lookup_func('__len__'):
         w_opspec = vm.fast_metacall(w_fn, [wop_obj])
         return w_opspec

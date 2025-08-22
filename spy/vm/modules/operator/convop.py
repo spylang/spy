@@ -29,7 +29,7 @@ def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_Func:
 
     # mismatched types
     err = SPyError('W_TypeError', 'mismatched types')
-    got = wop_x.w_static_type.fqn.human_name
+    got = wop_x.w_static_T.fqn.human_name
     exp = w_exp.fqn.human_name
     err.add('error', f'expected `{exp}`, got `{got}`', loc=wop_x.loc)
     raise err
@@ -39,7 +39,7 @@ def get_opspec(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpSpec:
     # this condition is checked by CONVERT_maybe. If we want this function to
     # become more generally usable, we might want to return an identity func
     # here.
-    w_got = wop_x.w_static_type
+    w_got = wop_x.w_static_T
     assert not vm.issubclass(w_got, w_exp)
 
     if vm.issubclass(w_exp, w_got):
@@ -75,7 +75,7 @@ def CONVERT_maybe(
     """
     Same as w_CONVERT, but return None if the types are already compatible.
     """
-    w_got = wop_x.w_static_type
+    w_got = wop_x.w_static_T
     if vm.issubclass(w_got, w_exp):
         # nothing to do
         return None

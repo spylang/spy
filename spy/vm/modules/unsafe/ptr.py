@@ -141,7 +141,7 @@ class W_Ptr(W_BasePtr):
 
     @staticmethod
     def _get_ptrtype(wop_ptr: W_OpArg) -> W_PtrType:
-        w_ptrtype = wop_ptr.w_static_type
+        w_ptrtype = wop_ptr.w_static_T
         if isinstance(w_ptrtype, W_PtrType):
             return w_ptrtype
         else:
@@ -224,8 +224,8 @@ class W_Ptr(W_BasePtr):
     @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
     def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
-        w_ltype = wop_l.w_static_type
-        w_rtype = wop_r.w_static_type
+        w_ltype = wop_l.w_static_T
+        w_rtype = wop_r.w_static_T
         if w_ltype is not w_rtype:
             return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_l)
@@ -242,8 +242,8 @@ class W_Ptr(W_BasePtr):
     @builtin_method('__ne__', color='blue', kind='metafunc')
     @staticmethod
     def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
-        w_ltype = wop_l.w_static_type
-        w_rtype = wop_r.w_static_type
+        w_ltype = wop_l.w_static_T
+        w_rtype = wop_r.w_static_T
         if w_ltype is not w_rtype:
             return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_l)

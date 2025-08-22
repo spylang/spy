@@ -72,7 +72,7 @@ class W_Str(W_Object):
     @staticmethod
     def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpSpec':
         from spy.vm.b import B
-        if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
+        if len(args_wop) == 1 and args_wop[0].w_static_T is B.w_i32:
             wop_i = args_wop[0]
             return W_OpSpec(w_int2str, [wop_i])
         else:
