@@ -93,6 +93,17 @@ def typecheck_opspec(
     # build the argspec for the W_OpImpl
     args = []
     for param, wop_out_arg in zip(w_out_functype.all_params(), out_args_wop):
+
+        ## if w_out_functype.color == 'blue' and wop_out_arg.color == 'red':
+        ##     msg = 'cannot call blue function with red arguments'
+        ##     err = SPyError('W_TypeError', msg)
+        ##     if call_loc:
+        ##         err.add('error', 'this is blue', call_loc)
+        ##     err.add('error', 'this is red', wop_out_arg.loc)
+        ##     if def_loc:
+        ##         err.add('note', 'function defined here', def_loc)
+        ##     raise err
+
         # add a converter if needed (this might raise W_TypeError)
         w_conv = get_w_conv(vm, param.w_T, wop_out_arg, def_loc)
         arg: ArgSpec

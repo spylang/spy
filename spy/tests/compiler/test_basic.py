@@ -1047,3 +1047,17 @@ class TestBasic(CompilerTest):
             return math.fabs(x)
         """)
         assert mod.foo(-3.5) == 3.5
+
+    @pytest.mark.skip(reason='implement me')
+    def test_cannot_call_red_from_blue(self):
+        mod = self.compile("""
+        @blue
+        def blue_inc(x):
+            return x + 1
+
+        def foo() -> i32:
+            x = 2
+            return blue_inc(x)
+        """)
+
+        mod.foo()
