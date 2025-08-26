@@ -12,6 +12,7 @@ def make_FuncType(
         w_restype: W_Type,
         color: Color = 'red',
         kind: FuncKind = 'plain',
+        varargs: bool = False
 ) -> W_FuncType:
     """
     Small helper to make it easier to build W_FuncType.
@@ -20,6 +21,8 @@ def make_FuncType(
         FuncParam(w_type, 'simple')
         for w_type in types_w
     ]
+    if varargs:
+        params[-1] = FuncParam(types_w[-1], 'varargs')
     return W_FuncType.new(params, w_restype, color=color, kind=kind)
 
 
@@ -86,3 +89,18 @@ class TestFunction:
         w_t3 = make('blue', 'generic')
         assert w_t3.fqn == FQN('builtins::blue.generic.def[i32, i32, str]')
         assert w_t3.fqn.human_name == '@blue.generic def(i32, i32) -> str'
+
+        w_t4 = make('blue', 'metafunc')
+        assert w_t4.fqn == FQN('builtins::blue.metafunc.def[i32, i32, str]')
+        assert w_t4.fqn.human_name == '@blue.metafunc def(i32, i32) -> str'
+
+        w_t5 = make_FuncType(
+            B.w_i32,
+            B.w_f64,
+            varargs = True,
+            w_restype = B.w_str,
+            color = 'red',
+            kind = 'plain'
+        )
+        assert w_t5.fqn == FQN('builtins::def[i32, builtins::__varargs__[f64], str]')
+        assert w_t5.fqn.human_name == 'def(i32, *f64) -> str'

@@ -22,6 +22,11 @@ class FuncParam:
     w_T: W_Type
     kind: FuncParamKind
 
+    def get_fqn(self) -> FQN:
+        if self.kind == 'simple':
+            return self.w_T.fqn
+        else:
+            return FQN('builtins').join('__varargs__', [self.w_T.fqn])
 
 @dataclass(repr=False, eq=True)
 class W_FuncType(W_Type):
@@ -38,7 +43,7 @@ class W_FuncType(W_Type):
         # build an artificial FQN for the functype.
         # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
-        qualifiers = [p.w_T.fqn for p in params] + [w_restype.fqn]
+        qualifiers = [p.get_fqn() for p in params] + [w_restype.fqn]
         if color == 'red' and kind == 'plain':
             t = 'def'
         elif color == 'blue' and kind == 'plain':

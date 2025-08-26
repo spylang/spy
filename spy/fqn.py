@@ -202,7 +202,12 @@ class FQN:
         is_def = (
             len(self.parts) == 2 and
             self.modname == 'builtins' and
-            self.parts[1].name in ('def', 'blue.def', 'blue.generic.def')
+            self.parts[1].name in (
+                'def',
+                'blue.def',
+                'blue.generic.def',
+                'blue.metafunc.def'
+            )
         )
         if is_def:
             p1 = self.parts[1]
@@ -212,6 +217,8 @@ class FQN:
                 d = '@blue def'
             elif p1.name == 'blue.generic.def':
                 d = '@blue.generic def'
+            elif p1.name == 'blue.metafunc.def':
+                d = '@blue.metafunc def'
             else:
                 assert False
             quals = [fqn.human_name for fqn in p1.qualifiers]
@@ -220,8 +227,19 @@ class FQN:
             if r == 'NoneType':
                 r = 'None'
             return f'{d}({p}) -> {r}'
-        else:
-            return self._fullname(human=True)
+
+        is_varargs_param = (
+            len(self.parts) == 2 and
+            self.modname == 'builtins' and
+            self.parts[1].name == '__varargs__'
+        )
+        if is_varargs_param:
+            p1 = self.parts[1]
+            assert len(p1.qualifiers) == 1
+            q0 = p1.qualifiers[0]
+            return f'*{q0.human_name}'
+
+        return self._fullname(human=True)
 
     @property
     def modname(self) -> str:
