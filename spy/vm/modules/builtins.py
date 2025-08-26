@@ -120,7 +120,7 @@ def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
 
 # this should belong to function.py, but we cannot put it there because of
 # circular import issues
-@builtin_func('builtins')
+@BUILTINS.builtin_func  # hidden=True?
 def w_functype_eq(vm: 'SPyVM', w_ft1: W_FuncType, w_ft2: W_FuncType) -> W_Bool:
     return vm.wrap(w_ft1 == w_ft2)
 

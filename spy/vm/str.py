@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 from spy.llwasm import LLWasmInstance
-from spy.vm.b import B
+from spy.vm.b import B, BUILTINS
 from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.opspec import W_OpSpec, W_OpArg
@@ -95,7 +95,7 @@ class W_Str(W_Object):
         return vm.wrap(length)
 
 
-@builtin_func('builtins')
+@BUILTINS.builtin_func #should we add "hidden=True"?
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
     return vm.wrap(str(i))
