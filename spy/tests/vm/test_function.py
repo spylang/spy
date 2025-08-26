@@ -47,27 +47,13 @@ class TestFunction:
             w_restype = B.w_i32
         )
 
-    def test_FunctionType_eq(self):
+    def test_FunctionType_cache(self):
         vm = SPyVM()
         w_ft1 = W_FuncType.parse('def() -> i32')
         w_ft2 = W_FuncType.parse('def() -> i32')
-        assert w_ft1 is not w_ft2
+        assert w_ft1 is w_ft2
         assert w_ft1 == w_ft2
-        w_res = vm.eq(w_ft1, w_ft2)
-        assert w_res is B.w_True
-
-    @no_type_check
-    def test_function_eq(self):
-        class FakeFuncDef:
-            prototype_loc = None
-        funcdef = FakeFuncDef()
-
-        vm = SPyVM()
-        w_functype = W_FuncType.parse('def() -> i32')
-        w_a = W_ASTFunc(w_functype, FQN('test::a'), funcdef, closure=None)
-        w_b = W_ASTFunc(w_functype, FQN('test::b'), funcdef, closure=None)
-        assert vm.eq(w_a, w_a) is B.w_True
-        assert vm.eq(w_a, w_b) is B.w_False
+        assert hash(w_ft1) == hash(w_ft2)
 
     def test_FunctionType_fqn(self):
         def make(color: Color, kind: FuncKind):

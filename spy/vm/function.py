@@ -17,8 +17,6 @@ CLOSURE = tuple[Namespace, ...]
 
 FuncParamKind = Literal['simple', 'varargs']
 
-#_CACHE: dict[FQN, 'W_FuncType'] = {}
-
 @dataclass(frozen=True, eq=True)
 class FuncParam:
     w_T: W_Type
@@ -30,18 +28,47 @@ class FuncParam:
         else:
             return FQN('builtins').join('__varargs__', [self.w_T.fqn])
 
-@dataclass(repr=False, eq=True) # , eq=False)?
-class W_FuncType(W_Type):
-    __spy_storage_category__ = 'value'
 
+# ==== W_FuncType cache ====
+#
+# W_Type (and thus W_FuncType) is a reference type and compare by
+# identity. Because of that, it's important that FuncTypes are unique inside a
+# VM: you should never have two separate FuncTypes with the same color, kind,
+# paramlist and restype. To solve that, we keep FuncTypes in a cache and make
+# sure to reuse them when needed.
+#
+# ---- EXT modules hack ----
+#
+# In theory, the FQN should encode all the needed info to uniquely identify a
+# FuncType and could be used as a dict key. However, the test suites contains
+# a lot of "ext" modules and "W_MyClass" types: each of them is unique
+# per-test (and thus per VM), but their FQNs clashes between runs. The
+# workaround is to include FuncParams and w_restype in the dict key, so that
+# FuncTypes created by different EXT modules are keyp separated.
+#
+# This is a hack. The ideal solution would be to have the cache *on the VM*,
+# but this would greatly complicate the code, because now ModuleRegistry
+# happily creates prebuilt W_BuiltinFunc and W_Type which are shared among
+# different VMs.
+#
+_KEY = tuple[FQN, tuple[FuncParam,...], W_Type]
+_CACHE: dict[_KEY, 'W_FuncType'] = {}
+
+@dataclass(repr=False, eq=False)
+class W_FuncType(W_Type):
     color: Color
     kind: FuncKind
     params: list[FuncParam]
     w_restype: W_Type
 
-    @classmethod
-    def new(cls, params: list[FuncParam], w_restype: W_Type,
-            *, color: Color = 'red', kind: FuncKind = 'plain') -> 'Self':
+    @staticmethod
+    def new(
+        params: list[FuncParam],
+        w_restype: W_Type,
+        *,
+        color: Color = 'red',
+        kind: FuncKind = 'plain'
+    ) -> 'W_FuncType':
         # build an artificial FQN for the functype.
         # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
         #    builtins::def[i32, i32, bool]
@@ -58,32 +85,21 @@ class W_FuncType(W_Type):
             assert False
         fqn = FQN('builtins').join(t, qualifiers)
 
-        ## if fqn in _CACHE:
-        ##     return _CACHE[fqn]
+        # see the long comment above to understand why we use this key.  Try
+        # to use "key = fqn" and see how tests/compiler/operator/*.py fail
+        key = (fqn, tuple(params), w_restype)
+        if key in _CACHE:
+            return _CACHE[key]
 
-        w_functype = super().from_pyclass(fqn, W_Func)
+        w_functype = W_FuncType.from_pyclass(fqn, W_Func)
         w_functype.params = params
         w_functype.w_restype = w_restype
         w_functype.color = color
         w_functype.kind = kind
 
-        ## print(fqn.human_name)
-        ## _CACHE[fqn] = w_functype
-
+        #print(fqn.human_name)
+        _CACHE[key] = w_functype
         return w_functype
-
-    def __hash__(self) -> int:
-        return hash((self.fqn, self.color, tuple(self.params), self.w_restype))
-
-    @builtin_method('__eq__', color='blue', kind='metafunc')
-    @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
-        from spy.vm.opspec import W_OpSpec
-        from spy.vm.modules.builtins import w_functype_eq
-        if wop_l.w_static_T is wop_r.w_static_T:
-            return W_OpSpec(w_functype_eq)
-        else:
-            return W_OpSpec.NULL
 
     @classmethod
     def parse(cls, s: str) -> 'W_FuncType':
