@@ -274,7 +274,7 @@ class W_OpArg(W_Object):
 
 
 @no_type_check
-@builtin_func('operator')
+@OPERATOR.builtin_func
 def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
     """
     Two red opargs are equal if they have the same static types.
