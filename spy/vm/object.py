@@ -145,6 +145,26 @@ class W_Object:
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
                         f"(interp-level type: {py_type})")
 
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        """
+        Return an interp-level object which can be used as a key for an
+        inter-level dict.
+
+        The main use case is to record BlueCache entries: so object which is
+        passed as blue argument must implement it.
+
+        If __spy_storage_category__ == 'reference', it provides a default
+        implementation which compares/hashes by identity.
+
+        If __spy_storage_category__ == 'value', you must implement it.
+        """
+        if self.__spy_storage_category__ == 'reference':
+            return self  # rely on Python's default __hash__ and __eq__
+
+        n = self.__class__.__name__
+        msg = (f"Class {n} has __spy_storage_category__ == 'value' " +
+               "but does not define a spy_key()")
+        raise TypeError(msg)
 
     # ==== OPERATOR SUPPORT ====
     #

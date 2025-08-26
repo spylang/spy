@@ -110,6 +110,12 @@ class W_OpArg(W_Object):
         self.loc = loc
         self.sym = sym
 
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        if self.color == 'red':
+            return ('red', self.w_static_T, None)
+        else:
+            return ('blue', self.w_static_T, self._w_val)
+
     @builtin_method('__new__')
     @staticmethod
     def w_new(

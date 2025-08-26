@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.object import (W_Object)
@@ -26,6 +26,9 @@ class W_Tuple(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> tuple:
         return tuple([vm.unwrap(w_item) for w_item in self.items_w])
+
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        return tuple(w_item.spy_key(vm) for w_item in self.items_w)
 
     @builtin_method('__getitem__')
     @staticmethod
