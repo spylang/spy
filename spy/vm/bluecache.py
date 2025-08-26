@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Optional, Sequence
+from collections import Counter, defaultdict
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
 from spy.textbuilder import Color
@@ -39,20 +40,12 @@ class BlueCache:
             print(f'BlueCache.lookup: {w_func.fqn}, {args_w} -> {w_res}')
         return w_res
 
-    def pp(self, funcname: Optional[str] = None) -> None:
-        if funcname:
-            for w_func, entries in self.data.items():
-                if funcname in str(w_func.fqn):
-                    self._pp_one(w_func, entries)
-        else:
-            items = sorted(self.data.items(), key=lambda x: len(x[1]))
-            for w_func, entries in items:
-                n = len(entries)
-                print(f'{n:4d} {w_func.fqn}')
-
-    def _pp_one(self, w_func: W_Func, entries: list[ENTRY]) -> None:
-        print(w_func.fqn)
-        for args_w, w_result in entries:
-            args = ', '.join([str(w_arg) for w_arg in args_w])
-            res = str(w_result)
-            print(Color.set('red', args), Color.set('yellow', res))
+    def pp(self) -> None:
+        c: Counter[W_Func] = Counter()
+        for (w_func, args_w), w_result in self.data.items():
+            c[w_func] += 1
+        print()
+        print('=== vm.bluecache ===')
+        print('Entries | Function')
+        for w_func, n in c.most_common():
+            print(f'{n:7d} | {w_func.fqn}')
