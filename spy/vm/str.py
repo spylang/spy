@@ -95,7 +95,7 @@ class W_Str(W_Object):
         return vm.wrap(length)
 
 
-@BUILTINS.builtin_func #should we add "hidden=True"?
+@BUILTINS.builtin_func(hidden=True)
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
     return vm.wrap(str(i))

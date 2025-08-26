@@ -27,7 +27,7 @@ class W_ListType(W_Type):
 # PREBUILT list types are instantiated the end of the file
 PREBUILT_LIST_TYPES: dict[W_Type, W_ListType] = {}
 
-@BUILTINS.builtin_func(color='blue')  # hidden=True ?
+@BUILTINS.builtin_func(color='blue', hidden=True)
 def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
     """
     Create a concrete W_List class specialized for W_Type.
