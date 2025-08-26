@@ -38,6 +38,7 @@ B.add('None', W_NoneType.__new__(W_NoneType))
 
 @B.builtin_type('i32', lazy_definition=True)
 class W_I32(W_Object):
+    __spy_storage_category__ = 'value'
     value: fixedint.Int32
 
     def __init__(self, value: int | FixedInt) -> None:
@@ -64,6 +65,7 @@ class W_I32(W_Object):
 
 @B.builtin_type('i8')
 class W_I8(W_Object):
+    __spy_storage_category__ = 'value'
     value: fixedint.Int8
 
     def __init__(self, value: int | FixedInt) -> None:
@@ -78,6 +80,7 @@ class W_I8(W_Object):
 
 @B.builtin_type('u8')
 class W_U8(W_Object):
+    __spy_storage_category__ = 'value'
     value: fixedint.UInt8
 
     def __init__(self, value: int | FixedInt) -> None:
@@ -92,6 +95,7 @@ class W_U8(W_Object):
 
 @B.builtin_type('f64', lazy_definition=True)
 class W_F64(W_Object):
+    __spy_storage_category__ = 'value'
     value: float
 
     def __init__(self, value: float) -> None:
@@ -120,6 +124,7 @@ class W_F64(W_Object):
 
 @B.builtin_type('bool')
 class W_Bool(W_Object):
+    __spy_storage_category__ = 'value'
     value: bool
 
     def __init__(self, value: bool) -> None:

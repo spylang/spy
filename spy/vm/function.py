@@ -25,6 +25,8 @@ class FuncParam:
 
 @dataclass(repr=False, eq=True)
 class W_FuncType(W_Type):
+    __spy_storage_category__ = 'value'
+
     color: Color
     kind: FuncKind
     params: list[FuncParam]
@@ -142,8 +144,6 @@ class W_FuncType(W_Type):
 W_FuncType._w = W_Type.declare(FQN('builtins::functype'))
 
 class W_Func(W_Object):
-    __spy_storage_category__ = 'reference'
-
     w_functype: W_FuncType
     fqn: FQN
     def_loc: Loc

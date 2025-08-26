@@ -80,6 +80,8 @@ class W_OpArg(W_Object):
 
     Blue OpArg always have an associated value.
     """
+    __spy_storage_category__ = 'value'
+
     color: Color
     w_static_T: Annotated[W_Type, Member('static_type')]
     loc: Loc

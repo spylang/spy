@@ -72,7 +72,6 @@ class W_BaseList(W_Object):
     The specialized types are created by calling the builtin make_list_type:
     see its docstring for details.
     """
-    __spy_storage_category__ = 'reference'
 
     def __init__(self, items_w: Any) -> None:
         raise Exception("You cannot instantiate W_BaseList, use W_List")

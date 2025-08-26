@@ -35,6 +35,7 @@ class W_Str(W_Object):
             const char utf8[];
         } spy_Str;
     """
+    __spy_storage_category__ = 'value'
     vm: 'SPyVM'
     ptr: int
 
