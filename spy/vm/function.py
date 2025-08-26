@@ -17,6 +17,8 @@ CLOSURE = tuple[Namespace, ...]
 
 FuncParamKind = Literal['simple', 'varargs']
 
+#_CACHE: dict[FQN, 'W_FuncType'] = {}
+
 @dataclass(frozen=True, eq=True)
 class FuncParam:
     w_T: W_Type
@@ -28,7 +30,7 @@ class FuncParam:
         else:
             return FQN('builtins').join('__varargs__', [self.w_T.fqn])
 
-@dataclass(repr=False, eq=True)
+@dataclass(repr=False, eq=True) # , eq=False)?
 class W_FuncType(W_Type):
     __spy_storage_category__ = 'value'
 
@@ -56,11 +58,18 @@ class W_FuncType(W_Type):
             assert False
         fqn = FQN('builtins').join(t, qualifiers)
 
+        ## if fqn in _CACHE:
+        ##     return _CACHE[fqn]
+
         w_functype = super().from_pyclass(fqn, W_Func)
         w_functype.params = params
         w_functype.w_restype = w_restype
         w_functype.color = color
         w_functype.kind = kind
+
+        ## print(fqn.human_name)
+        ## _CACHE[fqn] = w_functype
+
         return w_functype
 
     def __hash__(self) -> int:
