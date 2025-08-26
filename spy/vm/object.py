@@ -125,7 +125,7 @@ class W_Object:
     #   - 'value': compares by value, don't have an identity, 'is' is
     #     forbidden. E.g., i32, f64, str.
     #   - 'reference': compare by identity
-    __spy_storage_category__ = 'value'
+    __spy_storage_category__ = 'reference'
 
     def __repr__(self) -> str:
         fqn = self._w.fqn
@@ -289,7 +289,6 @@ class W_Type(W_Object):
     @builtin_type(lazy_definition=True) (as done e.g. by W_OpSpec). By
     convention, the .define() is called at the beginning of vm.py.
     """
-    __spy_storage_category__ = 'reference'
     fqn: FQN
     _pyclass: Optional[Type[W_Object]]
     _dict_w: Optional[dict[str, W_Object]]

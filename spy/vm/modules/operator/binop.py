@@ -262,7 +262,11 @@ def can_use_reference_eq(vm: 'SPyVM', w_ltype: W_Type, w_rtype: W_Type) -> bool:
       2. the common ancestor must be a reference type
     """
     w_common = vm.union_type(w_ltype, w_rtype)
-    return w_common is not B.w_object and w_common.is_reference_type(vm)
+    return (
+        w_common is not B.w_object and
+        w_common is not B.w_dynamic and
+        w_common.is_reference_type(vm)
+    )
 
 @OP.builtin_func(color='blue')
 def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:

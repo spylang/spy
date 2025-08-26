@@ -84,6 +84,7 @@ def test_nested_qualifiers_c_name():
     assert a.c_name == "spy_a$list__Ptr__x_y$c$3"
 
 def test_FQN_human_name():
+    # see also tests/vm/test_function.py::test_FunctionType_fqn
     assert FQN("a::b").human_name == "a::b"
     assert FQN("builtins::i32").human_name == "i32"
     func = FQN("builtins").join('def', ['builtins::i32', 'builtins::f64',

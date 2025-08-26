@@ -47,7 +47,6 @@ class W_Member(W_Object):
     Descriptor object which turns interp-level fields (such as
     `w_obj.w_x`) into app-level properties (i.e. `obj.x`)
     """
-    __spy_storage_category__ = 'reference'
 
     def __init__(self, name: str, field: str, w_type: W_Type) -> None:
         self.name = name

@@ -17,6 +17,7 @@ class W_Tuple(W_Object):
 
     Eventally, it will become a "real" type-safe, generic type.
     """
+    __spy_storage_category__ = 'value'
 
     items_w: list[W_Object]
 

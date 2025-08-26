@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 @BUILTINS.builtin_type('property', lazy_definition=True)
 class W_Property(W_Object):
-    __spy_storage_category__ = 'reference'
 
     def __init__(self, w_func: W_Func) -> None:
         self.w_func = w_func

@@ -1,6 +1,6 @@
 from typing import (TYPE_CHECKING, Any, TypeVar, Generic, Annotated, Self)
 from spy.fqn import FQN
-from spy.vm.b import B, OP
+from spy.vm.b import B, OP, BUILTINS
 from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_OpSpec, W_OpArg
@@ -27,7 +27,7 @@ class W_ListType(W_Type):
 # PREBUILT list types are instantiated the end of the file
 PREBUILT_LIST_TYPES: dict[W_Type, W_ListType] = {}
 
-@builtin_func('__spy__', color='blue')
+@BUILTINS.builtin_func(color='blue', hidden=True)
 def w_make_list_type(vm: 'SPyVM', w_list: W_Object, w_T: W_Type) -> W_ListType:
     """
     Create a concrete W_List class specialized for W_Type.
@@ -72,7 +72,6 @@ class W_BaseList(W_Object):
     The specialized types are created by calling the builtin make_list_type:
     see its docstring for details.
     """
-    __spy_storage_category__ = 'reference'
 
     def __init__(self, items_w: Any) -> None:
         raise Exception("You cannot instantiate W_BaseList, use W_List")

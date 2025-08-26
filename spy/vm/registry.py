@@ -82,6 +82,7 @@ class ModuleRegistry:
                      *,
                      color: Color = 'red',
                      kind: FuncKind = 'plain',
+                     hidden: bool = False,
                      ) -> Any:
         """
         Register a builtin function on the module. We support three
@@ -125,7 +126,8 @@ class ModuleRegistry:
                 kind=kind,
             )(pyfunc)
             setattr(self, f'w_{w_func.fqn.symbol_name}', w_func)
-            self.content.append((w_func.fqn, w_func))
+            if not hidden:
+                self.content.append((w_func.fqn, w_func))
             return w_func
 
         if pyfunc is None:
