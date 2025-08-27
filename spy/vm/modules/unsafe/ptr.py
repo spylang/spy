@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, Annotated, Self
+from typing import TYPE_CHECKING, Optional, Annotated, Self, Any
 import fixedint
 from spy.location import Loc
 from spy.errors import SPyError
@@ -138,6 +138,10 @@ class W_Ptr(W_BasePtr):
 
     def spy_unwrap(self, vm: 'SPyVM') -> 'W_BasePtr':
         return self
+
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        t = self.w_ptrtype.spy_key(vm)
+        return ('ptr', t, self.addr, self.length)
 
     @staticmethod
     def _get_ptrtype(wop_ptr: W_OpArg) -> W_PtrType:

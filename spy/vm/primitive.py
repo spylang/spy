@@ -62,6 +62,9 @@ class W_I32(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int32:
         return self.value
 
+    def spy_key(self, vm: 'SPyVM') -> fixedint.Int32:
+        return self.value
+
 
 @B.builtin_type('i8')
 class W_I8(W_Object):
@@ -77,6 +80,9 @@ class W_I8(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.Int8:
         return self.value
 
+    def spy_key(self, vm: 'SPyVM') -> fixedint.Int8:
+        return self.value
+
 
 @B.builtin_type('u8')
 class W_U8(W_Object):
@@ -90,6 +96,9 @@ class W_U8(W_Object):
         return f'W_U8({self.value})'
 
     def spy_unwrap(self, vm: 'SPyVM') -> fixedint.UInt8:
+        return self.value
+
+    def spy_key(self, vm: 'SPyVM') -> fixedint.UInt8:
         return self.value
 
 
@@ -121,6 +130,9 @@ class W_F64(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> float:
         return self.value
 
+    def spy_key(self, vm: 'SPyVM') -> float:
+        return self.value
+
 
 @B.builtin_type('bool')
 class W_Bool(W_Object):
@@ -142,6 +154,9 @@ class W_Bool(W_Object):
         return f'W_Bool({self.value})'
 
     def spy_unwrap(self, vm: 'SPyVM') -> bool:
+        return self.value
+
+    def spy_key(self, vm: 'SPyVM') -> bool:
         return self.value
 
     def not_(self, vm: 'SPyVM') -> 'W_Bool':

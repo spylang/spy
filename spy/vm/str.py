@@ -69,6 +69,9 @@ class W_Str(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()
 
+    def spy_key(self, vm: 'SPyVM') -> str:
+        return self._as_str()
+
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> 'W_OpSpec':

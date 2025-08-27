@@ -145,6 +145,22 @@ class W_Object:
         raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
                         f"(interp-level type: {py_type})")
 
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        """
+        Return an interp-level object which can be used as a key for an
+        inter-level dict.
+
+        The main use case is to record BlueCache entries: so object which is
+        passed as blue argument must implement it.
+
+        The default implementation works only if __spy_storage_category__ ==
+        'reference', and compares/hashes by identity.
+
+        Subclasses setting __spy_storage_category__ == 'value' must override
+        this method.
+        """
+        assert self.__spy_storage_category__ == 'reference'
+        return self  # rely on Python's default __hash__ and __eq__
 
     # ==== OPERATOR SUPPORT ====
     #
@@ -368,6 +384,21 @@ class W_Type(W_Object):
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
+        # sanity check for spy_key & co.
+        storage = pyclass.__spy_storage_category__
+        if storage == 'reference':
+            # ref types cannot ovverride interp-level __hash__ or  __eq__
+            assert pyclass.__hash__ is object.__hash__
+            assert pyclass.__eq__ is object.__eq__
+        elif storage == 'value':
+            if pyclass.spy_key is W_Object.spy_key:
+                n = pyclass.__name__
+                msg = f'class {n} is a value type but does not override spy_key'
+                raise TypeError(msg)
+        else:
+            msg = f'Invalid value for __spy_storage_category__: {storage}'
+            raise TypeError(msg)
+
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError
 
@@ -431,7 +462,10 @@ class W_Type(W_Object):
             s_hints = f' ({s_hints})'
         else:
             s_hints = ''
-        return f"<spy type '{self.fqn.human_name}'{s_hints}>"
+
+        addr = ''
+        #addr = f' at 0x{id(self):x}'
+        return f"<spy type '{self.fqn.human_name}'{s_hints}{addr}>"
 
     def repr_hints(self) -> list[str]:
         return []
