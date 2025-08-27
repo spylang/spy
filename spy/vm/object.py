@@ -451,7 +451,10 @@ class W_Type(W_Object):
             s_hints = f' ({s_hints})'
         else:
             s_hints = ''
-        return f"<spy type '{self.fqn.human_name}'{s_hints}>"
+
+        addr = ''
+        #addr = f' at 0x{id(self):x}'
+        return f"<spy type '{self.fqn.human_name}'{s_hints}{addr}>"
 
     def repr_hints(self) -> list[str]:
         return []
