@@ -55,7 +55,7 @@ from spy.vm.b import B
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.primitive import W_NoneType
+    from spy.vm.primitive import W_NoneType, W_Bool
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_OpSpec, W_OpArg
     from spy.vm.builtin import FuncKind
@@ -384,12 +384,12 @@ class W_Type(W_Object):
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
-        self._storage_sanity_check()
+        self._storage_sanity_check(pyclass)
         if pyclass.__spy_storage_category__ == 'value':
-            self._add_eq_ne_maybe()  # autogen __eq__ and __ne__ if possible
+            # autogen __eq__ and __ne__ if possible
+            self._add_eq_ne_maybe(pyclass)
 
-    def _storage_sanity_check(self):
-        pyclass = self._pyclass
+    def _storage_sanity_check(self, pyclass: Type[W_Object]) -> None:
         storage = pyclass.__spy_storage_category__
         if storage == 'reference':
             # ref types cannot ovverride interp-level __hash__ or  __eq__
@@ -404,17 +404,18 @@ class W_Type(W_Object):
             msg = f'Invalid value for __spy_storage_category__: {storage}'
             raise TypeError(msg)
 
-    def _add_eq_ne_maybe(self):
+    def _add_eq_ne_maybe(self, pyclass: Type[W_Object]) -> None:
         """
         Automatically generate __eq__ and __new__ based on spy_key
         """
         from spy.vm.modules.operator.binop import MM
-        assert self._pyclass.__spy_storage_category__ == 'value'
+        assert pyclass.__spy_storage_category__ == 'value'
+        assert self._dict_w is not None
         T = Annotated[W_Object, self]
 
         if MM.lookup('==', self, self) is None and '__eq__' not in self._dict_w:
             # no suitable __eq__ found, generate one
-            @builtin_method('__eq__')
+            @builtin_method('__eq__')  # type: ignore
             @staticmethod
             def w_eq(vm: 'SPyVM', w_self: T, w_other: T) -> 'W_Bool':
                 k1 = w_self.spy_key(vm)
@@ -425,7 +426,7 @@ class W_Type(W_Object):
 
         if MM.lookup('!=', self, self) is None and '__ne__' not in self._dict_w:
             # no suitable __ne__ found, generate one
-            @builtin_method('__ne__')
+            @builtin_method('__ne__')  # type: ignore
             @staticmethod
             def w_ne(vm: 'SPyVM', w_self: T, w_other: T) -> 'W_Bool':
                 k1 = w_self.spy_key(vm)
