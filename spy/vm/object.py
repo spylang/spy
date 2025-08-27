@@ -384,12 +384,20 @@ class W_Type(W_Object):
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
-        # sanity check for spy_key
-        if pyclass.__spy_storage_category__ == 'value':
+        # sanity check for spy_key & co.
+        storage = pyclass.__spy_storage_category__
+        if storage == 'reference':
+            # ref types cannot ovverride interp-level __hash__ or  __eq__
+            assert pyclass.__hash__ is object.__hash__
+            assert pyclass.__eq__ is object.__eq__
+        elif storage == 'value':
             if pyclass.spy_key is W_Object.spy_key:
                 n = pyclass.__name__
                 msg = f'class {n} is a value type but does not override spy_key'
                 raise TypeError(msg)
+        else:
+            msg = f'Invalid value for __spy_storage_category__: {storage}'
+            raise TypeError(msg)
 
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError
