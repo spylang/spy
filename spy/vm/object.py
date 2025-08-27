@@ -405,20 +405,34 @@ class W_Type(W_Object):
             raise TypeError(msg)
 
     def _add_eq_ne_maybe(self):
+        """
+        Automatically generate __eq__ and __new__ based on spy_key
+        """
         from spy.vm.modules.operator.binop import MM
         assert self._pyclass.__spy_storage_category__ == 'value'
         T = Annotated[W_Object, self]
 
-        if self._pyclass.__name__ == 'W_BinOpClass':
-            breakpoint()
-
         if MM.lookup('==', self, self) is None and '__eq__' not in self._dict_w:
+            # no suitable __eq__ found, generate one
             @builtin_method('__eq__')
             @staticmethod
             def w_eq(vm: 'SPyVM', w_self: T, w_other: T) -> 'W_Bool':
-                breakpoint()
+                k1 = w_self.spy_key(vm)
+                k2 = w_other.spy_key(vm)
+                return vm.wrap(k1 == k2)
 
             self._init_builtin_method(w_eq)
+
+        if MM.lookup('!=', self, self) is None and '__ne__' not in self._dict_w:
+            # no suitable __ne__ found, generate one
+            @builtin_method('__ne__')
+            @staticmethod
+            def w_ne(vm: 'SPyVM', w_self: T, w_other: T) -> 'W_Bool':
+                k1 = w_self.spy_key(vm)
+                k2 = w_other.spy_key(vm)
+                return vm.wrap(k1 != k2)
+
+            self._init_builtin_method(w_ne)
 
 
     def define_from_classbody(self, body: 'ClassBody') -> None:

@@ -1,3 +1,4 @@
+from typing import Any
 from spy.vm.primitive import W_I32
 from spy.vm.builtin import builtin_func, builtin_method
 from spy.vm.w import W_Object
@@ -6,7 +7,6 @@ from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
 
-# BinOpClass with uppercase binary operators
 class W_BinOpClass(W_Object):
 
     def __init__(self, w_x: W_I32) -> None:
@@ -130,6 +130,27 @@ class W_BinOpClass(W_Object):
         return vm.wrap(1 if x >= other else 0)
 
 
+class W_MyInt(W_Object):
+    """
+    Simulate a value type, so we can test that __eq__ and __new__ are
+    automatically generated.
+    """
+    __spy_storage_category__ = 'value'
+
+    def __init__(self, val: int) -> None:
+        self.val = val
+
+    @builtin_method('__new__')
+    @staticmethod
+    def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyInt':
+        val = int(vm.unwrap_i32(w_x))
+        return W_MyInt(val)
+
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        return ('MyInt', self.val)
+
+
+
 @no_C
 class TestOperatorBinop(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
@@ -137,6 +158,7 @@ class TestOperatorBinop(CompilerTest):
     def setup_ext(self) -> None:
         EXT = ModuleRegistry('ext')
         EXT.builtin_type('BinOpClass')(W_BinOpClass)
+        EXT.builtin_type('MyInt')(W_MyInt)
         self.vm.make_module(EXT)
 
     def test_add(self):
@@ -300,3 +322,24 @@ class TestOperatorBinop(CompilerTest):
         assert mod.test_ge(6, 5) == 1   # 6 >= 5 is True (1)
         assert mod.test_ge(5, 6) == 0   # 5 >= 6 is False (0)
         assert mod.test_ge(5, 5) == 1   # 5 >= 5 is True (1)
+
+    def test_automatic_eq_ne(self):
+        self.setup_ext()
+        src = """
+        from ext import MyInt
+
+        def eq(x: i32, y: i32) -> bool:
+            x1 = MyInt(x)
+            y1 = MyInt(y)
+            return x1 == y1
+
+        def ne(x: i32, y: i32) -> bool:
+            x1 = MyInt(x)
+            y1 = MyInt(y)
+            return x1 != y1
+        """
+        mod = self.compile(src)
+        assert mod.eq(5, 5) == True    # 5 == 5 is True
+        assert mod.eq(5, 6) == False   # 5 == 6 is False
+        assert mod.ne(5, 5) == False   # 5 != 5 is False
+        assert mod.ne(5, 6) == True    # 5 != 6 is True
