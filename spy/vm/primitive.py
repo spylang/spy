@@ -66,7 +66,7 @@ class W_I32(W_Object):
         return self.value
 
 
-@B.builtin_type('i8')
+@B.builtin_type('i8', lazy_definition=True)
 class W_I8(W_Object):
     __spy_storage_category__ = 'value'
     value: fixedint.Int8
@@ -84,7 +84,7 @@ class W_I8(W_Object):
         return self.value
 
 
-@B.builtin_type('u8')
+@B.builtin_type('u8', lazy_definition=True)
 class W_U8(W_Object):
     __spy_storage_category__ = 'value'
     value: fixedint.UInt8
@@ -134,7 +134,7 @@ class W_F64(W_Object):
         return self.value
 
 
-@B.builtin_type('bool')
+@B.builtin_type('bool', lazy_definition=True)
 class W_Bool(W_Object):
     __spy_storage_category__ = 'value'
     value: bool

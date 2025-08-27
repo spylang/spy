@@ -384,7 +384,12 @@ class W_Type(W_Object):
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
-        # sanity check for spy_key & co.
+        self._storage_sanity_check()
+        if pyclass.__spy_storage_category__ == 'value':
+            self._add_eq_ne_maybe()  # autogen __eq__ and __ne__ if possible
+
+    def _storage_sanity_check(self):
+        pyclass = self._pyclass
         storage = pyclass.__spy_storage_category__
         if storage == 'reference':
             # ref types cannot ovverride interp-level __hash__ or  __eq__
@@ -399,6 +404,23 @@ class W_Type(W_Object):
             msg = f'Invalid value for __spy_storage_category__: {storage}'
             raise TypeError(msg)
 
+    def _add_eq_ne_maybe(self):
+        from spy.vm.modules.operator.binop import MM
+        assert self._pyclass.__spy_storage_category__ == 'value'
+        T = Annotated[W_Object, self]
+
+        if self._pyclass.__name__ == 'W_BinOpClass':
+            breakpoint()
+
+        if MM.lookup('==', self, self) is None and '__eq__' not in self._dict_w:
+            @builtin_method('__eq__')
+            @staticmethod
+            def w_eq(vm: 'SPyVM', w_self: T, w_other: T) -> 'W_Bool':
+                breakpoint()
+
+            self._init_builtin_method(w_eq)
+
+
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError
 
@@ -410,7 +432,7 @@ class W_Type(W_Object):
         from spy.vm.builtin import builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
         from spy.vm.str import W_Str
-        from spy.vm.primitive import W_Dynamic
+        from spy.vm.primitive import W_Dynamic, W_Bool
         from spy.vm.property import W_Property
 
         pyfunc = statmeth.__func__
@@ -424,6 +446,7 @@ class W_Type(W_Object):
             'W_OpArg': W_OpArg,
             'W_OpSpec': W_OpSpec,
             'W_Str': W_Str,
+            'W_Bool': W_Bool,
             'W_Dynamic': W_Dynamic,
         }
         decorator = builtin_func(
