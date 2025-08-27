@@ -111,10 +111,11 @@ class W_OpArg(W_Object):
         self.sym = sym
 
     def spy_key(self, vm: 'SPyVM') -> Any:
+        t = self.w_static_T.spy_key(vm)
         if self.color == 'red':
-            return ('red', self.w_static_T, None)
+            return ('OpArg', 'red', t, None)
         else:
-            return ('blue', self.w_static_T, self._w_val)
+            return ('OpArg', 'blue', t, self._w_val.spy_key(vm))
 
     @builtin_method('__new__')
     @staticmethod
