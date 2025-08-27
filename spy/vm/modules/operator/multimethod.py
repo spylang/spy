@@ -98,3 +98,18 @@ class MultiMethodTable:
             dispatch = 'single',
             errmsg = 'cannot do %s`{0}`' % op
         )
+
+    def get_binary_opspec(
+        self,
+        op: str,
+        wop_l: W_OpArg,
+        wop_r: W_OpArg
+    ) -> Optional[W_OpSpec]:
+        w_ltype = wop_l.w_static_T
+        w_rtype = wop_r.w_static_T
+        w_opspec = self.lookup(op, w_ltype, w_rtype)
+        if w_opspec.is_null():
+            # XXX we can simplify this once we finish the migration
+            return None
+        else:
+            return w_opspec

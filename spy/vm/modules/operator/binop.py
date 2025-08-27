@@ -137,12 +137,15 @@ MM.register_partial('>=', 'dynamic', OP.w_dynamic_ge)
 def w_ADD(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_ltype = wop_l.w_static_T
-    if w_add := w_ltype.lookup_func('__add__'):
+    if w_opspec := MM.get_binary_opspec('+', wop_l, wop_r):
+        pass
+    elif w_add := w_ltype.lookup_func('__add__'):
         w_opspec = vm.fast_metacall(w_add, [wop_l, wop_r])
-        return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
-                                dispatch='multi',
-                                errmsg='cannot do `{0}` + `{1}`')
-    return MM.get_opimpl(vm, '+', wop_l, wop_r)
+    else:
+        w_opspec = W_OpSpec.NULL
+    return typecheck_opspec(vm, w_opspec, [wop_l, wop_r],
+                            dispatch='multi',
+                            errmsg='cannot do `{0}` + `{1}`')
 
 @OP.builtin_func(color='blue')
 def w_SUB(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpImpl:
