@@ -22,7 +22,7 @@ from spy.vm.opimpl import W_OpImpl
 from spy.vm.property import W_Property
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
-from spy.vm.opspec import W_OpSpec, W_OpArg, w_oparg_eq
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 

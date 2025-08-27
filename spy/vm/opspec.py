@@ -111,6 +111,10 @@ class W_OpArg(W_Object):
         self.sym = sym
 
     def spy_key(self, vm: 'SPyVM') -> Any:
+        """
+        Two red opargs are equal if they have the same static types.
+        Two blue opargs are equal if they also have the same values.
+        """
         t = self.w_static_T.spy_key(vm)
         if self.color == 'red':
             return ('OpArg', 'red', t, None)
@@ -246,18 +250,6 @@ class W_OpArg(W_Object):
             return W_OpSpec(w_from_type)
         return W_OpSpec.NULL
 
-    @builtin_method('__eq__', color='blue', kind='metafunc')
-    @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_l: 'W_OpArg', wop_r: 'W_OpArg') -> 'W_OpSpec':
-        w_ltype = wop_l.w_static_T
-        w_rtype = wop_r.w_static_T
-        assert w_ltype.pyclass is W_OpArg
-
-        if w_ltype is w_rtype:
-            return W_OpSpec(w_oparg_eq)
-        else:
-            return W_OpSpec.NULL
-
     @builtin_property('color')
     @staticmethod
     def w_get_color(vm: 'SPyVM', w_self: 'W_OpArg') -> 'W_Str':
@@ -279,28 +271,6 @@ class W_OpArg(W_Object):
         if w_self.color != 'blue':
             raise SPyError('W_ValueError', 'oparg is not blue')
         return w_self.w_blueval
-
-
-@no_type_check
-@OPERATOR.builtin_func
-def w_oparg_eq(vm: 'SPyVM', wop1: W_OpArg, wop2: W_OpArg) -> W_Bool:
-    """
-    Two red opargs are equal if they have the same static types.
-    Two blue opargs are equal if they also have the same values.
-    """
-    from spy.vm.b import B
-    # note that the prefix is NOT considered for equality, is purely for
-    # description
-    if wop1.w_static_T is not wop2.w_static_T:
-        return B.w_False
-    # we need to think what to do in this case
-    ## if wop1.is_blue() != wop2.is_blue():
-    ##     import pdb;pdb.set_trace()
-    if (wop1.is_blue() and
-        wop2.is_blue() and
-        vm.is_True(vm.universal_ne(wop1.w_val, wop2.w_val))):
-        return B.w_False
-    return B.w_True
 
 
 @OPERATOR.builtin_type('OpSpec', lazy_definition=True)
