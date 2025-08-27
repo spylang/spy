@@ -60,7 +60,7 @@ class MultiMethodTable:
             op: str,
             w_ltype: Optional[W_Type],
             w_rtype: Optional[W_Type]
-    ) -> W_OpSpec:
+    ) -> Optional[W_OpSpec]:
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
             (op, w_ltype, None),     # less precise ones
@@ -70,20 +70,7 @@ class MultiMethodTable:
             w_func = self.impls.get(key)
             if w_func:
                 return W_OpSpec(w_func)
-        return W_OpSpec.NULL
-
-    def get_unary_opimpl(self, vm: 'SPyVM', op: str,
-                         wop_v: W_OpArg) -> W_OpImpl:
-        from spy.vm.typechecker import typecheck_opspec
-        w_vtype = wop_v.w_static_T
-        w_opspec = self.lookup(op, w_vtype, None)
-        return typecheck_opspec(
-            vm,
-            w_opspec,
-            [wop_v],
-            dispatch = 'single',
-            errmsg = 'cannot do %s`{0}`' % op
-        )
+        return None
 
     def get_unary_opspec(
         self,
@@ -91,12 +78,7 @@ class MultiMethodTable:
         wop_v: W_OpArg
     ) -> Optional[W_OpSpec]:
         w_vtype = wop_v.w_static_T
-        w_opspec = self.lookup(op, w_vtype, None)
-        if w_opspec.is_null():
-            # XXX we can simplify this once we finish the migration
-            return None
-        else:
-            return w_opspec
+        return self.lookup(op, w_vtype, None)
 
     def get_binary_opspec(
         self,
@@ -106,9 +88,4 @@ class MultiMethodTable:
     ) -> Optional[W_OpSpec]:
         w_ltype = wop_l.w_static_T
         w_rtype = wop_r.w_static_T
-        w_opspec = self.lookup(op, w_ltype, w_rtype)
-        if w_opspec.is_null():
-            # XXX we can simplify this once we finish the migration
-            return None
-        else:
-            return w_opspec
+        return self.lookup(op, w_ltype, w_rtype)
