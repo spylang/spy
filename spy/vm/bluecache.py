@@ -49,16 +49,13 @@ class BlueCache:
         what: str,
         w_func: W_Func,
         args_key: ARGS_KEY,
-        w_res: W_Object
+        w_res: Optional[W_Object],
     ) -> None:
-        args_key = [self._fmt_key(k) for k in args_key]
-        args = ', '.join(args_key)
-
+        args = ', '.join(self._fmt_key(k) for k in args_key)
         if what == 'lookup' and w_res is not None:
             what = Color.set('green', what)
         elif what == 'record':
             what = Color.set('teal', what)
-
         print(f'BlueCache.{what}: {w_func.fqn} {args} -> {w_res}')
 
     def _fmt_key(self, k: Any, keycolor: Optional[str]=None) -> str:

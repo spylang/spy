@@ -115,6 +115,7 @@ class W_OpArg(W_Object):
         if self.color == 'red':
             return ('OpArg', 'red', t, None)
         else:
+            assert self._w_val is not None
             return ('OpArg', 'blue', t, self._w_val.spy_key(vm))
 
     @builtin_method('__new__')
