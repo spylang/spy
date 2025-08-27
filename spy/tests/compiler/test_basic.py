@@ -1048,9 +1048,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo(-3.5) == 3.5
 
-    @pytest.mark.skip(reason='implement me')
+    #@pytest.mark.skip(reason='implement me')
     def test_cannot_call_red_from_blue(self):
-        mod = self.compile("""
+        src = """
         @blue
         def blue_inc(x):
             return x + 1
@@ -1058,6 +1058,10 @@ class TestBasic(CompilerTest):
         def foo() -> i32:
             x = 2
             return blue_inc(x)
-        """)
-
-        mod.foo()
+        """
+        errors = expect_errors(
+            'cannot call blue function with red arguments',
+            ('this is blue', 'blue_inc'),
+            ('this is red', 'x'),
+        )
+        self.compile_raises(src, 'foo', errors)
