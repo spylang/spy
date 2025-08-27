@@ -622,19 +622,6 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        # Avoid infinite recursion:
-        #   1. vm.universal_eq(a, t) calls
-        #                    op.UNIVERSAL_EQ(W_OpArg(a, ...), W_OpArg(b, ...))
-        #   2. UNIVERSAL_EQ is a blue function and thus uses BlueCache.lookup
-        #   3. BlueCache.lookup calls vm.universal_eq on the W_OpArg
-        #   4. vm.universal_eq(wop_a, wop_b) calls
-        #                    op.UNIVERSAL_EQ(W_OpArg(...), W_OpArg(...))
-        #   5  ...
-        # By special-casing vm.universal_eq(W_OpArg, W_OpArg), we break the
-        # recursion
-        if isinstance(w_a, W_OpArg) and isinstance(w_b, W_OpArg):
-            return self.fast_call(w_oparg_eq, [w_a, w_b])  # type: ignore
-
         wop_a = self._w_oparg(w_a)
         wop_b = self._w_oparg(w_b)
         try:
