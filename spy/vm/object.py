@@ -153,18 +153,14 @@ class W_Object:
         The main use case is to record BlueCache entries: so object which is
         passed as blue argument must implement it.
 
-        If __spy_storage_category__ == 'reference', it provides a default
-        implementation which compares/hashes by identity.
+        The default implementation works only if __spy_storage_category__ ==
+        'reference', and compares/hashes by identity.
 
-        If __spy_storage_category__ == 'value', you must implement it.
+        Subclasses setting __spy_storage_category__ == 'value' must override
+        this method.
         """
-        if self.__spy_storage_category__ == 'reference':
-            return self  # rely on Python's default __hash__ and __eq__
-
-        n = self.__class__.__name__
-        msg = (f"Class {n} has __spy_storage_category__ == 'value' " +
-               "but does not define a spy_key()")
-        raise TypeError(msg)
+        assert self.__spy_storage_category__ == 'reference'
+        return self  # rely on Python's default __hash__ and __eq__
 
     # ==== OPERATOR SUPPORT ====
     #
@@ -387,6 +383,13 @@ class W_Type(W_Object):
                 self._init_builtin_method(value)
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
+
+        # sanity check for spy_key
+        if pyclass.__spy_storage_category__ == 'value':
+            if pyclass.spy_key is W_Object.spy_key:
+                n = pyclass.__name__
+                msg = f'class {n} is a value type but does not override spy_key'
+                raise TypeError(msg)
 
     def define_from_classbody(self, body: 'ClassBody') -> None:
         raise NotImplementedError
