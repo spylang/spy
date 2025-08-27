@@ -15,8 +15,8 @@ def test_oparg_eq():
     wop_r1 = W_OpArg(vm, 'red', B.w_i32, None, Loc.fake())
     wop_r2 = W_OpArg(vm, 'red', B.w_i32, None, Loc.fake())
     wop_r3 = W_OpArg(vm, 'red', B.w_f64, None, Loc.fake())
-    #assert eq(wop_r1, wop_r2)      # same T
-    #assert not eq(wop_r1, wop_r3)  # different T
+    assert eq(wop_r1, wop_r2)      # same T
+    assert not eq(wop_r1, wop_r3)  # different T
 
     # blue OpArgs are equals is the both w_T and w_blueval is equal
     wop_b1 = W_OpArg(vm, 'blue', B.w_i32, vm.wrap(42), Loc.fake())
@@ -24,9 +24,9 @@ def test_oparg_eq():
     wop_b3 = W_OpArg(vm, 'blue', B.w_i32, vm.wrap(43), Loc.fake())
     wop_b4 = W_OpArg(vm, 'blue', B.w_f64, vm.wrap(42.0), Loc.fake())
 
-    #assert eq(wop_b1, wop_b2)      # same T, same blueval
+    assert eq(wop_b1, wop_b2)      # same T, same blueval
     assert not eq(wop_b1, wop_b3)  # same T, different bluevale
-    #assert not eq(wop_b1, wop_b4)  # different T
+    assert not eq(wop_b1, wop_b4)  # different T
 
 def test_oparg_key():
     vm = SPyVM()
