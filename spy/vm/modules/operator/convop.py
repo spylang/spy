@@ -53,7 +53,7 @@ def get_opspec(vm: 'SPyVM', w_exp: W_Type, wop_x: W_OpArg) -> W_OpSpec:
         return W_OpSpec(w_from_dynamic_T)
 
     w_opspec = MM.lookup('convert', w_got, w_exp)
-    if not w_opspec.is_null():
+    if w_opspec is not None:
         return w_opspec
 
     if w_conv_to := w_got.lookup_func('__convert_to__'):

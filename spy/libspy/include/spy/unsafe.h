@@ -48,10 +48,10 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline void PTR##$store(PTR p, size_t i, T v) {       \
         p.p[i] = v;                                              \
     }                                                            \
-    static inline bool PTR##$eq(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__eq__(PTR p0, PTR p1) {            \
         return p0.p == p1.p;                                     \
     }                                                            \
-    static inline bool PTR##$ne(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__ne__(PTR p0, PTR p1) {            \
         return p0.p != p1.p;                                     \
     }                                                            \
     static inline bool PTR##$to_bool(PTR p) {                    \
@@ -84,10 +84,10 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
             spy_panic("PanicError", "ptr_store ouf of bounds", __FILE__, __LINE__); \
         p.p[i] = v;                                              \
     }                                                            \
-    static inline bool PTR##$eq(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__eq__(PTR p0, PTR p1) {            \
         return p0.p == p1.p && p0.length == p1.length;           \
     }                                                            \
-    static inline bool PTR##$ne(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__ne__(PTR p0, PTR p1) {            \
         return p0.p != p1.p || p0.length != p1.length;           \
     }                                                            \
     static inline bool PTR##$to_bool(PTR p) {                    \

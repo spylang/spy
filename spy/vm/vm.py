@@ -22,7 +22,7 @@ from spy.vm.opimpl import W_OpImpl
 from spy.vm.property import W_Property
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
-from spy.vm.opspec import W_OpSpec, W_OpArg, w_oparg_eq
+from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -44,7 +44,10 @@ W_Property._w.define(W_Property)
 W_Member._w.define(W_Member)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
+W_I8._w.define(W_I8)
+W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
+W_Bool._w.define(W_Bool)
 W_Str._w.define(W_Str)
 
 STDLIB = ROOT.join('..', 'stdlib')

@@ -225,42 +225,6 @@ class W_Ptr(W_BasePtr):
             )
         return W_OpSpec(w_ptr_store_T)
 
-    @builtin_method('__eq__', color='blue', kind='metafunc')
-    @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
-        w_ltype = wop_l.w_static_T
-        w_rtype = wop_r.w_static_T
-        if w_ltype is not w_rtype:
-            return W_OpSpec.NULL
-        w_ptrtype = W_Ptr._get_ptrtype(wop_l)
-        PTR = Annotated[W_Ptr, w_ptrtype]
-
-        @builtin_func(w_ptrtype.fqn, 'eq')
-        def w_ptr_eq(vm: 'SPyVM', w_ptr1: PTR, w_ptr2: PTR) -> W_Bool:
-            return vm.wrap(
-                w_ptr1.addr == w_ptr2.addr and
-                w_ptr1.length == w_ptr1.length
-            )  # type: ignore
-        return W_OpSpec(w_ptr_eq)
-
-    @builtin_method('__ne__', color='blue', kind='metafunc')
-    @staticmethod
-    def w_NE(vm: 'SPyVM', wop_l: W_OpArg, wop_r: W_OpArg) -> W_OpSpec:
-        w_ltype = wop_l.w_static_T
-        w_rtype = wop_r.w_static_T
-        if w_ltype is not w_rtype:
-            return W_OpSpec.NULL
-        w_ptrtype = W_Ptr._get_ptrtype(wop_l)
-        PTR = Annotated[W_Ptr, w_ptrtype]
-
-        @builtin_func(w_ptrtype.fqn, 'ne')
-        def w_ptr_ne(vm: 'SPyVM', w_ptr1: PTR, w_ptr2: PTR) -> W_Bool:
-            return vm.wrap(
-                w_ptr1.addr != w_ptr2.addr or
-                w_ptr1.length != w_ptr1.length
-            )  # type: ignore
-        return W_OpSpec(w_ptr_ne)
-
     @builtin_method('__convert_to__', color='blue', kind='metafunc')
     @staticmethod
     def w_CONVERT_TO(vm: 'SPyVM', wop_T: W_OpArg, wop_x: W_OpArg) -> W_OpSpec:
