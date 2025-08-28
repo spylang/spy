@@ -5,6 +5,7 @@ from spy import ast
 from spy.location import Loc
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN
+from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -268,7 +269,17 @@ class W_Func(W_Object):
             errmsg = 'cannot call objects of type `{0}`'
         )
         w_opspec = w_meta_opimpl.execute(vm, meta_args_wops)
-        assert isinstance(w_opspec, W_OpSpec) # XXX proper typecheck?
+
+        if not isinstance(w_opspec, W_OpSpec):
+            w_T = vm.dynamic_type(w_opspec)
+            msg = (
+                'wrong metafunc return type: expected `operator::OpSpec`, ' +
+                f'got `{w_T.fqn.human_name}`'
+            )
+            err = SPyError('W_TypeError', msg)
+            err.add('error', 'this is a metafunc', wop_func.loc)
+            err.add('note', 'metafunc defined here', w_func.def_loc)
+            raise err
 
         # if we return a simple opspec, it will be called with arguments
         # [wop_func, *args_wop]. But what we want is to call it with just

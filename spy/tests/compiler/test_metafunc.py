@@ -34,8 +34,6 @@ class TestMetaFunc(CompilerTest):
 
     def test_wrong_argcount(self):
         src = """
-        from operator import OpSpec
-
         @blue.metafunc
         def m(v_x):
             pass
@@ -46,5 +44,22 @@ class TestMetaFunc(CompilerTest):
         errors = expect_errors(
             'this function takes 1 argument but 0 arguments were supplied',
             ('function defined here', 'def m(v_x):'),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_wrong_restype(self):
+        src = """
+        @blue.metafunc
+        def m():
+            # the metacall protocol expects an OpSpec, not an int
+            return 42
+
+        def foo() -> i32:
+            return m()
+        """
+        errors = expect_errors(
+            'wrong metafunc return type: expected `operator::OpSpec`, got `i32`',
+            ('this is a metafunc', 'm'),
+            ('metafunc defined here', 'def m():'),
         )
         self.compile_raises(src, "foo", errors)
