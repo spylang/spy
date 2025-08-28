@@ -32,18 +32,19 @@ class TestMetaFunc(CompilerTest):
         assert mod.test1() == 10
         assert mod.test2() == 'hello world'
 
-    @pytest.mark.skip(reason='implement me')
-    def test_wrong_args(self):
-        mod = self.compile("""
+    def test_wrong_argcount(self):
+        src = """
         from operator import OpSpec
 
         @blue.metafunc
         def m(v_x):
-           def impl_i32(x: i32) -> i32:
-               return x * 2
-           return OpSpec(impl_i32)
+            pass
 
         def foo() -> i32:
             return m()
-        """)
-        mod.foo()
+        """
+        errors = expect_errors(
+            'this function takes 1 argument but 0 arguments were supplied',
+            ('function defined here', 'def m(v_x):'),
+        )
+        self.compile_raises(src, "foo", errors)
