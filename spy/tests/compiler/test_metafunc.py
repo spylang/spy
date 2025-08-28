@@ -63,3 +63,58 @@ class TestMetaFunc(CompilerTest):
             ('metafunc defined here', 'def m():'),
         )
         self.compile_raises(src, "foo", errors)
+
+    @no_C
+    def test_STATIC_TYPE(self):
+        mod = self.compile("""
+        def foo() -> type:
+            x = 42
+            return STATIC_TYPE(x)
+        """)
+        w_T = mod.foo(unwrap=False)
+        assert w_T is B.w_i32
+
+    @no_C
+    def test_STATIC_TYPE_wrong_argcount(self):
+        src = """
+        def foo() -> type:
+            x = 42
+            return STATIC_TYPE(x, 1, 2)
+        """
+        errors = expect_errors(
+            'this function takes 1 argument but 3 arguments were supplied',
+            ('2 extra arguments', '1, 2')
+        )
+        self.compile_raises(src, 'foo', errors)
+
+    @no_C
+    def test_STATIC_TYPE_side_effects(self):
+        # Ideally, we sould like to allow STATIC_TYPE on arbitrary
+        # expressions: this is easy to implement for interp, but tricky for
+        # doppler. For now, we declare that we support only simple expressions
+        # as argument of STATIC_TYPE, to avoid side effects
+        src = """
+        var x: i32 = 0
+
+        def get_x() -> i32:
+            return x
+
+        def inc() -> i32:
+            x = x + 1
+            return x
+
+        def foo() -> type:
+            return STATIC_TYPE(inc())
+        """
+        # this is what we would like, eventually
+        ## assert mod.get_x() == 0
+        ## pyclass = mod.foo()
+        ## assert pyclass is self.vm.unwrap(B.w_i32)
+        ## assert mod.get_x() == 1
+        #
+        # this is what we have now
+        errors = expect_errors(
+            'STATIC_TYPE works only on simple expressions',
+            ('Call not allowed here', 'inc()')
+        )
+        self.compile_raises(src, 'foo', errors)
