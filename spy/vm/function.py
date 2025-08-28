@@ -225,22 +225,41 @@ class W_Func(W_Object):
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpSpec':
+        """
+        Return an OpSpec which directly calls this function.
+        """
         from spy.vm.opspec import W_OpSpec
         w_func = wop_func.w_blueval
         assert isinstance(w_func, W_Func)
+        assert w_func.w_functype.kind != 'metafunc'
+        return W_OpSpec(
+            w_func,
+            list(args_wop),
+            is_direct_call = True,
+        )
 
-        if w_func.w_functype.kind == 'metafunc':
-            # call the metafunc to get the opspec
-            w_opspec = vm.fast_call(w_func, list(args_wop))
-            assert isinstance(w_opspec, W_OpSpec)
-            return w_opspec
-        else:
-            # return the func as the opspec
-            return W_OpSpec(
-                w_func,
-                list(args_wop),
-                is_direct_call = True,
-            )
+    def op_METACALL(vm: 'SPyVM', wop_func: 'W_OpArg',
+                    *args_wop: 'W_OpArg') -> 'W_OpSpec':
+        """
+        Call this function and use the return value as the OpSpec
+        """
+        from spy.vm.opspec import W_OpSpec
+        w_func = wop_func.w_blueval
+        assert isinstance(w_func, W_Func)
+        assert w_func.w_functype.kind == 'metafunc'
+
+        # call the metafunc and get the OpSpec
+        w_opspec = vm.fast_call(w_func, list(args_wop))
+        assert isinstance(w_opspec, W_OpSpec)
+
+        # this is a bit of a hack: without this, by default we call the
+        # w_opspec with ALL the newargs_wop, including the function object
+        # itself. But for metafunc it makes more sense that the default
+        # calling convention is to pass only the rest of the wops
+        if w_opspec.is_simple():
+            w_opspec._args_wop = list(args_wop)
+
+        return w_opspec
 
 
 class W_ASTFunc(W_Func):
