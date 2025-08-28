@@ -22,20 +22,12 @@ def w_CALL(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_OpImpl:
         # W_Func is a special case, as it can't have a w_CALL for bootstrapping
         # reasons. Moreover, while we are at it, we can produce a better error
         # message in case we try to call a plain function with [].
+        assert w_T.pyclass is W_Func
         if w_T.kind == 'plain':
-            assert w_T.pyclass is W_Func
             w_opspec = W_Func.op_CALL(vm, wop_obj, *args_wop) # type: ignore
-
         elif w_T.kind == 'metafunc':
             assert w_T.pyclass is W_Func
-            w_opspec = W_Func.op_CALL(vm, wop_obj, *args_wop) # type: ignore
-            # this is a bit of a hack: without this, by default we call the
-            # w_opspec with ALL the newargs_wop, including the function object
-            # itself. But for metafunc it makes more sense that the default
-            # calling convention is to pass only the rest of the wops
-            if w_opspec.is_simple():
-                w_opspec._args_wop = list(args_wop)
-
+            w_opspec = W_Func.op_METACALL(vm, wop_obj, *args_wop) # type: ignore
         elif w_T.kind == 'generic':
             errmsg = 'generic functions must be called via `[...]`'
         else:

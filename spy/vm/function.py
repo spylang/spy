@@ -5,6 +5,7 @@ from spy import ast
 from spy.location import Loc
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN
+from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type, builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -217,6 +218,8 @@ class W_Func(W_Object):
         """
         raise NotImplementedError
 
+    # ======== applevel interface ========
+
     # NOTE: we cannot use applevel '__call__' or '__getitem__' here, for
     # bootstrapping reason.
     # These operators are special cased by
@@ -225,22 +228,67 @@ class W_Func(W_Object):
     @staticmethod
     def op_CALL(vm: 'SPyVM', wop_func: 'W_OpArg',
                 *args_wop: 'W_OpArg') -> 'W_OpSpec':
+        """
+        Return an OpSpec which directly calls this function.
+        """
         from spy.vm.opspec import W_OpSpec
         w_func = wop_func.w_blueval
         assert isinstance(w_func, W_Func)
+        assert w_func.w_functype.kind != 'metafunc'
+        return W_OpSpec(
+            w_func,
+            list(args_wop),
+            is_direct_call = True,
+        )
 
-        if w_func.w_functype.kind == 'metafunc':
-            # call the metafunc to get the opspec
-            w_opspec = vm.fast_call(w_func, list(args_wop))
-            assert isinstance(w_opspec, W_OpSpec)
-            return w_opspec
-        else:
-            # return the func as the opspec
-            return W_OpSpec(
-                w_func,
-                list(args_wop),
-                is_direct_call = True,
+    @staticmethod
+    def op_METACALL(vm: 'SPyVM', wop_func: 'W_OpArg',
+                    *args_wop: 'W_OpArg') -> 'W_OpSpec':
+        """
+        Call this function and use the return value as the OpSpec
+        """
+        from spy.vm.opspec import W_OpSpec, W_OpArg
+        from spy.vm.typechecker import typecheck_opspec
+
+        w_func = wop_func.w_blueval
+        assert isinstance(w_func, W_Func)
+        assert w_func.w_functype.kind == 'metafunc'
+
+        # Now we want to call the metafunc to get the opspec to return.  Note
+        # that we cannot just vm.fast_call() it, because we don't know whether
+        # the metafunc has the right signature. Instead, we do a full
+        # OpSpec/typecheck/OpImpl dance, to raise proper TypeErrors if needed.
+        # This is a bit of code duplication with callop.w_CALL, but too bad.
+        meta_args_wops = [W_OpArg.from_w_obj(vm, wop) for wop in args_wop]
+        w_meta_opspec = W_OpSpec(w_func, meta_args_wops)
+        w_meta_opimpl = typecheck_opspec(
+            vm,
+            w_meta_opspec,
+            meta_args_wops,
+            dispatch = 'single',
+            errmsg = 'cannot call objects of type `{0}`'
+        )
+        w_opspec = w_meta_opimpl.execute(vm, meta_args_wops)
+
+        if not isinstance(w_opspec, W_OpSpec):
+            w_T = vm.dynamic_type(w_opspec)
+            msg = (
+                'wrong metafunc return type: expected `operator::OpSpec`, ' +
+                f'got `{w_T.fqn.human_name}`'
             )
+            err = SPyError('W_TypeError', msg)
+            err.add('error', 'this is a metafunc', wop_func.loc)
+            err.add('note', 'metafunc defined here', w_func.def_loc)
+            raise err
+
+        # if we return a simple opspec, it will be called with arguments
+        # [wop_func, *args_wop]. But what we want is to call it with just
+        # *args_wop. This is the equivalent of passing "list(args_wop)" in
+        # op_CALL.
+        if w_opspec.is_simple():
+            w_opspec._args_wop = list(args_wop)
+
+        return w_opspec
 
 
 class W_ASTFunc(W_Func):
