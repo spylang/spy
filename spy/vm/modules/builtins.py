@@ -19,15 +19,9 @@ if TYPE_CHECKING:
 
 PY_PRINT = print  # type: ignore
 
-@BUILTINS.builtin_func(color='blue')
-def w_STATIC_TYPE(vm: 'SPyVM', w_expr: W_Object) -> W_Type:
-    msg = ("STATIC_TYPE should never be called at runtime. "
-           "It's special-cased by ASTFrame")
-    raise NotImplementedError(msg)
-
-## @BUILTINS.builtin_func(color='blue', kind='metafunc')
-## def w_STATIC_TYPE(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-##     return W_OpSpec.const(wop_obj.w_static_T)
+@BUILTINS.builtin_func(color='blue', kind='metafunc')
+def w_STATIC_TYPE(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
+    return W_OpSpec.const(wop_obj.w_static_T)
 
 @BUILTINS.builtin_func
 def w_abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:

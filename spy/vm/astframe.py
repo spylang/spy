@@ -512,9 +512,6 @@ class AbstractFrame:
 
     def eval_expr_Call(self, call: ast.Call) -> W_OpArg:
         wop_func = self.eval_expr(call.func)
-        # STATIC_TYPE is special
-        if wop_func.color == 'blue' and wop_func.w_val is B.w_STATIC_TYPE:
-            return self._eval_STATIC_TYPE(wop_func, call)
         args_wop = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(
             call.loc,
@@ -522,22 +519,6 @@ class AbstractFrame:
             [wop_func]+args_wop
         )
         return self.eval_opimpl(call, w_opimpl, [wop_func]+args_wop)
-
-    def _eval_STATIC_TYPE(self, wop_func: W_OpArg, call: ast.Call) -> W_OpArg:
-        for arg in call.args:
-            if not isinstance(arg, (ast.Name, ast.Constant, ast.StrConst)):
-                msg = 'STATIC_TYPE works only on simple expressions'
-                E = arg.__class__.__name__
-                raise SPyError.simple(
-                    "W_TypeError",
-                    msg, f'{E} not allowed here', arg.loc,
-                )
-
-        args_wop = [self.eval_expr(arg) for arg in call.args]
-        w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wop_func]+args_wop)
-        assert len(call.args) == 1
-        w_argtype = args_wop[0].w_static_T
-        return W_OpArg.from_w_obj(self.vm, w_argtype)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         wop_obj = self.eval_expr(op.target)
