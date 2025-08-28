@@ -74,11 +74,11 @@ class TestMetaFunc(CompilerTest):
         w_T = mod.foo(unwrap=False)
         assert w_T is B.w_i32
 
-    @pytest.mark.skip(reason='fix me')
     @no_C
     def test_STATIC_TYPE_side_effects(self):
-        # ideally, you should be able to call STATIC_TYPE(expr) *and have the
-        # expression evaluated*. However, this is broken.
+        if self.backend == 'doppler':
+            pytest.skip('fixme: side effects of arguments which are redshifted away')
+
         src = """
         var x: i32 = 0
 
