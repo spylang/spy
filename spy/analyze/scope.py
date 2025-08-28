@@ -234,12 +234,13 @@ class ScopeAnalyzer:
         self.define_name(funcdef.name, 'blue', funcdef.prototype_loc,
                          funcdef.prototype_loc)
         # add function arguments to the "inner" scope
-        inner_scope = self.new_SymTable(funcdef.name, funcdef.color)
+        scope_color = funcdef.color
+        inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.define_name(arg.name, 'red', arg.loc, arg.type.loc)
-        self.define_name('@return', 'red', funcdef.return_type.loc,
+            self.define_name(arg.name, scope_color, arg.loc, arg.type.loc)
+        self.define_name('@return', scope_color, funcdef.return_type.loc,
                          funcdef.return_type.loc)
         for stmt in funcdef.body:
             self.declare(stmt)
