@@ -11,7 +11,7 @@ from spy import libspy
 from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError, WIP
-from spy.vm.builtin import _builtin_func
+from spy.vm.builtin import make_builtin_func
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
                               W_NoneType)
@@ -235,10 +235,43 @@ class SPyVM:
         kind: FuncKind = 'plain',
         extra_types: dict = {}
     ) -> Callable:
-        return _builtin_func(
-            namespace, funcname, qualifiers,
-            color=color, kind=kind, extra_types=extra_types
-        )
+        """
+        Decorator to turn an interp-level function into a W_BuiltinFunc.
+
+        Example of usage:
+
+            @vm.register_builtin_func("mymodule", "hello")
+            def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
+                ...
+            assert isinstance(w_hello, W_BuiltinFunc)
+            assert w_hello.fqn == FQN("mymodule::hello")
+
+        funcname can be omitted, and in that case it will automatically be
+        deduced from __name__:
+
+            @builtin_func("mymodule")
+            def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
+                ...
+            assert w_hello.fqn == FQN("mymodule::hello")
+
+        The w_functype of the wrapped function is automatically computed by
+        inspectng the signature of the interp-level function. The first
+        parameter MUST be 'vm'.
+
+        Note that the resulting object is a W_BuiltinFunc, which means that you
+        cannot call it directly, but you need to use vm.call.
+        """
+        def decorator(fn: Callable) -> W_BuiltinFunc:
+            return make_builtin_func(
+                fn,
+                namespace,
+                funcname,
+                qualifiers,
+                color=color,
+                kind=kind,
+                extra_types=extra_types
+            )
+        return decorator
 
     def make_fqn_const(self, w_val: W_Object) -> FQN:
         """

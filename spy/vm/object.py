@@ -444,7 +444,7 @@ class W_Type(W_Object):
         Turn @builtin_method into a W_BuiltinFunc and @builtin_property
         into a W_Property
         """
-        from spy.vm.builtin import _builtin_func
+        from spy.vm.builtin import make_builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
         from spy.vm.str import W_Str
         from spy.vm.primitive import W_Dynamic, W_Bool
@@ -454,8 +454,8 @@ class W_Type(W_Object):
         appname, color, kind, what = statmeth.spy_builtin_method # type: ignore
         assert what in ('method', 'property')
 
-        # create the @builtin_func decorator, and make it possible to use the
-        # string 'W_MyClass' in annotations
+        # create the W_BuiltinFunc. Make it possible to use the string
+        # 'W_MyClass' in annotations
         extra_types = {
             self.pyclass.__name__: Annotated[self.pyclass, self],
             'W_OpArg': W_OpArg,
@@ -464,7 +464,8 @@ class W_Type(W_Object):
             'W_Bool': W_Bool,
             'W_Dynamic': W_Dynamic,
         }
-        decorator = _builtin_func(
+        w_func = make_builtin_func(
+            pyfunc,
             namespace = self.fqn,
             funcname = appname,
             qualifiers = [],
@@ -472,8 +473,6 @@ class W_Type(W_Object):
             kind = kind,
             extra_types = extra_types,
         )
-        # apply the decorator and get a W_BuiltinFunc
-        w_func = decorator(pyfunc)
         if what == 'method':
             self.dict_w[appname] = w_func
         else:
