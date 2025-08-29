@@ -9,7 +9,7 @@ from spy.vm.str import W_Str
 from spy.vm.b import OP
 
 def make_w_repeat(vm: 'SPyVM'):
-    @vm.register_builtin_func('test')
+    @vm.register_builtin_func('_testing_helpers')
     def w_repeat(vm: 'SPyVM', w_s: W_Str, w_n: W_I32) -> W_Str:
         s = vm.unwrap_str(w_s)
         n = vm.unwrap_i32(w_n)
@@ -35,12 +35,12 @@ def test_shuffle_args():
     w_s = w_opimpl.execute(vm, [vm.wrap(3), vm.wrap('ab ')])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     #
-    r = '<OpImpl `def(i32, str) -> str` for `test::repeat`>'
+    r = '<OpImpl `def(i32, str) -> str` for `_testing_helpers::repeat`>'
     assert repr(w_opimpl) == r
     #
     expected = textwrap.dedent("""
     def(v0: i32, v1: str) -> str:
-        return `test::repeat`(v1, v0)
+        return `_testing_helpers::repeat`(v1, v0)
     """).strip()
     assert w_opimpl.render() == expected
 
@@ -58,7 +58,7 @@ def test_const():
     assert vm.unwrap_str(w_s) == 'ab ab ab '
     expected = textwrap.dedent("""
     def(v0: i32) -> str:
-        return `test::repeat`(W_Str('ab '), v0)
+        return `_testing_helpers::repeat`(W_Str('ab '), v0)
     """).strip()
     assert w_opimpl.render() == expected
 
@@ -76,6 +76,6 @@ def test_converter():
     #
     expected = textwrap.dedent("""
     def(v0: f64, v1: str) -> str:
-        return `test::repeat`(v1, `operator::f64_to_i32`(v0))
+        return `_testing_helpers::repeat`(v1, `operator::f64_to_i32`(v0))
     """).strip()
     assert w_opimpl.render() == expected
