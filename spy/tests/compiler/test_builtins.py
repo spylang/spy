@@ -1,5 +1,6 @@
-from spy.vm.primitive import W_I32
-from spy.vm.builtin import builtin_func, builtin_method
+import pytest
+from spy.vm.primitive import W_I32, W_Dynamic
+from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -38,7 +39,7 @@ class W_SeqMetaLen(W_Object):
     @builtin_method('__len__', color='blue', kind='metafunc')
     @staticmethod
     def w_LEN(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpSpec:
-        @builtin_func('ext')
+        @vm.register_builtin_func('ext')
         def w_len(vm: 'SPyVM', w_self: W_SeqMetaLen) -> W_I32:
             return w_self.w_size
         return W_OpSpec(w_len)
@@ -95,3 +96,43 @@ class TestBuiltins(CompilerTest):
             ('this is `i32`', '42'),
         )
         self.compile_raises(src, "foo", errors)
+
+    @no_C
+    def test_builtin_func_dedup(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry('ext')
+
+        @EXT.builtin_func(color='blue')
+        def w_make_func(vm: 'SPyVM', w_dummy: W_I32) -> W_Dynamic:
+            fqn = EXT.fqn.join('make_func')
+
+            @vm.register_builtin_func(fqn, 'impl')
+            def w_impl(vm: 'SPyVM') -> W_I32:
+                return vm.wrap(21)
+            return w_impl
+
+        # ========== /EXT module for this test =========
+
+        self.vm.make_module(EXT)
+        src = """
+        from ext import make_func
+
+        @blue
+        def my_make_func(n):
+            return make_func(n)
+
+        def foo() -> i32:
+            a = make_func(0)()
+            b = make_func(1)()
+            return a + b
+        """
+        mod = self.compile(src)
+
+        # check that make_func(0) and make_func(1) return the SAME object
+        if self.backend == 'interp':
+            w_a = mod.my_make_func(0, unwrap=False)
+            w_b = mod.my_make_func(1, unwrap=False)
+            assert w_a is w_b
+
+        # check that we can actually call them from SPy code
+        assert mod.foo() == 42

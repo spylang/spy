@@ -1,6 +1,6 @@
 import pytest
 from spy.vm.primitive import W_I32
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -27,7 +27,7 @@ class TestOpSpec(CompilerTest):
             @staticmethod
             def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                           wop_i: W_OpArg) -> W_OpSpec:
-                @builtin_func('ext')
+                @vm.register_builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
                               w_i: W_I32) -> W_I32:
                     return w_i
@@ -64,7 +64,7 @@ class TestOpSpec(CompilerTest):
             @staticmethod
             def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
                           wop_i: W_OpArg) -> W_OpSpec:
-                @builtin_func('ext')
+                @vm.register_builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
                 return W_OpSpec(w_getitem)

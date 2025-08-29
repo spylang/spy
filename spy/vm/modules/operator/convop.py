@@ -6,7 +6,6 @@ from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
 from spy.vm.opspec import W_OpArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8, W_U8
-from spy.vm.builtin import builtin_func
 from . import OP
 from .multimethod import MultiMethodTable
 if TYPE_CHECKING:
@@ -139,7 +138,7 @@ def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
 
     # operator::from_dynamic[i32]
-    @builtin_func('operator', 'from_dynamic', [w_T.fqn])
+    @vm.register_builtin_func('operator', 'from_dynamic', [w_T.fqn])
     def w_from_dynamic_T(vm: 'SPyVM', w_obj: W_Dynamic) -> T:
         # XXX, we can probably generate better errors
         #
@@ -150,7 +149,6 @@ def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         vm.typecheck(w_obj, w_T)
         return w_obj
 
-    vm.add_global(w_from_dynamic_T.fqn, w_from_dynamic_T)
     return w_from_dynamic_T
 
 MM.register('convert',  'i8', 'f64',  OP.w_i8_to_f64)

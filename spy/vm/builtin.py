@@ -79,58 +79,35 @@ def functype_from_sig(fn: Callable, color: Color, kind: FuncKind, *,
     return W_FuncType.new(func_params, w_restype, color=color, kind=kind)
 
 
-def builtin_func(namespace: FQN|str,
-                 funcname: Optional[str] = None,
-                 qualifiers: QUALIFIERS = None,
-                 *,
-                 color: Color = 'red',
-                 kind: FuncKind = 'plain',
-                 extra_types: dict = {},
-                 ) -> Callable:
+def make_builtin_func(
+    fn: Callable,
+    namespace: FQN|str,
+    funcname: Optional[str] = None,
+    qualifiers: QUALIFIERS = None,
+    *,
+    color: Color = 'red',
+    kind: FuncKind = 'plain',
+    extra_types: dict = {},
+) -> W_BuiltinFunc:
     """
-    Decorator to make an interp-level function wrappable by the VM.
-
-    Example of usage:
-
-        @builtin_func("mymodule", "hello")
-        def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
-            ...
-        assert isinstance(w_hello, W_BuiltinFunc)
-        assert w_hello.fqn == FQN("mymodule::hello")
-
-    funcname can be omitted, and in that case it will automatically be deduced
-    from __name__:
-
-        @builtin_func("mymodule")
-        def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
-            ...
-        assert w_hello.fqn == FQN("mymodule::hello")
-
-
-    The w_functype of the wrapped function is automatically computed by
-    inspectng the signature of the interp-level function. The first parameter
-    MUST be 'vm'.
-
-    Note that the decorator returns a W_BuiltinFunc, which means that you
-    cannot call it directly, but you need to use vm.call.
+    Turn an interp-level function into a W_BuiltinFunc.
+    See vm.register_builtin_func for additional docs.
     """
     if isinstance(namespace, str):
         namespace = FQN(namespace)
-    def decorator(fn: Callable) -> W_BuiltinFunc:
-        assert fn.__name__.startswith('w_')
-        fname = funcname
-        if fname is None:
-            fname = fn.__name__[2:]
-        assert isinstance(namespace, FQN)
-        fqn = namespace.join(fname, qualifiers)
+    assert fn.__name__.startswith('w_')
+    fname = funcname
+    if fname is None:
+        fname = fn.__name__[2:]
+    assert isinstance(namespace, FQN)
+    fqn = namespace.join(fname, qualifiers)
 
-        if kind == 'metafunc' and color != 'blue':
-            msg = f"wrong color for metafunc `{fqn.human_name}`: expected `blue`, got `{color}`"
-            raise SPyError('W_TypeError', msg)
+    if kind == 'metafunc' and color != 'blue':
+        msg = f"wrong color for metafunc `{fqn.human_name}`: expected `blue`, got `{color}`"
+        raise SPyError('W_TypeError', msg)
 
-        w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)
-        return W_BuiltinFunc(w_functype, fqn, fn)
-    return decorator
+    w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)
+    return W_BuiltinFunc(w_functype, fqn, fn)
 
 
 def builtin_type(namespace: FQN|str,

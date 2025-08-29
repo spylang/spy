@@ -8,7 +8,7 @@ from spy.vm.module import W_Module
 from spy.vm.object import W_Type, W_Object, ClassBody
 from spy.vm.function import W_Func
 from spy.vm.opspec import W_OpSpec, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_method, builtin_property
+from spy.vm.builtin import builtin_method, builtin_property
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -50,7 +50,7 @@ class W_LiftedType(W_Type):
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]
 
-        @builtin_func(w_hltype.fqn, '__lift__')
+        @vm.register_builtin_func(w_hltype.fqn, '__lift__')
         def w_lift(vm: 'SPyVM', w_ll: LL) -> HL:
             assert isinstance(w_hltype, W_LiftedType)
             return W_LiftedObject(w_hltype, w_ll)
@@ -98,7 +98,7 @@ class W_LiftedObject(W_Object):
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]
 
-        @builtin_func(w_hltype.fqn, '__unlift__')
+        @vm.register_builtin_func(w_hltype.fqn, '__unlift__')
         def w_unlift(vm: 'SPyVM', w_hl: HL) -> LL:
             return w_hl.w_ll
         return W_OpSpec(w_unlift, [wop_hl])

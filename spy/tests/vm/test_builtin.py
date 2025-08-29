@@ -7,8 +7,12 @@ from spy.vm.vm import SPyVM
 from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Str
 from spy.vm.b import B
 from spy.fqn import FQN
-from spy.vm.builtin import (builtin_func, functype_from_sig,
-                            builtin_type, builtin_method, builtin_class_attr)
+from spy.vm.builtin import (
+    functype_from_sig,
+    builtin_type,
+    builtin_method,
+    builtin_class_attr
+)
 
 class TestBuiltin:
 
@@ -37,53 +41,54 @@ class TestBuiltin:
     def test_builtin_func(self):
         vm = SPyVM()
 
-        @builtin_func('mymod')
+        @vm.register_builtin_func('_testing_helpers')
         def w_foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
             return vm.wrap(x*2)
 
         assert isinstance(w_foo, W_BuiltinFunc)
-        assert w_foo.fqn == FQN('mymod::foo')
+        assert w_foo.fqn == FQN('_testing_helpers::foo')
         w_y = vm.fast_call(w_foo, [vm.wrap(10)])
         assert vm.unwrap_i32(w_y) == 20
 
     def test_builtin_func_errors(self):
+        vm = SPyVM()
         with pytest.raises(ValueError,
                            match="The first param should be 'vm: SPyVM'."):
-            @builtin_func('mymod')
+            @vm.register_builtin_func('mymod')
             def w_foo() -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(ValueError,
                            match="The first param should be 'vm: SPyVM'."):
-            @builtin_func('mymod')
+            @vm.register_builtin_func('mymod')
             def w_foo(w_x: W_I32) -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(
                 ValueError,
                 match="Invalid @builtin_func annotation: <class 'int'>"):
-            @builtin_func('mymod')
+            @vm.register_builtin_func('mymod')
             def w_foo(vm: 'SPyVM', x: int) -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(
                 ValueError,
                 match="Invalid @builtin_func annotation: <class 'int'>"):
-            @builtin_func('mymod')
+            @vm.register_builtin_func('mymod')
             def w_foo(vm: 'SPyVM') -> int:  # type: ignore
                 pass
 
     def test_builtin_func_dynamic(self):
         vm = SPyVM()
-        @builtin_func('mymod')
+        @vm.register_builtin_func('_testing_helpers')
         def w_foo(vm: 'SPyVM', w_x: W_Dynamic) -> W_Dynamic:  # type: ignore
             pass
         assert w_foo.w_functype.fqn.human_name == 'def(dynamic) -> dynamic'
 
     def test_return_None(self):
         vm = SPyVM()
-        @builtin_func('mymod')
+        @vm.register_builtin_func('_testing_helpers')
         def w_foo(vm: 'SPyVM') -> None:
             pass
         assert w_foo.w_functype.fqn.human_name == 'def() -> None'
@@ -94,7 +99,7 @@ class TestBuiltin:
     def test_blue(self):
         vm = SPyVM()
 
-        @builtin_func('mymod', color='blue')
+        @vm.register_builtin_func('_testing_helpers', color='blue')
         def w_foo(vm: 'SPyVM', w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
             return vm.wrap(x*2)

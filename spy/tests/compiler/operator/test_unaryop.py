@@ -1,7 +1,7 @@
 # write test for unary neg
 
 from spy.vm.primitive import W_I32
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry

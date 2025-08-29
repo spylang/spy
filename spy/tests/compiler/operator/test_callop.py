@@ -1,7 +1,7 @@
 from typing import Annotated
 from spy.vm.primitive import W_I32
 from spy.vm.member import Member
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Type, W_Object
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -62,13 +62,13 @@ class TestCallOp(CompilerTest):
                 # Support overloading based on argument count
                 if len(args_wop) == 1:
                     # Point(x) -> Point(x, x)
-                    @builtin_func('ext', 'new_point_single')
+                    @vm.register_builtin_func('ext', 'new_point_single')
                     def w_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Point:
                         return W_Point(w_x, w_x)
                     return W_OpSpec(w_new)
                 else:
                     # Normal Point(x, y)
-                    @builtin_func('ext', 'new_point')
+                    @vm.register_builtin_func('ext', 'new_point')
                     def w_new(vm: 'SPyVM', w_cls: W_Type,
                               w_x: W_I32, w_y: W_I32) -> W_Point:
                         return W_Point(w_x, w_y)
@@ -210,7 +210,7 @@ class TestCallOp(CompilerTest):
                               *args_wop: W_OpArg) -> W_OpSpec:
                 meth = wop_method.blue_unwrap_str(vm)
                 if meth == 'add':
-                    @builtin_func('ext', 'add')
+                    @vm.register_builtin_func('ext', 'add')
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
@@ -218,7 +218,7 @@ class TestCallOp(CompilerTest):
                     return W_OpSpec(w_fn, [wop_obj] + list(args_wop))
 
                 elif meth == 'sub':
-                    @builtin_func('ext', 'sub')
+                    @vm.register_builtin_func('ext', 'sub')
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)

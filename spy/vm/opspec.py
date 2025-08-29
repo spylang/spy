@@ -36,7 +36,7 @@ from spy.vm.b import OPERATOR, B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.member import Member
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.builtin import (builtin_func, builtin_method, builtin_property,
+from spy.vm.builtin import (builtin_method, builtin_property,
                             builtin_class_attr)
 from spy.vm.primitive import W_Bool
 from spy.vm.property import W_Property
@@ -238,7 +238,7 @@ class W_OpArg(W_Object):
         w_T = wop_T.w_blueval
         assert isinstance(w_T, W_Type)
         if vm.issubclass(w_T, B.w_type):
-            @builtin_func(W_OpArg._w.fqn, 'from_type')
+            @vm.register_builtin_func(W_OpArg._w.fqn, 'from_type')
             def w_from_type(vm: 'SPyVM', w_type: W_Type) -> W_OpArg:
                 return W_OpArg(
                     vm,
@@ -358,14 +358,14 @@ class W_OpSpec(W_Object):
 
         if len(args_wop) == 1:
             # Simple case: OpSpec(func)
-            @builtin_func(w_T.fqn, 'new1')
+            @vm.register_builtin_func(w_T.fqn, 'new1')
             def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpSpec:
                 return W_OpSpec(w_func)
             return W_OpSpec(w_new1)
 
         elif len(args_wop) == 2:
             # OpSpec(func, args) case
-            @builtin_func(w_T.fqn, 'new2')
+            @vm.register_builtin_func(w_T.fqn, 'new2')
             def w_new2(vm: 'SPyVM', w_cls: W_Type,
                        w_func: W_Func, w_args: W_OpArgList) -> W_OpSpec:
                 # Convert from applevel w_args into interp-level args_w

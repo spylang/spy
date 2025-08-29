@@ -3,7 +3,6 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
-from spy.vm.builtin import builtin_func
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.opimpl import W_OpImpl
 

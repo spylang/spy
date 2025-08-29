@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated
 from spy.location import Loc
 from spy.errfmt import ErrorFormatter, Level, Annotation
 from spy.vm.opspec import W_OpSpec, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.builtin import builtin_method
 from spy.vm.primitive import W_Bool
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
@@ -63,7 +63,7 @@ class W_Exception(W_Object):
         # the whole "raise Exception(...)" is a bit of a hack at the moment:
         # the C backend can raise only BLUE exceptions, so here we make sure
         # that Exception("...") is blue
-        @builtin_func(fqn, '__new__', color='blue')
+        @vm.register_builtin_func(fqn, '__new__', color='blue')
         def w_new(vm: 'SPyVM', w_cls: W_Type, w_message: W_Str) -> T:
             pyclass = w_cls.pyclass
             assert issubclass(pyclass, W_Exception)
@@ -84,7 +84,7 @@ class W_Exception(W_Object):
         if w_atype is not w_btype:
             return W_OpSpec.NULL
 
-        @builtin_func(w_atype.fqn)
+        @vm.register_builtin_func(w_atype.fqn)
         def w_eq(vm: 'SPyVM', w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
             res =  (w_e1.message == w_e2.message and
                     w_e1.annotations == w_e2.annotations)
@@ -104,7 +104,7 @@ class W_Exception(W_Object):
         if w_atype is not w_btype:
             return W_OpSpec.NULL
 
-        @builtin_func(w_atype.fqn)
+        @vm.register_builtin_func(w_atype.fqn)
         def w_ne(vm: 'SPyVM', w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
             res = not (w_e1.message == w_e2.message and
                        w_e1.annotations == w_e2.annotations)
