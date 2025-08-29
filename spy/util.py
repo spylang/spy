@@ -1,6 +1,6 @@
 #-*- encoding: utf-8 -*-
 import typing
-from typing import Sequence
+from typing import Sequence, Callable
 import difflib
 import subprocess
 import inspect
@@ -148,7 +148,7 @@ def robust_run(
     return proc
 
 
-def func_equals(f, g):
+def func_equals(f: Callable, g: Callable) -> bool:
     """
     Try to determine whether two functions are "the same".
 

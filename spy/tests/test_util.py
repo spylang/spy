@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, no_type_check
 import pytest
 from spy.util import ANYTHING, magic_dispatch, extend, shortrepr, func_equals
 
@@ -80,7 +80,7 @@ def test_shortrepr():
 class Test_func_equals:
 
     def test_identity(self):
-        def f():
+        def f() -> None:
             pass
         assert func_equals(f, f)
 
@@ -90,6 +90,7 @@ class Test_func_equals:
         assert not func_equals(f, g)
 
     def test_no_defaults(self):
+        @no_type_check
         def make(n):
             def fn(x=n):
                 pass
@@ -100,6 +101,7 @@ class Test_func_equals:
             func_equals(f0, f1)
 
     def test_no_kwdefaults(self):
+        @no_type_check
         def make(n):
             def fn(*, x=n):
                 pass
@@ -111,6 +113,7 @@ class Test_func_equals:
             func_equals(f0, f1)
 
     def test_closure(self):
+        @no_type_check
         def make(n):
             def fn():
                 return n
