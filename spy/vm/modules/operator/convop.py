@@ -149,7 +149,6 @@ def w_from_dynamic(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
         vm.typecheck(w_obj, w_T)
         return w_obj
 
-    vm.add_global(w_from_dynamic_T.fqn, w_from_dynamic_T)
     return w_from_dynamic_T
 
 MM.register('convert',  'i8', 'f64',  OP.w_i8_to_f64)

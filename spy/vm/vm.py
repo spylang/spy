@@ -262,7 +262,8 @@ class SPyVM:
         cannot call it directly, but you need to use vm.call.
         """
         def decorator(fn: Callable) -> W_BuiltinFunc:
-            return make_builtin_func(
+            # create the w_func
+            w_func = make_builtin_func(
                 fn,
                 namespace,
                 funcname,
@@ -271,6 +272,15 @@ class SPyVM:
                 kind=kind,
                 extra_types=extra_types
             )
+
+            # check that the FQN is unique
+            w_other = self.lookup_global(w_func.fqn)
+            assert w_other is None
+
+            # register it as global and return
+            self.add_global(w_func.fqn, w_func)
+            return w_func
+
         return decorator
 
     def make_fqn_const(self, w_val: W_Object) -> FQN:
@@ -295,8 +305,10 @@ class SPyVM:
         elif isinstance(w_val, W_BuiltinFunc):
             # the fqn of builtin functions should be unique, else it's a fault
             # of whoever declared it.
-            fqn = w_val.fqn
-            assert w_val.fqn not in self.globals_w
+            ## fqn = w_val.fqn
+            ## assert w_val.fqn not in self.globals_w
+            assert False, 'XXX better error message'
+
         elif isinstance(w_val, W_Type):
             # for now types are only builtin so they must have an unique fqn,
             # we might need to change this when we introduce custom types
