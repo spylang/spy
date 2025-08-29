@@ -97,7 +97,7 @@ class TestBuiltins(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    @pytest.mark.skip('fixme')
+    @no_C
     def test_builtin_func_dedup(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')

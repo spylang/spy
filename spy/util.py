@@ -3,6 +3,7 @@ import typing
 from typing import Sequence
 import difflib
 import subprocess
+import inspect
 import py.path
 from spy.textbuilder import Color
 
@@ -145,6 +146,44 @@ def robust_run(
         msg = '\n'.join(lines)
         raise Exception(msg)
     return proc
+
+
+def func_equals(f, g):
+    """
+    Try to determine whether two functions are "the same".
+
+    In particular, they must have same name, same code object and same
+    closed-over variables.
+
+    This function is not meant to be perfect, but "good enough". Its main use
+    case is to make a sanity check in vm.register_builtin_func, so that we can
+    be confident that multiple builtin functions with the same fqn are "the
+    same".
+    """
+    if f is g:
+        return True
+
+    if f.__code__ != g.__code__:
+        return False
+
+    if f.__defaults__ is not None or g.__defaults__ is not None:
+        raise ValueError("unsupported: default arguments")
+
+    if f.__kwdefaults__ is not None or g.__kwdefaults__ is not None:
+        raise ValueError("unsupported: kwargs with default arguments")
+
+    # compare closure variables
+    cf = inspect.getclosurevars(f)
+    cg = inspect.getclosurevars(g)
+
+    # here we use default interp-level comparison for closed-over
+    # variables. This should work fine as long as we close over interp-level
+    # values. We might need to implement smarter comparison if we want to
+    # close over W_* value types (e.g. W_Str('hello')).
+    if cf.nonlocals != cg.nonlocals:
+        return False
+
+    return True
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@ from spy import libspy
 from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError, WIP
+from spy.util import func_equals
 from spy.vm.builtin import make_builtin_func
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
@@ -249,7 +250,7 @@ class SPyVM:
         funcname can be omitted, and in that case it will automatically be
         deduced from __name__:
 
-            @builtin_func("mymodule")
+            @vm.register_builtin_func("mymodule")
             def w_hello(vm: 'SPyVM', w_x: W_I32) -> W_Str:
                 ...
             assert w_hello.fqn == FQN("mymodule::hello")
@@ -260,6 +261,23 @@ class SPyVM:
 
         Note that the resulting object is a W_BuiltinFunc, which means that you
         cannot call it directly, but you need to use vm.call.
+
+        Registering a function with a FQN which is already in use is an
+        error. Howver, it is explicitly allowed to register the SAME function
+        with the SAME FQN multiple times. This is needed to allow this
+        pattern:
+
+            @MODULE.builtin_func
+            def w_foo(vm: SPyVM):
+                @vm.register_builtin_func(fqn)
+                def w_bar(vm: SPyVM) -> W_Object:
+                    ...
+
+        Here, even if we call w_foo multiple times, we always end up with the
+        "same" w_bar.  What "same function" means is not straightforward
+        though, in particular in presence of closures. For that, we use
+        spy.util.func_equals, which check function name, code objects and
+        closed-over variables.
         """
         def decorator(fn: Callable) -> W_BuiltinFunc:
             # create the w_func
@@ -273,13 +291,24 @@ class SPyVM:
                 extra_types=extra_types
             )
 
-            # check that the FQN is unique
+            # check whether the fqn is already in use
             w_other = self.lookup_global(w_func.fqn)
-            assert w_other is None
+            if w_other is None:
+                # fqn is free, register and return
+                self.add_global(w_func.fqn, w_func)
+                return w_func
 
-            # register it as global and return
-            self.add_global(w_func.fqn, w_func)
-            return w_func
+            # the fqn is taken. Let's check that it's "the same". If any of
+            # the following asserts fail, it probably means that we should
+            # compute a better FQN which takes into account all the values
+            # that it depends on.
+            assert isinstance(w_other, W_BuiltinFunc)
+            assert w_func.w_functype is w_other.w_functype
+            assert w_func.fqn == w_other.fqn
+            assert func_equals(w_func._pyfunc, w_other._pyfunc)
+
+            # everything ok, we can just return the existing W_BuiltinFunc
+            return w_other
 
         return decorator
 
