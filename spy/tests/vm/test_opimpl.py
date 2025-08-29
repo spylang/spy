@@ -6,23 +6,26 @@ from spy.vm.function import W_FuncType
 from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.primitive import W_I32
 from spy.vm.str import W_Str
-from spy.vm.builtin import builtin_func
 from spy.vm.b import OP
 
+def make_w_repeat(vm: 'SPyVM'):
+    @vm.register_builtin_func('test')
+    def w_repeat(vm: 'SPyVM', w_s: W_Str, w_n: W_I32) -> W_Str:
+        s = vm.unwrap_str(w_s)
+        n = vm.unwrap_i32(w_n)
+        return vm.wrap(s * int(n))
 
-@builtin_func('test')
-def w_repeat(vm: 'SPyVM', w_s: W_Str, w_n: W_I32) -> W_Str:
-    s = vm.unwrap_str(w_s)
-    n = vm.unwrap_i32(w_n)
-    return vm.wrap(s * int(n))
+    return w_repeat
 
 def test_repeat():
     vm = SPyVM()
+    w_repeat = make_w_repeat(vm)
     w_s = vm.fast_call(w_repeat, [vm.wrap('ab '), vm.wrap(3)])
     assert vm.unwrap_str(w_s) == 'ab ab ab '
 
 def test_shuffle_args():
     vm = SPyVM()
+    w_repeat = make_w_repeat(vm)
     w_functype = W_FuncType.parse('def(i32, str) -> str')
     w_opimpl = W_OpImpl(
         w_functype,
@@ -43,6 +46,7 @@ def test_shuffle_args():
 
 def test_const():
     vm = SPyVM()
+    w_repeat = make_w_repeat(vm)
     w_functype = W_FuncType.parse('def(i32) -> str')
     w_s: W_Object = vm.wrap('ab ')
     w_opimpl = W_OpImpl(
@@ -60,6 +64,7 @@ def test_const():
 
 def test_converter():
     vm = SPyVM()
+    w_repeat = make_w_repeat(vm)
     w_functype = W_FuncType.parse('def(f64, str) -> str')
     w_opimpl = W_OpImpl(
         w_functype,

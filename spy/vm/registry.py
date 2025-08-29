@@ -101,7 +101,7 @@ class ModuleRegistry:
         'qualifiers' is allowed only if you also explicitly specify
         'funcname'.
         """
-        from spy.vm.builtin import builtin_func
+        from spy.vm.builtin import _builtin_func
         if isinstance(pyfunc_or_funcname, FunctionType):
             pyfunc = pyfunc_or_funcname
             funcname = None
@@ -118,7 +118,7 @@ class ModuleRegistry:
         def decorator(pyfunc: Callable) -> 'W_BuiltinFunc':
             namespace = self.fqn
             # apply the @builtin_func decorator to pyfunc
-            w_func = builtin_func(
+            w_func = _builtin_func(
                 namespace=namespace,
                 funcname=funcname,
                 qualifiers=qualifiers,

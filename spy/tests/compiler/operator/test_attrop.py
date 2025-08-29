@@ -3,8 +3,7 @@ import pytest
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.member import Member
-from spy.vm.builtin import (builtin_func, builtin_method, builtin_class_attr,
-                            builtin_property)
+from spy.vm.builtin import builtin_method, builtin_class_attr, builtin_property
 from spy.vm.w import W_Object, W_Str
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -180,7 +179,7 @@ class TestAttrOp(CompilerTest):
                 """
                 w_t = wop_self.w_static_T
                 assert W_MyClass._w is w_t
-                @builtin_func(w_t.fqn, 'get_y')
+                @vm.register_builtin_func(w_t.fqn, 'get_y')
                 def w_get_x2(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
                     return vm.wrap(w_self.x * 2)
                 return W_OpSpec(w_get_x2, [wop_self])
@@ -262,12 +261,12 @@ class TestAttrOp(CompilerTest):
                                wop_name: W_OpArg) -> W_OpSpec:
                 attr = wop_name.blue_unwrap_str(vm)
                 if attr == 'x':
-                    @builtin_func('ext', 'getx')
+                    @vm.register_builtin_func('ext', 'getx')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                            w_attr: W_Str) -> W_I32:
                         return vm.wrap(w_obj.x)
                 else:
-                    @builtin_func('ext', 'getany')
+                    @vm.register_builtin_func('ext', 'getany')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
                                       w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
@@ -280,7 +279,7 @@ class TestAttrOp(CompilerTest):
                           wop_v: W_OpArg) -> W_OpSpec:
                 attr = wop_name.blue_unwrap_str(vm)
                 if attr == 'x':
-                    @builtin_func('ext')
+                    @vm.register_builtin_func('ext')
                     def w_setx(vm: 'SPyVM', w_obj: W_MyClass,
                                w_attr: W_Str, w_val: W_I32) -> None:
                         w_obj.x = vm.unwrap_i32(w_val)

@@ -2,7 +2,6 @@ from typing import Annotated, TYPE_CHECKING, Any, Optional
 from spy.vm.b import BUILTINS
 from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_method
-from spy.vm.builtin import builtin_func
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -72,7 +71,7 @@ class W_Member(W_Object):
         T = Annotated[W_Object, w_T]           # type of the object
         V = Annotated[W_Object, w_self.w_type] # type of the attribute
 
-        @builtin_func(w_T.fqn, f"__get_{w_self.name}__")
+        @vm.register_builtin_func(w_T.fqn, f"__get_{w_self.name}__")
         def w_get(vm: 'SPyVM', w_obj: T) -> V:
             return getattr(w_obj, field)
 
@@ -85,7 +84,6 @@ class W_Member(W_Object):
         vm: 'SPyVM', wop_self: 'W_OpArg', wop_obj: 'W_OpArg', wop_v: 'W_OpArg'
     ) -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec
-        from spy.vm.builtin import builtin_func
         w_self = wop_self.w_blueval
         assert isinstance(w_self, W_Member)
         w_T = wop_obj.w_static_T
@@ -93,7 +91,7 @@ class W_Member(W_Object):
         T = Annotated[W_Object, w_T]           # type of the object
         V = Annotated[W_Object, w_self.w_type] # type of the attribute
 
-        @builtin_func(w_T.fqn, f"__set_{w_self.name}__")
+        @vm.register_builtin_func(w_T.fqn, f"__set_{w_self.name}__")
         def w_set(vm: 'SPyVM', w_obj: T, w_val: V)-> None:
             setattr(w_obj, field, w_val)
 

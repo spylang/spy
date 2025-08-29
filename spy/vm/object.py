@@ -444,7 +444,7 @@ class W_Type(W_Object):
         Turn @builtin_method into a W_BuiltinFunc and @builtin_property
         into a W_Property
         """
-        from spy.vm.builtin import builtin_func
+        from spy.vm.builtin import _builtin_func
         from spy.vm.opspec import W_OpArg, W_OpSpec
         from spy.vm.str import W_Str
         from spy.vm.primitive import W_Dynamic, W_Bool
@@ -464,7 +464,7 @@ class W_Type(W_Object):
             'W_Bool': W_Bool,
             'W_Dynamic': W_Dynamic,
         }
-        decorator = builtin_func(
+        decorator = _builtin_func(
             namespace = self.fqn,
             funcname = appname,
             qualifiers = [],

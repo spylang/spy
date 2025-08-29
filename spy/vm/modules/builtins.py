@@ -6,7 +6,6 @@ The first half is in vm/b.py. See its docstring for more details.
 
 from typing import TYPE_CHECKING
 from spy.errors import SPyError
-from spy.vm.builtin import builtin_func
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
 from spy.vm.opspec import W_OpArg, W_OpSpec
 from spy.vm.object import W_Object, W_Type

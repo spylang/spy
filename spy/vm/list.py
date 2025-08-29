@@ -4,7 +4,7 @@ from spy.vm.b import B, OP, BUILTINS
 from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_OpSpec, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.builtin import builtin_method
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -120,7 +120,7 @@ class W_List(W_BaseList, Generic[T]):
         LIST = Annotated[W_List, w_listtype]
         T = Annotated[W_Object, w_T]
 
-        @builtin_func(w_listtype.fqn)
+        @vm.register_builtin_func(w_listtype.fqn)
         def w_getitem(vm: 'SPyVM', w_list: LIST, w_i: W_I32) -> T:
             i = vm.unwrap_i32(w_i)
             # XXX bound check?
@@ -137,7 +137,7 @@ class W_List(W_BaseList, Generic[T]):
         LIST = Annotated[W_List, w_listtype]
         T = Annotated[W_Object, w_T]
 
-        @builtin_func(w_listtype.fqn)
+        @vm.register_builtin_func(w_listtype.fqn)
         def w_setitem(vm: 'SPyVM', w_list: LIST, w_i: W_I32, w_v: T) -> None:
             i = vm.unwrap_i32(w_i)
             # XXX bound check?
@@ -155,7 +155,7 @@ class W_List(W_BaseList, Generic[T]):
         w_listtype = W_List._get_listtype(wop_l)
         LIST = Annotated[W_List, w_listtype]
 
-        @builtin_func(w_listtype.fqn)
+        @vm.register_builtin_func(w_listtype.fqn)
         def w_eq(vm: 'SPyVM', w_l1: LIST, w_l2: LIST) -> W_Bool:
             items1_w = w_l1.items_w
             items2_w = w_l2.items_w

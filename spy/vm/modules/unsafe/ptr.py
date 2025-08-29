@@ -6,7 +6,7 @@ from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
 from spy.vm.member import Member
 from spy.vm.b import B
-from spy.vm.builtin import builtin_method, builtin_property, builtin_func
+from spy.vm.builtin import builtin_method, builtin_property
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from . import UNSAFE
@@ -70,7 +70,7 @@ class W_PtrType(W_Type):
         w_NULL = W_Ptr(w_self, 0, 0)
         vm.add_global(w_self.fqn.join('NULL'), w_NULL)
 
-        @builtin_func(w_self.fqn, color='blue')  # ptr[i32]::get_NULL
+        @vm.register_builtin_func(w_self.fqn, color='blue')  # ptr[i32]::get_NULL
         def w_get_NULL(vm: 'SPyVM') -> Annotated['W_Ptr', w_self]:
             return w_NULL
         return W_OpSpec(w_get_NULL, [])
@@ -171,7 +171,7 @@ class W_Ptr(W_BasePtr):
 
         T = Annotated[W_Object, w_T]
 
-        @builtin_func(w_ptrtype.fqn, f'getitem_{by}')
+        @vm.register_builtin_func(w_ptrtype.fqn, f'getitem_{by}')
         def w_ptr_getitem_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32) -> T:
             base = w_ptr.addr
             length = w_ptr.length
@@ -207,7 +207,7 @@ class W_Ptr(W_BasePtr):
         filename = wop_ptr.loc.filename
         lineno = wop_ptr.loc.line_start
 
-        @builtin_func(w_ptrtype.fqn, 'store')
+        @vm.register_builtin_func(w_ptrtype.fqn, 'store')
         def w_ptr_store_T(vm: 'SPyVM', w_ptr: PTR, w_i: W_I32, w_v: T)-> None:
             base = w_ptr.addr
             length = w_ptr.length
@@ -235,7 +235,7 @@ class W_Ptr(W_BasePtr):
         w_ptrtype = W_Ptr._get_ptrtype(wop_x)
         PTR = Annotated[W_Ptr, w_ptrtype]
 
-        @builtin_func(w_ptrtype.fqn, 'to_bool')
+        @vm.register_builtin_func(w_ptrtype.fqn, 'to_bool')
         def w_ptr_to_bool(vm: 'SPyVM', w_ptr: PTR) -> W_Bool:
             if w_ptr.addr == 0:
                 return B.w_False
@@ -309,7 +309,7 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # e.g.:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
-    @builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
+    @vm.register_builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
                      w_offset: W_I32) -> T:
         """
@@ -332,7 +332,7 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
 
-    @builtin_func('unsafe', 'setfield', [w_T.fqn])  # unsafe::setfield[i32]
+    @vm.register_builtin_func('unsafe', 'setfield', [w_T.fqn])  # unsafe::setfield[i32]
     def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
                      w_offset: W_I32, w_val: T) -> None:
         """

@@ -4,12 +4,14 @@ from types import FunctionType
 import fixedint
 import py.path
 from spy import ROOT
-from spy.fqn import FQN
+from spy.fqn import FQN, QUALIFIERS
+from spy.ast import Color, FuncKind
 from spy.location import Loc
 from spy import libspy
 from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError, WIP
+from spy.vm.builtin import _builtin_func
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
                               W_NoneType)
@@ -222,6 +224,21 @@ class SPyVM:
         for modname, w_mod in self.modules_w.items():
             w_mod.pp()
             print()
+
+    def register_builtin_func(
+        self,
+        namespace: FQN|str,
+        funcname: Optional[str] = None,
+        qualifiers: QUALIFIERS = None,
+        *,
+        color: Color = 'red',
+        kind: FuncKind = 'plain',
+        extra_types: dict = {}
+    ) -> Callable:
+        return _builtin_func(
+            namespace, funcname, qualifiers,
+            color=color, kind=kind, extra_types=extra_types
+        )
 
     def make_fqn_const(self, w_val: W_Object) -> FQN:
         """

@@ -79,14 +79,15 @@ def functype_from_sig(fn: Callable, color: Color, kind: FuncKind, *,
     return W_FuncType.new(func_params, w_restype, color=color, kind=kind)
 
 
-def builtin_func(namespace: FQN|str,
-                 funcname: Optional[str] = None,
-                 qualifiers: QUALIFIERS = None,
-                 *,
-                 color: Color = 'red',
-                 kind: FuncKind = 'plain',
-                 extra_types: dict = {},
-                 ) -> Callable:
+def _builtin_func(
+    namespace: FQN|str,
+    funcname: Optional[str] = None,
+    qualifiers: QUALIFIERS = None,
+    *,
+    color: Color = 'red',
+    kind: FuncKind = 'plain',
+    extra_types: dict = {},
+) -> Callable:
     """
     Decorator to make an interp-level function wrappable by the VM.
 

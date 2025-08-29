@@ -2,7 +2,7 @@ from typing import Annotated
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.member import Member
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
 from spy.vm.opspec import W_OpSpec, W_OpArg
 from spy.vm.registry import ModuleRegistry
@@ -30,11 +30,11 @@ class W_MyClass(W_Object):
     ) -> W_OpSpec:
         w_target_T = wop_target_type.w_blueval
 
-        @builtin_func('ext')
+        @vm.register_builtin_func('ext')
         def w_to_i32(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
             return w_self.w_x
 
-        @builtin_func('ext')
+        @vm.register_builtin_func('ext')
         def w_to_str(vm: 'SPyVM', w_self: W_MyClass) -> W_Str:
             x = vm.unwrap_i32(w_self.w_x)
             return vm.wrap(str(x))
@@ -56,7 +56,7 @@ class W_MyClass(W_Object):
     ) -> W_OpSpec:
         w_src_T = wop_source_type.w_blueval
 
-        @builtin_func('ext')
+        @vm.register_builtin_func('ext')
         def w_from_str(vm: 'SPyVM', w_val: W_Str) -> W_MyClass:
             s = vm.unwrap_str(w_val)
             w_x = vm.wrap(int(s))
