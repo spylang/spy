@@ -332,11 +332,18 @@ class SPyVM:
             assert w_func.redshifted
             return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
-            # the fqn of builtin functions should be unique, else it's a fault
-            # of whoever declared it.
-            ## fqn = w_val.fqn
-            ## assert w_val.fqn not in self.globals_w
-            assert False, 'XXX better error message'
+            # ideally, I'd like ALL builtin funcs to be created with
+            # @vm.register_builtin_func. This way, we should just assert that
+            # w_val.fqn is already in vm.globals_w.
+            #
+            # However, this is not easily achievable at the moment, because we
+            # create all module-level builtin functions AND all the
+            # @builtin_method with make_builtin_func, bypassing the
+            # @vm.register_builtin_func pass. This happens becuse we don't
+            # have a vm available at that point, so it would require some
+            # serious refactoring.
+            fqn = w_val.fqn
+            assert w_val.fqn not in self.globals_w
 
         elif isinstance(w_val, W_Type):
             # for now types are only builtin so they must have an unique fqn,
