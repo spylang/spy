@@ -229,20 +229,19 @@ class W_Ptr(W_BasePtr):
     @staticmethod
     def w_CONVERT_TO(vm: 'SPyVM', wop_T: W_OpArg, wop_x: W_OpArg) -> W_OpSpec:
         w_T = wop_T.w_blueval
-
-        if w_T is not B.w_bool:
-            return W_OpSpec.NULL
         w_ptrtype = W_Ptr._get_ptrtype(wop_x)
         PTR = Annotated[W_Ptr, w_ptrtype]
 
-        @vm.register_builtin_func(w_ptrtype.fqn, 'to_bool')
-        def w_ptr_to_bool(vm: 'SPyVM', w_ptr: PTR) -> W_Bool:
-            if w_ptr.addr == 0:
-                return B.w_False
-            return B.w_True
+        if w_T is B.w_bool:
+            @vm.register_builtin_func(w_ptrtype.fqn, 'to_bool')
+            def w_ptr_to_bool(vm: 'SPyVM', w_ptr: PTR) -> W_Bool:
+                if w_ptr.addr == 0:
+                    return B.w_False
+                return B.w_True
+            return W_OpSpec(w_ptr_to_bool)
 
-        vm.add_global(w_ptr_to_bool.fqn, w_ptr_to_bool)
-        return W_OpSpec(w_ptr_to_bool)
+        else:
+            return W_OpSpec.NULL
 
     @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
