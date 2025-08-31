@@ -628,20 +628,24 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
-    def _w_oparg(self, w_x: W_Dynamic) -> W_OpArg:
-        return W_OpArg(self, 'red', self.dynamic_type(w_x), None, Loc.here(-3))
+    def _w_oparg(self, color: Color, w_x: W_Dynamic) -> W_OpArg:
+        w_T = self.dynamic_type(w_x)
+        if color == 'red':
+            return W_OpArg(self, 'blue', w_T, None, Loc.here(-2))
+        else:
+            return W_OpArg(self, 'blue', w_T, w_x, Loc.here(-2))
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = self._w_oparg(w_a)
-        wop_b = self._w_oparg(w_b)
+        wop_a = self._w_oparg('blue', w_a)
+        wop_b = self._w_oparg('blue', w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = self._w_oparg(w_a)
-        wop_b = self._w_oparg(w_b)
+        wop_a = self._w_oparg('blue', w_a)
+        wop_b = self._w_oparg('blue', w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wop_a, wop_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
@@ -651,8 +655,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wop_obj = self._w_oparg(w_obj)
-        wop_i = self._w_oparg(w_i)
+        wop_obj = self._w_oparg('red', w_obj)
+        wop_i = self._w_oparg('blue', w_i)
         w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return w_opimpl.execute(self, [w_obj, w_i])
 
@@ -689,8 +693,8 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        wop_a = self._w_oparg(w_a)
-        wop_b = self._w_oparg(w_b)
+        wop_a = self._w_oparg('blue', w_a)
+        wop_b = self._w_oparg('blue', w_b)
         try:
             w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
         except SPyError as err:
