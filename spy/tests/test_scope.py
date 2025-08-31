@@ -159,9 +159,9 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            'FLAG': MatchSymbol('FLAG', 'red'), # XXX should this be blue?
-            'x': MatchSymbol('x', 'red'),
-            '@return': MatchSymbol('@return', 'red'),
+            'FLAG': MatchSymbol('FLAG', 'blue'),
+            'x': MatchSymbol('x', 'red'),  # XXX should this be blue?
+            '@return': MatchSymbol('@return', 'blue'),
         }
 
     def test_no_shadowing(self):
