@@ -326,7 +326,7 @@ class FQN:
 
 
 @functools.lru_cache(maxsize=32768)
-def _compile_pattern(pattern):
+def _compile_pattern(pattern: str) -> Any:
     pattern = re.escape(pattern)
     regexp = pattern.replace(r'\*', '.*')
     return re.compile(regexp)
