@@ -633,7 +633,7 @@ class SPyVM:
     def _w_oparg(self, color: Color, w_x: W_Dynamic) -> W_OpArg:
         w_T = self.dynamic_type(w_x)
         if color == 'red':
-            return W_OpArg(self, 'blue', w_T, None, Loc.here(-2))
+            return W_OpArg(self, 'red', w_T, None, Loc.here(-2))
         else:
             return W_OpArg(self, 'blue', w_T, w_x, Loc.here(-2))
 
@@ -657,7 +657,7 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wop_obj = self._w_oparg('red', w_obj)
+        wop_obj = self._w_oparg('blue', w_obj)
         wop_i = self._w_oparg('blue', w_i)
         w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return w_opimpl.execute(self, [w_obj, w_i])
