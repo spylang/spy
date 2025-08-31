@@ -65,6 +65,8 @@ See also vm.get_unique_FQN.
 
 from typing import Optional, Any, Union, Sequence
 from dataclasses import dataclass
+import re
+import functools
 
 PARTS = Sequence[Union[str, 'NSPart']]
 QUALIFIERS = Optional[Sequence[Union[str, 'FQN']]]
@@ -310,3 +312,21 @@ class FQN:
 
     def is_object(self) -> bool:
         return not self.is_module()
+
+    def match(self, pattern: str) -> bool:
+        """
+        Check whether the string representation of the FQN matches the
+        given pattern.
+
+        pattern is *not* a regexp: the only character is '*' which matches any
+        string.
+        """
+        r = _compile_pattern(pattern)
+        return r.match(str(self))
+
+
+@functools.lru_cache(maxsize=32768)
+def _compile_pattern(pattern):
+    pattern = re.escape(pattern)
+    regexp = pattern.replace(r'\*', '.*')
+    return re.compile(regexp)
