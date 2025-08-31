@@ -633,9 +633,9 @@ class SPyVM:
     def _w_oparg(self, color: Color, w_x: W_Dynamic) -> W_OpArg:
         w_T = self.dynamic_type(w_x)
         if color == 'red':
-            return W_OpArg(self, 'red', w_T, None, Loc.here(-2))
+            return W_OpArg(self, 'red', w_T, None, Loc.here(-3))
         else:
-            return W_OpArg(self, 'blue', w_T, w_x, Loc.here(-2))
+            return W_OpArg(self, 'blue', w_T, w_x, Loc.here(-3))
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         wop_a = self._w_oparg('blue', w_a)
