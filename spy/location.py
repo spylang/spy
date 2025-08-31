@@ -5,7 +5,7 @@ import dataclasses
 from dataclasses import dataclass
 from typing import Callable, Any
 
-@dataclass
+@dataclass(frozen=True)
 class Loc:
     """
     Represent a location inside the source code

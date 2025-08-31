@@ -19,6 +19,7 @@ from spy.vm.opspec import W_OpArg
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
+from spy.vm.modules.types import TYPES
 from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -415,6 +416,10 @@ class AbstractFrame:
     def eval_expr_StrConst(self, const: ast.StrConst) -> W_OpArg:
         w_val = self.vm.wrap(const.value)
         return W_OpArg(self.vm, 'blue', B.w_str, w_val, const.loc)
+
+    def eval_expr_LocConst(self, const: ast.LocConst) -> W_OpArg:
+        w_val = self.vm.wrap(const.value)
+        return W_OpArg(self.vm, 'blue', TYPES.w_Loc, w_val, const.loc)
 
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_OpArg:
         w_value = self.vm.lookup_global(const.fqn)

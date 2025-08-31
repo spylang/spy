@@ -25,9 +25,13 @@ class W_Loc(W_Object):
     """
     Wrapped version of Loc.
     """
+    __spy_storage_category__ = 'value'
+
     def __init__(self, loc: Loc) -> None:
         self.loc = loc
 
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        return ('Loc', self.loc)
 
 
 @TYPES.builtin_type('LiftedType')
