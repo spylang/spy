@@ -590,42 +590,8 @@ class SPyVM:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
         """
-        # <TEMPORARY HACK>
-        #
-        # we don't want to over-specialize OPERATORs: for example, in case of
-        # W_List.w_GETITEM(obj, i) we care only about the types, and we don't
-        # care whether "i" is blue.
-        #
-        # args_wop contains W_OpArgs which directly comes from ASTFrame, and
-        # so they might be either red or blue: e.g., if you do mylist[0], "0"
-        # corresponds to a blue oparg. The idea is that we want to convert
-        # "non-interesting" blue opargs into red opargs.
-
-        # Ideally, each op_* should be able to specify whether it wants to
-        # specialize only on types (i.e., red W_OpArgs) or also values (i.e.,
-        # blue W_OpArgs). But we don't support that yet, so for now we use
-        # some heuristics which seems to work:
-        #
-        #   1. for "single dispatch" operator, in which we have an "obj" which
-        #      is the receiver of the OP, we keep it blue
-        #
-        #   2. for GETATTR, SETATTR, CALL_METHOD, we keep the attribute/method
-        #      name blue
-        #
-        #   3. everything else becomes red
-        OP = OPERATOR
-        new_args_wop = [wop.as_red(self) for wop in args_wop]
-
-        if w_OP in (OP.w_CALL, OP.w_CALL_METHOD, OP.w_GETATTR,
-                    OP.w_GETITEM, OP.w_SETATTR, OP.w_SETITEM,
-                    OP.w_RAISE):
-            new_args_wop[0] = args_wop[0]
-        if w_OP in (OP.w_GETATTR, OP.w_SETATTR, OP.w_CALL_METHOD):
-            new_args_wop[1] = args_wop[1]
-        # </TEMPORARY HACK>
-
         try:
-            w_opimpl = self.fast_call(w_OP, new_args_wop)
+            w_opimpl = self.fast_call(w_OP, args_wop)
             assert isinstance(w_opimpl, W_OpImpl)
             return w_opimpl
         except SPyError as err:

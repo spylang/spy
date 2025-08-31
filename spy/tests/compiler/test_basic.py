@@ -1048,7 +1048,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo(-3.5) == 3.5
 
-    #@pytest.mark.skip(reason='implement me')
     def test_cannot_call_red_from_blue(self):
         src = """
         @blue
