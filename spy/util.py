@@ -5,7 +5,6 @@ import difflib
 import subprocess
 import inspect
 import py.path
-import pexpect
 from spy.textbuilder import Color
 
 class AnythingClass:
@@ -126,6 +125,7 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
 
     Like unbuffer, this assumes the command only outputs to stdout.
     """
+    import pexpect
     try:
         cmd = cmdline_s[0]
         args = list(cmdline_s[1:])
