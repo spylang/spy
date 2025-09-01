@@ -27,9 +27,9 @@ class W_JsRef(W_Object):
 
     @builtin_method('__call_method__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wm_obj: W_MetaArg, wm_method: W_MetaArg,
-                      *args_wm: W_MetaArg) -> W_OpSpec:
-        n = len(args_wm)
+    def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_method: W_MetaArg,
+                      *args_wam: W_MetaArg) -> W_OpSpec:
+        n = len(args_wam)
         if n == 1:
             return W_OpSpec(JSFFI.w_js_call_method_1)
         else:
@@ -39,8 +39,8 @@ class W_JsRef(W_Object):
 
     @builtin_method('__convert_from__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', wm_T: W_MetaArg, wm_x: W_MetaArg) -> W_OpSpec:
-        w_T = wm_T.w_blueval
+    def w_CONVERT_FROM(vm: 'SPyVM', wam_T: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
+        w_T = wam_T.w_blueval
         if w_T is B.w_str:
             return W_OpSpec(JSFFI.w_js_string)
         elif w_T is B.w_i32:

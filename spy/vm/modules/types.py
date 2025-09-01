@@ -53,13 +53,13 @@ class W_LiftedType(W_Type):
 
     @builtin_method('__call_method__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wm_self: W_MetaArg, wm_method: W_MetaArg,
-                      *args_wm: W_MetaArg) -> W_OpSpec:
-        meth = wm_method.blue_unwrap_str(vm)
+    def w_CALL_METHOD(vm: 'SPyVM', wam_self: W_MetaArg, wam_method: W_MetaArg,
+                      *args_wam: W_MetaArg) -> W_OpSpec:
+        meth = wam_method.blue_unwrap_str(vm)
         if meth != '__lift__':
             return W_OpSpec.NULL
 
-        w_hltype = wm_self.w_blueval
+        w_hltype = wam_self.w_blueval
         assert isinstance(w_hltype, W_LiftedType)
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]
@@ -69,7 +69,7 @@ class W_LiftedType(W_Type):
             assert isinstance(w_hltype, W_LiftedType)
             return W_LiftedObject(w_hltype, w_ll)
 
-        return W_OpSpec(w_lift, list(args_wm))
+        return W_OpSpec(w_lift, list(args_wam))
 
 
 @dataclass
@@ -107,12 +107,12 @@ class W_LiftedObject(W_Object):
 
     @builtin_property('__ll__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GET_ll(vm: 'SPyVM', wm_hl: W_MetaArg) -> W_OpSpec:
-        w_hltype = wm_hl.w_static_T
+    def w_GET_ll(vm: 'SPyVM', wam_hl: W_MetaArg) -> W_OpSpec:
+        w_hltype = wam_hl.w_static_T
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]
 
         @vm.register_builtin_func(w_hltype.fqn, '__unlift__')
         def w_unlift(vm: 'SPyVM', w_hl: HL) -> LL:
             return w_hl.w_ll
-        return W_OpSpec(w_unlift, [wm_hl])
+        return W_OpSpec(w_unlift, [wam_hl])

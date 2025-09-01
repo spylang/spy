@@ -63,10 +63,10 @@ class W_PtrType(W_Type):
 
     @builtin_property('NULL', color='blue', kind='metafunc')
     @staticmethod
-    def w_GET_NULL(vm: 'SPyVM', wm_self: W_MetaArg) -> W_OpSpec:
+    def w_GET_NULL(vm: 'SPyVM', wam_self: W_MetaArg) -> W_OpSpec:
         # NOTE: the precise spelling of the FQN of NULL matters! The
         # C backend emits a #define to match it, see Context.new_ptr_type
-        w_self = wm_self.blue_ensure(vm, UNSAFE.w_ptrtype)
+        w_self = wam_self.blue_ensure(vm, UNSAFE.w_ptrtype)
         assert isinstance(w_self, W_PtrType)
         w_NULL = W_Ptr(w_self, 0, 0)
         vm.add_global(w_self.fqn.join('NULL'), w_NULL)
@@ -85,8 +85,8 @@ class W_MetaBasePtr(W_Type):
 
     @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wm_p: W_MetaArg, wm_T: W_MetaArg)-> W_OpSpec:
-        return W_OpSpec(w_make_ptr_type, [wm_T])
+    def w_GETITEM(vm: 'SPyVM', wam_p: W_MetaArg, wam_T: W_MetaArg)-> W_OpSpec:
+        return W_OpSpec(w_make_ptr_type, [wam_T])
 
 
 @UNSAFE.builtin_type('ptr', W_MetaClass=W_MetaBasePtr)
@@ -145,8 +145,8 @@ class W_Ptr(W_BasePtr):
         return ('ptr', t, self.addr, self.length)
 
     @staticmethod
-    def _get_ptrtype(wm_ptr: W_MetaArg) -> W_PtrType:
-        w_ptrtype = wm_ptr.w_static_T
+    def _get_ptrtype(wam_ptr: W_MetaArg) -> W_PtrType:
+        w_ptrtype = wam_ptr.w_static_T
         if isinstance(w_ptrtype, W_PtrType):
             return w_ptrtype
         else:
@@ -156,8 +156,8 @@ class W_Ptr(W_BasePtr):
 
     @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wm_ptr: W_MetaArg, wm_i: W_MetaArg) -> W_OpSpec:
-        w_ptrtype = W_Ptr._get_ptrtype(wm_ptr)
+    def w_GETITEM(vm: 'SPyVM', wam_ptr: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
+        w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
@@ -199,14 +199,14 @@ class W_Ptr(W_BasePtr):
         # for now we explicitly pass a loc to use to construct a
         # W_PanicError. Probably we want a more generic way to do that instead
         # of hardcodid locs everywhere
-        wm_loc = W_MetaArg.from_w_obj(vm, W_Loc(wm_ptr.loc))
-        return W_OpSpec(w_ptr_getitem_T, [wm_ptr, wm_i, wm_loc])
+        wam_loc = W_MetaArg.from_w_obj(vm, W_Loc(wam_ptr.loc))
+        return W_OpSpec(w_ptr_getitem_T, [wam_ptr, wam_i, wam_loc])
 
     @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
-    def w_SETITEM(vm: 'SPyVM', wm_ptr: W_MetaArg, wm_i: W_MetaArg,
-                  wm_v: W_MetaArg) -> W_OpSpec:
-        w_ptrtype = W_Ptr._get_ptrtype(wm_ptr)
+    def w_SETITEM(vm: 'SPyVM', wam_ptr: W_MetaArg, wam_i: W_MetaArg,
+                  wam_v: W_MetaArg) -> W_OpSpec:
+        w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
@@ -234,14 +234,14 @@ class W_Ptr(W_BasePtr):
                 [vm.wrap(addr), w_v]
             )
 
-        wm_loc = W_MetaArg.from_w_obj(vm, W_Loc(wm_ptr.loc))
-        return W_OpSpec(w_ptr_store_T, [wm_ptr, wm_i, wm_v, wm_loc])
+        wam_loc = W_MetaArg.from_w_obj(vm, W_Loc(wam_ptr.loc))
+        return W_OpSpec(w_ptr_store_T, [wam_ptr, wam_i, wam_v, wam_loc])
 
     @builtin_method('__convert_to__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', wm_T: W_MetaArg, wm_x: W_MetaArg) -> W_OpSpec:
-        w_T = wm_T.w_blueval
-        w_ptrtype = W_Ptr._get_ptrtype(wm_x)
+    def w_CONVERT_TO(vm: 'SPyVM', wam_T: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
+        w_T = wam_T.w_blueval
+        w_ptrtype = W_Ptr._get_ptrtype(wam_x)
         PTR = Annotated[W_Ptr, w_ptrtype]
 
         if w_T is B.w_bool:
@@ -257,50 +257,50 @@ class W_Ptr(W_BasePtr):
 
     @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTRIBUTE(vm: 'SPyVM', wm_ptr: W_MetaArg,
-                       wm_name: W_MetaArg) -> W_OpSpec:
-        return W_Ptr.op_ATTR('get', vm, wm_ptr, wm_name, None)
+    def w_GETATTRIBUTE(vm: 'SPyVM', wam_ptr: W_MetaArg,
+                       wam_name: W_MetaArg) -> W_OpSpec:
+        return W_Ptr.op_ATTR('get', vm, wam_ptr, wam_name, None)
 
     @builtin_method('__setattr__', color='blue', kind='metafunc')
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wm_ptr: W_MetaArg, wm_name: W_MetaArg,
-                  wm_v: W_MetaArg) -> W_OpSpec:
-        return W_Ptr.op_ATTR('set', vm, wm_ptr, wm_name, wm_v)
+    def w_SETATTR(vm: 'SPyVM', wam_ptr: W_MetaArg, wam_name: W_MetaArg,
+                  wam_v: W_MetaArg) -> W_OpSpec:
+        return W_Ptr.op_ATTR('set', vm, wam_ptr, wam_name, wam_v)
 
     @staticmethod
-    def op_ATTR(opkind: str, vm: 'SPyVM', wm_ptr: W_MetaArg, wm_name: W_MetaArg,
-                wm_v: Optional[W_MetaArg]) -> W_OpSpec:
+    def op_ATTR(opkind: str, vm: 'SPyVM', wam_ptr: W_MetaArg, wam_name: W_MetaArg,
+                wam_v: Optional[W_MetaArg]) -> W_OpSpec:
         """
         Implement both w_GETATTRIBUTE and w_SETATTR.
         """
         from .struct import W_StructType
-        w_ptrtype = W_Ptr._get_ptrtype(wm_ptr)
+        w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         # attributes are supported only on ptr-to-structs
         if not w_T.is_struct(vm):
             return W_OpSpec.NULL
 
         assert isinstance(w_T, W_StructType)
-        name = wm_name.blue_unwrap_str(vm)
+        name = wam_name.blue_unwrap_str(vm)
         if name not in w_T.fields:
             return W_OpSpec.NULL
 
         w_field_T = w_T.fields[name]
         offset = w_T.offsets[name]
-        wm_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
+        wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
 
         if opkind == 'get':
             # getfield[field_T](ptr, name, offset)
-            assert wm_v is None
+            assert wam_v is None
             w_func = vm.fast_call(UNSAFE.w_getfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wm_ptr, wm_name, wm_offset])
+            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset])
         else:
             # setfield[field_T](ptr, name, offset, v)
-            assert wm_v is not None
+            assert wam_v is not None
             w_func = vm.fast_call(UNSAFE.w_setfield, [w_field_T])
             assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wm_ptr, wm_name, wm_offset, wm_v])
+            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
 
 
 

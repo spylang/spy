@@ -172,17 +172,17 @@ class TestAttrOp(CompilerTest):
 
             @builtin_property('x2', color='blue', kind='metafunc')
             @staticmethod
-            def w_GET_x2(vm: 'SPyVM', wm_self: 'W_MetaArg') -> W_OpSpec:
+            def w_GET_x2(vm: 'SPyVM', wam_self: 'W_MetaArg') -> W_OpSpec:
                 """
                 This exist just to test that we can have a metafunc as a
                 @builtin_property
                 """
-                w_t = wm_self.w_static_T
+                w_t = wam_self.w_static_T
                 assert W_MyClass._w is w_t
                 @vm.register_builtin_func(w_t.fqn, 'get_y')
                 def w_get_x2(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
                     return vm.wrap(w_self.x * 2)
-                return W_OpSpec(w_get_x2, [wm_self])
+                return W_OpSpec(w_get_x2, [wam_self])
 
 
         # ========== /EXT module for this test =========
@@ -222,7 +222,7 @@ class TestAttrOp(CompilerTest):
 
             @builtin_property('NULL', color='blue', kind='metafunc')
             @staticmethod
-            def w_GET_NULL(vm: 'SPyVM', wm_self: 'W_MetaArg') -> W_OpSpec:
+            def w_GET_NULL(vm: 'SPyVM', wam_self: 'W_MetaArg') -> W_OpSpec:
                 raise NotImplementedError('WIP')
 
 
@@ -257,9 +257,9 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method('__getattribute__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETATTRIBUTE(vm: 'SPyVM', wm_obj: W_MetaArg,
-                               wm_name: W_MetaArg) -> W_OpSpec:
-                attr = wm_name.blue_unwrap_str(vm)
+            def w_GETATTRIBUTE(vm: 'SPyVM', wam_obj: W_MetaArg,
+                               wam_name: W_MetaArg) -> W_OpSpec:
+                attr = wam_name.blue_unwrap_str(vm)
                 if attr == 'x':
                     @vm.register_builtin_func('ext', 'getx')
                     def w_fn(vm: 'SPyVM', w_obj: W_MyClass,
@@ -275,9 +275,9 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method('__setattr__', color='blue', kind='metafunc')
             @staticmethod
-            def w_SETATTR(vm: 'SPyVM', wm_obj: W_MetaArg, wm_name: W_MetaArg,
-                          wm_v: W_MetaArg) -> W_OpSpec:
-                attr = wm_name.blue_unwrap_str(vm)
+            def w_SETATTR(vm: 'SPyVM', wam_obj: W_MetaArg, wam_name: W_MetaArg,
+                          wam_v: W_MetaArg) -> W_OpSpec:
+                attr = wam_name.blue_unwrap_str(vm)
                 if attr == 'x':
                     @vm.register_builtin_func('ext')
                     def w_setx(vm: 'SPyVM', w_obj: W_MyClass,

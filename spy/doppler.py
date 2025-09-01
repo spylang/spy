@@ -273,13 +273,13 @@ class DopplerFrame(ASTFrame):
         return wop
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
-                    args_wm: list[W_MetaArg]) -> W_MetaArg:
+                    args_wam: list[W_MetaArg]) -> W_MetaArg:
         """
         Override ASTFrame.eval_opimpl.
         This is a bug ugly, but too bad: record a mapping from op to w_opimpl.
         """
         self.opimpl[op] = w_opimpl
-        return super().eval_opimpl(op, w_opimpl, args_wm)
+        return super().eval_opimpl(op, w_opimpl, args_wam)
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
         """

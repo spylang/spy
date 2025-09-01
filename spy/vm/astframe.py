@@ -297,9 +297,9 @@ class AbstractFrame:
             self.vm.store_global(sym.fqn, wop.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        wm_tup = self.eval_expr(unpack.value)
-        if wm_tup.w_static_T is not B.w_tuple:
-            t = wm_tup.w_static_T.fqn.human_name
+        wam_tup = self.eval_expr(unpack.value)
+        if wam_tup.w_static_T is not B.w_tuple:
+            t = wam_tup.w_static_T.fqn.human_name
             err = SPyError(
                 'W_TypeError',
                 f'`{t}` does not support unpacking',
@@ -307,7 +307,7 @@ class AbstractFrame:
             err.add('error', f'this is `{t}`', unpack.value.loc)
             raise err
 
-        w_tup = wm_tup.w_val
+        w_tup = wam_tup.w_val
         assert isinstance(w_tup, W_Tuple)
         exp = len(unpack.targets)
         got = len(w_tup.items_w)
@@ -353,21 +353,21 @@ class AbstractFrame:
         )
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
-        wm_obj = self.eval_expr(node.target)
-        wm_name = self.eval_expr(node.attr)
-        wm_value = self.eval_expr(node.value)
+        wam_obj = self.eval_expr(node.target)
+        wam_name = self.eval_expr(node.attr)
+        wam_value = self.eval_expr(node.value)
         w_opimpl = self.vm.call_OP(
             node.loc,
             OP.w_SETATTR,
-            [wm_obj, wm_name, wm_value]
+            [wam_obj, wam_name, wam_value]
         )
-        self.eval_opimpl(node, w_opimpl, [wm_obj, wm_name, wm_value])
+        self.eval_opimpl(node, w_opimpl, [wam_obj, wam_name, wam_value])
 
     def exec_stmt_SetItem(self, node: ast.SetItem) -> None:
-        wm_obj = self.eval_expr(node.target)
-        args_wm = [self.eval_expr(arg) for arg in node.args]
-        wm_v = self.eval_expr(node.value)
-        wops = [wm_obj] + args_wm + [wm_v]
+        wam_obj = self.eval_expr(node.target)
+        args_wam = [self.eval_expr(arg) for arg in node.args]
+        wam_v = self.eval_expr(node.value)
+        wops = [wam_obj] + args_wam + [wam_v]
         w_opimpl = self.vm.call_OP(
             node.loc,
             OP.w_SETITEM,
@@ -379,9 +379,9 @@ class AbstractFrame:
         self.eval_expr(stmt.value)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        wm_cond = self.eval_expr(if_node.test, varname='@if')
-        assert isinstance(wm_cond.w_val, W_Bool)
-        if self.vm.is_True(wm_cond.w_val):
+        wam_cond = self.eval_expr(if_node.test, varname='@if')
+        assert isinstance(wam_cond.w_val, W_Bool)
+        if self.vm.is_True(wam_cond.w_val):
             for stmt in if_node.then_body:
                 self.exec_stmt(stmt)
         else:
@@ -390,17 +390,17 @@ class AbstractFrame:
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
-            wm_cond = self.eval_expr(while_node.test, varname='@while')
-            assert isinstance(wm_cond.w_val, W_Bool)
-            if self.vm.is_False(wm_cond.w_val):
+            wam_cond = self.eval_expr(while_node.test, varname='@while')
+            assert isinstance(wam_cond.w_val, W_Bool)
+            if self.vm.is_False(wam_cond.w_val):
                 break
             for stmt in while_node.body:
                 self.exec_stmt(stmt)
 
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
-        wm_exc = self.eval_expr(raise_node.exc)
-        w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wm_exc])
-        self.eval_opimpl(raise_node, w_opimpl, [wm_exc])
+        wam_exc = self.eval_expr(raise_node.exc)
+        w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])
+        self.eval_opimpl(raise_node, w_opimpl, [wam_exc])
 
     # ==== expressions ====
 
@@ -465,7 +465,7 @@ class AbstractFrame:
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
-                    args_wm: list[W_MetaArg]) -> W_MetaArg:
+                    args_wam: list[W_MetaArg]) -> W_MetaArg:
         # hack hack hack
         # result color:
         #   - pure function and blue arguments -> blue
@@ -474,7 +474,7 @@ class AbstractFrame:
         # XXX what happens if we try to call a blue func with red arguments?
         w_functype = w_opimpl.w_functype
         if w_opimpl.is_pure():
-            colors = [wop.color for wop in args_wm]
+            colors = [wop.color for wop in args_wam]
             color = maybe_blue(*colors)
         else:
             color = w_functype.color
@@ -482,87 +482,87 @@ class AbstractFrame:
         if color == 'red' and self.redshifting:
             w_res = None
         else:
-            args_w = [wop.w_val for wop in args_wm]
+            args_w = [wop.w_val for wop in args_wam]
             w_res = w_opimpl.execute(self.vm, args_w)
 
         return W_MetaArg(self.vm, color, w_functype.w_restype, w_res, op.loc)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_MetaArg:
         w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
-        wm_l = self.eval_expr(binop.left)
-        wm_r = self.eval_expr(binop.right)
-        w_opimpl = self.vm.call_OP(binop.loc, w_OP, [wm_l, wm_r])
+        wam_l = self.eval_expr(binop.left)
+        wam_r = self.eval_expr(binop.right)
+        w_opimpl = self.vm.call_OP(binop.loc, w_OP, [wam_l, wam_r])
         return self.eval_opimpl(
             binop,
             w_opimpl,
-            [wm_l, wm_r]
+            [wam_l, wam_r]
         )
 
     def eval_expr_CmpOp(self, op: ast.CmpOp) -> W_MetaArg:
         w_OP = OP_from_token(op.op) # e.g., w_ADD, w_MUL, etc.
-        wm_l = self.eval_expr(op.left)
-        wm_r = self.eval_expr(op.right)
-        w_opimpl = self.vm.call_OP(op.loc, w_OP, [wm_l, wm_r])
+        wam_l = self.eval_expr(op.left)
+        wam_r = self.eval_expr(op.right)
+        w_opimpl = self.vm.call_OP(op.loc, w_OP, [wam_l, wam_r])
         return self.eval_opimpl(
             op,
             w_opimpl,
-            [wm_l, wm_r]
+            [wam_l, wam_r]
         )
 
     def eval_expr_UnaryOp(self, unop: ast.UnaryOp) -> W_MetaArg:
         w_OP = OP_unary_from_token(unop.op)
-        wm_v = self.eval_expr(unop.value)
-        w_opimpl = self.vm.call_OP(unop.loc, w_OP, [wm_v])
-        return self.eval_opimpl(unop, w_opimpl, [wm_v])
+        wam_v = self.eval_expr(unop.value)
+        w_opimpl = self.vm.call_OP(unop.loc, w_OP, [wam_v])
+        return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
-        wm_func = self.eval_expr(call.func)
-        args_wm = [self.eval_expr(arg) for arg in call.args]
+        wam_func = self.eval_expr(call.func)
+        args_wam = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(
             call.loc,
             OP.w_CALL,
-            [wm_func]+args_wm
+            [wam_func]+args_wam
         )
-        return self.eval_opimpl(call, w_opimpl, [wm_func]+args_wm)
+        return self.eval_opimpl(call, w_opimpl, [wam_func]+args_wam)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
-        wm_obj = self.eval_expr(op.target)
-        wm_meth = self.eval_expr(op.method)
-        args_wm = [self.eval_expr(arg) for arg in op.args]
+        wam_obj = self.eval_expr(op.target)
+        wam_meth = self.eval_expr(op.method)
+        args_wam = [self.eval_expr(arg) for arg in op.args]
         w_opimpl = self.vm.call_OP(
             op.loc,
             OP.w_CALL_METHOD,
-            [wm_obj, wm_meth] + args_wm
+            [wam_obj, wam_meth] + args_wam
         )
         return self.eval_opimpl(
             op,
             w_opimpl,
-            [wm_obj, wm_meth] + args_wm,
+            [wam_obj, wam_meth] + args_wam,
         )
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_MetaArg:
-        wm_obj = self.eval_expr(op.value)
-        args_wm = [self.eval_expr(arg) for arg in op.args]
-        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETITEM, [wm_obj] + args_wm)
-        return self.eval_opimpl(op, w_opimpl, [wm_obj] + args_wm)
+        wam_obj = self.eval_expr(op.value)
+        args_wam = [self.eval_expr(arg) for arg in op.args]
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETITEM, [wam_obj] + args_wam)
+        return self.eval_opimpl(op, w_opimpl, [wam_obj] + args_wam)
 
     def eval_expr_GetAttr(self, op: ast.GetAttr) -> W_MetaArg:
-        wm_obj = self.eval_expr(op.value)
-        wm_name = self.eval_expr(op.attr)
-        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wm_obj, wm_name])
-        return self.eval_opimpl(op, w_opimpl, [wm_obj, wm_name])
+        wam_obj = self.eval_expr(op.value)
+        wam_name = self.eval_expr(op.attr)
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
+        return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
     def eval_expr_List(self, op: ast.List) -> W_Object:
-        items_wm = []
+        items_wam = []
         w_itemtype = None
         color: Color = 'red' # XXX should be blue?
         for item in op.items:
-            wm_item = self.eval_expr(item)
-            items_wm.append(wm_item)
-            color = maybe_blue(color, wm_item.color)
+            wam_item = self.eval_expr(item)
+            items_wam.append(wam_item)
+            color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:
-                w_itemtype = wm_item.w_static_T
-            w_itemtype = self.vm.union_type(w_itemtype, wm_item.w_static_T)
+                w_itemtype = wam_item.w_static_T
+            w_itemtype = self.vm.union_type(w_itemtype, wam_item.w_static_T)
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None
@@ -570,18 +570,18 @@ class AbstractFrame:
         if color == 'red' and self.redshifting:
             w_val = None
         else:
-            items_w = [wop.w_val for wop in items_wm]
+            items_w = [wop.w_val for wop in items_wam]
             w_val = W_List(w_listtype, items_w)
         return W_MetaArg(self.vm, color, w_listtype, w_val, op.loc)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
-        items_wm = [self.eval_expr(item) for item in op.items]
-        colors = [wop.color for wop in items_wm]
+        items_wam = [self.eval_expr(item) for item in op.items]
+        colors = [wop.color for wop in items_wam]
         color = maybe_blue(*colors)
         if color == 'red' and self.redshifting:
             w_val = None
         else:
-            items_w = [wop.w_val for wop in items_wm]
+            items_w = [wop.w_val for wop in items_wam]
             w_val = W_Tuple(items_w)
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
 

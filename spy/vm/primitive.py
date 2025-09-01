@@ -46,14 +46,14 @@ class W_I32(W_Object):
 
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
-    def w_NEW(vm: 'SPyVM', wm_cls: 'W_MetaArg',
-              *args_wm: 'W_MetaArg') -> 'W_OpSpec':
+    def w_NEW(vm: 'SPyVM', wam_cls: 'W_MetaArg',
+              *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec
-        if len(args_wm) != 1:
+        if len(args_wam) != 1:
             return W_OpSpec.NULL
-        wm_arg = args_wm[0]
-        if wm_arg.w_static_T == B.w_f64:
-            return W_OpSpec(OP.w_f64_to_i32, [wm_arg])
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_f64:
+            return W_OpSpec(OP.w_f64_to_i32, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:
@@ -113,14 +113,14 @@ class W_F64(W_Object):
 
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
-    def w_NEW(vm: 'SPyVM', wm_cls: 'W_MetaArg',
-              *args_wm: 'W_MetaArg') -> 'W_OpSpec':
+    def w_NEW(vm: 'SPyVM', wam_cls: 'W_MetaArg',
+              *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec
-        if len(args_wm) != 1:
+        if len(args_wam) != 1:
             return W_OpSpec.NULL
-        wm_arg = args_wm[0]
-        if wm_arg.w_static_T == B.w_i32:
-            return W_OpSpec(OP.w_i32_to_f64, [wm_arg])
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_f64, [wam_arg])
         return W_OpSpec.NULL
 
 

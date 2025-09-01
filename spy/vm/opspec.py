@@ -233,9 +233,9 @@ class W_MetaArg(W_Object):
 
     @builtin_method('__convert_from__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', wm_T: 'W_MetaArg',
-                       wm_x: 'W_MetaArg') -> 'W_OpSpec':
-        w_T = wm_T.w_blueval
+    def w_CONVERT_FROM(vm: 'SPyVM', wam_T: 'W_MetaArg',
+                       wam_x: 'W_MetaArg') -> 'W_OpSpec':
+        w_T = wam_T.w_blueval
         assert isinstance(w_T, W_Type)
         if vm.issubclass(w_T, B.w_type):
             @vm.register_builtin_func(W_MetaArg._w.fqn, 'from_type')
@@ -285,22 +285,22 @@ class W_OpSpec(W_Object):
     #
     # The invariants are
     #    - at most one of _w_func and _w_const should be non None
-    #    - _args_wm makes sense only if _w_func is non None
+    #    - _args_wam makes sense only if _w_func is non None
     #    - is_direct_call makes sense only if _w_const is None
     _w_func: Optional[W_Func]
-    _args_wm: Optional[list[W_MetaArg]]
+    _args_wam: Optional[list[W_MetaArg]]
     _w_const: Optional[W_Object]
     is_direct_call: bool
 
     # default constructor, for "NULL", "simple" and "complex" cases
     def __init__(self,
                  w_func: Optional[W_Func],
-                 args_wm: Optional[list[W_MetaArg]] = None,
+                 args_wam: Optional[list[W_MetaArg]] = None,
                  *,
                  is_direct_call: bool = False,
                 ) -> None:
         self._w_func = w_func
-        self._args_wm = args_wm
+        self._args_wam = args_wam
         self.is_direct_call = is_direct_call
         self._w_const = None
 
@@ -314,7 +314,7 @@ class W_OpSpec(W_Object):
     def __repr__(self) -> str:
         if self._w_func is None:
             return f"<spy OpSpec NULL>"
-        elif self._args_wm is None:
+        elif self._args_wam is None:
             fqn = self._w_func.fqn
             return f"<spy OpSpec {fqn}>"
         elif self._w_const is not None:
@@ -327,10 +327,10 @@ class W_OpSpec(W_Object):
         return self._w_func is None and self._w_const is None
 
     def is_simple(self) -> bool:
-        return self._w_func is not None and self._args_wm is None
+        return self._w_func is not None and self._args_wam is None
 
     def is_complex(self) -> bool:
-        return self._w_func is not None and self._args_wm is not None
+        return self._w_func is not None and self._args_wam is not None
 
     def is_const(self) -> bool:
         return self._w_const is not None
@@ -344,7 +344,7 @@ class W_OpSpec(W_Object):
 
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
-    def w_NEW(vm: 'SPyVM', wm_cls: W_MetaArg, *args_wm: W_MetaArg) -> 'W_OpSpec':
+    def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> 'W_OpSpec':
         """
         Operator for creating OpSpec instances with different argument counts.
         - OpSpec(func) -> Simple OpSpec
@@ -353,17 +353,17 @@ class W_OpSpec(W_Object):
         from spy.vm.function import W_Func
         from spy.vm.list import W_MetaArgList
 
-        w_T = wm_cls.w_blueval
+        w_T = wam_cls.w_blueval
         assert isinstance(w_T, W_Type)
 
-        if len(args_wm) == 1:
+        if len(args_wam) == 1:
             # Simple case: OpSpec(func)
             @vm.register_builtin_func(w_T.fqn, 'new1')
             def w_new1(vm: 'SPyVM', w_cls: W_Type, w_func: W_Func) -> W_OpSpec:
                 return W_OpSpec(w_func)
             return W_OpSpec(w_new1)
 
-        elif len(args_wm) == 2:
+        elif len(args_wam) == 2:
             # OpSpec(func, args) case
             @vm.register_builtin_func(w_T.fqn, 'new2')
             def w_new2(vm: 'SPyVM', w_cls: W_Type,

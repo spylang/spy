@@ -56,7 +56,7 @@ class W_MetaBaseList(W_Type):
 
     @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wm_obj: W_MetaArg, wm_i: W_MetaArg) -> W_OpSpec:
+    def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
         return W_OpSpec(w_make_list_type)
 
@@ -102,8 +102,8 @@ class W_List(W_BaseList, Generic[T]):
         return [vm.unwrap(w_item) for w_item in self.items_w]
 
     @staticmethod
-    def _get_listtype(wm_list: W_MetaArg) -> W_ListType:
-        w_listtype = wm_list.w_static_T
+    def _get_listtype(wam_list: W_MetaArg) -> W_ListType:
+        w_listtype = wam_list.w_static_T
         if isinstance(w_listtype, W_ListType):
             return w_listtype
         else:
@@ -113,9 +113,9 @@ class W_List(W_BaseList, Generic[T]):
 
     @builtin_method('__getitem__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wm_list: W_MetaArg, wm_i: W_MetaArg) -> W_OpSpec:
+    def w_GETITEM(vm: 'SPyVM', wam_list: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
-        w_listtype = W_List._get_listtype(wm_list)
+        w_listtype = W_List._get_listtype(wam_list)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_List, w_listtype]
         T = Annotated[W_Object, w_T]
@@ -129,10 +129,10 @@ class W_List(W_BaseList, Generic[T]):
 
     @builtin_method('__setitem__', color='blue', kind='metafunc')
     @staticmethod
-    def w_SETITEM(vm: 'SPyVM', wm_list: W_MetaArg, wm_i: W_MetaArg,
-                  wm_v: W_MetaArg) -> W_OpSpec:
+    def w_SETITEM(vm: 'SPyVM', wam_list: W_MetaArg, wam_i: W_MetaArg,
+                  wam_v: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
-        w_listtype = W_List._get_listtype(wm_list)
+        w_listtype = W_List._get_listtype(wam_list)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_List, w_listtype]
         T = Annotated[W_Object, w_T]
@@ -146,13 +146,13 @@ class W_List(W_BaseList, Generic[T]):
 
     @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wm_l: W_MetaArg, wm_r: W_MetaArg) -> W_OpSpec:
+    def w_EQ(vm: 'SPyVM', wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
-        w_ltype = wm_l.w_static_T
-        w_rtype = wm_r.w_static_T
+        w_ltype = wam_l.w_static_T
+        w_rtype = wam_r.w_static_T
         if w_ltype is not w_rtype:
             return W_OpSpec.NULL
-        w_listtype = W_List._get_listtype(wm_l)
+        w_listtype = W_List._get_listtype(wam_l)
         LIST = Annotated[W_List, w_listtype]
 
         @vm.register_builtin_func(w_listtype.fqn)
@@ -181,5 +181,5 @@ w_oparglist_type = _make_list_type(OP.w_OpArg)
 PREBUILT_LIST_TYPES[OP.w_OpArg] = w_oparglist_type
 
 W_MetaArgList = Annotated[W_List[W_MetaArg], w_oparglist_type]
-def make_oparg_list(args_wm: list[W_MetaArg]) -> W_MetaArgList:
-   return W_List(w_oparglist_type, args_wm)  # type: ignore
+def make_oparg_list(args_wam: list[W_MetaArg]) -> W_MetaArgList:
+   return W_List(w_oparglist_type, args_wam)  # type: ignore

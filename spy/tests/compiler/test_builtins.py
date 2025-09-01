@@ -38,7 +38,7 @@ class W_SeqMetaLen(W_Object):
 
     @builtin_method('__len__', color='blue', kind='metafunc')
     @staticmethod
-    def w_LEN(vm: 'SPyVM', wm_self: W_MetaArg) -> W_OpSpec:
+    def w_LEN(vm: 'SPyVM', wam_self: W_MetaArg) -> W_OpSpec:
         @vm.register_builtin_func('ext')
         def w_len(vm: 'SPyVM', w_self: W_SeqMetaLen) -> W_I32:
             return w_self.w_size

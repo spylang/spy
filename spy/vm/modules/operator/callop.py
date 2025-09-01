@@ -10,12 +10,12 @@ if TYPE_CHECKING:
 
 
 @OP.builtin_func(color='blue')
-def w_CALL(vm: 'SPyVM', wm_obj: W_MetaArg, *args_wm: W_MetaArg) -> W_OpImpl:
+def w_CALL(vm: 'SPyVM', wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opspec = W_OpSpec.NULL
-    w_T = wm_obj.w_static_T
+    w_T = wam_obj.w_static_T
 
-    newargs_wm = [wm_obj] + list(args_wm)
+    newargs_wam = [wam_obj] + list(args_wam)
     errmsg = 'cannot call objects of type `{0}`'
 
     if isinstance(w_T, W_FuncType):
@@ -24,10 +24,10 @@ def w_CALL(vm: 'SPyVM', wm_obj: W_MetaArg, *args_wm: W_MetaArg) -> W_OpImpl:
         # message in case we try to call a plain function with [].
         assert w_T.pyclass is W_Func
         if w_T.kind == 'plain':
-            w_opspec = W_Func.op_CALL(vm, wm_obj, *args_wm) # type: ignore
+            w_opspec = W_Func.op_CALL(vm, wam_obj, *args_wam) # type: ignore
         elif w_T.kind == 'metafunc':
             assert w_T.pyclass is W_Func
-            w_opspec = W_Func.op_METACALL(vm, wm_obj, *args_wm) # type: ignore
+            w_opspec = W_Func.op_METACALL(vm, wam_obj, *args_wam) # type: ignore
         elif w_T.kind == 'generic':
             errmsg = 'generic functions must be called via `[...]`'
         else:
@@ -36,45 +36,45 @@ def w_CALL(vm: 'SPyVM', wm_obj: W_MetaArg, *args_wm: W_MetaArg) -> W_OpImpl:
     elif w_T is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_call)
     elif w_call := w_T.lookup_func('__call__'):
-        w_opspec = vm.fast_metacall(w_call, newargs_wm)
+        w_opspec = vm.fast_metacall(w_call, newargs_wam)
 
     return typecheck_opspec(
         vm,
         w_opspec,
-        newargs_wm,
+        newargs_wam,
         dispatch = 'single',
         errmsg = errmsg,
     )
 
 
 @OP.builtin_func(color='blue')
-def w_CALL_METHOD(vm: 'SPyVM', wm_obj: W_MetaArg, wm_method: W_MetaArg,
-                  *args_wm: W_MetaArg) -> W_OpImpl:
+def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_method: W_MetaArg,
+                  *args_wam: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opspec = W_OpSpec.NULL
-    w_T = wm_obj.w_static_T
+    w_T = wam_obj.w_static_T
 
     # if the type provides __call_method__, use it
     if w_call_method := w_T.lookup_func('__call_method__'):
-        newargs_wm = [wm_obj, wm_method] + list(args_wm)
-        w_opspec = vm.fast_metacall(w_call_method, newargs_wm)
+        newargs_wam = [wam_obj, wam_method] + list(args_wam)
+        w_opspec = vm.fast_metacall(w_call_method, newargs_wam)
 
     # else, the default implementation is to look into the type dict
     # XXX: is it correct here to assume that we get a blue string?
-    meth = wm_method.blue_unwrap_str(vm)
+    meth = wam_method.blue_unwrap_str(vm)
 
     if w_func := w_T.dict_w.get(meth):
         # XXX: this should be turned into a proper exception, but for now we
         # cannot even write a test because we don't any way to inject
         # non-methods in the type dict
         assert isinstance(w_func, W_Func)
-        # call the w_func, passing wm_obj as the implicit self
-        w_opspec = W_OpSpec(w_func, [wm_obj] + list(args_wm))
+        # call the w_func, passing wam_obj as the implicit self
+        w_opspec = W_OpSpec(w_func, [wam_obj] + list(args_wam))
 
     return typecheck_opspec(
         vm,
         w_opspec,
-        [wm_obj, wm_method] + list(args_wm),
+        [wam_obj, wam_method] + list(args_wam),
         dispatch = 'single',
         errmsg = f'method `{{0}}::{meth}` does not exist'
     )

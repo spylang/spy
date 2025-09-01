@@ -75,17 +75,17 @@ class MultiMethodTable:
     def get_unary_opspec(
         self,
         op: str,
-        wm_v: W_MetaArg
+        wam_v: W_MetaArg
     ) -> Optional[W_OpSpec]:
-        w_vtype = wm_v.w_static_T
+        w_vtype = wam_v.w_static_T
         return self.lookup(op, w_vtype, None)
 
     def get_binary_opspec(
         self,
         op: str,
-        wm_l: W_MetaArg,
-        wm_r: W_MetaArg
+        wam_l: W_MetaArg,
+        wam_r: W_MetaArg
     ) -> Optional[W_OpSpec]:
-        w_ltype = wm_l.w_static_T
-        w_rtype = wm_r.w_static_T
+        w_ltype = wam_l.w_static_T
+        w_rtype = wam_r.w_static_T
         return self.lookup(op, w_ltype, w_rtype)

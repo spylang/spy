@@ -217,8 +217,8 @@ class W_Object:
     #
     #     # implement __getattribute__ as a metafunc
     #     @builtin_method('__getattribute__', color='blue', kind='metafunc')
-    #     def w_GETATTRIBUTE(vm: 'SPyVM', wm_self: W_MetaArg,
-    #                        wm_name: W_MetaArg) -> W_OpSpec:
+    #     def w_GETATTRIBUTE(vm: 'SPyVM', wam_self: W_MetaArg,
+    #                        wam_name: W_MetaArg) -> W_OpSpec:
     #         ...
     #
     # The naming convention at interp-level is the following:
@@ -230,51 +230,51 @@ class W_Object:
     # check the signatures
 
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wm_a: 'W_MetaArg', wm_b: 'W_MetaArg') -> 'W_OpSpec':
+    def w_EQ(vm: 'SPyVM', wam_a: 'W_MetaArg', wam_b: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_NE(vm: 'SPyVM', wm_a: 'W_MetaArg', wm_b: 'W_MetaArg') -> 'W_OpSpec':
+    def w_NE(vm: 'SPyVM', wam_a: 'W_MetaArg', wam_b: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_GETATTRIBUTE(vm: 'SPyVM', wm_obj: 'W_MetaArg',
-                       wm_name: 'W_MetaArg') -> 'W_OpSpec':
+    def w_GETATTRIBUTE(vm: 'SPyVM', wam_obj: 'W_MetaArg',
+                       wam_name: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_SETATTR(vm: 'SPyVM', wm_obj: 'W_MetaArg', wm_name: 'W_MetaArg',
-                  wm_v: 'W_MetaArg') -> 'W_OpSpec':
+    def w_SETATTR(vm: 'SPyVM', wam_obj: 'W_MetaArg', wam_name: 'W_MetaArg',
+                  wam_v: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wm_obj: 'W_MetaArg',
-                  wm_i: 'W_MetaArg') -> 'W_OpSpec':
+    def w_GETITEM(vm: 'SPyVM', wam_obj: 'W_MetaArg',
+                  wam_i: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_SETITEM(vm: 'SPyVM', wm_obj: 'W_MetaArg', wm_i: 'W_MetaArg',
-                  wm_v: 'W_MetaArg') -> 'W_OpSpec':
+    def w_SETITEM(vm: 'SPyVM', wam_obj: 'W_MetaArg', wam_i: 'W_MetaArg',
+                  wam_v: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CALL(vm: 'SPyVM', wm_obj: 'W_MetaArg',
-                *args_wm: 'W_MetaArg') -> 'W_OpSpec':
+    def w_CALL(vm: 'SPyVM', wam_obj: 'W_MetaArg',
+                *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wm_obj: 'W_MetaArg', wm_method: 'W_MetaArg',
-                      *args_wm: 'W_MetaArg') -> 'W_OpSpec':
+    def w_CALL_METHOD(vm: 'SPyVM', wam_obj: 'W_MetaArg', wam_method: 'W_MetaArg',
+                      *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', wm_T: 'W_MetaArg',
-                       wm_x: 'W_MetaArg') -> 'W_OpSpec':
+    def w_CONVERT_FROM(vm: 'SPyVM', wam_T: 'W_MetaArg',
+                       wam_x: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', wm_T: 'W_MetaArg',
-                     wm_x: 'W_MetaArg') -> 'W_OpSpec':
+    def w_CONVERT_TO(vm: 'SPyVM', wam_T: 'W_MetaArg',
+                     wam_x: 'W_MetaArg') -> 'W_OpSpec':
         raise NotImplementedError('this should never be called')
 
 
@@ -562,17 +562,17 @@ class W_Type(W_Object):
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method('__getattribute__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GETATTRIBUTE(vm: 'SPyVM', wm_T: 'W_MetaArg',
-                       wm_name: 'W_MetaArg') -> 'W_OpSpec':
+    def w_GETATTRIBUTE(vm: 'SPyVM', wam_T: 'W_MetaArg',
+                       wam_name: 'W_MetaArg') -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec, W_MetaArg
-        if wm_T.color != 'blue':
+        if wam_T.color != 'blue':
             # it's unclear how to implement getattr on red types, since we
             # need to have access to their dict.
             raise WIP('getattr on red types')
 
-        w_T = wm_T.w_blueval
+        w_T = wam_T.w_blueval
         assert isinstance(w_T, W_Type)
-        name = wm_name.blue_unwrap_str(vm)
+        name = wam_name.blue_unwrap_str(vm)
 
         # 1. try to lookup the attribute on the metatype. If it's a
         # descriptor, call it.
@@ -580,8 +580,8 @@ class W_Type(W_Object):
         w_meta_attr = w_meta_T.lookup(name)
         if w_meta_attr is not None:
             if w_get := vm.dynamic_type(w_meta_attr).lookup_func('__get__'):
-                wm_meta_attr = W_MetaArg.from_w_obj(vm, w_meta_attr)
-                return vm.fast_metacall(w_get, [wm_meta_attr, wm_T])
+                wam_meta_attr = W_MetaArg.from_w_obj(vm, w_meta_attr)
+                return vm.fast_metacall(w_get, [wam_meta_attr, wam_T])
 
         # 2. Look in the __dict__ of this type and its bases
         w_attr = w_T.lookup(name)
@@ -603,23 +603,23 @@ class W_Type(W_Object):
 
     @builtin_method('__call__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CALL(vm: 'SPyVM', wm_t: 'W_MetaArg',
-               *args_wm: 'W_MetaArg') -> 'W_OpSpec':
+    def w_CALL(vm: 'SPyVM', wam_t: 'W_MetaArg',
+               *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         """
         Calling a type means to instantiate it, by calling its __new__
         """
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
 
-        if wm_t.color != 'blue':
+        if wam_t.color != 'blue':
             err = SPyError(
                 'W_TypeError',
                 f"instantiation of red types is not yet supported",
             )
-            err.add('error', f"this is red", loc=wm_t.loc)
+            err.add('error', f"this is red", loc=wam_t.loc)
             raise err
 
-        w_T = wm_t.w_blueval
+        w_T = wam_t.w_blueval
         assert isinstance(w_T, W_Type)
 
         # try to call __new__
@@ -627,23 +627,23 @@ class W_Type(W_Object):
             # this is a bit of ad-hoc logic around normal __new__ vs metafunc
             # __new__: when it's a metafunc we also want to pass the OpArg of
             # the type itself (so that the function can reach
-            # e.g. wm_p.w_blueval), but for normal __new__ by default we
+            # e.g. wam_p.w_blueval), but for normal __new__ by default we
             # don't pass it (because usually it's not needed)
             if w_new.w_functype.kind == 'metafunc':
-                new_args_wm = [wm_t] + list(args_wm)
+                new_args_wam = [wam_t] + list(args_wam)
             else:
-                new_args_wm = list(args_wm)
+                new_args_wam = list(args_wam)
 
-            w_opspec = vm.fast_metacall(w_new, new_args_wm)
+            w_opspec = vm.fast_metacall(w_new, new_args_wam)
             return w_opspec
 
         # no __new__, error out
         clsname = w_T.fqn.human_name
         err = SPyError('W_TypeError', f"cannot instantiate `{clsname}`")
         err.add('error', f"`{clsname}` does not have a method `__new__`",
-                loc=wm_t.loc)
-        if wm_t.sym:
-            err.add('note', f"{clsname} defined here", wm_t.sym.loc)
+                loc=wam_t.loc)
+        if wam_t.sym:
+            err.add('note', f"{clsname} defined here", wam_t.sym.loc)
         raise err
 
 

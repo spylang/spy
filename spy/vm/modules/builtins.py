@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 PY_PRINT = print  # type: ignore
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_STATIC_TYPE(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
-    return W_OpSpec.const(wm_obj.w_static_T)
+def w_STATIC_TYPE(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
+    return W_OpSpec.const(wam_obj.w_static_T)
 
 @BUILTINS.builtin_func
 def w_abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:
@@ -44,8 +44,8 @@ def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
 
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_print(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
-    w_T = wm_obj.w_static_T
+def w_print(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
     if w_T is B.w_i32:
         return W_OpSpec(B.w_print_i32)
     elif w_T is B.w_f64:
@@ -59,13 +59,13 @@ def w_print(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
     elif w_T is B.w_dynamic:
         return W_OpSpec(B.w_print_dynamic)
 
-    elif wm_obj.color == 'blue':
+    elif wam_obj.color == 'blue':
         # if we print something of unsupported type BUT it's a blue object, we
         # can precompute its repr now and just print it as a string. This
         # allows to print things like types even with the C backend.
-        s = str(wm_obj.w_blueval)
-        wm_s = W_MetaArg.from_w_obj(vm, vm.wrap(s))
-        return W_OpSpec(w_print_str, [wm_s])
+        s = str(wam_obj.w_blueval)
+        wam_s = W_MetaArg.from_w_obj(vm, vm.wrap(s))
+        return W_OpSpec(w_print_str, [wam_s])
 
     else:
         # printing a red value of unsupported type. As a fallback, we just use
@@ -77,7 +77,7 @@ def w_print(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
         'W_TypeError',
         f'cannot call print(`{t}`)',
         f'this is `{t}`',
-        wm_obj.loc
+        wam_obj.loc
     )
 
 
@@ -110,10 +110,10 @@ def w_print_object(vm: 'SPyVM', w_x: W_Object) -> None:
     PY_PRINT(str(w_x))
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_len(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
-    w_T = wm_obj.w_static_T
+def w_len(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
     if w_fn := w_T.lookup_func('__len__'):
-        w_opspec = vm.fast_metacall(w_fn, [wm_obj])
+        w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 
     t = w_T.fqn.human_name
@@ -121,7 +121,7 @@ def w_len(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
         'W_TypeError',
         f'cannot call len(`{t}`)',
         f'this is `{t}`',
-        wm_obj.loc
+        wam_obj.loc
     )
 
 

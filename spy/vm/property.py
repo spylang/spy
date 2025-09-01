@@ -17,8 +17,8 @@ class W_Property(W_Object):
 
     @builtin_method('__get__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GET(vm: 'SPyVM', wm_self: 'W_MetaArg', wm_o: 'W_MetaArg') -> 'W_OpSpec':
-        w_prop = wm_self.w_blueval
+    def w_GET(vm: 'SPyVM', wam_self: 'W_MetaArg', wam_o: 'W_MetaArg') -> 'W_OpSpec':
+        w_prop = wam_self.w_blueval
         assert isinstance(w_prop, W_Property)
         w_func = w_prop.w_func
-        return vm.fast_metacall(w_func, [wm_o])
+        return vm.fast_metacall(w_func, [wam_o])

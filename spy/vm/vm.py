@@ -566,7 +566,7 @@ class SPyVM:
             return self._raw_call(w_func, args_w)
 
     def fast_metacall(vm: 'SPyVM', w_func: W_Func,
-                      args_wm: Sequence[W_MetaArg]) -> W_OpSpec:
+                      args_wam: Sequence[W_MetaArg]) -> W_OpSpec:
         """
         Return the OpSpec needed to call the given function.
 
@@ -576,24 +576,24 @@ class SPyVM:
         returns.
         """
         if w_func.w_functype.kind == 'metafunc':
-            w_res = vm.fast_call(w_func, args_wm)
+            w_res = vm.fast_call(w_func, args_wam)
             assert isinstance(w_res, W_OpSpec)
             return w_res
         else:
-            return W_OpSpec(w_func, list(args_wm))
+            return W_OpSpec(w_func, list(args_wam))
 
 
     def call_OP(
             self,
             loc: Optional[Loc],
             w_OP: W_Func,
-            args_wm: Sequence[W_MetaArg]
+            args_wam: Sequence[W_MetaArg]
     ) -> W_OpImpl:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
         """
         try:
-            w_opimpl = self.fast_call(w_OP, args_wm)
+            w_opimpl = self.fast_call(w_OP, args_wam)
             assert isinstance(w_opimpl, W_OpImpl)
             return w_opimpl
         except SPyError as err:
@@ -638,17 +638,17 @@ class SPyVM:
             return W_MetaArg(self, 'blue', w_T, w_x, Loc.here(-3))
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wm_a = self._w_metaarg('blue', w_a)
-        wm_b = self._w_metaarg('blue', w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wm_a, wm_b])
+        wam_a = self._w_metaarg('blue', w_a)
+        wam_b = self._w_metaarg('blue', w_b)
+        w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wm_a = self._w_metaarg('blue', w_a)
-        wm_b = self._w_metaarg('blue', w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wm_a, wm_b])
+        wam_a = self._w_metaarg('blue', w_a)
+        wam_b = self._w_metaarg('blue', w_b)
+        w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wam_a, wam_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
@@ -657,9 +657,9 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wm_obj = self._w_metaarg('blue', w_obj)
-        wm_i = self._w_metaarg('blue', w_i)
-        w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wm_obj, wm_i])
+        wam_obj = self._w_metaarg('blue', w_obj)
+        wam_i = self._w_metaarg('blue', w_i)
+        w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wam_obj, wam_i])
         return w_opimpl.execute(self, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
@@ -695,17 +695,17 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        wm_a = self._w_metaarg('blue', w_a)
-        wm_b = self._w_metaarg('blue', w_b)
+        wam_a = self._w_metaarg('blue', w_a)
+        wam_b = self._w_metaarg('blue', w_b)
         try:
-            w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wm_a, wm_b])
+            w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
-            w_ta = wm_a.w_static_T
-            w_tb = wm_b.w_static_T
+            w_ta = wam_a.w_static_T
+            w_tb = wam_b.w_static_T
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 

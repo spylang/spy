@@ -42,11 +42,11 @@ class TestOpSpec(CompilerTest):
         w_opspec = mod.foo(unwrap=False)
         assert isinstance(w_opspec, W_OpSpec)
         assert not w_opspec.is_simple()
-        assert w_opspec._args_wm is not None
-        assert len(w_opspec._args_wm) == 1
+        assert w_opspec._args_wam is not None
+        assert len(w_opspec._args_wam) == 1
 
         # Check the OpArg stored in the arguments list
-        wop = w_opspec._args_wm[0]
+        wop = w_opspec._args_wam[0]
         assert isinstance(wop, W_MetaArg)
         assert wop.color == 'blue'
         assert wop.w_static_T is B.w_i32
@@ -120,10 +120,10 @@ class TestOpSpec(CompilerTest):
         def bar() -> OpArg:
             return 42
         """)
-        wm_x = mod.foo(unwrap=False)
-        assert wm_x.color == 'red'
-        assert wm_x.w_static_T is B.w_i32
-        assert wm_x._w_val is None
+        wam_x = mod.foo(unwrap=False)
+        assert wam_x.color == 'red'
+        assert wam_x.w_static_T is B.w_i32
+        assert wam_x._w_val is None
 
         errors = expect_errors(
             'mismatched types',

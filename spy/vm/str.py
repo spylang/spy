@@ -74,11 +74,11 @@ class W_Str(W_Object):
 
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
-    def w_NEW(vm: 'SPyVM', wm_cls: W_MetaArg, *args_wm: W_MetaArg) -> 'W_OpSpec':
+    def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> 'W_OpSpec':
         from spy.vm.b import B
-        if len(args_wm) == 1 and args_wm[0].w_static_T is B.w_i32:
-            wm_i = args_wm[0]
-            return W_OpSpec(w_int2str, [wm_i])
+        if len(args_wam) == 1 and args_wam[0].w_static_T is B.w_i32:
+            wam_i = args_wam[0]
+            return W_OpSpec(w_int2str, [wam_i])
         else:
             return W_OpSpec.NULL
 

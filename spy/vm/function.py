@@ -226,31 +226,31 @@ class W_Func(W_Object):
     # callop.w_CALL and itemop.w_GETITEM, depending on whether w_functype.kind
     # is 'plain' or 'generic'.
     @staticmethod
-    def op_CALL(vm: 'SPyVM', wm_func: 'W_MetaArg',
-                *args_wm: 'W_MetaArg') -> 'W_OpSpec':
+    def op_CALL(vm: 'SPyVM', wam_func: 'W_MetaArg',
+                *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         """
         Return an OpSpec which directly calls this function.
         """
         from spy.vm.opspec import W_OpSpec
-        w_func = wm_func.w_blueval
+        w_func = wam_func.w_blueval
         assert isinstance(w_func, W_Func)
         assert w_func.w_functype.kind != 'metafunc'
         return W_OpSpec(
             w_func,
-            list(args_wm),
+            list(args_wam),
             is_direct_call = True,
         )
 
     @staticmethod
-    def op_METACALL(vm: 'SPyVM', wm_func: 'W_MetaArg',
-                    *args_wm: 'W_MetaArg') -> 'W_OpSpec':
+    def op_METACALL(vm: 'SPyVM', wam_func: 'W_MetaArg',
+                    *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         """
         Call this function and use the return value as the OpSpec
         """
         from spy.vm.opspec import W_OpSpec, W_MetaArg
         from spy.vm.typechecker import typecheck_opspec
 
-        w_func = wm_func.w_blueval
+        w_func = wam_func.w_blueval
         assert isinstance(w_func, W_Func)
         assert w_func.w_functype.kind == 'metafunc'
 
@@ -259,16 +259,16 @@ class W_Func(W_Object):
         # the metafunc has the right signature. Instead, we do a full
         # OpSpec/typecheck/OpImpl dance, to raise proper TypeErrors if needed.
         # This is a bit of code duplication with callop.w_CALL, but too bad.
-        meta_args_wms = [W_MetaArg.from_w_obj(vm, wop) for wop in args_wm]
-        w_meta_opspec = W_OpSpec(w_func, meta_args_wms)
+        meta_args_wams = [W_MetaArg.from_w_obj(vm, wop) for wop in args_wam]
+        w_meta_opspec = W_OpSpec(w_func, meta_args_wams)
         w_meta_opimpl = typecheck_opspec(
             vm,
             w_meta_opspec,
-            meta_args_wms,
+            meta_args_wams,
             dispatch = 'single',
             errmsg = 'cannot call objects of type `{0}`'
         )
-        w_opspec = w_meta_opimpl.execute(vm, meta_args_wms)
+        w_opspec = w_meta_opimpl.execute(vm, meta_args_wams)
 
         if not isinstance(w_opspec, W_OpSpec):
             w_T = vm.dynamic_type(w_opspec)
@@ -277,16 +277,16 @@ class W_Func(W_Object):
                 f'got `{w_T.fqn.human_name}`'
             )
             err = SPyError('W_TypeError', msg)
-            err.add('error', 'this is a metafunc', wm_func.loc)
+            err.add('error', 'this is a metafunc', wam_func.loc)
             err.add('note', 'metafunc defined here', w_func.def_loc)
             raise err
 
         # if we return a simple opspec, it will be called with arguments
-        # [wm_func, *args_wm]. But what we want is to call it with just
-        # *args_wm. This is the equivalent of passing "list(args_wm)" in
+        # [wam_func, *args_wam]. But what we want is to call it with just
+        # *args_wam. This is the equivalent of passing "list(args_wam)" in
         # op_CALL.
         if w_opspec.is_simple():
-            w_opspec._args_wm = list(args_wm)
+            w_opspec._args_wam = list(args_wam)
 
         return w_opspec
 

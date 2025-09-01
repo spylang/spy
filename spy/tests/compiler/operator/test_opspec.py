@@ -25,8 +25,8 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wm_obj: W_MetaArg,
-                          wm_i: W_MetaArg) -> W_OpSpec:
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
                 @vm.register_builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
                               w_i: W_I32) -> W_I32:
@@ -62,8 +62,8 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wm_obj: W_MetaArg,
-                          wm_i: W_MetaArg) -> W_OpSpec:
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
                 @vm.register_builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
@@ -100,12 +100,12 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wm_obj: W_MetaArg,
-                          wm_i: W_MetaArg) -> W_OpSpec:
-                assert isinstance(wm_obj, W_MetaArg)
-                assert isinstance(wm_i, W_MetaArg)
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
+                assert isinstance(wam_obj, W_MetaArg)
+                assert isinstance(wam_i, W_MetaArg)
                 # NOTE we are reversing the two arguments
-                return W_OpSpec(EXT.w_sum, [wm_i, wm_obj])
+                return W_OpSpec(EXT.w_sum, [wam_i, wam_obj])
 
         @EXT.builtin_func
         def w_sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
@@ -157,8 +157,8 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wm_obj: W_MetaArg,
-                          wm_i: W_MetaArg) -> W_OpSpec:
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
                 return W_OpSpec.const(vm.wrap(42))
         # ========== /EXT module for this test =========
 
