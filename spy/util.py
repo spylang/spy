@@ -123,31 +123,32 @@ def shortrepr(s: str, n: int) -> str:
 def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
     """
     Simulate the behavior of the unbuffer command from the expect package.
-    
-    Like unbuffer, this assumes the command only outputs to stderr.
+
+    Like unbuffer, this assumes the command only outputs to stdout.
     """
     try:
         cmd = cmdline_s[0]
         args = list(cmdline_s[1:])
         child = pexpect.spawn(command=cmd, args=args)
         child.expect(pexpect.EOF)
-        child.wait()  # this is needed to avoid a race condition on child.exitstatus
+        child.wait()  # avoid a race condition on child.exitstatus
 
         # child.exitstatus should never be None if child.wait() finished, but
-        # mypy doesn't know that.  Will treat that situation as a command error.
+        # mypy doesn't know that.  Will treat that situation as a command
+        # error.
         returncode = -1 if child.exitstatus is None else child.exitstatus
 
         return subprocess.CompletedProcess(
             args=cmdline_s,
-            stdout='',
-            stderr=child.before,
+            stdout=child.before,
+            stderr='',
             returncode=returncode
         )
     except pexpect.exceptions.EOF:
         return subprocess.CompletedProcess(
             args=cmdline_s,
-            stdout='',
-            stderr=child.before,
+            stdout=child.before,
+            stderr='',
             returncode=returncode
         )
 
@@ -170,6 +171,7 @@ def robust_run(
     else:
         # Use capture_output=True to capture stdout and stderr separately
         proc = subprocess.run(cmdline_s, capture_output=True)
+
     if proc.returncode != 0:
         FORCE_COLORS = True
         lines = ["subprocess failed:"]
