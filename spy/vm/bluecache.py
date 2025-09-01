@@ -60,7 +60,7 @@ class BlueCache:
 
     def _fmt_key(self, k: Any, keycolor: Optional[str]=None) -> str:
         if isinstance(k, tuple) and len(k) == 4 and k[0] == 'OpArg':
-            # this is a key coming from W_OpArg: it's common enough which
+            # this is a key coming from W_MetaArg: it's common enough which
             # is worth special casing its formatting for readability
             # purposes
             _, color, t, val = k

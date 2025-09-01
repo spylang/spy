@@ -1,7 +1,7 @@
 #-*- encoding: utf-8 -*-
 
 from spy.vm.b import B
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.opimpl import W_OpImpl
 from spy.tests.support import CompilerTest, only_interp, expect_errors
 
@@ -42,12 +42,12 @@ class TestOpSpec(CompilerTest):
         w_opspec = mod.foo(unwrap=False)
         assert isinstance(w_opspec, W_OpSpec)
         assert not w_opspec.is_simple()
-        assert w_opspec._args_wop is not None
-        assert len(w_opspec._args_wop) == 1
+        assert w_opspec._args_wm is not None
+        assert len(w_opspec._args_wm) == 1
 
         # Check the OpArg stored in the arguments list
-        wop = w_opspec._args_wop[0]
-        assert isinstance(wop, W_OpArg)
+        wop = w_opspec._args_wm[0]
+        assert isinstance(wop, W_MetaArg)
         assert wop.color == 'blue'
         assert wop.w_static_T is B.w_i32
         assert wop.is_blue()
@@ -70,14 +70,14 @@ class TestOpSpec(CompilerTest):
 
         # Test blue OpArg creation
         w_blue_oparg = mod.create_blue_oparg(42, unwrap=False)
-        assert isinstance(w_blue_oparg, W_OpArg)
+        assert isinstance(w_blue_oparg, W_MetaArg)
         assert w_blue_oparg.color == 'blue'
         assert w_blue_oparg.w_static_T is B.w_i32
         assert w_blue_oparg._w_val is not None
 
         # Test red OpArg creation
         w_red_oparg = mod.create_red_oparg(unwrap=False)
-        assert isinstance(w_red_oparg, W_OpArg)
+        assert isinstance(w_red_oparg, W_MetaArg)
         assert w_red_oparg.color == 'red'
         assert w_red_oparg.w_static_T is B.w_i32
         assert w_red_oparg._w_val is None
@@ -120,10 +120,10 @@ class TestOpSpec(CompilerTest):
         def bar() -> OpArg:
             return 42
         """)
-        wop_x = mod.foo(unwrap=False)
-        assert wop_x.color == 'red'
-        assert wop_x.w_static_T is B.w_i32
-        assert wop_x._w_val is None
+        wm_x = mod.foo(unwrap=False)
+        assert wm_x.color == 'red'
+        assert wm_x.w_static_T is B.w_i32
+        assert wm_x._w_val is None
 
         errors = expect_errors(
             'mismatched types',

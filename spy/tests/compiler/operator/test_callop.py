@@ -3,7 +3,7 @@ from spy.vm.primitive import W_I32
 from spy.vm.member import Member
 from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Type, W_Object
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
@@ -57,10 +57,10 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__new__', color='blue', kind='metafunc')
             @staticmethod
-            def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg,
-                     *args_wop: W_OpArg) -> W_OpSpec:
+            def w_NEW(vm: 'SPyVM', wm_cls: W_MetaArg,
+                     *args_wm: W_MetaArg) -> W_OpSpec:
                 # Support overloading based on argument count
-                if len(args_wop) == 1:
+                if len(args_wm) == 1:
                     # Point(x) -> Point(x, x)
                     @vm.register_builtin_func('ext', 'new_point_single')
                     def w_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Point:
@@ -205,17 +205,17 @@ class TestCallOp(CompilerTest):
 
             @builtin_method('__call_method__', color='blue', kind='metafunc')
             @staticmethod
-            def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg,
-                              wop_method: W_OpArg,
-                              *args_wop: W_OpArg) -> W_OpSpec:
-                meth = wop_method.blue_unwrap_str(vm)
+            def w_CALL_METHOD(vm: 'SPyVM', wm_obj: W_MetaArg,
+                              wm_method: W_MetaArg,
+                              *args_wm: W_MetaArg) -> W_OpSpec:
+                meth = wm_method.blue_unwrap_str(vm)
                 if meth == 'add':
                     @vm.register_builtin_func('ext', 'add')
                     def w_fn(vm: 'SPyVM', w_self: W_Calc,
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)
-                    return W_OpSpec(w_fn, [wop_obj] + list(args_wop))
+                    return W_OpSpec(w_fn, [wm_obj] + list(args_wm))
 
                 elif meth == 'sub':
                     @vm.register_builtin_func('ext', 'sub')
@@ -223,7 +223,7 @@ class TestCallOp(CompilerTest):
                              w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)
-                    return W_OpSpec(w_fn, [wop_obj] + list(args_wop))
+                    return W_OpSpec(w_fn, [wm_obj] + list(args_wm))
                 else:
                     return W_OpSpec.NULL
         # ========== /EXT module for this test =========

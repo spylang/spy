@@ -5,7 +5,7 @@ from spy.vm.builtin import builtin_method
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-    from spy.vm.opspec import W_OpArg, W_OpSpec
+    from spy.vm.opspec import W_MetaArg, W_OpSpec
 
 
 class Member:
@@ -61,12 +61,12 @@ class W_Member(W_Object):
     @builtin_method('__get__', color='blue', kind='metafunc')
     @staticmethod
     def w_GET(
-        vm: 'SPyVM', wop_self: 'W_OpArg', wop_obj: 'W_OpArg'
+        vm: 'SPyVM', wm_self: 'W_MetaArg', wm_obj: 'W_MetaArg'
     ) -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec
-        w_self = wop_self.w_blueval
+        w_self = wm_self.w_blueval
         assert isinstance(w_self, W_Member)
-        w_T = wop_obj.w_static_T
+        w_T = wm_obj.w_static_T
         field = w_self.field # the interp-level name of the attr (e.g, 'w_x')
         T = Annotated[W_Object, w_T]           # type of the object
         V = Annotated[W_Object, w_self.w_type] # type of the attribute
@@ -75,18 +75,18 @@ class W_Member(W_Object):
         def w_get(vm: 'SPyVM', w_obj: T) -> V:
             return getattr(w_obj, field)
 
-        return W_OpSpec(w_get, [wop_obj])
+        return W_OpSpec(w_get, [wm_obj])
 
 
     @builtin_method('__set__', color='blue', kind='metafunc')
     @staticmethod
     def w_set(
-        vm: 'SPyVM', wop_self: 'W_OpArg', wop_obj: 'W_OpArg', wop_v: 'W_OpArg'
+        vm: 'SPyVM', wm_self: 'W_MetaArg', wm_obj: 'W_MetaArg', wm_v: 'W_MetaArg'
     ) -> 'W_OpSpec':
         from spy.vm.opspec import W_OpSpec
-        w_self = wop_self.w_blueval
+        w_self = wm_self.w_blueval
         assert isinstance(w_self, W_Member)
-        w_T = wop_obj.w_static_T
+        w_T = wm_obj.w_static_T
         field = w_self.field # the interp-level name of the attr (e.g, 'w_x')
         T = Annotated[W_Object, w_T]           # type of the object
         V = Annotated[W_Object, w_self.w_type] # type of the attribute
@@ -95,4 +95,4 @@ class W_Member(W_Object):
         def w_set(vm: 'SPyVM', w_obj: T, w_val: V)-> None:
             setattr(w_obj, field, w_val)
 
-        return W_OpSpec(w_set, [wop_obj, wop_v])
+        return W_OpSpec(w_set, [wm_obj, wm_v])

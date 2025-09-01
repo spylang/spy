@@ -4,7 +4,7 @@ from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Type
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.exc import W_TypeError
 from spy.vm.function import W_Func, W_FuncType, FuncParam
 from spy.vm.opimpl import W_OpImpl, ArgSpec
@@ -32,7 +32,7 @@ def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
 def typecheck_opspec(
         vm: 'SPyVM',
         w_opspec: W_OpSpec,
-        in_args_wop: list[W_OpArg],
+        in_args_wm: list[W_MetaArg],
         *,
         dispatch: DispatchKind,
         errmsg: str,
@@ -47,7 +47,7 @@ def typecheck_opspec(
     report the type of the first operand, else of all operands.
     """
     if w_opspec.is_null():
-        _opspec_null_error(in_args_wop, dispatch, errmsg)
+        _opspec_null_error(in_args_wm, dispatch, errmsg)
 
     if w_opspec.is_const():
         assert w_opspec._w_const is not None
@@ -60,58 +60,58 @@ def typecheck_opspec(
     #   - calls a function of type w_out_functype
     w_out_functype = w_opspec.w_functype
     w_in_functype = functype_from_opargs(
-        in_args_wop,
+        in_args_wm,
         w_out_functype.w_restype,
         color=w_out_functype.color
     )
 
-    # if it's a simple OpSpec, we automatically pass the in_args_wop in order
+    # if it's a simple OpSpec, we automatically pass the in_args_wm in order
     if w_opspec.is_simple():
-        out_args_wop = in_args_wop
+        out_args_wm = in_args_wm
     else:
-        assert w_opspec._args_wop is not None
-        out_args_wop = w_opspec._args_wop
+        assert w_opspec._args_wm is not None
+        out_args_wm = w_opspec._args_wm
 
     # if it's a direct call, we can display extra info about call location
     def_loc = w_opspec._w_func.def_loc
     call_loc = None
     if w_opspec.is_direct_call:
-        wop_func = in_args_wop[0]
-        call_loc = wop_func.loc
+        wm_func = in_args_wm[0]
+        call_loc = wm_func.loc
 
     # check that the number of arguments match
-    got_nargs = len(out_args_wop)
+    got_nargs = len(out_args_wm)
     exp_nargs = len(w_out_functype.params)
     if not w_out_functype.is_argcount_ok(got_nargs):
         _call_error_wrong_argcount(
             got_nargs,
             exp_nargs,
-            out_args_wop,
+            out_args_wm,
             def_loc = def_loc,
             call_loc = call_loc)
 
     # build the argspec for the W_OpImpl
     args = []
-    for param, wop_out_arg in zip(w_out_functype.all_params(), out_args_wop):
+    for param, wm_out_arg in zip(w_out_functype.all_params(), out_args_wm):
 
-        if w_out_functype.color == 'blue' and wop_out_arg.color == 'red':
+        if w_out_functype.color == 'blue' and wm_out_arg.color == 'red':
             msg = 'cannot call blue function with red arguments'
             err = SPyError('W_TypeError', msg)
             if call_loc:
                 err.add('error', 'this is blue', call_loc)
-            err.add('error', 'this is red', wop_out_arg.loc)
+            err.add('error', 'this is red', wm_out_arg.loc)
             if def_loc:
                 err.add('note', 'function defined here', def_loc)
             raise err
 
         # add a converter if needed (this might raise W_TypeError)
-        w_conv = get_w_conv(vm, param.w_T, wop_out_arg, def_loc)
+        w_conv = get_w_conv(vm, param.w_T, wm_out_arg, def_loc)
         arg: ArgSpec
-        if wop_out_arg.is_blue():
-            arg = ArgSpec.Const(wop_out_arg.w_blueval, wop_out_arg.loc)
+        if wm_out_arg.is_blue():
+            arg = ArgSpec.Const(wm_out_arg.w_blueval, wm_out_arg.loc)
         else:
-            # red W_OpArg MUST come from in_args_wop
-            i = in_args_wop.index(wop_out_arg)
+            # red W_MetaArg MUST come from in_args_wm
+            i = in_args_wm.index(wm_out_arg)
             arg = ArgSpec.Arg(i)
 
         if w_conv:
@@ -123,19 +123,19 @@ def typecheck_opspec(
     return w_opimpl
 
 
-def functype_from_opargs(args_wop: list[W_OpArg], w_restype: W_Type,
+def functype_from_opargs(args_wm: list[W_MetaArg], w_restype: W_Type,
                          color: Color) -> W_FuncType:
-    params = [FuncParam(wop.w_static_T, 'simple') for wop in args_wop]
+    params = [FuncParam(wop.w_static_T, 'simple') for wop in args_wm]
     return W_FuncType.new(params, w_restype, color=color)
 
 
-def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
+def get_w_conv(vm: 'SPyVM', w_type: W_Type, wm_arg: W_MetaArg,
                def_loc: Optional[Loc]) -> Optional[W_Func]:
     """
     Like CONVERT_maybe, but improve the error message if we can
     """
     try:
-        return CONVERT_maybe(vm, w_type, wop_arg)
+        return CONVERT_maybe(vm, w_type, wm_arg)
     except SPyError as err:
         if not err.match(W_TypeError):
             raise
@@ -145,7 +145,7 @@ def get_w_conv(vm: 'SPyVM', w_type: W_Type, wop_arg: W_OpArg,
 
 
 def _opspec_null_error(
-        in_args_wop: list[W_OpArg],
+        in_args_wm: list[W_MetaArg],
         dispatch: DispatchKind,
         errmsg: str
 ) -> NoReturn:
@@ -160,27 +160,27 @@ def _opspec_null_error(
        determining whether an operation is supported, so we report all
        of them
     """
-    typenames = [wop.w_static_T.fqn.human_name for wop in in_args_wop]
+    typenames = [wop.w_static_T.fqn.human_name for wop in in_args_wm]
     errmsg = errmsg.format(*typenames)
     err = SPyError('W_TypeError', errmsg)
     if dispatch == 'single':
-        wop_target = in_args_wop[0]
-        t = wop_target.w_static_T.fqn.human_name
-        if wop_target.loc:
-            err.add('error', f'this is `{t}`', wop_target.loc)
-        if wop_target.sym:
-            sym = wop_target.sym
+        wm_target = in_args_wm[0]
+        t = wm_target.w_static_T.fqn.human_name
+        if wm_target.loc:
+            err.add('error', f'this is `{t}`', wm_target.loc)
+        if wm_target.sym:
+            sym = wm_target.sym
             err.add('note', f'`{sym.name}` defined here', sym.loc)
     else:
-        for wop_arg in in_args_wop:
-            t = wop_arg.w_static_T.fqn.human_name
-            err.add('error', f'this is `{t}`', wop_arg.loc)
+        for wm_arg in in_args_wm:
+            t = wm_arg.w_static_T.fqn.human_name
+            err.add('error', f'this is `{t}`', wm_arg.loc)
     raise err
 
 
 def _call_error_wrong_argcount(
         got: int, exp: int,
-        args_wop: list[W_OpArg],
+        args_wm: list[W_MetaArg],
         *,
         def_loc: Optional[Loc],
         call_loc: Optional[Loc],
@@ -201,8 +201,8 @@ def _call_error_wrong_argcount(
         else:
             diff = got - exp
             arguments = maybe_plural(diff, 'argument')
-            first_extra_loc = args_wop[exp].loc
-            last_extra_loc = args_wop[-1].loc
+            first_extra_loc = args_wm[exp].loc
+            last_extra_loc = args_wm[-1].loc
             assert first_extra_loc is not None
             assert last_extra_loc is not None
             # XXX this assumes that all the arguments are on the same line

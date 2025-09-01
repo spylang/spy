@@ -4,7 +4,7 @@
 from typing import TYPE_CHECKING, Annotated
 from spy.location import Loc
 from spy.errfmt import ErrorFormatter, Level, Annotation
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.builtin import builtin_method
 from spy.vm.primitive import W_Bool
 from spy.vm.object import W_Object, W_Type
@@ -53,9 +53,9 @@ class W_Exception(W_Object):
 
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
-    def w_NEW(vm: 'SPyVM', wop_cls: W_OpArg, *args_wop: W_OpArg) -> W_OpSpec:
+    def w_NEW(vm: 'SPyVM', wm_cls: W_MetaArg, *args_wm: W_MetaArg) -> W_OpSpec:
         # we cannot use the default __new__ because we want to pass w_cls
-        w_cls = wop_cls.w_blueval
+        w_cls = wm_cls.w_blueval
         assert isinstance(w_cls, W_Type)
         fqn = w_cls.fqn
         T = Annotated[W_Exception, w_cls]
@@ -69,16 +69,16 @@ class W_Exception(W_Object):
             assert issubclass(pyclass, W_Exception)
             message = vm.unwrap_str(w_message)
             return pyclass(message)
-        return W_OpSpec(w_new, [wop_cls] + list(args_wop))
+        return W_OpSpec(w_new, [wm_cls] + list(args_wm))
 
 
     @builtin_method('__eq__', color='blue', kind='metafunc')
     @staticmethod
-    def w_EQ(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpSpec:
+    def w_EQ(vm: 'SPyVM', wm_a: W_MetaArg, wm_b: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
 
-        w_atype = wop_a.w_static_T
-        w_btype = wop_b.w_static_T
+        w_atype = wm_a.w_static_T
+        w_btype = wm_b.w_static_T
 
         # If different exception types, return null implementation
         if w_atype is not w_btype:
@@ -94,11 +94,11 @@ class W_Exception(W_Object):
 
     @builtin_method('__ne__', color='blue', kind='metafunc')
     @staticmethod
-    def w_NE(vm: 'SPyVM', wop_a: W_OpArg, wop_b: W_OpArg) -> W_OpSpec:
+    def w_NE(vm: 'SPyVM', wm_a: W_MetaArg, wm_b: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
 
-        w_atype = wop_a.w_static_T
-        w_btype = wop_b.w_static_T
+        w_atype = wm_a.w_static_T
+        w_btype = wm_b.w_static_T
 
         # If different exception types, return null implementation
         if w_atype is not w_btype:

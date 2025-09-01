@@ -7,7 +7,7 @@ The first half is in vm/b.py. See its docstring for more details.
 from typing import TYPE_CHECKING
 from spy.errors import SPyError
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
-from spy.vm.opspec import W_OpArg, W_OpSpec
+from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 PY_PRINT = print  # type: ignore
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_STATIC_TYPE(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    return W_OpSpec.const(wop_obj.w_static_T)
+def w_STATIC_TYPE(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
+    return W_OpSpec.const(wm_obj.w_static_T)
 
 @BUILTINS.builtin_func
 def w_abs(vm: 'SPyVM', w_x: W_I32) -> W_I32:
@@ -44,8 +44,8 @@ def w_min(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> W_I32:
 
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    w_T = wop_obj.w_static_T
+def w_print(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wm_obj.w_static_T
     if w_T is B.w_i32:
         return W_OpSpec(B.w_print_i32)
     elif w_T is B.w_f64:
@@ -59,13 +59,13 @@ def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
     elif w_T is B.w_dynamic:
         return W_OpSpec(B.w_print_dynamic)
 
-    elif wop_obj.color == 'blue':
+    elif wm_obj.color == 'blue':
         # if we print something of unsupported type BUT it's a blue object, we
         # can precompute its repr now and just print it as a string. This
         # allows to print things like types even with the C backend.
-        s = str(wop_obj.w_blueval)
-        wop_s = W_OpArg.from_w_obj(vm, vm.wrap(s))
-        return W_OpSpec(w_print_str, [wop_s])
+        s = str(wm_obj.w_blueval)
+        wm_s = W_MetaArg.from_w_obj(vm, vm.wrap(s))
+        return W_OpSpec(w_print_str, [wm_s])
 
     else:
         # printing a red value of unsupported type. As a fallback, we just use
@@ -77,7 +77,7 @@ def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
         'W_TypeError',
         f'cannot call print(`{t}`)',
         f'this is `{t}`',
-        wop_obj.loc
+        wm_obj.loc
     )
 
 
@@ -110,10 +110,10 @@ def w_print_object(vm: 'SPyVM', w_x: W_Object) -> None:
     PY_PRINT(str(w_x))
 
 @BUILTINS.builtin_func(color='blue', kind='metafunc')
-def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
-    w_T = wop_obj.w_static_T
+def w_len(vm: 'SPyVM', wm_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wm_obj.w_static_T
     if w_fn := w_T.lookup_func('__len__'):
-        w_opspec = vm.fast_metacall(w_fn, [wop_obj])
+        w_opspec = vm.fast_metacall(w_fn, [wm_obj])
         return w_opspec
 
     t = w_T.fqn.human_name
@@ -121,7 +121,7 @@ def w_len(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
         'W_TypeError',
         f'cannot call len(`{t}`)',
         f'this is `{t}`',
-        wop_obj.loc
+        wm_obj.loc
     )
 
 

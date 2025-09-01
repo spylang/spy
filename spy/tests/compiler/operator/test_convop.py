@@ -4,7 +4,7 @@ from spy.vm.b import B
 from spy.vm.member import Member
 from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C
@@ -25,10 +25,10 @@ class W_MyClass(W_Object):
     @staticmethod
     def w_CONVERT_TO(
             vm: 'SPyVM',
-            wop_target_type: W_OpArg,
-            wop_self: W_OpArg
+            wm_target_type: W_MetaArg,
+            wm_self: W_MetaArg
     ) -> W_OpSpec:
-        w_target_T = wop_target_type.w_blueval
+        w_target_T = wm_target_type.w_blueval
 
         if w_target_T is B.w_i32:
             @vm.register_builtin_func('ext')
@@ -50,10 +50,10 @@ class W_MyClass(W_Object):
     @staticmethod
     def w_CONVERT_FROM(
             vm: 'SPyVM',
-            wop_source_type: W_OpArg,
-            wop_val: W_OpArg
+            wm_source_type: W_MetaArg,
+            wm_val: W_MetaArg
     ) -> W_OpSpec:
-        w_src_T = wop_source_type.w_blueval
+        w_src_T = wm_source_type.w_blueval
 
         if w_src_T is B.w_str:
             @vm.register_builtin_func('ext')

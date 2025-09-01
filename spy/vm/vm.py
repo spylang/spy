@@ -25,7 +25,7 @@ from spy.vm.opimpl import W_OpImpl
 from spy.vm.property import W_Property
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
 
@@ -42,7 +42,7 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 W_Object._w.define(W_Object)
 W_Type._w.define(W_Type)
 W_OpSpec._w.define(W_OpSpec)
-W_OpArg._w.define(W_OpArg)
+W_MetaArg._w.define(W_MetaArg)
 W_Property._w.define(W_Property)
 W_Member._w.define(W_Member)
 W_FuncType._w.define(W_FuncType)
@@ -566,7 +566,7 @@ class SPyVM:
             return self._raw_call(w_func, args_w)
 
     def fast_metacall(vm: 'SPyVM', w_func: W_Func,
-                      args_wop: Sequence[W_OpArg]) -> W_OpSpec:
+                      args_wm: Sequence[W_MetaArg]) -> W_OpSpec:
         """
         Return the OpSpec needed to call the given function.
 
@@ -576,24 +576,24 @@ class SPyVM:
         returns.
         """
         if w_func.w_functype.kind == 'metafunc':
-            w_res = vm.fast_call(w_func, args_wop)
+            w_res = vm.fast_call(w_func, args_wm)
             assert isinstance(w_res, W_OpSpec)
             return w_res
         else:
-            return W_OpSpec(w_func, list(args_wop))
+            return W_OpSpec(w_func, list(args_wm))
 
 
     def call_OP(
             self,
             loc: Optional[Loc],
             w_OP: W_Func,
-            args_wop: Sequence[W_OpArg]
+            args_wm: Sequence[W_MetaArg]
     ) -> W_OpImpl:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
         """
         try:
-            w_opimpl = self.fast_call(w_OP, args_wop)
+            w_opimpl = self.fast_call(w_OP, args_wm)
             assert isinstance(w_opimpl, W_OpImpl)
             return w_opimpl
         except SPyError as err:
@@ -630,25 +630,25 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
-    def _w_oparg(self, color: Color, w_x: W_Dynamic) -> W_OpArg:
+    def _w_oparg(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
         w_T = self.dynamic_type(w_x)
         if color == 'red':
-            return W_OpArg(self, 'red', w_T, None, Loc.here(-3))
+            return W_MetaArg(self, 'red', w_T, None, Loc.here(-3))
         else:
-            return W_OpArg(self, 'blue', w_T, w_x, Loc.here(-3))
+            return W_MetaArg(self, 'blue', w_T, w_x, Loc.here(-3))
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = self._w_oparg('blue', w_a)
-        wop_b = self._w_oparg('blue', w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
+        wm_a = self._w_oparg('blue', w_a)
+        wm_b = self._w_oparg('blue', w_b)
+        w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wm_a, wm_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = self._w_oparg('blue', w_a)
-        wop_b = self._w_oparg('blue', w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wop_a, wop_b])
+        wm_a = self._w_oparg('blue', w_a)
+        wm_b = self._w_oparg('blue', w_b)
+        w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wm_a, wm_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
@@ -657,9 +657,9 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wop_obj = self._w_oparg('blue', w_obj)
-        wop_i = self._w_oparg('blue', w_i)
-        w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wop_obj, wop_i])
+        wm_obj = self._w_oparg('blue', w_obj)
+        wm_i = self._w_oparg('blue', w_i)
+        w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wm_obj, wm_i])
         return w_opimpl.execute(self, [w_obj, w_i])
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
@@ -695,17 +695,17 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        wop_a = self._w_oparg('blue', w_a)
-        wop_b = self._w_oparg('blue', w_b)
+        wm_a = self._w_oparg('blue', w_a)
+        wm_b = self._w_oparg('blue', w_b)
         try:
-            w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
+            w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wm_a, wm_b])
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
             # sanity check: EQ between objects of the same type should always
             # be possible. If it's not, it means that we forgot to implement it
-            w_ta = wop_a.w_static_T
-            w_tb = wop_b.w_static_T
+            w_ta = wm_a.w_static_T
+            w_tb = wm_b.w_static_T
             assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
             return B.w_False
 

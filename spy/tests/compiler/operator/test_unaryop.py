@@ -3,7 +3,7 @@
 from spy.vm.primitive import W_I32
 from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C

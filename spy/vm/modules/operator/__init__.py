@@ -43,7 +43,7 @@ from typing import TYPE_CHECKING, Sequence
 from spy.errors import WIP
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.b import OPERATOR, OP
 
 if TYPE_CHECKING:
