@@ -53,6 +53,7 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
+                        vararg=None,
                         return_type=Constant(value=None),
                         docstring=None,
                         body=[
@@ -90,6 +91,7 @@ class TestParser:
                                 type=Name(id='float'),
                             ),
                         ],
+                        vararg=None,
                         return_type=Constant(value=None),
                         docstring=None,
                         body=[
@@ -112,17 +114,6 @@ class TestParser:
             src,
             "missing return type",
             ("", "def foo"),
-        )
-
-    def test_FuncDef_errors_2(self):
-        src = """
-        def foo(*args) -> None:
-            pass
-        """
-        self.expect_errors(
-            src,
-            "*args is not supported yet",
-            ("this is not supported", "args"),
         )
 
     def test_FuncDef_errors_3(self):
@@ -204,6 +195,7 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
+            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -228,6 +220,7 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
+            vararg=None,
             return_type=Name(id='i32'),
             docstring='hello',
             body=[
@@ -252,6 +245,7 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
+            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -276,6 +270,7 @@ class TestParser:
             kind='generic',
             name='foo',
             args=[],
+            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -300,6 +295,7 @@ class TestParser:
             kind='metafunc',
             name='foo',
             args=[],
+            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -991,6 +987,7 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
+                        vararg=None,
                         return_type=Name(id='dynamic'),
                         docstring=None,
                         body=[
@@ -999,6 +996,7 @@ class TestParser:
                                 kind='plain',
                                 name='bar',
                                 args=[],
+                                vararg=None,
                                 return_type=Constant(value=None),
                                 docstring=None,
                                 body=[
@@ -1216,6 +1214,7 @@ class TestParser:
                     kind='plain',
                     name='foo',
                     args=[],
+                    vararg=None,
                     return_type=Constant(value=None),
                     docstring=None,
                     body=[
@@ -1226,3 +1225,34 @@ class TestParser:
         )
         """
         self.assert_dump(classdef, expected)
+
+    def test_vararg(self):
+        src = """
+        def foo(a: i32, *args: str) -> None:
+            pass
+        """
+        mod = self.parse(src)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[
+                FuncArg(
+                    name='a',
+                    type=Name(id='i32'),
+                ),
+            ],
+            vararg=FuncArg(
+                name='args',
+                type=Name(id='str'),
+            ),
+            return_type=Constant(value=None),
+            docstring=None,
+            body=[
+                Pass(),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
