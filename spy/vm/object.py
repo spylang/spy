@@ -196,9 +196,9 @@ class W_Object:
     # If __getattribute__ is a metafunction, this is more or less what happens:
     #
     #     T = STATIC_TYPE(obj)
-    #     v_obj = MetaArg('red', T, ...)
-    #     v_attr = MetaArg('blue', str, "a")
-    #     opimpl = operator.GETATTR(v_obj, v_attr)
+    #     m_obj = MetaArg('red', T, ...)
+    #     m_attr = MetaArg('blue', str, "a")
+    #     opimpl = operator.GETATTR(m_obj, m_attr)
     #     opimpl.execute(obj)
     #
     # The actual logic for the SPy VM resides in the 'operator' module (see

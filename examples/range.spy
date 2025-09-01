@@ -32,7 +32,7 @@ class Range:
 
     @blue.metafunc
     def __getattr__(m_obj: MetaArg, m_attr: MetaArg) -> OpSpec:
-        #print(v_obj)
+        #print(m_obj)
         #print(m_attr)
         #print(m_attr.static_type)
         #print(m_attr.color)
