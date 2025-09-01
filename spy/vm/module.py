@@ -7,7 +7,7 @@ from spy.vm.object import W_Object
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.builtin import builtin_method
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -56,20 +56,20 @@ class W_Module(W_Object):
 
     @builtin_method('__call_method__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wop_mod: W_OpArg, wop_name: W_OpArg,
-                      *args_wop: W_OpArg) -> W_OpSpec:
-        if wop_mod.color != 'blue':
+    def w_CALL_METHOD(vm: 'SPyVM', wam_mod: W_MetaArg, wam_name: W_MetaArg,
+                      *args_wam: W_MetaArg) -> W_OpSpec:
+        if wam_mod.color != 'blue':
             raise WIP('__call_method__ on red modules')
 
-        w_mod = wop_mod.w_blueval
+        w_mod = wam_mod.w_blueval
         assert isinstance(w_mod, W_Module)
-        name = wop_name.blue_unwrap_str(vm)
+        name = wam_name.blue_unwrap_str(vm)
         w_func = w_mod.getattr_maybe(name)
         if w_func is None:
             return W_OpSpec.NULL
 
         if isinstance(w_func, W_Func):
-            return W_OpSpec(w_func, list(args_wop))
+            return W_OpSpec(w_func, list(args_wam))
         else:
             raise WIP('trying to call a non-function (we should emit a better error)')
 

@@ -2,7 +2,7 @@ import pytest
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
@@ -38,7 +38,7 @@ class W_SeqMetaLen(W_Object):
 
     @builtin_method('__len__', color='blue', kind='metafunc')
     @staticmethod
-    def w_LEN(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpSpec:
+    def w_LEN(vm: 'SPyVM', wam_self: W_MetaArg) -> W_OpSpec:
         @vm.register_builtin_func('ext')
         def w_len(vm: 'SPyVM', w_self: W_SeqMetaLen) -> W_I32:
             return w_self.w_size

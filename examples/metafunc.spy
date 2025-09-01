@@ -1,13 +1,13 @@
 from operator import OpSpec
 
 @blue.metafunc
-def myprint(v_x):
-    if v_x.static_type == int:
+def myprint(m_x):
+    if m_x.static_type == int:
         def myprint_int(x: int) -> None:
             print(x)
         return OpSpec(myprint_int)
 
-    if v_x.static_type == str:
+    if m_x.static_type == str:
         def myprint_str(x: str) -> None:
             print(x)
         return OpSpec(myprint_str)

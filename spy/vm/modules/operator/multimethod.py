@@ -19,7 +19,7 @@ from typing import Optional, TYPE_CHECKING
 from spy.vm.b import B
 from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.opimpl import W_OpImpl
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -75,17 +75,17 @@ class MultiMethodTable:
     def get_unary_opspec(
         self,
         op: str,
-        wop_v: W_OpArg
+        wam_v: W_MetaArg
     ) -> Optional[W_OpSpec]:
-        w_vtype = wop_v.w_static_T
+        w_vtype = wam_v.w_static_T
         return self.lookup(op, w_vtype, None)
 
     def get_binary_opspec(
         self,
         op: str,
-        wop_l: W_OpArg,
-        wop_r: W_OpArg
+        wam_l: W_MetaArg,
+        wam_r: W_MetaArg
     ) -> Optional[W_OpSpec]:
-        w_ltype = wop_l.w_static_T
-        w_rtype = wop_r.w_static_T
+        w_ltype = wam_l.w_static_T
+        w_rtype = wam_r.w_static_T
         return self.lookup(op, w_ltype, w_rtype)

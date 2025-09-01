@@ -12,12 +12,12 @@ class TestMetaFunc(CompilerTest):
         from operator import OpSpec
 
         @blue.metafunc
-        def foo(v_x):
-            if v_x.static_type == i32:
+        def foo(m_x):
+            if m_x.static_type == i32:
                def impl_i32(x: i32) -> i32:
                    return x * 2
                return OpSpec(impl_i32)
-            elif v_x.static_type == str:
+            elif m_x.static_type == str:
                def impl_str(x: str) -> str:
                    return x + ' world'
                return OpSpec(impl_str)
@@ -35,7 +35,7 @@ class TestMetaFunc(CompilerTest):
     def test_wrong_argcount(self):
         src = """
         @blue.metafunc
-        def m(v_x):
+        def m(m_x):
             pass
 
         def foo() -> i32:
@@ -43,7 +43,7 @@ class TestMetaFunc(CompilerTest):
         """
         errors = expect_errors(
             'this function takes 1 argument but 0 arguments were supplied',
-            ('function defined here', 'def m(v_x):'),
+            ('function defined here', 'def m(m_x):'),
         )
         self.compile_raises(src, "foo", errors)
 

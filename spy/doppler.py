@@ -9,7 +9,7 @@ from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.astframe import ASTFrame
-from spy.vm.opspec import W_OpArg
+from spy.vm.opspec import W_MetaArg
 from spy.vm.exc import W_StaticError
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.util import magic_dispatch
@@ -219,7 +219,7 @@ class DopplerFrame(ASTFrame):
     def eval_expr(self, expr: ast.Expr,
                   *,
                   varname: Optional[str] = None,
-                  ) -> W_OpArg:
+                  ) -> W_MetaArg:
         """
         Override ASTFrame.eval_expr.
         For each expr, also compute its shifted version.
@@ -246,19 +246,19 @@ class DopplerFrame(ASTFrame):
                 FuncDoppler.eval_opimpl
                   -> save self.opimpl[op]
                   -> call ASTFrame.eval_opimpl
-                  -> return W_OpArg
+                  -> return W_MetaArg
 
               FuncDoppler.shift_expr_BinOp
                   -> retrieve shifted operands for binop.{left,right}
                   -> compute shited binop (stored in .shifted_expr)
         """
-        wop = super().eval_expr(expr, varname=varname)
-        if wop.color == 'blue':
-            new_expr = make_const(self.vm, expr.loc, wop.w_val)
+        wam = super().eval_expr(expr, varname=varname)
+        if wam.color == 'blue':
+            new_expr = make_const(self.vm, expr.loc, wam.w_val)
         else:
             new_expr = self.shift_expr(expr)
 
-        w_typeconv = self.typecheck_maybe(wop, varname)
+        w_typeconv = self.typecheck_maybe(wam, varname)
         if w_typeconv:
             new_expr = ast.Call(
                 loc = new_expr.loc,
@@ -270,16 +270,16 @@ class DopplerFrame(ASTFrame):
             )
 
         self.shifted_expr[expr] = new_expr
-        return wop
+        return wam
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
-                    args_wop: list[W_OpArg]) -> W_OpArg:
+                    args_wam: list[W_MetaArg]) -> W_MetaArg:
         """
         Override ASTFrame.eval_opimpl.
         This is a bug ugly, but too bad: record a mapping from op to w_opimpl.
         """
         self.opimpl[op] = w_opimpl
-        return super().eval_opimpl(op, w_opimpl, args_wop)
+        return super().eval_opimpl(op, w_opimpl, args_wam)
 
     def shift_expr(self, expr: ast.Expr) -> ast.Expr:
         """

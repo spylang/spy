@@ -2,7 +2,7 @@ import pytest
 from spy.vm.primitive import W_I32
 from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Object
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.tests.support import CompilerTest, no_C, expect_errors
@@ -25,8 +25,8 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_i: W_OpArg) -> W_OpSpec:
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
                 @vm.register_builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
                               w_i: W_I32) -> W_I32:
@@ -62,8 +62,8 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_i: W_OpArg) -> W_OpSpec:
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
                 @vm.register_builtin_func('ext')
                 def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
@@ -100,12 +100,12 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_i: W_OpArg) -> W_OpSpec:
-                assert isinstance(wop_obj, W_OpArg)
-                assert isinstance(wop_i, W_OpArg)
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
+                assert isinstance(wam_obj, W_MetaArg)
+                assert isinstance(wam_i, W_MetaArg)
                 # NOTE we are reversing the two arguments
-                return W_OpSpec(EXT.w_sum, [wop_i, wop_obj])
+                return W_OpSpec(EXT.w_sum, [wam_i, wam_obj])
 
         @EXT.builtin_func
         def w_sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
@@ -157,8 +157,8 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method('__getitem__', color='blue', kind='metafunc')
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg,
-                          wop_i: W_OpArg) -> W_OpSpec:
+            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+                          wam_i: W_MetaArg) -> W_OpSpec:
                 return W_OpSpec.const(vm.wrap(42))
         # ========== /EXT module for this test =========
 

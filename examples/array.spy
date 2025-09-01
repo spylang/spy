@@ -1,4 +1,4 @@
-from operator import OpSpec, OpArg
+from operator import OpSpec, MetaArg
 from unsafe import gc_alloc, ptr
 
 @blue.generic
@@ -25,7 +25,7 @@ def ndarray1(DTYPE):
 
 
         @blue
-        def __GETITEM__(v_arr: OpArg, v_i: OpArg) -> OpSpec:
+        def __GETITEM__(m_arr: MetaArg, m_i: MetaArg) -> OpSpec:
 
             def getitem(arr: ndarray, i: i32) -> DTYPE:
                 ll = arr.__ll__

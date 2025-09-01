@@ -5,7 +5,7 @@ from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.w import W_Object, W_Type
 from spy.vm.registry import ModuleRegistry
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

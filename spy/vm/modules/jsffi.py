@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.builtin import builtin_method
 from spy.vm.registry import ModuleRegistry
 
@@ -27,9 +27,9 @@ class W_JsRef(W_Object):
 
     @builtin_method('__call_method__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                      *args_wop: W_OpArg) -> W_OpSpec:
-        n = len(args_wop)
+    def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_method: W_MetaArg,
+                      *args_wam: W_MetaArg) -> W_OpSpec:
+        n = len(args_wam)
         if n == 1:
             return W_OpSpec(JSFFI.w_js_call_method_1)
         else:
@@ -39,8 +39,8 @@ class W_JsRef(W_Object):
 
     @builtin_method('__convert_from__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', wop_T: W_OpArg, wop_x: W_OpArg) -> W_OpSpec:
-        w_T = wop_T.w_blueval
+    def w_CONVERT_FROM(vm: 'SPyVM', wam_T: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
+        w_T = wam_T.w_blueval
         if w_T is B.w_str:
             return W_OpSpec(JSFFI.w_js_string)
         elif w_T is B.w_i32:

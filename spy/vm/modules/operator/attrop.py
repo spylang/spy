@@ -3,7 +3,7 @@ from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
-from spy.vm.opspec import W_OpSpec, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.opimpl import W_OpImpl
 
 from . import OP
@@ -12,29 +12,29 @@ if TYPE_CHECKING:
 
 OpKind = Literal['get', 'set']
 
-def unwrap_name_maybe(vm: 'SPyVM', wop_name: W_OpArg) -> str:
-    if wop_name.is_blue() and wop_name.w_static_T is B.w_str:
-        return vm.unwrap_str(wop_name.w_blueval)
+def unwrap_name_maybe(vm: 'SPyVM', wam_name: W_MetaArg) -> str:
+    if wam_name.is_blue() and wam_name.w_static_T is B.w_str:
+        return vm.unwrap_str(wam_name.w_blueval)
     else:
         return '<unknown>'
 
 @OP.builtin_func(color='blue')
-def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg) -> W_OpImpl:
+def w_GETATTR(vm: 'SPyVM', wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
-    name = unwrap_name_maybe(vm, wop_name)
+    name = unwrap_name_maybe(vm, wam_name)
 
-    w_T = wop_obj.w_static_T
+    w_T = wam_obj.w_static_T
     if w_T is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_getattr)
     elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
-        w_opspec = vm.fast_metacall(w_getattribute, [wop_obj, wop_name])
+        w_opspec = vm.fast_metacall(w_getattribute, [wam_obj, wam_name])
     else:
-        w_opspec = default_getattribute(vm, wop_obj, wop_name, name)
+        w_opspec = default_getattribute(vm, wam_obj, wam_name, name)
 
     return typecheck_opspec(
         vm,
         w_opspec,
-        [wop_obj, wop_name],
+        [wam_obj, wam_name],
         dispatch = 'single',
         errmsg = "type `{0}` has no attribute '%s'" % name
     )
@@ -42,8 +42,8 @@ def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg) -> W_OpImpl:
 
 def default_getattribute(
     vm: 'SPyVM',
-    wop_obj: W_OpArg,
-    wop_name: W_OpArg,
+    wam_obj: W_MetaArg,
+    wam_name: W_MetaArg,
     name: str
 ) -> W_OpSpec:
     # default logic for objects which don't implement __getattribute__. This
@@ -80,12 +80,12 @@ def default_getattribute(
     # Also note that contrarily to Python, in SPy instances don't have a
     # __dict__ by default. (__dict__ support not implemented yet ATM).
 
-    w_T = wop_obj.w_static_T
+    w_T = wam_obj.w_static_T
     if w_attr := w_T.lookup(name):
         if w_get := vm.dynamic_type(w_attr).lookup_func('__get__'):
             # 1. found a descriptor on the type
-            wop_attr = W_OpArg.from_w_obj(vm, w_attr)
-            return vm.fast_metacall(w_get, [wop_attr, wop_obj])
+            wam_attr = W_MetaArg.from_w_obj(vm, w_attr)
+            return vm.fast_metacall(w_get, [wam_attr, wam_obj])
         else:
             # 2. found a normal attribute on the type
             return W_OpSpec.const(w_attr)
@@ -98,23 +98,23 @@ def default_getattribute(
 
 
 @OP.builtin_func(color='blue')
-def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
-            wop_v: W_OpArg) -> W_OpImpl:
+def w_SETATTR(vm: 'SPyVM', wam_obj: W_MetaArg, wam_name: W_MetaArg,
+            wam_v: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
-    name = unwrap_name_maybe(vm, wop_name)
-    w_opspec = _get_SETATTR_opspec(vm, wop_obj, wop_name, wop_v, name)
+    name = unwrap_name_maybe(vm, wam_name)
+    w_opspec = _get_SETATTR_opspec(vm, wam_obj, wam_name, wam_v, name)
     errmsg = "type `{0}` does not support assignment to attribute '%s'" % name
     return typecheck_opspec(
         vm,
         w_opspec,
-        [wop_obj, wop_name, wop_v],
+        [wam_obj, wam_name, wam_v],
         dispatch = 'single',
         errmsg = errmsg
     )
 
-def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
-                        wop_v: W_OpArg, name: str) -> W_OpSpec:
-    w_T = wop_obj.w_static_T
+def _get_SETATTR_opspec(vm: 'SPyVM', wam_obj: W_MetaArg, wam_name: W_MetaArg,
+                        wam_v: W_MetaArg, name: str) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
 
     if w_T is B.w_dynamic:
         return W_OpSpec(OP.w_dynamic_setattr)
@@ -125,10 +125,10 @@ def _get_SETATTR_opspec(vm: 'SPyVM', wop_obj: W_OpArg, wop_name: W_OpArg,
         w_set = w_member_T.lookup_func('__set__')
         if w_set:
             # w_member is a descriptor! We can call its __set__
-            wop_member = W_OpArg.from_w_obj(vm, w_member)
-            return vm.fast_metacall(w_set, [wop_member, wop_obj, wop_v])
+            wam_member = W_MetaArg.from_w_obj(vm, w_member)
+            return vm.fast_metacall(w_set, [wam_member, wam_obj, wam_v])
 
     elif w_setattr := w_T.lookup_func('__setattr__'):
-        return vm.fast_metacall(w_setattr, [wop_obj, wop_name, wop_v])
+        return vm.fast_metacall(w_setattr, [wam_obj, wam_name, wam_v])
 
     return W_OpSpec.NULL
