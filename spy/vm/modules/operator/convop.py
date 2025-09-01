@@ -16,7 +16,7 @@ MM = MultiMethodTable()
 @OP.builtin_func(color='blue')
 def w_CONVERT(vm: 'SPyVM', w_exp: W_Type, wam_x: W_MetaArg) -> W_Func:
     """
-    Return a w_func which can convert the given OpArg to the desired type.
+    Return a w_func which can convert the given MetaArg to the desired type.
 
     If the types are not compatible, raise SPyError. In this case,
     the caller can catch the error, add extra info and re-raise.

@@ -23,12 +23,12 @@ For example, take an operator like "a + b":
 
   1. We determine the static types of a and b.
 
-  2. we create two `OpArg`s, v_a and v_b. OpArgs are abstract: they don't have
+  2. we create two `MetaArg`s, m_a and m_b. MetaArgs are abstract: they don't have
      a concrete value but only the STATIC type of the operands. Additionally,
      they carry around extra info such as where the variable has been defined,
      etc., which are useful to generate descriptive error messages.
 
-  3. We call `operator.__ADD__(v_a, v_b)`. This returns an `OpSpec`, which
+  3. We call `operator.__ADD__(m_a, m_b)`. This returns an `OpSpec`, which
      tells SPy which function to call to compute the result of the operation
 
   4. Finally, we call `opimpl(a, b)`
@@ -37,7 +37,7 @@ The steps 1-3 happens at blue time and they are completely removed after
 redshifting. Thus, after redshifting we are left with only fast opimpl calls.
 """
 
-from operator import OpArg, OpSpec
+from operator import MetaArg, OpSpec
 
 @typelift
 class SmallPoint:
@@ -53,7 +53,7 @@ class SmallPoint:
         return SmallPoint.__lift__(val)
 
     @blue.metafunc
-    def __getattr__(v_obj: OpArg, v_attr: OpArg) -> OpSpec:
+    def __getattr__(m_obj: MetaArg, m_attr: MetaArg) -> OpSpec:
         # p.x is vaguely equivalent to:
         #     operator.__getattr__(STATIC_TYPE(p), "x")
         #
@@ -61,17 +61,17 @@ class SmallPoint:
         # is BLUE, so we can know which attribute we are reading and behave
         # consequently.
 
-        if v_attr.blueval == 'x':
+        if m_attr.blueval == 'x':
             def getx(p: SmallPoint) -> i32:
                 val = p.__ll__
                 return (val >> 16) & 0xFFFF
-            return OpSpec(getx, [v_obj])
+            return OpSpec(getx, [m_obj])
 
-        elif v_attr.blueval == 'y':
+        elif m_attr.blueval == 'y':
             def gety(p: SmallPoint) -> i32:
                 val = p.__ll__
                 return val & 0xFFFF
-            return OpSpec(gety, [v_obj])
+            return OpSpec(gety, [m_obj])
 
         else:
             # this is the equivalent of "return NotImplemented". If we cannot

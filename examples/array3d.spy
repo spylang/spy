@@ -1,4 +1,4 @@
-from operator import OpSpec, OpArg
+from operator import OpSpec, MetaArg
 from unsafe import gc_alloc, ptr
 
 @blue.generic
@@ -38,7 +38,7 @@ def array3d(DTYPE):
             return ndarray.__lift__(data)
 
         @blue
-        def __GETITEM__(v_arr: OpArg, v_i: OpArg, v_j: OpArg, v_k: OpArg) -> OpSpec:
+        def __GETITEM__(m_arr: MetaArg, m_i: MetaArg, m_j: MetaArg, m_k: MetaArg) -> OpSpec:
             def getitem(arr: ndarray, i: i32, j: i32, k: i32) -> DTYPE:
                 ll = arr.__ll__
                 if i >= ll.h:
@@ -52,8 +52,8 @@ def array3d(DTYPE):
             return OpSpec(getitem)
 
         @blue
-        def __SETITEM__(v_arr: OpArg, v_i: OpArg, v_j: OpArg, v_k: OpArg,
-                        v_v: OpArg) -> OpSpec:
+        def __SETITEM__(m_arr: MetaArg, m_i: MetaArg, m_j: MetaArg, m_k: MetaArg,
+                        m_v: MetaArg) -> OpSpec:
             def setitem(arr: ndarray, i: i32, j: i32, k: i32, v: DTYPE) -> None:
                 ll = arr.__ll__
                 if i >= ll.h:
