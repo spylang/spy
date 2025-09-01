@@ -99,13 +99,17 @@ class TestScopeAnalyzer:
     def test_blue_func(self):
         scopes = self.analyze("""
         @blue
-        def foo() -> None:
+        def foo(x) -> None:
             pass
         """)
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope.name == 'test::foo'
         assert scope.color == 'blue'
+        assert scope._symbols == {
+            'x': MatchSymbol('x', 'blue'),
+            '@return': MatchSymbol('@return', 'blue'),
+        }
 
     def test_assign_does_not_redeclare(self):
         scopes = self.analyze("""
@@ -155,9 +159,9 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            'FLAG': MatchSymbol('FLAG', 'red'), # XXX should this be blue?
-            'x': MatchSymbol('x', 'red'),
-            '@return': MatchSymbol('@return', 'red'),
+            'FLAG': MatchSymbol('FLAG', 'blue'),
+            'x': MatchSymbol('x', 'red'),  # XXX should this be blue?
+            '@return': MatchSymbol('@return', 'blue'),
         }
 
     def test_no_shadowing(self):

@@ -4,6 +4,7 @@ SPy `types` module.
 
 from typing import TYPE_CHECKING, Annotated, Any
 from dataclasses import dataclass
+from spy.location import Loc
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type, W_Object, ClassBody
 from spy.vm.function import W_Func
@@ -16,9 +17,22 @@ if TYPE_CHECKING:
 TYPES = ModuleRegistry('types')
 TYPES.add('module', W_Module._w)
 
-
 FIELDS_T = dict[str, W_Type]
 METHODS_T = dict[str, W_Func]
+
+@TYPES.builtin_type('Loc')
+class W_Loc(W_Object):
+    """
+    Wrapped version of Loc.
+    """
+    __spy_storage_category__ = 'value'
+
+    def __init__(self, loc: Loc) -> None:
+        self.loc = loc
+
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        return ('Loc', self.loc)
+
 
 @TYPES.builtin_type('LiftedType')
 class W_LiftedType(W_Type):

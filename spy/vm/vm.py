@@ -31,7 +31,7 @@ from spy.vm.bluecache import BlueCache
 
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.operator import OPERATOR
-from spy.vm.modules.types import TYPES
+from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.modules.math import MATH
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
@@ -492,6 +492,8 @@ class SPyVM:
                 return B.w_False
         elif T is str:
             return W_Str(self, value)
+        elif T is Loc:
+            return W_Loc(value)
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "
@@ -590,42 +592,8 @@ class SPyVM:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
         """
-        # <TEMPORARY HACK>
-        #
-        # we don't want to over-specialize OPERATORs: for example, in case of
-        # W_List.w_GETITEM(obj, i) we care only about the types, and we don't
-        # care whether "i" is blue.
-        #
-        # args_wop contains W_OpArgs which directly comes from ASTFrame, and
-        # so they might be either red or blue: e.g., if you do mylist[0], "0"
-        # corresponds to a blue oparg. The idea is that we want to convert
-        # "non-interesting" blue opargs into red opargs.
-
-        # Ideally, each op_* should be able to specify whether it wants to
-        # specialize only on types (i.e., red W_OpArgs) or also values (i.e.,
-        # blue W_OpArgs). But we don't support that yet, so for now we use
-        # some heuristics which seems to work:
-        #
-        #   1. for "single dispatch" operator, in which we have an "obj" which
-        #      is the receiver of the OP, we keep it blue
-        #
-        #   2. for GETATTR, SETATTR, CALL_METHOD, we keep the attribute/method
-        #      name blue
-        #
-        #   3. everything else becomes red
-        OP = OPERATOR
-        new_args_wop = [wop.as_red(self) for wop in args_wop]
-
-        if w_OP in (OP.w_CALL, OP.w_CALL_METHOD, OP.w_GETATTR,
-                    OP.w_GETITEM, OP.w_SETATTR, OP.w_SETITEM,
-                    OP.w_RAISE):
-            new_args_wop[0] = args_wop[0]
-        if w_OP in (OP.w_GETATTR, OP.w_SETATTR, OP.w_CALL_METHOD):
-            new_args_wop[1] = args_wop[1]
-        # </TEMPORARY HACK>
-
         try:
-            w_opimpl = self.fast_call(w_OP, new_args_wop)
+            w_opimpl = self.fast_call(w_OP, args_wop)
             assert isinstance(w_opimpl, W_OpImpl)
             return w_opimpl
         except SPyError as err:
@@ -662,20 +630,24 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
-    def _w_oparg(self, w_x: W_Dynamic) -> W_OpArg:
-        return W_OpArg(self, 'red', self.dynamic_type(w_x), None, Loc.here(-3))
+    def _w_oparg(self, color: Color, w_x: W_Dynamic) -> W_OpArg:
+        w_T = self.dynamic_type(w_x)
+        if color == 'red':
+            return W_OpArg(self, 'red', w_T, None, Loc.here(-3))
+        else:
+            return W_OpArg(self, 'blue', w_T, w_x, Loc.here(-3))
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = self._w_oparg(w_a)
-        wop_b = self._w_oparg(w_b)
+        wop_a = self._w_oparg('blue', w_a)
+        wop_b = self._w_oparg('blue', w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wop_a = self._w_oparg(w_a)
-        wop_b = self._w_oparg(w_b)
+        wop_a = self._w_oparg('blue', w_a)
+        wop_b = self._w_oparg('blue', w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wop_a, wop_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
@@ -685,8 +657,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wop_obj = self._w_oparg(w_obj)
-        wop_i = self._w_oparg(w_i)
+        wop_obj = self._w_oparg('blue', w_obj)
+        wop_i = self._w_oparg('blue', w_i)
         w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wop_obj, wop_i])
         return w_opimpl.execute(self, [w_obj, w_i])
 
@@ -723,8 +695,8 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        wop_a = self._w_oparg(w_a)
-        wop_b = self._w_oparg(w_b)
+        wop_a = self._w_oparg('blue', w_a)
+        wop_b = self._w_oparg('blue', w_b)
         try:
             w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wop_a, wop_b])
         except SPyError as err:

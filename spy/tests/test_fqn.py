@@ -111,3 +111,14 @@ def test_FQN_with_qualifiers():
     assert f.fullname == "mod::map[mod::key, mod::value]"
     # Verify original FQN is not modified
     assert e.fullname == "mod::map"
+
+def test_FQN_match():
+    a = FQN("mod::ptr[i32]::load")
+    assert a.match("mod::ptr[i32]::load")
+    assert a.match("mod::ptr[*]::load")
+    assert a.match("mod::ptr[i32]::*")
+    assert a.match("mod::ptr[*]::*")
+    #
+    assert not a.match("mod::ptr[i32]::store")
+    assert not a.match("mod::ptr[*]::store")
+    assert not a.match("load")

@@ -1047,3 +1047,20 @@ class TestBasic(CompilerTest):
             return math.fabs(x)
         """)
         assert mod.foo(-3.5) == 3.5
+
+    def test_cannot_call_red_from_blue(self):
+        src = """
+        @blue
+        def blue_inc(x):
+            return x + 1
+
+        def foo() -> i32:
+            x = 2
+            return blue_inc(x)
+        """
+        errors = expect_errors(
+            'cannot call blue function with red arguments',
+            ('this is blue', 'blue_inc'),
+            ('this is red', 'x'),
+        )
+        self.compile_raises(src, 'foo', errors)

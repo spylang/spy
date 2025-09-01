@@ -11,6 +11,7 @@ from spy.vm.opimpl import W_OpImpl, ArgSpec
 from spy.vm.astframe import ASTFrame
 from spy.vm.opspec import W_OpArg
 from spy.vm.exc import W_StaticError
+from spy.vm.modules.types import TYPES, W_Loc
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:
@@ -42,6 +43,13 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
         return ast.StrConst(loc, value)
+    elif w_T is TYPES.w_Loc:
+        # note that here we have two locs: 'loc' is as usual the location
+        # where the const comes from; 'value' is the actual value of the
+        # const, which happen to be of type Loc.
+        assert isinstance(w_val, W_Loc)
+        value = w_val.loc
+        return ast.LocConst(loc, value)
 
     # this is a non-primitive prebuilt constant.
     fqn = vm.make_fqn_const(w_val)
