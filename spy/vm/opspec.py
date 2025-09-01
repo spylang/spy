@@ -79,6 +79,10 @@ class W_MetaArg(W_Object):
     static types.
 
     Blue MetaArg always have an associated value.
+
+    The naming convention for variables of type W_MetaArg is wam_xxx (for
+    Wrapped Argument Meta), because it's "quicker" to pronounce that the more
+    correct wma_xxx.
     """
     __spy_storage_category__ = 'value'
 
