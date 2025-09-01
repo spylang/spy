@@ -37,23 +37,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Install apt packages
-      uses: tecolicom/actions-use-apt-tools@v1
-      with:
-        # expect provides "unbuffer"
-        tools: expect
-        method: timestamp
-      if: runner.os == 'Linux'
-
-    - name: Install Homebrew packages
-      uses: tecolicom/actions-use-homebrew-tools@v1
-      with:
-        tools: 'expect'
-        cache: 'yes'
-        verbose: true
-      if: runner.os == 'macOS'
-
-
     # - name: Install wasi-sdk
     #   run: |
     #     cd

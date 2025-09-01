@@ -139,6 +139,7 @@ class NinjaWriter:
 
     def build(self) -> py.path.local:
         assert self.out is not None
-        cmdline = ['unbuffer', 'ninja', '-C', str(self.build_dir)]
-        robust_run(cmdline)
+        cmdline = ['ninja', '-C', str(self.build_dir)]
+        # unbuffer run to get gcc to emit color codes
+        robust_run(cmdline, unbuffer=True)
         return self.build_dir.join(self.out)
