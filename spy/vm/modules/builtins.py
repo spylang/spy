@@ -58,8 +58,18 @@ def w_print(vm: 'SPyVM', wop_obj: W_OpArg) -> W_OpSpec:
         return W_OpSpec(B.w_print_str)
     elif w_T is B.w_dynamic:
         return W_OpSpec(B.w_print_dynamic)
+
+    elif wop_obj.color == 'blue':
+        # if we print something of unsupported type BUT it's a blue object, we
+        # can precompute its repr now and just print it as a string. This
+        # allows to print things like types even with the C backend.
+        s = str(wop_obj.w_blueval)
+        wop_s = W_OpArg.from_w_obj(vm, vm.wrap(s))
+        return W_OpSpec(w_print_str, [wop_s])
+
     else:
-        # NOTE: this doesn't work in the C backend
+        # printing a red value of unsupported type. As a fallback, we just use
+        # w_print_object, but this will not work in the C backend.
         return W_OpSpec(B.w_print_object)
 
     t = w_T.fqn.human_name
