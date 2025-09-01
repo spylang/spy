@@ -133,10 +133,9 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
         child.expect(pexpect.EOF)
         child.wait()  # avoid a race condition on child.exitstatus
 
-        # child.exitstatus should never be None if child.wait() finished, but
-        # mypy doesn't know that.  Will treat that situation as a command
-        # error.
-        returncode = -1 if child.exitstatus is None else child.exitstatus
+        # child.exitstatus is never None if child.wait() finished
+        assert child.exitstatus is not None
+        returncode = child.exitstatus
 
         return subprocess.CompletedProcess(
             args=cmdline_s,
