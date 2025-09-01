@@ -240,6 +240,8 @@ class ScopeAnalyzer:
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
             self.define_name(arg.name, scope_color, arg.loc, arg.type.loc)
+        if funcdef.vararg:
+            self.define_name(funcdef.vararg.name, scope_color, funcdef.vararg.loc, funcdef.vararg.type.loc)
         self.define_name('@return', scope_color, funcdef.return_type.loc,
                          funcdef.return_type.loc)
         for stmt in funcdef.body:
@@ -308,6 +310,8 @@ class ScopeAnalyzer:
         self.flatten(funcdef.return_type)
         for arg in funcdef.args:
             self.flatten(arg)
+        if funcdef.vararg:
+            self.flatten(funcdef.vararg)
         #
         # the statements of the function are evaluated in the inner scope
         inner_scope = self.by_funcdef(funcdef)

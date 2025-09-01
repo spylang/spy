@@ -260,6 +260,21 @@ class TestScopeAnalyzer:
             'i32': MatchSymbol('i32', 'blue', level=2),
         }
 
+    def test_vararg(self):
+        scopes = self.analyze("""
+        def foo(a: i32, *args: str) -> None:
+            pass
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == 'test::foo'
+        assert scope.color == 'red'
+        assert scope._symbols == {
+            'a': MatchSymbol('a', 'red'),
+            'args': MatchSymbol('args', 'red'),
+            '@return': MatchSymbol('@return', 'red'),
+        }
+
     def test_capture_across_multiple_scopes(self):
         # see also the similar test in test_basic
         scopes = self.analyze("""
