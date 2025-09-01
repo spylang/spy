@@ -47,7 +47,7 @@ if TYPE_CHECKING:
     from spy.vm.str import W_Str
 
 
-@OPERATOR.builtin_type('OpArg', lazy_definition=True)
+@OPERATOR.builtin_type('MetaArg', lazy_definition=True)
 class W_MetaArg(W_Object):
     """
     A value which carries some extra information.

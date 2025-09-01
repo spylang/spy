@@ -11,14 +11,14 @@ def test_oparg_eq():
 
     vm = SPyVM()
 
-    # red OpArgs are equals if the w_T is equal
+    # red MetaArgs are equals if the w_T is equal
     wam_r1 = W_MetaArg(vm, 'red', B.w_i32, None, Loc.fake())
     wam_r2 = W_MetaArg(vm, 'red', B.w_i32, None, Loc.fake())
     wam_r3 = W_MetaArg(vm, 'red', B.w_f64, None, Loc.fake())
     assert eq(wam_r1, wam_r2)      # same T
     assert not eq(wam_r1, wam_r3)  # different T
 
-    # blue OpArgs are equals is the both w_T and w_blueval is equal
+    # blue MetaArgs are equals is the both w_T and w_blueval is equal
     wam_b1 = W_MetaArg(vm, 'blue', B.w_i32, vm.wrap(42), Loc.fake())
     wam_b2 = W_MetaArg(vm, 'blue', B.w_i32, vm.wrap(42), Loc.fake())
     wam_b3 = W_MetaArg(vm, 'blue', B.w_i32, vm.wrap(43), Loc.fake())
