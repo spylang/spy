@@ -630,7 +630,7 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
-    def _w_oparg(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
+    def _w_e(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
         w_T = self.dynamic_type(w_x)
         if color == 'red':
             return W_MetaArg(self, 'red', w_T, None, Loc.here(-3))
