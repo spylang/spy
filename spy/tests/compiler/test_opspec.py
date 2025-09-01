@@ -46,13 +46,13 @@ class TestOpSpec(CompilerTest):
         assert len(w_opspec._args_wam) == 1
 
         # Check the MetaArg stored in the arguments list
-        wop = w_opspec._args_wam[0]
-        assert isinstance(wop, W_MetaArg)
-        assert wop.color == 'blue'
-        assert wop.w_static_T is B.w_i32
-        assert wop.is_blue()
-        assert wop._w_val is not None
-        assert self.vm.unwrap_i32(wop._w_val) == 42
+        wam = w_opspec._args_wam[0]
+        assert isinstance(wam, W_MetaArg)
+        assert wam.color == 'blue'
+        assert wam.w_static_T is B.w_i32
+        assert wam.is_blue()
+        assert wam._w_val is not None
+        assert self.vm.unwrap_i32(wam._w_val) == 42
 
     def test_new_MetaArg(self):
         mod = self.compile(

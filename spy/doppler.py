@@ -252,13 +252,13 @@ class DopplerFrame(ASTFrame):
                   -> retrieve shifted operands for binop.{left,right}
                   -> compute shited binop (stored in .shifted_expr)
         """
-        wop = super().eval_expr(expr, varname=varname)
-        if wop.color == 'blue':
-            new_expr = make_const(self.vm, expr.loc, wop.w_val)
+        wam = super().eval_expr(expr, varname=varname)
+        if wam.color == 'blue':
+            new_expr = make_const(self.vm, expr.loc, wam.w_val)
         else:
             new_expr = self.shift_expr(expr)
 
-        w_typeconv = self.typecheck_maybe(wop, varname)
+        w_typeconv = self.typecheck_maybe(wam, varname)
         if w_typeconv:
             new_expr = ast.Call(
                 loc = new_expr.loc,
@@ -270,7 +270,7 @@ class DopplerFrame(ASTFrame):
             )
 
         self.shifted_expr[expr] = new_expr
-        return wop
+        return wam
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
                     args_wam: list[W_MetaArg]) -> W_MetaArg:

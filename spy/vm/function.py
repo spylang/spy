@@ -259,16 +259,16 @@ class W_Func(W_Object):
         # the metafunc has the right signature. Instead, we do a full
         # OpSpec/typecheck/OpImpl dance, to raise proper TypeErrors if needed.
         # This is a bit of code duplication with callop.w_CALL, but too bad.
-        meta_args_wams = [W_MetaArg.from_w_obj(vm, wop) for wop in args_wam]
-        w_meta_opspec = W_OpSpec(w_func, meta_args_wams)
+        meta_args_wam = [W_MetaArg.from_w_obj(vm, wam) for wam in args_wam]
+        w_meta_opspec = W_OpSpec(w_func, meta_args_wam)
         w_meta_opimpl = typecheck_opspec(
             vm,
             w_meta_opspec,
-            meta_args_wams,
+            meta_args_wam,
             dispatch = 'single',
             errmsg = 'cannot call objects of type `{0}`'
         )
-        w_opspec = w_meta_opimpl.execute(vm, meta_args_wams)
+        w_opspec = w_meta_opimpl.execute(vm, meta_args_wam)
 
         if not isinstance(w_opspec, W_OpSpec):
             w_T = vm.dynamic_type(w_opspec)

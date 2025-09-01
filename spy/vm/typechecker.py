@@ -125,7 +125,7 @@ def typecheck_opspec(
 
 def functype_from_opargs(args_wam: list[W_MetaArg], w_restype: W_Type,
                          color: Color) -> W_FuncType:
-    params = [FuncParam(wop.w_static_T, 'simple') for wop in args_wam]
+    params = [FuncParam(wam.w_static_T, 'simple') for wam in args_wam]
     return W_FuncType.new(params, w_restype, color=color)
 
 
@@ -160,7 +160,7 @@ def _opspec_null_error(
        determining whether an operation is supported, so we report all
        of them
     """
-    typenames = [wop.w_static_T.fqn.human_name for wop in in_args_wam]
+    typenames = [wam.w_static_T.fqn.human_name for wam in in_args_wam]
     errmsg = errmsg.format(*typenames)
     err = SPyError('W_TypeError', errmsg)
     if dispatch == 'single':

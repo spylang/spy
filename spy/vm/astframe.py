@@ -97,13 +97,13 @@ class AbstractFrame:
             exc.add_location_maybe(stmt.loc)
             raise
 
-    def typecheck_maybe(self, wop: W_MetaArg,
+    def typecheck_maybe(self, wam: W_MetaArg,
                         varname: Optional[str]) -> Optional[W_Func]:
         if varname is None:
             return None # no typecheck needed
         w_exp_T = self.locals_types_w[varname]
         try:
-            w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wop)
+            w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wam)
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
@@ -124,12 +124,12 @@ class AbstractFrame:
                   ) -> W_MetaArg:
 
         try:
-            wop = magic_dispatch(self, 'eval_expr', expr)
+            wam = magic_dispatch(self, 'eval_expr', expr)
         except SPyError as exc:
             exc.add_location_maybe(expr.loc)
             raise
 
-        w_typeconv = self.typecheck_maybe(wop, varname)
+        w_typeconv = self.typecheck_maybe(wam, varname)
 
         if isinstance(self, ASTFrame) and self.w_func.redshifted:
             # this is just a sanity check. After redshifting, all type
@@ -140,26 +140,26 @@ class AbstractFrame:
 
         if w_typeconv is None:
             # no conversion needed, hooray
-            return wop
+            return wam
         elif self.redshifting:
             # we are performing redshifting: the conversion will be handlded
             # by FuncDoppler
-            return wop
+            return wam
         else:
             # apply the conversion immediately
-            w_val = self.vm.fast_call(w_typeconv, [wop.w_val])
+            w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
             return W_MetaArg(
                 self.vm,
-                wop.color,
+                wam.color,
                 w_typeconv.w_functype.w_restype,
                 w_val,
-                wop.loc,
-                sym=wop.sym,
+                wam.loc,
+                sym=wam.sym,
             )
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
-        wop = self.eval_expr(expr)
-        w_val = wop.w_val
+        wam = self.eval_expr(expr)
+        w_val = wam.w_val
         if isinstance(w_val, W_Type):
             self.vm.make_fqn_const(w_val)
             return w_val
@@ -176,8 +176,8 @@ class AbstractFrame:
         pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        wop = self.eval_expr(ret.value, varname='@return')
-        raise Return(wop.w_val)
+        wam = self.eval_expr(ret.value, varname='@return')
+        raise Return(wam.w_val)
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
@@ -268,14 +268,14 @@ class AbstractFrame:
         varname = target.value
         is_declared = varname in self.locals_types_w
         if is_declared:
-            wop = self.eval_expr(expr, varname=varname)
+            wam = self.eval_expr(expr, varname=varname)
         else:
             # first assignment, implicit declaration
-            wop = self.eval_expr(expr)
-            self.declare_local(varname, wop.w_static_T, target.loc)
+            wam = self.eval_expr(expr)
+            self.declare_local(varname, wam.w_static_T, target.loc)
 
         if not self.redshifting:
-            self.store_local(varname, wop.w_val)
+            self.store_local(varname, wam.w_val)
 
     def _exec_assign_global(self, target: ast.StrConst, expr: ast.Expr) -> None:
         # XXX this is semi-wrong. We need to add an AST field to keep track of
@@ -291,10 +291,10 @@ class AbstractFrame:
                     f'help: declare it as variable: `var {sym.name} ...`',
                     sym.loc)
             raise err
-        wop = self.eval_expr(expr)
+        wam = self.eval_expr(expr)
         if not self.redshifting:
             assert sym.fqn is not None
-            self.vm.store_global(sym.fqn, wop.w_val)
+            self.vm.store_global(sym.fqn, wam.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wam_tup = self.eval_expr(unpack.value)
@@ -367,13 +367,13 @@ class AbstractFrame:
         wam_obj = self.eval_expr(node.target)
         args_wam = [self.eval_expr(arg) for arg in node.args]
         wam_v = self.eval_expr(node.value)
-        wops = [wam_obj] + args_wam + [wam_v]
+        wams = [wam_obj] + args_wam + [wam_v]
         w_opimpl = self.vm.call_OP(
             node.loc,
             OP.w_SETITEM,
-            wops,
+            wams,
         )
-        self.eval_opimpl(node, w_opimpl, wops)
+        self.eval_opimpl(node, w_opimpl, wams)
 
     def exec_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         self.eval_expr(stmt.value)
@@ -474,7 +474,7 @@ class AbstractFrame:
         # XXX what happens if we try to call a blue func with red arguments?
         w_functype = w_opimpl.w_functype
         if w_opimpl.is_pure():
-            colors = [wop.color for wop in args_wam]
+            colors = [wam.color for wam in args_wam]
             color = maybe_blue(*colors)
         else:
             color = w_functype.color
@@ -482,7 +482,7 @@ class AbstractFrame:
         if color == 'red' and self.redshifting:
             w_res = None
         else:
-            args_w = [wop.w_val for wop in args_wam]
+            args_w = [wam.w_val for wam in args_wam]
             w_res = w_opimpl.execute(self.vm, args_w)
 
         return W_MetaArg(self.vm, color, w_functype.w_restype, w_res, op.loc)
@@ -570,18 +570,18 @@ class AbstractFrame:
         if color == 'red' and self.redshifting:
             w_val = None
         else:
-            items_w = [wop.w_val for wop in items_wam]
+            items_w = [wam.w_val for wam in items_wam]
             w_val = W_List(w_listtype, items_w)
         return W_MetaArg(self.vm, color, w_listtype, w_val, op.loc)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]
-        colors = [wop.color for wop in items_wam]
+        colors = [wam.color for wam in items_wam]
         color = maybe_blue(*colors)
         if color == 'red' and self.redshifting:
             w_val = None
         else:
-            items_w = [wop.w_val for wop in items_wam]
+            items_w = [wam.w_val for wam in items_wam]
             w_val = W_Tuple(items_w)
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
 
