@@ -738,6 +738,7 @@ class TestBasic(CompilerTest):
             print(12.3)
             print(True)
             print(None)
+            print(i32)
         """)
         mod.foo()
         if self.backend == 'C':
@@ -753,13 +754,15 @@ class TestBasic(CompilerTest):
                                  s_123,
                                  "True",
                                  "None",
+                                 "<spy type 'i32'>",
                                  ""])
 
     @no_C
     def test_print_object(self, capfd):
         mod = self.compile("""
         def foo() -> None:
-            print(i32)
+            x = i32   # force i32 to be a red value
+            print(x)
         """)
         mod.foo()
         out, err = capfd.readouterr()
