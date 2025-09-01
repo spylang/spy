@@ -187,7 +187,7 @@ class W_Object:
     #   3. [red]  execution: the OpImpl is executed
     #
     # Metafunctions don't receive the concrete values, but receive abstract
-    # OpArgs, which carry the static_type, the color, the definition location,
+    # MetaArgs, which carry the static_type, the color, the definition location,
     # etc.
     #
     # For example, consider the following expression:
@@ -196,8 +196,8 @@ class W_Object:
     # If __getattribute__ is a metafunction, this is more or less what happens:
     #
     #     T = STATIC_TYPE(obj)
-    #     v_obj = OpArg('red', T, ...)
-    #     v_attr = OpArg('blue', str, "a")
+    #     v_obj = MetaArg('red', T, ...)
+    #     v_attr = MetaArg('blue', str, "a")
     #     opimpl = operator.GETATTR(v_obj, v_attr)
     #     opimpl.execute(obj)
     #
@@ -625,7 +625,7 @@ class W_Type(W_Object):
         # try to call __new__
         if w_new := w_T.lookup_func('__new__'):
             # this is a bit of ad-hoc logic around normal __new__ vs metafunc
-            # __new__: when it's a metafunc we also want to pass the OpArg of
+            # __new__: when it's a metafunc we also want to pass the MetaArg of
             # the type itself (so that the function can reach
             # e.g. wam_p.w_blueval), but for normal __new__ by default we
             # don't pass it (because usually it's not needed)

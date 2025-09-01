@@ -5,8 +5,8 @@ Conceptually, the following SPy code:
    c = a + b
 
 is roughly equivalent to:
-   arg_a = OpArg('a', STATIC_TYPE(a))
-   arg_b = OpArg('b', STATIC_TYPE(b))
+   arg_a = MetaArg('red', STATIC_TYPE(a))
+   arg_b = MetaArg('red', STATIC_TYPE(b))
    opimpl = operator.ADD(arg_a, arg_b)
    c = opimpl(a, b)
 
@@ -18,7 +18,7 @@ I.e., the execution of an operator happens in three-steps:
 Point (2) is where typechecking happens and can fail.
 
 Note that OPERATORTs don't receive the actual values of operands. Instead,
-they receive OpArgs, which represents "abstract values", of which we know only
+they receive MetaArgs, which represents "abstract values", of which we know only
 the static type.
 
 Then, the OpImpl receives the actual values and compute the result.
@@ -62,7 +62,7 @@ class W_MetaArg(W_Object):
 
     x and y are identical, but have different static types.
 
-    The main job of OpArgs is to keep track of the color and the static type
+    The main job of MetaArgs is to keep track of the color and the static type
     of objects inside the ASTFrame.  As the name suggests, they are then
     passed as arguments to OPERATORs, which can then use the static type to
     dispatch to the proper OpSpec.
@@ -72,13 +72,13 @@ class W_MetaArg(W_Object):
       - loc: the source code location where this object comes from
       - sym: the symbol associated with this objects (if any)
 
-    In interpreter mode, OpArgs represent concrete values, so they carry an
+    In interpreter mode, MetaArgs represent concrete values, so they carry an
     actualy object + its static type.
 
-    During redshifting, red OpArgs are abstract: they carry around only the
+    During redshifting, red MetaArgs are abstract: they carry around only the
     static types.
 
-    Blue OpArg always have an associated value.
+    Blue MetaArg always have an associated value.
     """
     __spy_storage_category__ = 'value'
 
@@ -117,10 +117,10 @@ class W_MetaArg(W_Object):
         """
         t = self.w_static_T.spy_key(vm)
         if self.color == 'red':
-            return ('OpArg', 'red', t, None)
+            return ('MetaArg', 'red', t, None)
         else:
             assert self._w_val is not None
-            return ('OpArg', 'blue', t, self._w_val.spy_key(vm))
+            return ('MetaArg', 'blue', t, self._w_val.spy_key(vm))
 
     @builtin_method('__new__')
     @staticmethod
@@ -131,24 +131,24 @@ class W_MetaArg(W_Object):
             w_val: W_Object
     ) -> 'W_MetaArg':
         """
-        Create a new OpArg from SPy code:
+        Create a new MetaArg from SPy code:
         - color: 'red' or 'blue'
         - static_type: the static type of the argument
-        - val: the value (optional for red OpArg, required for blue)
+        - val: the value (optional for red MetaArg, required for blue)
         """
         # Check that w_color is a string
         w_T = vm.dynamic_type(w_color)
         if w_T is not B.w_str:
             raise SPyError(
                 'W_TypeError',
-                f"OpArg color must be a string, got {w_T.fqn.human_name}",
+                f"MetaArg color must be a string, got {w_T.fqn.human_name}",
             )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
         if color not in ('red', 'blue'):
             raise SPyError(
                 'W_TypeError',
-                f"OpArg color must be 'red' or 'blue', got '{color}'",
+                f"MetaArg color must be 'red' or 'blue', got '{color}'",
             )
 
         # Convert B.w_None to Python None
@@ -158,7 +158,7 @@ class W_MetaArg(W_Object):
             w_val2 = w_val
 
         if color == 'blue' and w_val is None:
-            raise SPyError("Blue OpArg requires a value", etype='W_TypeError')
+            raise SPyError("Blue MetaArg requires a value", etype='W_TypeError')
 
         loc = Loc.here(-2)  # approximate source location
         return W_MetaArg(vm, color, w_static_T, w_val2, loc)
@@ -187,7 +187,7 @@ class W_MetaArg(W_Object):
 
     @property
     def w_val(self) -> W_Object:
-        assert self._w_val is not None, 'cannot read w_val from abstract OpArg'
+        assert self._w_val is not None, 'cannot read w_val from abstract MetaArg'
         return self._w_val
 
     @property

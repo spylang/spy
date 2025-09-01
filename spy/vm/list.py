@@ -175,7 +175,7 @@ class W_List(W_BaseList, Generic[T]):
 # in case it's needed in the future.
 #
 # The following commented-out code makes an interp-level type W_MetaArgList
-# which corresponds to the interp-level type `list[OpArg]`.
+# which corresponds to the interp-level type `list[MetaArg]`.
 
 w_metaarg_list_type = _make_list_type(OP.w_MetaArg)
 PREBUILT_LIST_TYPES[OP.w_MetaArg] = w_metaarg_list_type

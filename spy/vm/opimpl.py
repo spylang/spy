@@ -44,7 +44,7 @@ class W_OpImpl(W_Object):
     typechecker.typecheck() transforms an OpSpec into an OpImpl, which is
     ready to be executed. In particular, OpImpl contains all the conversions
     which might be necessary to perform, in case the signature of the function
-    doesn't match the type of the OpArgs.
+    doesn't match the type of the MetaArgs.
 
     OpImpl is not a function, but behaves like one: it expects a certain
     number of positional arguments with certain types, and it has a return
