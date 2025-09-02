@@ -711,6 +711,7 @@ class ASTFrame(AbstractFrame):
                 self.declare_local(arg.name, param.w_T, arg.loc)
 
             elif param.kind == 'var_positional':
+                assert funcdef.vararg is not None
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 arg = funcdef.vararg
@@ -734,10 +735,11 @@ class ASTFrame(AbstractFrame):
                 self.store_local(arg.name, w_arg)
 
             elif param.kind == 'var_positional':
+                assert self.funcdef.vararg is not None
                 arg = self.funcdef.vararg
-                varargs_w = args_w[i:]
-                w_tup = W_Tuple(varargs_w)  # this is *args
-                self.store_local(arg.name, w_tup)
+                items_w = args_w[i:]
+                w_varargs = W_Tuple(list(items_w))
+                self.store_local(arg.name, w_varargs)
 
             else:
                 assert False
