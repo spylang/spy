@@ -16,10 +16,15 @@ if TYPE_CHECKING:
 Namespace = dict[str, Optional[W_Object]]
 CLOSURE = tuple[Namespace, ...]
 
-FuncParamKind = Literal['simple', 'varargs']
+FuncParamKind = Literal['simple', 'var_positional']
 
 @dataclass(frozen=True, eq=True)
 class FuncParam:
+    """
+    Represent a single param of a function.
+
+    Loosely modeled against inspect.Parameter.
+    """
     w_T: W_Type
     kind: FuncParamKind
 
@@ -136,8 +141,8 @@ class W_FuncType(W_Type):
         return cls.new(params, w_restype)
 
     @property
-    def is_varargs(self) -> bool:
-        return bool(self.params) and self.params[-1].kind == 'varargs'
+    def has_varargs(self) -> bool:
+        return bool(self.params) and self.params[-1].kind == 'var_positional'
 
     @property
     def arity(self) -> int:
@@ -145,13 +150,13 @@ class W_FuncType(W_Type):
         Return the *minimum* number of arguments expected by the function.
         In case of varargs, it's the number of non-varargs paramenters.
         """
-        if self.is_varargs:
+        if self.has_varargs:
             return len(self.params) - 1
         else:
             return len(self.params)
 
     def is_argcount_ok(self, n: int) -> bool:
-        if self.is_varargs:
+        if self.has_varargs:
             return n >= self.arity
         else:
             return n == self.arity
@@ -160,7 +165,7 @@ class W_FuncType(W_Type):
         """
         Iterate over all params. Go to infinity in case of varargs
         """
-        if self.is_varargs:
+        if self.has_varargs:
             for param in self.params[:-1]:
                 yield param
             last_param = self.params[-1]
