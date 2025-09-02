@@ -304,6 +304,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_varargs(self):
+        src = """
+        def foo(a: i32, b: i32, *args: i32) -> i32:
+            pass
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_zz_sanity_check(self):
         """
         This is a hack.

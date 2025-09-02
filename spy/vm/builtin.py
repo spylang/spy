@@ -55,7 +55,7 @@ def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     if p.kind == p.POSITIONAL_OR_KEYWORD:
         kind = 'simple'
     elif p.kind == p.VAR_POSITIONAL:
-        kind = 'varargs'
+        kind = 'var_positional'
     else:
         assert False
     return FuncParam(w_T, kind)

@@ -387,6 +387,7 @@ class FuncDef(Stmt):
     kind: FuncKind
     name: str
     args: list[FuncArg]
+    vararg: Optional[FuncArg]
     return_type: 'Expr'
     docstring: Optional[str]
     body: list['Stmt']

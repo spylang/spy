@@ -155,7 +155,7 @@ class Parser:
         #
         loc = py_funcdef.loc
         name = py_funcdef.name
-        args = self.from_py_arguments(color, py_funcdef.args)
+        args, vararg = self.from_py_arguments(color, py_funcdef.args)
         #
         py_returns = py_funcdef.returns
         if py_returns:
@@ -197,6 +197,7 @@ class Parser:
             kind = func_kind,
             name = py_funcdef.name,
             args = args,
+            vararg = vararg,
             return_type = return_type,
             body = body,
             docstring = docstring,
@@ -205,10 +206,10 @@ class Parser:
     def from_py_arguments(self,
                           color: spy.ast.Color,
                           py_args: py_ast.arguments
-                          ) -> list[spy.ast.FuncArg]:
+                          ) -> tuple[list[spy.ast.FuncArg], Optional[spy.ast.FuncArg]]:
+        vararg = None
         if py_args.vararg:
-            self.error('*args is not supported yet',
-                       'this is not supported', py_args.vararg.loc)
+            vararg = self.from_py_arg(color, py_args.vararg)
         if py_args.kwarg:
             self.error('**kwargs is not supported yet',
                        'this is not supported', py_args.kwarg.loc)
@@ -223,7 +224,8 @@ class Parser:
                        'this is not supported', py_args.kwonlyargs[0].loc)
         assert not py_args.kw_defaults
         #
-        return [self.from_py_arg(color, py_arg) for py_arg in py_args.args]
+        args = [self.from_py_arg(color, py_arg) for py_arg in py_args.args]
+        return args, vararg
 
     def from_py_arg(self,
                     color: spy.ast.Color,

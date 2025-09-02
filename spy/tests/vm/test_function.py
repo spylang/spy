@@ -22,7 +22,7 @@ def make_FuncType(
         for w_type in types_w
     ]
     if varargs:
-        params[-1] = FuncParam(types_w[-1], 'varargs')
+        params[-1] = FuncParam(types_w[-1], 'var_positional')
     return W_FuncType.new(params, w_restype, color=color, kind=kind)
 
 
