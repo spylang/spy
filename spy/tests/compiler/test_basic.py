@@ -1068,8 +1068,7 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, 'foo', errors)
 
-    @pytest.mark.skip('implement me')
-    def test_vararg(self):
+    def test_varargs(self):
         src = """
         @blue
         def foo(a, b, *args):
@@ -1079,3 +1078,4 @@ class TestBasic(CompilerTest):
             return foo(1, 2, 3, 4, 5)
         """
         mod = self.compile(src)
+        assert mod.bar() == 3

@@ -36,3 +36,9 @@ class W_Tuple(W_Object):
         i = vm.unwrap_i32(w_i)
         # XXX bound check?
         return w_tup.items_w[i]
+
+    @builtin_method('__len__')
+    @staticmethod
+    def w_len(vm: 'SPyVM', w_tup: 'W_Tuple') -> W_I32:
+        n = len(w_tup.items_w)
+        return vm.wrap(n)

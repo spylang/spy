@@ -27,6 +27,16 @@ class TestTuple(CompilerTest):
         y = mod.foo(2)
         assert y == 'hello'
 
+    def test_len(self):
+        mod = self.compile(
+        """
+        def foo() -> i32:
+            tup = 1, 2, 'hello'
+            return len(tup)
+        """)
+        x = mod.foo()
+        assert x == 3
+
     def test_unpacking(self):
         mod = self.compile(
         """

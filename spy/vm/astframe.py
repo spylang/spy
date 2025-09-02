@@ -189,6 +189,15 @@ class AbstractFrame:
                 kind = 'simple'
             )
             params.append(param)
+
+        if funcdef.vararg:
+            w_param_type = self.eval_expr_type(funcdef.vararg.type)
+            param = FuncParam(
+                w_T = w_param_type,
+                kind = 'var_positional'
+            )
+            params.append(param)
+
         w_restype = self.eval_expr_type(funcdef.return_type)
         w_functype = W_FuncType.new(
             params,
@@ -694,8 +703,22 @@ class ASTFrame(AbstractFrame):
         self.declare_local('@if', B.w_bool, Loc.fake())
         self.declare_local('@while', B.w_bool, Loc.fake())
         self.declare_local('@return', w_ft.w_restype, funcdef.return_type.loc)
-        for arg, param in zip(self.funcdef.args, w_ft.params, strict=True):
-            self.declare_local(arg.name, param.w_T, arg.loc)
+
+        assert w_ft.is_argcount_ok(len(funcdef.args))
+        for i, param in enumerate(w_ft.params):
+            if param.kind == 'simple':
+                arg = funcdef.args[i]
+                self.declare_local(arg.name, param.w_T, arg.loc)
+
+            elif param.kind == 'var_positional':
+                # XXX: we don't have typed tuples, for now we just use a
+                # generic untyped tuple as the type.
+                arg = funcdef.vararg
+                self.declare_local(arg.name, B.w_tuple, arg.loc)
+
+            else:
+                assert False
+
 
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """
@@ -703,7 +726,18 @@ class ASTFrame(AbstractFrame):
         """
         w_ft = self.w_func.w_functype
         args = self.funcdef.args
-        params = w_ft.params
-        for arg, param, w_arg in zip(args, params, args_w, strict=True):
-            assert self.vm.isinstance(w_arg, param.w_T)
-            self.store_local(arg.name, w_arg)
+
+        for i, param in enumerate(w_ft.params):
+            if param.kind == 'simple':
+                arg = args[i]
+                w_arg = args_w[i]
+                self.store_local(arg.name, w_arg)
+
+            elif param.kind == 'var_positional':
+                arg = self.funcdef.vararg
+                varargs_w = args_w[i:]
+                w_tup = W_Tuple(varargs_w)  # this is *args
+                self.store_local(arg.name, w_tup)
+
+            else:
+                assert False
