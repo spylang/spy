@@ -74,12 +74,20 @@ class SPyBackend:
         self.scope_stack.pop()
 
     def fmt_params(self, w_func: W_ASTFunc) -> str:
-        argnames = [arg.name for arg in w_func.funcdef.args]
-        params = w_func.w_functype.params
+        funcdef = w_func.funcdef
         l = []
-        for argname, p in zip(argnames, params, strict=True):
-            t = self.fmt_w_obj(p.w_T)
-            l.append(f'{argname}: {t}')
+        for i, param in enumerate(w_func.w_functype.params):
+            t = self.fmt_w_obj(param.w_T)
+            if param.kind == 'simple':
+                n = funcdef.args[i].name
+                l.append(f'{n}: {t}')
+            elif param.kind == 'var_positional':
+                assert funcdef.vararg is not None
+                assert i == len(funcdef.args)
+                n = funcdef.vararg.name
+                l.append(f'*{n}: {t}')
+            else:
+                assert False
         return ', '.join(l)
 
     def fmt_w_obj(self, w_obj: W_Object) -> str:
