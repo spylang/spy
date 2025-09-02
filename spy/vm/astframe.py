@@ -737,7 +737,7 @@ class ASTFrame(AbstractFrame):
 
             elif param.kind == 'var_positional':
                 assert self.funcdef.vararg is not None
-                assert i == len(funcdef.args)
+                assert i == len(self.funcdef.args)
                 arg = self.funcdef.vararg
                 items_w = args_w[i:]
                 w_varargs = W_Tuple(list(items_w))
