@@ -108,8 +108,8 @@ class Context:
         for i, param in enumerate(w_functype.params):
             c_type = self.w2c(param.w_T)
             if param.kind == 'simple':
-                name = funcdef.args[i].name
-                c_params.append(C_FuncParam(name=name, c_type=c_type))
+                c_param_name = funcdef.args[i].name
+                c_params.append(C_FuncParam(c_param_name, c_type))
             elif param.kind == 'var_positional':
                 assert funcdef.vararg is not None
                 assert i == len(funcdef.args)
