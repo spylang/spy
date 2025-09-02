@@ -1067,3 +1067,15 @@ class TestBasic(CompilerTest):
             ('this is red', 'x'),
         )
         self.compile_raises(src, 'foo', errors)
+
+    @pytest.mark.skip('implement me')
+    def test_vararg(self):
+        src = """
+        @blue
+        def foo(a, b, *args):
+            return len(args)
+
+        def bar() -> i32:
+            return foo(1, 2, 3, 4, 5)
+        """
+        mod = self.compile(src)
