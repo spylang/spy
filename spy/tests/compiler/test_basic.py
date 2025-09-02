@@ -1068,7 +1068,7 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, 'foo', errors)
 
-    def test_varargs(self):
+    def test_varargs_blue(self):
         src = """
         @blue
         def foo(a, b, *args):
@@ -1079,3 +1079,21 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.bar() == 3
+
+    def test_varargs_red(self):
+        src = """
+        def foo(a: i32, b: i32, *args: i32) -> i32:
+            return len(args)
+
+        def bar() -> i32:
+            return foo(1, 2, 3, 4, 5)
+        """
+        if self.backend == 'C':
+            errors = expect_errors(
+                '*args not yet supported by the C backend',
+                ('*args declared here', 'args: i32')
+            )
+            self.compile_raises(src, "foo", errors)
+        else:
+            mod = self.compile(src)
+            assert mod.bar() == 3

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
@@ -101,12 +102,27 @@ class Context:
 
     def c_function(self, name: str, w_func: W_ASTFunc) -> C_Function:
         w_functype = w_func.w_functype
-        argnames = [arg.name for arg in w_func.funcdef.args]
+        funcdef = w_func.funcdef
+
+        c_params = []
+        for i, param in enumerate(w_functype.params):
+            c_type = self.w2c(param.w_T)
+            if param.kind == 'simple':
+                name = funcdef.args[i].name
+                c_params.append(C_FuncParam(name=name, c_type=c_type))
+            elif param.kind == 'var_positional':
+                assert funcdef.vararg is not None
+                assert i == len(funcdef.args)
+                raise SPyError.simple(
+                    'W_WIP',
+                    '*args not yet supported by the C backend',
+                    '*args declared here',
+                    funcdef.vararg.loc
+                )
+            else:
+                assert False
+
         c_restype = self.w2c(w_functype.w_restype)
-        c_params = [
-            C_FuncParam(name=name, c_type=self.w2c(p.w_T))
-            for name, p in zip(argnames, w_functype.params, strict=True)
-        ]
         return C_Function(name, c_params, c_restype)
 
     def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:

@@ -712,6 +712,7 @@ class ASTFrame(AbstractFrame):
 
             elif param.kind == 'var_positional':
                 assert funcdef.vararg is not None
+                assert i == len(funcdef.args)
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 arg = funcdef.vararg
@@ -736,6 +737,7 @@ class ASTFrame(AbstractFrame):
 
             elif param.kind == 'var_positional':
                 assert self.funcdef.vararg is not None
+                assert i == len(funcdef.args)
                 arg = self.funcdef.vararg
                 items_w = args_w[i:]
                 w_varargs = W_Tuple(list(items_w))
