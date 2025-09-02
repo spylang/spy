@@ -16,11 +16,6 @@ KEY = tuple[W_Func, ARGS_KEY]
 class BlueCache:
     """
     Store and record the results of blue functions.
-
-    Currently this is very inefficient, because for every W_Func it records a
-    list of calls, and then during lookup it does a linear search.
-
-    We should use a SPy dict, as soon as we have it.
     """
     vm: 'SPyVM'
     data: dict[KEY, W_Object]
