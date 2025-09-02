@@ -1,0 +1,30 @@
+#! -*- mode: python -*-
+
+from operator import OpSpec
+
+@blue.metafunc
+def mysum(*args_m):
+    if len(args_m) == 2:
+        m0, m1 = args_m
+        T = m0.static_type
+        def mysum2(v0: T, v1: T) -> T:
+            return v0 + v1
+        return OpSpec(mysum2)
+
+    elif len(args_m) == 3:
+        m0, m1, m2 = args_m
+        T = m0.static_type
+        def mysum3(v0: T, v1: T, v2: T) -> T:
+            return v0 + v1 + v2
+        return OpSpec(mysum3)
+
+    else:
+        raise TypeError('invalid numer of arguments')
+
+
+def main() -> None:
+    print(mysum(1, 2))
+    print(mysum(1, 2, 3))
+    print(mysum('hello ', 'world'))
+    #print(mysum(1, 'hello'))
+    #print(mysum(1, 2, 3, 4))
