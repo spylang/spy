@@ -387,6 +387,9 @@ async def inner_main(args: Arguments) -> None:
 
     outfile = backend.build()
     executable = outfile.relto(cwd)
+    if executable == '':
+        # outfile is not in a subdir of cwd, let's display the full path
+        executable = str(outfile)
     print(f"==> {executable}")
 
 
