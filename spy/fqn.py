@@ -64,25 +64,25 @@ See also vm.get_unique_FQN.
 """
 
 from typing import Optional, Any, Union, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 import functools
 
 PARTS = Sequence[Union[str, 'NSPart']]
-QUALIFIERS = Optional[Sequence[Union[str, 'FQN']]]
+QUALIFIERS = Optional[tuple[Union[str, 'FQN'], ...]]
 
-def get_parts(x: PARTS) -> list['NSPart']:
+def get_parts(x: PARTS) -> tuple['NSPart']:
     parts = []
     for part in x:
         if isinstance(part, str):
-            parts.append(NSPart(part, []))
+            parts.append(NSPart(part, ()))
         elif isinstance(part, NSPart):
             parts.append(part)
         else:
             assert False
-    return parts
+    return tuple(parts)
 
-def get_qualifiers(x: QUALIFIERS) -> list['FQN']:
+def get_qualifiers(x: QUALIFIERS) -> tuple['FQN']:
     x = x or []
     quals = []
     for item in x:
@@ -92,18 +92,18 @@ def get_qualifiers(x: QUALIFIERS) -> list['FQN']:
             quals.append(item)
         else:
             assert False
-    return quals
+    return tuple(quals)
 
-@dataclass
+@dataclass(frozen=True)
 class NSPart:
     name: str
-    qualifiers: list['FQN']
+    qualifiers: tuple['FQN']
     suffix: int = 0
 
-    def __init__(self, name: str, quals: QUALIFIERS=None, suffix: int=0) -> None:
-        self.name = name
-        self.qualifiers = get_qualifiers(quals)
-        self.suffix = suffix
+    def __init__(self, name: str, quals: QUALIFIERS = None, suffix: int = 0) -> None:
+        object.__setattr__(self, 'name', name)
+        object.__setattr__(self, 'qualifiers', get_qualifiers(quals))
+        object.__setattr__(self, 'suffix', suffix)
 
     def __str__(self) -> str:
         result = self.name
@@ -127,7 +127,7 @@ class NSPart:
 
 
 class FQN:
-    parts: list[NSPart]
+    parts: tuple[NSPart]
 
     def __new__(cls, x: str | PARTS) -> 'FQN':
         """
@@ -147,9 +147,10 @@ class FQN:
         """
         Create a new FQN with the specified suffix on the last NSPart.
         """
-        res = FQN(self.parts)
-        res.parts[-1].suffix = suffix
-        return res
+        new_parts = list(self.parts)
+        last_part = new_parts[-1]
+        new_parts[-1] = NSPart(last_part.name, last_part.qualifiers, suffix)
+        return FQN(new_parts)
 
     def with_qualifiers(self, qualifiers: QUALIFIERS) -> 'FQN':
         """
@@ -159,11 +160,11 @@ class FQN:
         for i, part in enumerate(self.parts):
             if i < len(self.parts) - 1:
                 # For all parts except the last one, create a copy
-                new_part = NSPart(part.name, part.qualifiers.copy(), part.suffix)
+                new_part = NSPart(part.name, part.qualifiers, part.suffix)
                 new_parts.append(new_part)
             else:
                 # For the last part, create a copy with the new qualifiers added
-                new_quals = part.qualifiers.copy() + get_qualifiers(qualifiers)
+                new_quals = part.qualifiers + get_qualifiers(qualifiers)
                 new_part = NSPart(part.name, new_quals, part.suffix)
                 new_parts.append(new_part)
 
@@ -260,7 +261,7 @@ class FQN:
         Create a new FQN nested inside the current one.
         """
         qual2 = get_qualifiers(qualifiers)
-        return FQN(self.parts + [NSPart(name, qual2)])
+        return FQN(self.parts + (NSPart(name, qual2),))
 
     @property
     def c_name(self) -> str:
