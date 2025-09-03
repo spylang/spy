@@ -101,7 +101,7 @@ class FQNParser:
         else:
             return NSPart(name, ())
 
-    def parse_qualifiers(self) -> list['FQN']:
+    def parse_qualifiers(self) -> tuple['FQN', ...]:
         qualifiers = []
         while True:
             qualifiers.append(self.parse_fqn())
@@ -111,7 +111,7 @@ class FQNParser:
                 self.expect(',')
             elif self.peek() == ']':
                 break
-        return qualifiers
+        return tuple(qualifiers)
 
     def parse_name(self) -> str:
         name = self.peek()

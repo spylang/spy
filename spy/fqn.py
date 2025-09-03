@@ -69,9 +69,9 @@ import re
 import functools
 
 PARTS = Sequence[Union[str, 'NSPart']]
-QUALIFIERS = Optional[tuple[Union[str, 'FQN'], ...]]
+QUALIFIERS = Optional[Sequence[Union[str, 'FQN']]]
 
-def get_parts(x: PARTS) -> tuple['NSPart']:
+def get_parts(x: PARTS) -> tuple['NSPart', ...]:
     parts = []
     for part in x:
         if isinstance(part, str):
@@ -82,8 +82,8 @@ def get_parts(x: PARTS) -> tuple['NSPart']:
             assert False
     return tuple(parts)
 
-def get_qualifiers(x: QUALIFIERS) -> tuple['FQN']:
-    x = x or []
+def get_qualifiers(x: QUALIFIERS) -> tuple['FQN', ...]:
+    x = x or ()
     quals = []
     for item in x:
         if isinstance(item, str):
@@ -97,7 +97,7 @@ def get_qualifiers(x: QUALIFIERS) -> tuple['FQN']:
 @dataclass(frozen=True)
 class NSPart:
     name: str
-    qualifiers: tuple['FQN']
+    qualifiers: tuple['FQN', ...]
     suffix: int = 0
 
     def __init__(self, name: str, quals: QUALIFIERS = None, suffix: int = 0) -> None:
@@ -127,7 +127,7 @@ class NSPart:
 
 
 class FQN:
-    parts: tuple[NSPart]
+    parts: tuple[NSPart, ...]
 
     def __new__(cls, x: str | PARTS) -> 'FQN':
         """
