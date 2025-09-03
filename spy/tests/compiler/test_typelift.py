@@ -126,3 +126,23 @@ class TestTypelift(CompilerTest):
         mod = self.compile(src)
         assert mod.test1(10) == 20
         assert mod.test2(10) == 10
+
+    @pytest.mark.skip('implement me')
+    def test_staticmethod(self):
+        src = """
+        from operator import OpSpec
+
+        @typelift
+        class MyInt:
+            __ll__: i32
+
+            @staticmethod
+            def one() -> MyInt:
+                return MyInt.__lift__(1)
+
+        def foo() -> i32:
+            m = MyInt.one()
+            return m.__ll__
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1
