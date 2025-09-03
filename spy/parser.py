@@ -138,6 +138,8 @@ class Parser:
                                  ) -> spy.ast.FuncDef:
         color: spy.ast.Color = 'red'
         func_kind: spy.ast.FuncKind = 'plain'
+        decorators: list[spy.ast.Expr] = []
+
         for deco in py_funcdef.decorator_list:
             d = parse_special_decorator(deco)
             # @blue.* are special cased
@@ -150,9 +152,8 @@ class Parser:
                 color = 'blue'
                 func_kind = 'metafunc'
             else:
-                # other decorators are not supported:
-                self.error('decorators are not supported yet',
-                           'this is not supported', deco.loc)
+                # other decorators are stored as general decorators
+                decorators.append(self.from_py_expr(deco))
         #
         loc = py_funcdef.loc
         name = py_funcdef.name
@@ -202,6 +203,7 @@ class Parser:
             return_type = return_type,
             body = body,
             docstring = docstring,
+            decorators = decorators,
         )
 
     def from_py_arguments(self,

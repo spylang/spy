@@ -391,6 +391,7 @@ class FuncDef(Stmt):
     return_type: 'Expr'
     docstring: Optional[str]
     body: list['Stmt']
+    decorators: list['Expr']
     symtable: Any = field(repr=False, default=None)
 
     @property
