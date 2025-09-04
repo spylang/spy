@@ -123,7 +123,10 @@ class SymTable:
             fqn = ''
             if sym.fqn:
                 fqn = f' => {sym.fqn}'
-            print(f'    [{sym.level}] {sym.color:4s} {sym_name} {fqn}')
+            storage = ''
+            if sym.storage == 'cell':
+                storage = '[cell]'
+            print(f'    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {fqn}')
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols
