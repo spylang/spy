@@ -825,9 +825,12 @@ class TestBasic(CompilerTest):
             return 1 + 2 * 3
 
         x = INIT_X()
+
+        def get_x() -> i32:
+            return x
         """)
         vm = self.vm
-        assert mod.x == 7
+        assert mod.get_x() == 7
         fqn = FQN("test::x")
         assert vm.unwrap(self.vm.globals_w[fqn]) == 7
 
