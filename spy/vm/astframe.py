@@ -257,6 +257,15 @@ class AbstractFrame:
         w_T.define_from_classbody(body)
         assert w_T.is_defined()
 
+    def exec_stmt_Import(self, imp: ast.Import) -> None:
+        sym = self.symtable.lookup(imp.asname)
+        assert sym.is_local
+        w_mod = self.vm.modules_w[imp.fqn.modname]
+        w_val = w_mod.getattr(imp.fqn.symbol_name)
+        w_T = self.vm.dynamic_type(w_val)
+        self.declare_local(sym.name, w_T, imp.loc)
+        self.store_local(sym.name, w_val)
+
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_T = self.eval_expr_type(vardef.type)
         self.declare_local(vardef.name, w_T, vardef.loc)
@@ -436,7 +445,7 @@ class AbstractFrame:
             raise SPyError.simple(
                 "W_NameError", msg, "not found in this scope", name.loc,
             )
-        if sym.fqn is not None:
+        if sym.fqn is not None and sym.storage == 'cell':
             return self.eval_Name_global(name, sym)
         elif sym.is_local:
             return self.eval_Name_local(name, sym)
@@ -454,8 +463,9 @@ class AbstractFrame:
             assert isinstance(w_cell, W_Cell)
             w_val = w_cell.get()
         else:
-            w_val = self.vm.lookup_global(sym.fqn)
-            assert w_val is not None
+            assert False
+            ## w_val = self.vm.lookup_global(sym.fqn)
+            ## assert w_val is not None
 
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
