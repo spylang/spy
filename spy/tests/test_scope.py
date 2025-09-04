@@ -5,7 +5,7 @@ from spy import ast
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import Symbol, Color, VarKind, SymTable
+from spy.analyze.symtable import Symbol, Color, VarKind, VarStorage, SymTable
 from spy.vm.vm import SPyVM
 from spy.tests.support import expect_errors, MatchAnnotation
 
@@ -16,12 +16,13 @@ class MatchSymbol:
     Helper class which compares equals to Symbol if the specified fields match
     """
     def __init__(self, name: str, color: Color, varkind: VarKind, level: int = 0,
-                 fqn: Any = MISSING):
+                 fqn: Any = MISSING, storage: VarStorage = 'direct'):
         self.name = name
         self.color = color
         self.varkind = varkind
         self.level = level
         self.fqn = fqn
+        self.storage = storage
 
     def __eq__(self, sym: object) -> bool:
         if not isinstance(sym, Symbol):
@@ -30,6 +31,7 @@ class MatchSymbol:
                 self.color == sym.color and
                 self.varkind == sym.varkind and
                 self.level == sym.level and
+                self.storage == sym.storage and
                 (self.fqn is MISSING or self.fqn == sym.fqn))
 
 
@@ -71,7 +73,7 @@ class TestScopeAnalyzer:
         assert scope.color == 'blue'
         assert scope._symbols == {
             'x': MatchSymbol('x', 'blue', 'const'),
-            'y': MatchSymbol('y', 'red', 'var'),
+            'y': MatchSymbol('y', 'red', 'var', storage='cell'),
             'foo': MatchSymbol('foo', 'blue', 'const'),
             'bar': MatchSymbol('bar', 'blue', 'const'),
             # captured

@@ -1,7 +1,7 @@
 from typing import Optional
 from spy import ast
 from spy.location import Loc
-from spy.analyze.symtable import Color, VarKind
+from spy.analyze.symtable import Color, VarKind, VarStorage
 from spy.fqn import FQN
 from spy.errors import SPyError
 from spy.analyze.symtable import SymTable, Symbol
@@ -171,7 +171,14 @@ class ScopeAnalyzer:
             # this is a module-level global. Let's give it a FQN
             fqn = FQN([self.mod_scope.name, name])
 
-        sym = Symbol(name, color, varkind, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
+        # Determine storage type: module-level vars use "cell", others use "direct"
+        storage: VarStorage
+        if self.scope is self.mod_scope and varkind == 'var':
+            storage = 'cell'
+        else:
+            storage = 'direct'
+
+        sym = Symbol(name, color, varkind, storage, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
         self.scope.add(sym)
 
     # ====
