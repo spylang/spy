@@ -99,7 +99,9 @@ class W_Module(W_Object):
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:
         fqn = FQN([self.name, attr])
-        return self.vm.lookup_global(fqn)
+        w_res = self.vm.lookup_global(fqn)
+        assert w_res is self._dict_w.get(attr)
+        return w_res
 
     def getattr(self, attr: str) -> W_Object:
         w_obj = self.getattr_maybe(attr)
@@ -107,6 +109,7 @@ class W_Module(W_Object):
         return w_obj
 
     def setattr(self, attr: str, w_value: W_Object) -> None:
+        self._dict_w[attr] = w_value
         fqn = FQN([self.name, attr])
         self.vm.store_global(fqn, w_value)
 
