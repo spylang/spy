@@ -267,12 +267,13 @@ class AbstractFrame:
     def _exec_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value
         sym = self.symtable.lookup(varname)
-        if sym.is_local:
+        if sym.storage == 'direct':
+            assert sym.is_local
             self._exec_assign_local(target, expr)
-        elif sym.is_global:
-            self._exec_assign_global(target, expr)
+        elif sym.storage == 'cell':
+            self._exec_assign_cell(target, expr)
         else:
-            raise WIP('assignment to outer scopes not implemented yet')
+            assert False
 
     def _exec_assign_local(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value
@@ -287,17 +288,13 @@ class AbstractFrame:
         if not self.redshifting:
             self.store_local(varname, wam.w_val)
 
-    def _exec_assign_global(self, target: ast.StrConst, expr: ast.Expr) -> None:
-        # XXX this is semi-wrong. We need to add an AST field to keep track of
-        # which scope we want to assign to. For now we just assume that if
-        # it's not local, it's module.
+    def _exec_assign_cell(self, target: ast.StrConst, expr: ast.Expr) -> None:
         varname = target.value
         sym = self.symtable.lookup(varname)
         wam = self.eval_expr(expr)
         if not self.redshifting:
-            assert sym.fqn is not None
-            assert sym.varkind == 'var'
-            w_cell = self.vm.lookup_global(sym.fqn)
+            namespace = self.closure[-sym.level]
+            w_cell = namespace[sym.name]
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)
 

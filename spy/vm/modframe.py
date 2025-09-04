@@ -25,10 +25,15 @@ class ModFrame(AbstractFrame):
                  symtable: SymTable,
                  mod: ast.Module,
                  ) -> None:
-        super().__init__(vm, ns, symtable, closure=())
+        w_builtins = vm.modules_w['builtins']
+        super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
         self.mod = mod
         self.w_mod = W_Module(vm, ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)
+
+        # XXX: if we keep this, we SHOULD be able to kill store_local and
+        # load_local?
+        self._locals = self.w_mod._dict_w # XXXX
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
