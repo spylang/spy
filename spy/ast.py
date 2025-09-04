@@ -5,11 +5,10 @@ import dataclasses
 from dataclasses import dataclass, field
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.analyze.symtable import Color
+from spy.analyze.symtable import Color, VarKind
 from spy.util import extend
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
-VarKind = typing.Literal['const', 'var']
 ClassKind = typing.Literal['class', 'struct', 'typelift']
 FuncKind = typing.Literal['plain', 'generic', 'metafunc']
 

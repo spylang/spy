@@ -1,7 +1,7 @@
 from typing import Optional
 from spy import ast
 from spy.location import Loc
-from spy.analyze.symtable import Color
+from spy.analyze.symtable import Color, VarKind
 from spy.fqn import FQN
 from spy.errors import SPyError
 from spy.analyze.symtable import SymTable, Symbol
@@ -136,6 +136,7 @@ class ScopeAnalyzer:
                     loc: Loc,
                     type_loc: Loc,
                     *,
+                    varkind: VarKind,
                     fqn: Optional[FQN] = None
                     ) -> None:
         """
@@ -170,7 +171,7 @@ class ScopeAnalyzer:
             # this is a module-level global. Let's give it a FQN
             fqn = FQN([self.mod_scope.name, name])
 
-        sym = Symbol(name, color, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
+        sym = Symbol(name, color, varkind, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
         self.scope.add(sym)
 
     # ====
@@ -185,7 +186,7 @@ class ScopeAnalyzer:
     def declare_Import(self, imp: ast.Import) -> None:
         w_obj = self.vm.lookup_global(imp.fqn)
         if w_obj is not None:
-            self.define_name(imp.asname, 'blue', imp.loc, imp.loc, fqn=imp.fqn)
+            self.define_name(imp.asname, 'blue', imp.loc, imp.loc, varkind='const', fqn=imp.fqn)
             return
         #
         err = SPyError(
@@ -223,34 +224,34 @@ class ScopeAnalyzer:
         else:
             color = 'blue'
         self.define_name(decl.vardef.name, color, decl.loc,
-                         decl.vardef.type.loc)
+                         decl.vardef.type.loc, varkind=decl.vardef.kind)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.kind == 'var'
-        self.define_name(vardef.name, 'red', vardef.loc, vardef.type.loc)
+        self.define_name(vardef.name, 'red', vardef.loc, vardef.type.loc, varkind=vardef.kind)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
         self.define_name(funcdef.name, 'blue', funcdef.prototype_loc,
-                         funcdef.prototype_loc)
+                         funcdef.prototype_loc, varkind='const')
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
         inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.define_name(arg.name, scope_color, arg.loc, arg.type.loc)
+            self.define_name(arg.name, scope_color, arg.loc, arg.type.loc, varkind='var')
         if funcdef.vararg:
-            self.define_name(funcdef.vararg.name, scope_color, funcdef.vararg.loc, funcdef.vararg.type.loc)
+            self.define_name(funcdef.vararg.name, scope_color, funcdef.vararg.loc, funcdef.vararg.type.loc, varkind='var')
         self.define_name('@return', scope_color, funcdef.return_type.loc,
-                         funcdef.return_type.loc)
+                         funcdef.return_type.loc, varkind='var')
         for stmt in funcdef.body:
             self.declare(stmt)
         self.pop_scope()
 
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
-        self.define_name(classdef.name, 'blue', classdef.loc, classdef.loc)
+        self.define_name(classdef.name, 'blue', classdef.loc, classdef.loc, varkind='const')
         inner_scope = self.new_SymTable(classdef.name, 'blue')
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
@@ -277,7 +278,7 @@ class ScopeAnalyzer:
             # "value" to be the type_loc, because it's where the type will be
             # computed from
             type_loc = value.loc
-            self.define_name(target.value, 'red', target.loc, type_loc)
+            self.define_name(target.value, 'red', target.loc, type_loc, varkind='var')
 
     # ===
 

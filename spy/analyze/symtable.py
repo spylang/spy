@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 Color = Literal["red", "blue"]
+VarKind = Literal["var", "const"]
 
 def maybe_blue(*colors: Color) -> Color:
     """
@@ -22,6 +23,7 @@ def maybe_blue(*colors: Color) -> Color:
 class Symbol:
     name: str
     color: Color
+    varkind: VarKind
     _: KW_ONLY
     loc: Loc       # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
@@ -93,7 +95,7 @@ class SymTable:
                 loc = w_obj.def_loc
             else:
                 loc = generic_loc
-            sym = Symbol(fqn.symbol_name, 'blue', loc=loc, type_loc=loc,
+            sym = Symbol(fqn.symbol_name, 'blue', 'const', loc=loc, type_loc=loc,
                          level=0, fqn=fqn)
             scope.add(sym)
         return scope
