@@ -5,6 +5,7 @@ from spy.analyze.symtable import SymTable
 from spy.errors import SPyError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module, W_Cell
+from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc
 from spy.vm.astframe import AbstractFrame
 
@@ -26,15 +27,25 @@ class ModFrame(AbstractFrame):
                  ) -> None:
         super().__init__(vm, ns, symtable, closure=())
         self.mod = mod
+        self.w_mod = W_Module(vm, ns.modname, mod.filename)
+        self.vm.register_module(self.w_mod)
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         return f'<{cls} for `{self.ns}`>'
 
-    def run(self) -> W_Module:
-        w_mod = W_Module(self.vm, self.ns.modname, self.mod.filename)
-        self.vm.register_module(w_mod)
+    def store_local(self, name: str, w_value: W_Object) -> None:
+        self.w_mod._dict_w[name] = w_value
+        #self.w_mod.setattr(name, w_value)
 
+    def load_local(self, name: str) -> W_Object:
+        w_obj = self.w_mod._dict_w.get(name)
+        #w_obj = self.w_mod.getattr_maybe(name)
+        if w_obj is None:
+            raise SPyError("W_Exception", 'read from uninitialized local')
+        return w_obj
+
+    def run(self) -> W_Module:
         # forward declaration of types
         for decl in self.mod.decls:
             if isinstance(decl, ast.GlobalClassDef):
@@ -53,7 +64,7 @@ class ModFrame(AbstractFrame):
                 assert False
         #
         # call the __INIT__, if present
-        w_init = w_mod.getattr_maybe('__INIT__')
+        w_init = self.w_mod.getattr_maybe('__INIT__')
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             if w_init.color != "blue":
@@ -63,26 +74,32 @@ class ModFrame(AbstractFrame):
                 )
                 err.add("error", "function defined here", w_init.def_loc)
                 raise err
-            self.vm.fast_call(w_init, [w_mod])
+            self.vm.fast_call(w_init, [self.w_mod])
         #
-        return w_mod
+        return self.w_mod
 
     def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
         fqn = self.ns.join(vardef.name)
+        sym = self.symtable.lookup(vardef.name)
+        assert sym.level == 0, 'module assign to name declared outside?'
 
         # evaluate the vardef in the current frame
         if not isinstance(vardef.type, ast.Auto):
             self.exec_stmt(vardef)
-        self.exec_stmt(assign)
 
-        if vardef.kind == 'var':
-            # create a Cell object to hold the value
-            w_val = self.load_local(vardef.name)
-            w_cell = W_Cell(fqn, w_val)
+        # evaluate the assignment
+        wam = self.eval_expr(assign.value)
+
+        if sym.storage == 'direct':
+            self.w_mod._dict_w[sym.name] = wam.w_val
+            self.vm.add_global(fqn, wam.w_val) # XXX this should be killed
+
+        elif sym.storage == 'cell':
+            w_cell = W_Cell(fqn, wam.w_val)
+            self.w_mod._dict_w[sym.name] = w_cell
             self.vm.add_global(fqn, w_cell)
+
         else:
-            # store the const directly as FQN
-            w_val = self.load_local(vardef.name)
-            self.vm.add_global(fqn, w_val)
+            assert False

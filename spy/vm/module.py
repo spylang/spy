@@ -40,6 +40,7 @@ class W_Module(W_Object):
     vm: 'SPyVM'
     name: str
     filepath: Optional[str]
+    _dict_w: dict[str, W_Object]
     _frozen: bool
 
     def __init__(self, vm: 'SPyVM', name: str, filepath: Optional[str]) -> None:
@@ -47,6 +48,7 @@ class W_Module(W_Object):
         self.name = name # XXX should we kill name?
         self.fqn = FQN(name)
         self.filepath = filepath
+        self._dict_w = {}
 
     def __repr__(self) -> str:
         if self.filepath is None:
@@ -104,22 +106,17 @@ class W_Module(W_Object):
         assert w_obj is not None
         return w_obj
 
-    def getattr_astfunc(self, attr: str) -> 'W_ASTFunc':
-        from spy.vm.function import W_ASTFunc
-        w_obj = self.getattr(attr)
-        assert isinstance(w_obj, W_ASTFunc)
-        return w_obj
-
     def setattr(self, attr: str, w_value: W_Object) -> None:
-        # XXX we should raise an exception if the attr doesn't exist
         fqn = FQN([self.name, attr])
         self.vm.store_global(fqn, w_value)
 
+    # XXX this still use the old FQN-based system
     def keys(self) -> Iterable[FQN]:
         for fqn in self.vm.globals_w.keys():
             if fqn.modname == self.name and len(fqn.parts) > 1:
                 yield fqn
 
+    # XXX this still use the old FQN-based system
     def items_w(self) -> Iterable[ModItem]:
         for fqn, w_obj in self.vm.globals_w.items():
             if fqn.modname == self.name and len(fqn.parts) > 1:

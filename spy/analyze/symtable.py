@@ -52,7 +52,8 @@ class Symbol:
 
     @property
     def is_global(self) -> bool:
-        return self.level != 0 and self.fqn is not None
+        return self.fqn is not None
+        #return self.level != 0 and self.fqn is not None
 
 class SymTable:
     """
