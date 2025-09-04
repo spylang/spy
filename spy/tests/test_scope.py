@@ -181,6 +181,21 @@ class TestScopeAnalyzer:
             ('this is the previous declaration', "x: i32 = 1"),
         )
 
+    def test_cannot_assign_to_const_globals(self):
+        src = """
+        x: i32 = 42
+        def set_x() -> None:
+            x = 100
+        """
+        self.expect_errors(
+            src,
+            'invalid assignment target',
+            ('x is const', 'x'),
+            ('const declared here', 'x: i32 = 42'),
+            ('help: declare it as variable: `var x ...`', 'x: i32 = 42')
+        )
+        #self.compile_raises(src, "set_x", errors)
+
     def test_inner_funcdef(self):
         scopes = self.analyze("""
         def foo() -> None:

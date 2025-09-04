@@ -341,9 +341,26 @@ class ScopeAnalyzer:
         #
         classdef.symtable = inner_scope
 
+    def flatten_GlobalVarDef(self, globalvardef: ast.GlobalVarDef) -> None:
+        self.flatten(globalvardef.vardef)
+        if assign := globalvardef.assign:
+            self.capture_maybe(assign.target.value)
+            self.flatten(assign.value)
+
     def flatten_Name(self, name: ast.Name) -> None:
         self.capture_maybe(name.id)
 
     def flatten_Assign(self, assign: ast.Assign) -> None:
+        # Check if we're trying to assign to a const variable
+        target_name = assign.target.value
+        level, scope, sym = self.lookup_ref(target_name)
+        if sym and sym.varkind == 'const':
+            # Trying to assign to a const variable - this is an error
+            err = SPyError('W_ScopeError', 'invalid assignment target')
+            err.add('error', f'{target_name} is const', assign.target.loc)
+            err.add('note', 'const declared here', sym.loc)
+            err.add('note', f'help: declare it as variable: `var {target_name} ...`', sym.loc)
+            raise err
+
         self.capture_maybe(assign.target.value)
         self.flatten(assign.value)

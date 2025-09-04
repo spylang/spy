@@ -200,20 +200,6 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
-    def test_cannot_assign_to_const_globals(self):
-        src = """
-        x: i32 = 42
-        def set_x() -> None:
-            x = 100
-        """
-        errors = expect_errors(
-            'invalid assignment target',
-            ('x is const', 'x'),
-            ('const declared here', 'x: i32 = 42'),
-            ('help: declare it as variable: `var x ...`', 'x: i32 = 42')
-        )
-        self.compile_raises(src, "set_x", errors)
-
     @only_interp
     def test_int_float(self):
         mod = self.compile("""

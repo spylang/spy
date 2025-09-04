@@ -293,14 +293,6 @@ class AbstractFrame:
         # it's not local, it's module.
         varname = target.value
         sym = self.symtable.lookup(varname)
-        if sym.color == 'blue':
-            err = SPyError('W_TypeError', "invalid assignment target")
-            err.add('error', f'{sym.name} is const', target.loc)
-            err.add('note', 'const declared here', sym.loc)
-            err.add('note',
-                    f'help: declare it as variable: `var {sym.name} ...`',
-                    sym.loc)
-            raise err
         wam = self.eval_expr(expr)
         if not self.redshifting:
             assert sym.fqn is not None
