@@ -450,33 +450,17 @@ class AbstractFrame:
             raise SPyError.simple(
                 "W_NameError", msg, "not found in this scope", name.loc,
             )
-        if sym.fqn is not None and sym.storage == 'cell':
-            return self.eval_Name_global(name, sym)
-        elif sym.is_local:
+        if sym.is_local:
+            assert sym.storage == 'direct'
             return self.eval_Name_local(name, sym)
-        else:
-            return self.eval_Name_outer(name, sym)
-
-    def eval_Name_global(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
-        assert sym.fqn is not None
-
-        if sym.storage == 'cell':
-            assert sym.varkind == 'var'
-            # XXX: in this case, maybe we should assign a static type to the
-            # Cell and use it for w_T?
-            w_cell = self.vm.lookup_global(sym.fqn)
-            assert isinstance(w_cell, W_Cell)
-            w_val = w_cell.get()
+        elif sym.storage == 'direct':
+            return self.eval_Name_outer_direct(name, sym)
+        elif sym.storage == 'cell':
+            return self.eval_Name_outer_cell(name, sym)
         else:
             assert False
-            ## w_val = self.vm.lookup_global(sym.fqn)
-            ## assert w_val is not None
-
-        w_T = self.vm.dynamic_type(w_val)
-        return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_Name_local(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
-        assert sym.storage == 'direct'
         w_T = self.locals_types_w[name.id]
         if sym.color == 'red' and self.redshifting:
             w_val = None
@@ -484,14 +468,23 @@ class AbstractFrame:
             w_val = self.load_local(name.id)
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
-        assert sym.storage == 'direct'
+    def eval_Name_outer_direct(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
+        assert not sym.is_local
         color: Color = 'blue'  # closed-over variables are always blue
         namespace = self.closure[-sym.level]
         w_val = namespace[sym.name]
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
+
+    def eval_Name_outer_cell(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
+        assert not sym.is_local
+        namespace = self.closure[-sym.level]
+        w_cell = namespace[sym.name]
+        assert isinstance(w_cell, W_Cell)
+        w_val = w_cell.get()
+        w_T = self.vm.dynamic_type(w_val)
+        return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
                     args_wam: list[W_MetaArg]) -> W_MetaArg:
