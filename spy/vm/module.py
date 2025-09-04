@@ -113,17 +113,15 @@ class W_Module(W_Object):
         fqn = FQN([self.name, attr])
         self.vm.store_global(fqn, w_value)
 
-    # XXX this still use the old FQN-based system
+    # XXX: we should stop to return FQNs
     def keys(self) -> Iterable[FQN]:
-        for fqn in self.vm.globals_w.keys():
-            if fqn.modname == self.name and len(fqn.parts) > 1:
-                yield fqn
+        for key in self._dict_w.keys():
+            yield self.fqn.join(key)
 
-    # XXX this still use the old FQN-based system
+    # XXX: we should stop to return FQNs
     def items_w(self) -> Iterable[ModItem]:
-        for fqn, w_obj in self.vm.globals_w.items():
-            if fqn.modname == self.name and len(fqn.parts) > 1:
-                yield fqn, w_obj
+        for key, w_val in self._dict_w.items():
+            yield self.fqn.join(key), w_val
 
     def pp(self) -> None:
         """
