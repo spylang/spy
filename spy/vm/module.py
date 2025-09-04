@@ -12,8 +12,26 @@ from spy.vm.opspec import W_OpSpec, W_MetaArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-
 ModItem = tuple[FQN, W_Object]
+
+@B.builtin_type('ModuleVar')
+class W_ModuleVar(W_Object):
+    """
+    XXX explain
+    """
+
+    def __init__(self, fqn: FQN, w_val: W_Object) -> None:
+        self.fqn = fqn
+        self._w_val = w_val
+
+    def __repr__(self) -> str:
+        return f'<spy ModuleVar {self.fqn} = {self._w_val}>'
+
+    def get(self) -> W_Object:
+        return self._w_val
+
+    def set(self, w_val: W_Object) -> None:
+        self._w_val = w_val
 
 
 @B.builtin_type('module')

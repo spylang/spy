@@ -13,6 +13,7 @@ from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
                              FuncParam)
 from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
+from spy.vm.module import W_ModuleVar
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opspec import W_MetaArg
@@ -303,7 +304,10 @@ class AbstractFrame:
         wam = self.eval_expr(expr)
         if not self.redshifting:
             assert sym.fqn is not None
-            self.vm.store_global(sym.fqn, wam.w_val)
+            assert sym.varkind == 'var'
+            w_modvar = self.vm.lookup_global(sym.fqn)
+            assert isinstance(w_modvar, W_ModuleVar)
+            w_modvar.set(wam.w_val)
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wam_tup = self.eval_expr(unpack.value)
@@ -452,8 +456,17 @@ class AbstractFrame:
 
     def eval_Name_global(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
         assert sym.fqn is not None
-        w_val = self.vm.lookup_global(sym.fqn)
-        assert w_val is not None
+
+        if sym.varkind == 'var':
+            # XXX: in this case, maybe we should assign a static type to the
+            # ModVar and use it for w_T?
+            w_modvar = self.vm.lookup_global(sym.fqn)
+            assert isinstance(w_modvar, W_ModuleVar)
+            w_val = w_modvar.get()
+        else:
+            w_val = self.vm.lookup_global(sym.fqn)
+            assert w_val is not None
+
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
