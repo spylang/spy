@@ -868,8 +868,9 @@ class TestBasic(CompilerTest):
             mod.x = 42
         """)
         vm = self.vm
-        assert mod.x == 42
         assert mod.get_x() == 42
+        fqn = FQN("test::x")
+        assert vm.unwrap(self.vm.globals_w[fqn]) == 42
 
     def test_wrong__INIT__(self):
         # NOTE: this error is always eager because it happens at import time
