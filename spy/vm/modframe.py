@@ -91,13 +91,18 @@ class ModFrame(AbstractFrame):
         assert sym.level == 0, 'module assign to name declared outside?'
 
         # evaluate the vardef in the current frame
-        if not isinstance(vardef.type, ast.Auto):
+        is_auto = isinstance(vardef.type, ast.Auto)
+        if not is_auto:
             self.exec_stmt(vardef)
 
         # evaluate the assignment
         wam = self.eval_expr(assign.value)
 
         if sym.storage == 'direct':
+            if is_auto:
+                assert sym.name not in self.locals_types_w
+                self.declare_local(sym.name, wam.w_static_T,
+                                   decl.assign.target.loc)
             self.w_mod._dict_w[sym.name] = wam.w_val
             self.vm.add_global(fqn, wam.w_val) # XXX this should be killed
 
