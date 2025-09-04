@@ -6,6 +6,7 @@ from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.build.cffi import cffi_build
 from spy.vm.vm import SPyVM
+from spy.vm.module import W_ModuleVar
 from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import W_I32
@@ -120,11 +121,10 @@ class CBackend:
 
 
     def get_wasm_exports(self) -> list[str]:
-        # ok, this logic is wrong: we cannot know which names we want to
-        # export by simply looking at their type: for example, in case of
-        # variables we want to export "red variables" but we don't want to
-        # export "blue variabes" (I guess?). For now, let's just include
-        # red functions and integers
+        # this is a bit of ad-hoc logic but it's probably good enough. For now
+        # we export:
+        #    1. functions
+        #    2. red variables (who are stored inside a W_ModuleVar)
         wasm_exports = []
         for modname, w_mod in self.vm.modules_w.items():
             if w_mod.is_builtin():
@@ -133,6 +133,6 @@ class CBackend:
                 fqn.c_name
                 for fqn, w_obj in w_mod.items_w()
                 if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
-                    isinstance(w_obj, W_I32))
+                    isinstance(w_obj, W_ModuleVar))
             ]
         return wasm_exports
