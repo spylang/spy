@@ -457,7 +457,8 @@ class AbstractFrame:
     def eval_Name_global(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
         assert sym.fqn is not None
 
-        if sym.varkind == 'var':
+        if sym.storage == 'cell':
+            assert sym.varkind == 'var'
             # XXX: in this case, maybe we should assign a static type to the
             # Cell and use it for w_T?
             w_cell = self.vm.lookup_global(sym.fqn)
@@ -471,6 +472,7 @@ class AbstractFrame:
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_Name_local(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
+        assert sym.storage == 'direct'
         w_T = self.locals_types_w[name.id]
         if sym.color == 'red' and self.redshifting:
             w_val = None
@@ -479,6 +481,7 @@ class AbstractFrame:
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_Name_outer(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
+        assert sym.storage == 'direct'
         color: Color = 'blue'  # closed-over variables are always blue
         namespace = self.closure[-sym.level]
         w_val = namespace[sym.name]
