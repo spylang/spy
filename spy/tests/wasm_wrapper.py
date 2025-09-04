@@ -5,7 +5,7 @@ import wasmtime
 from spy.fqn import FQN
 from spy.llwasm import LLWasmType
 from spy.libspy import LLSPyInstance
-from spy.vm.module import W_ModuleVar
+from spy.vm.module import W_Cell
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.function import W_Func, W_FuncType
@@ -51,9 +51,9 @@ class WasmModuleWrapper:
                                fqn.c_name, w_func.w_functype)
 
     def read_global(self, fqn: FQN) -> Any:
-        w_modvar = self.vm.lookup_global(fqn)
-        assert isinstance(w_modvar, W_ModuleVar)
-        w_T = self.vm.dynamic_type(w_modvar.get())
+        w_cell = self.vm.lookup_global(fqn)
+        assert isinstance(w_cell, W_Cell)
+        w_T = self.vm.dynamic_type(w_cell.get())
         t: LLWasmType
         if w_T is B.w_i32:
             t = 'int32_t'

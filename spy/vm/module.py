@@ -14,8 +14,9 @@ if TYPE_CHECKING:
 
 ModItem = tuple[FQN, W_Object]
 
-@B.builtin_type('ModuleVar')
-class W_ModuleVar(W_Object):
+# XXX the Cell type should not be on builtins
+@B.builtin_type('Cell')
+class W_Cell(W_Object):
     """
     XXX explain
     """
@@ -25,7 +26,7 @@ class W_ModuleVar(W_Object):
         self._w_val = w_val
 
     def __repr__(self) -> str:
-        return f'<spy ModuleVar {self.fqn} = {self._w_val}>'
+        return f'<spy cell {self.fqn} = {self._w_val}>'
 
     def get(self) -> W_Object:
         return self._w_val

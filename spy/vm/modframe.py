@@ -4,7 +4,7 @@ from spy.analyze.scope import ScopeAnalyzer
 from spy.analyze.symtable import SymTable
 from spy.errors import SPyError
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module, W_ModuleVar
+from spy.vm.module import W_Module, W_Cell
 from spy.vm.function import W_ASTFunc
 from spy.vm.astframe import AbstractFrame
 
@@ -78,10 +78,10 @@ class ModFrame(AbstractFrame):
         self.exec_stmt(assign)
 
         if vardef.kind == 'var':
-            # create a ModuleVar object to hold the value
+            # create a Cell object to hold the value
             w_val = self.load_local(vardef.name)
-            w_modvar = W_ModuleVar(fqn, w_val)
-            self.vm.add_global(fqn, w_modvar)
+            w_cell = W_Cell(fqn, w_val)
+            self.vm.add_global(fqn, w_cell)
         else:
             # store the const directly as FQN
             w_val = self.load_local(vardef.name)

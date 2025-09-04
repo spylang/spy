@@ -3,7 +3,7 @@ import itertools
 import py.path
 from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object
-from spy.vm.module import W_Module, ModItem, W_ModuleVar
+from spy.vm.module import W_Module, ModItem, W_Cell
 from spy.vm.primitive import W_I32
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.vm import SPyVM
@@ -200,9 +200,9 @@ class CModuleWriter:
     def emit_obj(self, fqn: FQN, w_obj: W_Object) -> None:
         w_T = self.ctx.vm.dynamic_type(w_obj)
 
-        # XXX this is temporary: remove the W_ModuleVar indirection for the
+        # XXX this is temporary: remove the W_Cell indirection for the
         # sake of the C backend.
-        if isinstance(w_obj, W_ModuleVar):
+        if isinstance(w_obj, W_Cell):
             w_obj = w_obj.get()
             w_T = self.ctx.vm.dynamic_type(w_obj)
 

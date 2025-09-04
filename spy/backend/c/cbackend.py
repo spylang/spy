@@ -6,7 +6,7 @@ from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.build.cffi import cffi_build
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_ModuleVar
+from spy.vm.module import W_Cell
 from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import W_I32
@@ -124,7 +124,7 @@ class CBackend:
         # this is a bit of ad-hoc logic but it's probably good enough. For now
         # we export:
         #    1. functions
-        #    2. red variables (who are stored inside a W_ModuleVar)
+        #    2. red variables (who are stored inside a W_Cell)
         wasm_exports = []
         for modname, w_mod in self.vm.modules_w.items():
             if w_mod.is_builtin():
@@ -133,6 +133,6 @@ class CBackend:
                 fqn.c_name
                 for fqn, w_obj in w_mod.items_w()
                 if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
-                    isinstance(w_obj, W_ModuleVar))
+                    isinstance(w_obj, W_Cell))
             ]
         return wasm_exports

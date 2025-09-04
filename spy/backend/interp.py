@@ -12,7 +12,7 @@ vice-versa, by using vm.wrap and vm.unwrap.
 from typing import Any
 import fixedint
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module, W_ModuleVar
+from spy.vm.module import W_Module, W_Cell
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.b import B
 
@@ -33,7 +33,7 @@ class InterpModuleWrapper:
 
     def __getattr__(self, attr: str) -> Any:
         w_obj = self.w_mod.getattr(attr)
-        if isinstance(w_obj, W_ModuleVar):
+        if isinstance(w_obj, W_Cell):
             w_obj = w_obj.get()
 
         if isinstance(w_obj, W_Func):
