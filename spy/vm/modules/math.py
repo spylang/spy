@@ -11,10 +11,10 @@ MATH = ModuleRegistry('math')
 
 @MATH.builtin_func('__INIT__', color='blue')
 def w_INIT(vm: 'SPyVM') -> None:
-    vm.add_global(FQN('math::pi'), vm.wrap(math.pi))
-    vm.add_global(FQN('math::tau'), vm.wrap(math.tau))
-    vm.add_global(FQN('math::e'), vm.wrap(math.e))
-
+    w_mod = vm.modules_w['math']
+    w_mod.setattr('pi', vm.wrap(math.pi))
+    w_mod.setattr('tau', vm.wrap(math.tau))
+    w_mod.setattr('e', vm.wrap(math.e))
 
 @MATH.builtin_func
 def w_sqrt(vm: 'SPyVM', w_x: W_F64) -> W_F64:
