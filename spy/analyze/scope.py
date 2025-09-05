@@ -191,7 +191,18 @@ class ScopeAnalyzer:
         return node.visit('declare', self)
 
     def declare_Import(self, imp: ast.Import) -> None:
-        w_obj = self.vm.lookup_global(imp.fqn)
+        # XXX: I don't lkile this logic to distinguish mod vs mod.attr, it's
+        # scattered everywhere
+        w_mod = self.vm.modules_w.get(imp.fqn.modname)
+        w_obj = None
+        if len(imp.fqn.parts) == 1:
+            w_obj = w_mod
+        elif len(imp.fqn.parts) == 2:
+            if w_mod:
+                w_obj = w_mod.getattr_maybe(imp.fqn.symbol_name)
+        else:
+            assert False
+
         if w_obj is not None:
             self.define_name(imp.asname, 'blue', 'const', imp.loc, imp.loc, fqn=imp.fqn)
             return

@@ -98,9 +98,12 @@ class W_Module(W_Object):
     # ==== public interp-level API ====
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:
+        w_res = self._dict_w.get(attr)
+
+        # TODO: remove me
         fqn = FQN([self.name, attr])
-        w_res = self.vm.lookup_global(fqn)
-        assert w_res is self._dict_w.get(attr)
+        w_res is self.vm.lookup_global(fqn)
+
         return w_res
 
     def getattr(self, attr: str) -> W_Object:
@@ -110,6 +113,8 @@ class W_Module(W_Object):
 
     def setattr(self, attr: str, w_value: W_Object) -> None:
         self._dict_w[attr] = w_value
+
+        # TODO: remove me
         fqn = FQN([self.name, attr])
         self.vm.store_global(fqn, w_value)
 
