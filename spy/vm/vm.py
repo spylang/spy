@@ -12,6 +12,7 @@ from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError, WIP
 from spy.util import func_equals
+from spy.analyze.symtable import ImportRef
 from spy.vm.builtin import make_builtin_func
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
@@ -197,40 +198,14 @@ class SPyVM:
                 return fqn2
         assert False, 'unreachable'
 
-    def get_modref(self, modref: str) -> Optional[W_Object]:
-        """
-        modref is a potentially dotted string "a.b.c".
-
-        Read the attribute "c" from the module "a.b".
-        If not found, return None.
-        """
-        if '.' in modref:
-            modname, name = modref.rsplit('.', 1)
-            w_mod = self.modules_w.get(modname)
-            if w_mod is None:
-                return None
-            return w_mod.getattr_maybe(name)
+    def lookup_ImportRef(self, impref: ImportRef) -> Optional[W_Object]:
+        w_mod = self.modules_w.get(impref.modname)
+        if impref.attr is None:
+            return w_mod
+        elif w_mod is not None:
+            return w_mod.getattr_maybe(impref.attr)
         else:
-            modname = modref
-            return self.modules_w.get(modname)
-
-    def update_modref(self, modref: str, w_val: W_Object) -> None:
-        """
-        modref is a dottetd string "a.b.c".
-
-        Update the attribure "c" in the module "a.b".
-        If not found, raise ValueError.
-        """
-        assert '.' in modref
-        modname, name = modref.rsplit('.', 1)
-        w_mod = self.modules_w.get(modname)
-        if w_mod is None:
-            raise ValueError(f'Module {modname} does not exist')
-        w_current = w_mod.getattr_maybe(name)
-        if w_current is None:
-            raise ValueError(f'Module {modname} does not have attribute {name}')
-        w_mod.setattr(name, w_val)
-
+            return None
 
     def add_global(self, fqn: FQN, w_value: W_Object) -> None:
         assert fqn.modname in self.modules_w

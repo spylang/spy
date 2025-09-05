@@ -5,7 +5,8 @@ from spy import ast
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import Symbol, Color, VarKind, VarStorage, SymTable
+from spy.analyze.symtable import (Symbol, Color, VarKind, VarStorage, SymTable,
+                                  ImportRef)
 from spy.vm.vm import SPyVM
 from spy.tests.support import expect_errors, MatchAnnotation
 
@@ -16,12 +17,12 @@ class MatchSymbol:
     Helper class which compares equals to Symbol if the specified fields match
     """
     def __init__(self, name: str, color: Color, varkind: VarKind, level: int = 0,
-                 fqn: Any = MISSING, storage: VarStorage = 'direct'):
+                 impref: Any = MISSING, storage: VarStorage = 'direct'):
         self.name = name
         self.color = color
         self.varkind = varkind
         self.level = level
-        self.fqn = fqn
+        self.impref = impref
         self.storage = storage
 
     def __eq__(self, sym: object) -> bool:
@@ -32,7 +33,7 @@ class MatchSymbol:
                 self.varkind == sym.varkind and
                 self.level == sym.level and
                 self.storage == sym.storage and
-                (self.fqn is MISSING or self.fqn == sym.fqn))
+                (self.impref is MISSING or self.impref == sym.impref))
 
 
 @pytest.mark.usefixtures('init')
@@ -226,7 +227,7 @@ class TestScopeAnalyzer:
         scope = scopes.by_module()
         assert scope._symbols == {
             'my_int': MatchSymbol('my_int', 'blue', 'const',
-                                  fqn=FQN('builtins::i32')),
+                                  impref=ImportRef('builtins', 'i32')),
         }
 
     def test_import_wrong_attribute(self):

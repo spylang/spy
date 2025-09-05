@@ -260,13 +260,8 @@ class AbstractFrame:
     def exec_stmt_Import(self, imp: ast.Import) -> None:
         sym = self.symtable.lookup(imp.asname)
         assert sym.is_local
-        w_mod = self.vm.modules_w[imp.fqn.modname]
-        if len(imp.fqn.parts) == 1:
-            # 'import aaa'
-            w_val = w_mod
-        else:
-            # 'from aaa import bbb'
-            w_val = w_mod.getattr(imp.fqn.symbol_name)
+        assert sym.impref is not None
+        w_val = self.vm.lookup_ImportRef(sym.impref)
         w_T = self.vm.dynamic_type(w_val)
         self.declare_local(sym.name, w_T, imp.loc)
         self.store_local(sym.name, w_val)

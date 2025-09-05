@@ -256,33 +256,6 @@ class TestVM:
         with pytest.raises(ValueError, match="'builtins::x' already exists"):
             vm.add_global(fqn, vm.wrap(43))
 
-    def test_modref(self):
-        vm = SPyVM()
-        assert vm.get_modref('math') is vm.modules_w['math']
-        w_pi = vm.get_modref('math.pi')
-        pi = vm.unwrap(w_pi)
-        assert pi == math.pi
-
-        w_x = vm.get_modref('aaa.bbb.ccc')
-        assert w_x is None
-        #
-        w_pi2 = vm.wrap(42)
-        vm.update_modref('math.pi', w_pi2)
-        assert vm.get_modref('math.pi') is w_pi2
-        #
-        with pytest.raises(
-                ValueError,
-                match='Module xxx does not exist'
-        ):
-            vm.update_modref('xxx.yyy', B.w_None)
-        #
-        with pytest.raises(
-                ValueError,
-                match='Module math does not have attribute xxx'
-        ):
-            vm.update_modref('math.xxx', B.w_None)
-
-
     def test_get_filename(self, tmpdir):
         vm = SPyVM()
         vm.path = [str(tmpdir)]
