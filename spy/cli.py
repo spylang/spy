@@ -55,6 +55,14 @@ class Arguments:
         )
     ] = False
 
+    colorize: Annotated[
+        bool,
+        Option(
+            "-C", "--colorize",
+            help="Output the pre-redshifted AST with blue / red text colors."
+        )
+    ] = False
+
     imports: Annotated[
         bool,
         Option(
@@ -82,7 +90,7 @@ class Arguments:
     cwrite: Annotated[
         bool,
         Option(
-            "-C", "--cwrite",
+            "--cwrite",
             help="Generate the C code"
         )
     ] = False
@@ -195,7 +203,7 @@ class Arguments:
         # check that we specify at most one of the following options
         possible_actions = ["execute", "pyparse", "parse",
                             "imports", "symtable",
-                            "redshift", "cwrite", "compile"]
+                            "redshift", "cwrite", "compile", "colorize"]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
         if n == 0:
@@ -323,9 +331,9 @@ async def inner_main(args: Arguments) -> None:
     importer = ImportAnalizyer(vm, modname)
     importer.parse_all()
 
+    orig_mod = importer.getmod(modname)
     if args.parse and not args.redshift:
-        mod = importer.getmod(modname)
-        mod.pp()
+        orig_mod.pp()
         return
 
     if args.imports:
@@ -344,13 +352,19 @@ async def inner_main(args: Arguments) -> None:
         execute_spy_main(args, vm, w_mod)
         return
 
+    if args.colorize:
+        # Signal to the redshift codde that we want to retain expr color information
+        vm.expr_color_map = {}
     vm.redshift(error_mode=args.error_mode)
     #vm.pp_globals()
     #vm.pp_modules()
 
-    if args.redshift:
+    if args.redshift or args.colorize:
         if args.execute:
             execute_spy_main(args, vm, w_mod)
+        elif args.colorize:
+            # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
+            orig_mod.pp()
         elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
