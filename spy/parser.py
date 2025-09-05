@@ -327,12 +327,12 @@ class Parser:
         res = []
         for py_alias in py_imp.names:
             assert py_imp.module is not None
-            fqn = FQN([py_imp.module, py_alias.name])
+            impref = spy.ast.ImportRef(py_imp.module, py_alias.name)
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
                 loc_asname = py_alias.loc,
-                fqn = fqn,
+                ref = impref,
                 asname = asname
             ))
         return res
@@ -340,12 +340,12 @@ class Parser:
     def from_py_Import(self, py_imp: py_ast.Import) -> list[spy.ast.Import]:
         res = []
         for py_alias in py_imp.names:
-            fqn = FQN([py_alias.name])
+            impref = spy.ast.ImportRef(py_alias.name, None)
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
                 loc_asname = py_alias.loc,
-                fqn = fqn,
+                ref = impref,
                 asname = asname
             ))
         return res

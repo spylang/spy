@@ -883,8 +883,8 @@ class TestParser:
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
-                Import(fqn=FQN('testmod::a'), asname='a'),
-                Import(fqn=FQN('testmod::b'), asname='b2'),
+                Import(ref=<ImportRef testmod.a>, asname='a'),
+                Import(ref=<ImportRef testmod.b>, asname='b2'),
             ],
         )
         """
@@ -902,10 +902,10 @@ class TestParser:
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
-                Import(fqn=FQN('aaa'), asname='aaa'),
-                Import(fqn=FQN('bbb'), asname='BBB'),
-                Import(fqn=FQN('ccc'), asname='ccc'),
-                Import(fqn=FQN('ddd'), asname='DDD'),
+                Import(ref=<ImportRef aaa>, asname='aaa'),
+                Import(ref=<ImportRef bbb>, asname='BBB'),
+                Import(ref=<ImportRef ccc>, asname='ccc'),
+                Import(ref=<ImportRef ddd>, asname='DDD'),
             ],
         )
         """

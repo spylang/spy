@@ -12,6 +12,33 @@ AnyNode = typing.Union[py_ast.AST, 'Node']
 ClassKind = typing.Literal['class', 'struct', 'typelift']
 FuncKind = typing.Literal['plain', 'generic', 'metafunc']
 
+@dataclass(frozen=True)
+class ImportRef:
+    """
+    Represent a reference to an imported name.
+
+    modname is a dotted string which identifies a module
+
+    attr is the name of the attribute
+    If attr is None, then the ImportRef references the whole module.
+
+    E.g. 'a.b.c':
+      modname: 'a.b'
+      attr: 'c'
+    """
+    modname: str
+    attr: Optional[str]
+
+    def __repr__(self) -> str:
+        modname = self.modname
+        if '.' in modname:
+            modname = f'({modname})'
+        if self.attr is None:
+            return f'<ImportRef {modname}>'
+        else:
+            return f'<ImportRef {modname}.{self.attr}>'
+
+
 @extend(py_ast.AST)
 class AST:
     """
@@ -171,7 +198,7 @@ class GlobalClassDef(Decl):
 @dataclass(eq=False)
 class Import(Decl):
     loc_asname: Loc
-    fqn: FQN
+    ref: ImportRef
     asname: str
 
 # ====== Expr hierarchy ======
