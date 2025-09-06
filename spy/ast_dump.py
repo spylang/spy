@@ -1,23 +1,27 @@
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 import ast as py_ast
 import spy.ast
 from spy.analyze.symtable import Symbol
 from spy.textbuilder import TextBuilder
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 def dump(node: Any,
          *,
          use_colors: bool = True,
          fields_to_ignore: Any = (),
          hl: Any = None,
+         vm: Optional['SPyVM'] = None,
          ) -> str:
-    dumper = Dumper(use_colors=use_colors, highlight=hl)
+    dumper = Dumper(use_colors=use_colors, highlight=hl, vm=vm)
     dumper.fields_to_ignore += fields_to_ignore
     dumper.dump_anything(node)
     return dumper.build()
 
 def pprint(node: Any, *, copy_to_clipboard: bool = False,
-           hl: Optional[spy.ast.Node]=None) -> None:
-    print(dump(node, hl=hl))
+           hl: Optional[spy.ast.Node]=None,
+           vm: Optional['SPyVM'] = None) -> None:
+    print(dump(node, hl=hl, vm=vm))
     if copy_to_clipboard:
         import pyperclip  # type: ignore
         out = dump(node, use_colors=False)
@@ -26,15 +30,18 @@ def pprint(node: Any, *, copy_to_clipboard: bool = False,
 
 class Dumper(TextBuilder):
     fields_to_ignore: tuple[str, ...]
+    vm: 'SPyVM | None'
 
     def __init__(self, *,
                  use_colors: bool,
                  highlight: Optional[spy.ast.Node] = None,
+                 vm: Optional['SPyVM'] = None
                  ) -> None:
         super().__init__(use_colors=use_colors)
         self.highlight = highlight
         self.fields_to_ignore = ('loc', 'target_loc', 'target_locs',
                                  'loc_asname')
+        self.vm = vm
 
     def dump_anything(self, obj: Any) -> None:
         if isinstance(obj, spy.ast.Node):

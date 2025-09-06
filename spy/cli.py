@@ -364,7 +364,7 @@ async def inner_main(args: Arguments) -> None:
             execute_spy_main(args, vm, w_mod)
         elif args.colorize:
             # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
-            orig_mod.pp()
+            orig_mod.pp(vm=vm)
         elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
