@@ -335,6 +335,15 @@ class DopplerFrame(ASTFrame):
         return const
 
     def shift_expr_Name(self, name: ast.Name) -> ast.Expr:
+        return self.specialized_names[name]
+
+    def shift_expr_NameLocal(self, name: ast.NameLocal) -> ast.Expr:
+        return name
+
+    def shift_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> ast.Expr:
+        return name
+
+    def shift_expr_NameOuterCell(self, name: ast.NameOuterCell) -> ast.Expr:
         return name
 
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:
