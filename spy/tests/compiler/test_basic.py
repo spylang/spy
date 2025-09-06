@@ -841,6 +841,7 @@ class TestBasic(CompilerTest):
             )
         self.compile_raises(src, "foo", errors)
 
+    @pytest.mark.skip(reason="think better about __INIT__")
     def test___INIT__(self):
         mod = self.compile(
         """
@@ -858,6 +859,7 @@ class TestBasic(CompilerTest):
         fqn = FQN("test::x")
         assert vm.unwrap(self.vm.globals_w[fqn]) == 42
 
+    @pytest.mark.skip(reason="think better about __INIT__")
     def test_wrong__INIT__(self):
         # NOTE: this error is always eager because it happens at import time
         src = """

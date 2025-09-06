@@ -173,6 +173,9 @@ class SPyVM:
         w_mod = W_Module(self, reg.fqn.modname, None)
         self.register_module(w_mod)
         for fqn, w_obj in reg.content:
+            # 1.register w_obj as a global constant
+            self.add_global(fqn, w_obj)
+            # 2. add it to the actual module
             assert len(fqn.parts) == 2
             assert fqn.modname == reg.fqn.modname
             name = fqn.symbol_name
