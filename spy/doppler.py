@@ -147,8 +147,9 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
+        specialized = self.specialized_assigns[assign]
         newvalue = self.shifted_expr[assign.value]
-        return [assign.replace(value=newvalue)]
+        return [specialized.replace(value=newvalue)]
 
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
