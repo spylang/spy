@@ -13,10 +13,10 @@ class TestModule:
         fqn_b = FQN('mymod::b')
         w_a = vm.wrap(10)
         w_b = vm.wrap(20)
-        vm.add_global(fqn_a, w_a)
-        vm.add_global(fqn_b, w_b)
-        assert list(w_mod.keys()) == [fqn_a, fqn_b]
-        assert list(w_mod.fqn_items_w()) == [
-            (fqn_a, w_a),
-            (fqn_b, w_b),
+        w_mod.setattr("a", w_a)
+        w_mod.setattr("b", w_b)
+        assert list(w_mod.keys()) == ["a", "b"]
+        assert list(w_mod.items_w()) == [
+            ("a", w_a),
+            ("b", w_b),
         ]

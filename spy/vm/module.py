@@ -12,8 +12,6 @@ from spy.vm.opspec import W_OpSpec, W_MetaArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-ModItem = tuple[FQN, W_Object] # XXX kill
-
 # XXX the Cell type should not be on builtins
 @B.builtin_type('Cell')
 class W_Cell(W_Object):
@@ -113,14 +111,10 @@ class W_Module(W_Object):
     def items_w(self) -> Iterable[tuple[str, W_Object]]:
         return self._dict_w.items()
 
-    # XXX: kill me
-    def fqn_items_w(self) -> Iterable[ModItem]:
-        raise NotImplementedError('use vm.fqns_by_modname')
-
     def pp(self) -> None:
         """
         Pretty print
         """
         print(f'Module {self.name}:')
-        for attr, w_obj in self.fqn_items_w():
+        for attr, w_obj in self.items_w():
             print(f'    {attr}: {w_obj}')

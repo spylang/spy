@@ -29,7 +29,7 @@ def main(argv: list[str]) -> None:
     from spy.vm.function import W_ASTFunc
     filename = argv[1]
     vm, w_mod = redshift(filename)
-    for fqn, w_obj in w_mod.fqn_items_w():
+    for fqn, w_obj in vm.fqns_by_modname(w_mod.name):
         print(fqn, w_obj)
         if isinstance(w_obj, W_ASTFunc):
             print('functype:', w_obj.w_functype)
