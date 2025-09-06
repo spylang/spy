@@ -241,12 +241,6 @@ class CModuleWriter:
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
             self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
 
-        elif isinstance(w_T, W_Type) and w_T.fqn.modname == 'builtins':
-            # this is an ad-hoc hack to support things like this at
-            # module-level:
-            #    T = i32
-            pass
-
         else:
             # struct types are already handled in the header
             raise NotImplementedError('WIP')

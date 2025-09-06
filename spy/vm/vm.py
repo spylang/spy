@@ -234,7 +234,7 @@ class SPyVM:
 
     def fqns_by_modname(self, modname: str) -> Iterable[tuple[FQN, W_Object]]:
         for fqn, w_obj in self.globals_w.items():
-            if fqn.modname == modname:
+            if fqn.modname == modname and not fqn.is_module:
                 yield (fqn, w_obj)
 
     def pp_globals(self) -> None:

@@ -107,6 +107,9 @@ class CBackend:
 
         # fill the content of C modules
         for fqn, w_obj in self.vm.globals_w.items():
+            if fqn.is_module():
+                # don't put the module in its own content
+                continue
             modname = fqn.modname
             self.c_modules[modname].content.append((fqn, w_obj))
 
