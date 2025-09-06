@@ -196,21 +196,13 @@ class CModuleWriter:
             self.emit_obj(fqn, w_obj)
 
     def emit_obj(self, fqn: FQN, w_obj: W_Object) -> None:
+        if hasattr(w_obj, 'fqn'):
+            assert fqn == w_obj.fqn # sanity check
+
         w_T = self.ctx.vm.dynamic_type(w_obj)
 
-        # XXX this is temporary: remove the W_Cell indirection for the
-        # sake of the C backend.
-        if isinstance(w_obj, W_Cell):
-            w_obj = w_obj.get()
-            w_T = self.ctx.vm.dynamic_type(w_obj)
-
-        if hasattr(w_obj, 'fqn') and w_obj.fqn != fqn:
-            # just a reference to a function/type defined elsewhere, we can
-            # ignore it
-            return
-
         # ==== functions ====
-        elif isinstance(w_obj, W_ASTFunc):
+        if isinstance(w_obj, W_ASTFunc):
             # emit red functions, ignore blue ones
             if w_obj.color == 'red':
                 self.emit_func(fqn, w_obj)
@@ -229,13 +221,18 @@ class CModuleWriter:
         elif isinstance(w_obj, W_LiftedType):
             self.emit_LiftedType(fqn, w_obj)
 
-        # ==== vars/consts ====
-        elif isinstance(w_obj, W_I32):
-            intval = self.ctx.vm.unwrap(w_obj)
+        # ==== global variables (cells) ====
+        elif isinstance(w_obj, W_Cell):
+            w_content = w_obj.get()
+            w_T = self.ctx.vm.dynamic_type(w_content)
+            # we support only int global variables for now
+            assert isinstance(w_content, W_I32)
+            intval = self.ctx.vm.unwrap(w_content)
             c_type = self.ctx.w2c(w_T)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
             self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {intval};')
 
+        # ==== misc consts ====
         elif isinstance(w_T, W_PtrType):
             # for now, we only support NULL constnts
             assert isinstance(w_obj, W_Ptr)
