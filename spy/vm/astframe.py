@@ -522,7 +522,7 @@ class AbstractFrame:
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_expr_NameOuterCell(self, name: ast.Name) -> W_MetaArg:
+    def eval_expr_NameOuterCell(self, name: ast.NameOuterCell) -> W_MetaArg:
         sym = name.sym
         assert not sym.is_local
         w_cell = self.vm.lookup_global(name.fqn)
