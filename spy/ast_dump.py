@@ -61,7 +61,7 @@ class Dumper(TextBuilder):
         name = node.__class__.__name__
         fields = list(node.__class__.__dataclass_fields__)
         fields = [f for f in fields if f not in self.fields_to_ignore]
-        self._dump_node(node, name, fields, color='blue')
+        self._dump_node(node, name, fields, text_color='blue')
 
     def dump_py_node(self, node: py_ast.AST) -> None:
         name = 'py:' + node.__class__.__name__
@@ -69,12 +69,12 @@ class Dumper(TextBuilder):
         fields = [f for f in fields if f not in self.fields_to_ignore]
         if isinstance(node, py_ast.Name):
             fields.append('is_var')
-        self._dump_node(node, name, fields, color='turquoise')
+        self._dump_node(node, name, fields, text_color='turquoise')
 
     def dump_Symbol(self, sym: Symbol) -> None:
         self.write(f'Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})')
 
-    def _dump_node(self, node: Any, name: str, fields: list[str], color: str) -> None:
+    def _dump_node(self, node: Any, name: str, fields: list[str], text_color: Optional[str]) -> None:
         def is_complex(obj: Any) -> bool:
             return (isinstance(obj, (spy.ast.Node, py_ast.AST, list, Symbol)) and
                     not isinstance(obj, py_ast.expr_context))
@@ -83,8 +83,8 @@ class Dumper(TextBuilder):
         multiline = any(is_complex_field)
         #
         if node is self.highlight:
-            color = 'red'
-        self.write(name, color=color)
+            text_color = 'red'
+        self.write(name, color=text_color)
         self.write('(')
         if multiline:
             self.writeline('')
