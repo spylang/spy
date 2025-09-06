@@ -47,6 +47,7 @@ class AbstractFrame:
     _locals: Namespace
     locals_types_w: dict[str, W_Type]
     locals_decl_loc: dict[str, Loc]
+    specialized_names: dict[ast.Name, ast.Expr]
 
     def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:
@@ -58,6 +59,17 @@ class AbstractFrame:
         self._locals = {}
         self.locals_types_w = {}
         self.locals_decl_loc = {}
+
+        # ast.Name is special, because depending on the content of the
+        # symtable it has different meanings (e.g. local, outer direct, outer
+        # cell, ...), so we need some logic to distinguish between the cases.
+        #
+        # The first time eval_expr_Name is called, it understand which kind of
+        # name it is and create a specialized ast.Name* node, which is then
+        # executed from now on.  This is also useful for Doppler, since
+        # shifting a name simply means to return the specialized version.
+        self.specialized_names = {}
+
 
     # overridden by DopplerFrame
     @property
@@ -439,6 +451,14 @@ class AbstractFrame:
         return W_MetaArg.from_w_obj(self.vm, w_value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_MetaArg:
+        # see the comment in __init__ about specialized_names
+        specialized = self.specialized_names.get(name)
+        if specialized is None:
+            specialized = self._specialize_Name(name)
+            self.specialized_names[name] = specialized
+        return self.eval_expr(specialized)
+
+    def _specialize_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
         sym = self.symtable.lookup_maybe(varname)
         if sym is None:
@@ -446,37 +466,42 @@ class AbstractFrame:
             raise SPyError.simple(
                 "W_NameError", msg, "not found in this scope", name.loc,
             )
-        if sym.is_local:
+        elif sym.is_local:
             assert sym.storage == 'direct'
-            return self.eval_Name_local(name, sym)
+            return ast.NameLocal(name.loc, sym)
         elif sym.storage == 'direct':
-            return self.eval_Name_outer_direct(name, sym)
+            return ast.NameOuterDirect(name.loc, sym)
         elif sym.storage == 'cell':
-            return self.eval_Name_outer_cell(name, sym)
+            namespace = self.closure[-sym.level]
+            w_cell = namespace[sym.name]
+            assert isinstance(w_cell, W_Cell)
+            return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
         else:
             assert False
 
-    def eval_Name_local(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
-        w_T = self.locals_types_w[name.id]
+    def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
+        sym = name.sym
+        w_T = self.locals_types_w[sym.name]
         if sym.color == 'red' and self.redshifting:
             w_val = None
         else:
-            w_val = self.load_local(name.id)
+            w_val = self.load_local(sym.name)
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_Name_outer_direct(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
-        assert not sym.is_local
+    def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
         color: Color = 'blue'  # closed-over variables are always blue
+        sym = name.sym
+        assert not sym.is_local
         namespace = self.closure[-sym.level]
         w_val = namespace[sym.name]
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_Name_outer_cell(self, name: ast.Name, sym: Symbol) -> W_MetaArg:
+    def eval_expr_NameOuterCell(self, name: ast.Name) -> W_MetaArg:
+        sym = name.sym
         assert not sym.is_local
-        namespace = self.closure[-sym.level]
-        w_cell = namespace[sym.name]
+        w_cell = self.vm.lookup_global(name.fqn)
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
