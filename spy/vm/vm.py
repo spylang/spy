@@ -170,7 +170,7 @@ class SPyVM:
         self.globals_w[w_mod.fqn] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
-        w_mod = W_Module(self, reg.fqn.modname, None)
+        w_mod = W_Module(reg.fqn.modname, None)
         self.register_module(w_mod)
         for fqn, w_obj in reg.content:
             # 1.register w_obj as a global constant
@@ -234,7 +234,7 @@ class SPyVM:
 
     def fqns_by_modname(self, modname: str) -> Iterable[tuple[FQN, W_Object]]:
         for fqn, w_obj in self.globals_w.items():
-            if fqn.modname == modname and not fqn.is_module:
+            if fqn.modname == modname and not fqn.is_module():
                 yield (fqn, w_obj)
 
     def pp_globals(self) -> None:

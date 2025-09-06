@@ -28,7 +28,7 @@ class ModFrame(AbstractFrame):
         w_builtins = vm.modules_w['builtins']
         super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
         self.mod = mod
-        self.w_mod = W_Module(vm, ns.modname, mod.filename)
+        self.w_mod = W_Module(ns.modname, mod.filename)
         # the local vars of this frame goes directly in the module dict
         self._locals = self.w_mod._dict_w
         self.vm.register_module(self.w_mod)

@@ -35,15 +35,11 @@ class W_Cell(W_Object):
 
 @B.builtin_type('module')
 class W_Module(W_Object):
-    vm: 'SPyVM'
-    name: str
     filepath: Optional[str]
     _dict_w: dict[str, W_Object]
     _frozen: bool
 
-    def __init__(self, vm: 'SPyVM', name: str, filepath: Optional[str]) -> None:
-        self.vm = vm
-        self.name = name # XXX should we kill name?
+    def __init__(self, name: str, filepath: Optional[str]) -> None:
         self.fqn = FQN(name)
         self.filepath = filepath
         self._dict_w = {}
@@ -53,6 +49,10 @@ class W_Module(W_Object):
             return f'<spy module {self.name} (builtin)>'
         else:
             return f'<spy module {self.name}>'
+
+    @property
+    def name(self) -> str:
+        return self.fqn.modname
 
     def is_builtin(self) -> bool:
         return self.filepath is None
