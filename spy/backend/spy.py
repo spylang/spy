@@ -259,6 +259,12 @@ class SPyBackend:
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
+    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> str:
+        return name.sym.name
+
+    def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
+        return self.fmt_fqn(name.fqn)
+
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)
         r = self.fmt_expr(binop.right)

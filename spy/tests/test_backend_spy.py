@@ -334,7 +334,7 @@ class TestSPyBackend(CompilerTest):
         for i, src in enumerate(sources):
             modname = f'test_backend_spy_{i}'
             mod = self.compile(src, modname=modname)
-            for fqn, w_obj in mod.w_mod.items_w():
+            for fqn, w_obj in self.vm.fqns_by_modname(modname):
                 if isinstance(w_obj, W_ASTFunc) and w_obj.funcdef.color == 'red':
                     try:
                         b.dump_w_func(fqn, w_obj)
