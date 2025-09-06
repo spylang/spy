@@ -668,6 +668,8 @@ class ASTFrame(AbstractFrame):
         return ns.with_qualifiers(quals)
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
+        assert self.w_func.is_valid, 'you should execute the redshifted version'
+
         self.declare_arguments()
         self.init_arguments(args_w)
         try:

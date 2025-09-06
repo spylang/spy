@@ -37,8 +37,15 @@ class InterpModuleWrapper:
             w_obj = w_obj.get()
 
         if isinstance(w_obj, W_Func):
-            return InterpFuncWrapper(self.vm, w_obj)
-        return self.vm.unwrap(w_obj)
+            w_func = w_obj
+            if not w_func.is_valid:
+                # let's find the redshifted version
+                w_func = w_func.w_redshifted_into
+                assert w_func.redshifted
+                assert self.vm.lookup_global(w_func.fqn) is w_func
+            return InterpFuncWrapper(self.vm, w_func)
+        else:
+            return self.vm.unwrap(w_obj)
 
 
 class InterpFuncWrapper:

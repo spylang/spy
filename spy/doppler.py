@@ -102,7 +102,10 @@ class DopplerFrame(ASTFrame):
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
-            locals_types_w = self.locals_types_w.copy())
+            locals_types_w = self.locals_types_w.copy()
+        )
+        # mark the original function as invalid
+        self.w_func.invalidate(w_newfunc)
         return w_newfunc
 
     # =========
