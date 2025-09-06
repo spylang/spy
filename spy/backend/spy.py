@@ -181,6 +181,17 @@ class SPyBackend:
         v = self.fmt_expr(assign.value)
         self.wl(f'{varname} = {v}')
 
+    def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
+        varname = assign.target.value
+        self.emit_declare_var_maybe(varname)
+        v = self.fmt_expr(assign.value)
+        self.wl(f'{varname} = {v}')
+
+    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        varname = self.fmt_fqn(assign.target_fqn)
+        v = self.fmt_expr(assign.value)
+        self.wl(f'{varname} = {v}')
+
     def emit_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         varname = node.target.value
         op = node.op
