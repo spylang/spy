@@ -38,8 +38,7 @@ class SPyBackend:
 
     def dump_mod(self, modname: str) -> str:
         self.modname = modname
-        w_mod = self.vm.modules_w[modname]
-        for fqn, w_obj in w_mod.fqn_items_w():
+        for fqn, w_obj in self.vm.fqns_by_modname(modname):
             if (isinstance(w_obj, W_ASTFunc) and
                 w_obj.color == 'red' and
                 w_obj.fqn == fqn):
