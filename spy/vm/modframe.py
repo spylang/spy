@@ -58,13 +58,13 @@ class ModFrame(AbstractFrame):
 
         for decl in self.mod.decls:
             if isinstance(decl, ast.Import):
-                self.exec_stmt(decl)
+                self.exec_Import(decl)
             elif isinstance(decl, ast.GlobalFuncDef):
                 self.exec_stmt(decl.funcdef)
             elif isinstance(decl, ast.GlobalClassDef):
                 self.exec_stmt(decl.classdef)
             elif isinstance(decl, ast.GlobalVarDef):
-                self.gen_GlobalVarDef(decl)
+                self.exec_GlobalVarDef(decl)
             else:
                 assert False
         #
@@ -83,7 +83,7 @@ class ModFrame(AbstractFrame):
         #
         return self.w_mod
 
-    def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+    def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
         fqn = self.ns.join(vardef.name)
@@ -113,3 +113,14 @@ class ModFrame(AbstractFrame):
 
         else:
             assert False
+
+    # NOTE: ast.Import is not (yet?) a statement
+    def exec_Import(self, imp: ast.Import) -> None:
+        sym = self.symtable.lookup(imp.asname)
+        assert sym.is_local
+        assert sym.impref is not None
+        w_val = self.vm.lookup_ImportRef(sym.impref)
+        assert w_val is not None
+        w_T = self.vm.dynamic_type(w_val)
+        self.declare_local(sym.name, w_T, imp.loc)
+        self.store_local(sym.name, w_val)

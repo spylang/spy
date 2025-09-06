@@ -272,16 +272,6 @@ class AbstractFrame:
         w_T.define_from_classbody(body)
         assert w_T.is_defined()
 
-    def exec_stmt_Import(self, imp: ast.Import) -> None:
-        sym = self.symtable.lookup(imp.asname)
-        assert sym.is_local
-        assert sym.impref is not None
-        w_val = self.vm.lookup_ImportRef(sym.impref)
-        assert w_val is not None
-        w_T = self.vm.dynamic_type(w_val)
-        self.declare_local(sym.name, w_T, imp.loc)
-        self.store_local(sym.name, w_val)
-
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_T = self.eval_expr_type(vardef.type)
         self.declare_local(vardef.name, w_T, vardef.loc)
