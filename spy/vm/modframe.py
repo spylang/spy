@@ -90,12 +90,12 @@ class ModFrame(AbstractFrame):
                 assert sym.name not in self.locals_types_w
                 self.declare_local(sym.name, wam.w_static_T,
                                    decl.assign.target.loc)
-            self.w_mod._dict_w[sym.name] = wam.w_val
+            self.store_local(sym.name, wam.w_val)
 
         elif sym.storage == 'cell':
             w_cell = W_Cell(fqn, wam.w_val)
-            self.w_mod._dict_w[sym.name] = w_cell
             self.vm.add_global(fqn, w_cell)
+            self.store_local(sym.name, w_cell)
 
         else:
             assert False
