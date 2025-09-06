@@ -20,7 +20,9 @@ class TestInterop:
         vm, w_mod = interop.redshift(str(self.foo_spy))
         assert w_mod.name == 'foo'
         w_add = w_mod.getattr('add')
-        assert repr(w_add) == "<spy function 'foo::add' (redshifted)>"
+        w_add_rs = w_add.w_redshifted_into
+        assert repr(w_add) == "<spy function 'foo::add' (invalid)>"
+        assert repr(w_add_rs) == "<spy function 'foo::add' (redshifted)>"
 
     def test_main(self):
         # here we just check that main() doesn't crash
