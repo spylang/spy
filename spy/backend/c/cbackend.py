@@ -1,6 +1,6 @@
 from typing import Optional
 import py.path
-from spy.backend.c.cmodwriter import CModuleWriter
+from spy.backend.c.cmodwriter import CModule, CModuleWriter
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
@@ -12,6 +12,7 @@ from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import W_I32
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.util import highlight_C_maybe
+
 
 class CBackend:
     """
@@ -45,34 +46,85 @@ class CBackend:
         #
         self.cffi = CFFIWriter(outname, config, build_dir)
         self.ninja = None
+        self.c_modules = {}
         self.cfiles = [] # generated C files
         self.build_script = None
+
+    def init_c_modules(self) -> ...:
+        """
+        Create one C module for each .spy file
+
+        The ultimate goal of the C backend is to emit all the FQNs which were
+        created during init and redshift. In theory, we could emit all of them
+        into a single .c file and call it a day.
+
+        However, in order to make debugging and development easier, we try to
+        split them in a sensible way. In particular, we group them by their
+        FQN.modname.
+
+        Note that this is only VERY loosely relaed with the content of
+        W_Modules. In particular, consider this case:
+
+            # aaa.spy
+            def foo() -> i32:
+                return 42
+
+            # bbb.spy
+            import aaa
+            bar = foo
+
+        At startup the VM creates a function `aaa::foo`, which is present in
+        both the dict of W_Module('aaa') and W_Module('bbb').
+
+        But in the C backend we care only about the FQN, so `foo` will be
+        emitted ONLY inside "aaa.c".
+
+        "bbb.c" does not need it at all, because "bbb.bar" is a blue variable
+        and thus all the references to it has been already redshifted away
+        into an FQNConst("aaa::foo").
+        """
+        bdir = self.build_dir
+        for modname, w_mod in self.vm.modules_w.items():
+            spyfile = None
+            hfile = None
+            cfile = None
+            if w_mod.filepath is not None:
+                # a non-builtin module
+                spyfile = py.path.local(w_mod.filepath)
+                basename = spyfile.purebasename
+                hfile = bdir.join('src', f'{basename}.h')
+                cfile = bdir.join('src', f'{basename}.c')
+            c_mod = CModule(
+                modname = modname,
+                is_builtin = w_mod.is_builtin(),
+                spyfile = spyfile,
+                hfile = hfile,
+                cfile = cfile,
+                content = [],
+            )
+            self.c_modules[modname] = c_mod
+
+        # fill the content of C modules
+        for fqn, w_obj in self.vm.globals_w.items():
+            modname = fqn.modname
+            self.c_modules[modname].content.append((fqn, w_obj))
 
     def cwrite(self) -> None:
         """
         Convert all non-builtins modules into .c files
         """
+        self.init_c_modules()
         self.cwrite_builtins_extra()
-        for modname, w_mod in self.vm.modules_w.items():
-            if w_mod.is_builtin():
+        for modname, c_mod in self.c_modules.items():
+            if c_mod.is_builtin:
                 continue
-            assert w_mod.filepath is not None
-            file_spy = py.path.local(w_mod.filepath)
-            basename = file_spy.purebasename
-            file_c = self.build_dir.join('src', f'{basename}.c')
-            file_h = self.build_dir.join('src', f'{basename}.h')
-            cwriter = CModuleWriter(
-                self.vm, w_mod, file_spy, file_h, file_c,
-                self.cffi,
-            )
+            cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
             cwriter.write_c_source()
-            self.cfiles.append(file_c)
-            #
+            self.cfiles.append(c_mod.cfile)
             if self.dump_c:
                 print()
-                print(f'---- {file_c} ----')
-                print(highlight_C_maybe(file_c.read()))
-
+                print(f'---- {c_mod.cfile} ----')
+                print(highlight_C_maybe(c_mod.cfile.read()))
 
     def cwrite_builtins_extra(self) -> None:
         # find all the unsafe::ptr to a builtin
@@ -81,18 +133,19 @@ class CBackend:
                 isinstance(w_obj, W_PtrType) and
                 w_obj.w_itemtype.fqn.modname == 'builtins'
             )
-        mod_items = [
-            (fqn, w_obj)
-            for fqn, w_obj in self.vm.globals_w.items()
-            if is_ptr_to_builtin(w_obj)
-        ]
-
-        w_mod = self.vm.modules_w['builtins']
-        file_h = self.build_dir.join('src', 'builtins_extra.h')
-        cwriter = CModuleWriter(
-            self.vm, w_mod, None, file_h, None, self.cffi,
-            mod_items=mod_items
+        c_mod = CModule(
+            modname = 'builtins',
+            is_builtin = True,
+            spyfile = None,
+            hfile = self.build_dir.join('src', 'builtins_extra.h'),
+            cfile = None,
+            content = [
+                (fqn, w_obj)
+                for fqn, w_obj in self.vm.globals_w.items()
+                if is_ptr_to_builtin(w_obj)
+            ]
         )
+        cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
         cwriter.write_c_source()
 
     def write_build_script(self) -> None:
@@ -126,12 +179,12 @@ class CBackend:
         #    1. functions
         #    2. red variables (who are stored inside a W_Cell)
         wasm_exports = []
-        for modname, w_mod in self.vm.modules_w.items():
-            if w_mod.is_builtin():
+        for modname, c_mod in self.c_modules.items():
+            if c_mod.is_builtin:
                 continue
             wasm_exports += [
                 fqn.c_name
-                for fqn, w_obj in w_mod.fqn_items_w()
+                for fqn, w_obj in c_mod.content
                 if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
                     isinstance(w_obj, W_Cell))
             ]

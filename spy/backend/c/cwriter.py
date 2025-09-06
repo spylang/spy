@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class CFuncWriter:
     ctx: Context
-    cmod: 'CModuleWriter'
+    cmodw: 'CmodwuleWriter'
     tbc: TextBuilder
     fqn: FQN
     w_func: W_ASTFunc
@@ -25,12 +25,12 @@ class CFuncWriter:
 
     def __init__(self,
                  ctx: Context,
-                 cmod: 'CModuleWriter',
+                 cmodw: 'CmodwuleWriter',
                  fqn: FQN,
                  w_func: W_ASTFunc) -> None:
         self.ctx = ctx
-        self.cmod = cmod
-        self.tbc = cmod.tbc
+        self.cmodw = cmodw
+        self.tbc = cmodw.tbc
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1) # see emit_lineno_maybe
@@ -108,7 +108,7 @@ class CFuncWriter:
         """
         Emit a #line directive, unconditionally
         """
-        if self.cmod.spyfile is None:
+        if self.cmodw.c_mod.spyfile is None:
             # we don't have an associated spyfile, so we cannot emit SPY_LINE
             return
         cline = self.tbc.lineno
@@ -215,11 +215,11 @@ class CFuncWriter:
         # Emit the global decl
         s = const.value
         utf8 = s.encode('utf-8')
-        v = self.cmod.new_global_var('str')  # SPY_g_str0
+        v = self.cmodw.new_global_var('str')  # SPY_g_str0
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
         init = '{%d, %s}' % (n, lit)
-        self.cmod.tbc_globals.wl(f'static spy_Str {v} = {init};')
+        self.cmodw.tbc_globals.wl(f'static spy_Str {v} = {init};')
         #
         # shortstr is what we show in the comment, with a length limit
         comment = shortrepr(utf8.decode('utf-8'), 15)
@@ -343,7 +343,7 @@ class CFuncWriter:
             return C.UnaryOp(op, v)
 
         if call.func.fqn.modname == "jsffi":
-            self.cmod.emit_jsffi_error_maybe()
+            self.cmodw.emit_jsffi_error_maybe()
 
         fqn = call.func.fqn
         if str(fqn).startswith("unsafe::getfield_by"):

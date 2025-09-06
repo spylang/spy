@@ -12,7 +12,7 @@ from spy.vm.opspec import W_OpSpec, W_MetaArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-ModItem = tuple[FQN, W_Object]
+ModItem = tuple[FQN, W_Object] # XXX kill
 
 # XXX the Cell type should not be on builtins
 @B.builtin_type('Cell')

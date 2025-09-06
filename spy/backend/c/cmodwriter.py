@@ -1,9 +1,10 @@
 from typing import Optional, Iterable
+from dataclasses import dataclass
 import itertools
 import py.path
 from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object
-from spy.vm.module import W_Module, ModItem, W_Cell
+from spy.vm.module import W_Module, W_Cell
 from spy.vm.primitive import W_I32
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.vm import SPyVM
@@ -15,15 +16,24 @@ from spy.backend.c.context import Context, C_Type
 from spy.backend.c.cwriter import CFuncWriter
 from spy.backend.c.cffiwriter import CFFIWriter
 
-
-class CModuleWriter:
-    ctx: Context
-    w_mod: W_Module
+@dataclass
+class CModule:
+    modname: str
+    is_builtin: bool
     spyfile: Optional[py.path.local]
     hfile: Optional[py.path.local]
     cfile: Optional[py.path.local]
+    content: list[tuple[FQN, W_Object]]
+
+    def __repr__(self) -> str:
+        return f'<CModule {self.modname}>'
+
+
+
+class CModuleWriter:
+    ctx: Context
+    c_mod: CModule
     global_vars: set[str]
-    mod_items: Iterable[ModItem]
     jsffi_error_emitted: bool = False
 
     # main and nested TextBuilders for .h
@@ -43,23 +53,11 @@ class CModuleWriter:
     def __init__(
             self,
             vm: SPyVM,
-            w_mod: W_Module,
-            spyfile: Optional[py.path.local],
-            hfile: Optional[py.path.local],
-            cfile: Optional[py.path.local],
+            c_mod: CModule,
             cffi: CFFIWriter,
-            *,
-            mod_items: Optional[Iterable[ModItem]] = None,
     ) -> None:
         self.ctx = Context(vm)
-        self.w_mod = w_mod
-        if mod_items is None:
-            self.mod_items = w_mod.fqn_items_w()
-        else:
-            self.mod_items = mod_items
-        self.spyfile = spyfile
-        self.hfile = hfile
-        self.cfile = cfile
+        self.c_mod = c_mod
         self.cffi = cffi
         self.tbh = TextBuilder(use_colors=False)
         self.tbc = TextBuilder(use_colors=False)
@@ -69,14 +67,14 @@ class CModuleWriter:
         self.init_c()
 
     def __repr__(self) -> str:
-        return f'<CModuleWriter for {self.w_mod}>'
+        return f'<CModuleWriter for {self.c_mod.modname}>'
 
     def write_c_source(self) -> None:
         self.emit_content()
-        if self.hfile:
-            self.hfile.write(self.tbh.build())
-        if self.cfile:
-            self.cfile.write(self.tbc.build())
+        if self.c_mod.hfile:
+            self.c_mod.hfile.write(self.tbh.build())
+        if self.c_mod.cfile:
+            self.c_mod.cfile.write(self.tbc.build())
 
     def new_global_var(self, prefix: str) -> str:
         """
@@ -91,8 +89,8 @@ class CModuleWriter:
         return varname
 
     def init_h(self) -> None:
-        assert self.hfile is not None
-        GUARD = self.hfile.purebasename.upper()
+        assert self.c_mod.hfile is not None
+        GUARD = self.c_mod.hfile.purebasename.upper()
         header_guard = f"SPY_{GUARD}_H"
         self.tbh.wb(f"""
         #ifndef SPY_{GUARD}_H
@@ -150,18 +148,18 @@ class CModuleWriter:
         """)
 
     def init_c(self) -> None:
-        assert self.hfile is not None
-        header_name = self.hfile.basename
+        assert self.c_mod.hfile is not None
+        header_name = self.c_mod.hfile.basename
         self.cffi.emit_include(header_name)
         self.tbc.wb(f"""
         #include "{header_name}"
         """)
-        if self.spyfile is not None:
+        if self.c_mod.spyfile is not None:
             self.tbc.wb(f"""
             #ifdef SPY_DEBUG_C
-            #    define SPY_LINE(SPY, C) C "{self.cfile}"
+            #    define SPY_LINE(SPY, C) C "{self.c_mod.cfile}"
             #else
-            #    define SPY_LINE(SPY, C) SPY "{self.spyfile}"
+            #    define SPY_LINE(SPY, C) SPY "{self.c_mod.spyfile}"
             #endif
             """)
         self.tbc.wl()
@@ -173,7 +171,7 @@ class CModuleWriter:
         self.tbc_content = self.tbc.make_nested_builder()
 
         # Main function
-        fqn_main = FQN([self.w_mod.name, 'main'])
+        fqn_main = FQN([self.c_mod.modname, 'main'])
         if fqn_main in self.ctx.vm.globals_w:
             self.tbc.wb(f"""
                 int main(void) {{
@@ -193,7 +191,7 @@ class CModuleWriter:
         self.jsffi_error_emitted = True
 
     def emit_content(self) -> None:
-        for fqn, w_obj in self.mod_items:
+        for fqn, w_obj in self.c_mod.content:
             assert w_obj is not None, 'uninitialized global?'
             self.emit_obj(fqn, w_obj)
 
