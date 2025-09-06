@@ -118,20 +118,20 @@ class W_Module(W_Object):
         fqn = FQN([self.name, attr])
         self.vm.store_global(fqn, w_value)
 
-    # XXX: we should stop to return FQNs
-    def keys(self) -> Iterable[FQN]:
-        for key in self._dict_w.keys():
-            yield self.fqn.join(key)
+    def keys(self) -> Iterable[str]:
+        return self._dict_w.keys()
 
-    # XXX: we should stop to return FQNs
-    def items_w(self) -> Iterable[ModItem]:
-        for key, w_val in self._dict_w.items():
-            yield self.fqn.join(key), w_val
+    def items_w(self) -> Iterable[tuple[str, W_Object]]:
+        return self._dict_w.items()
+
+    # XXX: kill me
+    def fqn_items_w(self) -> Iterable[ModItem]:
+        raise NotImplementedError('use vm.fqns_by_modname')
 
     def pp(self) -> None:
         """
         Pretty print
         """
         print(f'Module {self.name}:')
-        for attr, w_obj in self.items_w():
+        for attr, w_obj in self.fqn_items_w():
             print(f'    {attr}: {w_obj}')

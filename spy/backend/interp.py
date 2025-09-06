@@ -29,10 +29,13 @@ class InterpModuleWrapper:
         self.w_mod = w_mod
 
     def __dir__(self) -> list[str]:
-        return [fqn.symbol_name for fqn in self.w_mod.keys()]
+        return ['vm', 'w_mod'] + list(self.w_mod.keys())
 
     def __getattr__(self, attr: str) -> Any:
-        w_obj = self.w_mod.getattr(attr)
+        w_obj = self.w_mod.getattr_maybe(attr)
+        if w_obj is None:
+            raise AttributeError(attr)
+
         if isinstance(w_obj, W_Cell):
             w_obj = w_obj.get()
 

@@ -229,6 +229,11 @@ class SPyVM:
                 return fqn
         return None
 
+    def fqns_by_modname(self, modname: str) -> Iterable[tuple[FQN, W_Object]]:
+        for fqn, w_obj in self.globals_w.items():
+            if fqn.modname == modname:
+                yield (fqn, w_obj)
+
     def pp_globals(self) -> None:
         all_fqns = sorted(self.globals_w, key=lambda fqn: str(fqn))
         for fqn in all_fqns:

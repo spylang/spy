@@ -54,7 +54,7 @@ class CModuleWriter:
         self.ctx = Context(vm)
         self.w_mod = w_mod
         if mod_items is None:
-            self.mod_items = w_mod.items_w()
+            self.mod_items = w_mod.fqn_items_w()
         else:
             self.mod_items = mod_items
         self.spyfile = spyfile

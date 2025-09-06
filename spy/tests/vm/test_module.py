@@ -16,7 +16,7 @@ class TestModule:
         vm.add_global(fqn_a, w_a)
         vm.add_global(fqn_b, w_b)
         assert list(w_mod.keys()) == [fqn_a, fqn_b]
-        assert list(w_mod.items_w()) == [
+        assert list(w_mod.fqn_items_w()) == [
             (fqn_a, w_a),
             (fqn_b, w_b),
         ]

@@ -131,7 +131,7 @@ class CBackend:
                 continue
             wasm_exports += [
                 fqn.c_name
-                for fqn, w_obj in w_mod.items_w()
+                for fqn, w_obj in w_mod.fqn_items_w()
                 if (isinstance(w_obj, W_ASTFunc) and w_obj.color == 'red' or
                     isinstance(w_obj, W_Cell))
             ]

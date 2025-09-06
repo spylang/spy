@@ -223,7 +223,7 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
 
 def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
     w_mod = vm.modules_w[modname]
-    for fqn, w_obj in w_mod.items_w():
+    for fqn, w_obj in w_mod.fqn_items_w():
         if (isinstance(w_obj, W_ASTFunc) and
             w_obj.color == 'red' and
             w_obj.fqn == fqn):
