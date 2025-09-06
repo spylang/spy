@@ -398,16 +398,18 @@ def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
         print('Cannot find function main()')
         return
 
+    vm.typecheck(w_main, w_main_functype)
+    assert isinstance(w_main, W_ASTFunc)
+
     # find the redshifted version, if necessary
     if args.redshift:
         assert not w_main.is_valid
+        assert w_main.w_redshifted_into is not None
         w_main = w_main.w_redshifted_into
         assert w_main.redshifted
     else:
         assert not w_main.redshifted
 
-    vm.typecheck(w_main, w_main_functype)
-    assert isinstance(w_main, W_Func)
     a = time.time()
     w_res = vm.fast_call(w_main, [])
     b = time.time()

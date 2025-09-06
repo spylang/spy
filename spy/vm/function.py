@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
-Namespace = dict[str, Optional[W_Object]]
+Namespace = dict[str, W_Object]
 CLOSURE = tuple[Namespace, ...]
 
 FuncParamKind = Literal['simple', 'var_positional']
@@ -307,7 +307,7 @@ class W_ASTFunc(W_Func):
     # if the function has been redshifted, this contains the NEW function, and
     # the current one becomes invalid (not ensure we don't execute it by
     # mistake).
-    w_redshifted_into: Optional[W_Func]
+    w_redshifted_into: Optional['W_ASTFunc']
 
     def __init__(self,
                  w_functype: W_FuncType,
@@ -336,7 +336,7 @@ class W_ASTFunc(W_Func):
         """
         return self.w_redshifted_into is None
 
-    def invalidate(self, w_func: W_Func) -> None:
+    def invalidate(self, w_func: 'W_ASTFunc') -> None:
         assert self.fqn == w_func.fqn
         self.w_redshifted_into = w_func
 

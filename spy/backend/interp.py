@@ -13,7 +13,7 @@ from typing import Any
 import fixedint
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module, W_Cell
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
 from spy.vm.b import B
 
 
@@ -36,14 +36,17 @@ class InterpModuleWrapper:
         if isinstance(w_obj, W_Cell):
             w_obj = w_obj.get()
 
-        if isinstance(w_obj, W_Func):
+        if isinstance(w_obj, W_ASTFunc):
             w_func = w_obj
             if not w_func.is_valid:
                 # let's find the redshifted version
+                assert w_func.w_redshifted_into is not None
                 w_func = w_func.w_redshifted_into
                 assert w_func.redshifted
                 assert self.vm.lookup_global(w_func.fqn) is w_func
             return InterpFuncWrapper(self.vm, w_func)
+        elif isinstance(w_obj, W_Func):
+            assert False, 'WHAT?'
         else:
             return self.vm.unwrap(w_obj)
 

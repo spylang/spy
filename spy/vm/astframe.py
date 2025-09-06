@@ -262,6 +262,7 @@ class AbstractFrame:
         assert sym.is_local
         assert sym.impref is not None
         w_val = self.vm.lookup_ImportRef(sym.impref)
+        assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
         self.declare_local(sym.name, w_T, imp.loc)
         self.store_local(sym.name, w_val)
