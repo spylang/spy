@@ -144,13 +144,16 @@ class CFuncWriter:
         pass
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        varname = assign.target.value
+        assert False, 'ast.Assign nodes should not survive redshifting'
+
+    def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
+        target = assign.target.value
         v = self.fmt_expr(assign.value)
-        sym = self.w_func.funcdef.symtable.lookup(varname)
-        if sym.is_local:
-            target = varname
-        else:
-            target = sym.fqn.c_name
+        self.tbc.wl(f'{target} = {v};')
+
+    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        v = self.fmt_expr(assign.value)
+        target = assign.target_fqn.c_name
         self.tbc.wl(f'{target} = {v};')
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
@@ -239,11 +242,18 @@ class CFuncWriter:
             assert False
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
-        sym = self.w_func.funcdef.symtable.lookup(name.id)
-        if sym.is_local:
-            return C.Literal(name.id)
-        else:
-            return C.Literal(sym.fqn.c_name)
+        assert False, 'ast.Name nodes should not survive redshifting'
+
+    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> C.Expr:
+        return C.Literal(name.sym.name)
+
+    def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
+        return C.Literal(name.fqn.c_name)
+
+    def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> C.Expr:
+        # at the moment of writing, closed-over variables are always blue, so
+        # they should not survive redshifting
+        assert False, 'unexepcted NameOuterDirect'
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         raise NotImplementedError(
