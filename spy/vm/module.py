@@ -97,7 +97,6 @@ class W_Module(W_Object):
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:
         return self._dict_w.get(attr)
-        return w_res
 
     def getattr(self, attr: str) -> W_Object:
         return self._dict_w[attr]

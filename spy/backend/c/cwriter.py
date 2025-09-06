@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class CFuncWriter:
     ctx: Context
-    cmodw: 'CmodwuleWriter'
+    cmodw: 'CModuleWriter'
     tbc: TextBuilder
     fqn: FQN
     w_func: W_ASTFunc
@@ -25,7 +25,7 @@ class CFuncWriter:
 
     def __init__(self,
                  ctx: Context,
-                 cmodw: 'CmodwuleWriter',
+                 cmodw: 'CModuleWriter',
                  fqn: FQN,
                  w_func: W_ASTFunc) -> None:
         self.ctx = ctx

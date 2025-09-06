@@ -25,6 +25,7 @@ class CBackend:
     dump_c: bool
     cffi: CFFIWriter
     ninja: Optional[NinjaWriter]
+    c_modules: dict[str, CModule]
     cfiles: list[py.path.local]
     build_script: Optional[py.path.local]
 
@@ -50,7 +51,7 @@ class CBackend:
         self.cfiles = [] # generated C files
         self.build_script = None
 
-    def init_c_modules(self) -> ...:
+    def init_c_modules(self) -> None:
         """
         Create one C module for each .spy file
 
@@ -120,6 +121,7 @@ class CBackend:
                 continue
             cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
             cwriter.write_c_source()
+            assert c_mod.cfile is not None
             self.cfiles.append(c_mod.cfile)
             if self.dump_c:
                 print()
