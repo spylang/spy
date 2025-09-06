@@ -22,6 +22,7 @@ from spy.textbuilder import Color
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.vm.module import W_Module
 import traceback
 
 app = typer.Typer(pretty_exceptions_enable=False)
@@ -343,25 +344,15 @@ async def inner_main(args: Arguments) -> None:
     #vm.pp_globals()
     #vm.pp_modules()
 
-    if args.execute:
-        w_main_functype = W_FuncType.parse('def() -> None')
-        w_main = w_mod.getattr_maybe('main')
-        if w_main is None:
-            print('Cannot find function main()')
-            return
-        vm.typecheck(w_main, w_main_functype)
-        assert isinstance(w_main, W_Func)
-        a = time.time()
-        w_res = vm.fast_call(w_main, [])
-        b = time.time()
-        if args.timeit:
-            print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
-        assert w_res is B.w_None
+    if args.execute and not args.redshift:
+        execute_spy_main(args, vm, w_mod)
         return
 
     vm.redshift(error_mode=args.error_mode)
     if args.redshift:
-        if args.parse:
+        if args.execute:
+            execute_spy_main(args, vm, w_mod)
+        elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
             dump_spy_mod(vm, modname, args.full_fqn)
@@ -398,3 +389,28 @@ async def inner_main(args: Arguments) -> None:
     outfile = backend.build()
     executable = outfile.relto(cwd)
     print(f"==> {executable}")
+
+
+def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
+    w_main_functype = W_FuncType.parse('def() -> None')
+    w_main = w_mod.getattr_maybe('main')
+    if w_main is None:
+        print('Cannot find function main()')
+        return
+
+    # find the redshifted version, if necessary
+    if args.redshift:
+        assert not w_main.is_valid
+        w_main = w_main.w_redshifted_into
+        assert w_main.redshifted
+    else:
+        assert not w_main.redshifted
+
+    vm.typecheck(w_main, w_main_functype)
+    assert isinstance(w_main, W_Func)
+    a = time.time()
+    w_res = vm.fast_call(w_main, [])
+    b = time.time()
+    if args.timeit:
+        print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
+    assert w_res is B.w_None
