@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Any, Optional
 import ast as py_ast
+
+from spy.analyze.symtable import Color
 import spy.ast
 from spy.analyze.symtable import Symbol
 from spy.textbuilder import TextBuilder
@@ -86,7 +88,15 @@ class Dumper(TextBuilder):
         #
         if node is self.highlight:
             text_color = 'red'
-        self.write(name, color=text_color)
+        # If the vm contains an expr_color_map, use the expression's color
+        # as the text background color, and use the default text_color
+        bg_color = None
+        if self.vm and self.vm.expr_color_map:
+            color: Optional[Color] = self.vm.expr_color_map.get(node, None)
+            if color:
+                bg_color = color
+                text_color = None
+        self.write(name, color=text_color, bg=bg_color)
         self.write('(')
         if multiline:
             self.writeline('')
