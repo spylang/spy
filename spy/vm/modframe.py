@@ -29,26 +29,13 @@ class ModFrame(AbstractFrame):
         super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
         self.mod = mod
         self.w_mod = W_Module(vm, ns.modname, mod.filename)
+        # the local vars of this frame goes directly in the module dict
+        self._locals = self.w_mod._dict_w
         self.vm.register_module(self.w_mod)
-
-        # XXX: if we keep this, we SHOULD be able to kill store_local and
-        # load_local?
-        self._locals = self.w_mod._dict_w # XXXX
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         return f'<{cls} for `{self.ns}`>'
-
-    def store_local(self, name: str, w_value: W_Object) -> None:
-        self.w_mod._dict_w[name] = w_value
-        #self.w_mod.setattr(name, w_value)
-
-    def load_local(self, name: str) -> W_Object:
-        w_obj = self.w_mod._dict_w.get(name)
-        #w_obj = self.w_mod.getattr_maybe(name)
-        if w_obj is None:
-            raise SPyError("W_Exception", 'read from uninitialized local')
-        return w_obj
 
     def run(self) -> W_Module:
         # forward declaration of types
