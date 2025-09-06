@@ -120,17 +120,17 @@ class SymTable:
                           col_start=0,
                           col_end=0)
         builtins_mod = vm.modules_w['builtins']
-        for fqn, w_obj in builtins_mod.fqn_items_w():
+        for attr, w_obj in builtins_mod.items_w():
             if isinstance(w_obj, W_BuiltinFunc):
                 loc = w_obj.def_loc
             else:
                 loc = generic_loc
             sym = Symbol(
-                fqn.symbol_name, 'blue', 'const', 'direct',
+                attr, 'blue', 'const', 'direct',
                 loc=loc,
                 type_loc=loc,
                 level=0,
-                impref=ImportRef('builtins', fqn.symbol_name),
+                impref=ImportRef('builtins', attr),
             )
             scope.add(sym)
         return scope
