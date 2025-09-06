@@ -61,7 +61,8 @@ class Dumper(TextBuilder):
         name = node.__class__.__name__
         fields = list(node.__class__.__dataclass_fields__)
         fields = [f for f in fields if f not in self.fields_to_ignore]
-        self._dump_node(node, name, fields, text_color='blue')
+        # Use turquoise text_color to distinguish from blue in --colorize
+        self._dump_node(node, name, fields, text_color='turquoise')
 
     def dump_py_node(self, node: py_ast.AST) -> None:
         name = 'py:' + node.__class__.__name__
@@ -69,6 +70,7 @@ class Dumper(TextBuilder):
         fields = [f for f in fields if f not in self.fields_to_ignore]
         if isinstance(node, py_ast.Name):
             fields.append('is_var')
+        # Use turquoise text_color to distinguish from blue in --colorize
         self._dump_node(node, name, fields, text_color='turquoise')
 
     def dump_Symbol(self, sym: Symbol) -> None:
