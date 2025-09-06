@@ -1,6 +1,7 @@
 from typing import Any, Optional
 import ast as py_ast
 import spy.ast
+from spy.analyze.symtable import Symbol
 from spy.textbuilder import TextBuilder
 
 def dump(node: Any,
@@ -42,6 +43,8 @@ class Dumper(TextBuilder):
             self.dump_py_node(obj)
         elif type(obj) is list:
             self.dump_list(obj)
+        elif type(obj) is Symbol:
+            self.dump_Symbol(obj)
         elif type(obj) is str:
             self.write(repr(obj), color='green')
         else:
@@ -61,9 +64,12 @@ class Dumper(TextBuilder):
             fields.append('is_var')
         self._dump_node(node, name, fields, color='turquoise')
 
+    def dump_Symbol(self, sym: Symbol) -> None:
+        self.write(f'Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})')
+
     def _dump_node(self, node: Any, name: str, fields: list[str], color: str) -> None:
         def is_complex(obj: Any) -> bool:
-            return (isinstance(obj, (spy.ast.Node, py_ast.AST, list)) and
+            return (isinstance(obj, (spy.ast.Node, py_ast.AST, list, Symbol)) and
                     not isinstance(obj, py_ast.expr_context))
         values = [getattr(node, field) for field in fields]
         is_complex_field = [is_complex(value) for value in values]
