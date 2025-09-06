@@ -48,6 +48,7 @@ class AbstractFrame:
     locals_types_w: dict[str, W_Type]
     locals_decl_loc: dict[str, Loc]
     specialized_names: dict[ast.Name, ast.Expr]
+    specialized_assigns: dict[ast.Assign, ast.Stmt]
 
     def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:
@@ -60,16 +61,18 @@ class AbstractFrame:
         self.locals_types_w = {}
         self.locals_decl_loc = {}
 
-        # ast.Name is special, because depending on the content of the
-        # symtable it has different meanings (e.g. local, outer direct, outer
-        # cell, ...), so we need some logic to distinguish between the cases.
+        # ast.Name and ast.Assign are special, because depending on the
+        # content of the symtable it has different meanings (e.g. local, outer
+        # direct, outer cell, ...), so we need some logic to distinguish
+        # between the cases.
         #
-        # The first time eval_expr_Name is called, it understand which kind of
-        # name it is and create a specialized ast.Name* node, which is then
-        # executed from now on.  This is also useful for Doppler, since
-        # shifting a name simply means to return the specialized version.
+        # The first time eval_expr_Name and exec_stmt_Assign are called, they
+        # understand which kind of name it is and create specialized ast.Name*
+        # or ast.Assign* nodes, which are then used from now on.  This is also
+        # useful for Doppler, since shifting simply means to return the
+        # specialized version.
         self.specialized_names = {}
-
+        self.specialized_assigns = {}
 
     # overridden by DopplerFrame
     @property
@@ -284,39 +287,52 @@ class AbstractFrame:
         self.declare_local(vardef.name, w_T, vardef.loc)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        self._exec_assign(assign.target, assign.value)
+        # see the commnet in __init__ about specialized_assigns
+        specialized = self.specialized_assigns.get(assign)
+        if specialized is None:
+            specialized = self._specialize_Assign(assign)
+            self.specialized_assigns[assign] = specialized
+        self.exec_stmt(specialized)
 
-    def _exec_assign(self, target: ast.StrConst, expr: ast.Expr) -> None:
-        varname = target.value
+    def _specialize_Assign(self, assign: ast.Assign) -> ast.Stmt:
+        varname = assign.target.value
         sym = self.symtable.lookup(varname)
         if sym.storage == 'direct':
             assert sym.is_local
-            self._exec_assign_local(target, expr)
+            return ast.AssignLocal(assign.loc, assign.target, assign.value)
         elif sym.storage == 'cell':
-            self._exec_assign_cell(target, expr)
+            namespace = self.closure[-sym.level]
+            w_cell = namespace[sym.name]
+            assert isinstance(w_cell, W_Cell)
+            return ast.AssignCell(
+                loc = assign.loc,
+                target = assign.target,
+                target_fqn = w_cell.fqn,
+                value = assign.value
+            )
         else:
             assert False
 
-    def _exec_assign_local(self, target: ast.StrConst, expr: ast.Expr) -> None:
+    def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
+        target = assign.target
         varname = target.value
         is_declared = varname in self.locals_types_w
         if is_declared:
-            wam = self.eval_expr(expr, varname=varname)
+            wam = self.eval_expr(assign.value, varname=varname)
         else:
             # first assignment, implicit declaration
-            wam = self.eval_expr(expr)
+            wam = self.eval_expr(assign.value)
             self.declare_local(varname, wam.w_static_T, target.loc)
 
         if not self.redshifting:
             self.store_local(varname, wam.w_val)
 
-    def _exec_assign_cell(self, target: ast.StrConst, expr: ast.Expr) -> None:
+    def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        target = assign.target
         varname = target.value
-        sym = self.symtable.lookup(varname)
-        wam = self.eval_expr(expr)
+        wam = self.eval_expr(assign.value)
         if not self.redshifting:
-            namespace = self.closure[-sym.level]
-            w_cell = namespace[sym.name]
+            w_cell = self.vm.lookup_global(assign.target_fqn)
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)
 

@@ -507,3 +507,14 @@ class NameOuterCell(Expr):
     precedence = 100 # the highest
     sym: Symbol
     fqn: FQN
+
+@dataclass(eq=False)
+class AssignLocal(Stmt):
+    target: StrConst
+    value: Expr
+
+@dataclass(eq=False)
+class AssignCell(Stmt):
+    target: StrConst
+    target_fqn: FQN
+    value: Expr
