@@ -368,7 +368,15 @@ class AbstractFrame:
                     )
                 ]
             )
-            self._exec_assign(target, expr)
+            # fabricate an ast.Assign
+            # XXX: ideally we should cache the specialization instead of
+            # rebuilding it at every exec
+            assign = self._specialize_Assign(ast.Assign(
+                loc = unpack.loc,
+                target = target,
+                value = expr
+            ))
+            self.exec_stmt(assign)
 
     def exec_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         # XXX: eventually we want to support things like __IADD__ etc, but for
