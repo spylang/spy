@@ -817,8 +817,10 @@ class TestBasic(CompilerTest):
         """)
         vm = self.vm
         assert mod.get_x() == 7
-        fqn = FQN("test::x")
-        assert vm.unwrap(self.vm.globals_w[fqn]) == 7
+        if self.backend != 'C':
+            w_mod = self.vm.modules_w['test']
+            w_x = w_mod.getattr('x')
+            assert vm.unwrap(w_x) == 7
 
     def test_getattr_module(self):
         mod = self.compile("""

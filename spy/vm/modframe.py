@@ -91,7 +91,6 @@ class ModFrame(AbstractFrame):
                 self.declare_local(sym.name, wam.w_static_T,
                                    decl.assign.target.loc)
             self.w_mod._dict_w[sym.name] = wam.w_val
-            self.vm.add_global(fqn, wam.w_val) # XXX this should be killed
 
         elif sym.storage == 'cell':
             w_cell = W_Cell(fqn, wam.w_val)

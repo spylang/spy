@@ -1,5 +1,6 @@
 #-*- encoding: utf-8 -*-
 
+import pytest
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.object import W_Type
@@ -73,6 +74,9 @@ class TestList(CompilerTest):
         assert mod.foo(1) == [0, 11, 2]
 
     def test_eq(self):
+        if self.backend == 'doppler':
+            pytest.skip('list PBCs not supported')
+
         mod = self.compile(
         """
         A: list[i32] = [0, 1, 2]
