@@ -1105,3 +1105,22 @@ class TestBasic(CompilerTest):
         else:
             mod = self.compile(src)
             assert mod.bar() == 3
+
+    def test_call_functions_during_redshifting(self):
+        # this test what happens in the middle of redshifting. When we are
+        # redshifting get_N(), "inc" has already been redshifted but get_N
+        # tries to call the old function object. ASTFrame has a special check
+        # to automatically use the new version instead.
+        src = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        @blue
+        def get_N():
+            return inc(5)
+
+        def foo() -> i32:
+            return get_N()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 6

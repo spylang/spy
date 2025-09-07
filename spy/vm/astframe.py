@@ -666,6 +666,9 @@ class ASTFrame(AbstractFrame):
 
     def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
                  args_w: Optional[Sequence[W_Object]]) -> None:
+        # if w_func was redshifted, automatically use the new version
+        if w_func.w_redshifted_into:
+            w_func = w_func.w_redshifted_into
         assert isinstance(w_func, W_ASTFunc)
         ns = self.compute_ns(w_func, args_w)
         super().__init__(vm, ns, w_func.funcdef.symtable, w_func.closure)
@@ -721,8 +724,7 @@ class ASTFrame(AbstractFrame):
         return ns.with_qualifiers(quals)
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
-        assert self.w_func.is_valid, 'you should execute the redshifted version'
-
+        assert self.w_func.is_valid, 'w_func has been redshifted'
         self.declare_arguments()
         self.init_arguments(args_w)
         try:
