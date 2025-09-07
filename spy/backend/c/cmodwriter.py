@@ -226,7 +226,7 @@ class CModuleWriter:
             w_content = w_obj.get()
             w_T = self.ctx.vm.dynamic_type(w_content)
             # we support only int global variables for now
-            assert isinstance(w_content, W_I32)
+            assert isinstance(w_content, W_I32), 'WIP: var type not supported'
             intval = self.ctx.vm.unwrap(w_content)
             c_type = self.ctx.w2c(w_T)
             self.tbh_globals.wl(f'extern {c_type} {fqn.c_name};')
