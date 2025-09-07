@@ -285,11 +285,23 @@ class AbstractFrame:
         self.exec_stmt(specialized)
 
     def _specialize_Assign(self, assign: ast.Assign) -> ast.Stmt:
-        varname = assign.target.value
+        target = assign.target
+        varname = target.value
         sym = self.symtable.lookup(varname)
-        if sym.storage == 'direct':
+
+        if sym.storage == 'direct' and sym.color == 'blue':
+            err = SPyError('W_TypeError', "invalid assignment target")
+            err.add('error', f'{sym.name} is const', target.loc)
+            err.add('note', 'const declared here', sym.loc)
+            err.add('note',
+                    f'help: declare it as variable: `var {sym.name} ...`',
+                    sym.loc)
+            raise err
+
+        elif sym.storage == 'direct':
             assert sym.is_local
-            return ast.AssignLocal(assign.loc, assign.target, assign.value)
+            return ast.AssignLocal(assign.loc, target, assign.value)
+
         elif sym.storage == 'cell':
             namespace = self.closure[-sym.level]
             w_cell = namespace[sym.name]
@@ -300,6 +312,7 @@ class AbstractFrame:
                 target_fqn = w_cell.fqn,
                 value = assign.value
             )
+
         else:
             assert False
 
