@@ -1,4 +1,3 @@
-import math
 import fixedint
 import pytest
 from spy.vm.primitive import W_I32, W_Bool, W_NoneType
