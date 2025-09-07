@@ -13,7 +13,7 @@ from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
                              FuncParam)
 from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
-from spy.vm.module import W_Cell
+from spy.vm.cell import W_Cell
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.struct import W_StructType
 from spy.vm.opspec import W_MetaArg

@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Optional, Iterable
 from spy.fqn import FQN
 from spy.errors import WIP
 from spy.vm.primitive import W_Dynamic
-from spy.vm.b import B
+from spy.vm.b import B, TYPES
 from spy.vm.object import W_Object
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc, W_Func
@@ -12,28 +12,8 @@ from spy.vm.opspec import W_OpSpec, W_MetaArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-# XXX the Cell type should not be on builtins
-@B.builtin_type('Cell')
-class W_Cell(W_Object):
-    """
-    XXX explain
-    """
 
-    def __init__(self, fqn: FQN, w_val: W_Object) -> None:
-        self.fqn = fqn
-        self._w_val = w_val
-
-    def __repr__(self) -> str:
-        return f'<spy cell {self.fqn} = {self._w_val}>'
-
-    def get(self) -> W_Object:
-        return self._w_val
-
-    def set(self, w_val: W_Object) -> None:
-        self._w_val = w_val
-
-
-@B.builtin_type('module')
+@TYPES.builtin_type('module')
 class W_Module(W_Object):
     filepath: Optional[str]
     _dict_w: dict[str, W_Object]

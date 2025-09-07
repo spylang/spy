@@ -4,7 +4,8 @@ import itertools
 import py.path
 from spy.fqn import FQN
 from spy.vm.object import W_Type, W_Object
-from spy.vm.module import W_Module, W_Cell
+from spy.vm.module import W_Module
+from spy.vm.cell import W_Cell
 from spy.vm.primitive import W_I32
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.vm import SPyVM

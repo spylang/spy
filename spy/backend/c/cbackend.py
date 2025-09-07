@@ -6,7 +6,7 @@ from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.build.cffi import cffi_build
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Cell
+from spy.vm.cell import W_Cell
 from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import W_I32

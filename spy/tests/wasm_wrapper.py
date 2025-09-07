@@ -5,7 +5,7 @@ import wasmtime
 from spy.fqn import FQN
 from spy.llwasm import LLWasmType
 from spy.libspy import LLSPyInstance
-from spy.vm.module import W_Cell
+from spy.vm.cell import W_Cell
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.function import W_Func, W_FuncType

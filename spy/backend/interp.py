@@ -12,7 +12,8 @@ vice-versa, by using vm.wrap and vm.unwrap.
 from typing import Any
 import fixedint
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module, W_Cell
+from spy.vm.module import W_Module
+from spy.vm.cell import W_Cell
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
 from spy.vm.b import B
 
