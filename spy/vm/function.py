@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
-Namespace = dict[str, Optional[W_Object]]
+Namespace = dict[str, W_Object]
 CLOSURE = tuple[Namespace, ...]
 
 FuncParamKind = Literal['simple', 'var_positional']
@@ -299,9 +299,15 @@ class W_Func(W_Object):
 class W_ASTFunc(W_Func):
     funcdef: ast.FuncDef
     closure: tuple[Namespace, ...]
+
     # types of local variables: this is non-None IIF the function has been
     # redshifted.
     locals_types_w: Optional[dict[str, W_Type]]
+
+    # if the function has been redshifted, this contains the NEW function, and
+    # the current one becomes invalid (not ensure we don't execute it by
+    # mistake).
+    w_redshifted_into: Optional['W_ASTFunc']
 
     def __init__(self,
                  w_functype: W_FuncType,
@@ -317,13 +323,27 @@ class W_ASTFunc(W_Func):
         self.funcdef = funcdef
         self.closure = closure
         self.locals_types_w = locals_types_w
+        self.w_redshifted_into = None
 
     @property
     def redshifted(self) -> bool:
         return self.locals_types_w is not None
 
+    @property
+    def is_valid(self) -> bool:
+        """
+        A function is valid if it has not been redshifted into something else.
+        """
+        return self.w_redshifted_into is None
+
+    def invalidate(self, w_func: 'W_ASTFunc') -> None:
+        assert self.fqn == w_func.fqn
+        self.w_redshifted_into = w_func
+
     def __repr__(self) -> str:
-        if self.redshifted:
+        if not self.is_valid:
+            extra = ' (invalid)'
+        elif self.redshifted:
             extra = ' (redshifted)'
         elif self.color == 'blue':
             extra = ' (blue)'

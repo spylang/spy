@@ -38,8 +38,7 @@ class SPyBackend:
 
     def dump_mod(self, modname: str) -> str:
         self.modname = modname
-        w_mod = self.vm.modules_w[modname]
-        for fqn, w_obj in w_mod.items_w():
+        for fqn, w_obj in self.vm.fqns_by_modname(modname):
             if (isinstance(w_obj, W_ASTFunc) and
                 w_obj.color == 'red' and
                 w_obj.fqn == fqn):
@@ -182,6 +181,17 @@ class SPyBackend:
         v = self.fmt_expr(assign.value)
         self.wl(f'{varname} = {v}')
 
+    def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
+        varname = assign.target.value
+        self.emit_declare_var_maybe(varname)
+        v = self.fmt_expr(assign.value)
+        self.wl(f'{varname} = {v}')
+
+    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        varname = self.fmt_fqn(assign.target_fqn)
+        v = self.fmt_expr(assign.value)
+        self.wl(f'{varname} = {v}')
+
     def emit_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         varname = node.target.value
         op = node.op
@@ -259,6 +269,12 @@ class SPyBackend:
 
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
+
+    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> str:
+        return name.sym.name
+
+    def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
+        return self.fmt_fqn(name.fqn)
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)

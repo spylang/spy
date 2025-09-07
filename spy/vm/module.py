@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Optional, Iterable
 from spy.fqn import FQN
 from spy.errors import WIP
 from spy.vm.primitive import W_Dynamic
-from spy.vm.b import B
+from spy.vm.b import B, TYPES
 from spy.vm.object import W_Object
 from spy.vm.str import W_Str
 from spy.vm.function import W_ASTFunc, W_Func
@@ -13,27 +13,26 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-ModItem = tuple[FQN, W_Object]
-
-
-@B.builtin_type('module')
+@TYPES.builtin_type('module')
 class W_Module(W_Object):
-    vm: 'SPyVM'
-    name: str
     filepath: Optional[str]
+    _dict_w: dict[str, W_Object]
     _frozen: bool
 
-    def __init__(self, vm: 'SPyVM', name: str, filepath: Optional[str]) -> None:
-        self.vm = vm
-        self.name = name # XXX should we kill name?
+    def __init__(self, name: str, filepath: Optional[str]) -> None:
         self.fqn = FQN(name)
         self.filepath = filepath
+        self._dict_w = {}
 
     def __repr__(self) -> str:
         if self.filepath is None:
             return f'<spy module {self.name} (builtin)>'
         else:
             return f'<spy module {self.name}>'
+
+    @property
+    def name(self) -> str:
+        return self.fqn.modname
 
     def is_builtin(self) -> bool:
         return self.filepath is None
@@ -77,34 +76,19 @@ class W_Module(W_Object):
     # ==== public interp-level API ====
 
     def getattr_maybe(self, attr: str) -> Optional[W_Object]:
-        fqn = FQN([self.name, attr])
-        return self.vm.lookup_global(fqn)
+        return self._dict_w.get(attr)
 
     def getattr(self, attr: str) -> W_Object:
-        w_obj = self.getattr_maybe(attr)
-        assert w_obj is not None
-        return w_obj
-
-    def getattr_astfunc(self, attr: str) -> 'W_ASTFunc':
-        from spy.vm.function import W_ASTFunc
-        w_obj = self.getattr(attr)
-        assert isinstance(w_obj, W_ASTFunc)
-        return w_obj
+        return self._dict_w[attr]
 
     def setattr(self, attr: str, w_value: W_Object) -> None:
-        # XXX we should raise an exception if the attr doesn't exist
-        fqn = FQN([self.name, attr])
-        self.vm.store_global(fqn, w_value)
+        self._dict_w[attr] = w_value
 
-    def keys(self) -> Iterable[FQN]:
-        for fqn in self.vm.globals_w.keys():
-            if fqn.modname == self.name and len(fqn.parts) > 1:
-                yield fqn
+    def keys(self) -> Iterable[str]:
+        return self._dict_w.keys()
 
-    def items_w(self) -> Iterable[ModItem]:
-        for fqn, w_obj in self.vm.globals_w.items():
-            if fqn.modname == self.name and len(fqn.parts) > 1:
-                yield fqn, w_obj
+    def items_w(self) -> Iterable[tuple[str, W_Object]]:
+        return self._dict_w.items()
 
     def pp(self) -> None:
         """

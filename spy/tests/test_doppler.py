@@ -270,7 +270,7 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            x = 1
+            `test::x` = 1
         """)
 
     def test_format_prebuilt_exception(self):

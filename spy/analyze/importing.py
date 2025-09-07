@@ -296,7 +296,7 @@ class ImportAnalizyer:
         mod.visit('visit', self)
 
     def visit_Import(self, imp: ast.Import) -> None:
-        modname = imp.fqn.modname
+        modname = imp.ref.modname
         assert self.cur_modname is not None
         # Record the dependency relationship
         self.deps[self.cur_modname].append(modname)

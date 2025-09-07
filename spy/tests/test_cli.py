@@ -105,6 +105,10 @@ class TestMain:
         res, stdout = self.run('--redshift', '--parse', self.main_spy)
         assert stdout.startswith('`main::main` = FuncDef(')
 
+    def test_redshift_and_execute(self):
+        res, stdout = self.run('--redshift', '--execute', self.main_spy)
+        assert stdout == "hello world\n"
+
     def test_cwrite(self):
         res, stdout = self.run(
             '--cwrite',

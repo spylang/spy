@@ -1,10 +1,9 @@
 from typing import Optional
 from spy import ast
 from spy.location import Loc
-from spy.analyze.symtable import Color
-from spy.fqn import FQN
+from spy.analyze.symtable import Color, VarKind, VarStorage
 from spy.errors import SPyError
-from spy.analyze.symtable import SymTable, Symbol
+from spy.analyze.symtable import SymTable, Symbol, ImportRef
 from spy.vm.vm import SPyVM
 
 
@@ -133,10 +132,11 @@ class ScopeAnalyzer:
     def define_name(self,
                     name: str,
                     color: ast.Color,
+                    varkind: VarKind,
                     loc: Loc,
                     type_loc: Loc,
                     *,
-                    fqn: Optional[FQN] = None
+                    impref: Optional[ImportRef] = None
                     ) -> None:
         """
         Add a name definition to the current scope.
@@ -166,11 +166,16 @@ class ScopeAnalyzer:
             err.add('note', 'this is the previous declaration', sym.loc)
             raise err
 
-        if fqn is None and self.scope is self.mod_scope:
-            # this is a module-level global. Let's give it a FQN
-            fqn = FQN([self.mod_scope.name, name])
+        # Determine storage type: module-level vars use "cell", others use
+        # "direct"
+        storage: VarStorage
+        if self.scope is self.mod_scope and varkind == 'var':
+            storage = 'cell'
+        else:
+            storage = 'direct'
 
-        sym = Symbol(name, color, loc=loc, type_loc=type_loc, fqn=fqn, level=0)
+        sym = Symbol(name, color, varkind, storage, loc=loc, type_loc=type_loc,
+                     impref=impref, level=0)
         self.scope.add(sym)
 
     # ====
@@ -183,36 +188,36 @@ class ScopeAnalyzer:
         return node.visit('declare', self)
 
     def declare_Import(self, imp: ast.Import) -> None:
-        w_obj = self.vm.lookup_global(imp.fqn)
+        w_obj = self.vm.lookup_ImportRef(imp.ref)
         if w_obj is not None:
-            self.define_name(imp.asname, 'blue', imp.loc, imp.loc, fqn=imp.fqn)
+            self.define_name(imp.asname, 'blue', 'const', imp.loc, imp.loc,
+                             impref=imp.ref)
             return
         #
         err = SPyError(
             'W_ImportError',
-            f'cannot import `{imp.fqn.spy_name}`',
+            f'cannot import `{imp.ref.spy_name()}`',
         )
-        if imp.fqn.modname not in self.vm.modules_w:
+        if imp.ref.modname not in self.vm.modules_w:
             # See if there is a matching .py file
             if self.vm.find_file_on_path(
-                imp.fqn.modname, allow_py_files=True
+                imp.ref.modname, allow_py_files=True
             ):
                 err.add(
                     "error",
-                    f"file `{imp.fqn.modname}.py` exists, but py files cannot be imported",
+                    f"file `{imp.ref.modname}.py` exists, but py files cannot be imported",
                     loc=imp.loc,
                 )
             else:
                 # module not found
                 err.add(
-                    "error", f"module `{imp.fqn.modname}` does not exist", loc=imp.loc
+                    "error", f"module `{imp.ref.modname}` does not exist", loc=imp.loc
                 )
         else:
             # attribute not found
-            attr = str(imp.fqn.symbol_name)
             err.add('error',
-                    f'attribute `{attr}` does not exist ' +
-                    f'in module `{imp.fqn.modname}`',
+                    f'attribute `{imp.ref.attr}` does not exist ' +
+                    f'in module `{imp.ref.modname}`',
                     loc=imp.loc_asname)
         raise err
 
@@ -222,16 +227,16 @@ class ScopeAnalyzer:
             color = 'red'
         else:
             color = 'blue'
-        self.define_name(decl.vardef.name, color, decl.loc,
+        self.define_name(decl.vardef.name, color, decl.vardef.kind, decl.loc,
                          decl.vardef.type.loc)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.kind == 'var'
-        self.define_name(vardef.name, 'red', vardef.loc, vardef.type.loc)
+        self.define_name(vardef.name, 'red', vardef.kind, vardef.loc, vardef.type.loc)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
-        self.define_name(funcdef.name, 'blue', funcdef.prototype_loc,
+        self.define_name(funcdef.name, 'blue', 'const', funcdef.prototype_loc,
                          funcdef.prototype_loc)
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
@@ -239,10 +244,10 @@ class ScopeAnalyzer:
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.define_name(arg.name, scope_color, arg.loc, arg.type.loc)
+            self.define_name(arg.name, scope_color, 'var', arg.loc, arg.type.loc)
         if funcdef.vararg:
-            self.define_name(funcdef.vararg.name, scope_color, funcdef.vararg.loc, funcdef.vararg.type.loc)
-        self.define_name('@return', scope_color, funcdef.return_type.loc,
+            self.define_name(funcdef.vararg.name, scope_color, 'var', funcdef.vararg.loc, funcdef.vararg.type.loc)
+        self.define_name('@return', scope_color, 'var', funcdef.return_type.loc,
                          funcdef.return_type.loc)
         for stmt in funcdef.body:
             self.declare(stmt)
@@ -250,7 +255,7 @@ class ScopeAnalyzer:
 
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
-        self.define_name(classdef.name, 'blue', classdef.loc, classdef.loc)
+        self.define_name(classdef.name, 'blue', 'const', classdef.loc, classdef.loc)
         inner_scope = self.new_SymTable(classdef.name, 'blue')
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
@@ -277,7 +282,7 @@ class ScopeAnalyzer:
             # "value" to be the type_loc, because it's where the type will be
             # computed from
             type_loc = value.loc
-            self.define_name(target.value, 'red', target.loc, type_loc)
+            self.define_name(target.value, 'red', 'var', target.loc, type_loc)
 
     # ===
 

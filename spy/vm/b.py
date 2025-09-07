@@ -24,3 +24,5 @@ B = BUILTINS
 
 OPERATOR = ModuleRegistry('operator')
 OP = OPERATOR
+
+TYPES = ModuleRegistry('types')

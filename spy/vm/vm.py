@@ -12,6 +12,7 @@ from spy.libspy import LLSPyInstance
 from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError, WIP
 from spy.util import func_equals
+from spy.analyze.symtable import ImportRef
 from spy.vm.builtin import make_builtin_func
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
@@ -169,10 +170,16 @@ class SPyVM:
         self.globals_w[w_mod.fqn] = w_mod
 
     def make_module(self, reg: ModuleRegistry) -> None:
-        w_mod = W_Module(self, reg.fqn.modname, None)
+        w_mod = W_Module(reg.fqn.modname, None)
         self.register_module(w_mod)
         for fqn, w_obj in reg.content:
+            # 1.register w_obj as a global constant
             self.add_global(fqn, w_obj)
+            # 2. add it to the actual module
+            assert len(fqn.parts) == 2
+            assert fqn.modname == reg.fqn.modname
+            name = fqn.symbol_name
+            w_mod.setattr(name, w_obj)
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:
@@ -193,6 +200,15 @@ class SPyVM:
             if fqn2 not in self.globals_w:
                 return fqn2
         assert False, 'unreachable'
+
+    def lookup_ImportRef(self, impref: ImportRef) -> Optional[W_Object]:
+        w_mod = self.modules_w.get(impref.modname)
+        if impref.attr is None:
+            return w_mod
+        elif w_mod is not None:
+            return w_mod.getattr_maybe(impref.attr)
+        else:
+            return None
 
     def add_global(self, fqn: FQN, w_value: W_Object) -> None:
         assert fqn.modname in self.modules_w
@@ -215,6 +231,11 @@ class SPyVM:
             if w_val == w_obj:
                 return fqn
         return None
+
+    def fqns_by_modname(self, modname: str) -> Iterable[tuple[FQN, W_Object]]:
+        for fqn, w_obj in self.globals_w.items():
+            if fqn.modname == modname and not fqn.is_module():
+                yield (fqn, w_obj)
 
     def pp_globals(self) -> None:
         all_fqns = sorted(self.globals_w, key=lambda fqn: str(fqn))

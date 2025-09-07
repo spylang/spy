@@ -1,10 +1,14 @@
 """
 SPy `types` module.
+
+Note that TYPES is defined in spy.vm.b, and that there are other builtin types
+which are attached to it here and there (e.g. W_Module and W_Cell).
 """
 
 from typing import TYPE_CHECKING, Annotated, Any
 from dataclasses import dataclass
 from spy.location import Loc
+from spy.vm.b import TYPES
 from spy.vm.module import W_Module
 from spy.vm.object import W_Type, W_Object, ClassBody
 from spy.vm.function import W_Func
@@ -14,8 +18,6 @@ from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-TYPES = ModuleRegistry('types')
-TYPES.add('module', W_Module._w)
 
 FIELDS_T = dict[str, W_Type]
 METHODS_T = dict[str, W_Func]

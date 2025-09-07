@@ -5,6 +5,8 @@ from spy.analyze.symtable import SymTable
 from spy.errors import SPyError
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+from spy.vm.cell import W_Cell
+from spy.vm.object import W_Object
 from spy.vm.function import W_ASTFunc
 from spy.vm.astframe import AbstractFrame
 
@@ -24,17 +26,19 @@ class ModFrame(AbstractFrame):
                  symtable: SymTable,
                  mod: ast.Module,
                  ) -> None:
-        super().__init__(vm, ns, symtable, closure=())
+        w_builtins = vm.modules_w['builtins']
+        super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
         self.mod = mod
+        self.w_mod = W_Module(ns.modname, mod.filename)
+        # the local vars of this frame goes directly in the module dict
+        self._locals = self.w_mod._dict_w
+        self.vm.register_module(self.w_mod)
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         return f'<{cls} for `{self.ns}`>'
 
     def run(self) -> W_Module:
-        w_mod = W_Module(self.vm, self.ns.modname, self.mod.filename)
-        self.vm.register_module(w_mod)
-
         # forward declaration of types
         for decl in self.mod.decls:
             if isinstance(decl, ast.GlobalClassDef):
@@ -42,18 +46,18 @@ class ModFrame(AbstractFrame):
 
         for decl in self.mod.decls:
             if isinstance(decl, ast.Import):
-                pass
+                self.exec_Import(decl)
             elif isinstance(decl, ast.GlobalFuncDef):
                 self.exec_stmt(decl.funcdef)
             elif isinstance(decl, ast.GlobalClassDef):
                 self.exec_stmt(decl.classdef)
             elif isinstance(decl, ast.GlobalVarDef):
-                self.gen_GlobalVarDef(decl)
+                self.exec_GlobalVarDef(decl)
             else:
                 assert False
         #
         # call the __INIT__, if present
-        w_init = w_mod.getattr_maybe('__INIT__')
+        w_init = self.w_mod.getattr_maybe('__INIT__')
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             if w_init.color != "blue":
@@ -63,20 +67,47 @@ class ModFrame(AbstractFrame):
                 )
                 err.add("error", "function defined here", w_init.def_loc)
                 raise err
-            self.vm.fast_call(w_init, [w_mod])
+            self.vm.fast_call(w_init, [self.w_mod])
         #
-        return w_mod
+        return self.w_mod
 
-    def gen_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+    def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         assign = decl.assign
         fqn = self.ns.join(vardef.name)
+        sym = self.symtable.lookup(vardef.name)
+        assert sym.level == 0, 'module assign to name declared outside?'
 
         # evaluate the vardef in the current frame
-        if not isinstance(vardef.type, ast.Auto):
+        is_auto = isinstance(vardef.type, ast.Auto)
+        if not is_auto:
             self.exec_stmt(vardef)
-        self.exec_stmt(assign)
 
-        # add it to the globals
-        w_val = self.load_local(vardef.name)
-        self.vm.add_global(fqn, w_val)
+        # evaluate the assignment
+        wam = self.eval_expr(assign.value)
+
+        if sym.storage == 'direct':
+            if is_auto:
+                assert sym.name not in self.locals_types_w
+                self.declare_local(sym.name, wam.w_static_T,
+                                   decl.assign.target.loc)
+            self.store_local(sym.name, wam.w_val)
+
+        elif sym.storage == 'cell':
+            w_cell = W_Cell(fqn, wam.w_val)
+            self.vm.add_global(fqn, w_cell)
+            self.store_local(sym.name, w_cell)
+
+        else:
+            assert False
+
+    # NOTE: ast.Import is not (yet?) a statement
+    def exec_Import(self, imp: ast.Import) -> None:
+        sym = self.symtable.lookup(imp.asname)
+        assert sym.is_local
+        assert sym.impref is not None
+        w_val = self.vm.lookup_ImportRef(sym.impref)
+        assert w_val is not None
+        w_T = self.vm.dynamic_type(w_val)
+        self.declare_local(sym.name, w_T, imp.loc)
+        self.store_local(sym.name, w_val)

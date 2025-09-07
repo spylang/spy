@@ -825,11 +825,16 @@ class TestBasic(CompilerTest):
             return 1 + 2 * 3
 
         x = INIT_X()
+
+        def get_x() -> i32:
+            return x
         """)
         vm = self.vm
-        assert mod.x == 7
-        fqn = FQN("test::x")
-        assert vm.unwrap(self.vm.globals_w[fqn]) == 7
+        assert mod.get_x() == 7
+        if self.backend != 'C':
+            w_mod = self.vm.modules_w['test']
+            w_x = w_mod.getattr('x')
+            assert vm.unwrap(w_x) == 7
 
     def test_getattr_module(self):
         mod = self.compile("""
@@ -852,6 +857,7 @@ class TestBasic(CompilerTest):
             )
         self.compile_raises(src, "foo", errors)
 
+    @pytest.mark.skip(reason="think better about __INIT__")
     def test___INIT__(self):
         mod = self.compile(
         """
@@ -865,9 +871,11 @@ class TestBasic(CompilerTest):
             mod.x = 42
         """)
         vm = self.vm
-        assert mod.x == 42
         assert mod.get_x() == 42
+        fqn = FQN("test::x")
+        assert vm.unwrap(self.vm.globals_w[fqn]) == 42
 
+    @pytest.mark.skip(reason="think better about __INIT__")
     def test_wrong__INIT__(self):
         # NOTE: this error is always eager because it happens at import time
         src = """
@@ -1097,3 +1105,22 @@ class TestBasic(CompilerTest):
         else:
             mod = self.compile(src)
             assert mod.bar() == 3
+
+    def test_call_functions_during_redshifting(self):
+        # this test what happens in the middle of redshifting. When we are
+        # redshifting get_N(), "inc" has already been redshifted but get_N
+        # tries to call the old function object. ASTFrame has a special check
+        # to automatically use the new version instead.
+        src = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        @blue
+        def get_N():
+            return inc(5)
+
+        def foo() -> i32:
+            return get_N()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 6

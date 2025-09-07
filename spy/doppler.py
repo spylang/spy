@@ -102,7 +102,10 @@ class DopplerFrame(ASTFrame):
             closure = new_closure,
             w_functype = w_newfunctype,
             funcdef = new_funcdef,
-            locals_types_w = self.locals_types_w.copy())
+            locals_types_w = self.locals_types_w.copy()
+        )
+        # mark the original function as invalid
+        self.w_func.invalidate(w_newfunc)
         return w_newfunc
 
     # =========
@@ -144,8 +147,9 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
+        specialized = self.specialized_assigns[assign]
         newvalue = self.shifted_expr[assign.value]
-        return [assign.replace(value=newvalue)]
+        return [specialized.replace(value=newvalue)]
 
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
@@ -332,6 +336,15 @@ class DopplerFrame(ASTFrame):
         return const
 
     def shift_expr_Name(self, name: ast.Name) -> ast.Expr:
+        return self.specialized_names[name]
+
+    def shift_expr_NameLocal(self, name: ast.NameLocal) -> ast.Expr:
+        return name
+
+    def shift_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> ast.Expr:
+        return name
+
+    def shift_expr_NameOuterCell(self, name: ast.NameOuterCell) -> ast.Expr:
         return name
 
     def shift_expr_BinOp(self, binop: ast.BinOp) -> ast.Expr:

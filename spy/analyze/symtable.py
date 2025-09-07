@@ -7,6 +7,8 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 Color = Literal["red", "blue"]
+VarKind = Literal["var", "const"]
+VarStorage = Literal["direct", "cell"]
 
 def maybe_blue(*colors: Color) -> Color:
     """
@@ -18,10 +20,43 @@ def maybe_blue(*colors: Color) -> Color:
         return 'red'
 
 
+@dataclass(frozen=True)
+class ImportRef:
+    """
+    Represent a reference to an imported name.
+
+    modname is a dotted string which identifies a module
+
+    attr is the name of the attribute
+    If attr is None, then the ImportRef references the whole module.
+
+    E.g. 'a.b.c':
+      modname: 'a.b'
+      attr: 'c'
+    """
+    modname: str
+    attr: Optional[str]
+
+    def spy_name(self) -> str:
+        modname = self.modname
+        if '.' in modname:
+            modname = f'({modname})'
+        if self.attr is None:
+            return modname
+        else:
+            return f'{modname}.{self.attr}'
+
+    def __repr__(self) -> str:
+        n = self.spy_name()
+        return f'<ImportRef {n}>'
+
+
 @dataclass
 class Symbol:
     name: str
     color: Color
+    varkind: VarKind
+    storage: VarStorage
     _: KW_ONLY
     loc: Loc       # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
@@ -37,7 +72,7 @@ class Symbol:
     #   * 1: module-level scope
     #   * 2: builtins
     level: int
-    fqn: Optional[FQN] = None
+    impref: Optional[ImportRef] = None
 
     def replace(self, **kwargs: Any) -> 'Symbol':
         return replace(self, **kwargs)
@@ -46,9 +81,6 @@ class Symbol:
     def is_local(self) -> bool:
         return self.level == 0
 
-    @property
-    def is_global(self) -> bool:
-        return self.level != 0 and self.fqn is not None
 
 class SymTable:
     """
@@ -88,13 +120,18 @@ class SymTable:
                           col_start=0,
                           col_end=0)
         builtins_mod = vm.modules_w['builtins']
-        for fqn, w_obj in builtins_mod.items_w():
+        for attr, w_obj in builtins_mod.items_w():
             if isinstance(w_obj, W_BuiltinFunc):
                 loc = w_obj.def_loc
             else:
                 loc = generic_loc
-            sym = Symbol(fqn.symbol_name, 'blue', loc=loc, type_loc=loc,
-                         level=0, fqn=fqn)
+            sym = Symbol(
+                attr, 'blue', 'const', 'direct',
+                loc=loc,
+                type_loc=loc,
+                level=0,
+                impref=ImportRef('builtins', attr),
+            )
             scope.add(sym)
         return scope
 
@@ -116,9 +153,12 @@ class SymTable:
         for sym in symbols:
             sym_name = color.set(sym.color, f'{sym.name:10s}')
             fqn = ''
-            if sym.fqn:
-                fqn = f' => {sym.fqn}'
-            print(f'    [{sym.level}] {sym.color:4s} {sym_name} {fqn}')
+            if sym.impref:
+                impref = f' => {sym.impref}'
+            storage = ''
+            if sym.storage == 'cell':
+                storage = '[cell]'
+            print(f'    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {impref}')
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols
