@@ -112,37 +112,24 @@ class CBackend:
                 continue
             modname = fqn.modname
             self.c_modules[modname].content.append((fqn, w_obj))
+        self.c_modules['ptrs_builtins'] = self.make_ptrs_builtins()
 
-    def cwrite(self) -> None:
+    def make_ptrs_builtins(self) -> CModule:
         """
-        Convert all non-builtins modules into .c files
+        ptrs_builtins is a special module which contains all the
+        specialized ptr types to builtins (e.g. ptr[i32]).
         """
-        self.init_c_modules()
-        self.cwrite_builtins_extra()
-        for modname, c_mod in self.c_modules.items():
-            if c_mod.is_builtin:
-                continue
-            cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
-            cwriter.write_c_source()
-            assert c_mod.cfile is not None
-            self.cfiles.append(c_mod.cfile)
-            if self.dump_c:
-                print()
-                print(f'---- {c_mod.cfile} ----')
-                print(highlight_C_maybe(c_mod.cfile.read()))
-
-    def cwrite_builtins_extra(self) -> None:
         # find all the unsafe::ptr to a builtin
         def is_ptr_to_builtin(w_obj: W_Object) -> bool:
             return (
                 isinstance(w_obj, W_PtrType) and
                 w_obj.w_itemtype.fqn.modname == 'builtins'
             )
-        c_mod = CModule(
-            modname = 'builtins',
-            is_builtin = True,
+        return CModule(
+            modname = 'ptrs_builtins',
+            is_builtin = False,
             spyfile = None,
-            hfile = self.build_dir.join('src', 'builtins_extra.h'),
+            hfile = self.build_dir.join('src', 'ptrs_builtins.h'),
             cfile = None,
             content = [
                 (fqn, w_obj)
@@ -150,8 +137,25 @@ class CBackend:
                 if is_ptr_to_builtin(w_obj)
             ]
         )
-        cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
-        cwriter.write_c_source()
+
+    def cwrite(self) -> None:
+        """
+        Convert all non-builtins modules into .c files
+        """
+        self.init_c_modules()
+        for modname, c_mod in self.c_modules.items():
+            if c_mod.is_builtin:
+                continue
+            cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
+            cwriter.write_c_source()
+            # c_mod.cfile can be None for modules which emit only .h
+            # (e.g. ptrs_builtins)
+            if c_mod.cfile is not None:
+                self.cfiles.append(c_mod.cfile)
+                if self.dump_c:
+                    print()
+                    print(f'---- {c_mod.cfile} ----')
+                    print(highlight_C_maybe(c_mod.cfile.read()))
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], 'call .cwrite() first'

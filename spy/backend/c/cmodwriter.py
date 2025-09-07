@@ -107,7 +107,7 @@ class CModuleWriter:
         self.tbh.wl()
 
         self.tbh.wl('// includes')
-        self.tbh.wl('#include "builtins_extra.h"')
+        self.tbh.wl('#include "ptrs_builtins.h"')
         self.tbh_includes = self.tbh.make_nested_builder()
         self.tbh.wl()
 
