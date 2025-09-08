@@ -79,6 +79,7 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
+        assert not self.w_func.redshifted, 'cannot redshit twice'
         self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
@@ -150,6 +151,16 @@ class DopplerFrame(ASTFrame):
         specialized = self.specialized_assigns[assign]
         newvalue = self.shifted_expr[assign.value]
         return [specialized.replace(value=newvalue)]
+
+    def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
+        # specialized stmts such as AssignLocal and AssignCell are present
+        # ONLY inside redshifted ASTs, so we should never see them here
+        assert False, 'not supposed to happen'
+
+    def shift_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
+        # specialized stmts such as AssignLocal and AssignCell are present
+        # ONLY inside redshifted ASTs, so we should never see them here
+        assert False, 'not supposed to happen'
 
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
