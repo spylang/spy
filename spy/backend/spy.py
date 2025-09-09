@@ -1,5 +1,5 @@
 import re
-from typing import Literal, Optional
+from typing import Literal, Optional, TypeGuard
 from spy import ast
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
@@ -37,13 +37,40 @@ class SPyBackend:
         self.scope_stack: list[SymTable] = []
 
     def dump_mod(self, modname: str) -> str:
+        """
+        Dump the given module into human readable form.
+
+        The main goal is to let humans to understand what happens during
+        redshifting.
+
+        1. "Aliased" functions: these are functions which are stored as
+           e.g. `mod.foo` but actually point to a function with a different
+           FQN.
+
+        2. All the PBCs which are contained in the module namespace. This
+           includes module-level functions and types, but also any other PBC
+           which was generated inside a blue closure.
+        """
         self.modname = modname
+
+        # part 1: aliases
+        w_mod = self.vm.modules_w[modname]
+        for attr, w_obj in w_mod.items_w():
+            expected_fqn = FQN(modname).join(attr)
+            if (isinstance(w_obj, W_ASTFunc) and
+                  w_obj.color == 'red' and
+                  w_obj.fqn != expected_fqn):
+                self.out.wl(f'{attr} = `{w_obj.fqn}`')
+        self.out.wl()
+
+        # part 2: all the other FQNs
         for fqn, w_obj in self.vm.fqns_by_modname(modname):
             if (isinstance(w_obj, W_ASTFunc) and
                 w_obj.color == 'red' and
                 w_obj.fqn == fqn):
                 self.dump_w_func(fqn, w_obj)
                 self.out.wl()
+
         return self.out.build()
 
     def is_module_global(self, fqn: FQN) -> bool:
