@@ -8,7 +8,7 @@ from spy.libspy import LLSPyInstance
 from spy.vm.cell import W_Cell
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.rawbuffer import RB
@@ -28,31 +28,42 @@ class WasmModuleWrapper:
     def __init__(self, vm: SPyVM, modname: str, f: py.path.local) -> None:
         self.vm = vm
         self.modname = modname
+        self.w_mod = vm.modules_w[modname]
         self.ll = LLSPyInstance.from_file(f)
 
     def __repr__(self) -> str:
         return f"<WasmModuleWrapper '{self.ll.llmod}'>"
 
     def __getattr__(self, attr: str) -> Any:
-        fqn = FQN([self.modname, attr])
-        wasm_obj = self.ll.get_export(fqn.c_name)
-        if isinstance(wasm_obj, wasmtime.Func):
-            return self.read_function(fqn)
-        elif isinstance(wasm_obj, wasmtime.Global):
-            return self.read_global(fqn)
+        w_obj = self.w_mod.getattr(attr)
+        if isinstance(w_obj, W_ASTFunc):
+            if w_obj.color == 'blue':
+                raise NotImplementedError(
+                    'cannot call a @blue func from a WASM module'
+                )
+            return self.read_function(w_obj)
+
+        elif isinstance(w_obj, W_Cell):
+            return self.read_cell(w_obj)
+
         else:
-            t = type(wasm_obj)
-            raise NotImplementedError(f'Unknown WASM object: {t}')
+            raise NotImplementedError(f"Don't know how to read this object from WASM: {w_obj}")
 
-    def read_function(self, fqn: FQN) -> 'WasmFuncWrapper':
-        w_func = self.vm.lookup_global(fqn)
-        assert isinstance(w_func, W_Func)
-        return WasmFuncWrapper(self.vm, self.ll,
-                               fqn.c_name, w_func.w_functype)
 
-    def read_global(self, fqn: FQN) -> Any:
-        w_cell = self.vm.lookup_global(fqn)
-        assert isinstance(w_cell, W_Cell)
+    def read_function(self, w_func: W_Func) -> 'WasmFuncWrapper':
+        # sanity check
+        wasm_func = self.ll.get_export(w_func.fqn.c_name)
+        assert isinstance(wasm_func, wasmtime.Func)
+        return WasmFuncWrapper(
+            self.vm,
+            self.ll,
+            w_func.fqn.c_name,
+            w_func.w_functype
+        )
+
+    def read_cell(self, w_cell: W_Cell) -> Any:
+        wasm_glob = self.ll.get_export(w_cell.fqn.c_name)
+        assert isinstance(wasm_glob, wasmtime.Global)
         w_T = self.vm.dynamic_type(w_cell.get())
         t: LLWasmType
         if w_T is B.w_i32:
@@ -60,7 +71,7 @@ class WasmModuleWrapper:
         else:
             assert False, f'Unknown type: {w_T}'
 
-        return self.ll.read_global(fqn.c_name, deref=t)
+        return self.ll.read_global(w_cell.fqn.c_name, deref=t)
 
 
 class WasmFuncWrapper:
