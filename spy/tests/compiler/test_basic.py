@@ -1125,7 +1125,6 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 6
 
-    #@pytest.mark.skip('implement me')
     def test_decorator(self):
         src = """
         @blue
@@ -1144,3 +1143,25 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(5) == 12
+
+    def test_multiple_decorator(self):
+        src = """
+        @blue
+        def inc(fn):
+            def inner(x: i32) -> i32:
+                return fn(x) + 1
+            return inner
+
+        @blue
+        def double(fn):
+            def inner(x: i32) -> i32:
+                return fn(x) * 2
+            return inner
+
+        @inc
+        @double
+        def x2_plus_1(x: i32) -> i32:
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.x2_plus_1(5) == 11

@@ -235,7 +235,6 @@ class AbstractFrame:
         self.vm.add_global(fqn, w_func)
 
         if funcdef.decorators:
-            assert len(funcdef.decorators) == 1, 'fixme'
             for deco in reversed(funcdef.decorators):
                 # create a tmp Call node to evaluate
                 call_node = ast.Call(
