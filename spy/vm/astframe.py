@@ -226,10 +226,36 @@ class AbstractFrame:
         fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self._locals,)
+
+        if funcdef.decorators:
+            # XXX explain
+            fqn = fqn.with_suffix('__bare__')
+
         w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
-        self.declare_local(funcdef.name, w_functype, funcdef.prototype_loc)
-        self.store_local(funcdef.name, w_func)
         self.vm.add_global(fqn, w_func)
+
+        if funcdef.decorators:
+            assert len(funcdef.decorators) == 1, 'fixme'
+            for deco in reversed(funcdef.decorators):
+                # create a tmp Call node to evaluate
+                call_node = ast.Call(
+                    loc = deco.loc,
+                    func = deco,
+                    args = [
+                        ast.FQNConst(
+                            funcdef.loc,
+                            self.vm.make_fqn_const(w_func)
+                        )
+                    ]
+                )
+                wam_inner = self.eval_expr_Call(call_node)
+                assert wam_inner.color == 'blue'
+                w_func = wam_inner.w_blueval
+
+        w_T = self.vm.dynamic_type(w_func)
+        self.declare_local(funcdef.name, w_T, funcdef.prototype_loc) # XXX loc?
+        self.store_local(funcdef.name, w_func)
+
 
     @staticmethod
     def metaclass_for_classdef(classdef: ast.ClassDef) -> type[W_Type]:

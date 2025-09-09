@@ -1125,7 +1125,7 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 6
 
-    @pytest.mark.skip('implement me')
+    #@pytest.mark.skip('implement me')
     def test_decorator(self):
         src = """
         @blue
@@ -1139,7 +1139,7 @@ class TestBasic(CompilerTest):
         def inc(x: i32) -> i32:
             return x + 1
 
-        def foo(x: i32):
+        def foo(x: i32) -> i32:
             return inc(x)
         """
         mod = self.compile(src)
