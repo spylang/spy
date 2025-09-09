@@ -99,7 +99,7 @@ class TestMain:
 
     def test_redshift_dump_spy(self):
         res, stdout = self.run('--redshift', self.main_spy)
-        assert stdout.startswith('def main() -> None:')
+        assert stdout.startswith('\ndef main() -> None:')
 
     def test_redshift_dump_ast(self):
         res, stdout = self.run('--redshift', '--parse', self.main_spy)
