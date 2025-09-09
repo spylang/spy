@@ -10,24 +10,24 @@ def test_single_unqualified_part():
     fqn = FQN("foo")
     assert len(fqn.parts) == 1
     assert fqn.parts[0].name == "foo"
-    assert fqn.parts[0].qualifiers == []
+    assert fqn.parts[0].qualifiers == ()
     assert fqn.parts[0].suffix == 0
 
 def test_two_parts():
     fqn = FQN("mod::foo")
     assert len(fqn.parts) == 2
     assert fqn.parts[0].name == "mod"
-    assert fqn.parts[0].qualifiers == []
+    assert fqn.parts[0].qualifiers == ()
     assert fqn.parts[1].name == "foo"
-    assert fqn.parts[1].qualifiers == []
+    assert fqn.parts[1].qualifiers == ()
 
 def test_dot_in_name():
     fqn = FQN("a.b.c::foo")
     assert len(fqn.parts) == 2
     assert fqn.parts[0].name == "a.b.c"
-    assert fqn.parts[0].qualifiers == []
+    assert fqn.parts[0].qualifiers == ()
     assert fqn.parts[1].name == "foo"
-    assert fqn.parts[1].qualifiers == []
+    assert fqn.parts[1].qualifiers == ()
 
 def test_single_part_with_qualifier():
     fqn = FQN("list[i32]")
