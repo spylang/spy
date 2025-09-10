@@ -59,6 +59,7 @@ class TestParser:
                         body=[
                             Pass(),
                         ],
+                        decorators=[],
                     ),
                 ),
             ],
@@ -97,6 +98,7 @@ class TestParser:
                         body=[
                             Pass(),
                         ],
+                        decorators=[],
                     ),
                 ),
             ],
@@ -171,17 +173,100 @@ class TestParser:
             ("type is missing here", "a"),
         )
 
-    def test_FuncDef_errors_8(self):
-        src = """
+    def test_FuncDef_decorator(self):
+        mod = self.parse("""
         @mydecorator
         def foo() -> None:
             pass
-        """
-        self.expect_errors(
-            src,
-            "decorators are not supported yet",
-            ("this is not supported", "mydecorator"),
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            vararg=None,
+            return_type=Constant(value=None),
+            docstring=None,
+            body=[
+                Pass(),
+            ],
+            decorators=[
+                Name(id='mydecorator'),
+            ],
         )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_FuncDef_multiple_decorators(self):
+        mod = self.parse("""
+        @deco1
+        @deco2.attr
+        @deco3(arg)
+        def foo() -> None:
+            pass
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            vararg=None,
+            return_type=Constant(value=None),
+            docstring=None,
+            body=[
+                Pass(),
+            ],
+            decorators=[
+                Name(id='deco1'),
+                GetAttr(
+                    value=Name(id='deco2'),
+                    attr=StrConst(value='attr'),
+                ),
+                Call(
+                    func=Name(id='deco3'),
+                    args=[
+                        Name(id='arg'),
+                    ],
+                ),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_FuncDef_mixed_decorators(self):
+        mod = self.parse("""
+        @mydecorator
+        @blue
+        @another_deco
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.get_funcdef('foo')
+        expected = """
+        FuncDef(
+            color='blue',
+            kind='plain',
+            name='foo',
+            args=[],
+            vararg=None,
+            return_type=Name(id='i32'),
+            docstring=None,
+            body=[
+                Return(
+                    value=Constant(value=42),
+                ),
+            ],
+            decorators=[
+                Name(id='mydecorator'),
+                Name(id='another_deco'),
+            ],
+        )
+        """
+        self.assert_dump(funcdef, expected)
 
     def test_FuncDef_body(self):
         mod = self.parse("""
@@ -203,6 +288,7 @@ class TestParser:
                     value=Constant(value=42),
                 ),
             ],
+            decorators=[],
         )
         """
         self.assert_dump(funcdef, expected)
@@ -228,6 +314,7 @@ class TestParser:
                     value=Constant(value=42),
                 ),
             ],
+            decorators=[],
         )
         """
         self.assert_dump(funcdef, expected)
@@ -253,6 +340,7 @@ class TestParser:
                     value=Constant(value=42),
                 ),
             ],
+            decorators=[],
         )
         """
         self.assert_dump(funcdef, expected)
@@ -278,6 +366,7 @@ class TestParser:
                     value=Constant(value=42),
                 ),
             ],
+            decorators=[],
         )
         """
         self.assert_dump(funcdef, expected)
@@ -303,6 +392,7 @@ class TestParser:
                     value=Constant(value=42),
                 ),
             ],
+            decorators=[],
         )
         """
         self.assert_dump(funcdef, expected)
@@ -1002,8 +1092,10 @@ class TestParser:
                                 body=[
                                     Pass(),
                                 ],
+                                decorators=[],
                             ),
                         ],
+                        decorators=[],
                     ),
                 ),
             ],
@@ -1220,6 +1312,7 @@ class TestParser:
                     body=[
                         Pass(),
                     ],
+                    decorators=[],
                 ),
             ],
         )
@@ -1253,6 +1346,7 @@ class TestParser:
             body=[
                 Pass(),
             ],
+            decorators=[],
         )
         """
         self.assert_dump(funcdef, expected)

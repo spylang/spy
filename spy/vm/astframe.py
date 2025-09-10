@@ -226,10 +226,40 @@ class AbstractFrame:
         fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self._locals,)
-        w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
-        self.declare_local(funcdef.name, w_functype, funcdef.prototype_loc)
-        self.store_local(funcdef.name, w_func)
+
+        # this is just a cosmetic nicety. In presence of decorators, "mod.foo"
+        # will NOT necessarily contain the function object which is being
+        # created. If we call the function FQN("mod::foo"), it might create
+        # confusion. The solution is that in presence of decorators, we use
+        # FQN("mod::foo#__bare__") as the name of the function, to make it
+        # clear is the undecorated version.
+        if funcdef.decorators:
+            fqn = fqn.with_suffix('__bare__')
+
+        w_func: W_Object = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.vm.add_global(fqn, w_func)
+
+        if funcdef.decorators:
+            for deco in reversed(funcdef.decorators):
+                # create a tmp Call node to evaluate
+                call_node = ast.Call(
+                    loc = deco.loc,
+                    func = deco,
+                    args = [
+                        ast.FQNConst(
+                            funcdef.loc,
+                            self.vm.make_fqn_const(w_func)
+                        )
+                    ]
+                )
+                wam_inner = self.eval_expr_Call(call_node)
+                assert wam_inner.color == 'blue'
+                w_func = wam_inner.w_blueval
+
+        w_T = self.vm.dynamic_type(w_func)
+        self.declare_local(funcdef.name, w_T, funcdef.prototype_loc)
+        self.store_local(funcdef.name, w_func)
+
 
     @staticmethod
     def metaclass_for_classdef(classdef: ast.ClassDef) -> type[W_Type]:

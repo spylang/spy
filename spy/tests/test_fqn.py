@@ -4,10 +4,10 @@ def test_FQN_init_fullname():
     a = FQN("a.b.c::xxx")
     assert a.fullname == "a.b.c::xxx"
     assert a.modname == "a.b.c"
-    assert a.parts == [
-        NSPart("a.b.c", []),
-        NSPart("xxx", [])
-    ]
+    assert a.parts == (
+        NSPart("a.b.c", ()),
+        NSPart("xxx", ())
+    )
 
 def test_FQN_init_parts():
     a = FQN(['a.b.c', 'xxx'])
@@ -17,7 +17,7 @@ def test_FQN_init_parts():
 def test_FQN_suffix():
     a = FQN("aaa::bbb#1")
     assert a.fullname == "aaa::bbb#1"
-    assert a.parts[-1].suffix == 1
+    assert a.parts[-1].suffix == '1'
 
 def test_many_FQNs():
     assert str(FQN("aaa")) == "aaa"
@@ -42,11 +42,11 @@ def test_qualifiers():
     a = FQN("a::b[x, y]::c")
     assert a.fullname == "a::b[x, y]::c"
     assert a.modname == "a"
-    assert a.parts == [
-        NSPart("a", []),
-        NSPart("b", [FQN("x"), FQN("y")]),
-        NSPart("c", [])
-    ]
+    assert a.parts == (
+        NSPart("a", ()),
+        NSPart("b", (FQN("x"), FQN("y"))),
+        NSPart("c", ())
+    )
 
 def test_nested_qualifiers():
     a = FQN("mod::dict[str, unsafe::ptr[mymod::Point]]")
@@ -122,3 +122,9 @@ def test_FQN_match():
     assert not a.match("mod::ptr[i32]::store")
     assert not a.match("mod::ptr[*]::store")
     assert not a.match("load")
+
+def test_FQN_with_suffix():
+    a = FQN("a::b")
+    a1 = a.with_suffix('1')
+    assert a.fullname == "a::b"
+    assert a1.fullname == "a::b#1"

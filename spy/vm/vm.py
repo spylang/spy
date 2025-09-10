@@ -193,10 +193,16 @@ class SPyVM:
         """
         Get an unique variant of the given FQN, adding a suffix if necessary.
         """
+        if fqn not in self.globals_w:
+            # fqn not used yet, just return it
+            return fqn
+
+        # fqn already used, try to add an unique suffix.
+        #
         # XXX this is potentially quadratic if we create tons of
         # conflicting FQNs, but for now we don't care
-        for n in itertools.count():
-            fqn2 = fqn.with_suffix(n)
+        for n in itertools.count(1):
+            fqn2 = fqn.with_suffix(str(n))
             if fqn2 not in self.globals_w:
                 return fqn2
         assert False, 'unreachable'

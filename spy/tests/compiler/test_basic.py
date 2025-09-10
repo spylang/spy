@@ -1124,3 +1124,44 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 6
+
+    def test_decorator(self):
+        src = """
+        @blue
+        def double(fn):
+            def inner(x: i32) -> i32:
+                res = fn(x)
+                return res * 2
+            return inner
+
+        @double
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo(x: i32) -> i32:
+            return inc(x)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 12
+
+    def test_multiple_decorator(self):
+        src = """
+        @blue
+        def inc(fn):
+            def inner(x: i32) -> i32:
+                return fn(x) + 1
+            return inner
+
+        @blue
+        def double(fn):
+            def inner(x: i32) -> i32:
+                return fn(x) * 2
+            return inner
+
+        @inc
+        @double
+        def x2_plus_1(x: i32) -> i32:
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.x2_plus_1(5) == 11

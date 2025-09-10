@@ -79,14 +79,10 @@ class FQNParser:
 
         if self.peek() == "#":
             self.expect("#")
-            suffix_str = self.parse_suffix()
-            try:
-                # Convert suffix to int
-                suffix = int(suffix_str)
-                # Set suffix on the last part
-                parts[-1].suffix = suffix
-            except ValueError:
-                raise ValueError(f"Suffix must be numeric, got: {suffix_str}")
+            suffix = self.parse_suffix()
+            # Create a new NSPart with the suffix for the last part
+            last_part = parts[-1]
+            parts[-1] = NSPart(last_part.name, last_part.qualifiers, suffix)
 
         return FQN(parts)
 
@@ -98,9 +94,9 @@ class FQNParser:
             self.expect(']')
             return NSPart(name, qualifiers)
         else:
-            return NSPart(name, [])
+            return NSPart(name, ())
 
-    def parse_qualifiers(self) -> list['FQN']:
+    def parse_qualifiers(self) -> tuple['FQN', ...]:
         qualifiers = []
         while True:
             qualifiers.append(self.parse_fqn())
@@ -110,7 +106,7 @@ class FQNParser:
                 self.expect(',')
             elif self.peek() == ']':
                 break
-        return qualifiers
+        return tuple(qualifiers)
 
     def parse_name(self) -> str:
         name = self.peek()
