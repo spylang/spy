@@ -231,7 +231,7 @@ class AbstractFrame:
             # XXX explain
             fqn = fqn.with_suffix('__bare__')
 
-        w_func = W_ASTFunc(w_functype, fqn, funcdef, closure)
+        w_func: W_Object = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.vm.add_global(fqn, w_func)
 
         if funcdef.decorators:
@@ -252,7 +252,7 @@ class AbstractFrame:
                 w_func = wam_inner.w_blueval
 
         w_T = self.vm.dynamic_type(w_func)
-        self.declare_local(funcdef.name, w_T, funcdef.prototype_loc) # XXX loc?
+        self.declare_local(funcdef.name, w_T, funcdef.prototype_loc)
         self.store_local(funcdef.name, w_func)
 
 
