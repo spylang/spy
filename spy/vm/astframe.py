@@ -227,8 +227,13 @@ class AbstractFrame:
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self._locals,)
 
+        # this is just a cosmetic nicety. In presence of decorators, "mod.foo"
+        # will NOT necessarily contain the function object which is being
+        # created. If we call the function FQN("mod::foo"), it might create
+        # confusion. The solution is that in presence of decorators, we use
+        # FQN("mod::foo#__bare__") as the name of the function, to make it
+        # clear is the undecorated version.
         if funcdef.decorators:
-            # XXX explain
             fqn = fqn.with_suffix('__bare__')
 
         w_func: W_Object = W_ASTFunc(w_functype, fqn, funcdef, closure)
