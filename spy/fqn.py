@@ -143,6 +143,11 @@ class FQN:
             fqn.parts = get_parts(x)
             return fqn
 
+    # uncomment this to understand who creates a specific FQN
+    ## def __init__(self, *args) -> None:
+    ##     if str(self) == 'test::Point#0':
+    ##         breakpoint()
+
     def with_suffix(self, suffix: str) -> 'FQN':
         """
         Create a new FQN with the specified suffix on the last NSPart.
