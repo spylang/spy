@@ -308,3 +308,25 @@ class TestScopeAnalyzer:
         assert a._symbols['x'] == MatchSymbol('x', 'red', 'var', level=0)
         assert b._symbols['x'] == MatchSymbol('x', 'red', 'var', level=1)
         assert c._symbols['x'] == MatchSymbol('x', 'red', 'var', level=2)
+
+    def test_capture_decorator(self):
+        scopes = self.analyze("""
+        @blue
+        def deco(fn):
+            pass
+
+        @blue
+        def outer():
+            @deco
+            def inner() -> None:
+                pass
+        """)
+        funcdef = self.mod.get_funcdef('outer')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == 'test::outer'
+        assert scope.color == 'blue'
+        assert scope._symbols == {
+            'inner': MatchSymbol('inner', 'blue', 'const'),
+            '@return': MatchSymbol('@return', 'blue', 'var'),
+            'deco': MatchSymbol('deco', 'blue', 'const', level=1),
+        }
