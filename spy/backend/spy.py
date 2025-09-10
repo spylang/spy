@@ -76,7 +76,7 @@ class SPyBackend:
     def is_module_global(self, fqn: FQN) -> bool:
         return (len(fqn.parts) == 2 and
                 fqn.modname == self.modname
-                and fqn.parts[-1].suffix == 0)
+                and fqn.parts[-1].suffix == '')
 
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         if self.fqn_format == 'short' and self.is_module_global(fqn):

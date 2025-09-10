@@ -98,9 +98,9 @@ def get_qualifiers(x: QUALIFIERS) -> tuple['FQN', ...]:
 class NSPart:
     name: str
     qualifiers: tuple['FQN', ...]
-    suffix: int = 0
+    suffix: str = ''
 
-    def __init__(self, name: str, quals: QUALIFIERS = None, suffix: int = 0) -> None:
+    def __init__(self, name: str, quals: QUALIFIERS = None, suffix: str = '') -> None:
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'qualifiers', get_qualifiers(quals))
         object.__setattr__(self, 'suffix', suffix)
@@ -110,7 +110,7 @@ class NSPart:
         if len(self.qualifiers) > 0:
             quals = ', '.join(q.human_name for q in self.qualifiers)
             result = f'{result}[{quals}]'
-        if self.suffix != 0:
+        if self.suffix != '':
             result += f'#{self.suffix}'
         return result
 
@@ -121,7 +121,7 @@ class NSPart:
         if len(self.qualifiers) > 0:
             quals = '_'.join(fqn.c_name_plain for fqn in self.qualifiers)
             result = f'{result}__{quals}'
-        if self.suffix != 0:
+        if self.suffix != '':
             result += f'${self.suffix}'
         return result
 
@@ -143,7 +143,7 @@ class FQN:
             fqn.parts = get_parts(x)
             return fqn
 
-    def with_suffix(self, suffix: int) -> 'FQN':
+    def with_suffix(self, suffix: str) -> 'FQN':
         """
         Create a new FQN with the specified suffix on the last NSPart.
         """

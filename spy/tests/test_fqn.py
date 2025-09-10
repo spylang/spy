@@ -17,7 +17,7 @@ def test_FQN_init_parts():
 def test_FQN_suffix():
     a = FQN("aaa::bbb#1")
     assert a.fullname == "aaa::bbb#1"
-    assert a.parts[-1].suffix == 1
+    assert a.parts[-1].suffix == '1'
 
 def test_many_FQNs():
     assert str(FQN("aaa")) == "aaa"
@@ -125,6 +125,6 @@ def test_FQN_match():
 
 def test_FQN_with_suffix():
     a = FQN("a::b")
-    a1 = a.with_suffix(1)
+    a1 = a.with_suffix('1')
     assert a.fullname == "a::b"
     assert a1.fullname == "a::b#1"
