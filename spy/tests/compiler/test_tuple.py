@@ -73,3 +73,35 @@ class TestTuple(CompilerTest):
             ('this is `i32`', '42'),
         )
         self.compile_raises(src, 'foo', errors)
+
+    def test_eq(self):
+        mod = self.compile(
+        """
+        def tup1() -> tuple:
+            return 1, 2
+
+        def tup2() -> tuple:
+            return 3, 4
+
+        def foo() -> bool:
+            return tup1() == tup1()
+
+        def bar() -> bool:
+            return tup1() == tup2()
+        """)
+        assert mod.foo()
+        assert not mod.bar()
+
+    def test_blue_tuple(self):
+        mod = self.compile(
+        """
+        @blue
+        def make_pair():
+            return 1, 2
+
+        def foo() -> i32:
+            a, b = make_pair()
+            return a + b
+        """)
+        x = mod.foo()
+        assert x == 3

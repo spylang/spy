@@ -260,6 +260,7 @@ class CModuleWriter:
 
     def emit_StructType(self, fqn: FQN, w_st: W_StructType) -> None:
         c_st = C_Type(w_st.fqn.c_name)
+        self.tbh_types_decl.wl(f'/* {w_st.fqn.human_name} */')
         self.tbh_types_decl.wl(f'typedef struct {c_st} {c_st};')
 
         # XXX this is VERY wrong: it assumes that the standard C layout
