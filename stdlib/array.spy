@@ -10,14 +10,8 @@ Some functionalities are just not implemented.
 Others are implemented but in a suboptimal way, because SPy misses the tools
 needed to do it properly.
 
-In particular:
-
-  - we don't have classmethods: so instead of using array[int, 1].from_buffer,
-    you need to use array_from_buffer[int, 1]. This also makes the
-    implementation a bit more complicated, but it's not too bad.
-
-  - we don't support an arbitrary number of dimensions: currently we hardcode
-    _array1, _array2, _array3, etc.
+In particular we don't support an arbitrary number of dimensions: currently we
+hardcode _array1, _array2, _array3, etc.
 """
 
 from unsafe import gc_alloc, ptr
@@ -40,6 +34,13 @@ def _array1(DTYPE):
             data.items = gc_alloc(DTYPE)(l)
             return ndarray.__lift__(data)
 
+        @staticmethod
+        def from_buffer(buf: ptr[DTYPE], l: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.items = buf
+            data.l = l
+            return ndarray.__lift__(data)
+
         def __getitem__(self: ndarray, i: i32) -> DTYPE:
             ll = self.__ll__
             if i >= ll.l:
@@ -55,28 +56,13 @@ def _array1(DTYPE):
         def __len__(self: ndarray) -> i32:
             return self.__ll__.l
 
-
-    # ideally this should be a classmethod, but we don't have them yet
-    def from_buffer(buf: ptr[DTYPE], l: i32) -> ndarray:
-        data = gc_alloc(ArrayData)(1)
-        data.items = buf
-        data.l = l
-        return ndarray.__lift__(data)
-
-    return ndarray, from_buffer
+    return ndarray
 
 
 
 @blue.generic
 def array(DTYPE, NDIM):
     if NDIM == 1:
-        ndarray, from_buffer = _array1[DTYPE]
+        ndarray = _array1[DTYPE]
         return ndarray
-    raise StaticError("number of dimensions not supported")
-
-@blue.generic
-def array_from_buffer(DTYPE, NDIM):
-    if NDIM == 1:
-        ndarray, from_buffer = _array1[DTYPE]
-        return from_buffer
     raise StaticError("number of dimensions not supported")

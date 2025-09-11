@@ -30,7 +30,7 @@ class TestArray(CompilerTest):
 
     def test_from_buffer(self):
         src = """
-        from array import array, array_from_buffer
+        from array import array
         from unsafe import ptr, gc_alloc
 
         def alloc_buf(n: i32) -> ptr[i32]:
@@ -40,7 +40,7 @@ class TestArray(CompilerTest):
             p[i] = v
 
         def test(buf: ptr[i32], l: i32) -> int:
-            a = array_from_buffer[int, 1](buf, l)
+            a = array[int, 1].from_buffer(buf, l)
             return a[0] + a[1] + a[2]
         """
         mod = self.compile(src)
