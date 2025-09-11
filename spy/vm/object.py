@@ -647,6 +647,39 @@ class W_Type(W_Object):
             err.add('note', f"{clsname} defined here", wam_t.sym.loc)
         raise err
 
+    @builtin_method('__call_method__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_CALL_METHOD(vm: 'SPyVM', wam_T: 'W_MetaArg', wam_name: 'W_MetaArg',
+                      *args_wam: 'W_MetaArg') -> 'W_OpSpec':
+        from spy.vm.function import W_Func
+        from spy.vm.opspec import W_OpSpec
+        from spy.vm.modules.builtins import W_StaticMethod
+
+        if wam_T.color != 'blue':
+            raise WIP('__call_method__ on red types')
+
+        w_T = wam_T.w_blueval
+        assert isinstance(w_T, W_Type)
+        name = wam_name.blue_unwrap_str(vm)
+        w_meth = w_T.lookup(name)
+        if w_meth is None:
+            return W_OpSpec.NULL
+
+        if not isinstance(w_meth, W_StaticMethod):
+            raise WIP(
+                f'cannot all object {w_meth} '
+                f'(we should emit a better error)'
+            )
+
+        w_func = w_meth.w_obj
+        if not isinstance(w_func, W_Func):
+            raise WIP(
+                f'cannot all object {w_meth.w_obj} '
+                f'(we should emit a better error)'
+            )
+
+        return W_OpSpec(w_func, list(args_wam))
+
 
 
 # helpers

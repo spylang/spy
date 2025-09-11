@@ -127,7 +127,6 @@ class TestTypelift(CompilerTest):
         assert mod.test1(10) == 20
         assert mod.test2(10) == 10
 
-    @pytest.mark.skip('implement me')
     def test_staticmethod(self):
         src = """
         from operator import OpSpec

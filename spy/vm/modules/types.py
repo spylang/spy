@@ -15,6 +15,7 @@ from spy.vm.function import W_Func
 from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.builtin import builtin_method, builtin_property
 from spy.vm.registry import ModuleRegistry
+from spy.vm.modules.builtins import W_StaticMethod
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -56,7 +57,9 @@ class W_LiftedType(W_Type):
                       *args_wam: W_MetaArg) -> W_OpSpec:
         meth = wam_method.blue_unwrap_str(vm)
         if meth != '__lift__':
-            return W_OpSpec.NULL
+            # XXX: here we want to do an applevel super(). How? The following
+            # is probably wrong because it bypasses the bluecache
+            return W_Type.w_CALL_METHOD(vm, wam_self, wam_method, *args_wam)
 
         w_hltype = wam_self.w_blueval
         assert isinstance(w_hltype, W_LiftedType)
