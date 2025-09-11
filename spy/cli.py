@@ -340,14 +340,14 @@ async def inner_main(args: Arguments) -> None:
     importer.import_all()
     w_mod = vm.modules_w[modname]
 
-    #vm.pp_globals()
-    #vm.pp_modules()
-
     if args.execute and not args.redshift:
         execute_spy_main(args, vm, w_mod)
         return
 
     vm.redshift(error_mode=args.error_mode)
+    #vm.pp_globals()
+    #vm.pp_modules()
+
     if args.redshift:
         if args.execute:
             execute_spy_main(args, vm, w_mod)

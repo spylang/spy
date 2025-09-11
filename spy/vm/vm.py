@@ -244,9 +244,19 @@ class SPyVM:
                 yield (fqn, w_obj)
 
     def pp_globals(self) -> None:
-        all_fqns = sorted(self.globals_w, key=lambda fqn: str(fqn))
-        for fqn in all_fqns:
-            print(fqn)
+        all_pbcs = sorted(
+            self.globals_w.items(),
+            key=lambda item: str(item[0]) # item[0] is fqn
+        )
+
+        last_modname = None
+        for fqn, w_obj in all_pbcs:
+            if fqn.modname != last_modname:
+                print()
+                print(f'{fqn.modname}::')
+                last_modname = fqn.modname
+            print(f'    {fqn}: {w_obj}')
+        print()
 
     def pp_modules(self) -> None:
         for modname, w_mod in self.modules_w.items():
