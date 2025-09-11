@@ -19,9 +19,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-FIELDS_T = dict[str, W_Type]
-METHODS_T = dict[str, W_Func]
-
 @TYPES.builtin_type('Loc')
 class W_Loc(W_Object):
     """
@@ -42,11 +39,11 @@ class W_LiftedType(W_Type):
 
     def define_from_classbody(self, body: ClassBody) -> None:
         super().define(W_LiftedObject)
-        assert set(body.fields.keys()) == {'__ll__'} # XXX raise proper exc
-        self.w_lltype = body.fields['__ll__']
-        for key, w_meth in body.methods.items():
-            assert isinstance(w_meth, W_Func)
-            self.dict_w[key] = w_meth
+        assert set(body.fields_w.keys()) == {'__ll__'} # XXX raise proper exc
+        self.w_lltype = body.fields_w['__ll__'].w_T
+        for key, w_obj in body.dict_w.items():
+            assert key not in self.dict_w, 'need to think what to do'
+            self.dict_w[key] = w_obj
 
     def repr_hints(self) -> list[str]:
         lltype = self.w_lltype.fqn.human_name

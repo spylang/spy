@@ -651,19 +651,15 @@ class W_Type(W_Object):
 # helpers
 # =======
 
-FIELDS_T = dict[str, W_Type]
-METHODS_T = dict[str, 'W_Func']
-
 @dataclass
 class ClassBody:
     """
-    Collect fields and methods which are evaluated inside a 'class'
-    statement, and passed to W_Type.define_from_classbody to define
-    user-defined types.
+    Collect fields, methods and other class attributes which are evaluated
+    inside a 'class' statement, and passed to W_Type.define_from_classbody to
+    define user-defined types.
     """
-    fields: FIELDS_T
-    methods: METHODS_T
-
+    fields_w: dict[str, 'W_Field']
+    dict_w: dict[str, W_Object]
 
 
 # Initial setup of the 'builtins' module

@@ -268,7 +268,8 @@ class W_Ptr(W_BasePtr):
         return W_Ptr.op_ATTR('set', vm, wam_ptr, wam_name, wam_v)
 
     @staticmethod
-    def op_ATTR(opkind: str, vm: 'SPyVM', wam_ptr: W_MetaArg, wam_name: W_MetaArg,
+    def op_ATTR(opkind: str, vm: 'SPyVM', wam_ptr: W_MetaArg,
+                wam_name: W_MetaArg,
                 wam_v: Optional[W_MetaArg]) -> W_OpSpec:
         """
         Implement both w_GETATTRIBUTE and w_SETATTR.
@@ -282,23 +283,23 @@ class W_Ptr(W_BasePtr):
 
         assert isinstance(w_T, W_StructType)
         name = wam_name.blue_unwrap_str(vm)
-        if name not in w_T.fields:
+        if name not in w_T.fields_w:
             return W_OpSpec.NULL
 
-        w_field_T = w_T.fields[name]
+        w_field = w_T.fields_w[name]
         offset = w_T.offsets[name]
         wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
 
         if opkind == 'get':
             # getfield[field_T](ptr, name, offset)
             assert wam_v is None
-            w_func = vm.fast_call(UNSAFE.w_getfield, [w_field_T])
+            w_func = vm.fast_call(UNSAFE.w_getfield, [w_field.w_T])
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset])
         else:
             # setfield[field_T](ptr, name, offset, v)
             assert wam_v is not None
-            w_func = vm.fast_call(UNSAFE.w_setfield, [w_field_T])
+            w_func = vm.fast_call(UNSAFE.w_setfield, [w_field.w_T])
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
 
