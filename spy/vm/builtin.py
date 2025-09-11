@@ -14,6 +14,7 @@ from spy.errors import SPyError
 from spy.ast import Color, FuncKind
 from spy.vm.object import W_Object, W_Type
 from spy.vm.object import (builtin_method,
+                           builtin_staticmethod,
                            builtin_property,
                            builtin_class_attr) # noqa: F401
 from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc

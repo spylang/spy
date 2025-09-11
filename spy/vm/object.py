@@ -75,6 +75,21 @@ def builtin_method(name: str, *, color: Color = 'red',
         return fn
     return decorator
 
+def builtin_staticmethod(name: str, *, color: Color = 'red',
+                         kind: 'FuncKind' = 'plain') -> Any:
+    """
+    Turn an interp-level staticmethod into an app-level staticmethod.
+
+    This decorator just puts a mark on the function, the actual job is done by
+    W_Type._init_builtin_method().
+    """
+    def decorator(fn: Callable) -> Callable:
+        assert isinstance(fn, staticmethod), 'missing @staticmethod'
+        fn.spy_builtin_method = (name, color, kind, 'staticmethod')  # type: ignore
+        return fn
+    return decorator
+
+
 def builtin_property(name: str, *, color: Color = 'red',
                      kind: 'FuncKind' = 'plain') -> Any:
     """
@@ -449,11 +464,11 @@ class W_Type(W_Object):
         from spy.vm.opspec import W_MetaArg, W_OpSpec
         from spy.vm.str import W_Str
         from spy.vm.primitive import W_Dynamic, W_Bool
-        from spy.vm.property import W_Property
+        from spy.vm.property import W_Property, W_StaticMethod
 
         pyfunc = statmeth.__func__
         appname, color, kind, what = statmeth.spy_builtin_method # type: ignore
-        assert what in ('method', 'property')
+        assert what in ('method', 'staticmethod', 'property')
 
         # create the W_BuiltinFunc. Make it possible to use the string
         # 'W_MyClass' in annotations
@@ -476,6 +491,8 @@ class W_Type(W_Object):
         )
         if what == 'method':
             self.dict_w[appname] = w_func
+        elif what =='staticmethod':
+            self.dict_w[appname] = W_StaticMethod(w_func)
         else:
             self.dict_w[appname] = W_Property(w_func)
 
