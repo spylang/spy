@@ -6,10 +6,11 @@ from spy.vm.member import Member
 from spy.vm.builtin import (
     builtin_method,
     builtin_staticmethod,
+    builtin_classmethod,
     builtin_class_attr,
     builtin_property
 )
-from spy.vm.w import W_Object, W_Str
+from spy.vm.w import W_Object, W_Str, W_Type, W_F64
 from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
@@ -89,7 +90,7 @@ class TestAttrOp(CompilerTest):
         self.compile_raises(src2, 'get_foobar', errors, modname='test2')
 
 
-    def test_builtin_staticmethod(self):
+    def test_builtin_staticmethod_classmethod(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry('ext')
 
@@ -105,6 +106,15 @@ class TestAttrOp(CompilerTest):
             def w_from_int(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
                 return W_MyClass(w_x)
 
+            @builtin_classmethod('from_float')
+            @staticmethod
+            def w_from_float(vm: 'SPyVM', w_cls: W_Type,
+                             w_f: W_F64) -> 'W_MyClass':
+                assert w_cls is W_MyClass._w
+                f = vm.unwrap_f64(w_f)
+                w_x = vm.wrap(int(f))
+                return W_MyClass(w_x)
+
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
 
@@ -114,10 +124,14 @@ class TestAttrOp(CompilerTest):
         def foo(x: i32) -> i32:
             obj = MyClass.from_int(x)
             return obj.x
+
+        def bar(x: f64) -> f64:
+            obj = MyClass.from_float(x)
+            return obj.x
         """
         mod = self.compile(src)
         assert mod.foo(10) == 10
-
+        assert mod.bar(12.3) == 12
 
     def test_descriptor_get_set(self):
         # ========== EXT module for this test ==========

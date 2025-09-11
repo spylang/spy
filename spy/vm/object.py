@@ -89,6 +89,19 @@ def builtin_staticmethod(name: str, *, color: Color = 'red',
         return fn
     return decorator
 
+def builtin_classmethod(name: str, *, color: Color = 'red',
+                        kind: 'FuncKind' = 'plain') -> Any:
+    """
+    Turn an interp-level staticmethod into an app-level classmethod.
+
+    This decorator just puts a mark on the function, the actual job is done by
+    W_Type._init_builtin_method().
+    """
+    def decorator(fn: Callable) -> Callable:
+        assert isinstance(fn, staticmethod), 'missing @staticmethod'
+        fn.spy_builtin_method = (name, color, kind, 'classmethod')  # type: ignore
+        return fn
+    return decorator
 
 def builtin_property(name: str, *, color: Color = 'red',
                      kind: 'FuncKind' = 'plain') -> Any:
@@ -464,11 +477,11 @@ class W_Type(W_Object):
         from spy.vm.opspec import W_MetaArg, W_OpSpec
         from spy.vm.str import W_Str
         from spy.vm.primitive import W_Dynamic, W_Bool
-        from spy.vm.property import W_Property, W_StaticMethod
+        from spy.vm.property import W_Property, W_StaticMethod, W_ClassMethod
 
         pyfunc = statmeth.__func__
         appname, color, kind, what = statmeth.spy_builtin_method # type: ignore
-        assert what in ('method', 'staticmethod', 'property')
+        assert what in ('method', 'staticmethod', 'classmethod', 'property')
 
         # create the W_BuiltinFunc. Make it possible to use the string
         # 'W_MyClass' in annotations
@@ -493,6 +506,8 @@ class W_Type(W_Object):
             self.dict_w[appname] = w_func
         elif what =='staticmethod':
             self.dict_w[appname] = W_StaticMethod(w_func)
+        elif what == 'classmethod':
+            self.dict_w[appname] = W_ClassMethod(w_func)
         else:
             self.dict_w[appname] = W_Property(w_func)
 
@@ -670,7 +685,7 @@ class W_Type(W_Object):
                       *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
-        from spy.vm.property import W_StaticMethod
+        from spy.vm.property import W_StaticMethod, W_ClassMethod
 
         if wam_T.color != 'blue':
             raise WIP('__call_method__ on red types')
@@ -682,7 +697,11 @@ class W_Type(W_Object):
         if w_meth is None:
             return W_OpSpec.NULL
 
-        if not isinstance(w_meth, W_StaticMethod):
+        if isinstance(w_meth, W_StaticMethod):
+            new_args_wam = list(args_wam)
+        elif isinstance(w_meth, W_ClassMethod):
+            new_args_wam = [wam_T] + list(args_wam)
+        else:
             raise WIP(
                 f'cannot all object {w_meth} '
                 f'(we should emit a better error)'
@@ -695,13 +714,13 @@ class W_Type(W_Object):
                 f'(we should emit a better error)'
             )
 
-        w_opspec = vm.fast_metacall(w_func, list(args_wam))
+        w_opspec = vm.fast_metacall(w_func, new_args_wam)
         # if we return a simple opspec, it will be called with arguments
         # [wam_name, *args_wam]. But what we want is to call it with just
         # *args_wam. This is the equivalent of passing "list(args_wam)" in
         # op_CALL.
         if w_opspec.is_simple():
-            w_opspec._args_wam = list(args_wam)
+            w_opspec._args_wam = new_args_wam
         return w_opspec
 
 
