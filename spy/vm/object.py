@@ -683,6 +683,10 @@ class W_Type(W_Object):
     @staticmethod
     def w_CALL_METHOD(vm: 'SPyVM', wam_T: 'W_MetaArg', wam_name: 'W_MetaArg',
                       *args_wam: 'W_MetaArg') -> 'W_OpSpec':
+        """
+        Calling a method on a type: we look into the type dict and try to
+        call @staticmethod or @classmethod, if present.
+        """
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
         from spy.vm.property import W_StaticMethod, W_ClassMethod

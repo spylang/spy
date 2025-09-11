@@ -3,6 +3,7 @@ from spy.vm.b import B
 from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.function import W_FuncType, W_Func
+from spy.vm.modules.operator.attrop import unwrap_name_maybe
 
 from . import OP
 if TYPE_CHECKING:
@@ -48,24 +49,40 @@ def w_CALL(vm: 'SPyVM', wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
 
 
 @OP.builtin_func(color='blue')
-def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_method: W_MetaArg,
+def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_meth: W_MetaArg,
                   *args_wam: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
     w_opspec = W_OpSpec.NULL
     w_T = wam_obj.w_static_T
+    meth = unwrap_name_maybe(vm, wam_meth)
 
     # if the type provides __call_method__, use it
     if w_call_method := w_T.lookup_func('__call_method__'):
-        newargs_wam = [wam_obj, wam_method] + list(args_wam)
+        newargs_wam = [wam_obj, wam_meth] + list(args_wam)
         w_opspec = vm.fast_metacall(w_call_method, newargs_wam)
+    else:
+        w_opspec = default_callmethod(vm, wam_obj, wam_meth, args_wam, meth)
 
-    # XXXXXX THIS SEEMS WRONG!?!?
-    # if we call __call_method__ then we fallthrough here?
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_obj, wam_meth] + list(args_wam),
+        dispatch = 'single',
+        errmsg = f'method `{{0}}::{meth}` does not exist'
+    )
 
-    # else, the default implementation is to look into the type dict
-    # XXX: is it correct here to assume that we get a blue string?
-    meth = wam_method.blue_unwrap_str(vm)
 
+def default_callmethod(
+    vm: 'SPyVM',
+    wam_obj: W_MetaArg,
+    wam_meth: W_MetaArg,
+    args_wam: tuple[W_MetaArg, ...],
+    meth: str
+) -> W_OpSpec:
+    """
+    Default logic for call_method: look into the type dict
+    """
+    w_T = wam_obj.w_static_T
     if w_func := w_T.dict_w.get(meth):
         # XXX: this should be turned into a proper exception, but for now we
         # cannot even write a test because we don't any way to inject
@@ -73,11 +90,6 @@ def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_method: W_MetaArg,
         assert isinstance(w_func, W_Func)
         # call the w_func, passing wam_obj as the implicit self
         w_opspec = W_OpSpec(w_func, [wam_obj] + list(args_wam))
-
-    return typecheck_opspec(
-        vm,
-        w_opspec,
-        [wam_obj, wam_method] + list(args_wam),
-        dispatch = 'single',
-        errmsg = f'method `{{0}}::{meth}` does not exist'
-    )
+        return w_opspec
+    else:
+        return W_OpSpec.NULL
