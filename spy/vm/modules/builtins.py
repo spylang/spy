@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from spy.errors import SPyError
 from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.object import W_Object, W_Type, builtin_method
+from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
 from spy.vm.b import BUILTINS, B
@@ -123,28 +123,6 @@ def w_len(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
         f'this is `{t}`',
         wam_obj.loc
     )
-
-@BUILTINS.builtin_type('staticmethod')
-class W_StaticMethod(W_Object):
-    """
-    The @staticmethod decorator.
-
-    Currently support for it it's a bit ad-hoc. In particular,
-    W_Type.w_CALL_METHOD has special logic to deal with it.
-
-    Ideally, we would like to be able to use the normal descriptor protocol.
-    """
-
-    def __init__(self, w_obj: W_Object) -> None:
-        self.w_obj = w_obj
-
-    @builtin_method('__new__', color='blue')
-    @staticmethod
-    def w_new(vm: 'SPyVM', w_obj: W_Object) -> 'W_StaticMethod':
-        return W_StaticMethod(w_obj)
-
-    def __repr__(self) -> str:
-        return f'<spy staticmethod {self.w_obj}>'
 
 # add aliases for common types. For now we map:
 #   int -> i32

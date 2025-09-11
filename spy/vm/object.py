@@ -653,7 +653,7 @@ class W_Type(W_Object):
                       *args_wam: 'W_MetaArg') -> 'W_OpSpec':
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
-        from spy.vm.modules.builtins import W_StaticMethod
+        from spy.vm.property import W_StaticMethod
 
         if wam_T.color != 'blue':
             raise WIP('__call_method__ on red types')

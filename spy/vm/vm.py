@@ -23,7 +23,7 @@ from spy.vm.b import B
 from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
 from spy.vm.opimpl import W_OpImpl
-from spy.vm.property import W_Property
+from spy.vm.property import W_Property, W_StaticMethod
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.opspec import W_OpSpec, W_MetaArg
@@ -45,6 +45,7 @@ W_Type._w.define(W_Type)
 W_OpSpec._w.define(W_OpSpec)
 W_MetaArg._w.define(W_MetaArg)
 W_Property._w.define(W_Property)
+W_StaticMethod._w.define(W_StaticMethod)
 W_Member._w.define(W_Member)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)

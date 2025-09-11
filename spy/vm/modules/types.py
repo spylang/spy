@@ -15,7 +15,6 @@ from spy.vm.function import W_Func
 from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.builtin import builtin_method, builtin_property
 from spy.vm.registry import ModuleRegistry
-from spy.vm.modules.builtins import W_StaticMethod
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
