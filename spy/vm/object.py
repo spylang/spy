@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_OpSpec, W_MetaArg
     from spy.vm.builtin import FuncKind
+    from spy.vm.field import W_Field
 
 def builtin_method(name: str, *, color: Color = 'red',
                    kind: 'FuncKind' = 'plain') -> Any:

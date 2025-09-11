@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from spy.errors import WIP
 from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.field import W_Field
 from . import UNSAFE
