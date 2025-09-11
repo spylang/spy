@@ -269,9 +269,9 @@ class CModuleWriter:
         tb = self.tbh_types_def
         tb.wl("struct %s {" % c_st)
         with tb.indent():
-            for field, w_fieldtype in w_st.fields.items():
-                c_fieldtype = self.ctx.w2c(w_fieldtype)
-                tb.wl(f"{c_fieldtype} {field};")
+            for name, w_field in w_st.fields_w.items():
+                c_fieldtype = self.ctx.w2c(w_field.w_T)
+                tb.wl(f"{c_fieldtype} {name};")
         tb.wl("};")
         tb.wl("")
 

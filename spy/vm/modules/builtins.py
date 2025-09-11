@@ -124,7 +124,6 @@ def w_len(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
         wam_obj.loc
     )
 
-
 # add aliases for common types. For now we map:
 #   int -> i32
 #   float -> f64
