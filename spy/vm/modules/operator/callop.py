@@ -59,6 +59,9 @@ def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_method: W_MetaArg,
         newargs_wam = [wam_obj, wam_method] + list(args_wam)
         w_opspec = vm.fast_metacall(w_call_method, newargs_wam)
 
+    # XXXXXX THIS SEEMS WRONG!?!?
+    # if we call __call_method__ then we fallthrough here?
+
     # else, the default implementation is to look into the type dict
     # XXX: is it correct here to assume that we get a blue string?
     meth = wam_method.blue_unwrap_str(vm)
