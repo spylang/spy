@@ -139,9 +139,39 @@ class TestTypelift(CompilerTest):
             def one() -> MyInt:
                 return MyInt.__lift__(1)
 
-        def foo() -> i32:
+            @staticmethod
+            def from_pair(x: i32, y: i32) -> MyInt:
+                return MyInt.__lift__(x + y)
+
+            @staticmethod
+            @blue.metafunc
+            def from_many(*args_m):
+                if len(args_m) == 3:
+                    def from3(x: i32, y: i32, z: i32) -> MyInt:
+                        return MyInt.__lift__(x + y + z)
+                    return OpSpec(from3)
+                raise TypeError('invalid number of args')
+
+        def one() -> i32:
             m = MyInt.one()
             return m.__ll__
+
+        def from_pair(x: i32, y: i32) -> i32:
+            m = MyInt.from_pair(x, y)
+            return m.__ll__
+
+        def from_triple(x: i32, y: i32, z: i32) -> i32:
+            m = MyInt.from_many(x, y, z)
+            return m.__ll__
+
+        def from_quadruple(x: i32, y: i32, z: i32, w: i32) -> i32:
+            # this raises TypeError
+            MyInt.from_many(x, y, z, w)
+            return 9999 # never reached
         """
-        mod = self.compile(src)
-        assert mod.foo() == 1
+        mod = self.compile(src, error_mode='lazy')
+        assert mod.one() == 1
+        assert mod.from_pair(4, 5) == 9
+        assert mod.from_triple(4, 5, 6) == 15
+        with SPyError.raises('W_TypeError', match='invalid number of args'):
+            mod.from_quadruple(4, 5, 6, 7)

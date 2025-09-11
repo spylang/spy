@@ -678,7 +678,15 @@ class W_Type(W_Object):
                 f'(we should emit a better error)'
             )
 
-        return W_OpSpec(w_func, list(args_wam))
+        w_opspec = vm.fast_metacall(w_func, list(args_wam))
+        # if we return a simple opspec, it will be called with arguments
+        # [wam_name, *args_wam]. But what we want is to call it with just
+        # *args_wam. This is the equivalent of passing "list(args_wam)" in
+        # op_CALL.
+        if w_opspec.is_simple():
+            w_opspec._args_wam = list(args_wam)
+        return w_opspec
+
 
 
 
