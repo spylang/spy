@@ -285,6 +285,8 @@ class DopplerFrame(ASTFrame):
             )
 
         self.shifted_expr[expr] = new_expr
+        if self.vm.expr_color_map is not None:
+            self.vm.expr_color_map[expr] = wam.color
         return wam
 
     def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,

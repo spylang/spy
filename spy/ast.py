@@ -1,5 +1,5 @@
 import typing
-from typing import Optional, Iterator, Any, no_type_check
+from typing import TYPE_CHECKING, Optional, Iterator, Any, no_type_check
 import ast as py_ast
 import dataclasses
 from dataclasses import dataclass, field
@@ -7,6 +7,8 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.analyze.symtable import Color, VarKind, ImportRef, Symbol
 from spy.util import extend
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 AnyNode = typing.Union[py_ast.AST, 'Node']
 ClassKind = typing.Literal['class', 'struct', 'typelift']
@@ -71,9 +73,9 @@ del AST
 class Node:
     loc: Loc = field(repr=False)
 
-    def pp(self, hl: Any=None) -> None:
+    def pp(self, hl: Any=None, vm: Optional['SPyVM']=None) -> None:
         import spy.ast_dump
-        spy.ast_dump.pprint(self, hl=hl)
+        spy.ast_dump.pprint(self, hl=hl, vm=vm)
 
     @typing.no_type_check
     def ppc(self) -> None:
