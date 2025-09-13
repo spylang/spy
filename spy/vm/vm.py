@@ -4,6 +4,7 @@ from types import FunctionType
 import fixedint
 import py.path
 from spy import ROOT
+from spy import ast
 from spy.fqn import FQN, QUALIFIERS
 from spy.ast import Color, FuncKind
 from spy.location import Loc
@@ -71,6 +72,9 @@ class SPyVM:
     path: list[str]
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
+    # For use by --colorize to remember the red/blue color of each expr
+    expr_color_map: Optional[dict[ast.Expr, Color]]
+
 
     def __init__(self, ll: Optional[LLSPyInstance]=None) -> None:
         if ll is None:
@@ -84,6 +88,8 @@ class SPyVM:
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
+        # By default, don't keep track of expr colors.
+        self.expr_color_map = None
         self.make_module(BUILTINS)
         self.make_module(OPERATOR)
         self.make_module(TYPES)

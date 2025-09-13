@@ -109,6 +109,10 @@ class TestMain:
         res, stdout = self.run('--redshift', '--execute', self.main_spy)
         assert stdout == "hello world\n"
 
+    def test_colorize(self):
+        res, stdout = self.run('--colorize', self.main_spy)
+        assert stdout.startswith('Module(')
+
     def test_cwrite(self):
         res, stdout = self.run(
             '--cwrite',
