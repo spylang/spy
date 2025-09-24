@@ -1,5 +1,6 @@
 from typing import Any
 import ast as py_ast
+import html
 
 import spy.ast
 from spy.analyze.symtable import Symbol
@@ -41,10 +42,6 @@ class DotDumper:
             self.node_ids[obj_id] = f'node{self.node_counter}'
         return self.node_ids[obj_id]
 
-    def escape_label(self, text: str) -> str:
-        """Escape text for DOT format"""
-        return text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-
     def dump_anything(self, obj: Any) -> str:
         if isinstance(obj, spy.ast.Node):
             return self.dump_spy_node(obj)
@@ -57,7 +54,7 @@ class DotDumper:
         else:
             # For simple values, create a leaf node
             node_id = self.get_node_id(obj)
-            label = self.escape_label(repr(obj))
+            label = html.escape(repr(obj), quote=True)
             self.lines.append(f'    {node_id} [label="{label}", shape=oval];')
             return node_id
 
@@ -85,13 +82,15 @@ class DotDumper:
             if '=' in attr:
                 field_name, field_value = attr.split('=', 1)
                 # Use same colors as stdout: strings=green, node names=turquoise, others=default
+                # Escape the field value content but keep HTML tags unescaped
+                escaped_field_value = html.escape(field_value, quote=True)
                 if field_value.startswith("'") and field_value.endswith("'"):
-                    colored_value = f'<FONT COLOR="#228B22">{field_value}</FONT>'  # darker green
+                    colored_value = f'<FONT COLOR="#228B22">{escaped_field_value}</FONT>'  # darker green
                 elif field_value.isdigit() or (field_value.startswith('-') and field_value[1:].isdigit()):
-                    colored_value = f'<FONT COLOR="#0080FF">{field_value}</FONT>'  # blue
+                    colored_value = f'<FONT COLOR="#0080FF">{escaped_field_value}</FONT>'  # blue
                 else:
-                    colored_value = f'<FONT COLOR="#666666">{field_value}</FONT>'  # gray
-                label_parts.append(f'{field_name}={colored_value}')
+                    colored_value = f'<FONT COLOR="#666666">{escaped_field_value}</FONT>'  # gray
+                label_parts.append(f'{html.escape(field_name, quote=True)}={colored_value}')
             else:
                 label_parts.append(attr)
 
@@ -137,13 +136,15 @@ class DotDumper:
             if '=' in attr:
                 field_name, field_value = attr.split('=', 1)
                 # Use same colors as stdout: strings=green, node names=turquoise, others=default
+                # Escape the field value content but keep HTML tags unescaped
+                escaped_field_value = html.escape(field_value, quote=True)
                 if field_value.startswith("'") and field_value.endswith("'"):
-                    colored_value = f'<FONT COLOR="#228B22">{field_value}</FONT>'  # darker green
+                    colored_value = f'<FONT COLOR="#228B22">{escaped_field_value}</FONT>'  # darker green
                 elif field_value.isdigit() or (field_value.startswith('-') and field_value[1:].isdigit()):
-                    colored_value = f'<FONT COLOR="#0080FF">{field_value}</FONT>'  # blue
+                    colored_value = f'<FONT COLOR="#0080FF">{escaped_field_value}</FONT>'  # blue
                 else:
-                    colored_value = f'<FONT COLOR="#666666">{field_value}</FONT>'  # gray
-                label_parts.append(f'{field_name}={colored_value}')
+                    colored_value = f'<FONT COLOR="#666666">{escaped_field_value}</FONT>'  # gray
+                label_parts.append(f'{html.escape(field_name, quote=True)}={colored_value}')
             else:
                 label_parts.append(attr)
 
@@ -178,7 +179,7 @@ class DotDumper:
 
     def dump_symbol(self, sym: Symbol) -> str:
         node_id = self.get_node_id(sym)
-        label = self.escape_label(f'Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})')
+        label = html.escape(f'Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})', quote=True)
         self.lines.append(f'    {node_id} [label="{label}", shape=hexagon];')
         return node_id
 
