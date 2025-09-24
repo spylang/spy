@@ -16,7 +16,6 @@ class DotDumper:
 
     def build(self) -> str:
         output = ['digraph AST {']
-        output.append('    node [shape=box, style=rounded];')
         output.append('    rankdir=TB;')
         output.append('')
 
@@ -87,7 +86,7 @@ class DotDumper:
                 field_name, field_value = attr.split('=', 1)
                 # Use same colors as stdout: strings=green, node names=turquoise, others=default
                 if field_value.startswith("'") and field_value.endswith("'"):
-                    colored_value = f'<FONT COLOR="#32C832">{field_value}</FONT>'  # green
+                    colored_value = f'<FONT COLOR="#228B22">{field_value}</FONT>'  # darker green
                 elif field_value.isdigit() or (field_value.startswith('-') and field_value[1:].isdigit()):
                     colored_value = f'<FONT COLOR="#0080FF">{field_value}</FONT>'  # blue
                 else:
@@ -101,7 +100,7 @@ class DotDumper:
         else:
             html_label = label_parts[0]
 
-        self.lines.append(f'    {node_id} [label=<{html_label}>];')
+        self.lines.append(f'    {node_id} [label=<{html_label}>, shape=oval];')
 
         # Add edges to complex child nodes
         for field, value in complex_fields:
@@ -139,7 +138,7 @@ class DotDumper:
                 field_name, field_value = attr.split('=', 1)
                 # Use same colors as stdout: strings=green, node names=turquoise, others=default
                 if field_value.startswith("'") and field_value.endswith("'"):
-                    colored_value = f'<FONT COLOR="#32C832">{field_value}</FONT>'  # green
+                    colored_value = f'<FONT COLOR="#228B22">{field_value}</FONT>'  # darker green
                 elif field_value.isdigit() or (field_value.startswith('-') and field_value[1:].isdigit()):
                     colored_value = f'<FONT COLOR="#0080FF">{field_value}</FONT>'  # blue
                 else:
@@ -153,7 +152,7 @@ class DotDumper:
         else:
             html_label = label_parts[0]
 
-        self.lines.append(f'    {node_id} [label=<{html_label}>];')
+        self.lines.append(f'    {node_id} [label=<{html_label}>, shape=oval];')
 
         # Add edges to complex child nodes
         for field, value in complex_fields:
@@ -163,13 +162,13 @@ class DotDumper:
         return node_id
 
     def dump_list(self, lst: list[Any]) -> str:
-        if not lst:
-            node_id = self.get_node_id(lst)
-            self.lines.append(f'    {node_id} [label="[]", shape=oval];')
-            return node_id
-
         list_id = self.get_node_id(lst)
-        self.lines.append(f'    {list_id} [label="list", shape=diamond];')
+
+        if not lst:
+            self.lines.append(f'    {list_id} [label="list []", shape=rectangle];')
+            return list_id
+
+        self.lines.append(f'    {list_id} [label="list [{len(lst)}]", shape=rectangle];')
 
         for i, item in enumerate(lst):
             child_id = self.dump_anything(item)
