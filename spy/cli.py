@@ -63,6 +63,14 @@ class Arguments:
         )
     ] = False
 
+    dot: Annotated[
+        bool,
+        Option(
+            "--dot",
+            help="Output the SPy AST as Graphviz DOT format"
+        )
+    ] = False
+
     imports: Annotated[
         bool,
         Option(
@@ -203,7 +211,7 @@ class Arguments:
         # check that we specify at most one of the following options
         possible_actions = ["execute", "pyparse", "parse",
                             "imports", "symtable",
-                            "redshift", "cwrite", "compile", "colorize"]
+                            "redshift", "cwrite", "compile", "colorize", "dot"]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
         if n == 0:
@@ -334,6 +342,10 @@ async def inner_main(args: Arguments) -> None:
     orig_mod = importer.getmod(modname)
     if args.parse and not args.redshift:
         orig_mod.pp()
+        return
+
+    if args.dot:
+        orig_mod.pp_dot()
         return
 
     if args.imports:

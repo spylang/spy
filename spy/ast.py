@@ -77,6 +77,11 @@ class Node:
         import spy.ast_dump
         spy.ast_dump.pprint(self, hl=hl, vm=vm)
 
+    def pp_dot(self) -> None:
+        """Pretty print AST in Graphviz DOT format"""
+        import spy.ast_dotdump
+        spy.ast_dotdump.pprint_dot(self)
+
     @typing.no_type_check
     def ppc(self) -> None:
         """
