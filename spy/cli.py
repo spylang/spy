@@ -211,7 +211,7 @@ class Arguments:
         # check that we specify at most one of the following options
         possible_actions = ["execute", "pyparse", "parse",
                             "imports", "symtable",
-                            "redshift", "cwrite", "compile", "colorize", "dot"]
+                            "redshift", "cwrite", "compile", "colorize"]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
         if n == 0:
@@ -237,14 +237,49 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
-def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
+def dump_spy_mod_ast(vm: SPyVM, modname: str, dot_format: bool = False) -> None:
+    if dot_format:
+        # For DOT format, create a unified graph with all functions
+        dump_spy_mod_ast_dot(vm, modname)
+    else:
+        # For text format, dump each function separately
+        for fqn, w_obj in vm.fqns_by_modname(modname):
+            if (isinstance(w_obj, W_ASTFunc) and
+                w_obj.color == 'red' and
+                w_obj.fqn == fqn):
+                print(f'`{fqn}` = ', end='')
+                w_obj.funcdef.pp()
+                print()
+
+def dump_spy_mod_ast_dot(vm: SPyVM, modname: str) -> None:
+    """Generate a unified DOT graph with all functions from a module"""
+    import spy.ast_dotdump
+
+    # Collect all functions
+    functions = []
     for fqn, w_obj in vm.fqns_by_modname(modname):
         if (isinstance(w_obj, W_ASTFunc) and
             w_obj.color == 'red' and
             w_obj.fqn == fqn):
-            print(f'`{fqn}` = ', end='')
-            w_obj.funcdef.pp()
-            print()
+            functions.append((fqn, w_obj.funcdef))
+
+    if not functions:
+        print("digraph AST {\n    rankdir=TB;\n}")
+        return
+
+    # Create a unified DOT dumper
+    dumper = spy.ast_dotdump.DotDumper()
+
+    # Create a root node for the module
+    root_id = dumper.get_node_id('module_root')
+    dumper.lines.append(f'    {root_id} [label=<<B>Module: {modname}</B>>, shape=box];')
+
+    # Add each function as a child of the root
+    for fqn, funcdef in functions:
+        func_id = dumper.dump_anything(funcdef)
+        dumper.edges.append((root_id, func_id, fqn))
+
+    print(dumper.build())
 
 def pyproject_entry_point() -> Any:
     """
@@ -341,11 +376,10 @@ async def inner_main(args: Arguments) -> None:
 
     orig_mod = importer.getmod(modname)
     if args.parse and not args.redshift:
-        orig_mod.pp()
-        return
-
-    if args.dot:
-        orig_mod.pp_dot()
+        if args.dot:
+            orig_mod.pp_dot()
+        else:
+            orig_mod.pp()
         return
 
     if args.imports:
@@ -376,11 +410,19 @@ async def inner_main(args: Arguments) -> None:
             execute_spy_main(args, vm, w_mod)
         elif args.colorize:
             # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
-            orig_mod.pp(vm=vm)
+            if args.dot:
+                orig_mod.pp_dot()
+            else:
+                orig_mod.pp(vm=vm)
         elif args.parse:
-            dump_spy_mod_ast(vm, modname)
+            dump_spy_mod_ast(vm, modname, dot_format=args.dot)
         else:
-            dump_spy_mod(vm, modname, args.full_fqn)
+            if args.dot:
+                # For --dot without --parse, we need to dump the module AST in DOT format
+                # This is similar to dump_spy_mod_ast but for the whole module
+                dump_spy_mod_ast(vm, modname, dot_format=True)
+            else:
+                dump_spy_mod(vm, modname, args.full_fqn)
         return
 
     config = BuildConfig(
