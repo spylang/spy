@@ -77,10 +77,10 @@ class Node:
         import spy.ast_dump
         spy.ast_dump.pprint(self, hl=hl, vm=vm)
 
-    def pp_dot(self) -> None:
+    def pp_dot(self, vm: Optional['SPyVM'] = None) -> None:
         """Pretty print AST in Graphviz DOT format"""
         import spy.ast_dotdump
-        spy.ast_dotdump.pprint_dot(self)
+        spy.ast_dotdump.pprint_dot(self, vm=vm)
 
     @typing.no_type_check
     def ppc(self) -> None:

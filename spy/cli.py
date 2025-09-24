@@ -268,7 +268,7 @@ def dump_spy_mod_ast_dot(vm: SPyVM, modname: str) -> None:
         return
 
     # Create a unified DOT dumper
-    dumper = spy.ast_dotdump.DotDumper()
+    dumper = spy.ast_dotdump.DotDumper(vm=vm)
 
     # Create a root node for the module
     root_id = dumper.get_node_id('module_root')
@@ -411,7 +411,7 @@ async def inner_main(args: Arguments) -> None:
         elif args.colorize:
             # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
             if args.dot:
-                orig_mod.pp_dot()
+                orig_mod.pp_dot(vm=vm)
             else:
                 orig_mod.pp(vm=vm)
         elif args.parse:

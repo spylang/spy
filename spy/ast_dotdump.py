@@ -1,19 +1,23 @@
-from typing import Any
+from typing import Any, Optional, TYPE_CHECKING
 import ast as py_ast
 import html
 
 import spy.ast
-from spy.analyze.symtable import Symbol
+from spy.analyze.symtable import Symbol, Color
+
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 
 class DotDumper:
     """Dumper that generates Graphviz DOT format for AST nodes"""
 
-    def __init__(self) -> None:
+    def __init__(self, vm: Optional['SPyVM'] = None) -> None:
         self.lines: list[str] = []
         self.node_counter = 0
         self.node_ids: dict[int, str] = {}  # maps id(obj) to node_id
         self.edges: list[tuple[str, str, str]] = []  # (from_id, to_id, label)
+        self.vm = vm
 
     def build(self) -> str:
         output = ['digraph AST {']
@@ -99,7 +103,16 @@ class DotDumper:
         else:
             html_label = label_parts[0]
 
-        self.lines.append(f'    {node_id} [label=<{html_label}>, shape=oval];')
+        # Check for color information from VM (like --colorize)
+        style_attrs = 'shape=oval'
+        if self.vm and hasattr(self.vm, 'expr_color_map') and self.vm.expr_color_map:
+            color: Optional[Color] = self.vm.expr_color_map.get(node)
+            if color == 'red':
+                style_attrs += ', style=filled, fillcolor="#FFD0D0"'  # pastel red
+            elif color == 'blue':
+                style_attrs += ', style=filled, fillcolor="#D0D0FF"'  # pastel blue
+
+        self.lines.append(f'    {node_id} [label=<{html_label}>, {style_attrs}];')
 
         # Add edges to complex child nodes
         for field, value in complex_fields:
@@ -153,7 +166,16 @@ class DotDumper:
         else:
             html_label = label_parts[0]
 
-        self.lines.append(f'    {node_id} [label=<{html_label}>, shape=oval];')
+        # Check for color information from VM (like --colorize)
+        style_attrs = 'shape=oval'
+        if self.vm and hasattr(self.vm, 'expr_color_map') and self.vm.expr_color_map:
+            color: Optional[Color] = self.vm.expr_color_map.get(node)
+            if color == 'red':
+                style_attrs += ', style=filled, fillcolor="#FFD0D0"'  # pastel red
+            elif color == 'blue':
+                style_attrs += ', style=filled, fillcolor="#D0D0FF"'  # pastel blue
+
+        self.lines.append(f'    {node_id} [label=<{html_label}>, {style_attrs}];')
 
         # Add edges to complex child nodes
         for field, value in complex_fields:
@@ -184,13 +206,13 @@ class DotDumper:
         return node_id
 
 
-def dump_dot(node: Any) -> str:
+def dump_dot(node: Any, vm: Optional['SPyVM'] = None) -> str:
     """Generate Graphviz DOT format for the AST"""
-    dumper = DotDumper()
+    dumper = DotDumper(vm=vm)
     dumper.dump_anything(node)
     return dumper.build()
 
 
-def pprint_dot(node: Any) -> None:
+def pprint_dot(node: Any, vm: Optional['SPyVM'] = None) -> None:
     """Print AST in Graphviz DOT format"""
-    print(dump_dot(node))
+    print(dump_dot(node, vm=vm))
