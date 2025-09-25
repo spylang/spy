@@ -17,16 +17,38 @@ class TestArray(CompilerTest):
         mod = self.compile(src)
         assert mod.test() == 6
 
-    def test_len(self):
+    def test_array2_simple(self):
         src = """
         from array import array
 
         def test() -> int:
+            a = array[int, 2](2, 3)
+            a[0, 0] = 1
+            a[0, 1] = 2
+            a[0, 2] = 3
+            a[1, 0] = 4
+            a[1, 1] = 5
+            a[1, 2] = 6
+            return a[0, 0] + a[1, 2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 7
+
+    def test_len(self):
+        src = """
+        from array import array
+
+        def test1() -> int:
             a = array[int, 1](3)
+            return len(a)
+
+        def test2() -> int:
+            a = array[int, 2](4, 5)
             return len(a)
         """
         mod = self.compile(src)
-        assert mod.test() == 3
+        assert mod.test1() == 3
+        assert mod.test2() == 4
 
     def test_from_buffer(self):
         src = """

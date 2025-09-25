@@ -18,6 +18,20 @@ from operator import OpSpec
 from unsafe import gc_alloc, ptr
 
 @blue.generic
+def array(DTYPE, NDIM):
+    # XXX this is ugly: we hardcode arrays impl for small ndims. We should
+    # autogenerate them.
+
+    if NDIM == 1:
+        return _array1[DTYPE]
+
+    elif NDIM == 2:
+        return _array2[DTYPE]
+
+    raise StaticError("number of dimensions not supported")
+
+
+@blue.generic
 def _array1(DTYPE):
 
     @struct
@@ -60,13 +74,59 @@ def _array1(DTYPE):
     return ndarray
 
 
-
 @blue.generic
-def array(DTYPE, NDIM):
-    if NDIM == 1:
-        ndarray = _array1[DTYPE]
-        return ndarray
-    raise StaticError("number of dimensions not supported")
+def _array2(DTYPE):
+
+    @struct
+    class ArrayData:
+        h: i32
+        w: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.h = h
+            data.w = w
+            data.items = gc_alloc(DTYPE)(h*w)
+            return ndarray.__lift__(data)
+
+        ## @staticmethod
+        ## def from_buffer(buf: ptr[DTYPE], l: i32) -> ndarray:
+        ##     data = gc_alloc(ArrayData)(1)
+        ##     data.items = buf
+        ##     data.l = l
+        ##     return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.h:
+                raise IndexError
+            if j >= ll.w:
+                raise IndexError
+            idx = (i * ll.w) + j
+            return ll.items[idx]
+
+        def __setitem__(self: ndarray, i: i32, j: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.h:
+                raise IndexError
+            if j >= ll.w:
+                raise IndexError
+            idx = (i * ll.w) + j
+            ll.items[idx] = v
+
+        def __len__(self: ndarray) -> i32:
+            return self.__ll__.h
+
+        # XXX: we don't have a good way to know "w". We need to implement
+        # .shape
+
+    return ndarray
+
 
 @blue.generic
 def zeros(DTYPE):
