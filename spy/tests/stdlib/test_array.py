@@ -49,3 +49,19 @@ class TestArray(CompilerTest):
         mod.store(buf, 1, 20)
         mod.store(buf, 2, 30)
         assert mod.test(buf, 3) == 60
+
+    def test_zeros(self):
+        src = """
+        from array import zeros
+
+        def test_len(n: i32) -> i32:
+            a = zeros[f64](n)
+            return len(a)
+
+        def test_content(n: i32) -> f64:
+            a = zeros[f64](n)
+            return a[0] + a[1] + a[2]
+        """
+        mod = self.compile(src)
+        assert mod.test_len(5) == 5
+        assert mod.test_content(5) == 0

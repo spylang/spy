@@ -14,6 +14,7 @@ In particular we don't support an arbitrary number of dimensions: currently we
 hardcode _array1, _array2, _array3, etc.
 """
 
+from operator import OpSpec
 from unsafe import gc_alloc, ptr
 
 @blue.generic
@@ -66,3 +67,23 @@ def array(DTYPE, NDIM):
         ndarray = _array1[DTYPE]
         return ndarray
     raise StaticError("number of dimensions not supported")
+
+@blue.generic
+def zeros(DTYPE):
+
+    @blue.metafunc
+    def metazeros(m_shape):
+        if m_shape.static_type == i32:
+            ArrayT = array[DTYPE, 1]
+            def impl(n: i32) -> ArrayT:
+                return ArrayT(n)
+            return OpSpec(impl)
+
+        elif m_shape.static_type == tuple:
+            raise StaticError('WIP')
+
+        else:
+            raise TypeError('shape must be either int or tuple')
+
+
+    return metazeros
