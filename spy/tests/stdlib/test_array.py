@@ -1,0 +1,156 @@
+import pytest
+from spy.tests.support import CompilerTest
+
+class TestArray(CompilerTest):
+
+    def test_array1_simple(self):
+        src = """
+        from array import array
+
+        def test() -> int:
+            a = array[int, 1](3)
+            a[0] = 1
+            a[1] = 2
+            a[2] = 3
+            return a[0] + a[1] + a[2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 6
+
+    def test_array2_simple(self):
+        src = """
+        from array import array
+
+        def test() -> int:
+            a = array[int, 2](2, 3)
+            a[0, 0] = 1
+            a[0, 1] = 2
+            a[0, 2] = 3
+            a[1, 0] = 4
+            a[1, 1] = 5
+            a[1, 2] = 6
+            return a[0, 0] + a[1, 2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 7
+
+    def test_len(self):
+        src = """
+        from array import array
+
+        def test1() -> int:
+            a = array[int, 1](3)
+            return len(a)
+
+        def test2() -> int:
+            a = array[int, 2](4, 5)
+            return len(a)
+        """
+        mod = self.compile(src)
+        assert mod.test1() == 3
+        assert mod.test2() == 4
+
+    def test_from_buffer(self):
+        src = """
+        from array import array
+        from unsafe import ptr, gc_alloc
+
+        def alloc_buf(n: i32) -> ptr[i32]:
+            return gc_alloc(i32)(n)
+
+        def store(p: ptr[i32], i: i32, v: i32) -> None:
+            p[i] = v
+
+        def test1(buf: ptr[i32], l: i32) -> i32:
+            a = array[i32, 1].from_buffer(buf, l)
+            return a[0] + a[1] + a[2]
+
+        def test2(buf: ptr[i32], h: i32, w: i32) -> int:
+            a = array[i32, 2].from_buffer(buf, h, w)
+            return a[1, 0]
+        """
+        mod = self.compile(src)
+        buf = mod.alloc_buf(6)
+        mod.store(buf, 0, 10)
+        mod.store(buf, 1, 20)
+        mod.store(buf, 2, 30)
+        mod.store(buf, 3, 40)
+        mod.store(buf, 4, 50)
+        mod.store(buf, 5, 60)
+        assert mod.test1(buf, 3) == 60
+        assert mod.test2(buf, 3, 2) == 30
+        assert mod.test2(buf, 2, 3) == 40
+
+    def test_zeros(self):
+        src = """
+        from array import zeros
+
+        def test_len(n: i32) -> i32:
+            a = zeros[f64](n)
+            return len(a)
+
+        def test_content(n: i32) -> f64:
+            a = zeros[f64](n)
+            return a[0] + a[1] + a[2]
+        """
+        mod = self.compile(src)
+        assert mod.test_len(5) == 5
+        assert mod.test_content(5) == 0
+
+    def test_array3_simple(self):
+        src = """
+        from array import array
+
+        def test() -> int:
+            a = array[int, 3](2, 2, 3)
+            a[0, 0, 0] = 1
+            a[0, 0, 1] = 2
+            a[0, 0, 2] = 3
+            a[0, 1, 0] = 4
+            a[0, 1, 1] = 5
+            a[0, 1, 2] = 6
+            a[1, 0, 0] = 7
+            a[1, 0, 1] = 8
+            a[1, 0, 2] = 9
+            a[1, 1, 0] = 10
+            a[1, 1, 1] = 11
+            a[1, 1, 2] = 12
+            return a[0, 0, 0] + a[1, 1, 2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 13
+
+    def test_array3_len(self):
+        src = """
+        from array import array
+
+        def test() -> int:
+            a = array[int, 3](3, 4, 5)
+            return len(a)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 3
+
+    def test_array3_from_buffer(self):
+        src = """
+        from array import array
+        from unsafe import ptr, gc_alloc
+
+        def alloc_buf(n: i32) -> ptr[i32]:
+            return gc_alloc(i32)(n)
+
+        def store(p: ptr[i32], i: i32, v: i32) -> None:
+            p[i] = v
+
+        def test3(buf: ptr[i32], d: i32, h: i32, w: i32) -> int:
+            a = array[i32, 3].from_buffer(buf, d, h, w)
+            return a[1, 0, 1]
+        """
+        mod = self.compile(src)
+        buf = mod.alloc_buf(12)
+        # Fill buffer with values 0-11
+        for i in range(12):
+            mod.store(buf, i, i * 10)
+        # Test 3D array with dimensions 2x2x3
+        # Element at [1, 0, 1] should be at index: 1*2*3 + 0*3 + 1 = 7
+        assert mod.test3(buf, 2, 2, 3) == 70
