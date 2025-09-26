@@ -28,6 +28,9 @@ def array(DTYPE, NDIM):
     elif NDIM == 2:
         return _array2[DTYPE]
 
+    elif NDIM == 3:
+        return _array3[DTYPE]
+
     raise StaticError("number of dimensions not supported")
 
 
@@ -125,6 +128,65 @@ def _array2(DTYPE):
 
         # XXX: we don't have a good way to know "w". We need to implement
         # .shape
+
+    return ndarray
+
+
+@blue.generic
+def _array3(DTYPE):
+
+    @struct
+    class ArrayData:
+        d: i32
+        h: i32
+        w: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(d: i32, h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.d = d
+            data.h = h
+            data.w = w
+            data.items = gc_alloc(DTYPE)(d*h*w)
+            return ndarray.__lift__(data)
+
+        @staticmethod
+        def from_buffer(buf: ptr[DTYPE], d: i32, h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.items = buf
+            data.d = d
+            data.h = h
+            data.w = w
+            return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32, j: i32, k: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.d:
+                raise IndexError
+            if j >= ll.h:
+                raise IndexError
+            if k >= ll.w:
+                raise IndexError
+            idx = (i * ll.h * ll.w) + (j * ll.w) + k
+            return ll.items[idx]
+
+        def __setitem__(self: ndarray, i: i32, j: i32, k: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.d:
+                raise IndexError
+            if j >= ll.h:
+                raise IndexError
+            if k >= ll.w:
+                raise IndexError
+            idx = (i * ll.h * ll.w) + (j * ll.w) + k
+            ll.items[idx] = v
+
+        def __len__(self: ndarray) -> i32:
+            return self.__ll__.d
 
     return ndarray
 

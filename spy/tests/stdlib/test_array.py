@@ -96,3 +96,61 @@ class TestArray(CompilerTest):
         mod = self.compile(src)
         assert mod.test_len(5) == 5
         assert mod.test_content(5) == 0
+
+    def test_array3_simple(self):
+        src = """
+        from array import array
+
+        def test() -> int:
+            a = array[int, 3](2, 2, 3)
+            a[0, 0, 0] = 1
+            a[0, 0, 1] = 2
+            a[0, 0, 2] = 3
+            a[0, 1, 0] = 4
+            a[0, 1, 1] = 5
+            a[0, 1, 2] = 6
+            a[1, 0, 0] = 7
+            a[1, 0, 1] = 8
+            a[1, 0, 2] = 9
+            a[1, 1, 0] = 10
+            a[1, 1, 1] = 11
+            a[1, 1, 2] = 12
+            return a[0, 0, 0] + a[1, 1, 2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 13
+
+    def test_array3_len(self):
+        src = """
+        from array import array
+
+        def test() -> int:
+            a = array[int, 3](3, 4, 5)
+            return len(a)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 3
+
+    def test_array3_from_buffer(self):
+        src = """
+        from array import array
+        from unsafe import ptr, gc_alloc
+
+        def alloc_buf(n: i32) -> ptr[i32]:
+            return gc_alloc(i32)(n)
+
+        def store(p: ptr[i32], i: i32, v: i32) -> None:
+            p[i] = v
+
+        def test3(buf: ptr[i32], d: i32, h: i32, w: i32) -> int:
+            a = array[i32, 3].from_buffer(buf, d, h, w)
+            return a[1, 0, 1]
+        """
+        mod = self.compile(src)
+        buf = mod.alloc_buf(12)
+        # Fill buffer with values 0-11
+        for i in range(12):
+            mod.store(buf, i, i * 10)
+        # Test 3D array with dimensions 2x2x3
+        # Element at [1, 0, 1] should be at index: 1*2*3 + 0*3 + 1 = 7
+        assert mod.test3(buf, 2, 2, 3) == 70
