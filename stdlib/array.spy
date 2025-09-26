@@ -94,12 +94,13 @@ def _array2(DTYPE):
             data.items = gc_alloc(DTYPE)(h*w)
             return ndarray.__lift__(data)
 
-        ## @staticmethod
-        ## def from_buffer(buf: ptr[DTYPE], l: i32) -> ndarray:
-        ##     data = gc_alloc(ArrayData)(1)
-        ##     data.items = buf
-        ##     data.l = l
-        ##     return ndarray.__lift__(data)
+        @staticmethod
+        def from_buffer(buf: ptr[DTYPE], h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.items = buf
+            data.h = h
+            data.w = w
+            return ndarray.__lift__(data)
 
         def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
             ll = self.__ll__

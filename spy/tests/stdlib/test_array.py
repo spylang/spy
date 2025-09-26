@@ -61,16 +61,25 @@ class TestArray(CompilerTest):
         def store(p: ptr[i32], i: i32, v: i32) -> None:
             p[i] = v
 
-        def test(buf: ptr[i32], l: i32) -> int:
-            a = array[int, 1].from_buffer(buf, l)
+        def test1(buf: ptr[i32], l: i32) -> i32:
+            a = array[i32, 1].from_buffer(buf, l)
             return a[0] + a[1] + a[2]
+
+        def test2(buf: ptr[i32], h: i32, w: i32) -> int:
+            a = array[i32, 2].from_buffer(buf, h, w)
+            return a[1, 0]
         """
         mod = self.compile(src)
-        buf = mod.alloc_buf(3)
+        buf = mod.alloc_buf(6)
         mod.store(buf, 0, 10)
         mod.store(buf, 1, 20)
         mod.store(buf, 2, 30)
-        assert mod.test(buf, 3) == 60
+        mod.store(buf, 3, 40)
+        mod.store(buf, 4, 50)
+        mod.store(buf, 5, 60)
+        assert mod.test1(buf, 3) == 60
+        assert mod.test2(buf, 3, 2) == 30
+        assert mod.test2(buf, 2, 3) == 40
 
     def test_zeros(self):
         src = """
