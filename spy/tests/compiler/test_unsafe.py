@@ -65,7 +65,7 @@ class TestUnsafe(CompilerTest):
         with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
             mod.foo(3)
 
-    def test_struct(self):
+    def test_struct_on_heap(self):
         mod = self.compile(
         """
         from unsafe import gc_alloc, ptr
@@ -86,6 +86,20 @@ class TestUnsafe(CompilerTest):
             return p.x + p.y
         """)
         assert mod.foo(3, 4.5) == 7.5
+
+    def test_struct_on_stack(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo(x: i32, y: i32) -> i32:
+            p = Point(x, y)
+            return p.x + p.y
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4) == 7
 
     def test_struct_wrong_field(self):
         src = """
