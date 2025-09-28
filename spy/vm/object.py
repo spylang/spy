@@ -705,7 +705,13 @@ class W_Type(W_Object):
             new_args_wam = list(args_wam)
         elif isinstance(w_meth, W_ClassMethod):
             new_args_wam = [wam_T] + list(args_wam)
+        elif isinstance(w_meth, W_Func):
+            raise WIP(
+                f'this is a method, not a staticmethod or classmethod '
+                f'(we should emit a better error)'
+            )
         else:
+            breakpoint()
             raise WIP(
                 f'cannot call object {w_meth} '
                 f'(we should emit a better error)'
