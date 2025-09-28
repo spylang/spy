@@ -4,6 +4,7 @@ from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.field import W_Field
 from spy.vm.function import W_FuncType, FuncParam
 from spy.vm.builtin import W_BuiltinFunc, builtin_method
+from spy.vm.property import W_StaticMethod
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from . import UNSAFE
 if TYPE_CHECKING:
@@ -23,10 +24,21 @@ class W_StructType(W_Type):
         self.offsets, self.size = calc_layout(self.fields_w)
         if body.dict_w != {}:
             raise WIP('methods in structs')
-        if '__new__' not in self.dict_w:
-            self.dict_w['__new__'] = self._make_w_new()
 
-    def _make_w_new(self):
+        if '__make__' in self.dict_w:
+            raise WIP('you cannot define your own __make__')
+
+        # add a '__make__' staticmethod to create a struct by specifying all
+        # the fields
+        w_make = self._create_w_make()
+        self.dict_w['__make__'] = W_StaticMethod(w_make)
+
+        # if the user didn't provide a '__new__', let's put a default one
+        # which is just an alias to '__make__',
+        if '__new__' not in self.dict_w:
+            self.dict_w['__new__'] = w_make
+
+    def _create_w_make(self):
         STRUCT = Annotated[W_Struct, self]
         # functype
         params = [
@@ -36,16 +48,16 @@ class W_StructType(W_Type):
         w_functype = W_FuncType.new(params, w_restype=self)
 
         # impl
-        def w_new_impl(vm: 'SPyVM', *args_w: W_Object) -> STRUCT:
+        def w_make_impl(vm: 'SPyVM', *args_w: W_Object) -> STRUCT:
             assert len(args_w) == len(self.fields_w)
             w_res = W_Struct(self)
             for w_arg, w_fld in zip(args_w, self.fields_w.values(), strict=True):
                 w_res.values_w[w_fld.name] = w_arg
             return w_res
 
-        # make the __new__
-        fqn = self.fqn.join('__new__')
-        return W_BuiltinFunc(w_functype, fqn, w_new_impl)
+        # make the __make__
+        fqn = self.fqn.join('__make__')
+        return W_BuiltinFunc(w_functype, fqn, w_make_impl)
 
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ['struct']

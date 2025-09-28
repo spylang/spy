@@ -97,9 +97,14 @@ class TestUnsafe(CompilerTest):
         def foo(x: i32, y: i32) -> i32:
             p = Point(x, y)
             return p.x + p.y
+
+        def bar(x: i32, y: i32) -> i32:
+            p = Point.__make__(x, y)
+            return p.x + p.y
         """
         mod = self.compile(src)
         assert mod.foo(3, 4) == 7
+        assert mod.bar(5, 6) == 11
 
     def test_struct_wrong_field(self):
         src = """
