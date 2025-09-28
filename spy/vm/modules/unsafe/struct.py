@@ -3,7 +3,7 @@ from spy.errors import WIP
 from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.field import W_Field
 from spy.vm.function import W_FuncType, FuncParam
-from spy.vm.builtin import W_BuiltinFunc
+from spy.vm.builtin import W_BuiltinFunc, builtin_method
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from . import UNSAFE
 if TYPE_CHECKING:
@@ -95,6 +95,9 @@ class W_Struct(W_Object):
     to have a stack pointer in the WASM memory, and reserve some stack space
     in ast ASTFrame. But then we would also need to think about memory safety
     and lifetimes.
+
+    Note that this is only a limitation of the SPy VM. The C backend uses C
+    structs, so taking-the-address will work out of the box.
     """
     __spy_storage_category__ = 'value'
     w_structtype: W_StructType
@@ -109,3 +112,25 @@ class W_Struct(W_Object):
     def spy_key(self, vm: 'SPyVM') -> Any:
         values_key = [w_val.spy_key(vm) for w_val in self.values_w.values()]
         return ('struct', self.w_structtype.spy_key(vm)) + tuple(values_key)
+
+    def __repr__(self) -> str:
+        fqn = self.w_structtype.fqn
+        return f'<spy struct {fqn}({self.values_w})>'
+
+    @builtin_method('__getattribute__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_GETATTRIBUTE(vm: 'SPyVM', wam_struct: W_MetaArg,
+                       wam_name: W_MetaArg) -> W_OpSpec:
+        w_structtype = wam_struct.w_static_T
+        assert isinstance(w_structtype, W_StructType)
+        name = wam_name.blue_unwrap_str(vm)
+
+        w_field = w_structtype.fields_w[name]
+        T = Annotated[W_Object, w_field.w_T]
+        STRUCT = Annotated[W_Struct, w_structtype]
+
+        @vm.register_builtin_func(w_structtype.fqn, f'__get_{name}__')
+        def w_get(vm: 'SPyVM', w_struct: STRUCT) -> T:
+            return w_struct.values_w[name]
+
+        return W_OpSpec(w_get, [wam_struct])
