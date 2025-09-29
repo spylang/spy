@@ -364,11 +364,11 @@ class CFuncWriter:
         elif irtag.tag == 'struct.getfield':
             return self.fmt_struct_getfield(call, irtag)
 
-        elif irtag.tag == 'unsafe.getfield':
-            return self.fmt_unsafe_getfield(call, irtag)
+        elif irtag.tag == 'ptr.getfield':
+            return self.fmt_ptr_getfield(call, irtag)
 
-        elif irtag.tag == 'unsafe.setfield':
-            return self.fmt_unsafe_setfield(call)
+        elif irtag.tag == 'ptr.setfield':
+            return self.fmt_ptr_setfield(call)
 
         elif irtag.tag in ('unsafe.getitem', 'unsafe.store'):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
@@ -406,7 +406,7 @@ class CFuncWriter:
         name = irtag.data['name']
         return C.Dot(c_struct, name)
 
-    def fmt_unsafe_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
+    def fmt_ptr_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
@@ -418,7 +418,7 @@ class CFuncWriter:
         else:
             return c_field
 
-    def fmt_unsafe_setfield(self, call: ast.Call) -> C.Expr:
+    def fmt_ptr_setfield(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value

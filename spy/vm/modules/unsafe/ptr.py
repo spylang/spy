@@ -293,22 +293,22 @@ class W_Ptr(W_BasePtr):
         wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
 
         if opkind == 'get':
-            # getfield[field_T](ptr, name, offset)
+            # ptr_getfield[field_T](ptr, name, offset)
             assert wam_v is None
-            w_func = vm.fast_call(UNSAFE.w_getfield, [w_field.w_T])
+            w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T])
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset])
         else:
-            # setfield[field_T](ptr, name, offset, v)
+            # ptr_setfield[field_T](ptr, name, offset, v)
             assert wam_v is not None
-            w_func = vm.fast_call(UNSAFE.w_setfield, [w_field.w_T])
+            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
 
 
 
 @UNSAFE.builtin_func(color='blue')
-def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+def w_ptr_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # fields can be returned "by value" or "by reference". Primitive types
     # returned by value, but struct types are always returned by reference
     # (i.e., we return a pointer to it).
@@ -323,10 +323,11 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # e.g.:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
-    tag = IRTag('unsafe.getfield', by=by)
-    @vm.register_builtin_func('unsafe', f'getfield_{by}', [w_T.fqn], irtag=tag)
-    def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
-                     w_offset: W_I32) -> T:
+    tag = IRTag('ptr.getfield', by=by)
+    @vm.register_builtin_func('unsafe', f'ptr_getfield_{by}', [w_T.fqn],
+                              irtag=tag)
+    def w_ptr_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
+                         w_offset: W_I32) -> T:
         """
         NOTE: w_name is ignored here, but it's used by the C backend
         """
@@ -340,18 +341,18 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
                 [w_T],
                 [vm.wrap(addr)]
             )
-    return w_getfield_T
+    return w_ptr_getfield_T
 
 
 @UNSAFE.builtin_func(color='blue')
-def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
+def w_ptr_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
 
     # fqn is something like unsafe::setfield[i32]
-    irtag = IRTag('unsafe.setfield')
-    @vm.register_builtin_func('unsafe', 'setfield', [w_T.fqn], irtag=irtag)
-    def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
-                     w_offset: W_I32, w_val: T) -> None:
+    irtag = IRTag('ptr.setfield')
+    @vm.register_builtin_func('unsafe', 'ptr_setfield', [w_T.fqn], irtag=irtag)
+    def w_ptr_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
+                         w_offset: W_I32, w_val: T) -> None:
         """
         NOTE: w_name is ignored here, but it's used by the C backend
         """
@@ -361,4 +362,4 @@ def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
             [w_T],
             [vm.wrap(addr), w_val]
         )
-    return w_setfield_T
+    return w_ptr_setfield_T
