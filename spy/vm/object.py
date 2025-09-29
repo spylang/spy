@@ -711,7 +711,6 @@ class W_Type(W_Object):
                 f'(we should emit a better error)'
             )
         else:
-            breakpoint()
             raise WIP(
                 f'cannot call object {w_meth} '
                 f'(we should emit a better error)'
