@@ -169,8 +169,9 @@ class W_Ptr(W_BasePtr):
             by = 'byval'
 
         T = Annotated[W_Object, w_T]
+        irtag = IRTag('unsafe.getitem')
 
-        @vm.register_builtin_func(w_ptrtype.fqn, f'getitem_{by}')
+        @vm.register_builtin_func(w_ptrtype.fqn, f'getitem_{by}', irtag=irtag)
         def w_ptr_getitem_T(
             vm: 'SPyVM',
             w_ptr: PTR,
@@ -211,8 +212,9 @@ class W_Ptr(W_BasePtr):
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
         T = Annotated[W_Object, w_T]
+        irtag = IRTag('unsafe.store')
 
-        @vm.register_builtin_func(w_ptrtype.fqn, 'store')
+        @vm.register_builtin_func(w_ptrtype.fqn, 'store', irtag=irtag)
         def w_ptr_store_T(
             vm: 'SPyVM',
             w_ptr: PTR,

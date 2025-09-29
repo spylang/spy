@@ -363,8 +363,7 @@ class CFuncWriter:
             return self.fmt_getfield(fqn, call, irtag)
         elif irtag.tag == 'unsafe.setfield':
             return self.fmt_setfield(fqn, call, irtag)
-        elif (fqn.match("unsafe::ptr[*]::getitem_by*") or
-              fqn.match("unsafe::ptr[*]::store")):
+        elif irtag.tag in ('unsafe.getitem', 'unsafe.store'):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
             # because we rely on C's own mechanism to get line numbers.
