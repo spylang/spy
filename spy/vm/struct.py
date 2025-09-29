@@ -176,7 +176,7 @@ class UnwrappedStruct:
     fqn: FQN
     _fields: dict[str, Any]
 
-    def __init__(self, fqn, fields):
+    def __init__(self, fqn: FQN, fields: dict[str, Any]) -> None:
         self.fqn = fqn
         self._fields = fields
 
