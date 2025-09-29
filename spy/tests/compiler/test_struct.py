@@ -1,11 +1,23 @@
 #-*- encoding: utf-8 -*-
 
 from spy.errors import SPyError
+from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.struct import UnwrappedStruct
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.tests.support import CompilerTest, expect_errors, only_interp
+
+def test_UnwrappedStruct():
+    us1 = UnwrappedStruct(FQN('test::Point'), {'x': 1, 'y': 2})
+    us2 = UnwrappedStruct(FQN('test::Point'), {'x': 1, 'y': 2})
+    us3 = UnwrappedStruct(FQN('test::Point'), {'x': 3, 'y': 4})
+    us4 = UnwrappedStruct(FQN('aaaa::bbbbb'), {'x': 1, 'y': 2})
+    assert us1 == us2
+    assert us1 != us3
+    assert us1 != us4
+    assert us1 == (1, 2)
 
 class TestStructOnStack(CompilerTest):
     """
@@ -34,6 +46,20 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo(3, 4) == 7
         assert mod.bar(5, 6) == 11
 
+    def test_spy_unwrap(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def make_point(x: i32, y: i32) -> Point:
+            return Point(x, y)
+        """
+        mod = self.compile(src)
+        p = mod.make_point(1, 2)
+        assert p == (1, 2)
+
     def test_pass_and_return(self):
         src = """
         @struct
@@ -44,13 +70,12 @@ class TestStructOnStack(CompilerTest):
         def move(p: Point, delta: i32) -> Point:
             return Point(p.x + delta, p.y + delta)
 
-        def foo(x: i32, y: i32) -> i32:
+        def foo(x: i32, y: i32) -> Point:
             p = Point(x, y)
-            p2 = move(p, 3)
-            return p2.x + p2.y
+            return move(p, 3)
         """
         mod = self.compile(src)
-        assert mod.foo(1, 2) == (1+3) + (2+3)
+        assert mod.foo(1, 2) == (4, 5)
 
     def test_cannot_mutate(self):
         src = """
@@ -124,9 +149,8 @@ class TestStructOnStack(CompilerTest):
             def __new__() -> Point:
                 return Point.__make__(0, 0)
 
-        def foo() -> i32:
-            p = Point()
-            return p.x + p.y
+        def foo() -> Point:
+            return Point()
         """
         mod = self.compile(src)
-        assert mod.foo() == 0
+        assert mod.foo() == (0, 0)

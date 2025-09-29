@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Annotated, Any
 from spy.errors import WIP
+from spy.fqn import FQN
 from spy.vm.b import TYPES, BUILTINS
 from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.field import W_Field
@@ -129,6 +130,14 @@ class W_Struct(W_Object):
         values_key = [w_val.spy_key(vm) for w_val in self.values_w.values()]
         return ('struct', self.w_structtype.spy_key(vm)) + tuple(values_key)
 
+    def spy_unwrap(self, vm: 'SPyVM') -> 'UnwrappedStruct':
+        fqn = self.w_structtype.fqn
+        fields = {
+            key: w_obj.spy_unwrap(vm)
+            for key, w_obj in self.values_w.items()
+        }
+        return UnwrappedStruct(fqn, fields)
+
     def __repr__(self) -> str:
         fqn = self.w_structtype.fqn
         return f'<spy struct {fqn}({self.values_w})>'
@@ -152,3 +161,40 @@ class W_Struct(W_Object):
             return w_struct.values_w[name]
 
         return W_OpSpec(w_get, [wam_struct])
+
+
+class UnwrappedStruct:
+    """
+    Return value of vm.unwrap(w_some_struct). Mostly useful for tests.
+
+    The logic to convert WASM values into UnwrappedStruct is in
+    spy.tests.wasm_wrapper.WasmFuncWrapper.to_py_result.
+
+    NOTE: the WASM version works only for flat structs with simple types. This
+    is good enough for most tests.
+    """
+    fqn: FQN
+    _fields: dict[str, Any]
+
+    def __init__(self, fqn, fields):
+        self.fqn = fqn
+        self._fields = fields
+
+    def __getattr__(self, attr: str) -> Any:
+        return self._fields[attr]
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, UnwrappedStruct):
+            return self.fqn == other.fqn and self._fields == other._fields
+        elif isinstance(other, tuple):
+            # this is to make tests easier: in this case, we just compare with
+            # the fields
+            return other == tuple(self._fields.values())
+        else:
+            return NotImplemented
+
+    def __ne__(self, other: Any) -> bool:
+        return not (self == other)
+
+    def __repr__(self) -> str:
+        return f'<UnwrappedStruct {self.fqn}: {self._fields}>'

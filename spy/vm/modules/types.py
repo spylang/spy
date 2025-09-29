@@ -64,7 +64,6 @@ class UnwrappedLiftedObject:
     w_hltype: W_LiftedType
     llval: Any
 
-
 class W_LiftedObject(W_Object):
     w_hltype: W_LiftedType  # high level type
     w_ll: W_Object

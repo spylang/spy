@@ -9,6 +9,7 @@ from spy.vm.cell import W_Cell
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
+from spy.vm.struct import W_StructType, UnwrappedStruct
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.modules.rawbuffer import RB
@@ -146,6 +147,22 @@ class WasmFuncWrapper:
             w_hltype = w_T
             llval = self.to_py_result(w_hltype.w_lltype, res)
             return UnwrappedLiftedObject(w_hltype, llval)
+        elif isinstance(w_T, W_StructType):
+            # when you return struct-by-val from C, wasmtime automatically
+            # converts them into a list. So, we have our values already.
+            #
+            # NOTE: this works only for flat structs with simple
+            # types. E.g. in the case of Rectangle, wasmtime returns a flat
+            # list of all the 4 coordinates, which seems wrong.
+            #
+            # However, this is good enough for most tests, so no reasons to
+            # write complicated logic.
+            assert isinstance(res, list)
+            fields = {
+                fieldname: item
+                for fieldname, item in zip(w_T.fields_w, res, strict=True)
+            }
+            return UnwrappedStruct(w_T.fqn, fields)
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
 

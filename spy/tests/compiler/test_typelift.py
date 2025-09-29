@@ -31,7 +31,6 @@ class TestTypelift(CompilerTest):
 
         def call_lower(i: i32) -> i32:
             return lower(lift(i))
-
         """)
         myint = mod.lift(42)
         assert myint.llval == 42
