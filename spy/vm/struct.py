@@ -149,6 +149,8 @@ class W_Struct(W_Object):
         w_structtype = wam_struct.w_static_T
         assert isinstance(w_structtype, W_StructType)
         name = wam_name.blue_unwrap_str(vm)
+        if name not in w_structtype.fields_w:
+            return W_OpSpec.NULL
 
         w_field = w_structtype.fields_w[name]
         T = Annotated[W_Object, w_field.w_T]
