@@ -299,7 +299,7 @@ class AbstractFrame:
         body = classframe.run()
 
         # finalize type definition
-        w_T.define_from_classbody(body)
+        w_T.define_from_classbody(self.vm, body)
         assert w_T.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:

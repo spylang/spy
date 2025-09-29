@@ -3,7 +3,7 @@ from spy.errors import WIP
 from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.field import W_Field
 from spy.vm.function import W_FuncType, FuncParam
-from spy.vm.builtin import W_BuiltinFunc, builtin_method
+from spy.vm.builtin import W_BuiltinFunc, builtin_method, IRTag
 from spy.vm.property import W_StaticMethod
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from . import UNSAFE
@@ -18,7 +18,7 @@ class W_StructType(W_Type):
     offsets: OFFSETS_T
     size: int
 
-    def define_from_classbody(self, body: ClassBody) -> None:
+    def define_from_classbody(self, vm: 'SPyVM', body: ClassBody) -> None:
         super().define(W_Struct)
         self.fields_w = body.fields_w.copy()
         self.offsets, self.size = calc_layout(self.fields_w)
@@ -30,7 +30,7 @@ class W_StructType(W_Type):
 
         # add a '__make__' staticmethod to create a struct by specifying all
         # the fields
-        w_make = self._create_w_make()
+        w_make = self._create_w_make(vm)
         self.dict_w['__make__'] = W_StaticMethod(w_make)
 
         # if the user didn't provide a '__new__', let's put a default one
@@ -38,7 +38,7 @@ class W_StructType(W_Type):
         if '__new__' not in self.dict_w:
             self.dict_w['__new__'] = w_make
 
-    def _create_w_make(self):
+    def _create_w_make(self, vm: 'SPyVM') -> W_BuiltinFunc:
         STRUCT = Annotated[W_Struct, self]
         # functype
         params = [
@@ -55,9 +55,11 @@ class W_StructType(W_Type):
                 w_res.values_w[w_fld.name] = w_arg
             return w_res
 
-        # make the __make__
+        # create the actual function object
         fqn = self.fqn.join('__make__')
-        return W_BuiltinFunc(w_functype, fqn, w_make_impl)
+        w_make = W_BuiltinFunc(w_functype, fqn, w_make_impl)
+        vm.add_global(fqn, w_make, irtag=IRTag('struct.make'))
+        return w_make
 
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ['struct']

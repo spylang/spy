@@ -358,6 +358,9 @@ class CFuncWriter:
             v = self.fmt_expr(call.args[0])
             return C.UnaryOp(op, v)
 
+        elif irtag.tag == 'struct.make':
+            return self.fmt_struct_make(call, irtag)
+
         elif irtag.tag == 'unsafe.getfield':
             return self.fmt_unsafe_getfield(call, irtag)
 
@@ -387,6 +390,12 @@ class CFuncWriter:
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
+
+    def fmt_struct_make(self, call: ast.Call, irtag: IRTag) -> C.Expr:
+        c_structtype = self.ctx.c_restype_by_fqn(call.func.fqn)
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        strargs = ', '.join(map(str, c_args))
+        return C.Cast(c_structtype, C.Literal('{ %s }' % strargs))
 
     def fmt_unsafe_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)

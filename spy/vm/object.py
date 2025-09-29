@@ -465,7 +465,7 @@ class W_Type(W_Object):
             self._init_builtin_method(w_ne)
 
 
-    def define_from_classbody(self, body: 'ClassBody') -> None:
+    def define_from_classbody(self, vm: 'SPyVM', body: 'ClassBody') -> None:
         raise NotImplementedError
 
     def _init_builtin_method(self, statmeth: staticmethod) -> None:

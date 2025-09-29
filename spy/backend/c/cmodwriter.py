@@ -275,7 +275,7 @@ class CModuleWriter:
                 tb.wl(f"{c_fieldtype} {name};")
         tb.wl("};")
         tb.wl("")
-
+        #
         # unsafe::ptr to struct are a special case: in theory the belong to
         # the 'unsafe' module, but it makes more sense to emit them in the
         # same module as their struct

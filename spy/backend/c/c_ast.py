@@ -288,3 +288,15 @@ class PtrFieldByRef(Expr):
 
     def __str__(self) -> str:
         return f'{self.ptr_type}_from_addr(&{self.byval})'
+
+
+@dataclass
+class Cast(Expr):
+    type: C_Type
+    expr: Expr
+
+    def precedence(self) -> int:
+        return 13
+
+    def __str__(self) -> str:
+        return f'({self.type}){self.expr}'
