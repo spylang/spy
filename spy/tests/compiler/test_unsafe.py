@@ -65,7 +65,7 @@ class TestUnsafe(CompilerTest):
         with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
             mod.foo(3)
 
-    def test_struct(self):
+    def test_ptr_to_struct(self):
         mod = self.compile(
         """
         from unsafe import gc_alloc, ptr

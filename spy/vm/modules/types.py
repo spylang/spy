@@ -41,7 +41,7 @@ class W_Loc(W_Object):
 class W_LiftedType(W_Type):
     w_lltype: W_Type  # low level type
 
-    def define_from_classbody(self, body: ClassBody) -> None:
+    def define_from_classbody(self, vm: 'SPyVM', body: ClassBody) -> None:
         super().define(W_LiftedObject)
         assert set(body.fields_w.keys()) == {'__ll__'} # XXX raise proper exc
         self.w_lltype = body.fields_w['__ll__'].w_T
@@ -63,7 +63,6 @@ class UnwrappedLiftedObject:
     """
     w_hltype: W_LiftedType
     llval: Any
-
 
 class W_LiftedObject(W_Object):
     w_hltype: W_LiftedType  # high level type

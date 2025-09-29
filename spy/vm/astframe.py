@@ -15,7 +15,7 @@ from spy.vm.list import W_List
 from spy.vm.tuple import W_Tuple
 from spy.vm.cell import W_Cell
 from spy.vm.modules.types import W_LiftedType
-from spy.vm.modules.unsafe.struct import W_StructType
+from spy.vm.struct import W_StructType
 from spy.vm.opspec import W_MetaArg
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
@@ -299,7 +299,7 @@ class AbstractFrame:
         body = classframe.run()
 
         # finalize type definition
-        w_T.define_from_classbody(body)
+        w_T.define_from_classbody(self.vm, body)
         assert w_T.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:

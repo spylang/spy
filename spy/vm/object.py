@@ -465,7 +465,7 @@ class W_Type(W_Object):
             self._init_builtin_method(w_ne)
 
 
-    def define_from_classbody(self, body: 'ClassBody') -> None:
+    def define_from_classbody(self, vm: 'SPyVM', body: 'ClassBody') -> None:
         raise NotImplementedError
 
     def _init_builtin_method(self, statmeth: staticmethod) -> None:
@@ -705,16 +705,21 @@ class W_Type(W_Object):
             new_args_wam = list(args_wam)
         elif isinstance(w_meth, W_ClassMethod):
             new_args_wam = [wam_T] + list(args_wam)
+        elif isinstance(w_meth, W_Func):
+            raise WIP(
+                f'this is a method, not a staticmethod or classmethod '
+                f'(we should emit a better error)'
+            )
         else:
             raise WIP(
-                f'cannot all object {w_meth} '
+                f'cannot call object {w_meth} '
                 f'(we should emit a better error)'
             )
 
         w_func = w_meth.w_obj
         if not isinstance(w_func, W_Func):
             raise WIP(
-                f'cannot all object {w_meth.w_obj} '
+                f'cannot call object {w_meth.w_obj} '
                 f'(we should emit a better error)'
             )
 

@@ -69,6 +69,12 @@ class InterpFuncWrapper:
         self.w_functype = w_func.w_functype
 
     def __call__(self, *args: Any, unwrap: bool = True) -> Any:
+        got = len(args)
+        exp = len(self.w_functype.params)
+        if got != exp:
+            msg = f'{self.w_func.fqn} takes exactly {exp} arguments, got {got}'
+            raise TypeError(msg)
+
         # *args contains python-level objs. We want to wrap them into args_w
         # *and to call the func, and unwrap the result
         args_w = []

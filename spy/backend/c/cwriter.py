@@ -5,6 +5,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.b import B
+from spy.vm.builtin import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context
@@ -340,28 +341,37 @@ class CFuncWriter:
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.func, ast.FQNConst), \
             'indirect calls are not supported yet'
+        fqn = call.func.fqn
 
-        # some calls are special-cased and transformed into a C binop
-        if op := self.FQN2BinOp.get(call.func.fqn):
+        irtag = self.ctx.vm.get_irtag(fqn)
+        if call.func.fqn.modname == "jsffi":
+            self.cmodw.emit_jsffi_error_maybe()
+
+        if op := self.FQN2BinOp.get(fqn):
+            # binop special case
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
-        if op := self.FQN2UnaryOp.get(call.func.fqn):
+        elif op := self.FQN2UnaryOp.get(fqn):
+            # unary op special case
             assert len(call.args) == 1
             v = self.fmt_expr(call.args[0])
             return C.UnaryOp(op, v)
 
-        if call.func.fqn.modname == "jsffi":
-            self.cmodw.emit_jsffi_error_maybe()
+        elif irtag.tag == 'struct.make':
+            return self.fmt_struct_make(fqn, call, irtag)
 
-        fqn = call.func.fqn
-        if str(fqn).startswith("unsafe::getfield_by"):
-            return self.fmt_getfield(fqn, call)
-        elif str(fqn).startswith("unsafe::setfield["):
-            return self.fmt_setfield(fqn, call)
-        elif (fqn.match("unsafe::ptr[*]::getitem_by*") or
-              fqn.match("unsafe::ptr[*]::store")):
+        elif irtag.tag == 'struct.getfield':
+            return self.fmt_struct_getfield(fqn, call, irtag)
+
+        elif irtag.tag == 'ptr.getfield':
+            return self.fmt_ptr_getfield(fqn, call, irtag)
+
+        elif irtag.tag == 'ptr.setfield':
+            return self.fmt_ptr_setfield(fqn, call)
+
+        elif irtag.tag in ('unsafe.getitem', 'unsafe.store'):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
             # because we rely on C's own mechanism to get line numbers.
@@ -372,27 +382,45 @@ class CFuncWriter:
             # unsafe.h:SPY_PTR_FUNCTIONS.
             assert isinstance(call.args[-1], ast.LocConst)
             call.args.pop() # remove it
+            return self.fmt_generic_call(fqn, call)
 
-        # the default case is to call a function with the corresponding name
+        else:
+            return self.fmt_generic_call(fqn, call)
+
+    def fmt_generic_call(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # default case: call a function with the corresponding name
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
 
-    def fmt_getfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+    def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        c_structtype = self.ctx.c_restype_by_fqn(fqn)
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        strargs = ', '.join(map(str, c_args))
+        return C.Cast(c_structtype, C.Literal('{ %s }' % strargs))
+
+    def fmt_struct_getfield(self, fqn: FQN, call: ast.Call,
+                            irtag: IRTag) -> C.Expr:
+        assert len(call.args) == 1
+        c_struct = self.fmt_expr(call.args[0])
+        name = irtag.data['name']
+        return C.Dot(c_struct, name)
+
+    def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call,
+                         irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
-        is_byref = str(fqn).startswith("unsafe::getfield_byref")
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
-        if is_byref:
+        if irtag.data['by'] == 'byref':
             c_restype = self.ctx.c_restype_by_fqn(fqn)
             return C.PtrFieldByRef(c_restype, c_field)
         else:
             return c_field
 
-    def fmt_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+    def fmt_ptr_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value

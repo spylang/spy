@@ -14,7 +14,7 @@ from spy.doppler import ErrorMode, redshift
 from spy.errors import SPyError, WIP
 from spy.util import func_equals
 from spy.analyze.symtable import ImportRef
-from spy.vm.builtin import make_builtin_func
+from spy.vm.builtin import make_builtin_func, IRTag
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
                               W_NoneType)
@@ -68,6 +68,7 @@ class SPyVM:
     """
     ll: LLSPyInstance
     globals_w: dict[FQN, W_Object]
+    irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
     path: list[str]
     bluecache: BlueCache
@@ -84,6 +85,7 @@ class SPyVM:
             self.ll = ll
 
         self.globals_w = {}
+        self.irtags = {}
         self.modules_w = {}
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
@@ -224,19 +226,24 @@ class SPyVM:
         else:
             return None
 
-    def add_global(self, fqn: FQN, w_value: W_Object) -> None:
+    def add_global(self, fqn: FQN, w_value: W_Object, *,
+                   irtag: IRTag = IRTag.Empty) -> None:
         assert fqn.modname in self.modules_w
         w_existing = self.globals_w.get(fqn)
         if w_existing is None:
             self.globals_w[fqn] = w_value
         else:
             raise ValueError(f"'{fqn}' already exists")
+        self.irtags[fqn] = irtag
 
     def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
             return self.globals_w.get(fqn)
+
+    def get_irtag(self, fqn: FQN) -> IRTag:
+        return self.irtags.get(fqn, IRTag.Empty)
 
     def reverse_lookup_global(self, w_val: W_Object) -> Optional[FQN]:
         # XXX we should maintain a reverse-lookup table instead of doing a
@@ -279,7 +286,8 @@ class SPyVM:
         *,
         color: Color = 'red',
         kind: FuncKind = 'plain',
-        extra_types: dict = {}
+        extra_types: dict = {},
+        irtag: IRTag = IRTag.Empty,
     ) -> Callable:
         """
         Decorator to turn an interp-level function into a W_BuiltinFunc.
@@ -340,7 +348,7 @@ class SPyVM:
             w_other = self.lookup_global(w_func.fqn)
             if w_other is None:
                 # fqn is free, register and return
-                self.add_global(w_func.fqn, w_func)
+                self.add_global(w_func.fqn, w_func, irtag=irtag)
                 return w_func
 
             # the fqn is taken. Let's check that it's "the same". If any of
