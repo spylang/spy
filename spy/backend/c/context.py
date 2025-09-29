@@ -9,7 +9,7 @@ from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.unsafe.ptr import W_PtrType
-from spy.vm.modules.unsafe.struct import W_StructType
+from spy.vm.struct import W_StructType
 from spy.textbuilder import TextBuilder
 
 @dataclass

@@ -3,9 +3,9 @@ from spy.errors import WIP
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.w import W_Type, W_Object
+from spy.vm.struct import W_StructType
 from . import UNSAFE
 from .ptr import W_Ptr, w_make_ptr_type, W_PtrType
-from .struct import W_StructType
 from .misc import sizeof
 
 if TYPE_CHECKING:

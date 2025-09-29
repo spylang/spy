@@ -11,7 +11,7 @@ from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.vm import SPyVM
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_Ptr
-from spy.vm.modules.unsafe.struct import W_StructType
+from spy.vm.struct import W_StructType
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type
 from spy.backend.c.cwriter import CFuncWriter

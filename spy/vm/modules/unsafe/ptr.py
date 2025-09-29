@@ -276,7 +276,7 @@ class W_Ptr(W_BasePtr):
         """
         Implement both w_GETATTRIBUTE and w_SETATTR.
         """
-        from .struct import W_StructType
+        from spy.vm.struct import W_StructType
         w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         # attributes are supported only on ptr-to-structs

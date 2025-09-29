@@ -1,18 +1,18 @@
 from typing import TYPE_CHECKING, Annotated, Any
 from spy.errors import WIP
+from spy.vm.b import TYPES, BUILTINS
 from spy.vm.object import W_Object, W_Type, ClassBody
 from spy.vm.field import W_Field
 from spy.vm.function import W_FuncType, FuncParam
 from spy.vm.builtin import W_BuiltinFunc, builtin_method, IRTag
 from spy.vm.property import W_StaticMethod
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from . import UNSAFE
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 OFFSETS_T = dict[str, int]
 
-@UNSAFE.builtin_type('StructType')
+@TYPES.builtin_type('StructType')
 class W_StructType(W_Type):
     fields_w: dict[str, W_Field]
     offsets: OFFSETS_T
@@ -82,7 +82,7 @@ def calc_layout(fields_w: dict[str, W_Field]) -> tuple[OFFSETS_T, int]:
     return offsets, size
 
 
-@UNSAFE.builtin_type('struct')
+@BUILTINS.builtin_type('struct')
 class W_Struct(W_Object):
     """
     Struct object allocated ON THE STACK.
