@@ -113,3 +113,20 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(5.0, 12.0) == 13.0
+
+    def test_custom_new(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def __new__() -> Point:
+                return Point.__make__(0, 0)
+
+        def foo() -> i32:
+            p = Point()
+            return p.x + p.y
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 0
