@@ -72,3 +72,25 @@ class TestStructOnStack(CompilerTest):
             ('`p` defined here', 'p: Point'),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_nested_struct(self):
+        mod = self.compile(
+        """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @struct
+        class Rect:
+            a: Point
+            b: Point
+
+        def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> Rect:
+            return Rect(Point(x0, y0), Point(x1, y1))
+
+        def foo() -> i32:
+            r = make_rect(1, 2, 3, 4)
+            return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
+        """)
+        assert mod.foo() == 4321
