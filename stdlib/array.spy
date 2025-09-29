@@ -42,7 +42,7 @@ def _array1(DTYPE):
         l: i32
         items: ptr[DTYPE]
 
-    @typelift
+    @struct
     class ndarray:
         __ll__: ptr[ArrayData]
 
@@ -50,14 +50,14 @@ def _array1(DTYPE):
             data = gc_alloc(ArrayData)(1)
             data.l = l
             data.items = gc_alloc(DTYPE)(l)
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         @staticmethod
         def from_buffer(buf: ptr[DTYPE], l: i32) -> ndarray:
             data = gc_alloc(ArrayData)(1)
             data.items = buf
             data.l = l
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         def __getitem__(self: ndarray, i: i32) -> DTYPE:
             ll = self.__ll__
@@ -86,7 +86,7 @@ def _array2(DTYPE):
         w: i32
         items: ptr[DTYPE]
 
-    @typelift
+    @struct
     class ndarray:
         __ll__: ptr[ArrayData]
 
@@ -95,7 +95,7 @@ def _array2(DTYPE):
             data.h = h
             data.w = w
             data.items = gc_alloc(DTYPE)(h*w)
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         @staticmethod
         def from_buffer(buf: ptr[DTYPE], h: i32, w: i32) -> ndarray:
@@ -103,7 +103,7 @@ def _array2(DTYPE):
             data.items = buf
             data.h = h
             data.w = w
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
             ll = self.__ll__
@@ -142,7 +142,7 @@ def _array3(DTYPE):
         w: i32
         items: ptr[DTYPE]
 
-    @typelift
+    @struct
     class ndarray:
         __ll__: ptr[ArrayData]
 
@@ -152,7 +152,7 @@ def _array3(DTYPE):
             data.h = h
             data.w = w
             data.items = gc_alloc(DTYPE)(d*h*w)
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         @staticmethod
         def from_buffer(buf: ptr[DTYPE], d: i32, h: i32, w: i32) -> ndarray:
@@ -161,7 +161,7 @@ def _array3(DTYPE):
             data.d = d
             data.h = h
             data.w = w
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         def __getitem__(self: ndarray, i: i32, j: i32, k: i32) -> DTYPE:
             ll = self.__ll__
