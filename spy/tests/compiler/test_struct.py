@@ -51,3 +51,24 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(1, 2) == (1+3) + (2+3)
+
+    def test_cannot_mutate(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def mutate(p: Point) -> None:
+            p.x = 0
+
+        def foo() -> None:
+            p = Point(1, 2)
+            mutate(p)
+        """
+        errors = expect_errors(
+            "type `test::Point` does not support assignment to attribute 'x'",
+            ('this is `test::Point`', 'p'),
+            ('`p` defined here', 'p: Point'),
+        )
+        self.compile_raises(src, "foo", errors)
