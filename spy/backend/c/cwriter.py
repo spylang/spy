@@ -361,6 +361,9 @@ class CFuncWriter:
         elif irtag.tag == 'struct.make':
             return self.fmt_struct_make(call, irtag)
 
+        elif irtag.tag == 'struct.getfield':
+            return self.fmt_struct_getfield(call, irtag)
+
         elif irtag.tag == 'unsafe.getfield':
             return self.fmt_unsafe_getfield(call, irtag)
 
@@ -397,13 +400,19 @@ class CFuncWriter:
         strargs = ', '.join(map(str, c_args))
         return C.Cast(c_structtype, C.Literal('{ %s }' % strargs))
 
+    def fmt_struct_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
+        assert len(call.args) == 1
+        c_struct = self.fmt_expr(call.args[0])
+        name = irtag.data['name']
+        return C.Dot(c_struct, name)
+
     def fmt_unsafe_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
-        if irtag.by == 'byref':
+        if irtag.data['by'] == 'byref':
             c_restype = self.ctx.c_restype_by_fqn(call.func.fqn)
             return C.PtrFieldByRef(c_restype, c_field)
         else:

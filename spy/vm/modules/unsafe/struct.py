@@ -142,8 +142,10 @@ class W_Struct(W_Object):
         w_field = w_structtype.fields_w[name]
         T = Annotated[W_Object, w_field.w_T]
         STRUCT = Annotated[W_Struct, w_structtype]
+        irtag = IRTag('struct.getfield', name=name)
 
-        @vm.register_builtin_func(w_structtype.fqn, f'__get_{name}__')
+        @vm.register_builtin_func(w_structtype.fqn, f'__get_{name}__',
+                                  irtag=irtag)
         def w_get(vm: 'SPyVM', w_struct: STRUCT) -> T:
             return w_struct.values_w[name]
 
