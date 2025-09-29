@@ -481,6 +481,11 @@ class While(Stmt):
 class Raise(Stmt):
     exc: Expr
 
+@dataclass(eq=False)
+class Assert(Stmt):
+    test: Expr
+    msg: str | None
+
 
 # ====== IR-specific nodes ======
 #
