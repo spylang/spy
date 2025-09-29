@@ -8,7 +8,7 @@ vm/modules/builtins.py.
 
 import inspect
 from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
-                    Annotated)
+                    Annotated, ClassVar)
 from spy.fqn import FQN, QUALIFIERS
 from spy.errors import SPyError
 from spy.ast import Color, FuncKind
@@ -139,3 +139,27 @@ def builtin_type(namespace: FQN|str,
         pyclass._w = w_T
         return pyclass
     return decorator
+
+class IRTag:
+    """
+    Additional info attached to e.g. builtin functions, to make the life
+    of the backend easier.
+    """
+    Empty: ClassVar['IRTag']
+    tag: str
+    _data: dict[str, Any]
+
+    def __init__(self, tag: str, **kwargs: Any) -> None:
+        self.tag = tag
+        self._data = kwargs
+
+    def __getattr__(self, attr: str) -> Any:
+        return self._data[attr]
+
+    def __repr__(self) -> str:
+        if self.tag == '':
+            return '<IRTag (empty)>'
+        else:
+            return f'<IRTag {self.tag}, {self._data}>'
+
+IRTag.Empty = IRTag('')

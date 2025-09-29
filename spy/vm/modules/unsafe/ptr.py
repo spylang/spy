@@ -6,7 +6,7 @@ from spy.fqn import FQN
 from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
 from spy.vm.member import Member
 from spy.vm.b import B
-from spy.vm.builtin import builtin_method, builtin_property
+from spy.vm.builtin import builtin_method, builtin_property, IRTag
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_OpSpec, W_MetaArg
@@ -321,7 +321,8 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     # e.g.:
     # unsafe::getfield_byval[i32]
     # unsafe::getfield_byref[ptr[Point]]
-    @vm.register_builtin_func('unsafe', f'getfield_{by}', [w_T.fqn])
+    tag = IRTag('unsafe.getfield', by=by)
+    @vm.register_builtin_func('unsafe', f'getfield_{by}', [w_T.fqn], irtag=tag)
     def w_getfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
                      w_offset: W_I32) -> T:
         """
@@ -344,7 +345,9 @@ def w_getfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
 def w_setfield(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
 
-    @vm.register_builtin_func('unsafe', 'setfield', [w_T.fqn])  # unsafe::setfield[i32]
+    # fqn is something like unsafe::setfield[i32]
+    irtag = IRTag('unsafe.setfield')
+    @vm.register_builtin_func('unsafe', 'setfield', [w_T.fqn], irtag=irtag)
     def w_setfield_T(vm: 'SPyVM', w_ptr: W_Ptr, w_name: W_Str,
                      w_offset: W_I32, w_val: T) -> None:
         """

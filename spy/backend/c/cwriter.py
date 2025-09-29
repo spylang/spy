@@ -5,6 +5,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.b import B
+from spy.vm.builtin import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context
@@ -341,6 +342,8 @@ class CFuncWriter:
         assert isinstance(call.func, ast.FQNConst), \
             'indirect calls are not supported yet'
 
+        irtag = self.ctx.vm.get_irtag(call.func.fqn)
+
         # some calls are special-cased and transformed into a C binop
         if op := self.FQN2BinOp.get(call.func.fqn):
             assert len(call.args) == 2
@@ -356,10 +359,10 @@ class CFuncWriter:
             self.cmodw.emit_jsffi_error_maybe()
 
         fqn = call.func.fqn
-        if str(fqn).startswith("unsafe::getfield_by"):
-            return self.fmt_getfield(fqn, call)
-        elif str(fqn).startswith("unsafe::setfield["):
-            return self.fmt_setfield(fqn, call)
+        if irtag.tag == 'unsafe.getfield':
+            return self.fmt_getfield(fqn, call, irtag)
+        elif irtag.tag == 'unsafe.setfield':
+            return self.fmt_setfield(fqn, call, irtag)
         elif (fqn.match("unsafe::ptr[*]::getitem_by*") or
               fqn.match("unsafe::ptr[*]::store")):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
@@ -379,20 +382,19 @@ class CFuncWriter:
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
 
-    def fmt_getfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+    def fmt_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
-        is_byref = str(fqn).startswith("unsafe::getfield_byref")
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
-        if is_byref:
+        if irtag.by == 'byref':
             c_restype = self.ctx.c_restype_by_fqn(fqn)
             return C.PtrFieldByRef(c_restype, c_field)
         else:
             return c_field
 
-    def fmt_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+    def fmt_setfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
