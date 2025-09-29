@@ -22,11 +22,12 @@ class W_StructType(W_Type):
         super().define(W_Struct)
         self.fields_w = body.fields_w.copy()
         self.offsets, self.size = calc_layout(self.fields_w)
-        if body.dict_w != {}:
-            raise WIP('methods in structs')
 
-        if '__make__' in self.dict_w:
-            raise WIP('you cannot define your own __make__')
+        for key, w_obj in body.dict_w.items():
+            assert key not in self.dict_w, 'need to think what to do'
+            if key == '__make__':
+                raise WIP('you cannot define your own __make__')
+            self.dict_w[key] = w_obj
 
         # add a '__make__' staticmethod to create a struct by specifying all
         # the fields

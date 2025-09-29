@@ -74,8 +74,7 @@ class TestStructOnStack(CompilerTest):
         self.compile_raises(src, "foo", errors)
 
     def test_nested_struct(self):
-        mod = self.compile(
-        """
+        src = """
         @struct
         class Point:
             x: i32
@@ -92,5 +91,25 @@ class TestStructOnStack(CompilerTest):
         def foo() -> i32:
             r = make_rect(1, 2, 3, 4)
             return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
-        """)
+        """
+        mod = self.compile(src)
         assert mod.foo() == 4321
+
+    def test_method(self):
+        src = """
+        from math import sqrt
+
+        @struct
+        class Point:
+            x: f64
+            y: f64
+
+            def hypot(self: Point) -> f64:
+                return sqrt(self.x * self.x + self.y * self.y)
+
+        def foo(x: f64, y: f64) -> f64:
+            p = Point(x, y)
+            return p.hypot()
+        """
+        mod = self.compile(src)
+        assert mod.foo(5.0, 12.0) == 13.0
