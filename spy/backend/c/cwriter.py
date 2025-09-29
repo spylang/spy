@@ -343,26 +343,27 @@ class CFuncWriter:
             'indirect calls are not supported yet'
 
         irtag = self.ctx.vm.get_irtag(call.func.fqn)
+        if call.func.fqn.modname == "jsffi":
+            self.cmodw.emit_jsffi_error_maybe()
 
-        # some calls are special-cased and transformed into a C binop
         if op := self.FQN2BinOp.get(call.func.fqn):
+            # binop special case
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
-        if op := self.FQN2UnaryOp.get(call.func.fqn):
+        elif op := self.FQN2UnaryOp.get(call.func.fqn):
+            # unary op special case
             assert len(call.args) == 1
             v = self.fmt_expr(call.args[0])
             return C.UnaryOp(op, v)
 
-        if call.func.fqn.modname == "jsffi":
-            self.cmodw.emit_jsffi_error_maybe()
+        elif irtag.tag == 'unsafe.getfield':
+            return self.fmt_unsafe_getfield(call, irtag)
 
-        fqn = call.func.fqn
-        if irtag.tag == 'unsafe.getfield':
-            return self.fmt_getfield(fqn, call, irtag)
         elif irtag.tag == 'unsafe.setfield':
-            return self.fmt_setfield(fqn, call, irtag)
+            return self.fmt_unsafe_setfield(call)
+
         elif irtag.tag in ('unsafe.getitem', 'unsafe.store'):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
@@ -374,26 +375,32 @@ class CFuncWriter:
             # unsafe.h:SPY_PTR_FUNCTIONS.
             assert isinstance(call.args[-1], ast.LocConst)
             call.args.pop() # remove it
+            return self.fmt_generic_call(call)
 
-        # the default case is to call a function with the corresponding name
+        else:
+            return self.fmt_generic_call(call)
+
+    def fmt_generic_call(self, call: ast.Call) -> C.Expr:
+        # default case: call a function with the corresponding name
+        fqn = call.func.fqn
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
 
-    def fmt_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+    def fmt_unsafe_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
         if irtag.by == 'byref':
-            c_restype = self.ctx.c_restype_by_fqn(fqn)
+            c_restype = self.ctx.c_restype_by_fqn(call.func.fqn)
             return C.PtrFieldByRef(c_restype, c_field)
         else:
             return c_field
 
-    def fmt_setfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+    def fmt_unsafe_setfield(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
