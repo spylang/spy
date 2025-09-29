@@ -341,34 +341,35 @@ class CFuncWriter:
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.func, ast.FQNConst), \
             'indirect calls are not supported yet'
+        fqn = call.func.fqn
 
-        irtag = self.ctx.vm.get_irtag(call.func.fqn)
+        irtag = self.ctx.vm.get_irtag(fqn)
         if call.func.fqn.modname == "jsffi":
             self.cmodw.emit_jsffi_error_maybe()
 
-        if op := self.FQN2BinOp.get(call.func.fqn):
+        if op := self.FQN2BinOp.get(fqn):
             # binop special case
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
-        elif op := self.FQN2UnaryOp.get(call.func.fqn):
+        elif op := self.FQN2UnaryOp.get(fqn):
             # unary op special case
             assert len(call.args) == 1
             v = self.fmt_expr(call.args[0])
             return C.UnaryOp(op, v)
 
         elif irtag.tag == 'struct.make':
-            return self.fmt_struct_make(call, irtag)
+            return self.fmt_struct_make(fqn, call, irtag)
 
         elif irtag.tag == 'struct.getfield':
-            return self.fmt_struct_getfield(call, irtag)
+            return self.fmt_struct_getfield(fqn, call, irtag)
 
         elif irtag.tag == 'ptr.getfield':
-            return self.fmt_ptr_getfield(call, irtag)
+            return self.fmt_ptr_getfield(fqn, call, irtag)
 
         elif irtag.tag == 'ptr.setfield':
-            return self.fmt_ptr_setfield(call)
+            return self.fmt_ptr_setfield(fqn, call)
 
         elif irtag.tag in ('unsafe.getitem', 'unsafe.store'):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
@@ -381,44 +382,45 @@ class CFuncWriter:
             # unsafe.h:SPY_PTR_FUNCTIONS.
             assert isinstance(call.args[-1], ast.LocConst)
             call.args.pop() # remove it
-            return self.fmt_generic_call(call)
+            return self.fmt_generic_call(fqn, call)
 
         else:
-            return self.fmt_generic_call(call)
+            return self.fmt_generic_call(fqn, call)
 
-    def fmt_generic_call(self, call: ast.Call) -> C.Expr:
+    def fmt_generic_call(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # default case: call a function with the corresponding name
-        fqn = call.func.fqn
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
 
-    def fmt_struct_make(self, call: ast.Call, irtag: IRTag) -> C.Expr:
-        c_structtype = self.ctx.c_restype_by_fqn(call.func.fqn)
+    def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        c_structtype = self.ctx.c_restype_by_fqn(fqn)
         c_args = [self.fmt_expr(arg) for arg in call.args]
         strargs = ', '.join(map(str, c_args))
         return C.Cast(c_structtype, C.Literal('{ %s }' % strargs))
 
-    def fmt_struct_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
+    def fmt_struct_getfield(self, fqn: FQN, call: ast.Call,
+                            irtag: IRTag) -> C.Expr:
         assert len(call.args) == 1
         c_struct = self.fmt_expr(call.args[0])
         name = irtag.data['name']
         return C.Dot(c_struct, name)
 
-    def fmt_ptr_getfield(self, call: ast.Call, irtag: IRTag) -> C.Expr:
+    def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call,
+                         irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
         if irtag.data['by'] == 'byref':
-            c_restype = self.ctx.c_restype_by_fqn(call.func.fqn)
+            c_restype = self.ctx.c_restype_by_fqn(fqn)
             return C.PtrFieldByRef(c_restype, c_field)
         else:
             return c_field
 
-    def fmt_ptr_setfield(self, call: ast.Call) -> C.Expr:
+    def fmt_ptr_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value

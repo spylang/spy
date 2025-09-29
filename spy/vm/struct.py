@@ -115,6 +115,7 @@ class W_Struct(W_Object):
     """
     __spy_storage_category__ = 'value'
     w_structtype: W_StructType
+    values_w: dict[str, W_Object]
 
     def __init__(self, w_structtype: W_StructType) -> None:
         self.w_structtype = w_structtype
