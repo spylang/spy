@@ -484,7 +484,7 @@ class Raise(Stmt):
 @dataclass(eq=False)
 class Assert(Stmt):
     test: Expr
-    msg: str | None
+    msg: Expr | None
 
 
 # ====== IR-specific nodes ======
