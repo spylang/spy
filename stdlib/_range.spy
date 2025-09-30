@@ -1,0 +1,7 @@
+@struct
+class range:
+    start: int
+    stop: int
+
+    def __new__(n: int) -> range:
+        return range.__make__(0, n)

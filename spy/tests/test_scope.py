@@ -347,6 +347,10 @@ class TestScopeAnalyzer:
 
     def test_for_loop(self):
         scopes = self.analyze("""
+        # XXX kill this when 'range' becomes a builtin
+        def range(n: i32) -> dynamic:
+            pass
+
         def foo() -> None:
             for i in range(10):
                 x: i32 = i * 2
@@ -357,7 +361,7 @@ class TestScopeAnalyzer:
             'i': MatchSymbol('i', 'red', 'var'),
             'x': MatchSymbol('x', 'red', 'var'),
             '@return': MatchSymbol('@return', 'red', 'var'),
-            'range': MatchSymbol('range', 'blue', 'const', level=2),
+            'range': MatchSymbol('range', 'blue', 'const', level=1),
             'i32': MatchSymbol('i32', 'blue', 'const', level=2),
         }
 
