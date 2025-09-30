@@ -5,3 +5,18 @@ class range:
 
     def __new__(n: int) -> range:
         return range.__make__(0, n)
+
+    def __fastiter__(self: range) -> range_iterator:
+        return range_iterator(self.start, self.stop)
+
+@struct
+class range_iterator:
+    i: int
+    stop: int
+
+    def __next__(self: range_iterator) -> range_iterator:
+        return range_iterator(self.i+1, self.stop)
+
+    # the opposite of StopIteration :)
+    def __continue_iteration__(self: range_iterator) -> bool:
+        return self.i < self.stop
