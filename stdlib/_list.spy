@@ -170,6 +170,45 @@ def List(T):
 
             return _ListImpl.__lift__(new_data)
 
+        def index(self: _ListImpl, value: T) -> i32:
+            ll = self.__ll__
+            i = 0
+            while i < ll.length:
+                if ll.items[i] == value:
+                    return i
+                i = i + 1
+            raise ValueError
+
+        def count(self: _ListImpl, value: T) -> i32:
+            ll = self.__ll__
+            result = 0
+            i = 0
+            while i < ll.length:
+                if ll.items[i] == value:
+                    result = result + 1
+                i = i + 1
+            return result
+
+        def remove(self: _ListImpl, value: T) -> None:
+            ll = self.__ll__
+            idx = -1
+            i = 0
+            while i < ll.length:
+                if ll.items[i] == value:
+                    idx = i
+                    i = ll.length
+                i = i + 1
+
+            if idx == -1:
+                raise ValueError
+
+            j = idx
+            while j < ll.length - 1:
+                ll.items[j] = ll.items[j + 1]
+                j = j + 1
+
+            ll.length = ll.length - 1
+
         def __fastiter__(self: _ListImpl) -> list_iterator:
             return list_iterator(self.__ll__, 0)
 

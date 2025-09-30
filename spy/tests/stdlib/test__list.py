@@ -512,3 +512,225 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.test() == 20
+
+    def test_index(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst.index(20)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 1
+
+    def test_index_first(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst.index(10)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 0
+
+    def test_index_last(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst.index(30)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 2
+
+    def test_index_not_found(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            return lst.index(99)
+        """
+        mod = self.compile(src)
+        with SPyError.raises('W_ValueError'):
+            mod.test()
+
+    def test_index_duplicate(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(10)
+            return lst.index(10)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 0  # Returns first occurrence
+
+    def test_count(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(10)
+            lst.append(30)
+            lst.append(10)
+            return lst.count(10)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 3
+
+    def test_count_zero(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            return lst.count(99)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 0
+
+    def test_count_one(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst.count(20)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 1
+
+    def test_count_empty(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            return lst.count(10)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 0
+
+    def test_remove(self):
+        src = """
+        from _list import List
+
+        def test() -> str:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            lst.remove(20)
+
+            s = ''
+            for x in lst:
+                s = s + str(x) + ' '
+            return s
+        """
+        mod = self.compile(src)
+        assert mod.test() == '10 30 '
+
+    def test_remove_first(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            lst.remove(10)
+            return lst[0]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 20
+
+    def test_remove_last(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            lst.remove(30)
+            return len(lst)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 2
+
+    def test_remove_duplicate(self):
+        src = """
+        from _list import List
+
+        def test() -> str:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(10)
+            lst.append(30)
+            lst.remove(10)
+
+            s = ''
+            for x in lst:
+                s = s + str(x) + ' '
+            return s
+        """
+        mod = self.compile(src)
+        assert mod.test() == '20 10 30 '  # Only first occurrence removed
+
+    def test_remove_not_found(self):
+        src = """
+        from _list import List
+
+        def test() -> None:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.remove(99)
+        """
+        mod = self.compile(src)
+        with SPyError.raises('W_ValueError'):
+            mod.test()
+
+    def test_remove_and_length(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            lst.remove(20)
+            return len(lst)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 2
