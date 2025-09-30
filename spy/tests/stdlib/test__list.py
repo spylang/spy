@@ -163,3 +163,135 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.test() == '5 10 15 '
+
+    def test_setitem(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            lst[1] = 99
+            return lst[1]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 99
+
+    def test_setitem_error(self):
+        src = """
+        from _list import List
+
+        def test() -> None:
+            lst = List[int]()
+            lst.append(10)
+            lst[5] = 99
+        """
+        mod = self.compile(src)
+        with SPyError.raises('W_IndexError'):
+            mod.test()
+
+    def test_pop(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            x = lst.pop()
+            y = len(lst)
+            return x + y
+        """
+        mod = self.compile(src)
+        assert mod.test() == 32  # 30 + 2
+
+    def test_pop_empty(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            return lst.pop()
+        """
+        mod = self.compile(src)
+        with SPyError.raises('W_IndexError'):
+            mod.test()
+
+    def test_insert(self):
+        src = """
+        from _list import List
+
+        def test() -> str:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(30)
+            lst.insert(1, 20)
+
+            s = ''
+            for x in lst:
+                s = s + str(x) + ' '
+            return s
+        """
+        mod = self.compile(src)
+        assert mod.test() == '10 20 30 '
+
+    def test_insert_at_start(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(20)
+            lst.append(30)
+            lst.insert(0, 10)
+            return lst[0]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 10
+
+    def test_insert_at_end(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.insert(2, 30)
+            return lst[2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 30
+
+    def test_clear(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            lst.clear()
+            return len(lst)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 0
+
+    def test_clear_and_reuse(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.clear()
+            lst.append(99)
+            return lst[0]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 99

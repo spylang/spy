@@ -67,6 +67,51 @@ def List(T):
                 raise IndexError
             return ll.items[i]
 
+        def __setitem__(self: _ListImpl, i: i32, value: T) -> None:
+            ll = self.__ll__
+            if i >= ll.length:
+                raise IndexError
+            ll.items[i] = value
+
+        def pop(self: _ListImpl) -> T:
+            ll = self.__ll__
+            if ll.length == 0:
+                raise IndexError
+            ll.length = ll.length - 1
+            return ll.items[ll.length]
+
+        def insert(self: _ListImpl, i: i32, item: T) -> None:
+            ll = self.__ll__
+            if i > ll.length:
+                i = ll.length
+            if i < 0:
+                i = 0
+
+            if ll.length >= ll.capacity:
+                old_capacity = ll.capacity
+                new_capacity = old_capacity * 2
+                new_items = gc_alloc(T)(new_capacity)
+
+                j = 0
+                while j < ll.length:
+                    new_items[j] = ll.items[j]
+                    j = j + 1
+
+                ll.items = new_items
+                ll.capacity = new_capacity
+
+            j = ll.length
+            while j > i:
+                ll.items[j] = ll.items[j - 1]
+                j = j - 1
+
+            ll.items[i] = item
+            ll.length = ll.length + 1
+
+        def clear(self: _ListImpl) -> None:
+            ll = self.__ll__
+            ll.length = 0
+
         def __fastiter__(self: _ListImpl) -> list_iterator:
             return list_iterator(self.__ll__, 0)
 
