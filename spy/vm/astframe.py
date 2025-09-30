@@ -49,6 +49,7 @@ class AbstractFrame:
     locals_decl_loc: dict[str, Loc]
     specialized_names: dict[ast.Name, ast.Expr]
     specialized_assigns: dict[ast.Assign, ast.Stmt]
+    desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:
@@ -73,6 +74,7 @@ class AbstractFrame:
         # specialized version.
         self.specialized_names = {}
         self.specialized_assigns = {}
+        self.desugared_fors = {}
 
     # overridden by DopplerFrame
     @property
@@ -479,6 +481,16 @@ class AbstractFrame:
                 self.exec_stmt(stmt)
 
     def exec_stmt_For(self, for_node: ast.For) -> None:
+        # see the comment in __init__ about desugared_fors
+        if for_node in self.desugared_fors:
+            init_iter, while_loop = self.desugared_fors[for_node]
+        else:
+            init_iter, while_loop = self._desugar_For(for_node)
+            self.desugared_fors[for_node] = (init_iter, while_loop)
+        self.exec_stmt(init_iter)
+        self.exec_stmt(while_loop)
+
+    def _desugar_For(self, for_node: ast.For) -> tuple[ast.Assign, ast.While]:
         # Desugar the for loop into an equivalent while loop
         # Transform:
         #     for i in X:
@@ -490,8 +502,7 @@ class AbstractFrame:
         #         body
         #         it = it.__next__()
         #
-        # (instead of 'it' we use the special variable '@fot_iter_0')
-
+        # (instead of 'it' we use the special variable '@for_iter_N')
         iter_name = f'@for_iter_{for_node.seq}'
         iter_sym = self.symtable.lookup(iter_name)
         iter_target = ast.StrConst(for_node.loc, iter_name)
@@ -507,7 +518,6 @@ class AbstractFrame:
                 args = []
             )
         )
-
         # i = it.__item__()
         assign_item = ast.Assign(
             loc = for_node.loc,
@@ -519,7 +529,6 @@ class AbstractFrame:
                 args = []
             )
         )
-
         # it = it.__next__()
         advance_iter = ast.Assign(
             loc = for_node.loc,
@@ -531,7 +540,6 @@ class AbstractFrame:
                 args = []
             )
         )
-
         # while it.__continue_iteration__(): ...
         while_loop = ast.While(
             loc = for_node.loc,
@@ -543,10 +551,7 @@ class AbstractFrame:
             ),
             body = [assign_item] + for_node.body + [advance_iter]
         )
-
-        # Execute the desugared code
-        self.exec_stmt(init_iter)
-        self.exec_stmt(while_loop)
+        return init_iter, while_loop
 
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
