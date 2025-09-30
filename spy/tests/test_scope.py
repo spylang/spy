@@ -330,3 +330,16 @@ class TestScopeAnalyzer:
             '@return': MatchSymbol('@return', 'blue', 'var'),
             'deco': MatchSymbol('deco', 'blue', 'const', level=1),
         }
+
+    def test_symbol_not_found(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            x = y
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            'x': MatchSymbol('x', 'red', 'var'),
+            '@return': MatchSymbol('@return', 'red', 'var'),
+            'y': MatchSymbol('y', 'red', 'var', level=-1, storage='NameError'),
+        }

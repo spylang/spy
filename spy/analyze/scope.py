@@ -288,17 +288,26 @@ class ScopeAnalyzer:
 
     def capture_maybe(self, varname: str) -> None:
         level, _, _ = self.lookup_ref(varname)
-        if level in (-1, 0):
-            # name already in the symtable, or NameError. Nothing to do here.
+        if level == -1:
+            # name not found
+            assert not self.scope.has_definition(varname)
+            sym = Symbol(varname, 'red', 'var', 'NameError',
+                         level=-1,
+                         loc=Loc.fake(),
+                         type_loc=Loc.fake())
+            self.scope.add(sym)
+
+        elif level == 0:
+            # name already in the symtable, nothing to do
             return
-        # the name was found but in an outer scope. Let's "capture" it.
-        #
-        # find the defintion
-        level, sym = self.lookup_definition(varname)
-        assert sym
-        new_sym = sym.replace(level=level)
-        assert not self.scope.has_definition(varname)
-        self.scope.add(new_sym)
+
+        else:
+            # the name was found but in an outer scope. Let's "capture" it.
+            level, sym = self.lookup_definition(varname)
+            assert sym
+            assert not self.scope.has_definition(varname)
+            new_sym = sym.replace(level=level)
+            self.scope.add(new_sym)
 
     def flatten(self, node: ast.Node) -> None:
         """

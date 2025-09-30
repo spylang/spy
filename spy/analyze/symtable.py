@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 Color = Literal["red", "blue"]
 VarKind = Literal["var", "const"]
-VarStorage = Literal["direct", "cell"]
+VarStorage = Literal["direct", "cell", "NameError"]
 
 def maybe_blue(*colors: Color) -> Color:
     """
@@ -152,7 +152,13 @@ class SymTable:
         )
         for sym in symbols:
             sym_name = color.set(sym.color, f'{sym.name:10s}')
-            fqn = ''
+
+            if sym.storage == 'NameError':
+                # special formatting
+                print(f'    [ ] NameError  {sym_name}')
+                continue
+
+            impref = ''
             if sym.impref:
                 impref = f' => {sym.impref}'
             storage = ''

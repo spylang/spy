@@ -518,12 +518,7 @@ class AbstractFrame:
     def _specialize_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
         sym = self.symtable.lookup_maybe(varname)
-        if sym is None:
-            msg = f"name `{name.id}` is not defined"
-            raise SPyError.simple(
-                "W_NameError", msg, "not found in this scope", name.loc,
-            )
-        elif sym.is_local:
+        if sym.is_local:
             assert sym.storage == 'direct'
             return ast.NameLocal(name.loc, sym)
         elif sym.storage == 'direct':
@@ -533,6 +528,11 @@ class AbstractFrame:
             w_cell = namespace[sym.name]
             assert isinstance(w_cell, W_Cell)
             return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
+        elif sym.storage == 'NameError':
+            msg = f"name `{name.id}` is not defined"
+            raise SPyError.simple(
+                "W_NameError", msg, "not found in this scope", name.loc,
+            )
         else:
             assert False
 
