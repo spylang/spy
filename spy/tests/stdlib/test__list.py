@@ -4,20 +4,13 @@ from spy.errors import SPyError
 
 class TestList(CompilerTest):
 
-    def test_empty_list(self):
+    def test_basic_operations(self):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_empty() -> int:
             lst = List[int]()
             return len(lst)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 0
-
-    def test_append_and_len(self):
-        src = """
-        from _list import List
 
         def test_append() -> int:
             lst = List[int]()
@@ -27,6 +20,7 @@ class TestList(CompilerTest):
             return len(lst)
         """
         mod = self.compile(src)
+        assert mod.test_empty() == 0
         assert mod.test_append() == 3
 
     def test_getitem(self):
@@ -39,13 +33,6 @@ class TestList(CompilerTest):
             lst.append(200)
             lst.append(300)
             return lst[1]
-        """
-        mod = self.compile(src)
-        assert mod.test_indexing() == 200
-
-    def test_multiple_elements(self):
-        src = """
-        from _list import List
 
         def sum_list() -> int:
             lst = List[int]()
@@ -61,13 +48,6 @@ class TestList(CompilerTest):
                 total = total + lst[i]
                 i = i + 1
             return total
-        """
-        mod = self.compile(src)
-        assert mod.sum_list() == 15
-
-    def test_grow_capacity(self):
-        src = """
-        from _list import List
 
         def test_grow() -> int:
             lst = List[int]()
@@ -76,27 +56,13 @@ class TestList(CompilerTest):
                 lst.append(i)
                 i = i + 1
             return lst[9]
-        """
-        mod = self.compile(src)
-        assert mod.test_grow() == 9
 
-    def test_generic_type(self):
-        src = """
-        from _list import List
-
-        def test_f64_list() -> f64:
+        def test_f64() -> f64:
             lst = List[f64]()
             lst.append(1.5)
             lst.append(2.5)
             lst.append(3.5)
             return lst[1]
-        """
-        mod = self.compile(src)
-        assert mod.test_f64_list() == 2.5
-
-    def test_index_error(self):
-        src = """
-        from _list import List
 
         def out_of_bounds() -> int:
             lst = List[int]()
@@ -104,6 +70,10 @@ class TestList(CompilerTest):
             return lst[5]
         """
         mod = self.compile(src)
+        assert mod.test_indexing() == 200
+        assert mod.sum_list() == 15
+        assert mod.test_grow() == 9
+        assert mod.test_f64() == 2.5
         with SPyError.raises('W_IndexError'):
             mod.out_of_bounds()
 
@@ -168,35 +138,29 @@ class TestList(CompilerTest):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_set() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             lst[1] = 99
             return lst[1]
-        """
-        mod = self.compile(src)
-        assert mod.test() == 99
 
-    def test_setitem_error(self):
-        src = """
-        from _list import List
-
-        def test() -> None:
+        def test_error() -> None:
             lst = List[int]()
             lst.append(10)
             lst[5] = 99
         """
         mod = self.compile(src)
+        assert mod.test_set() == 99
         with SPyError.raises('W_IndexError'):
-            mod.test()
+            mod.test_error()
 
     def test_pop(self):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_pop() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -204,27 +168,21 @@ class TestList(CompilerTest):
             x = lst.pop()
             y = len(lst)
             return x + y
-        """
-        mod = self.compile(src)
-        assert mod.test() == 32  # 30 + 2
 
-    def test_pop_empty(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_empty() -> int:
             lst = List[int]()
             return lst.pop()
         """
         mod = self.compile(src)
+        assert mod.test_pop() == 32  # 30 + 2
         with SPyError.raises('W_IndexError'):
-            mod.test()
+            mod.test_empty()
 
     def test_insert(self):
         src = """
         from _list import List
 
-        def test() -> str:
+        def test_middle() -> str:
             lst = List[int]()
             lst.append(10)
             lst.append(30)
@@ -234,29 +192,15 @@ class TestList(CompilerTest):
             for x in lst:
                 s = s + str(x) + ' '
             return s
-        """
-        mod = self.compile(src)
-        assert mod.test() == '10 20 30 '
 
-    def test_insert_at_start(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_start() -> int:
             lst = List[int]()
             lst.append(20)
             lst.append(30)
             lst.insert(0, 10)
             return lst[0]
-        """
-        mod = self.compile(src)
-        assert mod.test() == 10
 
-    def test_insert_at_end(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_end() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -264,28 +208,23 @@ class TestList(CompilerTest):
             return lst[2]
         """
         mod = self.compile(src)
-        assert mod.test() == 30
+        assert mod.test_middle() == '10 20 30 '
+        assert mod.test_start() == 10
+        assert mod.test_end() == 30
 
     def test_clear(self):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_clear() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             lst.clear()
             return len(lst)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 0
 
-    def test_clear_and_reuse(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_reuse() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -294,69 +233,52 @@ class TestList(CompilerTest):
             return lst[0]
         """
         mod = self.compile(src)
-        assert mod.test() == 99
+        assert mod.test_clear() == 0
+        assert mod.test_reuse() == 99
 
-    def test_negative_index_get(self):
+    def test_negative_indexing(self):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_last() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst[-1]
-        """
-        mod = self.compile(src)
-        assert mod.test() == 30
 
-    def test_negative_index_middle(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_middle() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst[-2]
-        """
-        mod = self.compile(src)
-        assert mod.test() == 20
 
-    def test_negative_index_set(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_set() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             lst[-1] = 99
             return lst[2]
-        """
-        mod = self.compile(src)
-        assert mod.test() == 99
 
-    def test_negative_index_error(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_error() -> int:
             lst = List[int]()
             lst.append(10)
             return lst[-5]
         """
         mod = self.compile(src)
+        assert mod.test_last() == 30
+        assert mod.test_middle() == 20
+        assert mod.test_set() == 99
         with SPyError.raises('W_IndexError'):
-            mod.test()
+            mod.test_error()
 
     def test_extend(self):
         src = """
         from _list import List
 
-        def test() -> str:
+        def test_extend() -> str:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -371,15 +293,8 @@ class TestList(CompilerTest):
             for x in lst1:
                 s = s + str(x) + ' '
             return s
-        """
-        mod = self.compile(src)
-        assert mod.test() == '10 20 30 40 '
 
-    def test_extend_empty(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_empty() -> int:
             lst1 = List[int]()
             lst1.append(10)
 
@@ -389,13 +304,14 @@ class TestList(CompilerTest):
             return len(lst1)
         """
         mod = self.compile(src)
-        assert mod.test() == 1
+        assert mod.test_extend() == '10 20 30 40 '
+        assert mod.test_empty() == 1
 
     def test_copy(self):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_independent() -> int:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -404,15 +320,8 @@ class TestList(CompilerTest):
             lst2[0] = 99
 
             return lst1[0]
-        """
-        mod = self.compile(src)
-        assert mod.test() == 10  # Original unchanged
 
-    def test_copy_values(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_values() -> int:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -422,13 +331,14 @@ class TestList(CompilerTest):
             return lst2[1]
         """
         mod = self.compile(src)
-        assert mod.test() == 20
+        assert mod.test_independent() == 10  # Original unchanged
+        assert mod.test_values() == 20
 
     def test_add_operator(self):
         src = """
         from _list import List
 
-        def test() -> str:
+        def test_concat() -> str:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -443,15 +353,8 @@ class TestList(CompilerTest):
             for x in lst3:
                 s = s + str(x) + ' '
             return s
-        """
-        mod = self.compile(src)
-        assert mod.test() == '10 20 30 40 '
 
-    def test_add_operator_original_unchanged(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_unchanged() -> int:
             lst1 = List[int]()
             lst1.append(10)
 
@@ -462,13 +365,14 @@ class TestList(CompilerTest):
             return len(lst1)
         """
         mod = self.compile(src)
-        assert mod.test() == 1  # lst1 unchanged
+        assert mod.test_concat() == '10 20 30 40 '
+        assert mod.test_unchanged() == 1  # lst1 unchanged
 
     def test_mul_operator(self):
         src = """
         from _list import List
 
-        def test() -> str:
+        def test_repeat() -> str:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -479,30 +383,16 @@ class TestList(CompilerTest):
             for x in lst2:
                 s = s + str(x) + ' '
             return s
-        """
-        mod = self.compile(src)
-        assert mod.test() == '10 20 10 20 10 20 '
 
-    def test_mul_operator_zero(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_zero() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
 
             lst2 = lst * 0
             return len(lst2)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 0
 
-    def test_mul_operator_one(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_one() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -511,69 +401,42 @@ class TestList(CompilerTest):
             return lst2[1]
         """
         mod = self.compile(src)
-        assert mod.test() == 20
+        assert mod.test_repeat() == '10 20 10 20 10 20 '
+        assert mod.test_zero() == 0
+        assert mod.test_one() == 20
 
     def test_index(self):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_middle() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.index(20)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 1
 
-    def test_index_first(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_first() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.index(10)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 0
 
-    def test_index_last(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_last() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.index(30)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 2
 
-    def test_index_not_found(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_not_found() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             return lst.index(99)
-        """
-        mod = self.compile(src)
-        with SPyError.raises('W_ValueError'):
-            mod.test()
 
-    def test_index_duplicate(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_duplicate() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -581,13 +444,18 @@ class TestList(CompilerTest):
             return lst.index(10)
         """
         mod = self.compile(src)
-        assert mod.test() == 0  # Returns first occurrence
+        assert mod.test_middle() == 1
+        assert mod.test_first() == 0
+        assert mod.test_last() == 2
+        with SPyError.raises('W_ValueError'):
+            mod.test_not_found()
+        assert mod.test_duplicate() == 0  # Returns first occurrence
 
     def test_count(self):
         src = """
         from _list import List
 
-        def test() -> int:
+        def test_multiple() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -595,53 +463,35 @@ class TestList(CompilerTest):
             lst.append(30)
             lst.append(10)
             return lst.count(10)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 3
 
-    def test_count_zero(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_zero() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             return lst.count(99)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 0
 
-    def test_count_one(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_one() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.count(20)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 1
 
-    def test_count_empty(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_empty() -> int:
             lst = List[int]()
             return lst.count(10)
         """
         mod = self.compile(src)
-        assert mod.test() == 0
+        assert mod.test_multiple() == 3
+        assert mod.test_zero() == 0
+        assert mod.test_one() == 1
+        assert mod.test_empty() == 0
 
     def test_remove(self):
         src = """
         from _list import List
 
-        def test() -> str:
+        def test_middle() -> str:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -652,45 +502,24 @@ class TestList(CompilerTest):
             for x in lst:
                 s = s + str(x) + ' '
             return s
-        """
-        mod = self.compile(src)
-        assert mod.test() == '10 30 '
 
-    def test_remove_first(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_first() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             lst.remove(10)
             return lst[0]
-        """
-        mod = self.compile(src)
-        assert mod.test() == 20
 
-    def test_remove_last(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_last() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             lst.remove(30)
             return len(lst)
-        """
-        mod = self.compile(src)
-        assert mod.test() == 2
 
-    def test_remove_duplicate(self):
-        src = """
-        from _list import List
-
-        def test() -> str:
+        def test_duplicate() -> str:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -702,29 +531,14 @@ class TestList(CompilerTest):
             for x in lst:
                 s = s + str(x) + ' '
             return s
-        """
-        mod = self.compile(src)
-        assert mod.test() == '20 10 30 '  # Only first occurrence removed
 
-    def test_remove_not_found(self):
-        src = """
-        from _list import List
-
-        def test() -> None:
+        def test_not_found() -> None:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
             lst.remove(99)
-        """
-        mod = self.compile(src)
-        with SPyError.raises('W_ValueError'):
-            mod.test()
 
-    def test_remove_and_length(self):
-        src = """
-        from _list import List
-
-        def test() -> int:
+        def test_length() -> int:
             lst = List[int]()
             lst.append(10)
             lst.append(20)
@@ -733,13 +547,19 @@ class TestList(CompilerTest):
             return len(lst)
         """
         mod = self.compile(src)
-        assert mod.test() == 2
+        assert mod.test_middle() == '10 30 '
+        assert mod.test_first() == 20
+        assert mod.test_last() == 2
+        assert mod.test_duplicate() == '20 10 30 '  # Only first occurrence removed
+        with SPyError.raises('W_ValueError'):
+            mod.test_not_found()
+        assert mod.test_length() == 2
 
-    def test_eq_equal_lists(self):
+    def test_eq(self):
         src = """
         from _list import List
 
-        def test() -> bool:
+        def test_equal() -> bool:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -751,27 +571,13 @@ class TestList(CompilerTest):
             lst2.append(30)
 
             return lst1 == lst2
-        """
-        mod = self.compile(src)
-        assert mod.test() == True
 
-    def test_eq_empty_lists(self):
-        src = """
-        from _list import List
-
-        def test() -> bool:
+        def test_empty() -> bool:
             lst1 = List[int]()
             lst2 = List[int]()
             return lst1 == lst2
-        """
-        mod = self.compile(src)
-        assert mod.test() == True
 
-    def test_eq_different_length(self):
-        src = """
-        from _list import List
-
-        def test() -> bool:
+        def test_diff_length() -> bool:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -782,15 +588,8 @@ class TestList(CompilerTest):
             lst2.append(30)
 
             return lst1 == lst2
-        """
-        mod = self.compile(src)
-        assert mod.test() == False
 
-    def test_eq_different_elements(self):
-        src = """
-        from _list import List
-
-        def test() -> bool:
+        def test_diff_elems() -> bool:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -802,15 +601,8 @@ class TestList(CompilerTest):
             lst2.append(30)
 
             return lst1 == lst2
-        """
-        mod = self.compile(src)
-        assert mod.test() == False
 
-    def test_eq_single_element(self):
-        src = """
-        from _list import List
-
-        def test() -> bool:
+        def test_single_same() -> bool:
             lst1 = List[int]()
             lst1.append(42)
 
@@ -818,15 +610,8 @@ class TestList(CompilerTest):
             lst2.append(42)
 
             return lst1 == lst2
-        """
-        mod = self.compile(src)
-        assert mod.test() == True
 
-    def test_eq_single_element_different(self):
-        src = """
-        from _list import List
-
-        def test() -> bool:
+        def test_single_diff() -> bool:
             lst1 = List[int]()
             lst1.append(42)
 
@@ -834,15 +619,8 @@ class TestList(CompilerTest):
             lst2.append(99)
 
             return lst1 == lst2
-        """
-        mod = self.compile(src)
-        assert mod.test() == False
 
-    def test_eq_after_mutations(self):
-        src = """
-        from _list import List
-
-        def test() -> bool:
+        def test_after_mutations() -> bool:
             lst1 = List[int]()
             lst1.append(10)
             lst1.append(20)
@@ -854,15 +632,8 @@ class TestList(CompilerTest):
             lst2.append(30)
 
             return lst1 == lst2
-        """
-        mod = self.compile(src)
-        assert mod.test() == True
 
-    def test_eq_f64_type(self):
-        src = """
-        from _list import List
-
-        def test() -> bool:
+        def test_f64() -> bool:
             lst1 = List[f64]()
             lst1.append(1.5)
             lst1.append(2.5)
@@ -874,4 +645,11 @@ class TestList(CompilerTest):
             return lst1 == lst2
         """
         mod = self.compile(src)
-        assert mod.test() == True
+        assert mod.test_equal() == True
+        assert mod.test_empty() == True
+        assert mod.test_diff_length() == False
+        assert mod.test_diff_elems() == False
+        assert mod.test_single_same() == True
+        assert mod.test_single_diff() == False
+        assert mod.test_after_mutations() == True
+        assert mod.test_f64() == True
