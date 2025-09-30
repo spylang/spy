@@ -502,8 +502,8 @@ class AbstractFrame:
         #         body
         #         it = it.__next__()
         #
-        # (instead of 'it' we use the special variable '@for_iter_N')
-        iter_name = f'@for_iter_{for_node.seq}'
+        # (instead of 'it' we use the special variable '_$iterN')
+        iter_name = f'_$iter{for_node.seq}'
         iter_sym = self.symtable.lookup(iter_name)
         iter_target = ast.StrConst(for_node.loc, iter_name)
 

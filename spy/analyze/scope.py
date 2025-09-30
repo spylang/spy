@@ -285,8 +285,8 @@ class ScopeAnalyzer:
             self.define_name(target.value, 'red', 'var', target.loc, type_loc)
 
     def declare_For(self, forstmt: ast.For) -> None:
-        # Declare the hidden iterator variable @for_iter_N
-        iter_name = f'@for_iter_{forstmt.seq}'
+        # Declare the hidden iterator variable _$iter0
+        iter_name = f'_$iter{forstmt.seq}'
         self.define_name(iter_name, 'red', 'var',
                          forstmt.iter.loc, forstmt.iter.loc)
 
