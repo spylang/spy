@@ -1,0 +1,56 @@
+"""
+SPy list module
+
+A generic dynamic array implementation similar to Python's list.
+"""
+
+from unsafe import gc_alloc, ptr
+
+@blue.generic
+def List(T):
+
+    @struct
+    class ListData:
+        length: i32
+        capacity: i32
+        items: ptr[T]
+
+    @typelift
+    class _ListImpl:
+        __ll__: ptr[ListData]
+
+        def __new__() -> _ListImpl:
+            data = gc_alloc(ListData)(1)
+            data.length = 0
+            data.capacity = 4
+            data.items = gc_alloc(T)(4)
+            return _ListImpl.__lift__(data)
+
+        def append(self: _ListImpl, item: T) -> None:
+            ll = self.__ll__
+            if ll.length >= ll.capacity:
+                old_capacity = ll.capacity
+                new_capacity = old_capacity * 2
+                new_items = gc_alloc(T)(new_capacity)
+
+                i = 0
+                while i < ll.length:
+                    new_items[i] = ll.items[i]
+                    i = i + 1
+
+                ll.items = new_items
+                ll.capacity = new_capacity
+
+            ll.items[ll.length] = item
+            ll.length = ll.length + 1
+
+        def __len__(self: _ListImpl) -> i32:
+            return self.__ll__.length
+
+        def __getitem__(self: _ListImpl, i: i32) -> T:
+            ll = self.__ll__
+            if i >= ll.length:
+                raise IndexError
+            return ll.items[i]
+
+    return _ListImpl
