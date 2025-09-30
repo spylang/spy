@@ -404,7 +404,7 @@ async def inner_main(args: Arguments) -> None:
     if executable == '':
         # outfile is not in a subdir of cwd, let's display the full path
         executable = str(outfile)
-    print(f"==> {executable}")
+    print(f"[{config.build_type}] {executable} ")
 
 
 def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
