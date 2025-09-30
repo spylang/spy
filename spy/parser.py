@@ -65,8 +65,7 @@ class Parser:
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyError.simple("W_ParseError", primary, secondary, loc)
 
-    def unsupported(self, node: py_ast.AST,
-                    reason: Optional[str] = None) -> NoReturn:
+    def unsupported(self, node: py_ast.AST, reason: str) -> NoReturn:
         """
         Emit a nice error in case we encounter an unsupported AST node.
         """
@@ -521,6 +520,29 @@ class Parser:
         return spy.ast.While(
             loc = py_node.loc,
             test = self.from_py_expr(py_node.test),
+            body = self.from_py_body(py_node.body)
+        )
+
+    def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
+        if py_node.orelse:
+            # ideally, we would like to point to the 'else:' line, but we
+            # cannot easiy get it from the ast. Too bad, let's point at the
+            # 'for'.
+            msg = 'not implemented yet: `else` clause in `for` loops'
+            forloc = py_node.loc.replace(
+                line_end = py_node.loc.line_start,
+                col_end = py_node.loc.col_start + 3
+            )
+            self.error(msg, 'this is not supported', forloc)
+
+        # Only support simple names as targets for now
+        if not isinstance(py_node.target, py_ast.Name):
+            self.unsupported(py_node.target, 'complex for loop targets')
+
+        return spy.ast.For(
+            loc = py_node.loc,
+            target = spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            iter = self.from_py_expr(py_node.iter),
             body = self.from_py_body(py_node.body)
         )
 

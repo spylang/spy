@@ -923,6 +923,55 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_For(self):
+        mod = self.parse("""
+        def foo() -> None:
+            for i in range(10):
+                pass
+        """)
+        stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        For(
+            target=StrConst(value='i'),
+            iter=Call(
+                func=Name(id='range'),
+                args=[
+                    Constant(value=10),
+                ],
+            ),
+            body=[
+                Pass(),
+            ],
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_For_else_unsupported(self):
+        src = """
+        def foo() -> None:
+            for i in range(10):
+                pass
+            else:
+                print("done")
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: `else` clause in `for` loops",
+            ("this is not supported", "for"),
+        )
+
+    def test_For_complex_target_unsupported(self):
+        src = """
+        def foo() -> None:
+            for i, j in pairs:
+                pass
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: complex for loop targets",
+            ("this is not supported", "i, j"),
+        )
+
     def test_Raise(self):
         mod = self.parse("""
         def foo() -> None:

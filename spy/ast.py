@@ -478,6 +478,12 @@ class While(Stmt):
     body: list[Stmt]
 
 @dataclass(eq=False)
+class For(Stmt):
+    target: StrConst
+    iter: Expr
+    body: list[Stmt]
+
+@dataclass(eq=False)
 class Raise(Stmt):
     exc: Expr
 
