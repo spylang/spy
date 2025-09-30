@@ -204,13 +204,17 @@ class DopplerFrame(ASTFrame):
             else_body = newelse
         )]
 
-    def shift_stmt_While(self, while_node: ast.While) -> list[ast.While]:
+    def shift_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
         newtest = self.eval_and_shift(while_node.test, varname='@while')
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(
             test = newtest,
             body = newbody
         )]
+
+    def shift_stmt_For(self, for_node: ast.For) -> list[ast.Stmt]:
+        init_iter, while_loop = self._desugar_For(for_node)
+        return self.shift_stmt(init_iter) + self.shift_stmt(while_loop)
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         self.exec_stmt(raise_node)
