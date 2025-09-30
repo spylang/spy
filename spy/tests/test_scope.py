@@ -358,7 +358,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            '@for_iter_0': MatchSymbol('@for_iter_0', 'red', 'var'),
+            '_$iter0': MatchSymbol('_$iter0', 'red', 'var'),
             'i': MatchSymbol('i', 'red', 'var'),
             'x': MatchSymbol('x', 'red', 'var'),
             '@return': MatchSymbol('@return', 'red', 'var'),
@@ -381,8 +381,8 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            '@for_iter_0': MatchSymbol('@for_iter_0', 'red', 'var'),
-            '@for_iter_1': MatchSymbol('@for_iter_1', 'red', 'var'),
+            '_$iter0': MatchSymbol('_$iter0', 'red', 'var'),
+            '_$iter1': MatchSymbol('_$iter1', 'red', 'var'),
             'i': MatchSymbol('i', 'red', 'var'),
             'j': MatchSymbol('j', 'red', 'var'),
             'x': MatchSymbol('x', 'red', 'var'),
