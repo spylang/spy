@@ -27,7 +27,7 @@ RELEASE_CFLAGS  = ['-DSPY_RELEASE', '-O3', '-flto']
 RELEASE_LDFLAGS = ['-flto']
 
 DEBUG_CFLAGS    = ['-DSPY_DEBUG',   '-O0', '-g']
-DEBUG_LDFLAGS   = []
+DEBUG_LDFLAGS: list[str] = []
 
 WASM_CFLAGS = [
     '-mmultivalue',

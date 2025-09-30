@@ -318,7 +318,7 @@ class ScopeAnalyzer:
 
         else:
             # the name was found but in an outer scope. Let's "capture" it.
-            level, sym = self.lookup_definition(varname)
+            level, sym = self.lookup_definition(varname)  # type: ignore
             assert sym
             assert not self.scope.has_definition(varname)
             new_sym = sym.replace(level=level)

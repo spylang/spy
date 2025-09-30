@@ -593,6 +593,7 @@ class AbstractFrame:
     def _specialize_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
         sym = self.symtable.lookup_maybe(varname)
+        assert sym is not None
         if sym.is_local:
             assert sym.storage == 'direct'
             return ast.NameLocal(name.loc, sym)
