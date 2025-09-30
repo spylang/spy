@@ -478,6 +478,76 @@ class AbstractFrame:
             for stmt in while_node.body:
                 self.exec_stmt(stmt)
 
+    def exec_stmt_For(self, for_node: ast.For) -> None:
+        # Desugar the for loop into an equivalent while loop
+        # Transform:
+        #     for i in X:
+        #         body
+        # Into:
+        #     it = X.__fastiter__()
+        #     while it.__continue_iteration__():
+        #         i = it.__item__()
+        #         body
+        #         it = it.__next__()
+        #
+        # (instead of 'it' we use the special variable '@fot_iter_0')
+
+        iter_name = f'@for_iter_{for_node.seq}'
+        iter_sym = self.symtable.lookup(iter_name)
+        iter_target = ast.StrConst(for_node.loc, iter_name)
+
+        # it = X.__fastiter__()
+        init_iter = ast.Assign(
+            loc = for_node.loc,
+            target = iter_target,
+            value = ast.CallMethod(
+                loc = for_node.loc,
+                target = for_node.iter,
+                method = ast.StrConst(for_node.loc, '__fastiter__'),
+                args = []
+            )
+        )
+
+        # i = it.__item__()
+        assign_item = ast.Assign(
+            loc = for_node.loc,
+            target = for_node.target,
+            value = ast.CallMethod(
+                loc = for_node.loc,
+                target = ast.NameLocal(for_node.loc, iter_sym),
+                method = ast.StrConst(for_node.loc, '__item__'),
+                args = []
+            )
+        )
+
+        # it = it.__next__()
+        advance_iter = ast.Assign(
+            loc = for_node.loc,
+            target = iter_target,
+            value = ast.CallMethod(
+                loc = for_node.loc,
+                target = ast.NameLocal(for_node.loc, iter_sym),
+                method = ast.StrConst(for_node.loc, '__next__'),
+                args = []
+            )
+        )
+
+        # while it.__continue_iteration__(): ...
+        while_loop = ast.While(
+            loc = for_node.loc,
+            test = ast.CallMethod(
+                loc = for_node.loc,
+                target = ast.NameLocal(for_node.loc, iter_sym),
+                method = ast.StrConst(for_node.loc, '__continue_iteration__'),
+                args = []
+            ),
+            body = [assign_item] + for_node.body + [advance_iter]
+        )
+
+        # Execute the desugared code
+        self.exec_stmt(init_iter)
+        self.exec_stmt(while_loop)
+
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
         w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])
