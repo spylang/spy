@@ -55,10 +55,14 @@ class TestStructOnStack(CompilerTest):
 
         def make_point(x: i32, y: i32) -> Point:
             return Point(x, y)
+
+        def get_x(p: Point) -> i32:
+            return p.x
         """
         mod = self.compile(src)
         p = mod.make_point(1, 2)
         assert p == (1, 2)
+        assert mod.get_x(p) == 1
 
     def test_pass_and_return(self):
         src = """

@@ -180,6 +180,17 @@ class UnwrappedStruct:
         self.fqn = fqn
         self._fields = fields
 
+    def spy_wrap(self, vm: 'SPyVM') -> W_Struct:
+        "This is needed for tests, to use structs as function arguments"
+        w_structT = vm.lookup_global(self.fqn)
+        assert set(self._fields.keys()) == set(w_structT.fields_w.keys())
+        w_struct = W_Struct(w_structT)
+        w_struct.values_w = {
+            key: vm.wrap(obj)
+            for key, obj in self._fields.items()
+        }
+        return w_struct
+
     def __getattr__(self, attr: str) -> Any:
         return self._fields[attr]
 

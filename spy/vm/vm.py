@@ -27,6 +27,7 @@ from spy.vm.opimpl import W_OpImpl
 from spy.vm.property import W_Property, W_StaticMethod, W_ClassMethod
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
+from spy.vm.struct import UnwrappedStruct
 from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
@@ -547,6 +548,8 @@ class SPyVM:
             return W_Str(self, value)
         elif T is Loc:
             return W_Loc(value)
+        elif T is UnwrappedStruct:
+            return value.spy_wrap(self)
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "
