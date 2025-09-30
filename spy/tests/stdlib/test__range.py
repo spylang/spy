@@ -52,3 +52,23 @@ class TestRange(CompilerTest):
 
         assert it == (3, 3)
         assert mod.cont(it) == False
+
+    def test_misc(self):
+        src = """
+        from _range import range
+
+        def tostr(r: range) -> str:
+            s = ''
+            for i in r:
+                s += str(i) + ' '
+            return s
+
+        def fmt1(n: int) -> str:
+            return tostr(range(n))
+
+        def fmt2(a: int, b: int) -> str:
+            return tostr(range(a, b))
+        """
+        mod = self.compile(src)
+        assert mod.fmt1(4) == '0 1 2 3 '
+        assert mod.fmt2(3, 7) == '3 4 5 6 '

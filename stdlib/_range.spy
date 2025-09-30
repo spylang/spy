@@ -1,10 +1,29 @@
+from operator import OpSpec, MetaArg
+
 @struct
 class range:
     start: int
     stop: int
 
-    def __new__(n: int) -> range:
-        return range.__make__(0, n)
+    @blue.metafunc
+    def __new__(m_cls, *args_m):
+        def impl1(n: int) -> range:
+            return range.__make__(0, n)
+
+        def impl2(a: int, b: int) -> range:
+            return range.__make__(a, b)
+
+        # we cannot do list(args_m), so we need to do it manually somehow :(
+        m0: MetaArg
+        m1: MetaArg
+        if len(args_m) == 1:
+            m0, = args_m
+            return OpSpec(impl1, [m0])
+        elif len(args_m) == 2:
+            m0, m1 = args_m
+            return OpSpec(impl2, [m0, m1])
+        else:
+            return OpSpec.NULL
 
     def __fastiter__(self: range) -> range_iterator:
         return range_iterator(self.start, self.stop)
