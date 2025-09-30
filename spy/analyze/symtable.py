@@ -152,7 +152,6 @@ class SymTable:
         )
         for sym in symbols:
             sym_name = color.set(sym.color, f'{sym.name:10s}')
-
             if sym.storage == 'NameError':
                 # special formatting
                 print(f'    [ ] NameError  {sym_name}')

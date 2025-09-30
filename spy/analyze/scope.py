@@ -284,6 +284,15 @@ class ScopeAnalyzer:
             type_loc = value.loc
             self.define_name(target.value, 'red', 'var', target.loc, type_loc)
 
+    def declare_For(self, forstmt: ast.For) -> None:
+        # consider "for i in range(10)".  What is the "type_loc" of i? It's an
+        # implicit declaration, and its value depends on the iterator returned
+        # by range. So we use "range(10)" as the type_loc.
+        self.define_name(forstmt.target.value, 'red', 'var',
+                         forstmt.target.loc, forstmt.iter.loc)
+        for stmt in forstmt.body:
+            self.declare(stmt)
+
     # ===
 
     def capture_maybe(self, varname: str) -> None:
@@ -356,3 +365,11 @@ class ScopeAnalyzer:
     def flatten_Assign(self, assign: ast.Assign) -> None:
         self.capture_maybe(assign.target.value)
         self.flatten(assign.value)
+
+    def flatten_For(self, forstmt: ast.For) -> None:
+        # capture the loop variable and flatten the iterator
+        self.capture_maybe(forstmt.target.value)
+        self.flatten(forstmt.iter)
+        # flatten the body
+        for stmt in forstmt.body:
+            self.flatten(stmt)

@@ -343,3 +343,35 @@ class TestScopeAnalyzer:
             '@return': MatchSymbol('@return', 'red', 'var'),
             'y': MatchSymbol('y', 'red', 'var', level=-1, storage='NameError'),
         }
+
+
+    def test_for_loop(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            for i in range(10):
+                x: i32 = i * 2
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            'i': MatchSymbol('i', 'red', 'var'),
+            'x': MatchSymbol('x', 'red', 'var'),
+            '@return': MatchSymbol('@return', 'red', 'var'),
+            'range': MatchSymbol('range', 'blue', 'const', level=2),
+            'i32': MatchSymbol('i32', 'blue', 'const', level=2),
+        }
+
+    def test_for_loop_no_shadowing(self):
+        src = """
+        i: i32 = 0
+
+        def foo() -> None:
+            for i in range(10):
+                pass
+        """
+        self.expect_errors(
+            src,
+            'variable `i` shadows a name declared in an outer scope',
+            ('this is the new declaration', "i"),
+            ('this is the previous declaration', "i: i32 = 0"),
+        )
