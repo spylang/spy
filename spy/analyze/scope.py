@@ -284,21 +284,45 @@ class ScopeAnalyzer:
             type_loc = value.loc
             self.define_name(target.value, 'red', 'var', target.loc, type_loc)
 
+    def declare_For(self, forstmt: ast.For) -> None:
+        # Declare the hidden iterator variable _$iter0
+        iter_name = f'_$iter{forstmt.seq}'
+        self.define_name(iter_name, 'red', 'var',
+                         forstmt.iter.loc, forstmt.iter.loc)
+
+        # Declare the loop variable (e.g., "i" in "for i in range(10)")
+        # What is the "type_loc" of i? It's an implicit declaration, and its
+        # value depends on the iterator returned by range. So we use
+        # "range(10)" as the type_loc.
+        self.define_name(forstmt.target.value, 'red', 'var',
+                         forstmt.target.loc, forstmt.iter.loc)
+        for stmt in forstmt.body:
+            self.declare(stmt)
+
     # ===
 
     def capture_maybe(self, varname: str) -> None:
         level, _, _ = self.lookup_ref(varname)
-        if level in (-1, 0):
-            # name already in the symtable, or NameError. Nothing to do here.
+        if level == -1:
+            # name not found
+            assert not self.scope.has_definition(varname)
+            sym = Symbol(varname, 'red', 'var', 'NameError',
+                         level=-1,
+                         loc=Loc.fake(),
+                         type_loc=Loc.fake())
+            self.scope.add(sym)
+
+        elif level == 0:
+            # name already in the symtable, nothing to do
             return
-        # the name was found but in an outer scope. Let's "capture" it.
-        #
-        # find the defintion
-        level, sym = self.lookup_definition(varname)
-        assert sym
-        new_sym = sym.replace(level=level)
-        assert not self.scope.has_definition(varname)
-        self.scope.add(new_sym)
+
+        else:
+            # the name was found but in an outer scope. Let's "capture" it.
+            level, sym = self.lookup_definition(varname)  # type: ignore
+            assert sym
+            assert not self.scope.has_definition(varname)
+            new_sym = sym.replace(level=level)
+            self.scope.add(new_sym)
 
     def flatten(self, node: ast.Node) -> None:
         """
@@ -347,3 +371,11 @@ class ScopeAnalyzer:
     def flatten_Assign(self, assign: ast.Assign) -> None:
         self.capture_maybe(assign.target.value)
         self.flatten(assign.value)
+
+    def flatten_For(self, forstmt: ast.For) -> None:
+        # capture the loop variable and flatten the iterator
+        self.capture_maybe(forstmt.target.value)
+        self.flatten(forstmt.iter)
+        # flatten the body
+        for stmt in forstmt.body:
+            self.flatten(stmt)

@@ -149,6 +149,8 @@ class W_Struct(W_Object):
         w_structtype = wam_struct.w_static_T
         assert isinstance(w_structtype, W_StructType)
         name = wam_name.blue_unwrap_str(vm)
+        if name not in w_structtype.fields_w:
+            return W_OpSpec.NULL
 
         w_field = w_structtype.fields_w[name]
         T = Annotated[W_Object, w_field.w_T]
@@ -179,6 +181,18 @@ class UnwrappedStruct:
     def __init__(self, fqn: FQN, fields: dict[str, Any]) -> None:
         self.fqn = fqn
         self._fields = fields
+
+    def spy_wrap(self, vm: 'SPyVM') -> W_Struct:
+        "This is needed for tests, to use structs as function arguments"
+        w_structT = vm.lookup_global(self.fqn)
+        assert isinstance(w_structT, W_StructType)
+        assert set(self._fields.keys()) == set(w_structT.fields_w.keys())
+        w_struct = W_Struct(w_structT)
+        w_struct.values_w = {
+            key: vm.wrap(obj)
+            for key, obj in self._fields.items()
+        }
+        return w_struct
 
     def __getattr__(self, attr: str) -> Any:
         return self._fields[attr]
