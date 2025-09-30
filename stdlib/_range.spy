@@ -17,6 +17,9 @@ class range_iterator:
     def __next__(self: range_iterator) -> range_iterator:
         return range_iterator(self.i+1, self.stop)
 
+    def __item__(self: range_iterator) -> int:
+        return self.i
+
     # the opposite of StopIteration :)
     def __continue_iteration__(self: range_iterator) -> bool:
         return self.i < self.stop

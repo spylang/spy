@@ -26,6 +26,9 @@ class TestRange(CompilerTest):
         def next(it: range_iterator) -> range_iterator:
             return it.__next__()
 
+        def item(it: range_iterator) -> int:
+            return it.__item__()
+
         def cont(it: range_iterator) -> bool:
             return it.__continue_iteration__()
         """
@@ -34,14 +37,17 @@ class TestRange(CompilerTest):
 
         assert it == (0, 3)
         assert mod.cont(it) == True
+        assert mod.item(it) == 0
         it = mod.next(it)
 
         assert it == (1, 3)
         assert mod.cont(it) == True
+        assert mod.item(it) == 1
         it = mod.next(it)
 
         assert it == (2, 3)
         assert mod.cont(it) == True
+        assert mod.item(it) == 2
         it = mod.next(it)
 
         assert it == (3, 3)
