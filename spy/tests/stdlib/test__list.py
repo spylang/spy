@@ -734,3 +734,144 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.test() == 2
+
+    def test_eq_equal_lists(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+            lst1.append(30)
+
+            lst2 = List[int]()
+            lst2.append(10)
+            lst2.append(20)
+            lst2.append(30)
+
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == True
+
+    def test_eq_empty_lists(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[int]()
+            lst2 = List[int]()
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == True
+
+    def test_eq_different_length(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+
+            lst2 = List[int]()
+            lst2.append(10)
+            lst2.append(20)
+            lst2.append(30)
+
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == False
+
+    def test_eq_different_elements(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+            lst1.append(30)
+
+            lst2 = List[int]()
+            lst2.append(10)
+            lst2.append(99)
+            lst2.append(30)
+
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == False
+
+    def test_eq_single_element(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[int]()
+            lst1.append(42)
+
+            lst2 = List[int]()
+            lst2.append(42)
+
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == True
+
+    def test_eq_single_element_different(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[int]()
+            lst1.append(42)
+
+            lst2 = List[int]()
+            lst2.append(99)
+
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == False
+
+    def test_eq_after_mutations(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+            lst1.append(30)
+            lst1.remove(20)
+
+            lst2 = List[int]()
+            lst2.append(10)
+            lst2.append(30)
+
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == True
+
+    def test_eq_f64_type(self):
+        src = """
+        from _list import List
+
+        def test() -> bool:
+            lst1 = List[f64]()
+            lst1.append(1.5)
+            lst1.append(2.5)
+
+            lst2 = List[f64]()
+            lst2.append(1.5)
+            lst2.append(2.5)
+
+            return lst1 == lst2
+        """
+        mod = self.compile(src)
+        assert mod.test() == True

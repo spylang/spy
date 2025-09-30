@@ -5,6 +5,7 @@ A generic dynamic array implementation similar to Python's list.
 """
 
 from unsafe import gc_alloc, ptr
+from operator import OpSpec, MetaArg
 
 @blue.generic
 def List(T):
@@ -208,6 +209,28 @@ def List(T):
                 j = j + 1
 
             ll.length = ll.length - 1
+
+        @blue.metafunc
+        def __eq__(m_self, m_other):
+            if m_other.static_type == m_self.static_type:
+                def eq_impl(self: _ListImpl, other: _ListImpl) -> bool:
+                    ll1 = self.__ll__
+                    ll2 = other.__ll__
+
+                    if ll1.length != ll2.length:
+                        return False
+
+                    i = 0
+                    while i < ll1.length:
+                        if ll1.items[i] != ll2.items[i]:
+                            return False
+                        i = i + 1
+
+                    return True
+
+                return OpSpec(eq_impl, [m_self, m_other])
+            else:
+                return OpSpec.NULL
 
         def __fastiter__(self: _ListImpl) -> list_iterator:
             return list_iterator(self.__ll__, 0)
