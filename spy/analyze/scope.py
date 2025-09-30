@@ -285,9 +285,15 @@ class ScopeAnalyzer:
             self.define_name(target.value, 'red', 'var', target.loc, type_loc)
 
     def declare_For(self, forstmt: ast.For) -> None:
-        # consider "for i in range(10)".  What is the "type_loc" of i? It's an
-        # implicit declaration, and its value depends on the iterator returned
-        # by range. So we use "range(10)" as the type_loc.
+        # Declare the hidden iterator variable @for_iter_N
+        iter_name = f'@for_iter_{forstmt.seq}'
+        self.define_name(iter_name, 'red', 'var',
+                         forstmt.iter.loc, forstmt.iter.loc)
+
+        # Declare the loop variable (e.g., "i" in "for i in range(10)")
+        # What is the "type_loc" of i? It's an implicit declaration, and its
+        # value depends on the iterator returned by range. So we use
+        # "range(10)" as the type_loc.
         self.define_name(forstmt.target.value, 'red', 'var',
                          forstmt.target.loc, forstmt.iter.loc)
         for stmt in forstmt.body:

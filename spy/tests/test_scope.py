@@ -358,8 +358,35 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef('foo')
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
+            '@for_iter_0': MatchSymbol('@for_iter_0', 'red', 'var'),
             'i': MatchSymbol('i', 'red', 'var'),
             'x': MatchSymbol('x', 'red', 'var'),
+            '@return': MatchSymbol('@return', 'red', 'var'),
+            'range': MatchSymbol('range', 'blue', 'const', level=1),
+            'i32': MatchSymbol('i32', 'blue', 'const', level=2),
+        }
+
+    def test_for_loop_multiple(self):
+        scopes = self.analyze("""
+        # XXX kill this when 'range' becomes a builtin
+        def range(n: i32) -> dynamic:
+            pass
+
+        def foo() -> None:
+            for i in range(10):
+                x: i32 = i * 2
+            for j in range(5):
+                y: i32 = j * 3
+        """)
+        funcdef = self.mod.get_funcdef('foo')
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            '@for_iter_0': MatchSymbol('@for_iter_0', 'red', 'var'),
+            '@for_iter_1': MatchSymbol('@for_iter_1', 'red', 'var'),
+            'i': MatchSymbol('i', 'red', 'var'),
+            'j': MatchSymbol('j', 'red', 'var'),
+            'x': MatchSymbol('x', 'red', 'var'),
+            'y': MatchSymbol('y', 'red', 'var'),
             '@return': MatchSymbol('@return', 'red', 'var'),
             'range': MatchSymbol('range', 'blue', 'const', level=1),
             'i32': MatchSymbol('i32', 'blue', 'const', level=2),
