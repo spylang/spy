@@ -479,6 +479,7 @@ class While(Stmt):
 
 @dataclass(eq=False)
 class For(Stmt):
+    seq: int  # unique id within a funcdef
     target: StrConst
     iter: Expr
     body: list[Stmt]
