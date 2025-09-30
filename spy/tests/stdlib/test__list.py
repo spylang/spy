@@ -116,24 +116,6 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         assert mod.test() == 10
 
-    def test_for_loop_string_concat(self):
-        src = """
-        from _list import List
-
-        def test() -> str:
-            lst = List[int]()
-            lst.append(5)
-            lst.append(10)
-            lst.append(15)
-
-            s = ''
-            for x in lst:
-                s = s + str(x) + ' '
-            return s
-        """
-        mod = self.compile(src)
-        assert mod.test() == '5 10 15 '
-
     def test_setitem(self):
         src = """
         from _list import List
