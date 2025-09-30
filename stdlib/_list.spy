@@ -63,12 +63,20 @@ def List(T):
 
         def __getitem__(self: _ListImpl, i: i32) -> T:
             ll = self.__ll__
+            if i < 0:
+                i = i + ll.length
+            if i < 0:
+                raise IndexError
             if i >= ll.length:
                 raise IndexError
             return ll.items[i]
 
         def __setitem__(self: _ListImpl, i: i32, value: T) -> None:
             ll = self.__ll__
+            if i < 0:
+                i = i + ll.length
+            if i < 0:
+                raise IndexError
             if i >= ll.length:
                 raise IndexError
             ll.items[i] = value
@@ -111,6 +119,56 @@ def List(T):
         def clear(self: _ListImpl) -> None:
             ll = self.__ll__
             ll.length = 0
+
+        def extend(self: _ListImpl, other: _ListImpl) -> None:
+            other_ll = other.__ll__
+            i = 0
+            while i < other_ll.length:
+                self.append(other_ll.items[i])
+                i = i + 1
+
+        def copy(self: _ListImpl) -> _ListImpl:
+            ll = self.__ll__
+            new_data = gc_alloc(ListData)(1)
+            new_data.length = ll.length
+            new_data.capacity = ll.capacity
+            new_data.items = gc_alloc(T)(ll.capacity)
+
+            i = 0
+            while i < ll.length:
+                new_data.items[i] = ll.items[i]
+                i = i + 1
+
+            return _ListImpl.__lift__(new_data)
+
+        def __add__(self: _ListImpl, other: _ListImpl) -> _ListImpl:
+            result = self.copy()
+            result.extend(other)
+            return result
+
+        def __mul__(self: _ListImpl, n: i32) -> _ListImpl:
+            ll = self.__ll__
+            new_data = gc_alloc(ListData)(1)
+            new_length = ll.length * n
+
+            if new_length == 0:
+                new_data.length = 0
+                new_data.capacity = 4
+                new_data.items = gc_alloc(T)(4)
+            else:
+                new_data.length = new_length
+                new_data.capacity = new_length
+                new_data.items = gc_alloc(T)(new_length)
+
+                i = 0
+                while i < n:
+                    j = 0
+                    while j < ll.length:
+                        new_data.items[i * ll.length + j] = ll.items[j]
+                        j = j + 1
+                    i = i + 1
+
+            return _ListImpl.__lift__(new_data)
 
         def __fastiter__(self: _ListImpl) -> list_iterator:
             return list_iterator(self.__ll__, 0)

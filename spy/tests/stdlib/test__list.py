@@ -295,3 +295,220 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.test() == 99
+
+    def test_negative_index_get(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst[-1]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 30
+
+    def test_negative_index_middle(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst[-2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 20
+
+    def test_negative_index_set(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            lst[-1] = 99
+            return lst[2]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 99
+
+    def test_negative_index_error(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            return lst[-5]
+        """
+        mod = self.compile(src)
+        with SPyError.raises('W_IndexError'):
+            mod.test()
+
+    def test_extend(self):
+        src = """
+        from _list import List
+
+        def test() -> str:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+
+            lst2 = List[int]()
+            lst2.append(30)
+            lst2.append(40)
+
+            lst1.extend(lst2)
+
+            s = ''
+            for x in lst1:
+                s = s + str(x) + ' '
+            return s
+        """
+        mod = self.compile(src)
+        assert mod.test() == '10 20 30 40 '
+
+    def test_extend_empty(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst1 = List[int]()
+            lst1.append(10)
+
+            lst2 = List[int]()
+
+            lst1.extend(lst2)
+            return len(lst1)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 1
+
+    def test_copy(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+
+            lst2 = lst1.copy()
+            lst2[0] = 99
+
+            return lst1[0]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 10  # Original unchanged
+
+    def test_copy_values(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+            lst1.append(30)
+
+            lst2 = lst1.copy()
+            return lst2[1]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 20
+
+    def test_add_operator(self):
+        src = """
+        from _list import List
+
+        def test() -> str:
+            lst1 = List[int]()
+            lst1.append(10)
+            lst1.append(20)
+
+            lst2 = List[int]()
+            lst2.append(30)
+            lst2.append(40)
+
+            lst3 = lst1 + lst2
+
+            s = ''
+            for x in lst3:
+                s = s + str(x) + ' '
+            return s
+        """
+        mod = self.compile(src)
+        assert mod.test() == '10 20 30 40 '
+
+    def test_add_operator_original_unchanged(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst1 = List[int]()
+            lst1.append(10)
+
+            lst2 = List[int]()
+            lst2.append(20)
+
+            lst3 = lst1 + lst2
+            return len(lst1)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 1  # lst1 unchanged
+
+    def test_mul_operator(self):
+        src = """
+        from _list import List
+
+        def test() -> str:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+
+            lst2 = lst * 3
+
+            s = ''
+            for x in lst2:
+                s = s + str(x) + ' '
+            return s
+        """
+        mod = self.compile(src)
+        assert mod.test() == '10 20 10 20 10 20 '
+
+    def test_mul_operator_zero(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+
+            lst2 = lst * 0
+            return len(lst2)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 0
+
+    def test_mul_operator_one(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+
+            lst2 = lst * 1
+            return lst2[1]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 20
