@@ -259,6 +259,14 @@ class SPyBackend:
             for stmt in while_node.body:
                 self.emit_stmt(stmt)
 
+    def emit_stmt_For(self, for_node: ast.For) -> None:
+        target = for_node.target.value
+        iter_expr = self.fmt_expr(for_node.iter)
+        self.wl(f'for {target} in {iter_expr}:')
+        with self.out.indent():
+            for stmt in for_node.body:
+                self.emit_stmt(stmt)
+
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
         self.wl(f'if {test}:')
