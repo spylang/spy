@@ -45,10 +45,12 @@ class Parser:
     """
     src: str
     filename: str
+    for_loop_seq: int  # counter for for loops within the current function
 
     def __init__(self, src: str, filename: str) -> None:
         self.src = src
         self.filename = filename
+        self.for_loop_seq = 0
 
     @classmethod
     def from_filename(cls, filename: str) -> 'Parser':
@@ -190,6 +192,7 @@ class Parser:
             self.error('missing return type', '', func_loc)
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
+        self.for_loop_seq = 0  # reset counter for this function
         body = self.from_py_body(py_body)
 
         return spy.ast.FuncDef(
@@ -539,11 +542,14 @@ class Parser:
         if not isinstance(py_node.target, py_ast.Name):
             self.unsupported(py_node.target, 'complex for loop targets')
 
+        seq = self.for_loop_seq
+        self.for_loop_seq += 1
         return spy.ast.For(
             loc = py_node.loc,
+            seq = seq,
             target = spy.ast.StrConst(py_node.target.loc, py_node.target.id),
             iter = self.from_py_expr(py_node.iter),
-            body = self.from_py_body(py_node.body)
+            body = self.from_py_body(py_node.body),
         )
 
     def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:

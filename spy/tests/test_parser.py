@@ -932,6 +932,7 @@ class TestParser:
         stmt = mod.get_funcdef('foo').body[0]
         expected = """
         For(
+            seq=0,
             target=StrConst(value='i'),
             iter=Call(
                 func=Name(id='range'),
@@ -971,6 +972,53 @@ class TestParser:
             "not implemented yet: complex for loop targets",
             ("this is not supported", "i, j"),
         )
+
+    def test_multiple_For(self):
+        mod = self.parse("""
+        def foo(x: dynamic) -> None:
+            for i in x:
+                for j in x:
+                    pass
+
+            for z in x:
+                pass
+
+        """)
+        body = mod.get_funcdef('foo').body
+
+        # first for loop
+        expected0 = """
+        For(
+            seq=0,
+            target=StrConst(value='i'),
+            iter=Name(id='x'),
+            body=[
+                For(
+                    seq=1,
+                    target=StrConst(value='j'),
+                    iter=Name(id='x'),
+                    body=[
+                        Pass(),
+                    ],
+                ),
+            ],
+        )
+        """
+
+        # second for loop
+        expected1 = """
+        For(
+            seq=2,
+            target=StrConst(value='z'),
+            iter=Name(id='x'),
+            body=[
+                Pass(),
+            ],
+        )
+        """
+        self.assert_dump(body[0], expected0)
+        self.assert_dump(body[1], expected1)
+
 
     def test_Raise(self):
         mod = self.parse("""
