@@ -106,3 +106,60 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises('W_IndexError'):
             mod.out_of_bounds()
+
+    def test_fastiter(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+
+            it = lst.__fastiter__()
+            total = 0
+            while it.__continue_iteration__():
+                total = total + it.__item__()
+                it = it.__next__()
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.test() == 60
+
+    def test_for_loop(self):
+        src = """
+        from _list import List
+
+        def test() -> int:
+            lst = List[int]()
+            lst.append(1)
+            lst.append(2)
+            lst.append(3)
+            lst.append(4)
+
+            total = 0
+            for x in lst:
+                total = total + x
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.test() == 10
+
+    def test_for_loop_string_concat(self):
+        src = """
+        from _list import List
+
+        def test() -> str:
+            lst = List[int]()
+            lst.append(5)
+            lst.append(10)
+            lst.append(15)
+
+            s = ''
+            for x in lst:
+                s = s + str(x) + ' '
+            return s
+        """
+        mod = self.compile(src)
+        assert mod.test() == '5 10 15 '

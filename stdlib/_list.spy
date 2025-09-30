@@ -15,6 +15,20 @@ def List(T):
         capacity: i32
         items: ptr[T]
 
+    @struct
+    class list_iterator:
+        lst: ptr[ListData]
+        i: i32
+
+        def __next__(self: list_iterator) -> list_iterator:
+            return list_iterator(self.lst, self.i + 1)
+
+        def __item__(self: list_iterator) -> T:
+            return self.lst.items[self.i]
+
+        def __continue_iteration__(self: list_iterator) -> bool:
+            return self.i < self.lst.length
+
     @typelift
     class _ListImpl:
         __ll__: ptr[ListData]
@@ -52,5 +66,8 @@ def List(T):
             if i >= ll.length:
                 raise IndexError
             return ll.items[i]
+
+        def __fastiter__(self: _ListImpl) -> list_iterator:
+            return list_iterator(self.__ll__, 0)
 
     return _ListImpl
