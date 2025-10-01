@@ -23,8 +23,11 @@ CFLAGS = [
     '-fdiagnostics-color=always', # force colors
     '-I', str(spy.libspy.INCLUDE),
 ]
-RELEASE_CFLAGS = ['-DSPY_RELEASE', '-O3']
-DEBUG_CFLAGS   = ['-DSPY_DEBUG',   '-O0', '-g']
+RELEASE_CFLAGS  = ['-DSPY_RELEASE', '-O3', '-flto']
+RELEASE_LDFLAGS = ['-flto']
+
+DEBUG_CFLAGS    = ['-DSPY_DEBUG',   '-O0', '-g']
+DEBUG_LDFLAGS: list[str] = []
 
 WASM_CFLAGS = [
     '-mmultivalue',
@@ -44,10 +47,6 @@ class CompilerConfig:
         self.cflags += [
             f'-DSPY_TARGET_{config.target.upper()}'
         ]
-        if config.build_type == 'release':
-            self.cflags += RELEASE_CFLAGS
-        else:
-            self.cflags += DEBUG_CFLAGS
 
         # e.g. 'spy/libspy/build/native/release/'
         libdir = spy.libspy.BUILD.join(config.target, config.build_type)
@@ -55,6 +54,13 @@ class CompilerConfig:
             '-L', str(libdir),
             '-lspy'
         ]
+
+        if config.build_type == 'release':
+            self.cflags += RELEASE_CFLAGS
+            self.ldflags += RELEASE_LDFLAGS
+        else:
+            self.cflags += DEBUG_CFLAGS
+            self.ldflags += RELEASE_LDFLAGS
 
         # target specific flags
         if config.target == 'native':

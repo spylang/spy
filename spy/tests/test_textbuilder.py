@@ -177,3 +177,110 @@ class TestColorFormatter:
         fmt = ColorFormatter(use_colors=True)
         assert fmt.set('red', 'hello') == '\x1b[31;01mhello\x1b[00m'
         assert fmt.set(None, 'hello') == 'hello'
+
+    def test_ColorFormatter_bg(self):
+        fmt = ColorFormatter(use_colors=False)
+        assert fmt.set('red', 'hello', bg='blue') == 'hello'
+        #
+        fmt = ColorFormatter(use_colors=True)
+        assert fmt.set('red', 'hello', bg='blue') == '\x1b[31;01;104mhello\x1b[00m'
+        assert fmt.set(None, 'hello', bg='blue') == '\x1b[104mhello\x1b[00m'
+        assert fmt.set('red', 'hello', bg=None) == '\x1b[31;01mhello\x1b[00m'
+
+    def test_TextBuilder_bg(self):
+        b = TextBuilder(use_colors=True)
+        b.wl('hello')
+        b.wl('world', color='red', bg='blue')
+        s = b.build()
+        expected = textwrap.dedent("""\
+        hello
+        \x1b[31;01;104mworld\x1b[00m
+        """)
+        assert s == expected
+
+    def test_writeblock_bg(self):
+        b = TextBuilder(use_colors=True)
+        b.wl('hello')
+        b.wb("""
+            one
+            two
+        """, color='green', bg='darkred')
+        s = b.build()
+        expected = textwrap.dedent("""\
+        hello
+        \x1b[32;01;41mone\x1b[00m
+        \x1b[32;01;41mtwo\x1b[00m
+        """)
+        assert s == expected
+
+    def test_color_contextmanager(self):
+        b = TextBuilder(use_colors=True)
+
+        # Basic color context
+        with b.color('red'):
+            b.write('red text')
+        b.writeline()
+
+        # Nested color contexts with background
+        with b.color('red'):
+            b.write('red text ')
+            with b.color(bg='green'):
+                b.write('red on green ')
+                b.wl('This is purple on green.', color='purple')
+                with b.color('blue'):
+                    b.write('blue on green')
+        b.writeline()
+
+        # Test inheritance of colors
+        with b.color('yellow'):
+            b.write('yellow text ')
+            with b.color(bg='blue'):
+                b.write('yellow on blue ')
+                with b.color(None, bg='red'):
+                    b.write('yellow on red')
+        b.writeline()
+
+        # Test overriding both colors
+        with b.color('green', bg='black'):
+            b.write('green on black ')
+            with b.color('white', bg='blue'):
+                b.write('white on blue')
+        b.writeline()
+
+        # Test that explicit colors override context
+        with b.color('red'):
+            b.write('red from context ')
+            b.write('blue explicitly', color='blue')
+        b.writeline()
+
+        s = b.build()
+
+        # Check that the text is present with appropriate ANSI codes
+        assert '\x1b[31;01mred text\x1b[00m' in s
+        assert '\x1b[31;01mred text \x1b[00m' in s
+        assert '\x1b[31;01;102mred on green \x1b[00m' in s
+        assert '\x1b[35;102mThis is purple on green.\x1b[00m' in s
+        assert '\x1b[34;01;102mblue on green\x1b[00m' in s
+        assert '\x1b[33;01myellow text \x1b[00m' in s
+        assert '\x1b[33;01;104myellow on blue \x1b[00m' in s
+        assert '\x1b[33;01;101myellow on red\x1b[00m' in s
+        assert '\x1b[32;01;40mgreen on black \x1b[00m' in s
+        assert '\x1b[37;01;104mwhite on blue\x1b[00m' in s
+        assert '\x1b[31;01mred from context \x1b[00m' in s
+        assert '\x1b[34;01mblue explicitly\x1b[00m' in s
+
+    def test_color_contextmanager_no_colors(self):
+        # Test that the contextmanager works even when colors are disabled
+        b = TextBuilder(use_colors=False)
+
+        with b.color('red'):
+            b.write('red text ')
+            with b.color(bg='green'):
+                b.write('red on green ')
+                with b.color('blue'):
+                    b.write('blue on green')
+        b.writeline()
+
+        s = b.build().rstrip('\n')
+        assert s == 'red text red on green blue on green'
+

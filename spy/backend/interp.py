@@ -13,7 +13,8 @@ from typing import Any
 import fixedint
 from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.cell import W_Cell
+from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
 from spy.vm.b import B
 
 
@@ -29,13 +30,29 @@ class InterpModuleWrapper:
         self.w_mod = w_mod
 
     def __dir__(self) -> list[str]:
-        return [fqn.symbol_name for fqn in self.w_mod.keys()]
+        return ['vm', 'w_mod'] + list(self.w_mod.keys())
 
     def __getattr__(self, attr: str) -> Any:
-        w_obj = self.w_mod.getattr(attr)
-        if isinstance(w_obj, W_Func):
-            return InterpFuncWrapper(self.vm, w_obj)
-        return self.vm.unwrap(w_obj)
+        w_obj = self.w_mod.getattr_maybe(attr)
+        if w_obj is None:
+            raise AttributeError(attr)
+
+        if isinstance(w_obj, W_Cell):
+            w_obj = w_obj.get()
+
+        if isinstance(w_obj, W_ASTFunc):
+            w_func = w_obj
+            if not w_func.is_valid:
+                # let's find the redshifted version
+                assert w_func.w_redshifted_into is not None
+                w_func = w_func.w_redshifted_into
+                assert w_func.redshifted
+                assert self.vm.lookup_global(w_func.fqn) is w_func
+            return InterpFuncWrapper(self.vm, w_func)
+        elif isinstance(w_obj, W_Func):
+            assert False, 'WHAT?'
+        else:
+            return self.vm.unwrap(w_obj)
 
 
 class InterpFuncWrapper:
@@ -52,14 +69,20 @@ class InterpFuncWrapper:
         self.w_functype = w_func.w_functype
 
     def __call__(self, *args: Any, unwrap: bool = True) -> Any:
+        got = len(args)
+        exp = len(self.w_functype.params)
+        if got != exp:
+            msg = f'{self.w_func.fqn} takes exactly {exp} arguments, got {got}'
+            raise TypeError(msg)
+
         # *args contains python-level objs. We want to wrap them into args_w
         # *and to call the func, and unwrap the result
         args_w = []
         for arg, param in zip(args, self.w_functype.params, strict=True):
-            w_type = param.w_type
-            if w_type is B.w_i8:
+            w_T = param.w_T
+            if w_T is B.w_i8:
                 arg = fixedint.Int8(arg)
-            elif w_type is B.w_u8:
+            elif w_T is B.w_u8:
                 arg = fixedint.UInt8(arg)
             w_arg = self.vm.wrap(arg)
             args_w.append(w_arg)

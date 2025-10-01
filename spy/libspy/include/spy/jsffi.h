@@ -55,7 +55,7 @@ static inline JsRef spy_jsffi$js_call_method_1(
     return jsffi_call_method_1(target, name->utf8, arg0);
 }
 
-static inline JsRef spy_jsffi$JsRef$__getattr__(JsRef target, spy_Str *name) {
+static inline JsRef spy_jsffi$JsRef$__getattribute__(JsRef target, spy_Str *name) {
     return jsffi_getattr(target, name->utf8);
 }
 

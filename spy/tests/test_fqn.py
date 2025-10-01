@@ -1,14 +1,13 @@
-import pytest
 from spy.fqn import NSPart, FQN
 
 def test_FQN_init_fullname():
     a = FQN("a.b.c::xxx")
     assert a.fullname == "a.b.c::xxx"
     assert a.modname == "a.b.c"
-    assert a.parts == [
-        NSPart("a.b.c", []),
-        NSPart("xxx", [])
-    ]
+    assert a.parts == (
+        NSPart("a.b.c", ()),
+        NSPart("xxx", ())
+    )
 
 def test_FQN_init_parts():
     a = FQN(['a.b.c', 'xxx'])
@@ -18,7 +17,7 @@ def test_FQN_init_parts():
 def test_FQN_suffix():
     a = FQN("aaa::bbb#1")
     assert a.fullname == "aaa::bbb#1"
-    assert a.parts[-1].suffix == 1
+    assert a.parts[-1].suffix == '1'
 
 def test_many_FQNs():
     assert str(FQN("aaa")) == "aaa"
@@ -43,11 +42,11 @@ def test_qualifiers():
     a = FQN("a::b[x, y]::c")
     assert a.fullname == "a::b[x, y]::c"
     assert a.modname == "a"
-    assert a.parts == [
-        NSPart("a", []),
-        NSPart("b", [FQN("x"), FQN("y")]),
-        NSPart("c", [])
-    ]
+    assert a.parts == (
+        NSPart("a", ()),
+        NSPart("b", (FQN("x"), FQN("y"))),
+        NSPart("c", ())
+    )
 
 def test_nested_qualifiers():
     a = FQN("mod::dict[str, unsafe::ptr[mymod::Point]]")
@@ -85,6 +84,7 @@ def test_nested_qualifiers_c_name():
     assert a.c_name == "spy_a$list__Ptr__x_y$c$3"
 
 def test_FQN_human_name():
+    # see also tests/vm/test_function.py::test_FunctionType_fqn
     assert FQN("a::b").human_name == "a::b"
     assert FQN("builtins::i32").human_name == "i32"
     func = FQN("builtins").join('def', ['builtins::i32', 'builtins::f64',
@@ -111,3 +111,20 @@ def test_FQN_with_qualifiers():
     assert f.fullname == "mod::map[mod::key, mod::value]"
     # Verify original FQN is not modified
     assert e.fullname == "mod::map"
+
+def test_FQN_match():
+    a = FQN("mod::ptr[i32]::load")
+    assert a.match("mod::ptr[i32]::load")
+    assert a.match("mod::ptr[*]::load")
+    assert a.match("mod::ptr[i32]::*")
+    assert a.match("mod::ptr[*]::*")
+    #
+    assert not a.match("mod::ptr[i32]::store")
+    assert not a.match("mod::ptr[*]::store")
+    assert not a.match("load")
+
+def test_FQN_with_suffix():
+    a = FQN("a::b")
+    a1 = a.with_suffix('1')
+    assert a.fullname == "a::b"
+    assert a1.fullname == "a::b#1"

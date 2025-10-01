@@ -1,5 +1,4 @@
-import pytest
-from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
+from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 class TestImporting(CompilerTest):
 
@@ -51,8 +50,6 @@ class TestImporting(CompilerTest):
     def test_type_in_other_module(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         self.write_file("point.spy", """
-        from unsafe import struct
-
         @struct
         class Point:
             x: i32

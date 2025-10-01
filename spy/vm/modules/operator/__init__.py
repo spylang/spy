@@ -43,35 +43,27 @@ from typing import TYPE_CHECKING, Sequence
 from spy.errors import WIP
 from spy.vm.object import W_Object
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.b import OPERATOR, OP
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-def op_fast_call(vm: 'SPyVM', w_func: W_Func,
-                 args_w: Sequence[W_Object]) -> W_OpImpl:
-    """
-    Like vm.fast_call, but ensure that the result is a W_OpImpl
-    """
-    w_res = vm.fast_call(w_func, args_w)
-    assert isinstance(w_res, W_OpImpl)
-    return w_res
-
 
 # the folloing imports register all the various objects on OP
-from . import opimpl_int     # side effects
-from . import opimpl_f64     # side effects
-from . import opimpl_str     # side effects
-from . import opimpl_object  # side effects
-from . import opimpl_dynamic # side effects
-from . import unaryop        # side effects
-from . import binop          # side effects
-from . import attrop         # side effects
-from . import itemop         # side effects
-from . import callop         # side effects
-from . import convop         # side effects
-from . import raiseop        # side effects
+from . import opimpl_int     # noqa: F401 -- side effects
+from . import opimpl_f64     # noqa: F401 -- side effects
+from . import opimpl_str     # noqa: F401 -- side effects
+from . import opimpl_object  # noqa: F401 -- side effects
+from . import opimpl_dynamic # noqa: F401 -- side effects
+from . import opimpl_bool    # noqa: F401 -- side effects
+from . import unaryop        # noqa: F401 -- side effects
+from . import binop          # noqa: F401 -- side effects
+from . import attrop         # noqa: F401 -- side effects
+from . import itemop         # noqa: F401 -- side effects
+from . import callop         # noqa: F401 -- side effects
+from . import convop         # noqa: F401 -- side effects
+from . import raiseop        # noqa: F401 -- side effects
 
 _from_token: dict[str, W_Func] = {
     '+': OP.w_ADD,

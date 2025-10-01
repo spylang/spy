@@ -4,6 +4,6 @@ def add(T):
         return x + y
     return impl
 
-def main() -> void:
+def main() -> None:
     print(add[i32](1, 2))
     print(add[str]('hello ', 'world'))

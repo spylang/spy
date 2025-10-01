@@ -2,12 +2,11 @@
 A pythonic wrapper around wasmtime.
 """
 
-from typing import Any, Optional, Literal
+from typing import Any, Optional
 from typing_extensions import Self
 import py.path
 import wasmtime as wt
-import struct
-from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmType
+from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase
 
 WasmTrap = wt.Trap
 

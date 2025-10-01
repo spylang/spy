@@ -1,4 +1,4 @@
-from operator import OpImpl, OpArg
+from operator import OpSpec, MetaArg
 from unsafe import gc_alloc, ptr
 
 @struct
@@ -30,32 +30,32 @@ class Range:
 
         return ll.start + i*ll.step
 
-    @blue
-    def __GETATTR__(v_obj: OpArg, v_attr: OpArg) -> OpImpl:
-        #print(v_obj)
-        #print(v_attr)
-        #print(v_attr.static_type)
-        #print(v_attr.color)
-        #print(v_attr.blueval)
+    @blue.metafunc
+    def __getattr__(m_obj: MetaArg, m_attr: MetaArg) -> OpSpec:
+        #print(m_obj)
+        #print(m_attr)
+        #print(m_attr.static_type)
+        #print(m_attr.color)
+        #print(m_attr.blueval)
 
-        if v_attr.color != 'blue':
+        if m_attr.color != 'blue':
             raise ValueError('wrong color')
-        attr = v_attr.blueval
+        attr = m_attr.blueval
 
         if attr == 'start':
             def getstart(r: Range, a: str) -> i32:
                 return r.__ll__.start
-            return OpImpl(getstart)
+            return OpSpec(getstart)
 
         elif attr == 'stop':
             def getstop(r: Range, a: str) -> i32:
                 return r.__ll__.stop
-            return OpImpl(getstop)
+            return OpSpec(getstop)
 
-        return OpImpl.NULL
+        return OpSpec.NULL
 
 
-def main() -> void:
+def main() -> None:
     r = Range(3, 12, 2)
     ## print(r)
     ## print(r.__ll__)

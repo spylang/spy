@@ -4,10 +4,9 @@ SPy `rawbuffer` module.
 
 from typing import TYPE_CHECKING
 import struct
-from spy.vm.primitive import W_F64, W_I32, W_Void
+from spy.vm.primitive import W_F64, W_I32
 from spy.vm.b import B
-from spy.vm.builtin import builtin_type
-from spy.vm.w import W_Func, W_Type, W_Object, W_Str
+from spy.vm.w import W_Object
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -32,28 +31,26 @@ def w_rb_alloc(vm: 'SPyVM', w_size: W_I32) -> W_RawBuffer:
 
 @RB.builtin_func
 def w_rb_set_i32(vm: 'SPyVM', w_rb: W_RawBuffer,
-               w_offset: W_I32, w_val: W_I32) -> W_Void:
+               w_offset: W_I32, w_val: W_I32) -> None:
     offset = vm.unwrap_i32(w_offset)
     val = vm.unwrap_i32(w_val)
     struct.pack_into('i', w_rb.buf, offset, val)
-    return B.w_None
 
 @RB.builtin_func
 def w_rb_get_i32(vm: 'SPyVM', w_rb: W_RawBuffer, w_offset: W_I32) -> W_I32:
     offset = vm.unwrap_i32(w_offset)
     val = struct.unpack_from('i', w_rb.buf, offset)[0]
-    return vm.wrap(val)  # type: ignore
+    return vm.wrap(val)
 
 @RB.builtin_func
 def w_rb_set_f64(vm: 'SPyVM', w_rb: W_RawBuffer,
-               w_offset: W_I32, w_val: W_F64) -> W_Void:
+               w_offset: W_I32, w_val: W_F64) -> None:
     offset = vm.unwrap_i32(w_offset)
     val = vm.unwrap_f64(w_val)
     struct.pack_into('d', w_rb.buf, offset, val)
-    return B.w_None
 
 @RB.builtin_func
 def w_rb_get_f64(vm: 'SPyVM', w_rb: W_RawBuffer, w_offset: W_I32) -> W_F64:
     offset = vm.unwrap_i32(w_offset)
     val = struct.unpack_from('d', w_rb.buf, offset)[0]
-    return vm.wrap(val)  # type: ignore
+    return vm.wrap(val)

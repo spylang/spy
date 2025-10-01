@@ -4,13 +4,13 @@ from jsffi import init as js_init, get_GlobalThis, get_Console
 
 var counter: i32 = 0
 
-def onclick() -> void:
+def onclick() -> None:
     counter = counter + 1
     window = get_GlobalThis()
     message = window.document.getElementById("message")
     message.innerText = "onclick " + str(counter)
 
-def main() -> void:
+def main() -> None:
     # initialization
     js_init()
     window = get_GlobalThis()
@@ -38,15 +38,15 @@ def main() -> void:
 ## class JsRef:
 ##
 ##     @staticmethod
-##     @blue
-##     def __GETATTR__(cls, attr):
+##     @blue.metafunc
+##     def __getattr__(cls, attr):
 ##         def opimpl(self: JsRef) -> JsRef:
 ##             return js_getattr(self, attr)
 ##         return opimpl
 ##
 ##     # equivalent to above, but with syntax sugare
 ##     @staticmethod
-##     def __GETATTR__[cls, attr](self: JsRef) -> JsRef:
+##     def __getattr__[cls, attr](self: JsRef) -> JsRef:
 ##         #            ^    ^     ^
 ##         #           blue blue  red
 ##         return js_getattr(self, attr)

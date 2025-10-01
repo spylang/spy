@@ -1,11 +1,10 @@
-from typing import Callable, Optional, TYPE_CHECKING, Any, Type
+from typing import Callable, TYPE_CHECKING, Any, Type, Optional
 from types import FunctionType
-from dataclasses import dataclass
-from spy.ast import Color
+from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Object
+    from spy.vm.object import W_Object, W_Type
     from spy.vm.function import W_BuiltinFunc
 
 class ModuleRegistry:
@@ -51,6 +50,7 @@ class ModuleRegistry:
                      qualifiers: QUALIFIERS = None,
                      *,
                      lazy_definition: bool = False,
+                     W_MetaClass: Optional[Type['W_Type']] = None,
                      ) -> Callable:
         """
         Register a type on the module.
@@ -69,7 +69,8 @@ class ModuleRegistry:
         from spy.vm.builtin import builtin_type
         def decorator(pyclass: Type['W_Object']) -> Type['W_Object']:
             bt_deco = builtin_type(self.fqn, typename, qualifiers,
-                                   lazy_definition=lazy_definition)
+                                   lazy_definition=lazy_definition,
+                                   W_MetaClass=W_MetaClass)
             W_class = bt_deco(pyclass)
             self.add(typename, W_class._w)
             return W_class
@@ -79,7 +80,10 @@ class ModuleRegistry:
                      pyfunc_or_funcname: Callable|str|None = None,
                      qualifiers: QUALIFIERS = None,
                      *,
-                     color: Color = 'red') -> Any:
+                     color: Color = 'red',
+                     kind: FuncKind = 'plain',
+                     hidden: bool = False,
+                     ) -> Any:
         """
         Register a builtin function on the module. We support three
         different syntaxes:
@@ -97,7 +101,7 @@ class ModuleRegistry:
         'qualifiers' is allowed only if you also explicitly specify
         'funcname'.
         """
-        from spy.vm.builtin import builtin_func
+        from spy.vm.builtin import make_builtin_func
         if isinstance(pyfunc_or_funcname, FunctionType):
             pyfunc = pyfunc_or_funcname
             funcname = None
@@ -112,16 +116,17 @@ class ModuleRegistry:
             assert qualifiers is None
 
         def decorator(pyfunc: Callable) -> 'W_BuiltinFunc':
-            namespace = self.fqn
-            # apply the @builtin_func decorator to pyfunc
-            w_func = builtin_func(
-                namespace=namespace,
+            w_func = make_builtin_func(
+                pyfunc,
+                namespace=self.fqn,
                 funcname=funcname,
                 qualifiers=qualifiers,
-                color=color
-            )(pyfunc)
+                color=color,
+                kind=kind,
+            )
             setattr(self, f'w_{w_func.fqn.symbol_name}', w_func)
-            self.content.append((w_func.fqn, w_func))
+            if not hidden:
+                self.content.append((w_func.fqn, w_func))
             return w_func
 
         if pyfunc is None:

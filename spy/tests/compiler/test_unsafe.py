@@ -1,12 +1,11 @@
 #-*- encoding: utf-8 -*-
 
-import pytest
 from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.tests.wasm_wrapper import WasmPtr
-from spy.tests.support import CompilerTest, no_C, expect_errors, only_interp
+from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 class TestUnsafe(CompilerTest):
 
@@ -63,10 +62,10 @@ class TestUnsafe(CompilerTest):
             return buf[i]
         """)
         assert mod.foo(1) == 100
-        with SPyError.raises("W_PanicError", match="ptr_load out of bounds"):
+        with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
             mod.foo(3)
 
-    def test_struct(self):
+    def test_ptr_to_struct(self):
         mod = self.compile(
         """
         from unsafe import gc_alloc, ptr
@@ -97,7 +96,7 @@ class TestUnsafe(CompilerTest):
             x: i32
             y: i32
 
-        def foo() -> void:
+        def foo() -> None:
             p = gc_alloc(Point)(1)
             p.z = 42
         """
@@ -284,7 +283,7 @@ class TestUnsafe(CompilerTest):
             lst.next.next = new_node(c)
             return lst
 
-        def print_list(n: ptr[Node]) -> void:
+        def print_list(n: ptr[Node]) -> None:
             if n:
                 print(n.val)
                 print_list(n.next)
@@ -295,3 +294,28 @@ class TestUnsafe(CompilerTest):
             mod.ll.call('spy_flush')
         out, err = capfd.readouterr()
         assert out.splitlines() == ['1', '2', '3']
+
+    def test_array_of_struct(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> ptr[Point]:
+            arr = gc_alloc(Point)(2)
+            arr[0].x = 1
+            arr[0].y = 2
+            arr[1].x = 3
+            arr[1].y = 4
+            return arr
+        """)
+        p = mod.foo()
+        addr = p.addr
+        self.vm.ll.mem.read_i32(p.addr)      == 1
+        self.vm.ll.mem.read_i32(p.addr + 4)  == 2
+        self.vm.ll.mem.read_i32(p.addr + 8)  == 3
+        self.vm.ll.mem.read_i32(p.addr + 12) == 4

@@ -1,14 +1,10 @@
-from typing import Annotated
-import pytest
-from spy.vm.primitive import W_I32, W_Dynamic, W_Void
-from spy.vm.b import B
-from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
-from spy.vm.w import W_Type, W_Object, W_Str
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.primitive import W_I32
+from spy.vm.builtin import builtin_method
+from spy.vm.w import W_Object
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.tests.support import CompilerTest, no_C
 
 
 class W_MyClass(W_Object):
@@ -21,36 +17,25 @@ class W_MyClass(W_Object):
     def w_new(vm: 'SPyVM', w_base: W_I32) -> 'W_MyClass':
         return W_MyClass(w_base)
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg) -> W_OpImpl:
+    def w_getitem(vm: 'SPyVM', w_self: 'W_MyClass', w_i: W_I32) -> W_I32:
+        base = vm.unwrap_i32(w_self.w_base)
+        idx = vm.unwrap_i32(w_i)
 
-        @builtin_func('ext')
-        def w_getitem(vm: 'SPyVM', w_self: W_MyClass, w_i: W_I32) -> W_I32:
-            base = vm.unwrap_i32(w_self.w_base)
-            idx = vm.unwrap_i32(w_i)
+        # If index exists in dictionary, return that value
+        if idx in w_self.w_values:
+            return w_self.w_values[idx]
 
-            # If index exists in dictionary, return that value
-            if idx in w_self.w_values:
-                return w_self.w_values[idx]
+        # Otherwise calculate a value based on base and index
+        return vm.wrap(base + idx)
 
-            # Otherwise calculate a value based on base and index
-            return vm.wrap(base + idx)  # type: ignore
-
-        return W_OpImpl(w_getitem)
-
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__')
     @staticmethod
-    def w_SETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg,
-                  wop_v: W_OpArg) -> W_OpImpl:
-
-        @builtin_func('ext')
-        def w_setitem(vm: 'SPyVM', w_self: W_MyClass, w_i: W_I32,
-                      w_v: W_I32) -> None:
-            idx = vm.unwrap_i32(w_i)
-            w_self.w_values[idx] = w_v
-
-        return W_OpImpl(w_setitem)
+    def w_setitem(vm: 'SPyVM', w_self: 'W_MyClass',
+                  w_i: W_I32, w_v: W_I32) -> None:
+        idx = vm.unwrap_i32(w_i)
+        w_self.w_values[idx] = w_v
 
 
 class W_2DArray(W_Object):
@@ -66,33 +51,25 @@ class W_2DArray(W_Object):
     def w_new(vm: 'SPyVM') -> 'W_2DArray':
         return W_2DArray()
 
-    @builtin_method('__GETITEM__', color='blue')
+    @builtin_method('__getitem__')
     @staticmethod
-    def w_GETITEM(vm: 'SPyVM', wop_self: W_OpArg,
-                  wop_i: W_OpArg, wop_j: W_OpArg) -> W_OpImpl:
-        @builtin_func('ext')
-        def w_getitem(vm: 'SPyVM', w_self: W_2DArray,
-                      w_i: W_I32, w_j: W_I32) -> W_I32:
-            i = vm.unwrap_i32(w_i)
-            j = vm.unwrap_i32(w_j)
-            k = i + (j * w_self.W)
-            val = w_self.data[k]
-            return vm.wrap(val)  # type: ignore
-        return W_OpImpl(w_getitem)
+    def w_getitem(vm: 'SPyVM', w_self: 'W_2DArray',
+                  w_i: W_I32, w_j: W_I32) -> W_I32:
+        i = vm.unwrap_i32(w_i)
+        j = vm.unwrap_i32(w_j)
+        k = i + (j * w_self.W)
+        val = w_self.data[k]
+        return vm.wrap(val)
 
-    @builtin_method('__SETITEM__', color='blue')
+    @builtin_method('__setitem__')
     @staticmethod
-    def w_SETITEM(vm: 'SPyVM', wop_self: W_OpArg, wop_i: W_OpArg,
-                  wop_j: W_OpArg, wop_v: W_OpArg) -> W_OpImpl:
-        @builtin_func('ext')
-        def w_setitem(vm: 'SPyVM', w_self: W_2DArray, w_i: W_I32,
-                      w_j: W_I32, w_v: W_I32) -> None:
-            i = vm.unwrap_i32(w_i)
-            j = vm.unwrap_i32(w_j)
-            v = vm.unwrap_i32(w_v)
-            k = i + (j * w_self.W)
-            w_self.data[k] = v
-        return W_OpImpl(w_setitem)
+    def w_setitem(vm: 'SPyVM', w_self: 'W_2DArray', w_i: W_I32,
+                  w_j: W_I32, w_v: W_I32) -> None:
+        i = vm.unwrap_i32(w_i)
+        j = vm.unwrap_i32(w_j)
+        v = vm.unwrap_i32(w_v)
+        k = i + (j * w_self.W)
+        w_self.data[k] = v
 
 
 

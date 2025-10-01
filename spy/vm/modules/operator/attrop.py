@@ -1,104 +1,134 @@
-from typing import TYPE_CHECKING, Literal, Annotated
-from spy.vm.primitive import W_Dynamic, W_Void
+from typing import TYPE_CHECKING, Literal, Annotated, Optional
 from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.module import W_Module
 from spy.vm.str import W_Str
 from spy.vm.function import W_Func
-from spy.vm.builtin import builtin_func
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.opimpl import W_OpImpl
 
-from . import OP, op_fast_call
-from .binop import MM
+from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 OpKind = Literal['get', 'set']
 
-def unwrap_attr_maybe(vm: 'SPyVM', wop_attr: W_OpArg) -> str:
-    if wop_attr.is_blue() and wop_attr.w_static_type is B.w_str:
-        return vm.unwrap_str(wop_attr.w_blueval)
+def unwrap_name_maybe(vm: 'SPyVM', wam_name: W_MetaArg) -> str:
+    if wam_name.is_blue() and wam_name.w_static_T is B.w_str:
+        return vm.unwrap_str(wam_name.w_blueval)
     else:
         return '<unknown>'
 
 @OP.builtin_func(color='blue')
-def w_GETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    attr = unwrap_attr_maybe(vm, wop_attr)
-    w_opimpl = _get_GETATTR_opimpl(vm, wop_obj, wop_attr, attr)
-    return typecheck_opimpl(
+def w_GETATTR(vm: 'SPyVM', wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+    name = unwrap_name_maybe(vm, wam_name)
+
+    w_T = wam_obj.w_static_T
+    if w_T is B.w_dynamic:
+        w_opspec = W_OpSpec(OP.w_dynamic_getattr)
+    elif w_getattribute := w_T.lookup_func(f'__getattribute__'):
+        w_opspec = vm.fast_metacall(w_getattribute, [wam_obj, wam_name])
+    else:
+        w_opspec = default_getattribute(vm, wam_obj, wam_name, name)
+
+    return typecheck_opspec(
         vm,
-        w_opimpl,
-        [wop_obj, wop_attr],
+        w_opspec,
+        [wam_obj, wam_name],
         dispatch = 'single',
-        errmsg = "type `{0}` has no attribute '%s'" % attr
+        errmsg = "type `{0}` has no attribute '%s'" % name
     )
 
-def _get_GETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                        attr: str) -> W_OpImpl:
-    w_type = wop_obj.w_static_type
-    if w_type is B.w_dynamic:
-        return W_OpImpl(OP.w_dynamic_getattr)
-    elif attr in w_type.spy_members:
-        return opimpl_member('get', vm, w_type, attr)
-    elif w_GET := w_type.lookup_blue_func(f'__GET_{attr}__'):
-        return op_fast_call(vm, w_GET, [wop_obj, wop_attr])
-    elif w_GETATTR := w_type.lookup_blue_func(f'__GETATTR__'):
-        return op_fast_call(vm, w_GETATTR, [wop_obj, wop_attr])
-    elif w_getattr := w_type.lookup_func(f'__getattr__'):
-        return W_OpImpl(w_getattr, [wop_obj, wop_attr])
-    return W_OpImpl.NULL
+
+def default_getattribute(
+    vm: 'SPyVM',
+    wam_obj: W_MetaArg,
+    wam_name: W_MetaArg,
+    name: str
+) -> W_OpSpec:
+    # default logic for objects which don't implement __getattribute__. This
+    # is the equivalent of CPython's object.c:PyObject_GenericGetAttr, and
+    # corresponds more or less to object.__getattribute__.
+    #
+    # There is a big difference compared to Python, though.
+    #   <python>
+    #     1. try to find a data descriptor on the type
+    #     2. try to look inside obj.__dict__
+    #     3. try to find a non-data descriptor on the type
+    #     4. try to find a normal attribute on the type
+    #     5. AttributeError
+    #   </python>
+    #
+    # This means that e.g. an instance can override methods via its __dict__.
+    #
+    # The SPy logic must be different, because we want to be able to resolve
+    # the getattribute during redshift: in particular, during redshift we know
+    # the static types but we DO NOT know the content of obj.__dict__ (if obj
+    # is red). So, we tweak the logic:
+    #   <spy>
+    #     1. try to find a descriptor on the type
+    #     2. try to find a normal attribute on the type
+    #     3. try to look inside obj.__dict__ (if present)
+    #     4. AttributeError
+    #   </spy>
+    #
+    # This means that individual instances can NEVER override attributes
+    # provided by their type. This also means that we no longer need the
+    # distinction between data and non-data descriptors (as all descriptors
+    # have the precedence anyway).
+    #
+    # Also note that contrarily to Python, in SPy instances don't have a
+    # __dict__ by default. (__dict__ support not implemented yet ATM).
+
+    w_T = wam_obj.w_static_T
+    if w_attr := w_T.lookup(name):
+        if w_get := vm.dynamic_type(w_attr).lookup_func('__get__'):
+            # 1. found a descriptor on the type
+            wam_attr = W_MetaArg.from_w_obj(vm, w_attr)
+            return vm.fast_metacall(w_get, [wam_attr, wam_obj])
+        else:
+            # 2. found a normal attribute on the type
+            return W_OpSpec.const(w_attr)
+
+    # 3. look inside obj.__dict__
+    # IMPLEMENT ME
+
+    # 4. AttributeError
+    return W_OpSpec.NULL
 
 
 @OP.builtin_func(color='blue')
-def w_SETATTR(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-            wop_v: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    attr = unwrap_attr_maybe(vm, wop_attr)
-    w_opimpl = _get_SETATTR_opimpl(vm, wop_obj, wop_attr, wop_v, attr)
-    errmsg = "type `{0}` does not support assignment to attribute '%s'" % attr
-    return typecheck_opimpl(
+def w_SETATTR(vm: 'SPyVM', wam_obj: W_MetaArg, wam_name: W_MetaArg,
+            wam_v: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+    name = unwrap_name_maybe(vm, wam_name)
+    w_opspec = _get_SETATTR_opspec(vm, wam_obj, wam_name, wam_v, name)
+    errmsg = "type `{0}` does not support assignment to attribute '%s'" % name
+    return typecheck_opspec(
         vm,
-        w_opimpl,
-        [wop_obj, wop_attr, wop_v],
+        w_opspec,
+        [wam_obj, wam_name, wam_v],
         dispatch = 'single',
         errmsg = errmsg
     )
 
-def _get_SETATTR_opimpl(vm: 'SPyVM', wop_obj: W_OpArg, wop_attr: W_OpArg,
-                        wop_v: W_OpArg, attr: str) -> W_OpImpl:
-    w_type = wop_obj.w_static_type
-    if w_type is B.w_dynamic:
-        return W_OpImpl(OP.w_dynamic_setattr)
-    elif attr in w_type.spy_members:
-        return opimpl_member('set', vm, w_type, attr)
-    elif w_SETATTR := w_type.lookup_blue_func('__SETATTR__'):
-        return op_fast_call(vm, w_SETATTR, [wop_obj, wop_attr, wop_v])
-    elif w_setattr := w_type.lookup_func('__setattr__'):
-        return W_OpImpl(w_setattr, [wop_obj, wop_attr, wop_v])
-    return W_OpImpl.NULL
+def _get_SETATTR_opspec(vm: 'SPyVM', wam_obj: W_MetaArg, wam_name: W_MetaArg,
+                        wam_v: W_MetaArg, name: str) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
 
+    if w_T is B.w_dynamic:
+        return W_OpSpec(OP.w_dynamic_setattr)
 
-def opimpl_member(kind: OpKind, vm: 'SPyVM', w_type: W_Type,
-                  attr: str) -> W_OpImpl:
-    member = w_type.spy_members[attr]
-    field = member.field # the interp-level name of the attr (e.g, 'w_x')
-    T = Annotated[W_Object, w_type]        # type of the object
-    V = Annotated[W_Object, member.w_type] # type of the attribute
+    # try to find a descriptor with a __set__ method
+    elif w_member := w_T.lookup(name):
+        w_member_T = vm.dynamic_type(w_member)
+        w_set = w_member_T.lookup_func('__set__')
+        if w_set:
+            # w_member is a descriptor! We can call its __set__
+            wam_member = W_MetaArg.from_w_obj(vm, w_member)
+            return vm.fast_metacall(w_set, [wam_member, wam_obj, wam_v])
 
-    if kind == 'get':
-        @builtin_func(w_type.fqn, f"__get_{attr}__")
-        def w_opimpl_get(vm: 'SPyVM', w_obj: T, w_attr: W_Str) -> V:
-            return getattr(w_obj, field)
+    elif w_setattr := w_T.lookup_func('__setattr__'):
+        return vm.fast_metacall(w_setattr, [wam_obj, wam_name, wam_v])
 
-        return W_OpImpl(w_opimpl_get)
-
-    elif kind == 'set':
-        @builtin_func(w_type.fqn, f"__set_{attr}__")
-        def w_opimpl_set(vm: 'SPyVM', w_obj: T, w_attr: W_Str, w_val: V)-> None:
-            setattr(w_obj, field, w_val)
-
-        return W_OpImpl(w_opimpl_set)
-
-    else:
-        assert False, f'Invalid OpKind: {kind}'
+    return W_OpSpec.NULL

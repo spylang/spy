@@ -1,16 +1,12 @@
 # write test for unary neg
 
-from typing import Annotated
-import pytest
-from spy.vm.primitive import W_I32, W_Dynamic, W_Void
-from spy.vm.b import B
-from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
-from spy.vm.w import W_Type, W_Object, W_Str
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.primitive import W_I32
+from spy.vm.builtin import builtin_method
+from spy.vm.w import W_Object
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.tests.support import CompilerTest, no_C
 
 class W_MyClass(W_Object):
 
@@ -22,14 +18,11 @@ class W_MyClass(W_Object):
     def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
         return W_MyClass(w_x)
 
-    @builtin_method('__NEG__', color='blue')
+    @builtin_method('__neg__')
     @staticmethod
-    def w_NEG(vm: 'SPyVM', wop_self: W_OpArg) -> W_OpImpl:
-        @builtin_func('ext')
-        def w_neg(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
-            x = vm.unwrap_i32(w_self.w_x)
-            return vm.wrap(-x)  # type: ignore
-        return W_OpImpl(w_neg)
+    def w_neg(vm: 'SPyVM', w_self: 'W_MyClass') -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        return vm.wrap(-x)
 
 
 @no_C

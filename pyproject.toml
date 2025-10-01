@@ -14,6 +14,8 @@ dependencies = [
     "py==1.11.0",
     "pytest==8.3.4",
     "typer==0.15.1",
+    "pexpect==4.9.0",
+    "types-pexpect==4.9.0.20250516",
     "wasmtime==8.0.1; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
 
@@ -45,6 +47,10 @@ include = ["spy*"]
 addopts = "--dist-dir=pyodide/node_modules/pyodide"
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
+# needed to ignore warnings caused by using pexpect to run ninja
+filterwarnings = [
+    'ignore:.*use of forkpty.*may lead to deadlocks:DeprecationWarning',
+]
 
 markers = [
     # compiler_backend

@@ -1,5 +1,5 @@
 import sys
-from typing import Annotated, Any, no_type_check, Optional
+from typing import Annotated, Any, Optional
 import asyncio
 from pathlib import Path
 import time
@@ -12,21 +12,18 @@ import py.path
 import pdb as stdlib_pdb # to distinguish from the "--pdb" option
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.magic_py_parse import magic_py_parse
-from spy.analyze.importing import ImportAnalizyer
+from spy.analyze.importing import ImportAnalyzer
 from spy.errors import SPyError
-from spy.parser import Parser
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
 from spy.backend.c.cbackend import CBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
 from spy.textbuilder import Color
-from spy.analyze.scope import ScopeAnalyzer
 from spy.vm.b import B
 from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
-from spy.util import highlight_C_maybe
+from spy.vm.module import W_Module
 import traceback
-import functools
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -58,6 +55,14 @@ class Arguments:
         )
     ] = False
 
+    colorize: Annotated[
+        bool,
+        Option(
+            "-C", "--colorize",
+            help="Output the pre-redshifted AST with blue / red text colors."
+        )
+    ] = False
+
     imports: Annotated[
         bool,
         Option(
@@ -85,7 +90,7 @@ class Arguments:
     cwrite: Annotated[
         bool,
         Option(
-            "-C", "--cwrite",
+            "--cwrite",
             help="Generate the C code"
         )
     ] = False
@@ -198,7 +203,7 @@ class Arguments:
         # check that we specify at most one of the following options
         possible_actions = ["execute", "pyparse", "parse",
                             "imports", "symtable",
-                            "redshift", "cwrite", "compile"]
+                            "redshift", "cwrite", "compile", "colorize"]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
         if n == 0:
@@ -214,7 +219,6 @@ class Arguments:
 
 
 def do_pyparse(filename: str) -> None:
-    import ast as py_ast
     with open(filename) as f:
         src = f.read()
     mod = magic_py_parse(src)
@@ -226,8 +230,7 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     print(b.dump_mod(modname))
 
 def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
-    w_mod = vm.modules_w[modname]
-    for fqn, w_obj in w_mod.items_w():
+    for fqn, w_obj in vm.fqns_by_modname(modname):
         if (isinstance(w_obj, W_ASTFunc) and
             w_obj.color == 'red' and
             w_obj.fqn == fqn):
@@ -312,6 +315,10 @@ async def inner_main(args: Arguments) -> None:
         do_pyparse(str(args.filename))
         return
 
+    if args.filename.suffix == '.py':
+        print(f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr)
+        sys.exit(1)
+
     modname = args.filename.stem
     srcdir = args.filename.parent
     vm = await SPyVM.async_new()
@@ -321,12 +328,12 @@ async def inner_main(args: Arguments) -> None:
         args.error_mode = 'lazy'
         vm.emit_warning = emit_warning
 
-    importer = ImportAnalizyer(vm, modname)
+    importer = ImportAnalyzer(vm, modname)
     importer.parse_all()
 
+    orig_mod = importer.getmod(modname)
     if args.parse and not args.redshift:
-        mod = importer.getmod(modname)
-        mod.pp()
+        orig_mod.pp()
         return
 
     if args.imports:
@@ -341,28 +348,24 @@ async def inner_main(args: Arguments) -> None:
     importer.import_all()
     w_mod = vm.modules_w[modname]
 
+    if args.execute and not args.redshift:
+        execute_spy_main(args, vm, w_mod)
+        return
+
+    if args.colorize:
+        # Signal to the redshift codde that we want to retain expr color information
+        vm.expr_color_map = {}
+    vm.redshift(error_mode=args.error_mode)
     #vm.pp_globals()
     #vm.pp_modules()
 
-    if args.execute:
-        w_main_functype = W_FuncType.parse('def() -> void')
-        w_main = w_mod.getattr_maybe('main')
-        if w_main is None:
-            print('Cannot find function main()')
-            return
-        vm.typecheck(w_main, w_main_functype)
-        assert isinstance(w_main, W_Func)
-        a = time.time()
-        w_res = vm.fast_call(w_main, [])
-        b = time.time()
-        if args.timeit:
-            print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
-        assert w_res is B.w_None
-        return
-
-    vm.redshift(error_mode=args.error_mode)
-    if args.redshift:
-        if args.parse:
+    if args.redshift or args.colorize:
+        if args.execute:
+            execute_spy_main(args, vm, w_mod)
+        elif args.colorize:
+            # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
+            orig_mod.pp(vm=vm)
+        elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
             dump_spy_mod(vm, modname, args.full_fqn)
@@ -398,4 +401,34 @@ async def inner_main(args: Arguments) -> None:
 
     outfile = backend.build()
     executable = outfile.relto(cwd)
-    print(f"==> {executable}")
+    if executable == '':
+        # outfile is not in a subdir of cwd, let's display the full path
+        executable = str(outfile)
+    print(f"[{config.build_type}] {executable} ")
+
+
+def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
+    w_main_functype = W_FuncType.parse('def() -> None')
+    w_main = w_mod.getattr_maybe('main')
+    if w_main is None:
+        print('Cannot find function main()')
+        return
+
+    vm.typecheck(w_main, w_main_functype)
+    assert isinstance(w_main, W_ASTFunc)
+
+    # find the redshifted version, if necessary
+    if args.redshift:
+        assert not w_main.is_valid
+        assert w_main.w_redshifted_into is not None
+        w_main = w_main.w_redshifted_into
+        assert w_main.redshifted
+    else:
+        assert not w_main.redshifted
+
+    a = time.time()
+    w_res = vm.fast_call(w_main, [])
+    b = time.time()
+    if args.timeit:
+        print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
+    assert w_res is B.w_None

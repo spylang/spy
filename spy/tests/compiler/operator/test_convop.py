@@ -1,14 +1,13 @@
 from typing import Annotated
-import pytest
-from spy.vm.primitive import W_I32, W_F64, W_Dynamic, W_Bool, W_Void
+from spy.vm.primitive import W_I32
 from spy.vm.b import B
-from spy.vm.object import Member
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
+from spy.vm.member import Member
+from spy.vm.builtin import builtin_method
 from spy.vm.w import W_Type, W_Object, W_Str
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.tests.support import CompilerTest, no_C
 
 
 class W_MyClass(W_Object):
@@ -22,42 +21,49 @@ class W_MyClass(W_Object):
     def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
         return W_MyClass(w_x)
 
-    @builtin_method('__CONVERT_TO__', color='blue')
+    @builtin_method('__convert_to__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_TO(vm: 'SPyVM', w_target_type: W_Type,
-                     wop_self: W_OpArg) -> W_OpImpl:
+    def w_CONVERT_TO(
+            vm: 'SPyVM',
+            wam_target_type: W_MetaArg,
+            wam_self: W_MetaArg
+    ) -> W_OpSpec:
+        w_target_T = wam_target_type.w_blueval
 
-        @builtin_func('ext')
-        def w_to_i32(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
-            return w_self.w_x
+        if w_target_T is B.w_i32:
+            @vm.register_builtin_func('ext')
+            def w_to_i32(vm: 'SPyVM', w_self: W_MyClass) -> W_I32:
+                return w_self.w_x
+            return W_OpSpec(w_to_i32)
 
-        @builtin_func('ext')
-        def w_to_str(vm: 'SPyVM', w_self: W_MyClass) -> W_Str:
-            x = vm.unwrap_i32(w_self.w_x)
-            return vm.wrap(str(x))  # type: ignore
+        elif w_target_T is B.w_str:
+            @vm.register_builtin_func('ext')
+            def w_to_str(vm: 'SPyVM', w_self: W_MyClass) -> W_Str:
+                x = vm.unwrap_i32(w_self.w_x)
+                return vm.wrap(str(x))
+            return W_OpSpec(w_to_str)
 
-        if w_target_type is B.w_i32:
-            vm.add_global(w_to_i32.fqn, w_to_i32)
-            return W_OpImpl(w_to_i32)
-        elif w_target_type is B.w_str:
-            vm.add_global(w_to_str.fqn, w_to_str)
-            return W_OpImpl(w_to_str)
-        return W_OpImpl.NULL
+        else:
+            return W_OpSpec.NULL
 
-    @builtin_method('__CONVERT_FROM__', color='blue')
+    @builtin_method('__convert_from__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', w_source_type: W_Type,
-                       wop_val: W_OpArg) -> W_OpImpl:
-        @builtin_func('ext')
-        def w_from_str(vm: 'SPyVM', w_val: W_Str) -> W_MyClass:
-            s = vm.unwrap_str(w_val)
-            w_x = vm.wrap(int(s))
-            return W_MyClass(w_x)  # type: ignore
+    def w_CONVERT_FROM(
+            vm: 'SPyVM',
+            wam_source_type: W_MetaArg,
+            wam_val: W_MetaArg
+    ) -> W_OpSpec:
+        w_src_T = wam_source_type.w_blueval
 
-        if w_source_type is B.w_str:
-            vm.add_global(w_from_str.fqn, w_from_str)
-            return W_OpImpl(w_from_str)
-        return W_OpImpl.NULL
+        if w_src_T is B.w_str:
+            @vm.register_builtin_func('ext')
+            def w_from_str(vm: 'SPyVM', w_val: W_Str) -> W_MyClass:
+                s = vm.unwrap_str(w_val)
+                w_x = vm.wrap(int(s))
+                return W_MyClass(w_x)
+            return W_OpSpec(w_from_str)
+
+        return W_OpSpec.NULL
 
 
 @no_C

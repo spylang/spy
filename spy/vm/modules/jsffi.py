@@ -1,11 +1,9 @@
-from typing import TYPE_CHECKING, Annotated
-import struct
-from spy.vm.primitive import W_F64, W_I32, W_Dynamic, W_Void
+from typing import TYPE_CHECKING
+from spy.vm.primitive import W_I32
 from spy.vm.b import B
-from spy.vm.object import Member
 from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
-from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
+from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.builtin import builtin_method
 from spy.vm.registry import ModuleRegistry
 
 if TYPE_CHECKING:
@@ -16,9 +14,9 @@ JSFFI = ModuleRegistry('jsffi')
 @JSFFI.builtin_type('JsRef')
 class W_JsRef(W_Object):
 
-    @builtin_method('__getattr__')
+    @builtin_method('__getattribute__')
     @staticmethod
-    def w_getattr(vm: 'SPyVM', w_self: 'W_JsRef', name: W_Str) -> 'W_JsRef':
+    def w_getattribute(vm: 'SPyVM', w_self: 'W_JsRef', name: W_Str) -> 'W_JsRef':
         raise NotImplementedError
 
     @builtin_method('__setattr__')
@@ -27,30 +25,31 @@ class W_JsRef(W_Object):
                   name: W_Str, val: 'W_JsRef') -> None:
         raise NotImplementedError
 
-    @builtin_method('__CALL_METHOD__', color='blue')
+    @builtin_method('__call_method__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wop_obj: W_OpArg, wop_method: W_OpArg,
-                      *args_wop: W_OpArg) -> W_OpImpl:
-        n = len(args_wop)
+    def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg, wam_method: W_MetaArg,
+                      *args_wam: W_MetaArg) -> W_OpSpec:
+        n = len(args_wam)
         if n == 1:
-            return W_OpImpl(JSFFI.w_js_call_method_1)
+            return W_OpSpec(JSFFI.w_js_call_method_1)
         else:
             raise Exception(
-                f"unsupported number of arguments for CALL_METHOD: {n}"
+                f"unsupported number of arguments for __call_method__: {n}"
             )
 
-    @builtin_method('__CONVERT_FROM__', color='blue')
+    @builtin_method('__convert_from__', color='blue', kind='metafunc')
     @staticmethod
-    def w_CONVERT_FROM(vm: 'SPyVM', w_T: W_Type, wop_x: W_OpArg) -> W_OpImpl:
+    def w_CONVERT_FROM(vm: 'SPyVM', wam_T: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
+        w_T = wam_T.w_blueval
         if w_T is B.w_str:
-            return W_OpImpl(JSFFI.w_js_string)
+            return W_OpSpec(JSFFI.w_js_string)
         elif w_T is B.w_i32:
-            return W_OpImpl(JSFFI.w_js_i32)
+            return W_OpSpec(JSFFI.w_js_i32)
         elif isinstance(w_T, W_FuncType):
-            assert w_T == W_FuncType.parse('def() -> void')
-            return W_OpImpl(JSFFI.w_js_wrap_func)
+            assert w_T == W_FuncType.parse('def() -> None')
+            return W_OpSpec(JSFFI.w_js_wrap_func)
         else:
-            return W_OpImpl.NULL
+            return W_OpSpec.NULL
 
 
 @JSFFI.builtin_func

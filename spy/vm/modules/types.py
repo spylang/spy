@@ -1,66 +1,58 @@
 """
 SPy `types` module.
+
+Note that TYPES is defined in spy.vm.b, and that there are other builtin types
+which are attached to it here and there (e.g. W_Module and W_Cell).
 """
 
 from typing import TYPE_CHECKING, Annotated, Any
 from dataclasses import dataclass
-from spy.fqn import FQN
-from spy.vm.builtin import builtin_type
-from spy.vm.primitive import W_Dynamic, W_Void
+from spy.location import Loc
+from spy.vm.b import TYPES
 from spy.vm.module import W_Module
-from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object, Member, ClassBody
-from spy.vm.str import W_Str
+from spy.vm.object import W_Type, W_Object, ClassBody
 from spy.vm.function import W_Func
-from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.builtin import builtin_func, builtin_method
+from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.builtin import (
+    builtin_method,
+    builtin_classmethod,
+    builtin_property
+)
 from spy.vm.registry import ModuleRegistry
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-TYPES = ModuleRegistry('types')
-TYPES.add('module', W_Module._w)
 
+@TYPES.builtin_type('Loc')
+class W_Loc(W_Object):
+    """
+    Wrapped version of Loc.
+    """
+    __spy_storage_category__ = 'value'
 
-FIELDS_T = dict[str, W_Type]
-METHODS_T = dict[str, W_Func]
+    def __init__(self, loc: Loc) -> None:
+        self.loc = loc
+
+    def spy_key(self, vm: 'SPyVM') -> Any:
+        return ('Loc', self.loc)
+
 
 @TYPES.builtin_type('LiftedType')
 class W_LiftedType(W_Type):
     w_lltype: W_Type  # low level type
 
-    def define_from_classbody(self, body: ClassBody) -> None:
+    def define_from_classbody(self, vm: 'SPyVM', body: ClassBody) -> None:
         super().define(W_LiftedObject)
-        assert set(body.fields.keys()) == {'__ll__'} # XXX raise proper exc
-        self.w_lltype = body.fields['__ll__']
-        for key, w_meth in body.methods.items():
-            assert isinstance(w_meth, W_Func)
-            self.dict_w[key] = w_meth
+        assert set(body.fields_w.keys()) == {'__ll__'} # XXX raise proper exc
+        self.w_lltype = body.fields_w['__ll__'].w_T
+        for key, w_obj in body.dict_w.items():
+            assert key not in self.dict_w, 'need to think what to do'
+            self.dict_w[key] = w_obj
 
     def repr_hints(self) -> list[str]:
         lltype = self.w_lltype.fqn.human_name
         h = f"lifted from '{lltype}'"
         return [h]
-
-    @builtin_method('__CALL_METHOD__', color='blue')
-    @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wop_self: W_OpArg, wop_method: W_OpArg,
-                      *args_wop: W_OpArg) -> W_OpImpl:
-        meth = wop_method.blue_unwrap_str(vm)
-        if meth != '__lift__':
-            return W_OpImpl.NULL
-
-        w_hltype = wop_self.w_blueval
-        assert isinstance(w_hltype, W_LiftedType)
-        HL = Annotated[W_LiftedObject, w_hltype]
-        LL = Annotated[W_Object, w_hltype.w_lltype]
-
-        @builtin_func(w_hltype.fqn, '__lift__')
-        def w_lift(vm: 'SPyVM', w_ll: LL) -> HL:
-            assert isinstance(w_hltype, W_LiftedType)
-            return W_LiftedObject(w_hltype, w_ll)
-
-        return W_OpImpl(w_lift, list(args_wop))
 
 
 @dataclass
@@ -71,7 +63,6 @@ class UnwrappedLiftedObject:
     """
     w_hltype: W_LiftedType
     llval: Any
-
 
 class W_LiftedObject(W_Object):
     w_hltype: W_LiftedType  # high level type
@@ -96,15 +87,29 @@ class W_LiftedObject(W_Object):
         hltype = self.w_hltype.fqn.human_name
         return f'<{hltype} (lifted from {ll_repr})>'
 
-    @builtin_method('__GET___ll____', color='blue')
+    @builtin_classmethod('__lift__', color='blue', kind='metafunc')
     @staticmethod
-    def w_GET___ll__(vm: 'SPyVM', wop_hl: W_OpArg,
-                      wop_attr: W_OpArg) -> W_OpImpl:
-        w_hltype = wop_hl.w_static_type
+    def w_LIFT(vm: 'SPyVM', wam_T: W_MetaArg, wam_from: W_MetaArg) -> W_OpSpec:
+        w_hltype = wam_T.w_blueval
+        assert isinstance(w_hltype, W_LiftedType)
         HL = Annotated[W_LiftedObject, w_hltype]
         LL = Annotated[W_Object, w_hltype.w_lltype]
 
-        @builtin_func(w_hltype.fqn, '__unlift__')
+        @vm.register_builtin_func(w_hltype.fqn, '__lift__')
+        def w_lift(vm: 'SPyVM', w_ll: LL) -> HL:
+            assert isinstance(w_hltype, W_LiftedType)
+            return W_LiftedObject(w_hltype, w_ll)
+        return W_OpSpec(w_lift, [wam_from])
+
+
+    @builtin_property('__ll__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_GET_ll(vm: 'SPyVM', wam_hl: W_MetaArg) -> W_OpSpec:
+        w_hltype = wam_hl.w_static_T
+        HL = Annotated[W_LiftedObject, w_hltype]
+        LL = Annotated[W_Object, w_hltype.w_lltype]
+
+        @vm.register_builtin_func(w_hltype.fqn, '__unlift__')
         def w_unlift(vm: 'SPyVM', w_hl: HL) -> LL:
             return w_hl.w_ll
-        return W_OpImpl(w_unlift, [wop_hl])
+        return W_OpSpec(w_unlift, [wam_hl])

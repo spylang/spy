@@ -191,3 +191,4 @@ cython_debug/
 #.idea/
 node_modules
 package-lock.json
+.claude/settings.local.json

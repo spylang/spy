@@ -1,8 +1,7 @@
-from typing import ClassVar, TYPE_CHECKING, Any, Optional
-from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Optional
 from contextlib import contextmanager
 from spy.location import Loc
-from spy.errfmt import ErrorFormatter, Level, Annotation
+from spy.errfmt import Level
 
 if TYPE_CHECKING:
     from spy.vm.exc import W_Exception

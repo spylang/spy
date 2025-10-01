@@ -1,18 +1,13 @@
-from typing import Any, Optional
 import textwrap
 import pytest
 import py.path
 from spy import ast
-from spy.fqn import FQN
-from spy.parser import Parser
-from spy.analyze.importing import ImportAnalizyer
+from spy.analyze.importing import ImportAnalyzer
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
-from spy.tests.support import expect_errors
 
 
 @pytest.mark.usefixtures('init')
-class TestImportAnalizyer:
+class TestImportAnalyzer:
 
     @pytest.fixture
     def init(self, tmpdir):
@@ -23,6 +18,7 @@ class TestImportAnalizyer:
     def write(self, filename: str, src: str) -> py.path.local:
         src = textwrap.dedent(src)
         f = self.tmpdir.join(filename)
+        f.dirpath().ensure(dir=True) # create directories, if needed
         f.write(src)
         return f
 
@@ -33,7 +29,7 @@ class TestImportAnalizyer:
         self.write("main.spy", """
         import mod1
         """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
 
         assert list(analyzer.mods) == ['main', 'mod1']
@@ -67,7 +63,7 @@ class TestImportAnalizyer:
         x = 'b2'
         """)
 
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         mods = analyzer.get_import_list()
         assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']
@@ -75,13 +71,13 @@ class TestImportAnalizyer:
     @pytest.mark.skip(reason="parser does not support this")
     def test_import_in_function(self):
         self.write("main.spy", """
-        def foo() -> void:
+        def foo() -> None:
             import mod1
         """)
         self.write("mod1.spy", """
         x: i32 = 42
         """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         assert list(analyzer.mods) == ['main', 'mod1']
 
@@ -90,7 +86,7 @@ class TestImportAnalizyer:
         import nonexistent
         """)
 
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         assert list(analyzer.mods) == ['main', 'nonexistent']
         assert isinstance(analyzer.mods['main'], ast.Module)
@@ -108,7 +104,7 @@ class TestImportAnalizyer:
         dummy_module = object()
         self.vm.modules_w['mod1'] = dummy_module  # type: ignore
 
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         assert list(analyzer.mods) == ['main', 'mod1']
         assert analyzer.mods['mod1'] is dummy_module
@@ -117,16 +113,22 @@ class TestImportAnalizyer:
         self.write("main.spy", """
         x: i32 = 42
         """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         scopes = analyzer.analyze_scopes('main')
         assert scopes.by_module().name == 'main'
 
-    def test_get_filename(self):
-        self.write("main.spy", """
+    def test_vm_path(self):
+        # we write mod1 in an unrelated dir, which is the added to vm.path
+        self.write("mylib/mod1.spy", """
         x: i32 = 42
         """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
-        filename = analyzer.get_filename('main')
-        assert filename == self.tmpdir.join('main.spy')
-        assert analyzer.get_filename('nonexistent') is None
+        self.write("main.spy", """
+        import mod1
+        """)
+
+        self.vm.path.append(self.tmpdir.join('mylib'))
+        analyzer = ImportAnalyzer(self.vm, 'main')
+        analyzer.parse_all()
+        assert list(analyzer.mods) == ['main', 'mod1']
+        assert analyzer.mods['mod1'] is not None # check that we found it

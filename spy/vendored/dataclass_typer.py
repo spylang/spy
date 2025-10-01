@@ -4,7 +4,6 @@
 from typing import Callable, no_type_check
 import inspect
 import dataclasses
-import typer
 
 @no_type_check
 def dataclass_typer(func: Callable) -> Callable:

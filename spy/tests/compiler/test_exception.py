@@ -32,7 +32,7 @@ class TestException(CompilerTest):
 
     def test_cannot_raise_red(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             exc = Exception("hello")
             raise exc
         """
@@ -44,7 +44,7 @@ class TestException(CompilerTest):
 
     def test_lazy_error(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             1 + "hello"
         """
         mod = self.compile(src, error_mode='lazy')
@@ -86,7 +86,7 @@ class TestException(CompilerTest):
         mod = self.compile("""
         from _testing_helpers import raise_no_loc
 
-        def foo() -> void:
+        def foo() -> None:
             raise_no_loc()
         """)
 

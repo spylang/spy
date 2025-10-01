@@ -1,8 +1,6 @@
 import textwrap
 import pytest
-from spy import ast
 from spy.vm.vm import SPyVM
-from spy.vm.function import W_ASTFunc
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.util import print_diff
 
@@ -68,12 +66,12 @@ class TestDoppler:
 
     def test_fqn_format(self):
         src = """
-        def foo(x: i32) -> void:
+        def foo(x: i32) -> None:
             y: str = 'hello'
         """
         self.redshift(src)
         expected = """
-        def `test::foo`(x: `builtins::i32`) -> `builtins::void`:
+        def `test::foo`(x: `builtins::i32`) -> `builtins::NoneType`:
             y: `builtins::str`
             y = 'hello'
         """
@@ -143,32 +141,32 @@ class TestDoppler:
         self.redshift("""
         @blue
         def make_foo():
-            def fn() -> void:
+            def fn() -> None:
                 print('fn')
 
-            def foo() -> void:
+            def foo() -> None:
                 fn()
                 fn()
             return foo
 
-        def main() -> void:
+        def main() -> None:
             make_foo()()
         """)
         self.assert_dump("""
-        def main() -> void:
+        def main() -> None:
             `test::make_foo::foo`()
 
-        def `test::make_foo::fn`() -> void:
+        def `test::make_foo::fn`() -> None:
             print_str('fn')
 
-        def `test::make_foo::foo`() -> void:
+        def `test::make_foo::foo`() -> None:
             `test::make_foo::fn`()
             `test::make_foo::fn`()
         """)
 
     def test_binops(self):
         src = """
-        def foo(i: i32, f: f64) -> void:
+        def foo(i: i32, f: f64) -> None:
             i + i
             i - i
             i * i
@@ -206,26 +204,26 @@ class TestDoppler:
 
     def test_type_conversion(self):
         src = """
-        def foo(x: f64) -> void:
+        def foo(x: f64) -> None:
             pass
 
-        def convert_in_call() -> void:
+        def convert_in_call() -> None:
             foo(42)
 
         def convert_in_locals(x: i32) -> bool:
             flag: bool = x
             return x
 
-        def convert_in_conditions(x: i32) -> void:
+        def convert_in_conditions(x: i32) -> None:
             if x:
                 pass
         """
         self.redshift(src)
         self.assert_dump("""
-        def foo(x: f64) -> void:
+        def foo(x: f64) -> None:
             pass
 
-        def convert_in_call() -> void:
+        def convert_in_call() -> None:
             `test::foo`(`operator::i32_to_f64`(42))
 
         def convert_in_locals(x: i32) -> bool:
@@ -233,7 +231,7 @@ class TestDoppler:
             flag = `operator::i32_to_bool`(x)
             return `operator::i32_to_bool`(x)
 
-        def convert_in_conditions(x: i32) -> void:
+        def convert_in_conditions(x: i32) -> None:
             if `operator::i32_to_bool`(x):
                 pass
         """)
@@ -246,12 +244,12 @@ class TestDoppler:
                 return x + y
             return impl
 
-        def foo() -> void:
+        def foo() -> None:
             x = add(i32)(1, 2)
             y = add(str)("a", "b")
         """)
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32
             x = `test::add[i32]::impl`(1, 2)
             y: str
@@ -267,24 +265,24 @@ class TestDoppler:
     def test_store_outer_var(self):
         self.redshift("""
         var x: i32 = 0
-        def foo() -> void:
+        def foo() -> None:
             x = 1
         """)
         self.assert_dump("""
-        def foo() -> void:
-            x = 1
+        def foo() -> None:
+            `test::x` = 1
         """)
 
     def test_format_prebuilt_exception(self):
         fname = str(self.tmpdir.join('test.spy'))
         self.redshift("""
-        def foo() -> void:
+        def foo() -> None:
             raise TypeError('foo')
             raise ValueError
         """)
         # in full mode, we show a call to operator::raise
         expected = f"""
-        def `test::foo`() -> `builtins::void`:
+        def `test::foo`() -> `builtins::NoneType`:
             `operator::raise`('TypeError', 'foo', '{fname}', 3)
             `operator::raise`('ValueError', '', '{fname}', 4)
         """
@@ -292,7 +290,44 @@ class TestDoppler:
 
         # in short mode, we show just a raise
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             raise TypeError('foo') # /.../test.spy:3
             raise ValueError # /.../test.spy:4
         """)
+
+    def test_expr_color_map_populated(self, monkeypatch):
+        # Verify that when vm.expr_color_map is not None, redshift populates it
+        monkeypatch.setattr(self.vm, 'expr_color_map', {})
+        src = """
+        def foo(i: i32) -> i32:
+            return i + 2
+        """
+        self.redshift(src)
+
+        # src contains 4 nodes, 3 red and 1 blue
+        assert self.vm
+        assert self.vm.expr_color_map
+        assert len(self.vm.expr_color_map) == 4
+        assert len([c for c in self.vm.expr_color_map.values() if c == 'blue']) == 1
+        assert len([c for c in self.vm.expr_color_map.values() if c == 'red']) == 3
+
+    def test_dumper_uses_expr_color_map_for_bg(self, monkeypatch):
+        # Verify that Dumper._dump_node passes correct bg argument based on expr_color_map
+        from unittest.mock import Mock
+        from spy.ast_dump import Dumper
+
+        red_node = Mock()
+        blue_node = Mock()
+
+        monkeypatch.setattr(self.vm, 'expr_color_map', {red_node: 'red', blue_node: 'blue'})
+        dumper = Dumper(use_colors=True, vm=self.vm)
+        mock_write = Mock()
+        monkeypatch.setattr(dumper, 'write', mock_write)
+
+        dumper._dump_node(red_node, 'test', [], text_color='turquoise')
+        mock_write.assert_any_call('test', color=None, bg='red')
+
+        mock_write.reset_mock()
+
+        dumper._dump_node(blue_node, 'test', [], text_color='turquoise')
+        mock_write.assert_any_call('test', color=None, bg='blue')

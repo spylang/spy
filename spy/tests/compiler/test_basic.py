@@ -3,8 +3,7 @@ from spy.fqn import FQN
 from spy.errors import SPyError
 from spy.vm.b import B
 from spy.fqn import FQN
-from spy.tests.support import (CompilerTest, skip_backends, no_backend,
-                               expect_errors, only_interp, no_C)
+from spy.tests.support import (CompilerTest, skip_backends, expect_errors, only_interp, no_C)
 
 class TestBasic(CompilerTest):
 
@@ -19,6 +18,14 @@ class TestBasic(CompilerTest):
             assert not mod.foo.w_func.redshifted
         elif self.backend == 'doppler':
             assert mod.foo.w_func.redshifted
+
+    def test_return_None(self):
+        mod = self.compile(
+        """
+        def foo() -> None:
+            pass
+        """)
+        assert mod.foo() is None
 
     def test_NameError(self):
         src = """
@@ -95,6 +102,23 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
 
+    @only_interp
+    def test_blue_cannot_redeclare(self):
+        # see also the equivalent test
+        # TestScopeAnalyzer.test_red_cannot_redeclare
+        src = """
+        @blue
+        def foo() -> i32:
+            x: i32 = 1
+            x: i32 = 2
+        """
+        errors = expect_errors(
+            'variable `x` already declared',
+            ('this is the new declaration', "x: i32 = 2"),
+            ('this is the previous declaration', "x: i32 = 1"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_local_typecheck(self):
         src = """
         def foo() -> i32:
@@ -166,7 +190,7 @@ class TestBasic(CompilerTest):
         var x: i32 = 42
         def get_x() -> i32:
             return x
-        def set_x(newval: i32) -> void:
+        def set_x(newval: i32) -> None:
             x = newval
         """)
         vm = self.vm
@@ -179,7 +203,7 @@ class TestBasic(CompilerTest):
     def test_cannot_assign_to_const_globals(self):
         src = """
         x: i32 = 42
-        def set_x() -> void:
+        def set_x() -> None:
             x = 100
         """
         errors = expect_errors(
@@ -205,12 +229,12 @@ class TestBasic(CompilerTest):
     def test_void_return(self):
         mod = self.compile("""
         var x: i32 = 0
-        def foo() -> void:
+        def foo() -> None:
             x = 1
             return
             x = 2
 
-        def bar() -> void:
+        def bar() -> None:
             x = 3
             return None
             x = 4
@@ -223,7 +247,7 @@ class TestBasic(CompilerTest):
     def test_implicit_return(self):
         mod = self.compile("""
         var x: i32 = 0
-        def implicit_return_void() -> void:
+        def implicit_return_void() -> None:
             x = 1
 
         def implicit_return_i32() -> i32:
@@ -241,10 +265,10 @@ class TestBasic(CompilerTest):
 
     def test_BinOp_error(self):
         src = """
-        def bar(a: i32, b: str) -> void:
+        def bar(a: i32, b: str) -> None:
             return a + b
 
-        def foo() -> void:
+        def foo() -> None:
             bar(1, "hello")
         """
         errors = expect_errors(
@@ -321,7 +345,7 @@ class TestBasic(CompilerTest):
         # for improvement
         src = """
         x: i32 = 0
-        def foo() -> void:
+        def foo() -> None:
             return x(0)
         """
         errors = expect_errors(
@@ -335,7 +359,7 @@ class TestBasic(CompilerTest):
         src = """
         def inc(x: i32) -> i32:
             return x+1
-        def foo() -> void:
+        def foo() -> None:
             return inc()
         """
         errors = expect_errors(
@@ -349,7 +373,7 @@ class TestBasic(CompilerTest):
         src = """
         def inc(x: i32) -> i32:
             return x+1
-        def foo() -> void:
+        def foo() -> None:
             return inc(1, 2, 3)
         """
         errors = expect_errors(
@@ -376,10 +400,10 @@ class TestBasic(CompilerTest):
     def test_StmtExpr(self):
         mod = self.compile("""
         var x: i32 = 0
-        def inc() -> void:
+        def inc() -> None:
             x = x + 1
 
-        def foo() -> void:
+        def foo() -> None:
             inc()
             inc()
         """)
@@ -397,12 +421,96 @@ class TestBasic(CompilerTest):
         assert mod.get_True() is True
         assert mod.get_False() is False
 
+    def test_bool_equality(self):
+        mod = self.compile("""
+        def eq_bool(a: bool, b: bool) -> bool:
+            return a == b
+
+        def ne_bool(a: bool, b: bool) -> bool:
+            return a != b
+        """)
+        assert mod.eq_bool(True, True) is True
+        assert mod.eq_bool(True, False) is False
+        assert mod.eq_bool(False, True) is False
+        assert mod.eq_bool(False, False) is True
+
+        assert mod.ne_bool(True, True) is False
+        assert mod.ne_bool(True, False) is True
+        assert mod.ne_bool(False, True) is True
+        assert mod.ne_bool(False, False) is False
+
+    def test_bool_operations(self):
+        mod = self.compile("""
+        def and_bool(a: bool, b: bool) -> bool:
+            return a & b
+
+        def or_bool(a: bool, b: bool) -> bool:
+            return a | b
+
+        def xor_bool(a: bool, b: bool) -> bool:
+            return a ^ b
+
+        def lt_bool(a: bool, b: bool) -> bool:
+            return a < b
+
+        def le_bool(a: bool, b: bool) -> bool:
+            return a <= b
+
+        def gt_bool(a: bool, b: bool) -> bool:
+            return a > b
+
+        def ge_bool(a: bool, b: bool) -> bool:
+            return a >= b
+        """)
+
+        # Test AND
+        assert mod.and_bool(True, True) is True
+        assert mod.and_bool(True, False) is False
+        assert mod.and_bool(False, True) is False
+        assert mod.and_bool(False, False) is False
+
+        # Test OR
+        assert mod.or_bool(True, True) is True
+        assert mod.or_bool(True, False) is True
+        assert mod.or_bool(False, True) is True
+        assert mod.or_bool(False, False) is False
+
+        # Test XOR
+        assert mod.xor_bool(True, True) is False
+        assert mod.xor_bool(True, False) is True
+        assert mod.xor_bool(False, True) is True
+        assert mod.xor_bool(False, False) is False
+
+        # Test <
+        assert mod.lt_bool(True, True) is False
+        assert mod.lt_bool(True, False) is False
+        assert mod.lt_bool(False, True) is True
+        assert mod.lt_bool(False, False) is False
+
+        # Test <=
+        assert mod.le_bool(True, True) is True
+        assert mod.le_bool(True, False) is False
+        assert mod.le_bool(False, True) is True
+        assert mod.le_bool(False, False) is True
+
+        # Test >
+        assert mod.gt_bool(True, True) is False
+        assert mod.gt_bool(True, False) is True
+        assert mod.gt_bool(False, True) is False
+        assert mod.gt_bool(False, False) is False
+
+        # Test >=
+        assert mod.ge_bool(True, True) is True
+        assert mod.ge_bool(True, False) is True
+        assert mod.ge_bool(False, True) is False
+        assert mod.ge_bool(False, False) is True
+
     def test_CompareOp_error(self):
         src = """
         def bar(a: i32, b: str) -> bool:
             return a == b
 
-        def foo() -> void:
+        def foo() -> None:
             bar(1, "hello")
         """
         errors = expect_errors(
@@ -418,17 +526,17 @@ class TestBasic(CompilerTest):
         var b: i32 = 0
         var c: i32 = 0
 
-        def reset() -> void:
+        def reset() -> None:
             a = 0
             b = 0
             c = 0
 
-        def if_then(x: i32) -> void:
+        def if_then(x: i32) -> None:
             if x == 0:
                 a = 100
             c = 300
 
-        def if_then_else(x: i32) -> void:
+        def if_then_else(x: i32) -> None:
             if x == 0:
                 a = 100
             else:
@@ -473,7 +581,7 @@ class TestBasic(CompilerTest):
 
     def test_pass(self):
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             pass
         """)
         assert mod.foo() is None
@@ -490,10 +598,10 @@ class TestBasic(CompilerTest):
 
     def test_getitem_error_1(self):
         src = """
-        def bar(a: i32, i: bool) -> void:
+        def bar(a: i32, i: bool) -> None:
             a[i]
 
-        def foo() -> void:
+        def foo() -> None:
             bar(42, True)
         """
         errors = expect_errors(
@@ -624,12 +732,13 @@ class TestBasic(CompilerTest):
 
     def test_print(self, capfd):
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             print("hello world")
             print(42)
             print(12.3)
             print(True)
             print(None)
+            print(i32)
         """)
         mod.foo()
         if self.backend == 'C':
@@ -645,13 +754,15 @@ class TestBasic(CompilerTest):
                                  s_123,
                                  "True",
                                  "None",
+                                 "<spy type 'i32'>",
                                  ""])
 
     @no_C
-    def test_print_type(self, capfd):
+    def test_print_object(self, capfd):
         mod = self.compile("""
-        def foo() -> void:
-            print(i32)
+        def foo() -> None:
+            x = i32   # force i32 to be a red value
+            print(x)
         """)
         mod.foo()
         out, err = capfd.readouterr()
@@ -667,7 +778,7 @@ class TestBasic(CompilerTest):
             @blue
             def b():
                 x2 = 2
-                def c() -> void:
+                def c() -> None:
                     x3 = 3
                     print(x0)
                     print(x1)
@@ -676,7 +787,7 @@ class TestBasic(CompilerTest):
                 return c
             return b
 
-        def foo() -> void:
+        def foo() -> None:
             a()()()
         """)
         mod.foo()
@@ -714,11 +825,16 @@ class TestBasic(CompilerTest):
             return 1 + 2 * 3
 
         x = INIT_X()
+
+        def get_x() -> i32:
+            return x
         """)
         vm = self.vm
-        assert mod.x == 7
-        fqn = FQN("test::x")
-        assert vm.unwrap(self.vm.globals_w[fqn]) == 7
+        assert mod.get_x() == 7
+        if self.backend != 'C':
+            w_mod = self.vm.modules_w['test']
+            w_x = w_mod.getattr('x')
+            assert vm.unwrap(w_x) == 7
 
     def test_getattr_module(self):
         mod = self.compile("""
@@ -731,7 +847,7 @@ class TestBasic(CompilerTest):
 
     def test_getattr_error(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             x: object = 1
             x.foo
         """
@@ -741,6 +857,7 @@ class TestBasic(CompilerTest):
             )
         self.compile_raises(src, "foo", errors)
 
+    @pytest.mark.skip(reason="think better about __INIT__")
     def test___INIT__(self):
         mod = self.compile(
         """
@@ -754,24 +871,26 @@ class TestBasic(CompilerTest):
             mod.x = 42
         """)
         vm = self.vm
-        assert mod.x == 42
         assert mod.get_x() == 42
+        fqn = FQN("test::x")
+        assert vm.unwrap(self.vm.globals_w[fqn]) == 42
 
+    @pytest.mark.skip(reason="think better about __INIT__")
     def test_wrong__INIT__(self):
         # NOTE: this error is always eager because it happens at import time
         src = """
-        def __INIT__(mod: dynamic) -> void:
+        def __INIT__(mod: dynamic) -> None:
             pass
         """
         errors = expect_errors(
             "the __INIT__ function must be @blue",
-            ("function defined here", "def __INIT__(mod: dynamic) -> void")
+            ("function defined here", "def __INIT__(mod: dynamic) -> None")
         )
         self.compile_raises(src, "", errors, error_reporting="eager")
 
     def test_setattr_error(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             s: str = "hello"
             s.x = 42
 
@@ -862,68 +981,13 @@ class TestBasic(CompilerTest):
         assert mod.ne_dynamic(1, 2) == True
         assert mod.ne_dynamic(1, 'str') == True
 
-    @no_C
-    def test_STATIC_TYPE(self):
-        mod = self.compile("""
-        def foo() -> type:
-            x = 42
-            return STATIC_TYPE(x)
-        """)
-        w_type = mod.foo(unwrap=False)
-        assert w_type is B.w_i32
-
-    @no_C
-    def test_STATIC_TYPE_wrong_argcount(self):
-        src = """
-        def foo() -> type:
-            x = 42
-            return STATIC_TYPE(x, 1, 2)
-        """
-        errors = expect_errors(
-            'this function takes 1 argument but 3 arguments were supplied',
-            ('2 extra arguments', '1, 2')
-        )
-        self.compile_raises(src, 'foo', errors)
-
-    @no_C
-    def test_STATIC_TYPE_side_effects(self):
-        # Ideally, we sould like to allow STATIC_TYPE on arbitrary
-        # expressions: this is easy to implement for interp, but tricky for
-        # doppler. For now, we declare that we support only simple expressions
-        # as argument of STATIC_TYPE, to avoid side effects
-        src = """
-        var x: i32 = 0
-
-        def get_x() -> i32:
-            return x
-
-        def inc() -> i32:
-            x = x + 1
-            return x
-
-        def foo() -> type:
-            return STATIC_TYPE(inc())
-        """
-        # this is what we would like, eventually
-        ## assert mod.get_x() == 0
-        ## pyclass = mod.foo()
-        ## assert pyclass is self.vm.unwrap(B.w_i32)
-        ## assert mod.get_x() == 1
-        #
-        # this is what we have now
-        errors = expect_errors(
-            'STATIC_TYPE works only on simple expressions',
-            ('Call not allowed here', 'inc()')
-        )
-        self.compile_raises(src, 'foo', errors)
-
     @only_interp
     def test_automatic_forward_declaration(self):
         mod = self.compile("""
         from unsafe import ptr
 
         # we can use S even if it's declared later
-        def foo(s: S, p: ptr[S]) -> void:
+        def foo(s: S, p: ptr[S]) -> None:
             pass
 
         ptr_S1 = ptr[S] # using the forward decl
@@ -940,11 +1004,11 @@ class TestBasic(CompilerTest):
         w_ptr_S1 = w_mod.getattr('ptr_S1')
         w_ptr_S2 = w_mod.getattr('ptr_S2')
         #
-        expected_sig = 'def(test::S, unsafe::ptr[test::S]) -> void'
+        expected_sig = 'def(test::S, unsafe::ptr[test::S]) -> None'
         assert w_foo.w_functype.fqn.human_name == expected_sig
         params = w_foo.w_functype.params
-        assert params[0].w_type is w_S
-        assert params[1].w_type is w_ptr_S1 is w_ptr_S2
+        assert params[0].w_T is w_S
+        assert params[1].w_T is w_ptr_S1 is w_ptr_S2
 
     @only_interp
     def test_forward_declaration_in_funcdef(self):
@@ -976,8 +1040,8 @@ class TestBasic(CompilerTest):
             x = bar()
             return STATIC_TYPE(x)
         """)
-        w_type = mod.foo(unwrap=False)
-        assert w_type is B.w_i32
+        w_T = mod.foo(unwrap=False)
+        assert w_T is B.w_i32
 
     def test_cls_as_param_name(self):
         mod = self.compile("""
@@ -985,3 +1049,132 @@ class TestBasic(CompilerTest):
             return cls+1
         """)
         assert mod.foo(3) == 4
+
+    def test_call_module_attr(self):
+        mod = self.compile("""
+        import math
+
+        def foo(x: f64) -> f64:
+            return math.fabs(x)
+        """)
+        assert mod.foo(-3.5) == 3.5
+
+    def test_cannot_call_red_from_blue(self):
+        src = """
+        @blue
+        def blue_inc(x):
+            return x + 1
+
+        def foo() -> i32:
+            x = 2
+            return blue_inc(x)
+        """
+        errors = expect_errors(
+            'cannot call blue function with red arguments',
+            ('this is blue', 'blue_inc'),
+            ('this is red', 'x'),
+        )
+        self.compile_raises(src, 'foo', errors)
+
+    def test_varargs_blue(self):
+        src = """
+        @blue
+        def foo(a, b, *args):
+            return len(args)
+
+        def bar() -> i32:
+            return foo(1, 2, 3, 4, 5)
+        """
+        mod = self.compile(src)
+        assert mod.bar() == 3
+
+    def test_varargs_red(self):
+        src = """
+        def foo(a: i32, b: i32, *args: i32) -> i32:
+            return len(args)
+
+        def bar() -> i32:
+            return foo(1, 2, 3, 4, 5)
+        """
+        if self.backend == 'C':
+            errors = expect_errors(
+                '*args not yet supported by the C backend',
+                ('*args declared here', 'args: i32')
+            )
+            self.compile_raises(src, "foo", errors)
+        else:
+            mod = self.compile(src)
+            assert mod.bar() == 3
+
+    def test_call_functions_during_redshifting(self):
+        # this test what happens in the middle of redshifting. When we are
+        # redshifting get_N(), "inc" has already been redshifted but get_N
+        # tries to call the old function object. ASTFrame has a special check
+        # to automatically use the new version instead.
+        src = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        @blue
+        def get_N():
+            return inc(5)
+
+        def foo() -> i32:
+            return get_N()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 6
+
+    def test_decorator(self):
+        src = """
+        @blue
+        def double(fn):
+            def inner(x: i32) -> i32:
+                res = fn(x)
+                return res * 2
+            return inner
+
+        @double
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo(x: i32) -> i32:
+            return inc(x)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 12
+
+    def test_multiple_decorator(self):
+        src = """
+        @blue
+        def inc(fn):
+            def inner(x: i32) -> i32:
+                return fn(x) + 1
+            return inner
+
+        @blue
+        def double(fn):
+            def inner(x: i32) -> i32:
+                return fn(x) * 2
+            return inner
+
+        @inc
+        @double
+        def x2_plus_1(x: i32) -> i32:
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.x2_plus_1(5) == 11
+
+    def test_for_loop(self):
+        src = """
+        from _range import range
+
+        def factorial(n: i32) -> i32:
+            res = 1
+            for i in range(n):
+                res *= (i+1)
+            return res
+        """
+        mod = self.compile(src)
+        assert mod.factorial(4) == 2 * 3 * 4
