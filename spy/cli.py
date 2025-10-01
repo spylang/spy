@@ -12,7 +12,7 @@ import py.path
 import pdb as stdlib_pdb # to distinguish from the "--pdb" option
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.magic_py_parse import magic_py_parse
-from spy.analyze.importing import ImportAnalizyer
+from spy.analyze.importing import ImportAnalyzer
 from spy.errors import SPyError
 from spy.backend.spy import SPyBackend, FQN_FORMAT
 from spy.doppler import ErrorMode
@@ -328,7 +328,7 @@ async def inner_main(args: Arguments) -> None:
         args.error_mode = 'lazy'
         vm.emit_warning = emit_warning
 
-    importer = ImportAnalizyer(vm, modname)
+    importer = ImportAnalyzer(vm, modname)
     importer.parse_all()
 
     orig_mod = importer.getmod(modname)

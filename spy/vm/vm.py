@@ -114,11 +114,11 @@ class SPyVM:
         return SPyVM(ll=ll)
 
     def import_(self, modname: str) -> W_Module:
-        from spy.analyze.importing import ImportAnalizyer
+        from spy.analyze.importing import ImportAnalyzer
         if modname in self.modules_w:
             return self.modules_w[modname]
 
-        importer = ImportAnalizyer(self, modname)
+        importer = ImportAnalyzer(self, modname)
         importer.parse_all()
         #importer.pp()
         importer.import_all()
