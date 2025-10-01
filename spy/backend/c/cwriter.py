@@ -265,7 +265,6 @@ class CFuncWriter:
         FQN('operator::i8_sub'): '-',
         FQN('operator::i8_mul'): '*',
         FQN('operator::i8_floordiv'): '/',
-        FQN('operator::i8_mod'): '%',
         FQN('operator::i8_lshift'): '<<',
         FQN('operator::i8_rshift'): '>>',
         FQN('operator::i8_and'): '&',
@@ -282,7 +281,6 @@ class CFuncWriter:
         FQN('operator::u8_sub'): '-',
         FQN('operator::u8_mul'): '*',
         FQN('operator::u8_floordiv'): '/',
-        FQN('operator::u8_mod'): '%',
         FQN('operator::u8_lshift'): '<<',
         FQN('operator::u8_rshift'): '>>',
         FQN('operator::u8_and'): '&',
@@ -299,7 +297,6 @@ class CFuncWriter:
         FQN('operator::i32_sub'): '-',
         FQN('operator::i32_mul'): '*',
         FQN('operator::i32_floordiv'): '/',
-        FQN('operator::i32_mod'): '%',
         FQN('operator::i32_lshift'): '<<',
         FQN('operator::i32_rshift'): '>>',
         FQN('operator::i32_and'): '&',
@@ -315,7 +312,6 @@ class CFuncWriter:
         FQN('operator::f64_add'): '+',
         FQN('operator::f64_sub'): '-',
         FQN('operator::f64_mul'): '*',
-        FQN('operator::f64_div'): '/',
         FQN('operator::f64_eq') : '==',
         FQN('operator::f64_ne') : '!=',
         FQN('operator::f64_lt') : '<',
@@ -327,8 +323,12 @@ class CFuncWriter:
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
         # FQN('operator::i8_div')
+        # FQN('operator::i8_mod')
         # FQN('operator::u8_div')
+        # FQN('operator::u8_mod')
         # FQN('operator::i32_div')
+        # FQN('operator::i32_mod')
+        # FQN('operator::f64_div')
         # FQN('operator::f64_floordiv')
     }
 

@@ -53,18 +53,74 @@ static inline void spy_operator$raise(spy_Str *etype,
 }
 
 static inline double spy_operator$i8_div(int8_t x, int8_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
     return (double)x / y;
 }
 
 static inline double spy_operator$u8_div(uint8_t x, uint8_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
     return (double)x / y;
 }
 
 static inline double spy_operator$i32_div(int32_t x, int32_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
     return (double)x / y;
 }
 
+static inline double spy_operator$i8_mod(int8_t x, int8_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
+    return x % y;
+}
+
+static inline double spy_operator$u8_mod(uint8_t x, uint8_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
+    return x % y;
+}
+
+static inline double spy_operator$i32_mod(int32_t x, int32_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
+    return x % y;
+}
+
+static inline double spy_operator$f64_div(double x, double y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
+    return x / y;
+}
+
 static inline double spy_operator$f64_floordiv(double x, double y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero",
+                  __FILE__, __LINE__);
+        return nan("");
+    }
     return floor(x / y);
 }
 
