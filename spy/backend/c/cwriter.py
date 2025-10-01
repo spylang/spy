@@ -183,6 +183,19 @@ class CFuncWriter:
                 self.emit_stmt(stmt)
         self.tbc.wl('}')
 
+    def emit_stmt_Assert(self, assert_node: ast.Assert) -> None:
+        test = self.fmt_expr(assert_node.test)
+        self.tbc.wl(f'if (!({test}))'+' {')
+        with self.tbc.indent():
+            if assert_node.msg is not None:
+                # TODO: assuming msg is always a string. extend the logic to work with other types
+                msg = self.fmt_expr(assert_node.msg)
+                self.tbc.wl(f'spy_panic("AssertionError", {msg}, "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+            else:
+                self.tbc.wl(f'spy_panic("AssertionError", "assertion failed", "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+            
+        self.tbc.wl('}')
+
     # ===== expressions =====
 
     def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
