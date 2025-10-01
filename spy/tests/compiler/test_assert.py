@@ -43,3 +43,21 @@ class TestAssert(CompilerTest):
 
         assert exc_info.value.etype == "W_AssertionError"
         assert "custom error message" in str(exc_info.value.w_exc.message)
+
+    def test_assert_invoking_a_function(self):
+        """Test assert with a message retrieved by a function call"""
+        mod = self.compile(
+            """
+            def get_message() -> str:
+                return "custom error message"
+
+            def test() -> None:
+                assert False, get_message()
+            """
+        )
+
+        with pytest.raises(SPyError) as exc_info:
+            mod.test()
+
+        assert exc_info.value.etype == "W_AssertionError"
+        assert "custom error message" in str(exc_info.value.w_exc.message)
