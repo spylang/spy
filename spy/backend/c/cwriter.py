@@ -80,7 +80,7 @@ class CFuncWriter:
         param_names = [arg.name for arg in self.w_func.funcdef.args]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
-            if (varname not in ('@return', '@if', '@while') and
+            if (varname not in ('@return', '@if', '@while', '@assert') and
                 varname not in param_names):
                 self.tbc.wl(f'{c_type} {varname};')
 
@@ -190,7 +190,7 @@ class CFuncWriter:
             if assert_node.msg is not None:
                 # TODO: assuming msg is always a string. extend the logic to work with other types
                 msg = self.fmt_expr(assert_node.msg)
-                self.tbc.wl(f'spy_panic("AssertionError", {msg}, "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+                self.tbc.wl(f'spy_panic("AssertionError", ({msg})->utf8, "{assert_node.loc.filename}", {assert_node.loc.line_start});')
             else:
                 self.tbc.wl(f'spy_panic("AssertionError", "assertion failed", "{assert_node.loc.filename}", {assert_node.loc.line_start});')
             

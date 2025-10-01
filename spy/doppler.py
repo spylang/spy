@@ -219,6 +219,11 @@ class DopplerFrame(ASTFrame):
         call = self.shift_opimpl(raise_node, w_opimpl, [v_exc])
         return [ast.StmtExpr(raise_node.loc, call)]
 
+    def shift_stmt_Assert(self, assert_node: ast.Assert) -> list[ast.Stmt]:
+        new_test = self.eval_and_shift(assert_node.test, varname='@assert')
+        new_msg = self.eval_and_shift(assert_node.msg) if assert_node.msg else None
+        return [assert_node.replace(test=new_test, msg=new_msg)]
+
     # ==== expressions ====
 
     def eval_and_shift(self, expr: ast.Expr,
