@@ -25,4 +25,4 @@ def hash(T):
 
 def main() -> None:
     print(hash[i32](123))
-    print(hash[str]("ciao"))
+    # print(hash[str]("ciao"))
