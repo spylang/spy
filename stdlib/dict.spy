@@ -62,7 +62,7 @@ def dict(Key, Value):
         return index
 
     # def new_entries(log_size: i32) -> ptr[Entry]:
-    def new_entries(log_size: i32, data: ptr[DictData]) -> void:
+    def new_entries(log_size: i32, data: ptr[DictData]) -> None:
         # entries = gc_alloc(Entry)(1 << log_size)
         entries_empty = gc_alloc(i32)(1 << log_size)
         entries_key = gc_alloc(Key)(1 << log_size)
@@ -132,7 +132,7 @@ def dict(Key, Value):
                             return ix
         return DKIX_EMPTY
 
-    def insert(self: _dict, key: Key, value: Value) -> void:
+    def insert(self: _dict, key: Key, value: Value) -> None:
         data: ptr[DictData] = self.__ll__
         # entry = data.entries[data.length]
         l = data.length + 1
@@ -199,7 +199,7 @@ def dict(Key, Value):
             # return data.entries[ix].value
             return data.entries_value[ix]
 
-        def __setitem__(self: _dict, key: Key, value: Value) -> void:
+        def __setitem__(self: _dict, key: Key, value: Value) -> None:
             data: ptr[DictData] = self.__ll__
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
@@ -212,7 +212,7 @@ def dict(Key, Value):
                 # entry.value = value
                 data.entries_value[ix] = value
 
-        def __delitem__(self: _dict, key: Key) -> void:
+        def __delitem__(self: _dict, key: Key) -> None:
             pass
 
         def __len__(self: _dict) -> i32:

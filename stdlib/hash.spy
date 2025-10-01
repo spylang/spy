@@ -23,6 +23,6 @@ def hash(T):
     #   9 |     raise TypeError("unhashable type: '" + str(T) + "'")
     #     |                                            |____| operator::CALL called here
 
-def main() -> void:
+def main() -> None:
     print(hash[i32](123))
     print(hash[str]("ciao"))
