@@ -32,10 +32,7 @@ def dict(Key, Value):
         index: ptr[i32]
         log_size: i32  # capacity
         length: i32  # number of items stored
-        # entries: ptr[Entry]  # array of structs is WIP
-        entries_empty: ptr[i32]
-        entries_key: ptr[Key]
-        entries_value: ptr[Value]
+        entries: ptr[Entry]
 
 
     def new_data(log_size: i32) -> ptr[DictData]:
@@ -63,21 +60,13 @@ def dict(Key, Value):
 
     # def new_entries(log_size: i32) -> ptr[Entry]:
     def new_entries(log_size: i32, data: ptr[DictData]) -> None:
-        # entries = gc_alloc(Entry)(1 << log_size)
-        entries_empty = gc_alloc(i32)(1 << log_size)
-        entries_key = gc_alloc(Key)(1 << log_size)
-        entries_value = gc_alloc(Value)(1 << log_size)
+        entries = gc_alloc(Entry)(1 << log_size)
         i = 0
         while i < 1 << log_size:
-            # entries_empty[i] = True
-            entries_empty[i] = 1
-            # entries_key[i] = None
-            # entries_value[i] = None
+            entries[i].empty = 1
             i += 1
         # return entries
-        data.entries_empty = entries_empty
-        data.entries_key = entries_key
-        data.entries_value = entries_value
+        data.entries = entries
 
     def capacity(self: _dict) -> i32:
         data: ptr[DictData] = self.__ll__
@@ -101,7 +90,7 @@ def dict(Key, Value):
         distance = -1
         while distance < capacity(self):
             distance += 1
-            ix = data.index[(d0 + distance) & capacity(self)]
+            ix = data.index[(d0 + distance) % capacity(self)]
             if ix == DKIX_EMPTY:
                 return DKIX_EMPTY
             if ix == DKIX_DUMMY:
@@ -109,7 +98,7 @@ def dict(Key, Value):
                 pass
             else:
                 # entry = get_entry_at(self, ix)
-                entry_empty = data.entries_empty[ix]
+                entry_empty = data.entries[ix].empty
                 # if not entry_empty:
                     # [Antonio]: another hard-to-read error. I think it says there's no `not`?
                     #   File "/Users/dp/repos/spy/spy/vm/modules/operator/__init__.py", line 115, in OP_unary_from_token
@@ -119,7 +108,7 @@ def dict(Key, Value):
                 if entry_empty:
                     pass
                 else:
-                    entry_key = data.entries_key[ix]
+                    entry_key = data.entries[ix].key
                     # continue (I'd rather remove the `not` and use `continue` here)
                     hash_entry = hash_key(entry_key)  # might raise exception
                     hash_lookup = hash_key(key)  # might raise exception
@@ -138,9 +127,9 @@ def dict(Key, Value):
         l = data.length + 1
         # data.length += 1
         data.length = l
-        data.entries_key[l] = key
-        data.entries_value[l] = value
-        data.entries_empty[l] = 0
+        data.entries[l].key = key
+        data.entries[l].value = value
+        data.entries[l].empty = 0
         d0 = distance_0(self, key)
         distance = -1
         while distance < capacity(self):
@@ -165,9 +154,9 @@ def dict(Key, Value):
         while i < old_data.length:
             # entry = old_data.entries[i]
             # new.entries[i] = entry
-            new.entries_empty[i] = old_data.entries_empty[i]
-            new.entries_key[i] = old_data.entries_key[i]
-            new.entries_value[i] = old_data.entries_value[i]
+            new.entries[i].empty = old_data.entries[i].empty
+            new.entries[i].key = old_data.entries[i].key
+            new.entries[i].value = old_data.entries[i].value
             i += 1
         self.__ll__.data = new
 
@@ -196,8 +185,7 @@ def dict(Key, Value):
                 # 184 |                 raise KeyError(key)
                 #     |                       |______| not found in this scope
                 raise Exception(str(key))
-            # return data.entries[ix].value
-            return data.entries_value[ix]
+            return data.entries[ix].value
 
         def __setitem__(self: _dict, key: Key, value: Value) -> None:
             data: ptr[DictData] = self.__ll__
@@ -210,7 +198,7 @@ def dict(Key, Value):
                 # entry = get_entry_at(self, ix)
                 # assert not entry.empty
                 # entry.value = value
-                data.entries_value[ix] = value
+                data.entries[ix].value = value
 
         def __delitem__(self: _dict, key: Key) -> None:
             pass
