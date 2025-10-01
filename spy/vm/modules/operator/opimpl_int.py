@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING, Any, Annotated, Protocol
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_I32, W_I8, W_U8, W_F64, W_Bool
+from spy.errors import SPyError
+from spy.location import Loc
 from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -43,14 +45,20 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
 
     @OP.builtin_func(f'{T}_div')
     def w_div(vm: 'SPyVM', w_a: WT, w_b: WT) -> W_F64:
+        if w_b.value == 0:
+            raise SPyError("W_ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero")
         return _binop(vm, w_a, w_b, lambda a, b: a / b)
 
     @OP.builtin_func(f'{T}_floordiv')
     def w_floordiv(vm: 'SPyVM', w_a: WT, w_b: WT) -> WT:
+        if w_b.value == 0:
+            raise SPyError("W_ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero")
         return _binop(vm, w_a, w_b, lambda a, b: a // b)
 
     @OP.builtin_func(f'{T}_mod')
     def w_mod(vm: 'SPyVM', w_a: WT, w_b: WT) -> WT:
+        if w_b.value == 0:
+            raise SPyError("W_ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero")
         return _binop(vm, w_a, w_b, lambda a, b: a % b)
 
     @OP.builtin_func(f'{T}_lshift')
