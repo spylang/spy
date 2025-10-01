@@ -1,6 +1,7 @@
 #-*- encoding: utf-8 -*-
 
 from spy.tests.support import CompilerTest
+from spy.errors import SPyError
 
 class TestFloat(CompilerTest):
 
@@ -25,9 +26,13 @@ class TestFloat(CompilerTest):
         assert mod.add(1.5, 2.6) == 4.1
         assert mod.sub(1.5, 0.2) == 1.3
         assert mod.mul(1.5, 0.5) == 0.75
-        assert mod.div(1.5, 2.0)   == 0.75
+        assert mod.div(1.5, 2.0) == 0.75
         assert mod.floordiv(10.0, 3.0) == 3.0
         assert mod.neg(-2.5) == 2.5
+        with SPyError.raises("W_ZeroDivisionError"):
+            mod.div(1.5, 0.0)
+        with SPyError.raises("W_ZeroDivisionError"):
+            mod.floordiv(10.0, 0.0)
 
     def test_CompareOp(self):
         mod = self.compile("""
