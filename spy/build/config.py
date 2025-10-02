@@ -23,6 +23,10 @@ CFLAGS = [
     '-fdiagnostics-color=always', # force colors
     '-I', str(spy.libspy.INCLUDE),
 ]
+LDFLAGS = [
+    '-lm' # always include libm for now. Ideally we should do it only if needed
+]
+
 RELEASE_CFLAGS  = ['-DSPY_RELEASE', '-O3', '-flto']
 RELEASE_LDFLAGS = ['-flto']
 
@@ -49,6 +53,7 @@ class CompilerConfig:
         ]
 
         # e.g. 'spy/libspy/build/native/release/'
+        self.ldflags += LDFLAGS
         libdir = spy.libspy.BUILD.join(config.target, config.build_type)
         self.ldflags += [
             '-L', str(libdir),
