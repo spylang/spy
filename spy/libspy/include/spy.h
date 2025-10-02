@@ -1,6 +1,10 @@
 #ifndef SPY_H
 #define SPY_H
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -35,6 +39,7 @@
 #include "spy/unsafe.h"
 #include "spy/rawbuffer.h"
 #include "spy/posix.h"
+#include "spy/time.h"
 #include "spy/debug.h"
 
 #ifdef SPY_TARGET_EMSCRIPTEN
