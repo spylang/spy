@@ -67,7 +67,6 @@ def generic_mem_read(vm: 'SPyVM', addr: int, w_T: W_Type) -> W_Object:
             offset = w_T.offsets[fname]
             values_w[fname] = generic_mem_read(vm, addr+offset, w_field.w_T)
         return W_Struct(w_T, values_w)
-
     else:
         raise WIP(f"Cannot read memory of type `{w_T.fqn.human_name}`")
 
@@ -84,6 +83,7 @@ def generic_mem_write(vm: 'SPyVM', addr: int,
         assert isinstance(w_val, W_Ptr)
         vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)
     elif isinstance(w_T, W_StructType):
+        assert isinstance(w_val, W_Struct)
         # write the struct by value, field by field
         for fname, w_field in w_T.fields_w.items():
             offset = w_T.offsets[fname]
