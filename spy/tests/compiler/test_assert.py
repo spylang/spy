@@ -1,11 +1,9 @@
-import pytest
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, expect_errors
 
 
 class TestAssert(CompilerTest):
     def test_assert_true(self):
-        """Test that assert True passes without error"""
         mod = self.compile(
             """
             def test() -> None:
@@ -16,7 +14,6 @@ class TestAssert(CompilerTest):
         mod.test()
 
     def test_assert_false(self):
-        """Test that assert False raises AssertionError"""
         mod = self.compile(
             """
             def test() -> None:
@@ -24,13 +21,10 @@ class TestAssert(CompilerTest):
             """
         )
 
-        with pytest.raises(SPyError) as exc_info:
+        with SPyError.raises("W_AssertionError"):
             mod.test()
 
-        assert exc_info.value.etype == "W_AssertionError"
-
     def test_assert_with_message(self):
-        """Test assert with custom message"""
         mod = self.compile(
             """
             def test() -> None:
@@ -38,14 +32,10 @@ class TestAssert(CompilerTest):
             """
         )
 
-        with pytest.raises(SPyError) as exc_info:
+        with SPyError.raises("W_AssertionError", match="custom error message"):
             mod.test()
 
-        assert exc_info.value.etype == "W_AssertionError"
-        assert "custom error message" in str(exc_info.value.w_exc.message)
-
     def test_assert_invoking_a_function(self):
-        """Test assert with a message retrieved by a function call"""
         mod = self.compile(
             """
             def get_message() -> str:
@@ -56,37 +46,34 @@ class TestAssert(CompilerTest):
             """
         )
 
-        with pytest.raises(SPyError) as exc_info:
+        with SPyError.raises("W_AssertionError", match="custom error message"):
             mod.test()
 
-        assert exc_info.value.etype == "W_AssertionError"
-        assert "custom error message" in str(exc_info.value.w_exc.message)
-
     def test_assert_with_non_string_message(self):
-        """Test assert with non-string message raises TypeError"""
-        with pytest.raises(SPyError) as exc_info:
-            self.compile(
-                """
-                def test() -> None:
-                    assert False, 42
-                """
-            ).test()
+        src = """
+        def foo() -> None:
+            assert False, 42
+        """
 
-        assert exc_info.value.etype == "W_TypeError"
-        assert "expected `str`, got `i32`" in str(exc_info.value)
+        errors = expect_errors(
+            "mismatched types",
+            ("expected `str`, got `i32`", "42"),
+        )
+
+        self.compile_raises(src, "foo", errors)
 
     def test_assert_with_function_returning_non_string(self):
-        """Test assert with function call returning non-string raises TypeError"""
-        with pytest.raises(SPyError) as exc_info:
-            self.compile(
-                """
-                def get_error_code() -> i32:
-                    return 404
-                    
-                def test() -> None:
-                    assert False, get_error_code()
-                """
-            ).test()
+        src = """
+        def get_error_code() -> i32:
+            return 404
+        
+        def foo() -> None:
+            assert False, get_error_code()
+        """
 
-        assert exc_info.value.etype == "W_TypeError"
-        assert "expected `str`, got `i32`" in str(exc_info.value)
+        errors = expect_errors(
+            "mismatched types",
+            ("expected `str`, got `i32`", "get_error_code()"),
+        )
+
+        self.compile_raises(src, "foo", errors)
