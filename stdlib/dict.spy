@@ -69,11 +69,11 @@ def dict(Key, Value):
         data.entries = entries
 
     def capacity(self: _dict) -> i32:
-        data: ptr[DictData] = self.__ll__
+        data: ptr[DictData] = self.__ll__.data
         return 1 << data.log_size
 
     def mask(self: _dict) -> i32:
-        data: ptr[DictData] = self.__ll__
+        data: ptr[DictData] = self.__ll__.data
         return 1 << data.log_size - 1
 
     def distance_0(self: _dict, key: Key) -> i32:
@@ -81,11 +81,12 @@ def dict(Key, Value):
         return hash_key(key) & mask(self)
 
     # def get_entry_at(self: _dict, position: i32) -> Entry:
-    #     data: DictData = self.__ll__
+    #     data: DictData = self.__ll__.data
     #     return data.entries[position]
 
     def lookup(self: _dict, key: Key) -> i32:
-        data: ptr[DictData] = self.__ll__
+        data: ptr[DictData] = self.__ll__.data
+        hash_lookup = hash_key(key)  # might raise exception
         d0 = distance_0(self, key)
         distance = -1
         while distance < capacity(self):
@@ -111,7 +112,6 @@ def dict(Key, Value):
                     entry_key = data.entries[ix].key
                     # continue (I'd rather remove the `not` and use `continue` here)
                     hash_entry = hash_key(entry_key)  # might raise exception
-                    hash_lookup = hash_key(key)  # might raise exception
                     if hash_entry == hash_lookup:
                         # if entry_key is key:
                         #     return ix
@@ -122,7 +122,7 @@ def dict(Key, Value):
         return DKIX_EMPTY
 
     def insert(self: _dict, key: Key, value: Value) -> None:
-        data: ptr[DictData] = self.__ll__
+        data: ptr[DictData] = self.__ll__.data
         # entry = data.entries[data.length]
         l = data.length + 1
         # data.length += 1
@@ -144,9 +144,9 @@ def dict(Key, Value):
 
     def resize(self: _dict) -> i32:
         # The resize operation never decreases the memory used by dict;
-        # i.e., we never resize to decrease the size of dict.
+        # i.e., we always resize to double the size of dict.
         # This follows the CPython implementation.
-        old_data: ptr[DictData] = self.__ll__
+        old_data: ptr[DictData] = self.__ll__.data
         # assert old_data.log_size < MAX_LOG_SIZE
         new = new_data(old_data.log_size + 1)
         new.length = old_data.length
@@ -160,10 +160,13 @@ def dict(Key, Value):
             i += 1
         self.__ll__.data = new
 
+    @struct
+    class _dict_struct:
+        data: ptr[DictData]
 
     @typelift
     class _dict:
-        __ll__: ptr[DictData]
+        __ll__: ptr[_dict_struct]
 
         def __new__() -> _dict:
             data = gc_alloc(DictData)(1)
@@ -172,10 +175,12 @@ def dict(Key, Value):
             data.index = new_index(data.log_size)
             # data.entries = new_entries(data.log_size)
             new_entries(data.log_size, data)
-            return _dict.__lift__(data)
+            this = gc_alloc(_dict_struct)(1)
+            this.data = data
+            return _dict.__lift__(this)
 
         def __getitem__(self: _dict, key: Key) -> Value:
-            data: ptr[DictData] = self.__ll__
+            data: ptr[DictData] = self.__ll__.data
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
                 # raise KeyError(key)
@@ -184,11 +189,11 @@ def dict(Key, Value):
                 #    --> /Users/dp/repos/spy/stdlib/dict.spy:184:23
                 # 184 |                 raise KeyError(key)
                 #     |                       |______| not found in this scope
-                raise Exception(str(key))
+                raise Exception("KeyError")
             return data.entries[ix].value
 
         def __setitem__(self: _dict, key: Key, value: Value) -> None:
-            data: ptr[DictData] = self.__ll__
+            data: ptr[DictData] = self.__ll__.data
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
                 insert(self, key, value)
@@ -204,7 +209,7 @@ def dict(Key, Value):
             pass
 
         def __len__(self: _dict) -> i32:
-            data: ptr[DictData] = self.__ll__
+            data: ptr[DictData] = self.__ll__.data
             return data.length
 
 
