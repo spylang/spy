@@ -1,6 +1,8 @@
 #ifndef SPY_H
 #define SPY_H
 
+// POSIX.1-2008 is needed for clock_gettime, nanosleep, getline
+// Must be defined before any system headers are included
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
