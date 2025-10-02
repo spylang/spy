@@ -67,7 +67,8 @@ class Parser:
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyError.simple("W_ParseError", primary, secondary, loc)
 
-    def unsupported(self, node: py_ast.AST, reason: str) -> NoReturn:
+    def unsupported(self, node: py_ast.AST,
+                    reason: Optional[str] = None) -> NoReturn:
         """
         Emit a nice error in case we encounter an unsupported AST node.
         """

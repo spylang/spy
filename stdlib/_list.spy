@@ -1,0 +1,238 @@
+"""
+SPy list module
+
+A generic dynamic array implementation similar to Python's list.
+"""
+
+from unsafe import gc_alloc, ptr
+from operator import OpSpec, MetaArg
+
+@blue.generic
+def List(T):
+
+    @struct
+    class ListData:
+        length: i32
+        capacity: i32
+        items: ptr[T]
+
+    @struct
+    class list_iterator:
+        lst: ptr[ListData]
+        i: i32
+
+        def __next__(self: list_iterator) -> list_iterator:
+            return list_iterator(self.lst, self.i + 1)
+
+        def __item__(self: list_iterator) -> T:
+            return self.lst.items[self.i]
+
+        def __continue_iteration__(self: list_iterator) -> bool:
+            return self.i < self.lst.length
+
+    @typelift
+    class _ListImpl:
+        __ll__: ptr[ListData]
+
+        def __new__() -> _ListImpl:
+            data = gc_alloc(ListData)(1)
+            data.length = 0
+            data.capacity = 4
+            data.items = gc_alloc(T)(4)
+            return _ListImpl.__lift__(data)
+
+        def append(self: _ListImpl, item: T) -> None:
+            ll = self.__ll__
+            if ll.length >= ll.capacity:
+                old_capacity = ll.capacity
+                new_capacity = old_capacity * 2
+                new_items = gc_alloc(T)(new_capacity)
+
+                i = 0
+                while i < ll.length:
+                    new_items[i] = ll.items[i]
+                    i = i + 1
+
+                ll.items = new_items
+                ll.capacity = new_capacity
+
+            ll.items[ll.length] = item
+            ll.length = ll.length + 1
+
+        def __len__(self: _ListImpl) -> i32:
+            return self.__ll__.length
+
+        def __getitem__(self: _ListImpl, i: i32) -> T:
+            ll = self.__ll__
+            if i < 0:
+                i = i + ll.length
+            if i < 0:
+                raise IndexError
+            if i >= ll.length:
+                raise IndexError
+            return ll.items[i]
+
+        def __setitem__(self: _ListImpl, i: i32, value: T) -> None:
+            ll = self.__ll__
+            if i < 0:
+                i = i + ll.length
+            if i < 0:
+                raise IndexError
+            if i >= ll.length:
+                raise IndexError
+            ll.items[i] = value
+
+        def pop(self: _ListImpl) -> T:
+            ll = self.__ll__
+            if ll.length == 0:
+                raise IndexError
+            ll.length = ll.length - 1
+            return ll.items[ll.length]
+
+        def insert(self: _ListImpl, i: i32, item: T) -> None:
+            ll = self.__ll__
+            if i > ll.length:
+                i = ll.length
+            if i < 0:
+                i = 0
+
+            if ll.length >= ll.capacity:
+                old_capacity = ll.capacity
+                new_capacity = old_capacity * 2
+                new_items = gc_alloc(T)(new_capacity)
+
+                j = 0
+                while j < ll.length:
+                    new_items[j] = ll.items[j]
+                    j = j + 1
+
+                ll.items = new_items
+                ll.capacity = new_capacity
+
+            j = ll.length
+            while j > i:
+                ll.items[j] = ll.items[j - 1]
+                j = j - 1
+
+            ll.items[i] = item
+            ll.length = ll.length + 1
+
+        def clear(self: _ListImpl) -> None:
+            ll = self.__ll__
+            ll.length = 0
+
+        def extend(self: _ListImpl, other: _ListImpl) -> None:
+            other_ll = other.__ll__
+            i = 0
+            while i < other_ll.length:
+                self.append(other_ll.items[i])
+                i = i + 1
+
+        def copy(self: _ListImpl) -> _ListImpl:
+            ll = self.__ll__
+            new_data = gc_alloc(ListData)(1)
+            new_data.length = ll.length
+            new_data.capacity = ll.capacity
+            new_data.items = gc_alloc(T)(ll.capacity)
+
+            i = 0
+            while i < ll.length:
+                new_data.items[i] = ll.items[i]
+                i = i + 1
+
+            return _ListImpl.__lift__(new_data)
+
+        def __add__(self: _ListImpl, other: _ListImpl) -> _ListImpl:
+            result = self.copy()
+            result.extend(other)
+            return result
+
+        def __mul__(self: _ListImpl, n: i32) -> _ListImpl:
+            ll = self.__ll__
+            new_data = gc_alloc(ListData)(1)
+            new_length = ll.length * n
+
+            if new_length == 0:
+                new_data.length = 0
+                new_data.capacity = 4
+                new_data.items = gc_alloc(T)(4)
+            else:
+                new_data.length = new_length
+                new_data.capacity = new_length
+                new_data.items = gc_alloc(T)(new_length)
+
+                i = 0
+                while i < n:
+                    j = 0
+                    while j < ll.length:
+                        new_data.items[i * ll.length + j] = ll.items[j]
+                        j = j + 1
+                    i = i + 1
+
+            return _ListImpl.__lift__(new_data)
+
+        def index(self: _ListImpl, value: T) -> i32:
+            ll = self.__ll__
+            i = 0
+            while i < ll.length:
+                if ll.items[i] == value:
+                    return i
+                i = i + 1
+            raise ValueError
+
+        def count(self: _ListImpl, value: T) -> i32:
+            ll = self.__ll__
+            result = 0
+            i = 0
+            while i < ll.length:
+                if ll.items[i] == value:
+                    result = result + 1
+                i = i + 1
+            return result
+
+        def remove(self: _ListImpl, value: T) -> None:
+            ll = self.__ll__
+            idx = -1
+            i = 0
+            while i < ll.length:
+                if ll.items[i] == value:
+                    idx = i
+                    i = ll.length
+                i = i + 1
+
+            if idx == -1:
+                raise ValueError
+
+            j = idx
+            while j < ll.length - 1:
+                ll.items[j] = ll.items[j + 1]
+                j = j + 1
+
+            ll.length = ll.length - 1
+
+        @blue.metafunc
+        def __eq__(m_self, m_other):
+            if m_other.static_type == m_self.static_type:
+                def eq_impl(self: _ListImpl, other: _ListImpl) -> bool:
+                    ll1 = self.__ll__
+                    ll2 = other.__ll__
+
+                    if ll1.length != ll2.length:
+                        return False
+
+                    i = 0
+                    while i < ll1.length:
+                        if ll1.items[i] != ll2.items[i]:
+                            return False
+                        i = i + 1
+
+                    return True
+
+                return OpSpec(eq_impl, [m_self, m_other])
+            else:
+                return OpSpec.NULL
+
+        def __fastiter__(self: _ListImpl) -> list_iterator:
+            return list_iterator(self.__ll__, 0)
+
+    return _ListImpl
