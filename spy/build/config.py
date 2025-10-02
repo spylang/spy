@@ -60,7 +60,7 @@ class CompilerConfig:
             self.ldflags += RELEASE_LDFLAGS
         else:
             self.cflags += DEBUG_CFLAGS
-            self.ldflags += RELEASE_LDFLAGS
+            self.ldflags += DEBUG_CFLAGS
 
         # target specific flags
         if config.target == 'native':
