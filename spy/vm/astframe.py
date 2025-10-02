@@ -129,7 +129,7 @@ class AbstractFrame:
             exp_loc = self.symtable.lookup(varname).type_loc
             if varname == '@return':
                 because = ' because of return type'
-            elif varname in ('@if', '@while'):
+            elif varname in ('@if', '@while', '@assert'):
                 because = ''
             else:
                 because = ' because of type declaration'
@@ -261,7 +261,6 @@ class AbstractFrame:
         w_T = self.vm.dynamic_type(w_func)
         self.declare_local(funcdef.name, w_T, funcdef.prototype_loc)
         self.store_local(funcdef.name, w_func)
-
 
     @staticmethod
     def metaclass_for_classdef(classdef: ast.ClassDef) -> type[W_Type]:
@@ -558,6 +557,29 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])
         self.eval_opimpl(raise_node, w_opimpl, [wam_exc])
 
+    def exec_stmt_Assert(self, assert_node: ast.Assert) -> None:
+        wam_assert = self.eval_expr(assert_node.test, varname="@assert")
+        assert isinstance(wam_assert.w_val, W_Bool)
+
+        if self.vm.is_False(wam_assert.w_val):
+            plain_msg = "assertion failed"
+
+            if assert_node.msg is not None:
+                wam_msg = self.eval_expr(assert_node.msg)
+                if wam_msg.w_static_T is B.w_str:
+                    plain_msg = self.vm.unwrap_str(wam_msg.w_val)
+                else:
+                    err = SPyError('W_TypeError', 'mismatched types')
+                    err.add('error', f'expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`', loc=wam_msg.loc)
+                    raise err
+
+            raise SPyError.simple(
+                etype="W_AssertionError",
+                primary=plain_msg,
+                secondary="assertion failed",
+                loc=assert_node.loc,
+            )
+
     # ==== expressions ====
 
     def eval_expr_Constant(self, const: ast.Constant) -> W_MetaArg:
@@ -762,7 +784,6 @@ class AbstractFrame:
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
 
 
-
 class ASTFrame(AbstractFrame):
     """
     A frame to execute and ASTFunc
@@ -874,6 +895,7 @@ class ASTFrame(AbstractFrame):
         self.declare_local('@if', B.w_bool, Loc.fake())
         self.declare_local('@while', B.w_bool, Loc.fake())
         self.declare_local('@return', w_ft.w_restype, funcdef.return_type.loc)
+        self.declare_local('@assert', B.w_bool, Loc.fake())
 
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):

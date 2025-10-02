@@ -281,7 +281,16 @@ class SPyBackend:
 
     def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
         exc = self.fmt_expr(raise_node.exc)
-        self.wl(f'raise {exc}')
+        self.wl(f"raise {exc}")
+
+    def emit_stmt_Assert(self, assert_node: ast.Assert) -> None:
+        test = self.fmt_expr(assert_node.test)
+
+        if assert_node.msg is not None:
+            msg = self.fmt_expr(assert_node.msg)
+            self.wl(f"assert {test}, {msg}")
+        else:
+            self.wl(f"assert {test}")
 
     # expressions
 

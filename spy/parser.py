@@ -565,6 +565,11 @@ class Parser:
             exc = exc
         )
 
+    def from_py_stmt_Assert(self, py_node: py_ast.Assert) -> spy.ast.Assert:
+        test = self.from_py_expr(py_node.test)
+        msg = self.from_py_expr(py_node.msg) if py_node.msg else None
+        return spy.ast.Assert(py_node.loc, test, msg)
+
     # ====== spy.ast.Expr ======
 
     def from_py_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:
