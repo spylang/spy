@@ -34,6 +34,7 @@
 #include "spy/gc.h"
 #include "spy/unsafe.h"
 #include "spy/rawbuffer.h"
+#include "spy/posix.h"
 #include "spy/debug.h"
 
 #ifdef SPY_TARGET_EMSCRIPTEN
