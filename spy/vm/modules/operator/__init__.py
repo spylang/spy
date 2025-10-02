@@ -104,7 +104,10 @@ def OP_from_token(token: str) -> W_Func:
         raise WIP(f"Operator not implemented yet: {token}")
 
 def OP_unary_from_token(token: str) -> W_Func:
-    return _unary_from_token[token]
+    if token in _from_token:
+        return _unary_from_token[token]
+    else:
+        raise WIP(f"Operator not implemented yet: {token}")
 
 def print_all_OPERATORS() -> None:
     """
