@@ -371,7 +371,12 @@ class CFuncWriter:
         elif irtag.tag == 'ptr.setfield':
             return self.fmt_ptr_setfield(fqn, call)
 
-        elif irtag.tag in ('unsafe.getitem', 'unsafe.store'):
+        elif irtag.tag == 'ptr.deref':
+            # this is not strictly necessary as it's just a generic call, but
+            # we handle ptr.deref explicitly for extra clarity
+            return self.fmt_generic_call(fqn, call)
+
+        elif irtag.tag in ('ptr.getitem', 'ptr.store'):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
             # because we rely on C's own mechanism to get line numbers.

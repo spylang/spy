@@ -7,6 +7,7 @@ from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
 from spy.vm.member import Member
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method, builtin_property, IRTag
+from spy.vm.struct import W_StructType
 from spy.vm.w import W_Object, W_Type, W_Str, W_Func
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_OpSpec, W_MetaArg
@@ -169,7 +170,7 @@ class W_Ptr(W_BasePtr):
             by = 'byval'
 
         T = Annotated[W_Object, w_T]
-        irtag = IRTag('unsafe.getitem')
+        irtag = IRTag('ptr.getitem')
 
         @vm.register_builtin_func(w_ptrtype.fqn, f'getitem_{by}', irtag=irtag)
         def w_ptr_getitem_T(
@@ -212,7 +213,7 @@ class W_Ptr(W_BasePtr):
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
         T = Annotated[W_Object, w_T]
-        irtag = IRTag('unsafe.store')
+        irtag = IRTag('ptr.store')
 
         @vm.register_builtin_func(w_ptrtype.fqn, 'store', irtag=irtag)
         def w_ptr_store_T(
@@ -244,6 +245,7 @@ class W_Ptr(W_BasePtr):
     def w_CONVERT_TO(vm: 'SPyVM', wam_T: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
         w_T = wam_T.w_blueval
         w_ptrtype = W_Ptr._get_ptrtype(wam_x)
+        T = Annotated[W_Object, w_T]
         PTR = Annotated[W_Ptr, w_ptrtype]
 
         if w_T is B.w_bool:
@@ -253,6 +255,28 @@ class W_Ptr(W_BasePtr):
                     return B.w_False
                 return B.w_True
             return W_OpSpec(w_ptr_to_bool)
+
+        elif isinstance(w_T, W_StructType) and w_T is w_ptrtype.w_itemtype:
+            # we are trying to convert 'ptr[Point]' into 'Point'
+            #
+            # this is a temporary hack: currently if we have an array of
+            # structs, arr[n] ALWAYS retrun a ptr[Struct] (it's always by
+            # ref), and thus we don't really have a way to derefeence it.
+            #
+            # PROBABLY the right solution is to introduce a different type
+            # 'ref[Point]', similar to 'Point&' in C++, and then declare that
+            # we can convert from 'ref[Point]' to 'Point' but not from
+            # 'ptr[Point]' to 'Point'. What a mess.
+            irtag = IRTag('ptr.deref')
+            @vm.register_builtin_func(w_ptrtype.fqn, 'deref', irtag=irtag)
+            def w_ptr_deref(vm: 'SPyVM', w_ptr: PTR) -> T:
+                addr = w_ptr.addr
+                return vm.call_generic(
+                    UNSAFE.w_mem_read,
+                    [w_T],
+                    [vm.wrap(addr)]
+                )
+            return W_OpSpec(w_ptr_deref)
 
         else:
             return W_OpSpec.NULL
@@ -276,7 +300,6 @@ class W_Ptr(W_BasePtr):
         """
         Implement both w_GETATTRIBUTE and w_SETATTR.
         """
-        from spy.vm.struct import W_StructType
         w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         # attributes are supported only on ptr-to-structs

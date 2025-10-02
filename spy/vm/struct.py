@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Optional
 from spy.errors import WIP
 from spy.fqn import FQN
 from spy.vm.b import TYPES, BUILTINS
@@ -119,9 +119,16 @@ class W_Struct(W_Object):
     w_structtype: W_StructType
     values_w: dict[str, W_Object]
 
-    def __init__(self, w_structtype: W_StructType) -> None:
+    def __init__(
+        self,
+        w_structtype: W_StructType,
+        values_w: Optional[dict[str, W_Object]] = None,
+    ) -> None:
         self.w_structtype = w_structtype
-        self.values_w = {}
+        if values_w is None:
+            self.values_w = {}
+        else:
+            self.values_w = values_w
 
     def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
         return self.w_structtype
