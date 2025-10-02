@@ -51,25 +51,38 @@ def w_mem_read(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     return w_mem_read_T
 
 
+
 @UNSAFE.builtin_func(color='blue')
 def w_mem_write(vm: 'SPyVM', w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
 
-    @vm.register_builtin_func('unsafe', 'mem_write', [w_T.fqn])  # unsafe::mem_write[i32]
+    # unsafe::mem_write[T]
+    @vm.register_builtin_func('unsafe', 'mem_write', [w_T.fqn])
     def w_mem_write_T(vm: 'SPyVM', w_addr: W_I32, w_val: T) -> None:
         addr = vm.unwrap_i32(w_addr)
-        if w_T is B.w_i32:
-            v = vm.unwrap_i32(w_val)
-            vm.ll.mem.write_i32(addr, v)
-        elif w_T is B.w_f64:
-            v = vm.unwrap_f64(w_val)
-            vm.ll.mem.write_f64(addr, v)
-        elif isinstance(w_T, W_PtrType):
-            assert isinstance(w_val, W_Ptr)
-            vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)
-        elif isinstance(w_T, W_StructType):
-            raise WIP(f"Cannot write struct by value: `{w_T.fqn.human_name}`")
-        else:
-            raise WIP(f"Cannot write memory of type `{w_T.fqn.human_name}`")
-
+        generic_mem_write(vm, addr, w_T, w_val)
     return w_mem_write_T
+
+
+def generic_mem_write(vm: 'SPyVM', addr: int,
+                      w_T: W_Type, w_val: W_Object) -> None:
+    if w_T is B.w_i32:
+        v = vm.unwrap_i32(w_val)
+        vm.ll.mem.write_i32(addr, v)
+    elif w_T is B.w_f64:
+        v = vm.unwrap_f64(w_val)
+        vm.ll.mem.write_f64(addr, v)
+    elif isinstance(w_T, W_PtrType):
+        assert isinstance(w_val, W_Ptr)
+        vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)
+    elif isinstance(w_T, W_StructType):
+        for fname, w_field in w_T.fields_w.items():
+            offset = w_T.offsets[fname]
+            generic_mem_write(
+                vm,
+                addr + offset,
+                w_field.w_T,
+                w_val.values_w[fname]
+            )
+    else:
+        raise WIP(f"Cannot write memory of type `{w_T.fqn.human_name}`")
