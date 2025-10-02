@@ -295,7 +295,7 @@ class TestUnsafe(CompilerTest):
         out, err = capfd.readouterr()
         assert out.splitlines() == ['1', '2', '3']
 
-    def test_array_of_struct(self):
+    def test_array_of_struct_getref(self):
         mod = self.compile(
         """
         from unsafe import gc_alloc, ptr
@@ -319,3 +319,49 @@ class TestUnsafe(CompilerTest):
         self.vm.ll.mem.read_i32(p.addr + 4)  == 2
         self.vm.ll.mem.read_i32(p.addr + 8)  == 3
         self.vm.ll.mem.read_i32(p.addr + 12) == 4
+
+
+    def test_array_of_struct_read_write_byval(self):
+        mod = self.compile(
+        """
+        from unsafe import gc_alloc, ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @struct
+        class Rect:
+            a: Point
+            b: Point
+
+        def write_point() -> ptr[Point]:
+            arr = gc_alloc(Point)(2)
+            arr[0] = Point(1, 2)
+            arr[1] = Point(3, 4)
+            return arr
+
+        def write_rect() -> ptr[Rect]:
+            arr = gc_alloc(Rect)(1)
+            arr[0] = Rect(Point(5, 6), Point(7, 8))
+            return arr
+
+        def read_point() -> Point:
+            arr = write_rect()
+            return arr[0].b
+        """)
+        ptr_p = mod.write_point()
+        self.vm.ll.mem.read_i32(ptr_p.addr)      == 1
+        self.vm.ll.mem.read_i32(ptr_p.addr + 4)  == 2
+        self.vm.ll.mem.read_i32(ptr_p.addr + 8)  == 3
+        self.vm.ll.mem.read_i32(ptr_p.addr + 12) == 4
+        #
+        ptr_r = mod.write_rect()
+        self.vm.ll.mem.read_i32(ptr_r.addr)      == 5
+        self.vm.ll.mem.read_i32(ptr_r.addr + 4)  == 6
+        self.vm.ll.mem.read_i32(ptr_r.addr + 8)  == 7
+        self.vm.ll.mem.read_i32(ptr_r.addr + 12) == 8
+        #
+        p = mod.read_point()
+        assert p == (7, 8)

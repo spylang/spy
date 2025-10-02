@@ -39,6 +39,9 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p };                                 \
     }                                                            \
+    static inline T PTR##$deref(PTR p) {                         \
+        return *(p.p);                                           \
+    }                                                            \
     static inline T PTR##$getitem_byval(PTR p, size_t i) {       \
         return p.p[i];                                           \
     }                                                            \
@@ -66,6 +69,9 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline PTR PTR##$gc_alloc(size_t n) {                 \
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p, n };                              \
+    }                                                            \
+    static inline T PTR##$deref(PTR p) {                         \
+        return *(p.p);                                           \
     }                                                            \
     static inline T PTR##$getitem_byval(PTR p, size_t i) {       \
         if (i >= p.length)                                       \

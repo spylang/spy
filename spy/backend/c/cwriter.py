@@ -81,7 +81,7 @@ class CFuncWriter:
         param_names = [arg.name for arg in self.w_func.funcdef.args]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
-            if (varname not in ('@return', '@if', '@while') and
+            if (varname not in ('@return', '@if', '@while', '@assert') and
                 varname not in param_names):
                 self.tbc.wl(f'{c_type} {varname};')
 
@@ -182,6 +182,19 @@ class CFuncWriter:
         with self.tbc.indent():
             for stmt in while_node.body:
                 self.emit_stmt(stmt)
+        self.tbc.wl('}')
+
+    def emit_stmt_Assert(self, assert_node: ast.Assert) -> None:
+        test = self.fmt_expr(assert_node.test)
+        self.tbc.wl(f'if (!({test}))'+' {')
+        with self.tbc.indent():
+            if assert_node.msg is not None:
+                # TODO: assuming msg is always a string. extend the logic to work with other types
+                msg = self.fmt_expr(assert_node.msg)
+                self.tbc.wl(f'spy_panic("AssertionError", ({msg})->utf8, "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+            else:
+                self.tbc.wl(f'spy_panic("AssertionError", "assertion failed", "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+            
         self.tbc.wl('}')
 
     # ===== expressions =====
@@ -371,7 +384,12 @@ class CFuncWriter:
         elif irtag.tag == 'ptr.setfield':
             return self.fmt_ptr_setfield(fqn, call)
 
-        elif irtag.tag in ('unsafe.getitem', 'unsafe.store'):
+        elif irtag.tag == 'ptr.deref':
+            # this is not strictly necessary as it's just a generic call, but
+            # we handle ptr.deref explicitly for extra clarity
+            return self.fmt_generic_call(fqn, call)
+
+        elif irtag.tag in ('ptr.getitem', 'ptr.store'):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
             # because we rely on C's own mechanism to get line numbers.

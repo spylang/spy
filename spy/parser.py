@@ -67,7 +67,8 @@ class Parser:
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyError.simple("W_ParseError", primary, secondary, loc)
 
-    def unsupported(self, node: py_ast.AST, reason: str) -> NoReturn:
+    def unsupported(self, node: py_ast.AST,
+                    reason: Optional[str] = None) -> NoReturn:
         """
         Emit a nice error in case we encounter an unsupported AST node.
         """
@@ -564,6 +565,11 @@ class Parser:
             loc = py_node.loc,
             exc = exc
         )
+
+    def from_py_stmt_Assert(self, py_node: py_ast.Assert) -> spy.ast.Assert:
+        test = self.from_py_expr(py_node.test)
+        msg = self.from_py_expr(py_node.msg) if py_node.msg else None
+        return spy.ast.Assert(py_node.loc, test, msg)
 
     # ====== spy.ast.Expr ======
 

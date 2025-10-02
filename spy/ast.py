@@ -488,6 +488,11 @@ class For(Stmt):
 class Raise(Stmt):
     exc: Expr
 
+@dataclass(eq=False)
+class Assert(Stmt):
+    test: Expr
+    msg: Optional[Expr]
+
 
 # ====== IR-specific nodes ======
 #

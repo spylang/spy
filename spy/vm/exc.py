@@ -159,6 +159,10 @@ class W_NameError(W_Exception):
 class W_PanicError(W_Exception):
     pass
 
+@BUILTINS.builtin_type('AssertionError')
+class W_AssertionError(W_Exception):
+    pass
+
 @BUILTINS.builtin_type('WIP')
 class W_WIP(W_Exception):
     """
