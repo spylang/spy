@@ -42,6 +42,7 @@
 #include "spy/rawbuffer.h"
 #include "spy/posix.h"
 #include "spy/time.h"
+#include "spy/__spy__.h"
 #include "spy/debug.h"
 
 #ifdef SPY_TARGET_EMSCRIPTEN
