@@ -494,8 +494,9 @@ class AbstractFrame:
                 if wam_msg.w_static_T is B.w_str:
                     plain_msg = self.vm.unwrap_str(wam_msg.w_val)
                 else:
-                    # Convert any type to string: assert x > 0, 42 or assert x > 0, get_code()
-                    plain_msg = str(self.vm.unwrap(wam_msg.w_val))
+                    err = SPyError('W_TypeError', 'mismatched types')
+                    err.add('error', f'expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`', loc=wam_msg.loc)
+                    raise err
 
             raise SPyError.simple(
                 etype="W_AssertionError",

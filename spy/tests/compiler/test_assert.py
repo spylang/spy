@@ -61,3 +61,32 @@ class TestAssert(CompilerTest):
 
         assert exc_info.value.etype == "W_AssertionError"
         assert "custom error message" in str(exc_info.value.w_exc.message)
+
+    def test_assert_with_non_string_message(self):
+        """Test assert with non-string message raises TypeError"""
+        with pytest.raises(SPyError) as exc_info:
+            self.compile(
+                """
+                def test() -> None:
+                    assert False, 42
+                """
+            ).test()
+
+        assert exc_info.value.etype == "W_TypeError"
+        assert "expected `str`, got `i32`" in str(exc_info.value)
+
+    def test_assert_with_function_returning_non_string(self):
+        """Test assert with function call returning non-string raises TypeError"""
+        with pytest.raises(SPyError) as exc_info:
+            self.compile(
+                """
+                def get_error_code() -> i32:
+                    return 404
+                    
+                def test() -> None:
+                    assert False, get_error_code()
+                """
+            ).test()
+
+        assert exc_info.value.etype == "W_TypeError"
+        assert "expected `str`, got `i32`" in str(exc_info.value)
