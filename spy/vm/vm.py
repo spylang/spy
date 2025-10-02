@@ -40,6 +40,7 @@ from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.posix import POSIX
+from spy.vm.modules.time import TIME
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 
 # lazy definition of some some core types. See the docstring of W_Type.
@@ -102,6 +103,7 @@ class SPyVM:
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)
         self.make_module(POSIX)
+        self.make_module(TIME)
         self.make_module(_TESTING_HELPERS)
         self.call_INITs()
 
