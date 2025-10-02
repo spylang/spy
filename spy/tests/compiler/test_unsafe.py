@@ -347,9 +347,9 @@ class TestUnsafe(CompilerTest):
             arr[0] = Rect(Point(5, 6), Point(7, 8))
             return arr
 
-        def read_rect() -> Rect:
+        def read_point() -> Point:
             arr = write_rect()
-            return arr[0]
+            return arr[0].b
         """)
         ptr_p = mod.write_point()
         self.vm.ll.mem.read_i32(ptr_p.addr)      == 1
@@ -363,5 +363,5 @@ class TestUnsafe(CompilerTest):
         self.vm.ll.mem.read_i32(ptr_r.addr + 8)  == 7
         self.vm.ll.mem.read_i32(ptr_r.addr + 12) == 8
         #
-        r = mod.read_rect()
-        assert r == ((5, 6), (7, 8))
+        p = mod.read_point()
+        assert p == (7, 8)

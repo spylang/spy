@@ -170,7 +170,7 @@ class W_Ptr(W_BasePtr):
             by = 'byval'
 
         T = Annotated[W_Object, w_T]
-        irtag = IRTag('unsafe.getitem')
+        irtag = IRTag('ptr.getitem')
 
         @vm.register_builtin_func(w_ptrtype.fqn, f'getitem_{by}', irtag=irtag)
         def w_ptr_getitem_T(
@@ -213,7 +213,7 @@ class W_Ptr(W_BasePtr):
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_Ptr, w_ptrtype]
         T = Annotated[W_Object, w_T]
-        irtag = IRTag('unsafe.store')
+        irtag = IRTag('ptr.store')
 
         @vm.register_builtin_func(w_ptrtype.fqn, 'store', irtag=irtag)
         def w_ptr_store_T(
@@ -267,7 +267,8 @@ class W_Ptr(W_BasePtr):
             # 'ref[Point]', similar to 'Point&' in C++, and then declare that
             # we can convert from 'ref[Point]' to 'Point' but not from
             # 'ptr[Point]' to 'Point'. What a mess.
-            @vm.register_builtin_func(w_ptrtype.fqn, 'deref')
+            irtag = IRTag('ptr.deref')
+            @vm.register_builtin_func(w_ptrtype.fqn, 'deref', irtag=irtag)
             def w_ptr_deref(vm: 'SPyVM', w_ptr: PTR) -> T:
                 addr = w_ptr.addr
                 return vm.call_generic(
