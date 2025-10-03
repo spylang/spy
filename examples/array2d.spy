@@ -1,4 +1,4 @@
-from operator import OpImpl, OpArg
+from operator import OpSpec, MetaArg
 from unsafe import gc_alloc, ptr
 
 @blue.generic
@@ -26,7 +26,7 @@ def array2d(DTYPE):
             return ndarray.__lift__(data)
 
         @blue
-        def __GETITEM__(v_arr: OpArg, v_i: OpArg, v_j: OpArg) -> OpImpl:
+        def __GETITEM__(m_arr: MetaArg, m_i: MetaArg, m_j: MetaArg) -> OpSpec:
             def getitem(arr: ndarray, i: i32, j: i32) -> DTYPE:
                 ll = arr.__ll__
                 if i >= ll.h:
@@ -35,12 +35,12 @@ def array2d(DTYPE):
                     raise IndexError
                 idx = (i * ll.w) + j
                 return ll.items[idx]
-            return OpImpl(getitem)
+            return OpSpec(getitem)
 
         @blue
-        def __SETITEM__(v_arr: OpArg, v_i: OpArg, v_j: OpArg,
-                        v_v: OpArg) -> OpImpl:
-            def setitem(arr: ndarray, i: i32, j: i32, v: DTYPE) -> void:
+        def __SETITEM__(m_arr: MetaArg, m_i: MetaArg, m_j: MetaArg,
+                        m_v: MetaArg) -> OpSpec:
+            def setitem(arr: ndarray, i: i32, j: i32, v: DTYPE) -> None:
                 ll = arr.__ll__
                 if i >= ll.h:
                     raise IndexError
@@ -48,9 +48,9 @@ def array2d(DTYPE):
                     raise IndexError
                 idx = (i * ll.w) + j
                 ll.items[idx] = v
-            return OpImpl(setitem)
+            return OpSpec(setitem)
 
-        def print_flatten(self: ndarray) -> void:
+        def print_flatten(self: ndarray) -> None:
             ll = self.__ll__
             i = 0
             while i < ll.h * ll.w:
@@ -59,7 +59,7 @@ def array2d(DTYPE):
 
     return ndarray
 
-def main() -> void:
+def main() -> None:
     a = array2d[i32](2, 4)
     a[1, 2] = 6
     print(a[1, 2])

@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 import fixedint
-from spy.vm.primitive import W_I32, W_Void
+from spy.vm.primitive import W_I32
 from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.w import W_Object, W_Type
 from spy.vm.registry import ModuleRegistry
-from spy.vm.opimpl import W_OpImpl, W_OpArg
+from spy.vm.opspec import W_OpSpec, W_MetaArg
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -14,5 +14,5 @@ if TYPE_CHECKING:
 # something like that. But for now, it's just a normal module.
 UNSAFE = ModuleRegistry('unsafe')
 
-from . import ptr     # side effects
-from . import mem     # side effects
+from . import ptr     # noqa: F401 -- side effects
+from . import mem     # noqa: F401 -- side effects

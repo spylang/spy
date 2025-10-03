@@ -1,55 +1,49 @@
 from typing import TYPE_CHECKING
-from spy.vm.b import B
-from spy.vm.object import W_Type
-from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.function import W_Func, W_FuncType
-from spy.vm.primitive import W_Dynamic
+from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.opimpl import W_OpImpl
+from spy.vm.function import W_FuncType
 
-from . import OP, op_fast_call
+from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
 @OP.builtin_func(color='blue')
-def w_GETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    w_opimpl = W_OpImpl.NULL
-    w_type = wop_obj.w_static_type
+def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+    w_opspec = W_OpSpec.NULL
+    w_T = wam_obj.w_static_T
 
-    newargs_wop = [wop_obj] + list(args_wop)
-    if isinstance(w_type, W_FuncType) and w_type.kind == 'generic':
+    newargs_wam = [wam_obj] + list(args_wam)
+    if isinstance(w_T, W_FuncType) and w_T.kind == 'generic':
         # special case: for generic W_Funcs, "[]" means "call"
-        w_opimpl = w_type.pyclass.op_CALL(vm, wop_obj, *args_wop) # type: ignore
-    elif w_GETITEM := w_type.lookup_blue_func('__GETITEM__'):
-        w_opimpl = op_fast_call(vm, w_GETITEM, newargs_wop)
-    elif w_getitem := w_type.lookup_func('__getitem__'):
-        w_opimpl = W_OpImpl(w_getitem, newargs_wop)
+        w_opspec = w_T.pyclass.op_CALL(vm, wam_obj, *args_wam) # type: ignore
+    elif w_getitem := w_T.lookup_func('__getitem__'):
+        w_opspec = vm.fast_metacall(w_getitem, newargs_wam)
 
-    return typecheck_opimpl(
+    return typecheck_opspec(
         vm,
-        w_opimpl,
-        newargs_wop,
+        w_opspec,
+        newargs_wam,
         dispatch = 'single',
         errmsg = 'cannot do `{0}`[...]'
     )
 
 
 @OP.builtin_func(color='blue')
-def w_SETITEM(vm: 'SPyVM', wop_obj: W_OpArg, *args_wop: W_OpArg) -> W_Func:
-    from spy.vm.typechecker import typecheck_opimpl
-    w_opimpl = W_OpImpl.NULL
-    w_type = wop_obj.w_static_type
+def w_SETITEM(vm: 'SPyVM', wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+    w_opspec = W_OpSpec.NULL
+    w_T = wam_obj.w_static_T
 
-    newargs_wop = [wop_obj] + list(args_wop)
-    if w_SETITEM := w_type.lookup_blue_func('__SETITEM__'):
-        w_opimpl = op_fast_call(vm, w_SETITEM, newargs_wop)
-    elif w_setitem := w_type.lookup_func('__setitem__'):
-        w_opimpl = W_OpImpl(w_setitem, newargs_wop)
+    newargs_wam = [wam_obj] + list(args_wam)
+    if w_setitem := w_T.lookup_func('__setitem__'):
+        w_opspec = vm.fast_metacall(w_setitem, newargs_wam)
 
-    return typecheck_opimpl(
+    return typecheck_opspec(
         vm,
-        w_opimpl,
-        newargs_wop,
+        w_opspec,
+        newargs_wam,
         dispatch = 'single',
         errmsg = "cannot do `{0}[`{1}`] = ..."
     )

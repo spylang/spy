@@ -3,17 +3,13 @@ import textwrap
 from contextlib import contextmanager
 import pytest
 import py.path
-from spy import ast
 from spy.backend.c.cbackend import CBackend
 from spy.build.config import BuildConfig, BuildTarget
 from spy.build.ninja import NinjaWriter
 from spy.backend.interp import InterpModuleWrapper
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
-from spy.fqn import FQN
 from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
-from spy.vm.function import W_FuncType
 from spy.tests.wasm_wrapper import WasmModuleWrapper
 from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.cffi_wrapper import load_cffi_module
@@ -153,9 +149,19 @@ class CompilerTest:
         Compile the W_Module into something which can be accessed and called by
         tests.
 
-        Currently, the only support backend is 'interp', which is a fake
-        backend: the IR code is not compiled and function are executed by the
-        VM.
+        Depending on the `self.backend` value, it returns different objects. By default
+        the following backends are supported:
+        - `interp`: InterpModuleWrapper which, when called, runs the module in the
+                    interpreter
+        - `doppler`: Perform the redshift and then wraps the result in an
+                     InterpModuleWrapper object.
+        - `C`: compiles the module to C and then builds it to a WASM and wraps the
+               result in a WasmModuleWrapper object.
+        unless while using @only_emscripten decorator, in which case the following
+        backend is used:
+        - `emscripten`: compiles the module to C and then builds it to a JS
+                        executable, wrapping the result in an ExeWrapper object.
+
         """
         self.write_file(f'{modname}.spy', src)
         self.w_mod = self.vm.import_(modname)
@@ -226,6 +232,7 @@ class CompilerTest:
 
     def compile_raises(self, src: str, funcname: str, ctx: Any,
                        *,
+                       modname: str = 'test',
                        error_reporting: Optional[str] = None) -> None:
         """
         Compile the given src and run the function with the given funcname.
@@ -245,7 +252,7 @@ class CompilerTest:
 
         if error_reporting == 'eager':
             with ctx:
-                mod = self.compile(src)
+                mod = self.compile(src, modname=modname)
         else:
             mod = self.compile(src)
             with ctx:

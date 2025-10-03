@@ -1,8 +1,6 @@
-import pytest
 from typing import no_type_check
 from spy.fqn import FQN
 from spy.vm.object import W_Type
-from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.w import W_FuncType
@@ -14,6 +12,7 @@ def make_FuncType(
         w_restype: W_Type,
         color: Color = 'red',
         kind: FuncKind = 'plain',
+        varargs: bool = False
 ) -> W_FuncType:
     """
     Small helper to make it easier to build W_FuncType.
@@ -22,6 +21,8 @@ def make_FuncType(
         FuncParam(w_type, 'simple')
         for w_type in types_w
     ]
+    if varargs:
+        params[-1] = FuncParam(types_w[-1], 'var_positional')
     return W_FuncType.new(params, w_restype, color=color, kind=kind)
 
 
@@ -46,27 +47,13 @@ class TestFunction:
             w_restype = B.w_i32
         )
 
-    def test_FunctionType_eq(self):
+    def test_FunctionType_cache(self):
         vm = SPyVM()
         w_ft1 = W_FuncType.parse('def() -> i32')
         w_ft2 = W_FuncType.parse('def() -> i32')
-        assert w_ft1 is not w_ft2
+        assert w_ft1 is w_ft2
         assert w_ft1 == w_ft2
-        w_res = vm.eq(w_ft1, w_ft2)
-        assert w_res is B.w_True
-
-    @no_type_check
-    def test_function_eq(self):
-        class FakeFuncDef:
-            prototype_loc = None
-        funcdef = FakeFuncDef()
-
-        vm = SPyVM()
-        w_functype = W_FuncType.parse('def() -> i32')
-        w_a = W_ASTFunc(w_functype, FQN('test::a'), funcdef, closure=None)
-        w_b = W_ASTFunc(w_functype, FQN('test::b'), funcdef, closure=None)
-        assert vm.eq(w_a, w_a) is B.w_True
-        assert vm.eq(w_a, w_b) is B.w_False
+        assert hash(w_ft1) == hash(w_ft2)
 
     def test_FunctionType_fqn(self):
         def make(color: Color, kind: FuncKind):
@@ -88,3 +75,18 @@ class TestFunction:
         w_t3 = make('blue', 'generic')
         assert w_t3.fqn == FQN('builtins::blue.generic.def[i32, i32, str]')
         assert w_t3.fqn.human_name == '@blue.generic def(i32, i32) -> str'
+
+        w_t4 = make('blue', 'metafunc')
+        assert w_t4.fqn == FQN('builtins::blue.metafunc.def[i32, i32, str]')
+        assert w_t4.fqn.human_name == '@blue.metafunc def(i32, i32) -> str'
+
+        w_t5 = make_FuncType(
+            B.w_i32,
+            B.w_f64,
+            varargs = True,
+            w_restype = B.w_str,
+            color = 'red',
+            kind = 'plain'
+        )
+        assert w_t5.fqn == FQN('builtins::def[i32, builtins::__varargs__[f64], str]')
+        assert w_t5.fqn.human_name == 'def(i32, *f64) -> str'

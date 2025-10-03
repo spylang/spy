@@ -1,10 +1,11 @@
 import re
-from typing import Literal, Optional
+from typing import Literal, Optional, TypeGuard
 from spy import ast
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
+from spy.vm.b import B
 from spy.vm.object import W_Object, W_Type
-from spy.vm.function import W_ASTFunc, FuncParam
+from spy.vm.function import W_ASTFunc
 from spy.vm.list import W_List
 from spy.vm.exc import W_Exception
 from spy.analyze.scope import SymTable
@@ -36,20 +37,46 @@ class SPyBackend:
         self.scope_stack: list[SymTable] = []
 
     def dump_mod(self, modname: str) -> str:
+        """
+        Dump the given module into human readable form.
+
+        The main goal is to let humans to understand what happens during
+        redshifting.
+
+        1. "Aliased" functions: these are functions which are stored as
+           e.g. `mod.foo` but actually point to a function with a different
+           FQN.
+
+        2. All the PBCs which are contained in the module namespace. This
+           includes module-level functions and types, but also any other PBC
+           which was generated inside a blue closure.
+        """
         self.modname = modname
+
+        # part 1: aliases
         w_mod = self.vm.modules_w[modname]
-        for fqn, w_obj in w_mod.items_w():
+        for attr, w_obj in w_mod.items_w():
+            expected_fqn = FQN(modname).join(attr)
+            if (isinstance(w_obj, W_ASTFunc) and
+                  w_obj.color == 'red' and
+                  w_obj.fqn != expected_fqn):
+                self.out.wl(f'{attr} = `{w_obj.fqn}`')
+        self.out.wl()
+
+        # part 2: all the other FQNs
+        for fqn, w_obj in self.vm.fqns_by_modname(modname):
             if (isinstance(w_obj, W_ASTFunc) and
                 w_obj.color == 'red' and
                 w_obj.fqn == fqn):
                 self.dump_w_func(fqn, w_obj)
                 self.out.wl()
+
         return self.out.build()
 
     def is_module_global(self, fqn: FQN) -> bool:
         return (len(fqn.parts) == 2 and
                 fqn.modname == self.modname
-                and fqn.parts[-1].suffix == 0)
+                and fqn.parts[-1].suffix == '')
 
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         if self.fqn_format == 'short' and self.is_module_global(fqn):
@@ -61,7 +88,10 @@ class SPyBackend:
         self.vars_declared = set()
         w_functype = w_func.w_functype
         params = self.fmt_params(w_func)
-        ret = self.fmt_w_obj(w_functype.w_restype)
+        if w_functype.w_restype is B.w_NoneType and self.fqn_format == 'short':
+            ret = 'None' # special case: emit '-> None' instead of '-> NoneType'
+        else:
+            ret = self.fmt_w_obj(w_functype.w_restype)
         self.scope_stack.append(w_func.funcdef.symtable)
         self.wl(f'def {name}({params}) -> {ret}:')
         with self.out.indent():
@@ -70,12 +100,20 @@ class SPyBackend:
         self.scope_stack.pop()
 
     def fmt_params(self, w_func: W_ASTFunc) -> str:
-        argnames = [arg.name for arg in w_func.funcdef.args]
-        params = w_func.w_functype.params
+        funcdef = w_func.funcdef
         l = []
-        for argname, p in zip(argnames, params, strict=True):
-            t = self.fmt_w_obj(p.w_type)
-            l.append(f'{argname}: {t}')
+        for i, param in enumerate(w_func.w_functype.params):
+            t = self.fmt_w_obj(param.w_T)
+            if param.kind == 'simple':
+                n = funcdef.args[i].name
+                l.append(f'{n}: {t}')
+            elif param.kind == 'var_positional':
+                assert funcdef.vararg is not None
+                assert i == len(funcdef.args)
+                n = funcdef.vararg.name
+                l.append(f'*{n}: {t}')
+            else:
+                assert False
         return ', '.join(l)
 
     def fmt_w_obj(self, w_obj: W_Object) -> str:
@@ -125,8 +163,8 @@ class SPyBackend:
         sym = symtable.lookup(varname)
         if self.w_func.redshifted and sym.level == 0 and varname not in self.vars_declared:
             assert self.w_func.locals_types_w is not None
-            w_type = self.w_func.locals_types_w[varname]
-            t = self.fmt_w_obj(w_type)
+            w_T = self.w_func.locals_types_w[varname]
+            t = self.fmt_w_obj(w_T)
             self.wl(f'{varname}: {t}')
             self.vars_declared.add(varname)
 
@@ -170,6 +208,17 @@ class SPyBackend:
         v = self.fmt_expr(assign.value)
         self.wl(f'{varname} = {v}')
 
+    def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
+        varname = assign.target.value
+        self.emit_declare_var_maybe(varname)
+        v = self.fmt_expr(assign.value)
+        self.wl(f'{varname} = {v}')
+
+    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        varname = self.fmt_fqn(assign.target_fqn)
+        v = self.fmt_expr(assign.value)
+        self.wl(f'{varname} = {v}')
+
     def emit_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         varname = node.target.value
         op = node.op
@@ -210,6 +259,14 @@ class SPyBackend:
             for stmt in while_node.body:
                 self.emit_stmt(stmt)
 
+    def emit_stmt_For(self, for_node: ast.For) -> None:
+        target = for_node.target.value
+        iter_expr = self.fmt_expr(for_node.iter)
+        self.wl(f'for {target} in {iter_expr}:')
+        with self.out.indent():
+            for stmt in for_node.body:
+                self.emit_stmt(stmt)
+
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
         self.wl(f'if {test}:')
@@ -224,7 +281,16 @@ class SPyBackend:
 
     def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
         exc = self.fmt_expr(raise_node.exc)
-        self.wl(f'raise {exc}')
+        self.wl(f"raise {exc}")
+
+    def emit_stmt_Assert(self, assert_node: ast.Assert) -> None:
+        test = self.fmt_expr(assert_node.test)
+
+        if assert_node.msg is not None:
+            msg = self.fmt_expr(assert_node.msg)
+            self.wl(f"assert {test}, {msg}")
+        else:
+            self.wl(f"assert {test}")
 
     # expressions
 
@@ -247,6 +313,12 @@ class SPyBackend:
 
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
+
+    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> str:
+        return name.sym.name
+
+    def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
+        return self.fmt_fqn(name.fqn)
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)

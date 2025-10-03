@@ -64,25 +64,26 @@ See also vm.get_unique_FQN.
 """
 
 from typing import Optional, Any, Union, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
+import functools
 
 PARTS = Sequence[Union[str, 'NSPart']]
 QUALIFIERS = Optional[Sequence[Union[str, 'FQN']]]
 
-def get_parts(x: PARTS) -> list['NSPart']:
+def get_parts(x: PARTS) -> tuple['NSPart', ...]:
     parts = []
     for part in x:
         if isinstance(part, str):
-            parts.append(NSPart(part, []))
+            parts.append(NSPart(part, ()))
         elif isinstance(part, NSPart):
             parts.append(part)
         else:
             assert False
-    return parts
+    return tuple(parts)
 
-def get_qualifiers(x: QUALIFIERS) -> list['FQN']:
-    x = x or []
+def get_qualifiers(x: QUALIFIERS) -> tuple['FQN', ...]:
+    x = x or ()
     quals = []
     for item in x:
         if isinstance(item, str):
@@ -91,25 +92,25 @@ def get_qualifiers(x: QUALIFIERS) -> list['FQN']:
             quals.append(item)
         else:
             assert False
-    return quals
+    return tuple(quals)
 
-@dataclass
+@dataclass(frozen=True)
 class NSPart:
     name: str
-    qualifiers: list['FQN']
-    suffix: int = 0
+    qualifiers: tuple['FQN', ...]
+    suffix: str = ''
 
-    def __init__(self, name: str, quals: QUALIFIERS=None, suffix: int=0) -> None:
-        self.name = name
-        self.qualifiers = get_qualifiers(quals)
-        self.suffix = suffix
+    def __init__(self, name: str, quals: QUALIFIERS = None, suffix: str = '') -> None:
+        object.__setattr__(self, 'name', name)
+        object.__setattr__(self, 'qualifiers', get_qualifiers(quals))
+        object.__setattr__(self, 'suffix', suffix)
 
     def __str__(self) -> str:
         result = self.name
         if len(self.qualifiers) > 0:
             quals = ', '.join(q.human_name for q in self.qualifiers)
             result = f'{result}[{quals}]'
-        if self.suffix != 0:
+        if self.suffix != '':
             result += f'#{self.suffix}'
         return result
 
@@ -120,13 +121,13 @@ class NSPart:
         if len(self.qualifiers) > 0:
             quals = '_'.join(fqn.c_name_plain for fqn in self.qualifiers)
             result = f'{result}__{quals}'
-        if self.suffix != 0:
+        if self.suffix != '':
             result += f'${self.suffix}'
         return result
 
 
 class FQN:
-    parts: list[NSPart]
+    parts: tuple[NSPart, ...]
 
     def __new__(cls, x: str | PARTS) -> 'FQN':
         """
@@ -142,13 +143,19 @@ class FQN:
             fqn.parts = get_parts(x)
             return fqn
 
-    def with_suffix(self, suffix: int) -> 'FQN':
+    # uncomment this to understand who creates a specific FQN
+    ## def __init__(self, *args) -> None:
+    ##     if str(self) == 'test::Point#0':
+    ##         breakpoint()
+
+    def with_suffix(self, suffix: str) -> 'FQN':
         """
         Create a new FQN with the specified suffix on the last NSPart.
         """
-        res = FQN(self.parts)
-        res.parts[-1].suffix = suffix
-        return res
+        new_parts = list(self.parts)
+        last_part = new_parts[-1]
+        new_parts[-1] = NSPart(last_part.name, last_part.qualifiers, suffix)
+        return FQN(new_parts)
 
     def with_qualifiers(self, qualifiers: QUALIFIERS) -> 'FQN':
         """
@@ -158,11 +165,11 @@ class FQN:
         for i, part in enumerate(self.parts):
             if i < len(self.parts) - 1:
                 # For all parts except the last one, create a copy
-                new_part = NSPart(part.name, part.qualifiers.copy(), part.suffix)
+                new_part = NSPart(part.name, part.qualifiers, part.suffix)
                 new_parts.append(new_part)
             else:
                 # For the last part, create a copy with the new qualifiers added
-                new_quals = part.qualifiers.copy() + get_qualifiers(qualifiers)
+                new_quals = part.qualifiers + get_qualifiers(qualifiers)
                 new_part = NSPart(part.name, new_quals, part.suffix)
                 new_parts.append(new_part)
 
@@ -203,7 +210,12 @@ class FQN:
         is_def = (
             len(self.parts) == 2 and
             self.modname == 'builtins' and
-            self.parts[1].name in ('def', 'blue.def', 'blue.generic.def')
+            self.parts[1].name in (
+                'def',
+                'blue.def',
+                'blue.generic.def',
+                'blue.metafunc.def'
+            )
         )
         if is_def:
             p1 = self.parts[1]
@@ -213,14 +225,29 @@ class FQN:
                 d = '@blue def'
             elif p1.name == 'blue.generic.def':
                 d = '@blue.generic def'
+            elif p1.name == 'blue.metafunc.def':
+                d = '@blue.metafunc def'
             else:
                 assert False
             quals = [fqn.human_name for fqn in p1.qualifiers]
             p = ', '.join(quals[:-1])
             r = quals[-1]
+            if r == 'NoneType':
+                r = 'None'
             return f'{d}({p}) -> {r}'
-        else:
-            return self._fullname(human=True)
+
+        is_varargs_param = (
+            len(self.parts) == 2 and
+            self.modname == 'builtins' and
+            self.parts[1].name == '__varargs__'
+        )
+        if is_varargs_param:
+            p1 = self.parts[1]
+            assert len(p1.qualifiers) == 1
+            q0 = p1.qualifiers[0]
+            return f'*{q0.human_name}'
+
+        return self._fullname(human=True)
 
     @property
     def modname(self) -> str:
@@ -239,7 +266,7 @@ class FQN:
         Create a new FQN nested inside the current one.
         """
         qual2 = get_qualifiers(qualifiers)
-        return FQN(self.parts + [NSPart(name, qual2)])
+        return FQN(self.parts + (NSPart(name, qual2),))
 
     @property
     def c_name(self) -> str:
@@ -291,3 +318,21 @@ class FQN:
 
     def is_object(self) -> bool:
         return not self.is_module()
+
+    def match(self, pattern: str) -> bool:
+        """
+        Check whether the string representation of the FQN matches the
+        given pattern.
+
+        pattern is *not* a regexp: the only character is '*' which matches any
+        string.
+        """
+        r = _compile_pattern(pattern)
+        return r.match(str(self))
+
+
+@functools.lru_cache(maxsize=32768)
+def _compile_pattern(pattern: str) -> Any:
+    pattern = re.escape(pattern)
+    regexp = pattern.replace(r'\*', '.*')
+    return re.compile(regexp)

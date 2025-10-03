@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any
 import textwrap
 import pytest
 from spy.vm.vm import SPyVM

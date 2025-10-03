@@ -1,14 +1,11 @@
 import fixedint
 import pytest
-from spy.vm.primitive import W_I32, W_Bool, W_Void
+from spy.vm.primitive import W_I32, W_Bool, W_NoneType
 from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.fqn import FQN
-from spy.errors import SPyError
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
-from spy.vm.function import W_BuiltinFunc
-from spy.vm.module import W_Module
 from spy.vm.exc import W_Exception
 from spy.vm.builtin import builtin_type
 from spy.tests.support import expect_errors
@@ -147,8 +144,8 @@ class TestVM:
     def test_w_None(self):
         vm = SPyVM()
         w_None = B.w_None
-        assert isinstance(w_None, W_Void)
-        assert vm.dynamic_type(w_None).fqn == FQN('builtins::void')
+        assert isinstance(w_None, W_NoneType)
+        assert vm.dynamic_type(w_None).fqn == FQN('builtins::NoneType')
         assert repr(w_None) == '<spy None>'
         #
         assert vm.wrap(None) is w_None
@@ -257,3 +254,17 @@ class TestVM:
         assert vm.lookup_global(fqn) is w_x
         with pytest.raises(ValueError, match="'builtins::x' already exists"):
             vm.add_global(fqn, vm.wrap(43))
+
+    def test_get_filename(self, tmpdir):
+        vm = SPyVM()
+        vm.path = [str(tmpdir)]
+        spy_file = tmpdir.join('main.spy')
+        spy_file.write('x: i32 = 42\n')
+
+        filename = vm.find_file_on_path('main')
+        assert filename == tmpdir.join('main.spy')
+        assert vm.find_file_on_path('nonexistent') is None
+        py_file = tmpdir.join('py.py')
+        py_file.write('i = 42\n')
+        assert vm.find_file_on_path('py') is None
+        assert vm.find_file_on_path('py', allow_py_files=True) == tmpdir.join('py.py')

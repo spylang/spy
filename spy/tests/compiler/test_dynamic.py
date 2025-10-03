@@ -1,8 +1,7 @@
 import re
 import pytest
 from spy.errors import SPyError
-from spy.vm.b import B
-from spy.tests.support import CompilerTest, skip_backends,  expect_errors
+from spy.tests.support import CompilerTest, skip_backends
 
 @skip_backends('C', reason='dynamic not supported')
 class TestDynamic(CompilerTest):
@@ -137,7 +136,7 @@ class TestDynamic(CompilerTest):
 
         mod = self.compile(
         """
-        def foo() -> void:
+        def foo() -> None:
             obj: dynamic = "hello"
             obj.x = 42
         """)
@@ -164,7 +163,7 @@ class TestDynamic(CompilerTest):
         def dyn(x: dynamic) -> dynamic:
             return x
 
-        def foo() -> void:
+        def foo() -> None:
             print(dyn("hello world"))
             print(dyn(42))
             print(dyn(12.3))

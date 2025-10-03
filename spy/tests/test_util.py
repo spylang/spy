@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, no_type_check
 import pytest
-from spy.util import ANYTHING, magic_dispatch, extend, shortrepr
+from spy.util import ANYTHING, magic_dispatch, extend, shortrepr, func_equals
 
 def test_ANYTHING():
     assert ANYTHING == 1
@@ -73,3 +73,53 @@ def test_shortrepr():
     assert shortrepr(s, 10) == "'12345678'"
     assert shortrepr(s,  8) == "'12345678'"
     assert shortrepr(s,  7) == "'12345...'"
+
+
+# ======= tests for same_closure =======
+
+class Test_func_equals:
+
+    def test_identity(self):
+        def f() -> None:
+            pass
+        assert func_equals(f, f)
+
+    def test_different_code_objects(self):
+        def f(): pass
+        def g(): pass
+        assert not func_equals(f, g)
+
+    def test_no_defaults(self):
+        @no_type_check
+        def make(n):
+            def fn(x=n):
+                pass
+            return fn
+        f0 = make(0)
+        f1 = make(1)
+        with pytest.raises(ValueError, match="unsupported: default arguments"):
+            func_equals(f0, f1)
+
+    def test_no_kwdefaults(self):
+        @no_type_check
+        def make(n):
+            def fn(*, x=n):
+                pass
+            return fn
+        f0 = make(0)
+        f1 = make(1)
+        with pytest.raises(ValueError,
+                           match="unsupported: kwargs with default arguments"):
+            func_equals(f0, f1)
+
+    def test_closure(self):
+        @no_type_check
+        def make(n):
+            def fn():
+                return n
+            return fn
+        f0 = make(0)
+        f1 = make(1)
+        f0b = make(0)
+        assert not func_equals(f0, f1)
+        assert func_equals(f0, f0b)

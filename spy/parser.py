@@ -1,10 +1,10 @@
-from typing import Optional, NoReturn, Any
+from typing import Optional, NoReturn
 from types import NoneType
-import textwrap
 import ast as py_ast
 import spy.ast
 from spy.magic_py_parse import magic_py_parse
 from spy.fqn import FQN
+from spy.analyze.symtable import ImportRef
 from spy.location import Loc
 from spy.errors import SPyError
 from spy.util import magic_dispatch
@@ -12,15 +12,22 @@ from spy.util import magic_dispatch
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
 
+def parse_special_decorator(py_expr: py_ast.expr) -> Optional[str]:
+    """
+    If the decorator is a simple @name or @name.attr, return them as
+    strings. Else, return None.
+    """
+    if isinstance(py_expr, py_ast.Name):
+        return py_expr.id
 
-def is_blue(py_expr: py_ast.expr) -> bool:
-    return is_py_Name(py_expr, 'blue')
+    if (isinstance(py_expr, py_ast.Attribute) and
+        isinstance(py_expr.value, py_ast.Name)):
+        a = py_expr.value.id
+        b = py_expr.attr
+        return f'{a}.{b}'
 
-def is_blue_generic(py_expr: py_ast.expr) -> bool:
-    return (isinstance(py_expr, py_ast.Attribute) and
-            isinstance(py_expr.value, py_ast.Name) and
-            py_expr.value.id == "blue" and
-            py_expr.attr == "generic")
+    return None
+
 
 class Parser:
     """
@@ -38,10 +45,12 @@ class Parser:
     """
     src: str
     filename: str
+    for_loop_seq: int  # counter for for loops within the current function
 
     def __init__(self, src: str, filename: str) -> None:
         self.src = src
         self.filename = filename
+        self.for_loop_seq = 0
 
     @classmethod
     def from_filename(cls, filename: str) -> 'Parser':
@@ -131,22 +140,26 @@ class Parser:
                                  ) -> spy.ast.FuncDef:
         color: spy.ast.Color = 'red'
         func_kind: spy.ast.FuncKind = 'plain'
+        decorators: list[spy.ast.Expr] = []
+
         for deco in py_funcdef.decorator_list:
-            if is_blue(deco):
-                # @blue is special-cased
+            d = parse_special_decorator(deco)
+            # @blue.* are special cased
+            if d == 'blue':
                 color = 'blue'
-            elif is_blue_generic(deco):
-                # @blue.generic is special-cased
+            elif d == 'blue.generic':
                 color = 'blue'
                 func_kind = 'generic'
+            elif d == 'blue.metafunc':
+                color = 'blue'
+                func_kind = 'metafunc'
             else:
-                # other decorators are not supported:
-                self.error('decorators are not supported yet',
-                           'this is not supported', deco.loc)
+                # other decorators are stored as general decorators
+                decorators.append(self.from_py_expr(deco))
         #
         loc = py_funcdef.loc
         name = py_funcdef.name
-        args = self.from_py_arguments(color, py_funcdef.args)
+        args, vararg = self.from_py_arguments(color, py_funcdef.args)
         #
         py_returns = py_funcdef.returns
         if py_returns:
@@ -180,6 +193,7 @@ class Parser:
             self.error('missing return type', '', func_loc)
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
+        self.for_loop_seq = 0  # reset counter for this function
         body = self.from_py_body(py_body)
 
         return spy.ast.FuncDef(
@@ -188,18 +202,20 @@ class Parser:
             kind = func_kind,
             name = py_funcdef.name,
             args = args,
+            vararg = vararg,
             return_type = return_type,
             body = body,
             docstring = docstring,
+            decorators = decorators,
         )
 
     def from_py_arguments(self,
                           color: spy.ast.Color,
                           py_args: py_ast.arguments
-                          ) -> list[spy.ast.FuncArg]:
+                          ) -> tuple[list[spy.ast.FuncArg], Optional[spy.ast.FuncArg]]:
+        vararg = None
         if py_args.vararg:
-            self.error('*args is not supported yet',
-                       'this is not supported', py_args.vararg.loc)
+            vararg = self.from_py_arg(color, py_args.vararg)
         if py_args.kwarg:
             self.error('**kwargs is not supported yet',
                        'this is not supported', py_args.kwarg.loc)
@@ -214,7 +230,8 @@ class Parser:
                        'this is not supported', py_args.kwonlyargs[0].loc)
         assert not py_args.kw_defaults
         #
-        return [self.from_py_arg(color, py_arg) for py_arg in py_args.args]
+        args = [self.from_py_arg(color, py_arg) for py_arg in py_args.args]
+        return args, vararg
 
     def from_py_arg(self,
                     color: spy.ast.Color,
@@ -277,30 +294,36 @@ class Parser:
 
         # only few kind of declarations are supported inside a "class:" block
         fields: list[spy.ast.VarDef] = []
-        methods: list[spy.ast.FuncDef] = []
+        body: list[spy.ast.Stmt] = []
         for py_stmt in py_class_body:
-            if isinstance(py_stmt, py_ast.Pass):
-                pass
-            elif isinstance(py_stmt, py_ast.AnnAssign):
+            if isinstance(py_stmt, py_ast.AnnAssign):
                 vardef, assign = self.from_py_AnnAssign(py_stmt)
                 if assign is not None:
                     self.error('default values in fields not supported yet',
                                'this is not supported',
                                assign.loc)
                 fields.append(vardef)
-            elif isinstance(py_stmt, py_ast.FunctionDef):
-                funcdef = self.from_py_stmt_FunctionDef(py_stmt)
-                methods.append(funcdef)
             else:
-                msg = 'only fields are allowed inside a class def'
-                self.error(msg, 'this is not allowed here', py_stmt.loc)
+                stmt = self.from_py_stmt(py_stmt)
+                if isinstance(stmt, (spy.ast.FuncDef,
+                                     spy.ast.If,
+                                     spy.ast.Pass)):
+                    body.append(stmt)
+                else:
+                    STMT = stmt.__class__.__name__
+                    msg = f'`{STMT}` not supported inside a classdef'
+                    self.error(
+                        msg,
+                        'this is not supported',
+                        stmt.loc
+                    )
 
         return spy.ast.ClassDef(
             loc = py_classdef.loc,
             name = py_classdef.name,
             kind = kind,
             fields = fields,
-            methods = methods,
+            body = body,
             docstring = docstring,
         )
 
@@ -310,12 +333,12 @@ class Parser:
         res = []
         for py_alias in py_imp.names:
             assert py_imp.module is not None
-            fqn = FQN([py_imp.module, py_alias.name])
+            impref = ImportRef(py_imp.module, py_alias.name)
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
                 loc_asname = py_alias.loc,
-                fqn = fqn,
+                ref = impref,
                 asname = asname
             ))
         return res
@@ -323,12 +346,12 @@ class Parser:
     def from_py_Import(self, py_imp: py_ast.Import) -> list[spy.ast.Import]:
         res = []
         for py_alias in py_imp.names:
-            fqn = FQN([py_alias.name])
+            impref = ImportRef(py_alias.name, None)
             asname = py_alias.asname or py_alias.name
             res.append(spy.ast.Import(
                 loc = py_imp.loc,
                 loc_asname = py_alias.loc,
-                fqn = fqn,
+                ref = impref,
                 asname = asname
             ))
         return res
@@ -504,6 +527,32 @@ class Parser:
             body = self.from_py_body(py_node.body)
         )
 
+    def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
+        if py_node.orelse:
+            # ideally, we would like to point to the 'else:' line, but we
+            # cannot easiy get it from the ast. Too bad, let's point at the
+            # 'for'.
+            msg = 'not implemented yet: `else` clause in `for` loops'
+            forloc = py_node.loc.replace(
+                line_end = py_node.loc.line_start,
+                col_end = py_node.loc.col_start + 3
+            )
+            self.error(msg, 'this is not supported', forloc)
+
+        # Only support simple names as targets for now
+        if not isinstance(py_node.target, py_ast.Name):
+            self.unsupported(py_node.target, 'complex for loop targets')
+
+        seq = self.for_loop_seq
+        self.for_loop_seq += 1
+        return spy.ast.For(
+            loc = py_node.loc,
+            seq = seq,
+            target = spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            iter = self.from_py_expr(py_node.iter),
+            body = self.from_py_body(py_node.body),
+        )
+
     def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:
         if py_node.cause:
             self.unsupported(py_node, 'raise ... from ...')
@@ -516,6 +565,11 @@ class Parser:
             loc = py_node.loc,
             exc = exc
         )
+
+    def from_py_stmt_Assert(self, py_node: py_ast.Assert) -> spy.ast.Assert:
+        test = self.from_py_expr(py_node.test)
+        msg = self.from_py_expr(py_node.msg) if py_node.msg else None
+        return spy.ast.Assert(py_node.loc, test, msg)
 
     # ====== spy.ast.Expr ======
 

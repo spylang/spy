@@ -1,4 +1,4 @@
-from typing import Any, Tuple
+from typing import Any
 import re
 import textwrap
 import subprocess
@@ -40,7 +40,7 @@ class TestMain:
         self.runner = CliRunner()
         self.main_spy = tmpdir.join('main.spy')
         self.main_spy.write(textwrap.dedent("""
-        def main() -> void:
+        def main() -> None:
             print("hello world")
         """))
 
@@ -75,6 +75,16 @@ class TestMain:
             raise Exception("run_external failed")
         return exit_code, decolorize(stdout)
 
+    def test_py_file_error(self):
+        # Create a .py file instead of .spy
+        py_file = self.tmpdir.join('test.py')
+        py_file.write("print('This is a Python file')")
+
+        # Test that passing a .py file produces an error
+        res = self.runner.invoke(app, [str(py_file)])
+        assert res.exit_code == 1
+        assert "Error:" in res.output and ".py file, not a .spy file" in res.output
+
     def test_pyparse(self):
         res, stdout = self.run('--pyparse', self.main_spy)
         assert stdout.startswith('py:Module(')
@@ -89,11 +99,19 @@ class TestMain:
 
     def test_redshift_dump_spy(self):
         res, stdout = self.run('--redshift', self.main_spy)
-        assert stdout.startswith('def main() -> void:')
+        assert stdout.startswith('\ndef main() -> None:')
 
     def test_redshift_dump_ast(self):
         res, stdout = self.run('--redshift', '--parse', self.main_spy)
         assert stdout.startswith('`main::main` = FuncDef(')
+
+    def test_redshift_and_execute(self):
+        res, stdout = self.run('--redshift', '--execute', self.main_spy)
+        assert stdout == "hello world\n"
+
+    def test_colorize(self):
+        res, stdout = self.run('--colorize', self.main_spy)
+        assert stdout.startswith('Module(')
 
     def test_cwrite(self):
         res, stdout = self.run(

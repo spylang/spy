@@ -1,9 +1,13 @@
 from typing import TYPE_CHECKING
 from spy import ast
+from spy.location import Loc
+from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.vm.b import B
 from spy.vm.object import ClassBody
 from spy.vm.astframe import AbstractFrame
 from spy.vm.function import W_Func, CLOSURE
+from spy.vm.field import W_Field
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -26,18 +30,19 @@ class ClassFrame(AbstractFrame):
 
     def run(self) -> ClassBody:
         # execute field definitions
-        body = ClassBody(fields={}, methods={})
+        self.declare_local('@if', B.w_bool, Loc.fake())
+        body = ClassBody(fields_w={}, dict_w={})
         for vardef in self.classdef.fields:
             assert vardef.kind == 'var'
-            self.exec_stmt_VarDef(vardef)
-            body.fields[vardef.name] = self.locals_types_w[vardef.name]
+            self.exec_stmt(vardef)
+            w_T = self.locals_types_w[vardef.name]
+            body.fields_w[vardef.name] = W_Field(vardef.name, w_T)
 
         # execute method definitions
-        for funcdef in self.classdef.methods:
-            name = funcdef.name
-            self.exec_stmt_FuncDef(funcdef)
-            w_meth = self.load_local(name)
-            assert isinstance(w_meth, W_Func)
-            body.methods[name] = w_meth
+        for stmt in self.classdef.body:
+            self.exec_stmt(stmt)
+
+        for name, w_val in self._locals.items():
+            body.dict_w[name] = w_val
 
         return body

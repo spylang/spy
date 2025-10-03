@@ -1,12 +1,9 @@
-import os
-import textwrap
 import py.path
 from spy.fqn import FQN
 from spy.vm.function import W_ASTFunc
-from spy.vm.vm import SPyVM
 from spy.backend.c.context import Context
 from spy.build.config import BuildConfig, CompilerConfig
-from spy.textbuilder import TextBuilder, Color
+from spy.textbuilder import TextBuilder
 
 
 class CFFIWriter:

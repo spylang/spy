@@ -1,4 +1,4 @@
-from typing import Literal, TYPE_CHECKING
+from typing import Literal
 from dataclasses import dataclass
 import linecache
 from spy.location import Loc

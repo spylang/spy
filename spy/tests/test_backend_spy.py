@@ -1,6 +1,5 @@
 import pytest
 import textwrap
-from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc
 from spy.backend.spy import SPyBackend
 from spy.util import print_diff
@@ -39,13 +38,13 @@ class TestSPyBackend(CompilerTest):
 
     def test_expr_precedence(self):
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             a = 1 + 2 * 3
             b = 1 + (2 * 3)
             c = (1 + 2) * 3
         """)
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             a = 1 + 2 * 3
             b = 1 + 2 * 3
             c = (1 + 2) * 3
@@ -53,7 +52,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_binop(self):
         mod = self.compile(r"""
-        def foo() -> void:
+        def foo() -> None:
             a + b
             a - b
             a * b
@@ -68,7 +67,7 @@ class TestSPyBackend(CompilerTest):
             -a
         """)
         self.assert_dump(r"""
-        def foo() -> void:
+        def foo() -> None:
             a + b
             a - b
             a * b
@@ -85,12 +84,12 @@ class TestSPyBackend(CompilerTest):
 
     def test_vardef(self):
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32 = 1
             y: f64 = 2.0
         """)
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32
             x = 1
             y: f64
@@ -100,12 +99,12 @@ class TestSPyBackend(CompilerTest):
     def test_implicit_declaration(self):
         self.backend = 'doppler'
         mod = self.compile("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32 = 1
             y = 2.0
         """)
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             x: i32
             x = 1
             y: f64
@@ -122,15 +121,15 @@ class TestSPyBackend(CompilerTest):
         def GET_X():
             return 42
 
-        def foo() -> void:
+        def foo() -> None:
             pass
         """)
         self.assert_dump("""
-        def foo() -> void:
+        def foo() -> None:
             pass
         """)
 
-    def test_dont_dump_func_references(self):
+    def test_func_aliases(self):
         mod = self.compile("""
         @blue.generic
         def add(T):
@@ -141,18 +140,21 @@ class TestSPyBackend(CompilerTest):
         add_i32 = add[i32]
         add_f64 = add[f64]
 
-        def foo() -> void:
+        def foo() -> None:
             add_i32(1, 2)
             add_f64(3.4, 5.6)
         """)
         self.assert_dump("""
+        add_i32 = `test::add[i32]::impl`
+        add_f64 = `test::add[f64]::impl`
+
         def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
             return x + y
 
         def `test::add[f64]::impl`(x: f64, y: f64) -> f64:
             return x + y
 
-        def foo() -> void:
+        def foo() -> None:
             add_i32(1, 2)
             add_f64(3.4, 5.6)
         """)
@@ -160,7 +162,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_while(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             while 1:
                 pass
         """
@@ -169,8 +171,8 @@ class TestSPyBackend(CompilerTest):
 
     def test_FuncDef(self):
         src = """
-        def outer() -> void:
-            def inner(x: i32, y: i32) -> void:
+        def outer() -> None:
+            def inner(x: i32, y: i32) -> None:
                 pass
         """
         self.compile(src)
@@ -197,7 +199,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_getitem(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             return x[i, 1]
         """
         self.compile(src)
@@ -205,7 +207,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_setitem(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             x[i, 1] = 0
         """
         self.compile(src)
@@ -213,7 +215,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_getattr(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             return x.foo
         """
         self.compile(src)
@@ -221,7 +223,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_setattr(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             x.foo = 42
         """
         self.compile(src)
@@ -229,7 +231,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_if(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             if 1:
                 aaa
             if 2:
@@ -258,7 +260,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_unpack_assign(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             a, b, c = x
         """
         self.compile(src)
@@ -266,7 +268,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_aug_assign(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             x += 1
         """
         self.compile(src)
@@ -276,11 +278,11 @@ class TestSPyBackend(CompilerTest):
         src = """
         from unsafe import ptr
 
-        def foo(p: ptr[i32]) -> void:
+        def foo(p: ptr[i32]) -> None:
             pass
         """
         expected = """
-        def foo(p: `unsafe::ptr[i32]`) -> void:
+        def foo(p: `unsafe::ptr[i32]`) -> None:
             pass
         """
         self.compile(src)
@@ -288,7 +290,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_classdef(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             @struct
             class Point:
                 x: i32
@@ -299,8 +301,16 @@ class TestSPyBackend(CompilerTest):
 
     def test_raise(self):
         src = """
-        def foo() -> void:
+        def foo() -> None:
             raise Exception('foo')
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
+    def test_varargs(self):
+        src = """
+        def foo(a: i32, b: i32, *args: i32) -> i32:
+            pass
         """
         self.compile(src)
         self.assert_dump(src)
@@ -327,8 +337,8 @@ class TestSPyBackend(CompilerTest):
         for i, src in enumerate(sources):
             modname = f'test_backend_spy_{i}'
             mod = self.compile(src, modname=modname)
-            for fqn, w_obj in mod.w_mod.items_w():
-                if isinstance(w_obj, W_ASTFunc):
+            for fqn, w_obj in self.vm.fqns_by_modname(modname):
+                if isinstance(w_obj, W_ASTFunc) and w_obj.funcdef.color == 'red':
                     try:
                         b.dump_w_func(fqn, w_obj)
                     except NotImplementedError as exc:

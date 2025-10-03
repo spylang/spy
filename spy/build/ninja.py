@@ -1,10 +1,8 @@
-from typing import Self, Optional
-from dataclasses import dataclass
-import subprocess
-import textwrap
+from typing import Optional
 import shlex
 import py.path
-from spy.textbuilder import TextBuilder, Color
+from spy.errors import WIP
+from spy.textbuilder import TextBuilder
 from spy.build.config import BuildConfig, CompilerConfig
 from spy.util import robust_run
 
@@ -38,7 +36,8 @@ class NinjaWriter:
     def __init__(self, config: BuildConfig, build_dir: py.path.local) -> None:
         # for now, we support only some combinations of target/kind
         if config.kind == 'lib':
-            assert config.target in ('wasi', 'emscripten')
+            if config.target not in ('wasi', 'emscripten'):
+                raise WIP('--output-kind=lib works only for wasi and emscripten targets')
         self.config = config
         self.build_dir = build_dir
         self.out = None
@@ -142,6 +141,7 @@ class NinjaWriter:
 
     def build(self) -> py.path.local:
         assert self.out is not None
-        cmdline = ['unbuffer', 'ninja', '-C', str(self.build_dir)]
-        robust_run(cmdline)
+        cmdline = ['ninja', '-C', str(self.build_dir)]
+        # unbuffer run to get gcc to emit color codes
+        robust_run(cmdline, unbuffer=True)
         return self.build_dir.join(self.out)

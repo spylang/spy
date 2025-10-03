@@ -1,0 +1,212 @@
+"""
+SPy array module
+
+The end goal is to have something which can be used in place of Python's
+array.array and numpy.ndarray types. At the moment is VERY limited in terms of
+functionalities.
+
+Some functionalities are just not implemented.
+
+Others are implemented but in a suboptimal way, because SPy misses the tools
+needed to do it properly.
+
+In particular we don't support an arbitrary number of dimensions: currently we
+hardcode _array1, _array2, _array3, etc.
+"""
+
+from operator import OpSpec
+from unsafe import gc_alloc, ptr
+
+@blue.generic
+def array(DTYPE, NDIM):
+    # XXX this is ugly: we hardcode arrays impl for small ndims. We should
+    # autogenerate them.
+
+    if NDIM == 1:
+        return _array1[DTYPE]
+
+    elif NDIM == 2:
+        return _array2[DTYPE]
+
+    elif NDIM == 3:
+        return _array3[DTYPE]
+
+    raise StaticError("number of dimensions not supported")
+
+
+@blue.generic
+def _array1(DTYPE):
+
+    @struct
+    class ArrayData:
+        l: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(l: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.l = l
+            data.items = gc_alloc(DTYPE)(l)
+            return ndarray.__lift__(data)
+
+        @staticmethod
+        def from_buffer(buf: ptr[DTYPE], l: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.items = buf
+            data.l = l
+            return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.l:
+                raise IndexError
+            return ll.items[i]
+
+        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.l:
+                raise IndexError
+            ll.items[i] = v
+
+        def __len__(self: ndarray) -> i32:
+            return self.__ll__.l
+
+    return ndarray
+
+
+@blue.generic
+def _array2(DTYPE):
+
+    @struct
+    class ArrayData:
+        h: i32
+        w: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.h = h
+            data.w = w
+            data.items = gc_alloc(DTYPE)(h*w)
+            return ndarray.__lift__(data)
+
+        @staticmethod
+        def from_buffer(buf: ptr[DTYPE], h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.items = buf
+            data.h = h
+            data.w = w
+            return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.h:
+                raise IndexError
+            if j >= ll.w:
+                raise IndexError
+            idx = (i * ll.w) + j
+            return ll.items[idx]
+
+        def __setitem__(self: ndarray, i: i32, j: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.h:
+                raise IndexError
+            if j >= ll.w:
+                raise IndexError
+            idx = (i * ll.w) + j
+            ll.items[idx] = v
+
+        def __len__(self: ndarray) -> i32:
+            return self.__ll__.h
+
+        # XXX: we don't have a good way to know "w". We need to implement
+        # .shape
+
+    return ndarray
+
+
+@blue.generic
+def _array3(DTYPE):
+
+    @struct
+    class ArrayData:
+        d: i32
+        h: i32
+        w: i32
+        items: ptr[DTYPE]
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData]
+
+        def __new__(d: i32, h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.d = d
+            data.h = h
+            data.w = w
+            data.items = gc_alloc(DTYPE)(d*h*w)
+            return ndarray.__lift__(data)
+
+        @staticmethod
+        def from_buffer(buf: ptr[DTYPE], d: i32, h: i32, w: i32) -> ndarray:
+            data = gc_alloc(ArrayData)(1)
+            data.items = buf
+            data.d = d
+            data.h = h
+            data.w = w
+            return ndarray.__lift__(data)
+
+        def __getitem__(self: ndarray, i: i32, j: i32, k: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.d:
+                raise IndexError
+            if j >= ll.h:
+                raise IndexError
+            if k >= ll.w:
+                raise IndexError
+            idx = (i * ll.h * ll.w) + (j * ll.w) + k
+            return ll.items[idx]
+
+        def __setitem__(self: ndarray, i: i32, j: i32, k: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.d:
+                raise IndexError
+            if j >= ll.h:
+                raise IndexError
+            if k >= ll.w:
+                raise IndexError
+            idx = (i * ll.h * ll.w) + (j * ll.w) + k
+            ll.items[idx] = v
+
+        def __len__(self: ndarray) -> i32:
+            return self.__ll__.d
+
+    return ndarray
+
+
+@blue.generic
+def zeros(DTYPE):
+
+    @blue.metafunc
+    def metazeros(m_shape):
+        if m_shape.static_type == i32:
+            ArrayT = array[DTYPE, 1]
+            def impl(n: i32) -> ArrayT:
+                return ArrayT(n)
+            return OpSpec(impl)
+
+        elif m_shape.static_type == tuple:
+            raise StaticError('WIP')
+
+        else:
+            raise TypeError('shape must be either int or tuple')
+
+
+    return metazeros

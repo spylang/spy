@@ -1,0 +1,20 @@
+from operator import OpSpec
+
+@blue.metafunc
+def myprint(m_x):
+    if m_x.static_type == int:
+        def myprint_int(x: int) -> None:
+            print(x)
+        return OpSpec(myprint_int)
+
+    if m_x.static_type == str:
+        def myprint_str(x: str) -> None:
+            print(x)
+        return OpSpec(myprint_str)
+
+    raise TypeError("don't know how to print this")
+
+def main() -> None:
+    print(42)
+    myprint("hello")
+    myprint(5.2)

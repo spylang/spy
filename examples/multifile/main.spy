@@ -2,7 +2,7 @@ from array import array, array1d, array2d
 from dot import dot
 
 
-def main() -> void:
+def main() -> None:
     # Create a vector [1, 2, 3]
     vec = array1d[i32](3)
     vec[0] = 1

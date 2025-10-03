@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from spy.llwasm import LLWasmInstance
-from spy.vm.b import B
+from spy.vm.b import B, BUILTINS
 from spy.vm.object import W_Object, W_Type
-from spy.vm.builtin import builtin_func, builtin_type, builtin_method
-from spy.vm.opimpl import W_OpImpl, W_OpArg
-from spy.vm.primitive import W_I32, W_Dynamic
+from spy.vm.builtin import builtin_method
+from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.primitive import W_I32
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -23,8 +23,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     return ptr
 
 
-
-@B.builtin_type('str')
+@B.builtin_type('str', lazy_definition=True)
 class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.
@@ -36,6 +35,7 @@ class W_Str(W_Object):
             const char utf8[];
         } spy_Str;
     """
+    __spy_storage_category__ = 'value'
     vm: 'SPyVM'
     ptr: int
 
@@ -69,6 +69,19 @@ class W_Str(W_Object):
     def spy_unwrap(self, vm: 'SPyVM') -> str:
         return self._as_str()
 
+    def spy_key(self, vm: 'SPyVM') -> str:
+        return self._as_str()
+
+    @builtin_method('__new__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> 'W_OpSpec':
+        from spy.vm.b import B
+        if len(args_wam) == 1 and args_wam[0].w_static_T is B.w_i32:
+            wam_i = args_wam[0]
+            return W_OpSpec(w_int2str, [wam_i])
+        else:
+            return W_OpSpec.NULL
+
     @builtin_method('__getitem__')
     @staticmethod
     def w_getitem(vm: 'SPyVM', w_s: 'W_Str', w_i: W_I32) -> 'W_Str':
@@ -77,18 +90,15 @@ class W_Str(W_Object):
         ptr_c = vm.ll.call('spy_str_getitem', w_s.ptr, w_i.value)
         return W_Str.from_ptr(vm, ptr_c)
 
+    @builtin_method('__len__')
     @staticmethod
-    def w_meta_CALL(vm: 'SPyVM', wop_obj: W_OpArg,
-                    *args_wop: W_OpArg) -> W_OpImpl:
-        from spy.vm.b import B
-        if len(args_wop) == 1 and args_wop[0].w_static_type is B.w_i32:
-            wop_i = args_wop[0]
-            return W_OpImpl(w_int2str, [wop_i])
-        else:
-            return W_OpImpl.NULL
+    def w_len(vm: 'SPyVM', w_s: 'W_Str') -> W_I32:
+        assert isinstance(w_s, W_Str)
+        length = vm.ll.call('spy_str_len', w_s.ptr)
+        return vm.wrap(length)
 
 
-@builtin_func('builtins')
+@BUILTINS.builtin_func(hidden=True)
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
-    return vm.wrap(str(i))  # type: ignore
+    return vm.wrap(str(i))

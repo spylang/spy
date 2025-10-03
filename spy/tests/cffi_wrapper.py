@@ -1,8 +1,5 @@
 from typing import Any
 import sys
-import os
-import importlib.util
-import sysconfig
 import py.path
 from spy.vm.vm import SPyVM
 

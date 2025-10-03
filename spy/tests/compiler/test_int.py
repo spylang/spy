@@ -1,10 +1,6 @@
 import pytest
-from spy.fqn import FQN
 from spy.errors import SPyError
-from spy.vm.b import B
-from spy.fqn import FQN
-from spy.tests.support import (CompilerTest, skip_backends, no_backend,
-                               expect_errors, only_interp, no_C)
+from spy.tests.support import (CompilerTest)
 
 @pytest.fixture(params=["i32", "i8", "u8"])
 def int_type(request):

@@ -30,13 +30,12 @@ does exactly that.
 
 from dataclasses import dataclass
 import ast as py_ast
-from tokenize import tokenize, NUMBER, STRING, NAME, OP, TokenInfo, TokenError
+from tokenize import tokenize, NAME, TokenInfo, TokenError
 from io import BytesIO
 
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
-import spy.ast_dump
 
 @dataclass(frozen=True)
 class LocInfo:

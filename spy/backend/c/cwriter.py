@@ -5,6 +5,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.b import B
+from spy.vm.builtin import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 
 class CFuncWriter:
     ctx: Context
-    cmod: 'CModuleWriter'
+    cmodw: 'CModuleWriter'
     tbc: TextBuilder
     fqn: FQN
     w_func: W_ASTFunc
@@ -25,12 +26,12 @@ class CFuncWriter:
 
     def __init__(self,
                  ctx: Context,
-                 cmod: 'CModuleWriter',
+                 cmodw: 'CModuleWriter',
                  fqn: FQN,
                  w_func: W_ASTFunc) -> None:
         self.ctx = ctx
-        self.cmod = cmod
-        self.tbc = cmod.tbc
+        self.cmodw = cmodw
+        self.tbc = cmodw.tbc
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1) # see emit_lineno_maybe
@@ -59,7 +60,7 @@ class CFuncWriter:
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
 
-            if self.w_func.w_functype.w_restype is not B.w_void:
+            if self.w_func.w_functype.w_restype is not B.w_NoneType:
                 # this is a non-void function: if we arrive here, it means we
                 # reached the end of the function without a return. Ideally,
                 # we would like to also report an error message, but for now
@@ -78,9 +79,9 @@ class CFuncWriter:
         """
         assert self.w_func.locals_types_w is not None
         param_names = [arg.name for arg in self.w_func.funcdef.args]
-        for varname, w_type in self.w_func.locals_types_w.items():
-            c_type = self.ctx.w2c(w_type)
-            if (varname not in ('@return', '@if', '@while') and
+        for varname, w_T in self.w_func.locals_types_w.items():
+            c_type = self.ctx.w2c(w_T)
+            if (varname not in ('@return', '@if', '@while', '@assert') and
                 varname not in param_names):
                 self.tbc.wl(f'{c_type} {varname};')
 
@@ -108,7 +109,7 @@ class CFuncWriter:
         """
         Emit a #line directive, unconditionally
         """
-        if self.cmod.spyfile is None:
+        if self.cmodw.c_mod.spyfile is None:
             # we don't have an associated spyfile, so we cannot emit SPY_LINE
             return
         cline = self.tbc.lineno
@@ -144,13 +145,16 @@ class CFuncWriter:
         pass
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        varname = assign.target.value
+        assert False, 'ast.Assign nodes should not survive redshifting'
+
+    def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
+        target = assign.target.value
         v = self.fmt_expr(assign.value)
-        sym = self.w_func.funcdef.symtable.lookup(varname)
-        if sym.is_local:
-            target = varname
-        else:
-            target = sym.fqn.c_name
+        self.tbc.wl(f'{target} = {v};')
+
+    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        v = self.fmt_expr(assign.value)
+        target = assign.target_fqn.c_name
         self.tbc.wl(f'{target} = {v};')
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
@@ -178,6 +182,19 @@ class CFuncWriter:
         with self.tbc.indent():
             for stmt in while_node.body:
                 self.emit_stmt(stmt)
+        self.tbc.wl('}')
+
+    def emit_stmt_Assert(self, assert_node: ast.Assert) -> None:
+        test = self.fmt_expr(assert_node.test)
+        self.tbc.wl(f'if (!({test}))'+' {')
+        with self.tbc.indent():
+            if assert_node.msg is not None:
+                # TODO: assuming msg is always a string. extend the logic to work with other types
+                msg = self.fmt_expr(assert_node.msg)
+                self.tbc.wl(f'spy_panic("AssertionError", ({msg})->utf8, "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+            else:
+                self.tbc.wl(f'spy_panic("AssertionError", "assertion failed", "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+            
         self.tbc.wl('}')
 
     # ===== expressions =====
@@ -215,11 +232,11 @@ class CFuncWriter:
         # Emit the global decl
         s = const.value
         utf8 = s.encode('utf-8')
-        v = self.cmod.new_global_var('str')  # SPY_g_str0
+        v = self.cmodw.new_global_var('str')  # SPY_g_str0
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
         init = '{%d, %s}' % (n, lit)
-        self.cmod.tbc_globals.wl(f'static spy_Str {v} = {init};')
+        self.cmodw.tbc_globals.wl(f'static spy_Str {v} = {init};')
         #
         # shortstr is what we show in the comment, with a length limit
         comment = shortrepr(utf8.decode('utf-8'), 15)
@@ -239,11 +256,18 @@ class CFuncWriter:
             assert False
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
-        sym = self.w_func.funcdef.symtable.lookup(name.id)
-        if sym.is_local:
-            return C.Literal(name.id)
-        else:
-            return C.Literal(sym.fqn.c_name)
+        assert False, 'ast.Name nodes should not survive redshifting'
+
+    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> C.Expr:
+        return C.Literal(name.sym.name)
+
+    def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
+        return C.Literal(name.fqn.c_name)
+
+    def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> C.Expr:
+        # at the moment of writing, closed-over variables are always blue, so
+        # they should not survive redshifting
+        assert False, 'unexepcted NameOuterDirect'
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         raise NotImplementedError(
@@ -330,47 +354,91 @@ class CFuncWriter:
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
         assert isinstance(call.func, ast.FQNConst), \
             'indirect calls are not supported yet'
+        fqn = call.func.fqn
 
-        # some calls are special-cased and transformed into a C binop
-        if op := self.FQN2BinOp.get(call.func.fqn):
+        irtag = self.ctx.vm.get_irtag(fqn)
+        if call.func.fqn.modname == "jsffi":
+            self.cmodw.emit_jsffi_error_maybe()
+
+        if op := self.FQN2BinOp.get(fqn):
+            # binop special case
             assert len(call.args) == 2
             l, r = [self.fmt_expr(arg) for arg in call.args]
             return C.BinOp(op, l, r)
 
-        if op := self.FQN2UnaryOp.get(call.func.fqn):
+        elif op := self.FQN2UnaryOp.get(fqn):
+            # unary op special case
             assert len(call.args) == 1
             v = self.fmt_expr(call.args[0])
             return C.UnaryOp(op, v)
 
-        if call.func.fqn.modname == "jsffi":
-            self.cmod.emit_jsffi_error_maybe()
+        elif irtag.tag == 'struct.make':
+            return self.fmt_struct_make(fqn, call, irtag)
 
-        fqn = call.func.fqn
-        if str(fqn).startswith("unsafe::getfield_by"):
-            return self.fmt_getfield(fqn, call)
-        elif str(fqn).startswith("unsafe::setfield["):
-            return self.fmt_setfield(fqn, call)
+        elif irtag.tag == 'struct.getfield':
+            return self.fmt_struct_getfield(fqn, call, irtag)
 
-        # the default case is to call a function with the corresponding name
+        elif irtag.tag == 'ptr.getfield':
+            return self.fmt_ptr_getfield(fqn, call, irtag)
+
+        elif irtag.tag == 'ptr.setfield':
+            return self.fmt_ptr_setfield(fqn, call)
+
+        elif irtag.tag == 'ptr.deref':
+            # this is not strictly necessary as it's just a generic call, but
+            # we handle ptr.deref explicitly for extra clarity
+            return self.fmt_generic_call(fqn, call)
+
+        elif irtag.tag in ('ptr.getitem', 'ptr.store'):
+            # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
+            # extra "w_loc" argument, which is not needed by the C backend
+            # because we rely on C's own mechanism to get line numbers.
+            # Moreover, we don't have a way to render "W_Loc" consts to C.
+            #
+            # So, we just remove the last arguments. Note that this much match
+            # with the signature of the load/store functions generated by
+            # unsafe.h:SPY_PTR_FUNCTIONS.
+            assert isinstance(call.args[-1], ast.LocConst)
+            call.args.pop() # remove it
+            return self.fmt_generic_call(fqn, call)
+
+        else:
+            return self.fmt_generic_call(fqn, call)
+
+    def fmt_generic_call(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # default case: call a function with the corresponding name
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
 
-    def fmt_getfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+    def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        c_structtype = self.ctx.c_restype_by_fqn(fqn)
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        strargs = ', '.join(map(str, c_args))
+        return C.Cast(c_structtype, C.Literal('{ %s }' % strargs))
+
+    def fmt_struct_getfield(self, fqn: FQN, call: ast.Call,
+                            irtag: IRTag) -> C.Expr:
+        assert len(call.args) == 1
+        c_struct = self.fmt_expr(call.args[0])
+        name = irtag.data['name']
+        return C.Dot(c_struct, name)
+
+    def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call,
+                         irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
-        is_byref = str(fqn).startswith("unsafe::getfield_byref")
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_field = C.PtrField(c_ptr, attr)
-        if is_byref:
+        if irtag.data['by'] == 'byref':
             c_restype = self.ctx.c_restype_by_fqn(fqn)
             return C.PtrFieldByRef(c_restype, c_field)
         else:
             return c_field
 
-    def fmt_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
+    def fmt_ptr_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value

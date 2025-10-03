@@ -1,7 +1,6 @@
 #-*- encoding: utf-8 -*-
 
-import pytest
-from spy.tests.support import CompilerTest, skip_backends, only_emscripten
+from spy.tests.support import CompilerTest, only_emscripten
 
 @only_emscripten
 class TestJsFFI(CompilerTest):
@@ -9,7 +8,7 @@ class TestJsFFI(CompilerTest):
     def test_emscripten_run(self):
         exe = self.compile(
         """
-        def main() -> void:
+        def main() -> None:
             print('hello from print')
         """)
         out = exe.run()
@@ -20,7 +19,7 @@ class TestJsFFI(CompilerTest):
         """
         from jsffi import init as js_init, get_Console
 
-        def main() -> void:
+        def main() -> None:
             js_init()
             console = get_Console()
             console.log('hello from console.log')
@@ -34,7 +33,7 @@ class TestJsFFI(CompilerTest):
         """
         from jsffi import init as js_init, get_Console, get_GlobalThis
 
-        def main() -> void:
+        def main() -> None:
             js_init()
             globalThis = get_GlobalThis()
             console = get_Console()
@@ -51,10 +50,10 @@ class TestJsFFI(CompilerTest):
         """
         from jsffi import init as js_init, get_GlobalThis
 
-        def say_hello() -> void:
+        def say_hello() -> None:
             print("hello from callback")
 
-        def main() -> void:
+        def main() -> None:
             js_init()
             globalThis = get_GlobalThis()
             globalThis.setTimeout(say_hello) # XXX allow 2 params and pass 0

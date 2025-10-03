@@ -29,14 +29,14 @@ def main(argv: list[str]) -> None:
     from spy.vm.function import W_ASTFunc
     filename = argv[1]
     vm, w_mod = redshift(filename)
-    for fqn, w_obj in w_mod.items_w():
+    for fqn, w_obj in vm.fqns_by_modname(w_mod.name):
         print(fqn, w_obj)
         if isinstance(w_obj, W_ASTFunc):
             print('functype:', w_obj.w_functype)
             print('locals:')
             assert w_obj.locals_types_w is not None
-            for varname, w_type in w_obj.locals_types_w.items():
-                print('   ', varname, w_type)
+            for varname, w_T in w_obj.locals_types_w.items():
+                print('   ', varname, w_T)
             print('AST:')
             w_obj.funcdef.pp()
             print()

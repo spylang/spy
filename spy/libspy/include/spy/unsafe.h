@@ -39,16 +39,22 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p };                                 \
     }                                                            \
-    static inline T PTR##$load(PTR p, size_t i) {                \
+    static inline T PTR##$deref(PTR p) {                         \
+        return *(p.p);                                           \
+    }                                                            \
+    static inline T PTR##$getitem_byval(PTR p, size_t i) {       \
         return p.p[i];                                           \
+    }                                                            \
+    static inline PTR PTR##$getitem_byref(PTR p, size_t i) {     \
+        return PTR##_from_addr(p.p + i);                         \
     }                                                            \
     static inline void PTR##$store(PTR p, size_t i, T v) {       \
         p.p[i] = v;                                              \
     }                                                            \
-    static inline bool PTR##$eq(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__eq__(PTR p0, PTR p1) {            \
         return p0.p == p1.p;                                     \
     }                                                            \
-    static inline bool PTR##$ne(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__ne__(PTR p0, PTR p1) {            \
         return p0.p != p1.p;                                     \
     }                                                            \
     static inline bool PTR##$to_bool(PTR p) {                    \
@@ -64,20 +70,30 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);              \
         return ( PTR ){ ref.p, n };                              \
     }                                                            \
-    static inline T PTR##$load(PTR p, size_t i) {                \
+    static inline T PTR##$deref(PTR p) {                         \
+        return *(p.p);                                           \
+    }                                                            \
+    static inline T PTR##$getitem_byval(PTR p, size_t i) {       \
         if (i >= p.length)                                       \
-            spy_panic("PanicError", "ptr_load out of bounds", __FILE__, __LINE__); \
+            spy_panic("PanicError", "ptr_getitem out of bounds", \
+                      __FILE__, __LINE__);                       \
         return p.p[i];                                           \
+    }                                                            \
+    static inline PTR PTR##$getitem_byref(PTR p, size_t i) {     \
+        if (i >= p.length)                                       \
+            spy_panic("PanicError", "ptr_getitem out of bounds", \
+                      __FILE__, __LINE__);                       \
+        return PTR##_from_addr(p.p + i);                         \
     }                                                            \
     static inline void PTR##$store(PTR p, size_t i, T v) {       \
         if (i >= p.length)                                       \
             spy_panic("PanicError", "ptr_store ouf of bounds", __FILE__, __LINE__); \
         p.p[i] = v;                                              \
     }                                                            \
-    static inline bool PTR##$eq(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__eq__(PTR p0, PTR p1) {            \
         return p0.p == p1.p && p0.length == p1.length;           \
     }                                                            \
-    static inline bool PTR##$ne(PTR p0, PTR p1) {                \
+    static inline bool PTR##$__ne__(PTR p0, PTR p1) {            \
         return p0.p != p1.p || p0.length != p1.length;           \
     }                                                            \
     static inline bool PTR##$to_bool(PTR p) {                    \

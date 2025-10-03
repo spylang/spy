@@ -1,7 +1,5 @@
 import math
-import pytest
-from spy.errors import SPyError
-from spy.tests.support import CompilerTest, skip_backends, no_backend
+from spy.tests.support import CompilerTest
 
 class TestMath(CompilerTest):
 
