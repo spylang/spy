@@ -17,4 +17,4 @@ def myprint(m_x):
 def main() -> None:
     print(42)
     myprint("hello")
-    myprint(5.2)
+    myprint(5.2)  # raises TypeError, but it's expected
