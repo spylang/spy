@@ -62,9 +62,9 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
         if isinstance(node, py_ast.Name):
             assert node.end_lineno is not None
             assert node.end_col_offset is not None
-            loc = LocInfo(node.lineno, node.end_lineno,
+            loc_info = LocInfo(node.lineno, node.end_lineno,
                           node.col_offset, node.end_col_offset)
-            node.is_var = loc in var_locs # type: ignore
+            node.is_var = loc_info in var_locs # type: ignore
 
     return py_mod
 
@@ -113,13 +113,13 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
                                tok0.start, tok1.end, tok1.line)
             newtokens.append(newtok)
             # compute the location info of the future ast.Name
-            loc = LocInfo(
+            loc_info = LocInfo(
                 lineno = var_l0,
                 end_lineno = var_l0,
                 col_offset = var_c0,
                 end_col_offset = var_c0 + len(tok1.string)
             )
-            var_locs.add(loc)
+            var_locs.add(loc_info)
             i += 1
         else:
             newtokens.append(tok0)
