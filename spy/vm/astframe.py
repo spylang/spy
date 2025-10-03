@@ -33,6 +33,16 @@ class Return(Exception):
         self.w_value = w_value
 
 
+class Break(Exception):
+    """Exception to implement break statement"""
+    pass
+
+
+class Continue(Exception):
+    """Exception to implement continue statement"""
+    pass
+
+
 class AbstractFrame:
     """
     Frame which is able to run AST expressions/statements.
@@ -196,6 +206,12 @@ class AbstractFrame:
     def exec_stmt_Return(self, ret: ast.Return) -> None:
         wam = self.eval_expr(ret.value, varname='@return')
         raise Return(wam.w_val)
+
+    def exec_stmt_Break(self, brk: ast.Break) -> None:
+        raise Break()
+
+    def exec_stmt_Continue(self, cont: ast.Continue) -> None:
+        raise Continue()
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # evaluate the functype
@@ -476,8 +492,13 @@ class AbstractFrame:
             assert isinstance(wam_cond.w_val, W_Bool)
             if self.vm.is_False(wam_cond.w_val):
                 break
-            for stmt in while_node.body:
-                self.exec_stmt(stmt)
+            try:
+                for stmt in while_node.body:
+                    self.exec_stmt(stmt)
+            except Break:
+                break
+            except Continue:
+                continue
 
     def exec_stmt_For(self, for_node: ast.For) -> None:
         # see the comment in __init__ about desugared_fors
