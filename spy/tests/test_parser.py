@@ -1447,3 +1447,107 @@ class TestParser:
         )
         """
         self.assert_dump(funcdef, expected)
+
+    def test_Break(self):
+        mod = self.parse("""
+        def foo() -> None:
+            while True:
+                break
+        """)
+        while_stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        While(
+            test=Constant(value=True),
+            body=[
+                Break(),
+            ],
+        )
+        """
+        self.assert_dump(while_stmt, expected)
+
+    def test_Continue(self):
+        mod = self.parse("""
+        def foo() -> None:
+            while True:
+                continue
+        """)
+        while_stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        While(
+            test=Constant(value=True),
+            body=[
+                Continue(),
+            ],
+        )
+        """
+        self.assert_dump(while_stmt, expected)
+
+    def test_Break_in_For(self):
+        mod = self.parse("""
+        def foo() -> None:
+            for i in range(10):
+                if i == 5:
+                    break
+        """)
+        for_stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        For(
+            seq=0,
+            target=StrConst(value='i'),
+            iter=Call(
+                func=Name(id='range'),
+                args=[
+                    Constant(value=10),
+                ],
+            ),
+            body=[
+                If(
+                    test=CmpOp(
+                        op='==',
+                        left=Name(id='i'),
+                        right=Constant(value=5),
+                    ),
+                    then_body=[
+                        Break(),
+                    ],
+                    else_body=[],
+                ),
+            ],
+        )
+        """
+        self.assert_dump(for_stmt, expected)
+
+    def test_Continue_in_For(self):
+        mod = self.parse("""
+        def foo() -> None:
+            for i in range(10):
+                if i == 5:
+                    continue
+        """)
+        for_stmt = mod.get_funcdef('foo').body[0]
+        expected = """
+        For(
+            seq=0,
+            target=StrConst(value='i'),
+            iter=Call(
+                func=Name(id='range'),
+                args=[
+                    Constant(value=10),
+                ],
+            ),
+            body=[
+                If(
+                    test=CmpOp(
+                        op='==',
+                        left=Name(id='i'),
+                        right=Constant(value=5),
+                    ),
+                    then_body=[
+                        Continue(),
+                    ],
+                    else_body=[],
+                ),
+            ],
+        )
+        """
+        self.assert_dump(for_stmt, expected)
