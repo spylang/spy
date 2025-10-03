@@ -55,7 +55,8 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     except SyntaxError as e:
         lineno = e.lineno or 1
         loc = Loc(filename, lineno, lineno, 0, -1)
-        raise SPyError.simple("W_ParseError", e.msg, "this is triggered by the Python parser", loc)
+        # this happens e.g. if we have an incomplete `if`, see test_magic_py_parse_error
+        raise SPyError.simple("W_ParseError", e.msg, "", loc)
 
     for node in py_ast.walk(py_mod):
         if isinstance(node, py_ast.Name):
@@ -81,7 +82,8 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
         if lineno is None:
             lineno = 1
         loc = Loc(filename, lineno, lineno, 0, -1)
-        raise SPyError.simple("W_ParseError", str(e), "this is triggered by the SPy preprocessor", loc)
+        # this happens when e.g. we mix tabs and spaces, see test_magic_py_parse_tab
+        raise SPyError.simple("W_ParseError", str(e), "", loc)
     newtokens = []
     i = 0
     N = len(tokens)

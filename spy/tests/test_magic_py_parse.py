@@ -66,7 +66,7 @@ def test_magic_py_parse_error(tmpdir):
     parser = Parser(src, str(f))
     errors = expect_errors(
         "expected an indented block after 'if' statement on line 3",
-        ("this is triggered by the Python parser", "    if 1:")
+        ("", "    if 1:")
     )
     with errors:
         parser.parse()
@@ -83,7 +83,7 @@ def test_magic_py_parse_tabs(tmpdir):
     parser = Parser(src, str(f))
     errors = expect_errors(
         "inconsistent use of tabs and spaces in indentation (<string>, line 4)",
-        ("this is triggered by the SPy preprocessor", "\tprint('world')")
+        ("", "\tprint('world')")
     )
     with errors:
         parser.parse()
@@ -98,7 +98,7 @@ def test_magic_py_parse_token_error(tmpdir):
     parser = Parser(src, str(f))
     errors = expect_errors(
         "('EOF in multi-line string', (3, 5))",
-        ("this is triggered by the SPy preprocessor", "    '''")
+        ("", "    '''")
     )
     with errors:
         parser.parse()
