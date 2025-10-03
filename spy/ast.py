@@ -22,7 +22,7 @@ class AST:
     stubs/_ast.pyi
     """
 
-    _loc = None
+    _loc: None = None
 
     @property
     def loc(self) -> Loc:
