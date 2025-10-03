@@ -29,9 +29,9 @@ class TestFloat(CompilerTest):
         assert mod.div(1.5, 2.0) == 0.75
         assert mod.floordiv(10.0, 3.0) == 3.0
         assert mod.neg(-2.5) == 2.5
-        with SPyError.raises("W_ZeroDivisionError"):
+        with SPyError.raises("W_ZeroDivisionError", match="float division by zero"):
             mod.div(1.5, 0.0)
-        with SPyError.raises("W_ZeroDivisionError"):
+        with SPyError.raises("W_ZeroDivisionError", match="float floor division by zero"):
             mod.floordiv(10.0, 0.0)
 
     def test_CompareOp(self):
