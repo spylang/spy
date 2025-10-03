@@ -66,20 +66,17 @@ class TestDict(CompilerTest):
             d = dict[i32, i32]()
             i = 1
             while i <= n:
-                print("inserting " + str(i))
                 d[i] = i
                 i += 1
-            print("done inserting")
-            print("d[20]=" + str(d[20]))
             return d[n]
         """
         mod = self.compile(src)
-        # assert mod.test(10) == 10
+        assert mod.test(10) == 10
         # MIN_LOG_SIZE = 6 => 64 entries
         # MAX_FILL_RATIO = 2 / 3 => 43 entries to trigger resize
         assert mod.test(43) == 43
         # and 86 entries to trigger two resizes
-        # assert mod.test(86) == 86
+        assert mod.test(86) == 86
 
     def test_len_after_many_inserts(self):
         src = """
