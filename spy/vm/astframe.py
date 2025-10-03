@@ -519,10 +519,13 @@ class AbstractFrame:
         #     it = X.__fastiter__()
         #     while it.__continue_iteration__():
         #         i = it.__item__()
-        #         body
         #         it = it.__next__()
+        #         body
         #
         # (instead of 'it' we use the special variable '_$iterN')
+        #
+        # Note that "body" is placed AFTER the call to it.__next__(). This
+        # way, 'continue' works out of the box.
         iter_name = f'_$iter{for_node.seq}'
         iter_sym = self.symtable.lookup(iter_name)
         iter_target = ast.StrConst(for_node.loc, iter_name)
@@ -569,7 +572,7 @@ class AbstractFrame:
                 method = ast.StrConst(for_node.loc, '__continue_iteration__'),
                 args = []
             ),
-            body = [assign_item] + for_node.body + [advance_iter]
+            body = [assign_item, advance_iter] + for_node.body
         )
         return init_iter, while_loop
 

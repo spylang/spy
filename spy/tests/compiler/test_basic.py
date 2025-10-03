@@ -1207,7 +1207,6 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 5  # counts odd numbers from 1 to 9
 
-    @pytest.mark.skip(reason="continue in for loops needs special handling for iterator advancement")
     def test_break_in_for(self):
         src = """
         from _range import range
@@ -1223,7 +1222,6 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 0 + 1 + 2 + 3 + 4
 
-    @pytest.mark.skip(reason="continue in for loops needs special handling for iterator advancement")
     def test_continue_in_for(self):
         src = """
         from _range import range
@@ -1239,7 +1237,6 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 1 + 3 + 5 + 7 + 9
 
-    @pytest.mark.skip(reason="continue in for loops needs special handling for iterator advancement")
     def test_nested_loops_with_break(self):
         src = """
         from _range import range
