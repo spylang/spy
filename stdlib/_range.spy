@@ -1,0 +1,56 @@
+from operator import OpSpec, MetaArg
+
+@struct
+class range:
+    start: int
+    stop: int
+    step: int
+
+    @blue.metafunc
+    def __new__(m_cls, *args_m):
+        def impl1(n: int) -> range:
+            return range.__make__(0, n, 1)
+
+        def impl2(a: int, b: int) -> range:
+            return range.__make__(a, b, 1)
+
+        def impl3(a: int, b: int, c: int) -> range:
+            return range.__make__(a, b, c)
+
+        # we cannot do list(args_m), so we need to do it manually somehow :(
+        m0: MetaArg
+        m1: MetaArg
+        m2: MetaArg
+        if len(args_m) == 1:
+            m0, = args_m
+            return OpSpec(impl1, [m0])
+        elif len(args_m) == 2:
+            m0, m1 = args_m
+            return OpSpec(impl2, [m0, m1])
+        elif len(args_m) == 3:
+            m0, m1, m2 = args_m
+            return OpSpec(impl3, [m0, m1, m2])
+        else:
+            return OpSpec.NULL
+
+    def __fastiter__(self: range) -> range_iterator:
+        return range_iterator(self.start, self.stop, self.step)
+
+@struct
+class range_iterator:
+    i: int
+    stop: int
+    step: int
+
+    def __next__(self: range_iterator) -> range_iterator:
+        return range_iterator(self.i + self.step, self.stop, self.step)
+
+    def __item__(self: range_iterator) -> int:
+        return self.i
+
+    # the opposite of StopIteration :)
+    def __continue_iteration__(self: range_iterator) -> bool:
+        if self.step > 0:
+            return self.i < self.stop
+        else:
+            return self.i > self.stop

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 MODULE = Union[ast.Module, 'W_Module', None]
 
 
-class ImportAnalizyer:
+class ImportAnalyzer:
     """
     The set of modules needed and loaded by a SPy program is statically
     determined ahead of time.

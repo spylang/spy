@@ -204,7 +204,7 @@ class DopplerFrame(ASTFrame):
             else_body = newelse
         )]
 
-    def shift_stmt_While(self, while_node: ast.While) -> list[ast.While]:
+    def shift_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
         newtest = self.eval_and_shift(while_node.test, varname='@while')
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(
@@ -212,12 +212,32 @@ class DopplerFrame(ASTFrame):
             body = newbody
         )]
 
+    def shift_stmt_For(self, for_node: ast.For) -> list[ast.Stmt]:
+        init_iter, while_loop = self._desugar_For(for_node)
+        return self.shift_stmt(init_iter) + self.shift_stmt(while_loop)
+
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         self.exec_stmt(raise_node)
         w_opimpl = self.opimpl[raise_node]
         v_exc = self.shifted_expr[raise_node.exc]
         call = self.shift_opimpl(raise_node, w_opimpl, [v_exc])
         return [ast.StmtExpr(raise_node.loc, call)]
+
+    def shift_stmt_Assert(self, assert_node: ast.Assert) -> list[ast.Stmt]:
+        new_test = self.eval_and_shift(assert_node.test, varname="@assert")
+        new_msg = None
+
+        if assert_node.msg is not None:
+            wam_msg = self.eval_expr(assert_node.msg)
+
+            if wam_msg.w_static_T is not B.w_str:
+                err = SPyError('W_TypeError', 'mismatched types')
+                err.add('error', f'expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`', loc=wam_msg.loc)
+                raise err
+
+            new_msg = self.shifted_expr[assert_node.msg]
+
+        return [assert_node.replace(test=new_test, msg=new_msg)]
 
     # ==== expressions ====
 

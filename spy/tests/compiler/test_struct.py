@@ -46,6 +46,24 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo(3, 4) == 7
         assert mod.bar(5, 6) == 11
 
+    def test_wrong_field(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            p = Point(0, 0)
+            return p.z
+        """
+        errors = expect_errors(
+            "type `test::Point` has no attribute 'z'",
+            ("this is `test::Point`", "p"),
+            ("`p` defined here", "p"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_spy_unwrap(self):
         src = """
         @struct
@@ -55,10 +73,14 @@ class TestStructOnStack(CompilerTest):
 
         def make_point(x: i32, y: i32) -> Point:
             return Point(x, y)
+
+        def get_x(p: Point) -> i32:
+            return p.x
         """
         mod = self.compile(src)
         p = mod.make_point(1, 2)
         assert p == (1, 2)
+        assert mod.get_x(p) == 1
 
     def test_pass_and_return(self):
         src = """

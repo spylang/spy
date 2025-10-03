@@ -2,6 +2,7 @@
 #define SPY_RAW_BUFFER_H
 
 #include <stddef.h>
+#include <stdalign.h>
 #include "spy.h"
 
 // RawBuffer is implemented entirely as static inline functions, since they
@@ -10,7 +11,7 @@
 
 typedef struct {
     size_t length;
-    const char buf[];
+    _Alignas(double) char buf[];
 } spy_RawBuffer;
 
 static inline spy_RawBuffer *

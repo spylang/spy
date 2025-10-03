@@ -45,10 +45,12 @@ class Parser:
     """
     src: str
     filename: str
+    for_loop_seq: int  # counter for for loops within the current function
 
     def __init__(self, src: str, filename: str) -> None:
         self.src = src
         self.filename = filename
+        self.for_loop_seq = 0
 
     @classmethod
     def from_filename(cls, filename: str) -> 'Parser':
@@ -191,6 +193,7 @@ class Parser:
             self.error('missing return type', '', func_loc)
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
+        self.for_loop_seq = 0  # reset counter for this function
         body = self.from_py_body(py_body)
 
         return spy.ast.FuncDef(
@@ -524,6 +527,32 @@ class Parser:
             body = self.from_py_body(py_node.body)
         )
 
+    def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
+        if py_node.orelse:
+            # ideally, we would like to point to the 'else:' line, but we
+            # cannot easiy get it from the ast. Too bad, let's point at the
+            # 'for'.
+            msg = 'not implemented yet: `else` clause in `for` loops'
+            forloc = py_node.loc.replace(
+                line_end = py_node.loc.line_start,
+                col_end = py_node.loc.col_start + 3
+            )
+            self.error(msg, 'this is not supported', forloc)
+
+        # Only support simple names as targets for now
+        if not isinstance(py_node.target, py_ast.Name):
+            self.unsupported(py_node.target, 'complex for loop targets')
+
+        seq = self.for_loop_seq
+        self.for_loop_seq += 1
+        return spy.ast.For(
+            loc = py_node.loc,
+            seq = seq,
+            target = spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            iter = self.from_py_expr(py_node.iter),
+            body = self.from_py_body(py_node.body),
+        )
+
     def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:
         if py_node.cause:
             self.unsupported(py_node, 'raise ... from ...')
@@ -536,6 +565,11 @@ class Parser:
             loc = py_node.loc,
             exc = exc
         )
+
+    def from_py_stmt_Assert(self, py_node: py_ast.Assert) -> spy.ast.Assert:
+        test = self.from_py_expr(py_node.test)
+        msg = self.from_py_expr(py_node.msg) if py_node.msg else None
+        return spy.ast.Assert(py_node.loc, test, msg)
 
     # ====== spy.ast.Expr ======
 

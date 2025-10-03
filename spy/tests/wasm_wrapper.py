@@ -97,6 +97,12 @@ class WasmFuncWrapper:
         elif isinstance(w_T, W_PtrType):
             assert isinstance(pyval, WasmPtr)
             return (pyval.addr, pyval.length)
+        elif isinstance(w_T, W_StructType):
+            # the function accepts a struct by value; wasmtime allows to pass
+            # a flat sequence of fields. This is the opposite of what we do in
+            # to_py_result. It works only for flat structs with simple types.
+            assert isinstance(pyval, UnwrappedStruct)
+            return tuple(pyval._fields.values())
         else:
             assert False, f'Unsupported type: {w_T}'
 
@@ -132,9 +138,15 @@ class WasmFuncWrapper:
             return utf8.decode('utf-8')
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
+            # On wasm32, it looks like this:
+            # struct {
+            #     size_t length;
+            #     /* 4 bytes of alignment */
+            #     char buf[];
+            # };
             addr = res
             length = self.ll.mem.read_i32(addr)
-            buf = self.ll.mem.read(addr + 4, length)
+            buf = self.ll.mem.read(addr + 8, length)
             return buf
         elif isinstance(w_T, W_PtrType):
             # this assumes that we compiled libspy with SPY_DEBUG:

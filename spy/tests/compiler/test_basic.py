@@ -1165,3 +1165,16 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.x2_plus_1(5) == 11
+
+    def test_for_loop(self):
+        src = """
+        from _range import range
+
+        def factorial(n: i32) -> i32:
+            res = 1
+            for i in range(n):
+                res *= (i+1)
+            return res
+        """
+        mod = self.compile(src)
+        assert mod.factorial(4) == 2 * 3 * 4

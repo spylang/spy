@@ -2,12 +2,12 @@ import textwrap
 import pytest
 import py.path
 from spy import ast
-from spy.analyze.importing import ImportAnalizyer
+from spy.analyze.importing import ImportAnalyzer
 from spy.vm.vm import SPyVM
 
 
 @pytest.mark.usefixtures('init')
-class TestImportAnalizyer:
+class TestImportAnalyzer:
 
     @pytest.fixture
     def init(self, tmpdir):
@@ -29,7 +29,7 @@ class TestImportAnalizyer:
         self.write("main.spy", """
         import mod1
         """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
 
         assert list(analyzer.mods) == ['main', 'mod1']
@@ -63,7 +63,7 @@ class TestImportAnalizyer:
         x = 'b2'
         """)
 
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         mods = analyzer.get_import_list()
         assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']
@@ -77,7 +77,7 @@ class TestImportAnalizyer:
         self.write("mod1.spy", """
         x: i32 = 42
         """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         assert list(analyzer.mods) == ['main', 'mod1']
 
@@ -86,7 +86,7 @@ class TestImportAnalizyer:
         import nonexistent
         """)
 
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         assert list(analyzer.mods) == ['main', 'nonexistent']
         assert isinstance(analyzer.mods['main'], ast.Module)
@@ -104,7 +104,7 @@ class TestImportAnalizyer:
         dummy_module = object()
         self.vm.modules_w['mod1'] = dummy_module  # type: ignore
 
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         assert list(analyzer.mods) == ['main', 'mod1']
         assert analyzer.mods['mod1'] is dummy_module
@@ -113,7 +113,7 @@ class TestImportAnalizyer:
         self.write("main.spy", """
         x: i32 = 42
         """)
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         scopes = analyzer.analyze_scopes('main')
         assert scopes.by_module().name == 'main'
@@ -128,7 +128,7 @@ class TestImportAnalizyer:
         """)
 
         self.vm.path.append(self.tmpdir.join('mylib'))
-        analyzer = ImportAnalizyer(self.vm, 'main')
+        analyzer = ImportAnalyzer(self.vm, 'main')
         analyzer.parse_all()
         assert list(analyzer.mods) == ['main', 'mod1']
         assert analyzer.mods['mod1'] is not None # check that we found it

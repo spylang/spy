@@ -27,6 +27,7 @@ from spy.vm.opimpl import W_OpImpl
 from spy.vm.property import W_Property, W_StaticMethod, W_ClassMethod
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
+from spy.vm.struct import UnwrappedStruct
 from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.registry import ModuleRegistry
 from spy.vm.bluecache import BlueCache
@@ -38,6 +39,9 @@ from spy.vm.modules.math import MATH
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.jsffi import JSFFI
+from spy.vm.modules.posix import POSIX
+from spy.vm.modules.time import TIME
+from spy.vm.modules.spy import SPY
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 
 # lazy definition of some some core types. See the docstring of W_Type.
@@ -99,6 +103,9 @@ class SPyVM:
         self.make_module(UNSAFE)
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)
+        self.make_module(POSIX)
+        self.make_module(TIME)
+        self.make_module(SPY)
         self.make_module(_TESTING_HELPERS)
         self.call_INITs()
 
@@ -113,11 +120,11 @@ class SPyVM:
         return SPyVM(ll=ll)
 
     def import_(self, modname: str) -> W_Module:
-        from spy.analyze.importing import ImportAnalizyer
+        from spy.analyze.importing import ImportAnalyzer
         if modname in self.modules_w:
             return self.modules_w[modname]
 
-        importer = ImportAnalizyer(self, modname)
+        importer = ImportAnalyzer(self, modname)
         importer.parse_all()
         #importer.pp()
         importer.import_all()
@@ -547,6 +554,8 @@ class SPyVM:
             return W_Str(self, value)
         elif T is Loc:
             return W_Loc(value)
+        elif T is UnwrappedStruct:
+            return value.spy_wrap(self)
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "

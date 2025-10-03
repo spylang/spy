@@ -8,6 +8,8 @@ from spy.vm.function import W_Func, W_ASTFunc
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.jsffi import JSFFI
+from spy.vm.modules.posix import POSIX
+from spy.vm.modules.time import TIME
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.struct import W_StructType
 from spy.textbuilder import TextBuilder
@@ -82,6 +84,7 @@ class Context:
         self._d[B.w_str] = C_Type('spy_Str *')
         self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer *')
         self._d[JSFFI.w_JsRef] = C_Type('JsRef')
+        self._d[POSIX.w_TerminalSize] = C_Type('spy_TerminalSize')
 
     def w2c(self, w_T: W_Type) -> C_Type:
         if w_T in self._d:
