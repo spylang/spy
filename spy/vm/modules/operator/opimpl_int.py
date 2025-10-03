@@ -46,19 +46,19 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     @OP.builtin_func(f'{T}_div')
     def w_div(vm: 'SPyVM', w_a: WT, w_b: WT) -> W_F64:
         if w_b.value == 0:
-            raise SPyError("W_ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero")
+            raise SPyError("W_ZeroDivisionError", "division by zero")
         return _binop(vm, w_a, w_b, lambda a, b: a / b)
 
     @OP.builtin_func(f'{T}_floordiv')
     def w_floordiv(vm: 'SPyVM', w_a: WT, w_b: WT) -> WT:
         if w_b.value == 0:
-            raise SPyError("W_ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero")
+            raise SPyError("W_ZeroDivisionError", "integer division or modulo by zero")
         return _binop(vm, w_a, w_b, lambda a, b: a // b)
 
     @OP.builtin_func(f'{T}_mod')
     def w_mod(vm: 'SPyVM', w_a: WT, w_b: WT) -> WT:
         if w_b.value == 0:
-            raise SPyError("W_ZeroDivisionError", "Raised when the second argument of a division or modulo operation is zero")
+            raise SPyError("W_ZeroDivisionError", "integer modulo by zero")
         return _binop(vm, w_a, w_b, lambda a, b: a % b)
 
     @OP.builtin_func(f'{T}_lshift')
