@@ -87,3 +87,18 @@ def test_magic_py_parse_tabs(tmpdir):
     )
     with errors:
         parser.parse()
+
+def test_magic_py_parse_token_error(tmpdir):
+    src = textwrap.dedent("""
+    def main() -> void:
+        '''
+    """)
+    f = tmpdir.join("test.spy")
+    f.write(src)
+    parser = Parser(src, str(f))
+    errors = expect_errors(
+        "('EOF in multi-line string', (3, 5))",
+        ("", "    '''")
+    )
+    with errors:
+        parser.parse()
