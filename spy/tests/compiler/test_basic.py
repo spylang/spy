@@ -1178,3 +1178,77 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.factorial(4) == 2 * 3 * 4
+
+    def test_break_in_while(self):
+        src = """
+        def foo() -> i32:
+            i = 0
+            while i < 10:
+                if i == 5:
+                    break
+                i += 1
+            return i
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 5
+
+    def test_continue_in_while(self):
+        src = """
+        def foo() -> i32:
+            i = 0
+            count = 0
+            while i < 10:
+                i += 1
+                if i % 2 == 0:
+                    continue
+                count += 1
+            return count
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 5  # counts odd numbers from 1 to 9
+
+    def test_break_in_for(self):
+        src = """
+        from _range import range
+
+        def foo() -> i32:
+            total = 0
+            for i in range(10):
+                if i == 5:
+                    break
+                total += i
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 0 + 1 + 2 + 3 + 4
+
+    def test_continue_in_for(self):
+        src = """
+        from _range import range
+
+        def foo() -> i32:
+            total = 0
+            for i in range(10):
+                if i % 2 == 0:
+                    continue
+                total += i
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1 + 3 + 5 + 7 + 9
+
+    def test_nested_loops_with_break(self):
+        src = """
+        from _range import range
+
+        def foo() -> i32:
+            total = 0
+            for i in range(5):
+                for j in range(5):
+                    if j == 3:
+                        break
+                    total += 1
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 5 * 3  # 5 outer iterations, 3 inner iterations each

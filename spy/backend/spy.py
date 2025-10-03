@@ -198,6 +198,12 @@ class SPyBackend:
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
         self.wl('pass')
 
+    def emit_stmt_Break(self, stmt: ast.Break) -> None:
+        self.wl('break')
+
+    def emit_stmt_Continue(self, stmt: ast.Continue) -> None:
+        self.wl('continue')
+
     def emit_stmt_Return(self, ret: ast.Return) -> None:
         v = self.fmt_expr(ret.value)
         self.wl(f'return {v}')

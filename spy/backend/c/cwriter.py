@@ -133,6 +133,12 @@ class CFuncWriter:
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
         pass
 
+    def emit_stmt_Break(self, stmt: ast.Break) -> None:
+        self.tbc.wl('break;')
+
+    def emit_stmt_Continue(self, stmt: ast.Continue) -> None:
+        self.tbc.wl('continue;')
+
     def emit_stmt_Return(self, ret: ast.Return) -> None:
         v = self.fmt_expr(ret.value)
         if v is C.Void():

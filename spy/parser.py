@@ -571,6 +571,12 @@ class Parser:
         msg = self.from_py_expr(py_node.msg) if py_node.msg else None
         return spy.ast.Assert(py_node.loc, test, msg)
 
+    def from_py_stmt_Break(self, py_node: py_ast.Break) -> spy.ast.Break:
+        return spy.ast.Break(py_node.loc)
+
+    def from_py_stmt_Continue(self, py_node: py_ast.Continue) -> spy.ast.Continue:
+        return spy.ast.Continue(py_node.loc)
+
     # ====== spy.ast.Expr ======
 
     def from_py_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:

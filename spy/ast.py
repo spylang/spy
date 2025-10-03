@@ -493,6 +493,14 @@ class Assert(Stmt):
     test: Expr
     msg: Optional[Expr]
 
+@dataclass(eq=False)
+class Break(Stmt):
+    pass
+
+@dataclass(eq=False)
+class Continue(Stmt):
+    pass
+
 
 # ====== IR-specific nodes ======
 #
