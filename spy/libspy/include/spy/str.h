@@ -36,6 +36,9 @@ WASM_EXPORT(spy_str_len)(spy_Str *s);
 spy_Str *
 WASM_EXPORT(spy_builtins$int2str)(int32_t x);
 
+spy_Str *
+WASM_EXPORT(spy_builtins$float2str)(double x);
+
 
 #define spy_operator$str_add spy_str_add
 #define spy_operator$str_mul spy_str_mul

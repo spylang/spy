@@ -4,7 +4,7 @@ from spy.vm.b import B, BUILTINS
 from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_OpSpec, W_MetaArg
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_I32, W_F64
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -76,11 +76,13 @@ class W_Str(W_Object):
     @staticmethod
     def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> 'W_OpSpec':
         from spy.vm.b import B
-        if len(args_wam) == 1 and args_wam[0].w_static_T is B.w_i32:
-            wam_i = args_wam[0]
-            return W_OpSpec(w_int2str, [wam_i])
-        else:
-            return W_OpSpec.NULL
+        if len(args_wam) == 1:
+            wam_arg = args_wam[0]
+            if wam_arg.w_static_T is B.w_i32:
+                return W_OpSpec(w_int2str, [wam_arg])
+            elif wam_arg.w_static_T is B.w_f64:
+                return W_OpSpec(w_float2str, [wam_arg])
+        return W_OpSpec.NULL
 
     @builtin_method('__getitem__')
     @staticmethod
@@ -102,3 +104,9 @@ class W_Str(W_Object):
 def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
     i = vm.unwrap_i32(w_i)
     return vm.wrap(str(i))
+
+
+@BUILTINS.builtin_func(hidden=True)
+def w_float2str(vm: 'SPyVM', w_f: W_F64) -> W_Str:
+    f = vm.unwrap_f64(w_f)
+    return vm.wrap(str(f))

@@ -74,3 +74,15 @@ spy_builtins$int2str(int32_t x) {
     memcpy(outbuf, buf, length);
     return res;
 }
+
+spy_Str *
+spy_builtins$float2str(double x) {
+    char buf[1024];
+    snprintf(buf, 1024, "%g", x);
+    size_t length = strlen(buf);
+
+    spy_Str *res = spy_str_alloc(length);
+    char *outbuf = (char*)res->utf8;
+    memcpy(outbuf, buf, length);
+    return res;
+}

@@ -926,6 +926,16 @@ class TestBasic(CompilerTest):
         assert mod.foo(9) == '9'
         assert mod.foo(123) == '123'
 
+    def test_str2f64(self):
+        mod = self.compile("""
+        def foo(x: f64) -> str:
+            return str(x)
+        """)
+        #
+        assert mod.foo(0.0) == '0'
+        assert mod.foo(3.14) == '3.14'
+        assert mod.foo(123.456) == '123.456'
+
     @no_C
     def test_eq_reference_types(self):
         mod = self.compile("""
