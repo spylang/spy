@@ -56,7 +56,7 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     except SyntaxError as e:
         lineno = e.lineno or 1
         loc = Loc(filename, lineno, lineno, 0, -1)
-        raise SPyError.simple("W_ParseError", e.msg, "", loc)
+        raise SPyError.simple("W_ParseError", e.msg, "this is triggered by the Python parser", loc)
 
     for node in py_ast.walk(py_mod):
         if isinstance(node, py_ast.Name):
@@ -64,7 +64,7 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
             assert node.end_col_offset is not None
             loc = LocInfo(node.lineno, node.end_lineno,
                           node.col_offset, node.end_col_offset)
-            node.is_var = loc in var_locs
+            node.is_var = loc in var_locs # type: ignore
 
     return py_mod
 
@@ -82,7 +82,7 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
         if lineno is None:
             lineno = 1
         loc = Loc(filename, lineno, lineno, 0, -1)
-        raise SPyError.simple("W_ParseError", str(e), "", loc)
+        raise SPyError.simple("W_ParseError", str(e), "this is triggered by the SPy preprocessor", loc)
     newtokens = []
     i = 0
     N = len(tokens)
