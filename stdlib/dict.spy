@@ -34,21 +34,6 @@ def dict(Key, Value):
         length: i32  # number of items stored
         entries: ptr[Entry]
 
-
-    def new_data(log_size: i32) -> ptr[DictData]:
-        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
-        data = gc_alloc(DictData)(1)
-        index = gc_alloc(i32)(1 << log_size)
-        data.index = index
-        data.log_size = 1 << log_size
-        data.length = 0
-        i = 0
-        while i < 1 << log_size:
-            data.index[i] = DKIX_EMPTY
-            # data.entries[i].empty = True
-            i += 1
-        return data
-
     def new_index(log_size: i32) -> ptr[i32]:
         # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
         index = gc_alloc(i32)(1 << log_size)
@@ -58,40 +43,36 @@ def dict(Key, Value):
             i += 1
         return index
 
-    # def new_entries(log_size: i32) -> ptr[Entry]:
-    def new_entries(log_size: i32, data: ptr[DictData]) -> None:
+    def new_entries(log_size: i32) -> ptr[Entry]:
         entries = gc_alloc(Entry)(1 << log_size)
         i = 0
         while i < 1 << log_size:
             entries[i].empty = 1
             i += 1
-        # return entries
-        data.entries = entries
+        return entries
 
-    def capacity(self: _dict) -> i32:
-        data: ptr[DictData] = self.__ll__.data
+    def capacity(data: ptr[DictData]) -> i32:
         return 1 << data.log_size
 
-    def mask(self: _dict) -> i32:
-        data: ptr[DictData] = self.__ll__.data
+    def mask(data: ptr[DictData]) -> i32:
         return 1 << data.log_size - 1
 
-    def distance_0(self: _dict, key: Key) -> i32:
+    def distance_0(data: ptr[DictData], key: Key) -> i32:
         # the first slot in the index to probe when looking up key
-        return hash_key(key) & mask(self)
+        return hash_key(key) & mask(data)
 
     # def get_entry_at(self: _dict, position: i32) -> Entry:
-    #     data: DictData = self.__ll__.data
+    #     data: DictData = self.__ll__
     #     return data.entries[position]
 
     def lookup(self: _dict, key: Key) -> i32:
-        data: ptr[DictData] = self.__ll__.data
+        data: ptr[DictData] = self.__ll__
         hash_lookup = hash_key(key)  # might raise exception
-        d0 = distance_0(self, key)
-        distance = -1
-        while distance < capacity(self):
-            distance += 1
-            ix = data.index[(d0 + distance) % capacity(self)]
+        d0 = distance_0(data, key)
+        distance = 0
+        while distance < capacity(data):
+            position = (d0 + distance) % capacity(data)
+            ix = data.index[position]
             if ix == DKIX_EMPTY:
                 return DKIX_EMPTY
             if ix == DKIX_DUMMY:
@@ -119,68 +100,83 @@ def dict(Key, Value):
                         cmp = entry_key == key  # might raise exception
                         if cmp:
                             return ix
+            distance += 1
         return DKIX_EMPTY
 
+    def insert_entry(entries: ptr[Entry], ix: i32, key: Key, value: Value) -> None:
+        entries[ix].key = key
+        entries[ix].value = value
+        entries[ix].empty = 0
+
+    def insert_index_node(data: ptr[DictData], entry_ix: i32, key: Key) -> None:
+        d0 = distance_0(data, key)
+        distance = 0
+        while distance < capacity(data):
+            position = (d0 + distance) % capacity(data)
+            ix = data.index[position]
+            if ix == DKIX_EMPTY:
+                data.index[position] = entry_ix
+                return
+            distance += 1
+        raise Exception("aargh!")
+        # must not loop through the entire index without finding a free slot
+
     def insert(self: _dict, key: Key, value: Value) -> None:
-        data: ptr[DictData] = self.__ll__.data
+        data: ptr[DictData] = self.__ll__
         # entry = data.entries[data.length]
         l = data.length + 1
         # data.length += 1
         data.length = l
-        data.entries[l].key = key
-        data.entries[l].value = value
-        data.entries[l].empty = 0
-        d0 = distance_0(self, key)
-        distance = -1
-        while distance < capacity(self):
-            distance += 1
-            ix = data.index[(d0 + distance) % capacity(self)]
-            if ix == DKIX_EMPTY:
-                data.index[d0 + distance] = l
-                return
-        raise Exception("aargh!")
-        # assert False  # must not loop through the entire index
-        # without finding a free slot
+        insert_entry(data.entries, l, key, value)
+        insert_index_node(data, l, key)
 
-    def resize(self: _dict) -> i32:
+    def resize_entries(data: ptr[DictData], new_log_size: i32) -> ptr[Entry]:
+        entries = new_entries(new_log_size)
+        i = 0
+        while i <= data.length:
+            entry = data.entries[i]
+            if entry.empty:
+                pass
+            else:
+                insert_entry(entries, i, entry.key, entry.value)
+            i += 1
+        return entries
+
+    def build_index_from_data_entries(data: ptr[DictData]) -> None:
+        i = 0
+        while i <= data.length:
+            entry = data.entries[i]
+            if entry.empty:
+                pass
+            else:
+                insert_index_node(data, i, entry.key)
+            i += 1
+
+    def resize(self: _dict) -> None:
         # The resize operation never decreases the memory used by dict;
         # i.e., we always resize to double the size of dict.
         # This follows the CPython implementation.
-        old_data: ptr[DictData] = self.__ll__.data
-        # assert old_data.log_size < MAX_LOG_SIZE
-        new = new_data(old_data.log_size + 1)
-        new.length = old_data.length
-        i = 0
-        while i < old_data.length:
-            # entry = old_data.entries[i]
-            # new.entries[i] = entry
-            new.entries[i].empty = old_data.entries[i].empty
-            new.entries[i].key = old_data.entries[i].key
-            new.entries[i].value = old_data.entries[i].value
-            i += 1
-        self.__ll__.data = new
-
-    @struct
-    class _dict_struct:
-        data: ptr[DictData]
+        data: ptr[DictData] = self.__ll__
+        new_log_size = data.log_size + 1
+        data.log_size = new_log_size
+        data.entries = resize_entries(data, new_log_size)
+        data.index = new_index(new_log_size)
+        build_index_from_data_entries(data)
 
     @typelift
     class _dict:
-        __ll__: ptr[_dict_struct]
+        __ll__: ptr[DictData]
 
         def __new__() -> _dict:
             data = gc_alloc(DictData)(1)
             data.log_size = MIN_LOG_SIZE
             data.length = 0
             data.index = new_index(data.log_size)
-            # data.entries = new_entries(data.log_size)
-            new_entries(data.log_size, data)
-            this = gc_alloc(_dict_struct)(1)
-            this.data = data
-            return _dict.__lift__(this)
+            data.entries = new_entries(data.log_size)
+            return _dict.__lift__(data)
 
         def __getitem__(self: _dict, key: Key) -> Value:
-            data: ptr[DictData] = self.__ll__.data
+            data: ptr[DictData] = self.__ll__
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
                 # raise KeyError(key)
@@ -193,11 +189,11 @@ def dict(Key, Value):
             return data.entries[ix].value
 
         def __setitem__(self: _dict, key: Key, value: Value) -> None:
-            data: ptr[DictData] = self.__ll__.data
+            data: ptr[DictData] = self.__ll__
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
                 insert(self, key, value)
-                if data.length >= capacity(self) * MAX_FILL_RATIO:
+                if data.length >= capacity(data) * MAX_FILL_RATIO:
                     resize(self)
             else:
                 # entry = get_entry_at(self, ix)
@@ -209,7 +205,7 @@ def dict(Key, Value):
             pass
 
         def __len__(self: _dict) -> i32:
-            data: ptr[DictData] = self.__ll__.data
+            data: ptr[DictData] = self.__ll__
             return data.length
 
 

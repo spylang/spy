@@ -55,7 +55,7 @@ class TestDict(CompilerTest):
             return d[99]
         """
         mod = self.compile(src)
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="KeyError"):
             mod.test()
 
     def test_many_inserts_and_lookup(self):
@@ -64,14 +64,22 @@ class TestDict(CompilerTest):
 
         def test(n: i32) -> int:
             d = dict[i32, i32]()
-            i = 0
-            while i < n:
-                d[i] = i * 2
+            i = 1
+            while i <= n:
+                print("inserting " + str(i))
+                d[i] = i
                 i += 1
-            return d[n - 1]
+            print("done inserting")
+            print("d[20]=" + str(d[20]))
+            return d[n]
         """
         mod = self.compile(src)
-        assert mod.test(10) == 18
+        # assert mod.test(10) == 10
+        # MIN_LOG_SIZE = 6 => 64 entries
+        # MAX_FILL_RATIO = 2 / 3 => 43 entries to trigger resize
+        assert mod.test(43) == 43
+        # and 86 entries to trigger two resizes
+        # assert mod.test(86) == 86
 
     def test_len_after_many_inserts(self):
         src = """
