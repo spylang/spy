@@ -26,6 +26,13 @@
 #  error "You must define either SPY_RELEASE or SPY_DEBUG"
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#  define NORETURN __attribute__((noreturn))
+#elif defined(_MSC_VER)
+#  define NORETURN __declspec(noreturn)
+#else
+#  define NORETURN _Noreturn  // C11
+#endif
 
 #include "spy/builtins.h"
 #include "spy/operator.h"

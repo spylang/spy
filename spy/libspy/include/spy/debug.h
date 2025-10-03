@@ -43,6 +43,7 @@ static void inline spy_panic(const char *etype,
 #else
 
 // for other targets, we define spy_panic in debug.c
+NORETURN
 void spy_panic(const char *etype, const char *message,
                const char *fname, int32_t lineno);
 
