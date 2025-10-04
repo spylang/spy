@@ -33,7 +33,9 @@ def dict(Key, Value):
         entries: ptr[Entry]
 
     def new_index(log_size: i32) -> ptr[i32]:
-        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE
+        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE (chained comparisons are WIP)
+        assert MIN_LOG_SIZE <= log_size
+        assert log_size <= MAX_LOG_SIZE
         index = gc_alloc(i32)(1 << log_size)
         i = 0
         while i < 1 << log_size:
