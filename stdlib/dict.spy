@@ -194,7 +194,8 @@ def dict(Key, Value):
         # E          --> /Users/dp/repos/spy/stdlib/dict.spy:191:50
         # E       191 |         def get(self, key: Key, default: Value = None) -> Value | None:
         # E           |                                                  |__| this is not supported
-        def get(self: _dict, key: Key, default: Value) -> Value:
+        def get(self: _dict, key: Key, default_: Value) -> Value:
+            # _ in default_: see https://github.com/spylang/spy/issues/246
             # [Antonio]: no try-except? :(
             # E       spy.errors.SPyError: ParseError: not implemented yet: Try
             # E          --> /Users/dp/repos/spy/stdlib/dict.spy:198:13
@@ -207,7 +208,7 @@ def dict(Key, Value):
             data: ptr[DictData] = self.__ll__
             ix = lookup(self, key)
             if ix == DKIX_EMPTY:
-                return default
+                return default_
             return data.entries[ix].value
 
         def __setitem__(self: _dict, key: Key, value: Value) -> None:
