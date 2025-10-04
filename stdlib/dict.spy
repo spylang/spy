@@ -61,47 +61,42 @@ def dict(Key, Value):
         # the first slot in the index to probe when looking up key
         return hash_key(key) & mask(data)
 
-    # def get_entry_at(self: _dict, position: i32) -> Entry:
-    #     data: DictData = self.__ll__
-    #     return data.entries[position]
-
-    def lookup(self: _dict, key: Key) -> i32:
-        data: ptr[DictData] = self.__ll__
-        hash_lookup = hash_key(key)  # might raise exception
+    def lookup_index_node_position(data: ptr[DictData], key: Key) -> i32:
+        hash_lookup = hash_key(key)  # might raise
         d0 = distance_0(data, key)
         distance = 0
         while distance < capacity(data):
             position = (d0 + distance) % capacity(data)
             ix = data.index[position]
             if ix == DKIX_EMPTY:
-                return DKIX_EMPTY
+                return position  # for insert_index_node()
             if ix == DKIX_DUMMY:
                 # continue
                 pass
             else:
-                # entry = get_entry_at(self, ix)
                 entry_empty = data.entries[ix].empty
-                # if not entry_empty:
-                    # [Antonio]: another hard-to-read error. I think it says there's no `not`?
-                    #   File "/Users/dp/repos/spy/spy/vm/modules/operator/__init__.py", line 115, in OP_unary_from_token
-                    #     return _unary_from_token[token]
-                    #            ~~~~~~~~~~~~~~~~~^^^^^^^
-                    # KeyError: 'not'
                 if entry_empty:
                     pass
                 else:
                     entry_key = data.entries[ix].key
-                    # continue (I'd rather remove the `not` and use `continue` here)
-                    hash_entry = hash_key(entry_key)  # might raise exception
+                    hash_entry = hash_key(entry_key)  # might raise
                     if hash_entry == hash_lookup:
+                        # todo: check for identity
                         # if entry_key is key:
                         #     return ix
                         # WIP: Operator not implemented yet: is
-                        cmp = entry_key == key  # might raise exception
+                        cmp = entry_key == key  # might raise
                         if cmp:
-                            return ix
+                            return position
             distance += 1
-        return DKIX_EMPTY
+        return -1
+
+    def lookup(self: _dict, key: Key) -> i32:
+        data: ptr[DictData] = self.__ll__
+        position = lookup_index_node_position(data, key)
+        if position < 0:
+            return DKIX_EMPTY
+        return data.index[position]
 
     def insert_entry(entries: ptr[Entry], ix: i32, key: Key, value: Value) -> None:
         entries[ix].key = key
@@ -109,21 +104,13 @@ def dict(Key, Value):
         entries[ix].empty = 0
 
     def insert_index_node(data: ptr[DictData], entry_ix: i32, key: Key) -> None:
-        d0 = distance_0(data, key)
-        distance = 0
-        while distance < capacity(data):
-            position = (d0 + distance) % capacity(data)
-            ix = data.index[position]
-            if ix == DKIX_EMPTY:
-                data.index[position] = entry_ix
-                return
-            distance += 1
-        raise Exception("aargh!")
-        # must not loop through the entire index without finding a free slot
+        position = lookup_index_node_position(data, key)
+        assert position >= 0, "must not loop through the entire index without finding a free slot"
+        assert data.index[position] == DKIX_EMPTY
+        data.index[position] = entry_ix
 
     def insert(self: _dict, key: Key, value: Value) -> None:
         data: ptr[DictData] = self.__ll__
-        # entry = data.entries[data.length]
         l = data.length + 1
         # data.length += 1
         data.length = l
@@ -219,7 +206,6 @@ def dict(Key, Value):
                 if data.length >= capacity(data) * MAX_FILL_RATIO:
                     resize(self)
             else:
-                # entry = get_entry_at(self, ix)
                 # assert not entry.empty
                 # entry.value = value
                 data.entries[ix].value = value
