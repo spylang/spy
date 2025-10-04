@@ -92,3 +92,33 @@ class TestDict(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.test(10) == 10
+
+    def test_delete(self):
+        src = """
+        from dict import dict
+        
+        def test() -> int:
+            d = dict[i32, i32]()
+            d[1] = 1
+            # del d[1]
+            d.__delitem__(1)
+            return len(d)
+        """
+        mod = self.compile(src)
+        assert mod.test() == 0
+
+    def test_delete_twice_raises(self):
+        src = """
+        from dict import dict
+        
+        def test() -> int:
+            d = dict[i32, i32]()
+            d[1] = 1
+            # del d[1]
+            d.__delitem__(1)
+            d.__delitem__(1)
+            return len(d)
+        """
+        mod = self.compile(src)
+        with pytest.raises(Exception, match="KeyError"):
+            mod.test()

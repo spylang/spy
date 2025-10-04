@@ -146,6 +146,26 @@ def dict(Key, Value):
         data.index = new_index(new_log_size)
         build_index_from_data_entries(data)
 
+    def swap_last_entry_with(data: ptr[DictData], ix_deleted: i32) -> None:
+        ix_to_swap = data.length
+        position = lookup_index_node_position(data, data.entries[ix_to_swap].key)
+        data.index[position] = ix_deleted
+        data.entries[ix_deleted] = data.entries[ix_to_swap]
+        data.entries[ix_to_swap].empty = 1
+
+    def delete(data: ptr[DictData], key: Key) -> Value:
+        position = lookup_index_node_position(data, key)
+        assert position >= 0
+        ix = data.index[position]
+        if ix == DKIX_EMPTY:
+            # raise KeyError(key)
+            raise Exception("KeyError")
+        data.index[position] = DKIX_DUMMY
+        deleted_value = data.entries[ix].value
+        swap_last_entry_with(data, ix)
+        data.length = data.length - 1
+        return deleted_value
+
     @typelift
     class _dict:
         __ll__: ptr[DictData]
@@ -207,7 +227,8 @@ def dict(Key, Value):
                 data.entries[ix].value = value
 
         def __delitem__(self: _dict, key: Key) -> None:
-            pass
+            data: ptr[DictData] = self.__ll__
+            delete(data, key)
 
         def __len__(self: _dict) -> i32:
             data: ptr[DictData] = self.__ll__
