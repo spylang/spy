@@ -158,8 +158,7 @@ def dict(Key, Value):
         assert position >= 0
         ix = data.index[position]
         if ix == DKIX_EMPTY:
-            # raise KeyError(key)
-            raise Exception("KeyError")
+            raise KeyError("")
         data.index[position] = DKIX_DUMMY
         deleted_value = data.entries[ix].value
         swap_last_entry_with(data, ix)
@@ -170,6 +169,8 @@ def dict(Key, Value):
     class dict_iterator:
         data: ptr[DictData]
         i: i32
+
+        # todo: detect dict size change during iteration
 
         def __next__(self: dict_iterator) -> dict_iterator:
             return dict_iterator(self.data, self.i + 1)
@@ -196,13 +197,7 @@ def dict(Key, Value):
             data: ptr[DictData] = self.__ll__
             ix = lookup(data, key)
             if ix == DKIX_EMPTY:
-                # raise KeyError(key)
-                # [Antonio]: no KeyError? :(
-                # NameError: name `KeyError` is not defined
-                #    --> /Users/dp/repos/spy/stdlib/dict.spy:184:23
-                # 184 |                 raise KeyError(key)
-                #     |                       |______| not found in this scope
-                raise Exception("KeyError")
+                raise KeyError("")
             return data.entries[ix].value
 
         # def get(self, key: Key, default: Value = None) -> Value | None:
@@ -280,6 +275,9 @@ def dict(Key, Value):
 
         def __fastiter__(self: _dict) -> dict_iterator:
             return dict_iterator(self.__ll__, 0)
+
+        def keys(self: _dict) -> _dict:
+            return self
 
 
     return _dict

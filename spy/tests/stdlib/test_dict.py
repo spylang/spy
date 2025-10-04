@@ -1,5 +1,6 @@
 import pytest
 from spy.tests.support import CompilerTest
+from spy.errors import SPyError
 
 
 class TestDict(CompilerTest):
@@ -55,7 +56,7 @@ class TestDict(CompilerTest):
             return d[99]
         """
         mod = self.compile(src)
-        with pytest.raises(Exception, match="KeyError"):
+        with SPyError.raises("W_KeyError"):
             mod.test()
 
     def test_many_inserts_and_lookup(self):
@@ -120,7 +121,7 @@ class TestDict(CompilerTest):
             return len(d)
         """
         mod = self.compile(src)
-        with pytest.raises(Exception, match="KeyError"):
+        with SPyError.raises("W_KeyError"):
             mod.test()
 
     def test_fastiter(self):
@@ -154,6 +155,24 @@ class TestDict(CompilerTest):
             d[4] = -1
             total = 0
             for x in d:
+                total = total + x
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.test() == 10
+
+    def test_keys(self):
+        src = """
+        from _dict import dict
+
+        def test() -> int:
+            d = dict[i32, i32]()
+            d[1] = -1
+            d[2] = -1
+            d[3] = -1
+            d[4] = -1
+            total = 0
+            for x in d.keys():
                 total = total + x
             return total
         """
