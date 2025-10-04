@@ -4,11 +4,8 @@ from operator import OpSpec
 
 
 DKIX_EMPTY = 0
-# DKIX_DUMMY = 2 ** 32 - 1
 DKIX_DUMMY = 1 << 32 - 1
-# DKIX_ERROR = 2 ** 32 - 2
 DKIX_ERROR = 1 << 32 - 2
-# DKIX_KEY_CHANGED = 2 ** 32 - 3
 DKIX_KEY_CHANGED = 1 << 32 - 3
 
 MIN_LOG_SIZE = 6

@@ -22,7 +22,3 @@ def hash(T):
     #    --> /Users/dp/repos/spy/stdlib/hash.spy:9:44
     #   9 |     raise TypeError("unhashable type: '" + str(T) + "'")
     #     |                                            |____| operator::CALL called here
-
-def main() -> None:
-    print(hash[i32](123))
-    # print(hash[str]("ciao"))
