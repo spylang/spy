@@ -91,8 +91,7 @@ def dict(Key, Value):
             distance += 1
         return -1
 
-    def lookup(self: _dict, key: Key) -> i32:
-        data: ptr[DictData] = self.__ll__
+    def lookup(data: ptr[DictData], key: Key) -> i32:
         position = lookup_index_node_position(data, key)
         if position < 0:
             return DKIX_EMPTY
@@ -109,13 +108,11 @@ def dict(Key, Value):
         assert data.index[position] == DKIX_EMPTY
         data.index[position] = entry_ix
 
-    def insert(self: _dict, key: Key, value: Value) -> None:
-        data: ptr[DictData] = self.__ll__
-        l = data.length + 1
-        # data.length += 1
-        data.length = l
-        insert_entry(data.entries, l, key, value)
-        insert_index_node(data, l, key)
+    def insert(data: ptr[DictData], key: Key, value: Value) -> None:
+        # entry 0 must remain empty because its ix is equal to DKIX_EMPTY
+        data.length = data.length + 1
+        insert_entry(data.entries, data.length, key, value)
+        insert_index_node(data, data.length, key)
 
     def resize_entries(data: ptr[DictData], new_log_size: i32) -> ptr[Entry]:
         entries = new_entries(new_log_size)
@@ -139,11 +136,10 @@ def dict(Key, Value):
                 insert_index_node(data, i, entry.key)
             i += 1
 
-    def resize(self: _dict) -> None:
+    def resize(data: ptr[DictData]) -> None:
         # The resize operation never decreases the memory used by dict;
         # i.e., we always resize to double the size of dict.
         # This follows the CPython implementation.
-        data: ptr[DictData] = self.__ll__
         new_log_size = data.log_size + 1
         data.log_size = new_log_size
         data.entries = resize_entries(data, new_log_size)
@@ -164,7 +160,7 @@ def dict(Key, Value):
 
         def __getitem__(self: _dict, key: Key) -> Value:
             data: ptr[DictData] = self.__ll__
-            ix = lookup(self, key)
+            ix = lookup(data, key)
             if ix == DKIX_EMPTY:
                 # raise KeyError(key)
                 # [Antonio]: no KeyError? :(
@@ -193,18 +189,18 @@ def dict(Key, Value):
             # except KeyError:
             #     return default
             data: ptr[DictData] = self.__ll__
-            ix = lookup(self, key)
+            ix = lookup(data, key)
             if ix == DKIX_EMPTY:
                 return default_
             return data.entries[ix].value
 
         def __setitem__(self: _dict, key: Key, value: Value) -> None:
             data: ptr[DictData] = self.__ll__
-            ix = lookup(self, key)
+            ix = lookup(data, key)
             if ix == DKIX_EMPTY:
-                insert(self, key, value)
+                insert(data, key, value)
                 if data.length >= capacity(data) * MAX_FILL_RATIO:
-                    resize(self)
+                    resize(data)
             else:
                 # assert not entry.empty
                 # entry.value = value
