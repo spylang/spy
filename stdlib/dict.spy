@@ -1,5 +1,6 @@
 from hash import hash
 from unsafe import gc_alloc, ptr
+from operator import OpSpec
 
 
 DKIX_EMPTY = 0
@@ -166,6 +167,20 @@ def dict(Key, Value):
         data.length = data.length - 1
         return deleted_value
 
+    @struct
+    class dict_iterator:
+        data: ptr[DictData]
+        i: i32
+
+        def __next__(self: dict_iterator) -> dict_iterator:
+            return dict_iterator(self.data, self.i + 1)
+
+        def __item__(self: dict_iterator) -> Key:
+            return self.data.entries[self.i].key
+
+        def __continue_iteration__(self: dict_iterator) -> bool:
+            return self.i <= self.data.length
+
     @typelift
     class _dict:
         __ll__: ptr[DictData]
@@ -214,6 +229,36 @@ def dict(Key, Value):
                 return default_
             return data.entries[ix].value
 
+        def __contains__(self: _dict, key: Key) -> bool:
+            data: ptr[DictData] = self.__ll__
+            ix = lookup(data, key)
+            return ix != DKIX_EMPTY
+
+        @blue.metafunc
+        def __eq__(m_self, m_other):
+            if m_other.static_type == m_self.static_type:
+                def eq_impl(self: _dict, other: _dict) -> bool:
+                    self_ll = self.__ll__
+                    other_ll = other.__ll__
+                    if self_ll.length != other_ll.length:
+                        return False
+                    i = 0
+                    while i <= self_ll.length:
+                        if self_ll.entries[i].empty:
+                            pass
+                        else:
+                            key = self_ll.entries[i].key
+                            if other.__contains__(key):
+                                if self[key] != other[key]:
+                                    return False
+                            else:
+                                return False
+                        i += 1
+                    return True
+                return OpSpec(eq_impl, [m_self, m_other])
+            else:
+                return OpSpec.NULL
+
         def __setitem__(self: _dict, key: Key, value: Value) -> None:
             data: ptr[DictData] = self.__ll__
             ix = lookup(data, key)
@@ -233,6 +278,9 @@ def dict(Key, Value):
         def __len__(self: _dict) -> i32:
             data: ptr[DictData] = self.__ll__
             return data.length
+
+        def __fastiter__(self: _dict) -> dict_iterator:
+            return dict_iterator(self.__ll__, 0)
 
 
     return _dict
