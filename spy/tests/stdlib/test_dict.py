@@ -6,7 +6,7 @@ class TestDict(CompilerTest):
 
     def test_set_get_simple(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test() -> int:
             d = dict[i32, i32]()
@@ -19,7 +19,7 @@ class TestDict(CompilerTest):
 
     def test_overwrite_value(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test() -> int:
             d = dict[i32, i32]()
@@ -32,7 +32,7 @@ class TestDict(CompilerTest):
 
     def test_len_and_no_growth_on_update(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test() -> int:
             d = dict[i32, i32]()
@@ -48,7 +48,7 @@ class TestDict(CompilerTest):
 
     def test_missing_key_raises(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test() -> int:
             d = dict[i32, i32]()
@@ -60,7 +60,7 @@ class TestDict(CompilerTest):
 
     def test_many_inserts_and_lookup(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test(n: i32) -> int:
             d = dict[i32, i32]()
@@ -80,7 +80,7 @@ class TestDict(CompilerTest):
 
     def test_len_after_many_inserts(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test(n: i32) -> int:
             d = dict[i32, i32]()
@@ -95,7 +95,7 @@ class TestDict(CompilerTest):
 
     def test_delete(self):
         src = """
-        from dict import dict
+        from _dict import dict
         
         def test() -> int:
             d = dict[i32, i32]()
@@ -109,7 +109,7 @@ class TestDict(CompilerTest):
 
     def test_delete_twice_raises(self):
         src = """
-        from dict import dict
+        from _dict import dict
         
         def test() -> int:
             d = dict[i32, i32]()
@@ -125,7 +125,7 @@ class TestDict(CompilerTest):
 
     def test_fastiter(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test() -> int:
             d = dict[i32, i32]()
@@ -144,7 +144,7 @@ class TestDict(CompilerTest):
 
     def test_for_loop(self):
         src = """
-        from dict import dict
+        from _dict import dict
 
         def test() -> int:
             d = dict[i32, i32]()
@@ -162,7 +162,7 @@ class TestDict(CompilerTest):
 
     def test_contains(self):
         src = """
-        from dict import dict
+        from _dict import dict
         
         def test() -> bool:
             d = dict[i32, i32]()
@@ -174,7 +174,7 @@ class TestDict(CompilerTest):
 
     def test_equal(self):
         src = """
-        from dict import dict
+        from _dict import dict
         
         def test_eq() -> bool:
             d1 = dict[i32, i32]()
