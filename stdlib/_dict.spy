@@ -201,18 +201,7 @@ def dict(Key, Value):
             return data.entries[ix].value
 
         # def get(self, key: Key, default: Value = None) -> Value | None:
-        # [Antonio]: no default args? :(
-        # E       spy.errors.SPyError: ParseError: default arguments are not supported yet
-        # E          --> /Users/dp/repos/spy/stdlib/dict.spy:191:50
-        # E       191 |         def get(self, key: Key, default: Value = None) -> Value | None:
-        # E           |                                                  |__| this is not supported
         def get(self: _dict, key: Key, default_: Value) -> Value:
-            # _ in default_: see https://github.com/spylang/spy/issues/246
-            # [Antonio]: no try-except? :(
-            # E       spy.errors.SPyError: ParseError: not implemented yet: Try
-            # E          --> /Users/dp/repos/spy/stdlib/dict.spy:198:13
-            # E       198 |             try:
-            # E           |             |________________| this is not supported
             # try:
             #     return self[key]
             # except KeyError:
