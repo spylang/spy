@@ -3,7 +3,7 @@ from typing import Literal, Optional, TypeGuard
 from spy import ast
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
-from spy.vm.b import B
+from spy.vm.b import B, TYPES
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc
 from spy.vm.list import W_List
@@ -88,7 +88,7 @@ class SPyBackend:
         self.vars_declared = set()
         w_functype = w_func.w_functype
         params = self.fmt_params(w_func)
-        if w_functype.w_restype is B.w_NoneType and self.fqn_format == 'short':
+        if w_functype.w_restype is TYPES.w_NoneType and self.fqn_format == 'short':
             ret = 'None' # special case: emit '-> None' instead of '-> NoneType'
         else:
             ret = self.fmt_w_obj(w_functype.w_restype)

@@ -11,7 +11,7 @@ from spy.vm.str import ll_spy_Str_new
 from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
 from spy.vm.struct import W_StructType, UnwrappedStruct
 from spy.vm.vm import SPyVM
-from spy.vm.b import B
+from spy.vm.b import B, TYPES
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.modules.types import W_LiftedType, UnwrappedLiftedObject
@@ -123,7 +123,7 @@ class WasmFuncWrapper:
         return wasm_args
 
     def to_py_result(self, w_T: W_Type, res: Any) -> Any:
-        if w_T is B.w_NoneType:
+        if w_T is TYPES.w_NoneType:
             assert res is None
             return None
         elif w_T in (B.w_i8, B.w_i32, B.w_f64, B.w_u8):

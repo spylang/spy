@@ -11,7 +11,7 @@ from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
-from spy.vm.b import BUILTINS, B
+from spy.vm.b import BUILTINS, B, TYPES
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -52,7 +52,7 @@ def w_print(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
         return W_OpSpec(B.w_print_f64)
     elif w_T is B.w_bool:
         return W_OpSpec(B.w_print_bool)
-    elif w_T is B.w_NoneType:
+    elif w_T is TYPES.w_NoneType:
         return W_OpSpec(B.w_print_NoneType)
     elif w_T is B.w_str:
         return W_OpSpec(B.w_print_str)

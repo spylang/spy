@@ -172,3 +172,19 @@ class TestStr(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.str_blue() == mod.repr_blue()
+
+    def test_str_none(self):
+        src = """
+        def foo() -> str:
+            return str(None)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 'None'
+
+    def test_str_not_implemented(self):
+        src = """
+        def foo() -> str:
+            return str(NotImplemented)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 'NotImplemented'

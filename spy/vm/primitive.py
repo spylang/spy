@@ -2,7 +2,7 @@ from typing import Annotated, TYPE_CHECKING
 import fixedint
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type
-from spy.vm.b import B, OP
+from spy.vm.b import B, OP, TYPES
 from spy.vm.builtin import builtin_method
 
 # fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a
@@ -15,8 +15,9 @@ else:
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opspec import W_MetaArg, W_OpSpec
+    from spy.vm.str import W_Str
 
-@B.builtin_type('NoneType')
+@TYPES.builtin_type('NoneType', lazy_definition=True)
 class W_NoneType(W_Object):
     """
     This is a singleton: there should be only one instance of this class,
@@ -32,6 +33,12 @@ class W_NoneType(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> None:
         return None
+
+    @builtin_method('__str__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_STR(vm: 'SPyVM', wam_self: 'W_MetaArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
+        return W_OpSpec.const(vm.wrap('None'))
 
 B.add('None', W_NoneType.__new__(W_NoneType))
 
@@ -199,13 +206,19 @@ B.add('True', W_Bool._make_singleton(True))
 B.add('False', W_Bool._make_singleton(False))
 
 
-@B.builtin_type('NotImplementedType') # XXX it should go to types?
+@TYPES.builtin_type('NotImplementedType', lazy_definition=True)
 class W_NotImplementedType(W_Object):
 
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
         # create additional instances
         raise Exception("You cannot instantiate W_NotImplementedType")
+
+    @builtin_method('__str__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_STR(vm: 'SPyVM', wam_self: 'W_MetaArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
+        return W_OpSpec.const(vm.wrap('NotImplemented'))
 
 B.add('NotImplemented', W_NotImplementedType.__new__(W_NotImplementedType))
 

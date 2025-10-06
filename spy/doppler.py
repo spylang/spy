@@ -34,7 +34,7 @@ def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
     return ast.FQNConst.
     """
     w_T = vm.dynamic_type(w_val)
-    if w_T in (B.w_i32, B.w_f64, B.w_bool, B.w_NoneType):
+    if w_T in (B.w_i32, B.w_f64, B.w_bool, TYPES.w_NoneType):
         # this is a primitive, we can just use ast.Constant
         value = vm.unwrap(w_val)
         if isinstance(value, FixedInt): # type: ignore
