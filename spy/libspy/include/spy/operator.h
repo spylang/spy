@@ -72,34 +72,46 @@ static inline double spy_operator$i32_div(int32_t x, int32_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "division by zero",
                   __FILE__, __LINE__);
-        return nan("");
     }
     return (double)x / y;
 }
 
-static inline double spy_operator$i8_floordiv(int8_t x, int8_t y) {
+static inline int8_t spy_operator$i8_floordiv(int8_t x, int8_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer division or modulo by zero",
                   __FILE__, __LINE__);
     }
-    return (double)x / y;
+    int8_t q = x / y;
+    int8_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        q -= 1;
+    }
+
+    return q;
 }
 
-static inline double spy_operator$u8_floordiv(uint8_t x, uint8_t y) {
+static inline uint8_t spy_operator$u8_floordiv(uint8_t x, uint8_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer division or modulo by zero",
                   __FILE__, __LINE__);
     }
-    return (double)x / y;
+    return x / y;
 }
 
-static inline double spy_operator$i32_floordiv(int32_t x, int32_t y) {
+static inline int32_t spy_operator$i32_floordiv(int32_t x, int32_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer division or modulo by zero",
                   __FILE__, __LINE__);
-        return nan("");
     }
-    return (double)x / y;
+    int32_t q = x / y;
+    int32_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        q -= 1;
+    }
+
+    return q;
 }
 
 static inline double spy_operator$i8_mod(int8_t x, int8_t y) {
