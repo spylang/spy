@@ -16,8 +16,8 @@ from spy.util import func_equals
 from spy.analyze.symtable import ImportRef
 from spy.vm.builtin import make_builtin_func, IRTag
 from spy.vm.object import W_Object, W_Type
-from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic,
-                              W_NoneType)
+from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_NoneType,
+                              W_Dynamic, w_DynamicType)
 from spy.vm.str import W_Str
 from spy.vm.list import W_ListType
 from spy.vm.b import B
@@ -60,6 +60,10 @@ W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
 W_Bool._w.define(W_Bool)
 W_Str._w.define(W_Str)
+# note: W_Dynamic doesn't exist: the equivalent of W_Dynamic._w is
+# w_DynamicType. See "The <dynamic> type" comment in primitive.py
+w_DynamicType.define(W_Object)
+
 
 STDLIB = ROOT.join('..', 'stdlib')
 
