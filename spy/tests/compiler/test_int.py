@@ -71,6 +71,19 @@ class TestInt(CompilerTest):
         with SPyError.raises("W_ZeroDivisionError", match="integer division or modulo by zero"):
             mod.floordiv(11, 0)
 
+    def test_signed_int_floordiv(self, int_type):
+        if int_type == "u8":
+            pytest.skip("Skipping for negative operands in floordiv test")
+
+        mod = self.compile(f"""
+        T = {int_type}
+        def floordiv(x: T, y: T) -> T: return x // y
+        """)
+        assert mod.floordiv(7, 3) == 2
+        assert mod.floordiv(-7, 3) == -3
+        assert mod.floordiv(7, -3) == -3
+        assert mod.floordiv(-7, -3) == 2
+
     def test_neg(self, int_type):
         src = f"""
         T = {int_type}
