@@ -76,7 +76,7 @@ spy_builtins$i32$__str__(int32_t x) {
 }
 
 spy_Str *
-spy_builtins$float2str(double x) {
+spy_builtins$f64$__str__(double x) {
     char buf[1024];
     snprintf(buf, 1024, "%g", x);
     size_t length = strlen(buf);

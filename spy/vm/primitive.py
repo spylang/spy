@@ -139,12 +139,11 @@ class W_F64(W_Object):
     def spy_key(self, vm: 'SPyVM') -> float:
         return self.value
 
-    @builtin_method('__str__', color='blue', kind='metafunc')
+    @builtin_method('__str__')
     @staticmethod
-    def w_str(vm: 'SPyVM', wam_obj: 'W_MetaArg') -> 'W_OpSpec':
-        from spy.vm.str import w_float2str
-        from spy.vm.opspec import W_OpSpec
-        return W_OpSpec(w_float2str, [wam_obj])
+    def w_str(vm: 'SPyVM', w_self: 'W_F64') -> 'W_Str':
+        f = vm.unwrap_f64(w_self)
+        return vm.wrap(str(f))
 
 
 @B.builtin_type('bool', lazy_definition=True)

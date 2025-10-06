@@ -37,7 +37,7 @@ spy_Str *
 WASM_EXPORT(spy_builtins$i32$__str__)(int32_t x);
 
 spy_Str *
-WASM_EXPORT(spy_builtins$float2str)(double x);
+WASM_EXPORT(spy_builtins$f64$__str__)(double x);
 
 
 #define spy_operator$str_add spy_str_add

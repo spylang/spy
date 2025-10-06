@@ -106,9 +106,3 @@ class W_Str(W_Object):
         assert isinstance(w_s, W_Str)
         length = vm.ll.call('spy_str_len', w_s.ptr)
         return vm.wrap(length)
-
-
-@BUILTINS.builtin_func(hidden=True)
-def w_float2str(vm: 'SPyVM', w_f: W_F64) -> W_Str:
-    f = vm.unwrap_f64(w_f)
-    return vm.wrap(str(f))
