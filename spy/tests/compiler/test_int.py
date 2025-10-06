@@ -68,8 +68,7 @@ class TestInt(CompilerTest):
             mod.mod(10, 0)
         with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
             mod.div(11, 0)
-        with SPyError.raises("W_ZeroDivisionError"):
-            # TODO: add appropriate floor div handling for c backend
+        with SPyError.raises("W_ZeroDivisionError", match="integer division or modulo by zero"):
             mod.floordiv(11, 0)
 
     def test_neg(self, int_type):
