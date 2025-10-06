@@ -65,12 +65,11 @@ class W_I32(W_Object):
     def spy_key(self, vm: 'SPyVM') -> fixedint.Int32:
         return self.value
 
-    @builtin_method('__str__', color='blue', kind='metafunc')
+    @builtin_method('__str__')
     @staticmethod
-    def w_str(vm: 'SPyVM', wam_obj: 'W_MetaArg') -> 'W_OpSpec':
-        from spy.vm.str import w_int2str
-        from spy.vm.opspec import W_OpSpec
-        return W_OpSpec(w_int2str, [wam_obj])
+    def w_str(vm: 'SPyVM', w_self: 'W_I32') -> 'W_Str':
+        i = vm.unwrap_i32(w_self)
+        return vm.wrap(str(i))
 
 
 @B.builtin_type('i8', lazy_definition=True)

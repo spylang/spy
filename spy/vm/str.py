@@ -109,12 +109,6 @@ class W_Str(W_Object):
 
 
 @BUILTINS.builtin_func(hidden=True)
-def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
-    i = vm.unwrap_i32(w_i)
-    return vm.wrap(str(i))
-
-
-@BUILTINS.builtin_func(hidden=True)
 def w_float2str(vm: 'SPyVM', w_f: W_F64) -> W_Str:
     f = vm.unwrap_f64(w_f)
     return vm.wrap(str(f))

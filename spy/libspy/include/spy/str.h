@@ -34,7 +34,7 @@ int32_t
 WASM_EXPORT(spy_str_len)(spy_Str *s);
 
 spy_Str *
-WASM_EXPORT(spy_builtins$int2str)(int32_t x);
+WASM_EXPORT(spy_builtins$i32$__str__)(int32_t x);
 
 spy_Str *
 WASM_EXPORT(spy_builtins$float2str)(double x);

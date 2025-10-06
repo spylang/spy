@@ -64,7 +64,7 @@ spy_str_len(spy_Str *s) {
 // XXX probably it would be better to implement it directly, instead of
 // bringing in all the code needed to support sprintf()
 spy_Str *
-spy_builtins$int2str(int32_t x) {
+spy_builtins$i32$__str__(int32_t x) {
     char buf[1024];
     snprintf(buf, 1024, "%d", x);
     size_t length = strlen(buf);
