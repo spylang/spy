@@ -1,4 +1,3 @@
-from hash import hash
 from unsafe import gc_alloc, ptr
 from operator import OpSpec
 
@@ -15,8 +14,6 @@ MAX_FILL_RATIO = 2 / 3
 
 @blue.generic
 def dict(Key, Value):
-    hash_key = hash[Key]
-
     @struct
     class Entry:
         # empty: bool
@@ -55,14 +52,14 @@ def dict(Key, Value):
         return 1 << data.log_size
 
     def mask(data: ptr[DictData]) -> i32:
-        return 1 << data.log_size - 1
+        return (1 << data.log_size) - 1
 
     def distance_0(data: ptr[DictData], key: Key) -> i32:
         # the first slot in the index to probe when looking up key
-        return hash_key(key) & mask(data)
+        return hash(key) & mask(data)
 
     def lookup_index_node_position(data: ptr[DictData], key: Key) -> i32:
-        hash_lookup = hash_key(key)  # might raise
+        hash_lookup = hash(key)  # might raise
         d0 = distance_0(data, key)
         distance = 0
         while distance < capacity(data):
@@ -79,7 +76,7 @@ def dict(Key, Value):
                     pass
                 else:
                     entry_key = data.entries[ix].key
-                    hash_entry = hash_key(entry_key)  # might raise
+                    hash_entry = hash(entry_key)  # might raise
                     if hash_entry == hash_lookup:
                         # todo: check for identity
                         # if entry_key is key:
@@ -158,7 +155,7 @@ def dict(Key, Value):
         assert position >= 0
         ix = data.index[position]
         if ix == DKIX_EMPTY:
-            raise KeyError("")
+            raise KeyError
         data.index[position] = DKIX_DUMMY
         deleted_value = data.entries[ix].value
         swap_last_entry_with(data, ix)
@@ -197,7 +194,7 @@ def dict(Key, Value):
             data: ptr[DictData] = self.__ll__
             ix = lookup(data, key)
             if ix == DKIX_EMPTY:
-                raise KeyError("")
+                raise KeyError
             return data.entries[ix].value
 
         # def get(self, key: Key, default: Value = None) -> Value | None:
