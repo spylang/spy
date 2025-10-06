@@ -33,18 +33,20 @@ WASM_EXPORT(spy_str_getitem)(spy_Str *s, int32_t i);
 int32_t
 WASM_EXPORT(spy_str_len)(spy_Str *s);
 
-spy_Str *
-WASM_EXPORT(spy_builtins$i32$__str__)(int32_t x);
-
-spy_Str *
-WASM_EXPORT(spy_builtins$f64$__str__)(double x);
-
-
 #define spy_operator$str_add spy_str_add
 #define spy_operator$str_mul spy_str_mul
 #define spy_operator$str_eq  spy_str_eq
 #define spy_operator$str_ne  spy_str_ne
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
+
+
+// __str__ methods of common builtin types
+spy_Str *
+spy_builtins$i32$__str__(int32_t x);
+
+spy_Str *
+spy_builtins$f64$__str__(double x);
+
 
 #endif /* SPY_STR_H */
