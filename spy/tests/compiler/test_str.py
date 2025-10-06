@@ -86,3 +86,22 @@ class TestStr(CompilerTest):
         assert mod.foo("") == 0
         assert mod.foo("abc") == 3
         assert mod.foo("hello world") == 11
+
+    def test_str_conv(self):
+        # NOTE: float2str produces slightly different results in Python vs C
+        # backend: e.g. str(0.0) == '0' in Pytohn, '0.0' in the C backend.
+        # Eventually, we want to port the formatting code from CPython, but
+        # for now we just allow both results and keep the C backend simple.
+        mod = self.compile("""
+        def from_i32(x: i32) -> str:
+            return str(x)
+
+        def from_f64(x: f64) -> str:
+            return str(x)
+        """)
+        assert mod.from_i32(-10) == '-10'
+        assert mod.from_i32(123) == '123'
+        assert mod.from_f64(-10.5) == '-10.5'
+        assert mod.from_f64(0.0) in ('0', '0.0')
+        assert mod.from_f64(3.14) == '3.14'
+        assert mod.from_f64(123.456) == '123.456'

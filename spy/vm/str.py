@@ -75,13 +75,21 @@ class W_Str(W_Object):
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> 'W_OpSpec':
-        from spy.vm.b import B
+        from spy.errors import SPyError
         if len(args_wam) == 1:
             wam_arg = args_wam[0]
-            if wam_arg.w_static_T is B.w_i32:
-                return W_OpSpec(w_int2str, [wam_arg])
-            elif wam_arg.w_static_T is B.w_f64:
-                return W_OpSpec(w_float2str, [wam_arg])
+            w_T = wam_arg.w_static_T
+            if w_fn := w_T.lookup_func('__str__'):
+                w_opspec = vm.fast_metacall(w_fn, [wam_arg])
+                return w_opspec
+
+            t = w_T.fqn.human_name
+            raise SPyError.simple(
+                'W_TypeError',
+                f'cannot call str(`{t}`)',
+                f'this is `{t}`',
+                wam_arg.loc
+            )
         return W_OpSpec.NULL
 
     @builtin_method('__getitem__')
