@@ -114,12 +114,18 @@ static inline int32_t spy_operator$i32_floordiv(int32_t x, int32_t y) {
     return q;
 }
 
-static inline double spy_operator$i8_mod(int8_t x, int8_t y) {
+static inline int8_t spy_operator$i8_mod(int8_t x, int8_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer modulo by zero",
                   __FILE__, __LINE__);
     }
-    return x % y;
+    int8_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        r += y;
+    }
+
+    return r;
 }
 
 static inline double spy_operator$u8_mod(uint8_t x, uint8_t y) {
@@ -130,12 +136,18 @@ static inline double spy_operator$u8_mod(uint8_t x, uint8_t y) {
     return x % y;
 }
 
-static inline double spy_operator$i32_mod(int32_t x, int32_t y) {
+static inline int32_t spy_operator$i32_mod(int32_t x, int32_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer modulo by zero",
                   __FILE__, __LINE__);
     }
-    return x % y;
+    int32_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        r += y;
+    }
+
+    return r;
 }
 
 static inline double spy_operator$f64_div(double x, double y) {
