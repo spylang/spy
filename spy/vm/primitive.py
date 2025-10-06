@@ -189,6 +189,12 @@ class W_Bool(W_Object):
         else:
             return B.w_True
 
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_Bool') -> 'W_Str':
+        b = vm.unwrap(w_self)
+        return vm.wrap(str(b))
+
 B.add('True', W_Bool._make_singleton(True))
 B.add('False', W_Bool._make_singleton(False))
 

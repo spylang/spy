@@ -104,6 +104,9 @@ class TestStr(CompilerTest):
 
         def from_f64(x: f64) -> str:
             return str(x)
+
+        def from_bool(x: bool) -> str:
+            return str(x)
         """)
         assert mod.from_i32(-10) == '-10'
         assert mod.from_i32(123) == '123'
@@ -116,3 +119,5 @@ class TestStr(CompilerTest):
         assert mod.from_f64(0.0) in ('0', '0.0')
         assert mod.from_f64(3.14) == '3.14'
         assert mod.from_f64(123.456) == '123.456'
+        assert mod.from_bool(True) == 'True'
+        assert mod.from_bool(False) == 'False'

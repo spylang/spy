@@ -98,3 +98,8 @@ spy_Str *
 spy_builtins$f64$__str__(double x) {
     return spy_str_from_format("%g", x);
 }
+
+spy_Str *
+spy_builtins$bool$__str__(bool x) {
+    return spy_str_from_format("%s", x ? "True" : "False");
+}

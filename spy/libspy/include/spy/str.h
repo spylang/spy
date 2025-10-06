@@ -54,5 +54,8 @@ spy_builtins$u8$__str__(uint8_t x);
 spy_Str *
 spy_builtins$f64$__str__(double x);
 
+spy_Str *
+spy_builtins$bool$__str__(bool x);
+
 
 #endif /* SPY_STR_H */
