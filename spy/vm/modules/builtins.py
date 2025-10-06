@@ -137,7 +137,7 @@ def w_hash_i32(vm: 'SPyVM', w_x: W_I32) -> W_I32:
     return w_x
 
 @BUILTINS.builtin_func
-def w_hash_u8(_: 'SPyVM', w_x: W_U8) -> W_I32:
+def w_hash_u8(vm: 'SPyVM', w_x: W_U8) -> W_I32:
     return w_x
 
 @BUILTINS.builtin_func
