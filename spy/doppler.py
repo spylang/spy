@@ -141,6 +141,12 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
 
+    def shift_stmt_Break(self, stmt: ast.Break) -> list[ast.Stmt]:
+        return [stmt]
+
+    def shift_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
+        return [stmt]
+
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
         self.exec_stmt_VarDef(vardef)
         newtype = self.shifted_expr[vardef.type]

@@ -59,7 +59,7 @@ class Parser:
         return Parser(src, filename)
 
     def parse(self) -> spy.ast.Module:
-        py_mod = magic_py_parse(self.src)
+        py_mod = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
         py_mod.compute_all_locs(self.filename)
         return self.from_py_Module(py_mod)
@@ -570,6 +570,12 @@ class Parser:
         test = self.from_py_expr(py_node.test)
         msg = self.from_py_expr(py_node.msg) if py_node.msg else None
         return spy.ast.Assert(py_node.loc, test, msg)
+
+    def from_py_stmt_Break(self, py_node: py_ast.Break) -> spy.ast.Break:
+        return spy.ast.Break(py_node.loc)
+
+    def from_py_stmt_Continue(self, py_node: py_ast.Continue) -> spy.ast.Continue:
+        return spy.ast.Continue(py_node.loc)
 
     # ====== spy.ast.Expr ======
 

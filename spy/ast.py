@@ -22,7 +22,7 @@ class AST:
     stubs/_ast.pyi
     """
 
-    _loc = None
+    _loc: None = None
 
     @property
     def loc(self) -> Loc:
@@ -492,6 +492,14 @@ class Raise(Stmt):
 class Assert(Stmt):
     test: Expr
     msg: Optional[Expr]
+
+@dataclass(eq=False)
+class Break(Stmt):
+    pass
+
+@dataclass(eq=False)
+class Continue(Stmt):
+    pass
 
 
 # ====== IR-specific nodes ======

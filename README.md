@@ -125,3 +125,82 @@ $ spy --cwrite examples/hello.spy
 Moreover, the `execute` step performs the actual execution: it can happen
 either after `symtable` (in "interp mode") or after `redshift` (in "doppler
 mode").
+
+## Implementation details
+
+(The following section should probably moved to the docs, once we have them)
+
+The following is a simplified diagram which represent the main phases of the
+compilation pipeline:
+
+```mermaid
+graph TD
+
+    SRC["*.spy source"]
+    PYAST["CPython AST"]
+    AST["SPy AST"]
+    SYMAST["SPy AST + symtable"]
+    SPyVM["SPyVM"]
+    REDSHIFTED["Redshifted AST"]
+    OUT["Output"]
+    C["C Source (.c)"]
+    EXE_NAT["Native exe"]
+    EXE_WASI["WASI exe"]
+    EXE_EM["Emscripten exe"]
+
+    %% Core pipeline
+    SRC -- pyparse --> PYAST -- parse --> AST -- ScopeAnalyzer --> SYMAST
+    SYMAST -- import --> SPyVM -- execute --> OUT
+    SPyVM -- redshift --> REDSHIFTED -- cwrite --> C
+    C -- ninja --> EXE_NAT -- execute --> OUT
+    C -- ninja --> EXE_WASI -- execute --> OUT
+    C -- ninja --> EXE_EM -- execute --> OUT
+```
+
+### Role of WASM and libspy
+
+WASM is a target (either WASI or emscripten), but it's also a fundamental
+building block of the interpreter.  The interpreter is currently written in
+Python and runs on top of CPython, but it also needs to be able to call into
+`libspy` (see below). This is achieved by compiling `libspy` to WASM and load
+it into the Python interpreter using `wasmtime`.
+
+So, depending on the execution mode, `libspy` is used in two very different
+ways:
+
+- **interpreted**: loaded in the python process via wasmtime. This is what
+  happens for `[interp]` and `[doppler]` tests, and when you do `spy hello.spy`
+
+- **compiled**: statically linked to the final executable. This is what happens
+  for `[C]` tests and when you do `spy --compile hello.spy`.
+
+**`libspy`**:
+
+  - `spy/libspy/src` is a small runtime library written in C, which must be
+    statically linked to any spy executable
+
+  - `make -C spy/libspy` creates a `libspy.a` for each supported target, which
+    currently are `native`, `emscripten` and `wasi`
+
+  - `spy/libspy/__init__.py` contains some support code to be able to load the
+    WASM version of libspy in the interpreter.
+
+the code in `llwasm` is just a thin wrapper over `wasmtime` to make it nicer
+to interact with it.
+
+The code in `libspy/__init__.py` uses `llwasm` to load `libspy.wasm` in the
+interpreter. In particular, it implements the necessary "WASM imports" which
+`libspy` uses to call back into the interpreter, for example to print debug
+log messages, to trigger a panic and to turn WASM panics into `SPyError`
+exceptions.
+
+### pyodide vs wasmtime
+
+Normally, we execute SPy on top of CPython and we use `wasmtime` to load
+`libspy.wasm`.
+
+However, we can also run SPy on top of Pyodide: in that case, we are *already*
+inside a WASM runtime engine (emscripten), so we don't need `wasmtime`.
+
+The code in `llwasm` abstracts this difference away, and makes it possible to
+transparently load `libspy.wasm` in either case.
