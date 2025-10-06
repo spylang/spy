@@ -2,6 +2,30 @@ from unsafe import gc_alloc, ptr
 from operator import OpSpec
 
 
+# spy dict
+# ========
+# This is a hash table implementation that tries to closely resemble the CPython
+# implementation. (If any differences are found, they are likely bugs.)
+#
+# This is a sequential linear probing hash table. It is a split table with a sparse
+# index array which points to a dense entries array. The index is the actual hash
+# table and is composed of nodes that are either empty (DKIX_EMPTY), or point to
+# an entry. The entries array contains the key-value pairs.
+# Hash tables are generally wasteful in memory because they are best performing
+# when they are sparse (low load factor, many empty elements). Having a split table
+# is useful because it keeps the sparse index array small by having smaller elements.
+# Since the entries array is dense (there are no empty array elements), it is more
+# efficient for iterations because there are no waisted memory reads for empty slots.
+# Whereas iterating over the index array requires to read the empty nodes, too.
+# Collisions are resolved by linearly probing for the next slot until an empty
+# slot is found, circularly.
+# This hash table implementation is not thread-safe.
+#
+# CPython implementation references:
+#   https://github.com/python/cpython/blob/main/Objects/dictnotes.txt
+#   https://github.com/python/cpython/blob/main/Objects/dictobject.c
+
+
 DKIX_EMPTY = 0
 DKIX_DUMMY = 1 << 32 - 1
 DKIX_ERROR = 1 << 32 - 2
