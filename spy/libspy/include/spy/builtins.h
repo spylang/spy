@@ -28,16 +28,16 @@ WASM_EXPORT(spy_builtins$print_NoneType)(void);
 void
 WASM_EXPORT(spy_builtins$print_str)(spy_Str *s);
 
-int32_t
+static inline int32_t
 WASM_EXPORT(spy_builtins$hash_i8)(int8_t x);
 
-int32_t
+static inline int32_t
 WASM_EXPORT(spy_builtins$hash_i32)(int32_t x);
 
-int32_t
+static inline int32_t
 WASM_EXPORT(spy_builtins$hash_u8)(uint8_t x);
 
-int32_t
+static inline int32_t
 WASM_EXPORT(spy_builtins$hash_bool)(bool x);
 
 // spy_flush is not a builtin, but we need it to flush stdout/stderr from
