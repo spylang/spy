@@ -141,3 +141,34 @@ class TestStr(CompilerTest):
         assert mod.str_f64(123.456) == '123.456'
         assert mod.str_bool(True) == 'True'
         assert mod.str_bool(False) == 'False'
+
+    def test_repr_blue(self):
+        src = """
+        def repr_blue() -> str:
+            return repr(i32)
+        """
+        mod = self.compile(src)
+        assert mod.repr_blue() == "<spy type 'i32'>"
+
+    @skip_backends('C', reason='`type` type not supported')
+    def test_repr_red(self):
+        src = """
+        def repr_red_type() -> str:
+            t: type = i32   # note, this is a red variable
+            return repr(t)
+        """
+        mod = self.compile(src)
+        s = mod.repr_red_type()
+        assert re.fullmatch(r"<spy `type` object at 0x.+>", s)
+
+    def test_str_fallback_to_repr(self):
+        # str() should fallback to repr() for types without custom __str__
+        src = """
+        def str_blue() -> str:
+            return str(i32)
+
+        def repr_blue() -> str:
+            return repr(i32)
+        """
+        mod = self.compile(src)
+        assert mod.str_blue() == mod.repr_blue()

@@ -124,6 +124,23 @@ def w_len(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
         wam_obj.loc
     )
 
+@BUILTINS.builtin_func(color='blue', kind='metafunc')
+def w_repr(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
+    if w_fn := w_T.lookup_func('__repr__'):
+        w_opspec = vm.fast_metacall(w_fn, [wam_obj])
+        return w_opspec
+
+    # this can happen only if you override a __repr__ which returns
+    # OpSpec.NULL
+    t = w_T.fqn.human_name
+    raise SPyError.simple(
+        'W_TypeError',
+        f'cannot call repr(`{t}`)',
+        f'this is `{t}`',
+        wam_obj.loc
+    )
+
 # add aliases for common types. For now we map:
 #   int -> i32
 #   float -> f64
