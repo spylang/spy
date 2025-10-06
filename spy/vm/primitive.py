@@ -89,6 +89,12 @@ class W_I8(W_Object):
     def spy_key(self, vm: 'SPyVM') -> fixedint.Int8:
         return self.value
 
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_I8') -> 'W_Str':
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
 
 @B.builtin_type('u8', lazy_definition=True)
 class W_U8(W_Object):
@@ -106,6 +112,12 @@ class W_U8(W_Object):
 
     def spy_key(self, vm: 'SPyVM') -> fixedint.UInt8:
         return self.value
+
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_U8') -> 'W_Str':
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
 
 
 @B.builtin_type('f64', lazy_definition=True)

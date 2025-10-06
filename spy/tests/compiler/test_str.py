@@ -96,11 +96,22 @@ class TestStr(CompilerTest):
         def from_i32(x: i32) -> str:
             return str(x)
 
+        def from_i8(x: i8) -> str:
+            return str(x)
+
+        def from_u8(x: u8) -> str:
+            return str(x)
+
         def from_f64(x: f64) -> str:
             return str(x)
         """)
         assert mod.from_i32(-10) == '-10'
         assert mod.from_i32(123) == '123'
+        assert mod.from_i8(-10) == '-10'
+        assert mod.from_i8(127) == '127'
+        assert mod.from_i8(-128) == '-128'
+        assert mod.from_u8(0) == '0'
+        assert mod.from_u8(255) == '255'
         assert mod.from_f64(-10.5) == '-10.5'
         assert mod.from_f64(0.0) in ('0', '0.0')
         assert mod.from_f64(3.14) == '3.14'

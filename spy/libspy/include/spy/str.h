@@ -46,6 +46,12 @@ spy_Str *
 spy_builtins$i32$__str__(int32_t x);
 
 spy_Str *
+spy_builtins$i8$__str__(int8_t x);
+
+spy_Str *
+spy_builtins$u8$__str__(uint8_t x);
+
+spy_Str *
 spy_builtins$f64$__str__(double x);
 
 

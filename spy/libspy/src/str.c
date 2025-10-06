@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdarg.h>
 #include "spy.h"
 
 spy_Str *
@@ -61,13 +62,16 @@ spy_str_len(spy_Str *s) {
     return (int32_t)s->length;
 }
 
+// Helper function to format and convert to spy_Str
 // XXX probably it would be better to implement it directly, instead of
 // bringing in all the code needed to support sprintf()
-spy_Str *
-spy_builtins$i32$__str__(int32_t x) {
+static spy_Str *
+spy_str_from_format(const char *fmt, ...) {
     char buf[1024];
-    snprintf(buf, 1024, "%d", x);
-    size_t length = strlen(buf);
+    va_list args;
+    va_start(args, fmt);
+    int length = vsnprintf(buf, 1024, fmt, args);
+    va_end(args);
 
     spy_Str *res = spy_str_alloc(length);
     char *outbuf = (char*)res->utf8;
@@ -76,13 +80,21 @@ spy_builtins$i32$__str__(int32_t x) {
 }
 
 spy_Str *
-spy_builtins$f64$__str__(double x) {
-    char buf[1024];
-    snprintf(buf, 1024, "%g", x);
-    size_t length = strlen(buf);
+spy_builtins$i32$__str__(int32_t x) {
+    return spy_str_from_format("%d", x);
+}
 
-    spy_Str *res = spy_str_alloc(length);
-    char *outbuf = (char*)res->utf8;
-    memcpy(outbuf, buf, length);
-    return res;
+spy_Str *
+spy_builtins$i8$__str__(int8_t x) {
+    return spy_str_from_format("%d", (int)x);
+}
+
+spy_Str *
+spy_builtins$u8$__str__(uint8_t x) {
+    return spy_str_from_format("%u", (unsigned int)x);
+}
+
+spy_Str *
+spy_builtins$f64$__str__(double x) {
+    return spy_str_from_format("%g", x);
 }
