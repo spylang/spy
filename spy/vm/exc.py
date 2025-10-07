@@ -55,6 +55,9 @@ class W_Exception(W_Object):
     @staticmethod
     def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
         # we cannot use the default __new__ because we want to pass w_cls
+        _args_wam: list[W_MetaArg] = list(args_wam) or [
+            W_MetaArg.from_w_obj(vm, vm.wrap(""))
+        ]
         w_cls = wam_cls.w_blueval
         assert isinstance(w_cls, W_Type)
         fqn = w_cls.fqn
@@ -69,7 +72,7 @@ class W_Exception(W_Object):
             assert issubclass(pyclass, W_Exception)
             message = vm.unwrap_str(w_message)
             return pyclass(message)
-        return W_OpSpec(w_new, [wam_cls] + list(args_wam))
+        return W_OpSpec(w_new, [wam_cls] + _args_wam)
 
 
     @builtin_method('__eq__', color='blue', kind='metafunc')

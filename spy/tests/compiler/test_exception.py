@@ -15,6 +15,8 @@ class TestException(CompilerTest):
                 raise Exception("hello")   # <-- line 6
             elif x == 2:
                 raise ValueError("world")
+            elif x == 3:
+                raise ValueError()
             else:
                 raise IndexError
         """)
@@ -27,8 +29,10 @@ class TestException(CompilerTest):
 
         with SPyError.raises('W_ValueError', match="world"):
             mod.foo(2)
-        with SPyError.raises('W_IndexError'):
+        with SPyError.raises('W_ValueError', match=""):
             mod.foo(3)
+        with SPyError.raises('W_IndexError') as excinfo:
+            mod.foo(4)
 
     def test_cannot_raise_red(self):
         src = """
