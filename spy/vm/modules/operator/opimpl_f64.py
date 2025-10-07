@@ -47,6 +47,12 @@ def w_f64_floordiv(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
     return _f64_op(vm, w_a, w_b, lambda a, b: a // b)
 
 @OP.builtin_func
+def w_f64_mod(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_F64:
+    if w_b.value == 0:
+        raise SPyError("W_ZeroDivisionError", "float modulo by zero")
+    return _f64_op(vm, w_a, w_b, lambda a, b: a % b)
+
+@OP.builtin_func
 def w_f64_eq(vm: 'SPyVM', w_a: W_F64, w_b: W_F64) -> W_Bool:
     return _f64_op(vm, w_a, w_b, lambda a, b: a == b)
 
