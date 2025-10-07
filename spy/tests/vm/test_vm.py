@@ -145,7 +145,7 @@ class TestVM:
         vm = SPyVM()
         w_None = B.w_None
         assert isinstance(w_None, W_NoneType)
-        assert vm.dynamic_type(w_None).fqn == FQN('builtins::NoneType')
+        assert vm.dynamic_type(w_None).fqn == FQN('types::NoneType')
         assert repr(w_None) == '<spy None>'
         #
         assert vm.wrap(None) is w_None

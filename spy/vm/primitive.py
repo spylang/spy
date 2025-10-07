@@ -2,7 +2,7 @@ from typing import Annotated, TYPE_CHECKING
 import fixedint
 from spy.fqn import FQN
 from spy.vm.object import W_Object, W_Type
-from spy.vm.b import B, OP
+from spy.vm.b import B, OP, TYPES
 from spy.vm.builtin import builtin_method
 
 # fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a
@@ -15,8 +15,9 @@ else:
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.opspec import W_MetaArg, W_OpSpec
+    from spy.vm.str import W_Str
 
-@B.builtin_type('NoneType')
+@TYPES.builtin_type('NoneType', lazy_definition=True)
 class W_NoneType(W_Object):
     """
     This is a singleton: there should be only one instance of this class,
@@ -32,6 +33,12 @@ class W_NoneType(W_Object):
 
     def spy_unwrap(self, vm: 'SPyVM') -> None:
         return None
+
+    @builtin_method('__str__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_STR(vm: 'SPyVM', wam_self: 'W_MetaArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
+        return W_OpSpec.const(vm.wrap('None'))
 
 B.add('None', W_NoneType.__new__(W_NoneType))
 
@@ -65,6 +72,12 @@ class W_I32(W_Object):
     def spy_key(self, vm: 'SPyVM') -> fixedint.Int32:
         return self.value
 
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_I32') -> 'W_Str':
+        i = vm.unwrap_i32(w_self)
+        return vm.wrap(str(i))
+
 
 @B.builtin_type('i8', lazy_definition=True)
 class W_I8(W_Object):
@@ -83,6 +96,12 @@ class W_I8(W_Object):
     def spy_key(self, vm: 'SPyVM') -> fixedint.Int8:
         return self.value
 
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_I8') -> 'W_Str':
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
 
 @B.builtin_type('u8', lazy_definition=True)
 class W_U8(W_Object):
@@ -100,6 +119,12 @@ class W_U8(W_Object):
 
     def spy_key(self, vm: 'SPyVM') -> fixedint.UInt8:
         return self.value
+
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_U8') -> 'W_Str':
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
 
 
 @B.builtin_type('f64', lazy_definition=True)
@@ -133,6 +158,12 @@ class W_F64(W_Object):
     def spy_key(self, vm: 'SPyVM') -> float:
         return self.value
 
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_F64') -> 'W_Str':
+        f = vm.unwrap_f64(w_self)
+        return vm.wrap(str(f))
+
 
 @B.builtin_type('bool', lazy_definition=True)
 class W_Bool(W_Object):
@@ -165,17 +196,29 @@ class W_Bool(W_Object):
         else:
             return B.w_True
 
+    @builtin_method('__str__')
+    @staticmethod
+    def w_str(vm: 'SPyVM', w_self: 'W_Bool') -> 'W_Str':
+        b = vm.unwrap(w_self)
+        return vm.wrap(str(b))
+
 B.add('True', W_Bool._make_singleton(True))
 B.add('False', W_Bool._make_singleton(False))
 
 
-@B.builtin_type('NotImplementedType') # XXX it should go to types?
+@TYPES.builtin_type('NotImplementedType', lazy_definition=True)
 class W_NotImplementedType(W_Object):
 
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
         # create additional instances
         raise Exception("You cannot instantiate W_NotImplementedType")
+
+    @builtin_method('__str__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_STR(vm: 'SPyVM', wam_self: 'W_MetaArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
+        return W_OpSpec.const(vm.wrap('NotImplemented'))
 
 B.add('NotImplemented', W_NotImplementedType.__new__(W_NotImplementedType))
 
@@ -214,6 +257,6 @@ B.add('NotImplemented', W_NotImplementedType.__new__(W_NotImplementedType))
 # just an annotated version of W_Object, which @builtin_func knows how to deal
 # with.
 
-w_DynamicType = W_Type.from_pyclass(FQN('builtins::dynamic'), W_Object)
+w_DynamicType = W_Type.declare(FQN('builtins::dynamic'))
 B.add('dynamic', w_DynamicType)
 W_Dynamic = Annotated[W_Object, B.w_dynamic]

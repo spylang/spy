@@ -11,7 +11,7 @@ from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
 from spy.vm.function import W_FuncType
-from spy.vm.b import BUILTINS, B
+from spy.vm.b import BUILTINS, B, TYPES
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -52,7 +52,7 @@ def w_print(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
         return W_OpSpec(B.w_print_f64)
     elif w_T is B.w_bool:
         return W_OpSpec(B.w_print_bool)
-    elif w_T is B.w_NoneType:
+    elif w_T is TYPES.w_NoneType:
         return W_OpSpec(B.w_print_NoneType)
     elif w_T is B.w_str:
         return W_OpSpec(B.w_print_str)
@@ -120,6 +120,23 @@ def w_len(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
     raise SPyError.simple(
         'W_TypeError',
         f'cannot call len(`{t}`)',
+        f'this is `{t}`',
+        wam_obj.loc
+    )
+
+@BUILTINS.builtin_func(color='blue', kind='metafunc')
+def w_repr(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
+    if w_fn := w_T.lookup_func('__repr__'):
+        w_opspec = vm.fast_metacall(w_fn, [wam_obj])
+        return w_opspec
+
+    # this can happen only if you override a __repr__ which returns
+    # OpSpec.NULL
+    t = w_T.fqn.human_name
+    raise SPyError.simple(
+        'W_TypeError',
+        f'cannot call repr(`{t}`)',
         f'this is `{t}`',
         wam_obj.loc
     )

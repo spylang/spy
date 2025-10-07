@@ -191,6 +191,46 @@ class W_Object:
         assert self.__spy_storage_category__ == 'reference'
         return self  # rely on Python's default __hash__ and __eq__
 
+    @builtin_method('__repr__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_REPR(vm: 'SPyVM', wam_self: 'W_MetaArg') -> 'W_OpSpec':
+        from spy.vm.opspec import W_OpSpec
+        from spy.vm.builtin import IRTag
+        from spy.vm.str import W_Str
+
+        if wam_self.color == 'blue':
+            w_self = wam_self.w_blueval
+            w_s = vm.wrap(repr(w_self))
+            return W_OpSpec.const(w_s)
+
+        else:
+            # fallback
+            w_T = wam_self.w_static_T
+            T = Annotated[W_Object, w_T]
+            irtag = IRTag('object.repr', w_T=w_T)
+
+            @vm.register_builtin_func(w_T.fqn, '__generic_repr__', irtag=irtag)
+            def w_generic_repr(vm: 'SPyVM', w_obj: T) -> W_Str:
+                tname = w_T.fqn.human_name
+                addr = f'0x{id(w_obj):x}'
+                s = f'<spy `{tname}` object at {addr}>'
+                return vm.wrap(s)
+
+            return W_OpSpec(w_generic_repr, [wam_self])
+
+    @builtin_method('__str__', color='blue', kind='metafunc')
+    @staticmethod
+    def w_STR(vm: 'SPyVM', wam_self: 'W_MetaArg') -> 'W_OpSpec':
+        # default implementation: fallback to __repr__
+        w_T = wam_self.w_static_T
+        if w_repr := w_T.lookup_func('__repr__'):
+            return vm.fast_metacall(w_repr, [wam_self])
+
+        # this should never happen since we define __repr__ on W_Object
+        from spy.vm.opspec import W_OpSpec
+        return W_OpSpec.NULL
+
+
     # ==== OPERATOR SUPPORT ====
     #
     # Operators are the central concept which drives the semantic of SPy

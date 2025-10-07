@@ -4,7 +4,7 @@ from spy.vm.b import B, BUILTINS
 from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_OpSpec, W_MetaArg
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_I32, W_F64
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -75,12 +75,22 @@ class W_Str(W_Object):
     @builtin_method('__new__', color='blue', kind='metafunc')
     @staticmethod
     def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> 'W_OpSpec':
-        from spy.vm.b import B
-        if len(args_wam) == 1 and args_wam[0].w_static_T is B.w_i32:
-            wam_i = args_wam[0]
-            return W_OpSpec(w_int2str, [wam_i])
-        else:
-            return W_OpSpec.NULL
+        from spy.errors import SPyError
+        if len(args_wam) == 1:
+            wam_arg = args_wam[0]
+            w_T = wam_arg.w_static_T
+            if w_fn := w_T.lookup_func('__str__'):
+                w_opspec = vm.fast_metacall(w_fn, [wam_arg])
+                return w_opspec
+
+            t = w_T.fqn.human_name
+            raise SPyError.simple(
+                'W_TypeError',
+                f'cannot call str(`{t}`)',
+                f'this is `{t}`',
+                wam_arg.loc
+            )
+        return W_OpSpec.NULL
 
     @builtin_method('__getitem__')
     @staticmethod
@@ -96,9 +106,3 @@ class W_Str(W_Object):
         assert isinstance(w_s, W_Str)
         length = vm.ll.call('spy_str_len', w_s.ptr)
         return vm.wrap(length)
-
-
-@BUILTINS.builtin_func(hidden=True)
-def w_int2str(vm: 'SPyVM', w_i: W_I32) -> W_Str:
-    i = vm.unwrap_i32(w_i)
-    return vm.wrap(str(i))
