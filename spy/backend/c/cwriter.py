@@ -349,6 +349,7 @@ class CFuncWriter:
         # FQN('operator::i32_mod')
         # FQN('operator::f64_div')
         # FQN('operator::f64_floordiv')
+        # FQN('operator::f64_mod')
     }
 
     FQN2UnaryOp = {
