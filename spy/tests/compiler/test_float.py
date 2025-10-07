@@ -60,10 +60,10 @@ class TestFloat(CompilerTest):
         assert mod.mod(3.5, -1.5) == -1.0
         assert mod.mod(-3.5, 1.5) == 1.0
         assert mod.mod(-3.5, -1.5) == -0.5
-        assert 5.0 % float('inf') == 5.0
-        assert -5.0 % float('inf') == float('inf')
-        assert 5.0 % float('-inf') == float('-inf')
-        assert -5.0 % float('-inf') == -5.0
+        assert mod.mod(5.0, float('inf')) == 5.0
+        assert mod.mod(-5.0, float('inf')) == float('inf')
+        assert mod.mod(5.0, float('-inf')) == float('-inf')
+        assert mod.mod(-5.0, float('-inf')) == -5.0
 
 
     def test_CompareOp(self):
