@@ -56,13 +56,7 @@ class W_Exception(W_Object):
     def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
         # we cannot use the default __new__ because we want to pass w_cls
         _args_wam: list[W_MetaArg] = list(args_wam) or [
-            W_MetaArg(
-                loc=Loc.here(),
-                w_static_T=BUILTINS.w_str,
-                vm=vm,
-                color="blue",
-                w_val=W_Str(s="", vm=vm),
-            )
+            W_MetaArg.from_w_obj(vm, vm.wrap(""))
         ]
         w_cls = wam_cls.w_blueval
         assert isinstance(w_cls, W_Type)
