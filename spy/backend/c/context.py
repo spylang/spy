@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.vm import SPyVM
-from spy.vm.b import B
+from spy.vm.b import B, TYPES
 from spy.vm.object import W_Type
 from spy.vm.function import W_Func, W_ASTFunc
 from spy.vm.modules.types import W_LiftedType
@@ -75,7 +75,7 @@ class Context:
         self.tbh_ptrs_def = None   # type: ignore
         self.tbh_types_def = None  # type: ignore
         self._d = {}
-        self._d[B.w_NoneType] = C_Type('void')
+        self._d[TYPES.w_NoneType] = C_Type('void')
         self._d[B.w_i8] = C_Type('int8_t')
         self._d[B.w_u8] = C_Type('uint8_t')
         self._d[B.w_i32] = C_Type('int32_t')

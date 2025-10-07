@@ -4,7 +4,7 @@ from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.function import W_ASTFunc, W_Func
-from spy.vm.b import B
+from spy.vm.b import B, TYPES
 from spy.vm.builtin import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.textbuilder import TextBuilder
@@ -60,7 +60,7 @@ class CFuncWriter:
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
 
-            if self.w_func.w_functype.w_restype is not B.w_NoneType:
+            if self.w_func.w_functype.w_restype is not TYPES.w_NoneType:
                 # this is a non-void function: if we arrive here, it means we
                 # reached the end of the function without a return. Ideally,
                 # we would like to also report an error message, but for now
@@ -200,7 +200,7 @@ class CFuncWriter:
                 self.tbc.wl(f'spy_panic("AssertionError", ({msg})->utf8, "{assert_node.loc.filename}", {assert_node.loc.line_start});')
             else:
                 self.tbc.wl(f'spy_panic("AssertionError", "assertion failed", "{assert_node.loc.filename}", {assert_node.loc.line_start});')
-            
+
         self.tbc.wl('}')
 
     # ===== expressions =====
