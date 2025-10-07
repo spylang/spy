@@ -6,7 +6,7 @@ The first half is in vm/b.py. See its docstring for more details.
 
 from typing import TYPE_CHECKING
 from spy.errors import SPyError
-from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
+from spy.vm.primitive import W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic, W_NoneType
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.object import W_Object, W_Type
 from spy.vm.str import W_Str
@@ -137,6 +137,56 @@ def w_repr(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
     raise SPyError.simple(
         'W_TypeError',
         f'cannot call repr(`{t}`)',
+        f'this is `{t}`',
+        wam_obj.loc
+    )
+
+@BUILTINS.builtin_func
+def w_hash_i8(vm: 'SPyVM', w_x: W_I8) -> W_I32:
+    x = vm.unwrap_i8(w_x)
+    if x == -1:
+        return vm.wrap(2)
+    return vm.wrap(x)
+
+@BUILTINS.builtin_func
+def w_hash_i32(vm: 'SPyVM', w_x: W_I32) -> W_I32:
+    if (vm.unwrap_i32(w_x)) == -1:
+        return vm.wrap(2)
+    return w_x
+
+@BUILTINS.builtin_func
+def w_hash_u8(vm: 'SPyVM', w_x: W_U8) -> W_I32:
+    return vm.wrap(vm.unwrap_u8(w_x))
+
+@BUILTINS.builtin_func
+def w_hash_bool(vm: 'SPyVM', w_x: W_Bool) -> W_I32:
+    if w_x is B.w_False:
+        return vm.wrap(0)
+    elif w_x is B.w_True:
+        return vm.wrap(1)
+    else:
+        assert False, 'unreachable'
+
+@BUILTINS.builtin_func(color='blue', kind='metafunc')
+def w_hash(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
+    if w_T is B.w_i8:
+        return W_OpSpec(B.w_hash_i8)
+    elif w_T is B.w_i32:
+        return W_OpSpec(B.w_hash_i32)
+    elif w_T is B.w_u8:
+        return W_OpSpec(B.w_hash_u8)
+    elif w_T is B.w_bool:
+        return W_OpSpec(B.w_hash_bool)
+
+    if w_fn := w_T.lookup_func('__hash__'):
+        w_opspec = vm.fast_metacall(w_fn, [wam_obj])
+        return w_opspec
+
+    t = w_T.fqn.human_name
+    raise SPyError.simple(
+        'W_TypeError',
+        f"unhashable type '{t}'",
         f'this is `{t}`',
         wam_obj.loc
     )
