@@ -143,9 +143,10 @@ def w_repr(vm: 'SPyVM', wam_obj: W_MetaArg) -> W_OpSpec:
 
 @BUILTINS.builtin_func
 def w_hash_i8(vm: 'SPyVM', w_x: W_I8) -> W_I32:
-    if (vm.unwrap_i8(w_x)) == -1:
+    x = vm.unwrap_i8(w_x)
+    if x == -1:
         return vm.wrap(2)
-    return w_x
+    return vm.wrap(x)
 
 @BUILTINS.builtin_func
 def w_hash_i32(vm: 'SPyVM', w_x: W_I32) -> W_I32:
@@ -155,7 +156,7 @@ def w_hash_i32(vm: 'SPyVM', w_x: W_I32) -> W_I32:
 
 @BUILTINS.builtin_func
 def w_hash_u8(vm: 'SPyVM', w_x: W_U8) -> W_I32:
-    return w_x
+    return vm.wrap(vm.unwrap_u8(w_x))
 
 @BUILTINS.builtin_func
 def w_hash_bool(vm: 'SPyVM', w_x: W_Bool) -> W_I32:
