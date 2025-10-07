@@ -64,13 +64,38 @@ class TestInt(CompilerTest):
         assert mod.mod(10, 3) == 1
         assert mod.div(11, 2) == 5.5
         assert mod.floordiv(11, 2) == 5
+
+    def test_zero_division_error(self, int_type):
+        mod = self.compile(f"""
+        T = {int_type}
+        def mod(x: T, y: T) -> T:      return x % y
+        def div(x: T, y: T) -> f64:    return x / y
+        def floordiv(x: T, y: T) -> T: return x // y
+        """)
         with SPyError.raises("W_ZeroDivisionError", match="integer modulo by zero"):
             mod.mod(10, 0)
         with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
             mod.div(11, 0)
-        with SPyError.raises("W_ZeroDivisionError"):
-            # TODO: add appropriate floor div handling for c backend
+        with SPyError.raises("W_ZeroDivisionError", match="integer division or modulo by zero"):
             mod.floordiv(11, 0)
+
+    def test_division_mixed_signs(self, int_type):
+        if int_type == "u8":
+            pytest.skip("Skipping for negative operands in floordiv test")
+
+        mod = self.compile(f"""
+        T = {int_type}
+        def floordiv(x: T, y: T) -> T: return x // y
+        def mod(x: T, y: T) -> T: return x % y
+        """)
+        assert mod.floordiv(7, 3) == 2
+        assert mod.floordiv(-7, 3) == -3
+        assert mod.floordiv(7, -3) == -3
+        assert mod.floordiv(-7, -3) == 2
+        assert mod.mod(7, 3) == 1
+        assert mod.mod(-7, 3) == 2
+        assert mod.mod(7, -3) == -2
+        assert mod.mod(-7, -3) == -1
 
     def test_neg(self, int_type):
         src = f"""

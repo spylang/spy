@@ -21,6 +21,7 @@ class TestFloat(CompilerTest):
         def mul(x: f64, y: f64) -> f64:      return x * y
         def div(x: f64, y: f64) -> f64:      return x / y
         def floordiv(x: f64, y: f64) -> f64: return x // y
+        def mod(x: f64, y: f64) -> f64:      return x % y
         def neg(x: f64) -> f64:              return -x
         """)
         assert mod.add(1.5, 2.6) == 4.1
@@ -28,11 +29,42 @@ class TestFloat(CompilerTest):
         assert mod.mul(1.5, 0.5) == 0.75
         assert mod.div(1.5, 2.0) == 0.75
         assert mod.floordiv(10.0, 3.0) == 3.0
+        assert mod.mod(10.5, 2.5) == 0.5
         assert mod.neg(-2.5) == 2.5
+    
+    def test_zero_division_error(self):
+        mod = self.compile(
+        """
+        def div(x: f64, y: f64) -> f64:      return x / y
+        def floordiv(x: f64, y: f64) -> f64: return x // y
+        def mod(x: f64, y: f64) -> f64:      return x % y
+        """)
         with SPyError.raises("W_ZeroDivisionError", match="float division by zero"):
             mod.div(1.5, 0.0)
         with SPyError.raises("W_ZeroDivisionError", match="float floor division by zero"):
             mod.floordiv(10.0, 0.0)
+        with SPyError.raises("W_ZeroDivisionError", match="float modulo by zero"):
+            mod.mod(10.5, 0.0)
+    
+    def test_division_mixed_signs(self):
+        mod = self.compile(
+        """
+        def floordiv(x: f64, y: f64) -> f64: return x // y
+        def mod(x: f64, y: f64) -> f64: return x % y
+        """)
+        assert mod.floordiv(3.5, 1.5) == 2.0
+        assert mod.floordiv(3.5, -1.5) == -3.0
+        assert mod.floordiv(-3.5, 1.5) == -3.0
+        assert mod.floordiv(-3.5, -1.5) == 2.0
+        assert mod.mod(3.5, 1.5) == 0.5
+        assert mod.mod(3.5, -1.5) == -1.0
+        assert mod.mod(-3.5, 1.5) == 1.0
+        assert mod.mod(-3.5, -1.5) == -0.5
+        assert mod.mod(5.0, float('inf')) == 5.0
+        assert mod.mod(-5.0, float('inf')) == float('inf')
+        assert mod.mod(5.0, float('-inf')) == float('-inf')
+        assert mod.mod(-5.0, float('-inf')) == -5.0
+
 
     def test_CompareOp(self):
         mod = self.compile("""
