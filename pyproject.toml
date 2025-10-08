@@ -89,6 +89,7 @@ exclude = [".venv", "*.pyi", "*.c"]
 
 [tool.ruff.format]
 line-ending = "auto"
+exclude = [".venv", "*.pyi", "*.c"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402"]

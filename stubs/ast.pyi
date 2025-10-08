@@ -7,27 +7,22 @@
 # The added lines are marked with <spy></spy> in comments
 
 # <spy>
+from typing import Optional
+from spy.location import Loc
 # </spy>
+
 import os
 import sys
+import typing_extensions
 from _ast import (
     PyCF_ALLOW_TOP_LEVEL_AWAIT as PyCF_ALLOW_TOP_LEVEL_AWAIT,
-)
-from _ast import (
     PyCF_ONLY_AST as PyCF_ONLY_AST,
-)
-from _ast import (
     PyCF_TYPE_COMMENTS as PyCF_TYPE_COMMENTS,
 )
-from collections.abc import Iterable, Iterator
-from typing import Any, ClassVar, Generic, Literal, Optional, TypedDict, overload
-from typing import TypeVar as _TypeVar
-
-import typing_extensions
 from _typeshed import ReadableBuffer, Unused
+from collections.abc import Iterable, Iterator
+from typing import Any, ClassVar, Generic, Literal, TypedDict, TypeVar as _TypeVar, overload
 from typing_extensions import Self, Unpack, deprecated
-
-from spy.location import Loc
 
 if sys.version_info >= (3, 13):
     from _ast import PyCF_OPTIMIZED_AST as PyCF_OPTIMIZED_AST
