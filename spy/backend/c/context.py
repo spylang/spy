@@ -83,12 +83,13 @@ class Context:
     def w2c(self, w_T: W_Type) -> C_Type:
         if w_T in self._d:
             return self._d[w_T]
-        elif isinstance(w_T, W_PtrType):
-            return self.new_ptr_type(w_T)
-        elif isinstance(w_T, W_StructType):
-            return self.new_struct_type(w_T)
-        elif isinstance(w_T, W_LiftedType):
-            return self.new_lifted_type(w_T)
+        elif isinstance(w_T, W_Type):
+            # as soon as we split spy_structdefs into multiple files, here we
+            # should add a self.add_include_maybe. But for now it's not needed
+            # because we always include spy_structdefs.h anyway.
+            c_type = C_Type(w_T.fqn.c_name)
+            self._d[w_T] = c_type
+            return c_type
         raise NotImplementedError(f'Cannot translate type {w_T} to C')
 
     def c_restype_by_fqn(self, fqn: FQN) -> C_Type:
@@ -121,21 +122,6 @@ class Context:
 
         c_restype = self.w2c(w_functype.w_restype)
         return C_Function(name, c_params, c_restype)
-
-    def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
-        c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        self._d[w_ptrtype] = c_ptrtype
-        return c_ptrtype
-
-    def new_struct_type(self, w_st: W_StructType) -> C_Type:
-        c_struct_type = C_Type(w_st.fqn.c_name)
-        self._d[w_st] = c_struct_type
-        return c_struct_type
-
-    def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
-        c_hltype = C_Type(w_hltype.fqn.c_name)
-        self._d[w_hltype] = c_hltype
-        return c_hltype
 
     def add_include_maybe(self, fqn: FQN) -> None:
         modname = fqn.modname
