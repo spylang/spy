@@ -16,7 +16,6 @@ from spy.textbuilder import TextBuilder
 from spy.backend.c.context import Context, C_Type
 from spy.backend.c.cwriter import CFuncWriter
 from spy.backend.c.cffiwriter import CFFIWriter
-from spy.backend.c.ctypeswriter import CTypesWriter
 
 @dataclass
 class CModule:
@@ -74,13 +73,6 @@ class CModuleWriter:
         return f'<CModuleWriter for {self.c_mod.modname}>'
 
     def write_c_source(self) -> None:
-        # Write types header using CTypesWriter
-        # Share the context so includes work properly
-        if self.c_mod.hfile_types:
-            typesw = CTypesWriter(self.ctx, self.c_mod)
-            typesw.write_types_header()
-
-        # Write regular content
         self.emit_content()
         if self.c_mod.hfile:
             self.c_mod.hfile.write(self.tbh.build())
@@ -117,10 +109,7 @@ class CModuleWriter:
         self.tbh.wl()
 
         self.tbh.wl('// includes')
-        # Include the types header
-        types_header = self.c_mod.hfile_types.basename if self.c_mod.hfile_types else None
-        if types_header:
-            self.tbh.wl(f'#include "{types_header}"')
+        self.tbh.wl('#include "spy_types.h"')
         self.tbh_includes = self.tbh.make_nested_builder()
         self.tbh.wl()
 
@@ -245,4 +234,3 @@ class CModuleWriter:
 
         # cffi wrapper
         self.cffi.emit_func(self.ctx, fqn, w_func)
-

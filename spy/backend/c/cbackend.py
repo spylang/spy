@@ -1,6 +1,7 @@
 from typing import Optional
 import py.path
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
+from spy.backend.c.ctypeswriter import CTypesDefs, CTypesWriter
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
@@ -26,6 +27,7 @@ class CBackend:
     cffi: CFFIWriter
     ninja: Optional[NinjaWriter]
     c_modules: dict[str, CModule]
+    c_types: list[CTypesDefs]
     cfiles: list[py.path.local]
     build_script: Optional[py.path.local]
 
@@ -48,6 +50,7 @@ class CBackend:
         self.cffi = CFFIWriter(outname, config, build_dir)
         self.ninja = None
         self.c_modules = {}
+        self.c_types = []
         self.cfiles = [] # generated C files
         self.build_script = None
 
@@ -88,77 +91,73 @@ class CBackend:
         for modname, w_mod in self.vm.modules_w.items():
             spyfile = None
             hfile = None
-            hfile_types = None
             cfile = None
             if w_mod.filepath is not None:
                 # a non-builtin module
                 spyfile = py.path.local(w_mod.filepath)
                 basename = spyfile.purebasename
                 hfile = bdir.join('src', f'{basename}.h')
-                hfile_types = bdir.join('src', f'{basename}_types.h')
                 cfile = bdir.join('src', f'{basename}.c')
             c_mod = CModule(
                 modname = modname,
                 is_builtin = w_mod.is_builtin(),
                 spyfile = spyfile,
                 hfile = hfile,
-                hfile_types = hfile_types,
+                hfile_types = None,  # No longer used
                 cfile = cfile,
-                types = [],
+                types = [],  # No longer used
                 content = [],
             )
             self.c_modules[modname] = c_mod
 
-        # fill the types and content of C modules
+        # Collect all types and content
+        all_types: list[tuple[FQN, W_Type]] = []
         for fqn, w_obj in self.vm.globals_w.items():
+            modname = fqn.modname
+            w_mod = self.vm.modules_w[modname]
             if fqn.is_module():
                 # don't put the module in its own content
                 continue
-            modname = fqn.modname
+            if w_mod.filepath is None and not isinstance(w_obj, W_PtrType):
+                # builtin module
+                continue
+
             if isinstance(w_obj, W_Type):
-                self.c_modules[modname].types.append((fqn, w_obj))
+                all_types.append((fqn, w_obj))
             else:
                 self.c_modules[modname].content.append((fqn, w_obj))
-        self.c_modules['ptrs_builtins'] = self.make_ptrs_builtins()
 
-    def make_ptrs_builtins(self) -> CModule:
-        """
-        ptrs_builtins is a special module which contains all the
-        specialized ptr types to builtins (e.g. ptr[i32]).
-        """
-        # find all the unsafe::ptr to a builtin
-        def is_ptr_to_builtin(w_obj: W_Object) -> bool:
-            return (
-                isinstance(w_obj, W_PtrType) and
-                w_obj.w_itemtype.fqn.modname == 'builtins'
-            )
-        return CModule(
-            modname = 'ptrs_builtins',
-            is_builtin = False,
-            spyfile = None,
-            hfile = None,
-            hfile_types = self.build_dir.join('src', 'ptrs_builtins.h'),
-            cfile = None,
-            types = [
-                (fqn, w_obj)
-                for fqn, w_obj in self.vm.globals_w.items()
-                if is_ptr_to_builtin(w_obj)
-            ],
-            content = []
-        )
+        # Create a single CTypesDefs with all types
+        # Structure it to make it easy to split into multiple files later
+        self.c_types.append(CTypesDefs(
+            hfile = bdir.join('src', 'spy_types.h'),
+            types = all_types
+        ))
 
     def cwrite(self) -> None:
         """
         Convert all non-builtins modules into .c files
         """
         self.init_c_modules()
+
+        # Write types headers first (e.g., spy_types.h)
+        for c_types in self.c_types:
+            from spy.backend.c.context import Context
+            ctx = Context(self.vm)
+            typesw = CTypesWriter(ctx, c_types)
+            typesw.write_types_header()
+            if self.dump_c:
+                print()
+                print(f'---- {c_types.hfile} ----')
+                print(highlight_C_maybe(c_types.hfile.read()))
+
+        # Then write regular module files
         for modname, c_mod in self.c_modules.items():
             if c_mod.is_builtin:
                 continue
             cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
             cwriter.write_c_source()
             # c_mod.cfile can be None for modules which emit only .h
-            # (e.g. ptrs_builtins)
             if c_mod.cfile is not None:
                 self.cfiles.append(c_mod.cfile)
                 if self.dump_c:
