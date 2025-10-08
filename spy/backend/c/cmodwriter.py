@@ -20,12 +20,9 @@ from spy.backend.c.cffiwriter import CFFIWriter
 @dataclass
 class CModule:
     modname: str
-    is_builtin: bool
-    spyfile: Optional[py.path.local]
-    hfile: Optional[py.path.local]
-    hfile_types: Optional[py.path.local]
-    cfile: Optional[py.path.local]
-    types: list[tuple[FQN, W_Type]]
+    spyfile: py.path.local
+    hfile: py.path.local
+    cfile: py.path.local
     content: list[tuple[FQN, W_Object]]
 
     def __repr__(self) -> str:
@@ -64,20 +61,16 @@ class CModuleWriter:
         self.tbc = TextBuilder(use_colors=False)
         # nested builders are initialized lazily
         self.global_vars = set()
-        if c_mod.hfile:
-            self.init_h()
-        if c_mod.cfile and c_mod.hfile:
-            self.init_c()
+        self.init_h()
+        self.init_c()
 
     def __repr__(self) -> str:
         return f'<CModuleWriter for {self.c_mod.modname}>'
 
     def write_c_source(self) -> None:
         self.emit_content()
-        if self.c_mod.hfile:
-            self.c_mod.hfile.write(self.tbh.build())
-        if self.c_mod.cfile:
-            self.c_mod.cfile.write(self.tbc.build())
+        self.c_mod.hfile.write(self.tbh.build())
+        self.c_mod.cfile.write(self.tbc.build())
 
     def new_global_var(self, prefix: str) -> str:
         """
@@ -92,7 +85,6 @@ class CModuleWriter:
         return varname
 
     def init_h(self) -> None:
-        assert self.c_mod.hfile is not None
         GUARD = self.c_mod.hfile.purebasename.upper()
         self.tbh.wb(f"""
         #ifndef SPY_{GUARD}_H
@@ -109,7 +101,7 @@ class CModuleWriter:
         self.tbh.wl()
 
         self.tbh.wl('// includes')
-        self.tbh.wl('#include "spy_types.h"')
+        self.tbh.wl('#include "spy_structdefs.h"')
         self.tbh_includes = self.tbh.make_nested_builder()
         self.tbh.wl()
 
@@ -121,11 +113,8 @@ class CModuleWriter:
         self.tbh_globals = self.tbh.make_nested_builder()
         self.tbh.wl()
 
-        # Register the includes builder with the context
-        # (types-related builders are registered by CTypesWriter)
         self.ctx.tbh_includes = self.tbh_includes
 
-        # Close header file
         self.tbh.wl()
         self.tbh.wb("""
         #ifdef __cplusplus
@@ -136,7 +125,6 @@ class CModuleWriter:
         """)
 
     def init_c(self) -> None:
-        assert self.c_mod.hfile is not None
         header_name = self.c_mod.hfile.basename
         self.cffi.emit_include(header_name)
         self.tbc.wb(f"""
@@ -220,7 +208,6 @@ class CModuleWriter:
             self.tbc_globals.wl(f'{c_type} {fqn.c_name} = {{0}};')
 
         else:
-            # struct types are already handled in the header
             raise NotImplementedError('WIP')
 
     def emit_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:

@@ -26,8 +26,8 @@ class CBackend:
     dump_c: bool
     cffi: CFFIWriter
     ninja: Optional[NinjaWriter]
+    c_structdefs: dict[str, CStructDefs]
     c_modules: dict[str, CModule]
-    c_types: list[CStructDefs]
     cfiles: list[py.path.local]
     build_script: Optional[py.path.local]
 
@@ -49,8 +49,8 @@ class CBackend:
         #
         self.cffi = CFFIWriter(outname, config, build_dir)
         self.ninja = None
+        self.c_structdefs = {}
         self.c_modules = {}
-        self.c_types = []
         self.cfiles = [] # generated C files
         self.build_script = None
 
@@ -88,51 +88,47 @@ class CBackend:
         into an FQNConst("aaa::foo").
         """
         bdir = self.build_dir
+        # create a CModule for each non-builtin SPy module
         for modname, w_mod in self.vm.modules_w.items():
-            spyfile = None
-            hfile = None
-            cfile = None
-            if w_mod.filepath is not None:
-                # a non-builtin module
-                spyfile = py.path.local(w_mod.filepath)
-                basename = spyfile.purebasename
-                hfile = bdir.join('src', f'{basename}.h')
-                cfile = bdir.join('src', f'{basename}.c')
+            if w_mod.is_builtin():
+                continue
+            assert w_mod.filepath is not None
+            spyfile = py.path.local(w_mod.filepath)
+            basename = spyfile.purebasename
+            hfile = bdir.join('src', f'{basename}.h')
+            cfile = bdir.join('src', f'{basename}.c')
             c_mod = CModule(
                 modname = modname,
-                is_builtin = w_mod.is_builtin(),
                 spyfile = spyfile,
                 hfile = hfile,
-                hfile_types = None,  # No longer used
                 cfile = cfile,
-                types = [],  # No longer used
                 content = [],
             )
             self.c_modules[modname] = c_mod
 
-        # Collect all types and content
-        all_types: list[tuple[FQN, W_Type]] = []
+        # for now we create a global with all types CStructDefs. Eventually we
+        # want to split them into multiple independent ones
+        self.c_structdefs['globals'] = CStructDefs(
+            hfile = bdir.join('src', 'spy_structdefs.h'),
+            content = []
+        )
+
+        # Put each FQNs into the corresponding CModule or CStructDefs
         for fqn, w_obj in self.vm.globals_w.items():
+            # ignore W_Modules
+            if fqn.is_module():
+                continue
+            # ignore w_objs belonging to a builtin modules, unless they are ptrs
             modname = fqn.modname
             w_mod = self.vm.modules_w[modname]
-            if fqn.is_module():
-                # don't put the module in its own content
-                continue
             if w_mod.filepath is None and not isinstance(w_obj, W_PtrType):
-                # builtin module
                 continue
 
             if isinstance(w_obj, W_Type):
-                all_types.append((fqn, w_obj))
+                self.c_structdefs['globals'].content.append((fqn, w_obj))
             else:
                 self.c_modules[modname].content.append((fqn, w_obj))
 
-        # Create a single CTypesDefs with all types
-        # Structure it to make it easy to split into multiple files later
-        self.c_types.append(CStructDefs(
-            hfile = bdir.join('src', 'spy_types.h'),
-            types = all_types
-        ))
 
     def cwrite(self) -> None:
         """
@@ -140,30 +136,25 @@ class CBackend:
         """
         self.init_c_modules()
 
-        # Write types headers first (e.g., spy_types.h)
-        for c_types in self.c_types:
-            from spy.backend.c.context import Context
-            ctx = Context(self.vm)
-            typesw = CStructWriter(ctx, c_types)
-            typesw.write_types_header()
+        # Emit structdefs.h
+        for c_structdefs in self.c_structdefs.values():
+            cstructwriter = CStructWriter(self.vm, c_structdefs, self.cffi)
+            cstructwriter.write_c_source()
             if self.dump_c:
                 print()
-                print(f'---- {c_types.hfile} ----')
-                print(highlight_C_maybe(c_types.hfile.read()))
+                print(f'---- {c_structdefs.hfile} ----')
+                print(highlight_C_maybe(c_structdefs.hfile.read()))
 
-        # Then write regular module files
-        for modname, c_mod in self.c_modules.items():
-            if c_mod.is_builtin:
-                continue
+        # Emit regular C modules
+        for c_mod in self.c_modules.values():
             cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
             cwriter.write_c_source()
-            # c_mod.cfile can be None for modules which emit only .h
-            if c_mod.cfile is not None:
-                self.cfiles.append(c_mod.cfile)
-                if self.dump_c:
-                    print()
-                    print(f'---- {c_mod.cfile} ----')
-                    print(highlight_C_maybe(c_mod.cfile.read()))
+            self.cfiles.append(c_mod.cfile)
+            if self.dump_c:
+                print()
+                print(f'---- {c_mod.cfile} ----')
+                print(highlight_C_maybe(c_mod.cfile.read()))
+
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], 'call .cwrite() first'
@@ -197,8 +188,6 @@ class CBackend:
         #    2. red variables (who are stored inside a W_Cell)
         wasm_exports = []
         for modname, c_mod in self.c_modules.items():
-            if c_mod.is_builtin:
-                continue
             wasm_exports += [
                 fqn.c_name
                 for fqn, w_obj in c_mod.content
