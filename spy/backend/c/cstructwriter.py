@@ -65,7 +65,7 @@ class CStructWriter:
         self.tbh.wl()
 
         self.tbh.wl('// includes')
-        self.tbh_types_includes = self.tbh.make_nested_builder()
+        self.tbh_includes = self.tbh.make_nested_builder()
         self.tbh.wl()
 
         self.tbh.wl('// forward type declarations')
@@ -80,13 +80,8 @@ class CStructWriter:
         self.tbh_ptrs_def = self.tbh.make_nested_builder()
         self.tbh.wl()
 
-        # Register the builders with the context
-        self.ctx.tbh_includes = self.tbh_types_includes
-        self.ctx.tbh_fwdecl = self.tbh_fwdecl
-        self.ctx.tbh_ptrs_def = self.tbh_ptrs_def
-        self.ctx.tbh_structs = self.tbh_structs
+        self.ctx.tbh_includes = self.tbh_includes
 
-        # Close header file
         self.tbh.wl()
         self.tbh.wb("""
         #ifdef __cplusplus

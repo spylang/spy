@@ -60,9 +60,6 @@ class Context:
     """
     vm: SPyVM
     tbh_includes: TextBuilder
-    tbh_types_decl: TextBuilder
-    tbh_ptrs_def: TextBuilder
-    tbh_types_def: TextBuilder
     seen_modules: set[str]
     _d: dict[W_Type, C_Type]
 
@@ -71,9 +68,6 @@ class Context:
         self.seen_modules = set()
         # set by CModuleWriter.emit_header
         self.tbh_includes = None   # type: ignore
-        self.tbh_types_decl = None # type: ignore
-        self.tbh_ptrs_def = None   # type: ignore
-        self.tbh_types_def = None  # type: ignore
         self._d = {}
         self._d[TYPES.w_NoneType] = C_Type('void')
         self._d[B.w_i8] = C_Type('int8_t')
@@ -129,19 +123,16 @@ class Context:
         return C_Function(name, c_params, c_restype)
 
     def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
-        self.add_include_maybe(w_ptrtype.w_itemtype.fqn)
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         self._d[w_ptrtype] = c_ptrtype
         return c_ptrtype
 
     def new_struct_type(self, w_st: W_StructType) -> C_Type:
-        self.add_include_maybe(w_st.fqn)
         c_struct_type = C_Type(w_st.fqn.c_name)
         self._d[w_st] = c_struct_type
         return c_struct_type
 
     def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
-        self.add_include_maybe(w_hltype.fqn)
         c_hltype = C_Type(w_hltype.fqn.c_name)
         self._d[w_hltype] = c_hltype
         return c_hltype
