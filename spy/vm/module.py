@@ -42,22 +42,23 @@ class W_Module(W_Object):
 
     @builtin_method("__getattribute__")
     @staticmethod
-    def w_getattribute(vm: "SPyVM", w_mod: "W_Module",
-                       w_attr: W_Str) -> W_Dynamic:
+    def w_getattribute(vm: "SPyVM", w_mod: "W_Module", w_attr: W_Str) -> W_Dynamic:
         attr = vm.unwrap_str(w_attr)
         return w_mod.getattr(attr)
 
     @builtin_method("__setattr__")
     @staticmethod
-    def w_setattr(vm: "SPyVM", w_mod: "W_Module", w_attr:
-                  W_Str, w_val: W_Dynamic) -> None:
+    def w_setattr(
+        vm: "SPyVM", w_mod: "W_Module", w_attr: W_Str, w_val: W_Dynamic
+    ) -> None:
         attr = vm.unwrap_str(w_attr)
         w_mod.setattr(attr, w_val)
 
     @builtin_method("__call_method__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CALL_METHOD(vm: "SPyVM", wam_mod: W_MetaArg, wam_name: W_MetaArg,
-                      *args_wam: W_MetaArg) -> W_OpSpec:
+    def w_CALL_METHOD(
+        vm: "SPyVM", wam_mod: W_MetaArg, wam_name: W_MetaArg, *args_wam: W_MetaArg
+    ) -> W_OpSpec:
         if wam_mod.color != "blue":
             raise WIP("__call_method__ on red modules")
 
@@ -72,7 +73,6 @@ class W_Module(W_Object):
             return W_OpSpec(w_func, list(args_wam))
         else:
             raise WIP("trying to call a non-function (we should emit a better error)")
-
 
     # ==== public interp-level API ====
 

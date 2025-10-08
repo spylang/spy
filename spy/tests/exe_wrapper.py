@@ -6,7 +6,6 @@ from spy.vm.vm import SPyVM
 
 
 class ExeWrapper:
-
     def __init__(self, vm: SPyVM, modname: str, f: py.path.local) -> None:
         # vm and modname are ignored
         self.f = f

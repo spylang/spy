@@ -15,6 +15,7 @@ from spy.vm.str import W_Str
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+
 @BUILTINS.builtin_type("Exception")
 class W_Exception(W_Object):
     message: str
@@ -73,8 +74,8 @@ class W_Exception(W_Object):
             assert issubclass(pyclass, W_Exception)
             message = vm.unwrap_str(w_message)
             return pyclass(message)
-        return W_OpSpec(w_new, [wam_cls] + _args_wam)
 
+        return W_OpSpec(w_new, [wam_cls] + _args_wam)
 
     @builtin_method("__eq__", color="blue", kind="metafunc")
     @staticmethod
@@ -90,8 +91,7 @@ class W_Exception(W_Object):
 
         @vm.register_builtin_func(w_atype.fqn)
         def w_eq(vm: "SPyVM", w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
-            res =  (w_e1.message == w_e2.message and
-                    w_e1.annotations == w_e2.annotations)
+            res = w_e1.message == w_e2.message and w_e1.annotations == w_e2.annotations
             return vm.wrap(bool(res))
 
         return W_OpSpec(w_eq)
@@ -110,8 +110,9 @@ class W_Exception(W_Object):
 
         @vm.register_builtin_func(w_atype.fqn)
         def w_ne(vm: "SPyVM", w_e1: W_Exception, w_e2: W_Exception) -> W_Bool:
-            res = not (w_e1.message == w_e2.message and
-                       w_e1.annotations == w_e2.annotations)
+            res = not (
+                w_e1.message == w_e2.message and w_e1.annotations == w_e2.annotations
+            )
             return vm.wrap(bool(res))
 
         return W_OpSpec(w_ne)
@@ -125,6 +126,7 @@ class W_StaticError(W_Exception):
 
     All the other exceptions are immediately reported and abort redshiting.
     """
+
     pass
 
 
@@ -133,47 +135,59 @@ class W_TypeError(W_StaticError):
     """
     Note that TypeError is a subclass of StaticError
     """
+
     pass
+
 
 @BUILTINS.builtin_type("ValueError")
 class W_ValueError(W_Exception):
     pass
 
+
 @BUILTINS.builtin_type("IndexError")
 class W_IndexError(W_Exception):
     pass
+
 
 @BUILTINS.builtin_type("ParseError")
 class W_ParseError(W_Exception):
     pass
 
+
 @BUILTINS.builtin_type("ImportError")
 class W_ImportError(W_Exception):
     pass
+
 
 @BUILTINS.builtin_type("ScopeError")
 class W_ScopeError(W_Exception):
     pass
 
+
 @BUILTINS.builtin_type("NameError")
 class W_NameError(W_Exception):
     pass
+
 
 @BUILTINS.builtin_type("PanicError")
 class W_PanicError(W_Exception):
     pass
 
+
 @BUILTINS.builtin_type("ZeroDivisionError")
 class W_ZeroDivisionError(W_Exception):
     pass
+
 
 @BUILTINS.builtin_type("AssertionError")
 class W_AssertionError(W_Exception):
     pass
 
+
 @BUILTINS.builtin_type("KeyError")
 class W_KeyError(W_Exception):
     pass
+
 
 @BUILTINS.builtin_type("WIP")
 class W_WIP(W_Exception):

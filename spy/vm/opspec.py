@@ -83,6 +83,7 @@ class W_MetaArg(W_Object):
     Wrapped Argument Meta), because it's "quicker" to pronounce that the more
     correct wma_xxx.
     """
+
     __spy_storage_category__ = "value"
 
     color: Color
@@ -91,15 +92,16 @@ class W_MetaArg(W_Object):
     _w_val: Optional[W_Object]
     sym: Optional[Symbol]
 
-    def __init__(self,
-                 vm: "SPyVM",
-                 color: Color,
-                 w_static_T: W_Type,
-                 w_val: Optional[W_Object],
-                 loc: Loc,
-                 *,
-                 sym: Optional[Symbol] = None,
-                 ) -> None:
+    def __init__(
+        self,
+        vm: "SPyVM",
+        color: Color,
+        w_static_T: W_Type,
+        w_val: Optional[W_Object],
+        loc: Loc,
+        *,
+        sym: Optional[Symbol] = None,
+    ) -> None:
         if color == "blue":
             assert w_val is not None
             if w_static_T is B.w_dynamic:
@@ -128,10 +130,7 @@ class W_MetaArg(W_Object):
     @builtin_method("__new__")
     @staticmethod
     def w_new(
-            vm: "SPyVM",
-            w_color: W_Object,
-            w_static_T: W_Type,
-            w_val: W_Object
+        vm: "SPyVM", w_color: W_Object, w_static_T: W_Type, w_val: W_Object
     ) -> "W_MetaArg":
         """
         Create a new MetaArg from SPy code:
@@ -185,8 +184,9 @@ class W_MetaArg(W_Object):
     def as_red(self, vm: "SPyVM") -> "W_MetaArg":
         if self.color == "red":
             return self
-        return W_MetaArg(vm, "red", self.w_static_T, self._w_val, self.loc,
-                       sym=self.sym)
+        return W_MetaArg(
+            vm, "red", self.w_static_T, self._w_val, self.loc, sym=self.sym
+        )
 
     @property
     def w_val(self) -> W_Object:
@@ -205,6 +205,7 @@ class W_MetaArg(W_Object):
         Raise SPyError(W_TypeError) if not.
         """
         from spy.vm.modules.operator.convop import CONVERT_maybe
+
         if self.color != "blue":
             raise SPyError.simple(
                 "W_TypeError",
@@ -230,17 +231,20 @@ class W_MetaArg(W_Object):
 
     def blue_unwrap_str(self, vm: "SPyVM") -> str:
         from spy.vm.b import B
+
         self.blue_ensure(vm, B.w_str)
         assert self.w_val is not None
         return vm.unwrap_str(self.w_val)
 
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CONVERT_FROM(vm: "SPyVM", wam_T: "W_MetaArg",
-                       wam_x: "W_MetaArg") -> "W_OpSpec":
+    def w_CONVERT_FROM(
+        vm: "SPyVM", wam_T: "W_MetaArg", wam_x: "W_MetaArg"
+    ) -> "W_OpSpec":
         w_T = wam_T.w_blueval
         assert isinstance(w_T, W_Type)
         if vm.issubclass(w_T, B.w_type):
+
             @vm.register_builtin_func(W_MetaArg._w.fqn, "from_type")
             def w_from_type(vm: "SPyVM", w_type: W_Type) -> W_MetaArg:
                 return W_MetaArg(
@@ -248,8 +252,9 @@ class W_MetaArg(W_Object):
                     color="red",
                     w_static_T=w_type,
                     w_val=None,
-                    loc=Loc.here()  # w_from_type
+                    loc=Loc.here(),  # w_from_type
                 )
+
             return W_OpSpec(w_from_type)
         return W_OpSpec.NULL
 
@@ -296,12 +301,13 @@ class W_OpSpec(W_Object):
     is_direct_call: bool
 
     # default constructor, for "NULL", "simple" and "complex" cases
-    def __init__(self,
-                 w_func: Optional[W_Func],
-                 args_wam: Optional[list[W_MetaArg]] = None,
-                 *,
-                 is_direct_call: bool = False,
-                ) -> None:
+    def __init__(
+        self,
+        w_func: Optional[W_Func],
+        args_wam: Optional[list[W_MetaArg]] = None,
+        *,
+        is_direct_call: bool = False,
+    ) -> None:
         self._w_func = w_func
         self._args_wam = args_wam
         self.is_direct_call = is_direct_call
@@ -364,19 +370,23 @@ class W_OpSpec(W_Object):
             @vm.register_builtin_func(w_T.fqn, "new1")
             def w_new1(vm: "SPyVM", w_cls: W_Type, w_func: W_Func) -> W_OpSpec:
                 return W_OpSpec(w_func)
+
             return W_OpSpec(w_new1)
 
         elif len(args_wam) == 2:
             # OpSpec(func, args) case
             @vm.register_builtin_func(w_T.fqn, "new2")
-            def w_new2(vm: "SPyVM", w_cls: W_Type,
-                       w_func: W_Func, w_args: W_MetaArgList) -> W_OpSpec:
+            def w_new2(
+                vm: "SPyVM", w_cls: W_Type, w_func: W_Func, w_args: W_MetaArgList
+            ) -> W_OpSpec:
                 # Convert from applevel w_args into interp-level args_w
                 args_w = w_args.items_w[:]
                 return W_OpSpec(w_func, args_w)
+
             return W_OpSpec(w_new2)
         else:
             return W_OpSpec.NULL
+
 
 # make W_OpSpec.NULL available also at applevel, thanks to builtin_class_attr
 W_OpSpec.NULL = builtin_class_attr("NULL", W_OpSpec(None))  # type: ignore

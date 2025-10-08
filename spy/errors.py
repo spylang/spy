@@ -7,6 +7,7 @@ from spy.location import Loc
 if TYPE_CHECKING:
     from spy.vm.exc import W_Exception
 
+
 def get_pyclass(etype: str) -> type["W_Exception"]:
     """
     Perform a lazy lookup of app-level exception classes.
@@ -15,6 +16,7 @@ def get_pyclass(etype: str) -> type["W_Exception"]:
         get_pyclass('W_TypeError') --> spy.vm.exc.W_TypeError
     """
     import spy.vm.exc
+
     assert etype.startswith("W_")
     return getattr(spy.vm.exc, etype)
 
@@ -30,8 +32,7 @@ class SPyError(Exception):
         super().__init__(message)
 
     @classmethod
-    def simple(cls, etype: str, primary: str,
-               secondary: str,loc: Loc) -> "SPyError":
+    def simple(cls, etype: str, primary: str, secondary: str, loc: Loc) -> "SPyError":
         err = cls(etype, primary)
         err.add("error", secondary, loc)
         return err
@@ -57,12 +58,13 @@ class SPyError(Exception):
 
     @contextmanager
     @staticmethod
-    def raises(etype: str, match: Optional[str]=None) -> Any:
+    def raises(etype: str, match: Optional[str] = None) -> Any:
         """
         Equivalent to pytest.raises(SPyError, ...), but also checks the
         etype.
         """
         import pytest
+
         with pytest.raises(SPyError, match=match) as excinfo:
             yield excinfo
         exc = excinfo.value

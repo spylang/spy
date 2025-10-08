@@ -15,10 +15,11 @@ class TestInterop:
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         self.foo_spy = tmpdir.join("foo.spy")
-        self.foo_spy.write(textwrap.dedent("""
+        src = """
         def add(x: i32, y: i32) -> i32:
             return x + y
-        """))
+        """
+        self.foo_spy.write(textwrap.dedent(src))
 
     def test_redshift(self):
         vm, w_mod = interop.redshift(str(self.foo_spy))

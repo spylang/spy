@@ -28,6 +28,7 @@ CLOSURE = tuple[Namespace, ...]
 
 FuncParamKind = Literal["simple", "var_positional"]
 
+
 @dataclass(frozen=True, eq=True)
 class FuncParam:
     """
@@ -35,6 +36,7 @@ class FuncParam:
 
     Loosely modeled against inspect.Parameter.
     """
+
     w_T: W_Type
     kind: FuncParamKind
 
@@ -67,8 +69,9 @@ class FuncParam:
 # happily creates prebuilt W_BuiltinFunc and W_Type which are shared among
 # different VMs.
 #
-_KEY = tuple[FQN, tuple[FuncParam,...], W_Type]
+_KEY = tuple[FQN, tuple[FuncParam, ...], W_Type]
 _CACHE: dict[_KEY, "W_FuncType"] = {}
+
 
 @dataclass(repr=False, eq=False)
 class W_FuncType(W_Type):
@@ -83,7 +86,7 @@ class W_FuncType(W_Type):
         w_restype: W_Type,
         *,
         color: Color = "red",
-        kind: FuncKind = "plain"
+        kind: FuncKind = "plain",
     ) -> "W_FuncType":
         # build an artificial FQN for the functype.
         # E.g. for 'def(i32, i32) -> bool', the FQN looks like this:
@@ -113,7 +116,7 @@ class W_FuncType(W_Type):
         w_functype.color = color
         w_functype.kind = kind
 
-        #print(fqn.human_name)
+        # print(fqn.human_name)
         _CACHE[key] = w_functype
         return w_functype
 
@@ -185,9 +188,11 @@ class W_FuncType(W_Type):
             for param in self.params:
                 yield param
 
+
 # we cannot use @builtin_type because of circular import issues. Let's build
 # the app-level type manually
 W_FuncType._w = W_Type.declare(FQN("builtins::functype"))
+
 
 class W_Func(W_Object):
     w_functype: W_FuncType
@@ -213,8 +218,7 @@ class W_Func(W_Object):
         this info on the w_functype.
         """
         # this is a hack, but good enough to constant-fold arithmetic ops
-        return (self.fqn.modname == "operator"
-                and self.fqn.symbol_name != "raise")
+        return self.fqn.modname == "operator" and self.fqn.symbol_name != "raise"
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
         return self.w_functype
@@ -241,24 +245,27 @@ class W_Func(W_Object):
     # callop.w_CALL and itemop.w_GETITEM, depending on whether w_functype.kind
     # is 'plain' or 'generic'.
     @staticmethod
-    def op_CALL(vm: "SPyVM", wam_func: "W_MetaArg",
-                *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def op_CALL(
+        vm: "SPyVM", wam_func: "W_MetaArg", *args_wam: "W_MetaArg"
+    ) -> "W_OpSpec":
         """
         Return an OpSpec which directly calls this function.
         """
         from spy.vm.opspec import W_OpSpec
+
         w_func = wam_func.w_blueval
         assert isinstance(w_func, W_Func)
         assert w_func.w_functype.kind != "metafunc"
         return W_OpSpec(
             w_func,
             list(args_wam),
-            is_direct_call = True,
+            is_direct_call=True,
         )
 
     @staticmethod
-    def op_METACALL(vm: "SPyVM", wam_func: "W_MetaArg",
-                    *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def op_METACALL(
+        vm: "SPyVM", wam_func: "W_MetaArg", *args_wam: "W_MetaArg"
+    ) -> "W_OpSpec":
         """
         Call this function and use the return value as the OpSpec
         """
@@ -280,16 +287,16 @@ class W_Func(W_Object):
             vm,
             w_meta_opspec,
             meta_args_wam,
-            dispatch = "single",
-            errmsg = "cannot call objects of type `{0}`"
+            dispatch="single",
+            errmsg="cannot call objects of type `{0}`",
         )
         w_opspec = w_meta_opimpl.execute(vm, meta_args_wam)
 
         if not isinstance(w_opspec, W_OpSpec):
             w_T = vm.dynamic_type(w_opspec)
             msg = (
-                "wrong metafunc return type: expected `operator::OpSpec`, " +
-                f"got `{w_T.fqn.human_name}`"
+                "wrong metafunc return type: expected `operator::OpSpec`, "
+                + f"got `{w_T.fqn.human_name}`"
             )
             err = SPyError("W_TypeError", msg)
             err.add("error", "this is a metafunc", wam_func.loc)
@@ -319,14 +326,15 @@ class W_ASTFunc(W_Func):
     # mistake).
     w_redshifted_into: Optional["W_ASTFunc"]
 
-    def __init__(self,
-                 w_functype: W_FuncType,
-                 fqn: FQN,
-                 funcdef: ast.FuncDef,
-                 closure: tuple[Namespace, ...],
-                 *,
-                 locals_types_w: Optional[dict[str, W_Type]] = None
-                 ) -> None:
+    def __init__(
+        self,
+        w_functype: W_FuncType,
+        fqn: FQN,
+        funcdef: ast.FuncDef,
+        closure: tuple[Namespace, ...],
+        *,
+        locals_types_w: Optional[dict[str, W_Type]] = None,
+    ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
         self.def_loc = funcdef.prototype_loc
@@ -363,6 +371,7 @@ class W_ASTFunc(W_Func):
 
     def raw_call(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.astframe import ASTFrame
+
         frame = ASTFrame(vm, self, args_w)
         return frame.run(args_w)
 
@@ -372,10 +381,10 @@ class W_BuiltinFunc(W_Func):
     Builtin functions are implemented by calling an interp-level function
     (written in Python).
     """
+
     pyfunc: Callable
 
-    def __init__(self, w_functype: W_FuncType, fqn: FQN,
-                 pyfunc: Callable) -> None:
+    def __init__(self, w_functype: W_FuncType, fqn: FQN, pyfunc: Callable) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
         self.def_loc = Loc.from_pyfunc(pyfunc)
@@ -388,6 +397,7 @@ class W_BuiltinFunc(W_Func):
 
     def raw_call(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
         from spy.vm.b import TYPES, B
+
         w_res = self._pyfunc(vm, *args_w)
         if w_res is None and self.w_functype.w_restype is TYPES.w_NoneType:
             return vm.wrap(None)

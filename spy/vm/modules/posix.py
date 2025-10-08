@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 POSIX = ModuleRegistry("posix")
 
+
 @POSIX.builtin_type("TerminalSize")
 class W_TerminalSize(W_Object):
     __spy_storage_category__ = "value"
@@ -29,9 +30,11 @@ class W_TerminalSize(W_Object):
     def spy_key(self, vm: "SPyVM") -> tuple:
         return ("TerminalSize", self.w_columns.value, self.w_lines.value)
 
+
 @POSIX.builtin_func
 def w_get_terminal_size(vm: "SPyVM") -> W_TerminalSize:
     import os
+
     try:
         size = os.get_terminal_size()
         return W_TerminalSize(size.columns, size.lines)

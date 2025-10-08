@@ -35,7 +35,9 @@ class TextBuilder:
         self.level -= 1
 
     @contextmanager
-    def color(self, color: Optional[str] = None, *, bg: Optional[str] = None) -> Iterator[None]:
+    def color(
+        self, color: Optional[str] = None, *, bg: Optional[str] = None
+    ) -> Iterator[None]:
         """
         Context manager to set text color for all writes within the block.
 
@@ -84,19 +86,21 @@ class TextBuilder:
         See also test_detached_indent.
         """
         if self.lines[-1] != "":
-            raise ValueError("attach_nested_builder can be called only "
-                             "after a newline")
+            raise ValueError("attach_nested_builder can be called only after a newline")
         nested.level = self.level
         self.lines[-1] = nested
         self.lines.append("")
 
-    def write(self, s: str, *, color: Optional[str] = None,
-              bg: Optional[str] = None) -> None:
+    def write(
+        self, s: str, *, color: Optional[str] = None, bg: Optional[str] = None
+    ) -> None:
         assert "\n" not in s
         assert isinstance(self.lines[-1], str)
 
         # Get current color context and override with any explicit values
-        current_color, current_bg = self.color_level[-1] if self.color_level else (None, None)
+        current_color, current_bg = (
+            self.color_level[-1] if self.color_level else (None, None)
+        )
         final_color = color if color is not None else current_color
         final_bg = bg if bg is not None else current_bg
         s = self.fmt.set(final_color, s, bg=final_bg)
@@ -107,13 +111,15 @@ class TextBuilder:
             self.lines[-1] = spaces
         self.lines[-1] += s
 
-    def writeline(self, s: str = "", *, color: Optional[str] = None,
-                  bg: Optional[str] = None) -> None:
+    def writeline(
+        self, s: str = "", *, color: Optional[str] = None, bg: Optional[str] = None
+    ) -> None:
         self.write(s, color=color, bg=bg)
         self.lines.append("")
 
-    def writeblock(self, s: str, *, color: Optional[str] = None,
-                   bg: Optional[str] = None) -> None:
+    def writeblock(
+        self, s: str, *, color: Optional[str] = None, bg: Optional[str] = None
+    ) -> None:
         s = textwrap.dedent(s).strip()
         for line in s.splitlines():
             self.writeline(line, color=color, bg=bg)
@@ -129,7 +135,7 @@ class TextBuilder:
             if isinstance(line, TextBuilder):
                 line = line.build()
                 if line == "":
-                    continue # nothing to do
+                    continue  # nothing to do
                 else:
                     assert line.endswith("\n")
                     line = line[:-1]
@@ -202,11 +208,14 @@ class ColorFormatter:
                 codes.append(bg_code)
             except AttributeError:
                 # If the attribute doesn't exist, try using the raw value
-                codes.append(bg if bg.isdigit() else f"4{bg[0]}" if len(bg) == 1 else bg)
+                codes.append(
+                    bg if bg.isdigit() else f"4{bg[0]}" if len(bg) == 1 else bg
+                )
 
         # Join all codes with semicolons
         code_str = ";".join(c for c in codes if c)
         return f"\x1b[{code_str}m{s}\x1b[00m"
+
 
 # create a global instance, so that you can just do Color.set('red', ....)
 Color = ColorFormatter(use_colors=True)
@@ -217,6 +226,7 @@ Color = ColorFormatter(use_colors=True)
 
 # run it with python -m spy.textbuilder
 
+
 def main() -> None:
     print("Visual test of ColorFormatter functionality")
     print("==========================================")
@@ -224,16 +234,46 @@ def main() -> None:
     # Test basic foreground colors
     fmt = ColorFormatter(use_colors=True)
     print("\nForeground colors:")
-    for color in ["black", "darkred", "darkgreen", "brown", "darkblue",
-                  "purple", "teal", "lightgray", "darkgray", "red", "green",
-                  "yellow", "blue", "fuchsia", "turquoise", "white"]:
+    for color in [
+        "black",
+        "darkred",
+        "darkgreen",
+        "brown",
+        "darkblue",
+        "purple",
+        "teal",
+        "lightgray",
+        "darkgray",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "fuchsia",
+        "turquoise",
+        "white",
+    ]:
         print(f"{color:10}: {fmt.set(color, f'This is {color} text')}")
 
     # Test background colors
     print("\nBackground colors:")
-    for bg in ["black", "darkred", "darkgreen", "brown", "darkblue", "purple",
-               "teal", "lightgray", "darkgray", "red", "green", "yellow",
-               "blue", "fuchsia", "turquoise", "white"]:
+    for bg in [
+        "black",
+        "darkred",
+        "darkgreen",
+        "brown",
+        "darkblue",
+        "purple",
+        "teal",
+        "lightgray",
+        "darkgray",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "fuchsia",
+        "turquoise",
+        "white",
+    ]:
         print(f"{bg:10}: {fmt.set(None, f'This has {bg} background', bg=bg)}")
 
     # Test combinations
@@ -243,10 +283,12 @@ def main() -> None:
         ("white", "darkblue"),
         ("yellow", "darkred"),
         ("black", "green"),
-        ("blue", "yellow")
+        ("blue", "yellow"),
     ]
     for fg, bg in combinations:
-        print(f"{fg:6} on {bg:8}: {fmt.set(fg, f'This is {fg} text on {bg} background', bg=bg)}")
+        print(
+            f"{fg:6} on {bg:8}: {fmt.set(fg, f'This is {fg} text on {bg} background', bg=bg)}"
+        )
 
     # Test TextBuilder with colors
     print("\nTextBuilder with colors:")
@@ -255,11 +297,12 @@ def main() -> None:
     b.wl("Red text", color="red")
     b.wl("Blue background", bg="blue")
     b.wl("Red on blue", color="red", bg="blue")
-    b.wb("""
-        This is a block
-        with multiple lines
-        in green on dark red
-    """, color="green", bg="darkred")
+    src = """
+    This is a block
+    with multiple lines
+    in green on dark red
+    """
+    b.wb(src, color="green", bg="darkred")
 
     # Test color contextmanager
     print("\nTextBuilder with color contextmanager:")
@@ -283,6 +326,7 @@ def main() -> None:
     print(f"1. Red text: {fmt.set('red', 'hello')}")
     print(f"2. Red on blue: {fmt.set('red', 'hello', bg='blue')}")
     print(f"3. Blue background only: {fmt.set(None, 'hello', bg='blue')}")
+
 
 if __name__ == "__main__":
     main()

@@ -18,6 +18,7 @@ FQN_FORMAT = Literal["full", "short"]
 # Regex pattern for valid identifiers (alphanumeric + underscore)
 VALID_IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
 
+
 class SPyBackend:
     """
     SPy backend: convert an AST back to SPy code.
@@ -32,9 +33,9 @@ class SPyBackend:
         self.w = self.out.w
         self.wl = self.out.wl
         # these are initialized by dump_w_func
-        self.w_func: W_ASTFunc = None       # type: ignore
-        self.vars_declared: set[str] = None # type: ignore
-        self.modname = "" # set by dump_mod
+        self.w_func: W_ASTFunc = None  # type: ignore
+        self.vars_declared: set[str] = None  # type: ignore
+        self.modname = ""  # set by dump_mod
         self.scope_stack: list[SymTable] = []
 
     def dump_mod(self, modname: str) -> str:
@@ -58,26 +59,32 @@ class SPyBackend:
         w_mod = self.vm.modules_w[modname]
         for attr, w_obj in w_mod.items_w():
             expected_fqn = FQN(modname).join(attr)
-            if (isinstance(w_obj, W_ASTFunc) and
-                  w_obj.color == "red" and
-                  w_obj.fqn != expected_fqn):
+            if (
+                isinstance(w_obj, W_ASTFunc)
+                and w_obj.color == "red"
+                and w_obj.fqn != expected_fqn
+            ):
                 self.out.wl(f"{attr} = `{w_obj.fqn}`")
         self.out.wl()
 
         # part 2: all the other FQNs
         for fqn, w_obj in self.vm.fqns_by_modname(modname):
-            if (isinstance(w_obj, W_ASTFunc) and
-                w_obj.color == "red" and
-                w_obj.fqn == fqn):
+            if (
+                isinstance(w_obj, W_ASTFunc)
+                and w_obj.color == "red"
+                and w_obj.fqn == fqn
+            ):
                 self.dump_w_func(fqn, w_obj)
                 self.out.wl()
 
         return self.out.build()
 
     def is_module_global(self, fqn: FQN) -> bool:
-        return (len(fqn.parts) == 2 and
-                fqn.modname == self.modname
-                and fqn.parts[-1].suffix == "")
+        return (
+            len(fqn.parts) == 2
+            and fqn.modname == self.modname
+            and fqn.parts[-1].suffix == ""
+        )
 
     def dump_w_func(self, fqn: FQN, w_func: W_ASTFunc) -> None:
         if self.fqn_format == "short" and self.is_module_global(fqn):
@@ -90,7 +97,7 @@ class SPyBackend:
         w_functype = w_func.w_functype
         params = self.fmt_params(w_func)
         if w_functype.w_restype is TYPES.w_NoneType and self.fqn_format == "short":
-            ret = "None" # special case: emit '-> None' instead of '-> NoneType'
+            ret = "None"  # special case: emit '-> None' instead of '-> NoneType'
         else:
             ret = self.fmt_w_obj(w_functype.w_restype)
         self.scope_stack.append(w_func.funcdef.symtable)
@@ -132,7 +139,7 @@ class SPyBackend:
         if self.fqn_format == "full":
             name = str(fqn)
         elif self.fqn_format == "short":
-            name = fqn.human_name # don't show builtins::
+            name = fqn.human_name  # don't show builtins::
         else:
             assert False
         #
@@ -162,7 +169,11 @@ class SPyBackend:
     def emit_declare_var_maybe(self, varname: str) -> None:
         symtable = self.scope_stack[-1]
         sym = symtable.lookup(varname)
-        if self.w_func.redshifted and sym.level == 0 and varname not in self.vars_declared:
+        if (
+            self.w_func.redshifted
+            and sym.level == 0
+            and varname not in self.vars_declared
+        ):
             assert self.w_func.locals_types_w is not None
             w_T = self.w_func.locals_types_w[varname]
             t = self.fmt_w_obj(w_T)
@@ -313,7 +324,7 @@ class SPyBackend:
         # blue exceptions, and so all of them are turned into FQNConst.
         w_val = self.vm.lookup_global(const.fqn)
         if isinstance(w_val, W_Exception):
-            t = self.vm.dynamic_type(w_val).fqn.symbol_name # e.g. 'Exception'
+            t = self.vm.dynamic_type(w_val).fqn.symbol_name  # e.g. 'Exception'
             m = w_val.message
             return f"{t}({m!r})"
         return self.fmt_fqn(const.fqn)

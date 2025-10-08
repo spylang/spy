@@ -11,29 +11,35 @@ from spy.vm.object import W_Object
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+
 # simulate Algebraic Data Type
 class ArgSpec:
     Arg: ClassVar[type["Arg"]]
     Const: ClassVar[type["Const"]]
     Convert: ClassVar[type["Convert"]]
 
+
 @dataclass
 class Arg(ArgSpec):
     i: int
+
 
 @dataclass
 class Const(ArgSpec):
     w_const: W_Object
     loc: Loc
 
+
 @dataclass
 class Convert(ArgSpec):
     w_conv: W_Func
     arg: ArgSpec
 
-ArgSpec.Arg = Arg          # type: ignore
-ArgSpec.Const = Const      # type: ignore
+
+ArgSpec.Arg = Arg  # type: ignore
+ArgSpec.Const = Const  # type: ignore
 ArgSpec.Convert = Convert  # type: ignore
+
 
 @OPERATOR.builtin_type("OpImpl")
 class W_OpImpl(W_Object):
@@ -73,8 +79,12 @@ class W_OpImpl(W_Object):
     _args: Optional[list[ArgSpec]]
     _w_const: Optional[W_Object]
 
-    def __init__(self, w_functype: W_FuncType, w_func: Optional[W_Func],
-                 args: Optional[list[ArgSpec]]) -> None:
+    def __init__(
+        self,
+        w_functype: W_FuncType,
+        w_func: Optional[W_Func],
+        args: Optional[list[ArgSpec]],
+    ) -> None:
         self.w_functype = w_functype
         self._w_func = w_func
         self._args = args
@@ -150,6 +160,7 @@ class W_OpImpl(W_Object):
         Return a human-readable representation of the OpImpl
         """
         argnames = [f"v{i}" for i, p in enumerate(self.w_functype.params)]
+
         def fmt(spec: ArgSpec) -> str:
             if isinstance(spec, Arg):
                 arg = argnames[spec.i]
@@ -173,10 +184,7 @@ class W_OpImpl(W_Object):
 
     def func_signature(self) -> str:
         w_ft = self.w_functype
-        params = [
-            f"v{i}: {p.w_T.fqn.human_name}"
-            for i, p in enumerate(w_ft.params)
-        ]
+        params = [f"v{i}: {p.w_T.fqn.human_name}" for i, p in enumerate(w_ft.params)]
         str_params = ", ".join(params)
         resname = w_ft.w_restype.fqn.human_name
         s = f"def({str_params}) -> {resname}"

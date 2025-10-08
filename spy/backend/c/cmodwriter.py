@@ -1,6 +1,6 @@
 import itertools
 from dataclasses import dataclass
-from typing import Iterable, Optional
+from typing import Optional
 
 import py.path
 
@@ -18,7 +18,6 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
 from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
-
 
 
 @dataclass

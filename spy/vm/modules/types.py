@@ -26,6 +26,7 @@ class W_Loc(W_Object):
     """
     Wrapped version of Loc.
     """
+
     __spy_storage_category__ = "value"
 
     def __init__(self, loc: Loc) -> None:
@@ -41,7 +42,7 @@ class W_LiftedType(W_Type):
 
     def define_from_classbody(self, vm: "SPyVM", body: ClassBody) -> None:
         super().define(W_LiftedObject)
-        assert set(body.fields_w.keys()) == {"__ll__"} # XXX raise proper exc
+        assert set(body.fields_w.keys()) == {"__ll__"}  # XXX raise proper exc
         self.w_lltype = body.fields_w["__ll__"].w_T
         for key, w_obj in body.dict_w.items():
             assert key not in self.dict_w, "need to think what to do"
@@ -59,8 +60,10 @@ class UnwrappedLiftedObject:
     Return value of vm.unwrap(w_some_lifted_object).
     Mostly useful for tests.
     """
+
     w_hltype: W_LiftedType
     llval: Any
+
 
 class W_LiftedObject(W_Object):
     w_hltype: W_LiftedType  # high level type
@@ -97,8 +100,8 @@ class W_LiftedObject(W_Object):
         def w_lift(vm: "SPyVM", w_ll: LL) -> HL:
             assert isinstance(w_hltype, W_LiftedType)
             return W_LiftedObject(w_hltype, w_ll)
-        return W_OpSpec(w_lift, [wam_from])
 
+        return W_OpSpec(w_lift, [wam_from])
 
     @builtin_property("__ll__", color="blue", kind="metafunc")
     @staticmethod
@@ -110,4 +113,5 @@ class W_LiftedObject(W_Object):
         @vm.register_builtin_func(w_hltype.fqn, "__unlift__")
         def w_unlift(vm: "SPyVM", w_hl: HL) -> LL:
             return w_hl.w_ll
+
         return W_OpSpec(w_unlift, [wam_hl])

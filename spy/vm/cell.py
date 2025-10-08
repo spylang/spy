@@ -7,6 +7,7 @@ from spy.vm.object import W_Object
 if TYPE_CHECKING:
     pass
 
+
 @TYPES.builtin_type("Cell")
 class W_Cell(W_Object):
     """

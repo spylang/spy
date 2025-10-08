@@ -15,6 +15,7 @@ E.g.:
 
 will call w_dynamic_add as long as one of the two operands is 'dynamic'.
 """
+
 from typing import TYPE_CHECKING, Optional
 
 from spy.vm.b import B
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 
 KeyType = tuple[str, Optional[W_Type], Optional[W_Type]]
 
+
 def parse_type(s: Optional[str]) -> Optional[W_Type]:
     if s is None:
         return None
@@ -35,17 +37,16 @@ def parse_type(s: Optional[str]) -> Optional[W_Type]:
     assert isinstance(w_res, W_Type)
     return w_res
 
+
 class MultiMethodTable:
     impls: dict[KeyType, W_Func]
 
     def __init__(self) -> None:
         self.impls = {}
 
-    def register(self,
-                 op: str,
-                 ltype: Optional[str],
-                 rtype: Optional[str],
-                 w_func: W_Object) -> None:
+    def register(
+        self, op: str, ltype: Optional[str], rtype: Optional[str], w_func: W_Object
+    ) -> None:
         assert isinstance(w_func, W_Func)
         w_ltype = parse_type(ltype)
         w_rtype = parse_type(rtype)
@@ -58,15 +59,12 @@ class MultiMethodTable:
         self.register(op, None, atype, w_func)
 
     def lookup(
-            self,
-            op: str,
-            w_ltype: Optional[W_Type],
-            w_rtype: Optional[W_Type]
+        self, op: str, w_ltype: Optional[W_Type], w_rtype: Optional[W_Type]
     ) -> Optional[W_OpSpec]:
         keys = [
             (op, w_ltype, w_rtype),  # most precise lookup
-            (op, w_ltype, None),     # less precise ones
-            (op, None,    w_rtype),
+            (op, w_ltype, None),  # less precise ones
+            (op, None, w_rtype),
         ]
         for key in keys:
             w_func = self.impls.get(key)
@@ -74,19 +72,12 @@ class MultiMethodTable:
                 return W_OpSpec(w_func)
         return None
 
-    def get_unary_opspec(
-        self,
-        op: str,
-        wam_v: W_MetaArg
-    ) -> Optional[W_OpSpec]:
+    def get_unary_opspec(self, op: str, wam_v: W_MetaArg) -> Optional[W_OpSpec]:
         w_vtype = wam_v.w_static_T
         return self.lookup(op, w_vtype, None)
 
     def get_binary_opspec(
-        self,
-        op: str,
-        wam_l: W_MetaArg,
-        wam_r: W_MetaArg
+        self, op: str, wam_l: W_MetaArg, wam_r: W_MetaArg
     ) -> Optional[W_OpSpec]:
         w_ltype = wam_l.w_static_T
         w_rtype = wam_r.w_static_T

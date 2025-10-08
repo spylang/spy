@@ -1,4 +1,4 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 import struct
 
@@ -6,10 +6,8 @@ from spy.tests.support import CompilerTest
 
 
 class TestRawBuffer(CompilerTest):
-
     def test_i32(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from rawbuffer import RawBuffer, rb_alloc, rb_set_i32, rb_get_i32
 
         def foo() -> i32:
@@ -20,8 +18,7 @@ class TestRawBuffer(CompilerTest):
         assert mod.foo() == 42
 
     def test_f64(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from rawbuffer import RawBuffer, rb_alloc, rb_set_f64, rb_get_f64
 
         def foo() -> f64:
@@ -32,8 +29,7 @@ class TestRawBuffer(CompilerTest):
         assert mod.foo() == 12.3
 
     def test_content(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from rawbuffer import RawBuffer, rb_alloc, rb_set_i32, rb_set_f64
 
         def foo() -> RawBuffer:

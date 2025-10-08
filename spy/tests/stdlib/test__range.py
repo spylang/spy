@@ -4,7 +4,6 @@ from spy.tests.support import CompilerTest
 
 
 class TestRange(CompilerTest):
-
     def test_simple(self):
         src = """
         from _range import range

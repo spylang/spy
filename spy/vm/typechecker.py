@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 #     binary operators)
 DispatchKind = Literal["single", "multi"]
 
+
 def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
     if n == 1:
         return singular
@@ -32,12 +33,12 @@ def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
 
 
 def typecheck_opspec(
-        vm: "SPyVM",
-        w_opspec: W_OpSpec,
-        in_args_wam: list[W_MetaArg],
-        *,
-        dispatch: DispatchKind,
-        errmsg: str,
+    vm: "SPyVM",
+    w_opspec: W_OpSpec,
+    in_args_wam: list[W_MetaArg],
+    *,
+    dispatch: DispatchKind,
+    errmsg: str,
 ) -> W_OpImpl:
     """
     Turn the W_OpSpec into a W_OpImpl, ready to be execute()d.
@@ -62,9 +63,7 @@ def typecheck_opspec(
     #   - calls a function of type w_out_functype
     w_out_functype = w_opspec.w_functype
     w_in_functype = functype_from_opargs(
-        in_args_wam,
-        w_out_functype.w_restype,
-        color=w_out_functype.color
+        in_args_wam, w_out_functype.w_restype, color=w_out_functype.color
     )
 
     # if it's a simple OpSpec, we automatically pass the in_args_wam in order
@@ -86,16 +85,12 @@ def typecheck_opspec(
     exp_nargs = len(w_out_functype.params)
     if not w_out_functype.is_argcount_ok(got_nargs):
         _call_error_wrong_argcount(
-            got_nargs,
-            exp_nargs,
-            out_args_wam,
-            def_loc = def_loc,
-            call_loc = call_loc)
+            got_nargs, exp_nargs, out_args_wam, def_loc=def_loc, call_loc=call_loc
+        )
 
     # build the argspec for the W_OpImpl
     args = []
     for param, wam_out_arg in zip(w_out_functype.all_params(), out_args_wam):
-
         if w_out_functype.color == "blue" and wam_out_arg.color == "red":
             msg = "cannot call blue function with red arguments"
             err = SPyError("W_TypeError", msg)
@@ -125,14 +120,16 @@ def typecheck_opspec(
     return w_opimpl
 
 
-def functype_from_opargs(args_wam: list[W_MetaArg], w_restype: W_Type,
-                         color: Color) -> W_FuncType:
+def functype_from_opargs(
+    args_wam: list[W_MetaArg], w_restype: W_Type, color: Color
+) -> W_FuncType:
     params = [FuncParam(wam.w_static_T, "simple") for wam in args_wam]
     return W_FuncType.new(params, w_restype, color=color)
 
 
-def get_w_conv(vm: "SPyVM", w_type: W_Type, wam_arg: W_MetaArg,
-               def_loc: Optional[Loc]) -> Optional[W_Func]:
+def get_w_conv(
+    vm: "SPyVM", w_type: W_Type, wam_arg: W_MetaArg, def_loc: Optional[Loc]
+) -> Optional[W_Func]:
     """
     Like CONVERT_maybe, but improve the error message if we can
     """
@@ -147,9 +144,7 @@ def get_w_conv(vm: "SPyVM", w_type: W_Type, wam_arg: W_MetaArg,
 
 
 def _opspec_null_error(
-        in_args_wam: list[W_MetaArg],
-        dispatch: DispatchKind,
-        errmsg: str
+    in_args_wam: list[W_MetaArg], dispatch: DispatchKind, errmsg: str
 ) -> NoReturn:
     """
     We couldn't find an OpSpec for this OPERATOR.
@@ -181,17 +176,18 @@ def _opspec_null_error(
 
 
 def _call_error_wrong_argcount(
-        got: int, exp: int,
-        args_wam: list[W_MetaArg],
-        *,
-        def_loc: Optional[Loc],
-        call_loc: Optional[Loc],
+    got: int,
+    exp: int,
+    args_wam: list[W_MetaArg],
+    *,
+    def_loc: Optional[Loc],
+    call_loc: Optional[Loc],
 ) -> NoReturn:
     assert got != exp
     takes = maybe_plural(exp, f"takes {exp} argument")
-    supplied = maybe_plural(got,
-                            f"1 argument was supplied",
-                            f"{got} arguments were supplied")
+    supplied = maybe_plural(
+        got, f"1 argument was supplied", f"{got} arguments were supplied"
+    )
     err = SPyError("W_TypeError", f"this function {takes} but {supplied}")
     #
     # if we know the call_loc, we can add more detailed errors
@@ -208,9 +204,7 @@ def _call_error_wrong_argcount(
             assert first_extra_loc is not None
             assert last_extra_loc is not None
             # XXX this assumes that all the arguments are on the same line
-            loc = first_extra_loc.replace(
-                col_end = last_extra_loc.col_end
-            )
+            loc = first_extra_loc.replace(col_end=last_extra_loc.col_end)
             err.add("error", f"{diff} extra {arguments}", loc)
     #
     if def_loc:

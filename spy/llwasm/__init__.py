@@ -10,6 +10,7 @@ It is called 'LL' for two reasons:
   - it's an unused prefix: other prefixes as "Py", "Wasm", "W" etc. would have
     been very confusing :)
 """
+
 from typing import TYPE_CHECKING
 
 from spy.platform import IS_PYODIDE

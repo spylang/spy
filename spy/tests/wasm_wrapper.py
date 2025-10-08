@@ -24,6 +24,7 @@ class WasmPtr:
     addr: int
     length: int
 
+
 class WasmModuleWrapper:
     vm: SPyVM
     modname: str
@@ -42,28 +43,22 @@ class WasmModuleWrapper:
         w_obj = self.w_mod.getattr(attr)
         if isinstance(w_obj, W_ASTFunc):
             if w_obj.color == "blue":
-                raise NotImplementedError(
-                    "cannot call a @blue func from a WASM module"
-                )
+                raise NotImplementedError("cannot call a @blue func from a WASM module")
             return self.read_function(w_obj)
 
         elif isinstance(w_obj, W_Cell):
             return self.read_cell(w_obj)
 
         else:
-            raise NotImplementedError(f"Don't know how to read this object from WASM: {w_obj}")
-
+            raise NotImplementedError(
+                f"Don't know how to read this object from WASM: {w_obj}"
+            )
 
     def read_function(self, w_func: W_Func) -> "WasmFuncWrapper":
         # sanity check
         wasm_func = self.ll.get_export(w_func.fqn.c_name)
         assert isinstance(wasm_func, wasmtime.Func)
-        return WasmFuncWrapper(
-            self.vm,
-            self.ll,
-            w_func.fqn.c_name,
-            w_func.w_functype
-        )
+        return WasmFuncWrapper(self.vm, self.ll, w_func.fqn.c_name, w_func.w_functype)
 
     def read_cell(self, w_cell: W_Cell) -> Any:
         wasm_glob = self.ll.get_export(w_cell.fqn.c_name)
@@ -84,8 +79,9 @@ class WasmFuncWrapper:
     c_name: str
     w_functype: W_FuncType
 
-    def __init__(self, vm: SPyVM, ll: LLSPyInstance, c_name: str,
-                 w_functype: W_FuncType) -> None:
+    def __init__(
+        self, vm: SPyVM, ll: LLSPyInstance, c_name: str, w_functype: W_FuncType
+    ) -> None:
         self.vm = vm
         self.ll = ll
         self.c_name = c_name
@@ -173,14 +169,10 @@ class WasmFuncWrapper:
             # However, this is good enough for most tests, so no reasons to
             # write complicated logic.
             assert isinstance(res, list)
-            fields = {
-                fieldname: item
-                for fieldname, item in zip(w_T.fields_w, res, strict=True)
-            }
+            fields = dict(zip(w_T.fields_w, res, strict=True))
             return UnwrappedStruct(w_T.fqn, fields)
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
-
 
     def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
         assert unwrap, "unwrap=False is not supported by the C backend"

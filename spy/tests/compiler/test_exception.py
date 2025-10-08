@@ -5,7 +5,6 @@ from spy.tests.support import CompilerTest, expect_errors, no_C
 
 
 class TestException(CompilerTest):
-
     def test_raise(self):
         # for now, we don't support "except:", and raising an exception result
         # in a panic.
@@ -45,7 +44,7 @@ class TestException(CompilerTest):
         errors = expect_errors(
             "`raise` only accepts blue values for now",
             ("this is red", "exc"),
-            )
+        )
         self.compile_raises(src, "foo", errors)
 
     def test_lazy_error(self):
@@ -83,7 +82,7 @@ class TestException(CompilerTest):
         else:
             # interp mode or lazy errors
             mod = self.compile(src, error_mode=error_mode)
-            assert mod.print_message(0) == 42 # works
+            assert mod.print_message(0) == 42  # works
             with SPyError.raises("W_StaticError", match="unsupported lang: it"):
                 mod.print_message(1)
 
@@ -99,7 +98,7 @@ class TestException(CompilerTest):
         errors = expect_errors(
             "this is some error",
             ("called from here", "raise_no_loc()"),
-            )
+        )
         with errors:
             mod.foo()
 
@@ -122,6 +121,6 @@ class TestException(CompilerTest):
         errors = expect_errors(
             "sizeof(<spy type 'bool'>) not implemented",
             ("called from here", "class X:\n    flag: bool"),
-            )
+        )
         with errors:
             self.compile(src)

@@ -6,7 +6,6 @@ from spy.textbuilder import ColorFormatter, TextBuilder
 
 
 class TestTextBuilder:
-
     def test_simple(self):
         b = TextBuilder()
         assert b.build() == ""
@@ -102,8 +101,9 @@ class TestTextBuilder:
     def test_nested_error(self):
         outer = TextBuilder()
         outer.w("begin")
-        with pytest.raises(ValueError, match="attach_nested_builder can be "
-                           "called only after a newline"):
+        with pytest.raises(
+            ValueError, match="attach_nested_builder can be called only after a newline"
+        ):
             inner = outer.make_nested_builder()
 
     def test_nested_detached(self):
@@ -121,7 +121,7 @@ class TestTextBuilder:
         """)
         assert s == expected
 
-    @pytest.mark.xfail(reason="fixme") # see attach_nested_builder.__doc__
+    @pytest.mark.xfail(reason="fixme")  # see attach_nested_builder.__doc__
     def test_detached_indent(self):
         outer = TextBuilder()
         inner = outer.make_nested_builder(detached=True)
@@ -171,8 +171,8 @@ class TestTextBuilder:
         """)
         assert b.lineno == 5
 
-class TestColorFormatter:
 
+class TestColorFormatter:
     def test_ColorFormatter(self):
         fmt = ColorFormatter(use_colors=False)
         assert fmt.set("red", "hello") == "hello"
@@ -204,10 +204,11 @@ class TestColorFormatter:
     def test_writeblock_bg(self):
         b = TextBuilder(use_colors=True)
         b.wl("hello")
-        b.wb("""
-            one
-            two
-        """, color="green", bg="darkred")
+        src = """
+        one
+        two
+        """
+        b.wb(src, color="green", bg="darkred")
         s = b.build()
         expected = textwrap.dedent("""\
         hello
@@ -286,4 +287,3 @@ class TestColorFormatter:
 
         s = b.build().rstrip("\n")
         assert s == "red text red on green blue on green"
-

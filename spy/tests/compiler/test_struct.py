@@ -1,4 +1,4 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 from spy.errors import SPyError
 from spy.fqn import FQN
@@ -19,6 +19,7 @@ def test_UnwrappedStruct():
     assert us1 != us3
     assert us1 != us4
     assert us1 == (1, 2)
+
 
 class TestStructOnStack(CompilerTest):
     """

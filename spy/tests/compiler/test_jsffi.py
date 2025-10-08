@@ -1,14 +1,12 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 from spy.tests.support import CompilerTest, only_emscripten
 
 
 @only_emscripten
 class TestJsFFI(CompilerTest):
-
     def test_emscripten_run(self):
-        exe = self.compile(
-        """
+        exe = self.compile("""
         def main() -> None:
             print('hello from print')
         """)
@@ -16,8 +14,7 @@ class TestJsFFI(CompilerTest):
         assert out == "hello from print\n"
 
     def test_console_log(self):
-        exe = self.compile(
-        """
+        exe = self.compile("""
         from jsffi import init as js_init, get_Console
 
         def main() -> None:
@@ -30,8 +27,7 @@ class TestJsFFI(CompilerTest):
         assert out == "hello from console.log\n42\n"
 
     def test_setattr(self):
-        exe = self.compile(
-        """
+        exe = self.compile("""
         from jsffi import init as js_init, get_Console, get_GlobalThis
 
         def main() -> None:
@@ -47,8 +43,7 @@ class TestJsFFI(CompilerTest):
         assert out == "hello 1\nhello 2\n"
 
     def test_callback(self):
-        exe = self.compile(
-        """
+        exe = self.compile("""
         from jsffi import init as js_init, get_GlobalThis
 
         def say_hello() -> None:

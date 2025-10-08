@@ -5,7 +5,6 @@ from spy.tests.support import CompilerTest
 
 
 class TestList(CompilerTest):
-
     def test_basic_operations(self):
         src = """
         from _list import List

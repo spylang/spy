@@ -4,10 +4,8 @@ from spy.tests.support import CompilerTest
 
 
 class TestMath(CompilerTest):
-
     def test_sqrt(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import sqrt
 
         def foo(x: f64) -> f64:
@@ -17,8 +15,7 @@ class TestMath(CompilerTest):
         assert mod.foo(2.0) == math.sqrt(2)
 
     def test_constants(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import pi, e, tau
 
         def get_pi() -> f64:
@@ -35,8 +32,7 @@ class TestMath(CompilerTest):
         assert mod.get_tau() == math.tau
 
     def test_cos(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import cos
 
         def foo(x: f64) -> f64:
@@ -46,30 +42,27 @@ class TestMath(CompilerTest):
         assert mod.foo(math.pi) == -1.0
 
     def test_sin(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import sin
 
         def foo(x: f64) -> f64:
             return sin(x)
         """)
         assert mod.foo(0.0) == 0.0
-        assert abs(mod.foo(math.pi/2) - 1.0) < 1e-10
+        assert abs(mod.foo(math.pi / 2) - 1.0) < 1e-10
 
     def test_tan(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import tan
 
         def foo(x: f64) -> f64:
             return tan(x)
         """)
         assert mod.foo(0.0) == 0.0
-        assert abs(mod.foo(math.pi/4) - 1.0) < 1e-10
+        assert abs(mod.foo(math.pi / 4) - 1.0) < 1e-10
 
     def test_log(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import log
 
         def foo(x: f64) -> f64:
@@ -79,8 +72,7 @@ class TestMath(CompilerTest):
         assert mod.foo(math.e) == 1.0
 
     def test_log10(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import log10
 
         def foo(x: f64) -> f64:
@@ -90,8 +82,7 @@ class TestMath(CompilerTest):
         assert mod.foo(10.0) == 1.0
 
     def test_exp(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import exp
 
         def foo(x: f64) -> f64:
@@ -101,52 +92,47 @@ class TestMath(CompilerTest):
         assert mod.foo(1.0) == math.e
 
     def test_acos(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import acos
 
         def foo(x: f64) -> f64:
             return acos(x)
         """)
         assert mod.foo(1.0) == 0.0
-        assert abs(mod.foo(0.0) - math.pi/2) < 1e-10
+        assert abs(mod.foo(0.0) - math.pi / 2) < 1e-10
 
     def test_asin(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import asin
 
         def foo(x: f64) -> f64:
             return asin(x)
         """)
         assert mod.foo(0.0) == 0.0
-        assert abs(mod.foo(1.0) - math.pi/2) < 1e-10
+        assert abs(mod.foo(1.0) - math.pi / 2) < 1e-10
 
     def test_atan(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import atan
 
         def foo(x: f64) -> f64:
             return atan(x)
         """)
         assert mod.foo(0.0) == 0.0
-        assert abs(mod.foo(1.0) - math.pi/4) < 1e-10
+        assert abs(mod.foo(1.0) - math.pi / 4) < 1e-10
 
     def test_atan2(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import atan2
 
         def foo(y: f64, x: f64) -> f64:
             return atan2(y, x)
         """)
         assert mod.foo(0.0, 1.0) == 0.0
-        assert abs(mod.foo(1.0, 1.0) - math.pi/4) < 1e-10
+        assert abs(mod.foo(1.0, 1.0) - math.pi / 4) < 1e-10
 
     def test_ceil(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import ceil
 
         def foo(x: f64) -> f64:
@@ -157,8 +143,7 @@ class TestMath(CompilerTest):
         assert mod.foo(-1.7) == -1.0
 
     def test_floor(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import floor
 
         def foo(x: f64) -> f64:
@@ -169,8 +154,7 @@ class TestMath(CompilerTest):
         assert mod.foo(-1.7) == -2.0
 
     def test_pow(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import pow
 
         def foo(x: f64, y: f64) -> f64:
@@ -181,8 +165,7 @@ class TestMath(CompilerTest):
         assert mod.foo(4.0, 0.5) == 2.0
 
     def test_fabs(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from math import fabs
 
         def foo(x: f64) -> f64:

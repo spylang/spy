@@ -77,6 +77,7 @@ w_DynamicType.define(W_Object)
 
 STDLIB = ROOT.join("..", "stdlib")
 
+
 class SPyVM:
     """
     A Virtual Machine to execute SPy code.
@@ -84,6 +85,7 @@ class SPyVM:
     Each instance of the VM contains an instance of libspy.wasm: all the
     non-scalar objects (e.g. strings) are stored in the WASM linear memory.
     """
+
     ll: LLSPyInstance
     globals_w: dict[FQN, W_Object]
     irtags: dict[FQN, IRTag]
@@ -94,8 +96,7 @@ class SPyVM:
     # For use by --colorize to remember the red/blue color of each expr
     expr_color_map: Optional[dict[ast.Expr, Color]]
 
-
-    def __init__(self, ll: Optional[LLSPyInstance]=None) -> None:
+    def __init__(self, ll: Optional[LLSPyInstance] = None) -> None:
         if ll is None:
             assert libspy.LLMOD is not None
             self.ll = LLSPyInstance(libspy.LLMOD)
@@ -135,17 +136,20 @@ class SPyVM:
 
     def import_(self, modname: str) -> W_Module:
         from spy.analyze.importing import ImportAnalyzer
+
         if modname in self.modules_w:
             return self.modules_w[modname]
 
         importer = ImportAnalyzer(self, modname)
         importer.parse_all()
-        #importer.pp()
+        # importer.pp()
         importer.import_all()
         w_mod = self.modules_w[modname]
         return w_mod
 
-    def find_file_on_path(self, modname: str, allow_py_files: bool = False) -> Optional[py.path.local]:
+    def find_file_on_path(
+        self, modname: str, allow_py_files: bool = False
+    ) -> Optional[py.path.local]:
         # XXX for now we assume that we find the module as a single file in
         # the only vm.path entry. Eventually we will need a proper import
         # mechanism and support for packages
@@ -167,6 +171,7 @@ class SPyVM:
         """
         Perform a redshift on all W_ASTFunc.
         """
+
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
             return w_func.color != "blue" and not w_func.redshifted
@@ -183,9 +188,9 @@ class SPyVM:
             self._redshift_some(funcs, error_mode)
 
     def _redshift_some(
-            self,
-            funcs: list[tuple[FQN, W_ASTFunc]],
-            error_mode: ErrorMode,
+        self,
+        funcs: list[tuple[FQN, W_ASTFunc]],
+        error_mode: ErrorMode,
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != "blue"
@@ -247,8 +252,9 @@ class SPyVM:
         else:
             return None
 
-    def add_global(self, fqn: FQN, w_value: W_Object, *,
-                   irtag: IRTag = IRTag.Empty) -> None:
+    def add_global(
+        self, fqn: FQN, w_value: W_Object, *, irtag: IRTag = IRTag.Empty
+    ) -> None:
         assert fqn.modname in self.modules_w
         w_existing = self.globals_w.get(fqn)
         if w_existing is None:
@@ -282,7 +288,7 @@ class SPyVM:
     def pp_globals(self) -> None:
         all_pbcs = sorted(
             self.globals_w.items(),
-            key=lambda item: str(item[0]) # item[0] is fqn
+            key=lambda item: str(item[0]),  # item[0] is fqn
         )
 
         last_modname = None
@@ -301,7 +307,7 @@ class SPyVM:
 
     def register_builtin_func(
         self,
-        namespace: FQN|str,
+        namespace: FQN | str,
         funcname: Optional[str] = None,
         qualifiers: QUALIFIERS = None,
         *,
@@ -353,6 +359,7 @@ class SPyVM:
         spy.util.func_equals, which check function name, code objects and
         closed-over variables.
         """
+
         def decorator(fn: Callable) -> W_BuiltinFunc:
             # create the w_func
             w_func = make_builtin_func(
@@ -362,7 +369,7 @@ class SPyVM:
                 qualifiers,
                 color=color,
                 kind=kind,
-                extra_types=extra_types
+                extra_types=extra_types,
             )
 
             # check whether the fqn is already in use
@@ -506,7 +513,6 @@ class SPyVM:
     def is_False(self, w_obj: W_Bool) -> bool:
         return w_obj is B.w_False
 
-
     # ======== <vm.wrap typing> =========
     # The return type of vm.wrap depends on the type of the argument.
     #
@@ -520,13 +526,13 @@ class SPyVM:
     def wrap(self, value: None) -> W_NoneType: ...
 
     @overload
-    def wrap(self, value: bool) -> W_Bool: ... # type: ignore[overload-overlap]
+    def wrap(self, value: bool) -> W_Bool: ...  # type: ignore[overload-overlap]
 
     @overload
-    def wrap(self, value: fixedint.Int8) -> W_I8: ... # type: ignore[overload-overlap]
+    def wrap(self, value: fixedint.Int8) -> W_I8: ...  # type: ignore[overload-overlap]
 
     @overload
-    def wrap(self, value: fixedint.UInt8) -> W_U8: ... # type: ignore[overload-overlap]
+    def wrap(self, value: fixedint.UInt8) -> W_U8: ...  # type: ignore[overload-overlap]
 
     @overload
     def wrap(self, value: Union[fixedint.Int32, int]) -> W_I32: ...
@@ -539,6 +545,7 @@ class SPyVM:
 
     @overload
     def wrap(self, value: Any) -> W_Object: ...
+
     # ======== </vm.wrap typing> =========
 
     def wrap(self, value: Any) -> W_Object:
@@ -573,9 +580,11 @@ class SPyVM:
         elif isinstance(value, FunctionType):
             raise Exception(
                 f"Cannot wrap interp-level function {value.__name__}. "
-                f"Did you forget `@builtin_func`?")
-        raise Exception(f"Cannot wrap interp-level objects " +
-                        f"of type {value.__class__.__name__}")
+                f"Did you forget `@builtin_func`?"
+            )
+        raise Exception(
+            f"Cannot wrap interp-level objects " + f"of type {value.__class__.__name__}"
+        )
 
     def unwrap(self, w_value: W_Object) -> Any:
         """
@@ -609,7 +618,7 @@ class SPyVM:
     def unwrap_str(self, w_value: W_Object) -> str:
         if not isinstance(w_value, W_Str):
             raise Exception("Type mismatch")
-        return self.unwrap(w_value) # type: ignore
+        return self.unwrap(w_value)  # type: ignore
 
     def call(self, w_obj: W_Object, args_w: Sequence[W_Object]) -> W_Object:
         """
@@ -641,8 +650,9 @@ class SPyVM:
             # for red functions, we just call them
             return self._raw_call(w_func, args_w)
 
-    def fast_metacall(vm: "SPyVM", w_func: W_Func,
-                      args_wam: Sequence[W_MetaArg]) -> W_OpSpec:
+    def fast_metacall(
+        vm: "SPyVM", w_func: W_Func, args_wam: Sequence[W_MetaArg]
+    ) -> W_OpSpec:
         """
         Return the OpSpec needed to call the given function.
 
@@ -658,12 +668,8 @@ class SPyVM:
         else:
             return W_OpSpec(w_func, list(args_wam))
 
-
     def call_OP(
-            self,
-            loc: Optional[Loc],
-            w_OP: W_Func,
-            args_wam: Sequence[W_MetaArg]
+        self, loc: Optional[Loc], w_OP: W_Func, args_wam: Sequence[W_MetaArg]
     ) -> W_OpImpl:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
@@ -678,9 +684,9 @@ class SPyVM:
                 err.add("note", f"{opname} called here", loc)
             raise
 
-    def call_generic(self, w_func: W_Func,
-                     generic_args_w: list[W_Object],
-                     args_w: list[W_Object]) -> W_Object:
+    def call_generic(
+        self, w_func: W_Func, generic_args_w: list[W_Object], args_w: list[W_Object]
+    ) -> W_Object:
         """
         Shortcut to call generic functions.
             call_generic(f, [T0, T1], [a0, a1, a2])
@@ -692,8 +698,7 @@ class SPyVM:
         assert isinstance(w_specialized, W_Func)
         return self.fast_call(w_specialized, args_w)
 
-    def _raw_call(self, w_func: W_Func,
-                  args_w: Sequence[W_Object]) -> W_Object:
+    def _raw_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         """
         The most fundamental building block for calling in SPy.
 

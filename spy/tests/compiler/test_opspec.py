@@ -1,4 +1,4 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 from spy.vm.b import B
@@ -8,10 +8,8 @@ from spy.vm.opspec import W_MetaArg, W_OpSpec
 
 @only_interp
 class TestOpSpec(CompilerTest):
-
     def test_new_OpSpec(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import OpSpec
 
         def bar() -> None:
@@ -27,8 +25,7 @@ class TestOpSpec(CompilerTest):
         assert w_opspec.is_simple()
 
     def test_OpSpec_with_args(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import OpSpec, MetaArg
 
         def bar(x: i32) -> i32:
@@ -56,8 +53,7 @@ class TestOpSpec(CompilerTest):
         assert self.vm.unwrap_i32(wam._w_val) == 42
 
     def test_new_MetaArg(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import MetaArg
 
         @blue
@@ -84,8 +80,7 @@ class TestOpSpec(CompilerTest):
         assert w_red_oparg._w_val is None
 
     def test_oparg_properties(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import MetaArg
 
         def foo() -> tuple:
@@ -99,8 +94,7 @@ class TestOpSpec(CompilerTest):
         assert self.vm.unwrap_i32(w_blueval) == 42
 
     def test_opspec_null(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import OpSpec
 
         @blue
@@ -111,8 +105,7 @@ class TestOpSpec(CompilerTest):
         assert w_null is W_OpSpec.NULL
 
     def test_oparg_from_type(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import MetaArg
 
         def foo() -> MetaArg:
@@ -127,16 +120,15 @@ class TestOpSpec(CompilerTest):
         assert wam_x._w_val is None
 
         errors = expect_errors(
-            "mismatched types",
-            ("expected `operator::MetaArg`, got `i32`", "42")
+            "mismatched types", ("expected `operator::MetaArg`, got `i32`", "42")
         )
         with errors:
             mod.bar()
 
     def test_call_OP_with_types(self):
         from spy.vm.modules.operator import OP
-        mod = self.compile(
-        """
+
+        mod = self.compile("""
         from operator import ADD, OpSpec
 
         def foo() -> dynamic:

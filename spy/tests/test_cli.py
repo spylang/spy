@@ -12,11 +12,12 @@ from spy.cli import app
 
 PYODIDE_EXE = spy.ROOT.dirpath().join("pyodide", "venv", "bin", "python")
 if not PYODIDE_EXE.exists():
-    PYODIDE_EXE = None # type: ignore
+    PYODIDE_EXE = None  # type: ignore
 
 # https://stackoverflow.com/a/14693789
 # 7-bit C1 ANSI sequences
-ANSI_ESCAPE = re.compile(r'''
+ANSI_ESCAPE = re.compile(
+    r"""
     \x1B  # ESC
     (?:   # 7-bit C1 Fe (except CSI)
         [@-Z\\-_]
@@ -26,7 +27,10 @@ ANSI_ESCAPE = re.compile(r'''
         [ -/]*  # Intermediate bytes
         [@-~]   # Final byte
     )
-''', re.VERBOSE)
+""",
+    re.VERBOSE,
+)
+
 
 def decolorize(s: str) -> str:
     return ANSI_ESCAPE.sub("", s)
@@ -41,10 +45,11 @@ class TestMain:
         self.tmpdir = tmpdir
         self.runner = CliRunner()
         self.main_spy = tmpdir.join("main.spy")
-        self.main_spy.write(textwrap.dedent("""
+        src = """
         def main() -> None:
             print("hello world")
-        """))
+        """
+        self.main_spy.write(textwrap.dedent(src))
 
     def run(self, *args: Any) -> Any:
         args2 = [str(arg) for arg in args]
@@ -58,14 +63,14 @@ class TestMain:
     def run_external(self, python_exe, *args: Any) -> Any:
         args2 = [str(arg) for arg in args]
         cmd = [str(python_exe), "-E", "-m", "spy"] + args2
-        print(f'run_external: {" ".join(cmd)}')
+        print(f"run_external: {' '.join(cmd)}")
 
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            cwd=str(self.tmpdir)
+            cwd=str(self.tmpdir),
         )
         stdout, stderr = process.communicate()
         exit_code = process.returncode
@@ -88,55 +93,51 @@ class TestMain:
         assert "Error:" in res.output and ".py file, not a .spy file" in res.output
 
     def test_pyparse(self):
-        res, stdout = self.run("--pyparse", self.main_spy)
+        _, stdout = self.run("--pyparse", self.main_spy)
         assert stdout.startswith("py:Module(")
 
     def test_parse(self):
-        res, stdout = self.run("--parse", self.main_spy)
+        _, stdout = self.run("--parse", self.main_spy)
         assert stdout.startswith("Module(")
 
     def test_execute(self):
-        res, stdout = self.run(self.main_spy)
+        _, stdout = self.run(self.main_spy)
         assert stdout == "hello world\n"
 
     def test_redshift_dump_spy(self):
-        res, stdout = self.run("--redshift", self.main_spy)
+        _, stdout = self.run("--redshift", self.main_spy)
         assert stdout.startswith("\ndef main() -> None:")
 
     def test_redshift_dump_ast(self):
-        res, stdout = self.run("--redshift", "--parse", self.main_spy)
+        _, stdout = self.run("--redshift", "--parse", self.main_spy)
         assert stdout.startswith("`main::main` = FuncDef(")
 
     def test_redshift_and_execute(self):
-        res, stdout = self.run("--redshift", "--execute", self.main_spy)
+        _, stdout = self.run("--redshift", "--execute", self.main_spy)
         assert stdout == "hello world\n"
 
     def test_colorize(self):
-        res, stdout = self.run("--colorize", self.main_spy)
+        _, stdout = self.run("--colorize", self.main_spy)
         assert stdout.startswith("Module(")
 
     def test_cwrite(self):
-        res, stdout = self.run(
-            "--cwrite",
-            "--build-dir", self.tmpdir,
-            self.main_spy
-        )
+        self.run("--cwrite", "--build-dir", self.tmpdir, self.main_spy)
         main_c = self.tmpdir.join("src", "main.c")
         assert main_c.exists()
         csrc = main_c.read()
         assert csrc.startswith('#include "main.h"')
 
-    @pytest.mark.parametrize("target", [
-        pytest.param("native"),
-        pytest.param("wasi"),
-        pytest.param("emscripten", marks=pytest.mark.emscripten)
-    ])
+    @pytest.mark.parametrize(
+        "target",
+        [
+            pytest.param("native"),
+            pytest.param("wasi"),
+            pytest.param("emscripten", marks=pytest.mark.emscripten),
+        ],
+    )
     def test_build(self, target):
         res, stdout = self.run(
-            "--compile",
-            "--target", target,
-            "--build-dir", self.tmpdir,
-            self.main_spy
+            "--compile", "--target", target, "--build-dir", self.tmpdir, self.main_spy
         )
         if target == "native":
             main_exe = self.tmpdir.join("main")

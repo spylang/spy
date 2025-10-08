@@ -8,7 +8,6 @@ from spy.tests.support import CompilerTest, skip_backends
 
 @skip_backends("C", reason="dynamic not supported")
 class TestDynamic(CompilerTest):
-
     def test_upcast_and_downcast(self):
         # this is similar to the same test in test_basic, but it uses
         # `dynamic` instead of `object`
@@ -122,8 +121,7 @@ class TestDynamic(CompilerTest):
             mod.foo()
 
     def test_setattr(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         x: i32 = 0
 
         @blue
@@ -137,8 +135,7 @@ class TestDynamic(CompilerTest):
         if self.backend == "doppler":
             pytest.skip("fixme")
 
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> None:
             obj: dynamic = "hello"
             obj.x = 42
@@ -148,8 +145,7 @@ class TestDynamic(CompilerTest):
             mod.foo()
 
     def test_getattr(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         x: i32 = 42
         y: i32 = 0
 
@@ -175,9 +171,4 @@ class TestDynamic(CompilerTest):
         """)
         mod.foo()
         out, err = capfd.readouterr()
-        assert out == "\n".join(["hello world",
-                                 "42",
-                                 "12.3",
-                                 "True",
-                                 "None",
-                                 ""])
+        assert out == "\n".join(["hello world", "42", "12.3", "True", "None", ""])

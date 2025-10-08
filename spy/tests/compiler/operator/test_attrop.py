@@ -38,6 +38,7 @@ class TestAttrOp(CompilerTest):
             @staticmethod
             def w_new(vm: "SPyVM") -> "W_MyClass":
                 return W_MyClass()
+
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -64,6 +65,7 @@ class TestAttrOp(CompilerTest):
             @staticmethod
             def w_new(vm: "SPyVM") -> "W_MyClass":
                 return W_MyClass()
+
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
 
@@ -92,7 +94,6 @@ class TestAttrOp(CompilerTest):
         )
         self.compile_raises(src2, "get_foobar", errors, modname="test2")
 
-
     def test_builtin_staticmethod_classmethod(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry("ext")
@@ -111,8 +112,7 @@ class TestAttrOp(CompilerTest):
 
             @builtin_classmethod("from_float")
             @staticmethod
-            def w_from_float(vm: "SPyVM", w_cls: W_Type,
-                             w_f: W_F64) -> "W_MyClass":
+            def w_from_float(vm: "SPyVM", w_cls: W_Type, w_f: W_F64) -> "W_MyClass":
                 assert w_cls is W_MyClass._w
                 f = vm.unwrap_f64(w_f)
                 w_x = vm.wrap(int(f))
@@ -149,19 +149,18 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method("__get__")
             @staticmethod
-            def w_get(vm: "SPyVM", w_self: "W_Adder",
-                      w_obj: W_Object) -> W_I32:
+            def w_get(vm: "SPyVM", w_self: "W_Adder", w_obj: W_Object) -> W_I32:
                 assert isinstance(w_obj, W_MyClass)
                 return vm.wrap(w_obj.val + w_self.n)
 
             @builtin_method("__set__")
             @staticmethod
-            def w_set(vm: "SPyVM", w_self: "W_Adder",
-                      w_obj: W_Object, w_val: W_I32) -> None:
+            def w_set(
+                vm: "SPyVM", w_self: "W_Adder", w_obj: W_Object, w_val: W_I32
+            ) -> None:
                 assert isinstance(w_obj, W_MyClass)
                 val = vm.unwrap_i32(w_val)
                 w_obj.val = val - w_self.n
-
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
@@ -175,7 +174,6 @@ class TestAttrOp(CompilerTest):
             @staticmethod
             def w_new(vm: "SPyVM") -> "W_MyClass":
                 return W_MyClass()
-
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
@@ -208,7 +206,6 @@ class TestAttrOp(CompilerTest):
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
-
             def __init__(self, x: int) -> None:
                 self.x = x
 
@@ -232,16 +229,16 @@ class TestAttrOp(CompilerTest):
                 """
                 w_t = wam_self.w_static_T
                 assert W_MyClass._w is w_t
+
                 @vm.register_builtin_func(w_t.fqn, "get_y")
                 def w_get_x2(vm: "SPyVM", w_self: W_MyClass) -> W_I32:
                     return vm.wrap(w_self.x * 2)
-                return W_OpSpec(w_get_x2, [wam_self])
 
+                return W_OpSpec(w_get_x2, [wam_self])
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from ext import MyClass
 
         @blue
@@ -259,7 +256,6 @@ class TestAttrOp(CompilerTest):
         x2 = mod.get_x2()
         assert x2 == 86
 
-
     @pytest.mark.skip(reason="implement me")
     def test_class_property(self):
         # ========== EXT module for this test ==========
@@ -267,7 +263,6 @@ class TestAttrOp(CompilerTest):
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
-
             @builtin_method("__new__")
             @staticmethod
             def w_new(vm: "SPyVM") -> "W_MyClass":
@@ -278,11 +273,9 @@ class TestAttrOp(CompilerTest):
             def w_GET_NULL(vm: "SPyVM", wam_self: "W_MetaArg") -> W_OpSpec:
                 raise NotImplementedError("WIP")
 
-
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from ext import MyClass
 
         @blue
@@ -299,7 +292,6 @@ class TestAttrOp(CompilerTest):
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
-
             def __init__(self) -> None:
                 self.x = 0
 
@@ -310,35 +302,42 @@ class TestAttrOp(CompilerTest):
 
             @builtin_method("__getattribute__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETATTRIBUTE(vm: "SPyVM", wam_obj: W_MetaArg,
-                               wam_name: W_MetaArg) -> W_OpSpec:
+            def w_GETATTRIBUTE(
+                vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg
+            ) -> W_OpSpec:
                 attr = wam_name.blue_unwrap_str(vm)
                 if attr == "x":
+
                     @vm.register_builtin_func("ext", "getx")
-                    def w_fn(vm: "SPyVM", w_obj: W_MyClass,
-                           w_attr: W_Str) -> W_I32:
+                    def w_fn(vm: "SPyVM", w_obj: W_MyClass, w_attr: W_Str) -> W_I32:
                         return vm.wrap(w_obj.x)
                 else:
+
                     @vm.register_builtin_func("ext", "getany")
-                    def w_fn(vm: "SPyVM", w_obj: W_MyClass,
-                                      w_attr: W_Str) -> W_Str:
+                    def w_fn(vm: "SPyVM", w_obj: W_MyClass, w_attr: W_Str) -> W_Str:
                         attr = vm.unwrap_str(w_attr)
                         return vm.wrap(attr.upper() + "--42")
+
                 return W_OpSpec(w_fn)
 
             @builtin_method("__setattr__", color="blue", kind="metafunc")
             @staticmethod
-            def w_SETATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg,
-                          wam_v: W_MetaArg) -> W_OpSpec:
+            def w_SETATTR(
+                vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
+            ) -> W_OpSpec:
                 attr = wam_name.blue_unwrap_str(vm)
                 if attr == "x":
+
                     @vm.register_builtin_func("ext")
-                    def w_setx(vm: "SPyVM", w_obj: W_MyClass,
-                               w_attr: W_Str, w_val: W_I32) -> None:
+                    def w_setx(
+                        vm: "SPyVM", w_obj: W_MyClass, w_attr: W_Str, w_val: W_I32
+                    ) -> None:
                         w_obj.x = vm.unwrap_i32(w_val)
+
                     return W_OpSpec(w_setx)
                 else:
                     return W_OpSpec.NULL
+
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

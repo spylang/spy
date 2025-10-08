@@ -21,7 +21,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     utf8 = s.encode("utf-8")
     length = len(utf8)
     ptr = ll.call("spy_str_alloc", length)
-    ll.mem.write(ptr+4, utf8)
+    ll.mem.write(ptr + 4, utf8)
     return ptr
 
 
@@ -37,6 +37,7 @@ class W_Str(W_Object):
             const char utf8[];
         } spy_Str;
     """
+
     __spy_storage_category__ = "value"
     vm: "SPyVM"
     ptr: int
@@ -58,7 +59,7 @@ class W_Str(W_Object):
 
     def get_utf8(self) -> bytes:
         length = self.get_length()
-        ba = self.vm.ll.mem.read(self.ptr+4, length)
+        ba = self.vm.ll.mem.read(self.ptr + 4, length)
         return bytes(ba)
 
     def _as_str(self) -> str:
@@ -78,6 +79,7 @@ class W_Str(W_Object):
     @staticmethod
     def w_NEW(vm: "SPyVM", wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> "W_OpSpec":
         from spy.errors import SPyError
+
         if len(args_wam) == 1:
             wam_arg = args_wam[0]
             w_T = wam_arg.w_static_T
@@ -87,10 +89,7 @@ class W_Str(W_Object):
 
             t = w_T.fqn.human_name
             raise SPyError.simple(
-                "W_TypeError",
-                f"cannot call str(`{t}`)",
-                f"this is `{t}`",
-                wam_arg.loc
+                "W_TypeError", f"cannot call str(`{t}`)", f"this is `{t}`", wam_arg.loc
             )
         return W_OpSpec.NULL
 

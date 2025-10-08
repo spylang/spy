@@ -16,7 +16,6 @@ from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
 
 
-
 @dataclass
 class C_Type:
     """

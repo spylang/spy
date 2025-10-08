@@ -10,7 +10,7 @@ from spy.vm.module import W_Module
 from spy.vm.vm import SPyVM
 
 
-def redshift(filename: str|Path) -> tuple[SPyVM, W_Module]:
+def redshift(filename: str | Path) -> tuple[SPyVM, W_Module]:
     """
     Perform redshift on the given file
     """
@@ -29,6 +29,7 @@ def main(argv: list[str]) -> None:
     Example of how to use spy.interop.redshift
     """
     from spy.vm.function import W_ASTFunc
+
     filename = argv[1]
     vm, w_mod = redshift(filename)
     for fqn, w_obj in vm.fqns_by_modname(w_mod.name):
@@ -42,8 +43,6 @@ def main(argv: list[str]) -> None:
             print("AST:")
             w_obj.funcdef.pp()
             print()
-
-
 
 
 if __name__ == "__main__":

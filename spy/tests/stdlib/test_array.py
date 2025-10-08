@@ -4,7 +4,6 @@ from spy.tests.support import CompilerTest
 
 
 class TestArray(CompilerTest):
-
     def test_array1_simple(self):
         src = """
         from array import array

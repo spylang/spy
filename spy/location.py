@@ -11,6 +11,7 @@ class Loc:
     """
     Represent a location inside the source code
     """
+
     filename: str
     line_start: int
     line_end: int
@@ -32,11 +33,11 @@ class Loc:
         assert level < 0
         f = sys._getframe(-level)
         return cls(
-            filename = f.f_code.co_filename,
-            line_start = f.f_lineno,
-            line_end = f.f_lineno,
-            col_start = 0,
-            col_end = -1 # whole line
+            filename=f.f_code.co_filename,
+            line_start=f.f_lineno,
+            line_end=f.f_lineno,
+            col_start=0,
+            col_end=-1,  # whole line
         )
 
     @classmethod
@@ -68,11 +69,11 @@ class Loc:
                 start = start + i
                 break
         return cls(
-            filename = inspect.getfile(pyfunc),
-            line_start = start,
-            line_end = start,
-            col_start = 0,
-            col_end = -1 # whole line
+            filename=inspect.getfile(pyfunc),
+            line_start=start,
+            line_end=start,
+            col_start=0,
+            col_end=-1,  # whole line
         )
 
     def replace(self, **kwargs: Any) -> "Loc":
@@ -82,8 +83,7 @@ class Loc:
         """
         Return a new Loc which starts where this one ends
         """
-        return self.replace(line_start=self.line_end,
-                            col_start=self.col_end)
+        return self.replace(line_start=self.line_end, col_start=self.col_end)
 
     def __repr__(self) -> str:
         l1 = self.line_start
@@ -114,10 +114,10 @@ class Loc:
                 srcline = linecache.getline(filename, line_num)
                 if line_num == self.line_start:
                     # First line - start from col_start
-                    lines.append(srcline[self.col_start:])
+                    lines.append(srcline[self.col_start :])
                 elif line_num == self.line_end:
                     # Last line - end at col_end
-                    lines.append(srcline[:self.col_end])
+                    lines.append(srcline[: self.col_end])
                 else:
                     # Middle lines - include whole line
                     lines.append(srcline)
@@ -128,7 +128,8 @@ class Loc:
         Visualize the piece of code which correspond to this Loc
         """
         from spy.errfmt import Annotation, ErrorFormatter
-        fmt = ErrorFormatter(use_colors=True) # type: ignore
+
+        fmt = ErrorFormatter(use_colors=True)  # type: ignore
         ann = Annotation("note", "", self)
         fmt.emit_annotation(ann)
         print(fmt.build())

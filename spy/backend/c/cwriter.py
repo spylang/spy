@@ -25,17 +25,15 @@ class CFuncWriter:
     w_func: W_ASTFunc
     last_emitted_linenos: tuple[int, int]
 
-    def __init__(self,
-                 ctx: Context,
-                 cmodw: "CModuleWriter",
-                 fqn: FQN,
-                 w_func: W_ASTFunc) -> None:
+    def __init__(
+        self, ctx: Context, cmodw: "CModuleWriter", fqn: FQN, w_func: W_ASTFunc
+    ) -> None:
         self.ctx = ctx
         self.cmodw = cmodw
         self.tbc = cmodw.tbc
         self.fqn = fqn
         self.w_func = w_func
-        self.last_emitted_linenos = (-1, -1) # see emit_lineno_maybe
+        self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
 
     def ppc(self) -> None:
         """
@@ -82,8 +80,10 @@ class CFuncWriter:
         param_names = [arg.name for arg in self.w_func.funcdef.args]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
-            if (varname not in ("@return", "@if", "@while", "@assert") and
-                varname not in param_names):
+            if (
+                varname not in ("@return", "@if", "@while", "@assert")
+                and varname not in param_names
+            ):
                 self.tbc.wl(f"{c_type} {varname};")
 
     # ==============
@@ -165,7 +165,7 @@ class CFuncWriter:
         self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
-        v = self.fmt_expr(stmt.value);
+        v = self.fmt_expr(stmt.value)
         self.tbc.wl(f"{v};")
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
@@ -193,14 +193,20 @@ class CFuncWriter:
 
     def emit_stmt_Assert(self, assert_node: ast.Assert) -> None:
         test = self.fmt_expr(assert_node.test)
-        self.tbc.wl(f"if (!({test}))"+" {")
+        self.tbc.wl(f"if (!({test}))" + " {")
         with self.tbc.indent():
             if assert_node.msg is not None:
                 # TODO: assuming msg is always a string. extend the logic to work with other types
                 msg = self.fmt_expr(assert_node.msg)
-                self.tbc.wl(f'spy_panic("AssertionError", ({msg})->utf8, "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+                self.tbc.wl(
+                    f'spy_panic("AssertionError", ({msg})->utf8, '
+                    f'"{assert_node.loc.filename}", {assert_node.loc.line_start});'
+                )
             else:
-                self.tbc.wl(f'spy_panic("AssertionError", "assertion failed", "{assert_node.loc.filename}", {assert_node.loc.line_start});')
+                self.tbc.wl(
+                    f'spy_panic("AssertionError", "assertion failed", '
+                    f'"{assert_node.loc.filename}", {assert_node.loc.line_start});'
+                )
 
         self.tbc.wl("}")
 
@@ -278,7 +284,8 @@ class CFuncWriter:
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         raise NotImplementedError(
-            "ast.BinOp not supported. It should have been redshifted away")
+            "ast.BinOp not supported. It should have been redshifted away"
+        )
 
     FQN2BinOp = {
         FQN("operator::i8_add"): "+",
@@ -289,12 +296,12 @@ class CFuncWriter:
         FQN("operator::i8_and"): "&",
         FQN("operator::i8_or"): "|",
         FQN("operator::i8_xor"): "^",
-        FQN("operator::i8_eq") : "==",
-        FQN("operator::i8_ne") : "!=",
-        FQN("operator::i8_lt") : "<",
-        FQN("operator::i8_le") : "<=",
-        FQN("operator::i8_gt") : ">",
-        FQN("operator::i8_ge") : ">=",
+        FQN("operator::i8_eq"): "==",
+        FQN("operator::i8_ne"): "!=",
+        FQN("operator::i8_lt"): "<",
+        FQN("operator::i8_le"): "<=",
+        FQN("operator::i8_gt"): ">",
+        FQN("operator::i8_ge"): ">=",
         #
         FQN("operator::u8_add"): "+",
         FQN("operator::u8_sub"): "-",
@@ -304,12 +311,12 @@ class CFuncWriter:
         FQN("operator::u8_and"): "&",
         FQN("operator::u8_or"): "|",
         FQN("operator::u8_xor"): "^",
-        FQN("operator::u8_eq") : "==",
-        FQN("operator::u8_ne") : "!=",
-        FQN("operator::u8_lt") : "<",
-        FQN("operator::u8_le") : "<=",
-        FQN("operator::u8_gt") : ">",
-        FQN("operator::u8_ge") : ">=",
+        FQN("operator::u8_eq"): "==",
+        FQN("operator::u8_ne"): "!=",
+        FQN("operator::u8_lt"): "<",
+        FQN("operator::u8_le"): "<=",
+        FQN("operator::u8_gt"): ">",
+        FQN("operator::u8_ge"): ">=",
         #
         FQN("operator::i32_add"): "+",
         FQN("operator::i32_sub"): "-",
@@ -319,23 +326,22 @@ class CFuncWriter:
         FQN("operator::i32_and"): "&",
         FQN("operator::i32_or"): "|",
         FQN("operator::i32_xor"): "^",
-        FQN("operator::i32_eq") : "==",
-        FQN("operator::i32_ne") : "!=",
-        FQN("operator::i32_lt") : "<",
-        FQN("operator::i32_le") : "<=",
-        FQN("operator::i32_gt") : ">",
-        FQN("operator::i32_ge") : ">=",
+        FQN("operator::i32_eq"): "==",
+        FQN("operator::i32_ne"): "!=",
+        FQN("operator::i32_lt"): "<",
+        FQN("operator::i32_le"): "<=",
+        FQN("operator::i32_gt"): ">",
+        FQN("operator::i32_ge"): ">=",
         #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
         FQN("operator::f64_mul"): "*",
-        FQN("operator::f64_eq") : "==",
-        FQN("operator::f64_ne") : "!=",
-        FQN("operator::f64_lt") : "<",
-        FQN("operator::f64_le") : "<=",
-        FQN("operator::f64_gt") : ">",
-        FQN("operator::f64_ge") : ">=",
-
+        FQN("operator::f64_eq"): "==",
+        FQN("operator::f64_ne"): "!=",
+        FQN("operator::f64_lt"): "<",
+        FQN("operator::f64_le"): "<=",
+        FQN("operator::f64_gt"): ">",
+        FQN("operator::f64_ge"): ">=",
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
@@ -360,8 +366,9 @@ class CFuncWriter:
     }
 
     def fmt_expr_Call(self, call: ast.Call) -> C.Expr:
-        assert isinstance(call.func, ast.FQNConst), \
+        assert isinstance(call.func, ast.FQNConst), (
             "indirect calls are not supported yet"
+        )
         fqn = call.func.fqn
 
         irtag = self.ctx.vm.get_irtag(fqn)
@@ -407,7 +414,7 @@ class CFuncWriter:
             # with the signature of the load/store functions generated by
             # unsafe.h:SPY_PTR_FUNCTIONS.
             assert isinstance(call.args[-1], ast.LocConst)
-            call.args.pop() # remove it
+            call.args.pop()  # remove it
             return self.fmt_generic_call(fqn, call)
 
         else:
@@ -426,15 +433,13 @@ class CFuncWriter:
         strargs = ", ".join(map(str, c_args))
         return C.Cast(c_structtype, C.Literal("{ %s }" % strargs))
 
-    def fmt_struct_getfield(self, fqn: FQN, call: ast.Call,
-                            irtag: IRTag) -> C.Expr:
+    def fmt_struct_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert len(call.args) == 1
         c_struct = self.fmt_expr(call.args[0])
         name = irtag.data["name"]
         return C.Dot(c_struct, name)
 
-    def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call,
-                         irtag: IRTag) -> C.Expr:
+    def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value

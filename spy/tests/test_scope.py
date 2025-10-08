@@ -13,12 +13,21 @@ from spy.vm.vm import SPyVM
 
 MISSING = object()
 
+
 class MatchSymbol:
     """
     Helper class which compares equals to Symbol if the specified fields match
     """
-    def __init__(self, name: str, color: Color, varkind: VarKind, level: int = 0,
-                 impref: Any = MISSING, storage: VarStorage = "direct"):
+
+    def __init__(
+        self,
+        name: str,
+        color: Color,
+        varkind: VarKind,
+        level: int = 0,
+        impref: Any = MISSING,
+        storage: VarStorage = "direct",
+    ):
         self.name = name
         self.color = color
         self.varkind = varkind
@@ -29,17 +38,18 @@ class MatchSymbol:
     def __eq__(self, sym: object) -> bool:
         if not isinstance(sym, Symbol):
             return NotImplemented
-        return (self.name == sym.name and
-                self.color == sym.color and
-                self.varkind == sym.varkind and
-                self.level == sym.level and
-                self.storage == sym.storage and
-                (self.impref is MISSING or self.impref == sym.impref))
+        return (
+            self.name == sym.name
+            and self.color == sym.color
+            and self.varkind == sym.varkind
+            and self.level == sym.level
+            and self.storage == sym.storage
+            and (self.impref is MISSING or self.impref == sym.impref)
+        )
 
 
 @pytest.mark.usefixtures("init")
 class TestScopeAnalyzer:
-
     @pytest.fixture
     def init(self, tmpdir):
         self.vm = SPyVM()
@@ -212,8 +222,9 @@ class TestScopeAnalyzer:
         """)
         scope = scopes.by_module()
         assert scope._symbols == {
-            "my_int": MatchSymbol("my_int", "blue", "const",
-                                  impref=ImportRef("builtins", "i32")),
+            "my_int": MatchSymbol(
+                "my_int", "blue", "const", impref=ImportRef("builtins", "i32")
+            ),
         }
 
     def test_import_wrong_attribute(self):
@@ -221,7 +232,7 @@ class TestScopeAnalyzer:
         self.expect_errors(
             src,
             "cannot import `builtins.aaa`",
-            ("attribute `aaa` does not exist in module `builtins`", "aaa")
+            ("attribute `aaa` does not exist in module `builtins`", "aaa"),
         )
 
     def test_import_wrong_module(self):
@@ -229,7 +240,7 @@ class TestScopeAnalyzer:
         self.expect_errors(
             src,
             "cannot import `xxx.aaa`",
-            ("module `xxx` does not exist", "from xxx import aaa")
+            ("module `xxx` does not exist", "from xxx import aaa"),
         )
 
     def test_import_wrong_py_module(self):
@@ -242,7 +253,10 @@ class TestScopeAnalyzer:
         self.expect_errors(
             src,
             "cannot import `mymodule.x`",
-            ("file `mymodule.py` exists, but py files cannot be imported", "from mymodule import x")
+            (
+                "file `mymodule.py` exists, but py files cannot be imported",
+                "from mymodule import x",
+            ),
         )
 
     def test_class(self):
@@ -344,7 +358,6 @@ class TestScopeAnalyzer:
             "@return": MatchSymbol("@return", "red", "var"),
             "y": MatchSymbol("y", "red", "var", level=-1, storage="NameError"),
         }
-
 
     def test_for_loop(self):
         scopes = self.analyze("""

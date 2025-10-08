@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 OFFSETS_T = dict[str, int]
 
+
 @TYPES.builtin_type("StructType")
 class W_StructType(W_Type):
     fields_w: dict[str, W_Field]
@@ -46,8 +47,7 @@ class W_StructType(W_Type):
         STRUCT = Annotated[W_Struct, self]
         # functype
         params = [
-            FuncParam(w_field.w_T, "simple")
-            for w_field in self.fields_w.values()
+            FuncParam(w_field.w_T, "simple") for w_field in self.fields_w.values()
         ]
         w_functype = W_FuncType.new(params, w_restype=self)
 
@@ -74,6 +74,7 @@ class W_StructType(W_Type):
 
 def calc_layout(fields_w: dict[str, W_Field]) -> tuple[OFFSETS_T, int]:
     from spy.vm.modules.unsafe.misc import sizeof
+
     offset = 0
     offsets = {}
     for name, w_field in fields_w.items():
@@ -117,6 +118,7 @@ class W_Struct(W_Object):
     Note that this is only a limitation of the SPy VM. The C backend uses C
     structs, so taking-the-address will work out of the box.
     """
+
     __spy_storage_category__ = "value"
     w_structtype: W_StructType
     values_w: dict[str, W_Object]
@@ -141,10 +143,7 @@ class W_Struct(W_Object):
 
     def spy_unwrap(self, vm: "SPyVM") -> "UnwrappedStruct":
         fqn = self.w_structtype.fqn
-        fields = {
-            key: w_obj.spy_unwrap(vm)
-            for key, w_obj in self.values_w.items()
-        }
+        fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
         return UnwrappedStruct(fqn, fields)
 
     def __repr__(self) -> str:
@@ -153,8 +152,9 @@ class W_Struct(W_Object):
 
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
-    def w_GETATTRIBUTE(vm: "SPyVM", wam_struct: W_MetaArg,
-                       wam_name: W_MetaArg) -> W_OpSpec:
+    def w_GETATTRIBUTE(
+        vm: "SPyVM", wam_struct: W_MetaArg, wam_name: W_MetaArg
+    ) -> W_OpSpec:
         w_structtype = wam_struct.w_static_T
         assert isinstance(w_structtype, W_StructType)
         name = wam_name.blue_unwrap_str(vm)
@@ -166,8 +166,7 @@ class W_Struct(W_Object):
         STRUCT = Annotated[W_Struct, w_structtype]
         irtag = IRTag("struct.getfield", name=name)
 
-        @vm.register_builtin_func(w_structtype.fqn, f"__get_{name}__",
-                                  irtag=irtag)
+        @vm.register_builtin_func(w_structtype.fqn, f"__get_{name}__", irtag=irtag)
         def w_get(vm: "SPyVM", w_struct: STRUCT) -> T:
             return w_struct.values_w[name]
 
@@ -184,6 +183,7 @@ class UnwrappedStruct:
     NOTE: the WASM version works only for flat structs with simple types. This
     is good enough for most tests.
     """
+
     fqn: FQN
     _fields: dict[str, Any]
 
@@ -197,10 +197,7 @@ class UnwrappedStruct:
         assert isinstance(w_structT, W_StructType)
         assert set(self._fields.keys()) == set(w_structT.fields_w.keys())
         w_struct = W_Struct(w_structT)
-        w_struct.values_w = {
-            key: vm.wrap(obj)
-            for key, obj in self._fields.items()
-        }
+        w_struct.values_w = {key: vm.wrap(obj) for key, obj in self._fields.items()}
         return w_struct
 
     def __getattr__(self, attr: str) -> Any:

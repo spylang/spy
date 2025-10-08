@@ -19,6 +19,7 @@ from spy.vm.vm import SPyVM
 Backend = Literal["interp", "doppler", "C"]
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
+
 def params_with_marks(params):
     """
     Small helper to automatically apply to each param a pytest.mark with the
@@ -34,8 +35,8 @@ def params_with_marks(params):
     This makes it possible to use 'pytest -m aaa' to run ONLY the tests which
     uses the param 'aaa'.
     """
-    return [pytest.param(name, marks=getattr(pytest.mark, name))
-            for name in params]
+    return [pytest.param(name, marks=getattr(pytest.mark, name)) for name in params]
+
 
 def skip_backends(*backends_to_skip: Backend, reason=""):
     """
@@ -67,30 +68,35 @@ def skip_backends(*backends_to_skip: Backend, reason=""):
 
     def decorator(func):
         return pytest.mark.parametrize("compiler_backend", new_backends)(func)
+
     return decorator
+
 
 @no_type_check
 def parametrize_compiler_backend(params, func):
-    deco = pytest.mark.parametrize(
-        "compiler_backend",
-        params_with_marks(params)
-    )
+    deco = pytest.mark.parametrize("compiler_backend", params_with_marks(params))
     return deco(func)
+
 
 def no_backend(func):
     return parametrize_compiler_backend([""], func)
 
+
 def only_interp(func):
     return parametrize_compiler_backend(["interp"], func)
+
 
 def only_C(func):
     return parametrize_compiler_backend(["C"], func)
 
+
 def only_emscripten(func):
     return parametrize_compiler_backend(["emscripten"], func)
 
+
 def only_py_cffi(func):
     return parametrize_compiler_backend(["py-cffi"], func)
+
 
 def no_C(func):
     return parametrize_compiler_backend(["interp", "doppler"], func)
@@ -143,9 +149,11 @@ class CompilerTest:
     ALL_COMPILED_SOURCES: set[str] = set()
 
     def compile(
-            self, src: str, modname: str = "test",
-            *,
-            error_mode: ErrorMode="eager",
+        self,
+        src: str,
+        modname: str = "test",
+        *,
+        error_mode: ErrorMode = "eager",
     ) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
@@ -188,54 +196,53 @@ class CompilerTest:
 
         if self.backend == "C":
             config = BuildConfig(
-                target = "wasi",
-                kind = "lib",
-                build_type = "debug",
-                opt_level = self.OPT_LEVEL,
+                target="wasi",
+                kind="lib",
+                build_type="debug",
+                opt_level=self.OPT_LEVEL,
             )
             WrapperClass = WasmModuleWrapper
         elif self.backend == "emscripten":
             config = BuildConfig(
-                target = "emscripten",
-                kind = "exe",
-                build_type = "debug",
-                opt_level = self.OPT_LEVEL
+                target="emscripten",
+                kind="exe",
+                build_type="debug",
+                opt_level=self.OPT_LEVEL,
             )
             WrapperClass = ExeWrapper
         elif self.backend == "py-cffi":
             config = BuildConfig(
-                target = "native",
-                kind = "py-cffi",
-                build_type = "debug",
-                opt_level = self.OPT_LEVEL
+                target="native",
+                kind="py-cffi",
+                build_type="debug",
+                opt_level=self.OPT_LEVEL,
             )
             WrapperClass = load_cffi_module
         else:
             assert False, f"Unknown backend: {self.backend}"
 
-        backend = CBackend(
-            self.vm,
-            modname,
-            config,
-            self.builddir,
-            dump_c=self.dump_c
-        )
+        backend = CBackend(self.vm, modname, config, self.builddir, dump_c=self.dump_c)
         backend.cwrite()
         backend.write_build_script()
-        outfile = backend.build() # e.g. 'test.wasm' or 'test.mjs'
+        outfile = backend.build()  # e.g. 'test.wasm' or 'test.mjs'
         return WrapperClass(self.vm, modname, outfile)
-
 
     def dump_module(self, modname: str) -> None:
         from spy.cli import dump_spy_mod
+
         print()
         print()
         dump_spy_mod(self.vm, modname, full_fqn=False)
 
-    def compile_raises(self, src: str, funcname: str, ctx: Any,
-                       *,
-                       modname: str = "test",
-                       error_reporting: Optional[str] = None) -> None:
+    def compile_raises(
+        self,
+        src: str,
+        funcname: str,
+        ctx: Any,
+        *,
+        modname: str = "test",
+        error_reporting: Optional[str] = None,
+    ) -> None:
         """
         Compile the given src and run the function with the given funcname.
 
@@ -263,6 +270,7 @@ class CompilerTest:
 
 
 MatchAnnotation = tuple[str, str]
+
 
 @contextmanager
 def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
@@ -314,7 +322,6 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
     print(formatted_error)
 
 
-
 @pytest.mark.usefixtures("init")
 class CTest:
     tmpdir: Any
@@ -334,11 +341,7 @@ class CTest:
         return test_c
 
     def c_compile(self, src: str, *, exports: list[str] = []) -> py.path.local:
-        config = BuildConfig(
-            target = self.target,
-            kind = "lib",
-            build_type = "debug"
-        )
+        config = BuildConfig(target=self.target, kind="lib", build_type="debug")
         test_c = self.write(src)
         ninja = NinjaWriter(config, self.build_dir)
         ninja.write("test", [test_c], wasm_exports=exports)

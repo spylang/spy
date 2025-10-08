@@ -1,4 +1,4 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 import pytest
 
@@ -13,10 +13,8 @@ from spy.vm.object import W_Type
 # doesn't support lists
 @no_C
 class TestList(CompilerTest):
-
     def test_generic_type(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         @blue
         def foo():
             return list[i32]
@@ -27,8 +25,7 @@ class TestList(CompilerTest):
         assert w_list_i32.fqn == FQN("builtins::list[i32]")
 
     def test_generalize_literal(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> type:
             x = [i32, f64, str]
             return STATIC_TYPE(x)
@@ -45,8 +42,7 @@ class TestList(CompilerTest):
         assert w_t2.fqn == FQN("builtins::list[object]")
 
     def test_literal(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> list[i32]:
             x: list[i32] = [1, 2, 3]
             return x
@@ -55,8 +51,7 @@ class TestList(CompilerTest):
         assert x == [1, 2, 3]
 
     def test_getitem(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo(i: i32) -> str:
             x: list[str] = ["foo", "bar", "baz"]
             return x[i]
@@ -65,8 +60,7 @@ class TestList(CompilerTest):
         assert mod.foo(1) == "bar"
 
     def test_setitem(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo(i: i32) -> list[i32]:
             x: list[i32] = [0, 1, 2]
             x[i] = x[i] + 10
@@ -79,8 +73,7 @@ class TestList(CompilerTest):
         if self.backend == "doppler":
             pytest.skip("list PBCs not supported")
 
-        mod = self.compile(
-        """
+        mod = self.compile("""
         A: list[i32] = [0, 1, 2]
         B: list[type] = [i32, f64, str]
 
@@ -98,8 +91,7 @@ class TestList(CompilerTest):
         assert mod.cmp_types(B.w_i32) == False
 
     def test_interp_repr(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> list[i32]:
             return [1, 2]
         """)

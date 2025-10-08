@@ -14,15 +14,18 @@ if TYPE_CHECKING:
 
 OpKind = Literal["get", "set"]
 
+
 def unwrap_name_maybe(vm: "SPyVM", wam_name: W_MetaArg) -> str:
     if wam_name.is_blue() and wam_name.w_static_T is B.w_str:
         return vm.unwrap_str(wam_name.w_blueval)
     else:
         return "<unknown>"
 
+
 @OP.builtin_func(color="blue")
 def w_GETATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     name = unwrap_name_maybe(vm, wam_name)
 
     w_T = wam_obj.w_static_T
@@ -37,16 +40,13 @@ def w_GETATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
         vm,
         w_opspec,
         [wam_obj, wam_name],
-        dispatch = "single",
-        errmsg = "type `{0}` has no attribute '%s'" % name
+        dispatch="single",
+        errmsg="type `{0}` has no attribute '%s'" % name,
     )
 
 
 def default_getattribute(
-    vm: "SPyVM",
-    wam_obj: W_MetaArg,
-    wam_name: W_MetaArg,
-    name: str
+    vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg, name: str
 ) -> W_OpSpec:
     # default logic for objects which don't implement __getattribute__. This
     # is the equivalent of CPython's object.c:PyObject_GenericGetAttr, and
@@ -100,22 +100,22 @@ def default_getattribute(
 
 
 @OP.builtin_func(color="blue")
-def w_SETATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg,
-            wam_v: W_MetaArg) -> W_OpImpl:
+def w_SETATTR(
+    vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
+) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     name = unwrap_name_maybe(vm, wam_name)
     w_opspec = _get_SETATTR_opspec(vm, wam_obj, wam_name, wam_v, name)
     errmsg = "type `{0}` does not support assignment to attribute '%s'" % name
     return typecheck_opspec(
-        vm,
-        w_opspec,
-        [wam_obj, wam_name, wam_v],
-        dispatch = "single",
-        errmsg = errmsg
+        vm, w_opspec, [wam_obj, wam_name, wam_v], dispatch="single", errmsg=errmsg
     )
 
-def _get_SETATTR_opspec(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg,
-                        wam_v: W_MetaArg, name: str) -> W_OpSpec:
+
+def _get_SETATTR_opspec(
+    vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg, name: str
+) -> W_OpSpec:
     w_T = wam_obj.w_static_T
 
     if w_T is B.w_dynamic:

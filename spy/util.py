@@ -1,4 +1,4 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 import difflib
 import inspect
 import subprocess
@@ -15,8 +15,10 @@ class AnythingClass:
     Magic object which compares equal to everything. Useful for equality tests
     in which you don't care about the exact value of a specific field.
     """
+
     def __eq__(self, other: typing.Any) -> bool:
         return True
+
 
 ANYTHING: typing.Any = AnythingClass()
 
@@ -53,6 +55,7 @@ def extend(existing_cls):
     Class decorator to extend an existing class with new attributes and
     methods
     """
+
     def decorator(new_cls):
         for key, value in new_cls.__dict__.items():
             if key.startswith("__"):
@@ -62,16 +65,18 @@ def extend(existing_cls):
                 raise TypeError(f"class {clsname} has already a member '{key}'")
             setattr(existing_cls, key, value)
         return existing_cls
+
     return decorator
 
 
 @typing.no_type_check
 def print_class_hierarchy(cls):
+    # fmt: off
     CROSS  = "├── "
     BAR    = "│   "
     CORNER = "└── "
     SPACE  = "    "
-
+    # fmt: on
     def print_class(cls, prefix, indent, marker):
         print(f"{prefix}{marker}{cls.__name__}")
         prefix += indent
@@ -109,7 +114,9 @@ def highlight_C_maybe(code: str | bytes) -> str:
     from pygments import highlight
     from pygments.formatters import TerminalFormatter  # type: ignore
     from pygments.lexers import CLexer  # type: ignore
+
     return highlight(code, CLexer(), TerminalFormatter())
+
 
 def shortrepr(s: str, n: int) -> str:
     """
@@ -119,8 +126,9 @@ def shortrepr(s: str, n: int) -> str:
     Else, we use '...' to put a cap on the length of s.
     """
     if len(s) > n:
-        s = s[:n-2] + "..."
+        s = s[: n - 2] + "..."
     return repr(s)
+
 
 def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
     """
@@ -129,6 +137,7 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
     Like unbuffer, this assumes the command only outputs to stdout.
     """
     import pexpect
+
     try:
         cmd = cmdline_s[0]
         args = list(cmdline_s[1:])
@@ -141,23 +150,16 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
         returncode = child.exitstatus
 
         return subprocess.CompletedProcess(
-            args=cmdline_s,
-            stdout=child.before,
-            stderr="",
-            returncode=returncode
+            args=cmdline_s, stdout=child.before, stderr="", returncode=returncode
         )
     except pexpect.exceptions.EOF:
         return subprocess.CompletedProcess(
-            args=cmdline_s,
-            stdout=child.before,
-            stderr="",
-            returncode=returncode
+            args=cmdline_s, stdout=child.before, stderr="", returncode=returncode
         )
 
 
 def robust_run(
-        cmdline: Sequence[str|py.path.local],
-        unbuffer: bool = False
+    cmdline: Sequence[str | py.path.local], unbuffer: bool = False
 ) -> subprocess.CompletedProcess:
     """
     Similar to subprocess.run, but raise an Exception with the content of
@@ -166,7 +168,6 @@ def robust_run(
     If unbuffer is True, the command is run unbuffered using pexpect.
     """
     cmdline_s = [str(x) for x in cmdline]
-    #print(" ".join(cmdline_s))
     if unbuffer:
         # Note that unbuffer doesn't read from stdin by default
         proc = unbuffer_run(cmdline_s)
@@ -232,4 +233,5 @@ def func_equals(f: Callable, g: Callable) -> bool:
 
 if __name__ == "__main__":
     import ast as py_ast
+
     print_class_hierarchy(py_ast.AST)

@@ -28,171 +28,115 @@ from spy.vm.vm import SPyVM
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
+
 @dataclass
 class Arguments:
     filename: Path
 
     execute: Annotated[
-        bool,
-        Option(
-            "-x", "--execute",
-            help="Execute the file (default)"
-        )
+        bool, Option("-x", "--execute", help="Execute the file (default)")
     ] = False
 
-    pyparse: Annotated[
-        bool,
-        Option(
-            "-P", "--pyparse",
-            help="Dump the Python AST"
-        )
-    ] = False
+    pyparse: Annotated[bool, Option("-P", "--pyparse", help="Dump the Python AST")] = (
+        False
+    )
 
-    parse: Annotated[
-        bool,
-        Option(
-            "-p", "--parse",
-            help="Dump the SPy AST"
-        )
-    ] = False
+    parse: Annotated[bool, Option("-p", "--parse", help="Dump the SPy AST")] = False
 
     colorize: Annotated[
         bool,
         Option(
-            "-C", "--colorize",
-            help="Output the pre-redshifted AST with blue / red text colors."
-        )
+            "-C",
+            "--colorize",
+            help="Output the pre-redshifted AST with blue / red text colors.",
+        ),
     ] = False
 
     imports: Annotated[
-        bool,
-        Option(
-            "-I", "--imports",
-            help="Dump the (recursive) list of imports"
-        )
+        bool, Option("-I", "--imports", help="Dump the (recursive) list of imports")
     ] = False
 
-    symtable: Annotated[
-        bool,
-        Option(
-            "-S", "--symtable",
-            help="Dump the symtables"
-        )
-    ] = False
+    symtable: Annotated[bool, Option("-S", "--symtable", help="Dump the symtables")] = (
+        False
+    )
 
     redshift: Annotated[
-        bool,
-        Option(
-            "-r", "--redshift",
-            help="Perform redshift and dump the result"
-        )
+        bool, Option("-r", "--redshift", help="Perform redshift and dump the result")
     ] = False
 
-    cwrite: Annotated[
-        bool,
-        Option(
-            "--cwrite",
-            help="Generate the C code"
-        )
-    ] = False
+    cwrite: Annotated[bool, Option("--cwrite", help="Generate the C code")] = False
 
     cdump: Annotated[
-        bool,
-        Option(
-            "--cdump",
-            help="Dump the generated C code to stdout"
-        )
+        bool, Option("--cdump", help="Dump the generated C code to stdout")
     ] = False
 
     compile: Annotated[
-        bool,
-        Option(
-            "-c", "--compile",
-            help="Compile the generated C code"
-        )
+        bool, Option("-c", "--compile", help="Compile the generated C code")
     ] = False
 
     build_dir: Annotated[
         Optional[Path],
         Option(
-            "-b", "--build-dir",
-            help="Directory to store generated files (defaults to build/ next to the .spy file)"
-        )
+            "-b",
+            "--build-dir",
+            help="Directory to store generated files (defaults to build/ next to the "
+            ".spy file)",
+        ),
     ] = None
 
     opt_level: Annotated[
         int,
         Option(
-            "-O", metavar="LEVEL",
+            "-O",
+            metavar="LEVEL",
             help="Optimization level",
-        )
+        ),
     ] = 0
 
-    debug_symbols: Annotated[
-        bool,
-        Option(
-            "-g",
-            help="Generate debug symbols"
-        )
-    ] = False
+    debug_symbols: Annotated[bool, Option("-g", help="Generate debug symbols")] = False
 
-    release_mode: Annotated[
-        bool,
-        Option(
-            "--release",
-            help="enable release mode"
-        )
-    ] = False
+    release_mode: Annotated[bool, Option("--release", help="enable release mode")] = (
+        False
+    )
 
     target: Annotated[
         BuildTarget,
         Option(
-            "-t", "--target",
+            "-t",
+            "--target",
             help="Compilation target",
             click_type=click.Choice(BuildTarget.__args__),
-        )
+        ),
     ] = "native"
 
     output_kind: Annotated[
         OutputKind,
         Option(
-            "-k", "--output-kind",
+            "-k",
+            "--output-kind",
             help="Output kind",
             click_type=click.Choice(OutputKind.__args__),
-        )
+        ),
     ] = "exe"
 
     error_mode: Annotated[
         ErrorMode,
         Option(
-            "-E", "--error-mode",
+            "-E",
+            "--error-mode",
             help="Handling strategy for static errors",
             click_type=click.Choice(ErrorMode.__args__),
-        )
+        ),
     ] = "eager"
 
     full_fqn: Annotated[
-        bool,
-        Option(
-            "--full-fqn",
-            help="Show full FQNs in redshifted modules"
-        )
+        bool, Option("--full-fqn", help="Show full FQNs in redshifted modules")
     ] = False
 
-    timeit: Annotated[
-        bool,
-        Option(
-            "--timeit",
-            help="Print execution time"
-        )
-    ] = False
+    timeit: Annotated[bool, Option("--timeit", help="Print execution time")] = False
 
     pdb: Annotated[
-        bool,
-        Option(
-            "--pdb",
-            help="Enter interp-level debugger in case of error"
-        )
+        bool, Option("--pdb", help="Enter interp-level debugger in case of error")
     ] = False
 
     def __post_init__(self) -> None:
@@ -202,17 +146,25 @@ class Arguments:
 
     def validate_actions(self) -> None:
         # check that we specify at most one of the following options
-        possible_actions = ["execute", "pyparse", "parse",
-                            "imports", "symtable",
-                            "redshift", "cwrite", "compile", "colorize"]
+        possible_actions = [
+            "execute",
+            "pyparse",
+            "parse",
+            "imports",
+            "symtable",
+            "redshift",
+            "cwrite",
+            "compile",
+            "colorize",
+        ]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
         if n == 0:
             self.execute = True
         elif n == 1:
-            pass # this is valid
+            pass  # this is valid
         elif actions == {"redshift", "execute"} or actions == {"redshift", "parse"}:
-            pass # these are valid
+            pass  # these are valid
         else:
             msg = "Too many actions specified: "
             msg += " ".join(["--" + a for a in actions])
@@ -225,28 +177,33 @@ def do_pyparse(filename: str) -> None:
     mod = magic_py_parse(src)
     mod.pp()
 
+
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
+
 def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
     for fqn, w_obj in vm.fqns_by_modname(modname):
-        if (isinstance(w_obj, W_ASTFunc) and
-            w_obj.color == "red" and
-            w_obj.fqn == fqn):
+        if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
             print(f"`{fqn}` = ", end="")
             w_obj.funcdef.pp()
             print()
+
 
 def pyproject_entry_point() -> Any:
     """
     This is called by the script generated by pyproject.toml
     """
     if sys.platform == "emscripten":
-        print("The 'spy' command does not work in a pyodide venv running under node. Please use python -m spy")
+        print(
+            "The 'spy' command does not work in a pyodide venv running under node. "
+            "Please use python -m spy"
+        )
         sys.exit(1)
     return app()
+
 
 @app.command()
 @dataclass_typer
@@ -267,7 +224,8 @@ async def pyodide_main(args: Arguments) -> None:
     try:
         await real_main(args)
     except BaseException:
-       traceback.print_exc()
+        traceback.print_exc()
+
 
 async def real_main(args: Arguments) -> None:
     """
@@ -295,6 +253,7 @@ def emit_warning(err: SPyError) -> None:
     print(Color.set("yellow", "[warning] "), end="")
     print(err.format())
 
+
 def get_build_dir(args: Arguments) -> py.path.local:
     if args.build_dir is not None:
         build_dir = args.build_dir
@@ -303,7 +262,7 @@ def get_build_dir(args: Arguments) -> py.path.local:
         srcdir = args.filename.parent
         build_dir = srcdir / "build"
 
-    #print(f"Build dir:    {build_dir}")
+    # print(f"Build dir:    {build_dir}")
     build_dir.mkdir(exist_ok=True, parents=True)
     return py.path.local(str(build_dir))
 
@@ -317,7 +276,9 @@ async def inner_main(args: Arguments) -> None:
         return
 
     if args.filename.suffix == ".py":
-        print(f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr)
+        print(
+            f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
+        )
         sys.exit(1)
 
     modname = args.filename.stem
@@ -357,8 +318,8 @@ async def inner_main(args: Arguments) -> None:
         # Signal to the redshift codde that we want to retain expr color information
         vm.expr_color_map = {}
     vm.redshift(error_mode=args.error_mode)
-    #vm.pp_globals()
-    #vm.pp_modules()
+    # vm.pp_globals()
+    # vm.pp_modules()
 
     if args.redshift or args.colorize:
         if args.execute:
@@ -373,21 +334,15 @@ async def inner_main(args: Arguments) -> None:
         return
 
     config = BuildConfig(
-        target = args.target,
-        kind = args.output_kind,
-        build_type = "release" if args.release_mode else "debug"
+        target=args.target,
+        kind=args.output_kind,
+        build_type="release" if args.release_mode else "debug",
     )
 
     cwd = py.path.local(".")
     build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
-    backend = CBackend(
-        vm,
-        modname,
-        config,
-        build_dir,
-        dump_c=dump_c
-    )
+    backend = CBackend(vm, modname, config, build_dir, dump_c=dump_c)
 
     backend.cwrite()
     backend.write_build_script()

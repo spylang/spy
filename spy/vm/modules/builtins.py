@@ -19,9 +19,11 @@ if TYPE_CHECKING:
 
 PY_PRINT = print  # type: ignore
 
+
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_STATIC_TYPE(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     return W_OpSpec.const(wam_obj.w_static_T)
+
 
 @BUILTINS.builtin_func
 def w_abs(vm: "SPyVM", w_x: W_I32) -> W_I32:
@@ -29,12 +31,14 @@ def w_abs(vm: "SPyVM", w_x: W_I32) -> W_I32:
     res = vm.ll.call("spy_builtins$abs", x)
     return vm.wrap(res)
 
+
 @BUILTINS.builtin_func
 def w_max(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
     y = vm.unwrap_i32(w_y)
     res = vm.ll.call("spy_builtins$max", x, y)
     return vm.wrap(res)
+
 
 @BUILTINS.builtin_func
 def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
@@ -75,10 +79,7 @@ def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 
     t = w_T.fqn.human_name
     raise SPyError.simple(
-        "W_TypeError",
-        f"cannot call print(`{t}`)",
-        f"this is `{t}`",
-        wam_obj.loc
+        "W_TypeError", f"cannot call print(`{t}`)", f"this is `{t}`", wam_obj.loc
     )
 
 
@@ -86,29 +87,36 @@ def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 def w_print_i32(vm: "SPyVM", w_x: W_I32) -> None:
     PY_PRINT(vm.unwrap(w_x))
 
+
 @BUILTINS.builtin_func
 def w_print_f64(vm: "SPyVM", w_x: W_F64) -> None:
     PY_PRINT(vm.unwrap(w_x))
+
 
 @BUILTINS.builtin_func
 def w_print_bool(vm: "SPyVM", w_x: W_Bool) -> None:
     PY_PRINT(vm.unwrap(w_x))
 
+
 @BUILTINS.builtin_func
 def w_print_NoneType(vm: "SPyVM", w_x: W_NoneType) -> None:
     PY_PRINT(vm.unwrap(w_x))
+
 
 @BUILTINS.builtin_func
 def w_print_str(vm: "SPyVM", w_x: W_Str) -> None:
     PY_PRINT(vm.unwrap(w_x))
 
+
 @BUILTINS.builtin_func
 def w_print_dynamic(vm: "SPyVM", w_x: W_Dynamic) -> None:
     PY_PRINT(vm.unwrap(w_x))
 
+
 @BUILTINS.builtin_func
 def w_print_object(vm: "SPyVM", w_x: W_Object) -> None:
     PY_PRINT(str(w_x))
+
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_len(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
@@ -119,11 +127,9 @@ def w_len(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 
     t = w_T.fqn.human_name
     raise SPyError.simple(
-        "W_TypeError",
-        f"cannot call len(`{t}`)",
-        f"this is `{t}`",
-        wam_obj.loc
+        "W_TypeError", f"cannot call len(`{t}`)", f"this is `{t}`", wam_obj.loc
     )
+
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_repr(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
@@ -136,11 +142,9 @@ def w_repr(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     # OpSpec.NULL
     t = w_T.fqn.human_name
     raise SPyError.simple(
-        "W_TypeError",
-        f"cannot call repr(`{t}`)",
-        f"this is `{t}`",
-        wam_obj.loc
+        "W_TypeError", f"cannot call repr(`{t}`)", f"this is `{t}`", wam_obj.loc
     )
+
 
 @BUILTINS.builtin_func
 def w_hash_i8(vm: "SPyVM", w_x: W_I8) -> W_I32:
@@ -149,15 +153,18 @@ def w_hash_i8(vm: "SPyVM", w_x: W_I8) -> W_I32:
         return vm.wrap(2)
     return vm.wrap(x)
 
+
 @BUILTINS.builtin_func
 def w_hash_i32(vm: "SPyVM", w_x: W_I32) -> W_I32:
     if (vm.unwrap_i32(w_x)) == -1:
         return vm.wrap(2)
     return w_x
 
+
 @BUILTINS.builtin_func
 def w_hash_u8(vm: "SPyVM", w_x: W_U8) -> W_I32:
     return vm.wrap(vm.unwrap_u8(w_x))
+
 
 @BUILTINS.builtin_func
 def w_hash_bool(vm: "SPyVM", w_x: W_Bool) -> W_I32:
@@ -167,6 +174,7 @@ def w_hash_bool(vm: "SPyVM", w_x: W_Bool) -> W_I32:
         return vm.wrap(1)
     else:
         assert False, "unreachable"
+
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
@@ -186,11 +194,9 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 
     t = w_T.fqn.human_name
     raise SPyError.simple(
-        "W_TypeError",
-        f"unhashable type '{t}'",
-        f"this is `{t}`",
-        wam_obj.loc
+        "W_TypeError", f"unhashable type '{t}'", f"this is `{t}`", wam_obj.loc
     )
+
 
 # add aliases for common types. For now we map:
 #   int -> i32

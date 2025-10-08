@@ -43,8 +43,8 @@ class W_SeqMetaLen(W_Object):
         @vm.register_builtin_func("ext")
         def w_len(vm: "SPyVM", w_self: W_SeqMetaLen) -> W_I32:
             return w_self.w_size
-        return W_OpSpec(w_len)
 
+        return W_OpSpec(w_len)
 
 
 class TestBuiltins(CompilerTest):
@@ -85,7 +85,6 @@ class TestBuiltins(CompilerTest):
         assert mod.foo(5) == 5
         assert mod.foo(42) == 42
         assert mod.foo(0) == 0
-
 
     def test_len_not_supported(self):
         src = """
@@ -130,6 +129,7 @@ class TestBuiltins(CompilerTest):
             @vm.register_builtin_func(fqn, "impl")
             def w_impl(vm: "SPyVM") -> W_I32:
                 return vm.wrap(21)
+
             return w_impl
 
         # ========== /EXT module for this test =========

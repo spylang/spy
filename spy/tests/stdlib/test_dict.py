@@ -1,11 +1,8 @@
-import pytest
-
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
 class TestDict(CompilerTest):
-
     def test_set_get_simple(self):
         src = """
         from _dict import dict

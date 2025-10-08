@@ -18,26 +18,27 @@ from spy.vm.w import W_BuiltinFunc, W_FuncType, W_Str
 
 
 class TestBuiltin:
-
     def test_functype_from_sig(self):
         def foo(vm: "SPyVM", w_x: W_I32) -> W_Str:
             return W_Str(vm, "this is never called")
+
         w_functype = functype_from_sig(foo, "red", "plain")
         assert w_functype == W_FuncType.parse("def(i32) -> str")
 
     def test_functype_from_sig_extra_types(self):
         def foo(vm: "SPyVM", w_x: W_I32) -> "FooBar":  # type: ignore
             return W_Str(vm, "this is never called")
-        extra_types = {
-            "FooBar": W_Str
-        }
+
+        extra_types = {"FooBar": W_Str}
         w_functype = functype_from_sig(foo, "red", "plain", extra_types=extra_types)
         assert w_functype == W_FuncType.parse("def(i32) -> str")
 
     def test_annotated_type(self):
         W_MyType = Annotated[W_Object, B.w_i32]
+
         def foo(vm: "SPyVM", w_x: W_MyType) -> None:
             pass
+
         w_functype = functype_from_sig(foo, "red", "plain")
         assert w_functype == W_FuncType.parse("def(i32) -> None")
 
@@ -47,7 +48,7 @@ class TestBuiltin:
         @vm.register_builtin_func("_testing_helpers")
         def w_foo(vm: "SPyVM", w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
-            return vm.wrap(x*2)
+            return vm.wrap(x * 2)
 
         assert isinstance(w_foo, W_BuiltinFunc)
         assert w_foo.fqn == FQN("_testing_helpers::foo")
@@ -56,44 +57,50 @@ class TestBuiltin:
 
     def test_builtin_func_errors(self):
         vm = SPyVM()
-        with pytest.raises(ValueError,
-                           match="The first param should be 'vm: SPyVM'."):
+        with pytest.raises(ValueError, match="The first param should be 'vm: SPyVM'."):
+
             @vm.register_builtin_func("mymod")
             def w_foo() -> W_I32:  # type: ignore
                 pass
 
-        with pytest.raises(ValueError,
-                           match="The first param should be 'vm: SPyVM'."):
+        with pytest.raises(ValueError, match="The first param should be 'vm: SPyVM'."):
+
             @vm.register_builtin_func("mymod")
             def w_foo(w_x: W_I32) -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(
-                ValueError,
-                match="Invalid @builtin_func annotation: <class 'int'>"):
+            ValueError, match="Invalid @builtin_func annotation: <class 'int'>"
+        ):
+
             @vm.register_builtin_func("mymod")
             def w_foo(vm: "SPyVM", x: int) -> W_I32:  # type: ignore
                 pass
 
         with pytest.raises(
-                ValueError,
-                match="Invalid @builtin_func annotation: <class 'int'>"):
+            ValueError, match="Invalid @builtin_func annotation: <class 'int'>"
+        ):
+
             @vm.register_builtin_func("mymod")
             def w_foo(vm: "SPyVM") -> int:  # type: ignore
                 pass
 
     def test_builtin_func_dynamic(self):
         vm = SPyVM()
+
         @vm.register_builtin_func("_testing_helpers")
         def w_foo(vm: "SPyVM", w_x: W_Dynamic) -> W_Dynamic:  # type: ignore
             pass
+
         assert w_foo.w_functype.fqn.human_name == "def(dynamic) -> dynamic"
 
     def test_return_None(self):
         vm = SPyVM()
+
         @vm.register_builtin_func("_testing_helpers")
         def w_foo(vm: "SPyVM") -> None:
             pass
+
         assert w_foo.w_functype.fqn.human_name == "def() -> None"
         assert isinstance(w_foo, W_BuiltinFunc)
         w_res = vm.fast_call(w_foo, [])
@@ -105,7 +112,7 @@ class TestBuiltin:
         @vm.register_builtin_func("_testing_helpers", color="blue")
         def w_foo(vm: "SPyVM", w_x: W_I32) -> W_I32:
             x = vm.unwrap_i32(w_x)
-            return vm.wrap(x*2)
+            return vm.wrap(x * 2)
 
         assert w_foo.w_functype.fqn.human_name == "@blue def(i32) -> i32"
         w_x = vm.fast_call(w_foo, [vm.wrap(21)])
@@ -115,7 +122,6 @@ class TestBuiltin:
     def test_builtin_method(self):
         @builtin_type("test", "Foo")
         class W_Foo(W_Object):
-
             @builtin_method("make")
             @staticmethod
             def w_make(vm: "SPyVM") -> "W_Foo":
@@ -139,11 +145,9 @@ class TestBuiltin:
         assert W_Foo.w_attr is w_42
         assert W_Foo._w.dict_w["attr"] is w_42
 
-
     def test_inherit_method(self):
         @builtin_type("test", "Super")
         class W_Super(W_Object):
-
             @builtin_method("foo")
             @staticmethod
             def w_foo(vm: "SPyVM") -> None:
@@ -162,14 +166,15 @@ class TestBuiltin:
 
     def test_metafunc_wrong_color(self):
         class W_Foo(W_Object):
-
             @builtin_method("__getitem__", kind="metafunc")
             @staticmethod
             def w_GETITEM(vm: "SPyVM") -> "W_Foo":
                 return W_Foo()
 
-        msg = ("wrong color for metafunc `test::Foo::__getitem__`: "
-               "expected `blue`, got `red`")
+        msg = (
+            "wrong color for metafunc `test::Foo::__getitem__`: expected `blue`, got "
+            "`red`"
+        )
         with SPyError.raises("W_TypeError", match=msg):
             # simulate @decorator application
             builtin_type("test", "Foo")(W_Foo)

@@ -5,17 +5,20 @@ import py.path
 
 LLWasmType = Literal[None, "void *", "int32_t", "int16_t"]
 
+
 class HostModule:
     """
     Base class for host modules.
 
     Each host module can provide one or more WASM import, used by link().
     """
-    ll: "LLWasmInstanceBase" # this attribute is set by LLWasmInstance.__init__
+
+    ll: "LLWasmInstanceBase"  # this attribute is set by LLWasmInstance.__init__
 
 
 class LLWasmModuleBase:
     pass
+
 
 class LLWasmInstanceBase:
     mem: "LLWasmMemoryBase"
@@ -27,8 +30,7 @@ class LLWasmInstanceBase:
         raise NotImplementedError
 
     @classmethod
-    def from_file(cls, f: py.path.local,
-                  hostmods: list[HostModule]=[]) -> Self:
+    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
         raise NotImplementedError
 
     def call(self, name: str, *args: Any) -> Any:
@@ -116,7 +118,7 @@ class LLWasmMemoryBase:
         Read a ptr, which we represent as a struct {addr; length }
         """
         v_addr = self.read_i32(addr)
-        v_length = self.read_i32(addr+4)
+        v_length = self.read_i32(addr + 4)
         return v_addr, v_length
 
     def read_cstr(self, addr: int) -> bytearray:
@@ -149,4 +151,4 @@ class LLWasmMemoryBase:
         Write a ptr { addr; length } to the given addr
         """
         self.write_i32(addr, v_addr)
-        self.write_i32(addr+4, v_length)
+        self.write_i32(addr + 4, v_length)

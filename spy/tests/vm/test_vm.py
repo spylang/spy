@@ -13,7 +13,6 @@ from spy.vm.vm import SPyVM
 
 
 class TestVM:
-
     def test_W_Object(self):
         vm = SPyVM()
         w_obj = W_Object()
@@ -60,7 +59,7 @@ class TestVM:
         @builtin_type("test", "foo")
         class W_Foo(W_Object):
             pass
-        #
+
         assert isinstance(W_Foo._w, W_Type)
         assert W_Foo._w.fqn == FQN("test::foo")
         assert W_Foo._w.pyclass is W_Foo
@@ -69,11 +68,11 @@ class TestVM:
         @builtin_type("test", "A")
         class W_A(W_Object):
             pass
-        #
+
         @builtin_type("test", "B")
         class W_B(W_A):
             pass
-        #
+
         assert W_Object._w.w_base is B.w_None
         assert W_A._w.w_base is W_Object._w
         assert W_B._w.w_base is W_A._w
@@ -82,15 +81,15 @@ class TestVM:
         @builtin_type("test", "A")
         class W_A(W_Object):
             pass
-        #
+
         @builtin_type("test", "B")
         class W_B(W_A):
             pass
-        #
+
         vm = SPyVM()
         w_a = W_A._w
         w_b = W_B._w
-        #
+
         assert vm.issubclass(w_a, B.w_object)
         assert vm.issubclass(w_b, B.w_object)
         assert vm.issubclass(w_a, w_a)
@@ -102,19 +101,20 @@ class TestVM:
         @builtin_type("test", "A")
         class W_A(W_Object):
             pass
-        #
+
         @builtin_type("test", "B")
         class W_B(W_A):
             pass
-        #
+
         @builtin_type("test", "C")
         class W_C(W_A):
             pass
+
         vm = SPyVM()
         w_a = W_A._w
         w_b = W_B._w
         w_c = W_C._w
-        #
+
         assert vm.union_type(w_a, w_a) is w_a
         assert vm.union_type(w_b, w_b) is w_b
         assert vm.union_type(w_a, w_b) is w_a
@@ -124,11 +124,13 @@ class TestVM:
 
     def test_cannot_wrap(self):
         vm = SPyVM()
+
         class Foo:
             pass
+
         with pytest.raises(
-                Exception,
-                match="Cannot wrap interp-level objects of type Foo"):
+            Exception, match="Cannot wrap interp-level objects of type Foo"
+        ):
             vm.wrap(Foo())
 
     def test_exception_eq(self):
@@ -149,7 +151,6 @@ class TestVM:
         assert isinstance(w_None, W_NoneType)
         assert vm.dynamic_type(w_None).fqn == FQN("types::NoneType")
         assert repr(w_None) == "<spy None>"
-        #
         assert vm.wrap(None) is w_None
 
     def test_W_I32(self):
@@ -160,16 +161,16 @@ class TestVM:
         assert vm.dynamic_type(w_x) is B.w_i32
         assert repr(w_x) == "W_I32(123)"
         assert repr(B.w_i32) == "<spy type 'i32'>"
-        #
+
         x = vm.unwrap(w_x)
         y = vm.unwrap(w_y)
         assert x == 123
         assert y == 456
         assert type(x) is fixedint.Int32
         assert type(y) is fixedint.Int32
-        #
+
         # check that we are actually using 32bit fixed arithmetic
-        w_z = vm.wrap(0xffffffff)
+        w_z = vm.wrap(0xFFFFFFFF)
         z = vm.unwrap(w_z)
         assert z == -1
 
@@ -179,13 +180,13 @@ class TestVM:
         w_False = vm.wrap(False)
         assert isinstance(w_True, W_Bool)
         assert isinstance(w_False, W_Bool)
-        #
+
         # w_True and w_False are singletons
         assert vm.wrap(True) is w_True
         assert vm.wrap(False) is w_False
         assert vm.unwrap(w_True) is True
         assert vm.unwrap(w_False) is False
-        #
+
         assert vm.dynamic_type(w_True) is B.w_bool
         assert repr(w_True) == "W_Bool(True)"
         assert repr(w_False) == "W_Bool(False)"
@@ -241,12 +242,14 @@ class TestVM:
         vm = SPyVM()
         w_a = vm.wrap(1)
         w_b = vm.wrap("x")
+        # fmt: off
         errors = expect_errors(
             "cannot do `i32`[...]",
             ("this is `i32`", "            vm.getitem(w_a, w_b) # hello")
         )
         with errors:
             vm.getitem(w_a, w_b) # hello
+        # fmt: on
 
     def test_add_global(self):
         vm = SPyVM()

@@ -10,9 +10,12 @@ from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+
 class W_IntLike(Protocol):
     "mypy protocol which works for W_I32, W_I8, etc."
+
     value: Any
+
 
 def make_ops(T: str, pyclass: type[W_Object]) -> None:
     w_T = pyclass._w  # e.g. B.w_i32

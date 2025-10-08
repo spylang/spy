@@ -71,6 +71,7 @@ from typing import Any, Optional, Sequence, Union
 PARTS = Sequence[Union[str, "NSPart"]]
 QUALIFIERS = Optional[Sequence[Union[str, "FQN"]]]
 
+
 def get_parts(x: PARTS) -> tuple["NSPart", ...]:
     parts = []
     for part in x:
@@ -81,6 +82,7 @@ def get_parts(x: PARTS) -> tuple["NSPart", ...]:
         else:
             assert False
     return tuple(parts)
+
 
 def get_qualifiers(x: QUALIFIERS) -> tuple["FQN", ...]:
     x = x or ()
@@ -93,6 +95,7 @@ def get_qualifiers(x: QUALIFIERS) -> tuple["FQN", ...]:
         else:
             assert False
     return tuple(quals)
+
 
 @dataclass(frozen=True)
 class NSPart:
@@ -136,6 +139,7 @@ class FQN:
             FQN(x: PARTS)
         """
         from .fqn_parser import FQNParser
+
         if isinstance(x, str):
             return FQNParser(x).parse()
         else:
@@ -208,14 +212,10 @@ class FQN:
         and special-case 'def[...]'
         """
         is_def = (
-            len(self.parts) == 2 and
-            self.modname == "builtins" and
-            self.parts[1].name in (
-                "def",
-                "blue.def",
-                "blue.generic.def",
-                "blue.metafunc.def"
-            )
+            len(self.parts) == 2
+            and self.modname == "builtins"
+            and self.parts[1].name
+            in ("def", "blue.def", "blue.generic.def", "blue.metafunc.def")
         )
         if is_def:
             p1 = self.parts[1]
@@ -237,9 +237,9 @@ class FQN:
             return f"{d}({p}) -> {r}"
 
         is_varargs_param = (
-            len(self.parts) == 2 and
-            self.modname == "builtins" and
-            self.parts[1].name == "__varargs__"
+            len(self.parts) == 2
+            and self.modname == "builtins"
+            and self.parts[1].name == "__varargs__"
         )
         if is_varargs_param:
             p1 = self.parts[1]
@@ -261,7 +261,7 @@ class FQN:
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-    def join(self, name: str, qualifiers: QUALIFIERS=None) -> "FQN":
+    def join(self, name: str, qualifiers: QUALIFIERS = None) -> "FQN":
         """
         Create a new FQN nested inside the current one.
         """

@@ -6,10 +6,8 @@ from spy.tests.support import CompilerTest, expect_errors, only_interp
 # doesn't support lists
 @only_interp
 class TestTuple(CompilerTest):
-
     def test_literal(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> dynamic:
             return 1, 2, 'hello'
         """)
@@ -17,8 +15,7 @@ class TestTuple(CompilerTest):
         assert tup == (1, 2, "hello")
 
     def test_getitem(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo(i: i32) -> dynamic:
             tup = 1, 2, 'hello'
             return tup[i]
@@ -29,8 +26,7 @@ class TestTuple(CompilerTest):
         assert y == "hello"
 
     def test_len(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> i32:
             tup = 1, 2, 'hello'
             return len(tup)
@@ -39,8 +35,7 @@ class TestTuple(CompilerTest):
         assert x == 3
 
     def test_unpacking(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def make_tuple() -> tuple:
             return 1, 2, 'hello'
 
@@ -52,8 +47,7 @@ class TestTuple(CompilerTest):
         assert x == 3
 
     def test_unpacking_wrong_number(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def make_tuple() -> tuple:
             return 1, 2
 
@@ -76,8 +70,7 @@ class TestTuple(CompilerTest):
         self.compile_raises(src, "foo", errors)
 
     def test_eq(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def tup1() -> tuple:
             return 1, 2
 
@@ -94,8 +87,7 @@ class TestTuple(CompilerTest):
         assert not mod.bar()
 
     def test_blue_tuple(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         @blue
         def make_pair():
             return 1, 2

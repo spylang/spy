@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 @OP.builtin_func(color="blue")
 def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_opspec = W_OpSpec.NULL
     w_T = wam_obj.w_static_T
 
@@ -27,10 +28,10 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
         # message in case we try to call a plain function with [].
         assert w_T.pyclass is W_Func
         if w_T.kind == "plain":
-            w_opspec = W_Func.op_CALL(vm, wam_obj, *args_wam) # type: ignore
+            w_opspec = W_Func.op_CALL(vm, wam_obj, *args_wam)  # type: ignore
         elif w_T.kind == "metafunc":
             assert w_T.pyclass is W_Func
-            w_opspec = W_Func.op_METACALL(vm, wam_obj, *args_wam) # type: ignore
+            w_opspec = W_Func.op_METACALL(vm, wam_obj, *args_wam)  # type: ignore
         elif w_T.kind == "generic":
             errmsg = "generic functions must be called via `[...]`"
         else:
@@ -45,15 +46,17 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
         vm,
         w_opspec,
         newargs_wam,
-        dispatch = "single",
-        errmsg = errmsg,
+        dispatch="single",
+        errmsg=errmsg,
     )
 
 
 @OP.builtin_func(color="blue")
-def w_CALL_METHOD(vm: "SPyVM", wam_obj: W_MetaArg, wam_meth: W_MetaArg,
-                  *args_wam: W_MetaArg) -> W_OpImpl:
+def w_CALL_METHOD(
+    vm: "SPyVM", wam_obj: W_MetaArg, wam_meth: W_MetaArg, *args_wam: W_MetaArg
+) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_opspec = W_OpSpec.NULL
     w_T = wam_obj.w_static_T
     meth = unwrap_name_maybe(vm, wam_meth)
@@ -69,8 +72,8 @@ def w_CALL_METHOD(vm: "SPyVM", wam_obj: W_MetaArg, wam_meth: W_MetaArg,
         vm,
         w_opspec,
         [wam_obj, wam_meth] + list(args_wam),
-        dispatch = "single",
-        errmsg = f"method `{{0}}::{meth}` does not exist"
+        dispatch="single",
+        errmsg=f"method `{{0}}::{meth}` does not exist",
     )
 
 
@@ -79,7 +82,7 @@ def default_callmethod(
     wam_obj: W_MetaArg,
     wam_meth: W_MetaArg,
     args_wam: tuple[W_MetaArg, ...],
-    meth: str
+    meth: str,
 ) -> W_OpSpec:
     """
     Default logic for call_method: look into the type dict

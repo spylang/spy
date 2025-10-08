@@ -17,6 +17,7 @@ class W_ListType(W_Type):
     A specialized list type.
     list[i32] -> W_ListType(fqn, B.w_i32)
     """
+
     w_itemtype: W_Type
 
     @classmethod
@@ -28,6 +29,7 @@ class W_ListType(W_Type):
 
 # PREBUILT list types are instantiated the end of the file
 PREBUILT_LIST_TYPES: dict[W_Type, W_ListType] = {}
+
 
 @BUILTINS.builtin_func(color="blue", hidden=True)
 def w_make_list_type(vm: "SPyVM", w_list: W_Object, w_T: W_Type) -> W_ListType:
@@ -46,9 +48,11 @@ def w_make_list_type(vm: "SPyVM", w_list: W_Object, w_T: W_Type) -> W_ListType:
         return PREBUILT_LIST_TYPES[w_T]
     return _make_list_type(w_T)
 
+
 def _make_list_type(w_T: W_Type) -> W_ListType:
     fqn = FQN("builtins").join("list", [w_T.fqn])  # builtins::list[i32]
     return W_ListType.from_itemtype(fqn, w_T)
+
 
 @B.builtin_type("MetaBaseList")
 class W_MetaBaseList(W_Type):
@@ -60,6 +64,7 @@ class W_MetaBaseList(W_Type):
     @staticmethod
     def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
+
         return W_OpSpec(w_make_list_type)
 
 
@@ -79,8 +84,8 @@ class W_BaseList(W_Object):
         raise Exception("You cannot instantiate W_BaseList, use W_List")
 
 
-
 T = TypeVar("T", bound="W_Object")
+
 
 class W_List(W_BaseList, Generic[T]):
     w_listtype: W_ListType
@@ -117,6 +122,7 @@ class W_List(W_BaseList, Generic[T]):
     @staticmethod
     def w_GETITEM(vm: "SPyVM", wam_list: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
+
         w_listtype = W_List._get_listtype(wam_list)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_List, w_listtype]
@@ -127,13 +133,16 @@ class W_List(W_BaseList, Generic[T]):
             i = vm.unwrap_i32(w_i)
             # XXX bound check?
             return w_list.items_w[i]
+
         return W_OpSpec(w_getitem)
 
     @builtin_method("__setitem__", color="blue", kind="metafunc")
     @staticmethod
-    def w_SETITEM(vm: "SPyVM", wam_list: W_MetaArg, wam_i: W_MetaArg,
-                  wam_v: W_MetaArg) -> W_OpSpec:
+    def w_SETITEM(
+        vm: "SPyVM", wam_list: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
+    ) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
+
         w_listtype = W_List._get_listtype(wam_list)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_List, w_listtype]
@@ -144,12 +153,14 @@ class W_List(W_BaseList, Generic[T]):
             i = vm.unwrap_i32(w_i)
             # XXX bound check?
             w_list.items_w[i] = w_v
+
         return W_OpSpec(w_setitem)
 
     @builtin_method("__eq__", color="blue", kind="metafunc")
     @staticmethod
     def w_EQ(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
+
         w_ltype = wam_l.w_static_T
         w_rtype = wam_r.w_static_T
         if w_ltype is not w_rtype:
@@ -167,6 +178,7 @@ class W_List(W_BaseList, Generic[T]):
                 if vm.is_False(vm.eq(w_1, w_2)):
                     return B.w_False
             return B.w_True
+
         return W_OpSpec(w_eq)
 
 
@@ -183,5 +195,7 @@ w_metaarg_list_type = _make_list_type(OP.w_MetaArg)
 PREBUILT_LIST_TYPES[OP.w_MetaArg] = w_metaarg_list_type
 
 W_MetaArgList = Annotated[W_List[W_MetaArg], w_metaarg_list_type]
+
+
 def make_metaarg_list(args_wam: list[W_MetaArg]) -> W_MetaArgList:
-   return W_List(w_metaarg_list_type, args_wam)  # type: ignore
+    return W_List(w_metaarg_list_type, args_wam)  # type: ignore

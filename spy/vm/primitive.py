@@ -19,12 +19,14 @@ if TYPE_CHECKING:
     from spy.vm.str import W_Str
     from spy.vm.vm import SPyVM
 
+
 @TYPES.builtin_type("NoneType", lazy_definition=True)
 class W_NoneType(W_Object):
     """
     This is a singleton: there should be only one instance of this class,
     which is w_None.
     """
+
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
         # create additional <None>s
@@ -40,7 +42,9 @@ class W_NoneType(W_Object):
     @staticmethod
     def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
+
         return W_OpSpec.const(vm.wrap("None"))
+
 
 B.add("None", W_NoneType.__new__(W_NoneType))
 
@@ -55,9 +59,9 @@ class W_I32(W_Object):
 
     @builtin_method("__new__", color="blue", kind="metafunc")
     @staticmethod
-    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg",
-              *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
+
         if len(args_wam) != 1:
             return W_OpSpec.NULL
         wam_arg = args_wam[0]
@@ -140,16 +144,15 @@ class W_F64(W_Object):
 
     @builtin_method("__new__", color="blue", kind="metafunc")
     @staticmethod
-    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg",
-              *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
+
         if len(args_wam) != 1:
             return W_OpSpec.NULL
         wam_arg = args_wam[0]
         if wam_arg.w_static_T == B.w_i32:
             return W_OpSpec(OP.w_i32_to_f64, [wam_arg])
         return W_OpSpec.NULL
-
 
     def __repr__(self) -> str:
         return f"W_F64({self.value})"
@@ -204,13 +207,13 @@ class W_Bool(W_Object):
         b = vm.unwrap(w_self)
         return vm.wrap(str(b))
 
+
 B.add("True", W_Bool._make_singleton(True))
 B.add("False", W_Bool._make_singleton(False))
 
 
 @TYPES.builtin_type("NotImplementedType", lazy_definition=True)
 class W_NotImplementedType(W_Object):
-
     def __init__(self) -> None:
         # this is just a sanity check: we don't want people to be able to
         # create additional instances
@@ -220,10 +223,11 @@ class W_NotImplementedType(W_Object):
     @staticmethod
     def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
+
         return W_OpSpec.const(vm.wrap("NotImplemented"))
 
-B.add("NotImplemented", W_NotImplementedType.__new__(W_NotImplementedType))
 
+B.add("NotImplemented", W_NotImplementedType.__new__(W_NotImplementedType))
 
 
 # The <dynamic> type

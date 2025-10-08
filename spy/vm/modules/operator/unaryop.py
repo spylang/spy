@@ -11,9 +11,11 @@ if TYPE_CHECKING:
 
 MM = MultiMethodTable()
 
+
 @OP.builtin_func(color="blue")
 def w_NEG(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_vtype = wam_v.w_static_T
     if w_opspec := MM.get_unary_opspec("-", wam_v):
         pass
@@ -21,10 +23,11 @@ def w_NEG(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_neg, [wam_v])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_v],
-                            dispatch="single",
-                            errmsg="cannot do -`{0}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_v], dispatch="single", errmsg="cannot do -`{0}`"
+    )
 
-MM.register("-", "i8",  None, OP.w_i8_neg)
+
+MM.register("-", "i8", None, OP.w_i8_neg)
 MM.register("-", "i32", None, OP.w_i32_neg)
 MM.register("-", "f64", None, OP.w_f64_neg)

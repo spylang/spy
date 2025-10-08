@@ -58,7 +58,6 @@ def make_table(src: str) -> dict[str, int]:
 
 @dataclass
 class Expr:
-
     def precedence(self) -> int:
         raise NotImplementedError
 
@@ -72,15 +71,17 @@ class Expr:
         cls = self.__class__.__name__
         return f"<{cls}(...)>"
 
+
 @dataclass
 class Literal(Expr):
     """
     A constant or an identifier
     """
+
     value: str
 
     def precedence(self) -> int:
-        return 100 # supposedly the highest
+        return 100  # supposedly the highest
 
     def __str__(self) -> str:
         return self.value
@@ -91,13 +92,14 @@ class Literal(Expr):
         Transform the given bytearray into a C literal surrounded by double
         quotes, taking care of escaping.
         """
+
         def char_repr(val: int) -> str:
             ch = chr(val)
             if val in (ord("\\"), ord('"')):
                 return rf"\{ch}"
             elif 32 <= val < 127:
                 return ch
-            return rf"\x{val:02x}" # :x is "hex format"
+            return rf"\x{val:02x}"  # :x is "hex format"
 
         lit = "".join([char_repr(val) for val in b])
         return Literal(f'"{lit}"')
@@ -124,11 +126,14 @@ class Void(Expr):
         return 100
 
     def __str__(self) -> str:
-        raise ValueError("You should never call Void.str(). "
-                         "You should special-case your code to "
-                         "handle this case specifically")
+        raise ValueError(
+            "You should never call Void.str(). You should special-case your code to "
+            "handle this case specifically"
+        )
+
 
 Void._singleton = object.__new__(Void)
+
 
 @dataclass
 class BinOp(Expr):
@@ -183,6 +188,7 @@ class UnaryOp(Expr):
             v = f"({v})"
         return f"{self.op}{v}"
 
+
 @dataclass
 class Call(Expr):
     func: str
@@ -220,6 +226,7 @@ class Arrow(Expr):
     def __str__(self) -> str:
         return f"{self.expr}->{self.field}"
 
+
 @dataclass
 class PtrField(Expr):
     """
@@ -228,6 +235,7 @@ class PtrField(Expr):
     Here it assumes that `ptr` is a SPy ptr, i.e. a struct with a `.p` field,
     and dereferences that.
     """
+
     ptr: Expr
     field: str
 
@@ -282,6 +290,7 @@ class PtrFieldByRef(Expr):
     """
     Wrapper around PtrField to make it "by ref"
     """
+
     ptr_type: C_Type
     byval: PtrField
 

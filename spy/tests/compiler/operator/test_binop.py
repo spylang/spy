@@ -10,7 +10,6 @@ from spy.vm.w import W_Object
 
 
 class W_BinOpClass(W_Object):
-
     def __init__(self, w_x: W_I32) -> None:
         self.w_x = w_x
 
@@ -137,6 +136,7 @@ class W_MyInt(W_Object):
     Simulate a value type, so we can test that __eq__ and __new__ are
     automatically generated.
     """
+
     __spy_storage_category__ = "value"
 
     def __init__(self, val: int) -> None:
@@ -150,7 +150,6 @@ class W_MyInt(W_Object):
 
     def spy_key(self, vm: "SPyVM") -> Any:
         return ("MyInt", self.val)
-
 
 
 @no_C
@@ -241,9 +240,9 @@ class TestOperatorBinop(CompilerTest):
             return obj ^ y
         """
         mod = self.compile(src)
-        assert mod.test_and(12, 5) == 4   # 1100 & 0101 = 0100 = 4
-        assert mod.test_or(12, 5) == 13   # 1100 | 0101 = 1101 = 13
-        assert mod.test_xor(12, 5) == 9   # 1100 ^ 0101 = 1001 = 9
+        assert mod.test_and(12, 5) == 4  # 1100 & 0101 = 0100 = 4
+        assert mod.test_or(12, 5) == 13  # 1100 | 0101 = 1101 = 13
+        assert mod.test_xor(12, 5) == 9  # 1100 ^ 0101 = 1001 = 9
 
     def test_shift_ops(self):
         self.setup_ext()
@@ -259,8 +258,8 @@ class TestOperatorBinop(CompilerTest):
             return obj >> y
         """
         mod = self.compile(src)
-        assert mod.test_shl(5, 2) == 20   # 5 << 2 = 20
-        assert mod.test_shr(20, 2) == 5   # 20 >> 2 = 5
+        assert mod.test_shl(5, 2) == 20  # 5 << 2 = 20
+        assert mod.test_shr(20, 2) == 5  # 20 >> 2 = 5
 
     def test_eq_ne(self):
         self.setup_ext()
@@ -276,10 +275,10 @@ class TestOperatorBinop(CompilerTest):
             return obj != y
         """
         mod = self.compile(src)
-        assert mod.test_eq(5, 5) == 1   # 5 == 5 is True (1)
-        assert mod.test_eq(5, 6) == 0   # 5 == 6 is False (0)
-        assert mod.test_ne(5, 5) == 0   # 5 != 5 is False (0)
-        assert mod.test_ne(5, 6) == 1   # 5 != 6 is True (1)
+        assert mod.test_eq(5, 5) == 1  # 5 == 5 is True (1)
+        assert mod.test_eq(5, 6) == 0  # 5 == 6 is False (0)
+        assert mod.test_ne(5, 5) == 0  # 5 != 5 is False (0)
+        assert mod.test_ne(5, 6) == 1  # 5 != 6 is True (1)
 
     def test_lt_le(self):
         self.setup_ext()
@@ -295,13 +294,13 @@ class TestOperatorBinop(CompilerTest):
             return obj <= y
         """
         mod = self.compile(src)
-        assert mod.test_lt(5, 6) == 1   # 5 < 6 is True (1)
-        assert mod.test_lt(6, 5) == 0   # 6 < 5 is False (0)
-        assert mod.test_lt(5, 5) == 0   # 5 < 5 is False (0)
+        assert mod.test_lt(5, 6) == 1  # 5 < 6 is True (1)
+        assert mod.test_lt(6, 5) == 0  # 6 < 5 is False (0)
+        assert mod.test_lt(5, 5) == 0  # 5 < 5 is False (0)
 
-        assert mod.test_le(5, 6) == 1   # 5 <= 6 is True (1)
-        assert mod.test_le(6, 5) == 0   # 6 <= 5 is False (0)
-        assert mod.test_le(5, 5) == 1   # 5 <= 5 is True (1)
+        assert mod.test_le(5, 6) == 1  # 5 <= 6 is True (1)
+        assert mod.test_le(6, 5) == 0  # 6 <= 5 is False (0)
+        assert mod.test_le(5, 5) == 1  # 5 <= 5 is True (1)
 
     def test_gt_ge(self):
         self.setup_ext()
@@ -317,13 +316,13 @@ class TestOperatorBinop(CompilerTest):
             return obj >= y
         """
         mod = self.compile(src)
-        assert mod.test_gt(6, 5) == 1   # 6 > 5 is True (1)
-        assert mod.test_gt(5, 6) == 0   # 5 > 6 is False (0)
-        assert mod.test_gt(5, 5) == 0   # 5 > 5 is False (0)
+        assert mod.test_gt(6, 5) == 1  # 6 > 5 is True (1)
+        assert mod.test_gt(5, 6) == 0  # 5 > 6 is False (0)
+        assert mod.test_gt(5, 5) == 0  # 5 > 5 is False (0)
 
-        assert mod.test_ge(6, 5) == 1   # 6 >= 5 is True (1)
-        assert mod.test_ge(5, 6) == 0   # 5 >= 6 is False (0)
-        assert mod.test_ge(5, 5) == 1   # 5 >= 5 is True (1)
+        assert mod.test_ge(6, 5) == 1  # 6 >= 5 is True (1)
+        assert mod.test_ge(5, 6) == 0  # 5 >= 6 is False (0)
+        assert mod.test_ge(5, 5) == 1  # 5 >= 5 is True (1)
 
     def test_automatic_eq_ne(self):
         self.setup_ext()
@@ -341,7 +340,7 @@ class TestOperatorBinop(CompilerTest):
             return x1 != y1
         """
         mod = self.compile(src)
-        assert mod.eq(5, 5) == True    # 5 == 5 is True
-        assert mod.eq(5, 6) == False   # 5 == 6 is False
-        assert mod.ne(5, 5) == False   # 5 != 5 is False
-        assert mod.ne(5, 6) == True    # 5 != 6 is True
+        assert mod.eq(5, 5) == True  # 5 == 5 is True
+        assert mod.eq(5, 6) == False  # 5 == 6 is False
+        assert mod.ne(5, 5) == False  # 5 != 5 is False
+        assert mod.ne(5, 6) == True  # 5 != 6 is True

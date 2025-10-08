@@ -25,23 +25,25 @@ class W_MyClass(W_Object):
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
     @staticmethod
     def w_CONVERT_TO(
-            vm: "SPyVM",
-            wam_target_type: W_MetaArg,
-            wam_self: W_MetaArg
+        vm: "SPyVM", wam_target_type: W_MetaArg, wam_self: W_MetaArg
     ) -> W_OpSpec:
         w_target_T = wam_target_type.w_blueval
 
         if w_target_T is B.w_i32:
+
             @vm.register_builtin_func("ext")
             def w_to_i32(vm: "SPyVM", w_self: W_MyClass) -> W_I32:
                 return w_self.w_x
+
             return W_OpSpec(w_to_i32)
 
         elif w_target_T is B.w_str:
+
             @vm.register_builtin_func("ext")
             def w_to_str(vm: "SPyVM", w_self: W_MyClass) -> W_Str:
                 x = vm.unwrap_i32(w_self.w_x)
                 return vm.wrap(str(x))
+
             return W_OpSpec(w_to_str)
 
         else:
@@ -50,18 +52,18 @@ class W_MyClass(W_Object):
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
     def w_CONVERT_FROM(
-            vm: "SPyVM",
-            wam_source_type: W_MetaArg,
-            wam_val: W_MetaArg
+        vm: "SPyVM", wam_source_type: W_MetaArg, wam_val: W_MetaArg
     ) -> W_OpSpec:
         w_src_T = wam_source_type.w_blueval
 
         if w_src_T is B.w_str:
+
             @vm.register_builtin_func("ext")
             def w_from_str(vm: "SPyVM", w_val: W_Str) -> W_MyClass:
                 s = vm.unwrap_str(w_val)
                 w_x = vm.wrap(int(s))
                 return W_MyClass(w_x)
+
             return W_OpSpec(w_from_str)
 
         return W_OpSpec.NULL

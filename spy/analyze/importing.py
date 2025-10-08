@@ -83,6 +83,7 @@ class ImportAnalyzer:
     Circular dependencies are currently not supported, but will be in the
     future.
     """
+
     def __init__(self, vm: "SPyVM", modname: str) -> None:
         self.vm = vm
         self.queue = deque([modname])
@@ -196,6 +197,7 @@ class ImportAnalyzer:
 
     def pp_list(self) -> None:
         from spy.vm.module import W_Module
+
         color = ColorFormatter(use_colors=True)
         n = max(len(modname) for modname in self.mods)
         import_list = self.get_import_list()
@@ -204,14 +206,14 @@ class ImportAnalyzer:
         paths = {}
         if self.vm.path:
             for i, path in enumerate(self.vm.path):
-                paths[path+"/"] = f"$p{i}"
+                paths[path + "/"] = f"$p{i}"
 
         def shorten_path(path: str) -> str:
             if not path:
                 return path
             for base_path, alias in paths.items():
                 if path.startswith(base_path):
-                    suffix = path[len(base_path):]
+                    suffix = path[len(base_path) :]
                     suffix = color.set("green", suffix)
                     return f"{alias}/{suffix}"
             return path
@@ -247,10 +249,12 @@ class ImportAnalyzer:
         assert self.mods, "call .parse_all() first"
 
         # Constants for tree formatting
+        # fmt: off
         CROSS  = "├── "
         BAR    = "│   "
         CORNER = "└── "
         SPACE  = "    "
+        # fmt: on
 
         # Find the root module(s) - those that are not imported by any other module
         all_imports = set()
@@ -264,7 +268,9 @@ class ImportAnalyzer:
             roots = [next(iter(self.mods))]
 
         # Define recursive printer function
-        def print_tree(modname: str, prefix: str, indent: str, marker: str, visited: set) -> None:
+        def print_tree(
+            modname: str, prefix: str, indent: str, marker: str, visited: set
+        ) -> None:
             if modname in visited:
                 print(f"{prefix}{marker}{modname} (already seen)")
                 return
@@ -289,7 +295,6 @@ class ImportAnalyzer:
         # Print each root
         for root in roots:
             print_tree(root, prefix="  ", indent="", marker="", visited=set())
-
 
     # ===========================================================
     # visitor pattern to recurively find all "import" statements

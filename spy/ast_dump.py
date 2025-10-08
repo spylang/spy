@@ -8,24 +8,32 @@ from spy.textbuilder import TextBuilder
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-def dump(node: Any,
-         *,
-         use_colors: bool = True,
-         fields_to_ignore: Any = (),
-         hl: Any = None,
-         vm: Optional["SPyVM"] = None,
-         ) -> str:
+
+def dump(
+    node: Any,
+    *,
+    use_colors: bool = True,
+    fields_to_ignore: Any = (),
+    hl: Any = None,
+    vm: Optional["SPyVM"] = None,
+) -> str:
     dumper = Dumper(use_colors=use_colors, highlight=hl, vm=vm)
     dumper.fields_to_ignore += fields_to_ignore
     dumper.dump_anything(node)
     return dumper.build()
 
-def pprint(node: Any, *, copy_to_clipboard: bool = False,
-           hl: Optional[spy.ast.Node]=None,
-           vm: Optional["SPyVM"] = None) -> None:
+
+def pprint(
+    node: Any,
+    *,
+    copy_to_clipboard: bool = False,
+    hl: Optional[spy.ast.Node] = None,
+    vm: Optional["SPyVM"] = None,
+) -> None:
     print(dump(node, hl=hl, vm=vm))
     if copy_to_clipboard:
         import pyperclip  # type: ignore
+
         out = dump(node, use_colors=False)
         pyperclip.copy(out)
 
@@ -34,15 +42,16 @@ class Dumper(TextBuilder):
     fields_to_ignore: tuple[str, ...]
     vm: "SPyVM | None"
 
-    def __init__(self, *,
-                 use_colors: bool,
-                 highlight: Optional[spy.ast.Node] = None,
-                 vm: Optional["SPyVM"] = None
-                 ) -> None:
+    def __init__(
+        self,
+        *,
+        use_colors: bool,
+        highlight: Optional[spy.ast.Node] = None,
+        vm: Optional["SPyVM"] = None,
+    ) -> None:
         super().__init__(use_colors=use_colors)
         self.highlight = highlight
-        self.fields_to_ignore = ("loc", "target_loc", "target_locs",
-                                 "loc_asname")
+        self.fields_to_ignore = ("loc", "target_loc", "target_locs", "loc_asname")
         self.vm = vm
 
     def dump_anything(self, obj: Any) -> None:
@@ -76,12 +85,18 @@ class Dumper(TextBuilder):
         self._dump_node(node, name, fields, text_color="turquoise")
 
     def dump_Symbol(self, sym: Symbol) -> None:
-        self.write(f"Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})")
+        self.write(
+            f"Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})"
+        )
 
-    def _dump_node(self, node: Any, name: str, fields: list[str], text_color: Optional[str]) -> None:
+    def _dump_node(
+        self, node: Any, name: str, fields: list[str], text_color: Optional[str]
+    ) -> None:
         def is_complex(obj: Any) -> bool:
-            return (isinstance(obj, (spy.ast.Node, py_ast.AST, list, Symbol)) and
-                    not isinstance(obj, py_ast.expr_context))
+            return isinstance(
+                obj, (spy.ast.Node, py_ast.AST, list, Symbol)
+            ) and not isinstance(obj, py_ast.expr_context)
+
         values = [getattr(node, field) for field in fields]
         is_complex_field = [is_complex(value) for value in values]
         multiline = any(is_complex_field)
@@ -102,7 +117,7 @@ class Dumper(TextBuilder):
             self.writeline("")
         with self.indent():
             for field, value in zip(fields, values):
-                is_last = (field is fields[-1])
+                is_last = field is fields[-1]
                 self.write(f"{field}=")
                 self.dump_anything(value)
                 if multiline:

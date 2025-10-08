@@ -19,21 +19,19 @@ def make_w_repeat(vm: "SPyVM"):
 
     return w_repeat
 
+
 def test_repeat():
     vm = SPyVM()
     w_repeat = make_w_repeat(vm)
     w_s = vm.fast_call(w_repeat, [vm.wrap("ab "), vm.wrap(3)])
     assert vm.unwrap_str(w_s) == "ab ab ab "
 
+
 def test_shuffle_args():
     vm = SPyVM()
     w_repeat = make_w_repeat(vm)
     w_functype = W_FuncType.parse("def(i32, str) -> str")
-    w_opimpl = W_OpImpl(
-        w_functype,
-        w_repeat,
-        [ArgSpec.Arg(1), ArgSpec.Arg(0)]
-    )
+    w_opimpl = W_OpImpl(w_functype, w_repeat, [ArgSpec.Arg(1), ArgSpec.Arg(0)])
     w_s = w_opimpl.execute(vm, [vm.wrap(3), vm.wrap("ab ")])
     assert vm.unwrap_str(w_s) == "ab ab ab "
     #
@@ -46,15 +44,14 @@ def test_shuffle_args():
     """).strip()
     assert w_opimpl.render() == expected
 
+
 def test_const():
     vm = SPyVM()
     w_repeat = make_w_repeat(vm)
     w_functype = W_FuncType.parse("def(i32) -> str")
     w_s: W_Object = vm.wrap("ab ")
     w_opimpl = W_OpImpl(
-        w_functype,
-        w_repeat,
-        [ArgSpec.Const(w_s, Loc.here()), ArgSpec.Arg(0)]
+        w_functype, w_repeat, [ArgSpec.Const(w_s, Loc.here()), ArgSpec.Arg(0)]
     )
     w_s = w_opimpl.execute(vm, [vm.wrap(3)])
     assert vm.unwrap_str(w_s) == "ab ab ab "
@@ -64,6 +61,7 @@ def test_const():
     """).strip()
     assert w_opimpl.render() == expected
 
+
 def test_converter():
     vm = SPyVM()
     w_repeat = make_w_repeat(vm)
@@ -71,7 +69,7 @@ def test_converter():
     w_opimpl = W_OpImpl(
         w_functype,
         w_repeat,
-        [ArgSpec.Arg(1), ArgSpec.Convert(OP.w_f64_to_i32, ArgSpec.Arg(0))]
+        [ArgSpec.Arg(1), ArgSpec.Convert(OP.w_f64_to_i32, ArgSpec.Arg(0))],
     )
     w_s = w_opimpl.execute(vm, [vm.wrap(3.5), vm.wrap("ab ")])
     assert vm.unwrap_str(w_s) == "ab ab ab "

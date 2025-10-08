@@ -27,6 +27,7 @@ def fmt_flags(flags: list[str]) -> str:
 
     def escape(s: str) -> str:
         return shlex.quote(s.replace("$", "$$"))
+
     return " ".join([escape(item) for item in flags])
 
 
@@ -39,24 +40,24 @@ class NinjaWriter:
         # for now, we support only some combinations of target/kind
         if config.kind == "lib":
             if config.target not in ("wasi", "emscripten"):
-                raise WIP("--output-kind=lib works only for wasi and emscripten targets")
+                raise WIP(
+                    "--output-kind=lib works only for wasi and emscripten targets"
+                )
         self.config = config
         self.build_dir = build_dir
         self.out = None
 
     def write(
-            self,
-            basename: str,
-            cfiles: list[py.path.local],
-            *,
-            wasm_exports: list[str] = [],
+        self,
+        basename: str,
+        cfiles: list[py.path.local],
+        *,
+        wasm_exports: list[str] = [],
     ) -> None:
         comp = CompilerConfig(self.config)
         self.out = basename + comp.ext
         if self.config.kind == "lib":
-            comp.ldflags += [
-                f"-Wl,--export={name}" for name in wasm_exports
-            ]
+            comp.ldflags += [f"-Wl,--export={name}" for name in wasm_exports]
 
         # generate build.ninja
         build_ninja = self.build_dir.join("build.ninja")
@@ -67,11 +68,7 @@ class NinjaWriter:
                 s = self.gen_build_ninja_many(comp, cfiles)
             f.write(s)
 
-    def gen_build_ninja_single(
-            self,
-            comp: CompilerConfig,
-            cfile: py.path.local
-    ) -> str:
+    def gen_build_ninja_single(self, comp: CompilerConfig, cfile: py.path.local) -> str:
         """
         Generate a build.ninja optimized for a single .c file.
 
@@ -103,9 +100,7 @@ class NinjaWriter:
         return tb.build()
 
     def gen_build_ninja_many(
-            self,
-            comp: CompilerConfig,
-            cfiles: list[py.path.local]
+        self, comp: CompilerConfig, cfiles: list[py.path.local]
     ) -> str:
         CC = comp.CC
         cflags = fmt_flags(comp.cflags)

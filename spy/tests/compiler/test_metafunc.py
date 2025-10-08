@@ -13,7 +13,6 @@ from spy.vm.b import B
 
 
 class TestMetaFunc(CompilerTest):
-
     def test_simple(self):
         mod = self.compile("""
         from operator import OpSpec

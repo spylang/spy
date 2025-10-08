@@ -9,7 +9,6 @@ from spy.vm.vm import SPyVM
 
 @pytest.mark.usefixtures("init")
 class TestDoppler:
-
     @pytest.fixture
     def init(self, tmpdir):
         # XXX there is a lot of code duplication with CompilerTest
@@ -21,12 +20,11 @@ class TestDoppler:
         f = self.tmpdir.join("test.spy")
         src = textwrap.dedent(src)
         f.write(src)
-        w_mod = self.vm.import_("test")
+        self.vm.import_("test")
         self.vm.redshift(error_mode="eager")
 
-    def assert_dump(self, expected: str,
-                    *, fqn_format: FQN_FORMAT="short") -> None:
-        b = SPyBackend(self.vm, fqn_format = fqn_format)
+    def assert_dump(self, expected: str, *, fqn_format: FQN_FORMAT = "short") -> None:
+        b = SPyBackend(self.vm, fqn_format=fqn_format)
         got = b.dump_mod("test").strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
@@ -323,7 +321,9 @@ class TestDoppler:
         red_node = Mock()
         blue_node = Mock()
 
-        monkeypatch.setattr(self.vm, "expr_color_map", {red_node: "red", blue_node: "blue"})
+        monkeypatch.setattr(
+            self.vm, "expr_color_map", {red_node: "red", blue_node: "blue"}
+        )
         dumper = Dumper(use_colors=True, vm=self.vm)
         mock_write = Mock()
         monkeypatch.setattr(dumper, "write", mock_write)

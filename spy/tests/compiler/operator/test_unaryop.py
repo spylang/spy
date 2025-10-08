@@ -10,7 +10,6 @@ from spy.vm.w import W_Object
 
 
 class W_MyClass(W_Object):
-
     def __init__(self, w_x: W_I32) -> None:
         self.w_x = w_x
 

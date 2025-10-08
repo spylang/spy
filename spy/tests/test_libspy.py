@@ -17,8 +17,8 @@ def mk_spy_Str(utf8: bytes) -> bytes:
     fmt = f"<i{n}s"
     return struct.pack(fmt, n, utf8)
 
-class TestLibSPy(CTest):
 
+class TestLibSPy(CTest):
     def test_walloc(self):
         src = r"""
         #include <spy.h>

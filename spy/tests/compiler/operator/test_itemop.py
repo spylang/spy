@@ -32,14 +32,14 @@ class W_MyClass(W_Object):
 
     @builtin_method("__setitem__")
     @staticmethod
-    def w_setitem(vm: "SPyVM", w_self: "W_MyClass",
-                  w_i: W_I32, w_v: W_I32) -> None:
+    def w_setitem(vm: "SPyVM", w_self: "W_MyClass", w_i: W_I32, w_v: W_I32) -> None:
         idx = vm.unwrap_i32(w_i)
         w_self.w_values[idx] = w_v
 
 
 class W_2DArray(W_Object):
     "Simple 2D array of fixed size 3x3"
+
     W = 3
     H = 3
 
@@ -53,8 +53,7 @@ class W_2DArray(W_Object):
 
     @builtin_method("__getitem__")
     @staticmethod
-    def w_getitem(vm: "SPyVM", w_self: "W_2DArray",
-                  w_i: W_I32, w_j: W_I32) -> W_I32:
+    def w_getitem(vm: "SPyVM", w_self: "W_2DArray", w_i: W_I32, w_j: W_I32) -> W_I32:
         i = vm.unwrap_i32(w_i)
         j = vm.unwrap_i32(w_j)
         k = i + (j * w_self.W)
@@ -63,14 +62,14 @@ class W_2DArray(W_Object):
 
     @builtin_method("__setitem__")
     @staticmethod
-    def w_setitem(vm: "SPyVM", w_self: "W_2DArray", w_i: W_I32,
-                  w_j: W_I32, w_v: W_I32) -> None:
+    def w_setitem(
+        vm: "SPyVM", w_self: "W_2DArray", w_i: W_I32, w_j: W_I32, w_v: W_I32
+    ) -> None:
         i = vm.unwrap_i32(w_i)
         j = vm.unwrap_i32(w_j)
         v = vm.unwrap_i32(w_v)
         k = i + (j * w_self.W)
         w_self.data[k] = v
-
 
 
 @no_C

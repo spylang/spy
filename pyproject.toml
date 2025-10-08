@@ -76,9 +76,17 @@ lint.select = [
     "Q000", # double quotes
     "C",  # flake8-comprehensions
 ]
+lint.ignore = ["C901"]
 line-length = 88
 indent-width = 4
 target-version = "py311"
+exclude = [".venv", "*.pyi"]
+
+[tool.ruff.format]
+line-ending = "auto"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
 
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = "double"

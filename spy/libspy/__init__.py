@@ -1,4 +1,3 @@
-import sys
 from typing import Any, Optional
 
 import spy
@@ -7,19 +6,16 @@ from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.location import Loc
 from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
 
-#from spy.vm.str import ll_spy_Str_read
-
 SRC = spy.ROOT.join("libspy", "src")
 INCLUDE = spy.ROOT.join("libspy", "include")
 BUILD = spy.ROOT.join("libspy", "build")
-
 
 
 if IS_NODE:
     LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
     LLMOD = None
 elif IS_BROWSER:
-    LIBSPY_WASM = None # type: ignore    # needs to be set by the embedder
+    LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
     LLMOD = None
 else:
     assert not IS_PYODIDE
@@ -71,11 +67,7 @@ class LibSPyHost(HostModule):
         print("[log]", msg)
 
     def env_spy_debug_set_panic_message(
-            self,
-            ptr_etype: int,
-            ptr_msg: int,
-            ptr_fname: int,
-            lineno: int
+        self, ptr_etype: int, ptr_msg: int, ptr_fname: int, lineno: int
     ) -> None:
         # ptr_* are const char*
         assert ptr_etype != 0
@@ -86,6 +78,7 @@ class LibSPyHost(HostModule):
         self.panic_filename = self._read_str(ptr_fname)
         self.panic_lineno = lineno
 
+
 class LLSPyInstance(LLWasmInstance):
     """
     A specialized version of LLWasmInstance which automatically link against
@@ -93,11 +86,11 @@ class LLSPyInstance(LLWasmInstance):
     """
 
     def __init__(
-            self,
-            llmod: LLWasmModule,
-            hostmods: list[HostModule] = [],
-            *,
-            instance: Any = None
+        self,
+        llmod: LLWasmModule,
+        hostmods: list[HostModule] = [],
+        *,
+        instance: Any = None,
     ) -> None:
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods

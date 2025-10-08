@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 MM = MultiMethodTable()
 
+# fmt: off
 # i8 ops
 MM.register("+",  "i8", "i8", OP.w_i8_add)
 MM.register("-",  "i8", "i8", OP.w_i8_sub)
@@ -135,11 +136,13 @@ MM.register_partial("<",  "dynamic", OP.w_dynamic_lt)
 MM.register_partial("<=", "dynamic", OP.w_dynamic_le)
 MM.register_partial(">",  "dynamic", OP.w_dynamic_gt)
 MM.register_partial(">=", "dynamic", OP.w_dynamic_ge)
+# fmt: on
 
 
 @OP.builtin_func(color="blue")
 def w_ADD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("+", wam_l, wam_r):
         pass
@@ -147,13 +150,15 @@ def w_ADD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_add, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` + `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` + `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_SUB(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("-", wam_l, wam_r):
         pass
@@ -161,13 +166,15 @@ def w_SUB(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_sub, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` - `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` - `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_MUL(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("*", wam_l, wam_r):
         pass
@@ -175,13 +182,15 @@ def w_MUL(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_mul, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` * `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` * `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_DIV(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("/", wam_l, wam_r):
         pass
@@ -189,13 +198,15 @@ def w_DIV(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_div, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` / `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` / `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_FLOORDIV(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("//", wam_l, wam_r):
         pass
@@ -203,14 +214,19 @@ def w_FLOORDIV(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_floordiv, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` // `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` // `{1}`",
+    )
 
 
 @OP.builtin_func(color="blue")
 def w_MOD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("%", wam_l, wam_r):
         pass
@@ -218,13 +234,15 @@ def w_MOD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_mod, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` % `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` % `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_LSHIFT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("<<", wam_l, wam_r):
         pass
@@ -232,13 +250,19 @@ def w_LSHIFT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_lshift, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` << `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` << `{1}`",
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_RSHIFT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec(">>", wam_l, wam_r):
         pass
@@ -246,13 +270,19 @@ def w_RSHIFT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_rshift, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` >> `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` >> `{1}`",
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_AND(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("&", wam_l, wam_r):
         pass
@@ -260,13 +290,15 @@ def w_AND(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_and, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` & `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` & `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_OR(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("|", wam_l, wam_r):
         pass
@@ -274,13 +306,15 @@ def w_OR(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_or, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` | `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` | `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_XOR(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("^", wam_l, wam_r):
         pass
@@ -288,9 +322,10 @@ def w_XOR(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_xor, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` ^ `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` ^ `{1}`"
+    )
+
 
 def can_use_reference_eq(vm: "SPyVM", w_ltype: W_Type, w_rtype: W_Type) -> bool:
     """
@@ -300,14 +335,16 @@ def can_use_reference_eq(vm: "SPyVM", w_ltype: W_Type, w_rtype: W_Type) -> bool:
     """
     w_common = vm.union_type(w_ltype, w_rtype)
     return (
-        w_common is not B.w_object and
-        w_common is not B.w_dynamic and
-        w_common.is_reference_type(vm)
+        w_common is not B.w_object
+        and w_common is not B.w_dynamic
+        and w_common.is_reference_type(vm)
     )
+
 
 @OP.builtin_func(color="blue")
 def w_EQ(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     w_rtype = wam_r.w_static_T
     if w_opspec := MM.get_binary_opspec("==", wam_l, wam_r):
@@ -318,13 +355,19 @@ def w_EQ(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = W_OpSpec(OP.w_object_is)
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` == `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` == `{1}`",
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_NE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     w_rtype = wam_r.w_static_T
     if w_opspec := MM.get_binary_opspec("!=", wam_l, wam_r):
@@ -335,34 +378,52 @@ def w_NE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = W_OpSpec(OP.w_object_isnot)
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` != `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` != `{1}`",
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_UNIVERSAL_EQ(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     # XXX this seems wrong: if we do universal_eq(i32, i32), we should get the
     # same as eq(i32, i32), not "w_object_universal_eq". In practice, it's not
     # a problem for now, because it's not exposed to the user, and we use it
     # only on W_Objects.
     w_opspec = W_OpSpec(OP.w_object_universal_eq)
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` <universal_eq> `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` <universal_eq> `{1}`",
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_UNIVERSAL_NE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     # XXX: see the commet in UNIVERSAL_EQ
     w_opspec = W_OpSpec(OP.w_object_universal_ne)
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                            dispatch="multi",
-                            errmsg="cannot do `{0}` <universal_ne> `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` <universal_ne> `{1}`",
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_LT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("<", wam_l, wam_r):
         pass
@@ -370,13 +431,15 @@ def w_LT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_lt, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                           dispatch="multi",
-                           errmsg="cannot do `{0}` < `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` < `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_LE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("<=", wam_l, wam_r):
         pass
@@ -384,13 +447,19 @@ def w_LE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_le, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                           dispatch="multi",
-                           errmsg="cannot do `{0}` <= `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` <= `{1}`",
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_GT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec(">", wam_l, wam_r):
         pass
@@ -398,13 +467,15 @@ def w_GT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_gt, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                           dispatch="multi",
-                           errmsg="cannot do `{0}` > `{1}`")
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` > `{1}`"
+    )
+
 
 @OP.builtin_func(color="blue")
 def w_GE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
+
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec(">=", wam_l, wam_r):
         pass
@@ -412,6 +483,10 @@ def w_GE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = vm.fast_metacall(w_ge, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
-    return typecheck_opspec(vm, w_opspec, [wam_l, wam_r],
-                           dispatch="multi",
-                           errmsg="cannot do `{0}` >= `{1}`")
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` >= `{1}`",
+    )

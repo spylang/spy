@@ -73,60 +73,76 @@ if TYPE_CHECKING:
     from spy.vm.primitive import W_Bool, W_NoneType
     from spy.vm.vm import SPyVM
 
-def builtin_method(name: str, *, color: Color = "red",
-                   kind: "FuncKind" = "plain") -> Any:
+
+def builtin_method(
+    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+) -> Any:
     """
     Turn an interp-level method into an app-level one.
 
     This decorator just puts a mark on the function, the actual job is done by
     W_Type._init_builtin_method().
     """
+
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
         fn.spy_builtin_method = (name, color, kind, "method")  # type: ignore
         return fn
+
     return decorator
 
-def builtin_staticmethod(name: str, *, color: Color = "red",
-                         kind: "FuncKind" = "plain") -> Any:
+
+def builtin_staticmethod(
+    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+) -> Any:
     """
     Turn an interp-level staticmethod into an app-level staticmethod.
 
     This decorator just puts a mark on the function, the actual job is done by
     W_Type._init_builtin_method().
     """
+
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
         fn.spy_builtin_method = (name, color, kind, "staticmethod")  # type: ignore
         return fn
+
     return decorator
 
-def builtin_classmethod(name: str, *, color: Color = "red",
-                        kind: "FuncKind" = "plain") -> Any:
+
+def builtin_classmethod(
+    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+) -> Any:
     """
     Turn an interp-level staticmethod into an app-level classmethod.
 
     This decorator just puts a mark on the function, the actual job is done by
     W_Type._init_builtin_method().
     """
+
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
         fn.spy_builtin_method = (name, color, kind, "classmethod")  # type: ignore
         return fn
+
     return decorator
 
-def builtin_property(name: str, *, color: Color = "red",
-                     kind: "FuncKind" = "plain") -> Any:
+
+def builtin_property(
+    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+) -> Any:
     """
     Turn an interp-level getter method into an app-level property.
 
     This decorator just puts a mark on the function, the actual job is done by
     W_Type._init_builtin_method().
     """
+
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
         fn.spy_builtin_method = (name, color, kind, "property")  # type: ignore
         return fn
+
     return decorator
 
 
@@ -155,12 +171,13 @@ class builtin_class_attr:
 # cannot use @B.builtin_type, because of bootstrapping issues.  See also the
 # section "Initial setup of the 'builtins' module"
 
+
 class W_Object:
     """
     The root of SPy object hierarchy
     """
 
-    _w: ClassVar["W_Type"]                         # set by @builtin_type
+    _w: ClassVar["W_Type"]  # set by @builtin_type
 
     # Storage category:
     #   - 'value': compares by value, don't have an identity, 'is' is
@@ -183,8 +200,10 @@ class W_Object:
     def spy_unwrap(self, vm: "SPyVM") -> Any:
         spy_type = vm.dynamic_type(self).fqn
         py_type = self.__class__.__name__
-        raise Exception(f"Cannot unwrap app-level objects of type {spy_type} "
-                        f"(interp-level type: {py_type})")
+        raise Exception(
+            f"Cannot unwrap app-level objects of type {spy_type} "
+            f"(interp-level type: {py_type})"
+        )
 
     def spy_key(self, vm: "SPyVM") -> Any:
         """
@@ -240,8 +259,8 @@ class W_Object:
 
         # this should never happen since we define __repr__ on W_Object
         from spy.vm.opspec import W_OpSpec
-        return W_OpSpec.NULL
 
+        return W_OpSpec.NULL
 
     # ==== OPERATOR SUPPORT ====
     #
@@ -319,45 +338,49 @@ class W_Object:
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_GETATTRIBUTE(vm: "SPyVM", wam_obj: "W_MetaArg",
-                       wam_name: "W_MetaArg") -> "W_OpSpec":
+    def w_GETATTRIBUTE(
+        vm: "SPyVM", wam_obj: "W_MetaArg", wam_name: "W_MetaArg"
+    ) -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_SETATTR(vm: "SPyVM", wam_obj: "W_MetaArg", wam_name: "W_MetaArg",
-                  wam_v: "W_MetaArg") -> "W_OpSpec":
+    def w_SETATTR(
+        vm: "SPyVM", wam_obj: "W_MetaArg", wam_name: "W_MetaArg", wam_v: "W_MetaArg"
+    ) -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_GETITEM(vm: "SPyVM", wam_obj: "W_MetaArg",
-                  wam_i: "W_MetaArg") -> "W_OpSpec":
+    def w_GETITEM(vm: "SPyVM", wam_obj: "W_MetaArg", wam_i: "W_MetaArg") -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_SETITEM(vm: "SPyVM", wam_obj: "W_MetaArg", wam_i: "W_MetaArg",
-                  wam_v: "W_MetaArg") -> "W_OpSpec":
+    def w_SETITEM(
+        vm: "SPyVM", wam_obj: "W_MetaArg", wam_i: "W_MetaArg", wam_v: "W_MetaArg"
+    ) -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_CALL(vm: "SPyVM", wam_obj: "W_MetaArg",
-                *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def w_CALL(vm: "SPyVM", wam_obj: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_CALL_METHOD(vm: "SPyVM", wam_obj: "W_MetaArg", wam_method: "W_MetaArg",
-                      *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def w_CALL_METHOD(
+        vm: "SPyVM",
+        wam_obj: "W_MetaArg",
+        wam_method: "W_MetaArg",
+        *args_wam: "W_MetaArg",
+    ) -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_CONVERT_FROM(vm: "SPyVM", wam_T: "W_MetaArg",
-                       wam_x: "W_MetaArg") -> "W_OpSpec":
+    def w_CONVERT_FROM(
+        vm: "SPyVM", wam_T: "W_MetaArg", wam_x: "W_MetaArg"
+    ) -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_CONVERT_TO(vm: "SPyVM", wam_T: "W_MetaArg",
-                     wam_x: "W_MetaArg") -> "W_OpSpec":
+    def w_CONVERT_TO(vm: "SPyVM", wam_T: "W_MetaArg", wam_x: "W_MetaArg") -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
-
 
 
 class W_Type(W_Object):
@@ -386,6 +409,7 @@ class W_Type(W_Object):
     @builtin_type(lazy_definition=True) (as done e.g. by W_OpSpec). By
     convention, the .define() is called at the beginning of vm.py.
     """
+
     fqn: FQN
     _pyclass: Optional[Type[W_Object]]
     _dict_w: Optional[dict[str, W_Object]]
@@ -393,8 +417,7 @@ class W_Type(W_Object):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         cls = self.__class__.__name__
         raise TypeError(
-            f"cannot instantiate {cls} directly. Use {cls}.declare " +
-            f"or {cls}.new"
+            f"cannot instantiate {cls} directly. Use {cls}.declare " + f"or {cls}.new"
         )
 
     def is_defined(self) -> bool:
@@ -441,6 +464,7 @@ class W_Type(W_Object):
         Turn a declared type into a defined type, using the given pyclass.
         """
         from spy.vm.member import Member, W_Member
+
         assert not self.is_defined(), "cannot call W_Type.setup() twice"
         self._pyclass = pyclass
         self._dict_w = {}
@@ -490,6 +514,7 @@ class W_Type(W_Object):
         Automatically generate __eq__ and __new__ based on spy_key
         """
         from spy.vm.modules.operator.binop import MM
+
         assert pyclass.__spy_storage_category__ == "value"
         assert self._dict_w is not None
         T = Annotated[W_Object, self]
@@ -516,7 +541,6 @@ class W_Type(W_Object):
 
             self._init_builtin_method(w_ne)
 
-
     def define_from_classbody(self, vm: "SPyVM", body: "ClassBody") -> None:
         raise NotImplementedError
 
@@ -532,7 +556,7 @@ class W_Type(W_Object):
         from spy.vm.str import W_Str
 
         pyfunc = statmeth.__func__
-        appname, color, kind, what = statmeth.spy_builtin_method # type: ignore
+        appname, color, kind, what = statmeth.spy_builtin_method  # type: ignore
         assert what in ("method", "staticmethod", "classmethod", "property")
 
         # create the W_BuiltinFunc. Make it possible to use the string
@@ -547,27 +571,27 @@ class W_Type(W_Object):
         }
         w_func = make_builtin_func(
             pyfunc,
-            namespace = self.fqn,
-            funcname = appname,
-            qualifiers = [],
-            color = color,
-            kind = kind,
-            extra_types = extra_types,
+            namespace=self.fqn,
+            funcname=appname,
+            qualifiers=[],
+            color=color,
+            kind=kind,
+            extra_types=extra_types,
         )
         if what == "method":
             self.dict_w[appname] = w_func
-        elif what =="staticmethod":
+        elif what == "staticmethod":
             self.dict_w[appname] = W_StaticMethod(w_func)
         elif what == "classmethod":
             self.dict_w[appname] = W_ClassMethod(w_func)
         else:
             self.dict_w[appname] = W_Property(w_func)
 
-
     # Union[W_Type, W_NoneType] means "either a W_Type or B.w_None"
     @property
     def w_base(self) -> Union["W_Type", "W_NoneType"]:
         from spy.vm.b import B
+
         if self is B.w_object or self is B.w_dynamic:
             return B.w_None
         basecls = self.pyclass.__base__
@@ -586,7 +610,7 @@ class W_Type(W_Object):
             s_hints = ""
 
         addr = ""
-        #addr = f' at 0x{id(self):x}'
+        # addr = f' at 0x{id(self):x}'
         return f"<spy type '{self.fqn.human_name}'{s_hints}{addr}>"
 
     def repr_hints(self) -> list[str]:
@@ -624,6 +648,7 @@ class W_Type(W_Object):
         Like lookup, but ensure it's a W_Func.
         """
         from spy.vm.function import W_Func
+
         w_obj = self.lookup(name)
         if w_obj:
             assert isinstance(w_obj, W_Func)
@@ -635,6 +660,7 @@ class W_Type(W_Object):
         Like lookup_func, but also check that the function is blue
         """
         from spy.vm.function import W_Func
+
         w_obj = self.lookup(name)
         if w_obj:
             assert isinstance(w_obj, W_Func)
@@ -647,9 +673,11 @@ class W_Type(W_Object):
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
-    def w_GETATTRIBUTE(vm: "SPyVM", wam_T: "W_MetaArg",
-                       wam_name: "W_MetaArg") -> "W_OpSpec":
+    def w_GETATTRIBUTE(
+        vm: "SPyVM", wam_T: "W_MetaArg", wam_name: "W_MetaArg"
+    ) -> "W_OpSpec":
         from spy.vm.opspec import W_MetaArg, W_OpSpec
+
         if wam_T.color != "blue":
             # it's unclear how to implement getattr on red types, since we
             # need to have access to their dict.
@@ -685,11 +713,9 @@ class W_Type(W_Object):
         # 4. attribute not found
         return W_OpSpec.NULL
 
-
     @builtin_method("__call__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CALL(vm: "SPyVM", wam_t: "W_MetaArg",
-               *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def w_CALL(vm: "SPyVM", wam_t: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
         """
         Calling a type means to instantiate it, by calling its __new__
         """
@@ -725,16 +751,16 @@ class W_Type(W_Object):
         # no __new__, error out
         clsname = w_T.fqn.human_name
         err = SPyError("W_TypeError", f"cannot instantiate `{clsname}`")
-        err.add("error", f"`{clsname}` does not have a method `__new__`",
-                loc=wam_t.loc)
+        err.add("error", f"`{clsname}` does not have a method `__new__`", loc=wam_t.loc)
         if wam_t.sym:
             err.add("note", f"{clsname} defined here", wam_t.sym.loc)
         raise err
 
     @builtin_method("__call_method__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CALL_METHOD(vm: "SPyVM", wam_T: "W_MetaArg", wam_name: "W_MetaArg",
-                      *args_wam: "W_MetaArg") -> "W_OpSpec":
+    def w_CALL_METHOD(
+        vm: "SPyVM", wam_T: "W_MetaArg", wam_name: "W_MetaArg", *args_wam: "W_MetaArg"
+    ) -> "W_OpSpec":
         """
         Calling a method on a type: we look into the type dict and try to
         call @staticmethod or @classmethod, if present.
@@ -763,16 +789,12 @@ class W_Type(W_Object):
                 f"(we should emit a better error)"
             )
         else:
-            raise WIP(
-                f"cannot call object {w_meth} "
-                f"(we should emit a better error)"
-            )
+            raise WIP(f"cannot call object {w_meth} (we should emit a better error)")
 
         w_func = w_meth.w_obj
         if not isinstance(w_func, W_Func):
             raise WIP(
-                f"cannot call object {w_meth.w_obj} "
-                f"(we should emit a better error)"
+                f"cannot call object {w_meth.w_obj} (we should emit a better error)"
             )
 
         w_opspec = vm.fast_metacall(w_func, new_args_wam)
@@ -785,10 +807,9 @@ class W_Type(W_Object):
         return w_opspec
 
 
-
-
 # helpers
 # =======
+
 
 @dataclass
 class ClassBody:
@@ -797,6 +818,7 @@ class ClassBody:
     inside a 'class' statement, and passed to W_Type.define_from_classbody to
     define user-defined types.
     """
+
     fields_w: dict[str, "W_Field"]
     dict_w: dict[str, W_Object]
 

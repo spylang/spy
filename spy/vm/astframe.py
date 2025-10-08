@@ -35,11 +35,13 @@ class Return(Exception):
 
 class Break(Exception):
     """Exception to implement break statement"""
+
     pass
 
 
 class Continue(Exception):
     """Exception to implement continue statement"""
+
     pass
 
 
@@ -50,6 +52,7 @@ class AbstractFrame:
     This is an abstract class, for concrete execution see ASTFrame and
     ClassFrame.
     """
+
     vm: "SPyVM"
     ns: FQN
     closure: CLOSURE
@@ -61,8 +64,9 @@ class AbstractFrame:
     specialized_assigns: dict[ast.Assign, ast.Stmt]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
-    def __init__(self, vm: "SPyVM", ns: FQN, symtable: SymTable,
-                 closure: CLOSURE) -> None:
+    def __init__(
+        self, vm: "SPyVM", ns: FQN, symtable: SymTable, closure: CLOSURE
+    ) -> None:
         assert type(self) is not AbstractFrame, "abstract class"
         self.vm = vm
         self.ns = ns
@@ -125,10 +129,11 @@ class AbstractFrame:
             exc.add_location_maybe(stmt.loc)
             raise
 
-    def typecheck_maybe(self, wam: W_MetaArg,
-                        varname: Optional[str]) -> Optional[W_Func]:
+    def typecheck_maybe(
+        self, wam: W_MetaArg, varname: Optional[str]
+    ) -> Optional[W_Func]:
         if varname is None:
-            return None # no typecheck needed
+            return None  # no typecheck needed
         w_exp_T = self.locals_types_w[varname]
         try:
             w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wam)
@@ -147,10 +152,7 @@ class AbstractFrame:
             raise
         return w_typeconv
 
-    def eval_expr(self, expr: ast.Expr, *,
-                  varname: Optional[str] = None
-                  ) -> W_MetaArg:
-
+    def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
         try:
             wam = magic_dispatch(self, "eval_expr", expr)
         except SPyError as exc:
@@ -218,26 +220,17 @@ class AbstractFrame:
         params = []
         for arg in funcdef.args:
             w_param_type = self.eval_expr_type(arg.type)
-            param = FuncParam(
-                w_T = w_param_type,
-                kind = "simple"
-            )
+            param = FuncParam(w_T=w_param_type, kind="simple")
             params.append(param)
 
         if funcdef.vararg:
             w_param_type = self.eval_expr_type(funcdef.vararg.type)
-            param = FuncParam(
-                w_T = w_param_type,
-                kind = "var_positional"
-            )
+            param = FuncParam(w_T=w_param_type, kind="var_positional")
             params.append(param)
 
         w_restype = self.eval_expr_type(funcdef.return_type)
         w_functype = W_FuncType.new(
-            params,
-            w_restype,
-            color=funcdef.color,
-            kind=funcdef.kind
+            params, w_restype, color=funcdef.color, kind=funcdef.kind
         )
         # create the w_func
         fqn = self.ns.join(funcdef.name)
@@ -261,14 +254,9 @@ class AbstractFrame:
             for deco in reversed(funcdef.decorators):
                 # create a tmp Call node to evaluate
                 call_node = ast.Call(
-                    loc = deco.loc,
-                    func = deco,
-                    args = [
-                        ast.FQNConst(
-                            funcdef.loc,
-                            self.vm.make_fqn_const(w_func)
-                        )
-                    ]
+                    loc=deco.loc,
+                    func=deco,
+                    args=[ast.FQNConst(funcdef.loc, self.vm.make_fqn_const(w_func))],
                 )
                 wam_inner = self.eval_expr_Call(call_node)
                 assert wam_inner.color == "blue"
@@ -302,11 +290,12 @@ class AbstractFrame:
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         from spy.vm.classframe import ClassFrame
+
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
         w_T = self.load_local(classdef.name)
         assert isinstance(w_T, W_Type)
-        assert w_T.fqn.parts[-1].name == classdef.name # sanity check
+        assert w_T.fqn.parts[-1].name == classdef.name  # sanity check
         assert not w_T.is_defined()
 
         # create a frame where to execute the class body
@@ -340,9 +329,9 @@ class AbstractFrame:
             err = SPyError("W_TypeError", "invalid assignment target")
             err.add("error", f"{sym.name} is const", target.loc)
             err.add("note", "const declared here", sym.loc)
-            err.add("note",
-                    f"help: declare it as variable: `var {sym.name} ...`",
-                    sym.loc)
+            err.add(
+                "note", f"help: declare it as variable: `var {sym.name} ...`", sym.loc
+            )
             raise err
 
         elif sym.storage == "direct":
@@ -354,10 +343,10 @@ class AbstractFrame:
             w_cell = namespace[sym.name]
             assert isinstance(w_cell, W_Cell)
             return ast.AssignCell(
-                loc = assign.loc,
-                target = assign.target,
-                target_fqn = w_cell.fqn,
-                value = assign.value
+                loc=assign.loc,
+                target=assign.target,
+                target_fqn=w_cell.fqn,
+                value=assign.value,
             )
 
         else:
@@ -409,23 +398,16 @@ class AbstractFrame:
         for i, target in enumerate(unpack.targets):
             # fabricate an expr to get an individual item of the tuple
             expr = ast.GetItem(
-                loc = unpack.value.loc,
-                value = unpack.value,
-                args = [
-                    ast.Constant(
-                        loc = unpack.value.loc,
-                        value = i
-                    )
-                ]
+                loc=unpack.value.loc,
+                value=unpack.value,
+                args=[ast.Constant(loc=unpack.value.loc, value=i)],
             )
             # fabricate an ast.Assign
             # XXX: ideally we should cache the specialization instead of
             # rebuilding it at every exec
-            assign = self._specialize_Assign(ast.Assign(
-                loc = unpack.loc,
-                target = target,
-                value = expr
-            ))
+            assign = self._specialize_Assign(
+                ast.Assign(loc=unpack.loc, target=target, value=expr)
+            )
             self.exec_stmt(assign)
 
     def exec_stmt_AugAssign(self, node: ast.AugAssign) -> None:
@@ -437,17 +419,14 @@ class AbstractFrame:
     def _desugar_AugAssign(self, node: ast.AugAssign) -> ast.Assign:
         # transform "x += 1" into "x = x + 1"
         return ast.Assign(
-            loc = node.loc,
-            target = node.target,
-            value = ast.BinOp(
-                loc = node.loc,
-                op = node.op,
-                left = ast.Name(
-                    loc = node.target.loc,
-                    id = node.target.value
-                ),
-                right = node.value
-            )
+            loc=node.loc,
+            target=node.target,
+            value=ast.BinOp(
+                loc=node.loc,
+                op=node.op,
+                left=ast.Name(loc=node.target.loc, id=node.target.value),
+                right=node.value,
+            ),
         )
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
@@ -455,9 +434,7 @@ class AbstractFrame:
         wam_name = self.eval_expr(node.attr)
         wam_value = self.eval_expr(node.value)
         w_opimpl = self.vm.call_OP(
-            node.loc,
-            OP.w_SETATTR,
-            [wam_obj, wam_name, wam_value]
+            node.loc, OP.w_SETATTR, [wam_obj, wam_name, wam_value]
         )
         self.eval_opimpl(node, w_opimpl, [wam_obj, wam_name, wam_value])
 
@@ -532,47 +509,47 @@ class AbstractFrame:
 
         # it = X.__fastiter__()
         init_iter = ast.Assign(
-            loc = for_node.loc,
-            target = iter_target,
-            value = ast.CallMethod(
-                loc = for_node.loc,
-                target = for_node.iter,
-                method = ast.StrConst(for_node.loc, "__fastiter__"),
-                args = []
-            )
+            loc=for_node.loc,
+            target=iter_target,
+            value=ast.CallMethod(
+                loc=for_node.loc,
+                target=for_node.iter,
+                method=ast.StrConst(for_node.loc, "__fastiter__"),
+                args=[],
+            ),
         )
         # i = it.__item__()
         assign_item = ast.Assign(
-            loc = for_node.loc,
-            target = for_node.target,
-            value = ast.CallMethod(
-                loc = for_node.loc,
-                target = ast.NameLocal(for_node.loc, iter_sym),
-                method = ast.StrConst(for_node.loc, "__item__"),
-                args = []
-            )
+            loc=for_node.loc,
+            target=for_node.target,
+            value=ast.CallMethod(
+                loc=for_node.loc,
+                target=ast.NameLocal(for_node.loc, iter_sym),
+                method=ast.StrConst(for_node.loc, "__item__"),
+                args=[],
+            ),
         )
         # it = it.__next__()
         advance_iter = ast.Assign(
-            loc = for_node.loc,
-            target = iter_target,
-            value = ast.CallMethod(
-                loc = for_node.loc,
-                target = ast.NameLocal(for_node.loc, iter_sym),
-                method = ast.StrConst(for_node.loc, "__next__"),
-                args = []
-            )
+            loc=for_node.loc,
+            target=iter_target,
+            value=ast.CallMethod(
+                loc=for_node.loc,
+                target=ast.NameLocal(for_node.loc, iter_sym),
+                method=ast.StrConst(for_node.loc, "__next__"),
+                args=[],
+            ),
         )
         # while it.__continue_iteration__(): ...
         while_loop = ast.While(
-            loc = for_node.loc,
-            test = ast.CallMethod(
-                loc = for_node.loc,
-                target = ast.NameLocal(for_node.loc, iter_sym),
-                method = ast.StrConst(for_node.loc, "__continue_iteration__"),
-                args = []
+            loc=for_node.loc,
+            test=ast.CallMethod(
+                loc=for_node.loc,
+                target=ast.NameLocal(for_node.loc, iter_sym),
+                method=ast.StrConst(for_node.loc, "__continue_iteration__"),
+                args=[],
             ),
-            body = [assign_item, advance_iter] + for_node.body
+            body=[assign_item, advance_iter] + for_node.body,
         )
         return init_iter, while_loop
 
@@ -594,7 +571,11 @@ class AbstractFrame:
                     plain_msg = self.vm.unwrap_str(wam_msg.w_val)
                 else:
                     err = SPyError("W_TypeError", "mismatched types")
-                    err.add("error", f"expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`", loc=wam_msg.loc)
+                    err.add(
+                        "error",
+                        f"expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`",
+                        loc=wam_msg.loc,
+                    )
                     raise err
 
             raise SPyError.simple(
@@ -653,7 +634,10 @@ class AbstractFrame:
         elif sym.storage == "NameError":
             msg = f"name `{name.id}` is not defined"
             raise SPyError.simple(
-                "W_NameError", msg, "not found in this scope", name.loc,
+                "W_NameError",
+                msg,
+                "not found in this scope",
+                name.loc,
             )
         else:
             assert False
@@ -686,8 +670,9 @@ class AbstractFrame:
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_opimpl(self, op: ast.Node, w_opimpl: W_OpImpl,
-                    args_wam: list[W_MetaArg]) -> W_MetaArg:
+    def eval_opimpl(
+        self, op: ast.Node, w_opimpl: W_OpImpl, args_wam: list[W_MetaArg]
+    ) -> W_MetaArg:
         # hack hack hack
         # result color:
         #   - pure function and blue arguments -> blue
@@ -710,26 +695,18 @@ class AbstractFrame:
         return W_MetaArg(self.vm, color, w_functype.w_restype, w_res, op.loc)
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_MetaArg:
-        w_OP = OP_from_token(binop.op) # e.g., w_ADD, w_MUL, etc.
+        w_OP = OP_from_token(binop.op)  # e.g., w_ADD, w_MUL, etc.
         wam_l = self.eval_expr(binop.left)
         wam_r = self.eval_expr(binop.right)
         w_opimpl = self.vm.call_OP(binop.loc, w_OP, [wam_l, wam_r])
-        return self.eval_opimpl(
-            binop,
-            w_opimpl,
-            [wam_l, wam_r]
-        )
+        return self.eval_opimpl(binop, w_opimpl, [wam_l, wam_r])
 
     def eval_expr_CmpOp(self, op: ast.CmpOp) -> W_MetaArg:
-        w_OP = OP_from_token(op.op) # e.g., w_ADD, w_MUL, etc.
+        w_OP = OP_from_token(op.op)  # e.g., w_ADD, w_MUL, etc.
         wam_l = self.eval_expr(op.left)
         wam_r = self.eval_expr(op.right)
         w_opimpl = self.vm.call_OP(op.loc, w_OP, [wam_l, wam_r])
-        return self.eval_opimpl(
-            op,
-            w_opimpl,
-            [wam_l, wam_r]
-        )
+        return self.eval_opimpl(op, w_opimpl, [wam_l, wam_r])
 
     def eval_expr_UnaryOp(self, unop: ast.UnaryOp) -> W_MetaArg:
         w_OP = OP_unary_from_token(unop.op)
@@ -740,21 +717,15 @@ class AbstractFrame:
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
         wam_func = self.eval_expr(call.func)
         args_wam = [self.eval_expr(arg) for arg in call.args]
-        w_opimpl = self.vm.call_OP(
-            call.loc,
-            OP.w_CALL,
-            [wam_func]+args_wam
-        )
-        return self.eval_opimpl(call, w_opimpl, [wam_func]+args_wam)
+        w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func] + args_wam)
+        return self.eval_opimpl(call, w_opimpl, [wam_func] + args_wam)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         wam_obj = self.eval_expr(op.target)
         wam_meth = self.eval_expr(op.method)
         args_wam = [self.eval_expr(arg) for arg in op.args]
         w_opimpl = self.vm.call_OP(
-            op.loc,
-            OP.w_CALL_METHOD,
-            [wam_obj, wam_meth] + args_wam
+            op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth] + args_wam
         )
         return self.eval_opimpl(
             op,
@@ -777,7 +748,7 @@ class AbstractFrame:
     def eval_expr_List(self, op: ast.List) -> W_Object:
         items_wam = []
         w_itemtype = None
-        color: Color = "red" # XXX should be blue?
+        color: Color = "red"  # XXX should be blue?
         for item in op.items:
             wam_item = self.eval_expr(item)
             items_wam.append(wam_item)
@@ -812,11 +783,13 @@ class ASTFrame(AbstractFrame):
     """
     A frame to execute and ASTFunc
     """
+
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
 
-    def __init__(self, vm: "SPyVM", w_func: W_ASTFunc,
-                 args_w: Optional[Sequence[W_Object]]) -> None:
+    def __init__(
+        self, vm: "SPyVM", w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
+    ) -> None:
         # if w_func was redshifted, automatically use the new version
         if w_func.w_redshifted_into:
             w_func = w_func.w_redshifted_into
@@ -836,8 +809,9 @@ class ASTFrame(AbstractFrame):
             extra = ""
         return f"<{cls} for `{self.w_func.fqn}`{extra}>"
 
-    def compute_ns(self, w_func: W_ASTFunc,
-                   args_w: Optional[Sequence[W_Object]]) -> FQN:
+    def compute_ns(
+        self, w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
+    ) -> FQN:
         """
         Try to generate a meaningful namespace for blue functions. The
         idea is that if we blue func takes type parameters, we want to include
@@ -937,7 +911,6 @@ class ASTFrame(AbstractFrame):
 
             else:
                 assert False
-
 
     def init_arguments(self, args_w: Sequence[W_Object]) -> None:
         """

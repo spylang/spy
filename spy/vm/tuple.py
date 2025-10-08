@@ -9,6 +9,7 @@ from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+
 @B.builtin_type("tuple")
 class W_Tuple(W_Object):
     """
@@ -20,6 +21,7 @@ class W_Tuple(W_Object):
 
     Eventally, it will become a "real" type-safe, generic type.
     """
+
     __spy_storage_category__ = "value"
 
     items_w: list[W_Object]

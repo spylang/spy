@@ -10,7 +10,6 @@ from spy.vm.vm import SPyVM
 
 @pytest.mark.usefixtures("init")
 class TestImportAnalyzer:
-
     @pytest.fixture
     def init(self, tmpdir):
         self.vm = SPyVM()
@@ -20,17 +19,19 @@ class TestImportAnalyzer:
     def write(self, filename: str, src: str) -> py.path.local:
         src = textwrap.dedent(src)
         f = self.tmpdir.join(filename)
-        f.dirpath().ensure(dir=True) # create directories, if needed
+        f.dirpath().ensure(dir=True)  # create directories, if needed
         f.write(src)
         return f
 
     def test_simple_import(self):
-        self.write("mod1.spy", """
+        src = """
         x: i32 = 42
-        """)
-        self.write("main.spy", """
+        """
+        self.write("mod1.spy", src)
+        src = """
         import mod1
-        """)
+        """
+        self.write("main.spy", src)
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
 
@@ -39,31 +40,38 @@ class TestImportAnalyzer:
         assert isinstance(analyzer.mods["mod1"], ast.Module)
 
     def test_nested_imports(self):
-        self.write("main.spy", """
+        src = """
         import aaa
         import bbb
-        """)
-        self.write("aaa.spy", """
+        """
+        self.write("main.spy", src)
+        src = """
         import a1
         import a2
-        """)
-        self.write("bbb.spy", """
+        """
+        self.write("aaa.spy", src)
+        src = """
         import aaa
         import b1
         import b2
-        """)
-        self.write("a1.spy", """
+        """
+        self.write("bbb.spy", src)
+        src = """
         x = 'a1'
-        """)
-        self.write("a2.spy", """
+        """
+        self.write("a1.spy", src)
+        src = """
         x = 'a2'
-        """)
-        self.write("b1.spy", """
+        """
+        self.write("a2.spy", src)
+        src = """
         x = 'b1'
-        """)
-        self.write("b2.spy", """
+        """
+        self.write("b1.spy", src)
+        src = """
         x = 'b2'
-        """)
+        """
+        self.write("b2.spy", src)
 
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
@@ -72,21 +80,22 @@ class TestImportAnalyzer:
 
     @pytest.mark.skip(reason="parser does not support this")
     def test_import_in_function(self):
-        self.write("main.spy", """
+        src = """
         def foo() -> None:
             import mod1
-        """)
-        self.write("mod1.spy", """
+        """
+        self.write("main.spy", src)
+        src = """
         x: i32 = 42
-        """)
+        """
+        self.write("mod1.spy", src)
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
         assert list(analyzer.mods) == ["main", "mod1"]
 
     def test_missing_module(self):
-        self.write("main.spy", """
-        import nonexistent
-        """)
+        src = "import nonexistent"
+        self.write("main.spy", src)
 
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
@@ -95,12 +104,8 @@ class TestImportAnalyzer:
         assert analyzer.mods["nonexistent"] is None
 
     def test_already_imported_module(self):
-        self.write("main.spy", """
-        import mod1
-        """)
-        self.write("mod1.spy", """
-        x: i32 = 42
-        """)
+        self.write("main.spy", "import mod1")
+        self.write("mod1.spy", "x: i32 = 42")
 
         # Pre-import mod1 into the VM
         dummy_module = object()
@@ -112,9 +117,7 @@ class TestImportAnalyzer:
         assert analyzer.mods["mod1"] is dummy_module
 
     def test_analyze_scopes(self):
-        self.write("main.spy", """
-        x: i32 = 42
-        """)
+        self.write("main.spy", "x: i32 = 42")
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
         scopes = analyzer.analyze_scopes("main")
@@ -122,15 +125,10 @@ class TestImportAnalyzer:
 
     def test_vm_path(self):
         # we write mod1 in an unrelated dir, which is the added to vm.path
-        self.write("mylib/mod1.spy", """
-        x: i32 = 42
-        """)
-        self.write("main.spy", """
-        import mod1
-        """)
-
+        self.write("mylib/mod1.spy", "x: i32 = 42")
+        self.write("main.spy", "import mod1")
         self.vm.path.append(self.tmpdir.join("mylib"))
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
         assert list(analyzer.mods) == ["main", "mod1"]
-        assert analyzer.mods["mod1"] is not None # check that we found it
+        assert analyzer.mods["mod1"] is not None  # check that we found it

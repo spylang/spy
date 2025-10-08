@@ -50,7 +50,6 @@ class CBackend:
         self.build_dir = build_dir
         self.build_dir.join("src").ensure(dir=True)
         self.dump_c = dump_c
-        #
         self.cffi = CFFIWriter(outname, config, build_dir)
         self.ninja = None
         self.c_structdefs = {}

@@ -4,14 +4,10 @@ from spy.vm.vm import SPyVM
 
 
 class TestModule:
-
     def test_add(self):
         vm = SPyVM()
         w_mod = W_Module("mymod", "mymod.spy")
         vm.register_module(w_mod)
-        #
-        fqn_a = FQN("mymod::a")
-        fqn_b = FQN("mymod::b")
         w_a = vm.wrap(10)
         w_b = vm.wrap(20)
         w_mod.setattr("a", w_a)

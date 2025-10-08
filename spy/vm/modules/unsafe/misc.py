@@ -19,6 +19,6 @@ def sizeof(w_T: W_Type) -> int:
         # XXX what is the right size of pointers? For wasm32 is 4 of course,
         # but for native it might be 8. Does it mean that we need to
         # preemptively choose the target platform BEFORE redshifting?
-        return 4 + 4 # in debug mode we store both addr and length
+        return 4 + 4  # in debug mode we store both addr and length
     else:
         raise WIP(f"sizeof({w_T}) not implemented")

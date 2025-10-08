@@ -14,6 +14,7 @@ WasmTrap = wt.Trap
 
 ENGINE = wt.Engine()
 
+
 class LLWasmModule(LLWasmModuleBase):
     filename: str
     mod: wt.Module
@@ -31,12 +32,12 @@ class LLWasmModule(LLWasmModuleBase):
 
 
 def get_linker(
-        store: wt.Store,
-        llmod: LLWasmModule,
-        *,
-        wasi_config: Optional[wt.WasiConfig] = None,
-        hostmods: Optional[list[HostModule]] = None,
-    ) -> wt.Linker:
+    store: wt.Store,
+    llmod: LLWasmModule,
+    *,
+    wasi_config: Optional[wt.WasiConfig] = None,
+    hostmods: Optional[list[HostModule]] = None,
+) -> wt.Linker:
     """
     Setup a Linker which can be used to instantiate llmod.
 
@@ -46,6 +47,7 @@ def get_linker(
     HostModules.
     """
     hostmods = hostmods or []
+
     def find_meth(imp: Any) -> Any:
         assert hostmods is not None
         methname = f"{imp.module}_{imp.name}"
@@ -88,6 +90,7 @@ def get_linker(
 
     return linker
 
+
 def get_wasi_config() -> wt.WasiConfig:
     wasi_config = wt.WasiConfig()
     # eventually, we want to support argv, with either:
@@ -106,19 +109,16 @@ class LLWasmInstance(LLWasmInstanceBase):
     mem: "LLWasmMemory"
 
     def __init__(
-            self,
-            llmod: LLWasmModule,
-            hostmods: list[HostModule] = [],
-            *,
-            instance: Optional[wt.Instance] = None
+        self,
+        llmod: LLWasmModule,
+        hostmods: list[HostModule] = [],
+        *,
+        instance: Optional[wt.Instance] = None,
     ) -> None:
         self.llmod = llmod
         self.store = wt.Store(ENGINE)
         linker = get_linker(
-            self.store,
-            self.llmod,
-            wasi_config = get_wasi_config(),
-            hostmods = hostmods
+            self.store, self.llmod, wasi_config=get_wasi_config(), hostmods=hostmods
         )
         if instance is None:
             self.instance = linker.instantiate(self.store, self.llmod.mod)
@@ -132,15 +132,12 @@ class LLWasmInstance(LLWasmInstanceBase):
 
     @classmethod
     async def async_new(
-            cls,
-            llmod: LLWasmModule,
-            hostmods: list[HostModule] = []
+        cls, llmod: LLWasmModule, hostmods: list[HostModule] = []
     ) -> Self:
         return cls(llmod, hostmods)
 
     @classmethod
-    def from_file(cls, f: py.path.local,
-                  hostmods: list[HostModule]=[]) -> Self:
+    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
         llmod = LLWasmModule(str(f))
         return cls(llmod, hostmods)
 
@@ -172,6 +169,7 @@ class LLWasmMemory(LLWasmMemoryBase):
     """
     Thin wrapper around wt.Memory
     """
+
     store: wt.Store
     mem: wt.Memory
 
@@ -183,7 +181,7 @@ class LLWasmMemory(LLWasmMemoryBase):
         """
         Read n bytes of memory at the given address.
         """
-        return self.mem.read(self.store, addr, addr+n)
+        return self.mem.read(self.store, addr, addr + n)
 
     def write(self, addr: int, b: bytes) -> None:
         self.mem.write(self.store, b, addr)

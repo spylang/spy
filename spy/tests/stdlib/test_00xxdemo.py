@@ -2,7 +2,6 @@ from spy.tests.support import CompilerTest
 
 
 class TestXXDemo(CompilerTest):
-
     def test_double(self):
         src = """
         from xxdemo import double

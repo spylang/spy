@@ -15,10 +15,12 @@ ARGS_W = Sequence[W_Object]
 ARGS_KEY = tuple[W_Object, ...]
 KEY = tuple[W_Func, ARGS_KEY]
 
+
 class BlueCache:
     """
     Store and record the results of blue functions.
     """
+
     vm: "SPyVM"
     data: dict[KEY, W_Object]
 
@@ -26,7 +28,7 @@ class BlueCache:
         self.vm = vm
         self.data = {}
 
-    def record(self, w_func: W_Func, args_w: ARGS_W, w_res: W_Object) ->None:
+    def record(self, w_func: W_Func, args_w: ARGS_W, w_res: W_Object) -> None:
         args_key = tuple(w_arg.spy_key(self.vm) for w_arg in args_w)
         key = (w_func, args_key)
         self.data[key] = w_res
@@ -55,7 +57,7 @@ class BlueCache:
             what = Color.set("teal", what)
         print(f"BlueCache.{what}: {w_func.fqn} {args} -> {w_res}")
 
-    def _fmt_key(self, k: Any, keycolor: Optional[str]=None) -> str:
+    def _fmt_key(self, k: Any, keycolor: Optional[str] = None) -> str:
         if isinstance(k, tuple) and len(k) == 4 and k[0] == "MetaArg":
             # this is a key coming from W_MetaArg: it's common enough which
             # is worth special casing its formatting for readability

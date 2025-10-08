@@ -48,6 +48,7 @@ class CFFIWriter:
     CFFI "Setuptools integration" as described here:
     https://cffi.readthedocs.io/en/latest/cdef.html
     """
+
     modname: str
     config: BuildConfig
     build_dir: py.path.local
@@ -57,15 +58,12 @@ class CFFIWriter:
     tb_src: TextBuilder
 
     def __init__(
-            self,
-            modname: str,
-            config: BuildConfig,
-            build_dir: py.path.local
+        self, modname: str, config: BuildConfig, build_dir: py.path.local
     ) -> None:
         self.modname = modname
         self.config = config
         self.build_dir = build_dir
-        self.tb_py = TextBuilder()     # {modname}.py
+        self.tb_py = TextBuilder()  # {modname}.py
         self.tb_build = TextBuilder()  # _{modname-cffi-build}.py
         self.init_py()
         self.init_cffi_build()
@@ -91,17 +89,12 @@ class CFFIWriter:
         tb.wl('"""')
         tb.wl()
 
-    def finalize_cffi_build(
-            self,
-            cfiles: list[py.path.local]
-    ) -> None:
+    def finalize_cffi_build(self, cfiles: list[py.path.local]) -> None:
         srcdir = self.build_dir.join("src")
         comp = CompilerConfig(self.config)
 
         SOURCES = [str(f) for f in cfiles]
-        CFLAGS = comp.cflags + [
-            f"-I{srcdir}"
-        ]
+        CFLAGS = comp.cflags + [f"-I{srcdir}"]
         LDFLAGS = comp.ldflags
 
         self.tb_build.wb(f"""

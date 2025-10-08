@@ -53,20 +53,21 @@ if TYPE_CHECKING:
 
 # the folloing imports register all the various objects on OP
 # isort: off
-from . import opimpl_int     # noqa: F401 -- side effects
-from . import opimpl_f64     # noqa: F401 -- side effects
-from . import opimpl_str     # noqa: F401 -- side effects
+from . import opimpl_int  # noqa: F401 -- side effects
+from . import opimpl_f64  # noqa: F401 -- side effects
+from . import opimpl_str  # noqa: F401 -- side effects
 from . import opimpl_object  # noqa: F401 -- side effects
-from . import opimpl_dynamic # noqa: F401 -- side effects
-from . import opimpl_bool    # noqa: F401 -- side effects
-from . import unaryop        # noqa: F401 -- side effects
-from . import binop          # noqa: F401 -- side effects
-from . import attrop         # noqa: F401 -- side effects
-from . import itemop         # noqa: F401 -- side effects
-from . import callop         # noqa: F401 -- side effects
-from . import convop         # noqa: F401 -- side effects
-from . import raiseop        # noqa: F401 -- side effects
+from . import opimpl_dynamic  # noqa: F401 -- side effects
+from . import opimpl_bool  # noqa: F401 -- side effects
+from . import unaryop  # noqa: F401 -- side effects
+from . import binop  # noqa: F401 -- side effects
+from . import attrop  # noqa: F401 -- side effects
+from . import itemop  # noqa: F401 -- side effects
+from . import callop  # noqa: F401 -- side effects
+from . import convop  # noqa: F401 -- side effects
+from . import raiseop  # noqa: F401 -- side effects
 # isort: on
+
 _from_token: dict[str, W_Func] = {
     "+": OP.w_ADD,
     "-": OP.w_SUB,
@@ -81,9 +82,9 @@ _from_token: dict[str, W_Func] = {
     "^": OP.w_XOR,
     "==": OP.w_EQ,
     "!=": OP.w_NE,
-    "<":  OP.w_LT,
+    "<": OP.w_LT,
     "<=": OP.w_LE,
-    ">":  OP.w_GT,
+    ">": OP.w_GT,
     ">=": OP.w_GE,
     "[]": OP.w_GETITEM,
     "<universal_eq>": OP.w_UNIVERSAL_EQ,
@@ -93,6 +94,7 @@ _from_token: dict[str, W_Func] = {
 _unary_from_token: dict[str, W_Func] = {
     "-": OP.w_NEG,
 }
+
 
 def OP_from_token(token: str) -> W_Func:
     """
@@ -105,11 +107,13 @@ def OP_from_token(token: str) -> W_Func:
     else:
         raise WIP(f"Operator not implemented yet: {token}")
 
+
 def OP_unary_from_token(token: str) -> W_Func:
     if token in _from_token:
         return _unary_from_token[token]
     else:
         raise WIP(f"Operator not implemented yet: {token}")
+
 
 def print_all_OPERATORS() -> None:
     """
@@ -120,5 +124,3 @@ def print_all_OPERATORS() -> None:
         if fqn.symbol_name.isupper():
             print("   ", fqn)
     print()
-
-#print_all_OPERATORS()

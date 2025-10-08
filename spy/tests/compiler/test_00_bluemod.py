@@ -11,7 +11,6 @@ from spy.vm.vm import SPyVM
 
 @pytest.mark.usefixtures("init")
 class TestBlueMod:
-
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir

@@ -7,21 +7,25 @@ from spy.tests.support import CTest
 PYODIDE = ROOT.join("..", "pyodide", "node_modules", "pyodide")
 HAS_PYODIDE = PYODIDE.check(exists=True)
 
+
 @pytest.mark.usefixtures("init_llwasm")
 class TestLLWasm(CTest):
-
-    @pytest.fixture(params=[
-        # "normal" execution, under CPython
-        pytest.param("wasmtime", marks=pytest.mark.wasmtime),
-
-        # run tests inside pyodide, using the 'emscripten' llwasm backend
-        pytest.param("pyodide", marks=[
-            pytest.mark.pyodide,
-            pytest.mark.skipif(
-                not HAS_PYODIDE,
-                reason="pyodide not found, run npm i")
-        ]),
-    ])
+    @pytest.fixture(
+        params=[
+            # "normal" execution, under CPython
+            pytest.param("wasmtime", marks=pytest.mark.wasmtime),
+            # run tests inside pyodide, using the 'emscripten' llwasm backend
+            pytest.param(
+                "pyodide",
+                marks=[
+                    pytest.mark.pyodide,
+                    pytest.mark.skipif(
+                        not HAS_PYODIDE, reason="pyodide not found, run npm i"
+                    ),
+                ],
+            ),
+        ]
+    )
     def llwasm_backend(self, request):
         return request.param
 
@@ -127,7 +131,7 @@ class TestLLWasm(CTest):
 
             ptr = ll.read_global("foo")
             assert ll.mem.read_i32(ptr) == 100
-            assert ll.mem.read_i32(ptr+4) == 200
+            assert ll.mem.read_i32(ptr + 4) == 200
 
         fn(self.selenium, test_wasm)
 
@@ -156,7 +160,6 @@ class TestLLWasm(CTest):
             assert ll.call("foo_total") == 210
 
         fn(self.selenium, test_wasm)
-
 
     def test_multiple_instances(self):
         src = r"""
@@ -204,6 +207,7 @@ class TestLLWasm(CTest):
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule
+
             llmod = LLWasmModule(str(test_wasm))
 
             class Math(HostModule):

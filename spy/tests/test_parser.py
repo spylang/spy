@@ -12,7 +12,6 @@ from spy.util import print_diff
 
 @pytest.mark.usefixtures("init")
 class TestParser:
-
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
@@ -30,8 +29,7 @@ class TestParser:
             self.parse(src)
 
     def assert_dump(self, node: ast.Node, expected: str):
-        dumped = dump(node, use_colors=False,
-                      fields_to_ignore=("symtable",))
+        dumped = dump(node, use_colors=False, fields_to_ignore=("symtable",))
         dumped = dumped.strip()
         expected = textwrap.dedent(expected).strip()
         if "{tmpdir}" in expected:
@@ -400,7 +398,6 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
-
     def test_FuncDef_prototype_loc(self):
         # blue functions without return type, are parsed as if they had a
         # synthetic '-> dynamic' annotation. We also need to generate a
@@ -466,7 +463,6 @@ class TestParser:
         )
         """
         self.assert_dump(stmt, expected)
-
 
     def test_GetItem(self):
         mod = self.parse("""
@@ -1022,7 +1018,6 @@ class TestParser:
         self.assert_dump(body[0], expected0)
         self.assert_dump(body[1], expected1)
 
-
     def test_Raise(self):
         mod = self.parse("""
         def foo() -> None:
@@ -1049,7 +1044,10 @@ class TestParser:
         self.expect_errors(
             src,
             "not implemented yet: raise ... from ...",
-            ("this is not supported", "raise ValueError(\"error\") from TypeError(\"cause\")"),
+            (
+                "this is not supported",
+                'raise ValueError("error") from TypeError("cause")',
+            ),
         )
 
     def test_Raise_bare(self):
@@ -1102,11 +1100,11 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_module_docstring(self):
-        mod = self.parse('''
+        mod = self.parse("""
         "hello"
         x = 42
-        ''')
-        #
+        """)
+
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
@@ -1327,7 +1325,6 @@ class TestParser:
         )
         """
         self.assert_dump(classdef, expected)
-
 
     def test_class_no_assignments(self):
         src = """

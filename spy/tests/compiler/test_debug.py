@@ -1,4 +1,4 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 import re
 
@@ -10,12 +10,10 @@ from spy.tests.support import CompilerTest, only_C
 @pytest.mark.skip(reason="this is broken, see TextBuilder.lineno docstring")
 @only_C
 class TestDebug(CompilerTest):
-
     RE_SPY_LINE = re.compile(r"#line SPY_LINE\((\d+), (\d+)\)")
 
     def test_debug_info(self):
-        mod = self.compile(
-        """
+        self.compile("""
         def foo() -> i32:   # line 2  <==
             x: i32 = 3      # line 3  <==
             y: i32 = 4      # line 4
@@ -39,5 +37,4 @@ class TestDebug(CompilerTest):
                 cline = int(m.group(2))
                 assert cline == lineno + 1
                 spylines.append(spyline)
-        #
         assert spylines == [2, 3, 7]

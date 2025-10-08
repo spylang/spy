@@ -19,7 +19,6 @@ class TestOpSpec(CompilerTest):
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
-
             @builtin_method("__new__")
             @staticmethod
             def w_new(vm: "SPyVM") -> "W_MyClass":
@@ -27,13 +26,15 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
-                          wam_i: W_MetaArg) -> W_OpSpec:
+            def w_GETITEM(
+                vm: "SPyVM", wam_obj: W_MetaArg, wam_i: W_MetaArg
+            ) -> W_OpSpec:
                 @vm.register_builtin_func("ext")
-                def w_getitem(vm: "SPyVM", w_obj: W_MyClass,
-                              w_i: W_I32) -> W_I32:
+                def w_getitem(vm: "SPyVM", w_obj: W_MyClass, w_i: W_I32) -> W_I32:
                     return w_i
+
                 return W_OpSpec(w_getitem)
+
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -56,7 +57,6 @@ class TestOpSpec(CompilerTest):
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
-
             @builtin_method("__new__")
             @staticmethod
             def w_new(vm: "SPyVM") -> "W_MyClass":
@@ -64,12 +64,15 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
-                          wam_i: W_MetaArg) -> W_OpSpec:
+            def w_GETITEM(
+                vm: "SPyVM", wam_obj: W_MetaArg, wam_i: W_MetaArg
+            ) -> W_OpSpec:
                 @vm.register_builtin_func("ext")
                 def w_getitem(vm: "SPyVM", w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
+
                 return W_OpSpec(w_getitem)
+
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -91,7 +94,6 @@ class TestOpSpec(CompilerTest):
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
-
             def __init__(self, w_x: W_I32):
                 self.w_x = w_x
 
@@ -102,8 +104,9 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
-                          wam_i: W_MetaArg) -> W_OpSpec:
+            def w_GETITEM(
+                vm: "SPyVM", wam_obj: W_MetaArg, wam_i: W_MetaArg
+            ) -> W_OpSpec:
                 assert isinstance(wam_obj, W_MetaArg)
                 assert isinstance(wam_i, W_MetaArg)
                 # NOTE we are reversing the two arguments
@@ -115,7 +118,8 @@ class TestOpSpec(CompilerTest):
             assert isinstance(w_obj, W_MyClass)
             a = vm.unwrap_i32(w_i)
             b = vm.unwrap_i32(w_obj.w_x)
-            return vm.wrap(a+b)
+            return vm.wrap(a + b)
+
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -151,7 +155,6 @@ class TestOpSpec(CompilerTest):
 
         @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
-
             @builtin_method("__new__")
             @staticmethod
             def w_new(vm: "SPyVM") -> "W_MyClass":
@@ -159,9 +162,11 @@ class TestOpSpec(CompilerTest):
 
             @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
-                          wam_i: W_MetaArg) -> W_OpSpec:
+            def w_GETITEM(
+                vm: "SPyVM", wam_obj: W_MetaArg, wam_i: W_MetaArg
+            ) -> W_OpSpec:
                 return W_OpSpec.const(vm.wrap(42))
+
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

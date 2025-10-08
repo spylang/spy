@@ -15,17 +15,19 @@ class ModFrame(AbstractFrame):
     """
     A frame to execute the body of a module
     """
+
     vm: SPyVM
     modname: str
     mod: ast.Module
     scopes: ScopeAnalyzer
 
-    def __init__(self,
-                 vm: SPyVM,
-                 ns: FQN,
-                 symtable: SymTable,
-                 mod: ast.Module,
-                 ) -> None:
+    def __init__(
+        self,
+        vm: SPyVM,
+        ns: FQN,
+        symtable: SymTable,
+        mod: ast.Module,
+    ) -> None:
         w_builtins = vm.modules_w["builtins"]
         super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
         self.mod = mod
@@ -89,8 +91,7 @@ class ModFrame(AbstractFrame):
         if sym.storage == "direct":
             if is_auto:
                 assert sym.name not in self.locals_types_w
-                self.declare_local(sym.name, wam.w_static_T,
-                                   decl.assign.target.loc)
+                self.declare_local(sym.name, wam.w_static_T, decl.assign.target.loc)
             self.store_local(sym.name, wam.w_val)
 
         elif sym.storage == "cell":

@@ -10,7 +10,6 @@ from spy.vm.function import W_ASTFunc
 
 @only_interp
 class TestSPyBackend(CompilerTest):
-
     def assert_dump(self, expected: str, *, modname: str = "test") -> None:
         b = SPyBackend(self.vm)
         got = b.dump_mod(modname).strip()
@@ -161,7 +160,6 @@ class TestSPyBackend(CompilerTest):
             add_i32(1, 2)
             add_f64(3.4, 5.6)
         """)
-
 
     def test_while(self):
         src = """

@@ -12,6 +12,7 @@ Color = Literal["red", "blue"]
 VarKind = Literal["var", "const"]
 VarStorage = Literal["direct", "cell", "NameError"]
 
+
 def maybe_blue(*colors: Color) -> Color:
     """
     Return 'blue' if all the given colors are blue, else 'red'
@@ -36,6 +37,7 @@ class ImportRef:
       modname: 'a.b'
       attr: 'c'
     """
+
     modname: str
     attr: Optional[str]
 
@@ -60,7 +62,7 @@ class Symbol:
     varkind: VarKind
     storage: VarStorage
     _: KW_ONLY
-    loc: Loc       # where the symbol is defined, in the source code
+    loc: Loc  # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
 
     # level indicates in which scope the symbol resides:
@@ -103,6 +105,7 @@ class SymTable:
 
       - frames associated to modules, classdefs, etc. are also BLUE
     """
+
     name: str  # just for debugging
     color: Color
     _symbols: dict[str, Symbol]
@@ -115,12 +118,11 @@ class SymTable:
     @classmethod
     def from_builtins(cls, vm: "SPyVM") -> "SymTable":
         from spy.vm.function import W_BuiltinFunc
+
         scope = cls("builtins", "blue")
-        generic_loc = Loc(filename="<builtins>",
-                          line_start=0,
-                          line_end=0,
-                          col_start=0,
-                          col_end=0)
+        generic_loc = Loc(
+            filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
+        )
         builtins_mod = vm.modules_w["builtins"]
         for attr, w_obj in builtins_mod.items_w():
             if isinstance(w_obj, W_BuiltinFunc):
@@ -128,7 +130,10 @@ class SymTable:
             else:
                 loc = generic_loc
             sym = Symbol(
-                attr, "blue", "const", "direct",
+                attr,
+                "blue",
+                "const",
+                "direct",
                 loc=loc,
                 type_loc=loc,
                 level=0,
@@ -165,7 +170,9 @@ class SymTable:
             storage = ""
             if sym.storage == "cell":
                 storage = "[cell]"
-            print(f"    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {impref}")
+            print(
+                f"    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {impref}"
+            )
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols

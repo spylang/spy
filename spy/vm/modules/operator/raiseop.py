@@ -14,15 +14,18 @@ from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+
 @OP.builtin_func
-def w_raise(vm: "SPyVM", w_etype: W_Str, w_message: W_Str,
-            w_filename: W_Str, w_lineno: W_I32) -> None:
+def w_raise(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> None:
     etype = "W_" + vm.unwrap_str(w_etype)
     msg = vm.unwrap_str(w_message)
     fname = vm.unwrap_str(w_filename)
     lineno = vm.unwrap_i32(w_lineno)
     loc = Loc(fname, lineno, lineno, 1, -1)
     raise SPyError.simple(etype, msg, "", loc)
+
 
 @OP.builtin_func(color="blue")
 def w_RAISE(vm: "SPyVM", wam_exc: W_MetaArg) -> W_OpImpl:
@@ -46,7 +49,7 @@ def w_RAISE(vm: "SPyVM", wam_exc: W_MetaArg) -> W_OpImpl:
     w_exc = wam_exc.w_val
     if isinstance(w_exc, W_Type) and issubclass(w_exc.pyclass, W_Exception):
         # we are in the "raise IndexError" case
-        etype = w_exc.pyclass.__name__ # "W_IndexError"
+        etype = w_exc.pyclass.__name__  # "W_IndexError"
         msg = ""
     elif isinstance(w_exc, W_Exception):
         # we are in the "raise IndexError('hello')" case
@@ -70,9 +73,5 @@ def w_RAISE(vm: "SPyVM", wam_exc: W_MetaArg) -> W_OpImpl:
     w_opspec = W_OpSpec(OP.w_raise, [wam_etype, wam_msg, wam_fname, wam_lineno])
 
     return typecheck_opspec(
-        vm,
-        w_opspec,
-        [wam_exc],
-        dispatch="single",
-        errmsg="cannot raise `{0}`"
+        vm, w_opspec, [wam_exc], dispatch="single", errmsg="cannot raise `{0}`"
     )

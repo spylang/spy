@@ -18,14 +18,12 @@ class ClassFrame(AbstractFrame):
     """
     A frame to execute a classdef body
     """
+
     classdef: ast.ClassDef
 
-    def __init__(self,
-                 vm: "SPyVM",
-                 classdef: ast.ClassDef,
-                 ns: FQN,
-                 closure: CLOSURE
-                 ) -> None:
+    def __init__(
+        self, vm: "SPyVM", classdef: ast.ClassDef, ns: FQN, closure: CLOSURE
+    ) -> None:
         super().__init__(vm, ns, classdef.symtable, closure)
         self.classdef = classdef
 

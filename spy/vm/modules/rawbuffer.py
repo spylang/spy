@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 RAW_BUFFER = RB = ModuleRegistry("rawbuffer")
 
+
 @RB.builtin_type("RawBuffer")
 class W_RawBuffer(W_Object):
     buf: bytearray
@@ -31,12 +32,13 @@ def w_rb_alloc(vm: "SPyVM", w_size: W_I32) -> W_RawBuffer:
     size = vm.unwrap_i32(w_size)
     return W_RawBuffer(size)
 
+
 @RB.builtin_func
-def w_rb_set_i32(vm: "SPyVM", w_rb: W_RawBuffer,
-               w_offset: W_I32, w_val: W_I32) -> None:
+def w_rb_set_i32(vm: "SPyVM", w_rb: W_RawBuffer, w_offset: W_I32, w_val: W_I32) -> None:
     offset = vm.unwrap_i32(w_offset)
     val = vm.unwrap_i32(w_val)
     struct.pack_into("i", w_rb.buf, offset, val)
+
 
 @RB.builtin_func
 def w_rb_get_i32(vm: "SPyVM", w_rb: W_RawBuffer, w_offset: W_I32) -> W_I32:
@@ -44,12 +46,13 @@ def w_rb_get_i32(vm: "SPyVM", w_rb: W_RawBuffer, w_offset: W_I32) -> W_I32:
     val = struct.unpack_from("i", w_rb.buf, offset)[0]
     return vm.wrap(val)
 
+
 @RB.builtin_func
-def w_rb_set_f64(vm: "SPyVM", w_rb: W_RawBuffer,
-               w_offset: W_I32, w_val: W_F64) -> None:
+def w_rb_set_f64(vm: "SPyVM", w_rb: W_RawBuffer, w_offset: W_I32, w_val: W_F64) -> None:
     offset = vm.unwrap_i32(w_offset)
     val = vm.unwrap_f64(w_val)
     struct.pack_into("d", w_rb.buf, offset, val)
+
 
 @RB.builtin_func
 def w_rb_get_f64(vm: "SPyVM", w_rb: W_RawBuffer, w_offset: W_I32) -> W_F64:

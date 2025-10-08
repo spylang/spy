@@ -34,8 +34,10 @@ from spy.vm.object import (
 
 TYPES_DICT = dict[str, W_Type]
 
+
 def is_W_class(x: Any) -> bool:
     return isinstance(x, type) and issubclass(x, W_Object)
+
 
 def get_spy_type_annotation(ann: Any) -> Optional[W_Type]:
     if get_origin(ann) is Annotated:
@@ -43,6 +45,7 @@ def get_spy_type_annotation(ann: Any) -> Optional[W_Type]:
             if isinstance(x, W_Type):
                 return x
     return None
+
 
 def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
     """
@@ -54,6 +57,7 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
       None -> TYPES.w_NoneType
     """
     from spy.vm.b import TYPES, B
+
     if allow_None and ann is None:
         return TYPES.w_NoneType
     elif is_W_class(ann):
@@ -61,6 +65,7 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
     elif w_t := get_spy_type_annotation(ann):
         return w_t
     raise ValueError(f"Invalid @builtin_func annotation: {ann}")
+
 
 def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     annotation = extra_types.get(p.annotation, p.annotation)
@@ -75,16 +80,16 @@ def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     return FuncParam(w_T, kind)
 
 
-def functype_from_sig(fn: Callable, color: Color, kind: FuncKind, *,
-                      extra_types: dict = {}) -> W_FuncType:
+def functype_from_sig(
+    fn: Callable, color: Color, kind: FuncKind, *, extra_types: dict = {}
+) -> W_FuncType:
     sig = inspect.signature(fn)
     params = list(sig.parameters.values())
     if len(params) == 0:
-        msg = (f"The first param should be 'vm: SPyVM'. Got nothing")
+        msg = f"The first param should be 'vm: SPyVM'. Got nothing"
         raise ValueError(msg)
-    if (params[0].name != "vm" or
-        params[0].annotation != "SPyVM"):
-        msg = (f"The first param should be 'vm: SPyVM'. Got '{params[0]}'")
+    if params[0].name != "vm" or params[0].annotation != "SPyVM":
+        msg = f"The first param should be 'vm: SPyVM'. Got '{params[0]}'"
         raise ValueError(msg)
 
     func_params = [to_spy_FuncParam(p, extra_types) for p in params[1:]]
@@ -95,7 +100,7 @@ def functype_from_sig(fn: Callable, color: Color, kind: FuncKind, *,
 
 def make_builtin_func(
     fn: Callable,
-    namespace: FQN|str,
+    namespace: FQN | str,
     funcname: Optional[str] = None,
     qualifiers: QUALIFIERS = None,
     *,
@@ -124,13 +129,14 @@ def make_builtin_func(
     return W_BuiltinFunc(w_functype, fqn, fn)
 
 
-def builtin_type(namespace: FQN|str,
-                 typename: str,
-                 qualifiers: QUALIFIERS = None,
-                 *,
-                 lazy_definition: bool = False,
-                 W_MetaClass: Optional[Type[W_Type]] = None,
-                 ) -> Any:
+def builtin_type(
+    namespace: FQN | str,
+    typename: str,
+    qualifiers: QUALIFIERS = None,
+    *,
+    lazy_definition: bool = False,
+    W_MetaClass: Optional[Type[W_Type]] = None,
+) -> Any:
     """
     Class decorator to simplify the creation of builtin SPy types.
 
@@ -150,13 +156,16 @@ def builtin_type(namespace: FQN|str,
             w_T.define(pyclass)
         pyclass._w = w_T
         return pyclass
+
     return decorator
+
 
 class IRTag:
     """
     Additional info attached to e.g. builtin functions, to make the life
     of the backend easier.
     """
+
     Empty: ClassVar["IRTag"]
     tag: str
     data: dict[str, Any]
@@ -170,5 +179,6 @@ class IRTag:
             return "<IRTag (empty)>"
         else:
             return f"<IRTag {self.tag}: {self.data}>"
+
 
 IRTag.Empty = IRTag("")
