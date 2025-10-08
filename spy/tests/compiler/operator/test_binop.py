@@ -12,119 +12,119 @@ class W_BinOpClass(W_Object):
     def __init__(self, w_x: W_I32) -> None:
         self.w_x = w_x
 
-    @builtin_method('__new__')
+    @builtin_method("__new__")
     @staticmethod
-    def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_BinOpClass':
+    def w_new(vm: "SPyVM", w_x: W_I32) -> "W_BinOpClass":
         return W_BinOpClass(w_x)
 
-    @builtin_method('__add__')
+    @builtin_method("__add__")
     @staticmethod
-    def w_add(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_add(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x + other)
 
-    @builtin_method('__sub__')
+    @builtin_method("__sub__")
     @staticmethod
-    def w_sub(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_sub(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x - other)
 
-    @builtin_method('__mul__')
+    @builtin_method("__mul__")
     @staticmethod
-    def w_mul(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_mul(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x * other)
 
-    @builtin_method('__div__')
+    @builtin_method("__div__")
     @staticmethod
-    def w_div(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_div(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x // other)
 
-    @builtin_method('__mod__')
+    @builtin_method("__mod__")
     @staticmethod
-    def w_mod(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_mod(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x % other)
 
-    @builtin_method('__and__')
+    @builtin_method("__and__")
     @staticmethod
-    def w_and(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_and(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x & other)
 
-    @builtin_method('__or__')
+    @builtin_method("__or__")
     @staticmethod
-    def w_or(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_or(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x | other)
 
-    @builtin_method('__xor__')
+    @builtin_method("__xor__")
     @staticmethod
-    def w_xor(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_xor(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x ^ other)
 
-    @builtin_method('__lshift__')
+    @builtin_method("__lshift__")
     @staticmethod
-    def w_shl(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_shl(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x << other)
 
-    @builtin_method('__rshift__')
+    @builtin_method("__rshift__")
     @staticmethod
-    def w_shr(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_shr(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x >> other)
 
-    @builtin_method('__eq__')
+    @builtin_method("__eq__")
     @staticmethod
-    def w_eq(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_eq(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(1 if x == other else 0)
 
-    @builtin_method('__ne__')
+    @builtin_method("__ne__")
     @staticmethod
-    def w_ne(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_ne(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(1 if x != other else 0)
 
-    @builtin_method('__lt__')
+    @builtin_method("__lt__")
     @staticmethod
-    def w_lt(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_lt(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(1 if x < other else 0)
 
-    @builtin_method('__le__')
+    @builtin_method("__le__")
     @staticmethod
-    def w_le(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_le(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(1 if x <= other else 0)
 
-    @builtin_method('__gt__')
+    @builtin_method("__gt__")
     @staticmethod
-    def w_gt(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_gt(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(1 if x > other else 0)
 
-    @builtin_method('__ge__')
+    @builtin_method("__ge__")
     @staticmethod
-    def w_ge(vm: 'SPyVM', w_self: 'W_BinOpClass', w_other: W_I32) -> W_I32:
+    def w_ge(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(1 if x >= other else 0)
@@ -135,19 +135,19 @@ class W_MyInt(W_Object):
     Simulate a value type, so we can test that __eq__ and __new__ are
     automatically generated.
     """
-    __spy_storage_category__ = 'value'
+    __spy_storage_category__ = "value"
 
     def __init__(self, val: int) -> None:
         self.val = val
 
-    @builtin_method('__new__')
+    @builtin_method("__new__")
     @staticmethod
-    def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyInt':
+    def w_new(vm: "SPyVM", w_x: W_I32) -> "W_MyInt":
         val = int(vm.unwrap_i32(w_x))
         return W_MyInt(val)
 
-    def spy_key(self, vm: 'SPyVM') -> Any:
-        return ('MyInt', self.val)
+    def spy_key(self, vm: "SPyVM") -> Any:
+        return ("MyInt", self.val)
 
 
 
@@ -156,9 +156,9 @@ class TestOperatorBinop(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
     def setup_ext(self) -> None:
-        EXT = ModuleRegistry('ext')
-        EXT.builtin_type('BinOpClass')(W_BinOpClass)
-        EXT.builtin_type('MyInt')(W_MyInt)
+        EXT = ModuleRegistry("ext")
+        EXT.builtin_type("BinOpClass")(W_BinOpClass)
+        EXT.builtin_type("MyInt")(W_MyInt)
         self.vm.make_module(EXT)
 
     def test_add(self):

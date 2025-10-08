@@ -6,7 +6,7 @@ from spy.errfmt import Level
 if TYPE_CHECKING:
     from spy.vm.exc import W_Exception
 
-def get_pyclass(etype: str) -> type['W_Exception']:
+def get_pyclass(etype: str) -> type["W_Exception"]:
     """
     Perform a lazy lookup of app-level exception classes.
 
@@ -14,13 +14,13 @@ def get_pyclass(etype: str) -> type['W_Exception']:
         get_pyclass('W_TypeError') --> spy.vm.exc.W_TypeError
     """
     import spy.vm.exc
-    assert etype.startswith('W_')
+    assert etype.startswith("W_")
     return getattr(spy.vm.exc, etype)
 
 
 class SPyError(Exception):
     etype: str
-    w_exc: 'W_Exception'
+    w_exc: "W_Exception"
 
     def __init__(self, etype: str, message: str) -> None:
         pyclass = get_pyclass(etype)
@@ -30,12 +30,12 @@ class SPyError(Exception):
 
     @classmethod
     def simple(cls, etype: str, primary: str,
-               secondary: str,loc: Loc) -> 'SPyError':
+               secondary: str,loc: Loc) -> "SPyError":
         err = cls(etype, primary)
-        err.add('error', secondary, loc)
+        err.add("error", secondary, loc)
         return err
 
-    def match(self, pyclass: type['W_Exception']) -> bool:
+    def match(self, pyclass: type["W_Exception"]) -> bool:
         return isinstance(self.w_exc, pyclass)
 
     def __str__(self) -> str:
@@ -72,4 +72,4 @@ class SPyError(Exception):
 
 
 def WIP(message: str) -> SPyError:
-    return SPyError('W_WIP', message)
+    return SPyError("W_WIP", message)

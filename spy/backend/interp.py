@@ -30,7 +30,7 @@ class InterpModuleWrapper:
         self.w_mod = w_mod
 
     def __dir__(self) -> list[str]:
-        return ['vm', 'w_mod'] + list(self.w_mod.keys())
+        return ["vm", "w_mod"] + list(self.w_mod.keys())
 
     def __getattr__(self, attr: str) -> Any:
         w_obj = self.w_mod.getattr_maybe(attr)
@@ -50,7 +50,7 @@ class InterpModuleWrapper:
                 assert self.vm.lookup_global(w_func.fqn) is w_func
             return InterpFuncWrapper(self.vm, w_func)
         elif isinstance(w_obj, W_Func):
-            assert False, 'WHAT?'
+            assert False, "WHAT?"
         else:
             return self.vm.unwrap(w_obj)
 
@@ -72,7 +72,7 @@ class InterpFuncWrapper:
         got = len(args)
         exp = len(self.w_functype.params)
         if got != exp:
-            msg = f'{self.w_func.fqn} takes exactly {exp} arguments, got {got}'
+            msg = f"{self.w_func.fqn} takes exactly {exp} arguments, got {got}"
             raise TypeError(msg)
 
         # *args contains python-level objs. We want to wrap them into args_w

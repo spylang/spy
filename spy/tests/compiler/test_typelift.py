@@ -34,7 +34,7 @@ class TestTypelift(CompilerTest):
         """)
         myint = mod.lift(42)
         assert myint.llval == 42
-        assert myint.w_hltype.fqn.fullname == 'test::MyInt'
+        assert myint.w_hltype.fqn.fullname == "test::MyInt"
         assert mod.call_lower(43) == 43
 
     def test_operator(self):
@@ -86,12 +86,12 @@ class TestTypelift(CompilerTest):
         mod = self.compile(src, error_mode="lazy")
         assert mod.foo(10) == 20
 
-        msg = 'this function takes 1 argument but 4 arguments were supplied'
-        with SPyError.raises('W_TypeError', match=msg):
+        msg = "this function takes 1 argument but 4 arguments were supplied"
+        with SPyError.raises("W_TypeError", match=msg):
             mod.wrong_args(10)
 
-        msg = 'method `test::MyInt::dont_exist` does not exist'
-        with SPyError.raises('W_TypeError', match=msg):
+        msg = "method `test::MyInt::dont_exist` does not exist"
+        with SPyError.raises("W_TypeError", match=msg):
             mod.wrong_meth(10)
 
     def test_if_inside_classdef(self):
@@ -168,9 +168,9 @@ class TestTypelift(CompilerTest):
             MyInt.from_many(x, y, z, w)
             return 9999 # never reached
         """
-        mod = self.compile(src, error_mode='lazy')
+        mod = self.compile(src, error_mode="lazy")
         assert mod.one() == 1
         assert mod.from_pair(4, 5) == 9
         assert mod.from_triple(4, 5, 6) == 15
-        with SPyError.raises('W_TypeError', match='invalid number of args'):
+        with SPyError.raises("W_TypeError", match="invalid number of args"):
             mod.from_quadruple(4, 5, 6, 7)

@@ -30,7 +30,7 @@ class TestMetaFunc(CompilerTest):
             return foo('hello')
         """)
         assert mod.test1() == 10
-        assert mod.test2() == 'hello world'
+        assert mod.test2() == "hello world"
 
     def test_wrong_argcount(self):
         src = """
@@ -42,8 +42,8 @@ class TestMetaFunc(CompilerTest):
             return m()
         """
         errors = expect_errors(
-            'this function takes 1 argument but 0 arguments were supplied',
-            ('function defined here', 'def m(m_x):'),
+            "this function takes 1 argument but 0 arguments were supplied",
+            ("function defined here", "def m(m_x):"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -58,9 +58,9 @@ class TestMetaFunc(CompilerTest):
             return m()
         """
         errors = expect_errors(
-            'wrong metafunc return type: expected `operator::OpSpec`, got `i32`',
-            ('this is a metafunc', 'm'),
-            ('metafunc defined here', 'def m():'),
+            "wrong metafunc return type: expected `operator::OpSpec`, got `i32`",
+            ("this is a metafunc", "m"),
+            ("metafunc defined here", "def m():"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -76,8 +76,8 @@ class TestMetaFunc(CompilerTest):
 
     @no_C
     def test_STATIC_TYPE_side_effects(self):
-        if self.backend == 'doppler':
-            pytest.skip('fixme: side effects of arguments which are redshifted away')
+        if self.backend == "doppler":
+            pytest.skip("fixme: side effects of arguments which are redshifted away")
 
         src = """
         var x: i32 = 0

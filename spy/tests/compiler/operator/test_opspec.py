@@ -13,22 +13,22 @@ class TestOpSpec(CompilerTest):
 
     def test_opspec_type_mismatch(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('MyClass')
+        @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
 
-            @builtin_method('__new__')
+            @builtin_method("__new__")
             @staticmethod
-            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+            def w_new(vm: "SPyVM") -> "W_MyClass":
                 return W_MyClass()
 
-            @builtin_method('__getitem__', color='blue', kind='metafunc')
+            @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
                           wam_i: W_MetaArg) -> W_OpSpec:
-                @vm.register_builtin_func('ext')
-                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass,
+                @vm.register_builtin_func("ext")
+                def w_getitem(vm: "SPyVM", w_obj: W_MyClass,
                               w_i: W_I32) -> W_I32:
                     return w_i
                 return W_OpSpec(w_getitem)
@@ -43,29 +43,29 @@ class TestOpSpec(CompilerTest):
             return obj['hello']
         """
         errors = expect_errors(
-            'mismatched types',
-            ('expected `i32`, got `str`', "'hello'"),
+            "mismatched types",
+            ("expected `i32`, got `str`", "'hello'"),
         )
         self.compile_raises(src, "foo", errors)
 
     def test_opspec_wrong_argcount(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('MyClass')
+        @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
 
-            @builtin_method('__new__')
+            @builtin_method("__new__")
             @staticmethod
-            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+            def w_new(vm: "SPyVM") -> "W_MyClass":
                 return W_MyClass()
 
-            @builtin_method('__getitem__', color='blue', kind='metafunc')
+            @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
                           wam_i: W_MetaArg) -> W_OpSpec:
-                @vm.register_builtin_func('ext')
-                def w_getitem(vm: 'SPyVM', w_obj: W_MyClass) -> W_I32:
+                @vm.register_builtin_func("ext")
+                def w_getitem(vm: "SPyVM", w_obj: W_MyClass) -> W_I32:
                     return vm.wrap(42)  # type: ignore
                 return W_OpSpec(w_getitem)
         # ========== /EXT module for this test =========
@@ -79,28 +79,28 @@ class TestOpSpec(CompilerTest):
             return obj[0]
         """
         errors = expect_errors(
-            'this function takes 1 argument but 2 arguments were supplied',
+            "this function takes 1 argument but 2 arguments were supplied",
         )
         self.compile_raises(src, "foo", errors)
 
     def test_complex_OpSpec(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('MyClass')
+        @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
 
             def __init__(self, w_x: W_I32):
                 self.w_x = w_x
 
-            @builtin_method('__new__')
+            @builtin_method("__new__")
             @staticmethod
-            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_MyClass':
+            def w_new(vm: "SPyVM", w_x: W_I32) -> "W_MyClass":
                 return W_MyClass(w_x)
 
-            @builtin_method('__getitem__', color='blue', kind='metafunc')
+            @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
                           wam_i: W_MetaArg) -> W_OpSpec:
                 assert isinstance(wam_obj, W_MetaArg)
                 assert isinstance(wam_i, W_MetaArg)
@@ -108,7 +108,7 @@ class TestOpSpec(CompilerTest):
                 return W_OpSpec(EXT.w_sum, [wam_i, wam_obj])
 
         @EXT.builtin_func
-        def w_sum(vm: 'SPyVM', w_i: W_I32, w_obj: W_MyClass) -> W_I32:
+        def w_sum(vm: "SPyVM", w_i: W_I32, w_obj: W_MyClass) -> W_I32:
             assert isinstance(w_i, W_I32)
             assert isinstance(w_obj, W_MyClass)
             a = vm.unwrap_i32(w_i)
@@ -127,8 +127,8 @@ class TestOpSpec(CompilerTest):
         assert mod.foo(10, 20) == 30
 
     def test_OpSpec_new(self):
-        if self.backend == 'doppler':
-            pytest.skip('OpSpec becomes blue? FIXME')
+        if self.backend == "doppler":
+            pytest.skip("OpSpec becomes blue? FIXME")
 
         mod = self.compile("""
         from operator import OpSpec
@@ -145,19 +145,19 @@ class TestOpSpec(CompilerTest):
 
     def test_opspec_const(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('MyClass')
+        @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
 
-            @builtin_method('__new__')
+            @builtin_method("__new__")
             @staticmethod
-            def w_new(vm: 'SPyVM') -> 'W_MyClass':
+            def w_new(vm: "SPyVM") -> "W_MyClass":
                 return W_MyClass()
 
-            @builtin_method('__getitem__', color='blue', kind='metafunc')
+            @builtin_method("__getitem__", color="blue", kind="metafunc")
             @staticmethod
-            def w_GETITEM(vm: 'SPyVM', wam_obj: W_MetaArg,
+            def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg,
                           wam_i: W_MetaArg) -> W_OpSpec:
                 return W_OpSpec.const(vm.wrap(42))
         # ========== /EXT module for this test =========

@@ -20,4 +20,4 @@ def sizeof(w_T: W_Type) -> int:
         # preemptively choose the target platform BEFORE redshifting?
         return 4 + 4 # in debug mode we store both addr and length
     else:
-        raise WIP(f'sizeof({w_T}) not implemented')
+        raise WIP(f"sizeof({w_T}) not implemented")

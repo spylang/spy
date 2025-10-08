@@ -10,7 +10,7 @@ class TestDunderSpy(CompilerTest):
         def foo() -> bool:
             return is_compiled()
         """)
-        if self.backend in ('interp', 'doppler'):
+        if self.backend in ("interp", "doppler"):
             assert mod.foo() == False
         else:
             assert mod.foo() == True

@@ -3,18 +3,18 @@ from spy import ROOT
 from spy.tests.support import CTest
 from pytest_pyodide import run_in_pyodide  # type: ignore
 
-PYODIDE = ROOT.join('..', 'pyodide', 'node_modules', 'pyodide')
+PYODIDE = ROOT.join("..", "pyodide", "node_modules", "pyodide")
 HAS_PYODIDE = PYODIDE.check(exists=True)
 
-@pytest.mark.usefixtures('init_llwasm')
+@pytest.mark.usefixtures("init_llwasm")
 class TestLLWasm(CTest):
 
     @pytest.fixture(params=[
         # "normal" execution, under CPython
-        pytest.param('wasmtime', marks=pytest.mark.wasmtime),
+        pytest.param("wasmtime", marks=pytest.mark.wasmtime),
 
         # run tests inside pyodide, using the 'emscripten' llwasm backend
-        pytest.param('pyodide', marks=[
+        pytest.param("pyodide", marks=[
             pytest.mark.pyodide,
             pytest.mark.skipif(
                 not HAS_PYODIDE,
@@ -39,10 +39,10 @@ class TestLLWasm(CTest):
         # The requested fixture has no parameter defined for test:
         #     spy/tests/test_llwasm.py::TestLLWasm::test_call[pyodide]
         self.llwasm_backend = llwasm_backend  # type: ignore
-        if self.llwasm_backend == 'pyodide':
-            self.selenium = request.getfixturevalue('selenium')
+        if self.llwasm_backend == "pyodide":
+            self.selenium = request.getfixturevalue("selenium")
             self.run_in_pyodide_maybe = run_in_pyodide
-            self.target = 'emscripten'
+            self.target = "emscripten"
         else:
             self.selenium = None
             self.run_in_pyodide_maybe = lambda fn: fn
@@ -53,20 +53,20 @@ class TestLLWasm(CTest):
             return x+y;
         }
         """
-        test_wasm = self.c_compile(src, exports=['add'])
+        test_wasm = self.c_compile(src, exports=["add"])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
-            assert ll.call('add', 4, 8) == 12
+            assert ll.call("add", 4, 8) == 12
 
         fn(self.selenium, test_wasm)
 
     def test_all_exports(self):
-        if self.llwasm_backend == 'pyodide':
-            pytest.skip('fixme')
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("fixme")
 
         src = r"""
         int add(int x, int y) {
@@ -75,7 +75,7 @@ class TestLLWasm(CTest):
         int x;
         int y;
         """
-        test_wasm = self.c_compile(src, exports=['add', 'x', 'y'])
+        test_wasm = self.c_compile(src, exports=["add", "x", "y"])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -84,7 +84,7 @@ class TestLLWasm(CTest):
             ll = LLWasmInstance.from_file(test_wasm)
             exports = ll.all_exports()
             exports.sort()
-            assert exports == ['_initialize', 'add', 'memory', 'x', 'y']
+            assert exports == ["_initialize", "add", "memory", "x", "y"]
 
         fn(self.selenium, test_wasm)
 
@@ -95,16 +95,16 @@ class TestLLWasm(CTest):
         int16_t y = 200;
         int16_t z = 300;
         """
-        test_wasm = self.c_compile(src, exports=['x', 'y', 'z'])
+        test_wasm = self.c_compile(src, exports=["x", "y", "z"])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
-            assert ll.read_global('x', 'int32_t') == 100
-            assert ll.read_global('y', 'int16_t') == 200
-            assert ll.read_global('z', 'int16_t') == 300
+            assert ll.read_global("x", "int32_t") == 100
+            assert ll.read_global("y", "int16_t") == 200
+            assert ll.read_global("z", "int16_t") == 300
 
         fn(self.selenium, test_wasm)
 
@@ -114,17 +114,17 @@ class TestLLWasm(CTest):
         const char *hello = "hello";
         int32_t foo[] = {100, 200};
         """
-        test_wasm = self.c_compile(src, exports=['hello', 'foo'])
+        test_wasm = self.c_compile(src, exports=["hello", "foo"])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
-            ptr = ll.read_global('hello', 'void *')
-            assert ll.mem.read(ptr, 6) == b'hello\0'
+            ptr = ll.read_global("hello", "void *")
+            assert ll.mem.read(ptr, 6) == b"hello\0"
 
-            ptr = ll.read_global('foo')
+            ptr = ll.read_global("foo")
             assert ll.mem.read_i32(ptr) == 100
             assert ll.mem.read_i32(ptr+4) == 200
 
@@ -138,21 +138,21 @@ class TestLLWasm(CTest):
             return foo[0] + foo[1] + foo[2];
         }
         """
-        test_wasm = self.c_compile(src, exports=['foo', 'foo_total'])
+        test_wasm = self.c_compile(src, exports=["foo", "foo_total"])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
             from spy.llwasm import LLWasmInstance
 
             ll = LLWasmInstance.from_file(test_wasm)
-            assert ll.call('foo_total') == 60
+            assert ll.call("foo_total") == 60
             #
-            ptr = ll.read_global('foo')
+            ptr = ll.read_global("foo")
             ll.mem.write(ptr, bytearray([40, 50, 60]))
-            assert ll.call('foo_total') == 150
+            assert ll.call("foo_total") == 150
             #
             ll.mem.write_i8(ptr, 100)
-            assert ll.call('foo_total') == 210
+            assert ll.call("foo_total") == 210
 
         fn(self.selenium, test_wasm)
 
@@ -164,7 +164,7 @@ class TestLLWasm(CTest):
             return ++x;
         }
         """
-        test_wasm = self.c_compile(src, exports=['inc'])
+        test_wasm = self.c_compile(src, exports=["inc"])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -173,13 +173,13 @@ class TestLLWasm(CTest):
             llmod = LLWasmModule(str(test_wasm))
             ll1 = LLWasmInstance(llmod)
             ll2 = LLWasmInstance(llmod)
-            assert ll1.call('inc') == 101
-            assert ll1.call('inc') == 102
-            assert ll1.call('inc') == 103
+            assert ll1.call("inc") == 101
+            assert ll1.call("inc") == 102
+            assert ll1.call("inc") == 103
             #
-            assert ll2.call('inc') == 101
-            assert ll2.call('inc') == 102
-            assert ll2.call('inc') == 103
+            assert ll2.call("inc") == 101
+            assert ll2.call("inc") == 102
+            assert ll2.call("inc") == 103
 
         fn(self.selenium, test_wasm)
 
@@ -198,7 +198,7 @@ class TestLLWasm(CTest):
             return square(add(10, 20));
         }
         """
-        test_wasm = self.c_compile(src, exports=['compute'])
+        test_wasm = self.c_compile(src, exports=["compute"])
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
@@ -224,7 +224,7 @@ class TestLLWasm(CTest):
             math = Math()
             recorder = Recorder()
             ll = LLWasmInstance(llmod, [math, recorder])
-            assert ll.call('compute') == 900
+            assert ll.call("compute") == 900
             assert recorder.log == [100, 200]
 
         fn(self.selenium, test_wasm)

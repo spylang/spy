@@ -44,9 +44,9 @@ def make_table(src: str) -> dict[str, int]:
     table = {}
     src = src.strip()
     for line in src.splitlines():
-        m = re.match(r' *(\d+): (.*)', line)
+        m = re.match(r" *(\d+): (.*)", line)
         if not m:
-            raise ValueError('Syntax Error in the opeator table')
+            raise ValueError("Syntax Error in the opeator table")
         prec = int(m.group(1))
         ops = m.group(2).split()
         for op in ops:
@@ -68,7 +68,7 @@ class Expr:
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        return f'<{cls}(...)>'
+        return f"<{cls}(...)>"
 
 @dataclass
 class Literal(Expr):
@@ -84,20 +84,20 @@ class Literal(Expr):
         return self.value
 
     @classmethod
-    def from_bytes(cls, b: bytes) -> 'Literal':
+    def from_bytes(cls, b: bytes) -> "Literal":
         """
         Transform the given bytearray into a C literal surrounded by double
         quotes, taking care of escaping.
         """
         def char_repr(val: int) -> str:
             ch = chr(val)
-            if val in (ord('\\'), ord('"')):
-                return rf'\{ch}'
+            if val in (ord("\\"), ord('"')):
+                return rf"\{ch}"
             elif 32 <= val < 127:
                 return ch
-            return rf'\x{val:02x}' # :x is "hex format"
+            return rf"\x{val:02x}" # :x is "hex format"
 
-        lit = ''.join([char_repr(val) for val in b])
+        lit = "".join([char_repr(val) for val in b])
         return Literal(f'"{lit}"')
 
 
@@ -113,18 +113,18 @@ class Void(Expr):
     used.
     """
 
-    _singleton: ClassVar['Void']
+    _singleton: ClassVar["Void"]
 
-    def __new__(cls) -> 'Void':
+    def __new__(cls) -> "Void":
         return cls._singleton
 
     def precedence(self) -> int:
         return 100
 
     def __str__(self) -> str:
-        raise ValueError('You should never call Void.str(). '
-                         'You should special-case your code to '
-                         'handle this case specifically')
+        raise ValueError("You should never call Void.str(). "
+                         "You should special-case your code to "
+                         "handle this case specifically")
 
 Void._singleton = object.__new__(Void)
 
@@ -149,17 +149,17 @@ class BinOp(Expr):
     """)
 
     def precedence(self) -> int:
-        assert self.op in self._table, f'Unknown operator {self.op}'
+        assert self.op in self._table, f"Unknown operator {self.op}"
         return self._table[self.op]
 
     def __str__(self) -> str:
         l = str(self.left)
         r = str(self.right)
         if self.left.precedence() < self.precedence():
-            l = f'({l})'
+            l = f"({l})"
         if self.right.precedence() < self.precedence():
-            r = f'({r})'
-        return f'{l} {self.op} {r}'
+            r = f"({r})"
+        return f"{l} {self.op} {r}"
 
 
 @dataclass
@@ -172,14 +172,14 @@ class UnaryOp(Expr):
     """)
 
     def precedence(self) -> int:
-        assert self.op in self._table, f'Unknown operator {self.op}'
+        assert self.op in self._table, f"Unknown operator {self.op}"
         return self._table[self.op]
 
     def __str__(self) -> str:
         v = str(self.value)
         if self.value.precedence() < self.precedence():
-            v = f'({v})'
-        return f'{self.op}{v}'
+            v = f"({v})"
+        return f"{self.op}{v}"
 
 @dataclass
 class Call(Expr):
@@ -191,8 +191,8 @@ class Call(Expr):
 
     def __str__(self) -> str:
         args = [str(arg) for arg in self.args if not isinstance(arg, Void)]
-        arglist = ', '.join(args)
-        return f'{self.func}({arglist})'
+        arglist = ", ".join(args)
+        return f"{self.func}({arglist})"
 
 
 @dataclass
@@ -204,7 +204,7 @@ class Dot(Expr):
         return 14
 
     def __str__(self) -> str:
-        return f'{self.expr}.{self.field}'
+        return f"{self.expr}.{self.field}"
 
 
 @dataclass
@@ -216,7 +216,7 @@ class Arrow(Expr):
         return 14
 
     def __str__(self) -> str:
-        return f'{self.expr}->{self.field}'
+        return f"{self.expr}->{self.field}"
 
 @dataclass
 class PtrField(Expr):
@@ -270,9 +270,9 @@ class PtrField(Expr):
 
     def __str__(self) -> str:
         if self.PRETTY_PRINT and isinstance(self.ptr, PtrFieldByRef):
-            return f'{self.ptr.byval}.{self.field}'
+            return f"{self.ptr.byval}.{self.field}"
         else:
-            return f'{self.ptr}.p->{self.field}'
+            return f"{self.ptr}.p->{self.field}"
 
 
 @dataclass
@@ -287,7 +287,7 @@ class PtrFieldByRef(Expr):
         return 14
 
     def __str__(self) -> str:
-        return f'{self.ptr_type}_from_addr(&{self.byval})'
+        return f"{self.ptr_type}_from_addr(&{self.byval})"
 
 
 @dataclass
@@ -299,4 +299,4 @@ class Cast(Expr):
         return 13
 
     def __str__(self) -> str:
-        return f'({self.type}){self.expr}'
+        return f"({self.type}){self.expr}"

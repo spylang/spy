@@ -43,4 +43,4 @@ class TestRawBuffer(CompilerTest):
         """)
         rb = mod.foo()
         assert isinstance(rb, bytearray)
-        assert struct.unpack('iid', rb) == (12, 34, 56.7)
+        assert struct.unpack("iid", rb) == (12, 34, 56.7)

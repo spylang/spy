@@ -27,7 +27,7 @@ class TestDebug(CompilerTest):
         # C code:
         #   1. that SPY_LINE(spy, c) contains the correct C line number
         #   2. that we emit only the SPY_LINE which are marked by the arrows
-        csrc = self.builddir.join('test.c').read()
+        csrc = self.builddir.join("test.c").read()
         spylines = []
         for lineno, line in enumerate(csrc.splitlines(), start=1):
             m = self.RE_SPY_LINE.search(line)

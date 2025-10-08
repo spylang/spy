@@ -55,9 +55,9 @@ def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     w_T = to_spy_type(annotation)
     kind: FuncParamKind
     if p.kind == p.POSITIONAL_OR_KEYWORD:
-        kind = 'simple'
+        kind = "simple"
     elif p.kind == p.VAR_POSITIONAL:
-        kind = 'var_positional'
+        kind = "var_positional"
     else:
         assert False
     return FuncParam(w_T, kind)
@@ -70,8 +70,8 @@ def functype_from_sig(fn: Callable, color: Color, kind: FuncKind, *,
     if len(params) == 0:
         msg = (f"The first param should be 'vm: SPyVM'. Got nothing")
         raise ValueError(msg)
-    if (params[0].name != 'vm' or
-        params[0].annotation != 'SPyVM'):
+    if (params[0].name != "vm" or
+        params[0].annotation != "SPyVM"):
         msg = (f"The first param should be 'vm: SPyVM'. Got '{params[0]}'")
         raise ValueError(msg)
 
@@ -87,8 +87,8 @@ def make_builtin_func(
     funcname: Optional[str] = None,
     qualifiers: QUALIFIERS = None,
     *,
-    color: Color = 'red',
-    kind: FuncKind = 'plain',
+    color: Color = "red",
+    kind: FuncKind = "plain",
     extra_types: dict = {},
 ) -> W_BuiltinFunc:
     """
@@ -97,16 +97,16 @@ def make_builtin_func(
     """
     if isinstance(namespace, str):
         namespace = FQN(namespace)
-    assert fn.__name__.startswith('w_')
+    assert fn.__name__.startswith("w_")
     fname = funcname
     if fname is None:
         fname = fn.__name__[2:]
     assert isinstance(namespace, FQN)
     fqn = namespace.join(fname, qualifiers)
 
-    if kind == 'metafunc' and color != 'blue':
+    if kind == "metafunc" and color != "blue":
         msg = f"wrong color for metafunc `{fqn.human_name}`: expected `blue`, got `{color}`"
-        raise SPyError('W_TypeError', msg)
+        raise SPyError("W_TypeError", msg)
 
     w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)
     return W_BuiltinFunc(w_functype, fqn, fn)
@@ -145,7 +145,7 @@ class IRTag:
     Additional info attached to e.g. builtin functions, to make the life
     of the backend easier.
     """
-    Empty: ClassVar['IRTag']
+    Empty: ClassVar["IRTag"]
     tag: str
     data: dict[str, Any]
 
@@ -154,9 +154,9 @@ class IRTag:
         self.data = kwargs
 
     def __repr__(self) -> str:
-        if self.tag == '':
-            return '<IRTag (empty)>'
+        if self.tag == "":
+            return "<IRTag (empty)>"
         else:
-            return f'<IRTag {self.tag}: {self.data}>'
+            return f"<IRTag {self.tag}: {self.data}>"
 
-IRTag.Empty = IRTag('')
+IRTag.Empty = IRTag("")

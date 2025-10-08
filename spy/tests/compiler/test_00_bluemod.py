@@ -6,7 +6,7 @@ from spy.vm.b import B
 from spy.vm.function import W_FuncType, W_ASTFunc
 from spy.backend.interp import InterpModuleWrapper
 
-@pytest.mark.usefixtures('init')
+@pytest.mark.usefixtures("init")
 class TestBlueMod:
 
     @pytest.fixture
@@ -54,7 +54,7 @@ class TestBlueMod:
             return i32
         """)
         w_mod = mod.w_mod
-        w_foo = w_mod.getattr('foo')
+        w_foo = w_mod.getattr("foo")
         w_res = self.vm.fast_call(w_foo, [])
         assert w_res is B.w_i32
 
@@ -67,10 +67,10 @@ class TestBlueMod:
             return bar
         """)
         w_mod = mod.w_mod
-        w_foo = w_mod.getattr('foo')
+        w_foo = w_mod.getattr("foo")
         w_bar = self.vm.fast_call(w_foo, [])
         assert isinstance(w_bar, W_ASTFunc)
-        assert w_bar.w_functype == W_FuncType.parse('def(i32) -> i32')
+        assert w_bar.w_functype == W_FuncType.parse("def(i32) -> i32")
         w_42 = self.vm.wrap(42)
         assert self.vm.fast_call(w_bar, [w_42]) is w_42
 
@@ -83,7 +83,7 @@ class TestBlueMod:
             return adder
         """)
         w_mod = mod.w_mod
-        w_make_adder = w_mod.getattr('make_adder')
+        w_make_adder = w_mod.getattr("make_adder")
         w_add5 = self.vm.fast_call(w_make_adder, [self.vm.wrap(5)])
         assert isinstance(w_add5, W_ASTFunc)
         w_42 = self.vm.fast_call(w_add5, [self.vm.wrap(37)])

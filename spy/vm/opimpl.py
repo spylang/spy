@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 
 # simulate Algebraic Data Type
 class ArgSpec:
-    Arg: ClassVar[type['Arg']]
-    Const: ClassVar[type['Const']]
-    Convert: ClassVar[type['Convert']]
+    Arg: ClassVar[type["Arg"]]
+    Const: ClassVar[type["Const"]]
+    Convert: ClassVar[type["Convert"]]
 
 @dataclass
 class Arg(ArgSpec):
@@ -33,7 +33,7 @@ ArgSpec.Arg = Arg          # type: ignore
 ArgSpec.Const = Const      # type: ignore
 ArgSpec.Convert = Convert  # type: ignore
 
-@OPERATOR.builtin_type('OpImpl')
+@OPERATOR.builtin_type("OpImpl")
 class W_OpImpl(W_Object):
     """
     The typechecked counterpart of OpSpec.
@@ -79,9 +79,9 @@ class W_OpImpl(W_Object):
         self._w_const = None
 
     @staticmethod
-    def const(vm: 'SPyVM', w_const: W_Object) -> 'W_OpImpl':
+    def const(vm: "SPyVM", w_const: W_Object) -> "W_OpImpl":
         w_T = vm.dynamic_type(w_const)
-        w_functype = W_FuncType.new([], w_T, color='blue')
+        w_functype = W_FuncType.new([], w_T, color="blue")
         w_opimpl = W_OpImpl(w_functype, None, None)
         w_opimpl._w_const = w_const
         return w_opimpl
@@ -112,17 +112,17 @@ class W_OpImpl(W_Object):
 
     def __repr__(self) -> str:
         if self.is_const():
-            return f'<OpImpl const {self.w_const}>'
+            return f"<OpImpl const {self.w_const}>"
         else:
             assert self.is_func_call()
             sig = self.w_functype.fqn.human_name
             fqn = self.w_func.fqn
-            return f'<OpImpl `{sig}` for `{fqn}`>'
+            return f"<OpImpl `{sig}` for `{fqn}`>"
 
     def is_pure(self) -> bool:
         return self.is_const() or self.w_func.is_pure()
 
-    def execute(self, vm: 'SPyVM', args_w: Sequence[W_Object]) -> W_Object:
+    def execute(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
         if self.is_const():
             return self.w_const
 
@@ -147,7 +147,7 @@ class W_OpImpl(W_Object):
         """
         Return a human-readable representation of the OpImpl
         """
-        argnames = [f'v{i}' for i, p in enumerate(self.w_functype.params)]
+        argnames = [f"v{i}" for i, p in enumerate(self.w_functype.params)]
         def fmt(spec: ArgSpec) -> str:
             if isinstance(spec, Arg):
                 arg = argnames[spec.i]
@@ -157,13 +157,13 @@ class W_OpImpl(W_Object):
             elif isinstance(spec, Convert):
                 fqn = spec.w_conv.fqn
                 arg = fmt(spec.arg)
-                return f'`{fqn}`({arg})'
+                return f"`{fqn}`({arg})"
             else:
                 assert False
 
         sig = self.func_signature()
         args = [fmt(spec) for spec in self.args]
-        arglist = ', '.join(args)
+        arglist = ", ".join(args)
         return textwrap.dedent(f"""
         {sig}:
             return `{self.w_func.fqn}`({arglist})
@@ -172,10 +172,10 @@ class W_OpImpl(W_Object):
     def func_signature(self) -> str:
         w_ft = self.w_functype
         params = [
-            f'v{i}: {p.w_T.fqn.human_name}'
+            f"v{i}: {p.w_T.fqn.human_name}"
             for i, p in enumerate(w_ft.params)
         ]
-        str_params = ', '.join(params)
+        str_params = ", ".join(params)
         resname = w_ft.w_restype.fqn.human_name
-        s = f'def({str_params}) -> {resname}'
+        s = f"def({str_params}) -> {resname}"
         return s

@@ -50,7 +50,7 @@ class AbstractFrame:
     This is an abstract class, for concrete execution see ASTFrame and
     ClassFrame.
     """
-    vm: 'SPyVM'
+    vm: "SPyVM"
     ns: FQN
     closure: CLOSURE
     symtable: SymTable
@@ -61,9 +61,9 @@ class AbstractFrame:
     specialized_assigns: dict[ast.Assign, ast.Stmt]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
-    def __init__(self, vm: 'SPyVM', ns: FQN, symtable: SymTable,
+    def __init__(self, vm: "SPyVM", ns: FQN, symtable: SymTable,
                  closure: CLOSURE) -> None:
-        assert type(self) is not AbstractFrame, 'abstract class'
+        assert type(self) is not AbstractFrame, "abstract class"
         self.vm = vm
         self.ns = ns
         self.symtable = symtable
@@ -98,10 +98,10 @@ class AbstractFrame:
             # RED frames we raise the error eagerly in the analyzer, but for
             # BLUE frames we raise it here
             old_loc = self.locals_decl_loc[name]
-            msg = f'variable `{name}` already declared'
-            err = SPyError('W_ScopeError', msg)
-            err.add('error', 'this is the new declaration', loc)
-            err.add('note', 'this is the previous declaration', old_loc)
+            msg = f"variable `{name}` already declared"
+            err = SPyError("W_ScopeError", msg)
+            err.add("error", "this is the new declaration", loc)
+            err.add("note", "this is the previous declaration", old_loc)
             raise err
 
         if not isinstance(w_type, W_FuncType):
@@ -115,12 +115,12 @@ class AbstractFrame:
     def load_local(self, name: str) -> W_Object:
         w_obj = self._locals.get(name)
         if w_obj is None:
-            raise SPyError("W_Exception", 'read from uninitialized local')
+            raise SPyError("W_Exception", "read from uninitialized local")
         return w_obj
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         try:
-            return magic_dispatch(self, 'exec_stmt', stmt)
+            return magic_dispatch(self, "exec_stmt", stmt)
         except SPyError as exc:
             exc.add_location_maybe(stmt.loc)
             raise
@@ -137,13 +137,13 @@ class AbstractFrame:
                 raise
             exp = w_exp_T.fqn.human_name
             exp_loc = self.symtable.lookup(varname).type_loc
-            if varname == '@return':
-                because = ' because of return type'
-            elif varname in ('@if', '@while', '@assert'):
-                because = ''
+            if varname == "@return":
+                because = " because of return type"
+            elif varname in ("@if", "@while", "@assert"):
+                because = ""
             else:
-                because = ' because of type declaration'
-            err.add('note', f'expected `{exp}`{because}', loc=exp_loc)
+                because = " because of type declaration"
+            err.add("note", f"expected `{exp}`{because}", loc=exp_loc)
             raise
         return w_typeconv
 
@@ -152,7 +152,7 @@ class AbstractFrame:
                   ) -> W_MetaArg:
 
         try:
-            wam = magic_dispatch(self, 'eval_expr', expr)
+            wam = magic_dispatch(self, "eval_expr", expr)
         except SPyError as exc:
             exc.add_location_maybe(expr.loc)
             raise
@@ -195,7 +195,7 @@ class AbstractFrame:
             # special case None and allow to use it as a type even if it's not
             return TYPES.w_NoneType
         w_valtype = self.vm.dynamic_type(w_val)
-        msg = f'expected `type`, got `{w_valtype.fqn.human_name}`'
+        msg = f"expected `type`, got `{w_valtype.fqn.human_name}`"
         raise SPyError.simple("W_TypeError", msg, "expected `type`", expr.loc)
 
     # ==== statements ====
@@ -204,7 +204,7 @@ class AbstractFrame:
         pass
 
     def exec_stmt_Return(self, ret: ast.Return) -> None:
-        wam = self.eval_expr(ret.value, varname='@return')
+        wam = self.eval_expr(ret.value, varname="@return")
         raise Return(wam.w_val)
 
     def exec_stmt_Break(self, brk: ast.Break) -> None:
@@ -220,7 +220,7 @@ class AbstractFrame:
             w_param_type = self.eval_expr_type(arg.type)
             param = FuncParam(
                 w_T = w_param_type,
-                kind = 'simple'
+                kind = "simple"
             )
             params.append(param)
 
@@ -228,7 +228,7 @@ class AbstractFrame:
             w_param_type = self.eval_expr_type(funcdef.vararg.type)
             param = FuncParam(
                 w_T = w_param_type,
-                kind = 'var_positional'
+                kind = "var_positional"
             )
             params.append(param)
 
@@ -252,7 +252,7 @@ class AbstractFrame:
         # FQN("mod::foo#__bare__") as the name of the function, to make it
         # clear is the undecorated version.
         if funcdef.decorators:
-            fqn = fqn.with_suffix('__bare__')
+            fqn = fqn.with_suffix("__bare__")
 
         w_func: W_Object = W_ASTFunc(w_functype, fqn, funcdef, closure)
         self.vm.add_global(fqn, w_func)
@@ -271,7 +271,7 @@ class AbstractFrame:
                     ]
                 )
                 wam_inner = self.eval_expr_Call(call_node)
-                assert wam_inner.color == 'blue'
+                assert wam_inner.color == "blue"
                 w_func = wam_inner.w_blueval
 
         w_T = self.vm.dynamic_type(w_func)
@@ -280,12 +280,12 @@ class AbstractFrame:
 
     @staticmethod
     def metaclass_for_classdef(classdef: ast.ClassDef) -> type[W_Type]:
-        if classdef.kind == 'struct':
+        if classdef.kind == "struct":
             return W_StructType
-        elif classdef.kind == 'typelift':
+        elif classdef.kind == "typelift":
             return W_LiftedType
         else:
-            assert False, 'only @struct and @typedef are supported for now'
+            assert False, "only @struct and @typedef are supported for now"
 
     def fwdecl_ClassDef(self, classdef: ast.ClassDef) -> None:
         """
@@ -336,20 +336,20 @@ class AbstractFrame:
         varname = target.value
         sym = self.symtable.lookup(varname)
 
-        if sym.storage == 'direct' and sym.color == 'blue':
-            err = SPyError('W_TypeError', "invalid assignment target")
-            err.add('error', f'{sym.name} is const', target.loc)
-            err.add('note', 'const declared here', sym.loc)
-            err.add('note',
-                    f'help: declare it as variable: `var {sym.name} ...`',
+        if sym.storage == "direct" and sym.color == "blue":
+            err = SPyError("W_TypeError", "invalid assignment target")
+            err.add("error", f"{sym.name} is const", target.loc)
+            err.add("note", "const declared here", sym.loc)
+            err.add("note",
+                    f"help: declare it as variable: `var {sym.name} ...`",
                     sym.loc)
             raise err
 
-        elif sym.storage == 'direct':
+        elif sym.storage == "direct":
             assert sym.is_local
             return ast.AssignLocal(assign.loc, target, assign.value)
 
-        elif sym.storage == 'cell':
+        elif sym.storage == "cell":
             namespace = self.closure[-sym.level]
             w_cell = namespace[sym.name]
             assert isinstance(w_cell, W_Cell)
@@ -391,10 +391,10 @@ class AbstractFrame:
         if wam_tup.w_static_T is not B.w_tuple:
             t = wam_tup.w_static_T.fqn.human_name
             err = SPyError(
-                'W_TypeError',
-                f'`{t}` does not support unpacking',
+                "W_TypeError",
+                f"`{t}` does not support unpacking",
             )
-            err.add('error', f'this is `{t}`', unpack.value.loc)
+            err.add("error", f"this is `{t}`", unpack.value.loc)
             raise err
 
         w_tup = wam_tup.w_val
@@ -403,7 +403,7 @@ class AbstractFrame:
         got = len(w_tup.items_w)
         if exp != got:
             raise SPyError(
-                'W_ValueError',
+                "W_ValueError",
                 f"Wrong number of values to unpack: expected {exp}, got {got}",
             )
         for i, target in enumerate(unpack.targets):
@@ -477,7 +477,7 @@ class AbstractFrame:
         self.eval_expr(stmt.value)
 
     def exec_stmt_If(self, if_node: ast.If) -> None:
-        wam_cond = self.eval_expr(if_node.test, varname='@if')
+        wam_cond = self.eval_expr(if_node.test, varname="@if")
         assert isinstance(wam_cond.w_val, W_Bool)
         if self.vm.is_True(wam_cond.w_val):
             for stmt in if_node.then_body:
@@ -488,7 +488,7 @@ class AbstractFrame:
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
-            wam_cond = self.eval_expr(while_node.test, varname='@while')
+            wam_cond = self.eval_expr(while_node.test, varname="@while")
             assert isinstance(wam_cond.w_val, W_Bool)
             if self.vm.is_False(wam_cond.w_val):
                 break
@@ -526,7 +526,7 @@ class AbstractFrame:
         #
         # Note that "body" is placed AFTER the call to it.__next__(). This
         # way, 'continue' works out of the box.
-        iter_name = f'_$iter{for_node.seq}'
+        iter_name = f"_$iter{for_node.seq}"
         iter_sym = self.symtable.lookup(iter_name)
         iter_target = ast.StrConst(for_node.loc, iter_name)
 
@@ -537,7 +537,7 @@ class AbstractFrame:
             value = ast.CallMethod(
                 loc = for_node.loc,
                 target = for_node.iter,
-                method = ast.StrConst(for_node.loc, '__fastiter__'),
+                method = ast.StrConst(for_node.loc, "__fastiter__"),
                 args = []
             )
         )
@@ -548,7 +548,7 @@ class AbstractFrame:
             value = ast.CallMethod(
                 loc = for_node.loc,
                 target = ast.NameLocal(for_node.loc, iter_sym),
-                method = ast.StrConst(for_node.loc, '__item__'),
+                method = ast.StrConst(for_node.loc, "__item__"),
                 args = []
             )
         )
@@ -559,7 +559,7 @@ class AbstractFrame:
             value = ast.CallMethod(
                 loc = for_node.loc,
                 target = ast.NameLocal(for_node.loc, iter_sym),
-                method = ast.StrConst(for_node.loc, '__next__'),
+                method = ast.StrConst(for_node.loc, "__next__"),
                 args = []
             )
         )
@@ -569,7 +569,7 @@ class AbstractFrame:
             test = ast.CallMethod(
                 loc = for_node.loc,
                 target = ast.NameLocal(for_node.loc, iter_sym),
-                method = ast.StrConst(for_node.loc, '__continue_iteration__'),
+                method = ast.StrConst(for_node.loc, "__continue_iteration__"),
                 args = []
             ),
             body = [assign_item, advance_iter] + for_node.body
@@ -593,8 +593,8 @@ class AbstractFrame:
                 if wam_msg.w_static_T is B.w_str:
                     plain_msg = self.vm.unwrap_str(wam_msg.w_val)
                 else:
-                    err = SPyError('W_TypeError', 'mismatched types')
-                    err.add('error', f'expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`', loc=wam_msg.loc)
+                    err = SPyError("W_TypeError", "mismatched types")
+                    err.add("error", f"expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`", loc=wam_msg.loc)
                     raise err
 
             raise SPyError.simple(
@@ -613,15 +613,15 @@ class AbstractFrame:
         assert T in (int, float, bool, NoneType)
         w_val = self.vm.wrap(const.value)
         w_T = self.vm.dynamic_type(w_val)
-        return W_MetaArg(self.vm, 'blue', w_T, w_val, const.loc)
+        return W_MetaArg(self.vm, "blue", w_T, w_val, const.loc)
 
     def eval_expr_StrConst(self, const: ast.StrConst) -> W_MetaArg:
         w_val = self.vm.wrap(const.value)
-        return W_MetaArg(self.vm, 'blue', B.w_str, w_val, const.loc)
+        return W_MetaArg(self.vm, "blue", B.w_str, w_val, const.loc)
 
     def eval_expr_LocConst(self, const: ast.LocConst) -> W_MetaArg:
         w_val = self.vm.wrap(const.value)
-        return W_MetaArg(self.vm, 'blue', TYPES.w_Loc, w_val, const.loc)
+        return W_MetaArg(self.vm, "blue", TYPES.w_Loc, w_val, const.loc)
 
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_MetaArg:
         w_value = self.vm.lookup_global(const.fqn)
@@ -641,16 +641,16 @@ class AbstractFrame:
         sym = self.symtable.lookup_maybe(varname)
         assert sym is not None
         if sym.is_local:
-            assert sym.storage == 'direct'
+            assert sym.storage == "direct"
             return ast.NameLocal(name.loc, sym)
-        elif sym.storage == 'direct':
+        elif sym.storage == "direct":
             return ast.NameOuterDirect(name.loc, sym)
-        elif sym.storage == 'cell':
+        elif sym.storage == "cell":
             namespace = self.closure[-sym.level]
             w_cell = namespace[sym.name]
             assert isinstance(w_cell, W_Cell)
             return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
-        elif sym.storage == 'NameError':
+        elif sym.storage == "NameError":
             msg = f"name `{name.id}` is not defined"
             raise SPyError.simple(
                 "W_NameError", msg, "not found in this scope", name.loc,
@@ -661,14 +661,14 @@ class AbstractFrame:
     def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
         sym = name.sym
         w_T = self.locals_types_w[sym.name]
-        if sym.color == 'red' and self.redshifting:
+        if sym.color == "red" and self.redshifting:
             w_val = None
         else:
             w_val = self.load_local(sym.name)
         return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
-        color: Color = 'blue'  # closed-over variables are always blue
+        color: Color = "blue"  # closed-over variables are always blue
         sym = name.sym
         assert not sym.is_local
         namespace = self.closure[-sym.level]
@@ -701,7 +701,7 @@ class AbstractFrame:
         else:
             color = w_functype.color
 
-        if color == 'red' and self.redshifting:
+        if color == "red" and self.redshifting:
             w_res = None
         else:
             args_w = [wam.w_val for wam in args_wam]
@@ -777,7 +777,7 @@ class AbstractFrame:
     def eval_expr_List(self, op: ast.List) -> W_Object:
         items_wam = []
         w_itemtype = None
-        color: Color = 'red' # XXX should be blue?
+        color: Color = "red" # XXX should be blue?
         for item in op.items:
             wam_item = self.eval_expr(item)
             items_wam.append(wam_item)
@@ -789,7 +789,7 @@ class AbstractFrame:
         # XXX we need to handle empty lists
         assert w_itemtype is not None
         w_listtype = self.vm.make_list_type(w_itemtype)
-        if color == 'red' and self.redshifting:
+        if color == "red" and self.redshifting:
             w_val = None
         else:
             items_w = [wam.w_val for wam in items_wam]
@@ -800,7 +800,7 @@ class AbstractFrame:
         items_wam = [self.eval_expr(item) for item in op.items]
         colors = [wam.color for wam in items_wam]
         color = maybe_blue(*colors)
-        if color == 'red' and self.redshifting:
+        if color == "red" and self.redshifting:
             w_val = None
         else:
             items_w = [wam.w_val for wam in items_wam]
@@ -815,7 +815,7 @@ class ASTFrame(AbstractFrame):
     w_func: W_ASTFunc
     funcdef: ast.FuncDef
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
+    def __init__(self, vm: "SPyVM", w_func: W_ASTFunc,
                  args_w: Optional[Sequence[W_Object]]) -> None:
         # if w_func was redshifted, automatically use the new version
         if w_func.w_redshifted_into:
@@ -829,12 +829,12 @@ class ASTFrame(AbstractFrame):
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         if self.w_func.redshifted:
-            extra = ' (redshifted)'
-        elif self.w_func.color == 'blue':
-            extra = ' (blue)'
+            extra = " (redshifted)"
+        elif self.w_func.color == "blue":
+            extra = " (blue)"
         else:
-            extra = ''
-        return f'<{cls} for `{self.w_func.fqn}`{extra}>'
+            extra = ""
+        return f"<{cls} for `{self.w_func.fqn}`{extra}>"
 
     def compute_ns(self, w_func: W_ASTFunc,
                    args_w: Optional[Sequence[W_Object]]) -> FQN:
@@ -864,7 +864,7 @@ class ASTFrame(AbstractFrame):
         comp, we will probably need a deterministic and reproducible way to
         compute unique FQNs out of a blue call.
         """
-        if w_func.color == 'red':
+        if w_func.color == "red":
             return w_func.fqn
         assert args_w is not None
         ns = w_func.fqn
@@ -875,7 +875,7 @@ class ASTFrame(AbstractFrame):
         return ns.with_qualifiers(quals)
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
-        assert self.w_func.is_valid, 'w_func has been redshifted'
+        assert self.w_func.is_valid, "w_func has been redshifted"
         self.declare_arguments()
         self.init_arguments(args_w)
         try:
@@ -907,8 +907,8 @@ class ASTFrame(AbstractFrame):
                 return B.w_None
             else:
                 loc = self.w_func.funcdef.loc.make_end_loc()
-                msg = 'reached the end of the function without a `return`'
-                raise SPyError.simple('W_TypeError', msg, 'no return', loc)
+                msg = "reached the end of the function without a `return`"
+                raise SPyError.simple("W_TypeError", msg, "no return", loc)
 
         except Return as e:
             return e.w_value
@@ -916,18 +916,18 @@ class ASTFrame(AbstractFrame):
     def declare_arguments(self) -> None:
         w_ft = self.w_func.w_functype
         funcdef = self.funcdef
-        self.declare_local('@if', B.w_bool, Loc.fake())
-        self.declare_local('@while', B.w_bool, Loc.fake())
-        self.declare_local('@return', w_ft.w_restype, funcdef.return_type.loc)
-        self.declare_local('@assert', B.w_bool, Loc.fake())
+        self.declare_local("@if", B.w_bool, Loc.fake())
+        self.declare_local("@while", B.w_bool, Loc.fake())
+        self.declare_local("@return", w_ft.w_restype, funcdef.return_type.loc)
+        self.declare_local("@assert", B.w_bool, Loc.fake())
 
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
-            if param.kind == 'simple':
+            if param.kind == "simple":
                 arg = funcdef.args[i]
                 self.declare_local(arg.name, param.w_T, arg.loc)
 
-            elif param.kind == 'var_positional':
+            elif param.kind == "var_positional":
                 assert funcdef.vararg is not None
                 assert i == len(funcdef.args)
                 # XXX: we don't have typed tuples, for now we just use a
@@ -947,12 +947,12 @@ class ASTFrame(AbstractFrame):
         args = self.funcdef.args
 
         for i, param in enumerate(w_ft.params):
-            if param.kind == 'simple':
+            if param.kind == "simple":
                 arg = args[i]
                 w_arg = args_w[i]
                 self.store_local(arg.name, w_arg)
 
-            elif param.kind == 'var_positional':
+            elif param.kind == "var_positional":
                 assert self.funcdef.vararg is not None
                 assert i == len(self.funcdef.args)
                 arg = self.funcdef.vararg

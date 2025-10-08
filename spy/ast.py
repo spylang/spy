@@ -10,9 +10,9 @@ from spy.util import extend
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-AnyNode = typing.Union[py_ast.AST, 'Node']
-ClassKind = typing.Literal['class', 'struct', 'typelift']
-FuncKind = typing.Literal['plain', 'generic', 'metafunc']
+AnyNode = typing.Union[py_ast.AST, "Node"]
+ClassKind = typing.Literal["class", "struct", "typelift"]
+FuncKind = typing.Literal["plain", "generic", "metafunc"]
 
 
 @extend(py_ast.AST)
@@ -28,7 +28,7 @@ class AST:
     def loc(self) -> Loc:
         if self._loc is not None:
             return self._loc
-        raise ValueError(f'{self.__class__.__name__} does not have a location')
+        raise ValueError(f"{self.__class__.__name__} does not have a location")
 
     @no_type_check
     def compute_all_locs(self, filename: str) -> None:
@@ -36,7 +36,7 @@ class AST:
         Compute .loc for itself and all its descendants.
         """
         for py_node in py_ast.walk(self):  # type: ignore
-            if hasattr(py_node, 'lineno'):
+            if hasattr(py_node, "lineno"):
                 assert py_node.end_lineno is not None
                 assert py_node.end_col_offset is not None
                 loc = Loc(
@@ -73,7 +73,7 @@ del AST
 class Node:
     loc: Loc = field(repr=False)
 
-    def pp(self, hl: Any=None, vm: Optional['SPyVM']=None) -> None:
+    def pp(self, hl: Any=None, vm: Optional["SPyVM"]=None) -> None:
         import spy.ast_dump
         spy.ast_dump.pprint(self, hl=hl, vm=vm)
 
@@ -89,13 +89,13 @@ class Node:
     def replace(self, **kwargs: Any) -> Any:
         return dataclasses.replace(self, **kwargs)
 
-    def walk(self, cls: Optional[type] = None) -> Iterator['Node']:
+    def walk(self, cls: Optional[type] = None) -> Iterator["Node"]:
         if cls is None or isinstance(self, cls):
             yield self
         for node in self.get_children():
             yield from node.walk(cls)
 
-    def get_children(self) -> Iterator['Node']:
+    def get_children(self) -> Iterator["Node"]:
         for f in self.__dataclass_fields__.values():
             value = getattr(self, f.name)
             if isinstance(value, Node):
@@ -118,7 +118,7 @@ class Node:
           - if it doesn't exist, we recurively visit its children
         """
         cls = self.__class__.__name__
-        methname = f'{prefix}_{cls}'
+        methname = f"{prefix}_{cls}"
         meth = getattr(visitor, methname, None)
         if meth:
             meth(self, *args)
@@ -130,9 +130,9 @@ class Node:
 class Module(Node):
     filename: str
     docstring: Optional[str]
-    decls: list['Decl']
+    decls: list["Decl"]
 
-    def get_funcdef(self, name: str) -> 'FuncDef':
+    def get_funcdef(self, name: str) -> "FuncDef":
         """
         Search for the FuncDef with the given name.
         """
@@ -141,7 +141,7 @@ class Module(Node):
                 return decl.funcdef
         raise KeyError(name)
 
-    def get_classdef(self, name: str) -> 'ClassDef':
+    def get_classdef(self, name: str) -> "ClassDef":
         """
         Search for the ClassDef with the given name.
         """
@@ -157,18 +157,18 @@ class Decl(Node):
 
 @dataclass(eq=False)
 class GlobalFuncDef(Decl):
-    funcdef: 'FuncDef'
+    funcdef: "FuncDef"
 
 
 @dataclass(eq=False)
 class GlobalVarDef(Decl):
-    vardef: 'VarDef'
-    assign: 'Assign'
+    vardef: "VarDef"
+    assign: "Assign"
 
 
 @dataclass(eq=False)
 class GlobalClassDef(Decl):
-    classdef: 'ClassDef'
+    classdef: "ClassDef"
 
 
 @dataclass(eq=False)
@@ -207,7 +207,7 @@ class Expr(Node):
     """
     # precedence must be overriden by subclasses. The weird type comment is
     # needed to make mypy happy
-    precedence = '<Expr.precedence not set>' # type: int # type: ignore
+    precedence = "<Expr.precedence not set>" # type: int # type: ignore
 
 
 @dataclass(eq=False)
@@ -225,7 +225,7 @@ class Constant(Expr):
     value: object
 
     def __post_init__(self) -> None:
-        assert type(self.value) is not str, 'use StrConst instead'
+        assert type(self.value) is not str, "use StrConst instead"
 
 @dataclass(eq=False)
 class StrConst(Expr):
@@ -293,19 +293,19 @@ class BinOp(Expr):
     right: Expr
 
     _precendece = {
-        '|':   7,
-        '^':   8,
-        '&':   9,
-        '<<': 10,
-        '>>': 10,
-        '+':  11,
-        '-':  11,
-        '*':  12,
-        '/':  12,
-        '//': 12,
-        '%':  12,
-        '@':  12,
-        '**': 14,
+        "|":   7,
+        "^":   8,
+        "&":   9,
+        "<<": 10,
+        ">>": 10,
+        "+":  11,
+        "-":  11,
+        "*":  12,
+        "/":  12,
+        "//": 12,
+        "%":  12,
+        "@":  12,
+        "**": 14,
     }
 
     @property
@@ -315,7 +315,7 @@ class BinOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
-        raise TypeError('readonly attribute')
+        raise TypeError("readonly attribute")
 
 
 # eventually this should allow chained comparisons, but for now we support
@@ -327,16 +327,16 @@ class CmpOp(Expr):
     right: Expr
 
     _precendece = {
-        '==':  6,
-        '!=':  6,
-        '<':   6,
-        '<=':  6,
-        '>':   6,
-        '>=':  6,
-        'is':  6,
-        'in':  6,
-        'is not': 6,
-        'not in': 6,
+        "==":  6,
+        "!=":  6,
+        "<":   6,
+        "<=":  6,
+        ">":   6,
+        ">=":  6,
+        "is":  6,
+        "in":  6,
+        "is not": 6,
+        "not in": 6,
     }
 
     @property
@@ -346,7 +346,7 @@ class CmpOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
-        raise TypeError('readonly attribute')
+        raise TypeError("readonly attribute")
 
 
 @dataclass(eq=False)
@@ -355,10 +355,10 @@ class UnaryOp(Expr):
     value: Expr
 
     _precendece = {
-        'not': 5,
-        '+':  13,
-        '-':  13,
-        '~':  13,
+        "not": 5,
+        "+":  13,
+        "-":  13,
+        "~":  13,
     }
 
     @property
@@ -368,7 +368,7 @@ class UnaryOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
-        raise TypeError('readonly attribute')
+        raise TypeError("readonly attribute")
 
 
 
@@ -381,7 +381,7 @@ class Stmt(Node):
 @dataclass(eq=False)
 class FuncArg(Node):
     name: str
-    type: 'Expr'
+    type: "Expr"
 
 @dataclass(eq=False)
 class FuncDef(Stmt):
@@ -390,10 +390,10 @@ class FuncDef(Stmt):
     name: str
     args: list[FuncArg]
     vararg: Optional[FuncArg]
-    return_type: 'Expr'
+    return_type: "Expr"
     docstring: Optional[str]
-    body: list['Stmt']
-    decorators: list['Expr']
+    body: list["Stmt"]
+    decorators: list["Expr"]
     symtable: Any = field(repr=False, default=None)
 
     @property
@@ -409,8 +409,8 @@ class ClassDef(Stmt):
     name: str
     kind: ClassKind
     docstring: Optional[str]
-    fields: list['VarDef']
-    body: list['Stmt']
+    fields: list["VarDef"]
+    body: list["Stmt"]
     symtable: Any = field(repr=False, default=None)
 
 @dataclass(eq=False)

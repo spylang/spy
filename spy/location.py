@@ -17,7 +17,7 @@ class Loc:
     col_end: int
 
     @classmethod
-    def here(cls, level: int = -1) -> 'Loc':
+    def here(cls, level: int = -1) -> "Loc":
         """
         Return a Loc corresponding to the interp-level code on the call
         stack.
@@ -39,14 +39,14 @@ class Loc:
         )
 
     @classmethod
-    def fake(cls) -> 'Loc':
+    def fake(cls) -> "Loc":
         """
         For tests
         """
-        return Loc('<fake>', 1, 1, 1, 1)
+        return Loc("<fake>", 1, 1, 1, 1)
 
     @classmethod
-    def combine(cls, start: 'Loc', end: 'Loc') -> 'Loc':
+    def combine(cls, start: "Loc", end: "Loc") -> "Loc":
         """
         Return a new Loc which spans from 'start' to 'end'
         """
@@ -58,7 +58,7 @@ class Loc:
         return cls(start.filename, l1, l2, c1, c2)
 
     @classmethod
-    def from_pyfunc(cls, pyfunc: Callable) -> 'Loc':
+    def from_pyfunc(cls, pyfunc: Callable) -> "Loc":
         # in case of decorators, start points to the line with the first
         # decorator. Try to find the actual 'def'
         lines, start = inspect.getsourcelines(pyfunc)
@@ -74,10 +74,10 @@ class Loc:
             col_end = -1 # whole line
         )
 
-    def replace(self, **kwargs: Any) -> 'Loc':
+    def replace(self, **kwargs: Any) -> "Loc":
         return dataclasses.replace(self, **kwargs)
 
-    def make_end_loc(self) -> 'Loc':
+    def make_end_loc(self) -> "Loc":
         """
         Return a new Loc which starts where this one ends
         """
@@ -120,7 +120,7 @@ class Loc:
                 else:
                     # Middle lines - include whole line
                     lines.append(srcline)
-            return ''.join(lines)
+            return "".join(lines)
 
     def pp(self) -> None:
         """
@@ -128,6 +128,6 @@ class Loc:
         """
         from spy.errfmt import ErrorFormatter, Annotation
         fmt = ErrorFormatter(use_colors=True) # type: ignore
-        ann = Annotation('note', '', self)
+        ann = Annotation("note", "", self)
         fmt.emit_annotation(ann)
         print(fmt.build())

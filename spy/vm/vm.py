@@ -67,7 +67,7 @@ W_Str._w.define(W_Str)
 w_DynamicType.define(W_Object)
 
 
-STDLIB = ROOT.join('..', 'stdlib')
+STDLIB = ROOT.join("..", "stdlib")
 
 class SPyVM:
     """
@@ -116,7 +116,7 @@ class SPyVM:
         self.call_INITs()
 
     @classmethod
-    async def async_new(cls) -> 'SPyVM':
+    async def async_new(cls) -> "SPyVM":
         """
         This is an alternative async ctor for SPyVM. It's needed for when
         we want to run spy under pyodide
@@ -141,14 +141,14 @@ class SPyVM:
         # XXX for now we assume that we find the module as a single file in
         # the only vm.path entry. Eventually we will need a proper import
         # mechanism and support for packages
-        assert self.path, 'vm.path not set'
+        assert self.path, "vm.path not set"
         for d in self.path:
             # XXX write test for this
-            f = py.path.local(d).join(f'{modname}.spy')
+            f = py.path.local(d).join(f"{modname}.spy")
             if f.exists():
                 return f
             if allow_py_files:
-                py_f = f.new(ext='.py')
+                py_f = f.new(ext=".py")
                 if py_f.exists():
                     return py_f
 
@@ -161,7 +161,7 @@ class SPyVM:
         """
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
-            return w_func.color != 'blue' and not w_func.redshifted
+            return w_func.color != "blue" and not w_func.redshifted
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
             for fqn, w_func in self.globals_w.items():
@@ -180,7 +180,7 @@ class SPyVM:
             error_mode: ErrorMode,
     ) -> None:
         for fqn, w_func in funcs:
-            assert w_func.color != 'blue'
+            assert w_func.color != "blue"
             assert not w_func.redshifted
             w_newfunc = redshift(self, w_func, error_mode)
             assert w_newfunc.redshifted
@@ -206,7 +206,7 @@ class SPyVM:
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:
-            init_fqn = FQN(modname).join('__INIT__')
+            init_fqn = FQN(modname).join("__INIT__")
             w_init = self.globals_w.get(init_fqn)
             if w_init is not None:
                 assert isinstance(w_init, W_Func)
@@ -228,7 +228,7 @@ class SPyVM:
             fqn2 = fqn.with_suffix(str(n))
             if fqn2 not in self.globals_w:
                 return fqn2
-        assert False, 'unreachable'
+        assert False, "unreachable"
 
     def lookup_ImportRef(self, impref: ImportRef) -> Optional[W_Object]:
         w_mod = self.modules_w.get(impref.modname)
@@ -281,9 +281,9 @@ class SPyVM:
         for fqn, w_obj in all_pbcs:
             if fqn.modname != last_modname:
                 print()
-                print(f'{fqn.modname}::')
+                print(f"{fqn.modname}::")
                 last_modname = fqn.modname
-            print(f'    {fqn}: {w_obj}')
+            print(f"    {fqn}: {w_obj}")
         print()
 
     def pp_modules(self) -> None:
@@ -297,8 +297,8 @@ class SPyVM:
         funcname: Optional[str] = None,
         qualifiers: QUALIFIERS = None,
         *,
-        color: Color = 'red',
-        kind: FuncKind = 'plain',
+        color: Color = "red",
+        kind: FuncKind = "plain",
         extra_types: dict = {},
         irtag: IRTag = IRTag.Empty,
     ) -> Callable:
@@ -424,14 +424,14 @@ class SPyVM:
             # W_Exception.w_NEW). Eventually, we will have proper support
             # for prebuilt constants, but for now we special case W_Exception.
             w_T = self.dynamic_type(w_val)
-            fqn = w_T.fqn.join('prebuilt')
+            fqn = w_T.fqn.join("prebuilt")
             fqn = self.get_unique_FQN(fqn)
         else:
             w_T = self.dynamic_type(w_val)
             T = w_T.fqn.human_name
             msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"
             raise WIP(msg)
-            assert False, 'implement me'
+            assert False, "implement me"
 
         assert fqn is not None
         self.add_global(fqn, w_val)
@@ -486,7 +486,7 @@ class SPyVM:
             exp = w_type.fqn.human_name
             got = w_t1.fqn.human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
-            raise SPyError('W_TypeError', msg)
+            raise SPyError("W_TypeError", msg)
 
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
@@ -580,27 +580,27 @@ class SPyVM:
 
     def unwrap_i32(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_I32):
-            raise Exception('Type mismatch')
+            raise Exception("Type mismatch")
         return w_value.value
 
     def unwrap_i8(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_I8):
-            raise Exception('Type mismatch')
+            raise Exception("Type mismatch")
         return w_value.value
 
     def unwrap_u8(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_U8):
-            raise Exception('Type mismatch')
+            raise Exception("Type mismatch")
         return w_value.value
 
     def unwrap_f64(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_F64):
-            raise Exception('Type mismatch')
+            raise Exception("Type mismatch")
         return w_value.value
 
     def unwrap_str(self, w_value: W_Object) -> str:
         if not isinstance(w_value, W_Str):
-            raise Exception('Type mismatch')
+            raise Exception("Type mismatch")
         return self.unwrap(w_value) # type: ignore
 
     def call(self, w_obj: W_Object, args_w: Sequence[W_Object]) -> W_Object:
@@ -621,7 +621,7 @@ class SPyVM:
 
         Blue functions are cached, as expected.
         """
-        if w_func.color == 'blue':
+        if w_func.color == "blue":
             # for blue functions, we memoize the result
             w_result = self.bluecache.lookup(w_func, args_w)
             if w_result is not None:
@@ -633,7 +633,7 @@ class SPyVM:
             # for red functions, we just call them
             return self._raw_call(w_func, args_w)
 
-    def fast_metacall(vm: 'SPyVM', w_func: W_Func,
+    def fast_metacall(vm: "SPyVM", w_func: W_Func,
                       args_wam: Sequence[W_MetaArg]) -> W_OpSpec:
         """
         Return the OpSpec needed to call the given function.
@@ -643,7 +643,7 @@ class SPyVM:
         If w_func is a metafunc, we call it and return whatever OpSpec it
         returns.
         """
-        if w_func.w_functype.kind == 'metafunc':
+        if w_func.w_functype.kind == "metafunc":
             w_res = vm.fast_call(w_func, args_wam)
             assert isinstance(w_res, W_OpSpec)
             return w_res
@@ -667,7 +667,7 @@ class SPyVM:
         except SPyError as err:
             if loc is not None:
                 opname = w_OP.fqn
-                err.add('note', f'{opname} called here', loc)
+                err.add("note", f"{opname} called here", loc)
             raise
 
     def call_generic(self, w_func: W_Func,
@@ -700,22 +700,22 @@ class SPyVM:
 
     def _w_metaarg(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
         w_T = self.dynamic_type(w_x)
-        if color == 'red':
-            return W_MetaArg(self, 'red', w_T, None, Loc.here(-3))
+        if color == "red":
+            return W_MetaArg(self, "red", w_T, None, Loc.here(-3))
         else:
-            return W_MetaArg(self, 'blue', w_T, w_x, Loc.here(-3))
+            return W_MetaArg(self, "blue", w_T, w_x, Loc.here(-3))
 
     def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wam_a = self._w_metaarg('blue', w_a)
-        wam_b = self._w_metaarg('blue', w_b)
+        wam_a = self._w_metaarg("blue", w_a)
+        wam_b = self._w_metaarg("blue", w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wam_a = self._w_metaarg('blue', w_a)
-        wam_b = self._w_metaarg('blue', w_b)
+        wam_a = self._w_metaarg("blue", w_a)
+        wam_b = self._w_metaarg("blue", w_b)
         w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wam_a, wam_b])
         w_res = w_opimpl.execute(self, [w_a, w_b])
         assert isinstance(w_res, W_Bool)
@@ -725,8 +725,8 @@ class SPyVM:
         # FIXME: we need a more structured way of implementing operators
         # inside the vm, and possibly share the code with typechecker and
         # ASTFrame. See also vm.ne and vm.getitem
-        wam_obj = self._w_metaarg('blue', w_obj)
-        wam_i = self._w_metaarg('blue', w_i)
+        wam_obj = self._w_metaarg("blue", w_obj)
+        wam_i = self._w_metaarg("blue", w_i)
         w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wam_obj, wam_i])
         return w_opimpl.execute(self, [w_obj, w_i])
 
@@ -763,8 +763,8 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        wam_a = self._w_metaarg('blue', w_a)
-        wam_b = self._w_metaarg('blue', w_b)
+        wam_a = self._w_metaarg("blue", w_a)
+        wam_b = self._w_metaarg("blue", w_b)
         try:
             w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
         except SPyError as err:
@@ -774,7 +774,7 @@ class SPyVM:
             # be possible. If it's not, it means that we forgot to implement it
             w_ta = wam_a.w_static_T
             w_tb = wam_b.w_static_T
-            assert w_ta is not w_tb, f'EQ missing on type `{w_ta.fqn}`'
+            assert w_ta is not w_tb, f"EQ missing on type `{w_ta.fqn}`"
             return B.w_False
 
         w_res = w_opimpl.execute(self, [w_a, w_b])

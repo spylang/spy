@@ -11,24 +11,24 @@ from spy.vm.member import Member
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-POSIX = ModuleRegistry('posix')
+POSIX = ModuleRegistry("posix")
 
-@POSIX.builtin_type('TerminalSize')
+@POSIX.builtin_type("TerminalSize")
 class W_TerminalSize(W_Object):
-    __spy_storage_category__ = 'value'
+    __spy_storage_category__ = "value"
 
-    w_columns: Annotated[W_I32, Member('columns')]
-    w_lines: Annotated[W_I32, Member('lines')]
+    w_columns: Annotated[W_I32, Member("columns")]
+    w_lines: Annotated[W_I32, Member("lines")]
 
     def __init__(self, columns: int, lines: int) -> None:
         self.w_columns = W_I32(columns)
         self.w_lines = W_I32(lines)
 
-    def spy_key(self, vm: 'SPyVM') -> tuple:
-        return ('TerminalSize', self.w_columns.value, self.w_lines.value)
+    def spy_key(self, vm: "SPyVM") -> tuple:
+        return ("TerminalSize", self.w_columns.value, self.w_lines.value)
 
 @POSIX.builtin_func
-def w_get_terminal_size(vm: 'SPyVM') -> W_TerminalSize:
+def w_get_terminal_size(vm: "SPyVM") -> W_TerminalSize:
     import os
     try:
         size = os.get_terminal_size()

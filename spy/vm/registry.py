@@ -14,7 +14,7 @@ class ModuleRegistry:
     At startup, the `vm` will create a W_Module out of it.
     """
     fqn: FQN
-    content: list[tuple[FQN, 'W_Object']]
+    content: list[tuple[FQN, "W_Object"]]
 
     def __init__(self, modname: str) -> None:
         self.fqn = FQN(modname)
@@ -38,9 +38,9 @@ class ModuleRegistry:
             but well...)
             """
 
-    def add(self, attr: str, w_obj: 'W_Object') -> None:
+    def add(self, attr: str, w_obj: "W_Object") -> None:
         fqn = self.fqn.join(attr)
-        attr = f'w_{attr}'
+        attr = f"w_{attr}"
         assert not hasattr(self, attr)
         setattr(self, attr, w_obj)
         self.content.append((fqn, w_obj))
@@ -50,7 +50,7 @@ class ModuleRegistry:
                      qualifiers: QUALIFIERS = None,
                      *,
                      lazy_definition: bool = False,
-                     W_MetaClass: Optional[Type['W_Type']] = None,
+                     W_MetaClass: Optional[Type["W_Type"]] = None,
                      ) -> Callable:
         """
         Register a type on the module.
@@ -67,7 +67,7 @@ class ModuleRegistry:
             MOD.add('Foo', W_Foo._w)
         """
         from spy.vm.builtin import builtin_type
-        def decorator(pyclass: Type['W_Object']) -> Type['W_Object']:
+        def decorator(pyclass: Type["W_Object"]) -> Type["W_Object"]:
             bt_deco = builtin_type(self.fqn, typename, qualifiers,
                                    lazy_definition=lazy_definition,
                                    W_MetaClass=W_MetaClass)
@@ -80,8 +80,8 @@ class ModuleRegistry:
                      pyfunc_or_funcname: Callable|str|None = None,
                      qualifiers: QUALIFIERS = None,
                      *,
-                     color: Color = 'red',
-                     kind: FuncKind = 'plain',
+                     color: Color = "red",
+                     kind: FuncKind = "plain",
                      hidden: bool = False,
                      ) -> Any:
         """
@@ -115,7 +115,7 @@ class ModuleRegistry:
             funcname = None
             assert qualifiers is None
 
-        def decorator(pyfunc: Callable) -> 'W_BuiltinFunc':
+        def decorator(pyfunc: Callable) -> "W_BuiltinFunc":
             w_func = make_builtin_func(
                 pyfunc,
                 namespace=self.fqn,
@@ -124,7 +124,7 @@ class ModuleRegistry:
                 color=color,
                 kind=kind,
             )
-            setattr(self, f'w_{w_func.fqn.symbol_name}', w_func)
+            setattr(self, f"w_{w_func.fqn.symbol_name}", w_func)
             if not hidden:
                 self.content.append((w_func.fqn, w_func))
             return w_func

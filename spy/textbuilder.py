@@ -4,13 +4,13 @@ from contextlib import contextmanager
 
 class TextBuilder:
     level: int  # indentation level
-    lines: list[Union[str, 'TextBuilder']]
+    lines: list[Union[str, "TextBuilder"]]
     use_colors: bool
     color_level: list[tuple[Optional[str], Optional[str]]]  # stack of (color, bg) pairs
 
     def __init__(self, *, use_colors: bool = False) -> None:
         self.level = 0
-        self.lines = ['']
+        self.lines = [""]
         self.use_colors = use_colors
         self.fmt = ColorFormatter(use_colors)
         self.color_level = [(None, None)]  # Start with no color
@@ -54,7 +54,7 @@ class TextBuilder:
         finally:
             self.color_level.pop()
 
-    def make_nested_builder(self, *, detached: bool = False) -> 'TextBuilder':
+    def make_nested_builder(self, *, detached: bool = False) -> "TextBuilder":
         """
         Create a new nested TextBuilder.
 
@@ -72,7 +72,7 @@ class TextBuilder:
             self.attach_nested_builder(nested)
         return nested
 
-    def attach_nested_builder(self, nested: 'TextBuilder') -> None:
+    def attach_nested_builder(self, nested: "TextBuilder") -> None:
         """
         Attach a nested builder which was previously created by
         make_nested_builder().
@@ -82,16 +82,16 @@ class TextBuilder:
         bad for now.
         See also test_detached_indent.
         """
-        if self.lines[-1] != '':
-            raise ValueError('attach_nested_builder can be called only '
-                             'after a newline')
+        if self.lines[-1] != "":
+            raise ValueError("attach_nested_builder can be called only "
+                             "after a newline")
         nested.level = self.level
         self.lines[-1] = nested
-        self.lines.append('')
+        self.lines.append("")
 
     def write(self, s: str, *, color: Optional[str] = None,
               bg: Optional[str] = None) -> None:
-        assert '\n' not in s
+        assert "\n" not in s
         assert isinstance(self.lines[-1], str)
 
         # Get current color context and override with any explicit values
@@ -100,16 +100,16 @@ class TextBuilder:
         final_bg = bg if bg is not None else current_bg
         s = self.fmt.set(final_color, s, bg=final_bg)
 
-        if self.lines[-1] == '':
+        if self.lines[-1] == "":
             # add the indentation
-            spaces = ' ' * (self.level * 4)
+            spaces = " " * (self.level * 4)
             self.lines[-1] = spaces
         self.lines[-1] += s
 
-    def writeline(self, s: str = '', *, color: Optional[str] = None,
+    def writeline(self, s: str = "", *, color: Optional[str] = None,
                   bg: Optional[str] = None) -> None:
         self.write(s, color=color, bg=bg)
-        self.lines.append('')
+        self.lines.append("")
 
     def writeblock(self, s: str, *, color: Optional[str] = None,
                    bg: Optional[str] = None) -> None:
@@ -127,54 +127,54 @@ class TextBuilder:
         for line in self.lines:
             if isinstance(line, TextBuilder):
                 line = line.build()
-                if line == '':
+                if line == "":
                     continue # nothing to do
                 else:
-                    assert line.endswith('\n')
+                    assert line.endswith("\n")
                     line = line[:-1]
                     strlines.append(line)
             else:
                 strlines.append(line)
-        return '\n'.join(strlines)
+        return "\n".join(strlines)
 
 
 class ColorFormatter:
     # Foreground colors
-    default = '00'
-    black = '30'
-    darkred = '31'
-    darkgreen = '32'
-    brown = '33'
-    darkblue = '34'
-    purple = '35'
-    teal = '36'
-    lightgray = '37'
-    darkgray = '30;01'
-    red = '31;01'
-    green = '32;01'
-    yellow = '33;01'
-    blue = '34;01'
-    fuchsia = '35;01'
-    turquoise = '36;01'
-    white = '37;01'
+    default = "00"
+    black = "30"
+    darkred = "31"
+    darkgreen = "32"
+    brown = "33"
+    darkblue = "34"
+    purple = "35"
+    teal = "36"
+    lightgray = "37"
+    darkgray = "30;01"
+    red = "31;01"
+    green = "32;01"
+    yellow = "33;01"
+    blue = "34;01"
+    fuchsia = "35;01"
+    turquoise = "36;01"
+    white = "37;01"
 
     # Background colors (40-47)
-    bg_black = '40'
-    bg_darkred = '41'
-    bg_darkgreen = '42'
-    bg_brown = '43'
-    bg_darkblue = '44'
-    bg_purple = '45'
-    bg_teal = '46'
-    bg_lightgray = '47'
-    bg_darkgray = '100'
-    bg_red = '101'
-    bg_green = '102'
-    bg_yellow = '103'
-    bg_blue = '104'
-    bg_fuchsia = '105'
-    bg_turquoise = '106'
-    bg_white = '107'
+    bg_black = "40"
+    bg_darkred = "41"
+    bg_darkgreen = "42"
+    bg_brown = "43"
+    bg_darkblue = "44"
+    bg_purple = "45"
+    bg_teal = "46"
+    bg_lightgray = "47"
+    bg_darkgray = "100"
+    bg_red = "101"
+    bg_green = "102"
+    bg_yellow = "103"
+    bg_blue = "104"
+    bg_fuchsia = "105"
+    bg_turquoise = "106"
+    bg_white = "107"
 
     def __init__(self, use_colors: bool) -> None:
         self._use_colors = use_colors
@@ -204,8 +204,8 @@ class ColorFormatter:
                 codes.append(bg if bg.isdigit() else f"4{bg[0]}" if len(bg) == 1 else bg)
 
         # Join all codes with semicolons
-        code_str = ';'.join(c for c in codes if c)
-        return f'\x1b[{code_str}m{s}\x1b[00m'
+        code_str = ";".join(c for c in codes if c)
+        return f"\x1b[{code_str}m{s}\x1b[00m"
 
 # create a global instance, so that you can just do Color.set('red', ....)
 Color = ColorFormatter(use_colors=True)
@@ -223,26 +223,26 @@ def main() -> None:
     # Test basic foreground colors
     fmt = ColorFormatter(use_colors=True)
     print("\nForeground colors:")
-    for color in ['black', 'darkred', 'darkgreen', 'brown', 'darkblue',
-                  'purple', 'teal', 'lightgray', 'darkgray', 'red', 'green',
-                  'yellow', 'blue', 'fuchsia', 'turquoise', 'white']:
+    for color in ["black", "darkred", "darkgreen", "brown", "darkblue",
+                  "purple", "teal", "lightgray", "darkgray", "red", "green",
+                  "yellow", "blue", "fuchsia", "turquoise", "white"]:
         print(f"{color:10}: {fmt.set(color, f'This is {color} text')}")
 
     # Test background colors
     print("\nBackground colors:")
-    for bg in ['black', 'darkred', 'darkgreen', 'brown', 'darkblue', 'purple',
-               'teal', 'lightgray', 'darkgray', 'red', 'green', 'yellow',
-               'blue', 'fuchsia', 'turquoise', 'white']:
+    for bg in ["black", "darkred", "darkgreen", "brown", "darkblue", "purple",
+               "teal", "lightgray", "darkgray", "red", "green", "yellow",
+               "blue", "fuchsia", "turquoise", "white"]:
         print(f"{bg:10}: {fmt.set(None, f'This has {bg} background', bg=bg)}")
 
     # Test combinations
     print("\nCombinations:")
     combinations = [
-        ('red', 'blue'),
-        ('white', 'darkblue'),
-        ('yellow', 'darkred'),
-        ('black', 'green'),
-        ('blue', 'yellow')
+        ("red", "blue"),
+        ("white", "darkblue"),
+        ("yellow", "darkred"),
+        ("black", "green"),
+        ("blue", "yellow")
     ]
     for fg, bg in combinations:
         print(f"{fg:6} on {bg:8}: {fmt.set(fg, f'This is {fg} text on {bg} background', bg=bg)}")
@@ -251,26 +251,26 @@ def main() -> None:
     print("\nTextBuilder with colors:")
     b = TextBuilder(use_colors=True)
     b.wl("Normal text")
-    b.wl("Red text", color='red')
-    b.wl("Blue background", bg='blue')
-    b.wl("Red on blue", color='red', bg='blue')
+    b.wl("Red text", color="red")
+    b.wl("Blue background", bg="blue")
+    b.wl("Red on blue", color="red", bg="blue")
     b.wb("""
         This is a block
         with multiple lines
         in green on dark red
-    """, color='green', bg='darkred')
+    """, color="green", bg="darkred")
 
     # Test color contextmanager
     print("\nTextBuilder with color contextmanager:")
     b = TextBuilder(use_colors=True)
     b.wl("Normal text")
-    with b.color('red'):
-        b.wl('This is red text. ')
-        with b.color(bg='green'):
-            b.wl('This is red on green.')
-            b.wl('This is purple on green.', color='purple')
-            with b.color('blue'):
-                b.wl('This is blue on green.')
+    with b.color("red"):
+        b.wl("This is red text. ")
+        with b.color(bg="green"):
+            b.wl("This is red on green.")
+            b.wl("This is purple on green.", color="purple")
+            with b.color("blue"):
+                b.wl("This is blue on green.")
         b.writeline()
     b.wl("Back to normal text")
 

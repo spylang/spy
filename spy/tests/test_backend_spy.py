@@ -8,13 +8,13 @@ from spy.tests.support import CompilerTest, only_interp
 @only_interp
 class TestSPyBackend(CompilerTest):
 
-    def assert_dump(self, expected: str, *, modname: str = 'test') -> None:
+    def assert_dump(self, expected: str, *, modname: str = "test") -> None:
         b = SPyBackend(self.vm)
         got = b.dump_mod(modname).strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
-            print_diff(expected, got, 'expected', 'got')
-            pytest.fail('assert_dump failed')
+            print_diff(expected, got, "expected", "got")
+            pytest.fail("assert_dump failed")
 
     def test_simple(self):
         mod = self.compile("""
@@ -97,7 +97,7 @@ class TestSPyBackend(CompilerTest):
         """)
 
     def test_implicit_declaration(self):
-        self.backend = 'doppler'
+        self.backend = "doppler"
         mod = self.compile("""
         def foo() -> None:
             x: i32 = 1
@@ -335,10 +335,10 @@ class TestSPyBackend(CompilerTest):
         b = SPyBackend(self.vm)
         sources = list(CompilerTest.ALL_COMPILED_SOURCES)
         for i, src in enumerate(sources):
-            modname = f'test_backend_spy_{i}'
+            modname = f"test_backend_spy_{i}"
             mod = self.compile(src, modname=modname)
             for fqn, w_obj in self.vm.fqns_by_modname(modname):
-                if isinstance(w_obj, W_ASTFunc) and w_obj.funcdef.color == 'red':
+                if isinstance(w_obj, W_ASTFunc) and w_obj.funcdef.color == "red":
                     try:
                         b.dump_w_func(fqn, w_obj)
                     except NotImplementedError as exc:

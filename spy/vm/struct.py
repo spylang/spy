@@ -13,44 +13,44 @@ if TYPE_CHECKING:
 
 OFFSETS_T = dict[str, int]
 
-@TYPES.builtin_type('StructType')
+@TYPES.builtin_type("StructType")
 class W_StructType(W_Type):
     fields_w: dict[str, W_Field]
     offsets: OFFSETS_T
     size: int
 
-    def define_from_classbody(self, vm: 'SPyVM', body: ClassBody) -> None:
+    def define_from_classbody(self, vm: "SPyVM", body: ClassBody) -> None:
         super().define(W_Struct)
         self.fields_w = body.fields_w.copy()
         self.offsets, self.size = calc_layout(self.fields_w)
 
         for key, w_obj in body.dict_w.items():
-            assert key not in self.dict_w, 'need to think what to do'
-            if key == '__make__':
-                raise WIP('you cannot define your own __make__')
+            assert key not in self.dict_w, "need to think what to do"
+            if key == "__make__":
+                raise WIP("you cannot define your own __make__")
             self.dict_w[key] = w_obj
 
         # add a '__make__' staticmethod to create a struct by specifying all
         # the fields
         w_make = self._create_w_make(vm)
-        self.dict_w['__make__'] = W_StaticMethod(w_make)
+        self.dict_w["__make__"] = W_StaticMethod(w_make)
 
         # if the user didn't provide a '__new__', let's put a default one
         # which is just an alias to '__make__',
-        if '__new__' not in self.dict_w:
-            self.dict_w['__new__'] = w_make
+        if "__new__" not in self.dict_w:
+            self.dict_w["__new__"] = w_make
 
-    def _create_w_make(self, vm: 'SPyVM') -> W_BuiltinFunc:
+    def _create_w_make(self, vm: "SPyVM") -> W_BuiltinFunc:
         STRUCT = Annotated[W_Struct, self]
         # functype
         params = [
-            FuncParam(w_field.w_T, 'simple')
+            FuncParam(w_field.w_T, "simple")
             for w_field in self.fields_w.values()
         ]
         w_functype = W_FuncType.new(params, w_restype=self)
 
         # impl
-        def w_make_impl(vm: 'SPyVM', *args_w: W_Object) -> STRUCT:
+        def w_make_impl(vm: "SPyVM", *args_w: W_Object) -> STRUCT:
             assert len(args_w) == len(self.fields_w)
             w_res = W_Struct(self)
             for w_arg, w_fld in zip(args_w, self.fields_w.values(), strict=True):
@@ -58,15 +58,15 @@ class W_StructType(W_Type):
             return w_res
 
         # create the actual function object
-        fqn = self.fqn.join('__make__')
+        fqn = self.fqn.join("__make__")
         w_make = W_BuiltinFunc(w_functype, fqn, w_make_impl)
-        vm.add_global(fqn, w_make, irtag=IRTag('struct.make'))
+        vm.add_global(fqn, w_make, irtag=IRTag("struct.make"))
         return w_make
 
     def repr_hints(self) -> list[str]:
-        return super().repr_hints() + ['struct']
+        return super().repr_hints() + ["struct"]
 
-    def is_struct(self, vm: 'SPyVM') -> bool:
+    def is_struct(self, vm: "SPyVM") -> bool:
         return True
 
 
@@ -84,7 +84,7 @@ def calc_layout(fields_w: dict[str, W_Field]) -> tuple[OFFSETS_T, int]:
     return offsets, size
 
 
-@BUILTINS.builtin_type('struct')
+@BUILTINS.builtin_type("struct")
 class W_Struct(W_Object):
     """
     Struct object allocated ON THE STACK.
@@ -115,7 +115,7 @@ class W_Struct(W_Object):
     Note that this is only a limitation of the SPy VM. The C backend uses C
     structs, so taking-the-address will work out of the box.
     """
-    __spy_storage_category__ = 'value'
+    __spy_storage_category__ = "value"
     w_structtype: W_StructType
     values_w: dict[str, W_Object]
 
@@ -130,14 +130,14 @@ class W_Struct(W_Object):
         else:
             self.values_w = values_w
 
-    def spy_get_w_type(self, vm: 'SPyVM') -> W_Type:
+    def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
         return self.w_structtype
 
-    def spy_key(self, vm: 'SPyVM') -> Any:
+    def spy_key(self, vm: "SPyVM") -> Any:
         values_key = [w_val.spy_key(vm) for w_val in self.values_w.values()]
-        return ('struct', self.w_structtype.spy_key(vm)) + tuple(values_key)
+        return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 
-    def spy_unwrap(self, vm: 'SPyVM') -> 'UnwrappedStruct':
+    def spy_unwrap(self, vm: "SPyVM") -> "UnwrappedStruct":
         fqn = self.w_structtype.fqn
         fields = {
             key: w_obj.spy_unwrap(vm)
@@ -147,11 +147,11 @@ class W_Struct(W_Object):
 
     def __repr__(self) -> str:
         fqn = self.w_structtype.fqn
-        return f'<spy struct {fqn}({self.values_w})>'
+        return f"<spy struct {fqn}({self.values_w})>"
 
-    @builtin_method('__getattribute__', color='blue', kind='metafunc')
+    @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
-    def w_GETATTRIBUTE(vm: 'SPyVM', wam_struct: W_MetaArg,
+    def w_GETATTRIBUTE(vm: "SPyVM", wam_struct: W_MetaArg,
                        wam_name: W_MetaArg) -> W_OpSpec:
         w_structtype = wam_struct.w_static_T
         assert isinstance(w_structtype, W_StructType)
@@ -162,11 +162,11 @@ class W_Struct(W_Object):
         w_field = w_structtype.fields_w[name]
         T = Annotated[W_Object, w_field.w_T]
         STRUCT = Annotated[W_Struct, w_structtype]
-        irtag = IRTag('struct.getfield', name=name)
+        irtag = IRTag("struct.getfield", name=name)
 
-        @vm.register_builtin_func(w_structtype.fqn, f'__get_{name}__',
+        @vm.register_builtin_func(w_structtype.fqn, f"__get_{name}__",
                                   irtag=irtag)
-        def w_get(vm: 'SPyVM', w_struct: STRUCT) -> T:
+        def w_get(vm: "SPyVM", w_struct: STRUCT) -> T:
             return w_struct.values_w[name]
 
         return W_OpSpec(w_get, [wam_struct])
@@ -189,7 +189,7 @@ class UnwrappedStruct:
         self.fqn = fqn
         self._fields = fields
 
-    def spy_wrap(self, vm: 'SPyVM') -> W_Struct:
+    def spy_wrap(self, vm: "SPyVM") -> W_Struct:
         "This is needed for tests, to use structs as function arguments"
         w_structT = vm.lookup_global(self.fqn)
         assert isinstance(w_structT, W_StructType)
@@ -218,4 +218,4 @@ class UnwrappedStruct:
         return not (self == other)
 
     def __repr__(self) -> str:
-        return f'<UnwrappedStruct {self.fqn}: {self._fields}>'
+        return f"<UnwrappedStruct {self.fqn}: {self._fields}>"

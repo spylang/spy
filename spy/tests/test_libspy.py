@@ -12,7 +12,7 @@ def mk_spy_Str(utf8: bytes) -> bytes:
          5s   5 bytes of data (b'hello')
     """
     n = len(utf8)
-    fmt = f'<i{n}s'
+    fmt = f"<i{n}s"
     return struct.pack(fmt, n, utf8)
 
 class TestLibSPy(CTest):
@@ -33,13 +33,13 @@ class TestLibSPy(CTest):
         """
         test_wasm = self.c_compile(src)
         ll = LLSPyInstance.from_file(test_wasm)
-        p1 = ll.call('make_str', ord('A'), ord('B'), ord('C'))
-        p2 = ll.call('make_str', ord('X'), ord('Y'), ord('Z'))
+        p1 = ll.call("make_str", ord("A"), ord("B"), ord("C"))
+        p2 = ll.call("make_str", ord("X"), ord("Y"), ord("Z"))
         assert p1 != p2
         abc = ll.mem.read(p1, 4)
-        assert abc == b'ABC\0'
+        assert abc == b"ABC\0"
         xyz = ll.mem.read(p2, 4)
-        assert xyz == b'XYZ\0'
+        assert xyz == b"XYZ\0"
 
     def test_str(self):
         src = r"""
@@ -53,16 +53,16 @@ class TestLibSPy(CTest):
             return s;
         }
         """
-        test_wasm = self.c_compile(src, exports=['H', 'mk_W'])
+        test_wasm = self.c_compile(src, exports=["H", "mk_W"])
         ll = LLSPyInstance.from_file(test_wasm)
-        ptr_H = ll.read_global('H')
-        assert ll.mem.read(ptr_H, 10) == mk_spy_Str(b'hello ')
+        ptr_H = ll.read_global("H")
+        assert ll.mem.read(ptr_H, 10) == mk_spy_Str(b"hello ")
         #
-        ptr_W = ll.call('mk_W')
-        assert ll.mem.read(ptr_W, 9) == mk_spy_Str(b'world')
+        ptr_W = ll.call("mk_W")
+        assert ll.mem.read(ptr_W, 9) == mk_spy_Str(b"world")
         #
-        ptr_HW = ll.call('spy_str_add', ptr_H, ptr_W)
-        assert ll.mem.read(ptr_HW, 15) == mk_spy_Str(b'hello world')
+        ptr_HW = ll.call("spy_str_add", ptr_H, ptr_W)
+        assert ll.mem.read(ptr_HW, 15) == mk_spy_Str(b"hello world")
 
     def test_debug_log(self):
         src = r"""
@@ -73,11 +73,11 @@ class TestLibSPy(CTest):
             spy_debug_log("world");
         }
         """
-        test_wasm = self.c_compile(src, exports=['log_hello'])
+        test_wasm = self.c_compile(src, exports=["log_hello"])
         llmod = LLWasmModule(str(test_wasm))
         ll = LLSPyInstance(llmod)
-        ll.call('log_hello')
-        assert ll.libspy.log == ['hello', 'world']
+        ll.call("log_hello")
+        assert ll.libspy.log == ["hello", "world"]
 
     def test_panic(self):
         src = r"""
@@ -87,10 +87,10 @@ class TestLibSPy(CTest):
             spy_panic("PanicError", "don't panic!", "myfile", 42);
         }
         """
-        test_wasm = self.c_compile(src, exports=['crash'])
+        test_wasm = self.c_compile(src, exports=["crash"])
         ll = LLSPyInstance.from_file(test_wasm)
-        with SPyError.raises('W_PanicError', match="don't panic!") as excinfo:
-            ll.call('crash')
+        with SPyError.raises("W_PanicError", match="don't panic!") as excinfo:
+            ll.call("crash")
         loc = excinfo.value.w_exc.annotations[0].loc
-        assert loc.filename == 'myfile'
+        assert loc.filename == "myfile"
         assert loc.line_start == 42

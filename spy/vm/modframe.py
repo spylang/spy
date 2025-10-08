@@ -26,7 +26,7 @@ class ModFrame(AbstractFrame):
                  symtable: SymTable,
                  mod: ast.Module,
                  ) -> None:
-        w_builtins = vm.modules_w['builtins']
+        w_builtins = vm.modules_w["builtins"]
         super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
@@ -36,7 +36,7 @@ class ModFrame(AbstractFrame):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        return f'<{cls} for `{self.ns}`>'
+        return f"<{cls} for `{self.ns}`>"
 
     def run(self) -> W_Module:
         # forward declaration of types
@@ -57,12 +57,12 @@ class ModFrame(AbstractFrame):
                 assert False
         #
         # call the __INIT__, if present
-        w_init = self.w_mod.getattr_maybe('__INIT__')
+        w_init = self.w_mod.getattr_maybe("__INIT__")
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             if w_init.color != "blue":
                 err = SPyError(
-                    'W_TypeError',
+                    "W_TypeError",
                     "the __INIT__ function must be @blue",
                 )
                 err.add("error", "function defined here", w_init.def_loc)
@@ -76,7 +76,7 @@ class ModFrame(AbstractFrame):
         assign = decl.assign
         fqn = self.ns.join(vardef.name)
         sym = self.symtable.lookup(vardef.name)
-        assert sym.level == 0, 'module assign to name declared outside?'
+        assert sym.level == 0, "module assign to name declared outside?"
 
         # evaluate the vardef in the current frame
         is_auto = isinstance(vardef.type, ast.Auto)
@@ -86,14 +86,14 @@ class ModFrame(AbstractFrame):
         # evaluate the assignment
         wam = self.eval_expr(assign.value)
 
-        if sym.storage == 'direct':
+        if sym.storage == "direct":
             if is_auto:
                 assert sym.name not in self.locals_types_w
                 self.declare_local(sym.name, wam.w_static_T,
                                    decl.assign.target.loc)
             self.store_local(sym.name, wam.w_val)
 
-        elif sym.storage == 'cell':
+        elif sym.storage == "cell":
             w_cell = W_Cell(fqn, wam.w_val)
             self.vm.add_global(fqn, w_cell)
             self.store_local(sym.name, w_cell)

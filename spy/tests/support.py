@@ -14,7 +14,7 @@ from spy.tests.wasm_wrapper import WasmModuleWrapper
 from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.cffi_wrapper import load_cffi_module
 
-Backend = Literal['interp', 'doppler', 'C']
+Backend = Literal["interp", "doppler", "C"]
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
 def params_with_marks(params):
@@ -35,7 +35,7 @@ def params_with_marks(params):
     return [pytest.param(name, marks=getattr(pytest.mark, name))
             for name in params]
 
-def skip_backends(*backends_to_skip: Backend, reason=''):
+def skip_backends(*backends_to_skip: Backend, reason=""):
     """
     Decorator to skip tests only for certain backends. Can be used to decorate
     classes or functions.
@@ -53,7 +53,7 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
     """
     for b in backends_to_skip:
         if b not in ALL_BACKENDS:
-            pytest.fail(f'Invalid backend passed to @skip_backends: {b}')
+            pytest.fail(f"Invalid backend passed to @skip_backends: {b}")
 
     new_backends = []
     for backend in ALL_BACKENDS:
@@ -64,37 +64,37 @@ def skip_backends(*backends_to_skip: Backend, reason=''):
         new_backends.append(param)
 
     def decorator(func):
-        return pytest.mark.parametrize('compiler_backend', new_backends)(func)
+        return pytest.mark.parametrize("compiler_backend", new_backends)(func)
     return decorator
 
 @no_type_check
 def parametrize_compiler_backend(params, func):
     deco = pytest.mark.parametrize(
-        'compiler_backend',
+        "compiler_backend",
         params_with_marks(params)
     )
     return deco(func)
 
 def no_backend(func):
-    return parametrize_compiler_backend([''], func)
+    return parametrize_compiler_backend([""], func)
 
 def only_interp(func):
-    return parametrize_compiler_backend(['interp'], func)
+    return parametrize_compiler_backend(["interp"], func)
 
 def only_C(func):
-    return parametrize_compiler_backend(['C'], func)
+    return parametrize_compiler_backend(["C"], func)
 
 def only_emscripten(func):
-    return parametrize_compiler_backend(['emscripten'], func)
+    return parametrize_compiler_backend(["emscripten"], func)
 
 def only_py_cffi(func):
-    return parametrize_compiler_backend(['py-cffi'], func)
+    return parametrize_compiler_backend(["py-cffi"], func)
 
 def no_C(func):
-    return parametrize_compiler_backend(['interp', 'doppler'], func)
+    return parametrize_compiler_backend(["interp", "doppler"], func)
 
 
-@pytest.mark.usefixtures('init')
+@pytest.mark.usefixtures("init")
 class CompilerTest:
     tmpdir: Any
     backend: Backend
@@ -108,10 +108,10 @@ class CompilerTest:
 
     @pytest.fixture
     def init(self, request, tmpdir, compiler_backend):
-        self.dump_c = request.config.getoption('--dump-c')
-        self.dump_redshift = request.config.getoption('--dump-redshift')
+        self.dump_c = request.config.getoption("--dump-c")
+        self.dump_redshift = request.config.getoption("--dump-redshift")
         self.tmpdir = tmpdir
-        self.builddir = self.tmpdir.join('build').ensure(dir=True)
+        self.builddir = self.tmpdir.join("build").ensure(dir=True)
         self.backend = compiler_backend
         self.vm = SPyVM()
         self.vm.path.append(str(self.tmpdir))
@@ -131,19 +131,19 @@ class CompilerTest:
     def error_reporting(self) -> str:
         # ideally for 'doppler' and 'C' we would like to be able to choose
         # either eager or lazy. For now, we hard-code it to eager.
-        if self.backend == 'interp':
-            return 'lazy'
+        if self.backend == "interp":
+            return "lazy"
         else:
-            return 'eager'
+            return "eager"
 
     # see test_backend_spy:test_zz_sanity_check for details
     SKIP_SPY_BACKEND_SANITY_CHECK = False
     ALL_COMPILED_SOURCES: set[str] = set()
 
     def compile(
-            self, src: str, modname: str = 'test',
+            self, src: str, modname: str = "test",
             *,
-            error_mode: ErrorMode='eager',
+            error_mode: ErrorMode="eager",
     ) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
@@ -163,15 +163,15 @@ class CompilerTest:
                         executable, wrapping the result in an ExeWrapper object.
 
         """
-        self.write_file(f'{modname}.spy', src)
+        self.write_file(f"{modname}.spy", src)
         self.w_mod = self.vm.import_(modname)
         if not self.SKIP_SPY_BACKEND_SANITY_CHECK:
             self.ALL_COMPILED_SOURCES.add(src)
 
-        if self.backend == '':
-            pytest.fail('Cannot call self.compile() on @no_backend tests')
+        if self.backend == "":
+            pytest.fail("Cannot call self.compile() on @no_backend tests")
 
-        if self.backend == 'interp':
+        if self.backend == "interp":
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
 
@@ -180,36 +180,36 @@ class CompilerTest:
         if self.dump_redshift:
             self.dump_module(modname)
 
-        if self.backend == 'doppler':
+        if self.backend == "doppler":
             interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
             return interp_mod
 
-        if self.backend == 'C':
+        if self.backend == "C":
             config = BuildConfig(
-                target = 'wasi',
-                kind = 'lib',
-                build_type = 'debug',
+                target = "wasi",
+                kind = "lib",
+                build_type = "debug",
                 opt_level = self.OPT_LEVEL,
             )
             WrapperClass = WasmModuleWrapper
-        elif self.backend == 'emscripten':
+        elif self.backend == "emscripten":
             config = BuildConfig(
-                target = 'emscripten',
-                kind = 'exe',
-                build_type = 'debug',
+                target = "emscripten",
+                kind = "exe",
+                build_type = "debug",
                 opt_level = self.OPT_LEVEL
             )
             WrapperClass = ExeWrapper
-        elif self.backend == 'py-cffi':
+        elif self.backend == "py-cffi":
             config = BuildConfig(
-                target = 'native',
-                kind = 'py-cffi',
-                build_type = 'debug',
+                target = "native",
+                kind = "py-cffi",
+                build_type = "debug",
                 opt_level = self.OPT_LEVEL
             )
             WrapperClass = load_cffi_module
         else:
-            assert False, f'Unknown backend: {self.backend}'
+            assert False, f"Unknown backend: {self.backend}"
 
         backend = CBackend(
             self.vm,
@@ -232,7 +232,7 @@ class CompilerTest:
 
     def compile_raises(self, src: str, funcname: str, ctx: Any,
                        *,
-                       modname: str = 'test',
+                       modname: str = "test",
                        error_reporting: Optional[str] = None) -> None:
         """
         Compile the given src and run the function with the given funcname.
@@ -250,7 +250,7 @@ class CompilerTest:
         if error_reporting is None:
             error_reporting = self.error_reporting
 
-        if error_reporting == 'eager':
+        if error_reporting == "eager":
             with ctx:
                 mod = self.compile(src, modname=modname)
         else:
@@ -280,18 +280,18 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
 
     err = exc.value
     formatted_error = err.format(use_colors=True)
-    formatted_error = textwrap.indent(formatted_error, '    ')
+    formatted_error = textwrap.indent(formatted_error, "    ")
 
     def fail(msg: str, src: str):
-        print('Error match failed!')
-        print('The following message was expected but not found:')
-        print(f'  - {msg}')
+        print("Error match failed!")
+        print("The following message was expected but not found:")
+        print(f"  - {msg}")
         if src:
-            print(f'  - {src}')
+            print(f"  - {src}")
         print()
-        print('Captured error')
+        print("Captured error")
         print(formatted_error)
-        pytest.fail(f'Error message not found: {msg}')
+        pytest.fail(f"Error message not found: {msg}")
 
     def match_one_annotation(expected_msg: str, expected_src: str) -> bool:
         for ann in err.w_exc.annotations:
@@ -301,7 +301,7 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
         return False
 
     if err.w_exc.message != main:
-        fail(main, '')
+        fail(main, "")
 
     for msg, src in anns_to_match:
         if not match_one_annotation(msg, src):
@@ -313,7 +313,7 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
 
 
 
-@pytest.mark.usefixtures('init')
+@pytest.mark.usefixtures("init")
 class CTest:
     tmpdir: Any
     target: BuildTarget
@@ -322,22 +322,22 @@ class CTest:
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         # NOTE: target is overwritten by TestLLWasm.init_llwasm
-        self.target = 'wasi'
-        self.build_dir = self.tmpdir.join('build').ensure(dir=True)
+        self.target = "wasi"
+        self.build_dir = self.tmpdir.join("build").ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:
         src = textwrap.dedent(src)
-        test_c = self.tmpdir.join('test.c')
+        test_c = self.tmpdir.join("test.c")
         test_c.write(src)
         return test_c
 
     def c_compile(self, src: str, *, exports: list[str] = []) -> py.path.local:
         config = BuildConfig(
             target = self.target,
-            kind = 'lib',
-            build_type = 'debug'
+            kind = "lib",
+            build_type = "debug"
         )
         test_c = self.write(src)
         ninja = NinjaWriter(config, self.build_dir)
-        ninja.write('test', [test_c], wasm_exports=exports)
+        ninja.write("test", [test_c], wasm_exports=exports)
         return ninja.build()

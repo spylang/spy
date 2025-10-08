@@ -67,3 +67,10 @@ markers = [
     # others
     "mypy: check mypy",
 ]
+
+# Formatter and Linter settings
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+multiline-quotes = "double"
+docstring-quotes = "double"
+avoid-escape = true

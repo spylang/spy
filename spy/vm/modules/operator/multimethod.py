@@ -29,7 +29,7 @@ KeyType = tuple[str, Optional[W_Type], Optional[W_Type]]
 def parse_type(s: Optional[str]) -> Optional[W_Type]:
     if s is None:
         return None
-    w_res = getattr(B, f'w_{s}')
+    w_res = getattr(B, f"w_{s}")
     assert isinstance(w_res, W_Type)
     return w_res
 

@@ -12,14 +12,14 @@ class W_MyClass(W_Object):
         self.w_base = w_base
         self.w_values: dict[W_I32, W_I32] = {}
 
-    @builtin_method('__new__')
+    @builtin_method("__new__")
     @staticmethod
-    def w_new(vm: 'SPyVM', w_base: W_I32) -> 'W_MyClass':
+    def w_new(vm: "SPyVM", w_base: W_I32) -> "W_MyClass":
         return W_MyClass(w_base)
 
-    @builtin_method('__getitem__')
+    @builtin_method("__getitem__")
     @staticmethod
-    def w_getitem(vm: 'SPyVM', w_self: 'W_MyClass', w_i: W_I32) -> W_I32:
+    def w_getitem(vm: "SPyVM", w_self: "W_MyClass", w_i: W_I32) -> W_I32:
         base = vm.unwrap_i32(w_self.w_base)
         idx = vm.unwrap_i32(w_i)
 
@@ -30,9 +30,9 @@ class W_MyClass(W_Object):
         # Otherwise calculate a value based on base and index
         return vm.wrap(base + idx)
 
-    @builtin_method('__setitem__')
+    @builtin_method("__setitem__")
     @staticmethod
-    def w_setitem(vm: 'SPyVM', w_self: 'W_MyClass',
+    def w_setitem(vm: "SPyVM", w_self: "W_MyClass",
                   w_i: W_I32, w_v: W_I32) -> None:
         idx = vm.unwrap_i32(w_i)
         w_self.w_values[idx] = w_v
@@ -46,14 +46,14 @@ class W_2DArray(W_Object):
     def __init__(self) -> None:
         self.data = [0] * (self.W * self.H)
 
-    @builtin_method('__new__')
+    @builtin_method("__new__")
     @staticmethod
-    def w_new(vm: 'SPyVM') -> 'W_2DArray':
+    def w_new(vm: "SPyVM") -> "W_2DArray":
         return W_2DArray()
 
-    @builtin_method('__getitem__')
+    @builtin_method("__getitem__")
     @staticmethod
-    def w_getitem(vm: 'SPyVM', w_self: 'W_2DArray',
+    def w_getitem(vm: "SPyVM", w_self: "W_2DArray",
                   w_i: W_I32, w_j: W_I32) -> W_I32:
         i = vm.unwrap_i32(w_i)
         j = vm.unwrap_i32(w_j)
@@ -61,9 +61,9 @@ class W_2DArray(W_Object):
         val = w_self.data[k]
         return vm.wrap(val)
 
-    @builtin_method('__setitem__')
+    @builtin_method("__setitem__")
     @staticmethod
-    def w_setitem(vm: 'SPyVM', w_self: 'W_2DArray', w_i: W_I32,
+    def w_setitem(vm: "SPyVM", w_self: "W_2DArray", w_i: W_I32,
                   w_j: W_I32, w_v: W_I32) -> None:
         i = vm.unwrap_i32(w_i)
         j = vm.unwrap_i32(w_j)
@@ -78,9 +78,9 @@ class TestItemop(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
     def setup_ext(self) -> None:
-        EXT = ModuleRegistry('ext')
-        EXT.builtin_type('MyClass')(W_MyClass)
-        EXT.builtin_type('W_2DArray')(W_2DArray)
+        EXT = ModuleRegistry("ext")
+        EXT.builtin_type("MyClass")(W_MyClass)
+        EXT.builtin_type("W_2DArray")(W_2DArray)
         self.vm.make_module(EXT)
 
     def test_getitem(self):

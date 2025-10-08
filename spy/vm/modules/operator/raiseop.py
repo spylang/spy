@@ -13,29 +13,29 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 @OP.builtin_func
-def w_raise(vm: 'SPyVM', w_etype: W_Str, w_message: W_Str,
+def w_raise(vm: "SPyVM", w_etype: W_Str, w_message: W_Str,
             w_filename: W_Str, w_lineno: W_I32) -> None:
-    etype = 'W_' + vm.unwrap_str(w_etype)
+    etype = "W_" + vm.unwrap_str(w_etype)
     msg = vm.unwrap_str(w_message)
     fname = vm.unwrap_str(w_filename)
     lineno = vm.unwrap_i32(w_lineno)
     loc = Loc(fname, lineno, lineno, 1, -1)
-    raise SPyError.simple(etype, msg, '', loc)
+    raise SPyError.simple(etype, msg, "", loc)
 
-@OP.builtin_func(color='blue')
-def w_RAISE(vm: 'SPyVM', wam_exc: W_MetaArg) -> W_OpImpl:
+@OP.builtin_func(color="blue")
+def w_RAISE(vm: "SPyVM", wam_exc: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
 
     # We are doing a bit of magic here:
     #   1. manually turn the blue wam_exc into an hardcoded message
     #   2. return an w_opimpl which calls w_raise with the hardcoded message,
     #      ignoring the actual wam_exc
-    if wam_exc.color != 'blue':
+    if wam_exc.color != "blue":
         err = SPyError(
-            'W_TypeError',
+            "W_TypeError",
             "`raise` only accepts blue values for now",
         )
-        err.add('error', 'this is red', wam_exc.loc)
+        err.add("error", "this is red", wam_exc.loc)
         raise err
 
     # we support two syntaxes:
@@ -51,7 +51,7 @@ def w_RAISE(vm: 'SPyVM', wam_exc: W_MetaArg) -> W_OpImpl:
         etype = w_exc.__class__.__name__
         msg = w_exc.message
 
-    assert etype.startswith('W_')
+    assert etype.startswith("W_")
     etype = etype[2:]
     w_etype = vm.wrap(etype)
     wam_etype = W_MetaArg.from_w_obj(vm, w_etype)
@@ -71,6 +71,6 @@ def w_RAISE(vm: 'SPyVM', wam_exc: W_MetaArg) -> W_OpImpl:
         vm,
         w_opspec,
         [wam_exc],
-        dispatch='single',
-        errmsg='cannot raise `{0}`'
+        dispatch="single",
+        errmsg="cannot raise `{0}`"
     )

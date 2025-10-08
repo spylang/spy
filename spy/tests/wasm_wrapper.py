@@ -38,9 +38,9 @@ class WasmModuleWrapper:
     def __getattr__(self, attr: str) -> Any:
         w_obj = self.w_mod.getattr(attr)
         if isinstance(w_obj, W_ASTFunc):
-            if w_obj.color == 'blue':
+            if w_obj.color == "blue":
                 raise NotImplementedError(
-                    'cannot call a @blue func from a WASM module'
+                    "cannot call a @blue func from a WASM module"
                 )
             return self.read_function(w_obj)
 
@@ -51,7 +51,7 @@ class WasmModuleWrapper:
             raise NotImplementedError(f"Don't know how to read this object from WASM: {w_obj}")
 
 
-    def read_function(self, w_func: W_Func) -> 'WasmFuncWrapper':
+    def read_function(self, w_func: W_Func) -> "WasmFuncWrapper":
         # sanity check
         wasm_func = self.ll.get_export(w_func.fqn.c_name)
         assert isinstance(wasm_func, wasmtime.Func)
@@ -68,9 +68,9 @@ class WasmModuleWrapper:
         w_T = self.vm.dynamic_type(w_cell.get())
         t: LLWasmType
         if w_T is B.w_i32:
-            t = 'int32_t'
+            t = "int32_t"
         else:
-            assert False, f'Unknown type: {w_T}'
+            assert False, f"Unknown type: {w_T}"
 
         return self.ll.read_global(w_cell.fqn.c_name, deref=t)
 
@@ -104,13 +104,13 @@ class WasmFuncWrapper:
             assert isinstance(pyval, UnwrappedStruct)
             return tuple(pyval._fields.values())
         else:
-            assert False, f'Unsupported type: {w_T}'
+            assert False, f"Unsupported type: {w_T}"
 
     def from_py_args(self, py_args: Any) -> Any:
         a = len(py_args)
         b = self.w_functype.arity
         if a != b:
-            raise TypeError(f'{self.c_name}: expected {b} arguments, got {a}')
+            raise TypeError(f"{self.c_name}: expected {b} arguments, got {a}")
         #
         wasm_args: list[Any] = []
         for py_arg, param in zip(py_args, self.w_functype.params):
@@ -135,7 +135,7 @@ class WasmFuncWrapper:
             addr = res
             length = self.ll.mem.read_i32(addr)
             utf8 = self.ll.mem.read(addr + 4, length)
-            return utf8.decode('utf-8')
+            return utf8.decode("utf-8")
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
             # On wasm32, it looks like this:
@@ -180,7 +180,7 @@ class WasmFuncWrapper:
 
 
     def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
-        assert unwrap, 'unwrap=False is not supported by the C backend'
+        assert unwrap, "unwrap=False is not supported by the C backend"
         wasm_args = self.from_py_args(py_args)
         res = self.ll.call(self.c_name, *wasm_args)
         w_T = self.w_functype.w_restype

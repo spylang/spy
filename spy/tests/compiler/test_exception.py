@@ -21,17 +21,17 @@ class TestException(CompilerTest):
                 raise IndexError
         """)
         assert mod.foo(0) == 42
-        with SPyError.raises('W_Exception', match="hello") as excinfo:
+        with SPyError.raises("W_Exception", match="hello") as excinfo:
             mod.foo(1)
         loc = excinfo.value.w_exc.annotations[0].loc
-        assert loc.filename == str(self.tmpdir.join('test.spy'))
+        assert loc.filename == str(self.tmpdir.join("test.spy"))
         assert loc.line_start == 6
 
-        with SPyError.raises('W_ValueError', match="world"):
+        with SPyError.raises("W_ValueError", match="world"):
             mod.foo(2)
-        with SPyError.raises('W_ValueError', match=""):
+        with SPyError.raises("W_ValueError", match=""):
             mod.foo(3)
-        with SPyError.raises('W_IndexError') as excinfo:
+        with SPyError.raises("W_IndexError") as excinfo:
             mod.foo(4)
 
     def test_cannot_raise_red(self):
@@ -42,7 +42,7 @@ class TestException(CompilerTest):
         """
         errors = expect_errors(
             "`raise` only accepts blue values for now",
-            ('this is red', 'exc'),
+            ("this is red", "exc"),
             )
         self.compile_raises(src, "foo", errors)
 
@@ -51,8 +51,8 @@ class TestException(CompilerTest):
         def foo() -> None:
             1 + "hello"
         """
-        mod = self.compile(src, error_mode='lazy')
-        with SPyError.raises('W_TypeError', match=r"cannot do `i32` \+ `str`"):
+        mod = self.compile(src, error_mode="lazy")
+        with SPyError.raises("W_TypeError", match=r"cannot do `i32` \+ `str`"):
             mod.foo()
 
     @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
@@ -74,7 +74,7 @@ class TestException(CompilerTest):
             return print_message(1)
         """
 
-        if self.backend in ('doppler', 'C') and error_mode == "eager":
+        if self.backend in ("doppler", "C") and error_mode == "eager":
             # eager errors and we are redshifting: expect a comptime error
             errors = expect_errors("unsupported lang: it")
             self.compile_raises(src, "foo", errors)
@@ -82,7 +82,7 @@ class TestException(CompilerTest):
             # interp mode or lazy errors
             mod = self.compile(src, error_mode=error_mode)
             assert mod.print_message(0) == 42 # works
-            with SPyError.raises('W_StaticError', match="unsupported lang: it"):
+            with SPyError.raises("W_StaticError", match="unsupported lang: it"):
                 mod.print_message(1)
 
     @no_C
@@ -96,7 +96,7 @@ class TestException(CompilerTest):
 
         errors = expect_errors(
             "this is some error",
-            ('called from here', 'raise_no_loc()'),
+            ("called from here", "raise_no_loc()"),
             )
         with errors:
             mod.foo()
@@ -119,7 +119,7 @@ class TestException(CompilerTest):
 
         errors = expect_errors(
             "sizeof(<spy type 'bool'>) not implemented",
-            ('called from here', 'class X:\n    flag: bool'),
+            ("called from here", "class X:\n    flag: bool"),
             )
         with errors:
             self.compile(src)

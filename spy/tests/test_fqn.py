@@ -10,14 +10,14 @@ def test_FQN_init_fullname():
     )
 
 def test_FQN_init_parts():
-    a = FQN(['a.b.c', 'xxx'])
+    a = FQN(["a.b.c", "xxx"])
     assert a.fullname == "a.b.c::xxx"
     assert a.modname == "a.b.c"
 
 def test_FQN_suffix():
     a = FQN("aaa::bbb#1")
     assert a.fullname == "aaa::bbb#1"
-    assert a.parts[-1].suffix == '1'
+    assert a.parts[-1].suffix == "1"
 
 def test_many_FQNs():
     assert str(FQN("aaa")) == "aaa"
@@ -26,7 +26,7 @@ def test_many_FQNs():
 def test_FQN_str_repr():
     a = FQN("aaa::bbb")
     assert repr(a) == "FQN('aaa::bbb')"
-    assert str(a) == 'aaa::bbb'
+    assert str(a) == "aaa::bbb"
 
 def test_FQN_hash_eq():
     a = FQN("aaa::bbb")
@@ -87,9 +87,9 @@ def test_FQN_human_name():
     # see also tests/vm/test_function.py::test_FunctionType_fqn
     assert FQN("a::b").human_name == "a::b"
     assert FQN("builtins::i32").human_name == "i32"
-    func = FQN("builtins").join('def', ['builtins::i32', 'builtins::f64',
-                                        'builtins::str'])
-    assert func.human_name == 'def(i32, f64) -> str'
+    func = FQN("builtins").join("def", ["builtins::i32", "builtins::f64",
+                                        "builtins::str"])
+    assert func.human_name == "def(i32, f64) -> str"
 
 def test_FQN_with_qualifiers():
     a = FQN("mod::list")
@@ -125,6 +125,6 @@ def test_FQN_match():
 
 def test_FQN_with_suffix():
     a = FQN("a::b")
-    a1 = a.with_suffix('1')
+    a1 = a.with_suffix("1")
     assert a.fullname == "a::b"
     assert a1.fullname == "a::b#1"

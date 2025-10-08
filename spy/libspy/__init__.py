@@ -7,14 +7,14 @@ from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule, WasmTrap
 from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
 #from spy.vm.str import ll_spy_Str_read
 
-SRC = spy.ROOT.join('libspy', 'src')
-INCLUDE = spy.ROOT.join('libspy', 'include')
-BUILD = spy.ROOT.join('libspy', 'build')
+SRC = spy.ROOT.join("libspy", "src")
+INCLUDE = spy.ROOT.join("libspy", "include")
+BUILD = spy.ROOT.join("libspy", "build")
 
 
 
 if IS_NODE:
-    LIBSPY_WASM = BUILD.join('emscripten', 'debug', 'libspy.mjs')
+    LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
     LLMOD = None
 elif IS_BROWSER:
     LIBSPY_WASM = None # type: ignore    # needs to be set by the embedder
@@ -22,7 +22,7 @@ elif IS_BROWSER:
 else:
     assert not IS_PYODIDE
     # "normal" python, we can preload LLMOD
-    LIBSPY_WASM = BUILD.join('wasi', 'debug', 'libspy.wasm')
+    LIBSPY_WASM = BUILD.join("wasi", "debug", "libspy.wasm")
     LLMOD = LLWasmModule(LIBSPY_WASM)  # type: ignore
 
 # XXX ^^^^
@@ -53,20 +53,20 @@ class LibSPyHost(HostModule):
     def _read_str(self, ptr: int) -> str:
         # ptr is const char*
         ba = self.ll.mem.read_cstr(ptr)
-        return ba.decode('utf-8')
+        return ba.decode("utf-8")
 
     # ========== WASM imports ==========
 
     def env_spy_debug_log(self, ptr: int) -> None:
         s = self._read_str(ptr)
         self.log.append(s)
-        print('[log]', s)
+        print("[log]", s)
 
     def env_spy_debug_log_i32(self, ptr: int, n: int) -> None:
         s = self._read_str(ptr)
-        msg = f'{s} {n}'
+        msg = f"{s} {n}"
         self.log.append(msg)
-        print('[log]', msg)
+        print("[log]", msg)
 
     def env_spy_debug_set_panic_message(
             self,
@@ -107,10 +107,10 @@ class LLSPyInstance(LLWasmInstance):
         except WasmTrap:
             if self.libspy.panic_message is not None:
                 assert self.libspy.panic_filename is not None
-                etype = 'W_' + self.libspy.panic_etype
+                etype = "W_" + self.libspy.panic_etype
                 message = self.libspy.panic_message
                 fname = self.libspy.panic_filename
                 lineno = self.libspy.panic_lineno
                 loc = Loc(fname, lineno, lineno, 1, -1)
-                raise SPyError.simple(etype, message, '', loc)
+                raise SPyError.simple(etype, message, "", loc)
             raise

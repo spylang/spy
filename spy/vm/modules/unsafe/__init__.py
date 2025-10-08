@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 # XXX: ideally, we want to limit the number of modules which can use unsafe
 # features. E.g., we could say that they need to end in .unsafe.spy or
 # something like that. But for now, it's just a normal module.
-UNSAFE = ModuleRegistry('unsafe')
+UNSAFE = ModuleRegistry("unsafe")
 
 from . import ptr     # noqa: F401 -- side effects
 from . import mem     # noqa: F401 -- side effects

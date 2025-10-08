@@ -18,19 +18,19 @@ if TYPE_CHECKING:
 #
 #   - 'multi' is the opspec depends on the types of all operands (e.g., all
 #     binary operators)
-DispatchKind = Literal['single', 'multi']
+DispatchKind = Literal["single", "multi"]
 
 def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
     if n == 1:
         return singular
     elif plural is None:
-        return singular + 's'
+        return singular + "s"
     else:
         return plural
 
 
 def typecheck_opspec(
-        vm: 'SPyVM',
+        vm: "SPyVM",
         w_opspec: W_OpSpec,
         in_args_wam: list[W_MetaArg],
         *,
@@ -94,14 +94,14 @@ def typecheck_opspec(
     args = []
     for param, wam_out_arg in zip(w_out_functype.all_params(), out_args_wam):
 
-        if w_out_functype.color == 'blue' and wam_out_arg.color == 'red':
-            msg = 'cannot call blue function with red arguments'
-            err = SPyError('W_TypeError', msg)
+        if w_out_functype.color == "blue" and wam_out_arg.color == "red":
+            msg = "cannot call blue function with red arguments"
+            err = SPyError("W_TypeError", msg)
             if call_loc:
-                err.add('error', 'this is blue', call_loc)
-            err.add('error', 'this is red', wam_out_arg.loc)
+                err.add("error", "this is blue", call_loc)
+            err.add("error", "this is red", wam_out_arg.loc)
             if def_loc:
-                err.add('note', 'function defined here', def_loc)
+                err.add("note", "function defined here", def_loc)
             raise err
 
         # add a converter if needed (this might raise W_TypeError)
@@ -125,11 +125,11 @@ def typecheck_opspec(
 
 def functype_from_opargs(args_wam: list[W_MetaArg], w_restype: W_Type,
                          color: Color) -> W_FuncType:
-    params = [FuncParam(wam.w_static_T, 'simple') for wam in args_wam]
+    params = [FuncParam(wam.w_static_T, "simple") for wam in args_wam]
     return W_FuncType.new(params, w_restype, color=color)
 
 
-def get_w_conv(vm: 'SPyVM', w_type: W_Type, wam_arg: W_MetaArg,
+def get_w_conv(vm: "SPyVM", w_type: W_Type, wam_arg: W_MetaArg,
                def_loc: Optional[Loc]) -> Optional[W_Func]:
     """
     Like CONVERT_maybe, but improve the error message if we can
@@ -140,7 +140,7 @@ def get_w_conv(vm: 'SPyVM', w_type: W_Type, wam_arg: W_MetaArg,
         if not err.match(W_TypeError):
             raise
         if def_loc:
-            err.add('note', 'function defined here', def_loc)
+            err.add("note", "function defined here", def_loc)
         raise
 
 
@@ -162,19 +162,19 @@ def _opspec_null_error(
     """
     typenames = [wam.w_static_T.fqn.human_name for wam in in_args_wam]
     errmsg = errmsg.format(*typenames)
-    err = SPyError('W_TypeError', errmsg)
-    if dispatch == 'single':
+    err = SPyError("W_TypeError", errmsg)
+    if dispatch == "single":
         wam_target = in_args_wam[0]
         t = wam_target.w_static_T.fqn.human_name
         if wam_target.loc:
-            err.add('error', f'this is `{t}`', wam_target.loc)
+            err.add("error", f"this is `{t}`", wam_target.loc)
         if wam_target.sym:
             sym = wam_target.sym
-            err.add('note', f'`{sym.name}` defined here', sym.loc)
+            err.add("note", f"`{sym.name}` defined here", sym.loc)
     else:
         for wam_arg in in_args_wam:
             t = wam_arg.w_static_T.fqn.human_name
-            err.add('error', f'this is `{t}`', wam_arg.loc)
+            err.add("error", f"this is `{t}`", wam_arg.loc)
     raise err
 
 
@@ -186,21 +186,21 @@ def _call_error_wrong_argcount(
         call_loc: Optional[Loc],
 ) -> NoReturn:
     assert got != exp
-    takes = maybe_plural(exp, f'takes {exp} argument')
+    takes = maybe_plural(exp, f"takes {exp} argument")
     supplied = maybe_plural(got,
-                            f'1 argument was supplied',
-                            f'{got} arguments were supplied')
-    err = SPyError('W_TypeError', f'this function {takes} but {supplied}')
+                            f"1 argument was supplied",
+                            f"{got} arguments were supplied")
+    err = SPyError("W_TypeError", f"this function {takes} but {supplied}")
     #
     # if we know the call_loc, we can add more detailed errors
     if call_loc:
         if got < exp:
             diff = exp - got
-            arguments = maybe_plural(diff, 'argument')
-            err.add('error', f'{diff} {arguments} missing', call_loc)
+            arguments = maybe_plural(diff, "argument")
+            err.add("error", f"{diff} {arguments} missing", call_loc)
         else:
             diff = got - exp
-            arguments = maybe_plural(diff, 'argument')
+            arguments = maybe_plural(diff, "argument")
             first_extra_loc = args_wam[exp].loc
             last_extra_loc = args_wam[-1].loc
             assert first_extra_loc is not None
@@ -209,8 +209,8 @@ def _call_error_wrong_argcount(
             loc = first_extra_loc.replace(
                 col_end = last_extra_loc.col_end
             )
-            err.add('error', f'{diff} extra {arguments}', loc)
+            err.add("error", f"{diff} extra {arguments}", loc)
     #
     if def_loc:
-        err.add('note', 'function defined here', def_loc)
+        err.add("note", "function defined here", def_loc)
     raise err

@@ -26,9 +26,9 @@ def pytest_collection_modifyitems(session, config, items):
 
     def key(item):
         filename = item.fspath.relto(ROOT)
-        if filename == 'test_zz_mypy.py':
+        if filename == "test_zz_mypy.py":
             return 100 # last
-        elif filename == 'test_backend_spy.py':
+        elif filename == "test_backend_spy.py":
             return 99  # second to last
         else:
             return 0   # don't touch
@@ -62,7 +62,7 @@ def call_immediately(f):
 
 @call_immediately
 def configure_pyodide():
-    SPY_ROOT = ROOT.join('..', '..') # the root of the repo
+    SPY_ROOT = ROOT.join("..", "..") # the root of the repo
 
     pytest_pyodide_config = get_global_config()
     pytest_pyodide_config.set_flags(

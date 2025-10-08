@@ -3,7 +3,7 @@ import pytest
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, skip_backends
 
-@skip_backends('C', reason='dynamic not supported')
+@skip_backends("C", reason="dynamic not supported")
 class TestDynamic(CompilerTest):
 
     def test_upcast_and_downcast(self):
@@ -27,7 +27,7 @@ class TestDynamic(CompilerTest):
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"
-        with SPyError.raises('W_TypeError', match=msg):
+        with SPyError.raises("W_TypeError", match=msg):
             mod.foo()
 
     def test_dynamic_dispatch_ok(self):
@@ -46,8 +46,8 @@ class TestDynamic(CompilerTest):
             y: dynamic = 'hello'
             return x + y
         """)
-        msg = re.escape('cannot do `i32` + `str`')
-        with SPyError.raises('W_TypeError', match=msg):
+        msg = re.escape("cannot do `i32` + `str`")
+        with SPyError.raises("W_TypeError", match=msg):
             mod.foo()
 
     def test_mixed_dispatch(self):
@@ -114,8 +114,8 @@ class TestDynamic(CompilerTest):
         def foo() -> i32:
             return get_inc()(7)
         """)
-        msg = 'cannot call objects of type `str`'
-        with SPyError.raises('W_TypeError', match=msg):
+        msg = "cannot call objects of type `str`"
+        with SPyError.raises("W_TypeError", match=msg):
             mod.foo()
 
     def test_setattr(self):
@@ -131,7 +131,7 @@ class TestDynamic(CompilerTest):
         assert mod.x == 42
 
     def test_wrong_setattr(self):
-        if self.backend == 'doppler':
+        if self.backend == "doppler":
             pytest.skip("fixme")
 
         mod = self.compile(
@@ -141,7 +141,7 @@ class TestDynamic(CompilerTest):
             obj.x = 42
         """)
         msg = "type `str` does not support assignment to attribute 'x'"
-        with SPyError.raises('W_TypeError', match=msg):
+        with SPyError.raises("W_TypeError", match=msg):
             mod.foo()
 
     def test_getattr(self):
@@ -172,7 +172,7 @@ class TestDynamic(CompilerTest):
         """)
         mod.foo()
         out, err = capfd.readouterr()
-        assert out == '\n'.join(["hello world",
+        assert out == "\n".join(["hello world",
                                  "42",
                                  "12.3",
                                  "True",

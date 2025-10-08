@@ -15,7 +15,7 @@ class TestVM:
     def test_W_Object(self):
         vm = SPyVM()
         w_obj = W_Object()
-        assert repr(w_obj).startswith('<spy instance: type=object, id=')
+        assert repr(w_obj).startswith("<spy instance: type=object, id=")
         assert vm.dynamic_type(w_obj) is B.w_object
 
     def test_object_type_metaclass(self):
@@ -51,24 +51,24 @@ class TestVM:
         assert repr(B.w_type) == "<spy type 'type'>"
         assert repr(B.w_dynamic) == "<spy type 'dynamic'>"
         #
-        w_t = W_Type.declare(FQN('foo::t'))
+        w_t = W_Type.declare(FQN("foo::t"))
         assert repr(w_t) == "<spy type 'foo::t' (fwdecl)>"
 
     def test_builtin_type_decorator(self):
-        @builtin_type('test', 'foo')
+        @builtin_type("test", "foo")
         class W_Foo(W_Object):
             pass
         #
         assert isinstance(W_Foo._w, W_Type)
-        assert W_Foo._w.fqn == FQN('test::foo')
+        assert W_Foo._w.fqn == FQN("test::foo")
         assert W_Foo._w.pyclass is W_Foo
 
     def test_w_base(self):
-        @builtin_type('test', 'A')
+        @builtin_type("test", "A")
         class W_A(W_Object):
             pass
         #
-        @builtin_type('test', 'B')
+        @builtin_type("test", "B")
         class W_B(W_A):
             pass
         #
@@ -77,11 +77,11 @@ class TestVM:
         assert W_B._w.w_base is W_A._w
 
     def test_issubclass(self):
-        @builtin_type('test', 'A')
+        @builtin_type("test", "A")
         class W_A(W_Object):
             pass
         #
-        @builtin_type('test', 'B')
+        @builtin_type("test", "B")
         class W_B(W_A):
             pass
         #
@@ -97,15 +97,15 @@ class TestVM:
         assert not vm.issubclass(w_a, w_b)
 
     def test_union_type(self):
-        @builtin_type('test', 'A')
+        @builtin_type("test", "A")
         class W_A(W_Object):
             pass
         #
-        @builtin_type('test', 'B')
+        @builtin_type("test", "B")
         class W_B(W_A):
             pass
         #
-        @builtin_type('test', 'C')
+        @builtin_type("test", "C")
         class W_C(W_A):
             pass
         vm = SPyVM()
@@ -145,8 +145,8 @@ class TestVM:
         vm = SPyVM()
         w_None = B.w_None
         assert isinstance(w_None, W_NoneType)
-        assert vm.dynamic_type(w_None).fqn == FQN('types::NoneType')
-        assert repr(w_None) == '<spy None>'
+        assert vm.dynamic_type(w_None).fqn == FQN("types::NoneType")
+        assert repr(w_None) == "<spy None>"
         #
         assert vm.wrap(None) is w_None
 
@@ -156,7 +156,7 @@ class TestVM:
         w_y = vm.wrap(fixedint.Int32(456))
         assert isinstance(w_x, W_I32)
         assert vm.dynamic_type(w_x) is B.w_i32
-        assert repr(w_x) == 'W_I32(123)'
+        assert repr(w_x) == "W_I32(123)"
         assert repr(B.w_i32) == "<spy type 'i32'>"
         #
         x = vm.unwrap(w_x)
@@ -185,16 +185,16 @@ class TestVM:
         assert vm.unwrap(w_False) is False
         #
         assert vm.dynamic_type(w_True) is B.w_bool
-        assert repr(w_True) == 'W_Bool(True)'
-        assert repr(w_False) == 'W_Bool(False)'
+        assert repr(w_True) == "W_Bool(True)"
+        assert repr(w_False) == "W_Bool(False)"
         assert repr(B.w_bool) == "<spy type 'bool'>"
 
     def test_W_Str(self):
         vm = SPyVM()
-        w_hello = vm.wrap('hello')
+        w_hello = vm.wrap("hello")
         assert isinstance(w_hello, W_Str)
         assert vm.dynamic_type(w_hello) is B.w_str
-        assert vm.unwrap(w_hello) == 'hello'
+        assert vm.unwrap(w_hello) == "hello"
         assert repr(w_hello) == "W_Str('hello')"
 
     def test_call_function(self):
@@ -207,7 +207,7 @@ class TestVM:
     def test_call_function_TypeError(self):
         vm = SPyVM()
         w_abs = B.w_abs
-        w_x = vm.wrap('hello')
+        w_x = vm.wrap("hello")
         # if we use vm.call(), we get proper type checking and SPyTypeError
         # XXX implement vm.call!
         ## msg = 'Invalid cast. Expected `i32`, got `str`'
@@ -238,7 +238,7 @@ class TestVM:
     def test_error_loc(self):
         vm = SPyVM()
         w_a = vm.wrap(1)
-        w_b = vm.wrap('x')
+        w_b = vm.wrap("x")
         errors = expect_errors(
             "cannot do `i32`[...]",
             ("this is `i32`", "            vm.getitem(w_a, w_b) # hello")
@@ -248,7 +248,7 @@ class TestVM:
 
     def test_add_global(self):
         vm = SPyVM()
-        fqn = FQN('builtins::x')
+        fqn = FQN("builtins::x")
         w_x = vm.wrap(42)
         vm.add_global(fqn, w_x)
         assert vm.lookup_global(fqn) is w_x
@@ -258,13 +258,13 @@ class TestVM:
     def test_get_filename(self, tmpdir):
         vm = SPyVM()
         vm.path = [str(tmpdir)]
-        spy_file = tmpdir.join('main.spy')
-        spy_file.write('x: i32 = 42\n')
+        spy_file = tmpdir.join("main.spy")
+        spy_file.write("x: i32 = 42\n")
 
-        filename = vm.find_file_on_path('main')
-        assert filename == tmpdir.join('main.spy')
-        assert vm.find_file_on_path('nonexistent') is None
-        py_file = tmpdir.join('py.py')
-        py_file.write('i = 42\n')
-        assert vm.find_file_on_path('py') is None
-        assert vm.find_file_on_path('py', allow_py_files=True) == tmpdir.join('py.py')
+        filename = vm.find_file_on_path("main")
+        assert filename == tmpdir.join("main.spy")
+        assert vm.find_file_on_path("nonexistent") is None
+        py_file = tmpdir.join("py.py")
+        py_file.write("i = 42\n")
+        assert vm.find_file_on_path("py") is None
+        assert vm.find_file_on_path("py", allow_py_files=True) == tmpdir.join("py.py")

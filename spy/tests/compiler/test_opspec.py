@@ -48,7 +48,7 @@ class TestOpSpec(CompilerTest):
         # Check the MetaArg stored in the arguments list
         wam = w_opspec._args_wam[0]
         assert isinstance(wam, W_MetaArg)
-        assert wam.color == 'blue'
+        assert wam.color == "blue"
         assert wam.w_static_T is B.w_i32
         assert wam.is_blue()
         assert wam._w_val is not None
@@ -71,14 +71,14 @@ class TestOpSpec(CompilerTest):
         # Test blue MetaArg creation
         w_blue_oparg = mod.create_blue_oparg(42, unwrap=False)
         assert isinstance(w_blue_oparg, W_MetaArg)
-        assert w_blue_oparg.color == 'blue'
+        assert w_blue_oparg.color == "blue"
         assert w_blue_oparg.w_static_T is B.w_i32
         assert w_blue_oparg._w_val is not None
 
         # Test red MetaArg creation
         w_red_oparg = mod.create_red_oparg(unwrap=False)
         assert isinstance(w_red_oparg, W_MetaArg)
-        assert w_red_oparg.color == 'red'
+        assert w_red_oparg.color == "red"
         assert w_red_oparg.w_static_T is B.w_i32
         assert w_red_oparg._w_val is None
 
@@ -93,7 +93,7 @@ class TestOpSpec(CompilerTest):
         """)
         w_tup = mod.foo(unwrap=False)
         w_color, w_type, w_blueval = w_tup.items_w
-        assert self.vm.unwrap_str(w_color) == 'blue'
+        assert self.vm.unwrap_str(w_color) == "blue"
         assert w_type is B.w_i32
         assert self.vm.unwrap_i32(w_blueval) == 42
 
@@ -121,13 +121,13 @@ class TestOpSpec(CompilerTest):
             return 42
         """)
         wam_x = mod.foo(unwrap=False)
-        assert wam_x.color == 'red'
+        assert wam_x.color == "red"
         assert wam_x.w_static_T is B.w_i32
         assert wam_x._w_val is None
 
         errors = expect_errors(
-            'mismatched types',
-            ('expected `operator::MetaArg`, got `i32`', '42')
+            "mismatched types",
+            ("expected `operator::MetaArg`, got `i32`", "42")
         )
         with errors:
             mod.bar()

@@ -13,7 +13,7 @@ class TestTuple(CompilerTest):
             return 1, 2, 'hello'
         """)
         tup = mod.foo()
-        assert tup == (1, 2, 'hello')
+        assert tup == (1, 2, "hello")
 
     def test_getitem(self):
         mod = self.compile(
@@ -25,7 +25,7 @@ class TestTuple(CompilerTest):
         x = mod.foo(0)
         assert x == 1
         y = mod.foo(2)
-        assert y == 'hello'
+        assert y == "hello"
 
     def test_len(self):
         mod = self.compile(
@@ -60,7 +60,7 @@ class TestTuple(CompilerTest):
             a, b, c = make_tuple()
         """)
         msg = "Wrong number of values to unpack: expected 3, got 2"
-        with SPyError.raises('W_ValueError', match=msg):
+        with SPyError.raises("W_ValueError", match=msg):
             mod.foo()
 
     def test_unpacking_wrong_type(self):
@@ -69,10 +69,10 @@ class TestTuple(CompilerTest):
             a, b, c = 42
         """
         errors = expect_errors(
-            '`i32` does not support unpacking',
-            ('this is `i32`', '42'),
+            "`i32` does not support unpacking",
+            ("this is `i32`", "42"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_eq(self):
         mod = self.compile(

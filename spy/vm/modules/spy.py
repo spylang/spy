@@ -8,8 +8,8 @@ from spy.vm.b import B
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-SPY = ModuleRegistry('__spy__')
+SPY = ModuleRegistry("__spy__")
 
 @SPY.builtin_func
-def w_is_compiled(vm: 'SPyVM') -> W_Bool:
+def w_is_compiled(vm: "SPyVM") -> W_Bool:
     return B.w_False

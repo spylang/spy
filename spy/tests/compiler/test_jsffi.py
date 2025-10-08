@@ -12,7 +12,7 @@ class TestJsFFI(CompilerTest):
             print('hello from print')
         """)
         out = exe.run()
-        assert out == 'hello from print\n'
+        assert out == "hello from print\n"
 
     def test_console_log(self):
         exe = self.compile(
@@ -26,7 +26,7 @@ class TestJsFFI(CompilerTest):
             console.log(42)
         """)
         out = exe.run()
-        assert out == 'hello from console.log\n42\n'
+        assert out == "hello from console.log\n42\n"
 
     def test_setattr(self):
         exe = self.compile(
@@ -43,7 +43,7 @@ class TestJsFFI(CompilerTest):
             console.log(globalThis.xxx)
         """)
         out = exe.run()
-        assert out == 'hello 1\nhello 2\n'
+        assert out == "hello 1\nhello 2\n"
 
     def test_callback(self):
         exe = self.compile(
@@ -59,4 +59,4 @@ class TestJsFFI(CompilerTest):
             globalThis.setTimeout(say_hello) # XXX allow 2 params and pass 0
         """)
         out = exe.run()
-        assert out == 'hello from callback\n'
+        assert out == "hello from callback\n"

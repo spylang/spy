@@ -13,7 +13,7 @@ def dump(node: Any,
          use_colors: bool = True,
          fields_to_ignore: Any = (),
          hl: Any = None,
-         vm: Optional['SPyVM'] = None,
+         vm: Optional["SPyVM"] = None,
          ) -> str:
     dumper = Dumper(use_colors=use_colors, highlight=hl, vm=vm)
     dumper.fields_to_ignore += fields_to_ignore
@@ -22,7 +22,7 @@ def dump(node: Any,
 
 def pprint(node: Any, *, copy_to_clipboard: bool = False,
            hl: Optional[spy.ast.Node]=None,
-           vm: Optional['SPyVM'] = None) -> None:
+           vm: Optional["SPyVM"] = None) -> None:
     print(dump(node, hl=hl, vm=vm))
     if copy_to_clipboard:
         import pyperclip  # type: ignore
@@ -32,17 +32,17 @@ def pprint(node: Any, *, copy_to_clipboard: bool = False,
 
 class Dumper(TextBuilder):
     fields_to_ignore: tuple[str, ...]
-    vm: 'SPyVM | None'
+    vm: "SPyVM | None"
 
     def __init__(self, *,
                  use_colors: bool,
                  highlight: Optional[spy.ast.Node] = None,
-                 vm: Optional['SPyVM'] = None
+                 vm: Optional["SPyVM"] = None
                  ) -> None:
         super().__init__(use_colors=use_colors)
         self.highlight = highlight
-        self.fields_to_ignore = ('loc', 'target_loc', 'target_locs',
-                                 'loc_asname')
+        self.fields_to_ignore = ("loc", "target_loc", "target_locs",
+                                 "loc_asname")
         self.vm = vm
 
     def dump_anything(self, obj: Any) -> None:
@@ -55,7 +55,7 @@ class Dumper(TextBuilder):
         elif type(obj) is Symbol:
             self.dump_Symbol(obj)
         elif type(obj) is str:
-            self.write(repr(obj), color='green')
+            self.write(repr(obj), color="green")
         else:
             self.write(repr(obj))
 
@@ -64,19 +64,19 @@ class Dumper(TextBuilder):
         fields = list(node.__class__.__dataclass_fields__)
         fields = [f for f in fields if f not in self.fields_to_ignore]
         # Use turquoise text_color to distinguish from blue in --colorize
-        self._dump_node(node, name, fields, text_color='turquoise')
+        self._dump_node(node, name, fields, text_color="turquoise")
 
     def dump_py_node(self, node: py_ast.AST) -> None:
-        name = 'py:' + node.__class__.__name__
+        name = "py:" + node.__class__.__name__
         fields = list(node.__class__._fields)
         fields = [f for f in fields if f not in self.fields_to_ignore]
         if isinstance(node, py_ast.Name):
-            fields.append('is_var')
+            fields.append("is_var")
         # Use turquoise text_color to distinguish from blue in --colorize
-        self._dump_node(node, name, fields, text_color='turquoise')
+        self._dump_node(node, name, fields, text_color="turquoise")
 
     def dump_Symbol(self, sym: Symbol) -> None:
-        self.write(f'Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})')
+        self.write(f"Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})")
 
     def _dump_node(self, node: Any, name: str, fields: list[str], text_color: Optional[str]) -> None:
         def is_complex(obj: Any) -> bool:
@@ -87,7 +87,7 @@ class Dumper(TextBuilder):
         multiline = any(is_complex_field)
         #
         if node is self.highlight:
-            text_color = 'red'
+            text_color = "red"
         # If the vm contains an expr_color_map, use the expression's color
         # as the text background color, and use the default text_color
         bg_color = None
@@ -97,28 +97,28 @@ class Dumper(TextBuilder):
                 bg_color = color
                 text_color = None
         self.write(name, color=text_color, bg=bg_color)
-        self.write('(')
+        self.write("(")
         if multiline:
-            self.writeline('')
+            self.writeline("")
         with self.indent():
             for field, value in zip(fields, values):
                 is_last = (field is fields[-1])
-                self.write(f'{field}=')
+                self.write(f"{field}=")
                 self.dump_anything(value)
                 if multiline:
-                    self.writeline(',')
+                    self.writeline(",")
                 elif not is_last:
                     # single line
-                    self.write(', ')
-        self.write(')')
+                    self.write(", ")
+        self.write(")")
 
     def dump_list(self, lst: list[Any]) -> None:
         if lst == []:
-            self.write('[]')
+            self.write("[]")
             return
-        self.writeline('[')
+        self.writeline("[")
         with self.indent():
             for item in lst:
                 self.dump_anything(item)
-                self.writeline(',')
-        self.write(']')
+                self.writeline(",")
+        self.write("]")

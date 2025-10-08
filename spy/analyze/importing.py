@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
     from spy.vm.module import W_Module
 
-MODULE = Union[ast.Module, 'W_Module', None]
+MODULE = Union[ast.Module, "W_Module", None]
 
 
 class ImportAnalyzer:
@@ -81,7 +81,7 @@ class ImportAnalyzer:
     Circular dependencies are currently not supported, but will be in the
     future.
     """
-    def __init__(self, vm: 'SPyVM', modname: str) -> None:
+    def __init__(self, vm: "SPyVM", modname: str) -> None:
         self.vm = vm
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
@@ -126,7 +126,7 @@ class ImportAnalyzer:
                 self.mods[modname] = None
 
     def analyze_scopes(self, modname: str) -> ScopeAnalyzer:
-        assert self.mods, 'call .parse_all() first'
+        assert self.mods, "call .parse_all() first"
         mod = self.getmod(modname)
         scopes = ScopeAnalyzer(self.vm, modname, mod)
         scopes.analyze()
@@ -162,7 +162,7 @@ class ImportAnalyzer:
         return result
 
     def import_all(self) -> None:
-        assert self.mods, 'call .parse_all() first'
+        assert self.mods, "call .parse_all() first"
         import_list = self.get_import_list()
         for modname in import_list:
             mod = self.mods[modname]
@@ -178,19 +178,19 @@ class ImportAnalyzer:
         self.vm.modules_w[modname] = w_mod
 
     def pp(self) -> None:
-        print('Import tree:')
+        print("Import tree:")
         self.pp_tree()
         print()
-        print('vm.path:')
+        print("vm.path:")
         self.pp_path()
         print()
-        print('Import order:')
+        print("Import order:")
         self.pp_list()
 
     def pp_path(self) -> None:
         color = ColorFormatter(use_colors=True)
         for i, p in enumerate(self.vm.path):
-            print(f'  p{i} = {p}')
+            print(f"  p{i} = {p}")
 
     def pp_list(self) -> None:
         from spy.vm.module import W_Module
@@ -202,7 +202,7 @@ class ImportAnalyzer:
         paths = {}
         if self.vm.path:
             for i, path in enumerate(self.vm.path):
-                paths[path+'/'] = f'$p{i}'
+                paths[path+"/"] = f"$p{i}"
 
         def shorten_path(path: str) -> str:
             if not path:
@@ -210,7 +210,7 @@ class ImportAnalyzer:
             for base_path, alias in paths.items():
                 if path.startswith(base_path):
                     suffix = path[len(base_path):]
-                    suffix = color.set('green', suffix)
+                    suffix = color.set("green", suffix)
                     return f"{alias}/{suffix}"
             return path
 
@@ -221,12 +221,12 @@ class ImportAnalyzer:
                 # The alias is already colored in shorten_path
                 what = shorten_path(mod.filename)
             elif isinstance(mod, W_Module):
-                what = color.set('blue', str(mod)) + ' (already imported)'
+                what = color.set("blue", str(mod)) + " (already imported)"
             elif mod is None:
-                what = color.set('red', 'ImportError')
+                what = color.set("red", "ImportError")
             else:
                 assert False
-            print(f'{i:>3d} {modname:>{n}s} => {what}')
+            print(f"{i:>3d} {modname:>{n}s} => {what}")
 
     def pp_tree(self) -> None:
         """
@@ -242,7 +242,7 @@ class ImportAnalyzer:
             ├── b1
             └── b2
         """
-        assert self.mods, 'call .parse_all() first'
+        assert self.mods, "call .parse_all() first"
 
         # Constants for tree formatting
         CROSS  = "├── "
@@ -264,10 +264,10 @@ class ImportAnalyzer:
         # Define recursive printer function
         def print_tree(modname: str, prefix: str, indent: str, marker: str, visited: set) -> None:
             if modname in visited:
-                print(f'{prefix}{marker}{modname} (already seen)')
+                print(f"{prefix}{marker}{modname} (already seen)")
                 return
 
-            print(f'{prefix}{marker}{modname}')
+            print(f"{prefix}{marker}{modname}")
             visited.add(modname)
 
             # Get the dependencies of this module
@@ -286,14 +286,14 @@ class ImportAnalyzer:
 
         # Print each root
         for root in roots:
-            print_tree(root, prefix='  ', indent='', marker='', visited=set())
+            print_tree(root, prefix="  ", indent="", marker="", visited=set())
 
 
     # ===========================================================
     # visitor pattern to recurively find all "import" statements
 
     def visit(self, mod: ast.Module) -> None:
-        mod.visit('visit', self)
+        mod.visit("visit", self)
 
     def visit_Import(self, imp: ast.Import) -> None:
         modname = imp.ref.modname

@@ -66,30 +66,30 @@ from . import convop         # noqa: F401 -- side effects
 from . import raiseop        # noqa: F401 -- side effects
 
 _from_token: dict[str, W_Func] = {
-    '+': OP.w_ADD,
-    '-': OP.w_SUB,
-    '*': OP.w_MUL,
-    '/': OP.w_DIV,
-    '//': OP.w_FLOORDIV,
-    '%': OP.w_MOD,
-    '<<': OP.w_LSHIFT,
-    '>>': OP.w_RSHIFT,
-    '&': OP.w_AND,
-    '|': OP.w_OR,
-    '^': OP.w_XOR,
-    '==': OP.w_EQ,
-    '!=': OP.w_NE,
-    '<':  OP.w_LT,
-    '<=': OP.w_LE,
-    '>':  OP.w_GT,
-    '>=': OP.w_GE,
-    '[]': OP.w_GETITEM,
-    '<universal_eq>': OP.w_UNIVERSAL_EQ,
-    '<universal_ne>': OP.w_UNIVERSAL_NE,
+    "+": OP.w_ADD,
+    "-": OP.w_SUB,
+    "*": OP.w_MUL,
+    "/": OP.w_DIV,
+    "//": OP.w_FLOORDIV,
+    "%": OP.w_MOD,
+    "<<": OP.w_LSHIFT,
+    ">>": OP.w_RSHIFT,
+    "&": OP.w_AND,
+    "|": OP.w_OR,
+    "^": OP.w_XOR,
+    "==": OP.w_EQ,
+    "!=": OP.w_NE,
+    "<":  OP.w_LT,
+    "<=": OP.w_LE,
+    ">":  OP.w_GT,
+    ">=": OP.w_GE,
+    "[]": OP.w_GETITEM,
+    "<universal_eq>": OP.w_UNIVERSAL_EQ,
+    "<universal_ne>": OP.w_UNIVERSAL_NE,
 }
 
 _unary_from_token: dict[str, W_Func] = {
-    '-': OP.w_NEG,
+    "-": OP.w_NEG,
 }
 
 def OP_from_token(token: str) -> W_Func:
@@ -113,7 +113,7 @@ def print_all_OPERATORS() -> None:
     """
     Just a development tool to print the list of all OPERATORs
     """
-    print('SPy OPERATORS:')
+    print("SPy OPERATORS:")
     for fqn, w_func in OP.content:
         if fqn.symbol_name.isupper():
             print("   ", fqn)

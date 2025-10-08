@@ -69,7 +69,7 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     return py_mod
 
 def get_tokens(src: str) -> list[TokenInfo]:
-    readline = BytesIO(src.encode('utf-8')).readline
+    readline = BytesIO(src.encode("utf-8")).readline
     return list(tokenize(readline))
 
 def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]:
@@ -92,7 +92,7 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
     while i < N-1:
         tok0 = tokens[i]
         tok1 = tokens[i+1]
-        if tok0.type == NAME and tok0.string == 'var' and tok1.type == NAME:
+        if tok0.type == NAME and tok0.string == "var" and tok1.type == NAME:
             # tok0 is 'var'
             # tok1 is the name
             # basically, we want to turn:
@@ -107,8 +107,8 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
             name_l0, name_c0 = tok1.start
             name_l1, name_c1 = tok1.end
             assert var_l0 == var_l1 == name_l0 == name_l1, \
-                'multiline var not supported'
-            spaces = ' ' * (name_c0 - var_c0)
+                "multiline var not supported"
+            spaces = " " * (name_c0 - var_c0)
             newtok = TokenInfo(NAME, tok1.string + spaces,
                                tok0.start, tok1.end, tok1.line)
             newtokens.append(newtok)

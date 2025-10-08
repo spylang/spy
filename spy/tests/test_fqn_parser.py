@@ -11,7 +11,7 @@ def test_single_unqualified_part():
     assert len(fqn.parts) == 1
     assert fqn.parts[0].name == "foo"
     assert fqn.parts[0].qualifiers == ()
-    assert fqn.parts[0].suffix == ''
+    assert fqn.parts[0].suffix == ""
 
 def test_two_parts():
     fqn = FQN("mod::foo")
@@ -51,5 +51,5 @@ def test_suffix():
     assert fqn.parts[0].name == "mod"
     assert fqn.parts[1].name == "foo"
     assert fqn.parts[1].qualifiers[0].parts[0].name == "i32"
-    assert fqn.parts[1].suffix == '1'
+    assert fqn.parts[1].suffix == "1"
     assert str(fqn) == "mod::foo[i32]#1"

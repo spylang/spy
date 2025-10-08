@@ -15,8 +15,8 @@ class TestImporting(CompilerTest):
 
     def test_import_errors_1(self):
         ctx = expect_errors(
-            'cannot import `builtins.aaa`',
-            ('attribute `aaa` does not exist in module `builtins`', 'aaa')
+            "cannot import `builtins.aaa`",
+            ("attribute `aaa` does not exist in module `builtins`", "aaa")
         )
         with ctx:
             self.compile("""
@@ -25,8 +25,8 @@ class TestImporting(CompilerTest):
 
     def test_import_errors_2(self):
         ctx = expect_errors(
-            'cannot import `xxx.aaa`',
-            ('module `xxx` does not exist', 'from xxx import aaa'),
+            "cannot import `xxx.aaa`",
+            ("module `xxx` does not exist", "from xxx import aaa"),
         )
         with ctx:
             self.compile("""
@@ -123,6 +123,7 @@ class TestImporting(CompilerTest):
             print('main')
         """)
         out, err = capsys.readouterr()
+<<<<<<< HEAD
         mods = out.strip().split('\n')
         assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']
 
@@ -151,3 +152,7 @@ class TestImporting(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == (1, 1)
+=======
+        mods = out.strip().split("\n")
+        assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
+>>>>>>> 0c57b4ea (ruff: replace single quote with doublequotes)

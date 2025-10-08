@@ -17,15 +17,15 @@ from spy.util import magic_dispatch
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-ErrorMode = Literal['eager', 'lazy', 'warn']
+ErrorMode = Literal["eager", "lazy", "warn"]
 
-def redshift(vm: 'SPyVM', w_func: W_ASTFunc,
+def redshift(vm: "SPyVM", w_func: W_ASTFunc,
              error_mode: ErrorMode) -> W_ASTFunc:
     dop = DopplerFrame(vm, w_func, error_mode)
     return dop.redshift()
 
 
-def make_const(vm: 'SPyVM', loc: Loc, w_val: W_Object) -> ast.Expr:
+def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     """
     Create an AST node to represent a constant of the given w_val.
 
@@ -64,13 +64,13 @@ class DopplerFrame(ASTFrame):
     opimpl: dict[ast.Node, W_OpImpl]
     error_mode: ErrorMode
 
-    def __init__(self, vm: 'SPyVM', w_func: W_ASTFunc,
+    def __init__(self, vm: "SPyVM", w_func: W_ASTFunc,
                  error_mode: ErrorMode) -> None:
-        assert w_func.color == 'red'
+        assert w_func.color == "red"
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
         self.opimpl = {}
-        assert error_mode != 'warn'
+        assert error_mode != "warn"
         self.error_mode = error_mode
 
     # overridden
@@ -79,7 +79,7 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
-        assert not self.w_func.redshifted, 'cannot redshit twice'
+        assert not self.w_func.redshifted, "cannot redshit twice"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
@@ -115,9 +115,9 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
         try:
-            return magic_dispatch(self, 'shift_stmt', stmt)
+            return magic_dispatch(self, "shift_stmt", stmt)
         except SPyError as err:
-            if self.error_mode == 'lazy' and err.match(W_StaticError):
+            if self.error_mode == "lazy" and err.match(W_StaticError):
                 # turn the exception into a lazy "raise" statement
                 self.vm.emit_warning(err)
                 return self.make_raise_from_SPyError(stmt, err)
@@ -135,7 +135,7 @@ class DopplerFrame(ASTFrame):
         return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
-        newvalue = self.eval_and_shift(ret.value, varname='@return')
+        newvalue = self.eval_and_shift(ret.value, varname="@return")
         return [ret.replace(value=newvalue)]
 
     def shift_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
@@ -161,12 +161,12 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
         # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, 'not supposed to happen'
+        assert False, "not supposed to happen"
 
     def shift_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
         # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, 'not supposed to happen'
+        assert False, "not supposed to happen"
 
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
@@ -201,7 +201,7 @@ class DopplerFrame(ASTFrame):
         return newbody
 
     def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
-        newtest = self.eval_and_shift(if_node.test, varname='@if')
+        newtest = self.eval_and_shift(if_node.test, varname="@if")
         newthen = self.shift_body(if_node.then_body)
         newelse = self.shift_body(if_node.else_body)
         return [if_node.replace(
@@ -211,7 +211,7 @@ class DopplerFrame(ASTFrame):
         )]
 
     def shift_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
-        newtest = self.eval_and_shift(while_node.test, varname='@while')
+        newtest = self.eval_and_shift(while_node.test, varname="@while")
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(
             test = newtest,
@@ -237,8 +237,8 @@ class DopplerFrame(ASTFrame):
             wam_msg = self.eval_expr(assert_node.msg)
 
             if wam_msg.w_static_T is not B.w_str:
-                err = SPyError('W_TypeError', 'mismatched types')
-                err.add('error', f'expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`', loc=wam_msg.loc)
+                err = SPyError("W_TypeError", "mismatched types")
+                err.add("error", f"expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`", loc=wam_msg.loc)
                 raise err
 
             new_msg = self.shifted_expr[assert_node.msg]
@@ -294,7 +294,7 @@ class DopplerFrame(ASTFrame):
                   -> compute shited binop (stored in .shifted_expr)
         """
         wam = super().eval_expr(expr, varname=varname)
-        if wam.color == 'blue':
+        if wam.color == "blue":
             new_expr = make_const(self.vm, expr.loc, wam.w_val)
         else:
             new_expr = self.shift_expr(expr)
@@ -332,7 +332,7 @@ class DopplerFrame(ASTFrame):
         of the AST, and it's supposed to be called by eval_expr.
         """
         assert expr not in self.shifted_expr
-        new_expr = magic_dispatch(self, 'shift_expr', expr)
+        new_expr = magic_dispatch(self, "shift_expr", expr)
         self.shifted_expr[expr] = new_expr
         return new_expr
 

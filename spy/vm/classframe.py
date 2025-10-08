@@ -20,7 +20,7 @@ class ClassFrame(AbstractFrame):
     classdef: ast.ClassDef
 
     def __init__(self,
-                 vm: 'SPyVM',
+                 vm: "SPyVM",
                  classdef: ast.ClassDef,
                  ns: FQN,
                  closure: CLOSURE
@@ -30,10 +30,10 @@ class ClassFrame(AbstractFrame):
 
     def run(self) -> ClassBody:
         # execute field definitions
-        self.declare_local('@if', B.w_bool, Loc.fake())
+        self.declare_local("@if", B.w_bool, Loc.fake())
         body = ClassBody(fields_w={}, dict_w={})
         for vardef in self.classdef.fields:
-            assert vardef.kind == 'var'
+            assert vardef.kind == "var"
             self.exec_stmt(vardef)
             w_T = self.locals_types_w[vardef.name]
             body.fields_w[vardef.name] = W_Field(vardef.name, w_T)

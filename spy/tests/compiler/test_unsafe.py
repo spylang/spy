@@ -102,9 +102,9 @@ class TestUnsafe(CompilerTest):
         """
         errors = expect_errors(
             "type `unsafe::ptr[test::Point]` does not support assignment to attribute 'z'",
-            ('this is `unsafe::ptr[test::Point]`', 'p'),
+            ("this is `unsafe::ptr[test::Point]`", "p"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_nested_struct(self):
         mod = self.compile(
@@ -219,11 +219,11 @@ class TestUnsafe(CompilerTest):
             return ptr[i32].NULL
         """)
         w_p = mod.foo()
-        if self.backend in ('interp', 'doppler'):
+        if self.backend in ("interp", "doppler"):
             assert isinstance(w_p, W_Ptr)
             assert w_p.addr == 0
             assert w_p.length == 0
-            assert repr(w_p) == 'W_Ptr(i32, NULL)'
+            assert repr(w_p) == "W_Ptr(i32, NULL)"
         else:
             assert isinstance(w_p, WasmPtr)
             assert w_p.addr == 0
@@ -290,10 +290,10 @@ class TestUnsafe(CompilerTest):
         """)
         ptr = mod.alloc_list(1, 2, 3)
         mod.print_list(ptr)
-        if self.backend == 'C':
-            mod.ll.call('spy_flush')
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
         out, err = capfd.readouterr()
-        assert out.splitlines() == ['1', '2', '3']
+        assert out.splitlines() == ["1", "2", "3"]
 
     def test_array_of_struct_getref(self):
         mod = self.compile(

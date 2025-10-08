@@ -21,7 +21,7 @@ class LLWasmModule(LLWasmModuleBase):
         self.mod = wt.Module.from_file(ENGINE, filename)
 
     def __repr__(self) -> str:
-        return f'<LLWasmModule {self.filename}>'
+        return f"<LLWasmModule {self.filename}>"
 
     @classmethod
     async def async_new(cls, url: str) -> Self:
@@ -46,12 +46,12 @@ def get_linker(
     hostmods = hostmods or []
     def find_meth(imp: Any) -> Any:
         assert hostmods is not None
-        methname = f'{imp.module}_{imp.name}'
+        methname = f"{imp.module}_{imp.name}"
         for hostmod in hostmods:
             meth = getattr(hostmod, methname, None)
             if meth is not None:
                 return meth
-        raise NotImplementedError(f'Missing WASM import: {methname}')
+        raise NotImplementedError(f"Missing WASM import: {methname}")
 
     py2w = {
         int: wt.ValType.i32(),
@@ -59,7 +59,7 @@ def get_linker(
 
     def FuncType_from_pyfunc(pyfunc: Any) -> wt.FuncType:
         annotations = pyfunc.__annotations__.copy()
-        py_restype = annotations.pop('return')
+        py_restype = annotations.pop("return")
         if py_restype is None:
             restypes = []
         else:
@@ -79,7 +79,7 @@ def get_linker(
         linker.define_wasi()
 
     for imp in llmod.mod.imports:
-        if imp.module.startswith('wasi_'):
+        if imp.module.startswith("wasi_"):
             continue
         func = get_wasmfunc(imp)
         linker.define(store, imp.module, imp.name, func)  # type: ignore
@@ -101,7 +101,7 @@ class LLWasmInstance(LLWasmInstanceBase):
     f: py.path.local
     store: wt.Store
     instance: wt.Instance
-    mem: 'LLWasmMemory'
+    mem: "LLWasmMemory"
 
     def __init__(
             self,
@@ -122,7 +122,7 @@ class LLWasmInstance(LLWasmInstanceBase):
             self.instance = linker.instantiate(self.store, self.llmod.mod)
         else:
             self.instance = instance
-        memory = self.instance.exports(self.store).get('memory')
+        memory = self.instance.exports(self.store).get("memory")
         assert isinstance(memory, wt.Memory)
         self.mem = LLWasmMemory(self.store, memory)
         for hostmod in hostmods:
