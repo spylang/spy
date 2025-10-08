@@ -11,14 +11,14 @@ from spy.backend.c.context import Context, C_Type
 
 
 @dataclass
-class CTypesDefs:
+class CStructDefs:
     hfile: py.path.local
     types: list[tuple[FQN, W_Type]]
 
 
-class CTypesWriter:
+class CStructWriter:
     ctx: Context
-    c_types: CTypesDefs
+    c_types: CStructDefs
 
     # main and nested TextBuilders for _types.h
     tbh_types: TextBuilder
@@ -27,7 +27,7 @@ class CTypesWriter:
     tbh_types_def: TextBuilder   # type definitions
     tbh_ptrs_def: TextBuilder    # ptr and typelift accessors
 
-    def __init__(self, ctx: Context, c_types: CTypesDefs) -> None:
+    def __init__(self, ctx: Context, c_types: CStructDefs) -> None:
         self.ctx = ctx
         self.c_types = c_types
         self.tbh_types = TextBuilder(use_colors=False)

@@ -1,7 +1,7 @@
 from typing import Optional
 import py.path
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
-from spy.backend.c.ctypeswriter import CTypesDefs, CTypesWriter
+from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
@@ -27,7 +27,7 @@ class CBackend:
     cffi: CFFIWriter
     ninja: Optional[NinjaWriter]
     c_modules: dict[str, CModule]
-    c_types: list[CTypesDefs]
+    c_types: list[CStructDefs]
     cfiles: list[py.path.local]
     build_script: Optional[py.path.local]
 
@@ -129,7 +129,7 @@ class CBackend:
 
         # Create a single CTypesDefs with all types
         # Structure it to make it easy to split into multiple files later
-        self.c_types.append(CTypesDefs(
+        self.c_types.append(CStructDefs(
             hfile = bdir.join('src', 'spy_types.h'),
             types = all_types
         ))
@@ -144,7 +144,7 @@ class CBackend:
         for c_types in self.c_types:
             from spy.backend.c.context import Context
             ctx = Context(self.vm)
-            typesw = CTypesWriter(ctx, c_types)
+            typesw = CStructWriter(ctx, c_types)
             typesw.write_types_header()
             if self.dump_c:
                 print()
