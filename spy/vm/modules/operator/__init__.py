@@ -90,6 +90,7 @@ _from_token: dict[str, W_Func] = {
 
 _unary_from_token: dict[str, W_Func] = {
     '-': OP.w_NEG,
+    'not': OP.w_NOT
 }
 
 def OP_from_token(token: str) -> W_Func:
@@ -104,7 +105,7 @@ def OP_from_token(token: str) -> W_Func:
         raise WIP(f"Operator not implemented yet: {token}")
 
 def OP_unary_from_token(token: str) -> W_Func:
-    if token in _from_token:
+    if token in _unary_from_token:
         return _unary_from_token[token]
     else:
         raise WIP(f"Operator not implemented yet: {token}")

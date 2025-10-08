@@ -22,6 +22,20 @@ def w_NEG(vm: 'SPyVM', wam_v: W_MetaArg) -> W_OpImpl:
                             dispatch='single',
                             errmsg='cannot do -`{0}`')
 
+
+@OP.builtin_func(color="blue")
+def w_NOT(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    return typecheck_opspec(
+        vm,
+        W_OpSpec(OP.w_bool_not),
+        [wam_v],
+        dispatch="single",
+        errmsg="cannot do not `{0}`",
+    )
+
+
 MM.register('-', 'i8',  None, OP.w_i8_neg)
 MM.register('-', 'i32', None, OP.w_i32_neg)
 MM.register('-', 'f64', None, OP.w_f64_neg)
