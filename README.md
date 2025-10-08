@@ -46,7 +46,7 @@ Installation:
   1. Install the `spy` package in editable mode:
       ```
       $ cd /path/to/spy/
-      $ pip install -e .
+      $ pip install -e .[dev]
       ```
 
   2. Build the `libspy` runtime library:

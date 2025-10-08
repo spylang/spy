@@ -1,0 +1,9 @@
+repos:
+  # 🧹 Ruff for linting, import sorting, and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.0
+    hooks:
+      - id: ruff
+        args: [--fix] # auto-fix lint issues (quotes, imports, etc.)
+      - id: ruff-format
+        # no args → formats code like Black

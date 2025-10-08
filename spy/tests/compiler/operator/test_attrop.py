@@ -284,7 +284,6 @@ class TestAttrOp(CompilerTest):
 
         """)
         x = mod.get_NULL()
-        breakpoint()
 
     def test_getattr_setattr_custom(self):
         # ========== EXT module for this test ==========
