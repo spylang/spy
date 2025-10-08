@@ -32,7 +32,7 @@ class TestFloat(CompilerTest):
         assert mod.floordiv(10.0, 3.0) == 3.0
         assert mod.mod(10.5, 2.5) == 0.5
         assert mod.neg(-2.5) == 2.5
-    
+
     def test_zero_division_error(self):
         mod = self.compile(
         """
@@ -46,7 +46,7 @@ class TestFloat(CompilerTest):
             mod.floordiv(10.0, 0.0)
         with SPyError.raises("W_ZeroDivisionError", match="float modulo by zero"):
             mod.mod(10.5, 0.0)
-    
+
     def test_division_mixed_signs(self):
         mod = self.compile(
         """

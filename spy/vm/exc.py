@@ -166,7 +166,7 @@ class W_PanicError(W_Exception):
 @BUILTINS.builtin_type("ZeroDivisionError")
 class W_ZeroDivisionError(W_Exception):
     pass
-  
+
 @BUILTINS.builtin_type("AssertionError")
 class W_AssertionError(W_Exception):
     pass

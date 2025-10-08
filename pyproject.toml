@@ -69,6 +69,17 @@ markers = [
 ]
 
 # Formatter and Linter settings
+[tool.ruff]
+lint.select = [
+    "W",  # pycodestyle warnings
+    "I",  # isort
+    "Q000", # double quotes
+    "C",  # flake8-comprehensions
+]
+line-length = 88
+indent-width = 4
+target-version = "py311"
+
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = "double"
 multiline-quotes = "double"

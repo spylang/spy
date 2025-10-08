@@ -66,7 +66,7 @@ class TestAssert(CompilerTest):
         src = """
         def get_error_code() -> i32:
             return 404
-        
+
         def foo() -> None:
             assert False, get_error_code()
         """

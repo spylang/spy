@@ -98,7 +98,7 @@ class TestDict(CompilerTest):
     def test_delete(self):
         src = """
         from _dict import dict
-        
+
         def test() -> int:
             d = dict[i32, i32]()
             d[1] = 1
@@ -112,7 +112,7 @@ class TestDict(CompilerTest):
     def test_delete_twice_raises(self):
         src = """
         from _dict import dict
-        
+
         def test() -> int:
             d = dict[i32, i32]()
             d[1] = 1
@@ -183,7 +183,7 @@ class TestDict(CompilerTest):
     def test_contains(self):
         src = """
         from _dict import dict
-        
+
         def test() -> bool:
             d = dict[i32, i32]()
             d[1] = 1
@@ -195,7 +195,7 @@ class TestDict(CompilerTest):
     def test_equal(self):
         src = """
         from _dict import dict
-        
+
         def test_eq() -> bool:
             d1 = dict[i32, i32]()
             d1[1] = -1
@@ -206,7 +206,7 @@ class TestDict(CompilerTest):
             d2[2] = -1
             d2[3] = -1
             return d1 == d2
-        
+
         def test_neq_value() -> bool:
             d1 = dict[i32, i32]()
             d1[1] = -1
@@ -217,7 +217,7 @@ class TestDict(CompilerTest):
             d2[2] = -1
             d2[3] = 0
             return d1 == d2
-        
+
         def test_neq_missing_key() -> bool:
             d1 = dict[i32, i32]()
             d1[1] = -1
@@ -227,7 +227,7 @@ class TestDict(CompilerTest):
             d2[1] = -1
             d2[2] = -1
             return d1 == d2
-        
+
         def test_neq_key() -> bool:
             d1 = dict[i32, i32]()
             d1[1] = -1
