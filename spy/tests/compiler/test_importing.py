@@ -126,7 +126,6 @@ class TestImporting(CompilerTest):
         mods = out.strip().split('\n')
         assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']
 
-    @pytest.mark.skip(reason="goal of this branch")
     def test_circular_type_refs(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         self.write_file("vec.spy", """

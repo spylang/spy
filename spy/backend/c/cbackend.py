@@ -108,6 +108,30 @@ class CBackend:
 
         # for now we create a global with all types CStructDefs. Eventually we
         # want to split them into multiple independent ones
+        #
+        # NOTE: currently structdefs work because of a very specific property.
+        # The point is that when we have nested structs, C requires that
+        # structs are defined be in topological order: i.e. the "inner" func
+        # first, the "outer" func next.
+        #
+        # As long as we have a single "spy_structdefs.h" file, we are
+        # guaranteed to have the structs in the right order: this happens
+        # because similarly to C you must define structs before being able to
+        # use them as fields for another struct, which means that the various
+        # W_Struct objects are put in vm.globals_w in the right order.
+        #
+        # See test_importing::test_circular_type_ref for an example of that.
+        #
+        # Eventually, we want to split structdefs into multiple files (to
+        # avoid recompiling everything at every change), but this will be
+        # non-obvious. It will require to:
+        #   1. maintain a graph of struct dependencies
+        #   2. identify the set of Strongly Connected Components (SCC)
+        #   3. ensure that structs in each SCC is in topological order
+        #   4. emit one .h for each SCC (or maybe group multiple SCC by
+        #      modname, but keep in mind that in case of circular deps it will
+        #      be impossible to guarantee the correspondance fqn.modname <=>
+        #      modname.h)
         self.c_structdefs['globals'] = CStructDefs(
             hfile = bdir.join('src', 'spy_structdefs.h'),
             content = []
