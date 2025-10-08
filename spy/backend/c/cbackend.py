@@ -88,18 +88,21 @@ class CBackend:
         for modname, w_mod in self.vm.modules_w.items():
             spyfile = None
             hfile = None
+            hfile_types = None
             cfile = None
             if w_mod.filepath is not None:
                 # a non-builtin module
                 spyfile = py.path.local(w_mod.filepath)
                 basename = spyfile.purebasename
                 hfile = bdir.join('src', f'{basename}.h')
+                hfile_types = bdir.join('src', f'{basename}_types.h')
                 cfile = bdir.join('src', f'{basename}.c')
             c_mod = CModule(
                 modname = modname,
                 is_builtin = w_mod.is_builtin(),
                 spyfile = spyfile,
                 hfile = hfile,
+                hfile_types = hfile_types,
                 cfile = cfile,
                 types = [],
                 content = [],
@@ -133,7 +136,8 @@ class CBackend:
             modname = 'ptrs_builtins',
             is_builtin = False,
             spyfile = None,
-            hfile = self.build_dir.join('src', 'ptrs_builtins.h'),
+            hfile = None,
+            hfile_types = self.build_dir.join('src', 'ptrs_builtins.h'),
             cfile = None,
             types = [
                 (fqn, w_obj)
