@@ -7,7 +7,7 @@ from spy.build.ninja import NinjaWriter
 from spy.build.cffi import cffi_build
 from spy.vm.vm import SPyVM
 from spy.vm.cell import W_Cell
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import W_I32
 from spy.vm.modules.unsafe.ptr import W_PtrType
@@ -101,17 +101,21 @@ class CBackend:
                 spyfile = spyfile,
                 hfile = hfile,
                 cfile = cfile,
+                types = [],
                 content = [],
             )
             self.c_modules[modname] = c_mod
 
-        # fill the content of C modules
+        # fill the types and content of C modules
         for fqn, w_obj in self.vm.globals_w.items():
             if fqn.is_module():
                 # don't put the module in its own content
                 continue
             modname = fqn.modname
-            self.c_modules[modname].content.append((fqn, w_obj))
+            if isinstance(w_obj, W_Type):
+                self.c_modules[modname].types.append((fqn, w_obj))
+            else:
+                self.c_modules[modname].content.append((fqn, w_obj))
         self.c_modules['ptrs_builtins'] = self.make_ptrs_builtins()
 
     def make_ptrs_builtins(self) -> CModule:
@@ -131,11 +135,12 @@ class CBackend:
             spyfile = None,
             hfile = self.build_dir.join('src', 'ptrs_builtins.h'),
             cfile = None,
-            content = [
+            types = [
                 (fqn, w_obj)
                 for fqn, w_obj in self.vm.globals_w.items()
                 if is_ptr_to_builtin(w_obj)
-            ]
+            ],
+            content = []
         )
 
     def cwrite(self) -> None:

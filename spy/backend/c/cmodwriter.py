@@ -24,6 +24,7 @@ class CModule:
     spyfile: Optional[py.path.local]
     hfile: Optional[py.path.local]
     cfile: Optional[py.path.local]
+    types: list[tuple[FQN, W_Type]]
     content: list[tuple[FQN, W_Object]]
 
     def __repr__(self) -> str:
@@ -192,6 +193,9 @@ class CModuleWriter:
         self.jsffi_error_emitted = True
 
     def emit_content(self) -> None:
+        for fqn, w_type in self.c_mod.types:
+            assert w_type is not None, 'uninitialized global?'
+            self.emit_obj(fqn, w_type)
         for fqn, w_obj in self.c_mod.content:
             assert w_obj is not None, 'uninitialized global?'
             self.emit_obj(fqn, w_obj)
