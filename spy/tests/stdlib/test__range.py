@@ -1,5 +1,7 @@
 import pytest
+
 from spy.tests.support import CompilerTest
+
 
 class TestRange(CompilerTest):
 

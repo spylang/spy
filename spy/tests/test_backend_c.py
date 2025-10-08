@@ -5,7 +5,8 @@ This is just a small part of the tests: the majority of the functionality is
 tested by tests/compiler/*.py.
 """
 
-from spy.backend.c.c_ast import make_table, Literal, BinOp, UnaryOp
+from spy.backend.c.c_ast import BinOp, Literal, UnaryOp, make_table
+
 
 class TestExpr:
 

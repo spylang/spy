@@ -1,6 +1,9 @@
 from typing import Any, no_type_check
+
 import pytest
-from spy.util import ANYTHING, magic_dispatch, extend, shortrepr, func_equals
+
+from spy.util import ANYTHING, extend, func_equals, magic_dispatch, shortrepr
+
 
 def test_ANYTHING():
     assert ANYTHING == 1

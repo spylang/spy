@@ -1,9 +1,10 @@
 import py.path
-from spy.fqn import FQN
-from spy.vm.function import W_ASTFunc
+
 from spy.backend.c.context import Context
 from spy.build.config import BuildConfig, CompilerConfig
+from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.function import W_ASTFunc
 
 
 class CFFIWriter:

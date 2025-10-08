@@ -1,18 +1,20 @@
-from typing import Any, Literal, Optional, no_type_check
 import textwrap
 from contextlib import contextmanager
-import pytest
+from typing import Any, Literal, Optional, no_type_check
+
 import py.path
+import pytest
+
 from spy.backend.c.cbackend import CBackend
+from spy.backend.interp import InterpModuleWrapper
 from spy.build.config import BuildConfig, BuildTarget
 from spy.build.ninja import NinjaWriter
-from spy.backend.interp import InterpModuleWrapper
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
-from spy.vm.vm import SPyVM
-from spy.tests.wasm_wrapper import WasmModuleWrapper
-from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.cffi_wrapper import load_cffi_module
+from spy.tests.exe_wrapper import ExeWrapper
+from spy.tests.wasm_wrapper import WasmModuleWrapper
+from spy.vm.vm import SPyVM
 
 Backend = Literal["interp", "doppler", "C"]
 ALL_BACKENDS = Backend.__args__  # type: ignore

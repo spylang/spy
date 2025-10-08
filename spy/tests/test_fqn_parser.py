@@ -1,5 +1,6 @@
 from spy.fqn_parser import FQN, tokenize
 
+
 def test_tokenizer():
     assert tokenize("foo") == ["foo"]
     assert tokenize("mod::foo") == ["mod", "::", "foo"]

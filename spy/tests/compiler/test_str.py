@@ -1,8 +1,10 @@
 #-*- encoding: utf-8 -*-
 
 import re
+
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, skip_backends
+
 
 class TestStr(CompilerTest):
 

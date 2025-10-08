@@ -1,6 +1,7 @@
-import pytest
 import os
 import pathlib
+
+import pytest
 
 ROOT = pathlib.Path(__file__).parent.parent.parent
 

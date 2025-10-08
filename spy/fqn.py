@@ -63,10 +63,10 @@ fn_f64 = make_fn(f64)  # FQN is 'test::make_fn::fn#2'
 See also vm.get_unique_FQN.
 """
 
-from typing import Optional, Any, Union, Sequence
-from dataclasses import dataclass, field
-import re
 import functools
+import re
+from dataclasses import dataclass, field
+from typing import Any, Optional, Sequence, Union
 
 PARTS = Sequence[Union[str, "NSPart"]]
 QUALIFIERS = Optional[Sequence[Union[str, "FQN"]]]

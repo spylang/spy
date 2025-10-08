@@ -2,6 +2,7 @@
 
 from spy.tests.support import CompilerTest
 
+
 class TestPosix(CompilerTest):
 
     def test_get_terminal_size(self):

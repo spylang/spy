@@ -1,6 +1,7 @@
-from typing import Literal
-from dataclasses import dataclass
 import linecache
+from dataclasses import dataclass
+from typing import Literal
+
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
 

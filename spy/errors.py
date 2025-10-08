@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING, Any, Optional
 from contextlib import contextmanager
-from spy.location import Loc
+from typing import TYPE_CHECKING, Any, Optional
+
 from spy.errfmt import Level
+from spy.location import Loc
 
 if TYPE_CHECKING:
     from spy.vm.exc import W_Exception

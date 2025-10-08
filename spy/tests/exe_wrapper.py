@@ -1,7 +1,9 @@
 import subprocess
+
 import py.path
 
 from spy.vm.vm import SPyVM
+
 
 class ExeWrapper:
 

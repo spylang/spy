@@ -15,12 +15,14 @@ E.g.:
 
 will call w_dynamic_add as long as one of the two operands is 'dynamic'.
 """
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
 from spy.vm.b import B
-from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
-from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

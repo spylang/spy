@@ -35,7 +35,9 @@ PREC  CATEGORY         OPERATOR            ASSOCIATIVITY
 import re
 from dataclasses import dataclass
 from typing import ClassVar
+
 from .context import C_Type
+
 
 def make_table(src: str) -> dict[str, int]:
     """

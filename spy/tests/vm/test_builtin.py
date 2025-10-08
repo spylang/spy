@@ -1,18 +1,21 @@
-import pytest
 from typing import Annotated
+
+import pytest
+
 from spy.errors import SPyError
+from spy.fqn import FQN
+from spy.vm.b import B
+from spy.vm.builtin import (
+    builtin_class_attr,
+    builtin_method,
+    builtin_type,
+    functype_from_sig,
+)
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.vm import SPyVM
-from spy.vm.w import W_FuncType, W_BuiltinFunc, W_Str
-from spy.vm.b import B
-from spy.fqn import FQN
-from spy.vm.builtin import (
-    functype_from_sig,
-    builtin_type,
-    builtin_method,
-    builtin_class_attr
-)
+from spy.vm.w import W_BuiltinFunc, W_FuncType, W_Str
+
 
 class TestBuiltin:
 

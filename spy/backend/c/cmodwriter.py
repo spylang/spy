@@ -1,21 +1,24 @@
-from typing import Optional, Iterable
-from dataclasses import dataclass
 import itertools
+from dataclasses import dataclass
+from typing import Iterable, Optional
+
 import py.path
-from spy.fqn import FQN
-from spy.vm.object import W_Type, W_Object
-from spy.vm.module import W_Module
-from spy.vm.cell import W_Cell
-from spy.vm.primitive import W_I32
-from spy.vm.function import W_ASTFunc, W_BuiltinFunc
-from spy.vm.vm import SPyVM
-from spy.vm.modules.types import W_LiftedType
-from spy.vm.modules.unsafe.ptr import W_PtrType, W_Ptr
-from spy.vm.struct import W_StructType
-from spy.textbuilder import TextBuilder
-from spy.backend.c.context import Context, C_Type
-from spy.backend.c.cwriter import CFuncWriter
+
 from spy.backend.c.cffiwriter import CFFIWriter
+from spy.backend.c.context import C_Type, Context
+from spy.backend.c.cwriter import CFuncWriter
+from spy.fqn import FQN
+from spy.textbuilder import TextBuilder
+from spy.vm.cell import W_Cell
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc
+from spy.vm.module import W_Module
+from spy.vm.modules.types import W_LiftedType
+from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
+from spy.vm.object import W_Object, W_Type
+from spy.vm.primitive import W_I32
+from spy.vm.struct import W_StructType
+from spy.vm.vm import SPyVM
+
 
 
 @dataclass

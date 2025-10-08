@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from spy.errors import SPyError
 from spy.vm.registry import ModuleRegistry
 

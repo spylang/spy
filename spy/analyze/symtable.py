@@ -1,8 +1,10 @@
-from typing import Optional, Literal, TYPE_CHECKING, Any
-from dataclasses import dataclass, KW_ONLY, replace
+from dataclasses import KW_ONLY, dataclass, replace
+from typing import TYPE_CHECKING, Any, Literal, Optional
+
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

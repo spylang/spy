@@ -1,7 +1,7 @@
-import py.path
-
-from typing import Literal, Any, Self
 import struct
+from typing import Any, Literal, Self
+
+import py.path
 
 LLWasmType = Literal[None, "void *", "int32_t", "int16_t"]
 

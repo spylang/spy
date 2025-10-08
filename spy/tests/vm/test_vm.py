@@ -1,14 +1,16 @@
 import fixedint
 import pytest
-from spy.vm.primitive import W_I32, W_Bool, W_NoneType
-from spy.vm.vm import SPyVM
-from spy.vm.b import B
+
 from spy.fqn import FQN
-from spy.vm.object import W_Object, W_Type
-from spy.vm.str import W_Str
-from spy.vm.exc import W_Exception
-from spy.vm.builtin import builtin_type
 from spy.tests.support import expect_errors
+from spy.vm.b import B
+from spy.vm.builtin import builtin_type
+from spy.vm.exc import W_Exception
+from spy.vm.object import W_Object, W_Type
+from spy.vm.primitive import W_I32, W_Bool, W_NoneType
+from spy.vm.str import W_Str
+from spy.vm.vm import SPyVM
+
 
 class TestVM:
 

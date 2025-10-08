@@ -1,6 +1,8 @@
 import pytest
+
 from spy.errors import SPyError
-from spy.tests.support import (CompilerTest)
+from spy.tests.support import CompilerTest
+
 
 @pytest.fixture(params=["i32", "i8", "u8"])
 def int_type(request):

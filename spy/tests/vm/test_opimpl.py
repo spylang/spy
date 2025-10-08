@@ -1,12 +1,14 @@
 import textwrap
+
 from spy.location import Loc
-from spy.vm.vm import SPyVM
-from spy.vm.object import W_Object
+from spy.vm.b import OP
 from spy.vm.function import W_FuncType
-from spy.vm.opimpl import W_OpImpl, ArgSpec
+from spy.vm.object import W_Object
+from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.primitive import W_I32
 from spy.vm.str import W_Str
-from spy.vm.b import OP
+from spy.vm.vm import SPyVM
+
 
 def make_w_repeat(vm: "SPyVM"):
     @vm.register_builtin_func("_testing_helpers")

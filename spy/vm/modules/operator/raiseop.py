@@ -1,14 +1,16 @@
 from typing import TYPE_CHECKING
-from spy.location import Loc
+
 from spy.errors import SPyError
-from spy.vm.object import W_Type
-from spy.vm.str import W_Str
-from spy.vm.opspec import W_OpSpec, W_MetaArg
-from spy.vm.opimpl import W_OpImpl
-from spy.vm.primitive import W_I32
+from spy.location import Loc
 from spy.vm.exc import W_Exception
+from spy.vm.object import W_Type
+from spy.vm.opimpl import W_OpImpl
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_I32
+from spy.vm.str import W_Str
 
 from . import OP
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

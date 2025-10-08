@@ -1,5 +1,6 @@
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp, expect_errors
+from spy.tests.support import CompilerTest, expect_errors, only_interp
+
 
 # Eventually we want to remove the @only_interp, but for now the C backend
 # doesn't support lists

@@ -1,20 +1,23 @@
 from typing import Annotated
+
 import pytest
-from spy.vm.primitive import W_I32
+
+from spy.tests.support import CompilerTest, expect_errors, no_C
 from spy.vm.b import B
-from spy.vm.member import Member
 from spy.vm.builtin import (
-    builtin_method,
-    builtin_staticmethod,
-    builtin_classmethod,
     builtin_class_attr,
-    builtin_property
+    builtin_classmethod,
+    builtin_method,
+    builtin_property,
+    builtin_staticmethod,
 )
-from spy.vm.w import W_Object, W_Str, W_Type, W_F64
-from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.member import Member
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_I32
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.vm.w import W_F64, W_Object, W_Str, W_Type
+
 
 @no_C
 class TestAttrOp(CompilerTest):

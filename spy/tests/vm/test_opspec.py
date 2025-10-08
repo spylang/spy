@@ -1,8 +1,9 @@
 from spy.location import Loc
-from spy.vm.opspec import W_MetaArg
-from spy.vm.vm import SPyVM
 from spy.vm.b import B
 from spy.vm.object import W_Object
+from spy.vm.opspec import W_MetaArg
+from spy.vm.vm import SPyVM
+
 
 def test_oparg_eq():
     def eq(w_a: W_Object, w_b: W_Object) -> bool:

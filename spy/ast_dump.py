@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, Any, Optional
 import ast as py_ast
+from typing import TYPE_CHECKING, Any, Optional
 
-from spy.analyze.symtable import Color
 import spy.ast
-from spy.analyze.symtable import Symbol
+from spy.analyze.symtable import Color, Symbol
 from spy.textbuilder import TextBuilder
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

@@ -1,9 +1,12 @@
-import pytest
 import textwrap
-from spy.vm.function import W_ASTFunc
+
+import pytest
+
 from spy.backend.spy import SPyBackend
-from spy.util import print_diff
 from spy.tests.support import CompilerTest, only_interp
+from spy.util import print_diff
+from spy.vm.function import W_ASTFunc
+
 
 @only_interp
 class TestSPyBackend(CompilerTest):

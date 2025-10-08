@@ -1,18 +1,20 @@
 from dataclasses import dataclass
+
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.vm.vm import SPyVM
-from spy.vm.b import B, TYPES
-from spy.vm.object import W_Type
-from spy.vm.function import W_Func, W_ASTFunc
-from spy.vm.modules.types import W_LiftedType
-from spy.vm.modules.rawbuffer import RB
+from spy.textbuilder import TextBuilder
+from spy.vm.b import TYPES, B
+from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.posix import POSIX
+from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.time import TIME
+from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType
+from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
-from spy.textbuilder import TextBuilder
+from spy.vm.vm import SPyVM
+
 
 
 @dataclass

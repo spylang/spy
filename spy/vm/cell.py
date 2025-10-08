@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from spy.fqn import FQN
 from spy.vm.b import TYPES
 from spy.vm.object import W_Object

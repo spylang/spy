@@ -1,5 +1,6 @@
-from typing import TYPE_CHECKING
 import math
+from typing import TYPE_CHECKING
+
 from spy.fqn import FQN
 from spy.vm.primitive import W_F64
 from spy.vm.registry import ModuleRegistry

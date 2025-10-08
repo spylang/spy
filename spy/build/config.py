@@ -1,5 +1,6 @@
-from typing import Literal, Optional
 from dataclasses import dataclass
+from typing import Literal, Optional
+
 import spy.libspy
 
 BuildTarget = Literal["native", "wasi", "emscripten"]

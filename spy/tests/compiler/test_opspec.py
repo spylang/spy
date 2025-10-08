@@ -1,9 +1,10 @@
 #-*- encoding: utf-8 -*-
 
+from spy.tests.support import CompilerTest, expect_errors, only_interp
 from spy.vm.b import B
-from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.opimpl import W_OpImpl
-from spy.tests.support import CompilerTest, only_interp, expect_errors
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+
 
 @only_interp
 class TestOpSpec(CompilerTest):

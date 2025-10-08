@@ -1,9 +1,16 @@
 import pytest
-from spy.fqn import FQN
+
 from spy.errors import SPyError
-from spy.vm.b import B
 from spy.fqn import FQN
-from spy.tests.support import (CompilerTest, skip_backends, expect_errors, only_interp, no_C)
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_interp,
+    skip_backends,
+)
+from spy.vm.b import B
+
 
 class TestMetaFunc(CompilerTest):
 

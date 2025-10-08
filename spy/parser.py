@@ -1,13 +1,15 @@
-from typing import Optional, NoReturn
-from types import NoneType
 import ast as py_ast
+from types import NoneType
+from typing import NoReturn, Optional
+
 import spy.ast
-from spy.magic_py_parse import magic_py_parse
-from spy.fqn import FQN
 from spy.analyze.symtable import ImportRef
-from spy.location import Loc
 from spy.errors import SPyError
+from spy.fqn import FQN
+from spy.location import Loc
+from spy.magic_py_parse import magic_py_parse
 from spy.util import magic_dispatch
+
 
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected

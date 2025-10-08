@@ -1,6 +1,7 @@
-from typing import Optional, Iterator, Union
 import textwrap
 from contextlib import contextmanager
+from typing import Iterator, Optional, Union
+
 
 class TextBuilder:
     level: int  # indentation level

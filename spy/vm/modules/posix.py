@@ -3,11 +3,13 @@ SPy `posix` module.
 """
 
 from typing import TYPE_CHECKING, Annotated
-from spy.vm.primitive import W_I32
-from spy.vm.object import W_Type
-from spy.vm.w import W_Object
-from spy.vm.registry import ModuleRegistry
+
 from spy.vm.member import Member
+from spy.vm.object import W_Type
+from spy.vm.primitive import W_I32
+from spy.vm.registry import ModuleRegistry
+from spy.vm.w import W_Object
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

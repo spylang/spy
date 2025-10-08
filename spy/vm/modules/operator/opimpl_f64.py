@@ -1,8 +1,11 @@
 from typing import TYPE_CHECKING, Any
+
+from spy.errors import SPyError
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_F64, W_Bool
-from spy.errors import SPyError
+
 from . import OP
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

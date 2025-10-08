@@ -1,14 +1,15 @@
-from typing import Any
 import textwrap
+from typing import Any
+
 import pytest
+
 from spy import ast
+from spy.analyze.scope import ScopeAnalyzer
+from spy.analyze.symtable import Color, ImportRef, Symbol, SymTable, VarKind, VarStorage
 from spy.fqn import FQN
 from spy.parser import Parser
-from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import (Symbol, Color, VarKind, VarStorage, SymTable,
-                                  ImportRef)
+from spy.tests.support import MatchAnnotation, expect_errors
 from spy.vm.vm import SPyVM
-from spy.tests.support import expect_errors, MatchAnnotation
 
 MISSING = object()
 

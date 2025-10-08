@@ -7,18 +7,30 @@ vm/modules/builtins.py.
 """
 
 import inspect
-from typing import (TYPE_CHECKING, Any, Callable, Type, Optional, get_origin,
-                    Annotated, ClassVar)
-from spy.fqn import FQN, QUALIFIERS
-from spy.errors import SPyError
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Callable,
+    ClassVar,
+    Optional,
+    Type,
+    get_origin,
+)
+
 from spy.ast import Color, FuncKind
-from spy.vm.object import W_Object, W_Type
-from spy.vm.object import (builtin_method,
-                           builtin_staticmethod,
-                           builtin_classmethod,
-                           builtin_property,
-                           builtin_class_attr) # noqa: F401
-from spy.vm.function import FuncParam, FuncParamKind, W_FuncType, W_BuiltinFunc
+from spy.errors import SPyError
+from spy.fqn import FQN, QUALIFIERS
+from spy.vm.function import FuncParam, FuncParamKind, W_BuiltinFunc, W_FuncType
+from spy.vm.object import (
+    W_Object,
+    W_Type,
+    builtin_class_attr,  # noqa: F401
+    builtin_classmethod,
+    builtin_method,
+    builtin_property,
+    builtin_staticmethod,
+)
 
 TYPES_DICT = dict[str, W_Type]
 
@@ -41,7 +53,7 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
       Annotated[W_Object, w_mytype] -> w_mytype
       None -> TYPES.w_NoneType
     """
-    from spy.vm.b import B, TYPES
+    from spy.vm.b import TYPES, B
     if allow_None and ann is None:
         return TYPES.w_NoneType
     elif is_W_class(ann):

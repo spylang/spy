@@ -2,8 +2,10 @@
 SPy `time` module.
 """
 from typing import TYPE_CHECKING
+
 from spy.vm.primitive import W_F64
 from spy.vm.registry import ModuleRegistry
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

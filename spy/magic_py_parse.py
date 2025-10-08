@@ -28,14 +28,15 @@ on disk. For this, we use the `untokenize` module (available on PyPI) which
 does exactly that.
 """
 
-from dataclasses import dataclass
 import ast as py_ast
-from tokenize import tokenize, NAME, TokenInfo, TokenError
+from dataclasses import dataclass
 from io import BytesIO
+from tokenize import NAME, TokenError, TokenInfo, tokenize
 
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
+
 
 @dataclass(frozen=True)
 class LocInfo:

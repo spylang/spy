@@ -1,18 +1,22 @@
-from typing import TYPE_CHECKING, Optional, Annotated, Self, Any
+from typing import TYPE_CHECKING, Annotated, Any, Optional, Self
+
 import fixedint
-from spy.location import Loc
+
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
-from spy.vm.member import Member
+from spy.location import Loc
 from spy.vm.b import B
-from spy.vm.builtin import builtin_method, builtin_property, IRTag
-from spy.vm.struct import W_StructType
-from spy.vm.w import W_Object, W_Type, W_Str, W_Func
+from spy.vm.builtin import IRTag, builtin_method, builtin_property
+from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
-from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
+from spy.vm.struct import W_StructType
+from spy.vm.w import W_Func, W_Object, W_Str, W_Type
+
 from . import UNSAFE
 from .misc import sizeof
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

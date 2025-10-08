@@ -1,20 +1,23 @@
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
+
 import py.path
 import wasmtime
+
 from spy.fqn import FQN
-from spy.llwasm import LLWasmType
 from spy.libspy import LLSPyInstance
+from spy.llwasm import LLWasmType
+from spy.vm.b import TYPES, B
 from spy.vm.cell import W_Cell
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.vm.modules.rawbuffer import RB
+from spy.vm.modules.types import UnwrappedLiftedObject, W_LiftedType
+from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
-from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
-from spy.vm.struct import W_StructType, UnwrappedStruct
+from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
-from spy.vm.b import B, TYPES
-from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.unsafe.ptr import W_PtrType
-from spy.vm.modules.types import W_LiftedType, UnwrappedLiftedObject
+
 
 @dataclass
 class WasmPtr:

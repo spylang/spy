@@ -1,9 +1,9 @@
 from typing import Optional
+
 from spy import ast
-from spy.location import Loc
-from spy.analyze.symtable import Color, VarKind, VarStorage
+from spy.analyze.symtable import Color, ImportRef, Symbol, SymTable, VarKind, VarStorage
 from spy.errors import SPyError
-from spy.analyze.symtable import SymTable, Symbol, ImportRef
+from spy.location import Loc
 from spy.vm.vm import SPyVM
 
 

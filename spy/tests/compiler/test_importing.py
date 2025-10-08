@@ -1,6 +1,7 @@
 import pytest
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
+
 class TestImporting(CompilerTest):
 
     def test_import(self):

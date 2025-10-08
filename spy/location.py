@@ -1,9 +1,10 @@
-import sys
+import dataclasses
 import inspect
 import linecache
-import dataclasses
+import sys
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Any, Callable
+
 
 @dataclass(frozen=True)
 class Loc:
@@ -126,7 +127,7 @@ class Loc:
         """
         Visualize the piece of code which correspond to this Loc
         """
-        from spy.errfmt import ErrorFormatter, Annotation
+        from spy.errfmt import Annotation, ErrorFormatter
         fmt = ErrorFormatter(use_colors=True) # type: ignore
         ann = Annotation("note", "", self)
         fmt.emit_annotation(ann)

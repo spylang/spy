@@ -1,6 +1,8 @@
 import pytest
+
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, no_C
+
 
 class TestException(CompilerTest):
 

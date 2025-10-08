@@ -1,8 +1,11 @@
 #-*- encoding: utf-8 -*-
 
 import re
+
 import pytest
+
 from spy.tests.support import CompilerTest, only_C
+
 
 @pytest.mark.skip(reason="this is broken, see TextBuilder.lineno docstring")
 @only_C

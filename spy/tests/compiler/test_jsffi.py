@@ -2,6 +2,7 @@
 
 from spy.tests.support import CompilerTest, only_emscripten
 
+
 @only_emscripten
 class TestJsFFI(CompilerTest):
 

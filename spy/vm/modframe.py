@@ -1,14 +1,14 @@
 from spy import ast
-from spy.fqn import FQN
 from spy.analyze.scope import ScopeAnalyzer
 from spy.analyze.symtable import SymTable
 from spy.errors import SPyError
-from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
-from spy.vm.cell import W_Cell
-from spy.vm.object import W_Object
-from spy.vm.function import W_ASTFunc
+from spy.fqn import FQN
 from spy.vm.astframe import AbstractFrame
+from spy.vm.cell import W_Cell
+from spy.vm.function import W_ASTFunc
+from spy.vm.module import W_Module
+from spy.vm.object import W_Object
+from spy.vm.vm import SPyVM
 
 
 class ModFrame(AbstractFrame):

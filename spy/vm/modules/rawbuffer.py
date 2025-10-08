@@ -2,12 +2,14 @@
 SPy `rawbuffer` module.
 """
 
-from typing import TYPE_CHECKING
 import struct
-from spy.vm.primitive import W_F64, W_I32
+from typing import TYPE_CHECKING
+
 from spy.vm.b import B
-from spy.vm.w import W_Object
+from spy.vm.primitive import W_F64, W_I32
 from spy.vm.registry import ModuleRegistry
+from spy.vm.w import W_Object
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

@@ -1,11 +1,12 @@
-from typing import Callable, TYPE_CHECKING, Any, Type, Optional
 from types import FunctionType
+from typing import TYPE_CHECKING, Any, Callable, Optional, Type
+
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Object, W_Type
     from spy.vm.function import W_BuiltinFunc
+    from spy.vm.object import W_Object, W_Type
 
 class ModuleRegistry:
     """

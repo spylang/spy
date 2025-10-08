@@ -40,17 +40,19 @@ re-exported here.
 """
 
 from typing import TYPE_CHECKING, Sequence
+
 from spy.errors import WIP
-from spy.vm.object import W_Object
+from spy.vm.b import OP, OPERATOR
 from spy.vm.function import W_Func
-from spy.vm.opspec import W_OpSpec, W_MetaArg
-from spy.vm.b import OPERATOR, OP
+from spy.vm.object import W_Object
+from spy.vm.opspec import W_MetaArg, W_OpSpec
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
 # the folloing imports register all the various objects on OP
+# isort: off
 from . import opimpl_int     # noqa: F401 -- side effects
 from . import opimpl_f64     # noqa: F401 -- side effects
 from . import opimpl_str     # noqa: F401 -- side effects
@@ -64,7 +66,7 @@ from . import itemop         # noqa: F401 -- side effects
 from . import callop         # noqa: F401 -- side effects
 from . import convop         # noqa: F401 -- side effects
 from . import raiseop        # noqa: F401 -- side effects
-
+# isort: on
 _from_token: dict[str, W_Func] = {
     "+": OP.w_ADD,
     "-": OP.w_SUB,

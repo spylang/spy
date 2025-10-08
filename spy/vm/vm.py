@@ -1,48 +1,56 @@
-from typing import Any, Optional, Iterable, Sequence, Callable, overload, Union
 import itertools
 from types import FunctionType
+from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
+
 import fixedint
 import py.path
-from spy import ROOT
-from spy import ast
-from spy.fqn import FQN, QUALIFIERS
-from spy.ast import Color, FuncKind
-from spy.location import Loc
-from spy import libspy
-from spy.libspy import LLSPyInstance
-from spy.doppler import ErrorMode, redshift
-from spy.errors import SPyError, WIP
-from spy.util import func_equals
+
+from spy import ROOT, ast, libspy
 from spy.analyze.symtable import ImportRef
-from spy.vm.builtin import make_builtin_func, IRTag
-from spy.vm.object import W_Object, W_Type
-from spy.vm.primitive import (W_F64, W_I32, W_I8, W_U8, W_Bool, W_NoneType,
-                              W_Dynamic, w_DynamicType, W_NotImplementedType)
-from spy.vm.str import W_Str
-from spy.vm.list import W_ListType
+from spy.ast import Color, FuncKind
+from spy.doppler import ErrorMode, redshift
+from spy.errors import WIP, SPyError
+from spy.fqn import FQN, QUALIFIERS
+from spy.libspy import LLSPyInstance
+from spy.location import Loc
+from spy.util import func_equals
 from spy.vm.b import B
+from spy.vm.bluecache import BlueCache
+from spy.vm.builtin import IRTag, make_builtin_func
 from spy.vm.exc import W_Exception, W_TypeError
-from spy.vm.function import W_FuncType, W_Func, W_ASTFunc, W_BuiltinFunc
-from spy.vm.opimpl import W_OpImpl
-from spy.vm.property import W_Property, W_StaticMethod, W_ClassMethod
+from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func, W_FuncType
+from spy.vm.list import W_ListType
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
-from spy.vm.struct import UnwrappedStruct
-from spy.vm.opspec import W_OpSpec, W_MetaArg
-from spy.vm.registry import ModuleRegistry
-from spy.vm.bluecache import BlueCache
-
-from spy.vm.modules.builtins import BUILTINS
-from spy.vm.modules.operator import OPERATOR
-from spy.vm.modules.types import TYPES, W_Loc
-from spy.vm.modules.math import MATH
-from spy.vm.modules.unsafe import UNSAFE
-from spy.vm.modules.rawbuffer import RAW_BUFFER
-from spy.vm.modules.jsffi import JSFFI
-from spy.vm.modules.posix import POSIX
-from spy.vm.modules.time import TIME
-from spy.vm.modules.spy import SPY
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
+from spy.vm.modules.builtins import BUILTINS
+from spy.vm.modules.jsffi import JSFFI
+from spy.vm.modules.math import MATH
+from spy.vm.modules.operator import OPERATOR
+from spy.vm.modules.posix import POSIX
+from spy.vm.modules.rawbuffer import RAW_BUFFER
+from spy.vm.modules.spy import SPY
+from spy.vm.modules.time import TIME
+from spy.vm.modules.types import TYPES, W_Loc
+from spy.vm.modules.unsafe import UNSAFE
+from spy.vm.object import W_Object, W_Type
+from spy.vm.opimpl import W_OpImpl
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import (
+    W_F64,
+    W_I8,
+    W_I32,
+    W_U8,
+    W_Bool,
+    W_Dynamic,
+    W_NoneType,
+    W_NotImplementedType,
+    w_DynamicType,
+)
+from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
+from spy.vm.registry import ModuleRegistry
+from spy.vm.str import W_Str
+from spy.vm.struct import UnwrappedStruct
 
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)

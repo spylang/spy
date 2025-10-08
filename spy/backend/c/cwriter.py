@@ -1,16 +1,17 @@
-from typing import TYPE_CHECKING
 from types import NoneType
+from typing import TYPE_CHECKING
+
 from spy import ast
+from spy.backend.c import c_ast as C
+from spy.backend.c.context import Context
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.vm.function import W_ASTFunc, W_Func
-from spy.vm.b import B, TYPES
-from spy.vm.builtin import IRTag
-from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.textbuilder import TextBuilder
-from spy.backend.c.context import Context
-from spy.backend.c import c_ast as C
-from spy.util import shortrepr, magic_dispatch
+from spy.util import magic_dispatch, shortrepr
+from spy.vm.b import TYPES, B
+from spy.vm.builtin import IRTag
+from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter

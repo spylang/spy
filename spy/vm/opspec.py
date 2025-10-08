@@ -27,24 +27,23 @@ This scheme is designed in such a way that the call to OPERATOR() is always
 blue and can be optimized away during redshifting.
 """
 
-from typing import (Annotated, Optional, ClassVar, no_type_check, Any,
-                    TYPE_CHECKING)
-from spy.location import Loc
-from spy.analyze.symtable import Symbol, Color
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Optional, no_type_check
+
+from spy.analyze.symtable import Color, Symbol
 from spy.errors import SPyError
+from spy.location import Loc
 from spy.vm.b import OPERATOR, B
-from spy.vm.object import W_Type, W_Object
-from spy.vm.member import Member
+from spy.vm.builtin import builtin_class_attr, builtin_method, builtin_property
 from spy.vm.function import W_Func, W_FuncType
-from spy.vm.builtin import (builtin_method, builtin_property,
-                            builtin_class_attr)
+from spy.vm.member import Member
+from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_Bool
 from spy.vm.property import W_Property
 
 if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
     from spy.vm.primitive import W_Dynamic
     from spy.vm.str import W_Str
+    from spy.vm.vm import SPyVM
 
 
 @OPERATOR.builtin_type("MetaArg", lazy_definition=True)

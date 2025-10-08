@@ -3,10 +3,12 @@ A pythonic wrapper around wasmtime.
 """
 
 from typing import Any, Optional
-from typing_extensions import Self
+
 import py.path
 import wasmtime as wt
-from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase
+from typing_extensions import Self
+
+from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
 
 WasmTrap = wt.Trap
 

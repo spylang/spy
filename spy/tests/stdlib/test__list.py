@@ -1,6 +1,8 @@
 import pytest
-from spy.tests.support import CompilerTest
+
 from spy.errors import SPyError
+from spy.tests.support import CompilerTest
+
 
 class TestList(CompilerTest):
 

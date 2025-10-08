@@ -1,6 +1,7 @@
 import textwrap
-from spy.magic_py_parse import magic_py_parse, preprocess
+
 from spy.ast_dump import dump
+from spy.magic_py_parse import magic_py_parse, preprocess
 from spy.parser import Parser
 from spy.tests.support import expect_errors
 

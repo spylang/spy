@@ -1,11 +1,14 @@
-from typing import Any
 import textwrap
+from typing import Any
+
 import pytest
+
 from spy import ast
-from spy.parser import Parser
 from spy.ast_dump import dump
+from spy.parser import Parser
+from spy.tests.support import MatchAnnotation, expect_errors
 from spy.util import print_diff
-from spy.tests.support import expect_errors, MatchAnnotation
+
 
 @pytest.mark.usefixtures("init")
 class TestParser:

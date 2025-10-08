@@ -1,13 +1,15 @@
 from typing import TYPE_CHECKING, Annotated, Any, Optional
+
 from spy.errors import WIP
 from spy.fqn import FQN
-from spy.vm.b import TYPES, BUILTINS
-from spy.vm.object import W_Object, W_Type, ClassBody
+from spy.vm.b import BUILTINS, TYPES
+from spy.vm.builtin import IRTag, W_BuiltinFunc, builtin_method
 from spy.vm.field import W_Field
-from spy.vm.function import W_FuncType, FuncParam
-from spy.vm.builtin import W_BuiltinFunc, builtin_method, IRTag
-from spy.vm.property import W_StaticMethod
+from spy.vm.function import FuncParam, W_FuncType
+from spy.vm.object import ClassBody, W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.property import W_StaticMethod
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

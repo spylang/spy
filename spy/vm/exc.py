@@ -2,14 +2,15 @@
 # W_Exception, you need to wrap it into SPyError.
 
 from typing import TYPE_CHECKING, Annotated
+
+from spy.errfmt import Annotation, ErrorFormatter, Level
 from spy.location import Loc
-from spy.errfmt import ErrorFormatter, Level, Annotation
-from spy.vm.opspec import W_OpSpec, W_MetaArg
-from spy.vm.builtin import builtin_method
-from spy.vm.primitive import W_Bool
-from spy.vm.object import W_Object, W_Type
-from spy.vm.str import W_Str
 from spy.vm.b import BUILTINS
+from spy.vm.builtin import builtin_method
+from spy.vm.object import W_Object, W_Type
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_Bool
+from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

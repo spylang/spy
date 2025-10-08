@@ -1,13 +1,16 @@
-from typing import TYPE_CHECKING, Annotated, Optional
 import math
+from typing import TYPE_CHECKING, Annotated, Optional
+
 from spy.errors import SPyError
-from spy.vm.modules.operator import OP
-from spy.vm.object import W_Type, W_Object
 from spy.vm.function import W_Func
+from spy.vm.modules.operator import OP
+from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I32, W_F64, W_Bool, W_Dynamic, W_I8, W_U8
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool, W_Dynamic
+
 from . import OP
 from .multimethod import MultiMethodTable
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

@@ -10,12 +10,14 @@ Python objects are automatically converted into their SPy equivalent and
 vice-versa, by using vm.wrap and vm.unwrap.
 """
 from typing import Any
+
 import fixedint
-from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
-from spy.vm.cell import W_Cell
-from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
+
 from spy.vm.b import B
+from spy.vm.cell import W_Cell
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.vm.module import W_Module
+from spy.vm.vm import SPyVM
 
 
 class InterpModuleWrapper:

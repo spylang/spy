@@ -11,7 +11,9 @@ It is called 'LL' for two reasons:
     been very confusing :)
 """
 from typing import TYPE_CHECKING
+
 from spy.platform import IS_PYODIDE
+
 from .base import HostModule, LLWasmType
 
 # This is a bit of a hack: ideally, we would like mypy to understand that
@@ -25,6 +27,6 @@ from .base import HostModule, LLWasmType
 # A quick hack is to use "not TYPE_CHECKING": this way, mypy only sees (and
 # typechecks) the wasmtime path.
 if not TYPE_CHECKING and IS_PYODIDE:
-    from .emscripten import LLWasmModule, LLWasmInstance, LLWasmMemory, WasmTrap
+    from .emscripten import LLWasmInstance, LLWasmMemory, LLWasmModule, WasmTrap
 else:
-    from .wasmtime import LLWasmModule, LLWasmInstance, LLWasmMemory, WasmTrap
+    from .wasmtime import LLWasmInstance, LLWasmMemory, LLWasmModule, WasmTrap

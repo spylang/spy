@@ -5,13 +5,14 @@ The first half is in vm/b.py. See its docstring for more details.
 """
 
 from typing import TYPE_CHECKING
+
 from spy.errors import SPyError
-from spy.vm.primitive import W_F64, W_I32, W_I8, W_U8, W_Bool, W_Dynamic, W_NoneType
-from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.object import W_Object, W_Type
-from spy.vm.str import W_Str
+from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.function import W_FuncType
-from spy.vm.b import BUILTINS, B, TYPES
+from spy.vm.object import W_Object, W_Type
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool, W_Dynamic, W_NoneType
+from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

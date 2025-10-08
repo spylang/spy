@@ -5,8 +5,10 @@ compilers.
 
 import sys
 from pathlib import Path
-from spy.vm.vm import SPyVM
+
 from spy.vm.module import W_Module
+from spy.vm.vm import SPyVM
+
 
 def redshift(filename: str|Path) -> tuple[SPyVM, W_Module]:
     """

@@ -1,16 +1,18 @@
-from typing import Optional, TYPE_CHECKING, Union
 from collections import deque
+from typing import TYPE_CHECKING, Optional, Union
+
 import py.path
+
 from spy import ast
+from spy.analyze.scope import ScopeAnalyzer
 from spy.fqn import FQN
 from spy.parser import Parser
-from spy.analyze.scope import ScopeAnalyzer
-from spy.vm.modframe import ModFrame
 from spy.textbuilder import ColorFormatter
+from spy.vm.modframe import ModFrame
 
 if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
     from spy.vm.module import W_Module
+    from spy.vm.vm import SPyVM
 
 MODULE = Union[ast.Module, "W_Module", None]
 

@@ -1,11 +1,14 @@
 #-*- encoding: utf-8 -*-
-import typing
-from typing import Sequence, Callable
 import difflib
-import subprocess
 import inspect
+import subprocess
+import typing
+from typing import Callable, Sequence
+
 import py.path
+
 from spy.textbuilder import Color
+
 
 class AnythingClass:
     """
@@ -104,8 +107,8 @@ def highlight_C_maybe(code: str | bytes) -> str:
         return code
 
     from pygments import highlight
-    from pygments.lexers import CLexer  # type: ignore
     from pygments.formatters import TerminalFormatter  # type: ignore
+    from pygments.lexers import CLexer  # type: ignore
     return highlight(code, CLexer(), TerminalFormatter())
 
 def shortrepr(s: str, n: int) -> str:

@@ -1,29 +1,30 @@
-import sys
-from typing import Annotated, Any, Optional
 import asyncio
-from pathlib import Path
+import pdb as stdlib_pdb  # to distinguish from the "--pdb" option
+import sys
 import time
 import traceback
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Annotated, Any, Optional
+
 import click
+import py.path
 import typer
 from typer import Option
-import py.path
-import pdb as stdlib_pdb # to distinguish from the "--pdb" option
-from spy.vendored.dataclass_typer import dataclass_typer
-from spy.magic_py_parse import magic_py_parse
+
 from spy.analyze.importing import ImportAnalyzer
-from spy.errors import SPyError
-from spy.backend.spy import SPyBackend, FQN_FORMAT
-from spy.doppler import ErrorMode
 from spy.backend.c.cbackend import CBackend
+from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
+from spy.doppler import ErrorMode
+from spy.errors import SPyError
+from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
+from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
-from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.module import W_Module
-import traceback
+from spy.vm.vm import SPyVM
 
 app = typer.Typer(pretty_exceptions_enable=False)
 

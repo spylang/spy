@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING
-from spy.vm.primitive import W_I32
+
 from spy.vm.b import B
-from spy.vm.w import W_Func, W_Type, W_Object, W_Str, W_FuncType
-from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.builtin import builtin_method
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_I32
 from spy.vm.registry import ModuleRegistry
+from spy.vm.w import W_Func, W_FuncType, W_Object, W_Str, W_Type
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

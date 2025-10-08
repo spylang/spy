@@ -1,6 +1,8 @@
 import pytest
+
 from spy.errors import SPyError
-from spy.tests.support import (CompilerTest, only_interp)
+from spy.tests.support import CompilerTest, only_interp
+
 
 class TestTypelift(CompilerTest):
 

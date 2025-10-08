@@ -1,10 +1,13 @@
-from typing import Any
 import textwrap
+from typing import Any
+
 import pytest
-from spy.vm.vm import SPyVM
-from spy.vm.b import B
-from spy.vm.function import W_FuncType, W_ASTFunc
+
 from spy.backend.interp import InterpModuleWrapper
+from spy.vm.b import B
+from spy.vm.function import W_ASTFunc, W_FuncType
+from spy.vm.vm import SPyVM
+
 
 @pytest.mark.usefixtures("init")
 class TestBlueMod:

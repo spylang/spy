@@ -1,5 +1,7 @@
 import math
+
 from spy.tests.support import CompilerTest
+
 
 class TestMath(CompilerTest):
 

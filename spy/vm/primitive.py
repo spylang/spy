@@ -1,9 +1,11 @@
-from typing import Annotated, TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
+
 import fixedint
+
 from spy.fqn import FQN
-from spy.vm.object import W_Object, W_Type
-from spy.vm.b import B, OP, TYPES
+from spy.vm.b import OP, TYPES, B
 from spy.vm.builtin import builtin_method
+from spy.vm.object import W_Object, W_Type
 
 # fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a
 # function. Let's convince it back that it's a type
@@ -13,9 +15,9 @@ else:
     from fixedint import FixedInt
 
 if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
     from spy.vm.opspec import W_MetaArg, W_OpSpec
     from spy.vm.str import W_Str
+    from spy.vm.vm import SPyVM
 
 @TYPES.builtin_type("NoneType", lazy_definition=True)
 class W_NoneType(W_Object):

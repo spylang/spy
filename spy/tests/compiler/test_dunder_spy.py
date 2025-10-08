@@ -1,5 +1,6 @@
 from spy.tests.support import CompilerTest
 
+
 class TestDunderSpy(CompilerTest):
 
     def test_is_compiled(self):

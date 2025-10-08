@@ -1,8 +1,11 @@
-from typing import Any
 import textwrap
+from typing import Any
+
 import pytest
+
 from spy import interop
 from spy.vm.function import W_ASTFunc
+
 
 @pytest.mark.usefixtures("init")
 class TestInterop:

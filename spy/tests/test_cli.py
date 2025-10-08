@@ -1,10 +1,12 @@
-from typing import Any
 import re
-import textwrap
 import subprocess
+import textwrap
 from subprocess import getstatusoutput
+from typing import Any
+
 import pytest
 from typer.testing import CliRunner
+
 import spy
 from spy.cli import app
 

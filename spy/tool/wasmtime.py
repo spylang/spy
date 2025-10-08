@@ -7,9 +7,11 @@ requires only `pip install wasmtime`, no extra dependency.
 Mostly useful for tests.
 """
 
-import sys
 import argparse
+import sys
+
 import wasmtime as wt
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(

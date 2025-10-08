@@ -1,8 +1,11 @@
 import textwrap
+
 import pytest
-from spy.vm.vm import SPyVM
-from spy.backend.spy import SPyBackend, FQN_FORMAT
+
+from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.util import print_diff
+from spy.vm.vm import SPyVM
+
 
 @pytest.mark.usefixtures("init")
 class TestDoppler:
@@ -314,6 +317,7 @@ class TestDoppler:
     def test_dumper_uses_expr_color_map_for_bg(self, monkeypatch):
         # Verify that Dumper._dump_node passes correct bg argument based on expr_color_map
         from unittest.mock import Mock
+
         from spy.ast_dump import Dumper
 
         red_node = Mock()

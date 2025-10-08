@@ -1,9 +1,11 @@
 from typing import TYPE_CHECKING, Any
+
 from spy.vm.b import B
-from spy.vm.primitive import W_I32, W_Dynamic, W_Bool
-from spy.vm.object import W_Object
 from spy.vm.builtin import builtin_method
-from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.object import W_Object
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

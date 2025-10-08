@@ -1,8 +1,10 @@
 from typing import TYPE_CHECKING
-from spy.vm.primitive import W_I32
+
+from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.str import W_Str
-from spy.vm.primitive import W_Bool
+
 from . import OP
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

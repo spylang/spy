@@ -1,5 +1,6 @@
 from typing import Optional
-from .fqn import NSPart, FQN
+
+from .fqn import FQN, NSPart
 
 
 def tokenize(s: str) -> list[str]:

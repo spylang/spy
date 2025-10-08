@@ -1,10 +1,12 @@
 import sys
 from typing import Any, Optional
+
 import spy
-from spy.location import Loc
 from spy.errors import SPyError
-from spy.llwasm import LLWasmModule, LLWasmInstance, HostModule, WasmTrap
+from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
+from spy.location import Loc
 from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
+
 #from spy.vm.str import ll_spy_Str_read
 
 SRC = spy.ROOT.join("libspy", "src")

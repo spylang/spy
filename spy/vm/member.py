@@ -1,11 +1,12 @@
-from typing import Annotated, TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional
+
 from spy.vm.b import BUILTINS
-from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_method
+from spy.vm.object import W_Object, W_Type
 
 if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
     from spy.vm.opspec import W_MetaArg, W_OpSpec
+    from spy.vm.vm import SPyVM
 
 
 class Member:

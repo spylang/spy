@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING, Any
+
 from spy.vm.b import TYPES
-from spy.vm.object import W_Type, W_Object
+from spy.vm.object import W_Object, W_Type
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

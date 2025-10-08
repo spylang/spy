@@ -1,6 +1,8 @@
-from typing import Any
 import sys
+from typing import Any
+
 import py.path
+
 from spy.vm.vm import SPyVM
 
 

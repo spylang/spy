@@ -45,21 +45,33 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 """
 
 import typing
-from typing import (TYPE_CHECKING, ClassVar, Type, Any, Optional, Union,
-                    Callable, Annotated, Self, Literal, Sequence)
 from dataclasses import dataclass
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Callable,
+    ClassVar,
+    Literal,
+    Optional,
+    Self,
+    Sequence,
+    Type,
+    Union,
+)
+
 from spy.ast import Color
+from spy.errors import WIP, SPyError
 from spy.fqn import FQN
-from spy.errors import SPyError, WIP
 from spy.vm.b import B
 
 if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
-    from spy.vm.primitive import W_NoneType, W_Bool
-    from spy.vm.function import W_Func
-    from spy.vm.opspec import W_OpSpec, W_MetaArg
     from spy.vm.builtin import FuncKind
     from spy.vm.field import W_Field
+    from spy.vm.function import W_Func
+    from spy.vm.opspec import W_MetaArg, W_OpSpec
+    from spy.vm.primitive import W_Bool, W_NoneType
+    from spy.vm.vm import SPyVM
 
 def builtin_method(name: str, *, color: Color = "red",
                    kind: "FuncKind" = "plain") -> Any:
@@ -194,8 +206,8 @@ class W_Object:
     @builtin_method("__repr__", color="blue", kind="metafunc")
     @staticmethod
     def w_REPR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
-        from spy.vm.opspec import W_OpSpec
         from spy.vm.builtin import IRTag
+        from spy.vm.opspec import W_OpSpec
         from spy.vm.str import W_Str
 
         if wam_self.color == "blue":
@@ -515,9 +527,9 @@ class W_Type(W_Object):
         """
         from spy.vm.builtin import make_builtin_func
         from spy.vm.opspec import W_MetaArg, W_OpSpec
+        from spy.vm.primitive import W_Bool, W_Dynamic
+        from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
         from spy.vm.str import W_Str
-        from spy.vm.primitive import W_Dynamic, W_Bool
-        from spy.vm.property import W_Property, W_StaticMethod, W_ClassMethod
 
         pyfunc = statmeth.__func__
         appname, color, kind, what = statmeth.spy_builtin_method # type: ignore
@@ -637,7 +649,7 @@ class W_Type(W_Object):
     @staticmethod
     def w_GETATTRIBUTE(vm: "SPyVM", wam_T: "W_MetaArg",
                        wam_name: "W_MetaArg") -> "W_OpSpec":
-        from spy.vm.opspec import W_OpSpec, W_MetaArg
+        from spy.vm.opspec import W_MetaArg, W_OpSpec
         if wam_T.color != "blue":
             # it's unclear how to implement getattr on red types, since we
             # need to have access to their dict.
@@ -729,7 +741,7 @@ class W_Type(W_Object):
         """
         from spy.vm.function import W_Func
         from spy.vm.opspec import W_OpSpec
-        from spy.vm.property import W_StaticMethod, W_ClassMethod
+        from spy.vm.property import W_ClassMethod, W_StaticMethod
 
         if wam_T.color != "blue":
             raise WIP("__call_method__ on red types")

@@ -1,10 +1,13 @@
 from typing import TYPE_CHECKING
+
 from spy.vm.b import B
 from spy.vm.object import W_Type
-from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.opimpl import W_OpImpl
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+
 from . import OP
 from .multimethod import MultiMethodTable
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

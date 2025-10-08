@@ -1,5 +1,6 @@
 from spy.tests.support import CompilerTest, only_py_cffi
 
+
 @only_py_cffi
 class TestPyCFFI(CompilerTest):
 

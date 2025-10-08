@@ -1,6 +1,7 @@
 from spy.fqn import FQN
-from spy.vm.vm import SPyVM
 from spy.vm.module import W_Module
+from spy.vm.vm import SPyVM
+
 
 class TestModule:
 

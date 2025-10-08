@@ -1,6 +1,8 @@
 import textwrap
-import pytest
+
 import py.path
+import pytest
+
 from spy import ast
 from spy.analyze.importing import ImportAnalyzer
 from spy.vm.vm import SPyVM

@@ -1,18 +1,21 @@
 from typing import Optional
+
 import py.path
+
+from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
 from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
-from spy.backend.c.cffiwriter import CFFIWriter
+from spy.build.cffi import cffi_build
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
-from spy.build.cffi import cffi_build
-from spy.vm.vm import SPyVM
+from spy.util import highlight_C_maybe
 from spy.vm.cell import W_Cell
 from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc
-from spy.vm.primitive import W_I32
 from spy.vm.modules.unsafe.ptr import W_PtrType
-from spy.util import highlight_C_maybe
+from spy.vm.object import W_Object
+from spy.vm.primitive import W_I32
+from spy.vm.vm import SPyVM
 
 
 class CBackend:

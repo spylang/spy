@@ -1,5 +1,6 @@
 from spy.location import Loc
 
+
 def myfunc() -> Loc:
     loc = Loc.here()
     return loc

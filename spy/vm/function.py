@@ -1,15 +1,25 @@
 from dataclasses import dataclass
-from typing import (TYPE_CHECKING, Any, Optional, Callable, Sequence, Literal,
-                    Iterator, Self)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    Literal,
+    Optional,
+    Self,
+    Sequence,
+)
+
 from spy import ast
-from spy.location import Loc
 from spy.ast import Color, FuncKind
-from spy.fqn import FQN
 from spy.errors import SPyError
+from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.object import W_Object, W_Type, builtin_method
+
 if TYPE_CHECKING:
+    from spy.vm.opspec import W_MetaArg, W_OpSpec
     from spy.vm.vm import SPyVM
-    from spy.vm.opspec import W_OpSpec, W_MetaArg
 
 # dictionary which contains local vars in an ASTFrame. The type is defined
 # here because it's also used by W_ASTFunc.closure.
@@ -115,7 +125,7 @@ class W_FuncType(W_Type):
         It's meant to be used in tests, it's not robust at all, especially in
         case of wrong inputs.
         """
-        from spy.vm.b import B, TYPES
+        from spy.vm.b import TYPES, B
 
         def parse_type(s: str) -> Any:
             attr = f"w_{s}"
@@ -252,7 +262,7 @@ class W_Func(W_Object):
         """
         Call this function and use the return value as the OpSpec
         """
-        from spy.vm.opspec import W_OpSpec, W_MetaArg
+        from spy.vm.opspec import W_MetaArg, W_OpSpec
         from spy.vm.typechecker import typecheck_opspec
 
         w_func = wam_func.w_blueval
@@ -377,7 +387,7 @@ class W_BuiltinFunc(W_Func):
         return f"<spy function '{self.fqn}' (builtin)>"
 
     def raw_call(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
-        from spy.vm.b import B, TYPES
+        from spy.vm.b import TYPES, B
         w_res = self._pyfunc(vm, *args_w)
         if w_res is None and self.w_functype.w_restype is TYPES.w_NoneType:
             return vm.wrap(None)

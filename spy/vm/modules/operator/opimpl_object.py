@@ -1,7 +1,10 @@
 from typing import TYPE_CHECKING
+
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_Bool
+
 from . import OP
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

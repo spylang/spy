@@ -2,13 +2,16 @@
 A pythonic way to instantiate Emscripten binaries.
 """
 
-from typing import Any, Optional, Callable
-from typing_extensions import Self
 from asyncio import Future
+from typing import Any, Callable, Optional
+
 import py.path
-from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase
-from pyodide.ffi import run_sync, JsProxy
 from pyodide.code import run_js
+from pyodide.ffi import JsProxy, run_sync
+from typing_extensions import Self
+
+from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
+
 
 class WasmTrap(Exception):
     # xxx add way to catch only actual aborts

@@ -2,12 +2,13 @@
 
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.vm.struct import UnwrappedStruct
-from spy.tests.wasm_wrapper import WasmPtr
-from spy.tests.support import CompilerTest, expect_errors, only_interp
+
 
 def test_UnwrappedStruct():
     us1 = UnwrappedStruct(FQN("test::Point"), {"x": 1, "y": 2})

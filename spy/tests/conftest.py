@@ -1,10 +1,10 @@
 # type: ignore
 
-import pytest
 import shutil
-import py
-from pytest_pyodide import get_global_config
 
+import py
+import pytest
+from pytest_pyodide import get_global_config
 
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None

@@ -1,11 +1,13 @@
-from typing import TYPE_CHECKING, Sequence, ClassVar, Optional
-from dataclasses import dataclass
 import textwrap
-from spy.vm.b import OPERATOR
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, ClassVar, Optional, Sequence
+
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.vm.object import W_Object
+from spy.vm.b import OPERATOR
 from spy.vm.function import W_Func, W_FuncType
+from spy.vm.object import W_Object
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

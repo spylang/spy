@@ -1,12 +1,14 @@
 from typing import Annotated
-from spy.vm.primitive import W_I32
-from spy.vm.member import Member
+
+from spy.tests.support import CompilerTest, expect_errors, no_C
 from spy.vm.builtin import builtin_method
-from spy.vm.w import W_Type, W_Object
-from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.member import Member
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_I32
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.vm.w import W_Object, W_Type
+
 
 @no_C
 class TestCallOp(CompilerTest):

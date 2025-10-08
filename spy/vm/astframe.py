@@ -1,27 +1,27 @@
-from typing import TYPE_CHECKING, Optional, Sequence
 from types import NoneType
+from typing import TYPE_CHECKING, Optional, Sequence
+
 from spy import ast
-from spy.location import Loc
-from spy.errors import SPyError, WIP
-from spy.analyze.symtable import SymTable, Symbol, Color, maybe_blue
+from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
+from spy.errors import WIP, SPyError
 from spy.fqn import FQN
+from spy.location import Loc
+from spy.util import magic_dispatch
 from spy.vm.b import B
-from spy.vm.exc import W_TypeError
-from spy.vm.object import W_Object, W_Type
-from spy.vm.primitive import W_Bool
-from spy.vm.function import (W_Func, W_FuncType, W_ASTFunc, Namespace, CLOSURE,
-                             FuncParam)
-from spy.vm.list import W_List
-from spy.vm.tuple import W_Tuple
 from spy.vm.cell import W_Cell
-from spy.vm.modules.types import W_LiftedType
-from spy.vm.struct import W_StructType
-from spy.vm.opspec import W_MetaArg
-from spy.vm.opimpl import W_OpImpl
+from spy.vm.exc import W_TypeError
+from spy.vm.function import CLOSURE, FuncParam, Namespace, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.list import W_List
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
-from spy.vm.modules.types import TYPES
-from spy.util import magic_dispatch
+from spy.vm.modules.types import TYPES, W_LiftedType
+from spy.vm.object import W_Object, W_Type
+from spy.vm.opimpl import W_OpImpl
+from spy.vm.opspec import W_MetaArg
+from spy.vm.primitive import W_Bool
+from spy.vm.struct import W_StructType
+from spy.vm.tuple import W_Tuple
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

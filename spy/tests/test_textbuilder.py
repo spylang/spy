@@ -1,6 +1,9 @@
-import pytest
 import textwrap
-from spy.textbuilder import TextBuilder, ColorFormatter
+
+import pytest
+
+from spy.textbuilder import ColorFormatter, TextBuilder
+
 
 class TestTextBuilder:
 

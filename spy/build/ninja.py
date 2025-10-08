@@ -1,9 +1,11 @@
-from typing import Optional
 import shlex
+from typing import Optional
+
 import py.path
+
+from spy.build.config import BuildConfig, CompilerConfig
 from spy.errors import WIP
 from spy.textbuilder import TextBuilder
-from spy.build.config import BuildConfig, CompilerConfig
 from spy.util import robust_run
 
 

@@ -1,7 +1,8 @@
 import pytest
+from pytest_pyodide import run_in_pyodide  # type: ignore
+
 from spy import ROOT
 from spy.tests.support import CTest
-from pytest_pyodide import run_in_pyodide  # type: ignore
 
 PYODIDE = ROOT.join("..", "pyodide", "node_modules", "pyodide")
 HAS_PYODIDE = PYODIDE.check(exists=True)
@@ -202,7 +203,7 @@ class TestLLWasm(CTest):
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
-            from spy.llwasm import LLWasmInstance, LLWasmModule, HostModule
+            from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule
             llmod = LLWasmModule(str(test_wasm))
 
             class Math(HostModule):

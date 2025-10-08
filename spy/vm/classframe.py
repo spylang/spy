@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING
+
 from spy import ast
-from spy.location import Loc
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.vm.b import B
-from spy.vm.object import ClassBody
+from spy.location import Loc
 from spy.vm.astframe import AbstractFrame
-from spy.vm.function import W_Func, CLOSURE
+from spy.vm.b import B
 from spy.vm.field import W_Field
+from spy.vm.function import CLOSURE, W_Func
+from spy.vm.object import ClassBody
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM

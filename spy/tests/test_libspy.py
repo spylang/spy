@@ -1,7 +1,9 @@
 import struct
-from spy.llwasm import LLWasmModule
+
 from spy.libspy import LLSPyInstance, SPyError
+from spy.llwasm import LLWasmModule
 from spy.tests.support import CTest
+
 
 def mk_spy_Str(utf8: bytes) -> bytes:
     """

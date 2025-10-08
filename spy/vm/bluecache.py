@@ -1,9 +1,11 @@
-from typing import TYPE_CHECKING, Optional, Sequence, Any
 import itertools
 from collections import Counter, defaultdict
-from spy.vm.object import W_Object
-from spy.vm.function import W_Func
+from typing import TYPE_CHECKING, Any, Optional, Sequence
+
 from spy.textbuilder import Color
+from spy.vm.function import W_Func
+from spy.vm.object import W_Object
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

@@ -1,12 +1,14 @@
-import typing
-from typing import TYPE_CHECKING, Optional, Iterator, Any, no_type_check
 import ast as py_ast
 import dataclasses
+import typing
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Iterator, Optional, no_type_check
+
+from spy.analyze.symtable import Color, ImportRef, Symbol, VarKind
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.analyze.symtable import Color, VarKind, ImportRef, Symbol
 from spy.util import extend
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 

@@ -1,4 +1,5 @@
-from spy.fqn import NSPart, FQN
+from spy.fqn import FQN, NSPart
+
 
 def test_FQN_init_fullname():
     a = FQN("a.b.c::xxx")
