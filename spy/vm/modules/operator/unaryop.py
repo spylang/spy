@@ -28,7 +28,6 @@ def w_NEG(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
     )
 
 
-
 @OP.builtin_func(color="blue")
 def w_NOT(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec

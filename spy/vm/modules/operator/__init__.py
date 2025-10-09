@@ -91,10 +91,7 @@ _from_token: dict[str, W_Func] = {
     "<universal_ne>": OP.w_UNIVERSAL_NE,
 }
 
-_unary_from_token: dict[str, W_Func] = {
-    "-": OP.w_NEG,
-    "not": OP.w_NOT
-}
+_unary_from_token: dict[str, W_Func] = {"-": OP.w_NEG, "not": OP.w_NOT}
 
 
 def OP_from_token(token: str) -> W_Func:
