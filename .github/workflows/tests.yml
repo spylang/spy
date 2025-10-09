@@ -86,8 +86,18 @@ jobs:
       - name: Run tests
         run: |
           pip install pytest-xdist
-          pytest -n 6 -m "not mypy"
+          pytest -n 6 -m "not mypy" --junit-xml=test-results.xml
 
       - name: Run mypy
         run: |
           mypy
+
+      - name: Surface failing tests
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          path: test-results.xml
+          summary: true
+          display-options: fEX
+          fail-on-empty: true
+          title: Test results
