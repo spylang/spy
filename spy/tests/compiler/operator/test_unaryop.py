@@ -47,3 +47,12 @@ class TestOperatorUnaryOp(CompilerTest):
         assert mod.foo(5) == -5
         assert mod.foo(-10) == 10
         assert mod.foo(0) == 0
+
+    def test_not(self):
+        src = """
+        def foo(x: bool) -> bool:
+            return not x
+        """
+        mod = self.compile(src)
+        assert mod.foo(True) == False
+        assert mod.foo(False) == True
