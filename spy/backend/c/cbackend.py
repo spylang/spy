@@ -1,13 +1,14 @@
 from typing import Optional
 import py.path
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
+from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.build.cffi import cffi_build
 from spy.vm.vm import SPyVM
 from spy.vm.cell import W_Cell
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import W_I32
 from spy.vm.modules.unsafe.ptr import W_PtrType
@@ -25,6 +26,7 @@ class CBackend:
     dump_c: bool
     cffi: CFFIWriter
     ninja: Optional[NinjaWriter]
+    c_structdefs: dict[str, CStructDefs]
     c_modules: dict[str, CModule]
     cfiles: list[py.path.local]
     build_script: Optional[py.path.local]
@@ -47,13 +49,17 @@ class CBackend:
         #
         self.cffi = CFFIWriter(outname, config, build_dir)
         self.ninja = None
+        self.c_structdefs = {}
         self.c_modules = {}
         self.cfiles = [] # generated C files
         self.build_script = None
 
-    def init_c_modules(self) -> None:
+    def split_fqns(self) -> None:
         """
-        Create one C module for each .spy file
+        Split the global FQNs into multiple CModule and CStructDefs, which
+        will later be written to disk.
+
+        Generally speaking, we try to create a .c file for each .spy file.
 
         The ultimate goal of the C backend is to emit all the FQNs which were
         created during init and redshift. In theory, we could emit all of them
@@ -85,19 +91,17 @@ class CBackend:
         into an FQNConst("aaa::foo").
         """
         bdir = self.build_dir
+        # create a CModule for each non-builtin SPy module
         for modname, w_mod in self.vm.modules_w.items():
-            spyfile = None
-            hfile = None
-            cfile = None
-            if w_mod.filepath is not None:
-                # a non-builtin module
-                spyfile = py.path.local(w_mod.filepath)
-                basename = spyfile.purebasename
-                hfile = bdir.join('src', f'{basename}.h')
-                cfile = bdir.join('src', f'{basename}.c')
+            if w_mod.is_builtin():
+                continue
+            assert w_mod.filepath is not None
+            spyfile = py.path.local(w_mod.filepath)
+            basename = spyfile.purebasename
+            hfile = bdir.join('src', f'{basename}.h')
+            cfile = bdir.join('src', f'{basename}.c')
             c_mod = CModule(
                 modname = modname,
-                is_builtin = w_mod.is_builtin(),
                 spyfile = spyfile,
                 hfile = hfile,
                 cfile = cfile,
@@ -105,57 +109,79 @@ class CBackend:
             )
             self.c_modules[modname] = c_mod
 
-        # fill the content of C modules
-        for fqn, w_obj in self.vm.globals_w.items():
-            if fqn.is_module():
-                # don't put the module in its own content
-                continue
-            modname = fqn.modname
-            self.c_modules[modname].content.append((fqn, w_obj))
-        self.c_modules['ptrs_builtins'] = self.make_ptrs_builtins()
-
-    def make_ptrs_builtins(self) -> CModule:
-        """
-        ptrs_builtins is a special module which contains all the
-        specialized ptr types to builtins (e.g. ptr[i32]).
-        """
-        # find all the unsafe::ptr to a builtin
-        def is_ptr_to_builtin(w_obj: W_Object) -> bool:
-            return (
-                isinstance(w_obj, W_PtrType) and
-                w_obj.w_itemtype.fqn.modname == 'builtins'
-            )
-        return CModule(
-            modname = 'ptrs_builtins',
-            is_builtin = False,
-            spyfile = None,
-            hfile = self.build_dir.join('src', 'ptrs_builtins.h'),
-            cfile = None,
-            content = [
-                (fqn, w_obj)
-                for fqn, w_obj in self.vm.globals_w.items()
-                if is_ptr_to_builtin(w_obj)
-            ]
+        # for now we create a global with all types CStructDefs. Eventually we
+        # want to split them into multiple independent ones
+        #
+        # NOTE: currently structdefs work because of a very specific property.
+        # The point is that when we have nested structs, C requires that
+        # structs are defined be in topological order: i.e. the "inner" func
+        # first, the "outer" func next.
+        #
+        # As long as we have a single "spy_structdefs.h" file, we are
+        # guaranteed to have the structs in the right order: this happens
+        # because similarly to C you must define structs before being able to
+        # use them as fields for another struct, which means that the various
+        # W_Struct objects are put in vm.globals_w in the right order.
+        #
+        # See test_importing::test_circular_type_ref for an example of that.
+        #
+        # Eventually, we want to split structdefs into multiple files (to
+        # avoid recompiling everything at every change), but this will be
+        # non-obvious. It will require to:
+        #   1. maintain a graph of struct dependencies
+        #   2. identify the set of Strongly Connected Components (SCC)
+        #   3. ensure that structs in each SCC is in topological order
+        #   4. emit one .h for each SCC (or maybe group multiple SCC by
+        #      modname, but keep in mind that in case of circular deps it will
+        #      be impossible to guarantee the correspondance fqn.modname <=>
+        #      modname.h)
+        self.c_structdefs['globals'] = CStructDefs(
+            hfile = bdir.join('src', 'spy_structdefs.h'),
+            content = []
         )
+
+        # Put each FQN into the corresponding CModule or CStructDefs
+        for fqn, w_obj in self.vm.globals_w.items():
+            # ignore W_Modules
+            if fqn.is_module():
+                continue
+            # ignore w_objs belonging to a builtin modules, unless they are ptrs
+            modname = fqn.modname
+            w_mod = self.vm.modules_w[modname]
+            if w_mod.filepath is None and not isinstance(w_obj, W_PtrType):
+                continue
+
+            if isinstance(w_obj, W_Type):
+                self.c_structdefs['globals'].content.append((fqn, w_obj))
+            else:
+                self.c_modules[modname].content.append((fqn, w_obj))
+
 
     def cwrite(self) -> None:
         """
         Convert all non-builtins modules into .c files
         """
-        self.init_c_modules()
-        for modname, c_mod in self.c_modules.items():
-            if c_mod.is_builtin:
-                continue
+        self.split_fqns()
+
+        # Emit structdefs.h
+        for c_structdefs in self.c_structdefs.values():
+            cstructwriter = CStructWriter(self.vm, c_structdefs, self.cffi)
+            cstructwriter.write_c_source()
+            if self.dump_c:
+                print()
+                print(f'---- {c_structdefs.hfile} ----')
+                print(highlight_C_maybe(c_structdefs.hfile.read()))
+
+        # Emit regular C modules
+        for c_mod in self.c_modules.values():
             cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
             cwriter.write_c_source()
-            # c_mod.cfile can be None for modules which emit only .h
-            # (e.g. ptrs_builtins)
-            if c_mod.cfile is not None:
-                self.cfiles.append(c_mod.cfile)
-                if self.dump_c:
-                    print()
-                    print(f'---- {c_mod.cfile} ----')
-                    print(highlight_C_maybe(c_mod.cfile.read()))
+            self.cfiles.append(c_mod.cfile)
+            if self.dump_c:
+                print()
+                print(f'---- {c_mod.cfile} ----')
+                print(highlight_C_maybe(c_mod.cfile.read()))
+
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], 'call .cwrite() first'
@@ -189,8 +215,6 @@ class CBackend:
         #    2. red variables (who are stored inside a W_Cell)
         wasm_exports = []
         for modname, c_mod in self.c_modules.items():
-            if c_mod.is_builtin:
-                continue
             wasm_exports += [
                 fqn.c_name
                 for fqn, w_obj in c_mod.content
