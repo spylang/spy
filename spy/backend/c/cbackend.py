@@ -54,9 +54,12 @@ class CBackend:
         self.cfiles = [] # generated C files
         self.build_script = None
 
-    def init_c_modules(self) -> None:
+    def split_fqns(self) -> None:
         """
-        Create one C module for each .spy file
+        Split the global FQNs into multiple CModule and CStructDefs, which
+        will later be written to disk.
+
+        Generally speaking, we try to create a .c file for each .spy file.
 
         The ultimate goal of the C backend is to emit all the FQNs which were
         created during init and redshift. In theory, we could emit all of them
@@ -137,7 +140,7 @@ class CBackend:
             content = []
         )
 
-        # Put each FQNs into the corresponding CModule or CStructDefs
+        # Put each FQN into the corresponding CModule or CStructDefs
         for fqn, w_obj in self.vm.globals_w.items():
             # ignore W_Modules
             if fqn.is_module():
@@ -158,7 +161,7 @@ class CBackend:
         """
         Convert all non-builtins modules into .c files
         """
-        self.init_c_modules()
+        self.split_fqns()
 
         # Emit structdefs.h
         for c_structdefs in self.c_structdefs.values():
