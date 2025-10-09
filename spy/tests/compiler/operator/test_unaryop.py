@@ -52,7 +52,12 @@ class TestOperatorUnaryOp(CompilerTest):
         src = """
         def foo(x: bool) -> bool:
             return not x
+
+        def bar(x: i32) -> bool:
+            return not x
         """
         mod = self.compile(src)
         assert mod.foo(True) == False
         assert mod.foo(False) == True
+        assert mod.bar(10) == False
+        assert mod.bar(0) == True
