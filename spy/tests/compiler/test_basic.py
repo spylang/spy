@@ -37,7 +37,8 @@ class TestBasic(CompilerTest):
             return x
         """
         errors = expect_errors(
-            "name `x` is not defined", ("not found in this scope", "x")
+            "name `x` is not defined",
+            ("not found in this scope", "x"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -742,7 +743,15 @@ class TestBasic(CompilerTest):
             s_123 = "12.3"
         out, err = capfd.readouterr()
         assert out == "\n".join(
-            ["hello world", "42", s_123, "True", "None", "<spy type 'i32'>", ""]
+            [
+                "hello world",
+                "42",
+                s_123,
+                "True",
+                "None",
+                "<spy type 'i32'>",
+                "",
+            ]
         )
 
     @no_C

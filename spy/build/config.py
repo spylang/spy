@@ -18,25 +18,30 @@ class BuildConfig:
 
 # ======= CFLAGS and LDFLAGS logic =======
 
+# fmt: off
 CFLAGS = [
     "--std=c99",
     "-Werror=implicit-function-declaration",
     "-Wfatal-errors",
     "-fdiagnostics-color=always",  # force colors
-    "-I",
-    str(spy.libspy.INCLUDE),
+    "-I", str(spy.libspy.INCLUDE)
 ]
 LDFLAGS = [
     "-lm"  # always include libm for now. Ideally we should do it only if needed
 ]
 
-RELEASE_CFLAGS = ["-DSPY_RELEASE", "-O3", "-flto"]
+RELEASE_CFLAGS  = ["-DSPY_RELEASE", "-O3", "-flto"]
 RELEASE_LDFLAGS = ["-flto"]
 
-DEBUG_CFLAGS = ["-DSPY_DEBUG", "-O0", "-g"]
+DEBUG_CFLAGS    = ["-DSPY_DEBUG", "-O0", "-g"]
 DEBUG_LDFLAGS: list[str] = []
 
-WASM_CFLAGS = ["-mmultivalue", "-Xclang", "-target-abi", "-Xclang", "experimental-mv"]
+WASM_CFLAGS = [
+    "-mmultivalue",
+    "-Xclang", "-target-abi",
+    "-Xclang", "experimental-mv"
+]
+# fmt: on
 
 
 class CompilerConfig:
@@ -52,7 +57,10 @@ class CompilerConfig:
         # e.g. 'spy/libspy/build/native/release/'
         self.ldflags += LDFLAGS
         libdir = spy.libspy.BUILD.join(config.target, config.build_type)
-        self.ldflags += ["-L", str(libdir), "-lspy"]
+        self.ldflags += [
+            "-L", str(libdir),
+            "-lspy",
+        ]  # fmt: skip
 
         if config.build_type == "release":
             self.cflags += RELEASE_CFLAGS

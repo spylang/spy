@@ -34,14 +34,23 @@ class Arguments:
     filename: Path
 
     execute: Annotated[
-        bool, Option("-x", "--execute", help="Execute the file (default)")
+        bool,
+        Option(
+            "-x",
+            "--execute",
+            help="Execute the file (default)",
+        ),
     ] = False
 
-    pyparse: Annotated[bool, Option("-P", "--pyparse", help="Dump the Python AST")] = (
-        False
-    )
+    pyparse: Annotated[
+        bool,
+        Option("-P", "--pyparse", help="Dump the Python AST"),
+    ] = False
 
-    parse: Annotated[bool, Option("-p", "--parse", help="Dump the SPy AST")] = False
+    parse: Annotated[
+        bool,
+        Option("-p", "--parse", help="Dump the SPy AST"),
+    ] = False
 
     colorize: Annotated[
         bool,
@@ -53,25 +62,37 @@ class Arguments:
     ] = False
 
     imports: Annotated[
-        bool, Option("-I", "--imports", help="Dump the (recursive) list of imports")
+        bool,
+        Option("-I", "--imports", help="Dump the (recursive) list of imports"),
     ] = False
 
-    symtable: Annotated[bool, Option("-S", "--symtable", help="Dump the symtables")] = (
-        False
-    )
+    symtable: Annotated[
+        bool,
+        Option("-S", "--symtable", help="Dump the symtables"),
+    ] = False
 
     redshift: Annotated[
-        bool, Option("-r", "--redshift", help="Perform redshift and dump the result")
+        bool,
+        Option(
+            "-r",
+            "--redshift",
+            help="Perform redshift and dump the result",
+        ),
     ] = False
 
-    cwrite: Annotated[bool, Option("--cwrite", help="Generate the C code")] = False
+    cwrite: Annotated[
+        bool,
+        Option("--cwrite", help="Generate the C code"),
+    ] = False
 
     cdump: Annotated[
-        bool, Option("--cdump", help="Dump the generated C code to stdout")
+        bool,
+        Option("--cdump", help="Dump the generated C code to stdout"),
     ] = False
 
     compile: Annotated[
-        bool, Option("-c", "--compile", help="Compile the generated C code")
+        bool,
+        Option("-c", "--compile", help="Compile the generated C code"),
     ] = False
 
     build_dir: Annotated[
@@ -93,11 +114,15 @@ class Arguments:
         ),
     ] = 0
 
-    debug_symbols: Annotated[bool, Option("-g", help="Generate debug symbols")] = False
+    debug_symbols: Annotated[
+        bool,
+        Option("-g", help="Generate debug symbols"),
+    ] = False
 
-    release_mode: Annotated[bool, Option("--release", help="enable release mode")] = (
-        False
-    )
+    release_mode: Annotated[
+        bool,
+        Option("--release", help="enable release mode"),
+    ] = False
 
     target: Annotated[
         BuildTarget,
@@ -130,13 +155,18 @@ class Arguments:
     ] = "eager"
 
     full_fqn: Annotated[
-        bool, Option("--full-fqn", help="Show full FQNs in redshifted modules")
+        bool,
+        Option("--full-fqn", help="Show full FQNs in redshifted modules"),
     ] = False
 
-    timeit: Annotated[bool, Option("--timeit", help="Print execution time")] = False
+    timeit: Annotated[
+        bool,
+        Option("--timeit", help="Print execution time"),
+    ] = False
 
     pdb: Annotated[
-        bool, Option("--pdb", help="Enter interp-level debugger in case of error")
+        bool,
+        Option("--pdb", help="Enter interp-level debugger in case of error"),
     ] = False
 
     def __post_init__(self) -> None:

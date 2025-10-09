@@ -215,7 +215,12 @@ class FQN:
             len(self.parts) == 2
             and self.modname == "builtins"
             and self.parts[1].name
-            in ("def", "blue.def", "blue.generic.def", "blue.metafunc.def")
+            in (
+                "def",
+                "blue.def",
+                "blue.generic.def",
+                "blue.metafunc.def",
+            )
         )
         if is_def:
             p1 = self.parts[1]

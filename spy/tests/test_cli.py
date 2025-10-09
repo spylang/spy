@@ -137,8 +137,11 @@ class TestMain:
     )
     def test_build(self, target):
         res, stdout = self.run(
-            "--compile", "--target", target, "--build-dir", self.tmpdir, self.main_spy
-        )
+            "--compile",
+            "--target", target,
+            "--build-dir", self.tmpdir,
+            self.main_spy,
+        )  # fmt: skip
         if target == "native":
             main_exe = self.tmpdir.join("main")
             assert main_exe.exists()

@@ -171,4 +171,13 @@ class TestDynamic(CompilerTest):
         """)
         mod.foo()
         out, err = capfd.readouterr()
-        assert out == "\n".join(["hello world", "42", "12.3", "True", "None", ""])
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                "12.3",
+                "True",
+                "None",
+                "",
+            ]
+        )
