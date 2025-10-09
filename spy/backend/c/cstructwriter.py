@@ -1,15 +1,18 @@
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
+
 import py.path
+
+from spy.backend.c.cffiwriter import CFFIWriter
+from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
-from spy.vm.object import W_Type
-from spy.vm.struct import W_StructType
+from spy.textbuilder import TextBuilder
 from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType
+from spy.vm.object import W_Type
+from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
-from spy.textbuilder import TextBuilder
-from spy.backend.c.context import Context, C_Type
-from spy.backend.c.cffiwriter import CFFIWriter
+
 
 @dataclass
 class CStructDefs:
@@ -24,15 +27,15 @@ class CStructWriter:
     # main and nested TextBuilders for _types.h
     tbh: TextBuilder
     tbh_includes: TextBuilder  # XXX kill
-    tbh_fwdecl: TextBuilder    # forward type declarations
-    tbh_structs: TextBuilder   # type definitions
+    tbh_fwdecl: TextBuilder  # forward type declarations
+    tbh_structs: TextBuilder  # type definitions
     tbh_ptrs_def: TextBuilder  # ptr and typelift accessors
 
     def __init__(
-            self,
-            vm: SPyVM,
-            c_structdefs: CStructDefs,
-            cffi: CFFIWriter,
+        self,
+        vm: SPyVM,
+        c_structdefs: CStructDefs,
+        cffi: CFFIWriter,
     ) -> None:
         self.ctx = Context(vm)
         self.c_structdefs = c_structdefs
@@ -41,7 +44,7 @@ class CStructWriter:
         self.init_h()
 
     def __repr__(self) -> str:
-        return f'<CStructWriter for {self.c_structdefs.hfile}>'
+        return f"<CStructWriter for {self.c_structdefs.hfile}>"
 
     def write_c_source(self) -> None:
         """
@@ -64,19 +67,19 @@ class CStructWriter:
         """)
         self.tbh.wl()
 
-        self.tbh.wl('// includes')
+        self.tbh.wl("// includes")
         self.tbh_includes = self.tbh.make_nested_builder()
         self.tbh.wl()
 
-        self.tbh.wl('// forward type declarations')
+        self.tbh.wl("// forward type declarations")
         self.tbh_fwdecl = self.tbh.make_nested_builder()
         self.tbh.wl()
 
-        self.tbh.wl('// struct definitions')
+        self.tbh.wl("// struct definitions")
         self.tbh_structs = self.tbh.make_nested_builder()
         self.tbh.wl()
 
-        self.tbh.wl('// ptr and typelift accessors')
+        self.tbh.wl("// ptr and typelift accessors")
         self.tbh_ptrs_def = self.tbh.make_nested_builder()
         self.tbh.wl()
 
@@ -101,13 +104,11 @@ class CStructWriter:
             elif isinstance(w_type, W_LiftedType):
                 self.emit_LiftedType(fqn, w_type)
             else:
-                assert False, f'Unknown type: {w_type}'
+                assert False, f"Unknown type: {w_type}"
 
     def emit_StructType(self, fqn: FQN, w_st: W_StructType) -> None:
         c_st = C_Type(w_st.fqn.c_name)
-        self.tbh_fwdecl.wl(
-            f'typedef struct {c_st} {c_st}; /* {w_st.fqn.human_name} */'
-        )
+        self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {w_st.fqn.human_name} */")
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
@@ -146,7 +147,7 @@ class CStructWriter:
         w_lltype = w_hltype.w_lltype
         c_lltype = self.ctx.w2c(w_lltype)
         self.tbh_fwdecl.wl(
-            f'typedef struct {c_hltype} {c_hltype}; /* {w_hltype.fqn.human_name} */'
+            f"typedef struct {c_hltype} {c_hltype}; /* {w_hltype.fqn.human_name} */"
         )
         self.tbh_structs.wb(f"""
         typedef struct {c_hltype} {{

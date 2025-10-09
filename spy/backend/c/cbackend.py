@@ -10,10 +10,9 @@ from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.util import highlight_C_maybe
 from spy.vm.cell import W_Cell
-from spy.vm.object import W_Object, W_Type
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.unsafe.ptr import W_PtrType
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
 

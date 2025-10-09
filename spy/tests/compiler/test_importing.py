@@ -1,4 +1,3 @@
-import pytest
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 
@@ -130,15 +129,13 @@ class TestImporting(CompilerTest):
         def __INIT__(mod):
             print('main')
         """)
-<<<<<<< HEAD
-        out, err = capsys.readouterr()
-<<<<<<< HEAD
-        mods = out.strip().split('\n')
-        assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']
+        out, _ = capsys.readouterr()
+        mods = out.strip().split("\n")
+        assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
 
     def test_circular_type_refs(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
-        self.write_file("vec.spy", """
+        src = """
         @blue.generic
         def Vec2(T):
             @struct
@@ -146,25 +143,17 @@ class TestImporting(CompilerTest):
                 a: T
                 b: T
             return _Vec2
-        """)
+        """
+        self.write_file("vec.spy", src)
         src = """
         from vec import Vec2
-
         @struct
         class Point:
             x: int
             y: int
-
         def foo() -> Point:
             v = Vec2[Point](Point(1, 1), Point(2, 2))
             return v.a
         """
         mod = self.compile(src)
         assert mod.foo() == (1, 1)
-=======
-=======
-        out, _ = capsys.readouterr()
->>>>>>> 6b75d077 (ruff: apply format)
-        mods = out.strip().split("\n")
-        assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
->>>>>>> 0c57b4ea (ruff: replace single quote with doublequotes)
