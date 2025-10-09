@@ -1,24 +1,27 @@
 from dataclasses import dataclass
+
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.vm.vm import SPyVM
-from spy.vm.b import B
-from spy.vm.object import W_Type
-from spy.vm.function import W_Func, W_ASTFunc
-from spy.vm.modules.types import W_LiftedType
-from spy.vm.modules.rawbuffer import RB
+from spy.textbuilder import TextBuilder
+from spy.vm.b import TYPES, B
+from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.posix import POSIX
+from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.time import TIME
+from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType
+from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
-from spy.textbuilder import TextBuilder
+from spy.vm.vm import SPyVM
+
 
 @dataclass
 class C_Type:
     """
     Just a tiny wrapper around a string, but it helps to make things tidy.
     """
+
     name: str
 
     def __repr__(self) -> str:
@@ -26,6 +29,7 @@ class C_Type:
 
     def __str__(self) -> str:
         return self.name
+
 
 @dataclass
 class C_FuncParam:
@@ -44,12 +48,12 @@ class C_Function:
 
     def decl(self) -> str:
         if self.params == []:
-            s_params = 'void'
+            s_params = "void"
         else:
-            paramlist = [f'{p.c_type} {p.name}' for p in self.params]
-            s_params = ', '.join(paramlist)
+            paramlist = [f"{p.c_type} {p.name}" for p in self.params]
+            s_params = ", ".join(paramlist)
         #
-        return f'{self.c_restype} {self.name}({s_params})'
+        return f"{self.c_restype} {self.name}({s_params})"
 
 
 class Context:
@@ -58,11 +62,9 @@ class Context:
 
     Keep track of things like the mapping from W_* types to C types.
     """
+
     vm: SPyVM
     tbh_includes: TextBuilder
-    tbh_types_decl: TextBuilder
-    tbh_ptrs_def: TextBuilder
-    tbh_types_def: TextBuilder
     seen_modules: set[str]
     _d: dict[W_Type, C_Type]
 
@@ -70,32 +72,30 @@ class Context:
         self.vm = vm
         self.seen_modules = set()
         # set by CModuleWriter.emit_header
-        self.tbh_includes = None   # type: ignore
-        self.tbh_types_decl = None # type: ignore
-        self.tbh_ptrs_def = None   # type: ignore
-        self.tbh_types_def = None  # type: ignore
+        self.tbh_includes = None  # type: ignore
         self._d = {}
-        self._d[B.w_NoneType] = C_Type('void')
-        self._d[B.w_i8] = C_Type('int8_t')
-        self._d[B.w_u8] = C_Type('uint8_t')
-        self._d[B.w_i32] = C_Type('int32_t')
-        self._d[B.w_f64] = C_Type('double')
-        self._d[B.w_bool] = C_Type('bool')
-        self._d[B.w_str] = C_Type('spy_Str *')
-        self._d[RB.w_RawBuffer] = C_Type('spy_RawBuffer *')
-        self._d[JSFFI.w_JsRef] = C_Type('JsRef')
-        self._d[POSIX.w_TerminalSize] = C_Type('spy_TerminalSize')
+        self._d[TYPES.w_NoneType] = C_Type("void")
+        self._d[B.w_i8] = C_Type("int8_t")
+        self._d[B.w_u8] = C_Type("uint8_t")
+        self._d[B.w_i32] = C_Type("int32_t")
+        self._d[B.w_f64] = C_Type("double")
+        self._d[B.w_bool] = C_Type("bool")
+        self._d[B.w_str] = C_Type("spy_Str *")
+        self._d[RB.w_RawBuffer] = C_Type("spy_RawBuffer *")
+        self._d[JSFFI.w_JsRef] = C_Type("JsRef")
+        self._d[POSIX.w_TerminalSize] = C_Type("spy_TerminalSize")
 
     def w2c(self, w_T: W_Type) -> C_Type:
         if w_T in self._d:
             return self._d[w_T]
-        elif isinstance(w_T, W_PtrType):
-            return self.new_ptr_type(w_T)
-        elif isinstance(w_T, W_StructType):
-            return self.new_struct_type(w_T)
-        elif isinstance(w_T, W_LiftedType):
-            return self.new_lifted_type(w_T)
-        raise NotImplementedError(f'Cannot translate type {w_T} to C')
+        elif isinstance(w_T, W_Type):
+            # as soon as we split spy_structdefs into multiple files, here we
+            # should add a self.add_include_maybe. But for now it's not needed
+            # because we always include spy_structdefs.h anyway.
+            c_type = C_Type(w_T.fqn.c_name)
+            self._d[w_T] = c_type
+            return c_type
+        raise NotImplementedError(f"Cannot translate type {w_T} to C")
 
     def c_restype_by_fqn(self, fqn: FQN) -> C_Type:
         w_func = self.vm.lookup_global(fqn)
@@ -110,41 +110,23 @@ class Context:
         c_params = []
         for i, param in enumerate(w_functype.params):
             c_type = self.w2c(param.w_T)
-            if param.kind == 'simple':
+            if param.kind == "simple":
                 c_param_name = funcdef.args[i].name
                 c_params.append(C_FuncParam(c_param_name, c_type))
-            elif param.kind == 'var_positional':
+            elif param.kind == "var_positional":
                 assert funcdef.vararg is not None
                 assert i == len(funcdef.args)
                 raise SPyError.simple(
-                    'W_WIP',
-                    '*args not yet supported by the C backend',
-                    '*args declared here',
-                    funcdef.vararg.loc
+                    "W_WIP",
+                    "*args not yet supported by the C backend",
+                    "*args declared here",
+                    funcdef.vararg.loc,
                 )
             else:
                 assert False
 
         c_restype = self.w2c(w_functype.w_restype)
         return C_Function(name, c_params, c_restype)
-
-    def new_ptr_type(self, w_ptrtype: W_PtrType) -> C_Type:
-        self.add_include_maybe(w_ptrtype.w_itemtype.fqn)
-        c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        self._d[w_ptrtype] = c_ptrtype
-        return c_ptrtype
-
-    def new_struct_type(self, w_st: W_StructType) -> C_Type:
-        self.add_include_maybe(w_st.fqn)
-        c_struct_type = C_Type(w_st.fqn.c_name)
-        self._d[w_st] = c_struct_type
-        return c_struct_type
-
-    def new_lifted_type(self, w_hltype: W_LiftedType) -> C_Type:
-        self.add_include_maybe(w_hltype.fqn)
-        c_hltype = C_Type(w_hltype.fqn.c_name)
-        self._d[w_hltype] = c_hltype
-        return c_hltype
 
     def add_include_maybe(self, fqn: FQN) -> None:
         modname = fqn.modname

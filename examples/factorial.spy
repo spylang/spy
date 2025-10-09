@@ -1,0 +1,13 @@
+import time
+from _range import range
+
+def factorial(n: i32) -> i32:
+    res = 1
+    for i in range(n):
+        res *= (i+1)
+    return res
+
+def main() -> None:
+    print(factorial(5))
+    # this is needed to force gcc to compile the function, else it just precomputes the result
+    #print(factorial(int(time.time())))

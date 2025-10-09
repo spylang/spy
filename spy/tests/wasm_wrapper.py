@@ -1,25 +1,29 @@
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
+
 import py.path
 import wasmtime
+
 from spy.fqn import FQN
-from spy.llwasm import LLWasmType
 from spy.libspy import LLSPyInstance
+from spy.llwasm import LLWasmType
+from spy.vm.b import TYPES, B
 from spy.vm.cell import W_Cell
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.vm.modules.rawbuffer import RB
+from spy.vm.modules.types import UnwrappedLiftedObject, W_LiftedType
+from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
-from spy.vm.function import W_Func, W_FuncType, W_ASTFunc
-from spy.vm.struct import W_StructType, UnwrappedStruct
+from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
-from spy.vm.b import B
-from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.unsafe.ptr import W_PtrType
-from spy.vm.modules.types import W_LiftedType, UnwrappedLiftedObject
+
 
 @dataclass
 class WasmPtr:
     addr: int
     length: int
+
 
 class WasmModuleWrapper:
     vm: SPyVM
@@ -38,29 +42,23 @@ class WasmModuleWrapper:
     def __getattr__(self, attr: str) -> Any:
         w_obj = self.w_mod.getattr(attr)
         if isinstance(w_obj, W_ASTFunc):
-            if w_obj.color == 'blue':
-                raise NotImplementedError(
-                    'cannot call a @blue func from a WASM module'
-                )
+            if w_obj.color == "blue":
+                raise NotImplementedError("cannot call a @blue func from a WASM module")
             return self.read_function(w_obj)
 
         elif isinstance(w_obj, W_Cell):
             return self.read_cell(w_obj)
 
         else:
-            raise NotImplementedError(f"Don't know how to read this object from WASM: {w_obj}")
+            raise NotImplementedError(
+                f"Don't know how to read this object from WASM: {w_obj}"
+            )
 
-
-    def read_function(self, w_func: W_Func) -> 'WasmFuncWrapper':
+    def read_function(self, w_func: W_Func) -> "WasmFuncWrapper":
         # sanity check
         wasm_func = self.ll.get_export(w_func.fqn.c_name)
         assert isinstance(wasm_func, wasmtime.Func)
-        return WasmFuncWrapper(
-            self.vm,
-            self.ll,
-            w_func.fqn.c_name,
-            w_func.w_functype
-        )
+        return WasmFuncWrapper(self.vm, self.ll, w_func.fqn.c_name, w_func.w_functype)
 
     def read_cell(self, w_cell: W_Cell) -> Any:
         wasm_glob = self.ll.get_export(w_cell.fqn.c_name)
@@ -68,9 +66,9 @@ class WasmModuleWrapper:
         w_T = self.vm.dynamic_type(w_cell.get())
         t: LLWasmType
         if w_T is B.w_i32:
-            t = 'int32_t'
+            t = "int32_t"
         else:
-            assert False, f'Unknown type: {w_T}'
+            assert False, f"Unknown type: {w_T}"
 
         return self.ll.read_global(w_cell.fqn.c_name, deref=t)
 
@@ -81,8 +79,9 @@ class WasmFuncWrapper:
     c_name: str
     w_functype: W_FuncType
 
-    def __init__(self, vm: SPyVM, ll: LLSPyInstance, c_name: str,
-                 w_functype: W_FuncType) -> None:
+    def __init__(
+        self, vm: SPyVM, ll: LLSPyInstance, c_name: str, w_functype: W_FuncType
+    ) -> None:
         self.vm = vm
         self.ll = ll
         self.c_name = c_name
@@ -104,13 +103,13 @@ class WasmFuncWrapper:
             assert isinstance(pyval, UnwrappedStruct)
             return tuple(pyval._fields.values())
         else:
-            assert False, f'Unsupported type: {w_T}'
+            assert False, f"Unsupported type: {w_T}"
 
     def from_py_args(self, py_args: Any) -> Any:
         a = len(py_args)
         b = self.w_functype.arity
         if a != b:
-            raise TypeError(f'{self.c_name}: expected {b} arguments, got {a}')
+            raise TypeError(f"{self.c_name}: expected {b} arguments, got {a}")
         #
         wasm_args: list[Any] = []
         for py_arg, param in zip(py_args, self.w_functype.params):
@@ -123,7 +122,7 @@ class WasmFuncWrapper:
         return wasm_args
 
     def to_py_result(self, w_T: W_Type, res: Any) -> Any:
-        if w_T is B.w_NoneType:
+        if w_T is TYPES.w_NoneType:
             assert res is None
             return None
         elif w_T in (B.w_i8, B.w_i32, B.w_f64, B.w_u8):
@@ -135,7 +134,7 @@ class WasmFuncWrapper:
             addr = res
             length = self.ll.mem.read_i32(addr)
             utf8 = self.ll.mem.read(addr + 4, length)
-            return utf8.decode('utf-8')
+            return utf8.decode("utf-8")
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
             # On wasm32, it looks like this:
@@ -170,17 +169,13 @@ class WasmFuncWrapper:
             # However, this is good enough for most tests, so no reasons to
             # write complicated logic.
             assert isinstance(res, list)
-            fields = {
-                fieldname: item
-                for fieldname, item in zip(w_T.fields_w, res, strict=True)
-            }
+            fields = dict(zip(w_T.fields_w, res, strict=True))
             return UnwrappedStruct(w_T.fqn, fields)
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
 
-
     def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
-        assert unwrap, 'unwrap=False is not supported by the C backend'
+        assert unwrap, "unwrap=False is not supported by the C backend"
         wasm_args = self.from_py_args(py_args)
         res = self.ll.call(self.c_name, *wasm_args)
         w_T = self.w_functype.w_restype

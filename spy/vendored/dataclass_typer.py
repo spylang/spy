@@ -1,9 +1,10 @@
 # copied and adapted from this code by @tbenthompson (Ben Thompson):
 # https://github.com/fastapi/typer/issues/154#issuecomment-1544876144
 
-from typing import Callable, no_type_check
-import inspect
 import dataclasses
+import inspect
+from typing import Callable, no_type_check
+
 
 @no_type_check
 def dataclass_typer(func: Callable) -> Callable:

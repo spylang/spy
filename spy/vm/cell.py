@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+
 from spy.fqn import FQN
 from spy.vm.b import TYPES
 from spy.vm.object import W_Object
@@ -6,7 +7,8 @@ from spy.vm.object import W_Object
 if TYPE_CHECKING:
     pass
 
-@TYPES.builtin_type('Cell')
+
+@TYPES.builtin_type("Cell")
 class W_Cell(W_Object):
     """
     A cell object represent an indirect global reference.
@@ -23,7 +25,7 @@ class W_Cell(W_Object):
         self._w_val = w_val
 
     def __repr__(self) -> str:
-        return f'<spy cell {self.fqn} = {self._w_val}>'
+        return f"<spy cell {self.fqn} = {self._w_val}>"
 
     def get(self) -> W_Object:
         return self._w_val

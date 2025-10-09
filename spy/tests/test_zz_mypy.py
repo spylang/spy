@@ -1,17 +1,19 @@
-import pytest
 import os
 import pathlib
 
+import pytest
+
 ROOT = pathlib.Path(__file__).parent.parent.parent
+
 
 @pytest.mark.mypy
 def test_mypy():
-    mypy_ini = ROOT.joinpath('mypy.ini')
+    mypy_ini = ROOT.joinpath("mypy.ini")
     assert mypy_ini.exists()
     os.chdir(ROOT)
-    os.environ['MYPY_FORCE_COLOR'] = '1'
+    os.environ["MYPY_FORCE_COLOR"] = "1"
     print()
-    ret = os.system('mypy')
+    ret = os.system("mypy")
     print()
     if ret != 0:
-        pytest.fail('mypy failed')
+        pytest.fail("mypy failed")

@@ -1,23 +1,25 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.vm.struct import UnwrappedStruct
-from spy.tests.wasm_wrapper import WasmPtr
-from spy.tests.support import CompilerTest, expect_errors, only_interp
+
 
 def test_UnwrappedStruct():
-    us1 = UnwrappedStruct(FQN('test::Point'), {'x': 1, 'y': 2})
-    us2 = UnwrappedStruct(FQN('test::Point'), {'x': 1, 'y': 2})
-    us3 = UnwrappedStruct(FQN('test::Point'), {'x': 3, 'y': 4})
-    us4 = UnwrappedStruct(FQN('aaaa::bbbbb'), {'x': 1, 'y': 2})
+    us1 = UnwrappedStruct(FQN("test::Point"), {"x": 1, "y": 2})
+    us2 = UnwrappedStruct(FQN("test::Point"), {"x": 1, "y": 2})
+    us3 = UnwrappedStruct(FQN("test::Point"), {"x": 3, "y": 4})
+    us4 = UnwrappedStruct(FQN("aaaa::bbbbb"), {"x": 1, "y": 2})
     assert us1 == us2
     assert us1 != us3
     assert us1 != us4
     assert us1 == (1, 2)
+
 
 class TestStructOnStack(CompilerTest):
     """
@@ -115,8 +117,8 @@ class TestStructOnStack(CompilerTest):
         """
         errors = expect_errors(
             "type `test::Point` does not support assignment to attribute 'x'",
-            ('this is `test::Point`', 'p'),
-            ('`p` defined here', 'p: Point'),
+            ("this is `test::Point`", "p"),
+            ("`p` defined here", "p: Point"),
         )
         self.compile_raises(src, "foo", errors)
 

@@ -1,19 +1,24 @@
-#-*- encoding: utf-8 -*-
-import typing
-from typing import Sequence, Callable
+# -*- encoding: utf-8 -*-
 import difflib
-import subprocess
 import inspect
+import subprocess
+import typing
+from typing import Callable, Sequence
+
 import py.path
+
 from spy.textbuilder import Color
+
 
 class AnythingClass:
     """
     Magic object which compares equal to everything. Useful for equality tests
     in which you don't care about the exact value of a specific field.
     """
+
     def __eq__(self, other: typing.Any) -> bool:
         return True
+
 
 ANYTHING: typing.Any = AnythingClass()
 
@@ -34,13 +39,13 @@ def magic_dispatch(self, prefix, obj, *args, **kwargs):
         def visit_str(self): ...
         def visit_float(self): ...
     """
-    methname = f'{prefix}_{obj.__class__.__name__}'
+    methname = f"{prefix}_{obj.__class__.__name__}"
     meth = getattr(self, methname, None)
     if meth is None:
-        meth = getattr(self, f'{prefix}_NotImplemented', None)
+        meth = getattr(self, f"{prefix}_NotImplemented", None)
         if meth is None:
             clsname = self.__class__.__name__
-            raise NotImplementedError(f'{clsname}.{methname}')
+            raise NotImplementedError(f"{clsname}.{methname}")
     return meth(obj, *args, **kwargs)
 
 
@@ -50,27 +55,30 @@ def extend(existing_cls):
     Class decorator to extend an existing class with new attributes and
     methods
     """
+
     def decorator(new_cls):
         for key, value in new_cls.__dict__.items():
-            if key.startswith('__'):
+            if key.startswith("__"):
                 continue
             if hasattr(existing_cls, key):
                 clsname = existing_cls.__name__
                 raise TypeError(f"class {clsname} has already a member '{key}'")
             setattr(existing_cls, key, value)
         return existing_cls
+
     return decorator
 
 
 @typing.no_type_check
 def print_class_hierarchy(cls):
+    # fmt: off
     CROSS  = "├── "
     BAR    = "│   "
     CORNER = "└── "
     SPACE  = "    "
-
+    # fmt: on
     def print_class(cls, prefix, indent, marker):
-        print(f'{prefix}{marker}{cls.__name__}')
+        print(f"{prefix}{marker}{cls.__name__}")
         prefix += indent
         subclasses = cls.__subclasses__()
         if subclasses:
@@ -78,7 +86,7 @@ def print_class_hierarchy(cls):
                 print_class(subcls, prefix, indent=BAR, marker=CROSS)
             print_class(subclasses[-1], prefix, indent=SPACE, marker=CORNER)
 
-    print_class(cls, prefix='', indent='', marker='')
+    print_class(cls, prefix="", indent="", marker="")
 
 
 def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
@@ -87,12 +95,12 @@ def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
     diff = difflib.unified_diff(la, lb, fromfile, tofile, lineterm="")
     print()
     for line in diff:
-        if line.startswith('+'):
-            line = Color.set('yellow', line)
-        elif line.startswith('-'):
-            line = Color.set('red', line)
-        elif line.startswith('@@'):
-            line = Color.set('fuchsia', line)
+        if line.startswith("+"):
+            line = Color.set("yellow", line)
+        elif line.startswith("-"):
+            line = Color.set("red", line)
+        elif line.startswith("@@"):
+            line = Color.set("fuchsia", line)
         print(line)
 
 
@@ -104,9 +112,11 @@ def highlight_C_maybe(code: str | bytes) -> str:
         return code
 
     from pygments import highlight
-    from pygments.lexers import CLexer  # type: ignore
     from pygments.formatters import TerminalFormatter  # type: ignore
+    from pygments.lexers import CLexer  # type: ignore
+
     return highlight(code, CLexer(), TerminalFormatter())
+
 
 def shortrepr(s: str, n: int) -> str:
     """
@@ -116,8 +126,9 @@ def shortrepr(s: str, n: int) -> str:
     Else, we use '...' to put a cap on the length of s.
     """
     if len(s) > n:
-        s = s[:n-2] + '...'
+        s = s[: n - 2] + "..."
     return repr(s)
+
 
 def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
     """
@@ -126,6 +137,7 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
     Like unbuffer, this assumes the command only outputs to stdout.
     """
     import pexpect
+
     try:
         cmd = cmdline_s[0]
         args = list(cmdline_s[1:])
@@ -138,23 +150,16 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
         returncode = child.exitstatus
 
         return subprocess.CompletedProcess(
-            args=cmdline_s,
-            stdout=child.before,
-            stderr='',
-            returncode=returncode
+            args=cmdline_s, stdout=child.before, stderr="", returncode=returncode
         )
     except pexpect.exceptions.EOF:
         return subprocess.CompletedProcess(
-            args=cmdline_s,
-            stdout=child.before,
-            stderr='',
-            returncode=returncode
+            args=cmdline_s, stdout=child.before, stderr="", returncode=returncode
         )
 
 
 def robust_run(
-        cmdline: Sequence[str|py.path.local],
-        unbuffer: bool = False
+    cmdline: Sequence[str | py.path.local], unbuffer: bool = False
 ) -> subprocess.CompletedProcess:
     """
     Similar to subprocess.run, but raise an Exception with the content of
@@ -163,7 +168,6 @@ def robust_run(
     If unbuffer is True, the command is run unbuffered using pexpect.
     """
     cmdline_s = [str(x) for x in cmdline]
-    #print(" ".join(cmdline_s))
     if unbuffer:
         # Note that unbuffer doesn't read from stdin by default
         proc = unbuffer_run(cmdline_s)
@@ -174,17 +178,17 @@ def robust_run(
     if proc.returncode != 0:
         FORCE_COLORS = True
         lines = ["subprocess failed:"]
-        lines.append(' '.join(cmdline_s))
-        lines.append('')
+        lines.append(" ".join(cmdline_s))
+        lines.append("")
         errlines = []
         if proc.stdout:
-            errlines += proc.stdout.decode('utf-8').splitlines()
+            errlines += proc.stdout.decode("utf-8").splitlines()
         if proc.stderr:
-            errlines += proc.stderr.decode('utf-8').splitlines()
+            errlines += proc.stderr.decode("utf-8").splitlines()
         if FORCE_COLORS:
-            errlines = [Color.set('default', line) for line in errlines]
+            errlines = [Color.set("default", line) for line in errlines]
         lines += errlines
-        msg = '\n'.join(lines)
+        msg = "\n".join(lines)
         raise Exception(msg)
     return proc
 
@@ -227,6 +231,7 @@ def func_equals(f: Callable, g: Callable) -> bool:
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import ast as py_ast
+
     print_class_hierarchy(py_ast.AST)

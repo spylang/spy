@@ -9,22 +9,27 @@ requires-python = ">=3.12"
 dependencies = [
     "click==8.1.8",
     "fixedint==0.2.0",
-    "mypy==1.15.0",
     "ninja==1.11.1.4",
     "py==1.11.0",
-    "pytest==8.3.4",
     "typer==0.15.1",
     "pexpect==4.9.0",
     "types-pexpect==4.9.0.20250516",
     "wasmtime==8.0.1; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
+]
 
+[project.optional-dependencies]
+dev = [
+    "pdbpp>=0.11.7",
+    "pytest==8.3.4",
+    "ruff>=0.12.8,<1",
+    "mypy==1.15.0",
     # the followings are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
-
     "pytest_pyodide==0.58.4; sys_platform != 'emscripten'",
     "pyodide-py==0.27.2; sys_platform != 'emscripten'",
+    "pre-commit==4.3.0"
 ]
 
 [project.urls]
@@ -67,3 +72,30 @@ markers = [
     # others
     "mypy: check mypy",
 ]
+
+# Formatter and Linter settings
+[tool.ruff]
+lint.select = [
+    "W",  # pycodestyle warnings
+    "I",  # isort
+    "Q000", # double quotes
+    "C",  # flake8-comprehensions
+]
+lint.ignore = ["C901"]
+line-length = 88
+indent-width = 4
+target-version = "py311"
+exclude = [".venv", "*.pyi", "*.c"]
+
+[tool.ruff.format]
+line-ending = "auto"
+exclude = [".venv", "*.pyi", "*.c"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+multiline-quotes = "double"
+docstring-quotes = "double"
+avoid-escape = true

@@ -1,4 +1,4 @@
-from array import array1d, array2d
+from myarray import array1d, array2d
 
 @blue.generic
 def dot(T):
@@ -17,9 +17,3 @@ def dot(T):
         return result
 
     return impl
-
-
-
-@blue
-def __INIT__(mod):
-    print('dot.__INIT__')

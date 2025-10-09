@@ -1,18 +1,20 @@
-import typing
-from typing import TYPE_CHECKING, Optional, Iterator, Any, no_type_check
 import ast as py_ast
 import dataclasses
+import typing
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Iterator, Optional, no_type_check
+
+from spy.analyze.symtable import Color, ImportRef, Symbol, VarKind
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.analyze.symtable import Color, VarKind, ImportRef, Symbol
 from spy.util import extend
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-AnyNode = typing.Union[py_ast.AST, 'Node']
-ClassKind = typing.Literal['class', 'struct', 'typelift']
-FuncKind = typing.Literal['plain', 'generic', 'metafunc']
+AnyNode = typing.Union[py_ast.AST, "Node"]
+ClassKind = typing.Literal["class", "struct", "typelift"]
+FuncKind = typing.Literal["plain", "generic", "metafunc"]
 
 
 @extend(py_ast.AST)
@@ -28,7 +30,7 @@ class AST:
     def loc(self) -> Loc:
         if self._loc is not None:
             return self._loc
-        raise ValueError(f'{self.__class__.__name__} does not have a location')
+        raise ValueError(f"{self.__class__.__name__} does not have a location")
 
     @no_type_check
     def compute_all_locs(self, filename: str) -> None:
@@ -36,22 +38,24 @@ class AST:
         Compute .loc for itself and all its descendants.
         """
         for py_node in py_ast.walk(self):  # type: ignore
-            if hasattr(py_node, 'lineno'):
+            if hasattr(py_node, "lineno"):
                 assert py_node.end_lineno is not None
                 assert py_node.end_col_offset is not None
                 loc = Loc(
-                    filename = filename,
-                    line_start = py_node.lineno,
-                    line_end = py_node.end_lineno,
-                    col_start = py_node.col_offset,
-                    col_end = py_node.end_col_offset,
+                    filename=filename,
+                    line_start=py_node.lineno,
+                    line_end=py_node.end_lineno,
+                    col_start=py_node.col_offset,
+                    col_end=py_node.end_col_offset,
                 )
                 py_node._loc = loc
 
     @typing.no_type_check
     def pp(self, *, hl=None) -> None:
         import spy.ast_dump
+
         spy.ast_dump.pprint(self, hl=hl)
+
 
 del AST
 
@@ -69,12 +73,14 @@ del AST
 #
 # But we can't because this pattern is not understood by mypy.
 
+
 @dataclass(eq=False)
 class Node:
     loc: Loc = field(repr=False)
 
-    def pp(self, hl: Any=None, vm: Optional['SPyVM']=None) -> None:
+    def pp(self, hl: Any = None, vm: Optional["SPyVM"] = None) -> None:
         import spy.ast_dump
+
         spy.ast_dump.pprint(self, hl=hl, vm=vm)
 
     @typing.no_type_check
@@ -84,18 +90,19 @@ class Node:
         copy&paste expected output into your editor.
         """
         import spy.ast_dump
+
         spy.ast_dump.pprint(self, copy_to_clipboard=True)
 
     def replace(self, **kwargs: Any) -> Any:
         return dataclasses.replace(self, **kwargs)
 
-    def walk(self, cls: Optional[type] = None) -> Iterator['Node']:
+    def walk(self, cls: Optional[type] = None) -> Iterator["Node"]:
         if cls is None or isinstance(self, cls):
             yield self
         for node in self.get_children():
             yield from node.walk(cls)
 
-    def get_children(self) -> Iterator['Node']:
+    def get_children(self) -> Iterator["Node"]:
         for f in self.__dataclass_fields__.values():
             value = getattr(self, f.name)
             if isinstance(value, Node):
@@ -118,7 +125,7 @@ class Node:
           - if it doesn't exist, we recurively visit its children
         """
         cls = self.__class__.__name__
-        methname = f'{prefix}_{cls}'
+        methname = f"{prefix}_{cls}"
         meth = getattr(visitor, methname, None)
         if meth:
             meth(self, *args)
@@ -126,13 +133,14 @@ class Node:
             for node in self.get_children():
                 node.visit(prefix, visitor, *args)
 
+
 @dataclass(eq=False)
 class Module(Node):
     filename: str
     docstring: Optional[str]
-    decls: list['Decl']
+    decls: list["Decl"]
 
-    def get_funcdef(self, name: str) -> 'FuncDef':
+    def get_funcdef(self, name: str) -> "FuncDef":
         """
         Search for the FuncDef with the given name.
         """
@@ -141,7 +149,7 @@ class Module(Node):
                 return decl.funcdef
         raise KeyError(name)
 
-    def get_classdef(self, name: str) -> 'ClassDef':
+    def get_classdef(self, name: str) -> "ClassDef":
         """
         Search for the ClassDef with the given name.
         """
@@ -157,18 +165,18 @@ class Decl(Node):
 
 @dataclass(eq=False)
 class GlobalFuncDef(Decl):
-    funcdef: 'FuncDef'
+    funcdef: "FuncDef"
 
 
 @dataclass(eq=False)
 class GlobalVarDef(Decl):
-    vardef: 'VarDef'
-    assign: 'Assign'
+    vardef: "VarDef"
+    assign: "Assign"
 
 
 @dataclass(eq=False)
 class GlobalClassDef(Decl):
-    classdef: 'ClassDef'
+    classdef: "ClassDef"
 
 
 @dataclass(eq=False)
@@ -177,7 +185,9 @@ class Import(Decl):
     ref: ImportRef
     asname: str
 
+
 # ====== Expr hierarchy ======
+
 
 @dataclass(eq=False)
 class Expr(Node):
@@ -205,27 +215,31 @@ class Expr(Node):
      1    lambda
      0    :=
     """
+
     # precedence must be overriden by subclasses. The weird type comment is
     # needed to make mypy happy
-    precedence = '<Expr.precedence not set>' # type: int # type: ignore
+    precedence = "<Expr.precedence not set>"  # type: int # type: ignore
 
 
 @dataclass(eq=False)
 class Name(Expr):
-    precedence = 100 # the highest
+    precedence = 100  # the highest
     id: str
+
 
 @dataclass(eq=False)
 class Auto(Expr):
-    precedence = 100 # the highest
+    precedence = 100  # the highest
+
 
 @dataclass(eq=False)
 class Constant(Expr):
-    precedence = 100 # the highest
+    precedence = 100  # the highest
     value: object
 
     def __post_init__(self) -> None:
-        assert type(self.value) is not str, 'use StrConst instead'
+        assert type(self.value) is not str, "use StrConst instead"
+
 
 @dataclass(eq=False)
 class StrConst(Expr):
@@ -235,8 +249,10 @@ class StrConst(Expr):
     The reason we have a specialized node is that we want to use it for fields
     than MUST be strings, like GetAttr.attr or Assign.target.
     """
-    precedence = 100 # the highest
+
+    precedence = 100  # the highest
     value: str
+
 
 @dataclass(eq=False)
 class LocConst(Expr):
@@ -246,7 +262,8 @@ class LocConst(Expr):
     The reason for this is that we treat W_Locs as value types and we don't
     want to give them an FQN just for redshifting.
     """
-    precedence = 100 # the highest
+
+    precedence = 100  # the highest
     value: Loc
 
 
@@ -256,15 +273,18 @@ class GetItem(Expr):
     value: Expr
     args: list[Expr]
 
+
 @dataclass(eq=False)
 class List(Expr):
     precedence = 17
     items: list[Expr]
 
+
 @dataclass(eq=False)
 class Tuple(Expr):
     precedence = 17
     items: list[Expr]
+
 
 @dataclass(eq=False)
 class Call(Expr):
@@ -272,12 +292,14 @@ class Call(Expr):
     func: Expr
     args: list[Expr]
 
+
 @dataclass(eq=False)
 class CallMethod(Expr):
-    precedence = 17 # higher than GetAttr
+    precedence = 17  # higher than GetAttr
     target: Expr
     method: StrConst
     args: list[Expr]
+
 
 @dataclass(eq=False)
 class GetAttr(Expr):
@@ -291,22 +313,23 @@ class BinOp(Expr):
     op: str
     left: Expr
     right: Expr
-
+    # fmt: off
     _precendece = {
-        '|':   7,
-        '^':   8,
-        '&':   9,
-        '<<': 10,
-        '>>': 10,
-        '+':  11,
-        '-':  11,
-        '*':  12,
-        '/':  12,
-        '//': 12,
-        '%':  12,
-        '@':  12,
-        '**': 14,
+        "|":   7,
+        "^":   8,
+        "&":   9,
+        "<<": 10,
+        ">>": 10,
+        "+":  11,
+        "-":  11,
+        "*":  12,
+        "/":  12,
+        "//": 12,
+        "%":  12,
+        "@":  12,
+        "**": 14,
     }
+    # fmt: on
 
     @property
     def precedence(self) -> int:
@@ -315,7 +338,7 @@ class BinOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
-        raise TypeError('readonly attribute')
+        raise TypeError("readonly attribute")
 
 
 # eventually this should allow chained comparisons, but for now we support
@@ -325,19 +348,20 @@ class CmpOp(Expr):
     op: str
     left: Expr
     right: Expr
-
+    # fmt: off
     _precendece = {
-        '==':  6,
-        '!=':  6,
-        '<':   6,
-        '<=':  6,
-        '>':   6,
-        '>=':  6,
-        'is':  6,
-        'in':  6,
-        'is not': 6,
-        'not in': 6,
+        "==":  6,
+        "!=":  6,
+        "<":   6,
+        "<=":  6,
+        ">":   6,
+        ">=":  6,
+        "is":  6,
+        "in":  6,
+        "is not": 6,
+        "not in": 6,
     }
+    # fmt: on
 
     @property
     def precedence(self) -> int:
@@ -346,20 +370,21 @@ class CmpOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
-        raise TypeError('readonly attribute')
+        raise TypeError("readonly attribute")
 
 
 @dataclass(eq=False)
 class UnaryOp(Expr):
     op: str
     value: Expr
-
+    # fmt: off
     _precendece = {
-        'not': 5,
-        '+':  13,
-        '-':  13,
-        '~':  13,
+        "not": 5,
+        "+":  13,
+        "-":  13,
+        "~":  13,
     }
+    # fmt: on
 
     @property
     def precedence(self) -> int:
@@ -368,20 +393,22 @@ class UnaryOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
-        raise TypeError('readonly attribute')
-
+        raise TypeError("readonly attribute")
 
 
 # ====== Stmt hierarchy ======
+
 
 @dataclass(eq=False)
 class Stmt(Node):
     pass
 
+
 @dataclass(eq=False)
 class FuncArg(Node):
     name: str
-    type: 'Expr'
+    type: "Expr"
+
 
 @dataclass(eq=False)
 class FuncDef(Stmt):
@@ -390,10 +417,10 @@ class FuncDef(Stmt):
     name: str
     args: list[FuncArg]
     vararg: Optional[FuncArg]
-    return_type: 'Expr'
+    return_type: "Expr"
     docstring: Optional[str]
-    body: list['Stmt']
-    decorators: list['Expr']
+    body: list["Stmt"]
+    decorators: list["Expr"]
     symtable: Any = field(repr=False, default=None)
 
     @property
@@ -404,22 +431,26 @@ class FuncDef(Stmt):
         """
         return Loc.combine(self.loc, self.return_type.loc)
 
+
 @dataclass(eq=False)
 class ClassDef(Stmt):
     name: str
     kind: ClassKind
     docstring: Optional[str]
-    fields: list['VarDef']
-    body: list['Stmt']
+    fields: list["VarDef"]
+    body: list["Stmt"]
     symtable: Any = field(repr=False, default=None)
+
 
 @dataclass(eq=False)
 class Pass(Stmt):
     pass
 
+
 @dataclass(eq=False)
 class Return(Stmt):
     value: Expr
+
 
 @dataclass(eq=False)
 class VarDef(Stmt):
@@ -427,22 +458,27 @@ class VarDef(Stmt):
     name: str
     type: Expr
 
+
 @dataclass(eq=False)
 class StmtExpr(Stmt):
     """
     An expr used as a statement
     """
+
     value: Expr
+
 
 @dataclass(eq=False)
 class Assign(Stmt):
     target: StrConst
     value: Expr
 
+
 @dataclass(eq=False)
 class UnpackAssign(Stmt):
     targets: list[StrConst]
     value: Expr
+
 
 @dataclass(eq=False)
 class AugAssign(Stmt):
@@ -450,17 +486,20 @@ class AugAssign(Stmt):
     target: StrConst
     value: Expr
 
+
 @dataclass(eq=False)
 class SetAttr(Stmt):
     target: Expr
     attr: StrConst
     value: Expr
 
+
 @dataclass(eq=False)
 class SetItem(Stmt):
     target: Expr
     args: list[Expr]
     value: Expr
+
 
 @dataclass(eq=False)
 class If(Stmt):
@@ -472,10 +511,12 @@ class If(Stmt):
     def has_else(self) -> bool:
         return len(self.else_body) > 0
 
+
 @dataclass(eq=False)
 class While(Stmt):
     test: Expr
     body: list[Stmt]
+
 
 @dataclass(eq=False)
 class For(Stmt):
@@ -484,18 +525,22 @@ class For(Stmt):
     iter: Expr
     body: list[Stmt]
 
+
 @dataclass(eq=False)
 class Raise(Stmt):
     exc: Expr
+
 
 @dataclass(eq=False)
 class Assert(Stmt):
     test: Expr
     msg: Optional[Expr]
 
+
 @dataclass(eq=False)
 class Break(Stmt):
     pass
+
 
 @dataclass(eq=False)
 class Continue(Stmt):
@@ -509,32 +554,38 @@ class Continue(Stmt):
 # the proper AST-which-represent-the-syntax-of-the-language, but they are part
 # of the AST-which-we-use-as-IR
 
+
 @dataclass(eq=False)
 class FQNConst(Expr):
-    precedence = 100 # the highest
+    precedence = 100  # the highest
     fqn: FQN
+
 
 # specialized Name nodes
 @dataclass(eq=False)
 class NameLocal(Expr):
-    precedence = 100 # the highest
+    precedence = 100  # the highest
     sym: Symbol
+
 
 @dataclass(eq=False)
 class NameOuterDirect(Expr):
-    precedence = 100 # the highest
+    precedence = 100  # the highest
     sym: Symbol
+
 
 @dataclass(eq=False)
 class NameOuterCell(Expr):
-    precedence = 100 # the highest
+    precedence = 100  # the highest
     sym: Symbol
     fqn: FQN
+
 
 @dataclass(eq=False)
 class AssignLocal(Stmt):
     target: StrConst
     value: Expr
+
 
 @dataclass(eq=False)
 class AssignCell(Stmt):

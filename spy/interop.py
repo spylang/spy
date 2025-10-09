@@ -5,10 +5,12 @@ compilers.
 
 import sys
 from pathlib import Path
-from spy.vm.vm import SPyVM
-from spy.vm.module import W_Module
 
-def redshift(filename: str|Path) -> tuple[SPyVM, W_Module]:
+from spy.vm.module import W_Module
+from spy.vm.vm import SPyVM
+
+
+def redshift(filename: str | Path) -> tuple[SPyVM, W_Module]:
     """
     Perform redshift on the given file
     """
@@ -18,7 +20,7 @@ def redshift(filename: str|Path) -> tuple[SPyVM, W_Module]:
     vm = SPyVM()
     vm.path.append(str(builddir))
     w_mod = vm.import_(modname)
-    vm.redshift(error_mode='eager')
+    vm.redshift(error_mode="eager")
     return vm, w_mod
 
 
@@ -27,22 +29,21 @@ def main(argv: list[str]) -> None:
     Example of how to use spy.interop.redshift
     """
     from spy.vm.function import W_ASTFunc
+
     filename = argv[1]
     vm, w_mod = redshift(filename)
     for fqn, w_obj in vm.fqns_by_modname(w_mod.name):
         print(fqn, w_obj)
         if isinstance(w_obj, W_ASTFunc):
-            print('functype:', w_obj.w_functype)
-            print('locals:')
+            print("functype:", w_obj.w_functype)
+            print("locals:")
             assert w_obj.locals_types_w is not None
             for varname, w_T in w_obj.locals_types_w.items():
-                print('   ', varname, w_T)
-            print('AST:')
+                print("   ", varname, w_T)
+            print("AST:")
             w_obj.funcdef.pp()
             print()
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)

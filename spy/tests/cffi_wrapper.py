@@ -1,6 +1,8 @@
-from typing import Any
 import sys
+from typing import Any
+
 import py.path
+
 from spy.vm.vm import SPyVM
 
 
@@ -21,7 +23,7 @@ def isolated_import(modname: str, sofile: py.path.local):
 
     assert modname in sys.modules
     after_mods = set(sys.modules.keys())
-    new_mods = after_mods - before_mods - {'_cffi_backend'}
+    new_mods = after_mods - before_mods - {"_cffi_backend"}
     for modname in new_mods:
         del sys.modules[modname]
 

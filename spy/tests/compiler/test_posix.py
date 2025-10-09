@@ -1,12 +1,11 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 from spy.tests.support import CompilerTest
 
-class TestPosix(CompilerTest):
 
+class TestPosix(CompilerTest):
     def test_get_terminal_size(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from posix import TerminalSize, get_terminal_size
 
         def foo() -> str:

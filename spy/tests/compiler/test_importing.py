@@ -1,7 +1,7 @@
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
-class TestImporting(CompilerTest):
 
+class TestImporting(CompilerTest):
     def test_import(self):
         mod = self.compile("""
         from builtins import abs as my_abs
@@ -14,8 +14,8 @@ class TestImporting(CompilerTest):
 
     def test_import_errors_1(self):
         ctx = expect_errors(
-            'cannot import `builtins.aaa`',
-            ('attribute `aaa` does not exist in module `builtins`', 'aaa')
+            "cannot import `builtins.aaa`",
+            ("attribute `aaa` does not exist in module `builtins`", "aaa"),
         )
         with ctx:
             self.compile("""
@@ -24,8 +24,8 @@ class TestImporting(CompilerTest):
 
     def test_import_errors_2(self):
         ctx = expect_errors(
-            'cannot import `xxx.aaa`',
-            ('module `xxx` does not exist', 'from xxx import aaa'),
+            "cannot import `xxx.aaa`",
+            ("module `xxx` does not exist", "from xxx import aaa"),
         )
         with ctx:
             self.compile("""
@@ -34,10 +34,11 @@ class TestImporting(CompilerTest):
 
     def test_function_in_other_module(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
-        self.write_file("delta.spy", """
+        src = """
         def get_delta() -> i32:
             return 10
-        """)
+        """
+        self.write_file("delta.spy", src)
 
         mod = self.compile("""
         from delta import get_delta
@@ -49,12 +50,13 @@ class TestImporting(CompilerTest):
 
     def test_type_in_other_module(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
-        self.write_file("point.spy", """
+        src = """
         @struct
         class Point:
             x: i32
             y: i32
-        """)
+        """
+        self.write_file("point.spy", src)
 
         mod = self.compile("""
         from unsafe import gc_alloc, ptr
@@ -76,15 +78,16 @@ class TestImporting(CompilerTest):
     @only_interp
     def test_nested_imports(self, capsys):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
-        self.write_file("aaa.spy", """
+        src = """
         import a1
         import a2
 
         @blue
         def __INIT__(mod):
             print('aaa')
-        """)
-        self.write_file("bbb.spy", """
+        """
+        self.write_file("aaa.spy", src)
+        src = """
         import aaa
         import b1
         import b2
@@ -92,28 +95,33 @@ class TestImporting(CompilerTest):
         @blue
         def __INIT__(mod):
             print('bbb')
-        """)
-        self.write_file("a1.spy", """
+        """
+        self.write_file("bbb.spy", src)
+        src = """
         @blue
         def __INIT__(mod):
             print('a1')
-        """)
-        self.write_file("a2.spy", """
+        """
+        self.write_file("a1.spy", src)
+        src = """
         @blue
         def __INIT__(mod):
             print('a2')
-        """)
-        self.write_file("b1.spy", """
+        """
+        self.write_file("a2.spy", src)
+        src = """
         @blue
         def __INIT__(mod):
             print('b1')
-        """)
-        self.write_file("b2.spy", """
+        """
+        self.write_file("b1.spy", src)
+        src = """
         @blue
         def __INIT__(mod):
             print('b2')
-        """)
-        mod = self.compile("""
+        """
+        self.write_file("b2.spy", src)
+        self.compile("""
         import aaa
         import bbb
 
@@ -121,6 +129,31 @@ class TestImporting(CompilerTest):
         def __INIT__(mod):
             print('main')
         """)
-        out, err = capsys.readouterr()
-        mods = out.strip().split('\n')
-        assert mods == ['a1', 'a2', 'aaa', 'b1', 'b2', 'bbb', 'main']
+        out, _ = capsys.readouterr()
+        mods = out.strip().split("\n")
+        assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
+
+    def test_circular_type_refs(self):
+        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
+        src = """
+        @blue.generic
+        def Vec2(T):
+            @struct
+            class _Vec2:
+                a: T
+                b: T
+            return _Vec2
+        """
+        self.write_file("vec.spy", src)
+        src = """
+        from vec import Vec2
+        @struct
+        class Point:
+            x: int
+            y: int
+        def foo() -> Point:
+            v = Vec2[Point](Point(1, 1), Point(2, 2))
+            return v.a
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (1, 1)

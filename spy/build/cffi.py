@@ -1,8 +1,10 @@
-from typing import Any
-import sys
-import os
-import py.path
 import contextlib
+import os
+import sys
+from typing import Any
+
+import py.path
+
 from spy.util import robust_run
 
 

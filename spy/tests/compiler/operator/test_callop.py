@@ -1,12 +1,14 @@
 from typing import Annotated
-from spy.vm.primitive import W_I32
-from spy.vm.member import Member
+
+from spy.tests.support import CompilerTest, expect_errors, no_C
 from spy.vm.builtin import builtin_method
-from spy.vm.w import W_Type, W_Object
-from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.member import Member
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_I32
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.tests.support import CompilerTest, no_C, expect_errors
+from spy.vm.w import W_Object, W_Type
+
 
 @no_C
 class TestCallOp(CompilerTest):
@@ -14,21 +16,22 @@ class TestCallOp(CompilerTest):
 
     def test_w_new_simple(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('Point')
+        @EXT.builtin_type("Point")
         class W_Point(W_Object):
-            w_x: Annotated[W_I32, Member('x')]
-            w_y: Annotated[W_I32, Member('y')]
+            w_x: Annotated[W_I32, Member("x")]
+            w_y: Annotated[W_I32, Member("y")]
 
             def __init__(self, w_x: W_I32, w_y: W_I32) -> None:
                 self.w_x = w_x
                 self.w_y = w_y
 
-            @builtin_method('__new__')
+            @builtin_method("__new__")
             @staticmethod
-            def w_new(vm: 'SPyVM', w_x: W_I32, w_y: W_I32) -> 'W_Point':
+            def w_new(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> "W_Point":
                 return W_Point(w_x, w_y)
+
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -44,35 +47,40 @@ class TestCallOp(CompilerTest):
 
     def test_w_new_metafunc(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('Point')
+        @EXT.builtin_type("Point")
         class W_Point(W_Object):
-            w_x: Annotated[W_I32, Member('x')]
-            w_y: Annotated[W_I32, Member('y')]
+            w_x: Annotated[W_I32, Member("x")]
+            w_y: Annotated[W_I32, Member("y")]
 
             def __init__(self, w_x: W_I32, w_y: W_I32) -> None:
                 self.w_x = w_x
                 self.w_y = w_y
 
-            @builtin_method('__new__', color='blue', kind='metafunc')
+            @builtin_method("__new__", color="blue", kind="metafunc")
             @staticmethod
-            def w_NEW(vm: 'SPyVM', wam_cls: W_MetaArg,
-                     *args_wam: W_MetaArg) -> W_OpSpec:
+            def w_NEW(
+                vm: "SPyVM", wam_cls: W_MetaArg, *args_wam: W_MetaArg
+            ) -> W_OpSpec:
                 # Support overloading based on argument count
                 if len(args_wam) == 1:
                     # Point(x) -> Point(x, x)
-                    @vm.register_builtin_func('ext', 'new_point_single')
-                    def w_new(vm: 'SPyVM', w_cls: W_Type, w_x: W_I32) -> W_Point:
+                    @vm.register_builtin_func("ext", "new_point_single")
+                    def w_new(vm: "SPyVM", w_cls: W_Type, w_x: W_I32) -> W_Point:
                         return W_Point(w_x, w_x)
+
                     return W_OpSpec(w_new)
                 else:
                     # Normal Point(x, y)
-                    @vm.register_builtin_func('ext', 'new_point')
-                    def w_new(vm: 'SPyVM', w_cls: W_Type,
-                              w_x: W_I32, w_y: W_I32) -> W_Point:
+                    @vm.register_builtin_func("ext", "new_point")
+                    def w_new(
+                        vm: "SPyVM", w_cls: W_Type, w_x: W_I32, w_y: W_I32
+                    ) -> W_Point:
                         return W_Point(w_x, w_y)
+
                     return W_OpSpec(w_new)
+
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -100,11 +108,12 @@ class TestCallOp(CompilerTest):
 
     def test_no_w_new(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('MyClass')
+        @EXT.builtin_type("MyClass")
         class W_MyClass(W_Object):
             pass
+
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)
@@ -115,8 +124,8 @@ class TestCallOp(CompilerTest):
             return MyClass()
         """
         errors = expect_errors(
-            'cannot instantiate `ext::MyClass`',
-            ('`ext::MyClass` does not have a method `__new__`', "MyClass"),
+            "cannot instantiate `ext::MyClass`",
+            ("`ext::MyClass` does not have a method `__new__`", "MyClass"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -129,21 +138,22 @@ class TestCallOp(CompilerTest):
             return bar(i32)
         """
         errors = expect_errors(
-            'instantiation of red types is not yet supported',
-            ('this is red', "T"),
+            "instantiation of red types is not yet supported",
+            ("this is red", "T"),
         )
         self.compile_raises(src, "foo", errors)
 
     def test_call_varargs(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
         @EXT.builtin_func
-        def w_sum(vm: 'SPyVM', *args_w: W_I32) -> W_I32:
+        def w_sum(vm: "SPyVM", *args_w: W_I32) -> W_I32:
             tot = 0
             for w_x in args_w:
                 tot += vm.unwrap_i32(w_x)
             return vm.wrap(tot)
+
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
@@ -156,22 +166,21 @@ class TestCallOp(CompilerTest):
 
     def test_call_instance(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('Adder')
+        @EXT.builtin_type("Adder")
         class W_Adder(W_Object):
-
             def __init__(self, x: int) -> None:
                 self.x = x
 
-            @builtin_method('__new__')
+            @builtin_method("__new__")
             @staticmethod
-            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Adder':
+            def w_new(vm: "SPyVM", w_x: W_I32) -> "W_Adder":
                 return W_Adder(vm.unwrap_i32(w_x))
 
-            @builtin_method('__call__')
+            @builtin_method("__call__")
             @staticmethod
-            def w_call(vm: 'SPyVM', w_obj: 'W_Adder', w_y: W_I32) -> W_I32:
+            def w_call(vm: "SPyVM", w_obj: "W_Adder", w_y: W_I32) -> W_I32:
                 y = vm.unwrap_i32(w_y)
                 res = w_obj.x + y
                 return vm.wrap(res)
@@ -190,42 +199,47 @@ class TestCallOp(CompilerTest):
 
     def test_call_method(self):
         # ========== EXT module for this test ==========
-        EXT = ModuleRegistry('ext')
+        EXT = ModuleRegistry("ext")
 
-        @EXT.builtin_type('Calc')
+        @EXT.builtin_type("Calc")
         class W_Calc(W_Object):
-
             def __init__(self, x: int) -> None:
                 self.x = x
 
-            @builtin_method('__new__')
+            @builtin_method("__new__")
             @staticmethod
-            def w_new(vm: 'SPyVM', w_x: W_I32) -> 'W_Calc':
+            def w_new(vm: "SPyVM", w_x: W_I32) -> "W_Calc":
                 return W_Calc(vm.unwrap_i32(w_x))
 
-            @builtin_method('__call_method__', color='blue', kind='metafunc')
+            @builtin_method("__call_method__", color="blue", kind="metafunc")
             @staticmethod
-            def w_CALL_METHOD(vm: 'SPyVM', wam_obj: W_MetaArg,
-                              wam_method: W_MetaArg,
-                              *args_wam: W_MetaArg) -> W_OpSpec:
+            def w_CALL_METHOD(
+                vm: "SPyVM",
+                wam_obj: W_MetaArg,
+                wam_method: W_MetaArg,
+                *args_wam: W_MetaArg,
+            ) -> W_OpSpec:
                 meth = wam_method.blue_unwrap_str(vm)
-                if meth == 'add':
-                    @vm.register_builtin_func('ext', 'add')
-                    def w_fn(vm: 'SPyVM', w_self: W_Calc,
-                             w_arg: W_I32) -> W_I32:
+                if meth == "add":
+
+                    @vm.register_builtin_func("ext", "add")
+                    def w_fn(vm: "SPyVM", w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x + y)
+
                     return W_OpSpec(w_fn, [wam_obj] + list(args_wam))
 
-                elif meth == 'sub':
-                    @vm.register_builtin_func('ext', 'sub')
-                    def w_fn(vm: 'SPyVM', w_self: W_Calc,
-                             w_arg: W_I32) -> W_I32:
+                elif meth == "sub":
+
+                    @vm.register_builtin_func("ext", "sub")
+                    def w_fn(vm: "SPyVM", w_self: W_Calc, w_arg: W_I32) -> W_I32:
                         y = vm.unwrap_i32(w_arg)
                         return vm.wrap(w_self.x - y)
+
                     return W_OpSpec(w_fn, [wam_obj] + list(args_wam))
                 else:
                     return W_OpSpec.NULL
+
         # ========== /EXT module for this test =========
 
         self.vm.make_module(EXT)

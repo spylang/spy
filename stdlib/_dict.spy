@@ -1,0 +1,293 @@
+from unsafe import gc_alloc, ptr
+from operator import OpSpec
+
+
+# spy dict
+# ========
+# This is a hash table implementation that tries to closely resemble the CPython
+# implementation. (If any differences are found, they are likely bugs.)
+#
+# This is a sequential, open addressing, linear probing hash table. It is a split
+# table with a sparse index array which points to a dense entries array. The index
+# is the actual hash table and is composed of nodes that are either empty (DKIX_EMPTY),
+# or point to an entry. The entries array contains the key-value pairs.
+# Hash tables are generally wasteful in memory because they are best performing
+# when they are sparse (low load factor, many empty elements). Having a split table
+# is useful because it keeps the sparse index array small by having smaller elements.
+# Since the entries array is dense (there are no empty array elements), it is more
+# efficient for iterations because there are no waisted memory reads for empty slots.
+# Whereas iterating over the index array requires to read the empty nodes, too.
+# Collisions are resolved by probing the next slot until an empty slot is found,
+# circularly.
+# This hash table implementation is not thread-safe.
+#
+# CPython implementation references:
+#   https://github.com/python/cpython/blob/main/Objects/dictnotes.txt
+#   https://github.com/python/cpython/blob/main/Objects/dictobject.c
+
+
+DKIX_EMPTY = 0
+DKIX_DUMMY = 1 << 32 - 1
+DKIX_ERROR = 1 << 32 - 2
+DKIX_KEY_CHANGED = 1 << 32 - 3
+
+MIN_LOG_SIZE = 6
+MAX_LOG_SIZE = 31
+MAX_FILL_RATIO = 2 / 3
+
+
+@blue.generic
+def dict(Key, Value):
+    @struct
+    class Entry:
+        # empty: bool
+        empty: i32
+        key: Key
+        value: Value
+
+
+    @struct
+    class DictData:
+        index: ptr[i32]
+        log_size: i32  # capacity
+        length: i32  # number of items stored
+        entries: ptr[Entry]
+
+    def new_index(log_size: i32) -> ptr[i32]:
+        # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE (chained comparisons are WIP)
+        assert MIN_LOG_SIZE <= log_size
+        assert log_size <= MAX_LOG_SIZE
+        index = gc_alloc(i32)(1 << log_size)
+        i = 0
+        while i < 1 << log_size:
+            index[i] = DKIX_EMPTY
+            i += 1
+        return index
+
+    def new_entries(log_size: i32) -> ptr[Entry]:
+        entries = gc_alloc(Entry)(1 << log_size)
+        i = 0
+        while i < 1 << log_size:
+            entries[i].empty = 1
+            i += 1
+        return entries
+
+    def capacity(data: ptr[DictData]) -> i32:
+        return 1 << data.log_size
+
+    def mask(data: ptr[DictData]) -> i32:
+        return (1 << data.log_size) - 1
+
+    def distance_0(data: ptr[DictData], key: Key) -> i32:
+        # the first slot in the index to probe when looking up key
+        return hash(key) & mask(data)
+
+    def lookup_index_node_position(data: ptr[DictData], key: Key) -> i32:
+        hash_lookup = hash(key)  # might raise
+        d0 = distance_0(data, key)
+        distance = 0
+        while distance < capacity(data):
+            position = (d0 + distance) % capacity(data)
+            ix = data.index[position]
+            if ix == DKIX_EMPTY:
+                return position  # for insert_index_node()
+            if ix == DKIX_DUMMY:
+                # continue
+                pass
+            else:
+                entry_empty = data.entries[ix].empty
+                if entry_empty:
+                    pass
+                else:
+                    entry_key = data.entries[ix].key
+                    hash_entry = hash(entry_key)  # might raise
+                    if hash_entry == hash_lookup:
+                        # todo: check for identity
+                        # if entry_key is key:
+                        #     return ix
+                        # WIP: Operator not implemented yet: is
+                        cmp = entry_key == key  # might raise
+                        if cmp:
+                            return position
+            distance += 1
+        return -1
+
+    def lookup(data: ptr[DictData], key: Key) -> i32:
+        position = lookup_index_node_position(data, key)
+        if position < 0:
+            return DKIX_EMPTY
+        return data.index[position]
+
+    def insert_entry(entries: ptr[Entry], ix: i32, key: Key, value: Value) -> None:
+        entries[ix].key = key
+        entries[ix].value = value
+        entries[ix].empty = 0
+
+    def insert_index_node(data: ptr[DictData], entry_ix: i32, key: Key) -> None:
+        position = lookup_index_node_position(data, key)
+        assert position >= 0, "must not loop through the entire index without finding a free slot"
+        assert data.index[position] == DKIX_EMPTY
+        data.index[position] = entry_ix
+
+    def insert(data: ptr[DictData], key: Key, value: Value) -> None:
+        # entry 0 must remain empty because its ix is equal to DKIX_EMPTY
+        data.length = data.length + 1
+        insert_entry(data.entries, data.length, key, value)
+        insert_index_node(data, data.length, key)
+
+    def resize_entries(data: ptr[DictData], new_log_size: i32) -> ptr[Entry]:
+        entries = new_entries(new_log_size)
+        i = 0
+        while i <= data.length:
+            entry = data.entries[i]
+            if entry.empty:
+                pass
+            else:
+                insert_entry(entries, i, entry.key, entry.value)
+            i += 1
+        return entries
+
+    def build_index_from_data_entries(data: ptr[DictData]) -> None:
+        i = 0
+        while i <= data.length:
+            entry = data.entries[i]
+            if entry.empty:
+                pass
+            else:
+                insert_index_node(data, i, entry.key)
+            i += 1
+
+    def resize(data: ptr[DictData]) -> None:
+        # The resize operation never decreases the memory used by dict;
+        # i.e., we always resize to double the size of dict.
+        # This follows the CPython implementation.
+        new_log_size = data.log_size + 1
+        data.log_size = new_log_size
+        data.entries = resize_entries(data, new_log_size)
+        data.index = new_index(new_log_size)
+        build_index_from_data_entries(data)
+
+    def swap_last_entry_with(data: ptr[DictData], ix_deleted: i32) -> None:
+        ix_to_swap = data.length
+        position = lookup_index_node_position(data, data.entries[ix_to_swap].key)
+        data.index[position] = ix_deleted
+        data.entries[ix_deleted] = data.entries[ix_to_swap]
+        data.entries[ix_to_swap].empty = 1
+
+    def delete(data: ptr[DictData], key: Key) -> Value:
+        position = lookup_index_node_position(data, key)
+        assert position >= 0
+        ix = data.index[position]
+        if ix == DKIX_EMPTY:
+            raise KeyError
+        data.index[position] = DKIX_DUMMY
+        deleted_value = data.entries[ix].value
+        swap_last_entry_with(data, ix)
+        data.length = data.length - 1
+        return deleted_value
+
+    @struct
+    class dict_iterator:
+        data: ptr[DictData]
+        i: i32
+
+        # todo: detect dict size change during iteration
+
+        def __next__(self: dict_iterator) -> dict_iterator:
+            return dict_iterator(self.data, self.i + 1)
+
+        def __item__(self: dict_iterator) -> Key:
+            return self.data.entries[self.i].key
+
+        def __continue_iteration__(self: dict_iterator) -> bool:
+            return self.i <= self.data.length
+
+    @typelift
+    class _dict:
+        __ll__: ptr[DictData]
+
+        def __new__() -> _dict:
+            data = gc_alloc(DictData)(1)
+            data.log_size = MIN_LOG_SIZE
+            data.length = 0
+            data.index = new_index(data.log_size)
+            data.entries = new_entries(data.log_size)
+            return _dict.__lift__(data)
+
+        def __getitem__(self: _dict, key: Key) -> Value:
+            data: ptr[DictData] = self.__ll__
+            ix = lookup(data, key)
+            if ix == DKIX_EMPTY:
+                raise KeyError
+            return data.entries[ix].value
+
+        # def get(self, key: Key, default: Value = None) -> Value | None:
+        def get(self: _dict, key: Key, default_: Value) -> Value:
+            # try:
+            #     return self[key]
+            # except KeyError:
+            #     return default
+            data: ptr[DictData] = self.__ll__
+            ix = lookup(data, key)
+            if ix == DKIX_EMPTY:
+                return default_
+            return data.entries[ix].value
+
+        def __contains__(self: _dict, key: Key) -> bool:
+            data: ptr[DictData] = self.__ll__
+            ix = lookup(data, key)
+            return ix != DKIX_EMPTY
+
+        @blue.metafunc
+        def __eq__(m_self, m_other):
+            if m_other.static_type == m_self.static_type:
+                def eq_impl(self: _dict, other: _dict) -> bool:
+                    self_ll = self.__ll__
+                    other_ll = other.__ll__
+                    if self_ll.length != other_ll.length:
+                        return False
+                    i = 0
+                    while i <= self_ll.length:
+                        if self_ll.entries[i].empty:
+                            pass
+                        else:
+                            key = self_ll.entries[i].key
+                            if other.__contains__(key):
+                                if self[key] != other[key]:
+                                    return False
+                            else:
+                                return False
+                        i += 1
+                    return True
+                return OpSpec(eq_impl, [m_self, m_other])
+            else:
+                return OpSpec.NULL
+
+        def __setitem__(self: _dict, key: Key, value: Value) -> None:
+            data: ptr[DictData] = self.__ll__
+            ix = lookup(data, key)
+            if ix == DKIX_EMPTY:
+                insert(data, key, value)
+                if data.length >= capacity(data) * MAX_FILL_RATIO:
+                    resize(data)
+            else:
+                # assert not entry.empty
+                # entry.value = value
+                data.entries[ix].value = value
+
+        def __delitem__(self: _dict, key: Key) -> None:
+            data: ptr[DictData] = self.__ll__
+            delete(data, key)
+
+        def __len__(self: _dict) -> i32:
+            data: ptr[DictData] = self.__ll__
+            return data.length
+
+        def __fastiter__(self: _dict) -> dict_iterator:
+            return dict_iterator(self.__ll__, 0)
+
+        def keys(self: _dict) -> _dict:
+            return self
+
+
+    return _dict

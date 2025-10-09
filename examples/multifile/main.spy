@@ -1,4 +1,6 @@
-from array import array, array1d, array2d
+### THIS IS BROKEN - DO NOT RUN
+
+from myarray import array, array1d, array2d
 from dot import dot
 
 
@@ -31,8 +33,3 @@ def main() -> None:
     while i < result.l:
         print(result[i])
         i += 1
-
-
-@blue
-def __INIT__(mod):
-    print('main.__INIT__')

@@ -1,10 +1,11 @@
 from typing import Optional
-from .fqn import NSPart, FQN
+
+from .fqn import FQN, NSPart
 
 
 def tokenize(s: str) -> list[str]:
     tokens = []
-    token = ''
+    token = ""
     depth = 0
     i = 0
     while i < len(s):
@@ -12,34 +13,34 @@ def tokenize(s: str) -> list[str]:
         if char.isspace():
             i += 1
             continue
-        if char in '[],' and depth == 0:
+        if char in "[]," and depth == 0:
             if token:
                 tokens.append(token)
-                token = ''
+                token = ""
             tokens.append(char)
-        elif char == '[':
+        elif char == "[":
             if token:
                 tokens.append(token)
-                token = ''
+                token = ""
             tokens.append(char)
             depth += 1
-        elif char == ']':
+        elif char == "]":
             if token:
                 tokens.append(token)
-                token = ''
+                token = ""
             tokens.append(char)
             depth -= 1
-        elif char == ':' and i + 1 < len(s) and s[i + 1] == ':' and depth == 0:
+        elif char == ":" and i + 1 < len(s) and s[i + 1] == ":" and depth == 0:
             if token:
                 tokens.append(token)
-                token = ''
-            tokens.append('::')
+                token = ""
+            tokens.append("::")
             i += 1  # Skip the next ':'
-        elif char == '#' and depth == 0:
+        elif char == "#" and depth == 0:
             if token:
                 tokens.append(token)
-                token = ''
-            tokens.append('#')
+                token = ""
+            tokens.append("#")
         else:
             token += char
         i += 1
@@ -61,19 +62,19 @@ class FQNParser:
             return None
         return self.tokens[self.i]
 
-    def parse(self) -> 'FQN':
+    def parse(self) -> "FQN":
         fqn = self.parse_fqn()
         if self.i < len(self.tokens):
             tok = self.tokens[self.i]
-            raise ValueError(f'Unexpected token: {tok}')
+            raise ValueError(f"Unexpected token: {tok}")
         return fqn
 
-    def parse_fqn(self) -> 'FQN':
+    def parse_fqn(self) -> "FQN":
         parts = []
         while True:
             parts.append(self.parse_part())
-            if self.peek() == '::':
-                self.expect('::')
+            if self.peek() == "::":
+                self.expect("::")
             else:
                 break
 
@@ -88,23 +89,23 @@ class FQNParser:
 
     def parse_part(self) -> NSPart:
         name = self.parse_name()
-        if self.peek() == '[':
-            self.expect('[')
+        if self.peek() == "[":
+            self.expect("[")
             qualifiers = self.parse_qualifiers()
-            self.expect(']')
+            self.expect("]")
             return NSPart(name, qualifiers)
         else:
             return NSPart(name, ())
 
-    def parse_qualifiers(self) -> tuple['FQN', ...]:
+    def parse_qualifiers(self) -> tuple["FQN", ...]:
         qualifiers = []
         while True:
             qualifiers.append(self.parse_fqn())
             if self.peek() is None:
-                raise ValueError('Unclosed bracket')
-            elif self.peek() == ',':
-                self.expect(',')
-            elif self.peek() == ']':
+                raise ValueError("Unclosed bracket")
+            elif self.peek() == ",":
+                self.expect(",")
+            elif self.peek() == "]":
                 break
         return tuple(qualifiers)
 

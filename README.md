@@ -46,7 +46,7 @@ Installation:
   1. Install the `spy` package in editable mode:
       ```
       $ cd /path/to/spy/
-      $ pip install -e .
+      $ pip install -e .[dev]
       ```
 
   2. Build the `libspy` runtime library:
@@ -204,3 +204,7 @@ inside a WASM runtime engine (emscripten), so we don't need `wasmtime`.
 
 The code in `llwasm` abstracts this difference away, and makes it possible to
 transparently load `libspy.wasm` in either case.
+
+## Contribution guidelines
+
+If you want to contribute to SPy, be sure to review the [contribution guidelines](CONTRIBUTING.md)

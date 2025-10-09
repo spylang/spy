@@ -63,15 +63,16 @@ fn_f64 = make_fn(f64)  # FQN is 'test::make_fn::fn#2'
 See also vm.get_unique_FQN.
 """
 
-from typing import Optional, Any, Union, Sequence
-from dataclasses import dataclass, field
-import re
 import functools
+import re
+from dataclasses import dataclass, field
+from typing import Any, Optional, Sequence, Union
 
-PARTS = Sequence[Union[str, 'NSPart']]
-QUALIFIERS = Optional[Sequence[Union[str, 'FQN']]]
+PARTS = Sequence[Union[str, "NSPart"]]
+QUALIFIERS = Optional[Sequence[Union[str, "FQN"]]]
 
-def get_parts(x: PARTS) -> tuple['NSPart', ...]:
+
+def get_parts(x: PARTS) -> tuple["NSPart", ...]:
     parts = []
     for part in x:
         if isinstance(part, str):
@@ -82,7 +83,8 @@ def get_parts(x: PARTS) -> tuple['NSPart', ...]:
             assert False
     return tuple(parts)
 
-def get_qualifiers(x: QUALIFIERS) -> tuple['FQN', ...]:
+
+def get_qualifiers(x: QUALIFIERS) -> tuple["FQN", ...]:
     x = x or ()
     quals = []
     for item in x:
@@ -94,48 +96,50 @@ def get_qualifiers(x: QUALIFIERS) -> tuple['FQN', ...]:
             assert False
     return tuple(quals)
 
+
 @dataclass(frozen=True)
 class NSPart:
     name: str
-    qualifiers: tuple['FQN', ...]
-    suffix: str = ''
+    qualifiers: tuple["FQN", ...]
+    suffix: str = ""
 
-    def __init__(self, name: str, quals: QUALIFIERS = None, suffix: str = '') -> None:
-        object.__setattr__(self, 'name', name)
-        object.__setattr__(self, 'qualifiers', get_qualifiers(quals))
-        object.__setattr__(self, 'suffix', suffix)
+    def __init__(self, name: str, quals: QUALIFIERS = None, suffix: str = "") -> None:
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "qualifiers", get_qualifiers(quals))
+        object.__setattr__(self, "suffix", suffix)
 
     def __str__(self) -> str:
         result = self.name
         if len(self.qualifiers) > 0:
-            quals = ', '.join(q.human_name for q in self.qualifiers)
-            result = f'{result}[{quals}]'
-        if self.suffix != '':
-            result += f'#{self.suffix}'
+            quals = ", ".join(q.human_name for q in self.qualifiers)
+            result = f"{result}[{quals}]"
+        if self.suffix != "":
+            result += f"#{self.suffix}"
         return result
 
     @property
     def c_name(self) -> str:
-        name = self.name.replace('.', '_')
+        name = self.name.replace(".", "_")
         result = name
         if len(self.qualifiers) > 0:
-            quals = '_'.join(fqn.c_name_plain for fqn in self.qualifiers)
-            result = f'{result}__{quals}'
-        if self.suffix != '':
-            result += f'${self.suffix}'
+            quals = "_".join(fqn.c_name_plain for fqn in self.qualifiers)
+            result = f"{result}__{quals}"
+        if self.suffix != "":
+            result += f"${self.suffix}"
         return result
 
 
 class FQN:
     parts: tuple[NSPart, ...]
 
-    def __new__(cls, x: str | PARTS) -> 'FQN':
+    def __new__(cls, x: str | PARTS) -> "FQN":
         """
         Supported overloads:
             FQN(x: str)
             FQN(x: PARTS)
         """
         from .fqn_parser import FQNParser
+
         if isinstance(x, str):
             return FQNParser(x).parse()
         else:
@@ -148,7 +152,7 @@ class FQN:
     ##     if str(self) == 'test::Point#0':
     ##         breakpoint()
 
-    def with_suffix(self, suffix: str) -> 'FQN':
+    def with_suffix(self, suffix: str) -> "FQN":
         """
         Create a new FQN with the specified suffix on the last NSPart.
         """
@@ -157,7 +161,7 @@ class FQN:
         new_parts[-1] = NSPart(last_part.name, last_part.qualifiers, suffix)
         return FQN(new_parts)
 
-    def with_qualifiers(self, qualifiers: QUALIFIERS) -> 'FQN':
+    def with_qualifiers(self, qualifiers: QUALIFIERS) -> "FQN":
         """
         Create a new FQN with the specified qualifiers added to the last NSPart.
         """
@@ -192,9 +196,9 @@ class FQN:
 
     def _fullname(self, human: bool) -> str:
         parts = self.parts
-        if human and str(parts[0]) == 'builtins':
+        if human and str(parts[0]) == "builtins":
             parts = parts[1:]
-        s = '::'.join(str(part) for part in parts)
+        s = "::".join(str(part) for part in parts)
         return s
 
     @property
@@ -208,44 +212,45 @@ class FQN:
         and special-case 'def[...]'
         """
         is_def = (
-            len(self.parts) == 2 and
-            self.modname == 'builtins' and
-            self.parts[1].name in (
-                'def',
-                'blue.def',
-                'blue.generic.def',
-                'blue.metafunc.def'
+            len(self.parts) == 2
+            and self.modname == "builtins"
+            and self.parts[1].name
+            in (
+                "def",
+                "blue.def",
+                "blue.generic.def",
+                "blue.metafunc.def",
             )
         )
         if is_def:
             p1 = self.parts[1]
-            if p1.name == 'def':
-                d = 'def'
-            elif p1.name == 'blue.def':
-                d = '@blue def'
-            elif p1.name == 'blue.generic.def':
-                d = '@blue.generic def'
-            elif p1.name == 'blue.metafunc.def':
-                d = '@blue.metafunc def'
+            if p1.name == "def":
+                d = "def"
+            elif p1.name == "blue.def":
+                d = "@blue def"
+            elif p1.name == "blue.generic.def":
+                d = "@blue.generic def"
+            elif p1.name == "blue.metafunc.def":
+                d = "@blue.metafunc def"
             else:
                 assert False
             quals = [fqn.human_name for fqn in p1.qualifiers]
-            p = ', '.join(quals[:-1])
+            p = ", ".join(quals[:-1])
             r = quals[-1]
-            if r == 'NoneType':
-                r = 'None'
-            return f'{d}({p}) -> {r}'
+            if r == "types::NoneType":
+                r = "None"
+            return f"{d}({p}) -> {r}"
 
         is_varargs_param = (
-            len(self.parts) == 2 and
-            self.modname == 'builtins' and
-            self.parts[1].name == '__varargs__'
+            len(self.parts) == 2
+            and self.modname == "builtins"
+            and self.parts[1].name == "__varargs__"
         )
         if is_varargs_param:
             p1 = self.parts[1]
             assert len(p1.qualifiers) == 1
             q0 = p1.qualifiers[0]
-            return f'*{q0.human_name}'
+            return f"*{q0.human_name}"
 
         return self._fullname(human=True)
 
@@ -254,14 +259,14 @@ class FQN:
         return str(self.parts[0])
 
     @property
-    def namespace(self) -> 'FQN':
+    def namespace(self) -> "FQN":
         return FQN(self.parts[:-1])
 
     @property
     def symbol_name(self) -> str:
         return str(self.parts[-1])
 
-    def join(self, name: str, qualifiers: QUALIFIERS=None) -> 'FQN':
+    def join(self, name: str, qualifiers: QUALIFIERS = None) -> "FQN":
         """
         Create a new FQN nested inside the current one.
         """
@@ -297,7 +302,7 @@ class FQN:
         Becomes:
             spy_mod$dict__i32_f64$foo$0
         """
-        return f'spy_{self.c_name_plain}'
+        return f"spy_{self.c_name_plain}"
 
     @property
     def c_name_plain(self) -> str:
@@ -305,13 +310,13 @@ class FQN:
         Like c_name, but without the spy_ prefix
         """
         parts = [part.c_name for part in self.parts]
-        cn = '$'.join(parts)
+        cn = "$".join(parts)
         return cn
 
     @property
     def spy_name(self) -> str:
         # this works only for very simple cases
-        return '.'.join(part.name for part in self.parts)
+        return ".".join(part.name for part in self.parts)
 
     def is_module(self) -> bool:
         return len(self.parts) == 1
@@ -334,5 +339,5 @@ class FQN:
 @functools.lru_cache(maxsize=32768)
 def _compile_pattern(pattern: str) -> Any:
     pattern = re.escape(pattern)
-    regexp = pattern.replace(r'\*', '.*')
+    regexp = pattern.replace(r"\*", ".*")
     return re.compile(regexp)

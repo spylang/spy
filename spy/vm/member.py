@@ -1,11 +1,12 @@
-from typing import Annotated, TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional
+
 from spy.vm.b import BUILTINS
-from spy.vm.object import W_Object, W_Type
 from spy.vm.builtin import builtin_method
+from spy.vm.object import W_Object, W_Type
 
 if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
     from spy.vm.opspec import W_MetaArg, W_OpSpec
+    from spy.vm.vm import SPyVM
 
 
 class Member:
@@ -24,23 +25,24 @@ class Member:
     turns Member annotations into W_Member, which does its job thanks to the
     descriptor protocol.
     """
+
     name: str
 
     def __init__(self, name: str) -> None:
         self.name = name
 
     @staticmethod
-    def from_annotation(t: Any) -> Optional['Member']:
+    def from_annotation(t: Any) -> Optional["Member"]:
         """
         Return the Member instance found in the annotation metadata, if any.
         """
-        for meta in getattr(t, '__metadata__', []):
+        for meta in getattr(t, "__metadata__", []):
             if isinstance(meta, Member):
                 return meta
         return None
 
 
-@BUILTINS.builtin_type('member', lazy_definition=True)
+@BUILTINS.builtin_type("member", lazy_definition=True)
 class W_Member(W_Object):
     """
     Descriptor object which turns interp-level fields (such as
@@ -58,41 +60,40 @@ class W_Member(W_Object):
         T = self.w_type.fqn.human_name
         return f"<spy member '{n}: {T}'>"
 
-    @builtin_method('__get__', color='blue', kind='metafunc')
+    @builtin_method("__get__", color="blue", kind="metafunc")
     @staticmethod
-    def w_GET(
-        vm: 'SPyVM', wam_self: 'W_MetaArg', wam_obj: 'W_MetaArg'
-    ) -> 'W_OpSpec':
+    def w_GET(vm: "SPyVM", wam_self: "W_MetaArg", wam_obj: "W_MetaArg") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
+
         w_self = wam_self.w_blueval
         assert isinstance(w_self, W_Member)
         w_T = wam_obj.w_static_T
-        field = w_self.field # the interp-level name of the attr (e.g, 'w_x')
-        T = Annotated[W_Object, w_T]           # type of the object
-        V = Annotated[W_Object, w_self.w_type] # type of the attribute
+        field = w_self.field  # the interp-level name of the attr (e.g, 'w_x')
+        T = Annotated[W_Object, w_T]  # type of the object
+        V = Annotated[W_Object, w_self.w_type]  # type of the attribute
 
         @vm.register_builtin_func(w_T.fqn, f"__get_{w_self.name}__")
-        def w_get(vm: 'SPyVM', w_obj: T) -> V:
+        def w_get(vm: "SPyVM", w_obj: T) -> V:
             return getattr(w_obj, field)
 
         return W_OpSpec(w_get, [wam_obj])
 
-
-    @builtin_method('__set__', color='blue', kind='metafunc')
+    @builtin_method("__set__", color="blue", kind="metafunc")
     @staticmethod
     def w_set(
-        vm: 'SPyVM', wam_self: 'W_MetaArg', wam_obj: 'W_MetaArg', wam_v: 'W_MetaArg'
-    ) -> 'W_OpSpec':
+        vm: "SPyVM", wam_self: "W_MetaArg", wam_obj: "W_MetaArg", wam_v: "W_MetaArg"
+    ) -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
+
         w_self = wam_self.w_blueval
         assert isinstance(w_self, W_Member)
         w_T = wam_obj.w_static_T
-        field = w_self.field # the interp-level name of the attr (e.g, 'w_x')
-        T = Annotated[W_Object, w_T]           # type of the object
-        V = Annotated[W_Object, w_self.w_type] # type of the attribute
+        field = w_self.field  # the interp-level name of the attr (e.g, 'w_x')
+        T = Annotated[W_Object, w_T]  # type of the object
+        V = Annotated[W_Object, w_self.w_type]  # type of the attribute
 
         @vm.register_builtin_func(w_T.fqn, f"__set_{w_self.name}__")
-        def w_set(vm: 'SPyVM', w_obj: T, w_val: V)-> None:
+        def w_set(vm: "SPyVM", w_obj: T, w_val: V) -> None:
             setattr(w_obj, field, w_val)
 
         return W_OpSpec(w_set, [wam_obj, wam_v])

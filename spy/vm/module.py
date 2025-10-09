@@ -1,19 +1,20 @@
-from typing import TYPE_CHECKING, Optional, Iterable
-from spy.fqn import FQN
+from typing import TYPE_CHECKING, Iterable, Optional
+
 from spy.errors import WIP
-from spy.vm.primitive import W_Dynamic
-from spy.vm.b import B, TYPES
-from spy.vm.object import W_Object
-from spy.vm.str import W_Str
-from spy.vm.function import W_ASTFunc, W_Func
+from spy.fqn import FQN
+from spy.vm.b import TYPES, B
 from spy.vm.builtin import builtin_method
-from spy.vm.opspec import W_OpSpec, W_MetaArg
+from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.object import W_Object
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+from spy.vm.primitive import W_Dynamic
+from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@TYPES.builtin_type('module')
+@TYPES.builtin_type("module")
 class W_Module(W_Object):
     filepath: Optional[str]
     _dict_w: dict[str, W_Object]
@@ -26,9 +27,9 @@ class W_Module(W_Object):
 
     def __repr__(self) -> str:
         if self.filepath is None:
-            return f'<spy module {self.name} (builtin)>'
+            return f"<spy module {self.name} (builtin)>"
         else:
-            return f'<spy module {self.name}>'
+            return f"<spy module {self.name}>"
 
     @property
     def name(self) -> str:
@@ -39,26 +40,27 @@ class W_Module(W_Object):
 
     # ==== applevel interface =====
 
-    @builtin_method('__getattribute__')
+    @builtin_method("__getattribute__")
     @staticmethod
-    def w_getattribute(vm: 'SPyVM', w_mod: 'W_Module',
-                       w_attr: W_Str) -> W_Dynamic:
+    def w_getattribute(vm: "SPyVM", w_mod: "W_Module", w_attr: W_Str) -> W_Dynamic:
         attr = vm.unwrap_str(w_attr)
         return w_mod.getattr(attr)
 
-    @builtin_method('__setattr__')
+    @builtin_method("__setattr__")
     @staticmethod
-    def w_setattr(vm: 'SPyVM', w_mod: 'W_Module', w_attr:
-                  W_Str, w_val: W_Dynamic) -> None:
+    def w_setattr(
+        vm: "SPyVM", w_mod: "W_Module", w_attr: W_Str, w_val: W_Dynamic
+    ) -> None:
         attr = vm.unwrap_str(w_attr)
         w_mod.setattr(attr, w_val)
 
-    @builtin_method('__call_method__', color='blue', kind='metafunc')
+    @builtin_method("__call_method__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CALL_METHOD(vm: 'SPyVM', wam_mod: W_MetaArg, wam_name: W_MetaArg,
-                      *args_wam: W_MetaArg) -> W_OpSpec:
-        if wam_mod.color != 'blue':
-            raise WIP('__call_method__ on red modules')
+    def w_CALL_METHOD(
+        vm: "SPyVM", wam_mod: W_MetaArg, wam_name: W_MetaArg, *args_wam: W_MetaArg
+    ) -> W_OpSpec:
+        if wam_mod.color != "blue":
+            raise WIP("__call_method__ on red modules")
 
         w_mod = wam_mod.w_blueval
         assert isinstance(w_mod, W_Module)
@@ -70,8 +72,7 @@ class W_Module(W_Object):
         if isinstance(w_func, W_Func):
             return W_OpSpec(w_func, list(args_wam))
         else:
-            raise WIP('trying to call a non-function (we should emit a better error)')
-
+            raise WIP("trying to call a non-function (we should emit a better error)")
 
     # ==== public interp-level API ====
 
@@ -94,6 +95,6 @@ class W_Module(W_Object):
         """
         Pretty print
         """
-        print(f'Module {self.name}:')
+        print(f"Module {self.name}:")
         for attr, w_obj in self.items_w():
-            print(f'    {attr}: {w_obj}')
+            print(f"    {attr}: {w_obj}")

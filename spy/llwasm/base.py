@@ -1,9 +1,10 @@
+import struct
+from typing import Any, Literal, Self
+
 import py.path
 
-from typing import Literal, Any, Self
-import struct
+LLWasmType = Literal[None, "void *", "int32_t", "int16_t"]
 
-LLWasmType = Literal[None, 'void *', 'int32_t', 'int16_t']
 
 class HostModule:
     """
@@ -11,14 +12,16 @@ class HostModule:
 
     Each host module can provide one or more WASM import, used by link().
     """
-    ll: 'LLWasmInstanceBase' # this attribute is set by LLWasmInstance.__init__
+
+    ll: "LLWasmInstanceBase"  # this attribute is set by LLWasmInstance.__init__
 
 
 class LLWasmModuleBase:
     pass
 
+
 class LLWasmInstanceBase:
-    mem: 'LLWasmMemoryBase'
+    mem: "LLWasmMemoryBase"
 
     def get_export(self, name: str) -> Any:
         raise NotImplementedError
@@ -27,8 +30,7 @@ class LLWasmInstanceBase:
         raise NotImplementedError
 
     @classmethod
-    def from_file(cls, f: py.path.local,
-                  hostmods: list[HostModule]=[]) -> Self:
+    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
         raise NotImplementedError
 
     def call(self, name: str, *args: Any) -> Any:
@@ -77,12 +79,12 @@ class LLWasmInstanceBase:
         addr = self.get_addr_of_global(name)
         if deref is None:
             return addr
-        elif deref == 'int32_t' or deref == 'void *':
+        elif deref == "int32_t" or deref == "void *":
             return self.mem.read_i32(addr)
-        elif deref == 'int16_t':
+        elif deref == "int16_t":
             return self.mem.read_i16(addr)
         else:
-            assert False, f'Unknown type: {deref}'
+            assert False, f"Unknown type: {deref}"
 
 
 class LLWasmMemoryBase:
@@ -97,11 +99,11 @@ class LLWasmMemoryBase:
 
     def read_i32(self, addr: int) -> int:
         rawbytes = self.read(addr, 4)
-        return struct.unpack('i', rawbytes)[0]
+        return struct.unpack("i", rawbytes)[0]
 
     def read_i16(self, addr: int) -> int:
         rawbytes = self.read(addr, 2)
-        return struct.unpack('h', rawbytes)[0]
+        return struct.unpack("h", rawbytes)[0]
 
     def read_i8(self, addr: int) -> int:
         rawbytes = self.read(addr, 1)
@@ -109,14 +111,14 @@ class LLWasmMemoryBase:
 
     def read_f64(self, addr: int) -> int:
         rawbytes = self.read(addr, 8)
-        return struct.unpack('d', rawbytes)[0]
+        return struct.unpack("d", rawbytes)[0]
 
     def read_ptr(self, addr: int) -> tuple[int, int]:
         """
         Read a ptr, which we represent as a struct {addr; length }
         """
         v_addr = self.read_i32(addr)
-        v_length = self.read_i32(addr+4)
+        v_length = self.read_i32(addr + 4)
         return v_addr, v_length
 
     def read_cstr(self, addr: int) -> bytearray:
@@ -133,20 +135,20 @@ class LLWasmMemoryBase:
         return self.read(addr, n)
 
     def write_i32(self, addr: int, v: int) -> None:
-        self.write(addr, struct.pack('i', v))
+        self.write(addr, struct.pack("i", v))
 
     def write_i16(self, addr: int, v: int) -> None:
-        self.write(addr, struct.pack('h', v))
+        self.write(addr, struct.pack("h", v))
 
     def write_i8(self, addr: int, v: int) -> None:
-        self.write(addr, struct.pack('b', v))
+        self.write(addr, struct.pack("b", v))
 
     def write_f64(self, addr: int, v: float) -> None:
-        self.write(addr, struct.pack('d', v))
+        self.write(addr, struct.pack("d", v))
 
     def write_ptr(self, addr: int, v_addr: int, v_length: int) -> None:
         """
         Write a ptr { addr; length } to the given addr
         """
         self.write_i32(addr, v_addr)
-        self.write_i32(addr+4, v_length)
+        self.write_i32(addr + 4, v_length)

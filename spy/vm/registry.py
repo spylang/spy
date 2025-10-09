@@ -1,11 +1,13 @@
-from typing import Callable, TYPE_CHECKING, Any, Type, Optional
 from types import FunctionType
+from typing import TYPE_CHECKING, Any, Callable, Optional, Type
+
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Object, W_Type
     from spy.vm.function import W_BuiltinFunc
+    from spy.vm.object import W_Object, W_Type
+
 
 class ModuleRegistry:
     """
@@ -13,8 +15,9 @@ class ModuleRegistry:
 
     At startup, the `vm` will create a W_Module out of it.
     """
+
     fqn: FQN
-    content: list[tuple[FQN, 'W_Object']]
+    content: list[tuple[FQN, "W_Object"]]
 
     def __init__(self, modname: str) -> None:
         self.fqn = FQN(modname)
@@ -24,6 +27,7 @@ class ModuleRegistry:
         return f"<ModuleRegistry '{self.fqn}'>"
 
     if TYPE_CHECKING:
+
         def __getattr__(self, attr: str) -> Any:
             """
             Workaround for mypy blindness.
@@ -38,20 +42,21 @@ class ModuleRegistry:
             but well...)
             """
 
-    def add(self, attr: str, w_obj: 'W_Object') -> None:
+    def add(self, attr: str, w_obj: "W_Object") -> None:
         fqn = self.fqn.join(attr)
-        attr = f'w_{attr}'
+        attr = f"w_{attr}"
         assert not hasattr(self, attr)
         setattr(self, attr, w_obj)
         self.content.append((fqn, w_obj))
 
-    def builtin_type(self,
-                     typename: str,
-                     qualifiers: QUALIFIERS = None,
-                     *,
-                     lazy_definition: bool = False,
-                     W_MetaClass: Optional[Type['W_Type']] = None,
-                     ) -> Callable:
+    def builtin_type(
+        self,
+        typename: str,
+        qualifiers: QUALIFIERS = None,
+        *,
+        lazy_definition: bool = False,
+        W_MetaClass: Optional[Type["W_Type"]] = None,
+    ) -> Callable:
         """
         Register a type on the module.
 
@@ -67,23 +72,30 @@ class ModuleRegistry:
             MOD.add('Foo', W_Foo._w)
         """
         from spy.vm.builtin import builtin_type
-        def decorator(pyclass: Type['W_Object']) -> Type['W_Object']:
-            bt_deco = builtin_type(self.fqn, typename, qualifiers,
-                                   lazy_definition=lazy_definition,
-                                   W_MetaClass=W_MetaClass)
+
+        def decorator(pyclass: Type["W_Object"]) -> Type["W_Object"]:
+            bt_deco = builtin_type(
+                self.fqn,
+                typename,
+                qualifiers,
+                lazy_definition=lazy_definition,
+                W_MetaClass=W_MetaClass,
+            )
             W_class = bt_deco(pyclass)
             self.add(typename, W_class._w)
             return W_class
+
         return decorator
 
-    def builtin_func(self,
-                     pyfunc_or_funcname: Callable|str|None = None,
-                     qualifiers: QUALIFIERS = None,
-                     *,
-                     color: Color = 'red',
-                     kind: FuncKind = 'plain',
-                     hidden: bool = False,
-                     ) -> Any:
+    def builtin_func(
+        self,
+        pyfunc_or_funcname: Callable | str | None = None,
+        qualifiers: QUALIFIERS = None,
+        *,
+        color: Color = "red",
+        kind: FuncKind = "plain",
+        hidden: bool = False,
+    ) -> Any:
         """
         Register a builtin function on the module. We support three
         different syntaxes:
@@ -102,6 +114,7 @@ class ModuleRegistry:
         'funcname'.
         """
         from spy.vm.builtin import make_builtin_func
+
         if isinstance(pyfunc_or_funcname, FunctionType):
             pyfunc = pyfunc_or_funcname
             funcname = None
@@ -115,7 +128,7 @@ class ModuleRegistry:
             funcname = None
             assert qualifiers is None
 
-        def decorator(pyfunc: Callable) -> 'W_BuiltinFunc':
+        def decorator(pyfunc: Callable) -> "W_BuiltinFunc":
             w_func = make_builtin_func(
                 pyfunc,
                 namespace=self.fqn,
@@ -124,7 +137,7 @@ class ModuleRegistry:
                 color=color,
                 kind=kind,
             )
-            setattr(self, f'w_{w_func.fqn.symbol_name}', w_func)
+            setattr(self, f"w_{w_func.fqn.symbol_name}", w_func)
             if not hidden:
                 self.content.append((w_func.fqn, w_func))
             return w_func

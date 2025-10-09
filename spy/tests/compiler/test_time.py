@@ -1,13 +1,13 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 import time
+
 from spy.tests.support import CompilerTest
 
-class TestTime(CompilerTest):
 
+class TestTime(CompilerTest):
     def test_time(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from time import time
 
         def foo() -> f64:
@@ -19,8 +19,7 @@ class TestTime(CompilerTest):
         assert a <= result <= b
 
     def test_sleep(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from time import time, sleep
 
         def foo() -> f64:
