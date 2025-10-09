@@ -85,7 +85,8 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -m "not mypy"
+          pip install pytest-xdist
+          pytest -n 6 -m "not mypy"
 
       - name: Run mypy
         run: |
