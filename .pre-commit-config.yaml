@@ -1,9 +1,17 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict # checks for files that contain merge conflict strings.
+      - id: check-toml # checks toml files for parseable syntax.
+      - id: check-xml # checks xml files for parseable syntax.
+      - id: check-yaml # checks yaml files for parseable syntax.
+      - id: debug-statements # checks for debugger imports and py37+ `breakpoint()` calls in python source.
   # 🧹 Ruff for linting, import sorting, and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.0
     hooks:
-      - id: ruff
-        args: [--fix] # auto-fix lint issues (quotes, imports, etc.)
+      - id: ruff-check
+        args:
+          - --fix
       - id: ruff-format
-        # no args → formats code like Black
