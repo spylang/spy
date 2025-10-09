@@ -207,4 +207,4 @@ transparently load `libspy.wasm` in either case.
 
 ## Contribution guidelines
 
-If you want to contribute to histolab, be sure to review the [contribution guidelines](CONTRIBUTING.md)
+If you want to contribute to SPy, be sure to review the [contribution guidelines](CONTRIBUTING.md)
