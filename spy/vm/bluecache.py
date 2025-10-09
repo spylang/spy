@@ -1,9 +1,11 @@
-from typing import TYPE_CHECKING, Optional, Sequence, Any
 import itertools
 from collections import Counter, defaultdict
-from spy.vm.object import W_Object
-from spy.vm.function import W_Func
+from typing import TYPE_CHECKING, Any, Optional, Sequence
+
 from spy.textbuilder import Color
+from spy.vm.function import W_Func
+from spy.vm.object import W_Object
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -13,30 +15,32 @@ ARGS_W = Sequence[W_Object]
 ARGS_KEY = tuple[W_Object, ...]
 KEY = tuple[W_Func, ARGS_KEY]
 
+
 class BlueCache:
     """
     Store and record the results of blue functions.
     """
-    vm: 'SPyVM'
+
+    vm: "SPyVM"
     data: dict[KEY, W_Object]
 
-    def __init__(self, vm: 'SPyVM'):
+    def __init__(self, vm: "SPyVM"):
         self.vm = vm
         self.data = {}
 
-    def record(self, w_func: W_Func, args_w: ARGS_W, w_res: W_Object) ->None:
+    def record(self, w_func: W_Func, args_w: ARGS_W, w_res: W_Object) -> None:
         args_key = tuple(w_arg.spy_key(self.vm) for w_arg in args_w)
         key = (w_func, args_key)
         self.data[key] = w_res
         if DEBUG:
-            self._debug('record', w_func, args_key, w_res)
+            self._debug("record", w_func, args_key, w_res)
 
     def lookup(self, w_func: W_Func, args_w: ARGS_W) -> Optional[W_Object]:
         args_key = tuple(w_arg.spy_key(self.vm) for w_arg in args_w)
         key = (w_func, args_key)
         w_res = self.data.get(key)
         if DEBUG:
-            self._debug('lookup', w_func, args_key, w_res)
+            self._debug("lookup", w_func, args_key, w_res)
         return w_res
 
     def _debug(
@@ -46,15 +50,15 @@ class BlueCache:
         args_key: ARGS_KEY,
         w_res: Optional[W_Object],
     ) -> None:
-        args = ', '.join(self._fmt_key(k) for k in args_key)
-        if what == 'lookup' and w_res is not None:
-            what = Color.set('green', what)
-        elif what == 'record':
-            what = Color.set('teal', what)
-        print(f'BlueCache.{what}: {w_func.fqn} {args} -> {w_res}')
+        args = ", ".join(self._fmt_key(k) for k in args_key)
+        if what == "lookup" and w_res is not None:
+            what = Color.set("green", what)
+        elif what == "record":
+            what = Color.set("teal", what)
+        print(f"BlueCache.{what}: {w_func.fqn} {args} -> {w_res}")
 
-    def _fmt_key(self, k: Any, keycolor: Optional[str]=None) -> str:
-        if isinstance(k, tuple) and len(k) == 4 and k[0] == 'MetaArg':
+    def _fmt_key(self, k: Any, keycolor: Optional[str] = None) -> str:
+        if isinstance(k, tuple) and len(k) == 4 and k[0] == "MetaArg":
             # this is a key coming from W_MetaArg: it's common enough which
             # is worth special casing its formatting for readability
             # purposes
@@ -75,10 +79,10 @@ class BlueCache:
         for (w_func, args_key), w_result in self.data.items():
             c[w_func] += 1
         print()
-        print('=== vm.bluecache ===')
-        print('Entries | Function')
+        print("=== vm.bluecache ===")
+        print("Entries | Function")
         for w_func, n in c.most_common():
-            print(f'{n:7d} | {w_func.fqn}')
+            print(f"{n:7d} | {w_func.fqn}")
 
     def _pp_func(self, funcname: str) -> None:
         for key, w_result in self.data.items():
@@ -86,7 +90,7 @@ class BlueCache:
             if funcname in str(w_func.fqn):
                 print(w_func.fqn)
                 for arg in args_key:
-                    print('   ', arg)
-                print('    ==>')
-                print('   ', w_result)
+                    print("   ", arg)
+                print("    ==>")
+                print("   ", w_result)
                 print()

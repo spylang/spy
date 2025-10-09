@@ -1,9 +1,10 @@
 import py.path
-from spy.fqn import FQN
-from spy.vm.function import W_ASTFunc
+
 from spy.backend.c.context import Context
 from spy.build.config import BuildConfig, CompilerConfig
+from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.function import W_ASTFunc
 
 
 class CFFIWriter:
@@ -47,6 +48,7 @@ class CFFIWriter:
     CFFI "Setuptools integration" as described here:
     https://cffi.readthedocs.io/en/latest/cdef.html
     """
+
     modname: str
     config: BuildConfig
     build_dir: py.path.local
@@ -56,15 +58,12 @@ class CFFIWriter:
     tb_src: TextBuilder
 
     def __init__(
-            self,
-            modname: str,
-            config: BuildConfig,
-            build_dir: py.path.local
+        self, modname: str, config: BuildConfig, build_dir: py.path.local
     ) -> None:
         self.modname = modname
         self.config = config
         self.build_dir = build_dir
-        self.tb_py = TextBuilder()     # {modname}.py
+        self.tb_py = TextBuilder()  # {modname}.py
         self.tb_build = TextBuilder()  # _{modname-cffi-build}.py
         self.init_py()
         self.init_cffi_build()
@@ -90,17 +89,12 @@ class CFFIWriter:
         tb.wl('"""')
         tb.wl()
 
-    def finalize_cffi_build(
-            self,
-            cfiles: list[py.path.local]
-    ) -> None:
-        srcdir = self.build_dir.join('src')
+    def finalize_cffi_build(self, cfiles: list[py.path.local]) -> None:
+        srcdir = self.build_dir.join("src")
         comp = CompilerConfig(self.config)
 
         SOURCES = [str(f) for f in cfiles]
-        CFLAGS = comp.cflags + [
-            f'-I{srcdir}'
-        ]
+        CFLAGS = comp.cflags + [f"-I{srcdir}"]
         LDFLAGS = comp.ldflags
 
         self.tb_build.wb(f"""
@@ -120,16 +114,16 @@ class CFFIWriter:
         """)
 
     def write(self, cfiles: list[py.path.local]) -> py.path.local:
-        assert self.config.kind == 'py-cffi'
+        assert self.config.kind == "py-cffi"
         self.finalize_cffi_build(cfiles)
 
-        self.cffi_dir = self.build_dir.join('cffi')
+        self.cffi_dir = self.build_dir.join("cffi")
         self.cffi_dir.ensure(dir=True)
 
-        pyfile = self.cffi_dir.join(f'{self.modname}.py')
+        pyfile = self.cffi_dir.join(f"{self.modname}.py")
         pyfile.write(self.tb_py.build())
 
-        build_script = self.cffi_dir.join(f'_{self.modname}-cffi-build.py')
+        build_script = self.cffi_dir.join(f"_{self.modname}-cffi-build.py")
         build_script.write(self.tb_build.build())
         return build_script
 
@@ -147,11 +141,11 @@ class CFFIWriter:
         #     ffibuilder.cdef("void spy_test_add(...)");
         #     src = "#define spy_test_add spy_test$add"
         real_name = fqn.c_name
-        cdef_name = real_name.replace('$', '_')
+        cdef_name = real_name.replace("$", "_")
         c_func = ctx.c_function(cdef_name, w_func)
-        self.tb_cdef.wl(c_func.decl() + ';')
-        self.tb_src.wl(f'#define {cdef_name} {real_name}')
+        self.tb_cdef.wl(c_func.decl() + ";")
+        self.tb_src.wl(f"#define {cdef_name} {real_name}")
         #
         # XXX explain
         py_name = fqn.symbol_name
-        self.tb_py.wl(f'{py_name} = _{self.modname}.lib.{cdef_name}')
+        self.tb_py.wl(f"{py_name} = _{self.modname}.lib.{cdef_name}")

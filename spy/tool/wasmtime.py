@@ -7,16 +7,20 @@ requires only `pip install wasmtime`, no extra dependency.
 Mostly useful for tests.
 """
 
-import sys
 import argparse
+import sys
+
 import wasmtime as wt
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run a WASI-enabled WebAssembly module using wasmtime."
     )
     parser.add_argument("wasm_file", help="Path to the .wasm file to run")
-    parser.add_argument("args", nargs=argparse.REMAINDER, help="Arguments to pass to the WASM program")
+    parser.add_argument(
+        "args", nargs=argparse.REMAINDER, help="Arguments to pass to the WASM program"
+    )
 
     args = parser.parse_args()
 
@@ -44,6 +48,7 @@ def main() -> None:
     except wt.WasmtimeError as e:
         print(f"Error: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

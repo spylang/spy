@@ -1,14 +1,14 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
 from spy.errors import SPyError
+from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
-from spy.tests.wasm_wrapper import WasmPtr
-from spy.tests.support import CompilerTest, expect_errors, only_interp
+
 
 class TestUnsafe(CompilerTest):
-
     @only_interp
     def test_ptrtype_repr(self):
         w_ptrtype = self.vm.fast_call(UNSAFE.w_make_ptr_type, [B.w_i32])
@@ -26,8 +26,7 @@ class TestUnsafe(CompilerTest):
         assert w_T is B.w_i32
 
     def test_gc_alloc(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
         def foo() -> i32:
@@ -50,8 +49,7 @@ class TestUnsafe(CompilerTest):
         assert mod.bar(2) == 5.6
 
     def test_out_of_bound(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
         def foo(i: i32) -> i32:
@@ -66,8 +64,7 @@ class TestUnsafe(CompilerTest):
             mod.foo(3)
 
     def test_ptr_to_struct(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
         @struct
@@ -102,13 +99,12 @@ class TestUnsafe(CompilerTest):
         """
         errors = expect_errors(
             "type `unsafe::ptr[test::Point]` does not support assignment to attribute 'z'",
-            ('this is `unsafe::ptr[test::Point]`', 'p'),
+            ("this is `unsafe::ptr[test::Point]`", "p"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_nested_struct(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
         @struct
@@ -210,7 +206,6 @@ class TestUnsafe(CompilerTest):
         assert mod.foo() == 3
         assert mod.bar() == 4.6
 
-
     def test_ptr_NULL(self):
         mod = self.compile("""
         from unsafe import ptr
@@ -219,11 +214,11 @@ class TestUnsafe(CompilerTest):
             return ptr[i32].NULL
         """)
         w_p = mod.foo()
-        if self.backend in ('interp', 'doppler'):
+        if self.backend in ("interp", "doppler"):
             assert isinstance(w_p, W_Ptr)
             assert w_p.addr == 0
             assert w_p.length == 0
-            assert repr(w_p) == 'W_Ptr(i32, NULL)'
+            assert repr(w_p) == "W_Ptr(i32, NULL)"
         else:
             assert isinstance(w_p, WasmPtr)
             assert w_p.addr == 0
@@ -239,7 +234,6 @@ class TestUnsafe(CompilerTest):
             return global_ptr == ptr[i32].NULL
         """)
         assert mod.is_null() is True
-
 
     def test_ptr_truth(self):
         mod = self.compile("""
@@ -290,14 +284,13 @@ class TestUnsafe(CompilerTest):
         """)
         ptr = mod.alloc_list(1, 2, 3)
         mod.print_list(ptr)
-        if self.backend == 'C':
-            mod.ll.call('spy_flush')
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
         out, err = capfd.readouterr()
-        assert out.splitlines() == ['1', '2', '3']
+        assert out.splitlines() == ["1", "2", "3"]
 
     def test_array_of_struct_getref(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
         @struct
@@ -315,15 +308,13 @@ class TestUnsafe(CompilerTest):
         """)
         p = mod.foo()
         addr = p.addr
-        self.vm.ll.mem.read_i32(p.addr)      == 1
-        self.vm.ll.mem.read_i32(p.addr + 4)  == 2
-        self.vm.ll.mem.read_i32(p.addr + 8)  == 3
+        self.vm.ll.mem.read_i32(p.addr) == 1
+        self.vm.ll.mem.read_i32(p.addr + 4) == 2
+        self.vm.ll.mem.read_i32(p.addr + 8) == 3
         self.vm.ll.mem.read_i32(p.addr + 12) == 4
 
-
     def test_array_of_struct_read_write_byval(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from unsafe import gc_alloc, ptr
 
         @struct
@@ -352,16 +343,16 @@ class TestUnsafe(CompilerTest):
             return arr[0].b
         """)
         ptr_p = mod.write_point()
-        self.vm.ll.mem.read_i32(ptr_p.addr)      == 1
-        self.vm.ll.mem.read_i32(ptr_p.addr + 4)  == 2
-        self.vm.ll.mem.read_i32(ptr_p.addr + 8)  == 3
+        self.vm.ll.mem.read_i32(ptr_p.addr) == 1
+        self.vm.ll.mem.read_i32(ptr_p.addr + 4) == 2
+        self.vm.ll.mem.read_i32(ptr_p.addr + 8) == 3
         self.vm.ll.mem.read_i32(ptr_p.addr + 12) == 4
-        #
+
         ptr_r = mod.write_rect()
-        self.vm.ll.mem.read_i32(ptr_r.addr)      == 5
-        self.vm.ll.mem.read_i32(ptr_r.addr + 4)  == 6
-        self.vm.ll.mem.read_i32(ptr_r.addr + 8)  == 7
+        self.vm.ll.mem.read_i32(ptr_r.addr) == 5
+        self.vm.ll.mem.read_i32(ptr_r.addr + 4) == 6
+        self.vm.ll.mem.read_i32(ptr_r.addr + 8) == 7
         self.vm.ll.mem.read_i32(ptr_r.addr + 12) == 8
-        #
+
         p = mod.read_point()
         assert p == (7, 8)

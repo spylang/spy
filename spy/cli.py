@@ -1,31 +1,33 @@
-import sys
-from typing import Annotated, Any, Optional
 import asyncio
-from pathlib import Path
+import pdb as stdlib_pdb  # to distinguish from the "--pdb" option
+import sys
 import time
 import traceback
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Annotated, Any, Optional
+
 import click
+import py.path
 import typer
 from typer import Option
-import py.path
-import pdb as stdlib_pdb # to distinguish from the "--pdb" option
-from spy.vendored.dataclass_typer import dataclass_typer
-from spy.magic_py_parse import magic_py_parse
+
 from spy.analyze.importing import ImportAnalyzer
-from spy.errors import SPyError
-from spy.backend.spy import SPyBackend, FQN_FORMAT
-from spy.doppler import ErrorMode
 from spy.backend.c.cbackend import CBackend
+from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
+from spy.doppler import ErrorMode
+from spy.errors import SPyError
+from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
+from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
-from spy.vm.vm import SPyVM
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.module import W_Module
-import traceback
+from spy.vm.vm import SPyVM
 
 app = typer.Typer(pretty_exceptions_enable=False)
+
 
 @dataclass
 class Arguments:
@@ -34,164 +36,137 @@ class Arguments:
     execute: Annotated[
         bool,
         Option(
-            "-x", "--execute",
-            help="Execute the file (default)"
-        )
+            "-x",
+            "--execute",
+            help="Execute the file (default)",
+        ),
     ] = False
 
     pyparse: Annotated[
         bool,
-        Option(
-            "-P", "--pyparse",
-            help="Dump the Python AST"
-        )
+        Option("-P", "--pyparse", help="Dump the Python AST"),
     ] = False
 
     parse: Annotated[
         bool,
-        Option(
-            "-p", "--parse",
-            help="Dump the SPy AST"
-        )
+        Option("-p", "--parse", help="Dump the SPy AST"),
     ] = False
 
     colorize: Annotated[
         bool,
         Option(
-            "-C", "--colorize",
-            help="Output the pre-redshifted AST with blue / red text colors."
-        )
+            "-C",
+            "--colorize",
+            help="Output the pre-redshifted AST with blue / red text colors.",
+        ),
     ] = False
 
     imports: Annotated[
         bool,
-        Option(
-            "-I", "--imports",
-            help="Dump the (recursive) list of imports"
-        )
+        Option("-I", "--imports", help="Dump the (recursive) list of imports"),
     ] = False
 
     symtable: Annotated[
         bool,
-        Option(
-            "-S", "--symtable",
-            help="Dump the symtables"
-        )
+        Option("-S", "--symtable", help="Dump the symtables"),
     ] = False
 
     redshift: Annotated[
         bool,
         Option(
-            "-r", "--redshift",
-            help="Perform redshift and dump the result"
-        )
+            "-r",
+            "--redshift",
+            help="Perform redshift and dump the result",
+        ),
     ] = False
 
     cwrite: Annotated[
         bool,
-        Option(
-            "--cwrite",
-            help="Generate the C code"
-        )
+        Option("--cwrite", help="Generate the C code"),
     ] = False
 
     cdump: Annotated[
         bool,
-        Option(
-            "--cdump",
-            help="Dump the generated C code to stdout"
-        )
+        Option("--cdump", help="Dump the generated C code to stdout"),
     ] = False
 
     compile: Annotated[
         bool,
-        Option(
-            "-c", "--compile",
-            help="Compile the generated C code"
-        )
+        Option("-c", "--compile", help="Compile the generated C code"),
     ] = False
 
     build_dir: Annotated[
         Optional[Path],
         Option(
-            "-b", "--build-dir",
-            help="Directory to store generated files (defaults to build/ next to the .spy file)"
-        )
+            "-b",
+            "--build-dir",
+            help="Directory to store generated files (defaults to build/ next to the "
+            ".spy file)",
+        ),
     ] = None
 
     opt_level: Annotated[
         int,
         Option(
-            '-O', metavar='LEVEL',
+            "-O",
+            metavar="LEVEL",
             help="Optimization level",
-        )
+        ),
     ] = 0
 
     debug_symbols: Annotated[
         bool,
-        Option(
-            '-g',
-            help="Generate debug symbols"
-        )
+        Option("-g", help="Generate debug symbols"),
     ] = False
 
     release_mode: Annotated[
         bool,
-        Option(
-            '--release',
-            help="enable release mode"
-        )
+        Option("--release", help="enable release mode"),
     ] = False
 
     target: Annotated[
         BuildTarget,
         Option(
-            "-t", "--target",
+            "-t",
+            "--target",
             help="Compilation target",
             click_type=click.Choice(BuildTarget.__args__),
-        )
-    ] = 'native'
+        ),
+    ] = "native"
 
     output_kind: Annotated[
         OutputKind,
         Option(
-            "-k", "--output-kind",
+            "-k",
+            "--output-kind",
             help="Output kind",
             click_type=click.Choice(OutputKind.__args__),
-        )
-    ] = 'exe'
+        ),
+    ] = "exe"
 
     error_mode: Annotated[
         ErrorMode,
         Option(
-            "-E", "--error-mode",
+            "-E",
+            "--error-mode",
             help="Handling strategy for static errors",
             click_type=click.Choice(ErrorMode.__args__),
-        )
-    ] = 'eager'
+        ),
+    ] = "eager"
 
     full_fqn: Annotated[
         bool,
-        Option(
-            "--full-fqn",
-            help="Show full FQNs in redshifted modules"
-        )
+        Option("--full-fqn", help="Show full FQNs in redshifted modules"),
     ] = False
 
     timeit: Annotated[
         bool,
-        Option(
-            "--timeit",
-            help="Print execution time"
-        )
+        Option("--timeit", help="Print execution time"),
     ] = False
 
     pdb: Annotated[
         bool,
-        Option(
-            "--pdb",
-            help="Enter interp-level debugger in case of error"
-        )
+        Option("--pdb", help="Enter interp-level debugger in case of error"),
     ] = False
 
     def __post_init__(self) -> None:
@@ -201,17 +176,25 @@ class Arguments:
 
     def validate_actions(self) -> None:
         # check that we specify at most one of the following options
-        possible_actions = ["execute", "pyparse", "parse",
-                            "imports", "symtable",
-                            "redshift", "cwrite", "compile", "colorize"]
+        possible_actions = [
+            "execute",
+            "pyparse",
+            "parse",
+            "imports",
+            "symtable",
+            "redshift",
+            "cwrite",
+            "compile",
+            "colorize",
+        ]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
         if n == 0:
             self.execute = True
         elif n == 1:
-            pass # this is valid
+            pass  # this is valid
         elif actions == {"redshift", "execute"} or actions == {"redshift", "parse"}:
-            pass # these are valid
+            pass  # these are valid
         else:
             msg = "Too many actions specified: "
             msg += " ".join(["--" + a for a in actions])
@@ -224,34 +207,39 @@ def do_pyparse(filename: str) -> None:
     mod = magic_py_parse(src)
     mod.pp()
 
+
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
-    fqn_format: FQN_FORMAT = 'full' if full_fqn else 'short'
+    fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
 
+
 def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
     for fqn, w_obj in vm.fqns_by_modname(modname):
-        if (isinstance(w_obj, W_ASTFunc) and
-            w_obj.color == 'red' and
-            w_obj.fqn == fqn):
-            print(f'`{fqn}` = ', end='')
+        if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
+            print(f"`{fqn}` = ", end="")
             w_obj.funcdef.pp()
             print()
+
 
 def pyproject_entry_point() -> Any:
     """
     This is called by the script generated by pyproject.toml
     """
-    if sys.platform == 'emscripten':
-        print("The 'spy' command does not work in a pyodide venv running under node. Please use python -m spy")
+    if sys.platform == "emscripten":
+        print(
+            "The 'spy' command does not work in a pyodide venv running under node. "
+            "Please use python -m spy"
+        )
         sys.exit(1)
     return app()
+
 
 @app.command()
 @dataclass_typer
 def main(args: Arguments) -> None:
     # this is the main Typer entry point
-    if sys.platform == 'emscripten':
+    if sys.platform == "emscripten":
         asyncio.create_task(pyodide_main(args))
     else:
         asyncio.run(real_main(args))
@@ -266,7 +254,8 @@ async def pyodide_main(args: Arguments) -> None:
     try:
         await real_main(args)
     except BaseException:
-       traceback.print_exc()
+        traceback.print_exc()
+
 
 async def real_main(args: Arguments) -> None:
     """
@@ -291,8 +280,9 @@ async def real_main(args: Arguments) -> None:
 
 
 def emit_warning(err: SPyError) -> None:
-    print(Color.set('yellow', '[warning] '), end='')
+    print(Color.set("yellow", "[warning] "), end="")
     print(err.format())
+
 
 def get_build_dir(args: Arguments) -> py.path.local:
     if args.build_dir is not None:
@@ -302,7 +292,7 @@ def get_build_dir(args: Arguments) -> py.path.local:
         srcdir = args.filename.parent
         build_dir = srcdir / "build"
 
-    #print(f"Build dir:    {build_dir}")
+    # print(f"Build dir:    {build_dir}")
     build_dir.mkdir(exist_ok=True, parents=True)
     return py.path.local(str(build_dir))
 
@@ -315,8 +305,10 @@ async def inner_main(args: Arguments) -> None:
         do_pyparse(str(args.filename))
         return
 
-    if args.filename.suffix == '.py':
-        print(f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr)
+    if args.filename.suffix == ".py":
+        print(
+            f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
+        )
         sys.exit(1)
 
     modname = args.filename.stem
@@ -324,8 +316,8 @@ async def inner_main(args: Arguments) -> None:
     vm = await SPyVM.async_new()
 
     vm.path.append(str(srcdir))
-    if args.error_mode == 'warn':
-        args.error_mode = 'lazy'
+    if args.error_mode == "warn":
+        args.error_mode = "lazy"
         vm.emit_warning = emit_warning
 
     importer = ImportAnalyzer(vm, modname)
@@ -356,8 +348,8 @@ async def inner_main(args: Arguments) -> None:
         # Signal to the redshift codde that we want to retain expr color information
         vm.expr_color_map = {}
     vm.redshift(error_mode=args.error_mode)
-    #vm.pp_globals()
-    #vm.pp_modules()
+    # vm.pp_globals()
+    # vm.pp_modules()
 
     if args.redshift or args.colorize:
         if args.execute:
@@ -372,28 +364,22 @@ async def inner_main(args: Arguments) -> None:
         return
 
     config = BuildConfig(
-        target = args.target,
-        kind = args.output_kind,
-        build_type = "release" if args.release_mode else "debug"
+        target=args.target,
+        kind=args.output_kind,
+        build_type="release" if args.release_mode else "debug",
     )
 
-    cwd = py.path.local('.')
+    cwd = py.path.local(".")
     build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
-    backend = CBackend(
-        vm,
-        modname,
-        config,
-        build_dir,
-        dump_c=dump_c
-    )
+    backend = CBackend(vm, modname, config, build_dir, dump_c=dump_c)
 
     backend.cwrite()
     backend.write_build_script()
     assert backend.build_script is not None
 
     if args.cwrite:
-        cfiles = ', '.join([f.relto(cwd) for f in backend.cfiles])
+        cfiles = ", ".join([f.relto(cwd) for f in backend.cfiles])
         build_script = backend.build_script.relto(cwd)
         print(f"C files:      {cfiles}")
         print(f"Build script: {build_script}")
@@ -401,17 +387,17 @@ async def inner_main(args: Arguments) -> None:
 
     outfile = backend.build()
     executable = outfile.relto(cwd)
-    if executable == '':
+    if executable == "":
         # outfile is not in a subdir of cwd, let's display the full path
         executable = str(outfile)
     print(f"[{config.build_type}] {executable} ")
 
 
 def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
-    w_main_functype = W_FuncType.parse('def() -> None')
-    w_main = w_mod.getattr_maybe('main')
+    w_main_functype = W_FuncType.parse("def() -> None")
+    w_main = w_mod.getattr_maybe("main")
     if w_main is None:
-        print('Cannot find function main()')
+        print("Cannot find function main()")
         return
 
     vm.typecheck(w_main, w_main_functype)
@@ -430,5 +416,5 @@ def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
     w_res = vm.fast_call(w_main, [])
     b = time.time()
     if args.timeit:
-        print(f'main(): {b - a:.3f} seconds', file=sys.stderr)
+        print(f"main(): {b - a:.3f} seconds", file=sys.stderr)
     assert w_res is B.w_None

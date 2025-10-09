@@ -1,9 +1,10 @@
 import pytest
-from spy.tests.support import CompilerTest
+
 from spy.errors import SPyError
+from spy.tests.support import CompilerTest
+
 
 class TestList(CompilerTest):
-
     def test_basic_operations(self):
         src = """
         from _list import List
@@ -74,7 +75,7 @@ class TestList(CompilerTest):
         assert mod.sum_list() == 15
         assert mod.test_grow() == 9
         assert mod.test_f64() == 2.5
-        with SPyError.raises('W_IndexError'):
+        with SPyError.raises("W_IndexError"):
             mod.out_of_bounds()
 
     def test_fastiter(self):
@@ -135,7 +136,7 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.test_set() == 99
-        with SPyError.raises('W_IndexError'):
+        with SPyError.raises("W_IndexError"):
             mod.test_error()
 
     def test_pop(self):
@@ -157,7 +158,7 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.test_pop() == 32  # 30 + 2
-        with SPyError.raises('W_IndexError'):
+        with SPyError.raises("W_IndexError"):
             mod.test_empty()
 
     def test_insert(self):
@@ -190,7 +191,7 @@ class TestList(CompilerTest):
             return lst[2]
         """
         mod = self.compile(src)
-        assert mod.test_middle() == '10 20 30 '
+        assert mod.test_middle() == "10 20 30 "
         assert mod.test_start() == 10
         assert mod.test_end() == 30
 
@@ -253,7 +254,7 @@ class TestList(CompilerTest):
         assert mod.test_last() == 30
         assert mod.test_middle() == 20
         assert mod.test_set() == 99
-        with SPyError.raises('W_IndexError'):
+        with SPyError.raises("W_IndexError"):
             mod.test_error()
 
     def test_extend(self):
@@ -286,7 +287,7 @@ class TestList(CompilerTest):
             return len(lst1)
         """
         mod = self.compile(src)
-        assert mod.test_extend() == '10 20 30 40 '
+        assert mod.test_extend() == "10 20 30 40 "
         assert mod.test_empty() == 1
 
     def test_copy(self):
@@ -347,7 +348,7 @@ class TestList(CompilerTest):
             return len(lst1)
         """
         mod = self.compile(src)
-        assert mod.test_concat() == '10 20 30 40 '
+        assert mod.test_concat() == "10 20 30 40 "
         assert mod.test_unchanged() == 1  # lst1 unchanged
 
     def test_mul_operator(self):
@@ -383,7 +384,7 @@ class TestList(CompilerTest):
             return lst2[1]
         """
         mod = self.compile(src)
-        assert mod.test_repeat() == '10 20 10 20 10 20 '
+        assert mod.test_repeat() == "10 20 10 20 10 20 "
         assert mod.test_zero() == 0
         assert mod.test_one() == 20
 
@@ -429,7 +430,7 @@ class TestList(CompilerTest):
         assert mod.test_middle() == 1
         assert mod.test_first() == 0
         assert mod.test_last() == 2
-        with SPyError.raises('W_ValueError'):
+        with SPyError.raises("W_ValueError"):
             mod.test_not_found()
         assert mod.test_duplicate() == 0  # Returns first occurrence
 
@@ -529,11 +530,11 @@ class TestList(CompilerTest):
             return len(lst)
         """
         mod = self.compile(src)
-        assert mod.test_middle() == '10 30 '
+        assert mod.test_middle() == "10 30 "
         assert mod.test_first() == 20
         assert mod.test_last() == 2
-        assert mod.test_duplicate() == '20 10 30 '  # Only first occurrence removed
-        with SPyError.raises('W_ValueError'):
+        assert mod.test_duplicate() == "20 10 30 "  # Only first occurrence removed
+        with SPyError.raises("W_ValueError"):
             mod.test_not_found()
         assert mod.test_length() == 2
 

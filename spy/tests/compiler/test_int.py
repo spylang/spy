@@ -1,16 +1,17 @@
 import pytest
+
 from spy.errors import SPyError
-from spy.tests.support import (CompilerTest)
+from spy.tests.support import CompilerTest
+
 
 @pytest.fixture(params=["i32", "i8", "u8"])
 def int_type(request):
     return request.param
 
-class TestInt(CompilerTest):
 
+class TestInt(CompilerTest):
     def test_i8_conversion(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo(x: i32) -> i8:
             return x
 
@@ -24,8 +25,7 @@ class TestInt(CompilerTest):
         assert mod.bar(128) == -128
 
     def test_u8_conversion(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo(x: i32) -> u8:
             return x
 
@@ -38,13 +38,12 @@ class TestInt(CompilerTest):
         assert mod.bar(-1) == 255
 
     def test_float_to_int(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def to_i32(x: f64) -> i32: return i32(x)
         """)
         MAX = 2**31 - 1
         assert mod.to_i32(12.5) == 12
-        assert mod.to_i32(float(MAX*2)) == MAX
+        assert mod.to_i32(float(MAX * 2)) == MAX
         assert mod.to_i32(float("inf")) == MAX
         assert mod.to_i32(float("nan")) == 0
 
@@ -76,7 +75,9 @@ class TestInt(CompilerTest):
             mod.mod(10, 0)
         with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
             mod.div(11, 0)
-        with SPyError.raises("W_ZeroDivisionError", match="integer division or modulo by zero"):
+        with SPyError.raises(
+            "W_ZeroDivisionError", match="integer division or modulo by zero"
+        ):
             mod.floordiv(11, 0)
 
     def test_division_mixed_signs(self, int_type):
@@ -103,11 +104,11 @@ class TestInt(CompilerTest):
         def neg(x: T) -> T:
             return -x
         """
-        mod = self.compile(src, error_mode='lazy')
+        mod = self.compile(src, error_mode="lazy")
         #
-        is_unsigned = int_type.startswith('u')
+        is_unsigned = int_type.startswith("u")
         if is_unsigned:
-            with SPyError.raises('W_TypeError', match="cannot do -`u8`"):
+            with SPyError.raises("W_TypeError", match="cannot do -`u8`"):
                 mod.neg(-5)
         else:
             assert mod.neg(-5) == 5
@@ -142,22 +143,22 @@ class TestInt(CompilerTest):
         """)
         assert mod.cmp_eq(5, 5) is True
         assert mod.cmp_eq(5, 6) is False
-        #
+
         assert mod.cmp_neq(5, 5) is False
         assert mod.cmp_neq(5, 6) is True
-        #
+
         assert mod.cmp_lt(5, 6) is True
         assert mod.cmp_lt(5, 5) is False
         assert mod.cmp_lt(6, 5) is False
-        #
+
         assert mod.cmp_lte(5, 6) is True
         assert mod.cmp_lte(5, 5) is True
         assert mod.cmp_lte(6, 5) is False
-        #
+
         assert mod.cmp_gt(5, 6) is False
         assert mod.cmp_gt(5, 5) is False
         assert mod.cmp_gt(6, 5) is True
-        #
+
         assert mod.cmp_gte(5, 6) is False
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True

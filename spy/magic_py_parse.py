@@ -28,14 +28,15 @@ on disk. For this, we use the `untokenize` module (available on PyPI) which
 does exactly that.
 """
 
-from dataclasses import dataclass
 import ast as py_ast
-from tokenize import tokenize, NAME, TokenInfo, TokenError
+from dataclasses import dataclass
 from io import BytesIO
+from tokenize import NAME, TokenError, TokenInfo, tokenize
 
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
+
 
 @dataclass(frozen=True)
 class LocInfo:
@@ -43,6 +44,7 @@ class LocInfo:
     end_lineno: int
     col_offset: int
     end_col_offset: int
+
 
 def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     """
@@ -62,15 +64,18 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
         if isinstance(node, py_ast.Name):
             assert node.end_lineno is not None
             assert node.end_col_offset is not None
-            loc_info = LocInfo(node.lineno, node.end_lineno,
-                          node.col_offset, node.end_col_offset)
-            node.is_var = loc_info in var_locs # type: ignore
+            loc_info = LocInfo(
+                node.lineno, node.end_lineno, node.col_offset, node.end_col_offset
+            )
+            node.is_var = loc_info in var_locs  # type: ignore
 
     return py_mod
 
+
 def get_tokens(src: str) -> list[TokenInfo]:
-    readline = BytesIO(src.encode('utf-8')).readline
+    readline = BytesIO(src.encode("utf-8")).readline
     return list(tokenize(readline))
+
 
 def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]:
     try:
@@ -89,10 +94,10 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
     N = len(tokens)
     var_locs = set()
 
-    while i < N-1:
+    while i < N - 1:
         tok0 = tokens[i]
-        tok1 = tokens[i+1]
-        if tok0.type == NAME and tok0.string == 'var' and tok1.type == NAME:
+        tok1 = tokens[i + 1]
+        if tok0.type == NAME and tok0.string == "var" and tok1.type == NAME:
             # tok0 is 'var'
             # tok1 is the name
             # basically, we want to turn:
@@ -106,18 +111,18 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
             var_l1, var_c1 = tok0.end
             name_l0, name_c0 = tok1.start
             name_l1, name_c1 = tok1.end
-            assert var_l0 == var_l1 == name_l0 == name_l1, \
-                'multiline var not supported'
-            spaces = ' ' * (name_c0 - var_c0)
-            newtok = TokenInfo(NAME, tok1.string + spaces,
-                               tok0.start, tok1.end, tok1.line)
+            assert var_l0 == var_l1 == name_l0 == name_l1, "multiline var not supported"
+            spaces = " " * (name_c0 - var_c0)
+            newtok = TokenInfo(
+                NAME, tok1.string + spaces, tok0.start, tok1.end, tok1.line
+            )
             newtokens.append(newtok)
             # compute the location info of the future ast.Name
             loc_info = LocInfo(
-                lineno = var_l0,
-                end_lineno = var_l0,
-                col_offset = var_c0,
-                end_col_offset = var_c0 + len(tok1.string)
+                lineno=var_l0,
+                end_lineno=var_l0,
+                col_offset=var_c0,
+                end_col_offset=var_c0 + len(tok1.string),
             )
             var_locs.add(loc_info)
             i += 1

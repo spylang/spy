@@ -1,8 +1,10 @@
-from typing import Optional, Literal, TYPE_CHECKING, Any
-from dataclasses import dataclass, KW_ONLY, replace
+from dataclasses import KW_ONLY, dataclass, replace
+from typing import TYPE_CHECKING, Any, Literal, Optional
+
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
+
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
@@ -10,14 +12,15 @@ Color = Literal["red", "blue"]
 VarKind = Literal["var", "const"]
 VarStorage = Literal["direct", "cell", "NameError"]
 
+
 def maybe_blue(*colors: Color) -> Color:
     """
     Return 'blue' if all the given colors are blue, else 'red'
     """
-    if set(colors) == {'blue'}:
-        return 'blue'
+    if set(colors) == {"blue"}:
+        return "blue"
     else:
-        return 'red'
+        return "red"
 
 
 @dataclass(frozen=True)
@@ -34,21 +37,22 @@ class ImportRef:
       modname: 'a.b'
       attr: 'c'
     """
+
     modname: str
     attr: Optional[str]
 
     def spy_name(self) -> str:
         modname = self.modname
-        if '.' in modname:
-            modname = f'({modname})'
+        if "." in modname:
+            modname = f"({modname})"
         if self.attr is None:
             return modname
         else:
-            return f'{modname}.{self.attr}'
+            return f"{modname}.{self.attr}"
 
     def __repr__(self) -> str:
         n = self.spy_name()
-        return f'<ImportRef {n}>'
+        return f"<ImportRef {n}>"
 
 
 @dataclass
@@ -58,7 +62,7 @@ class Symbol:
     varkind: VarKind
     storage: VarStorage
     _: KW_ONLY
-    loc: Loc       # where the symbol is defined, in the source code
+    loc: Loc  # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
 
     # level indicates in which scope the symbol resides:
@@ -74,7 +78,7 @@ class Symbol:
     level: int
     impref: Optional[ImportRef] = None
 
-    def replace(self, **kwargs: Any) -> 'Symbol':
+    def replace(self, **kwargs: Any) -> "Symbol":
         return replace(self, **kwargs)
 
     @property
@@ -101,6 +105,7 @@ class SymTable:
 
       - frames associated to modules, classdefs, etc. are also BLUE
     """
+
     name: str  # just for debugging
     color: Color
     _symbols: dict[str, Symbol]
@@ -111,26 +116,28 @@ class SymTable:
         self._symbols = {}
 
     @classmethod
-    def from_builtins(cls, vm: 'SPyVM') -> 'SymTable':
+    def from_builtins(cls, vm: "SPyVM") -> "SymTable":
         from spy.vm.function import W_BuiltinFunc
-        scope = cls('builtins', 'blue')
-        generic_loc = Loc(filename='<builtins>',
-                          line_start=0,
-                          line_end=0,
-                          col_start=0,
-                          col_end=0)
-        builtins_mod = vm.modules_w['builtins']
+
+        scope = cls("builtins", "blue")
+        generic_loc = Loc(
+            filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
+        )
+        builtins_mod = vm.modules_w["builtins"]
         for attr, w_obj in builtins_mod.items_w():
             if isinstance(w_obj, W_BuiltinFunc):
                 loc = w_obj.def_loc
             else:
                 loc = generic_loc
             sym = Symbol(
-                attr, 'blue', 'const', 'direct',
+                attr,
+                "blue",
+                "const",
+                "direct",
                 loc=loc,
                 type_loc=loc,
                 level=0,
-                impref=ImportRef('builtins', attr),
+                impref=ImportRef("builtins", attr),
             )
             scope.add(sym)
         return scope
@@ -140,7 +147,7 @@ class SymTable:
 
     def pp(self) -> None:
         color = ColorFormatter(use_colors=True)
-        name = color.set('green', self.name)
+        name = color.set("green", self.name)
         print(f"<symbol table '{name}'>")
         # sort symbols by:
         #   1. level
@@ -148,22 +155,24 @@ class SymTable:
         #   3. name (@special names last)
         symbols = sorted(
             self._symbols.values(),
-            key=lambda sym: (sym.level, sym.color, sym.name.replace('@', '~')),
+            key=lambda sym: (sym.level, sym.color, sym.name.replace("@", "~")),
         )
         for sym in symbols:
-            sym_name = color.set(sym.color, f'{sym.name:10s}')
-            if sym.storage == 'NameError':
+            sym_name = color.set(sym.color, f"{sym.name:10s}")
+            if sym.storage == "NameError":
                 # special formatting
-                print(f'    [ ] NameError  {sym_name}')
+                print(f"    [ ] NameError  {sym_name}")
                 continue
 
-            impref = ''
+            impref = ""
             if sym.impref:
-                impref = f' => {sym.impref}'
-            storage = ''
-            if sym.storage == 'cell':
-                storage = '[cell]'
-            print(f'    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {impref}')
+                impref = f" => {sym.impref}"
+            storage = ""
+            if sym.storage == "cell":
+                storage = "[cell]"
+            print(
+                f"    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {impref}"
+            )
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols

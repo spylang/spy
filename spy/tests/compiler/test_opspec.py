@@ -1,16 +1,15 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 
+from spy.tests.support import CompilerTest, expect_errors, only_interp
 from spy.vm.b import B
-from spy.vm.opspec import W_OpSpec, W_MetaArg
 from spy.vm.opimpl import W_OpImpl
-from spy.tests.support import CompilerTest, only_interp, expect_errors
+from spy.vm.opspec import W_MetaArg, W_OpSpec
+
 
 @only_interp
 class TestOpSpec(CompilerTest):
-
     def test_new_OpSpec(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import OpSpec
 
         def bar() -> None:
@@ -26,8 +25,7 @@ class TestOpSpec(CompilerTest):
         assert w_opspec.is_simple()
 
     def test_OpSpec_with_args(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import OpSpec, MetaArg
 
         def bar(x: i32) -> i32:
@@ -48,15 +46,14 @@ class TestOpSpec(CompilerTest):
         # Check the MetaArg stored in the arguments list
         wam = w_opspec._args_wam[0]
         assert isinstance(wam, W_MetaArg)
-        assert wam.color == 'blue'
+        assert wam.color == "blue"
         assert wam.w_static_T is B.w_i32
         assert wam.is_blue()
         assert wam._w_val is not None
         assert self.vm.unwrap_i32(wam._w_val) == 42
 
     def test_new_MetaArg(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import MetaArg
 
         @blue
@@ -71,20 +68,19 @@ class TestOpSpec(CompilerTest):
         # Test blue MetaArg creation
         w_blue_oparg = mod.create_blue_oparg(42, unwrap=False)
         assert isinstance(w_blue_oparg, W_MetaArg)
-        assert w_blue_oparg.color == 'blue'
+        assert w_blue_oparg.color == "blue"
         assert w_blue_oparg.w_static_T is B.w_i32
         assert w_blue_oparg._w_val is not None
 
         # Test red MetaArg creation
         w_red_oparg = mod.create_red_oparg(unwrap=False)
         assert isinstance(w_red_oparg, W_MetaArg)
-        assert w_red_oparg.color == 'red'
+        assert w_red_oparg.color == "red"
         assert w_red_oparg.w_static_T is B.w_i32
         assert w_red_oparg._w_val is None
 
     def test_oparg_properties(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import MetaArg
 
         def foo() -> tuple:
@@ -93,13 +89,12 @@ class TestOpSpec(CompilerTest):
         """)
         w_tup = mod.foo(unwrap=False)
         w_color, w_type, w_blueval = w_tup.items_w
-        assert self.vm.unwrap_str(w_color) == 'blue'
+        assert self.vm.unwrap_str(w_color) == "blue"
         assert w_type is B.w_i32
         assert self.vm.unwrap_i32(w_blueval) == 42
 
     def test_opspec_null(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import OpSpec
 
         @blue
@@ -110,8 +105,7 @@ class TestOpSpec(CompilerTest):
         assert w_null is W_OpSpec.NULL
 
     def test_oparg_from_type(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         from operator import MetaArg
 
         def foo() -> MetaArg:
@@ -121,21 +115,20 @@ class TestOpSpec(CompilerTest):
             return 42
         """)
         wam_x = mod.foo(unwrap=False)
-        assert wam_x.color == 'red'
+        assert wam_x.color == "red"
         assert wam_x.w_static_T is B.w_i32
         assert wam_x._w_val is None
 
         errors = expect_errors(
-            'mismatched types',
-            ('expected `operator::MetaArg`, got `i32`', '42')
+            "mismatched types", ("expected `operator::MetaArg`, got `i32`", "42")
         )
         with errors:
             mod.bar()
 
     def test_call_OP_with_types(self):
         from spy.vm.modules.operator import OP
-        mod = self.compile(
-        """
+
+        mod = self.compile("""
         from operator import ADD, OpSpec
 
         def foo() -> dynamic:

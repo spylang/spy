@@ -2,18 +2,20 @@
 A pythonic way to instantiate Emscripten binaries.
 """
 
-from typing import Any, Optional, Callable
-from typing_extensions import Self
 from asyncio import Future
+from typing import Any, Callable, Optional
+
 import py.path
-from .base import HostModule, LLWasmModuleBase, LLWasmInstanceBase, LLWasmMemoryBase
-from pyodide.ffi import run_sync, JsProxy
 from pyodide.code import run_js
+from pyodide.ffi import JsProxy, run_sync
+from typing_extensions import Self
+
+from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
+
 
 class WasmTrap(Exception):
     # xxx add way to catch only actual aborts
     pass
-
 
 
 loadModule = run_js("""
@@ -24,13 +26,10 @@ loadModule = run_js("""
     loadModule
 """)
 
-class LLWasmModule(LLWasmModuleBase):
 
+class LLWasmModule(LLWasmModuleBase):
     def __init__(
-            self,
-            url: str,
-            *,
-            instance_factory: Optional[Callable] = None
+        self, url: str, *, instance_factory: Optional[Callable] = None
     ) -> None:
         assert isinstance(url, str)
         self.url = url
@@ -42,7 +41,7 @@ class LLWasmModule(LLWasmModuleBase):
             self.instance_factory = instance_factory
 
     def __repr__(self) -> str:
-        return f'<LLWasmModule {self.url}>'
+        return f"<LLWasmModule {self.url}>"
 
     @classmethod
     async def async_new(cls, url: str) -> Self:
@@ -53,11 +52,11 @@ class LLWasmModule(LLWasmModuleBase):
 
 class LLWasmInstance(LLWasmInstanceBase):
     def __init__(
-            self,
-            llmod: LLWasmModule,
-            hostmods: list[HostModule] = [],
-            *,
-            instance: Optional[JsProxy] = None
+        self,
+        llmod: LLWasmModule,
+        hostmods: list[HostModule] = [],
+        *,
+        instance: Optional[JsProxy] = None,
     ) -> None:
         self.llmod = llmod
 
@@ -72,24 +71,23 @@ class LLWasmInstance(LLWasmInstanceBase):
 
     @classmethod
     async def async_new(
-            cls,
-            llmod: LLWasmModule,
-            hostmods: list[HostModule] = []
+        cls, llmod: LLWasmModule, hostmods: list[HostModule] = []
     ) -> Self:
         instance = await cls.link_and_instantiate(llmod, hostmods)
         return cls(llmod, hostmods, instance=instance)
 
     @staticmethod
     def link_and_instantiate(
-            llmod: LLWasmModule,
-            hostmods: list[HostModule]
+        llmod: LLWasmModule, hostmods: list[HostModule]
     ) -> Future[Any]:
         """
         Return a PROMISE of the emscripten instance of the given module,
         linking all needed imports
         """
+
         def adjust_imports(imports: Any) -> None:
             from js import Object  # type: ignore
+
             env = imports.env
             for [name, val] in Object.entries(env):
                 if not getattr(val, "stub", False):
@@ -98,11 +96,11 @@ class LLWasmInstance(LLWasmInstanceBase):
                     if x := getattr(hostmod, "env_" + name, None):
                         setattr(env, name, x)
                         break
+
         return llmod.instance_factory(adjustWasmImports=adjust_imports)
 
     @classmethod
-    def from_file(cls, f: py.path.local,
-                  hostmods: list[HostModule]=[]) -> Self:
+    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
         llmod = LLWasmModule(str(f))
         return cls(llmod, hostmods)
 
@@ -120,7 +118,6 @@ class LLWasmInstance(LLWasmInstanceBase):
 
 
 class LLWasmMemory(LLWasmMemoryBase):
-
     def __init__(self, jsmem: Any) -> None:
         self.jsmem = jsmem
 
@@ -128,7 +125,7 @@ class LLWasmMemory(LLWasmMemoryBase):
         """
         Read n bytes of memory at the given address.
         """
-        return self.jsmem.subarray(addr, addr+n).to_py()
+        return self.jsmem.subarray(addr, addr + n).to_py()
 
     def write(self, addr: int, b: bytes) -> None:
         self.jsmem.subarray(addr, addr + len(b)).assign(b)

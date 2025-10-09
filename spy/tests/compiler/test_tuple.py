@@ -1,23 +1,21 @@
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp, expect_errors
+from spy.tests.support import CompilerTest, expect_errors, only_interp
+
 
 # Eventually we want to remove the @only_interp, but for now the C backend
 # doesn't support lists
 @only_interp
 class TestTuple(CompilerTest):
-
     def test_literal(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> dynamic:
             return 1, 2, 'hello'
         """)
         tup = mod.foo()
-        assert tup == (1, 2, 'hello')
+        assert tup == (1, 2, "hello")
 
     def test_getitem(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo(i: i32) -> dynamic:
             tup = 1, 2, 'hello'
             return tup[i]
@@ -25,11 +23,10 @@ class TestTuple(CompilerTest):
         x = mod.foo(0)
         assert x == 1
         y = mod.foo(2)
-        assert y == 'hello'
+        assert y == "hello"
 
     def test_len(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> i32:
             tup = 1, 2, 'hello'
             return len(tup)
@@ -38,8 +35,7 @@ class TestTuple(CompilerTest):
         assert x == 3
 
     def test_unpacking(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def make_tuple() -> tuple:
             return 1, 2, 'hello'
 
@@ -51,8 +47,7 @@ class TestTuple(CompilerTest):
         assert x == 3
 
     def test_unpacking_wrong_number(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def make_tuple() -> tuple:
             return 1, 2
 
@@ -60,7 +55,7 @@ class TestTuple(CompilerTest):
             a, b, c = make_tuple()
         """)
         msg = "Wrong number of values to unpack: expected 3, got 2"
-        with SPyError.raises('W_ValueError', match=msg):
+        with SPyError.raises("W_ValueError", match=msg):
             mod.foo()
 
     def test_unpacking_wrong_type(self):
@@ -69,14 +64,13 @@ class TestTuple(CompilerTest):
             a, b, c = 42
         """
         errors = expect_errors(
-            '`i32` does not support unpacking',
-            ('this is `i32`', '42'),
+            "`i32` does not support unpacking",
+            ("this is `i32`", "42"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_eq(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def tup1() -> tuple:
             return 1, 2
 
@@ -93,8 +87,7 @@ class TestTuple(CompilerTest):
         assert not mod.bar()
 
     def test_blue_tuple(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         @blue
         def make_pair():
             return 1, 2

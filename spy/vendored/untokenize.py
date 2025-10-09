@@ -24,11 +24,10 @@
 
 import tokenize
 
+__version__ = "0.1.1"
 
-__version__ = '0.1.1'
 
-
-TOKENIZE_HAS_ENCODING = hasattr(tokenize, 'ENCODING')
+TOKENIZE_HAS_ENCODING = hasattr(tokenize, "ENCODING")
 
 WHITESPACE_TOKENS = frozenset([tokenize.INDENT, tokenize.NEWLINE, tokenize.NL])
 
@@ -42,13 +41,13 @@ def untokenize(tokens):
     reflected by untokenize().
 
     """
-    text = ''
-    previous_line = ''
+    text = ""
+    previous_line = ""
     last_row = 0
     last_column = -1
     last_non_whitespace_token_type = None
 
-    for (token_type, token_string, start, end, line) in tokens:
+    for token_type, token_string, start, end, line in tokens:
         if TOKENIZE_HAS_ENCODING and token_type == tokenize.ENCODING:
             continue
 
@@ -57,11 +56,11 @@ def untokenize(tokens):
 
         # Preserve escaped newlines.
         if (
-            last_non_whitespace_token_type != tokenize.COMMENT and
-            start_row > last_row and
-            previous_line.endswith(('\\\n', '\\\r\n', '\\\r'))
+            last_non_whitespace_token_type != tokenize.COMMENT
+            and start_row > last_row
+            and previous_line.endswith(("\\\n", "\\\r\n", "\\\r"))
         ):
-            text += previous_line[len(previous_line.rstrip(' \t\n\r\\')):]
+            text += previous_line[len(previous_line.rstrip(" \t\n\r\\")) :]
 
         # Preserve spacing.
         if start_row > last_row:

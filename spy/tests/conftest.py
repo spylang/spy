@@ -1,13 +1,14 @@
 # type: ignore
 
-import pytest
 import shutil
-import py
-from pytest_pyodide import get_global_config
 
+import py
+import pytest
+from pytest_pyodide import get_global_config
 
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
+
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_collection_modifyitems(session, config, items):
@@ -26,23 +27,25 @@ def pytest_collection_modifyitems(session, config, items):
 
     def key(item):
         filename = item.fspath.relto(ROOT)
-        if filename == 'test_zz_mypy.py':
-            return 100 # last
-        elif filename == 'test_backend_spy.py':
+        if filename == "test_zz_mypy.py":
+            return 100  # last
+        elif filename == "test_backend_spy.py":
             return 99  # second to last
         else:
-            return 0   # don't touch
+            return 0  # don't touch
 
     items.sort(key=key)
 
+
 def pytest_addoption(parser):
     parser.addoption(
-        "--dump-c", action="store_true", default=False,
-        help="Dump generated C code"
+        "--dump-c", action="store_true", default=False, help="Dump generated C code"
     )
     parser.addoption(
-        "--dump-redshift", action="store_true", default=False,
-        help="Dump the redshifted module"
+        "--dump-redshift",
+        action="store_true",
+        default=False,
+        help="Dump the redshifted module",
     )
 
 
@@ -56,13 +59,15 @@ def skip_if_no_emcc(request):
 # pyodide config
 # ===============
 
+
 def call_immediately(f):
     f()
     return f
 
+
 @call_immediately
 def configure_pyodide():
-    SPY_ROOT = ROOT.join('..', '..') # the root of the repo
+    SPY_ROOT = ROOT.join("..", "..")  # the root of the repo
 
     pytest_pyodide_config = get_global_config()
     pytest_pyodide_config.set_flags(
@@ -78,7 +83,7 @@ def configure_pyodide():
             enableRunUntilComplete: true,
         });
         await pyodide.loadPackage(["pytest", "typing-extensions"]);
-        """
+        """,
     )
     pytest_pyodide_config.set_initialize_script(
         f"""

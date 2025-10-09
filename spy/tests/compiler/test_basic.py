@@ -1,27 +1,31 @@
 import pytest
-from spy.fqn import FQN
+
 from spy.errors import SPyError
-from spy.vm.b import B
 from spy.fqn import FQN
-from spy.tests.support import (CompilerTest, skip_backends, expect_errors, only_interp, no_C)
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_interp,
+    skip_backends,
+)
+from spy.vm.b import B
+
 
 class TestBasic(CompilerTest):
-
     def test_simple(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> i32:
             return 42
         """)
         assert mod.foo() == 42
-        if self.backend == 'interp':
+        if self.backend == "interp":
             assert not mod.foo.w_func.redshifted
-        elif self.backend == 'doppler':
+        elif self.backend == "doppler":
             assert mod.foo.w_func.redshifted
 
     def test_return_None(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> None:
             pass
         """)
@@ -33,10 +37,10 @@ class TestBasic(CompilerTest):
             return x
         """
         errors = expect_errors(
-            'name `x` is not defined',
-            ('not found in this scope', 'x')
+            "name `x` is not defined",
+            ("not found in this scope", "x"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_resolve_type_errors(self):
         # NOTE: this error is always eager because it doesn't happen when
@@ -46,10 +50,9 @@ class TestBasic(CompilerTest):
             return 42
         """
         errors = expect_errors(
-            'name `aaa` is not defined',
-            ('not found in this scope', 'aaa')
+            "name `aaa` is not defined", ("not found in this scope", "aaa")
         )
-        self.compile_raises(src, 'foo', errors, error_reporting='eager')
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
 
     def test_wrong_functype_restype(self):
         src = """
@@ -57,10 +60,9 @@ class TestBasic(CompilerTest):
             return 42
         """
         errors = expect_errors(
-            'expected `type`, got `str`',
-            ('expected `type`', "'hello'")
+            "expected `type`, got `str`", ("expected `type`", "'hello'")
         )
-        self.compile_raises(src, 'foo', errors, error_reporting='eager')
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
 
     def test_wrong_functype_argtype(self):
         src = """
@@ -68,10 +70,10 @@ class TestBasic(CompilerTest):
             return 42
         """
         errors = expect_errors(
-            'expected `type`, got `str`',
-            ('expected `type`', "'hello'"),
+            "expected `type`, got `str`",
+            ("expected `type`", "'hello'"),
         )
-        self.compile_raises(src, 'foo', errors, error_reporting='eager')
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
 
     def test_wrong_return_type(self):
         src = """
@@ -79,23 +81,21 @@ class TestBasic(CompilerTest):
             return 42
         """
         errors = expect_errors(
-            'mismatched types',
-            ('expected `str`, got `i32`', "42"),
-            ('expected `str` because of return type', "str"),
+            "mismatched types",
+            ("expected `str`, got `i32`", "42"),
+            ("expected `str` because of return type", "str"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_binop(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> i32:
             return 1 + 2
         """)
         assert mod.foo() == 3
 
     def test_local_variables(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo() -> i32:
             x: i32 = 42
             return x
@@ -113,9 +113,9 @@ class TestBasic(CompilerTest):
             x: i32 = 2
         """
         errors = expect_errors(
-            'variable `x` already declared',
-            ('this is the new declaration', "x: i32 = 2"),
-            ('this is the previous declaration', "x: i32 = 1"),
+            "variable `x` already declared",
+            ("this is the new declaration", "x: i32 = 2"),
+            ("this is the previous declaration", "x: i32 = 1"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -125,13 +125,13 @@ class TestBasic(CompilerTest):
             x: str = 1
         """
         errors = expect_errors(
-            'mismatched types',
-            ('expected `str`, got `i32`', '1'),
-            ('expected `str` because of type declaration', 'str'),
+            "mismatched types",
+            ("expected `str`, got `i32`", "1"),
+            ("expected `str` because of type declaration", "str"),
         )
         self.compile_raises(src, "foo", errors)
 
-    @skip_backends('C', reason='type <object> not supported')
+    @skip_backends("C", reason="type <object> not supported")
     def test_upcast_and_downcast(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -142,7 +142,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 1
 
-    @skip_backends('C', reason='type <object> not supported')
+    @skip_backends("C", reason="type <object> not supported")
     def test_downcast_error(self):
         # NOTE: we don't check this with expect_errors because this is ALWAYS
         # a runtime error. The compilation always succeed.
@@ -153,21 +153,18 @@ class TestBasic(CompilerTest):
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"
-        with SPyError.raises('W_TypeError', match=msg):
+        with SPyError.raises("W_TypeError", match=msg):
             mod.foo()
 
-
     def test_function_arguments(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def inc(x: i32) -> i32:
             return x + 1
         """)
         assert mod.inc(100) == 101
 
     def test_assign(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def inc(x: i32) -> i32:
             a: i32 = 0
             a = x + 1
@@ -176,17 +173,15 @@ class TestBasic(CompilerTest):
         assert mod.inc(100) == 101
 
     def test_implicit_declaration(self):
-        mod = self.compile(
-            """
-            def foo() -> i32:
-                x = 42
-                return x
-            """)
+        mod = self.compile("""
+        def foo() -> i32:
+            x = 42
+            return x
+        """)
         assert mod.foo() == 42
 
     def test_global_variables(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         var x: i32 = 42
         def get_x() -> i32:
             return x
@@ -207,10 +202,10 @@ class TestBasic(CompilerTest):
             x = 100
         """
         errors = expect_errors(
-            'invalid assignment target',
-            ('x is const', 'x'),
-            ('const declared here', 'x: i32 = 42'),
-            ('help: declare it as variable: `var x ...`', 'x: i32 = 42')
+            "invalid assignment target",
+            ("x is const", "x"),
+            ("const declared here", "x: i32 = 42"),
+            ("help: declare it as variable: `var x ...`", "x: i32 = 42"),
         )
         self.compile_raises(src, "set_x", errors)
 
@@ -257,10 +252,10 @@ class TestBasic(CompilerTest):
         """)
         mod.implicit_return_void()
         assert mod.x == 1
-        if self.backend != 'C':
+        if self.backend != "C":
             # in the C backend we just abort without reporting an error, for now
-            msg = 'reached the end of the function without a `return`'
-            with SPyError.raises('W_TypeError', match=msg):
+            msg = "reached the end of the function without a `return`"
+            with SPyError.raises("W_TypeError", match=msg):
                 mod.implicit_return_i32()
 
     def test_BinOp_error(self):
@@ -272,9 +267,9 @@ class TestBasic(CompilerTest):
             bar(1, "hello")
         """
         errors = expect_errors(
-            'cannot do `i32` + `str`',
-            ('this is `i32`', 'a'),
-            ('this is `str`', 'b'),
+            "cannot do `i32` + `str`",
+            ("this is `i32`", "a"),
+            ("this is `str`", "b"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -288,9 +283,9 @@ class TestBasic(CompilerTest):
             return a + b
         """
         errors = expect_errors(
-            'cannot do `object` + `i32`',
-            ('this is `object`', 'a'),
-            ('this is `i32`', 'b'),
+            "cannot do `object` + `i32`",
+            ("this is `object`", "a"),
+            ("this is `i32`", "b"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -316,8 +311,7 @@ class TestBasic(CompilerTest):
         assert mod.bar(4) == 456
 
     def test_function_call_conversion(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def foo(x: f64) -> f64:
             return x / 2
 
@@ -327,8 +321,7 @@ class TestBasic(CompilerTest):
         assert mod.bar(3) == 1.5
 
     def test_conversions(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         def a(x: i32) -> f64:
             return x
 
@@ -349,9 +342,9 @@ class TestBasic(CompilerTest):
             return x(0)
         """
         errors = expect_errors(
-            'cannot call objects of type `i32`',
-            ('this is `i32`', 'x'),
-            ('`x` defined here', 'x: i32 = 0'),
+            "cannot call objects of type `i32`",
+            ("this is `i32`", "x"),
+            ("`x` defined here", "x: i32 = 0"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -363,9 +356,9 @@ class TestBasic(CompilerTest):
             return inc()
         """
         errors = expect_errors(
-            'this function takes 1 argument but 0 arguments were supplied',
-            ('1 argument missing', 'inc'),
-            ('function defined here', 'def inc(x: i32) -> i32'),
+            "this function takes 1 argument but 0 arguments were supplied",
+            ("1 argument missing", "inc"),
+            ("function defined here", "def inc(x: i32) -> i32"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -377,11 +370,11 @@ class TestBasic(CompilerTest):
             return inc(1, 2, 3)
         """
         errors = expect_errors(
-            'this function takes 1 argument but 3 arguments were supplied',
-            ('2 extra arguments', '2, 3'),
-            ('function defined here', 'def inc(x: i32) -> i32'),
+            "this function takes 1 argument but 3 arguments were supplied",
+            ("2 extra arguments", "2, 3"),
+            ("function defined here", "def inc(x: i32) -> i32"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_function_call_type_mismatch(self):
         src = """
@@ -391,9 +384,9 @@ class TestBasic(CompilerTest):
             return inc("hello")
         """
         errors = expect_errors(
-            'mismatched types',
-            ('expected `i32`, got `str`', '"hello"'),
-            ('function defined here', 'def inc(x: i32) -> i32'),
+            "mismatched types",
+            ("expected `i32`, got `str`", '"hello"'),
+            ("function defined here", "def inc(x: i32) -> i32"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -514,11 +507,11 @@ class TestBasic(CompilerTest):
             bar(1, "hello")
         """
         errors = expect_errors(
-            'cannot do `i32` == `str`',
-            ('this is `i32`', 'a'),
-            ('this is `str`', 'b'),
+            "cannot do `i32` == `str`",
+            ("this is `i32`", "a"),
+            ("this is `str`", "b"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_if_stmt(self):
         mod = self.compile("""
@@ -605,9 +598,9 @@ class TestBasic(CompilerTest):
             bar(42, True)
         """
         errors = expect_errors(
-            'cannot do `i32`[...]',
-            ('this is `i32`', 'a'),
-            )
+            "cannot do `i32`[...]",
+            ("this is `i32`", "a"),
+        )
         self.compile_raises(src, "foo", errors)
 
     def test_builtin_function(self):
@@ -652,7 +645,7 @@ class TestBasic(CompilerTest):
         """)
         #
         w_functype = mod.foo.w_functype
-        assert w_functype.fqn.human_name == 'def(i32) -> i32'
+        assert w_functype.fqn.human_name == "def(i32) -> i32"
         assert mod.foo(1) == 2
 
     def test_redshift_nonglobal_function(self):
@@ -696,7 +689,7 @@ class TestBasic(CompilerTest):
             return add[str]('hello ', 'world')
         """)
         assert mod.foo() == 3
-        assert mod.bar() == 'hello world'
+        assert mod.bar() == "hello world"
 
     def test_cannot_call_blue_generic(self):
         src = """
@@ -708,10 +701,10 @@ class TestBasic(CompilerTest):
             return ident(42)
         """
         errors = expect_errors(
-            'generic functions must be called via `[...]`',
-            ('this is `@blue.generic def(dynamic) -> dynamic`', 'ident'),
-            ("`ident` defined here", "def ident(x):")
-            )
+            "generic functions must be called via `[...]`",
+            ("this is `@blue.generic def(dynamic) -> dynamic`", "ident"),
+            ("`ident` defined here", "def ident(x):"),
+        )
         self.compile_raises(src, "foo", errors)
 
     def test_call_func_already_redshifted(self):
@@ -741,21 +734,25 @@ class TestBasic(CompilerTest):
             print(i32)
         """)
         mod.foo()
-        if self.backend == 'C':
+        if self.backend == "C":
             # NOTE: float formatting is done by printf and it's different than
             # the one that we get by Python in interp-mode. Too bad for now.
             s_123 = "12.300000"
-            mod.ll.call('spy_flush')
+            mod.ll.call("spy_flush")
         else:
             s_123 = "12.3"
         out, err = capfd.readouterr()
-        assert out == '\n'.join(["hello world",
-                                 "42",
-                                 s_123,
-                                 "True",
-                                 "None",
-                                 "<spy type 'i32'>",
-                                 ""])
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                s_123,
+                "True",
+                "None",
+                "<spy type 'i32'>",
+                "",
+            ]
+        )
 
     @no_C
     def test_print_object(self, capfd):
@@ -791,10 +788,10 @@ class TestBasic(CompilerTest):
             a()()()
         """)
         mod.foo()
-        if self.backend == 'C':
-            mod.ll.call('spy_flush')
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
         out, err = capfd.readouterr()
-        assert out.split() == ['0', '1', '2', '3']
+        assert out.split() == ["0", "1", "2", "3"]
 
     def test_capture_across_multiple_scopes(self):
         # see also the similar test in test_scope.py
@@ -818,8 +815,7 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 42
 
     def test_global_const_type_inference(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         @blue
         def INIT_X():
             return 1 + 2 * 3
@@ -831,9 +827,9 @@ class TestBasic(CompilerTest):
         """)
         vm = self.vm
         assert mod.get_x() == 7
-        if self.backend != 'C':
-            w_mod = self.vm.modules_w['test']
-            w_x = w_mod.getattr('x')
+        if self.backend != "C":
+            w_mod = self.vm.modules_w["test"]
+            w_x = w_mod.getattr("x")
             assert vm.unwrap(w_x) == 7
 
     def test_getattr_module(self):
@@ -853,14 +849,13 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             "type `object` has no attribute 'foo'",
-            ('this is `object`', 'x'),
-            )
+            ("this is `object`", "x"),
+        )
         self.compile_raises(src, "foo", errors)
 
     @pytest.mark.skip(reason="think better about __INIT__")
     def test___INIT__(self):
-        mod = self.compile(
-        """
+        mod = self.compile("""
         x: i32 = 0
 
         def get_x() -> i32:
@@ -884,7 +879,7 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             "the __INIT__ function must be @blue",
-            ("function defined here", "def __INIT__(mod: dynamic) -> None")
+            ("function defined here", "def __INIT__(mod: dynamic) -> None"),
         )
         self.compile_raises(src, "", errors, error_reporting="eager")
 
@@ -897,7 +892,7 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             "type `str` does not support assignment to attribute 'x'",
-            ("this is `str`", 's'),
+            ("this is `str`", "s"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -910,11 +905,11 @@ class TestBasic(CompilerTest):
             return x
         """)
         assert mod.foo(1) == 1
-        assert mod.foo(1) == 1 # this should be cached
+        assert mod.foo(1) == 1  # this should be cached
         assert mod.foo(2) == 2
 
         out, err = capsys.readouterr()
-        assert out == '1\n2\n'
+        assert out == "1\n2\n"
 
     @no_C
     def test_eq_reference_types(self):
@@ -932,7 +927,7 @@ class TestBasic(CompilerTest):
         assert mod.type_ne(B.w_i32, B.w_i32) == False
         assert mod.type_ne(B.w_i32, B.w_str) == True
 
-    @skip_backends('doppler', 'C', reason='we need lazy errors')
+    @skip_backends("doppler", "C", reason="we need lazy errors")
     def test_equality(self):
         mod = self.compile("""
         def eq_with_conversion(x: i32, y: f64) -> bool:
@@ -955,21 +950,21 @@ class TestBasic(CompilerTest):
         assert mod.eq_with_conversion(1, 2.0) == False
         #
         msg = "cannot do `i32` == `str`"
-        with SPyError.raises('W_TypeError', match=msg):
-            mod.eq_wrong_types(1, 'hello')
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.eq_wrong_types(1, "hello")
         #
         msg = "cannot do `object` == `object`"
-        with SPyError.raises('W_TypeError', match=msg):
+        with SPyError.raises("W_TypeError", match=msg):
             mod.eq_objects(1, 2)
         #
         # `dynamic` == `dynamic` uses universal equality, so comparison
         # between different types is permitted
         assert mod.eq_dynamic(1, 1) == True
         assert mod.eq_dynamic(1, 2) == False
-        assert mod.eq_dynamic(1, 'str') == False
+        assert mod.eq_dynamic(1, "str") == False
         assert mod.ne_dynamic(1, 1) == False
         assert mod.ne_dynamic(1, 2) == True
-        assert mod.ne_dynamic(1, 'str') == True
+        assert mod.ne_dynamic(1, "str") == True
 
     @only_interp
     def test_automatic_forward_declaration(self):
@@ -989,12 +984,12 @@ class TestBasic(CompilerTest):
         ptr_S2 = ptr[S] # using the actual S
         """)
         w_mod = mod.w_mod
-        w_foo = w_mod.getattr('foo')
-        w_S = w_mod.getattr('S')
-        w_ptr_S1 = w_mod.getattr('ptr_S1')
-        w_ptr_S2 = w_mod.getattr('ptr_S2')
+        w_foo = w_mod.getattr("foo")
+        w_S = w_mod.getattr("S")
+        w_ptr_S1 = w_mod.getattr("ptr_S1")
+        w_ptr_S2 = w_mod.getattr("ptr_S2")
         #
-        expected_sig = 'def(test::S, unsafe::ptr[test::S]) -> None'
+        expected_sig = "def(test::S, unsafe::ptr[test::S]) -> None"
         assert w_foo.w_functype.fqn.human_name == expected_sig
         params = w_foo.w_functype.params
         assert params[0].w_T is w_S
@@ -1060,11 +1055,11 @@ class TestBasic(CompilerTest):
             return blue_inc(x)
         """
         errors = expect_errors(
-            'cannot call blue function with red arguments',
-            ('this is blue', 'blue_inc'),
-            ('this is red', 'x'),
+            "cannot call blue function with red arguments",
+            ("this is blue", "blue_inc"),
+            ("this is red", "x"),
         )
-        self.compile_raises(src, 'foo', errors)
+        self.compile_raises(src, "foo", errors)
 
     def test_varargs_blue(self):
         src = """
@@ -1086,10 +1081,10 @@ class TestBasic(CompilerTest):
         def bar() -> i32:
             return foo(1, 2, 3, 4, 5)
         """
-        if self.backend == 'C':
+        if self.backend == "C":
             errors = expect_errors(
-                '*args not yet supported by the C backend',
-                ('*args declared here', 'args: i32')
+                "*args not yet supported by the C backend",
+                ("*args declared here", "args: i32"),
             )
             self.compile_raises(src, "foo", errors)
         else:
