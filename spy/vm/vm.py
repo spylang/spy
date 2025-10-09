@@ -618,8 +618,8 @@ class SPyVM:
     def unwrap_str(self, w_value: W_Object) -> str:
         if not isinstance(w_value, W_Str):
             raise Exception("Type mismatch")
-        return self.unwrap(w_value) # type: ignore
-    
+        return self.unwrap(w_value)  # type: ignore
+
     def unwrap_bool(self, w_value: W_Object) -> bool:
         if not isinstance(w_value, W_Bool):
             raise Exception("Type mismatch")
