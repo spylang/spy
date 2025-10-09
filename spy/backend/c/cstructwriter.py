@@ -105,9 +105,9 @@ class CStructWriter:
 
     def emit_StructType(self, fqn: FQN, w_st: W_StructType) -> None:
         c_st = C_Type(w_st.fqn.c_name)
-        self.tbh_fwdecl.wl(f'/* {w_st.fqn.human_name} */')
-        self.tbh_fwdecl.wl(f'typedef struct {c_st} {c_st};')
-
+        self.tbh_fwdecl.wl(
+            f'typedef struct {c_st} {c_st}; /* {w_st.fqn.human_name} */'
+        )
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
@@ -145,12 +145,15 @@ class CStructWriter:
         c_hltype = C_Type(w_hltype.fqn.c_name)
         w_lltype = w_hltype.w_lltype
         c_lltype = self.ctx.w2c(w_lltype)
-        self.tbh_fwdecl.wb(f"""
+        self.tbh_fwdecl.wl(
+            f'typedef struct {c_hltype} {c_hltype}; /* {w_hltype.fqn.human_name} */'
+        )
+        self.tbh_structs.wb(f"""
         typedef struct {c_hltype} {{
             {c_lltype} ll;
         }} {c_hltype};
         """)
-        self.tbh_fwdecl.wl()
+        self.tbh_structs.wl()
 
         self.tbh_ptrs_def.wb(f"""
         SPY_TYPELIFT_FUNCTIONS({c_hltype}, {c_lltype});
