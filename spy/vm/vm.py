@@ -450,7 +450,6 @@ class SPyVM:
             w_T = self.dynamic_type(w_val)
             fqn = w_T.fqn.join("prebuilt")
             fqn = self.get_unique_FQN(fqn)
-            breakpoint()
 
         else:
             w_T = self.dynamic_type(w_val)
