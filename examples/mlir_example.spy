@@ -1,0 +1,20 @@
+import mlir
+
+"""
+// Define a function that adds two 2x2 f32 tensors.
+func.func @add_tensors(%A: tensor<2x2xf32>, %B: tensor<2x2xf32>) -> tensor<2x2xf32> {
+  %C = arith.addf %A, %B : tensor<2x2xf32>
+  return %C : tensor<2x2xf32>
+}
+"""
+
+Tensor = mlir.Type['tensor<2x2xf32>']
+arith_addf = mlir.op['arith.addf', Tensor, [Tensor, Tensor]]
+
+# alternative syntax:
+## @mlir.op('arith.addf')
+## def arith_addf(a: Tensor, b: Tensor) -> Tensor:
+##     pass
+
+def add(a: Tensor, b: Tensor) -> Tensor:
+    return arith_addf(a, b)
