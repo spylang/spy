@@ -55,3 +55,8 @@ def w_bool_gt(vm: "SPyVM", w_a: W_Bool, w_b: W_Bool) -> W_Bool:
 def w_bool_ge(vm: "SPyVM", w_a: W_Bool, w_b: W_Bool) -> W_Bool:
     # True >= False and True >= True and False >= False
     return vm.wrap(w_a.value or not w_b.value)
+
+
+@OP.builtin_func("bool_not")
+def w_bool_not(vm: "SPyVM", w_a: W_Bool) -> W_Bool:
+    return vm.wrap(not vm.unwrap_bool(w_a))

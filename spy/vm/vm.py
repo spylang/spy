@@ -620,6 +620,11 @@ class SPyVM:
             raise Exception("Type mismatch")
         return self.unwrap(w_value)  # type: ignore
 
+    def unwrap_bool(self, w_value: W_Object) -> bool:
+        if not isinstance(w_value, W_Bool):
+            raise Exception("Type mismatch")
+        return w_value.value
+
     def call(self, w_obj: W_Object, args_w: Sequence[W_Object]) -> W_Object:
         """
         The most generic way of calling an object.

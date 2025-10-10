@@ -216,4 +216,8 @@ static inline bool spy_operator$bool_ge(bool x, bool y) {
     return x || !y;
 }
 
+static inline bool spy_operator$bool_not(bool x) {
+    return !x;
+}
+
 #endif /* SPY_OPERATOR_H */
