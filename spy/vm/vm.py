@@ -26,6 +26,7 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.math import MATH
+from spy.vm.modules.mlir import MLIR
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
@@ -115,6 +116,7 @@ class SPyVM:
         self.make_module(OPERATOR)
         self.make_module(TYPES)
         self.make_module(MATH)
+        self.make_module(MLIR)
         self.make_module(UNSAFE)
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)

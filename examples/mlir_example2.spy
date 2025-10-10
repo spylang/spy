@@ -4,17 +4,22 @@ from mlir import MLIR_Type, MLIR_op
 ##   %C = arith.addf %A, %B : tensor<2x2xf32>
 ##   return %C : tensor<2x2xf32>
 
-T = MLIR_Type('tensor<2x2xf32>')
+@blue.generic
+def Tensor(w, h, dtype):
+    name = 'tensor<' + str(w) + 'x' + str(h) + 'x' + str(dtype) + '>'
+    return MLIR_Type(name)
+
+
+T = Tensor[2, 2, f64]
 arith_addf = MLIR_op('arith.addf', T, (T, T))
 
-# alternative syntax:
-## @mlir.op('arith.addf')
-## def arith_addf(a: T, b: T) -> T:
-##     pass
+
+
 
 def add(a: T, b: T) -> T:
     return arith_addf(a, b)
 
-def main() -> None:
-    print(Tensor)
-    print(arith_addf)
+
+## def main() -> None:
+##     print(Tensor)
+##     print(arith_addf)
