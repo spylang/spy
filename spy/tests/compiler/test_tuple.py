@@ -50,17 +50,20 @@ class TestTuple(CompilerTest):
         assert x == 3
 
     def test_unpacking_wrong_number(self):
-        mod = self.compile("""
+        src = """
         @blue
         def make_tuple() -> tuple:
             return 1, 2
 
         def foo() -> None:
             a, b, c = make_tuple()
-        """)
-        msg = "Wrong number of values to unpack: expected 3, got 2"
-        with SPyError.raises("W_ValueError", match=msg):
-            mod.foo()
+        """
+        errors = expect_errors(
+            "Wrong number of values to unpack",
+            ("expected 3 values", "a, b, c"),
+            ("got 2 values", "make_tuple()"),
+        )
+        self.compile_raises(src, "foo", errors)
 
     def test_unpacking_wrong_type(self):
         src = """

@@ -21,6 +21,7 @@ from spy.vm.opspec import W_MetaArg
 from spy.vm.primitive import W_Bool
 from spy.vm.struct import W_StructType
 from spy.vm.tuple import W_Tuple
+from spy.vm.typechecker import maybe_plural
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -391,10 +392,22 @@ class AbstractFrame:
         exp = len(unpack.targets)
         got = len(w_tup.items_w)
         if exp != got:
-            raise SPyError(
-                "W_ValueError",
-                f"Wrong number of values to unpack: expected {exp}, got {got}",
+            # we cannot use ValueError because we want an exception type which
+            # inherits from StaticError.
+            targets_loc = Loc.combine(
+                start=unpack.targets[0].loc,
+                end=unpack.targets[-1].loc,
             )
+            err = SPyError(
+                "W_TypeError",
+                f"Wrong number of values to unpack",
+            )
+            exp_values = maybe_plural(exp, "value")
+            got_values = maybe_plural(got, "value")
+            err.add("error", f"expected {exp} {exp_values}", targets_loc)
+            err.add("error", f"got {got} {got_values}", unpack.value.loc)
+            raise err
+
         for i, target in enumerate(unpack.targets):
             # fabricate an expr to get an individual item of the tuple
             expr = ast.GetItem(
