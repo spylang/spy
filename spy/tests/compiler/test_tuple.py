@@ -1,3 +1,5 @@
+import pytest
+
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, no_C
 
@@ -36,6 +38,7 @@ class TestTuple(CompilerTest):
 
     def test_unpacking(self):
         mod = self.compile("""
+        @blue
         def make_tuple() -> tuple:
             return 1, 2, 'hello'
 
@@ -48,6 +51,7 @@ class TestTuple(CompilerTest):
 
     def test_unpacking_wrong_number(self):
         mod = self.compile("""
+        @blue
         def make_tuple() -> tuple:
             return 1, 2
 
@@ -69,6 +73,23 @@ class TestTuple(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    @pytest.mark.skip("implement me")
+    def test_unpacking_wrong_color(self):
+        # this is temporary: for now you can only unpack blue
+        # tuples. Eventually we want to be able to unpack red tuple with known
+        # arity.
+        sec = """
+        def make_tuple() -> tuple:
+            return 1, 2, 'hello'
+
+        def foo() -> i32:
+            a, b, c = make_tuple()
+            return a + b
+        """
+        assert False, "fixme"
+        errors = "WRITE ME"
+        self.compile_raises(src, "foo", errors)
+
     def test_eq(self):
         mod = self.compile("""
         def tup1() -> tuple:
@@ -85,16 +106,3 @@ class TestTuple(CompilerTest):
         """)
         assert mod.foo()
         assert not mod.bar()
-
-    def test_blue_tuple(self):
-        mod = self.compile("""
-        @blue
-        def make_pair():
-            return 1, 2
-
-        def foo() -> i32:
-            a, b = make_pair()
-            return a + b
-        """)
-        x = mod.foo()
-        assert x == 3
