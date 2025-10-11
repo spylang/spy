@@ -1,10 +1,10 @@
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.tests.support import CompilerTest, expect_errors, no_C
 
 
 # Eventually we want to remove the @only_interp, but for now the C backend
 # doesn't support lists
-@only_interp
+@no_C
 class TestTuple(CompilerTest):
     def test_literal(self):
         mod = self.compile("""
