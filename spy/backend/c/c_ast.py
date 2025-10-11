@@ -99,10 +99,17 @@ class Literal(Expr):
                 return rf"\{ch}"
             elif 32 <= val < 127:
                 return ch
-            return rf"\x{val:02x}"  # :x is "hex format"
+            # \x in C will consume as many legal hex digits as possible.
+            # To prevent this from consuming following characters, put it
+            # in its own quotes and rely on string concatenation.
+            return rf'""\x{val:02x}""'  # :x is "hex format"
 
         lit = "".join([char_repr(val) for val in b])
-        return Literal(f'"{lit}"')
+        # Remove any empty string concatenations at the front or back,
+        # then surround with quotes
+        lit = f'"{lit}"'
+        lit = lit.replace('"""', '"')
+        return Literal(lit)
 
 
 @dataclass
