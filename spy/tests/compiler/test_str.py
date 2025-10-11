@@ -182,3 +182,12 @@ class TestStr(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == "NotImplemented"
+
+    def test_escaped_c_literal(self):
+        # See https://github.com/spylang/spy/issues/255
+        src = r"""
+        def foo() -> str:
+             return "\nBall"
+        """
+        mod = self.compile(src)
+        assert mod.foo() == "\nBall"
