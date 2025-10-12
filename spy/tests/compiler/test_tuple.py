@@ -76,23 +76,6 @@ class TestTuple(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    @pytest.mark.skip("implement me")
-    def test_unpacking_wrong_color(self):
-        # this is temporary: for now you can only unpack blue
-        # tuples. Eventually we want to be able to unpack red tuple with known
-        # arity.
-        sec = """
-        def make_tuple() -> tuple:
-            return 1, 2, 'hello'
-
-        def foo() -> i32:
-            a, b, c = make_tuple()
-            return a + b
-        """
-        assert False, "fixme"
-        errors = "WRITE ME"
-        self.compile_raises(src, "foo", errors)
-
     def test_eq(self):
         mod = self.compile("""
         def tup1() -> tuple:

@@ -387,6 +387,14 @@ class AbstractFrame:
             err.add("error", f"this is `{t}`", unpack.value.loc)
             raise err
 
+        if wam_tup.color == "red":
+            raise SPyError.simple(
+                "W_WIP",
+                "redshift of UnpackAssign works only for blue tuples",
+                "this is red",
+                unpack.value.loc,
+            )
+
         w_tup = wam_tup.w_val
         assert isinstance(w_tup, W_Tuple)
         exp = len(unpack.targets)
