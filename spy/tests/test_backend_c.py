@@ -72,4 +72,5 @@ class TestExpr:
         assert cstr(b"--\x00--\n--\xff--") == r'"--\x00--\x0a--\xff--"'
         assert cstr(b"\nball") == r'"\x0a""ball"'
         assert cstr(b"ball\n") == r'"ball\x0a"'
-        assert cstr(b"ball\n\nball") == r'"ball""\x0a\x0a""ball"'
+        assert cstr(b"ball\n\nball") == r'"ball\x0a\x0a""ball"'
+        assert cstr(b"\x00\x01\x02") == r'"\x00\x01\x02"'
