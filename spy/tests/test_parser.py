@@ -1660,7 +1660,7 @@ class TestParser:
         """
         self.assert_dump(for_stmt, expected)
 
-    def test_BoolOp_and(self):
+    def test_and(self):
         mod = self.parse(
             """
         def foo() -> bool:
@@ -1672,8 +1672,7 @@ class TestParser:
 
         expected = """
         Return(
-            value=BoolOp(
-                op='and',
+            value=And(
                 values=[
                     Name(id='a'),
                     Name(id='b'),
@@ -1683,7 +1682,7 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    def test_BoolOp_or(self):
+    def test_or(self):
         mod = self.parse(
             """
         def foo() -> bool:
@@ -1695,8 +1694,7 @@ class TestParser:
 
         expected = """
         Return(
-            value=BoolOp(
-                op='or',
+            value=Or(
                 values=[
                     Name(id='a'),
                     Name(id='b'),
@@ -1706,7 +1704,7 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    def test_BoolOp_combined(self):
+    def test_and_or_combined(self):
         mod = self.parse(
             """
         def foo() -> bool:
@@ -1718,12 +1716,10 @@ class TestParser:
 
         expected = """
         Return(
-            value=BoolOp(
-                op='or',
+            value=Or(
                 values=[
                     Name(id='a'),
-                    BoolOp(
-                        op='and',
+                    And(
                         values=[
                             Name(id='b'),
                             Name(id='c'),

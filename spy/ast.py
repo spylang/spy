@@ -342,25 +342,15 @@ class BinOp(Expr):
 
 
 @dataclass(eq=False)
-class BoolOp(Expr):
-    op: str
+class And(Expr):
+    precedence = 4
     values: list[Expr]
 
-    # fmt: off
-    _precedence = {
-        "and": 4,
-        "or": 3
-    }
-    # fmt: on
 
-    @property
-    def precedence(self) -> int:
-        return self._precedence[self.op]
-
-    # this is just to make mypy happy
-    @precedence.setter
-    def precedence(self, newval: int) -> None:
-        raise TypeError("readonly attribute")
+@dataclass(eq=False)
+class Or(Expr):
+    precedence = 3
+    values: list[Expr]
 
 
 # eventually this should allow chained comparisons, but for now we support

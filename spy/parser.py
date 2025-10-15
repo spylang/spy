@@ -1,4 +1,5 @@
 import ast as py_ast
+import typing
 from types import NoneType
 from typing import NoReturn, Optional
 
@@ -714,16 +715,16 @@ class Parser:
         else:
             return spy.ast.Call(loc=py_node.loc, func=func, args=args)
 
-    def from_py_expr_BoolOp(self, py_node: py_ast.BoolOp) -> spy.ast.BoolOp:
+    def from_py_expr_BoolOp(
+        self, py_node: py_ast.BoolOp
+    ) -> typing.Union[spy.ast.And, spy.ast.Or]:
         values = [self.from_py_expr(value) for value in py_node.values]
 
         if isinstance(py_node.op, py_ast.And):
-            op = "and"
+            return spy.ast.And(py_node.loc, values)
         elif isinstance(py_node.op, py_ast.Or):
-            op = "or"
+            return spy.ast.Or(py_node.loc, values)
         else:
             self.unsupported(
                 py_node.op, f"boolean operator {type(py_node.op).__name__}"
             )
-
-        return spy.ast.BoolOp(py_node.loc, op, values)
