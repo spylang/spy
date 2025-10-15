@@ -145,7 +145,7 @@ class AbstractFrame:
             exp_loc = self.symtable.lookup(varname).type_loc
             if varname == "@return":
                 because = " because of return type"
-            elif varname in ("@if", "@while", "@assert"):
+            elif varname in ("@if", "@while", "@assert", "@and", "@or"):
                 because = ""
             else:
                 because = " because of type declaration"
@@ -799,6 +799,26 @@ class AbstractFrame:
             w_val = W_Tuple(items_w)
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
 
+    def eval_expr_And(self, op: ast.And) -> W_MetaArg:
+        for i, expr in enumerate(op.values):
+            wam = self.eval_expr(expr, varname="@and")
+            assert isinstance(wam.w_val, W_Bool)
+            is_last_condition = i == len(op.values) - 1
+            short_circuit = self.vm.is_False(wam.w_val)
+
+            if short_circuit or is_last_condition:
+                return wam
+
+    def eval_expr_Or(self, op: ast.Or) -> W_MetaArg:
+        for i, expr in enumerate(op.values):
+            wam = self.eval_expr(expr, varname="@or")
+            assert isinstance(wam.w_val, W_Bool)
+            is_last_condition = i == len(op.values) - 1
+            short_circuit = self.vm.is_True(wam.w_val)
+
+            if short_circuit or is_last_condition:
+                return wam
+
 
 class ASTFrame(AbstractFrame):
     """
@@ -915,6 +935,8 @@ class ASTFrame(AbstractFrame):
         self.declare_local("@while", B.w_bool, Loc.fake())
         self.declare_local("@return", w_ft.w_restype, funcdef.return_type.loc)
         self.declare_local("@assert", B.w_bool, Loc.fake())
+        self.declare_local("@and", B.w_bool, Loc.fake())
+        self.declare_local("@or", B.w_bool, Loc.fake())
 
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
