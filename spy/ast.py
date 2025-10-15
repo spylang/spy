@@ -341,6 +341,18 @@ class BinOp(Expr):
         raise TypeError("readonly attribute")
 
 
+@dataclass(eq=False)
+class And(Expr):
+    precedence = 4
+    values: list[Expr]
+
+
+@dataclass(eq=False)
+class Or(Expr):
+    precedence = 3
+    values: list[Expr]
+
+
 # eventually this should allow chained comparisons, but for now we support
 # only binary ones
 @dataclass(eq=False)
