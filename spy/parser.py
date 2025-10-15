@@ -713,3 +713,17 @@ class Parser:
             )
         else:
             return spy.ast.Call(loc=py_node.loc, func=func, args=args)
+
+    def from_py_expr_BoolOp(self, py_node: py_ast.BoolOp) -> spy.ast.BoolOp:
+        values = [self.from_py_expr(value) for value in py_node.values]
+
+        if isinstance(py_node.op, py_ast.And):
+            op = "and"
+        elif isinstance(py_node.op, py_ast.Or):
+            op = "or"
+        else:
+            self.unsupported(
+                py_node.op, f"boolean operator {type(py_node.op).__name__}"
+            )
+
+        return spy.ast.BoolOp(py_node.loc, op, values)

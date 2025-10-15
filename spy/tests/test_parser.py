@@ -39,10 +39,12 @@ class TestParser:
             pytest.fail("assert_dump failed")
 
     def test_Module(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             pass
-        """)
+        """
+        )
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
@@ -69,10 +71,12 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_FuncDef_arguments(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo(a: i32, b: float) -> None:
             pass
-        """)
+        """
+        )
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
@@ -175,11 +179,13 @@ class TestParser:
         )
 
     def test_FuncDef_decorator(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @mydecorator
         def foo() -> None:
             pass
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -201,13 +207,15 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_FuncDef_multiple_decorators(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @deco1
         @deco2.attr
         @deco3(arg)
         def foo() -> None:
             pass
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -239,13 +247,15 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_FuncDef_mixed_decorators(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @mydecorator
         @blue
         @another_deco
         def foo() -> i32:
             return 42
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -270,10 +280,12 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_FuncDef_body(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> i32:
             return 42
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -295,11 +307,13 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_FuncDef_docstring(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> i32:
             "hello"
             return 42
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -321,11 +335,13 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_blue_FuncDef(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @blue
         def foo() -> i32:
             return 42
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -347,11 +363,13 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_blue_generic_FuncDef(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @blue.generic
         def foo() -> i32:
             return 42
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -373,11 +391,13 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_blue_metafunc_FuncDef(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @blue.metafunc
         def foo() -> i32:
             return 42
-        """)
+        """
+        )
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
@@ -404,7 +424,8 @@ class TestParser:
         # synthetic Loc for the annotation. This is particularly important
         # because we use return_type.loc to compute prototype_loc, which is
         # used e.g. in error messages.
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @blue
         def a():
             pass
@@ -417,7 +438,8 @@ class TestParser:
         def c(
               x):
             pass
-        """)
+        """
+        )
         adef = mod.get_funcdef("a")
         bdef = mod.get_funcdef("b")
         cdef = mod.get_funcdef("c")
@@ -426,10 +448,12 @@ class TestParser:
         assert cdef.prototype_loc.get_src() == "def c(\n      x):"
 
     def test_empty_return(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             return
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -452,10 +476,12 @@ class TestParser:
         )
 
     def test_StrConst(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> i32:
             return "hello"
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -465,10 +491,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_GetItem(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             return mylist[0, 1]
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -484,10 +512,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_SetItem(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             mylist[0, 1] = 42
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         SetItem(
@@ -502,10 +532,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_VarDef(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             x: i32 = 42
-        """)
+        """
+        )
         vardef, assign = mod.get_funcdef("foo").body[:2]
         vardef_expected = """
         VarDef(
@@ -524,9 +556,11 @@ class TestParser:
         self.assert_dump(assign, assign_expected)
 
     def test_global_VarDef_const(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         x: i32 = 42
-        """)
+        """
+        )
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
@@ -549,9 +583,11 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_global_VarDef_var(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         var x: i32 = 42
-        """)
+        """
+        )
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
@@ -574,9 +610,11 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_global_VarDef_auto_const(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         x = 42
-        """)
+        """
+        )
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
@@ -599,9 +637,11 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_global_VarDef_auto_var(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         var x = 42
-        """)
+        """
+        )
         expected = f"""
         Module(
             filename='{self.tmpdir}/test.spy',
@@ -624,10 +664,12 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_List(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             return [1, 2, 3]
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -643,10 +685,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Tuple(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             return 1, 2, 3
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -663,10 +707,12 @@ class TestParser:
 
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_BinOp(self, op):
-        mod = self.parse(f"""
+        mod = self.parse(
+            f"""
         def foo() -> i32:
             return x {op} 1
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
         Return(
@@ -681,10 +727,12 @@ class TestParser:
 
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_AugAssign(self, op):
-        mod = self.parse(f"""
+        mod = self.parse(
+            f"""
         def foo() -> None:
             x {op}= 42
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
         AugAssign(
@@ -697,10 +745,12 @@ class TestParser:
 
     @pytest.mark.parametrize("op", "+ - ~ not".split())
     def test_UnaryOp(self, op):
-        mod = self.parse(f"""
+        mod = self.parse(
+            f"""
         def foo() -> i32:
             return {op} x
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
         Return(
@@ -715,10 +765,12 @@ class TestParser:
     def test_negative_const(self):
         # special case -NUM, so that it's seen as a constant by the rest of
         # the code
-        mod = self.parse(f"""
+        mod = self.parse(
+            f"""
         def foo() -> f64:
             return -123 * -1.0
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -734,10 +786,12 @@ class TestParser:
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
         op = op.replace("_", " ")  # is_not ==> is not
-        mod = self.parse(f"""
+        mod = self.parse(
+            f"""
         def foo() -> i32:
             return x {op} 1
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
         Return(
@@ -762,10 +816,12 @@ class TestParser:
         )
 
     def test_Assign(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             x = 42
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Assign(
@@ -798,10 +854,12 @@ class TestParser:
         )
 
     def test_UnpackAssign(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             a, b, c = x
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         UnpackAssign(
@@ -816,10 +874,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Call(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> i32:
             return bar(1, 2, 3)
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -847,10 +907,12 @@ class TestParser:
         )
 
     def test_CallMethod(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> i32:
             return a.b(1, 2)
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
@@ -867,13 +929,15 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_If(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> i32:
             if x:
                 return 1
             else:
                 return 2
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         If(
@@ -893,10 +957,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_StmtExpr(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             42
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         StmtExpr(
@@ -906,11 +972,13 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_While(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             while True:
                 pass
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         While(
@@ -923,11 +991,13 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_For(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             for i in range(10):
                 pass
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         For(
@@ -973,7 +1043,8 @@ class TestParser:
         )
 
     def test_multiple_For(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo(x: dynamic) -> None:
             for i in x:
                 for j in x:
@@ -982,7 +1053,8 @@ class TestParser:
             for z in x:
                 pass
 
-        """)
+        """
+        )
         body = mod.get_funcdef("foo").body
 
         # first for loop
@@ -1019,10 +1091,12 @@ class TestParser:
         self.assert_dump(body[1], expected1)
 
     def test_Raise(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             raise ValueError("error message")
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Raise(
@@ -1062,9 +1136,11 @@ class TestParser:
         )
 
     def test_from_import(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         from testmod import a, b as b2
-        """)
+        """
+        )
         #
         expected = """
         Module(
@@ -1079,11 +1155,13 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_import(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         import aaa
         import bbb as BBB
         import ccc, ddd as DDD
-        """)
+        """
+        )
         #
         expected = """
         Module(
@@ -1100,10 +1178,12 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_module_docstring(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         "hello"
         x = 42
-        """)
+        """
+        )
 
         expected = """
         Module(
@@ -1130,11 +1210,13 @@ class TestParser:
         def isclass(x: Any, name: str) -> bool:
             return x.__class__.__name__ == name
 
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             if True:
                 x = y + 1
-        """)
+        """
+        )
         nodes: list[Any] = list(mod.walk())
         assert isclass(nodes[0], "Module")
         assert isclass(nodes[1], "GlobalFuncDef")
@@ -1158,12 +1240,14 @@ class TestParser:
         assert nodes3 == expected3
 
     def test_inner_FuncDef(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @blue
         def foo():
             def bar() -> None:
                 pass
-        """)
+        """
+        )
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
@@ -1202,10 +1286,12 @@ class TestParser:
         self.assert_dump(mod, expected)
 
     def test_GetAttr(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             a.b
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         StmtExpr(
@@ -1218,10 +1304,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_SetAttr(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             a.b = 42
-        """)
+        """
+        )
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         SetAttr(
@@ -1233,10 +1321,12 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Class(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         class Foo:
             pass
-        """)
+        """
+        )
         classdef = mod.get_classdef("Foo")
         expected = """
         ClassDef(
@@ -1252,11 +1342,13 @@ class TestParser:
         self.assert_dump(classdef, expected)
 
     def test_struct(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @struct
         class Foo:
             pass
-        """)
+        """
+        )
         classdef = mod.get_classdef("Foo")
         expected = """
         ClassDef(
@@ -1272,11 +1364,13 @@ class TestParser:
         self.assert_dump(classdef, expected)
 
     def test_Class_docstring(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         class Foo:
             "hello"
             x: i32
-        """)
+        """
+        )
         classdef = mod.get_classdef("Foo")
 
         expected = """
@@ -1297,12 +1391,14 @@ class TestParser:
         self.assert_dump(classdef, expected)
 
     def test_class_fields(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @struct
         class Point:
             x: i32
             y: i32
-        """)
+        """
+        )
         classdef = mod.get_classdef("Point")
         expected = """
         ClassDef(
@@ -1339,11 +1435,13 @@ class TestParser:
         )
 
     def test_typelift(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @typelift
         class Foo:
             __ll__: i32
-        """)
+        """
+        )
         classdef = mod.get_classdef("Foo")
         expected = """
         ClassDef(
@@ -1376,14 +1474,16 @@ class TestParser:
         )
 
     def test_classdef_methods(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         @typelift
         class Foo:
             __ll__: i32
 
             def foo() -> None:
                 pass
-        """)
+        """
+        )
         classdef = mod.get_classdef("Foo")
         expected = """
         ClassDef(
@@ -1449,11 +1549,13 @@ class TestParser:
         self.assert_dump(funcdef, expected)
 
     def test_Break(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             while True:
                 break
-        """)
+        """
+        )
         while_stmt = mod.get_funcdef("foo").body[0]
         expected = """
         While(
@@ -1466,11 +1568,13 @@ class TestParser:
         self.assert_dump(while_stmt, expected)
 
     def test_Continue(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             while True:
                 continue
-        """)
+        """
+        )
         while_stmt = mod.get_funcdef("foo").body[0]
         expected = """
         While(
@@ -1483,12 +1587,14 @@ class TestParser:
         self.assert_dump(while_stmt, expected)
 
     def test_Break_in_For(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             for i in range(10):
                 if i == 5:
                     break
-        """)
+        """
+        )
         for_stmt = mod.get_funcdef("foo").body[0]
         expected = """
         For(
@@ -1518,12 +1624,14 @@ class TestParser:
         self.assert_dump(for_stmt, expected)
 
     def test_Continue_in_For(self):
-        mod = self.parse("""
+        mod = self.parse(
+            """
         def foo() -> None:
             for i in range(10):
                 if i == 5:
                     continue
-        """)
+        """
+        )
         for_stmt = mod.get_funcdef("foo").body[0]
         expected = """
         For(
@@ -1551,3 +1659,78 @@ class TestParser:
         )
         """
         self.assert_dump(for_stmt, expected)
+
+    def test_BoolOp_and(self):
+        mod = self.parse(
+            """
+        def foo() -> bool:
+            return a and b
+        """
+        )
+
+        stmt = mod.get_funcdef("foo").body[0]
+
+        expected = """
+        Return(
+            value=BoolOp(
+                op='and',
+                values=[
+                    Name(id='a'),
+                    Name(id='b'),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_BoolOp_or(self):
+        mod = self.parse(
+            """
+        def foo() -> bool:
+            return a or b
+        """
+        )
+
+        stmt = mod.get_funcdef("foo").body[0]
+
+        expected = """
+        Return(
+            value=BoolOp(
+                op='or',
+                values=[
+                    Name(id='a'),
+                    Name(id='b'),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_BoolOp_combined(self):
+        mod = self.parse(
+            """
+        def foo() -> bool:
+            return a or b and c
+        """
+        )
+
+        stmt = mod.get_funcdef("foo").body[0]
+
+        expected = """
+        Return(
+            value=BoolOp(
+                op='or',
+                values=[
+                    Name(id='a'),
+                    BoolOp(
+                        op='and',
+                        values=[
+                            Name(id='b'),
+                            Name(id='c'),
+                        ],
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
