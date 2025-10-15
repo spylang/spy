@@ -1237,3 +1237,92 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 5 * 3  # 5 outer iterations, 3 inner iterations each
+
+    def test_bool_and_or_operations(self):
+        src = """
+        def test_and(a: bool, b: bool) -> bool:
+          return a and b
+
+        def test_or(a: bool, b: bool) -> bool:
+            return a or b
+
+        def test_chained_and(a: bool, b: bool, c: bool) -> bool:
+            return a and b and c
+
+        def test_chained_or(a: bool, b: bool, c: bool) -> bool:
+            return a or b or c
+
+        def test_mixed_precedence(a: bool, b: bool, c: bool) -> bool:
+          return a or b and c
+        """
+
+        mod = self.compile(src)
+
+        # test and
+        assert mod.test_and(True, True) is True
+        assert mod.test_and(True, False) is False
+        assert mod.test_and(False, True) is False
+        assert mod.test_and(False, False) is False
+
+        # test or
+        assert mod.test_or(True, True) is True
+        assert mod.test_or(True, False) is True
+        assert mod.test_or(False, True) is True
+        assert mod.test_or(False, False) is False
+
+        # test chained and
+        assert mod.test_chained_and(1, 2, 3) is 3
+        assert mod.test_chained_and(1, 0, 2) is 0
+
+        # test chained or
+        assert mod.test_chained_or(1, 2, 3) is 1
+        assert mod.test_chained_or(0, 0, 1) is 1
+
+        # Test mixed precedence
+        assert mod.test_mixed_precedence(True, False, False) is True
+        assert mod.test_mixed_precedence(False, True, True) is True
+        assert mod.test_mixed_precedence(False, True, False) is False
+
+    def test_and_short_circuit_evaluation(self):
+        src = """
+        counter: i32 = 0
+
+        def get_counter() -> i32:
+            return counter
+
+        def increment() -> bool:
+            counter = counter + 1
+            return True
+
+        def test_and_short_circuit(x: bool) -> bool:
+            return x and increment()
+        """
+
+        mod = self.compile(src)
+
+        assert mod.test_and_short_circuit(False) is False
+        assert mod.get_counter() == 0
+        assert mod.test_and_short_circuit(True) is True
+        assert mod.get_counter() == 1
+
+    def test_or_short_circuit_evaluation(self):
+        src = """
+        counter: i32 = 0
+
+        def get_counter() -> i32:
+            return counter
+
+        def increment() -> bool:
+            counter = counter + 1
+            return True
+
+        def test_or_short_circuit(x: bool) -> bool:
+            return x or increment()
+        """
+
+        mod = self.compile(src)
+
+        assert mod.test_or_short_circuit(True) is True
+        assert mod.get_counter() == 0
+        assert mod.test_or_short_circuit(False) is True
+        assert mod.get_counter() == 1
