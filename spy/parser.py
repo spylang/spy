@@ -697,7 +697,15 @@ class Parser:
             and isinstance(value, spy.ast.Constant)
             and isinstance(value.value, (int, float))
         ):
-            return spy.ast.Constant(value.loc, -value.value)
+            c_loc = value.loc
+            new_loc = Loc(
+                c_loc.filename,
+                c_loc.line_start,
+                c_loc.line_end,
+                c_loc.col_start - 1,  # handle the negative sign
+                c_loc.col_end,
+            )
+            return spy.ast.Constant(new_loc, -value.value)
         return spy.ast.UnaryOp(py_node.loc, op, value)
 
     def from_py_expr_Call(
