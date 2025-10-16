@@ -1,3 +1,4 @@
+import pprint
 from dataclasses import KW_ONLY, dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, Optional
 
@@ -58,7 +59,6 @@ class ImportRef:
 @dataclass
 class Symbol:
     name: str
-    color: Color
     varkind: VarKind
     storage: VarStorage
     _: KW_ONLY
@@ -84,6 +84,16 @@ class Symbol:
     @property
     def is_local(self) -> bool:
         return self.level == 0
+
+    @property
+    def color(self) -> Color:
+        """
+        Just for convenience: "const" is blue, everything else is red.
+        """
+        return "blue" if self.varkind == "const" else "red"
+
+    def pp(self) -> None:
+        pprint.pprint(self)
 
 
 class SymTable:
@@ -131,7 +141,6 @@ class SymTable:
                 loc = generic_loc
             sym = Symbol(
                 attr,
-                "blue",
                 "const",
                 "direct",
                 loc=loc,

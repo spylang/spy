@@ -327,6 +327,7 @@ class AbstractFrame:
         sym = self.symtable.lookup(varname)
 
         if sym.storage == "direct" and sym.color == "blue":
+            assert sym.varkind == "const"  # XXX-symbols fixme
             err = SPyError("W_TypeError", "invalid assignment target")
             err.add("error", f"{sym.name} is const", target.loc)
             err.add("note", "const declared here", sym.loc)
