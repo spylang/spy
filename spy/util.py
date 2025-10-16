@@ -1,8 +1,10 @@
 # -*- encoding: utf-8 -*-
 import difflib
 import inspect
+import re
 import subprocess
 import typing
+from collections import defaultdict
 from typing import Callable, Sequence
 
 import py.path
@@ -118,6 +120,28 @@ def highlight_C_maybe(code: str | bytes) -> str:
     return highlight(code, CLexer(), TerminalFormatter())
 
 
+def highlight_spy_maybe(code: str | bytes) -> str:
+    assert isinstance(code, str)
+    try:
+        import pygments  # type: ignore
+    except ImportError:
+        return code
+
+    from pygments import highlight
+    from pygments.formatters import TerminalFormatter  # type: ignore
+    from pygments.lexers import CLexer  # type: ignore
+
+    # Regex for ANSI escape sequences
+    regexp = re.compile(r"\033\[[0-9;]*m")  # \033 is \x1b
+
+    def has_ansi(text: str) -> bool:
+        return bool(regexp.search(text))
+
+    if not has_ansi(code):
+        return highlight(code, CLexer(), TerminalFormatter())
+    return code
+
+
 def shortrepr(s: str, n: int) -> str:
     """
     Return a repr of the `s`.
@@ -229,6 +253,39 @@ def func_equals(f: Callable, g: Callable) -> bool:
         return False
 
     return True
+
+
+@typing.no_type_check
+def colors_coordinates(ast_module, expr_color_map) -> dict[int, list[tuple[str, str]]]:
+    """
+    Generate a mapping line_number:col_ranges with associated colors for AST nodes.
+
+    This function walks through all nodes in the given AST module and maps each node
+    that has a color specified in `expr_color_map` to its line and column range.
+    The result is a dictionary where each key is a line number and each value is a list
+    of tuples. Each tuple contains a string representing the column range in the format
+    "start:end" and the corresponding color.
+
+    Args:
+        ast_module (spy.ast.Module): The AST module to traverse.
+        expr_color_map (dict[spy.ast.Node, str]): A mapping from AST nodes to colors.
+
+    Returns:
+        dict[int, list[tuple[str, str]]]: A dictionary mapping line numbers to a list of
+        (column_range, color) tuples.
+
+    Example:
+        >>> colors_coordinates(ast_module, {node: "red", ...})
+        {3: [("4:9", "red"), ("10:15", "blue")], 5: [("2:5", "red")]}
+    """
+    ast_nodes = list(ast_module.walk())
+    coords = defaultdict(list)
+    for node in ast_nodes:
+        col_range = f"{node.loc.col_start}:{node.loc.col_end - 1}"
+        if expr_color_map.get(node):
+            # collect just the lines that needs to be colored
+            coords[node.loc.line_start].append((col_range, expr_color_map.get(node)))
+    return dict(coords)
 
 
 if __name__ == "__main__":
