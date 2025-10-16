@@ -209,6 +209,24 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "set_x", errors)
 
+    def test_cannot_assign_to_blue_param(self):
+        src = """
+        @blue
+        def inc(x: i32) -> i32:
+            x = x + 1
+            return x
+
+        def foo() -> i32:
+            return inc(5)
+        """
+        errors = expect_errors(
+            "invalid assignment target",
+            ("x is const", "x"),
+            ("const declared here", "x: i32"),
+            ("blue function arguments are const by default", "x: i32"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     @only_interp
     def test_int_float(self):
         mod = self.compile("""

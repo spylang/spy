@@ -26,12 +26,14 @@ class MatchSymbol:
         level: int = 0,
         impref: Any = MISSING,
         storage: VarStorage = "direct",
+        hints: Any = MISSING,
     ):
         self.name = name
         self.varkind = varkind
         self.level = level
         self.impref = impref
         self.storage = storage
+        self.hints = hints
 
     def __eq__(self, sym: object) -> bool:
         if not isinstance(sym, Symbol):
@@ -42,6 +44,7 @@ class MatchSymbol:
             and self.level == sym.level
             and self.storage == sym.storage
             and (self.impref is MISSING or self.impref == sym.impref)
+            and (self.hints is MISSING or self.hints == sym.hints)
         )
 
 
@@ -120,8 +123,8 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "blue"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "const"),
-            "@return": MatchSymbol("@return", "var"),
+            "x": MatchSymbol("x", "const", hints=("blue-param",)),
+            "@return": MatchSymbol("@return", "var", hints=()),
         }
 
     def test_assign_does_not_redeclare(self):
@@ -417,3 +420,29 @@ class TestScopeAnalyzer:
             ("this is the new declaration", "i"),
             ("this is the previous declaration", "i: i32 = 0"),
         )
+
+    def test_global_const_hint(self):
+        scopes = self.analyze("""
+        x: i32 = 42
+        var y: i32 = 0
+        """)
+        scope = scopes.by_module()
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "const", hints=("global-const",)),
+            "y": MatchSymbol("y", "var", storage="cell", hints=()),
+            "i32": MatchSymbol("i32", "const", level=1),
+        }
+
+    def test_blue_func_vararg(self):
+        scopes = self.analyze("""
+        @blue
+        def foo(a: i32, *args: str) -> None:
+            pass
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            "a": MatchSymbol("a", "const", hints=("blue-param",)),
+            "args": MatchSymbol("args", "const", hints=("blue-param",)),
+            "@return": MatchSymbol("@return", "var", hints=()),
+        }

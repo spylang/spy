@@ -326,14 +326,23 @@ class AbstractFrame:
         varname = target.value
         sym = self.symtable.lookup(varname)
 
-        if sym.storage == "direct" and sym.color == "blue":
-            assert sym.varkind == "const"  # XXX-symbols fixme
+        if sym.varkind == "const":
             err = SPyError("W_TypeError", "invalid assignment target")
             err.add("error", f"{sym.name} is const", target.loc)
             err.add("note", "const declared here", sym.loc)
-            err.add(
-                "note", f"help: declare it as variable: `var {sym.name} ...`", sym.loc
-            )
+
+            if "blue-param" in sym.hints:
+                err.add(
+                    "note",
+                    "blue function arguments are const by default",
+                    sym.loc,
+                )
+            elif "global-const" in sym.hints:
+                err.add(
+                    "note",
+                    f"help: declare it as variable: `var {sym.name} ...`",
+                    sym.loc,
+                )
             raise err
 
         elif sym.storage == "direct":

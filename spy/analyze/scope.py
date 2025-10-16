@@ -137,6 +137,7 @@ class ScopeAnalyzer:
         type_loc: Loc,
         *,
         impref: Optional[ImportRef] = None,
+        hints: tuple[str, ...] = (),
     ) -> None:
         """
         Add a name definition to the current scope.
@@ -183,6 +184,7 @@ class ScopeAnalyzer:
             type_loc=type_loc,
             impref=impref,
             level=0,
+            hints=hints,
         )
         self.scope.add(sym)
 
@@ -230,7 +232,10 @@ class ScopeAnalyzer:
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         varkind = decl.vardef.kind
-        self.define_name(decl.vardef.name, varkind, decl.loc, decl.vardef.type.loc)
+        hints = ("global-const",) if varkind == "const" else ()
+        self.define_name(
+            decl.vardef.name, varkind, decl.loc, decl.vardef.type.loc, hints=hints
+        )
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.kind == "var"
@@ -243,18 +248,22 @@ class ScopeAnalyzer:
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
         arg_varkind: VarKind = "const" if scope_color == "blue" else "var"
+        arg_hints = ("blue-param",) if scope_color == "blue" else ()
 
         inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.define_name(arg.name, arg_varkind, arg.loc, arg.type.loc)
+            self.define_name(
+                arg.name, arg_varkind, arg.loc, arg.type.loc, hints=arg_hints
+            )
         if funcdef.vararg:
             self.define_name(
                 funcdef.vararg.name,
                 arg_varkind,
                 funcdef.vararg.loc,
                 funcdef.vararg.type.loc,
+                hints=arg_hints,
             )
         self.define_name(
             "@return",

@@ -77,6 +77,7 @@ class Symbol:
     #   * 2: builtins
     level: int
     impref: Optional[ImportRef] = None
+    hints: tuple[str, ...] = ()
 
     def replace(self, **kwargs: Any) -> "Symbol":
         return replace(self, **kwargs)
