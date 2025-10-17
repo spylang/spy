@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 
 class Return(Exception):
+    "Raised to implement the 'return' statement"
+
     w_value: W_Object
 
     def __init__(self, w_value: W_Object) -> None:
@@ -35,15 +37,11 @@ class Return(Exception):
 
 
 class Break(Exception):
-    """Exception to implement break statement"""
-
-    pass
+    "Raised to implement the 'break' statement"
 
 
 class Continue(Exception):
-    """Exception to implement continue statement"""
-
-    pass
+    "Raised to implement the 'continue' statement"
 
 
 class AbstractFrame:
