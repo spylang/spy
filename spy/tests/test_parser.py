@@ -729,7 +729,10 @@ class TestParser:
             ),
         )
         """
+        const = stmt.value.left  # type: ignore[attr-defined]
         self.assert_dump(stmt, expected)
+        assert const.value == -123
+        assert const.loc.get_src() == "-123"
 
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
