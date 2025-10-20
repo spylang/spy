@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 UNSAFE = ModuleRegistry("unsafe")
 
 from . import (
+    binop,  # noqa: F401 -- side effects
     mem,  # noqa: F401 -- side effects
     ptr,  # noqa: F401 -- side effects
 )
