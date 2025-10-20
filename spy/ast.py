@@ -453,7 +453,7 @@ class Return(Stmt):
 
 @dataclass(eq=False)
 class VarDef(Stmt):
-    kind: VarKind
+    kind: Optional[VarKind]
     name: StrConst
     type: Expr
     value: Optional[Expr]

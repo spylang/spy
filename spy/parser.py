@@ -118,7 +118,7 @@ class Parser:
                 globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
                 mod.decls.append(globclass)
             elif isinstance(py_stmt, py_ast.AnnAssign):
-                vardef = self.from_py_AnnAssign(py_stmt, is_global=True)
+                vardef = self.from_py_AnnAssign(py_stmt)
                 assert vardef.value is not None
                 globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef)
                 mod.decls.append(globvar)
@@ -406,21 +406,17 @@ class Parser:
     def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
         assign = self.from_py_stmt_Assign(py_node)
         assert isinstance(assign, spy.ast.Assign)
-        varkind: spy.ast.VarKind = py_node.targets[0].spy_varkind
-        if varkind is None:
-            varkind = "const"
+        varkind = py_node.targets[0].spy_varkind
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
-            kind=kind,
+            kind=varkind,
             name=assign.target,
             type=spy.ast.Auto(loc=py_node.loc),
             value=assign.value,
         )
         return vardef
 
-    def from_py_AnnAssign(
-        self, py_node: py_ast.AnnAssign, is_global: bool = False
-    ) -> spy.ast.VarDef:
+    def from_py_AnnAssign(self, py_node: py_ast.AnnAssign) -> spy.ast.VarDef:
         if not py_node.simple:
             self.error(
                 f"not supported: assignments targets with parentheses",
@@ -431,23 +427,14 @@ class Parser:
         # non-name target
         assert isinstance(py_node.target, py_ast.Name), "WTF?"
 
-        # global VarDef are 'const' by default, unless you specify 'var'.
-        # local VarDef are always 'var' (for now?)
-        is_local = not is_global
-        kind: spy.ast.VarKind
-        # XXX antocuni double check this code
-        if is_local or py_node.target.spy_varkind == "var":
-            kind = "var"
-        else:
-            kind = "const"
-
+        varkind = py_node.target.spy_varkind
         value = None
         if py_node.value is not None:
             value = self.from_py_expr(py_node.value)
 
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
-            kind=kind,
+            kind=varkind,
             name=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
             type=self.from_py_expr(py_node.annotation),
             value=value,
