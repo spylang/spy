@@ -171,7 +171,6 @@ class GlobalFuncDef(Decl):
 @dataclass(eq=False)
 class GlobalVarDef(Decl):
     vardef: "VarDef"
-    assign: "Assign"
 
 
 @dataclass(eq=False)
@@ -457,6 +456,7 @@ class VarDef(Stmt):
     kind: VarKind
     name: StrConst
     type: Expr
+    value: Optional[Expr]
 
 
 @dataclass(eq=False)

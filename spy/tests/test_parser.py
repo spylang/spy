@@ -506,22 +506,16 @@ class TestParser:
         def foo() -> None:
             x: i32 = 42
         """)
-        vardef, assign = mod.get_funcdef("foo").body[:2]
+        vardef = mod.get_funcdef("foo").body[0]
         vardef_expected = """
         VarDef(
             kind='var',
             name=StrConst(value='x'),
             type=Name(id='i32'),
-        )
-        """
-        assign_expected = """
-        Assign(
-            target=StrConst(value='x'),
             value=Constant(value=42),
         )
         """
         self.assert_dump(vardef, vardef_expected)
-        self.assert_dump(assign, assign_expected)
 
     def test_global_VarDef_const(self):
         mod = self.parse("""
@@ -537,9 +531,6 @@ class TestParser:
                         kind='const',
                         name=StrConst(value='x'),
                         type=Name(id='i32'),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -562,9 +553,6 @@ class TestParser:
                         kind='var',
                         name=StrConst(value='x'),
                         type=Name(id='i32'),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -587,9 +575,6 @@ class TestParser:
                         kind='const',
                         name=StrConst(value='x'),
                         type=Auto(),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -612,9 +597,6 @@ class TestParser:
                         kind='var',
                         name=StrConst(value='x'),
                         type=Auto(),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -1115,9 +1097,6 @@ class TestParser:
                         kind='const',
                         name=StrConst(value='x'),
                         type=Auto(),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -1289,6 +1268,7 @@ class TestParser:
                     kind='var',
                     name=StrConst(value='x'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[],
@@ -1314,11 +1294,13 @@ class TestParser:
                     kind='var',
                     name=StrConst(value='x'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
                 VarDef(
                     kind='var',
                     name=StrConst(value='y'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[],
@@ -1355,6 +1337,7 @@ class TestParser:
                     kind='var',
                     name=StrConst(value='__ll__'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[],
@@ -1395,6 +1378,7 @@ class TestParser:
                     kind='var',
                     name=StrConst(value='__ll__'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[
