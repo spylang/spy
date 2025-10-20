@@ -232,7 +232,7 @@ class SPyVM:
         for name, w_val in w_builtins._dict_w.items():
             w_T = self.dynamic_type(w_val)
             d[name] = LocalVar(name, loc, w_T, w_val)
-        return d
+        return (d,)
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:

@@ -310,7 +310,7 @@ class AbstractFrame:
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_T = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.name, w_T, vardef.loc)
+        self.declare_local(vardef.name.value, w_T, vardef.loc)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         # see the commnet in __init__ about specialized_assigns

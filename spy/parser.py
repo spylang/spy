@@ -417,7 +417,7 @@ class Parser:
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=kind,
-            name=assign.target.value,
+            name=assign.target,
             type=spy.ast.Auto(loc=py_node.loc),
         )
         return vardef, assign
@@ -447,7 +447,7 @@ class Parser:
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=kind,
-            name=py_node.target.id,
+            name=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
             type=self.from_py_expr(py_node.annotation),
         )
 

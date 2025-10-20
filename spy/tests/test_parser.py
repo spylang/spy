@@ -510,7 +510,7 @@ class TestParser:
         vardef_expected = """
         VarDef(
             kind='var',
-            name='x',
+            name=StrConst(value='x'),
             type=Name(id='i32'),
         )
         """
@@ -535,7 +535,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='const',
-                        name='x',
+                        name=StrConst(value='x'),
                         type=Name(id='i32'),
                     ),
                     assign=Assign(
@@ -560,7 +560,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='var',
-                        name='x',
+                        name=StrConst(value='x'),
                         type=Name(id='i32'),
                     ),
                     assign=Assign(
@@ -585,7 +585,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='const',
-                        name='x',
+                        name=StrConst(value='x'),
                         type=Auto(),
                     ),
                     assign=Assign(
@@ -610,7 +610,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='var',
-                        name='x',
+                        name=StrConst(value='x'),
                         type=Auto(),
                     ),
                     assign=Assign(
@@ -1113,7 +1113,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='const',
-                        name='x',
+                        name=StrConst(value='x'),
                         type=Auto(),
                     ),
                     assign=Assign(
@@ -1287,7 +1287,7 @@ class TestParser:
             fields=[
                 VarDef(
                     kind='var',
-                    name='x',
+                    name=StrConst(value='x'),
                     type=Name(id='i32'),
                 ),
             ],
@@ -1312,12 +1312,12 @@ class TestParser:
             fields=[
                 VarDef(
                     kind='var',
-                    name='x',
+                    name=StrConst(value='x'),
                     type=Name(id='i32'),
                 ),
                 VarDef(
                     kind='var',
-                    name='y',
+                    name=StrConst(value='y'),
                     type=Name(id='i32'),
                 ),
             ],
@@ -1353,7 +1353,7 @@ class TestParser:
             fields=[
                 VarDef(
                     kind='var',
-                    name='__ll__',
+                    name=StrConst(value='__ll__'),
                     type=Name(id='i32'),
                 ),
             ],
@@ -1393,7 +1393,7 @@ class TestParser:
             fields=[
                 VarDef(
                     kind='var',
-                    name='__ll__',
+                    name=StrConst(value='__ll__'),
                     type=Name(id='i32'),
                 ),
             ],

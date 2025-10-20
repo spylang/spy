@@ -231,15 +231,15 @@ class ScopeAnalyzer:
         raise err
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        varname = decl.vardef.name.value
         varkind = decl.vardef.kind
         hints = ("global-const",) if varkind == "const" else ()
-        self.define_name(
-            decl.vardef.name, varkind, decl.loc, decl.vardef.type.loc, hints=hints
-        )
+        self.define_name(varname, varkind, decl.loc, decl.vardef.type.loc, hints=hints)
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         assert vardef.kind == "var"
-        self.define_name(vardef.name, "var", vardef.loc, vardef.type.loc)
+        varname = vardef.name.value
+        self.define_name(varname, "var", vardef.loc, vardef.type.loc)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope

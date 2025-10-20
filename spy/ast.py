@@ -455,7 +455,7 @@ class Return(Stmt):
 @dataclass(eq=False)
 class VarDef(Stmt):
     kind: VarKind
-    name: str
+    name: StrConst
     type: Expr
 
 

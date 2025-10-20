@@ -28,7 +28,7 @@ class ModFrame(AbstractFrame):
         symtable: SymTable,
         mod: ast.Module,
     ) -> None:
-        super().__init__(vm, ns, symtable, closure=(vm.builtins_closure,))
+        super().__init__(vm, ns, symtable, closure=vm.builtins_closure)
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)
@@ -77,9 +77,10 @@ class ModFrame(AbstractFrame):
 
     def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
+        varname = vardef.name.value
         assign = decl.assign
-        fqn = self.ns.join(vardef.name)
-        sym = self.symtable.lookup(vardef.name)
+        fqn = self.ns.join(varname)
+        sym = self.symtable.lookup(varname)
         assert sym.level == 0, "module assign to name declared outside?"
 
         # evaluate the vardef in the current frame
