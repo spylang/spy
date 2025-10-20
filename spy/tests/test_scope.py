@@ -116,7 +116,7 @@ class TestScopeAnalyzer:
             "a": MatchSymbol("a", "const", "implicit"),
             "b": MatchSymbol("b", "const", "implicit"),
             "c": MatchSymbol("c", "const", "implicit"),
-            "d": MatchSymbol("d", "const", "implicit"),
+            "d": MatchSymbol("d", "const"),
             "e": MatchSymbol("e", "var"),
             "@return": MatchSymbol("@return", "var"),
             # captured
