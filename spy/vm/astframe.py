@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from types import NoneType
 from typing import TYPE_CHECKING, Optional, Sequence
 
@@ -44,6 +45,14 @@ class Continue(Exception):
     "Raised to implement the 'continue' statement"
 
 
+@dataclass
+class LocalVar:
+    varname: str
+    decl_loc: Loc
+    w_T: W_Type
+    w_val: Optional[W_Object] = None
+
+
 class AbstractFrame:
     """
     Frame which is able to run AST expressions/statements.
@@ -56,9 +65,7 @@ class AbstractFrame:
     ns: FQN
     closure: CLOSURE
     symtable: SymTable
-    _locals: Namespace
-    locals_types_w: dict[str, W_Type]
-    locals_decl_loc: dict[str, Loc]
+    locals: dict[str, LocalVar]
     specialized_names: dict[ast.Name, ast.Expr]
     specialized_assigns: dict[ast.Assign, ast.Stmt]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
@@ -71,9 +78,7 @@ class AbstractFrame:
         self.ns = ns
         self.symtable = symtable
         self.closure = closure
-        self._locals = {}
-        self.locals_types_w = {}
-        self.locals_decl_loc = {}
+        self.locals = {}
 
         # ast.Name and ast.Assign are special, because depending on the
         # content of the symtable it has different meanings (e.g. local, outer
@@ -94,13 +99,19 @@ class AbstractFrame:
     def redshifting(self) -> bool:
         return False
 
+    def get_locals_types_w(self) -> dict[str, W_Type]:
+        return {
+            name: lv.w_T
+            for name, lv in self.locals.items()
+        }  # fmt: skip
+
     def declare_local(self, name: str, w_type: W_Type, loc: Loc) -> None:
-        if name in self.locals_types_w:
+        if name in self.locals:
             # this is the same check that we already do in
             # ScopeAnalyzer.define_name. This logic is duplicated because for
             # RED frames we raise the error eagerly in the analyzer, but for
             # BLUE frames we raise it here
-            old_loc = self.locals_decl_loc[name]
+            old_loc = self.locals[name].decl_loc
             msg = f"variable `{name}` already declared"
             err = SPyError("W_ScopeError", msg)
             err.add("error", "this is the new declaration", loc)
@@ -109,17 +120,16 @@ class AbstractFrame:
 
         if not isinstance(w_type, W_FuncType):
             self.vm.make_fqn_const(w_type)
-        self.locals_types_w[name] = w_type
-        self.locals_decl_loc[name] = loc
+        self.locals[name] = LocalVar(varname=name, decl_loc=loc, w_T=w_type, w_val=None)
 
     def store_local(self, name: str, w_value: W_Object) -> None:
-        self._locals[name] = w_value
+        self.locals[name].w_val = w_value
 
     def load_local(self, name: str) -> W_Object:
-        w_obj = self._locals.get(name)
-        if w_obj is None:
+        localvar = self.locals.get(name)
+        if localvar is None or localvar.w_val is None:
             raise SPyError("W_Exception", "read from uninitialized local")
-        return w_obj
+        return localvar.w_val
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         try:
@@ -133,7 +143,7 @@ class AbstractFrame:
     ) -> Optional[W_Func]:
         if varname is None:
             return None  # no typecheck needed
-        w_exp_T = self.locals_types_w[varname]
+        w_exp_T = self.locals[varname].w_T
         try:
             w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wam)
         except SPyError as err:
@@ -235,7 +245,7 @@ class AbstractFrame:
         fqn = self.ns.join(funcdef.name)
         fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
-        closure = self.closure + (self._locals,)
+        closure = self.closure + (self.get_locals_values_w(),)
 
         # this is just a cosmetic nicety. In presence of decorators, "mod.foo"
         # will NOT necessarily contain the function object which is being
@@ -299,7 +309,7 @@ class AbstractFrame:
 
         # create a frame where to execute the class body
         # XXX we should capture only the names actually used in the inner frame
-        closure = self.closure + (self._locals,)
+        closure = self.closure + (self.get_locals_values_w(),)
         classframe = ClassFrame(self.vm, classdef, w_T.fqn, closure)
         body = classframe.run()
 
@@ -364,7 +374,7 @@ class AbstractFrame:
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target
         varname = target.value
-        is_declared = varname in self.locals_types_w
+        is_declared = varname in self.locals
         if is_declared:
             wam = self.eval_expr(assign.value, varname=varname)
         else:
@@ -673,7 +683,7 @@ class AbstractFrame:
 
     def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
         sym = name.sym
-        w_T = self.locals_types_w[sym.name]
+        w_T = self.locals[sym.name].w_T
         if sym.color == "red" and self.redshifting:
             w_val = None
         else:

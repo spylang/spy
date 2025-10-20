@@ -32,13 +32,16 @@ class ModFrame(AbstractFrame):
         super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
-        # the local vars of this frame goes directly in the module dict
-        self._locals = self.w_mod._dict_w
         self.vm.register_module(self.w_mod)
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         return f"<{cls} for `{self.ns}`>"
+
+    def store_local(self, name: str, w_value: W_Object) -> None:
+        # For modules, locals also go directly in the module dict
+        super().store_local(name, w_value)
+        self.w_mod._dict_w[name] = w_value
 
     def run(self) -> W_Module:
         # forward declaration of types
@@ -90,7 +93,7 @@ class ModFrame(AbstractFrame):
 
         if sym.storage == "direct":
             if is_auto:
-                assert sym.name not in self.locals_types_w
+                assert sym.name not in self.locals
                 self.declare_local(sym.name, wam.w_static_T, decl.assign.target.loc)
             self.store_local(sym.name, wam.w_val)
 

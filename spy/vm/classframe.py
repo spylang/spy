@@ -34,14 +34,17 @@ class ClassFrame(AbstractFrame):
         for vardef in self.classdef.fields:
             assert vardef.kind == "var"
             self.exec_stmt(vardef)
-            w_T = self.locals_types_w[vardef.name]
+            w_T = self.locals[vardef.name].w_T
             body.fields_w[vardef.name] = W_Field(vardef.name, w_T)
 
         # execute method definitions
         for stmt in self.classdef.body:
             self.exec_stmt(stmt)
 
-        for name, w_val in self._locals.items():
-            body.dict_w[name] = w_val
+        for name, lv in self.locals.items():
+            # ignore variables which were just declared but never assigned; this
+            # includes .e.g field declarations
+            if lv.w_val is not None:
+                body.dict_w[name] = lv.w_val
 
         return body
