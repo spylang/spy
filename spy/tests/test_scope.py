@@ -103,14 +103,61 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "var"),
+            "x": MatchSymbol("x", "const"),
             "y": MatchSymbol("y", "var"),
-            "z": MatchSymbol("z", "var"),
+            "z": MatchSymbol("z", "const"),
             "@return": MatchSymbol("@return", "var"),
             # captured
             "i32": MatchSymbol("i32", "const", level=2),
         }
         assert funcdef.symtable is scope
+
+    def test_var_and_const(self):
+        scopes = self.analyze("""
+        def range(n: i32) -> dynamic:
+            pass
+
+        def foo(x: i32, y: i32) -> None:
+            # x is not touched   # param: const
+            y = 0                # param + assign: var
+            # b: i32 = 0           # vardef, implicit varkind: const   FIXME
+            var c: i32 = 0       # vardef, explicit varkind: var
+            d = 0                # single assign: const
+            e = 0                # multi assign: var
+            e = 0
+            f = 0                # single assign + augassign: var
+            f += 0
+            g: i32 = 0           # vardef + augassign: var
+            g += 0
+
+            for i in range(10):  # loop variable: var
+                h = 0            # assign in loop: var
+
+            while True:
+                f = 0       # assign in loop: var
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == "test::foo"
+        assert scope.color == "red"
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "const"),
+            "y": MatchSymbol("y", "var"),
+            # "b": MatchSymbol("b", "const"),  # FIXME
+            "c": MatchSymbol("c", "var"),
+            "d": MatchSymbol("d", "const"),
+            "e": MatchSymbol("e", "var"),
+            "f": MatchSymbol("f", "var"),
+            "g": MatchSymbol("g", "var"),
+            "h": MatchSymbol("h", "var"),
+            "i": MatchSymbol("i", "var"),
+            "f": MatchSymbol("f", "var"),
+            #
+            "_$iter0": MatchSymbol("_$iter0", "var"),
+            "@return": MatchSymbol("@return", "var"),
+            "range": MatchSymbol("range", "const", level=1),
+            "i32": MatchSymbol("i32", "const", level=2),
+        }
 
     def test_blue_func(self):
         scopes = self.analyze("""
@@ -211,7 +258,7 @@ class TestScopeAnalyzer:
         bardef = foodef.body[1]
         assert isinstance(bardef, ast.FuncDef)
         assert bardef.symtable._symbols == {
-            "y": MatchSymbol("y", "var"),
+            "y": MatchSymbol("y", "const"),
             "@return": MatchSymbol("@return", "var"),
             "x": MatchSymbol("x", "var", level=1),
         }
@@ -290,8 +337,8 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "a": MatchSymbol("a", "var"),
-            "args": MatchSymbol("args", "var"),
+            "a": MatchSymbol("a", "const"),
+            "args": MatchSymbol("args", "const"),
             "@return": MatchSymbol("@return", "var"),
         }
 
@@ -320,9 +367,9 @@ class TestScopeAnalyzer:
         a = get_scope("a")
         b = get_scope("b")
         c = get_scope("c")
-        assert a._symbols["x"] == MatchSymbol("x", "var", level=0)
-        assert b._symbols["x"] == MatchSymbol("x", "var", level=1)
-        assert c._symbols["x"] == MatchSymbol("x", "var", level=2)
+        assert a._symbols["x"] == MatchSymbol("x", "const", level=0)
+        assert b._symbols["x"] == MatchSymbol("x", "const", level=1)
+        assert c._symbols["x"] == MatchSymbol("x", "const", level=2)
 
     def test_capture_decorator(self):
         scopes = self.analyze("""
@@ -354,7 +401,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "x": MatchSymbol("x", "var"),
+            "x": MatchSymbol("x", "const"),  # inferred const
             "@return": MatchSymbol("@return", "var"),
             "y": MatchSymbol("y", "var", level=-1, storage="NameError"),
         }

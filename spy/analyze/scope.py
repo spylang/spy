@@ -43,6 +43,7 @@ class ScopeAnalyzer:
     mod: ast.Module
     stack: list[SymTable]
     inner_scopes: dict[ast.FuncDef | ast.ClassDef, SymTable]
+    loop_depth: int
 
     def __init__(self, vm: SPyVM, modname: str, mod: ast.Module) -> None:
         self.vm = vm
@@ -51,6 +52,7 @@ class ScopeAnalyzer:
         self.mod_scope = SymTable(modname, "blue")
         self.stack = []
         self.inner_scopes = {}
+        self.loop_depth = 0
         self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
 
@@ -247,20 +249,18 @@ class ScopeAnalyzer:
         self.define_name(funcdef.name, "const", protoloc, protoloc)
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
-        arg_varkind: VarKind = "const" if scope_color == "blue" else "var"
+        ## arg_varkind: VarKind = "const" if scope_color == "blue" else "var"
         arg_hints = ("blue-param",) if scope_color == "blue" else ()
 
         inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.define_name(
-                arg.name, arg_varkind, arg.loc, arg.type.loc, hints=arg_hints
-            )
+            self.define_name(arg.name, "const", arg.loc, arg.type.loc, hints=arg_hints)
         if funcdef.vararg:
             self.define_name(
                 funcdef.vararg.name,
-                arg_varkind,
+                "const",
                 funcdef.vararg.loc,
                 funcdef.vararg.type.loc,
                 hints=arg_hints,
@@ -290,6 +290,9 @@ class ScopeAnalyzer:
     def declare_Assign(self, assign: ast.Assign) -> None:
         self._declare_target_maybe(assign.target, assign.value)
 
+    def declare_AugAssign(self, augassign: ast.AugAssign) -> None:
+        self._promote_const_to_var_maybe(augassign.target)
+
     def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         for target in unpack.targets:
             self._declare_target_maybe(target, unpack.value)
@@ -299,11 +302,33 @@ class ScopeAnalyzer:
         # declaration
         level, scope, sym = self.lookup_ref(target.value)
         if sym is None:
-            # we don't have an explicit type annotation: we consider the
-            # "value" to be the type_loc, because it's where the type will be
-            # computed from
+            # First assignment: mark as const unless in a loop
             type_loc = value.loc
-            self.define_name(target.value, "var", target.loc, type_loc)
+            if self.loop_depth > 0:
+                varkind: VarKind = "var"
+            else:
+                varkind = "const"
+            self.define_name(target.value, varkind, target.loc, type_loc)
+        else:
+            # possible second assignment: promote to var if needed
+            self._promote_const_to_var_maybe(target)
+
+    def _promote_const_to_var_maybe(self, target: ast.StrConst) -> None:
+        level, scope, sym = self.lookup_ref(target.value)
+        if sym.is_local and sym.varkind == "const" and sym.impref is None:
+            if target.value in self.scope._symbols:
+                # Second assignment to a local const: make it var
+                old_sym = self.scope._symbols[target.value]
+                if old_sym.varkind == "const":
+                    new_sym = old_sym.replace(varkind="var")
+                    self.scope._symbols[target.value] = new_sym
+
+    def declare_While(self, whilestmt: ast.While) -> None:
+        # Increment loop depth before processing body
+        self.loop_depth += 1
+        for stmt in whilestmt.body:
+            self.declare(stmt)
+        self.loop_depth -= 1
 
     def declare_For(self, forstmt: ast.For) -> None:
         # Declare the hidden iterator variable _$iter0
@@ -317,8 +342,12 @@ class ScopeAnalyzer:
         self.define_name(
             forstmt.target.value, "var", forstmt.target.loc, forstmt.iter.loc
         )
+
+        # Increment loop depth before processing body
+        self.loop_depth += 1
         for stmt in forstmt.body:
             self.declare(stmt)
+        self.loop_depth -= 1
 
     # ===
 
