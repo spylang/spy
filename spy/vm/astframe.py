@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from types import NoneType
 from typing import TYPE_CHECKING, Optional, Sequence
 
@@ -11,7 +10,7 @@ from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
-from spy.vm.function import CLOSURE, FuncParam, Namespace, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.list import W_List
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
@@ -43,14 +42,6 @@ class Break(Exception):
 
 class Continue(Exception):
     "Raised to implement the 'continue' statement"
-
-
-@dataclass
-class LocalVar:
-    varname: str
-    decl_loc: Loc
-    w_T: W_Type
-    w_val: Optional[W_Object] = None
 
 
 class AbstractFrame:
@@ -245,7 +236,7 @@ class AbstractFrame:
         fqn = self.ns.join(funcdef.name)
         fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
-        closure = self.closure + (self.get_locals_values_w(),)
+        closure = self.closure + (self.locals,)
 
         # this is just a cosmetic nicety. In presence of decorators, "mod.foo"
         # will NOT necessarily contain the function object which is being
@@ -309,7 +300,7 @@ class AbstractFrame:
 
         # create a frame where to execute the class body
         # XXX we should capture only the names actually used in the inner frame
-        closure = self.closure + (self.get_locals_values_w(),)
+        closure = self.closure + (self.locals,)
         classframe = ClassFrame(self.vm, classdef, w_T.fqn, closure)
         body = classframe.run()
 
@@ -358,8 +349,8 @@ class AbstractFrame:
             return ast.AssignLocal(assign.loc, target, assign.value)
 
         elif sym.storage == "cell":
-            namespace = self.closure[-sym.level]
-            w_cell = namespace[sym.name]
+            outervars = self.closure[-sym.level]
+            w_cell = outervars[sym.name].w_val
             assert isinstance(w_cell, W_Cell)
             return ast.AssignCell(
                 loc=assign.loc,
@@ -666,8 +657,8 @@ class AbstractFrame:
         elif sym.storage == "direct":
             return ast.NameOuterDirect(name.loc, sym)
         elif sym.storage == "cell":
-            namespace = self.closure[-sym.level]
-            w_cell = namespace[sym.name]
+            outervars = self.closure[-sym.level]
+            w_cell = outervars[sym.name].w_val
             assert isinstance(w_cell, W_Cell)
             return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
         elif sym.storage == "NameError":
@@ -694,8 +685,8 @@ class AbstractFrame:
         color: Color = "blue"  # closed-over variables are always blue
         sym = name.sym
         assert not sym.is_local
-        namespace = self.closure[-sym.level]
-        w_val = namespace[sym.name]
+        outervars = self.closure[-sym.level]
+        w_val = outervars[sym.name].w_val
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)

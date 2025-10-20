@@ -28,8 +28,7 @@ class ModFrame(AbstractFrame):
         symtable: SymTable,
         mod: ast.Module,
     ) -> None:
-        w_builtins = vm.modules_w["builtins"]
-        super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
+        super().__init__(vm, ns, symtable, closure=(vm.builtins_closure,))
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)

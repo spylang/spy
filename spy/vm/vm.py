@@ -18,7 +18,14 @@ from spy.vm.b import B
 from spy.vm.bluecache import BlueCache
 from spy.vm.builtin import IRTag, make_builtin_func
 from spy.vm.exc import W_Exception, W_TypeError
-from spy.vm.function import W_ASTFunc, W_BuiltinFunc, W_Func, W_FuncType
+from spy.vm.function import (
+    CLOSURE,
+    LocalVar,
+    W_ASTFunc,
+    W_BuiltinFunc,
+    W_Func,
+    W_FuncType,
+)
 from spy.vm.list import W_ListType
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
@@ -90,6 +97,7 @@ class SPyVM:
     globals_w: dict[FQN, W_Object]
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
+    builtins_closure: CLOSURE
     path: list[str]
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
@@ -109,9 +117,9 @@ class SPyVM:
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
-        # By default, don't keep track of expr colors.
-        self.expr_color_map = None
+        self.expr_color_map = None  # By default, don't keep track of expr colors.
         self.make_module(BUILTINS)
+        self.builtins_closure = self.make_builtins_closure()
         self.make_module(OPERATOR)
         self.make_module(TYPES)
         self.make_module(MATH)
@@ -216,6 +224,15 @@ class SPyVM:
             assert fqn.modname == reg.fqn.modname
             name = fqn.symbol_name
             w_mod.setattr(name, w_obj)
+
+    def make_builtins_closure(self) -> CLOSURE:
+        loc = BUILTINS.loc
+        w_builtins = self.modules_w["builtins"]
+        d = {}
+        for name, w_val in w_builtins._dict_w.items():
+            w_T = self.dynamic_type(w_val)
+            d[name] = LocalVar(name, loc, w_T, w_val)
+        return d
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:

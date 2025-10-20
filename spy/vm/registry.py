@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Type
 
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
+from spy.location import Loc
 
 if TYPE_CHECKING:
     from spy.vm.function import W_BuiltinFunc
@@ -18,10 +19,12 @@ class ModuleRegistry:
 
     fqn: FQN
     content: list[tuple[FQN, "W_Object"]]
+    loc: Loc
 
     def __init__(self, modname: str) -> None:
         self.fqn = FQN(modname)
         self.content = []
+        self.loc = Loc.here(-2)
 
     def __repr__(self) -> str:
         return f"<ModuleRegistry '{self.fqn}'>"

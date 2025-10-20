@@ -21,10 +21,26 @@ if TYPE_CHECKING:
     from spy.vm.opspec import W_MetaArg, W_OpSpec
     from spy.vm.vm import SPyVM
 
-# dictionary which contains local vars in an ASTFrame. The type is defined
-# here because it's also used by W_ASTFunc.closure.
-Namespace = dict[str, W_Object]
-CLOSURE = tuple[Namespace, ...]
+# =========== Closures ========
+#
+# - Each frame has a .locals which maps varname -> LocalVar
+# - When creating a closure, we capture the .locals of all the outer frames
+#
+# These types are defined here because we need CLOSURE in the definition of W_ASTFunc,
+# but they are manipulated by ASTFrame.
+
+
+@dataclass
+class LocalVar:
+    varname: str
+    decl_loc: Loc
+    w_T: W_Type
+    w_val: Optional[W_Object] = None
+
+
+CLOSURE = tuple[dict[str, LocalVar], ...]
+# ========= /Closures =========
+
 
 FuncParamKind = Literal["simple", "var_positional"]
 
@@ -315,7 +331,7 @@ class W_Func(W_Object):
 
 class W_ASTFunc(W_Func):
     funcdef: ast.FuncDef
-    closure: tuple[Namespace, ...]
+    closure: CLOSURE
 
     # types of local variables: this is non-None IIF the function has been
     # redshifted.
@@ -331,7 +347,7 @@ class W_ASTFunc(W_Func):
         w_functype: W_FuncType,
         fqn: FQN,
         funcdef: ast.FuncDef,
-        closure: tuple[Namespace, ...],
+        closure: CLOSURE,
         *,
         locals_types_w: Optional[dict[str, W_Type]] = None,
     ) -> None:
