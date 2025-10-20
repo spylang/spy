@@ -58,6 +58,7 @@ class AbstractFrame:
     symtable: SymTable
     locals: dict[str, LocalVar]
     specialized_names: dict[ast.Name, ast.Expr]
+    specialized_vardefs: dict[ast.VarDef, ast.Stmt]
     specialized_assigns: dict[ast.Assign, ast.Stmt]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
@@ -82,6 +83,7 @@ class AbstractFrame:
         # useful for Doppler, since shifting simply means to return the
         # specialized version.
         self.specialized_names = {}
+        self.specialized_vardefs = {}
         self.specialized_assigns = {}
         self.desugared_fors = {}
 
@@ -311,6 +313,20 @@ class AbstractFrame:
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         w_T = self.eval_expr_type(vardef.type)
         self.declare_local(vardef.name.value, w_T, vardef.loc)
+        if vardef.value is None:
+            return  # nothing to do
+
+        # fabricate an Assign to set the value
+        assign = self.specialized_vardefs.get(vardef)
+        if assign is None:
+            assign = self._specialize_vardef(vardef)
+            self.specialized_vardefs[vardef] = assign
+        self.exec_stmt(assign)
+
+    def _specialize_vardef(self, vardef: ast.VarDef) -> ast.Stmt:
+        return self._specialize_Assign(
+            ast.Assign(loc=vardef.loc, target=vardef.name, value=vardef.value)
+        )
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         # see the commnet in __init__ about specialized_assigns

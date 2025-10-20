@@ -78,23 +78,24 @@ class ModFrame(AbstractFrame):
     def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         varname = vardef.name.value
-        assign = decl.assign
         fqn = self.ns.join(varname)
         sym = self.symtable.lookup(varname)
         assert sym.level == 0, "module assign to name declared outside?"
 
-        # evaluate the vardef in the current frame
+        # evaluate the right side of the vardef
+        assert vardef.value is not None
+        wam = self.eval_expr(vardef.value)
+
+        # declare the variable
         is_auto = isinstance(vardef.type, ast.Auto)
-        if not is_auto:
-            self.exec_stmt(vardef)
+        if is_auto:
+            w_T = wam.w_static_T
+        else:
+            w_T = self.eval_expr_type(vardef.type)
+        self.declare_local(varname, w_T, vardef.loc)
 
-        # evaluate the assignment
-        wam = self.eval_expr(assign.value)
-
+        # do the assignment
         if sym.storage == "direct":
-            if is_auto:
-                assert sym.name not in self.locals
-                self.declare_local(sym.name, wam.w_static_T, decl.assign.target.loc)
             self.store_local(sym.name, wam.w_val)
 
         elif sym.storage == "cell":
