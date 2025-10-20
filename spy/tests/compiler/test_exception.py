@@ -30,10 +30,12 @@ class TestException(CompilerTest):
 
         with SPyError.raises("W_ValueError", match="world"):
             mod.foo(2)
-        with SPyError.raises("W_ValueError", match=""):
+        with SPyError.raises("W_ValueError") as excinfo:
             mod.foo(3)
+            assert excinfo.value.w_exc.message == ""
         with SPyError.raises("W_IndexError") as excinfo:
             mod.foo(4)
+            assert excinfo.value.w_exc.message == ""
 
     def test_cannot_raise_red(self):
         src = """
