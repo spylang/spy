@@ -123,7 +123,7 @@ class Parser:
                 globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.Assign):
-                vardef, assign = self.from_py_global_Assign(py_stmt)
+                vardef = self.from_py_global_Assign(py_stmt)
                 globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.ImportFrom):
@@ -403,9 +403,7 @@ class Parser:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
 
-    def from_py_global_Assign(
-        self, py_node: py_ast.Assign
-    ) -> tuple[spy.ast.VarDef, spy.ast.Assign]:
+    def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
         assign = self.from_py_stmt_Assign(py_node)
         assert isinstance(assign, spy.ast.Assign)
         kind: spy.ast.VarKind = "const"
@@ -418,7 +416,7 @@ class Parser:
             type=spy.ast.Auto(loc=py_node.loc),
             value=assign.value,
         )
-        return vardef, assign
+        return vardef
 
     def from_py_AnnAssign(
         self, py_node: py_ast.AnnAssign, is_global: bool = False
