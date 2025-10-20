@@ -138,6 +138,7 @@ class ScopeAnalyzer:
         loc: Loc,
         type_loc: Loc,
         *,
+        has_implicit_varkind: bool,
         impref: Optional[ImportRef] = None,
         hints: tuple[str, ...] = (),
     ) -> None:
@@ -172,6 +173,7 @@ class ScopeAnalyzer:
 
         # Determine storage type: module-level vars use "cell", others use
         # "direct"
+        assert varkind is not None
         storage: VarStorage
         if self.scope is self.mod_scope and varkind == "var":
             storage = "cell"
@@ -184,6 +186,7 @@ class ScopeAnalyzer:
             storage,
             loc=loc,
             type_loc=type_loc,
+            has_implicit_varkind=has_implicit_varkind,
             impref=impref,
             level=0,
             hints=hints,
@@ -202,7 +205,14 @@ class ScopeAnalyzer:
     def declare_Import(self, imp: ast.Import) -> None:
         w_obj = self.vm.lookup_ImportRef(imp.ref)
         if w_obj is not None:
-            self.define_name(imp.asname, "const", imp.loc, imp.loc, impref=imp.ref)
+            self.define_name(
+                imp.asname,
+                "const",
+                imp.loc,
+                imp.loc,
+                impref=imp.ref,
+                has_implicit_varkind=False,
+            )
             return
         #
         err = SPyError(
@@ -235,28 +245,56 @@ class ScopeAnalyzer:
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         varname = decl.vardef.name.value
         varkind = decl.vardef.kind
+        has_implicit_varkind = False
+        if varkind is None:
+            varkind = "const"
+            has_implicit_varkind = True
         hints = ("global-const",) if varkind == "const" else ()
-        self.define_name(varname, varkind, decl.loc, decl.vardef.type.loc, hints=hints)
+        self.define_name(
+            decl.vardef.name,
+            varkind,
+            decl.loc,
+            decl.vardef.type.loc,
+            hints=hints,
+            has_implicit_varkind=has_implicit_varkind,
+        )
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
-        assert vardef.kind == "var"
-        varname = vardef.name.value
-        self.define_name(varname, "var", vardef.loc, vardef.type.loc)
+        varkind = vardef.kind
+        has_implicit_varkind = False
+        if varkind is None:
+            varkind = "const"
+            has_implicit_varkind = True
+        self.define_name(
+            vardef.name,
+            varkind,
+            vardef.loc,
+            vardef.type.loc,
+            has_implicit_varkind=has_implicit_varkind,
+        )
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
         protoloc = funcdef.prototype_loc
-        self.define_name(funcdef.name, "const", protoloc, protoloc)
+        self.define_name(
+            funcdef.name, "const", protoloc, protoloc, has_implicit_varkind=False
+        )
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
-        ## arg_varkind: VarKind = "const" if scope_color == "blue" else "var"
         arg_hints = ("blue-param",) if scope_color == "blue" else ()
 
         inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.define_name(arg.name, "const", arg.loc, arg.type.loc, hints=arg_hints)
+            self.define_name(
+                arg.name,
+                "const",
+                arg.loc,
+                arg.type.loc,
+                hints=arg_hints,
+                has_implicit_varkind=True,
+            )
         if funcdef.vararg:
             self.define_name(
                 funcdef.vararg.name,
@@ -264,12 +302,14 @@ class ScopeAnalyzer:
                 funcdef.vararg.loc,
                 funcdef.vararg.type.loc,
                 hints=arg_hints,
+                has_implicit_varkind=True,
             )
         self.define_name(
             "@return",
             "var",
             funcdef.return_type.loc,
             funcdef.return_type.loc,
+            has_implicit_varkind=False,
         )
         for stmt in funcdef.body:
             self.declare(stmt)
@@ -277,7 +317,13 @@ class ScopeAnalyzer:
 
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
-        self.define_name(classdef.name, "const", classdef.loc, classdef.loc)
+        self.define_name(
+            classdef.name,
+            "const",
+            classdef.loc,
+            classdef.loc,
+            has_implicit_varkind=False,
+        )
         inner_scope = self.new_SymTable(classdef.name, "blue")
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
@@ -308,7 +354,9 @@ class ScopeAnalyzer:
                 varkind: VarKind = "var"
             else:
                 varkind = "const"
-            self.define_name(target.value, varkind, target.loc, type_loc)
+            self.define_name(
+                target.value, varkind, target.loc, type_loc, has_implicit_varkind=True
+            )
         else:
             # possible second assignment: promote to var if needed
             self._promote_const_to_var_maybe(target)
@@ -333,14 +381,24 @@ class ScopeAnalyzer:
     def declare_For(self, forstmt: ast.For) -> None:
         # Declare the hidden iterator variable _$iter0
         iter_name = f"_$iter{forstmt.seq}"
-        self.define_name(iter_name, "var", forstmt.iter.loc, forstmt.iter.loc)
+        self.define_name(
+            iter_name,
+            "var",
+            forstmt.iter.loc,
+            forstmt.iter.loc,
+            has_implicit_varkind=True,
+        )
 
         # Declare the loop variable (e.g., "i" in "for i in range(10)")
         # What is the "type_loc" of i? It's an implicit declaration, and its
         # value depends on the iterator returned by range. So we use
         # "range(10)" as the type_loc.
         self.define_name(
-            forstmt.target.value, "var", forstmt.target.loc, forstmt.iter.loc
+            forstmt.target.value,
+            "var",
+            forstmt.target.loc,
+            forstmt.iter.loc,
+            has_implicit_varkind=True,
         )
 
         # Increment loop depth before processing body

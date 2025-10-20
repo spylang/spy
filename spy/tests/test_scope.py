@@ -23,6 +23,8 @@ class MatchSymbol:
         self,
         name: str,
         varkind: VarKind,
+        implicit: str = "explicit",
+        *,
         level: int = 0,
         impref: Any = MISSING,
         storage: VarStorage = "direct",
@@ -30,6 +32,7 @@ class MatchSymbol:
     ):
         self.name = name
         self.varkind = varkind
+        self.has_implicit_varkind = implicit == "implicit"
         self.level = level
         self.impref = impref
         self.storage = storage
@@ -41,6 +44,7 @@ class MatchSymbol:
         return (
             self.name == sym.name
             and self.varkind == sym.varkind
+            and self.has_implicit_varkind == sym.has_implicit_varkind
             and self.level == sym.level
             and self.storage == sym.storage
             and (self.impref is MISSING or self.impref == sym.impref)
@@ -71,8 +75,10 @@ class TestScopeAnalyzer:
 
     def test_global(self):
         scopes = self.analyze("""
-        x: i32 = 0
-        var y: i32 = 0
+        a = 0
+        b: i32 = 0
+        const c: i32 = 0
+        var d: i32 = 0
 
         def foo() -> None:
             pass
@@ -84,8 +90,10 @@ class TestScopeAnalyzer:
         assert scope.name == "test"
         assert scope.color == "blue"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "const"),
-            "y": MatchSymbol("y", "var", storage="cell"),
+            "a": MatchSymbol("a", "const", "implicit"),
+            "b": MatchSymbol("b", "const", "implicit"),
+            "c": MatchSymbol("c", "const"),
+            "d": MatchSymbol("d", "var", storage="cell"),
             "foo": MatchSymbol("foo", "const"),
             "bar": MatchSymbol("bar", "const"),
             # captured
@@ -94,18 +102,22 @@ class TestScopeAnalyzer:
 
     def test_funcargs_and_locals(self):
         scopes = self.analyze("""
-        def foo(x: i32) -> i32:
-            y: i32 = 42
-            z = 42
+        def foo(a: i32) -> i32:
+            b = 0
+            c: i32 = 0
+            const d: i32 = 0
+            var e: i32 = 0
         """)
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "const"),
-            "y": MatchSymbol("y", "var"),
-            "z": MatchSymbol("z", "const"),
+            "a": MatchSymbol("a", "const", "implicit"),
+            "b": MatchSymbol("b", "const", "implicit"),
+            "c": MatchSymbol("c", "const", "implicit"),
+            "d": MatchSymbol("d", "const", "implicit"),
+            "e": MatchSymbol("e", "var"),
             "@return": MatchSymbol("@return", "var"),
             # captured
             "i32": MatchSymbol("i32", "const", level=2),

@@ -64,6 +64,7 @@ class Symbol:
     _: KW_ONLY
     loc: Loc  # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
+    has_implicit_varkind: bool
 
     # level indicates in which scope the symbol resides:
     #   0: this Symbol is defined in the scope corresponding to
@@ -78,6 +79,10 @@ class Symbol:
     level: int
     impref: Optional[ImportRef] = None
     hints: tuple[str, ...] = ()
+
+    ## def __post_init__(self):
+    ##     if self.name == "b":
+    ##         breakpoint()
 
     def replace(self, **kwargs: Any) -> "Symbol":
         return replace(self, **kwargs)
@@ -148,6 +153,7 @@ class SymTable:
                 type_loc=loc,
                 level=0,
                 impref=ImportRef("builtins", attr),
+                has_implicit_varkind=False,
             )
             scope.add(sym)
         return scope
