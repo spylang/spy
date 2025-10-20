@@ -406,9 +406,9 @@ class Parser:
     def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
         assign = self.from_py_stmt_Assign(py_node)
         assert isinstance(assign, spy.ast.Assign)
-        kind: spy.ast.VarKind = "const"
-        if py_node.targets[0].is_var:  # type: ignore
-            kind = "var"
+        varkind: spy.ast.VarKind = py_node.targets[0].spy_varkind
+        if varkind is None:
+            varkind = "const"
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=kind,
@@ -435,7 +435,8 @@ class Parser:
         # local VarDef are always 'var' (for now?)
         is_local = not is_global
         kind: spy.ast.VarKind
-        if is_local or py_node.target.is_var:
+        # XXX antocuni double check this code
+        if is_local or py_node.target.spy_varkind == "var":
             kind = "var"
         else:
             kind = "const"
