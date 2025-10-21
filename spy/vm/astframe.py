@@ -366,13 +366,6 @@ class AbstractFrame:
                     f"help: declare it as variable: `var {sym.name} ...`",
                     sym.loc,
                 )
-            ## elif sym.varkind_origin == "blue-param":
-            ##     err.add(
-            ##         "note",
-            ##         "blue function arguments are const by default",
-            ##         sym.loc,
-            ##     )
-
             raise err
 
         elif sym.storage == "direct":
@@ -427,7 +420,7 @@ class AbstractFrame:
             err.add("error", f"this is `{t}`", unpack.value.loc)
             raise err
 
-        if wam_tup.color == "red":
+        if wam_tup.color == "red" and self.w_func.color == "red":
             raise SPyError.simple(
                 "W_WIP",
                 "redshift of UnpackAssign works only for blue tuples",
