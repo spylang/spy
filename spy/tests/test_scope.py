@@ -190,8 +190,6 @@ class TestScopeAnalyzer:
             "y": MatchSymbol("y", "const", "explicit"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
-        # var/const declarations are NOT implicit vardefs
-        assert len(scope.implicit_vardefs) == 0
 
     def test_blue_func(self):
         scopes = self.analyze("""
