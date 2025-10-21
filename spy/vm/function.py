@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 class LocalVar:
     varname: str
     decl_loc: Loc
+    color: Color
     w_T: W_Type
     w_val: Optional[W_Object] = None
 

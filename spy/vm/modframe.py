@@ -87,12 +87,13 @@ class ModFrame(AbstractFrame):
         wam = self.eval_expr(vardef.value)
 
         # declare the variable
+        color = "blue" if vardef.kind == "const" else "red"
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
             w_T = wam.w_static_T
         else:
             w_T = self.eval_expr_type(vardef.type)
-        self.declare_local(varname, w_T, vardef.loc)
+        self.declare_local(varname, color, w_T, vardef.loc)
 
         # do the assignment
         if sym.storage == "direct":
@@ -114,5 +115,5 @@ class ModFrame(AbstractFrame):
         w_val = self.vm.lookup_ImportRef(sym.impref)
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
-        self.declare_local(sym.name, w_T, imp.loc)
+        self.declare_local(sym.name, "blue", w_T, imp.loc)
         self.store_local(sym.name, w_val)

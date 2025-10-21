@@ -29,7 +29,7 @@ class ClassFrame(AbstractFrame):
 
     def run(self) -> ClassBody:
         # execute field definitions
-        self.declare_local("@if", B.w_bool, Loc.fake())
+        self.declare_local("@if", "red", B.w_bool, Loc.fake())
         body = ClassBody(fields_w={}, dict_w={})
         for vardef in self.classdef.fields:
             varname = vardef.name.value

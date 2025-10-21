@@ -110,23 +110,12 @@ class Symbol:
     level: int
     impref: Optional[ImportRef] = None
 
-    ## def __post_init__(self):
-    ##     if self.name == "b":
-    ##         breakpoint()
-
     def replace(self, **kwargs: Any) -> "Symbol":
         return replace(self, **kwargs)
 
     @property
     def is_local(self) -> bool:
         return self.level == 0
-
-    @property
-    def color(self) -> Color:
-        """
-        Just for convenience: "const" is blue, everything else is red.
-        """
-        return "blue" if self.varkind == "const" else "red"
 
     def pp(self) -> None:
         pprint.pprint(self)
@@ -197,14 +186,15 @@ class SymTable:
         print(f"<symbol table '{name}'>")
         # sort symbols by:
         #   1. level
-        #   2. color (blue, then red)
+        #   2. color (const, then var)
         #   3. name (@special names last)
         symbols = sorted(
             self._symbols.values(),
-            key=lambda sym: (sym.level, sym.color, sym.name.replace("@", "~")),
+            key=lambda sym: (sym.level, sym.varkind, sym.name.replace("@", "~")),
         )
         for sym in symbols:
-            sym_name = color.set(sym.color, f"{sym.name:10s}")
+            sym_color = "blue" if sym.varkind == "const" else "red"
+            sym_name = color.set(sym_color, f"{sym.name:10s}")
             if sym.storage == "NameError":
                 # special formatting
                 print(f"    [ ] NameError  {sym_name}")
@@ -216,9 +206,7 @@ class SymTable:
             storage = ""
             if sym.storage == "cell":
                 storage = "[cell]"
-            print(
-                f"    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {impref}"
-            )
+            print(f"    [{sym.level}] {sym.varkind:5s} {sym_name} {storage} {impref}")
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols
