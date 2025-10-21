@@ -127,7 +127,7 @@ class AbstractFrame:
         # during redshift.
         if name[0] == "@":
             # special case '@if', '@while', etc.
-            color = "red"
+            color: Color = "red"
         else:
             sym = self.symtable.lookup(name)
             assert sym.is_local
@@ -460,7 +460,7 @@ class AbstractFrame:
             err.add("error", f"this is `{t}`", unpack.value.loc)
             raise err
 
-        if wam_tup.color == "red" and self.w_func.color == "red":
+        if wam_tup.color == "red" and self.symtable.color == "red":
             raise SPyError.simple(
                 "W_WIP",
                 "redshift of UnpackAssign works only for blue tuples",
@@ -762,7 +762,7 @@ class AbstractFrame:
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
-        color = "blue" if sym.varkind == "const" else "red"
+        color: Color = "blue" if sym.varkind == "const" else "red"
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(

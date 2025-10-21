@@ -290,8 +290,8 @@ class ScopeAnalyzer:
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
         if scope_color == "red":
-            argkind = "var"
-            argkind_origin = "red-param"
+            argkind: VarKind = "var"
+            argkind_origin: VarKindOrigin = "red-param"
         else:
             argkind = "const"
             argkind_origin = "blue-param"

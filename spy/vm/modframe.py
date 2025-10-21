@@ -1,6 +1,6 @@
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import SymTable
+from spy.analyze.symtable import Color, SymTable
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.astframe import AbstractFrame
@@ -87,7 +87,7 @@ class ModFrame(AbstractFrame):
         wam = self.eval_expr(vardef.value)
 
         # declare the variable
-        color = "blue" if vardef.kind == "const" else "red"
+        color: Color = "blue" if vardef.kind == "const" else "red"
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
             w_T = wam.w_static_T

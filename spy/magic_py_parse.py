@@ -81,7 +81,9 @@ def get_tokens(src: str) -> list[TokenInfo]:
     return list(tokenize(readline))
 
 
-def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]:
+def preprocess(
+    src: str, filename: str = "<string>"
+) -> tuple[str, dict[LocInfo, VarKind]]:
     try:
         tokens = get_tokens(src)
     except (SyntaxError, TokenError) as e:
@@ -96,13 +98,13 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
     newtokens = []
     i = 0
     N = len(tokens)
-    varkind_locs: dict[VarKind, Loc] = {}
+    varkind_locs: dict[LocInfo, VarKind] = {}
 
     while i < N - 1:
         tok0 = tokens[i]
         tok1 = tokens[i + 1]
         if tok0.type == NAME and tok0.string in ("var", "const") and tok1.type == NAME:
-            varkind = tok0.string
+            varkind: VarKind = tok0.string  # type: ignore
             # tok0 is 'var'
             # tok1 is the name
             # basically, we want to turn:

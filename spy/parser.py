@@ -406,6 +406,8 @@ class Parser:
     def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
         assign = self.from_py_stmt_Assign(py_node)
         assert isinstance(assign, spy.ast.Assign)
+        assert len(py_node.targets) == 1
+        assert isinstance(py_node.targets[0], py_ast.Name)
         varkind = py_node.targets[0].spy_varkind
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
