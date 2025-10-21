@@ -251,7 +251,7 @@ class ScopeAnalyzer:
             has_implicit_varkind = True
         hints = ("global-const",) if varkind == "const" else ()
         self.define_name(
-            decl.vardef.name,
+            varname,
             varkind,
             decl.loc,
             decl.vardef.type.loc,
@@ -260,13 +260,17 @@ class ScopeAnalyzer:
         )
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
+        varname = vardef.name.value
         varkind = vardef.kind
         has_implicit_varkind = False
         if varkind is None:
-            varkind = "const"
+            if self.loop_depth > 0:
+                varkind = "var"
+            else:
+                varkind = "const"
             has_implicit_varkind = True
         self.define_name(
-            vardef.name,
+            varname,
             varkind,
             vardef.loc,
             vardef.type.loc,
@@ -421,6 +425,7 @@ class ScopeAnalyzer:
                 level=-1,
                 loc=Loc.fake(),
                 type_loc=Loc.fake(),
+                has_implicit_varkind=True,
             )
             self.scope.add(sym)
 
