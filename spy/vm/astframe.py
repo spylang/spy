@@ -58,7 +58,6 @@ class AbstractFrame:
     symtable: SymTable
     locals: dict[str, LocalVar]
     specialized_names: dict[ast.Name, ast.Expr]
-    specialized_vardefs: dict[ast.VarDef, ast.Stmt]
     specialized_assigns: dict[ast.Assign, ast.Stmt]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
@@ -83,7 +82,6 @@ class AbstractFrame:
         # useful for Doppler, since shifting simply means to return the
         # specialized version.
         self.specialized_names = {}
-        self.specialized_vardefs = {}
         self.specialized_assigns = {}
         self.desugared_fors = {}
 
@@ -311,23 +309,17 @@ class AbstractFrame:
         assert w_T.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        varname = vardef.name.value
         w_T = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.name.value, w_T, vardef.loc)
+        self.declare_local(varname, w_T, vardef.loc)
         if vardef.value is None:
             return  # nothing to do
 
-        # fabricate an Assign to set the value
-        assign = self.specialized_vardefs.get(vardef)
-        if assign is None:
-            assign = self._specialize_vardef(vardef)
-            self.specialized_vardefs[vardef] = assign
-        self.exec_stmt(assign)
-
-    def _specialize_vardef(self, vardef: ast.VarDef) -> ast.Stmt:
-        assert vardef.value is not None
-        return self._specialize_Assign(
-            ast.Assign(loc=vardef.loc, target=vardef.name, value=vardef.value)
-        )
+        # assign the initial value
+        sym = self.symtable.lookup(varname)
+        wam = self.eval_expr(vardef.value, varname=varname)
+        if not self.redshifting or sym.color == "blue":
+            self.store_local(varname, wam.w_val)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         # see the commnet in __init__ about specialized_assigns
@@ -345,20 +337,21 @@ class AbstractFrame:
         if sym.varkind == "const":
             err = SPyError("W_TypeError", "invalid assignment target")
             err.add("error", f"{sym.name} is const", target.loc)
-            err.add("note", "const declared here", sym.loc)
+            err.add("note", "const declared here ({sym.varkind_origin})", sym.loc)
 
-            if "blue-param" in sym.hints:
-                err.add(
-                    "note",
-                    "blue function arguments are const by default",
-                    sym.loc,
-                )
-            elif "global-const" in sym.hints:
+            if sym.varkind_origin == "global-const":
                 err.add(
                     "note",
                     f"help: declare it as variable: `var {sym.name} ...`",
                     sym.loc,
                 )
+            ## elif sym.varkind_origin == "blue-param":
+            ##     err.add(
+            ##         "note",
+            ##         "blue function arguments are const by default",
+            ##         sym.loc,
+            ##     )
+
             raise err
 
         elif sym.storage == "direct":
