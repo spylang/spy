@@ -132,7 +132,6 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    @pytest.mark.skip(reason="fixme")
     def test_blue_locals(self):
         src = """
         def inc(x: i32) -> i32:
