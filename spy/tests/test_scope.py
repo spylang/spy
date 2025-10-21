@@ -118,7 +118,7 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "a": MatchSymbol("a", "const", "auto"),
+            "a": MatchSymbol("a", "var", "func-param"),
             "b": MatchSymbol("b", "const", "auto"),
             "c": MatchSymbol("c", "const", "auto"),
             "d": MatchSymbol("d", "const", "explicit"),
@@ -158,8 +158,8 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "const", "auto"),
-            "y": MatchSymbol("y", "var", "auto"),
+            "x": MatchSymbol("x", "var", "func-param"),
+            "y": MatchSymbol("y", "var", "func-param"),
             "b": MatchSymbol("b", "const", "auto"),
             "c": MatchSymbol("c", "var", "explicit"),
             "d": MatchSymbol("d", "const", "auto"),
@@ -187,7 +187,7 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "blue"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "const", "auto"),
+            "x": MatchSymbol("x", "var", "func-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
@@ -239,7 +239,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "FLAG": MatchSymbol("FLAG", "const", "auto"),
+            "FLAG": MatchSymbol("FLAG", "var", "func-param"),
             "x": MatchSymbol("x", "var", "auto"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
@@ -275,7 +275,7 @@ class TestScopeAnalyzer:
         bardef = foodef.body[1]
         assert isinstance(bardef, ast.FuncDef)
         assert bardef.symtable._symbols == {
-            "y": MatchSymbol("y", "const", "auto"),
+            "y": MatchSymbol("y", "var", "func-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
             "x": MatchSymbol("x", "const", "auto", level=1),
         }
@@ -354,8 +354,8 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "a": MatchSymbol("a", "const", "auto"),
-            "args": MatchSymbol("args", "const", "auto"),
+            "a": MatchSymbol("a", "var", "func-param"),
+            "args": MatchSymbol("args", "var", "func-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
@@ -506,7 +506,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "a": MatchSymbol("a", "const", "auto"),
-            "args": MatchSymbol("args", "const", "auto"),
+            "a": MatchSymbol("a", "var", "func-param"),
+            "args": MatchSymbol("args", "var", "func-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 #
 # Function and class definitions are always "const".
 # Field definition inside a "class" are always "var".
+# Function parameters are always "var".
 #
 # Module level assignments are "const" by default, unless explicitly marked as "var".
 #
@@ -40,6 +41,7 @@ VarKindOrigin = Literal[
     "funcdef",       # function defs are always "const"
     "classdef",      # class defs are always "const"
     "class-field",   # class field declarations are always "var"
+    "func-param",    # function parameters are always "var"
 ]  # fmt: skip
 
 

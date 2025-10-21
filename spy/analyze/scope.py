@@ -296,16 +296,16 @@ class ScopeAnalyzer:
         for arg in funcdef.args:
             self.define_name(
                 arg.name,
-                "const",
-                "auto",
+                "var",
+                "func-param",
                 arg.loc,
                 arg.type.loc,
             )
         if funcdef.vararg:
             self.define_name(
                 funcdef.vararg.name,
-                "const",
-                "auto",
+                "var",
+                "func-param",
                 funcdef.vararg.loc,
                 funcdef.vararg.type.loc,
             )
