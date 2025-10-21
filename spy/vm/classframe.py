@@ -33,7 +33,7 @@ class ClassFrame(AbstractFrame):
         body = ClassBody(fields_w={}, dict_w={})
         for vardef in self.classdef.fields:
             varname = vardef.name.value
-            assert vardef.kind == "var"
+            assert vardef.kind is None
             self.exec_stmt(vardef)
             w_T = self.locals[varname].w_T
             body.fields_w[varname] = W_Field(varname, w_T)
