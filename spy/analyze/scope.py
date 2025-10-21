@@ -333,7 +333,14 @@ class ScopeAnalyzer:
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
         for vardef in classdef.fields:
-            self.declare_VarDef(vardef)
+            # Class fields are always "var" with origin "class-field"
+            self.define_name(
+                vardef.name.value,
+                "var",
+                "class-field",
+                vardef.loc,
+                vardef.type.loc,
+            )
         for stmt in classdef.body:
             self.declare(stmt)
         self.pop_scope()

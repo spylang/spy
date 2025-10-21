@@ -343,8 +343,8 @@ class TestScopeAnalyzer:
         }
         classdef = self.mod.get_classdef("Foo")
         assert classdef.symtable._symbols == {
-            "x": MatchSymbol("x", "const", "auto"),  # XXX FIXME
-            "y": MatchSymbol("y", "const", "auto"),  # XXX FIXME
+            "x": MatchSymbol("x", "var", "class-field"),
+            "y": MatchSymbol("y", "var", "class-field"),
             "foo": MatchSymbol("foo", "const", "funcdef"),
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }

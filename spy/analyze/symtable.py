@@ -18,6 +18,7 @@ VarKindOrigin = Literal[
     "explicit",      # "var x = 0" or "const x = 0"
     "funcdef",       # function defs are always "const"
     "classdef",      # class defs are always "const"
+    "class-field",   # class field declarations are always "var"
 ]  # fmt: skip
 
 
