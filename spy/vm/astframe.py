@@ -398,11 +398,12 @@ class AbstractFrame:
             err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
 
             if sym.varkind_origin == "global-const":
-                err.add(
-                    "note",
-                    f"help: declare it as variable: `var {sym.name} ...`",
-                    sym.loc,
-                )
+                msg = f"help: declare it as variable: `var {sym.name} ...`"
+                err.add("note", msg, sym.loc)
+            elif sym.varkind_origin == "blue-param":
+                msg = "blue function arguments are const by default"
+                err.add("note", msg, sym.loc)
+
             raise err
 
         elif sym.storage == "direct":
@@ -988,11 +989,12 @@ class ASTFrame(AbstractFrame):
         self.declare_local("@return", "red", w_ft.w_restype, funcdef.return_type.loc)
         self.declare_local("@assert", "red", B.w_bool, Loc.fake())
 
+        color = self.w_func.color
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
             if param.kind == "simple":
                 arg = funcdef.args[i]
-                self.declare_local(arg.name, "red", param.w_T, arg.loc)
+                self.declare_local(arg.name, color, param.w_T, arg.loc)
 
             elif param.kind == "var_positional":
                 assert funcdef.vararg is not None
@@ -1000,7 +1002,7 @@ class ASTFrame(AbstractFrame):
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 arg = funcdef.vararg
-                self.declare_local(arg.name, "red", B.w_tuple, arg.loc)
+                self.declare_local(arg.name, color, B.w_tuple, arg.loc)
 
             else:
                 assert False

@@ -41,7 +41,8 @@ VarKindOrigin = Literal[
     "funcdef",       # function defs are always "const"
     "classdef",      # class defs are always "const"
     "class-field",   # class field declarations are always "var"
-    "func-param",    # function parameters are always "var"
+    "red-param",     # parameters of red functions are "var"
+    "blue-param",    # parameters of blue functions are "const"
 ]  # fmt: skip
 
 

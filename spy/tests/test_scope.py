@@ -118,7 +118,7 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "a": MatchSymbol("a", "var", "func-param"),
+            "a": MatchSymbol("a", "var", "red-param"),
             "b": MatchSymbol("b", "const", "auto"),
             "c": MatchSymbol("c", "const", "auto"),
             "d": MatchSymbol("d", "const", "explicit"),
@@ -157,7 +157,7 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "a": MatchSymbol("a", "var", "func-param"),
+            "a": MatchSymbol("a", "var", "red-param"),
             "b": MatchSymbol("b", "const", "auto"),
             "c": MatchSymbol("c", "var", "explicit"),
             "d": MatchSymbol("d", "const", "auto"),
@@ -204,7 +204,23 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "blue"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "var", "func-param"),
+            "x": MatchSymbol("x", "const", "blue-param"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+    def test_blue_param_stay_const(self):
+        # this code will raise when executed, see
+        # test_basic.py:test_cannot_assign_to_blue_param. But here we want to test that
+        # "const" of "blue-param" origin cannot be promoted to "var"
+        scopes = self.analyze("""
+        @blue
+        def foo(x) -> None:
+            x = 4
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "const", "blue-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
@@ -256,7 +272,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "FLAG": MatchSymbol("FLAG", "var", "func-param"),
+            "FLAG": MatchSymbol("FLAG", "const", "blue-param"),
             "x": MatchSymbol("x", "var", "auto"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
@@ -292,7 +308,7 @@ class TestScopeAnalyzer:
         bardef = foodef.body[1]
         assert isinstance(bardef, ast.FuncDef)
         assert bardef.symtable._symbols == {
-            "y": MatchSymbol("y", "var", "func-param"),
+            "y": MatchSymbol("y", "var", "red-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
             "x": MatchSymbol("x", "const", "auto", level=1),
         }
@@ -371,8 +387,8 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "a": MatchSymbol("a", "var", "func-param"),
-            "args": MatchSymbol("args", "var", "func-param"),
+            "a": MatchSymbol("a", "var", "red-param"),
+            "args": MatchSymbol("args", "var", "red-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
@@ -523,7 +539,7 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "a": MatchSymbol("a", "var", "func-param"),
-            "args": MatchSymbol("args", "var", "func-param"),
+            "a": MatchSymbol("a", "const", "blue-param"),
+            "args": MatchSymbol("args", "const", "blue-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }

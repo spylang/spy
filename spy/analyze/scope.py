@@ -289,6 +289,12 @@ class ScopeAnalyzer:
         self.define_name(funcdef.name, "const", "funcdef", protoloc, protoloc)
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
+        if scope_color == "red":
+            argkind = "var"
+            argkind_origin = "red-param"
+        else:
+            argkind = "const"
+            argkind_origin = "blue-param"
 
         inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
@@ -296,16 +302,16 @@ class ScopeAnalyzer:
         for arg in funcdef.args:
             self.define_name(
                 arg.name,
-                "var",
-                "func-param",
+                argkind,
+                argkind_origin,
                 arg.loc,
                 arg.type.loc,
             )
         if funcdef.vararg:
             self.define_name(
                 funcdef.vararg.name,
-                "var",
-                "func-param",
+                argkind,
+                argkind_origin,
                 funcdef.vararg.loc,
                 funcdef.vararg.type.loc,
             )
@@ -373,7 +379,12 @@ class ScopeAnalyzer:
 
     def _promote_const_to_var_maybe(self, target: ast.StrConst) -> None:
         level, scope, sym = self.lookup_ref(target.value)
-        if sym.is_local and sym.varkind == "const" and sym.impref is None:
+        if (
+            sym
+            and sym.is_local
+            and sym.varkind == "const"
+            and sym.varkind_origin == "auto"
+        ):
             if target.value in self.scope._symbols:
                 # Second assignment to a local const: make it var
                 old_sym = self.scope._symbols[target.value]
