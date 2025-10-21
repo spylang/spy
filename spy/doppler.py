@@ -159,7 +159,8 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
         self.exec_stmt_VarDef(vardef)
         newtype = self.shifted_expr[vardef.type]
-        return [vardef.replace(type=newtype)]
+        newvalue = self.shifted_expr[vardef.value]
+        return [vardef.replace(type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
