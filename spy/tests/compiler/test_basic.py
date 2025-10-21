@@ -132,6 +132,20 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    @pytest.mark.skip(reason="fixme")
+    def test_blue_locals(self):
+        src = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            x = 1        # this is a blue local
+            y = inc(1)   # this is a red local because inc() is @red
+            return x + y
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
     @skip_backends("C", reason="type <object> not supported")
     def test_upcast_and_downcast(self):
         mod = self.compile("""
