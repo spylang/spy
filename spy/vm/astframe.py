@@ -376,7 +376,8 @@ class AbstractFrame:
                 self.locals[varname].color = wam.color
 
         # store the value (common for "type inference" and "definition")
-        if not self.redshifting or sym.color == "blue":
+        lv = self.locals[varname]
+        if not self.redshifting or lv.color == "blue":
             self.store_local(varname, wam.w_val)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
@@ -427,16 +428,16 @@ class AbstractFrame:
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target
         varname = target.value
-        sym = self.symtable.lookup(varname)
-        is_declared = varname in self.locals
-        if is_declared:
-            wam = self.eval_expr(assign.value, varname=varname)
-        else:
+        lv = self.locals.get(varname)
+        if lv is None:
             # first assignment, implicit declaration
             wam = self.eval_expr(assign.value)
             self.declare_local(varname, wam.w_static_T, target.loc)
+            lv = self.locals[varname]
+        else:
+            wam = self.eval_expr(assign.value, varname=varname)
 
-        if not self.redshifting or sym.color == "blue":
+        if not self.redshifting or lv.color == "blue":
             self.store_local(varname, wam.w_val)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
