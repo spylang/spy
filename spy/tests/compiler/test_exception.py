@@ -40,7 +40,7 @@ class TestException(CompilerTest):
     def test_cannot_raise_red(self):
         src = """
         def foo() -> None:
-            exc = Exception("hello")
+            var exc = Exception("hello")
             raise exc
         """
         errors = expect_errors(
