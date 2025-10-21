@@ -8,7 +8,7 @@ def int_type(request):
     return request.param
 
 
-class TestUnsafeInt(CompilerTest):
+class TestUnsafeIntDiv(CompilerTest):
     def test_unchecked_div(self, int_type):
         mod = self.compile(f"""
         from unsafe import unchecked_div
