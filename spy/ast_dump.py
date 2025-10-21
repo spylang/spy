@@ -85,9 +85,7 @@ class Dumper(TextBuilder):
         self._dump_node(node, name, fields, text_color="turquoise")
 
     def dump_Symbol(self, sym: Symbol) -> None:
-        self.write(
-            f"Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})"
-        )
+        self.write(f"Symbol({sym.name!r}, {sym.varkind!r}, {sym.storage!r})")
 
     def _dump_node(
         self, node: Any, name: str, fields: list[str], text_color: Optional[str]

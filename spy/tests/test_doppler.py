@@ -44,8 +44,7 @@ class TestDoppler:
 
     def test_red_vars(self):
         src = """
-        def foo() -> i32:
-            x: i32 = 1
+        def foo(x: i32) -> i32:
             return x
         """
         self.redshift(src)
