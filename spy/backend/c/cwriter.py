@@ -306,6 +306,8 @@ class CFuncWriter:
         FQN("operator::u8_add"): "+",
         FQN("operator::u8_sub"): "-",
         FQN("operator::u8_mul"): "*",
+        FQN("unsafe::u8_unchecked_floordiv"): "/",
+        FQN("unsafe::u8_unchecked_mod"): "%",
         FQN("operator::u8_lshift"): "<<",
         FQN("operator::u8_rshift"): ">>",
         FQN("operator::u8_and"): "&",
@@ -346,14 +348,21 @@ class CFuncWriter:
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
         # FQN('operator::i8_div')
+        # FQN('unsafe::i8_unchecked_div')
         # FQN('operator::i8_floordiv')
+        # FQN('unsafe::i8_unchecked_floordiv')
         # FQN('operator::i8_mod')
+        # FQN('unsafe::i8_unchecked_mod')
         # FQN('operator::u8_div')
+        # FQN('unsafe::u8_unchecked_div')
         # FQN('operator::u8_floordiv')
         # FQN('operator::u8_mod')
         # FQN('operator::i32_div')
+        # FQN('unsafe::i32_unchecked_div')
         # FQN('operator::i32_floordiv')
+        # FQN('unsafe::i32_unchecked_floordiv')
         # FQN('operator::i32_mod')
+        # FQN('unsafe::i32_unchecked_mod')
         # FQN('operator::f64_div')
         # FQN('operator::f64_floordiv')
         # FQN('operator::f64_mod')
