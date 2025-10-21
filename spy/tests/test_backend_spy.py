@@ -92,10 +92,8 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32
-            x = 1
-            y: f64
-            y = 2.0
+            x: i32 = 1
+            y: f64 = 2.0
         """)
 
     def test_implicit_declaration(self):
@@ -107,8 +105,7 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32
-            x = 1
+            x: i32 = 1
             y: f64
             y = 2.0
         """)
