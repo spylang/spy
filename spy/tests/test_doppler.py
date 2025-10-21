@@ -61,7 +61,7 @@ class TestDoppler:
     def test_fqn_format(self):
         src = """
         def foo(x: i32) -> None:
-            y: str = 'hello'
+            var y: str = 'hello'
         """
         self.redshift(src)
         expected = """
@@ -105,6 +105,28 @@ class TestDoppler:
 
         def foo() -> i32:
             return ANSWER()
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return 42
+        """)
+
+    def test_blue_local_assign(self):
+        self.redshift("""
+        def foo() -> i32:
+            x = 42
+            return x
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return 42
+        """)
+
+    def test_blue_local_vardef(self):
+        self.redshift("""
+        def foo() -> i32:
+            x: i32 = 42
+            return x
         """)
         self.assert_dump("""
         def foo() -> i32:

@@ -161,6 +161,12 @@ class DopplerFrame(ASTFrame):
         is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
 
+        sym = self.symtable.lookup(varname)
+        assert sym.is_local
+        if self.locals[varname].color == "blue":
+            # redshift away assignments to blue locals
+            return []
+
         if is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
@@ -176,9 +182,15 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
-        specialized = self.specialized_assigns[assign]
-        newvalue = self.shifted_expr[assign.value]
-        return [specialized.replace(value=newvalue)]
+        varname = assign.target.value
+        sym = self.symtable.lookup(varname)
+        if sym.is_local and self.locals[varname].color == "blue":
+            # redshift away assignments to blue locals
+            return []
+        else:
+            specialized = self.specialized_assigns[assign]
+            newvalue = self.shifted_expr[assign.value]
+            return [specialized.replace(value=newvalue)]
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
