@@ -142,7 +142,7 @@ class TestScopeAnalyzer:
         def foo(x: i32, y: i32) -> None:
             # x is not touched   # param: const
             y = 0                # param + assign: var
-            # b: i32 = 0           # vardef, implicit varkind: const   FIXME
+            b: i32 = 0           # vardef, implicit varkind: const
             var c: i32 = 0       # vardef, explicit varkind: var
             d = 0                # single assign: const
             e = 0                # multi assign: var
@@ -165,7 +165,7 @@ class TestScopeAnalyzer:
         assert scope._symbols == {
             "x": MatchSymbol("x", "const", "auto"),
             "y": MatchSymbol("y", "var", "auto"),
-            # "b": MatchSymbol("b", "const", "explicit"),  # FIXME
+            "b": MatchSymbol("b", "const", "auto"),
             "c": MatchSymbol("c", "var", "explicit"),
             "d": MatchSymbol("d", "const", "auto"),
             "e": MatchSymbol("e", "var", "auto"),
