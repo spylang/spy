@@ -324,6 +324,7 @@ class AbstractFrame:
         self.exec_stmt(assign)
 
     def _specialize_vardef(self, vardef: ast.VarDef) -> ast.Stmt:
+        assert vardef.value is not None
         return self._specialize_Assign(
             ast.Assign(loc=vardef.loc, target=vardef.name, value=vardef.value)
         )
