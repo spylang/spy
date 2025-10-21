@@ -9,6 +9,27 @@ from spy.textbuilder import ColorFormatter
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+# ====== VarKind rules ======
+#
+# Symbol.varkind determine whether a symbol is "var" or "const".
+# Symbol.varkind_origin tracks how we determined the varkind.
+#
+# The varkind_origin can be "explicit":
+#     var x: i32 = 0
+#     const y: i32 = 0
+#
+# In all the other cases, it's determined by the context.
+#
+# Function and class definitions are always "const".
+# Field definition inside a "class" are always "var".
+#
+# Module level assignments are "const" by default, unless explicitly marked as "var".
+#
+# Local variables inside a function follow these rules:
+#   - if a variable is assigned only once, it's a "const"
+#   - if a variable is assigned multiple times, it's a "var"
+#   - if a variable is assigned inside a loop, it's a "var"
+
 Color = Literal["red", "blue"]
 VarStorage = Literal["direct", "cell", "NameError"]
 VarKind = Literal["var", "const"]

@@ -94,11 +94,6 @@ class TestScopeAnalyzer:
         scope = scopes.by_module()
         assert scope.name == "test"
         assert scope.color == "blue"
-
-        ## sym = scope._symbols["b"]
-        ## breakpoint()
-        ## sym == MatchSymbol("b", "const")
-
         assert scope._symbols == {
             "a": MatchSymbol("a", "const", "global-const"),
             "b": MatchSymbol("b", "const", "global-const"),
