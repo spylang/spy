@@ -389,6 +389,7 @@ class AbstractFrame:
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target
         varname = target.value
+        sym = self.symtable.lookup(varname)
         is_declared = varname in self.locals
         if is_declared:
             wam = self.eval_expr(assign.value, varname=varname)
@@ -397,7 +398,7 @@ class AbstractFrame:
             wam = self.eval_expr(assign.value)
             self.declare_local(varname, wam.w_static_T, target.loc)
 
-        if not self.redshifting:
+        if not self.redshifting or sym.color == "blue":
             self.store_local(varname, wam.w_val)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
