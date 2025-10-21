@@ -10,8 +10,15 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 Color = Literal["red", "blue"]
-VarKind = Literal["var", "const"]
 VarStorage = Literal["direct", "cell", "NameError"]
+VarKind = Literal["var", "const"]
+VarKindOrigin = Literal[
+    "auto",          # "x = 0" inside a function
+    "global-const",  # "x = 0" at module level
+    "explicit",      # "var x = 0" or "const x = 0"
+    "funcdef",       # function defs are always "const"
+    "classdef",      # class defs are always "const"
+]  # fmt: skip
 
 
 def maybe_blue(*colors: Color) -> Color:
@@ -60,11 +67,11 @@ class ImportRef:
 class Symbol:
     name: str
     varkind: VarKind
+    varkind_origin: VarKindOrigin
     storage: VarStorage
     _: KW_ONLY
     loc: Loc  # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
-    has_implicit_varkind: bool
 
     # level indicates in which scope the symbol resides:
     #   0: this Symbol is defined in the scope corresponding to
@@ -78,7 +85,6 @@ class Symbol:
     #   * 2: builtins
     level: int
     impref: Optional[ImportRef] = None
-    hints: tuple[str, ...] = ()
 
     ## def __post_init__(self):
     ##     if self.name == "b":
@@ -148,12 +154,12 @@ class SymTable:
             sym = Symbol(
                 attr,
                 "const",
+                "explicit",
                 "direct",
                 loc=loc,
                 type_loc=loc,
                 level=0,
                 impref=ImportRef("builtins", attr),
-                has_implicit_varkind=False,
             )
             scope.add(sym)
         return scope

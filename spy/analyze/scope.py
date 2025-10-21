@@ -1,7 +1,15 @@
 from typing import Optional
 
 from spy import ast
-from spy.analyze.symtable import Color, ImportRef, Symbol, SymTable, VarKind, VarStorage
+from spy.analyze.symtable import (
+    Color,
+    ImportRef,
+    Symbol,
+    SymTable,
+    VarKind,
+    VarKindOrigin,
+    VarStorage,
+)
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.vm import SPyVM
@@ -135,12 +143,11 @@ class ScopeAnalyzer:
         self,
         name: str,
         varkind: VarKind,
+        varkind_origin: VarKindOrigin,
         loc: Loc,
         type_loc: Loc,
         *,
-        has_implicit_varkind: bool,
         impref: Optional[ImportRef] = None,
-        hints: tuple[str, ...] = (),
     ) -> None:
         """
         Add a name definition to the current scope.
@@ -183,13 +190,12 @@ class ScopeAnalyzer:
         sym = Symbol(
             name,
             varkind,
+            varkind_origin,
             storage,
             loc=loc,
             type_loc=type_loc,
-            has_implicit_varkind=has_implicit_varkind,
             impref=impref,
             level=0,
-            hints=hints,
         )
         self.scope.add(sym)
 
@@ -208,10 +214,10 @@ class ScopeAnalyzer:
             self.define_name(
                 imp.asname,
                 "const",
+                "auto",
                 imp.loc,
                 imp.loc,
                 impref=imp.ref,
-                has_implicit_varkind=False,
             )
             return
         #
@@ -245,47 +251,44 @@ class ScopeAnalyzer:
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         varname = decl.vardef.name.value
         varkind = decl.vardef.kind
-        has_implicit_varkind = False
         if varkind is None:
             varkind = "const"
-            has_implicit_varkind = True
-        hints = ("global-const",) if varkind == "const" else ()
+            varkind_origin: VarKindOrigin = "global-const"
+        else:
+            varkind_origin = "explicit"
         self.define_name(
             varname,
             varkind,
+            varkind_origin,
             decl.loc,
             decl.vardef.type.loc,
-            hints=hints,
-            has_implicit_varkind=has_implicit_varkind,
         )
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
         varkind = vardef.kind
-        has_implicit_varkind = False
         if varkind is None:
             if self.loop_depth > 0:
                 varkind = "var"
             else:
                 varkind = "const"
-            has_implicit_varkind = True
+            varkind_origin: VarKindOrigin = "auto"
+        else:
+            varkind_origin = "explicit"
         self.define_name(
             varname,
             varkind,
+            varkind_origin,
             vardef.loc,
             vardef.type.loc,
-            has_implicit_varkind=has_implicit_varkind,
         )
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
         protoloc = funcdef.prototype_loc
-        self.define_name(
-            funcdef.name, "const", protoloc, protoloc, has_implicit_varkind=False
-        )
+        self.define_name(funcdef.name, "const", "funcdef", protoloc, protoloc)
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
-        arg_hints = ("blue-param",) if scope_color == "blue" else ()
 
         inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
@@ -294,26 +297,24 @@ class ScopeAnalyzer:
             self.define_name(
                 arg.name,
                 "const",
+                "auto",
                 arg.loc,
                 arg.type.loc,
-                hints=arg_hints,
-                has_implicit_varkind=True,
             )
         if funcdef.vararg:
             self.define_name(
                 funcdef.vararg.name,
                 "const",
+                "auto",
                 funcdef.vararg.loc,
                 funcdef.vararg.type.loc,
-                hints=arg_hints,
-                has_implicit_varkind=True,
             )
         self.define_name(
             "@return",
             "var",
+            "auto",
             funcdef.return_type.loc,
             funcdef.return_type.loc,
-            has_implicit_varkind=False,
         )
         for stmt in funcdef.body:
             self.declare(stmt)
@@ -324,9 +325,9 @@ class ScopeAnalyzer:
         self.define_name(
             classdef.name,
             "const",
+            "classdef",
             classdef.loc,
             classdef.loc,
-            has_implicit_varkind=False,
         )
         inner_scope = self.new_SymTable(classdef.name, "blue")
         self.push_scope(inner_scope)
@@ -358,9 +359,7 @@ class ScopeAnalyzer:
                 varkind: VarKind = "var"
             else:
                 varkind = "const"
-            self.define_name(
-                target.value, varkind, target.loc, type_loc, has_implicit_varkind=True
-            )
+            self.define_name(target.value, varkind, "auto", target.loc, type_loc)
         else:
             # possible second assignment: promote to var if needed
             self._promote_const_to_var_maybe(target)
@@ -388,9 +387,9 @@ class ScopeAnalyzer:
         self.define_name(
             iter_name,
             "var",
+            "auto",
             forstmt.iter.loc,
             forstmt.iter.loc,
-            has_implicit_varkind=True,
         )
 
         # Declare the loop variable (e.g., "i" in "for i in range(10)")
@@ -400,9 +399,9 @@ class ScopeAnalyzer:
         self.define_name(
             forstmt.target.value,
             "var",
+            "auto",
             forstmt.target.loc,
             forstmt.iter.loc,
-            has_implicit_varkind=True,
         )
 
         # Increment loop depth before processing body
@@ -421,11 +420,11 @@ class ScopeAnalyzer:
             sym = Symbol(
                 varname,
                 "var",
+                "auto",
                 "NameError",
                 level=-1,
                 loc=Loc.fake(),
                 type_loc=Loc.fake(),
-                has_implicit_varkind=True,
             )
             self.scope.add(sym)
 
