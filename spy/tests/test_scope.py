@@ -134,9 +134,8 @@ class TestScopeAnalyzer:
         def range(n: i32) -> dynamic:
             pass
 
-        def foo(x: i32, y: i32) -> None:
-            # x is not touched   # param: const
-            y = 0                # param + assign: var
+        def foo(a: i32) -> None:
+            # a is not touched   # param: var
             b: i32 = 0           # vardef, implicit varkind: const
             var c: i32 = 0       # vardef, explicit varkind: var
             d = 0                # single assign: const
@@ -151,15 +150,14 @@ class TestScopeAnalyzer:
                 h = 0            # assign in loop: var
 
             while True:
-                f = 0       # assign in loop: var
+                j = 0       # assign in loop: var
         """)
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "var", "func-param"),
-            "y": MatchSymbol("y", "var", "func-param"),
+            "a": MatchSymbol("a", "var", "func-param"),
             "b": MatchSymbol("b", "const", "auto"),
             "c": MatchSymbol("c", "var", "explicit"),
             "d": MatchSymbol("d", "const", "auto"),
@@ -168,13 +166,32 @@ class TestScopeAnalyzer:
             "g": MatchSymbol("g", "var", "auto"),
             "h": MatchSymbol("h", "var", "auto"),
             "i": MatchSymbol("i", "var", "auto"),
-            "f": MatchSymbol("f", "var", "auto"),
+            "j": MatchSymbol("j", "var", "auto"),
             #
             "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
             "@return": MatchSymbol("@return", "var", "auto"),
             "range": MatchSymbol("range", "const", "funcdef", level=1),
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
+
+    def test_const_var_without_type(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            var x = 42
+            const y = 100
+            x = 50
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == "test::foo"
+        assert scope.color == "red"
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "var", "explicit"),
+            "y": MatchSymbol("y", "const", "explicit"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+        # var/const declarations are NOT implicit vardefs
+        assert len(scope.implicit_vardefs) == 0
 
     def test_blue_func(self):
         scopes = self.analyze("""

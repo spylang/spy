@@ -450,11 +450,22 @@ class Parser:
             self.unsupported(py_node, "assign to multiple targets")
         py_target = py_node.targets[0]
         if isinstance(py_target, py_ast.Name):
-            return spy.ast.Assign(
-                loc=py_node.loc,
-                target=spy.ast.StrConst(py_target.loc, py_target.id),
-                value=self.from_py_expr(py_node.value),
-            )
+            if py_target.spy_varkind is not None:
+                # "var x = 0" is a VarDef, not an Assign
+                return spy.ast.VarDef(
+                    loc=py_node.loc,
+                    kind=py_target.spy_varkind,
+                    name=spy.ast.StrConst(py_target.loc, py_target.id),
+                    type=spy.ast.Auto(loc=py_node.loc),
+                    value=self.from_py_expr(py_node.value),
+                )
+            else:
+                # "x = 0" is an Assign
+                return spy.ast.Assign(
+                    loc=py_node.loc,
+                    target=spy.ast.StrConst(py_target.loc, py_target.id),
+                    value=self.from_py_expr(py_node.value),
+                )
         elif isinstance(py_target, py_ast.Attribute):
             return spy.ast.SetAttr(
                 loc=py_node.loc,
