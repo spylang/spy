@@ -393,7 +393,7 @@ class AbstractFrame:
         varname = target.value
         sym = self.symtable.lookup(varname)
 
-        if sym.varkind == "const":
+        if sym.varkind == "const" and sym.varkind_origin != "auto":
             err = SPyError("W_TypeError", "invalid assignment target")
             err.add("error", f"{sym.name} is const", target.loc)
             err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
@@ -432,7 +432,7 @@ class AbstractFrame:
         if lv is None:
             # first assignment, implicit declaration
             wam = self.eval_expr(assign.value)
-            self.declare_local(varname, wam.w_static_T, target.loc)
+            self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
             lv = self.locals[varname]
         else:
             wam = self.eval_expr(assign.value, varname=varname)
