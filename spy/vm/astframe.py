@@ -337,7 +337,7 @@ class AbstractFrame:
         if sym.varkind == "const":
             err = SPyError("W_TypeError", "invalid assignment target")
             err.add("error", f"{sym.name} is const", target.loc)
-            err.add("note", "const declared here ({sym.varkind_origin})", sym.loc)
+            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
 
             if sym.varkind_origin == "global-const":
                 err.add(
