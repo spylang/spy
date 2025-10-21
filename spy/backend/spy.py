@@ -263,12 +263,18 @@ class SPyBackend:
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
-        t = self.fmt_expr(vardef.type)
-        if vardef.value:
+        is_auto = isinstance(vardef.type, ast.Auto)
+        if is_auto:
+            assert vardef.value
             v = self.fmt_expr(vardef.value)
-            self.wl(f"{varname}: {t} = {v}")
+            self.wl(f"{varname} = {v}")
         else:
-            self.wl(f"{varname}: {t}")
+            t = self.fmt_expr(vardef.type)
+            if vardef.value:
+                v = self.fmt_expr(vardef.value)
+                self.wl(f"{varname}: {t} = {v}")
+            else:
+                self.wl(f"{varname}: {t}")
         self.vars_declared.add(varname)
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:

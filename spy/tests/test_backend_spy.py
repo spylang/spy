@@ -100,14 +100,13 @@ class TestSPyBackend(CompilerTest):
         self.backend = "doppler"
         mod = self.compile("""
         def foo() -> None:
-            x: i32 = 1
-            y = 2.0
+            var x: i32 = 1
+            var y = 2.0
         """)
         self.assert_dump("""
         def foo() -> None:
             x: i32 = 1
-            y: f64
-            y = 2.0
+            y: f64 = 2.0
         """)
 
     def test_dont_dump_blue_func(self):
