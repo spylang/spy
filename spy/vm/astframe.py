@@ -309,15 +309,36 @@ class AbstractFrame:
         assert w_T.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        # Possible cases:
+        #   declaration    (not is_auto and not value):  [var] x: i32
+        #   definition     (not is_auto and value):      [var] x: i32 = 0
+        #   type inference (is_auto and value):          var   x      = 0
+        #   invalid        (is_auto and not value):      var   x
+        #
+        # Note that the "type inference" case is basically a simple Assign.
         varname = vardef.name.value
-        w_T = self.eval_expr_type(vardef.type)
-        self.declare_local(varname, w_T, vardef.loc)
-        if vardef.value is None:
-            return  # nothing to do
-
-        # assign the initial value
         sym = self.symtable.lookup(varname)
-        wam = self.eval_expr(vardef.value, varname=varname)
+        is_auto = isinstance(vardef.type, ast.Auto)
+
+        if vardef.value is None:
+            # declaration
+            assert not is_auto, "invalid VarDef"
+            w_T = self.eval_expr_type(vardef.type)
+            self.declare_local(varname, w_T, vardef.loc)
+            return
+
+        if is_auto:
+            # type inference
+            wam = self.eval_expr(vardef.value)
+            w_T = wam.w_static_T
+            self.declare_local(varname, w_T, vardef.loc)
+        else:
+            # definition
+            w_T = self.eval_expr_type(vardef.type)
+            self.declare_local(varname, w_T, vardef.loc)
+            wam = self.eval_expr(vardef.value, varname=varname)
+
+        # store the value (common for "type inference" and "definition")
         if not self.redshifting or sym.color == "blue":
             self.store_local(varname, wam.w_val)
 

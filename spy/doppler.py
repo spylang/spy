@@ -157,8 +157,17 @@ class DopplerFrame(ASTFrame):
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
+        varname = vardef.name.value
+        is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
-        newtype = self.shifted_expr[vardef.type]
+
+        if is_auto:
+            # use the actual type computed during type inference
+            w_T = self.locals[varname].w_T
+            newtype = make_const(self.vm, vardef.type.loc, w_T)
+        else:
+            newtype = self.shifted_expr[vardef.type]
+
         if vardef.value is None:
             newvalue = None
         else:

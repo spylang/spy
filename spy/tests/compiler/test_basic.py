@@ -97,10 +97,11 @@ class TestBasic(CompilerTest):
     def test_local_variables(self):
         mod = self.compile("""
         def foo() -> i32:
-            x: i32 = 42
-            return x
+            x: i32 = 10
+            var y = 90
+            return x + y
         """)
-        assert mod.foo() == 42
+        assert mod.foo() == 100
 
     @only_interp
     def test_blue_cannot_redeclare(self):
