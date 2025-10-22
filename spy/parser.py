@@ -1,4 +1,6 @@
 import ast as py_ast
+import linecache
+import re
 from types import NoneType
 from typing import NoReturn, Optional
 
@@ -697,12 +699,21 @@ class Parser:
             and isinstance(value, spy.ast.Constant)
             and isinstance(value.value, (int, float))
         ):
+
+            def unary_offset(line: str, value: str) -> int:
+                # Match a unary operator (+, -, ~) followed by spaces and the exact value
+                pattern = rf"([+\-~])(\s+){re.escape(value)}(?!\w)"
+                m = re.search(pattern, line)
+                return len(m.group(2)) + 1 if m else 1
+
             c_loc = value.loc
+            srcline = linecache.getline(c_loc.filename, c_loc.line_start)
+            offset = unary_offset(srcline, str(value.value))
             new_loc = Loc(
                 c_loc.filename,
                 c_loc.line_start,
                 c_loc.line_end,
-                c_loc.col_start - 1,  # handle the negative sign
+                c_loc.col_start - offset,  # handle the negative sign
                 c_loc.col_end,
             )
             return spy.ast.Constant(new_loc, -value.value)

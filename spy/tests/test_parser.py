@@ -712,12 +712,21 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    def test_negative_const(self):
+    @pytest.mark.parametrize(
+        "srcline, expected_src, expected_value",
+        (
+            ("return -123 * -1.0", "-123", -123),
+            ("return -     123 * -1.0", "-     123", -123),
+            ("return (-         123) * -1.0", "-         123", -123),
+            ("return ((-   123) * -1.0)", "-   123", -123),
+        ),
+    )
+    def test_negative_const(self, srcline, expected_src, expected_value):
         # special case -NUM, so that it's seen as a constant by the rest of
         # the code
         mod = self.parse(f"""
         def foo() -> f64:
-            return -123 * -1.0
+            {srcline}
         """)
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
@@ -731,8 +740,8 @@ class TestParser:
         """
         const = stmt.value.left  # type: ignore[attr-defined]
         self.assert_dump(stmt, expected)
-        assert const.value == -123
-        assert const.loc.get_src() == "-123"
+        assert const.value == expected_value
+        assert const.loc.get_src() == expected_src
 
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
