@@ -20,7 +20,7 @@ from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
-from spy.util import colors_coordinates, highlight_spy_maybe
+from spy.util import colors_coordinates, highlight_src_maybe
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
 from spy.vm.function import W_ASTFunc, W_FuncType
@@ -479,4 +479,4 @@ def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
             cursor += 1
 
         highlighted_lines.append("".join(result))
-    return "".join(highlight_spy_maybe(line) for line in highlighted_lines)
+    return "".join(highlight_src_maybe("spy", line) for line in highlighted_lines)

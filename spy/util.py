@@ -5,7 +5,7 @@ import re
 import subprocess
 import typing
 from collections import defaultdict
-from typing import Callable, Sequence
+from typing import Callable, Literal, Sequence
 
 import py.path
 
@@ -106,8 +106,9 @@ def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
         print(line)
 
 
-def highlight_C_maybe(code: str | bytes) -> str:
+def highlight_src_maybe(lang: Literal["C", "spy"], code: str | bytes) -> str:
     assert isinstance(code, str)
+
     try:
         import pygments  # type: ignore
     except ImportError:
@@ -115,31 +116,19 @@ def highlight_C_maybe(code: str | bytes) -> str:
 
     from pygments import highlight
     from pygments.formatters import TerminalFormatter  # type: ignore
-    from pygments.lexers import CLexer  # type: ignore
-
-    return highlight(code, CLexer(), TerminalFormatter())
-
-
-def highlight_spy_maybe(code: str | bytes) -> str:
-    assert isinstance(code, str)
-    try:
-        import pygments  # type: ignore
-    except ImportError:
-        return code
-
-    from pygments import highlight
-    from pygments.formatters import TerminalFormatter  # type: ignore
-    from pygments.lexers import CLexer  # type: ignore
-
-    # Regex for ANSI escape sequences
-    regexp = re.compile(r"\033\[[0-9;]*m")  # \033 is \x1b
+    from pygments.lexers import CLexer, PythonLexer  # type: ignore
 
     def has_ansi(text: str) -> bool:
         return bool(regexp.search(text))
 
-    if not has_ansi(code):
-        return highlight(code, CLexer(), TerminalFormatter())
-    return code
+    if lang == "spy":
+        regexp = re.compile(r"\033\[[0-9;]*m")  # \033 is \x1b
+
+        if not has_ansi(code):
+            return highlight(code, PythonLexer(), TerminalFormatter())
+        return code
+
+    return highlight(code, CLexer(), TerminalFormatter())
 
 
 def shortrepr(s: str, n: int) -> str:

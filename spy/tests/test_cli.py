@@ -80,14 +80,14 @@ class TestMain:
         self.main_spy.write(textwrap.dedent(main_src))
         self.factorial_spy.write(textwrap.dedent(factorial_src))
 
-    def run(self, *args: Any, decolorize_stout=True) -> Any:
+    def run(self, *args: Any, decolorize_stdout=True) -> Any:
         args2 = [str(arg) for arg in args]
         print("run: spy %s" % " ".join(args2))
         res = self.runner.invoke(app, args2)
         print(res.stdout)
         if res.exit_code != 0:
             raise res.exception  # type: ignore
-        return res, decolorize(res.stdout) if decolorize_stout else res.stdout
+        return res, decolorize(res.stdout) if decolorize_stdout else res.stdout
 
     def run_external(self, python_exe, *args: Any) -> Any:
         args2 = [str(arg) for arg in args]
@@ -150,7 +150,7 @@ class TestMain:
         assert stdout.startswith("Module(")
 
     def test_colorize(self):
-        _, stdout = self.run("--colorize", self.factorial_spy, decolorize_stout=False)
+        _, stdout = self.run("--colorize", self.factorial_spy, decolorize_stdout=False)
         # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
         expected_outout = """
         import time
