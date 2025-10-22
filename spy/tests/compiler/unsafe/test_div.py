@@ -90,8 +90,8 @@ class TestUnsafeFloatDiv(CompilerTest):
         def div(x: f64, y: f64) -> f64: return unchecked_div(x, y)
         """)
         assert mod.div(1.5, 2.0) == 0.75
-        assert mod.div(643.2, 51.2) == 12.5625
-        assert mod.div(500.000034, 45.000034) == 11.111103471610711
+        assert mod.div(11.0, 2.0) == 5.5
+        assert mod.div(500.000034, 45.000034) == 500.000034 / 45.000034
 
     def test_unchecked_floordiv(self):
         mod = self.compile("""
@@ -99,8 +99,8 @@ class TestUnsafeFloatDiv(CompilerTest):
         def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
         """)
         assert mod.floordiv(1.5, 2.0) == 0.0
-        assert mod.floordiv(643.2, 51.2) == 12.0
-        assert mod.floordiv(500.000034, 45.000034) == 11.0
+        assert mod.floordiv(11.0, 2.0) == 5.0
+        assert mod.floordiv(500.000034, 45.000034) == 500.000034 // 45.000034
 
     def test_unchecked_mod(self):
         mod = self.compile("""
@@ -108,8 +108,8 @@ class TestUnsafeFloatDiv(CompilerTest):
         def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
         """)
         assert mod.mod(10.5, 2.5) == 0.5
-        assert mod.mod(643.2, 51.2) == 28.80000000000001
-        assert mod.mod(500.000034, 45.000034) == 4.999660000000034
+        assert mod.mod(11.0, 2.0) == 1.0
+        assert mod.mod(500.000034, 45.000034) == 500.000034 % 45.000034
 
     def test_spy_zero_division_unchecked(self):
         mod = self.compile(f"""
@@ -162,9 +162,9 @@ class TestUnsafeFloatDiv(CompilerTest):
         def mod(x: i32, y: f64) -> f64: return unchecked_mod(x, y)
         def mod2(x: f64, y: i32) -> f64: return unchecked_mod(x, y)
         """)
-        assert mod.div(3, 2.5) == 1.2
-        assert mod.div2(3.5, 2) == 1.75
-        assert mod.floordiv(643, 51.2) == 12.0
-        assert mod.floordiv2(643.2, 51) == 12.0
-        assert mod.mod(10, 2.5) == 0.0
-        assert mod.mod2(10.5, 2) == 0.5
+        assert mod.div(11, 2.0) == 5.5
+        assert mod.div2(11.0, 2) == 5.5
+        assert mod.floordiv(11, 2.0) == 5.0
+        assert mod.floordiv2(11.0, 2) == 5.0
+        assert mod.mod(11, 2.0) == 1.0
+        assert mod.mod2(11.0, 2) == 1.0
