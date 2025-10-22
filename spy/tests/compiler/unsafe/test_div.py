@@ -81,3 +81,90 @@ class TestUnsafeIntDiv(CompilerTest):
             mod.mod(10, 0)
         except ZeroDivisionError:
             pass
+
+
+class TestUnsafeFloatDiv(CompilerTest):
+    def test_unchecked_div(self):
+        mod = self.compile("""
+        from unsafe import unchecked_div
+        def div(x: f64, y: f64) -> f64: return unchecked_div(x, y)
+        """)
+        assert mod.div(1.5, 2.0) == 0.75
+        assert mod.div(643.2, 51.2) == 12.5625
+        assert mod.div(500.000034, 45.000034) == 11.111103471610711
+
+    def test_unchecked_floordiv(self):
+        mod = self.compile("""
+        from unsafe import unchecked_floordiv
+        def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
+        """)
+        assert mod.floordiv(1.5, 2.0) == 0.0
+        assert mod.floordiv(643.2, 51.2) == 12.0
+        assert mod.floordiv(500.000034, 45.000034) == 11.0
+
+    def test_unchecked_mod(self):
+        mod = self.compile("""
+        from unsafe import unchecked_mod
+        def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
+        """)
+        assert mod.mod(10.5, 2.5) == 0.5
+        assert mod.mod(643.2, 51.2) == 28.80000000000001
+        assert mod.mod(500.000034, 45.000034) == 4.999660000000034
+
+    def test_spy_zero_division_unchecked(self):
+        mod = self.compile(f"""
+        from unsafe import unchecked_div, unchecked_floordiv, unchecked_mod
+        def div(x: f64, y: f64) -> f64: return unchecked_div(x, y)
+        def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
+        def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
+        """)
+        try:
+            mod.div(1.5, 0.0)
+        except ZeroDivisionError:
+            pass
+
+        try:
+            mod.floordiv(10.0, 0.0)
+        except ZeroDivisionError:
+            pass
+
+        try:
+            mod.mod(10.5, 0.0)
+        except ZeroDivisionError:
+            pass
+
+    def test_division_mixed_signs(self):
+        mod = self.compile("""
+        from unsafe import unchecked_floordiv, unchecked_mod
+        def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
+        def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
+        """)
+        assert mod.floordiv(3.5, 1.5) == 2.0
+        assert mod.floordiv(3.5, -1.5) == -3.0
+        assert mod.floordiv(-3.5, 1.5) == -3.0
+        assert mod.floordiv(-3.5, -1.5) == 2.0
+        assert mod.mod(3.5, 1.5) == 0.5
+        assert mod.mod(3.5, -1.5) == -1.0
+        assert mod.mod(-3.5, 1.5) == 1.0
+        assert mod.mod(-3.5, -1.5) == -0.5
+        assert mod.mod(5.0, float("inf")) == 5.0
+        assert mod.mod(-5.0, float("inf")) == float("inf")
+        assert mod.mod(5.0, float("-inf")) == float("-inf")
+        assert mod.mod(-5.0, float("-inf")) == -5.0
+
+    def test_division_mixed_types(self):
+        mod = self.compile("""
+        from unsafe import unchecked_div, unchecked_floordiv, unchecked_mod
+        def div(x: i32, y: f64) -> f64: return unchecked_div(x, y)
+        def div2(x: f64, y: i32) -> f64: return unchecked_div(x, y)
+        def floordiv(x: i32, y: f64) -> f64: return unchecked_floordiv(x, y)
+        def floordiv2(x: f64, y: i32) -> f64: return unchecked_floordiv(x, y)
+        def mod(x: i32, y: f64) -> f64: return unchecked_mod(x, y)
+        def mod2(x: f64, y: i32) -> f64: return unchecked_mod(x, y)
+        """)
+        assert mod.div(3, 2.5) == 1.2
+        assert mod.div2(3.5, 2) == 1.75
+        assert mod.floordiv(643, 51.2) == 12.0
+        assert mod.floordiv2(643.2, 51) == 12.0
+        assert mod.mod(10, 2.5) == 0.0
+        assert mod.mod2(10.5, 2) == 0.5
