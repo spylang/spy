@@ -221,11 +221,25 @@ static inline double spy_operator$f64_floordiv(double x, double y) {
     return floor(x / y);
 }
 
+static inline double spy_unsafe$f64_unchecked_floordiv(double x, double y) {
+    return floor(x / y);
+}
+
 static inline double spy_operator$f64_mod(double x, double y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "float modulo by zero",
                   __FILE__, __LINE__);
     }
+    double r = fmod(x, y);
+
+    if (r != 0.00 && (y < 0.00) != (r < 0.00)) {
+        r += y;
+    }
+
+    return r;
+}
+
+static inline double spy_unsafe$f64_unchecked_mod(double x, double y) {
     double r = fmod(x, y);
 
     if (r != 0.00 && (y < 0.00) != (r < 0.00)) {

@@ -338,6 +338,7 @@ class CFuncWriter:
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
         FQN("operator::f64_mul"): "*",
+        FQN("unsafe::f64_unchecked_div"): "/",
         FQN("operator::f64_eq"): "==",
         FQN("operator::f64_ne"): "!=",
         FQN("operator::f64_lt"): "<",
@@ -365,7 +366,9 @@ class CFuncWriter:
         # FQN('unsafe::i32_unchecked_mod')
         # FQN('operator::f64_div')
         # FQN('operator::f64_floordiv')
+        # FQN('unsafe::f64_unchecked_floordiv')
         # FQN('operator::f64_mod')
+        # FQN('unsafe::f64_unchecked_mod')
     }
 
     FQN2UnaryOp = {

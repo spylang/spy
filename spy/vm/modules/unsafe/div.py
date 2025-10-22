@@ -9,7 +9,7 @@ from spy.vm.primitive import (
     W_I32,
     W_U8,
 )
-from spy.vm.w import W_Object, W_OpSpec
+from spy.vm.w import W_Object, W_OpSpec, W_Type
 
 from . import UNSAFE
 
@@ -19,9 +19,7 @@ if TYPE_CHECKING:
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_unchecked_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
-    wam_l, wam_r = float_type_check(wam_l, wam_r)
-
-    w_T = wam_l.w_static_T
+    w_T = meta_args_type(wam_l, wam_r)
     match w_T:
         case B.w_i8:
             return W_OpSpec(UNSAFE.w_i8_unchecked_div)
@@ -40,9 +38,7 @@ def w_unchecked_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_unchecked_floordiv(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
-    wam_l, wam_r = float_type_check(wam_l, wam_r)
-
-    w_T = wam_l.w_static_T
+    w_T = meta_args_type(wam_l, wam_r)
     match w_T:
         case B.w_i8:
             return W_OpSpec(UNSAFE.w_i8_unchecked_floordiv)
@@ -61,9 +57,7 @@ def w_unchecked_floordiv(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_O
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_unchecked_mod(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
-    wam_l, wam_r = float_type_check(wam_l, wam_r)
-
-    w_T = wam_l.w_static_T
+    w_T = meta_args_type(wam_l, wam_r)
     match w_T:
         case B.w_i8:
             return W_OpSpec(UNSAFE.w_i8_unchecked_mod)
@@ -80,12 +74,12 @@ def w_unchecked_mod(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
             )
 
 
-def float_type_check(wam_l: W_MetaArg, wam_r: W_MetaArg) -> tuple[W_MetaArg, W_MetaArg]:
+def meta_args_type(wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_Type:
     if (wam_l.w_static_T == B.w_f64) ^ (wam_r.w_static_T == B.w_f64):
         if wam_l.w_static_T != B.w_f64:
-            wam_l, wam_r = wam_r, wam_l
+            return wam_r.w_static_T
 
-    return (wam_l, wam_r)
+    return wam_l.w_static_T
 
 
 class W_NumLike(Protocol):
