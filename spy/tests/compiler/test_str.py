@@ -94,7 +94,7 @@ class TestStr(CompilerTest):
     def test_object_str_red(self):
         src = """
         def str_red_type() -> str:
-            t: type = i32   # note, this is a red variable
+            var t: type = i32   # note, this is a red variable
             return str(t)
         """
         mod = self.compile(src)
@@ -148,7 +148,7 @@ class TestStr(CompilerTest):
     def test_repr_red(self):
         src = """
         def repr_red_type() -> str:
-            t: type = i32   # note, this is a red variable
+            var t: type = i32   # note, this is a red variable
             return repr(t)
         """
         mod = self.compile(src)

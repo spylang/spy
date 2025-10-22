@@ -1,7 +1,15 @@
 from typing import Optional
 
 from spy import ast
-from spy.analyze.symtable import Color, ImportRef, Symbol, SymTable, VarKind, VarStorage
+from spy.analyze.symtable import (
+    Color,
+    ImportRef,
+    Symbol,
+    SymTable,
+    VarKind,
+    VarKindOrigin,
+    VarStorage,
+)
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.vm import SPyVM
@@ -43,6 +51,7 @@ class ScopeAnalyzer:
     mod: ast.Module
     stack: list[SymTable]
     inner_scopes: dict[ast.FuncDef | ast.ClassDef, SymTable]
+    loop_depth: int
 
     def __init__(self, vm: SPyVM, modname: str, mod: ast.Module) -> None:
         self.vm = vm
@@ -51,6 +60,7 @@ class ScopeAnalyzer:
         self.mod_scope = SymTable(modname, "blue")
         self.stack = []
         self.inner_scopes = {}
+        self.loop_depth = 0
         self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
 
@@ -132,8 +142,8 @@ class ScopeAnalyzer:
     def define_name(
         self,
         name: str,
-        color: ast.Color,
         varkind: VarKind,
+        varkind_origin: VarKindOrigin,
         loc: Loc,
         type_loc: Loc,
         *,
@@ -170,6 +180,7 @@ class ScopeAnalyzer:
 
         # Determine storage type: module-level vars use "cell", others use
         # "direct"
+        assert varkind is not None
         storage: VarStorage
         if self.scope is self.mod_scope and varkind == "var":
             storage = "cell"
@@ -178,8 +189,8 @@ class ScopeAnalyzer:
 
         sym = Symbol(
             name,
-            color,
             varkind,
+            varkind_origin,
             storage,
             loc=loc,
             type_loc=type_loc,
@@ -201,7 +212,12 @@ class ScopeAnalyzer:
         w_obj = self.vm.lookup_ImportRef(imp.ref)
         if w_obj is not None:
             self.define_name(
-                imp.asname, "blue", "const", imp.loc, imp.loc, impref=imp.ref
+                imp.asname,
+                "const",
+                "auto",
+                imp.loc,
+                imp.loc,
+                impref=imp.ref,
             )
             return
         #
@@ -233,43 +249,76 @@ class ScopeAnalyzer:
         raise err
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
-        color: Color
-        if decl.vardef.kind == "var":
-            color = "red"
+        varname = decl.vardef.name.value
+        varkind = decl.vardef.kind
+        if varkind is None:
+            varkind = "const"
+            varkind_origin: VarKindOrigin = "global-const"
         else:
-            color = "blue"
+            varkind_origin = "explicit"
         self.define_name(
-            decl.vardef.name, color, decl.vardef.kind, decl.loc, decl.vardef.type.loc
+            varname,
+            varkind,
+            varkind_origin,
+            decl.loc,
+            decl.vardef.type.loc,
         )
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
-        assert vardef.kind == "var"
-        self.define_name(vardef.name, "red", vardef.kind, vardef.loc, vardef.type.loc)
+        varname = vardef.name.value
+        varkind = vardef.kind
+        if varkind is None:
+            if self.loop_depth > 0:
+                varkind = "var"
+            else:
+                varkind = "const"
+            varkind_origin: VarKindOrigin = "auto"
+        else:
+            varkind_origin = "explicit"
+        self.define_name(
+            varname,
+            varkind,
+            varkind_origin,
+            vardef.loc,
+            vardef.type.loc,
+        )
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
-        self.define_name(
-            funcdef.name, "blue", "const", funcdef.prototype_loc, funcdef.prototype_loc
-        )
+        protoloc = funcdef.prototype_loc
+        self.define_name(funcdef.name, "const", "funcdef", protoloc, protoloc)
         # add function arguments to the "inner" scope
         scope_color = funcdef.color
+        if scope_color == "red":
+            argkind: VarKind = "var"
+            argkind_origin: VarKindOrigin = "red-param"
+        else:
+            argkind = "const"
+            argkind_origin = "blue-param"
+
         inner_scope = self.new_SymTable(funcdef.name, scope_color)
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
-            self.define_name(arg.name, scope_color, "var", arg.loc, arg.type.loc)
+            self.define_name(
+                arg.name,
+                argkind,
+                argkind_origin,
+                arg.loc,
+                arg.type.loc,
+            )
         if funcdef.vararg:
             self.define_name(
                 funcdef.vararg.name,
-                scope_color,
-                "var",
+                argkind,
+                argkind_origin,
                 funcdef.vararg.loc,
                 funcdef.vararg.type.loc,
             )
         self.define_name(
             "@return",
-            scope_color,
             "var",
+            "auto",
             funcdef.return_type.loc,
             funcdef.return_type.loc,
         )
@@ -279,18 +328,34 @@ class ScopeAnalyzer:
 
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
-        self.define_name(classdef.name, "blue", "const", classdef.loc, classdef.loc)
+        self.define_name(
+            classdef.name,
+            "const",
+            "classdef",
+            classdef.loc,
+            classdef.loc,
+        )
         inner_scope = self.new_SymTable(classdef.name, "blue")
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
         for vardef in classdef.fields:
-            self.declare_VarDef(vardef)
+            # Class fields are always "var" with origin "class-field"
+            self.define_name(
+                vardef.name.value,
+                "var",
+                "class-field",
+                vardef.loc,
+                vardef.type.loc,
+            )
         for stmt in classdef.body:
             self.declare(stmt)
         self.pop_scope()
 
     def declare_Assign(self, assign: ast.Assign) -> None:
         self._declare_target_maybe(assign.target, assign.value)
+
+    def declare_AugAssign(self, augassign: ast.AugAssign) -> None:
+        self._promote_const_to_var_maybe(augassign.target)
 
     def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         for target in unpack.targets:
@@ -301,26 +366,67 @@ class ScopeAnalyzer:
         # declaration
         level, scope, sym = self.lookup_ref(target.value)
         if sym is None:
-            # we don't have an explicit type annotation: we consider the
-            # "value" to be the type_loc, because it's where the type will be
-            # computed from
+            # First assignment: mark as const unless in a loop
             type_loc = value.loc
-            self.define_name(target.value, "red", "var", target.loc, type_loc)
+            if self.loop_depth > 0:
+                varkind: VarKind = "var"
+            else:
+                varkind = "const"
+            self.define_name(target.value, varkind, "auto", target.loc, type_loc)
+        else:
+            # possible second assignment: promote to var if needed
+            self._promote_const_to_var_maybe(target)
+
+    def _promote_const_to_var_maybe(self, target: ast.StrConst) -> None:
+        level, scope, sym = self.lookup_ref(target.value)
+        if (
+            sym
+            and sym.is_local
+            and sym.varkind == "const"
+            and sym.varkind_origin == "auto"
+        ):
+            if target.value in self.scope._symbols:
+                # Second assignment to a local const: make it var
+                old_sym = self.scope._symbols[target.value]
+                if old_sym.varkind == "const":
+                    new_sym = old_sym.replace(varkind="var")
+                    self.scope._symbols[target.value] = new_sym
+
+    def declare_While(self, whilestmt: ast.While) -> None:
+        # Increment loop depth before processing body
+        self.loop_depth += 1
+        for stmt in whilestmt.body:
+            self.declare(stmt)
+        self.loop_depth -= 1
 
     def declare_For(self, forstmt: ast.For) -> None:
         # Declare the hidden iterator variable _$iter0
         iter_name = f"_$iter{forstmt.seq}"
-        self.define_name(iter_name, "red", "var", forstmt.iter.loc, forstmt.iter.loc)
+        self.define_name(
+            iter_name,
+            "var",
+            "auto",
+            forstmt.iter.loc,
+            forstmt.iter.loc,
+        )
 
         # Declare the loop variable (e.g., "i" in "for i in range(10)")
         # What is the "type_loc" of i? It's an implicit declaration, and its
         # value depends on the iterator returned by range. So we use
         # "range(10)" as the type_loc.
         self.define_name(
-            forstmt.target.value, "red", "var", forstmt.target.loc, forstmt.iter.loc
+            forstmt.target.value,
+            "var",
+            "auto",
+            forstmt.target.loc,
+            forstmt.iter.loc,
         )
+
+        # Increment loop depth before processing body
+        self.loop_depth += 1
         for stmt in forstmt.body:
             self.declare(stmt)
+        self.loop_depth -= 1
 
     # ===
 
@@ -331,8 +437,8 @@ class ScopeAnalyzer:
             assert not self.scope.has_definition(varname)
             sym = Symbol(
                 varname,
-                "red",
                 "var",
+                "auto",
                 "NameError",
                 level=-1,
                 loc=Loc.fake(),

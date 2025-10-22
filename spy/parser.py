@@ -118,13 +118,13 @@ class Parser:
                 globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
                 mod.decls.append(globclass)
             elif isinstance(py_stmt, py_ast.AnnAssign):
-                vardef, assign = self.from_py_AnnAssign(py_stmt, is_global=True)
-                assert assign is not None
-                globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef, assign)
+                vardef = self.from_py_AnnAssign(py_stmt)
+                assert vardef.value is not None
+                globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.Assign):
-                vardef, assign = self.from_py_global_Assign(py_stmt)
-                globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef, assign)
+                vardef = self.from_py_global_Assign(py_stmt)
+                globvar = spy.ast.GlobalVarDef(py_stmt.loc, vardef)
                 mod.decls.append(globvar)
             elif isinstance(py_stmt, py_ast.ImportFrom):
                 importdecls = self.from_py_ImportFrom(py_stmt)
@@ -314,12 +314,12 @@ class Parser:
         body: list[spy.ast.Stmt] = []
         for py_stmt in py_class_body:
             if isinstance(py_stmt, py_ast.AnnAssign):
-                vardef, assign = self.from_py_AnnAssign(py_stmt)
-                if assign is not None:
+                vardef = self.from_py_AnnAssign(py_stmt)
+                if vardef.value is not None:
                     self.error(
                         "default values in fields not supported yet",
                         "this is not supported",
-                        assign.loc,
+                        vardef.value.loc,
                     )
                 fields.append(vardef)
             else:
@@ -371,11 +371,8 @@ class Parser:
         body: list[spy.ast.Stmt] = []
         for py_stmt in py_body:
             if isinstance(py_stmt, py_ast.AnnAssign):
-                # special case, as it's the stmt wich generates two
-                vardef, assign = self.from_py_AnnAssign(py_stmt)
+                vardef = self.from_py_AnnAssign(py_stmt)
                 body.append(vardef)
-                if assign:
-                    body.append(assign)
             else:
                 stmt = self.from_py_stmt(py_stmt)
                 body.append(stmt)
@@ -406,25 +403,22 @@ class Parser:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
 
-    def from_py_global_Assign(
-        self, py_node: py_ast.Assign
-    ) -> tuple[spy.ast.VarDef, spy.ast.Assign]:
+    def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
         assign = self.from_py_stmt_Assign(py_node)
         assert isinstance(assign, spy.ast.Assign)
-        kind: spy.ast.VarKind = "const"
-        if py_node.targets[0].is_var:  # type: ignore
-            kind = "var"
+        assert len(py_node.targets) == 1
+        assert isinstance(py_node.targets[0], py_ast.Name)
+        varkind = py_node.targets[0].spy_varkind
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
-            kind=kind,
-            name=assign.target.value,
+            kind=varkind,
+            name=assign.target,
             type=spy.ast.Auto(loc=py_node.loc),
+            value=assign.value,
         )
-        return vardef, assign
+        return vardef
 
-    def from_py_AnnAssign(
-        self, py_node: py_ast.AnnAssign, is_global: bool = False
-    ) -> tuple[spy.ast.VarDef, Optional[spy.ast.Assign]]:
+    def from_py_AnnAssign(self, py_node: py_ast.AnnAssign) -> spy.ast.VarDef:
         if not py_node.simple:
             self.error(
                 f"not supported: assignments targets with parentheses",
@@ -435,32 +429,20 @@ class Parser:
         # non-name target
         assert isinstance(py_node.target, py_ast.Name), "WTF?"
 
-        # global VarDef are 'const' by default, unless you specify 'var'.
-        # local VarDef are always 'var' (for now?)
-        is_local = not is_global
-        kind: spy.ast.VarKind
-        if is_local or py_node.target.is_var:
-            kind = "var"
-        else:
-            kind = "const"
+        varkind = py_node.target.spy_varkind
+        value = None
+        if py_node.value is not None:
+            value = self.from_py_expr(py_node.value)
 
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
-            kind=kind,
-            name=py_node.target.id,
+            kind=varkind,
+            name=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
             type=self.from_py_expr(py_node.annotation),
+            value=value,
         )
 
-        if py_node.value is None:
-            assign = None
-        else:
-            assign = spy.ast.Assign(
-                loc=py_node.loc,
-                target=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
-                value=self.from_py_expr(py_node.value),
-            )
-
-        return vardef, assign
+        return vardef
 
     def from_py_stmt_Assign(self, py_node: py_ast.Assign) -> spy.ast.Stmt:
         # Assign can be pretty complex: it can have multiple targets, and a
@@ -470,11 +452,22 @@ class Parser:
             self.unsupported(py_node, "assign to multiple targets")
         py_target = py_node.targets[0]
         if isinstance(py_target, py_ast.Name):
-            return spy.ast.Assign(
-                loc=py_node.loc,
-                target=spy.ast.StrConst(py_target.loc, py_target.id),
-                value=self.from_py_expr(py_node.value),
-            )
+            if py_target.spy_varkind is not None:
+                # "var x = 0" is a VarDef, not an Assign
+                return spy.ast.VarDef(
+                    loc=py_node.loc,
+                    kind=py_target.spy_varkind,
+                    name=spy.ast.StrConst(py_target.loc, py_target.id),
+                    type=spy.ast.Auto(loc=py_node.loc),
+                    value=self.from_py_expr(py_node.value),
+                )
+            else:
+                # "x = 0" is an Assign
+                return spy.ast.Assign(
+                    loc=py_node.loc,
+                    target=spy.ast.StrConst(py_target.loc, py_target.id),
+                    value=self.from_py_expr(py_node.value),
+                )
         elif isinstance(py_target, py_ast.Attribute):
             return spy.ast.SetAttr(
                 loc=py_node.loc,

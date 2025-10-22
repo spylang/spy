@@ -1,3 +1,4 @@
+import pprint
 from dataclasses import KW_ONLY, dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, Optional
 
@@ -8,9 +9,41 @@ from spy.textbuilder import ColorFormatter
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+# ====== VarKind rules ======
+#
+# Symbol.varkind determine whether a symbol is "var" or "const".
+# Symbol.varkind_origin tracks how we determined the varkind.
+#
+# The varkind_origin can be "explicit":
+#     var x: i32 = 0
+#     const y: i32 = 0
+#
+# In all the other cases, it's determined by the context.
+#
+# Function and class definitions are always "const".
+# Field definition inside a "class" are always "var".
+# Function parameters are always "var".
+#
+# Module level assignments are "const" by default, unless explicitly marked as "var".
+#
+# Local variables inside a function follow these rules:
+#   - if a variable is assigned only once, it's a "const"
+#   - if a variable is assigned multiple times, it's a "var"
+#   - if a variable is assigned inside a loop, it's a "var"
+
 Color = Literal["red", "blue"]
-VarKind = Literal["var", "const"]
 VarStorage = Literal["direct", "cell", "NameError"]
+VarKind = Literal["var", "const"]
+VarKindOrigin = Literal[
+    "auto",          # "x = 0" inside a function
+    "global-const",  # "x = 0" at module level
+    "explicit",      # "var x = 0" or "const x = 0"
+    "funcdef",       # function defs are always "const"
+    "classdef",      # class defs are always "const"
+    "class-field",   # class field declarations are always "var"
+    "red-param",     # parameters of red functions are "var"
+    "blue-param",    # parameters of blue functions are "const"
+]  # fmt: skip
 
 
 def maybe_blue(*colors: Color) -> Color:
@@ -58,8 +91,8 @@ class ImportRef:
 @dataclass
 class Symbol:
     name: str
-    color: Color
     varkind: VarKind
+    varkind_origin: VarKindOrigin
     storage: VarStorage
     _: KW_ONLY
     loc: Loc  # where the symbol is defined, in the source code
@@ -84,6 +117,9 @@ class Symbol:
     @property
     def is_local(self) -> bool:
         return self.level == 0
+
+    def pp(self) -> None:
+        pprint.pprint(self)
 
 
 class SymTable:
@@ -131,8 +167,8 @@ class SymTable:
                 loc = generic_loc
             sym = Symbol(
                 attr,
-                "blue",
                 "const",
+                "explicit",
                 "direct",
                 loc=loc,
                 type_loc=loc,
@@ -151,14 +187,15 @@ class SymTable:
         print(f"<symbol table '{name}'>")
         # sort symbols by:
         #   1. level
-        #   2. color (blue, then red)
+        #   2. color (const, then var)
         #   3. name (@special names last)
         symbols = sorted(
             self._symbols.values(),
-            key=lambda sym: (sym.level, sym.color, sym.name.replace("@", "~")),
+            key=lambda sym: (sym.level, sym.varkind, sym.name.replace("@", "~")),
         )
         for sym in symbols:
-            sym_name = color.set(sym.color, f"{sym.name:10s}")
+            sym_color = "blue" if sym.varkind == "const" else "red"
+            sym_name = color.set(sym_color, f"{sym.name:10s}")
             if sym.storage == "NameError":
                 # special formatting
                 print(f"    [ ] NameError  {sym_name}")
@@ -170,9 +207,7 @@ class SymTable:
             storage = ""
             if sym.storage == "cell":
                 storage = "[cell]"
-            print(
-                f"    [{sym.level}] {sym.color:4s} {sym.varkind:5s} {sym_name} {storage} {impref}"
-            )
+            print(f"    [{sym.level}] {sym.varkind:5s} {sym_name} {storage} {impref}")
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols

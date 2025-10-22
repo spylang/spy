@@ -10,7 +10,7 @@ def test_preprocess_plain():
     src1 = textwrap.dedent("""
     x: i32 = 100
     """)
-    src2, var_locs = preprocess(src1)
+    src2, varkind_locs = preprocess(src1)
     assert src1 == src2
 
 
@@ -19,19 +19,37 @@ def test_preprocess_var():
     var x: i32 = 100
     var    y     : i32 = 200
     """)
-    src2, var_locs = preprocess(src1)
+    src2, varkind_locs = preprocess(src1)
     expected = textwrap.dedent("""
     x    : i32 = 100
     y            : i32 = 200
     """)
     assert src2 == expected
-    assert len(var_locs) == 2
+    assert len(varkind_locs) == 2
+    assert list(varkind_locs.values()) == ["var", "var"]
+
+
+def test_preprocess_const():
+    src1 = textwrap.dedent("""
+    const x: i32 = 100
+    const    y     : i32 = 200
+    """)
+    src2, varkind_locs = preprocess(src1)
+    expected = textwrap.dedent("""
+    x      : i32 = 100
+    y              : i32 = 200
+    """)
+    assert src2 == expected
+    assert len(varkind_locs) == 2
+    assert list(varkind_locs.values()) == ["const", "const"]
 
 
 def test_magic_py_parse():
     src = textwrap.dedent("""
     var x: i32 = 100
-    y: i32 = 200
+    const y: i32 = 200
+    z: i32 = 300
+
     """)
     py_mod = magic_py_parse(src)
     dumped = dump(py_mod, use_colors=False)
@@ -39,15 +57,21 @@ def test_magic_py_parse():
     py:Module(
         body=[
             py:AnnAssign(
-                target=py:Name(id='x', ctx=py:Store(), is_var=True),
-                annotation=py:Name(id='i32', ctx=py:Load(), is_var=False),
+                target=py:Name(id='x', ctx=py:Store(), spy_varkind='var'),
+                annotation=py:Name(id='i32', ctx=py:Load(), spy_varkind=None),
                 value=py:Constant(value=100, kind=None),
                 simple=1,
             ),
             py:AnnAssign(
-                target=py:Name(id='y', ctx=py:Store(), is_var=False),
-                annotation=py:Name(id='i32', ctx=py:Load(), is_var=False),
+                target=py:Name(id='y', ctx=py:Store(), spy_varkind='const'),
+                annotation=py:Name(id='i32', ctx=py:Load(), spy_varkind=None),
                 value=py:Constant(value=200, kind=None),
+                simple=1,
+            ),
+            py:AnnAssign(
+                target=py:Name(id='z', ctx=py:Store(), spy_varkind=None),
+                annotation=py:Name(id='i32', ctx=py:Load(), spy_varkind=None),
+                value=py:Constant(value=300, kind=None),
                 simple=1,
             ),
         ],

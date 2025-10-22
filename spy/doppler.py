@@ -113,7 +113,7 @@ class DopplerFrame(ASTFrame):
             closure=new_closure,
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
-            locals_types_w=self.locals_types_w.copy(),
+            locals_types_w=self.get_locals_types_w(),
         )
         # mark the original function as invalid
         self.w_func.invalidate(w_newfunc)
@@ -157,15 +157,40 @@ class DopplerFrame(ASTFrame):
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
+        varname = vardef.name.value
+        is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
-        newtype = self.shifted_expr[vardef.type]
-        return [vardef.replace(type=newtype)]
+
+        sym = self.symtable.lookup(varname)
+        assert sym.is_local
+        if self.locals[varname].color == "blue":
+            # redshift away assignments to blue locals
+            return []
+
+        if is_auto:
+            # use the actual type computed during type inference
+            w_T = self.locals[varname].w_T
+            newtype = make_const(self.vm, vardef.type.loc, w_T)
+        else:
+            newtype = self.shifted_expr[vardef.type]
+
+        if vardef.value is None:
+            newvalue = None
+        else:
+            newvalue = self.shifted_expr[vardef.value]
+        return [vardef.replace(type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
-        specialized = self.specialized_assigns[assign]
-        newvalue = self.shifted_expr[assign.value]
-        return [specialized.replace(value=newvalue)]
+        varname = assign.target.value
+        sym = self.symtable.lookup(varname)
+        if sym.is_local and self.locals[varname].color == "blue":
+            # redshift away assignments to blue locals
+            return []
+        else:
+            specialized = self.specialized_assigns[assign]
+            newvalue = self.shifted_expr[assign.value]
+            return [specialized.replace(value=newvalue)]
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present

@@ -7,7 +7,7 @@
 # The added lines are marked with <spy></spy> in comments
 
 # <spy>
-from typing import Optional
+from typing import Optional, Literal
 from spy.location import Loc
 # </spy>
 
@@ -1143,7 +1143,7 @@ class Name(expr):
     id: _Identifier
     ctx: expr_context  # Not present in Python < 3.13 if not passed to `__init__`
     # <spy>
-    is_var: bool
+    spy_varkind: Optional[Literal["var", "const"]]
     # </spy>
 
     def __init__(self, id: _Identifier, ctx: expr_context = ..., **kwargs: Unpack[_Attributes]) -> None: ...

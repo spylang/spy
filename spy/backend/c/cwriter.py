@@ -148,8 +148,12 @@ class CFuncWriter:
             self.tbc.wl(f"return {v};")
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        # all local vars have already been declared, nothing to do
-        pass
+        # NOTE: the local variable declaration happens in emit_local_vars, here we just
+        # assign the value
+        if vardef.value:
+            target = vardef.name.value
+            v = self.fmt_expr(vardef.value)
+            self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
         assert False, "ast.Assign nodes should not survive redshifting"

@@ -10,7 +10,7 @@ from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
-from spy.vm.function import CLOSURE, FuncParam, Namespace, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.list import W_List
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 
 class Return(Exception):
+    "Raised to implement the 'return' statement"
+
     w_value: W_Object
 
     def __init__(self, w_value: W_Object) -> None:
@@ -35,15 +37,11 @@ class Return(Exception):
 
 
 class Break(Exception):
-    """Exception to implement break statement"""
-
-    pass
+    "Raised to implement the 'break' statement"
 
 
 class Continue(Exception):
-    """Exception to implement continue statement"""
-
-    pass
+    "Raised to implement the 'continue' statement"
 
 
 class AbstractFrame:
@@ -58,9 +56,7 @@ class AbstractFrame:
     ns: FQN
     closure: CLOSURE
     symtable: SymTable
-    _locals: Namespace
-    locals_types_w: dict[str, W_Type]
-    locals_decl_loc: dict[str, Loc]
+    locals: dict[str, LocalVar]
     specialized_names: dict[ast.Name, ast.Expr]
     specialized_assigns: dict[ast.Assign, ast.Stmt]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
@@ -73,9 +69,7 @@ class AbstractFrame:
         self.ns = ns
         self.symtable = symtable
         self.closure = closure
-        self._locals = {}
-        self.locals_types_w = {}
-        self.locals_decl_loc = {}
+        self.locals = {}
 
         # ast.Name and ast.Assign are special, because depending on the
         # content of the symtable it has different meanings (e.g. local, outer
@@ -96,13 +90,22 @@ class AbstractFrame:
     def redshifting(self) -> bool:
         return False
 
-    def declare_local(self, name: str, w_type: W_Type, loc: Loc) -> None:
-        if name in self.locals_types_w:
+    def get_locals_types_w(self) -> dict[str, W_Type]:
+        return {
+            name: lv.w_T
+            for name, lv in self.locals.items()
+            if lv.color == "red"
+        }  # fmt: skip
+
+    def declare_local(
+        self, name: str, desired_color: Color, w_type: W_Type, loc: Loc
+    ) -> None:
+        if name in self.locals:
             # this is the same check that we already do in
             # ScopeAnalyzer.define_name. This logic is duplicated because for
             # RED frames we raise the error eagerly in the analyzer, but for
             # BLUE frames we raise it here
-            old_loc = self.locals_decl_loc[name]
+            old_loc = self.locals[name].decl_loc
             msg = f"variable `{name}` already declared"
             err = SPyError("W_ScopeError", msg)
             err.add("error", "this is the new declaration", loc)
@@ -111,17 +114,39 @@ class AbstractFrame:
 
         if not isinstance(w_type, W_FuncType):
             self.vm.make_fqn_const(w_type)
-        self.locals_types_w[name] = w_type
-        self.locals_decl_loc[name] = loc
+
+        # determine the color of the local var:
+        #   - varkind is statically known and depends on the symbol
+        #   - desired_color is the color of the wam that we determine during execution
+        #
+        # The local variable will be "blue" IIF varkind is "const" and "desired_color"
+        # is actually a "blue". Consider this case:
+        #     x = 0                # const, blue
+        #     y = some_red_func()  # const, red
+        # They are both const, but "y" cannot be "blue" because we don't know its value
+        # during redshift.
+        if name[0] == "@":
+            # special case '@if', '@while', etc.
+            color: Color = "red"
+        else:
+            sym = self.symtable.lookup(name)
+            assert sym.is_local
+            if sym.varkind == "const" and desired_color == "blue":
+                color = "blue"
+            else:
+                color = "red"
+        self.locals[name] = LocalVar(
+            varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
+        )
 
     def store_local(self, name: str, w_value: W_Object) -> None:
-        self._locals[name] = w_value
+        self.locals[name].w_val = w_value
 
     def load_local(self, name: str) -> W_Object:
-        w_obj = self._locals.get(name)
-        if w_obj is None:
+        localvar = self.locals.get(name)
+        if localvar is None or localvar.w_val is None:
             raise SPyError("W_Exception", "read from uninitialized local")
-        return w_obj
+        return localvar.w_val
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         try:
@@ -135,7 +160,7 @@ class AbstractFrame:
     ) -> Optional[W_Func]:
         if varname is None:
             return None  # no typecheck needed
-        w_exp_T = self.locals_types_w[varname]
+        w_exp_T = self.locals[varname].w_T
         try:
             w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wam)
         except SPyError as err:
@@ -237,7 +262,7 @@ class AbstractFrame:
         fqn = self.ns.join(funcdef.name)
         fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
-        closure = self.closure + (self._locals,)
+        closure = self.closure + (self.locals,)
 
         # this is just a cosmetic nicety. In presence of decorators, "mod.foo"
         # will NOT necessarily contain the function object which is being
@@ -264,7 +289,7 @@ class AbstractFrame:
                 w_func = wam_inner.w_blueval
 
         w_T = self.vm.dynamic_type(w_func)
-        self.declare_local(funcdef.name, w_T, funcdef.prototype_loc)
+        self.declare_local(funcdef.name, "blue", w_T, funcdef.prototype_loc)
         self.store_local(funcdef.name, w_func)
 
     @staticmethod
@@ -285,7 +310,7 @@ class AbstractFrame:
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
-        self.declare_local(classdef.name, w_meta_type, classdef.loc)
+        self.declare_local(classdef.name, "blue", w_meta_type, classdef.loc)
         self.store_local(classdef.name, w_typedecl)
         self.vm.add_global(fqn, w_typedecl)
 
@@ -301,7 +326,7 @@ class AbstractFrame:
 
         # create a frame where to execute the class body
         # XXX we should capture only the names actually used in the inner frame
-        closure = self.closure + (self._locals,)
+        closure = self.closure + (self.locals,)
         classframe = ClassFrame(self.vm, classdef, w_T.fqn, closure)
         body = classframe.run()
 
@@ -310,8 +335,50 @@ class AbstractFrame:
         assert w_T.is_defined()
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        w_T = self.eval_expr_type(vardef.type)
-        self.declare_local(vardef.name, w_T, vardef.loc)
+        # Possible cases:
+        #   declaration    (not is_auto and not value):  [var] x: i32
+        #   definition     (not is_auto and value):      [var] x: i32 = 0
+        #   type inference (is_auto and value):          var   x      = 0
+        #   invalid        (is_auto and not value):      var   x
+        #
+        # Note that the "type inference" case is basically a simple Assign.
+        varname = vardef.name.value
+        sym = self.symtable.lookup(varname)
+        is_auto = isinstance(vardef.type, ast.Auto)
+
+        if vardef.value is None:
+            # declaration
+            assert not is_auto, "invalid VarDef"
+            w_T = self.eval_expr_type(vardef.type)
+            self.declare_local(varname, "red", w_T, vardef.loc)
+            return
+
+        if is_auto:
+            # type inference
+            wam = self.eval_expr(vardef.value)
+            color = wam.color
+            w_T = wam.w_static_T
+            self.declare_local(varname, color, w_T, vardef.loc)
+        else:
+            # definition
+            w_T = self.eval_expr_type(vardef.type)
+            self.declare_local(varname, "red", w_T, vardef.loc)
+            wam = self.eval_expr(vardef.value, varname=varname)
+            # XXX hack hack hack: would be nice to find a way to avoid mutating
+            # LocalVar. Ideally we would like to write something like this:
+            #     wam = self.eval_expr(vardef.value, varname=varname)
+            #     self.declare_local(varname, wam.color, ...)
+            #
+            # However, we cannot do that, because declare_local must be called BEFORE
+            # eval_expr (because of varname=varname). If we remove varname=varname it
+            # probably works, but we lose good error message.
+            if sym.varkind == "const":
+                self.locals[varname].color = wam.color
+
+        # store the value (common for "type inference" and "definition")
+        lv = self.locals[varname]
+        if not self.redshifting or lv.color == "blue":
+            self.store_local(varname, wam.w_val)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         # see the commnet in __init__ about specialized_assigns
@@ -326,13 +393,18 @@ class AbstractFrame:
         varname = target.value
         sym = self.symtable.lookup(varname)
 
-        if sym.storage == "direct" and sym.color == "blue":
+        if sym.varkind == "const" and sym.varkind_origin != "auto":
             err = SPyError("W_TypeError", "invalid assignment target")
             err.add("error", f"{sym.name} is const", target.loc)
-            err.add("note", "const declared here", sym.loc)
-            err.add(
-                "note", f"help: declare it as variable: `var {sym.name} ...`", sym.loc
-            )
+            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
+
+            if sym.varkind_origin == "global-const":
+                msg = f"help: declare it as variable: `var {sym.name} ...`"
+                err.add("note", msg, sym.loc)
+            elif sym.varkind_origin == "blue-param":
+                msg = "blue function arguments are const by default"
+                err.add("note", msg, sym.loc)
+
             raise err
 
         elif sym.storage == "direct":
@@ -340,8 +412,8 @@ class AbstractFrame:
             return ast.AssignLocal(assign.loc, target, assign.value)
 
         elif sym.storage == "cell":
-            namespace = self.closure[-sym.level]
-            w_cell = namespace[sym.name]
+            outervars = self.closure[-sym.level]
+            w_cell = outervars[sym.name].w_val
             assert isinstance(w_cell, W_Cell)
             return ast.AssignCell(
                 loc=assign.loc,
@@ -356,15 +428,16 @@ class AbstractFrame:
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target
         varname = target.value
-        is_declared = varname in self.locals_types_w
-        if is_declared:
-            wam = self.eval_expr(assign.value, varname=varname)
-        else:
+        lv = self.locals.get(varname)
+        if lv is None:
             # first assignment, implicit declaration
             wam = self.eval_expr(assign.value)
-            self.declare_local(varname, wam.w_static_T, target.loc)
+            self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
+            lv = self.locals[varname]
+        else:
+            wam = self.eval_expr(assign.value, varname=varname)
 
-        if not self.redshifting:
+        if not self.redshifting or lv.color == "blue":
             self.store_local(varname, wam.w_val)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
@@ -387,7 +460,7 @@ class AbstractFrame:
             err.add("error", f"this is `{t}`", unpack.value.loc)
             raise err
 
-        if wam_tup.color == "red":
+        if wam_tup.color == "red" and self.symtable.color == "red":
             raise SPyError.simple(
                 "W_WIP",
                 "redshift of UnpackAssign works only for blue tuples",
@@ -648,8 +721,8 @@ class AbstractFrame:
         elif sym.storage == "direct":
             return ast.NameOuterDirect(name.loc, sym)
         elif sym.storage == "cell":
-            namespace = self.closure[-sym.level]
-            w_cell = namespace[sym.name]
+            outervars = self.closure[-sym.level]
+            w_cell = outervars[sym.name].w_val
             assert isinstance(w_cell, W_Cell)
             return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
         elif sym.storage == "NameError":
@@ -665,19 +738,19 @@ class AbstractFrame:
 
     def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
         sym = name.sym
-        w_T = self.locals_types_w[sym.name]
-        if sym.color == "red" and self.redshifting:
+        lv = self.locals[sym.name]
+        if lv.color == "red" and self.redshifting:
             w_val = None
         else:
             w_val = self.load_local(sym.name)
-        return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
+        return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
         color: Color = "blue"  # closed-over variables are always blue
         sym = name.sym
         assert not sym.is_local
-        namespace = self.closure[-sym.level]
-        w_val = namespace[sym.name]
+        outervars = self.closure[-sym.level]
+        w_val = outervars[sym.name].w_val
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
@@ -689,7 +762,8 @@ class AbstractFrame:
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
-        return W_MetaArg(self.vm, sym.color, w_T, w_val, name.loc, sym=sym)
+        color: Color = "blue" if sym.varkind == "const" else "red"
+        return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(
         self, op: ast.Node, w_opimpl: W_OpImpl, args_wam: list[W_MetaArg]
@@ -911,16 +985,17 @@ class ASTFrame(AbstractFrame):
     def declare_arguments(self) -> None:
         w_ft = self.w_func.w_functype
         funcdef = self.funcdef
-        self.declare_local("@if", B.w_bool, Loc.fake())
-        self.declare_local("@while", B.w_bool, Loc.fake())
-        self.declare_local("@return", w_ft.w_restype, funcdef.return_type.loc)
-        self.declare_local("@assert", B.w_bool, Loc.fake())
+        self.declare_local("@if", "red", B.w_bool, Loc.fake())
+        self.declare_local("@while", "red", B.w_bool, Loc.fake())
+        self.declare_local("@return", "red", w_ft.w_restype, funcdef.return_type.loc)
+        self.declare_local("@assert", "red", B.w_bool, Loc.fake())
 
+        color = self.w_func.color
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
             if param.kind == "simple":
                 arg = funcdef.args[i]
-                self.declare_local(arg.name, param.w_T, arg.loc)
+                self.declare_local(arg.name, color, param.w_T, arg.loc)
 
             elif param.kind == "var_positional":
                 assert funcdef.vararg is not None
@@ -928,7 +1003,7 @@ class ASTFrame(AbstractFrame):
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 arg = funcdef.vararg
-                self.declare_local(arg.name, B.w_tuple, arg.loc)
+                self.declare_local(arg.name, color, B.w_tuple, arg.loc)
 
             else:
                 assert False

@@ -5,7 +5,15 @@ import pytest
 
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import Color, ImportRef, Symbol, SymTable, VarKind, VarStorage
+from spy.analyze.symtable import (
+    Color,
+    ImportRef,
+    Symbol,
+    SymTable,
+    VarKind,
+    VarKindOrigin,
+    VarStorage,
+)
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.tests.support import MatchAnnotation, expect_errors
@@ -22,15 +30,16 @@ class MatchSymbol:
     def __init__(
         self,
         name: str,
-        color: Color,
         varkind: VarKind,
+        varkind_origin: VarKindOrigin,
+        *,
         level: int = 0,
         impref: Any = MISSING,
         storage: VarStorage = "direct",
     ):
         self.name = name
-        self.color = color
         self.varkind = varkind
+        self.varkind_origin = varkind_origin
         self.level = level
         self.impref = impref
         self.storage = storage
@@ -40,8 +49,8 @@ class MatchSymbol:
             return NotImplemented
         return (
             self.name == sym.name
-            and self.color == sym.color
             and self.varkind == sym.varkind
+            and self.varkind_origin == sym.varkind_origin
             and self.level == sym.level
             and self.storage == sym.storage
             and (self.impref is MISSING or self.impref == sym.impref)
@@ -71,8 +80,10 @@ class TestScopeAnalyzer:
 
     def test_global(self):
         scopes = self.analyze("""
-        x: i32 = 0
-        var y: i32 = 0
+        a = 0
+        b: i32 = 0
+        const c: i32 = 0
+        var d: i32 = 0
 
         def foo() -> None:
             pass
@@ -84,33 +95,101 @@ class TestScopeAnalyzer:
         assert scope.name == "test"
         assert scope.color == "blue"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "blue", "const"),
-            "y": MatchSymbol("y", "red", "var", storage="cell"),
-            "foo": MatchSymbol("foo", "blue", "const"),
-            "bar": MatchSymbol("bar", "blue", "const"),
+            "a": MatchSymbol("a", "const", "global-const"),
+            "b": MatchSymbol("b", "const", "global-const"),
+            "c": MatchSymbol("c", "const", "explicit"),
+            "d": MatchSymbol("d", "var", "explicit", storage="cell"),
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            "bar": MatchSymbol("bar", "const", "funcdef"),
             # captured
-            "i32": MatchSymbol("i32", "blue", "const", level=1),
+            "i32": MatchSymbol("i32", "const", "explicit", level=1),
         }
 
     def test_funcargs_and_locals(self):
         scopes = self.analyze("""
-        def foo(x: i32) -> i32:
-            y: i32 = 42
-            z = 42
+        def foo(a: i32) -> i32:
+            b = 0
+            c: i32 = 0
+            const d: i32 = 0
+            var e: i32 = 0
         """)
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "red", "var"),
-            "y": MatchSymbol("y", "red", "var"),
-            "z": MatchSymbol("z", "red", "var"),
-            "@return": MatchSymbol("@return", "red", "var"),
+            "a": MatchSymbol("a", "var", "red-param"),
+            "b": MatchSymbol("b", "const", "auto"),
+            "c": MatchSymbol("c", "const", "auto"),
+            "d": MatchSymbol("d", "const", "explicit"),
+            "e": MatchSymbol("e", "var", "explicit"),
+            "@return": MatchSymbol("@return", "var", "auto"),
             # captured
-            "i32": MatchSymbol("i32", "blue", "const", level=2),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
         assert funcdef.symtable is scope
+
+    def test_var_and_const(self):
+        scopes = self.analyze("""
+        def range(n: i32) -> dynamic:
+            pass
+
+        def foo(a: i32) -> None:
+            # a is not touched   # param: var
+            b: i32 = 0           # vardef, implicit varkind: const
+            var c: i32 = 0       # vardef, explicit varkind: var
+            d = 0                # single assign: const
+            e = 0                # multi assign: var
+            e = 0
+            f = 0                # single assign + augassign: var
+            f += 0
+            g: i32 = 0           # vardef + augassign: var
+            g += 0
+
+            for i in range(10):  # loop variable: var
+                h = 0            # assign in loop: var
+
+            while True:
+                j = 0       # assign in loop: var
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == "test::foo"
+        assert scope.color == "red"
+        assert scope._symbols == {
+            "a": MatchSymbol("a", "var", "red-param"),
+            "b": MatchSymbol("b", "const", "auto"),
+            "c": MatchSymbol("c", "var", "explicit"),
+            "d": MatchSymbol("d", "const", "auto"),
+            "e": MatchSymbol("e", "var", "auto"),
+            "f": MatchSymbol("f", "var", "auto"),
+            "g": MatchSymbol("g", "var", "auto"),
+            "h": MatchSymbol("h", "var", "auto"),
+            "i": MatchSymbol("i", "var", "auto"),
+            "j": MatchSymbol("j", "var", "auto"),
+            #
+            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "range": MatchSymbol("range", "const", "funcdef", level=1),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
+        }
+
+    def test_const_var_without_type(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            var x = 42
+            const y = 100
+            x = 50
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope.name == "test::foo"
+        assert scope.color == "red"
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "var", "explicit"),
+            "y": MatchSymbol("y", "const", "explicit"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
 
     def test_blue_func(self):
         scopes = self.analyze("""
@@ -123,8 +202,24 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "blue"
         assert scope._symbols == {
-            "x": MatchSymbol("x", "blue", "var"),
-            "@return": MatchSymbol("@return", "blue", "var"),
+            "x": MatchSymbol("x", "const", "blue-param"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+    def test_blue_param_stay_const(self):
+        # this code will raise when executed, see
+        # test_basic.py:test_cannot_assign_to_blue_param. But here we want to test that
+        # "const" of "blue-param" origin cannot be promoted to "var"
+        scopes = self.analyze("""
+        @blue
+        def foo(x) -> None:
+            x = 4
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "const", "blue-param"),
+            "@return": MatchSymbol("@return", "var", "auto"),
         }
 
     def test_assign_does_not_redeclare(self):
@@ -136,9 +231,9 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "x": MatchSymbol("x", "red", "var"),
-            "@return": MatchSymbol("@return", "red", "var"),
-            "i32": MatchSymbol("i32", "blue", "const", level=2),
+            "x": MatchSymbol("x", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
     def test_red_cannot_redeclare(self):
@@ -175,9 +270,9 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "FLAG": MatchSymbol("FLAG", "blue", "var"),
-            "x": MatchSymbol("x", "red", "var"),  # XXX should this be blue?
-            "@return": MatchSymbol("@return", "blue", "var"),
+            "FLAG": MatchSymbol("FLAG", "const", "blue-param"),
+            "x": MatchSymbol("x", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
         }
 
     def test_no_shadowing(self):
@@ -202,18 +297,18 @@ class TestScopeAnalyzer:
         """)
         foodef = self.mod.get_funcdef("foo")
         assert foodef.symtable._symbols == {
-            "x": MatchSymbol("x", "red", "var"),
-            "bar": MatchSymbol("bar", "blue", "const"),
-            "@return": MatchSymbol("@return", "red", "var"),
-            "i32": MatchSymbol("i32", "blue", "const", level=2),
+            "x": MatchSymbol("x", "const", "auto"),
+            "bar": MatchSymbol("bar", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
         #
-        bardef = foodef.body[2]
+        bardef = foodef.body[1]
         assert isinstance(bardef, ast.FuncDef)
         assert bardef.symtable._symbols == {
-            "y": MatchSymbol("y", "red", "var"),
-            "@return": MatchSymbol("@return", "red", "var"),
-            "x": MatchSymbol("x", "red", "var", level=1),
+            "y": MatchSymbol("y", "var", "red-param"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "x": MatchSymbol("x", "const", "auto", level=1),
         }
 
     def test_import(self):
@@ -223,7 +318,7 @@ class TestScopeAnalyzer:
         scope = scopes.by_module()
         assert scope._symbols == {
             "my_int": MatchSymbol(
-                "my_int", "blue", "const", impref=ImportRef("builtins", "i32")
+                "my_int", "const", "auto", impref=ImportRef("builtins", "i32")
             ),
         }
 
@@ -270,14 +365,14 @@ class TestScopeAnalyzer:
         """)
         mod_scope = scopes.by_module()
         assert mod_scope._symbols == {
-            "Foo": MatchSymbol("Foo", "blue", "const"),
+            "Foo": MatchSymbol("Foo", "const", "classdef"),
         }
         classdef = self.mod.get_classdef("Foo")
         assert classdef.symtable._symbols == {
-            "x": MatchSymbol("x", "red", "var"),
-            "y": MatchSymbol("y", "red", "var"),
-            "foo": MatchSymbol("foo", "blue", "const"),
-            "i32": MatchSymbol("i32", "blue", "const", level=2),
+            "x": MatchSymbol("x", "var", "class-field"),
+            "y": MatchSymbol("y", "var", "class-field"),
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
     def test_vararg(self):
@@ -290,9 +385,9 @@ class TestScopeAnalyzer:
         assert scope.name == "test::foo"
         assert scope.color == "red"
         assert scope._symbols == {
-            "a": MatchSymbol("a", "red", "var"),
-            "args": MatchSymbol("args", "red", "var"),
-            "@return": MatchSymbol("@return", "red", "var"),
+            "a": MatchSymbol("a", "var", "red-param"),
+            "args": MatchSymbol("args", "var", "red-param"),
+            "@return": MatchSymbol("@return", "var", "auto"),
         }
 
     def test_capture_across_multiple_scopes(self):
@@ -320,9 +415,9 @@ class TestScopeAnalyzer:
         a = get_scope("a")
         b = get_scope("b")
         c = get_scope("c")
-        assert a._symbols["x"] == MatchSymbol("x", "red", "var", level=0)
-        assert b._symbols["x"] == MatchSymbol("x", "red", "var", level=1)
-        assert c._symbols["x"] == MatchSymbol("x", "red", "var", level=2)
+        assert a._symbols["x"] == MatchSymbol("x", "const", "auto", level=0)
+        assert b._symbols["x"] == MatchSymbol("x", "const", "auto", level=1)
+        assert c._symbols["x"] == MatchSymbol("x", "const", "auto", level=2)
 
     def test_capture_decorator(self):
         scopes = self.analyze("""
@@ -341,9 +436,9 @@ class TestScopeAnalyzer:
         assert scope.name == "test::outer"
         assert scope.color == "blue"
         assert scope._symbols == {
-            "inner": MatchSymbol("inner", "blue", "const"),
-            "@return": MatchSymbol("@return", "blue", "var"),
-            "deco": MatchSymbol("deco", "blue", "const", level=1),
+            "inner": MatchSymbol("inner", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "deco": MatchSymbol("deco", "const", "funcdef", level=1),
         }
 
     def test_symbol_not_found(self):
@@ -354,9 +449,9 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "x": MatchSymbol("x", "red", "var"),
-            "@return": MatchSymbol("@return", "red", "var"),
-            "y": MatchSymbol("y", "red", "var", level=-1, storage="NameError"),
+            "x": MatchSymbol("x", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "y": MatchSymbol("y", "var", "auto", level=-1, storage="NameError"),
         }
 
     def test_for_loop(self):
@@ -372,12 +467,12 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "_$iter0": MatchSymbol("_$iter0", "red", "var"),
-            "i": MatchSymbol("i", "red", "var"),
-            "x": MatchSymbol("x", "red", "var"),
-            "@return": MatchSymbol("@return", "red", "var"),
-            "range": MatchSymbol("range", "blue", "const", level=1),
-            "i32": MatchSymbol("i32", "blue", "const", level=2),
+            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
+            "i": MatchSymbol("i", "var", "auto"),
+            "x": MatchSymbol("x", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "range": MatchSymbol("range", "const", "funcdef", level=1),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
     def test_for_loop_multiple(self):
@@ -395,15 +490,15 @@ class TestScopeAnalyzer:
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
-            "_$iter0": MatchSymbol("_$iter0", "red", "var"),
-            "_$iter1": MatchSymbol("_$iter1", "red", "var"),
-            "i": MatchSymbol("i", "red", "var"),
-            "j": MatchSymbol("j", "red", "var"),
-            "x": MatchSymbol("x", "red", "var"),
-            "y": MatchSymbol("y", "red", "var"),
-            "@return": MatchSymbol("@return", "red", "var"),
-            "range": MatchSymbol("range", "blue", "const", level=1),
-            "i32": MatchSymbol("i32", "blue", "const", level=2),
+            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
+            "_$iter1": MatchSymbol("_$iter1", "var", "auto"),
+            "i": MatchSymbol("i", "var", "auto"),
+            "j": MatchSymbol("j", "var", "auto"),
+            "x": MatchSymbol("x", "var", "auto"),
+            "y": MatchSymbol("y", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "range": MatchSymbol("range", "const", "funcdef", level=1),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
     def test_for_loop_no_shadowing(self):
@@ -420,3 +515,29 @@ class TestScopeAnalyzer:
             ("this is the new declaration", "i"),
             ("this is the previous declaration", "i: i32 = 0"),
         )
+
+    def test_global_const_hint(self):
+        scopes = self.analyze("""
+        x: i32 = 42
+        var y: i32 = 0
+        """)
+        scope = scopes.by_module()
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "const", "global-const"),
+            "y": MatchSymbol("y", "var", "explicit", storage="cell"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=1),
+        }
+
+    def test_blue_func_vararg(self):
+        scopes = self.analyze("""
+        @blue
+        def foo(a: i32, *args: str) -> None:
+            pass
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            "a": MatchSymbol("a", "const", "blue-param"),
+            "args": MatchSymbol("args", "const", "blue-param"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }

@@ -29,19 +29,23 @@ class ClassFrame(AbstractFrame):
 
     def run(self) -> ClassBody:
         # execute field definitions
-        self.declare_local("@if", B.w_bool, Loc.fake())
+        self.declare_local("@if", "red", B.w_bool, Loc.fake())
         body = ClassBody(fields_w={}, dict_w={})
         for vardef in self.classdef.fields:
-            assert vardef.kind == "var"
+            varname = vardef.name.value
+            assert vardef.kind is None
             self.exec_stmt(vardef)
-            w_T = self.locals_types_w[vardef.name]
-            body.fields_w[vardef.name] = W_Field(vardef.name, w_T)
+            w_T = self.locals[varname].w_T
+            body.fields_w[varname] = W_Field(varname, w_T)
 
         # execute method definitions
         for stmt in self.classdef.body:
             self.exec_stmt(stmt)
 
-        for name, w_val in self._locals.items():
-            body.dict_w[name] = w_val
+        for name, lv in self.locals.items():
+            # ignore variables which were just declared but never assigned; this
+            # includes .e.g field declarations
+            if lv.w_val is not None:
+                body.dict_w[name] = lv.w_val
 
         return body
