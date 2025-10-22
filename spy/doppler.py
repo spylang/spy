@@ -15,6 +15,7 @@ from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
+from spy.vm.tuple import W_Tuple
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -42,9 +43,16 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         if isinstance(value, FixedInt):  # type: ignore
             value = int(value)
         return ast.Constant(loc, value)
+
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
         return ast.StrConst(loc, value)
+
+    elif w_T is B.w_tuple:
+        assert isinstance(w_val, W_Tuple)
+        items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
+        return ast.Tuple(loc, items)
+
     elif w_T is TYPES.w_Loc:
         # note that here we have two locs: 'loc' is as usual the location
         # where the const comes from; 'value' is the actual value of the
@@ -105,7 +113,7 @@ class DopplerFrame(ASTFrame):
             closure=new_closure,
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
-            locals_types_w=self.locals_types_w.copy(),
+            locals_types_w=self.get_locals_types_w(),
         )
         # mark the original function as invalid
         self.w_func.invalidate(w_newfunc)
@@ -149,15 +157,40 @@ class DopplerFrame(ASTFrame):
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
+        varname = vardef.name.value
+        is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
-        newtype = self.shifted_expr[vardef.type]
-        return [vardef.replace(type=newtype)]
+
+        sym = self.symtable.lookup(varname)
+        assert sym.is_local
+        if self.locals[varname].color == "blue":
+            # redshift away assignments to blue locals
+            return []
+
+        if is_auto:
+            # use the actual type computed during type inference
+            w_T = self.locals[varname].w_T
+            newtype = make_const(self.vm, vardef.type.loc, w_T)
+        else:
+            newtype = self.shifted_expr[vardef.type]
+
+        if vardef.value is None:
+            newvalue = None
+        else:
+            newvalue = self.shifted_expr[vardef.value]
+        return [vardef.replace(type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
-        specialized = self.specialized_assigns[assign]
-        newvalue = self.shifted_expr[assign.value]
-        return [specialized.replace(value=newvalue)]
+        varname = assign.target.value
+        sym = self.symtable.lookup(varname)
+        if sym.is_local and self.locals[varname].color == "blue":
+            # redshift away assignments to blue locals
+            return []
+        else:
+            specialized = self.specialized_assigns[assign]
+            newvalue = self.shifted_expr[assign.value]
+            return [specialized.replace(value=newvalue)]
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
@@ -172,6 +205,11 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
         return self.shift_stmt_Assign(assign)
+
+    def shift_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
+        self.exec_stmt_UnpackAssign(unpack)
+        newvalue = self.shifted_expr[unpack.value]
+        return [unpack.replace(value=newvalue)]
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)

@@ -1,10 +1,12 @@
+import pytest
+
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.tests.support import CompilerTest, expect_errors, no_C
 
 
 # Eventually we want to remove the @only_interp, but for now the C backend
 # doesn't support lists
-@only_interp
+@no_C
 class TestTuple(CompilerTest):
     def test_literal(self):
         mod = self.compile("""
@@ -36,6 +38,7 @@ class TestTuple(CompilerTest):
 
     def test_unpacking(self):
         mod = self.compile("""
+        @blue
         def make_tuple() -> tuple:
             return 1, 2, 'hello'
 
@@ -47,16 +50,20 @@ class TestTuple(CompilerTest):
         assert x == 3
 
     def test_unpacking_wrong_number(self):
-        mod = self.compile("""
+        src = """
+        @blue
         def make_tuple() -> tuple:
             return 1, 2
 
         def foo() -> None:
             a, b, c = make_tuple()
-        """)
-        msg = "Wrong number of values to unpack: expected 3, got 2"
-        with SPyError.raises("W_ValueError", match=msg):
-            mod.foo()
+        """
+        errors = expect_errors(
+            "Wrong number of values to unpack",
+            ("expected 3 values", "a, b, c"),
+            ("got 2 values", "make_tuple()"),
+        )
+        self.compile_raises(src, "foo", errors)
 
     def test_unpacking_wrong_type(self):
         src = """
@@ -85,16 +92,3 @@ class TestTuple(CompilerTest):
         """)
         assert mod.foo()
         assert not mod.bar()
-
-    def test_blue_tuple(self):
-        mod = self.compile("""
-        @blue
-        def make_pair():
-            return 1, 2
-
-        def foo() -> i32:
-            a, b = make_pair()
-            return a + b
-        """)
-        x = mod.foo()
-        assert x == 3

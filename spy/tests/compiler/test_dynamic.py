@@ -25,7 +25,7 @@ class TestDynamic(CompilerTest):
         mod = self.compile("""
         def foo() -> str:
             x: i32 = 1
-            y: dynamic = x
+            var y: dynamic = x
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"
@@ -44,8 +44,8 @@ class TestDynamic(CompilerTest):
     def test_dynamic_runtime_error(self):
         mod = self.compile("""
         def foo() -> i32:
-            x: dynamic = 1
-            y: dynamic = 'hello'
+            var x: dynamic = 1
+            var y: dynamic = 'hello'
             return x + y
         """)
         msg = re.escape("cannot do `i32` + `str`")

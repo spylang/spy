@@ -34,6 +34,7 @@ PREC  CATEGORY         OPERATOR            ASSOCIATIVITY
 
 import re
 from dataclasses import dataclass
+from enum import Enum
 from typing import ClassVar
 
 from .context import C_Type
@@ -102,6 +103,13 @@ class Literal(Expr):
             return rf"\x{val:02x}"  # :x is "hex format"
 
         lit = "".join([char_repr(val) for val in b])
+
+        # The C standard mandates that `\x` consumes as many hex digits as possible, but
+        # what we want is that each of them is followed by exactly TWO hex digits. The
+        # following regex finds occurences of `\x` followed by THREE hex digits, and
+        # inserts a literal "" after the 2nd. E.g. "\x0aBall" -> "\x0a""Ball"
+        lit = re.sub(r"(\\x[0-9A-Fa-f]{2})(?=[0-9A-Fa-f])", r'\1""', lit)
+
         return Literal(f'"{lit}"')
 
 

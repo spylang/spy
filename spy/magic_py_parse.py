@@ -3,15 +3,16 @@ This is a hack.
 
 The goal is be able to parse lines such as:
     var x: i32 = 0
+    const y: i32 = 0
 
-We want to reuse the Python parser, but the line above is not valid syntax.
+We want to reuse the Python parser, but the lines above is not valid syntax.
 
 The idea is the following:
 
 1. tokenize the source
 
 2. search for pairs of NAMEs starting with 'var' (from the point of view of
-   the tokenizer, 'var' is a plain NAME
+   the tokenizer, 'var' is a plain NAME)
 
 3. remove the 'var' token, and keep track of the location in which it was seen
 
@@ -32,10 +33,13 @@ import ast as py_ast
 from dataclasses import dataclass
 from io import BytesIO
 from tokenize import NAME, TokenError, TokenInfo, tokenize
+from typing import Literal
 
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
+
+VarKind = Literal["var", "const"]
 
 
 @dataclass(frozen=True)
@@ -48,10 +52,10 @@ class LocInfo:
 
 def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     """
-    Like ast.parse, but supports the new "var" syntax. See the module
+    Like ast.parse, but supports the new "var" and "const" syntax. See the module
     docstring for more info.
     """
-    src2, var_locs = preprocess(src, filename)
+    src2, varkind_locs = preprocess(src, filename)
     try:
         py_mod = py_ast.parse(src2, filename=filename)
     except SyntaxError as e:
@@ -67,7 +71,7 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
             loc_info = LocInfo(
                 node.lineno, node.end_lineno, node.col_offset, node.end_col_offset
             )
-            node.is_var = loc_info in var_locs  # type: ignore
+            node.spy_varkind = varkind_locs.get(loc_info)
 
     return py_mod
 
@@ -77,7 +81,9 @@ def get_tokens(src: str) -> list[TokenInfo]:
     return list(tokenize(readline))
 
 
-def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]:
+def preprocess(
+    src: str, filename: str = "<string>"
+) -> tuple[str, dict[LocInfo, VarKind]]:
     try:
         tokens = get_tokens(src)
     except (SyntaxError, TokenError) as e:
@@ -92,12 +98,13 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
     newtokens = []
     i = 0
     N = len(tokens)
-    var_locs = set()
+    varkind_locs: dict[LocInfo, VarKind] = {}
 
     while i < N - 1:
         tok0 = tokens[i]
         tok1 = tokens[i + 1]
-        if tok0.type == NAME and tok0.string == "var" and tok1.type == NAME:
+        if tok0.type == NAME and tok0.string in ("var", "const") and tok1.type == NAME:
+            varkind: VarKind = tok0.string  # type: ignore
             # tok0 is 'var'
             # tok1 is the name
             # basically, we want to turn:
@@ -124,10 +131,10 @@ def preprocess(src: str, filename: str = "<string>") -> tuple[str, set[LocInfo]]
                 col_offset=var_c0,
                 end_col_offset=var_c0 + len(tok1.string),
             )
-            var_locs.add(loc_info)
+            varkind_locs[loc_info] = varkind
             i += 1
         else:
             newtokens.append(tok0)
         i += 1
     src2 = untokenize.untokenize(newtokens)
-    return src2, var_locs
+    return src2, varkind_locs

@@ -44,18 +44,11 @@ class TestDoppler:
 
     def test_red_vars(self):
         src = """
-        def foo() -> i32:
-            x: i32 = 1
+        def foo(x: i32) -> i32:
             return x
         """
         self.redshift(src)
-        expected = """
-        def foo() -> i32:
-            x: i32
-            x = 1
-            return x
-        """
-        self.assert_dump(expected)
+        self.assert_dump(src)
 
     def test_funcargs(self):
         src = """
@@ -68,13 +61,12 @@ class TestDoppler:
     def test_fqn_format(self):
         src = """
         def foo(x: i32) -> None:
-            y: str = 'hello'
+            var y: str = 'hello'
         """
         self.redshift(src)
         expected = """
         def `test::foo`(x: `builtins::i32`) -> `types::NoneType`:
-            y: `builtins::str`
-            y = 'hello'
+            y: `builtins::str` = 'hello'
         """
         self.assert_dump(expected, fqn_format="full")
 
@@ -113,6 +105,28 @@ class TestDoppler:
 
         def foo() -> i32:
             return ANSWER()
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return 42
+        """)
+
+    def test_blue_local_assign(self):
+        self.redshift("""
+        def foo() -> i32:
+            x = 42
+            return x
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return 42
+        """)
+
+    def test_blue_local_vardef(self):
+        self.redshift("""
+        def foo() -> i32:
+            x: i32 = 42
+            return x
         """)
         self.assert_dump("""
         def foo() -> i32:
@@ -228,8 +242,7 @@ class TestDoppler:
             `test::foo`(`operator::i32_to_f64`(42))
 
         def convert_in_locals(x: i32) -> bool:
-            flag: bool
-            flag = `operator::i32_to_bool`(x)
+            flag: bool = `operator::i32_to_bool`(x)
             return `operator::i32_to_bool`(x)
 
         def convert_in_conditions(x: i32) -> None:

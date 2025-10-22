@@ -506,26 +506,72 @@ class TestParser:
         def foo() -> None:
             x: i32 = 42
         """)
-        vardef, assign = mod.get_funcdef("foo").body[:2]
+        vardef = mod.get_funcdef("foo").body[0]
         vardef_expected = """
         VarDef(
-            kind='var',
-            name='x',
+            kind=None,
+            name=StrConst(value='x'),
             type=Name(id='i32'),
-        )
-        """
-        assign_expected = """
-        Assign(
-            target=StrConst(value='x'),
             value=Constant(value=42),
         )
         """
         self.assert_dump(vardef, vardef_expected)
-        self.assert_dump(assign, assign_expected)
 
-    def test_global_VarDef_const(self):
+    def test_VarDef_const(self):
         mod = self.parse("""
-        x: i32 = 42
+        def foo() -> None:
+            const x: i32 = 42
+        """)
+        vardef = mod.get_funcdef("foo").body[0]
+        expected = f"""
+        VarDef(
+            kind='const',
+            name=StrConst(value='x'),
+            type=Name(id='i32'),
+            value=Constant(value=42),
+        )
+        """
+        self.assert_dump(vardef, expected)
+
+    def test_VarDef_var_without_type(self):
+        mod = self.parse("""
+        def foo() -> None:
+            var x = 42
+        """)
+        vardef = mod.get_funcdef("foo").body[0]
+        expected = """
+        VarDef(
+            kind='var',
+            name=StrConst(value='x'),
+            type=Auto(),
+            value=Constant(value=42),
+        )
+        """
+        self.assert_dump(vardef, expected)
+
+    def test_VarDef_const_without_type(self):
+        mod = self.parse("""
+        def foo() -> None:
+            const y = 42
+        """)
+        vardef = mod.get_funcdef("foo").body[0]
+        expected = """
+        VarDef(
+            kind='const',
+            name=StrConst(value='y'),
+            type=Auto(),
+            value=Constant(value=42),
+        )
+        """
+        self.assert_dump(vardef, expected)
+
+    def test_global_VarDef(self):
+        mod = self.parse("""
+        a = 1
+        b: i32 = 42
+        var c: i32 = 43
+        const d: i32 = 44
+
         """)
         expected = f"""
         Module(
@@ -534,88 +580,34 @@ class TestParser:
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
-                        kind='const',
-                        name='x',
-                        type=Name(id='i32'),
+                        kind=None,
+                        name=StrConst(value='a'),
+                        type=Auto(),
+                        value=Constant(value=1),
                     ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
+                ),
+                GlobalVarDef(
+                    vardef=VarDef(
+                        kind=None,
+                        name=StrConst(value='b'),
+                        type=Name(id='i32'),
                         value=Constant(value=42),
                     ),
                 ),
-            ],
-        )
-        """
-        self.assert_dump(mod, expected)
-
-    def test_global_VarDef_var(self):
-        mod = self.parse("""
-        var x: i32 = 42
-        """)
-        expected = f"""
-        Module(
-            filename='{self.tmpdir}/test.spy',
-            docstring=None,
-            decls=[
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='var',
-                        name='x',
+                        name=StrConst(value='c'),
                         type=Name(id='i32'),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
-                        value=Constant(value=42),
+                        value=Constant(value=43),
                     ),
                 ),
-            ],
-        )
-        """
-        self.assert_dump(mod, expected)
-
-    def test_global_VarDef_auto_const(self):
-        mod = self.parse("""
-        x = 42
-        """)
-        expected = f"""
-        Module(
-            filename='{self.tmpdir}/test.spy',
-            docstring=None,
-            decls=[
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='const',
-                        name='x',
-                        type=Auto(),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
-                        value=Constant(value=42),
-                    ),
-                ),
-            ],
-        )
-        """
-        self.assert_dump(mod, expected)
-
-    def test_global_VarDef_auto_var(self):
-        mod = self.parse("""
-        var x = 42
-        """)
-        expected = f"""
-        Module(
-            filename='{self.tmpdir}/test.spy',
-            docstring=None,
-            decls=[
-                GlobalVarDef(
-                    vardef=VarDef(
-                        kind='var',
-                        name='x',
-                        type=Auto(),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
-                        value=Constant(value=42),
+                        name=StrConst(value='d'),
+                        type=Name(id='i32'),
+                        value=Constant(value=44),
                     ),
                 ),
             ],
@@ -1112,12 +1104,9 @@ class TestParser:
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
-                        kind='const',
-                        name='x',
+                        kind=None,
+                        name=StrConst(value='x'),
                         type=Auto(),
-                    ),
-                    assign=Assign(
-                        target=StrConst(value='x'),
                         value=Constant(value=42),
                     ),
                 ),
@@ -1286,9 +1275,10 @@ class TestParser:
             docstring='hello',
             fields=[
                 VarDef(
-                    kind='var',
-                    name='x',
+                    kind=None,
+                    name=StrConst(value='x'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[],
@@ -1311,14 +1301,16 @@ class TestParser:
             docstring=None,
             fields=[
                 VarDef(
-                    kind='var',
-                    name='x',
+                    kind=None,
+                    name=StrConst(value='x'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
                 VarDef(
-                    kind='var',
-                    name='y',
+                    kind=None,
+                    name=StrConst(value='y'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[],
@@ -1352,9 +1344,10 @@ class TestParser:
             docstring=None,
             fields=[
                 VarDef(
-                    kind='var',
-                    name='__ll__',
+                    kind=None,
+                    name=StrConst(value='__ll__'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[],
@@ -1392,9 +1385,10 @@ class TestParser:
             docstring=None,
             fields=[
                 VarDef(
-                    kind='var',
-                    name='__ll__',
+                    kind=None,
+                    name=StrConst(value='__ll__'),
                     type=Name(id='i32'),
+                    value=None,
                 ),
             ],
             body=[

@@ -97,10 +97,11 @@ class TestBasic(CompilerTest):
     def test_local_variables(self):
         mod = self.compile("""
         def foo() -> i32:
-            x: i32 = 42
-            return x
+            x: i32 = 10
+            var y = 90
+            return x + y
         """)
-        assert mod.foo() == 42
+        assert mod.foo() == 100
 
     @only_interp
     def test_blue_cannot_redeclare(self):
@@ -130,6 +131,19 @@ class TestBasic(CompilerTest):
             ("expected `str` because of type declaration", "str"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_blue_locals(self):
+        src = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            x = 1        # this is a blue local
+            y = inc(1)   # this is a red local because inc() is @red
+            return x + y
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
 
     @skip_backends("C", reason="type <object> not supported")
     def test_upcast_and_downcast(self):
@@ -204,10 +218,28 @@ class TestBasic(CompilerTest):
         errors = expect_errors(
             "invalid assignment target",
             ("x is const", "x"),
-            ("const declared here", "x: i32 = 42"),
+            ("const declared here (global-const)", "x: i32 = 42"),
             ("help: declare it as variable: `var x ...`", "x: i32 = 42"),
         )
         self.compile_raises(src, "set_x", errors)
+
+    def test_cannot_assign_to_blue_param(self):
+        src = """
+        @blue
+        def inc(x: i32) -> i32:
+            x = x + 1
+            return x
+
+        def foo() -> i32:
+            return inc(5)
+        """
+        errors = expect_errors(
+            "invalid assignment target",
+            ("x is const", "x"),
+            ("const declared here (blue-param)", "x: i32"),
+            ("blue function arguments are const by default", "x: i32"),
+        )
+        self.compile_raises(src, "foo", errors)
 
     @only_interp
     def test_int_float(self):
@@ -1044,14 +1076,14 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo(-3.5) == 3.5
 
-    def test_cannot_call_red_from_blue(self):
+    def test_cannot_call_blue_with_red_args(self):
         src = """
         @blue
         def blue_inc(x):
             return x + 1
 
         def foo() -> i32:
-            x = 2
+            var x: i32 = 2
             return blue_inc(x)
         """
         errors = expect_errors(

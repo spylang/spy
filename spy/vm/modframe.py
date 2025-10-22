@@ -1,6 +1,6 @@
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import SymTable
+from spy.analyze.symtable import Color, SymTable
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.astframe import AbstractFrame
@@ -28,17 +28,19 @@ class ModFrame(AbstractFrame):
         symtable: SymTable,
         mod: ast.Module,
     ) -> None:
-        w_builtins = vm.modules_w["builtins"]
-        super().__init__(vm, ns, symtable, closure=(w_builtins._dict_w,))
+        super().__init__(vm, ns, symtable, closure=vm.builtins_closure)
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
-        # the local vars of this frame goes directly in the module dict
-        self._locals = self.w_mod._dict_w
         self.vm.register_module(self.w_mod)
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         return f"<{cls} for `{self.ns}`>"
+
+    def store_local(self, name: str, w_value: W_Object) -> None:
+        # For modules, locals also go directly in the module dict
+        super().store_local(name, w_value)
+        self.w_mod._dict_w[name] = w_value
 
     def run(self) -> W_Module:
         # forward declaration of types
@@ -75,23 +77,26 @@ class ModFrame(AbstractFrame):
 
     def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
-        assign = decl.assign
-        fqn = self.ns.join(vardef.name)
-        sym = self.symtable.lookup(vardef.name)
+        varname = vardef.name.value
+        fqn = self.ns.join(varname)
+        sym = self.symtable.lookup(varname)
         assert sym.level == 0, "module assign to name declared outside?"
 
-        # evaluate the vardef in the current frame
+        # evaluate the right side of the vardef
+        assert vardef.value is not None
+        wam = self.eval_expr(vardef.value)
+
+        # declare the variable
+        color: Color = "blue" if vardef.kind == "const" else "red"
         is_auto = isinstance(vardef.type, ast.Auto)
-        if not is_auto:
-            self.exec_stmt(vardef)
+        if is_auto:
+            w_T = wam.w_static_T
+        else:
+            w_T = self.eval_expr_type(vardef.type)
+        self.declare_local(varname, color, w_T, vardef.loc)
 
-        # evaluate the assignment
-        wam = self.eval_expr(assign.value)
-
+        # do the assignment
         if sym.storage == "direct":
-            if is_auto:
-                assert sym.name not in self.locals_types_w
-                self.declare_local(sym.name, wam.w_static_T, decl.assign.target.loc)
             self.store_local(sym.name, wam.w_val)
 
         elif sym.storage == "cell":
@@ -110,5 +115,5 @@ class ModFrame(AbstractFrame):
         w_val = self.vm.lookup_ImportRef(sym.impref)
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
-        self.declare_local(sym.name, w_T, imp.loc)
+        self.declare_local(sym.name, "blue", w_T, imp.loc)
         self.store_local(sym.name, w_val)

@@ -80,14 +80,12 @@ class Dumper(TextBuilder):
         fields = list(node.__class__._fields)
         fields = [f for f in fields if f not in self.fields_to_ignore]
         if isinstance(node, py_ast.Name):
-            fields.append("is_var")
+            fields.append("spy_varkind")
         # Use turquoise text_color to distinguish from blue in --colorize
         self._dump_node(node, name, fields, text_color="turquoise")
 
     def dump_Symbol(self, sym: Symbol) -> None:
-        self.write(
-            f"Symbol({sym.name!r}, {sym.color!r}, {sym.varkind!r}, {sym.storage!r})"
-        )
+        self.write(f"Symbol({sym.name!r}, {sym.varkind!r}, {sym.storage!r})")
 
     def _dump_node(
         self, node: Any, name: str, fields: list[str], text_color: Optional[str]
