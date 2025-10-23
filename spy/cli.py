@@ -20,9 +20,10 @@ from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
+from spy.util import colors_coordinates, highlight_src_maybe
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
-from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.vm.function import W_ASTFunc, W_FuncType
 from spy.vm.module import W_Module
 from spy.vm.vm import SPyVM
 
@@ -193,7 +194,11 @@ class Arguments:
             self.execute = True
         elif n == 1:
             pass  # this is valid
-        elif actions == {"redshift", "execute"} or actions == {"redshift", "parse"}:
+        elif (
+            actions == {"redshift", "execute"}
+            or actions == {"redshift", "parse"}
+            or actions == {"colorize", "parse"}
+        ):
             pass  # these are valid
         else:
             msg = "Too many actions specified: "
@@ -324,7 +329,7 @@ async def inner_main(args: Arguments) -> None:
     importer.parse_all()
 
     orig_mod = importer.getmod(modname)
-    if args.parse and not args.redshift:
+    if args.parse and not args.redshift and not args.colorize:
         orig_mod.pp()
         return
 
@@ -355,8 +360,12 @@ async def inner_main(args: Arguments) -> None:
         if args.execute:
             execute_spy_main(args, vm, w_mod)
         elif args.colorize:
-            # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
-            orig_mod.pp(vm=vm)
+            if args.parse:
+                # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
+                orig_mod.pp(vm=vm)
+            else:
+                coords = colors_coordinates(orig_mod, vm.expr_color_map)
+                print(highlight_sourcecode(args.filename, coords))
         elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
@@ -418,3 +427,56 @@ def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
     if args.timeit:
         print(f"main(): {b - a:.3f} seconds", file=sys.stderr)
     assert w_res is B.w_None
+
+
+def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
+    reset = "\033[0m"
+    ansi_colors = {"red": "\033[41m\033[30m", "blue": "\033[44m\033[30m"}
+    with open(sourcefile) as f:
+        lines = f.readlines()
+
+    highlighted_lines = []
+
+    for i, line in enumerate(lines, start=1):
+        if i not in coords_dict:
+            highlighted_lines.append(line)
+            continue
+
+        # Segments in input order: later spans overwrite earlier ones
+        spans = [
+            (int(s.split(":")[0]), int(s.split(":")[1]), color)
+            for s, color in coords_dict[i]
+        ]
+
+        # Track color per character using segments
+        line_len = len(line)
+        color_map = [None] * line_len
+        for start, end, color in spans:
+            for j in range(start, min(end + 1, line_len)):
+                color_map[j] = color
+
+        # Build line from contiguous segments
+        result = []
+        current_color = None
+        cursor = 0
+        while cursor < line_len:
+            c = color_map[cursor]
+            if c != current_color:
+                if current_color is not None:
+                    result.append(reset)
+                if c is not None:
+                    # Find contiguous run of this color
+                    run_end = cursor
+                    while run_end < line_len and color_map[run_end] == c:
+                        run_end += 1
+                    result.append(ansi_colors[c] + line[cursor:run_end] + reset)
+                    cursor = run_end
+                    current_color = None
+                    continue
+                current_color = c
+            else:
+                result.append(line[cursor])
+            cursor += 1
+
+        highlighted_lines.append("".join(result))
+    return "".join(highlight_src_maybe("spy", line) for line in highlighted_lines)

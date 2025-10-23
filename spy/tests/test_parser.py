@@ -708,20 +708,39 @@ class TestParser:
         # special case -NUM, so that it's seen as a constant by the rest of
         # the code
         mod = self.parse(f"""
-        def foo() -> f64:
-            return -123 * -1.0
+        def foo() -> None:
+            -100
+            -  101
+            (-    102)
         """)
-        stmt = mod.get_funcdef("foo").body[0]
+        funcdef = mod.get_funcdef("foo")
         expected = """
-        Return(
-            value=BinOp(
-                op='*',
-                left=Constant(value=-123),
-                right=Constant(value=-1.0),
-            ),
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            vararg=None,
+            return_type=Constant(value=None),
+            docstring=None,
+            body=[
+                StmtExpr(
+                    value=Constant(value=-100),
+                ),
+                StmtExpr(
+                    value=Constant(value=-101),
+                ),
+                StmtExpr(
+                    value=Constant(value=-102),
+                ),
+            ],
+            decorators=[],
         )
         """
-        self.assert_dump(stmt, expected)
+        self.assert_dump(funcdef, expected)
+        assert funcdef.body[0].value.loc.get_src() == "-100"  # type: ignore
+        assert funcdef.body[1].value.loc.get_src() == "-  101"  # type: ignore
+        assert funcdef.body[2].value.loc.get_src() == "-    102"  # type: ignore
 
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):

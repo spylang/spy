@@ -8,7 +8,7 @@ from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
 from spy.build.cffi import cffi_build
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
-from spy.util import highlight_C_maybe
+from spy.util import highlight_src_maybe
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.unsafe.ptr import W_PtrType
@@ -170,7 +170,7 @@ class CBackend:
             if self.dump_c:
                 print()
                 print(f"---- {c_structdefs.hfile} ----")
-                print(highlight_C_maybe(c_structdefs.hfile.read()))
+                print(highlight_src_maybe("C", c_structdefs.hfile.read()))
 
         # Emit regular C modules
         for c_mod in self.c_modules.values():
@@ -180,7 +180,7 @@ class CBackend:
             if self.dump_c:
                 print()
                 print(f"---- {c_mod.cfile} ----")
-                print(highlight_C_maybe(c_mod.cfile.read()))
+                print(highlight_src_maybe("C", c_mod.cfile.read()))
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"

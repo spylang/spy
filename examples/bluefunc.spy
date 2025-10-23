@@ -1,9 +1,5 @@
-# XXX: we need to implement fabs because out builtin::abs supports only i32
-def fabs(x: f64) -> f64:
-    if x < 0:
-        return -1 * x
-    else:
-        return x
+from math import fabs
+
 
 @blue
 def get_pi():
@@ -25,6 +21,7 @@ def get_pi():
         k = k + 1
 
     return 4 * pi_approx
+
 
 def main() -> None:
     pi = get_pi()

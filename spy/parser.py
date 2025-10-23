@@ -690,7 +690,10 @@ class Parser:
             and isinstance(value, spy.ast.Constant)
             and isinstance(value.value, (int, float))
         ):
-            return spy.ast.Constant(value.loc, -value.value)
+            c_loc = value.loc
+            op_loc = py_node.loc
+            new_loc = Loc.combine(op_loc, c_loc)
+            return spy.ast.Constant(new_loc, -value.value)
         return spy.ast.UnaryOp(py_node.loc, op, value)
 
     def from_py_expr_Call(

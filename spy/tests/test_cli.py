@@ -32,6 +32,20 @@ ANSI_ESCAPE = re.compile(
 )
 
 
+def ansi_to_readable(s: str) -> str:
+    mapping = {
+        "\x1b[41m": "[R]",  # red background
+        "\x1b[44m": "[B]",  # blue background
+        "\x1b[0m": "[/COLOR]",  # reset (end of color)
+    }
+
+    def repl(match):
+        code = match.group(0)
+        return mapping.get(code, "")
+
+    return ANSI_ESCAPE.sub(repl, s)
+
+
 def decolorize(s: str) -> str:
     return ANSI_ESCAPE.sub("", s)
 
@@ -45,20 +59,35 @@ class TestMain:
         self.tmpdir = tmpdir
         self.runner = CliRunner()
         self.main_spy = tmpdir.join("main.spy")
-        src = """
+        self.factorial_spy = tmpdir.join("fatcorial.spy")
+        main_src = """
         def main() -> None:
             print("hello world")
         """
-        self.main_spy.write(textwrap.dedent(src))
+        factorial_src = """
+        import time
+        from _range import range
 
-    def run(self, *args: Any) -> Any:
+        def factorial(n: i32) -> i32:
+            res = 1
+            for i in range(n):
+                res *= (i+1)
+            return res
+
+        def main() -> None:
+            print(factorial(5))
+        """
+        self.main_spy.write(textwrap.dedent(main_src))
+        self.factorial_spy.write(textwrap.dedent(factorial_src))
+
+    def run(self, *args: Any, decolorize_stdout=True) -> Any:
         args2 = [str(arg) for arg in args]
         print("run: spy %s" % " ".join(args2))
         res = self.runner.invoke(app, args2)
         print(res.stdout)
         if res.exit_code != 0:
             raise res.exception  # type: ignore
-        return res, decolorize(res.stdout)
+        return res, decolorize(res.stdout) if decolorize_stdout else res.stdout
 
     def run_external(self, python_exe, *args: Any) -> Any:
         args2 = [str(arg) for arg in args]
@@ -116,9 +145,26 @@ class TestMain:
         _, stdout = self.run("--redshift", "--execute", self.main_spy)
         assert stdout == "hello world\n"
 
-    def test_colorize(self):
-        _, stdout = self.run("--colorize", self.main_spy)
+    def test_colorize_ast(self):
+        _, stdout = self.run("--colorize", "--parse", self.main_spy)
         assert stdout.startswith("Module(")
+
+    def test_colorize(self):
+        _, stdout = self.run("--colorize", self.factorial_spy, decolorize_stdout=False)
+        # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
+        expected_outout = """
+        import time
+        from _range import range
+
+        def factorial(n: i32) -> i32:
+            res = [B]1[/COLOR]
+            for i in [B]range[/COLOR][R](n)[/COLOR]:
+                res *= ([R]i+[/COLOR][B]1[/COLOR])
+            return [R]res[/COLOR]
+
+        def main() -> None:
+            [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
+        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
 
     def test_cwrite(self):
         self.run("--cwrite", "--build-dir", self.tmpdir, self.main_spy)
