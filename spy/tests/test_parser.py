@@ -712,36 +712,43 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    @pytest.mark.parametrize(
-        "srcline, expected_src, expected_value",
-        (
-            ("return -123 * -1.0", "-123", -123),
-            ("return -     123 * -1.0", "-     123", -123),
-            ("return (-         123) * -1.0", "-         123", -123),
-            ("return ((-   123) * -1.0)", "-   123", -123),
-        ),
-    )
-    def test_negative_const(self, srcline, expected_src, expected_value):
+    def test_negative_const(self):
         # special case -NUM, so that it's seen as a constant by the rest of
         # the code
         mod = self.parse(f"""
-        def foo() -> f64:
-            {srcline}
+        def foo() -> None:
+            -100
+            -  101
+            (-    102)
         """)
-        stmt = mod.get_funcdef("foo").body[0]
+        funcdef = mod.get_funcdef("foo")
         expected = """
-        Return(
-            value=BinOp(
-                op='*',
-                left=Constant(value=-123),
-                right=Constant(value=-1.0),
-            ),
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            vararg=None,
+            return_type=Constant(value=None),
+            docstring=None,
+            body=[
+                StmtExpr(
+                    value=Constant(value=-100),
+                ),
+                StmtExpr(
+                    value=Constant(value=-101),
+                ),
+                StmtExpr(
+                    value=Constant(value=-102),
+                ),
+            ],
+            decorators=[],
         )
         """
-        const = stmt.value.left  # type: ignore[attr-defined]
-        self.assert_dump(stmt, expected)
-        assert const.value == expected_value
-        assert const.loc.get_src() == expected_src
+        self.assert_dump(funcdef, expected)
+        assert funcdef.body[0].value.loc.get_src() == "-100"  # type: ignore
+        assert funcdef.body[1].value.loc.get_src() == "-  101"  # type: ignore
+        assert funcdef.body[2].value.loc.get_src() == "-    102"  # type: ignore
 
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
