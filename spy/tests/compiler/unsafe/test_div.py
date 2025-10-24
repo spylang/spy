@@ -1,6 +1,7 @@
 import pytest
 
-from spy.tests.support import CompilerTest, only_interp
+from spy.errors import SPyError
+from spy.tests.support import CompilerTest
 
 
 @pytest.fixture(params=["i32", "i8", "u8"])
@@ -58,29 +59,24 @@ class TestUnsafeIntDiv(CompilerTest):
         assert mod.mod(7, -3) == -2
         assert mod.mod(-7, -3) == -1
 
-    @only_interp
     def test_spy_zero_division_unchecked(self, int_type):
         mod = self.compile(f"""
         from unsafe import unchecked_div, unchecked_floordiv, unchecked_mod
         T = {int_type}
-        def div(x: T, y: T) -> T: return unchecked_div(x, y)
+        def div(x: T, y: T) -> f64: return unchecked_div(x, y)
         def floordiv(x: T, y: T) -> T: return unchecked_floordiv(x, y)
         def mod(x: T, y: T) -> T: return unchecked_mod(x, y)
         """)
-        try:
+        with SPyError.raises("W_PanicError", match="division by zero"):
             mod.div(11, 0)
-        except ZeroDivisionError:
-            pass
 
-        try:
+        with SPyError.raises(
+            "W_PanicError", match="integer division or modulo by zero"
+        ):
             mod.floordiv(11, 0)
-        except ZeroDivisionError:
-            pass
 
-        try:
+        with SPyError.raises("W_PanicError", match="integer modulo by zero"):
             mod.mod(10, 0)
-        except ZeroDivisionError:
-            pass
 
 
 class TestUnsafeFloatDiv(CompilerTest):
@@ -118,20 +114,14 @@ class TestUnsafeFloatDiv(CompilerTest):
         def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
         def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
         """)
-        try:
+        with SPyError.raises("W_PanicError", match="float division by zero"):
             mod.div(1.5, 0.0)
-        except ZeroDivisionError:
-            pass
 
-        try:
+        with SPyError.raises("W_PanicError", match="float floor division by zero"):
             mod.floordiv(10.0, 0.0)
-        except ZeroDivisionError:
-            pass
 
-        try:
+        with SPyError.raises("W_PanicError", match="float modulo by zero"):
             mod.mod(10.5, 0.0)
-        except ZeroDivisionError:
-            pass
 
     def test_division_mixed_signs(self):
         mod = self.compile("""
