@@ -306,8 +306,6 @@ class CFuncWriter:
         FQN("operator::u8_add"): "+",
         FQN("operator::u8_sub"): "-",
         FQN("operator::u8_mul"): "*",
-        FQN("unsafe::u8_unchecked_floordiv"): "/",
-        FQN("unsafe::u8_unchecked_mod"): "%",
         FQN("operator::u8_lshift"): "<<",
         FQN("operator::u8_rshift"): ">>",
         FQN("operator::u8_and"): "&",
@@ -338,7 +336,6 @@ class CFuncWriter:
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
         FQN("operator::f64_mul"): "*",
-        FQN("unsafe::f64_unchecked_div"): "/",
         FQN("operator::f64_eq"): "==",
         FQN("operator::f64_ne"): "!=",
         FQN("operator::f64_lt"): "<",
@@ -348,27 +345,13 @@ class CFuncWriter:
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
-        # FQN('operator::i8_div')
-        # FQN('unsafe::i8_unchecked_div')
-        # FQN('operator::i8_floordiv')
-        # FQN('unsafe::i8_unchecked_floordiv')
-        # FQN('operator::i8_mod')
-        # FQN('unsafe::i8_unchecked_mod')
-        # FQN('operator::u8_div')
-        # FQN('unsafe::u8_unchecked_div')
-        # FQN('operator::u8_floordiv')
-        # FQN('operator::u8_mod')
-        # FQN('operator::i32_div')
-        # FQN('unsafe::i32_unchecked_div')
-        # FQN('operator::i32_floordiv')
-        # FQN('unsafe::i32_unchecked_floordiv')
-        # FQN('operator::i32_mod')
-        # FQN('unsafe::i32_unchecked_mod')
-        # FQN('operator::f64_div')
-        # FQN('operator::f64_floordiv')
-        # FQN('unsafe::f64_unchecked_floordiv')
-        # FQN('operator::f64_mod')
-        # FQN('unsafe::f64_unchecked_mod')
+        # T is any of the following types: i8, u8, i32 and f64
+        # FQN('operator::T_div')
+        # FQN('operator::T_floordiv')
+        # FQN('operator::T_mod')
+        # FQN('unsafe::T_unchecked_div')
+        # FQN('unsafe::T_unchecked_floordiv')
+        # FQN('unsafe::T_unchecked_mod')
     }
 
     FQN2UnaryOp = {

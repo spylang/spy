@@ -100,18 +100,50 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
 
     @UNSAFE.builtin_func(f"{T}_unchecked_div")
     def w_unchecked_div(vm: "SPyVM", w_a: WT, w_b: WT) -> W_F64:
+        if w_b.value == 0:
+            raise SPyError("W_PanicError", "division by zero")
         return _binop(vm, w_a, w_b, lambda a, b: a / b)
 
     @UNSAFE.builtin_func(f"{T}_unchecked_floordiv")
     def w_unchecked_floordiv(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        if w_b.value == 0:
+            raise SPyError("W_PanicError", "integer division or modulo by zero")
         return _binop(vm, w_a, w_b, lambda a, b: a // b)
 
     @UNSAFE.builtin_func(f"{T}_unchecked_mod")
     def w_unchecked_mod(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        if w_b.value == 0:
+            raise SPyError("W_PanicError", "integer modulo by zero")
         return _binop(vm, w_a, w_b, lambda a, b: a % b)
 
 
 make_ops("i8", W_I8)
 make_ops("u8", W_U8)
 make_ops("i32", W_I32)
-make_ops("f64", W_F64)
+
+
+@UNSAFE.builtin_func
+def w_f64_unchecked_div(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+    if w_b.value == 0:
+        raise SPyError("W_PanicError", "float division by zero")
+    a = w_a.value
+    b = w_b.value
+    return vm.wrap(a / b)
+
+
+@UNSAFE.builtin_func
+def w_f64_unchecked_floordiv(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+    if w_b.value == 0:
+        raise SPyError("W_PanicError", "float floor division by zero")
+    a = w_a.value
+    b = w_b.value
+    return vm.wrap(a // b)
+
+
+@UNSAFE.builtin_func
+def w_f64_unchecked_mod(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+    if w_b.value == 0:
+        raise SPyError("W_PanicError", "float modulo by zero")
+    a = w_a.value
+    b = w_b.value
+    return vm.wrap(a % b)
