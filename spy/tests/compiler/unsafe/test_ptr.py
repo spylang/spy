@@ -8,7 +8,7 @@ from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 
-class TestUnsafe(CompilerTest):
+class TestUnsafePtr(CompilerTest):
     @only_interp
     def test_ptrtype_repr(self):
         w_ptrtype = self.vm.fast_call(UNSAFE.w_make_ptr_type, [B.w_i32])
