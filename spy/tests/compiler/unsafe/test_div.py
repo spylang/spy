@@ -10,6 +10,15 @@ def int_type(request):
 
 
 class TestUnsafeIntDiv(CompilerTest):
+    """
+    NOTE: unchecked_div & co. are actually unchecked only in compiled SPY_RELEASE
+    mode.
+
+    In interp mode and compiled SPY_DEBUG mode, they still panic in case of
+    divide-by-zero. CompilerTest runs in debug mode, that's why we still test the panic
+    here.
+    """
+
     def test_unchecked_div(self, int_type):
         mod = self.compile(f"""
         from unsafe import unchecked_div
