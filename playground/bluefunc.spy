@@ -1,0 +1,20 @@
+# things to notice:
+#   - @blue funcs are completely resolved at redshift time
+#   - make_adder is not present in the redshifted or .c file
+#   - types in blue functions are optional
+#   - you can pass a type to get generics
+#   - eventually we will support a syntax like "make_adder[i32]"
+#   - redshift inserts type conversions
+
+@blue
+def make_adder(T, x):
+    def adder(y: T) -> T:
+        return x + y
+    return adder
+
+add_4 = make_adder(i32, 4)
+add_pi = make_adder(f64, 3.1415)
+
+def main() -> void:
+    print(add_4(38))
+    print(add_pi(10))
