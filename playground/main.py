@@ -117,6 +117,7 @@ def main():
                 RunSPyButton("--redshift"),
                 RunSPyButton("--redshift --no-pretty"),
                 RunSPyButton("--cwrite"),
+                RunSPyButton("--colorize"),
             ).css(
                 {
                     "display": "flex",
