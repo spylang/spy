@@ -3,7 +3,7 @@ This is one of the most advanced examples of SPy so far.
 
 It implements the basics of a generic array type
 """
-from operator import OpImpl, OpArg
+from operator import OpSpec, MetaArg
 from unsafe import gc_alloc, ptr
 
 @blue
@@ -28,7 +28,7 @@ def ndarray1(DTYPE):
     class ndarray:
         __ll__: ptr[ArrayData(DTYPE)]
 
-        def __new__(cls: type, length: i32) -> ndarray:
+        def __new__(length: i32) -> ndarray:
             data = gc_alloc(ArrayData(DTYPE))(1)
             data.length = length
             data.capacity = length
@@ -39,76 +39,42 @@ def ndarray1(DTYPE):
                 i = i + 1
             return ndarray.__lift__(data)
 
-        @blue
-        def __CALL_METHOD__(v_self: OpArg, v_meth: OpArg,
-                            v_arg: OpArg) -> OpImpl:
-            """
-            This is the "hard way" to get methods (and attributes) to
-            work: it is not how people will be supposed to write their code,
-            but it's instructive.
+        def append(self: ndarray, value: DTYPE) -> None:
+            ll = self.__ll__
+            if ll.length >= ll.capacity:
+                # resize needed - double the capacity
+                new_capacity = ll.capacity * 2
+                if new_capacity == 0:
+                    new_capacity = 1
+                new_items = gc_alloc(DTYPE)(new_capacity)
+                # copy existing items
+                i = 0
+                while i < ll.length:
+                    new_items[i] = ll.items[i]
+                    i = i + 1
+                ll.items = new_items
+                ll.capacity = new_capacity
 
-            Eventually, SPy will have support for automatically add methods
-            from the class body definition, of course.
-            """
-
-            if v_meth.blueval == 'append':
-
-                def append(arr: ndarray, value: DTYPE) -> void:
-                    ll = arr.__ll__
-                    if ll.length >= ll.capacity:
-                        # resize needed - double the capacity
-                        new_capacity = ll.capacity * 2
-                        if new_capacity == 0:
-                            new_capacity = 1
-                        new_items = gc_alloc(DTYPE)(new_capacity)
-                        # copy existing items
-                        i = 0
-                        while i < ll.length:
-                            new_items[i] = ll.items[i]
-                            i = i + 1
-                        ll.items = new_items
-                        ll.capacity = new_capacity
-
-                    ll.items[ll.length] = value
-                    ll.length = ll.length + 1
-
-                return OpImpl(append, [v_self, v_arg])
-
-            else:
-                # XXX, it should be OpImpl.NULL but we don't have it at
-                # applevel
-                return None
+            ll.items[ll.length] = value
+            ll.length = ll.length + 1
 
 
-        @blue
-        def __GETITEM__(v_arr: OpArg, v_i: OpArg) -> OpImpl:
+        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.length:
+                raise IndexError
+            return ll.items[i]
 
-            def getitem(arr: ndarray, i: i32) -> DTYPE:
-                ll = arr.__ll__
-                if i >= ll.length:
-                    print('IndexError')
-                    # raise...
-                return ll.items[i]
-
-            return OpImpl(getitem, None)
-
-
-        @blue
-        def __SETITEM__(v_arr: OpArg, v_i: OpArg, v_v: OpArg) -> OpImpl:
-
-            def setitem(arr: ndarray, i: i32, v: DTYPE) -> void:
-                ll = arr.__ll__
-                if i >= ll.length:
-                    print("IndexError")
-                    # raise...
-                ll.items[i] = v
-
-            return OpImpl(setitem, None)
+        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.length:
+                raise IndexError
+            ll.items[i] = v
 
     return ndarray
 
 
-def main() -> void:
+def main() -> None:
     a_floats = ndarray1(f64)(10)
     a_ints = ndarray1(i32)(4)
     a_ints[0] = 1

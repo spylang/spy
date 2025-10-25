@@ -15,6 +15,6 @@ def make_adder(T, x):
 add_4 = make_adder(i32, 4)
 add_pi = make_adder(f64, 3.1415)
 
-def main() -> void:
+def main() -> None:
     print(add_4(38))
     print(add_pi(10))

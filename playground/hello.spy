@@ -1,6 +1,5 @@
 # things to notice:
 #   - functions require signature
-#   - for now we use "-> void". We might allow "-> None" in the future
 #   - print works with only one argument for now
 #   - after redshift, print is specialized
 #   - with --redshift --no-pretty, you can see that lookups are resolved early
@@ -8,6 +7,6 @@
 def add(x: i32, y: i32) -> i32:
     return x + y
 
-def main() -> void:
+def main() -> None:
     print("Hello from SPy 🥸")
     print(add(10, 20))

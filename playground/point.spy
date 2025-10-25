@@ -28,7 +28,7 @@ def squared_distance(p0: ptr[Point], p1: ptr[Point]) -> f64:
     dy = p0.y - p1.y
     return dx*dx + dy*dy
 
-def main() -> void:
+def main() -> None:
     p0 = new_point(1, 2)
     p1 = new_point(3, 4)
     print(squared_distance(p0, p1))
