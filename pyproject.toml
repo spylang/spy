@@ -9,11 +9,11 @@ requires-python = ">=3.12"
 dependencies = [
     "click==8.1.8",
     "fixedint==0.2.0",
-    "ninja==1.11.1.4",
+    "ninja==1.11.1.4; sys_platform != 'emscripten'",
     "py==1.11.0",
     "typer==0.15.1",
-    "pexpect==4.9.0",
-    "types-pexpect==4.9.0.20250516",
+    "pexpect==4.9.0; sys_platform != 'emscripten'",
+    "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
     "wasmtime==8.0.1; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
 ]
