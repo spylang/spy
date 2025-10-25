@@ -105,7 +105,6 @@ def main():
                 LoadButton("hello.spy"),
                 LoadButton("bluefunc.spy"),
                 LoadButton("point.spy"),
-                LoadButton("smallpoint.spy"),
                 LoadButton("array.spy"),
             ),
             editor.css("border", "1px solid gray")

@@ -5,7 +5,6 @@ packages = [ "micropip", "pygments",]
 "hello.spy" = ""
 "bluefunc.spy" = ""
 "point.spy" = ""
-"smallpoint.spy" = ""
 "array.spy" = ""
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/widgets.py" = "ltk/widgets.py"
