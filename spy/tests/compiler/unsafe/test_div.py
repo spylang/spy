@@ -1,3 +1,5 @@
+from math import isnan
+
 import pytest
 
 from spy.errors import SPyError
@@ -98,6 +100,15 @@ class TestUnsafeFloatDiv(CompilerTest):
         assert mod.div(11.0, 2.0) == 5.5
         assert mod.div(500.000034, 45.000034) == 500.000034 / 45.000034
 
+    def test_ieee754_div(self):
+        mod = self.compile("""
+        from unsafe import ieee754_div
+        def div(x: f64, y: f64) -> f64: return ieee754_div(x, y)
+        """)
+        assert mod.div(1.5, 2.0) == 0.75
+        assert mod.div(11.0, 2.0) == 5.5
+        assert mod.div(500.000034, 45.000034) == 500.000034 / 45.000034
+
     def test_unchecked_floordiv(self):
         mod = self.compile("""
         from unsafe import unchecked_floordiv
@@ -115,6 +126,15 @@ class TestUnsafeFloatDiv(CompilerTest):
         assert mod.mod(10.5, 2.5) == 0.5
         assert mod.mod(11.0, 2.0) == 1.0
         assert mod.mod(500.000034, 45.000034) == 500.000034 % 45.000034
+
+    def test_ieee754_zero_div(self):
+        mod = self.compile(f"""
+        from unsafe import ieee754_div
+        def div(x: f64, y: f64) -> f64: return ieee754_div(x, y)
+        """)
+        assert mod.div(1.5, 0.0) == float("inf")
+        assert mod.div(-1.5, 0.0) == float("-inf")
+        assert isnan(mod.div(0.0, 0.0))
 
     def test_spy_zero_division_unchecked(self):
         mod = self.compile(f"""
