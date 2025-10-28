@@ -340,8 +340,6 @@ class BinOp(Expr):
         raise TypeError("readonly attribute")
 
 
-# eventually this should allow chained comparisons, but for now we support
-# only binary ones
 @dataclass(eq=False)
 class CmpOp(Expr):
     op: str
@@ -365,6 +363,20 @@ class CmpOp(Expr):
     @property
     def precedence(self) -> int:
         return self._precendece[self.op]
+
+    # this is just to make mypy happy
+    @precedence.setter
+    def precedence(self, newval: int) -> None:
+        raise TypeError("readonly attribute")
+
+
+@dataclass(eq=False)
+class CmpChain(Expr):
+    comparisons: list[CmpOp]
+
+    @property
+    def precedence(self) -> int:
+        return 6
 
     # this is just to make mypy happy
     @precedence.setter

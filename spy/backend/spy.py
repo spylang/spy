@@ -367,6 +367,21 @@ class SPyBackend:
             r = f"({r})"
         return f"{l} {op.op} {r}"
 
+    def fmt_expr_CmpChain(self, chain: ast.CmpChain) -> str:
+        assert chain.comparisons
+        pieces: list[str] = []
+        first = chain.comparisons[0]
+        left_str = self.fmt_expr(first.left)
+        if first.left.precedence < chain.precedence:
+            left_str = f"({left_str})"
+        pieces.append(left_str)
+        for cmp in chain.comparisons:
+            right_str = self.fmt_expr(cmp.right)
+            if cmp.right.precedence < chain.precedence:
+                right_str = f"({right_str})"
+            pieces.append(f"{cmp.op} {right_str}")
+        return " ".join(pieces)
+
     def fmt_expr_UnaryOp(self, unary: ast.UnaryOp) -> str:
         v = self.fmt_expr(unary.value)
         if unary.value.precedence < unary.precedence:

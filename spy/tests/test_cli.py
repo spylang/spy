@@ -133,6 +133,64 @@ class TestMain:
         _, stdout = self.run(self.main_spy)
         assert stdout == "hello world\n"
 
+    def test_execute_chained_comparison(self):
+        chain_spy = self.tmpdir.join("chain.spy")
+        chain_spy.write(
+            textwrap.dedent(
+                """
+                def main() -> None:
+                    assert 1 < 2 < 3
+                    print("ok")
+                """
+            )
+        )
+        res, stdout = self.run(chain_spy)
+        assert res.exit_code == 0
+        assert stdout == "ok\n"
+
+    def test_execute_chained_comparison_false(self):
+        chain_spy = self.tmpdir.join("chain_fail.spy")
+        chain_spy.write(
+            textwrap.dedent(
+                """
+                def main() -> None:
+                    assert 1 > 2 > 3 > 1
+                """
+            )
+        )
+        res = self.runner.invoke(app, [str(chain_spy)])
+        assert res.exit_code == 1
+        assert "AssertionError" in res.output
+
+    def test_redshift_execute_chained_comparison(self):
+        chain_spy = self.tmpdir.join("chain_red.spy")
+        chain_spy.write(
+            textwrap.dedent(
+                """
+                def main() -> None:
+                    assert 3 > 2 > 1
+                    print("ok")
+                """
+            )
+        )
+        res, stdout = self.run("--redshift", "--execute", chain_spy)
+        assert res.exit_code == 0
+        assert stdout == "ok\n"
+
+    def test_redshift_execute_chained_comparison_failure(self):
+        chain_spy = self.tmpdir.join("chain_red_fail.spy")
+        chain_spy.write(
+            textwrap.dedent(
+                """
+                def main() -> None:
+                    assert 1 > 2 > 3 > 1
+                """
+            )
+        )
+        res = self.runner.invoke(app, ["--redshift", "--execute", str(chain_spy)])
+        assert res.exit_code == 1
+        assert "AssertionError" in res.output
+
     def test_redshift_dump_spy(self):
         _, stdout = self.run("--redshift", self.main_spy)
         assert stdout.startswith("\ndef main() -> None:")

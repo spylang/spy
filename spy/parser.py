@@ -671,14 +671,22 @@ class Parser:
         right = self.from_py_expr(py_node.right)
         return spy.ast.BinOp(py_node.loc, op, left, right)
 
-    def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.CmpOp:
-        if len(py_node.comparators) > 1:
-            self.unsupported(py_node.comparators[1], "chained comparisons")
-        opname = type(py_node.ops[0]).__name__
-        op = self._cmpops[opname]
+    def from_py_expr_Compare(self, py_node: py_ast.Compare) -> spy.ast.Expr:
+        ops = [self._cmpops[type(op).__name__] for op in py_node.ops]
         left = self.from_py_expr(py_node.left)
-        right = self.from_py_expr(py_node.comparators[0])
-        return spy.ast.CmpOp(py_node.loc, op, left, right)
+        comparators = [self.from_py_expr(expr) for expr in py_node.comparators]
+        if not comparators:
+            self.error("invalid comparison", "comparison requires a value", py_node.loc)
+        if len(comparators) == 1:
+            return spy.ast.CmpOp(py_node.loc, ops[0], left, comparators[0])
+
+        cmps: list[spy.ast.CmpOp] = []
+        current_left = left
+        for op_token, comparator in zip(ops, comparators):
+            cmp = spy.ast.CmpOp(py_node.loc, op_token, current_left, comparator)
+            cmps.append(cmp)
+            current_left = comparator
+        return spy.ast.CmpChain(py_node.loc, cmps)
 
     def from_py_expr_UnaryOp(self, py_node: py_ast.UnaryOp) -> spy.ast.Expr:
         value = self.from_py_expr(py_node.operand)
