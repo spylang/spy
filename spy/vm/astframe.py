@@ -816,9 +816,12 @@ class AbstractFrame:
             w_OP = OP_from_token(cmp.op)
             w_opimpl = self.vm.call_OP(cmp.loc, w_OP, [wam_prev, wam_right])
             result = self.eval_opimpl(cmp, w_opimpl, [wam_prev, wam_right])
-            assert isinstance(result.w_val, W_Bool)
-            if self.vm.is_False(result.w_val):
-                return result
+            if result._w_val is not None:
+                assert isinstance(result._w_val, W_Bool)
+                if self.vm.is_False(result._w_val):
+                    return result
+            else:
+                assert self.redshifting and result.color == "red"
             prev_expr = cmp.right
             wam_prev = wam_right
 
