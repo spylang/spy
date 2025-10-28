@@ -809,6 +809,7 @@ class AbstractFrame:
         prev_expr = first_cmp.left
         wam_prev = self.eval_expr(prev_expr)
         result: Optional[W_MetaArg] = None
+        saw_red = False
 
         for cmp in chain.comparisons:
             assert cmp.left is prev_expr, "chained comparisons must share operands"
@@ -816,16 +817,21 @@ class AbstractFrame:
             w_OP = OP_from_token(cmp.op)
             w_opimpl = self.vm.call_OP(cmp.loc, w_OP, [wam_prev, wam_right])
             result = self.eval_opimpl(cmp, w_opimpl, [wam_prev, wam_right])
+            if result.color == "red":
+                saw_red = True
             if result._w_val is not None:
                 assert isinstance(result._w_val, W_Bool)
                 if self.vm.is_False(result._w_val):
                     return result
             else:
                 assert self.redshifting and result.color == "red"
+                saw_red = True
             prev_expr = cmp.right
             wam_prev = wam_right
 
         assert result is not None
+        if saw_red and result.color != "red":
+            result = result.as_red(self.vm)
         return result
 
     def eval_expr_UnaryOp(self, unop: ast.UnaryOp) -> W_MetaArg:

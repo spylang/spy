@@ -214,6 +214,14 @@ class TestDoppler:
         self.redshift(src)
         self.assert_dump(src)
 
+    def test_chained_comparison_red_then_blue(self):
+        src = """
+        def foo(x: i32) -> bool:
+            return x < 2 < 3
+        """
+        self.redshift(src)
+        self.assert_dump(src)
+
     def test_list(self):
         src = """
         def foo() -> dynamic:
