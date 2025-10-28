@@ -147,3 +147,25 @@ def w_f64_unchecked_mod(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
     a = w_a.value
     b = w_b.value
     return vm.wrap(a % b)
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ieee754_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
+    @vm.register_builtin_func("unsafe", "f64_ieee754_div")
+    def w_ieee754_div(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+        a = w_a.value
+        b = w_b.value
+
+        if b == 0:
+            if a > 0:
+                result = float("inf")
+            elif a < 0:
+                result = float("-inf")
+            else:
+                result = float("nan")
+
+            return vm.wrap(result)
+
+        return vm.wrap(a / b)
+
+    return W_OpSpec(w_ieee754_div)

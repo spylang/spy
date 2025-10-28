@@ -335,6 +335,7 @@ class CFuncWriter:
         #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
+        FQN("unsafe::f64_ieee754_div"): "/",
         FQN("operator::f64_mul"): "*",
         FQN("operator::f64_eq"): "==",
         FQN("operator::f64_ne"): "!=",
