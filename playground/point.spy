@@ -1,0 +1,34 @@
+# things to notice:
+#   - the unsafe module allows C-level direct memory access to pointers and
+#     unsafe arrays
+#   - @struct maps directly to C structs
+#   - most users will never have to deal with this directly: using the
+#     `unsafe` module is the equivalent of writing C extensions or using
+#     Cython
+#
+# Exercise for the reader:
+#   - write a Rect struct with two points, and check what its C layout
+
+from unsafe import ptr, gc_alloc
+
+@struct
+class Point:
+    x: f64
+    y: f64
+
+# eventually structs will get an automatic ctor, like dataclasses
+def new_point(x: f64, y: f64) -> ptr[Point]:
+    p = gc_alloc(Point)(1) # allocate 1 Point
+    p.x = x
+    p.y = y
+    return p
+
+def squared_distance(p0: ptr[Point], p1: ptr[Point]) -> f64:
+    dx = p0.x - p1.x
+    dy = p0.y - p1.y
+    return dx*dx + dy*dy
+
+def main() -> None:
+    p0 = new_point(1, 2)
+    p1 = new_point(3, 4)
+    print(squared_distance(p0, p1))
