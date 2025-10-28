@@ -246,6 +246,17 @@ class TestDoppler:
         self.redshift(src)
         self.assert_dump(src)
 
+    def test_chained_comparison_short_circuit_shift(self):
+        src = """
+        def foo(x: i32, y: i32) -> bool:
+            return x < 2 > 3 > y
+        """
+        self.redshift(src)
+        self.assert_dump("""
+        def foo(x: i32, y: i32) -> bool:
+            return x < 2 > 3
+        """)
+
     def test_list(self):
         src = """
         def foo() -> dynamic:
