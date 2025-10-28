@@ -822,6 +822,8 @@ class AbstractFrame:
             if result._w_val is not None:
                 assert isinstance(result._w_val, W_Bool)
                 if self.vm.is_False(result._w_val):
+                    if saw_red and result.color != "red":
+                        result = result.as_red(self.vm)
                     return result
             else:
                 assert self.redshifting and result.color == "red"
