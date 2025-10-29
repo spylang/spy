@@ -1,6 +1,10 @@
-# SPy
+<div align="center">
+  <!-- Disguised Face emoji from Noto Emoji by Google (Apache 2.0): https://github.com/googlefonts/noto-emoji -->
+  <h1><img src="./assets/disguised-face.svg" height="40" align="center"/> SPy</h1>
+</div>
 
-**Discord server**&nbsp;&nbsp;&nbsp;[![](https://dcbadge.limes.pink/api/server/https://discord.gg/wRb29FGZpP)](https://discord.gg/wRb29FGZpP)
+**Discord server**
+[![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/wRb29FGZpP)](https://discord.gg/wRb29FGZpP)
 
 
 ## What is SPy?
