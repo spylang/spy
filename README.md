@@ -2,10 +2,15 @@
 
 **Discord server**&nbsp;&nbsp;&nbsp;[![](https://dcbadge.limes.pink/api/server/https://discord.gg/wRb29FGZpP)](https://discord.gg/wRb29FGZpP)
 
+**Community calls**: Monthly on the first Wednesday of the month at 17:30 CET (Europe time). [Google calendar](https://calendar.app.google/5qMsCibGVH8kAkcs7) and [Discord Event](https://discord.com/events/1378402660914429992/1433058515311919245)
+
+
+
+
 
 ## What is SPy?
 
-TL;DR: SPy is a subset/variant of Python specifically designed to be
+TL;DR: SPy is a variant of Python specifically designed to be
 statically compilable **while** retaining a lot of the "useful" dynamic parts
 of Python.
 
