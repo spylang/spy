@@ -57,6 +57,9 @@ jobs:
           cp spy/libspy/build/emscripten/release/libspy.wasm playground/
           cp dist/spylang-*.whl playground/
 
+      - name: Remove build files from playground
+        run: rm -f playground/Makefile
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
