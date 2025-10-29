@@ -116,7 +116,7 @@ def main():
                 RunSPyButton("--parse"),
                 RunSPyButton("--redshift"),
                 RunSPyButton("--redshift --full-fqn"),
-                RunSPyButton("--cwrite"),
+                RunSPyButton("--cwrite --cdump"),
                 RunSPyButton("--colorize"),
             ).css(
                 {
