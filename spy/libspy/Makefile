@@ -84,7 +84,8 @@ else ifeq ($(TARGET), emscripten)
 		-mbulk-memory
 
 	LDFLAGS := \
-		-sWASM_BIGINT
+		-sWASM_BIGINT \
+		-sEXPORTED_RUNTIME_METHODS=HEAP8
 
 	SRCS := \
 		$(SRCS) \
