@@ -13,10 +13,12 @@ import micropip
 await micropip.install("./spylang-0.1.0-py3-none-any.whl")
 print("DONE")
 
+from js import URL, document
+
 import spy.cli
 from spy import libspy
 
-libspy.LIBSPY_WASM = "https://antocuni.pyscriptapps.com/young-disk/latest/libspy.mjs"
+libspy.LIBSPY_WASM = str(URL.new("./libspy.mjs", document.baseURI))
 
 
 def spy_main(argv):
