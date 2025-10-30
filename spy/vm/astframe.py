@@ -149,6 +149,7 @@ class AbstractFrame:
         return localvar.w_val
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
+        self.loc = stmt.loc
         try:
             return magic_dispatch(self, "exec_stmt", stmt)
         except SPyError as exc:
@@ -179,6 +180,7 @@ class AbstractFrame:
         return w_typeconv
 
     def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
+        self.loc = expr.loc
         try:
             wam = magic_dispatch(self, "eval_expr", expr)
         except SPyError as exc:
@@ -963,6 +965,7 @@ class ASTFrame(AbstractFrame):
             # Is the forward declaration of "S" available or not?  For now, we
             # just ignore the problem and support only classdef done at the
             # outermost level.
+            self.loc = self.w_func.funcdef.loc
             for stmt in self.funcdef.body:
                 if isinstance(stmt, ast.ClassDef):
                     self.fwdecl_ClassDef(stmt)
