@@ -1,6 +1,10 @@
-# SPy
+<div align="center">
+  <!-- Disguised Face emoji from Noto Emoji by Google (Apache 2.0): https://github.com/googlefonts/noto-emoji -->
+  <h1><img src="./assets/disguised-face.svg" height="40" align="center"/> SPy</h1>
+</div>
 
-**Discord server**&nbsp;&nbsp;&nbsp;[![](https://dcbadge.limes.pink/api/server/https://discord.gg/wRb29FGZpP)](https://discord.gg/wRb29FGZpP)
+**Discord server**
+[![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/wRb29FGZpP)](https://discord.gg/wRb29FGZpP)
 
 **Community calls**: Monthly on the first Wednesday of the month at 17:30 CET (Europe time). [Google calendar](https://calendar.app.google/5qMsCibGVH8kAkcs7) and [Discord Event](https://discord.com/events/1378402660914429992/1433058515311919245)
 
@@ -34,6 +38,9 @@ Additional info can be found on:
   - Antonio Cuni's [blog](http://antocuni.eu/tags/#tag:spy)
   - [A peek into a possible future of Python in the browser](https://lukasz.langa.pl/f37aa97a-9ea3-4aeb-b6a0-9daeea5a7505/) by Łukasz Langa.
 
+## Try it in your browser
+
+Explore SPy without installing it by exploring the [playground](https://spylang.github.io/spy).
 
 ## Local development setup
 

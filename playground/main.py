@@ -60,22 +60,18 @@ class Editor(ltk.Div):
         )
 
 
-editor = Editor(Path("hello.spy").read_text())
+EXAMPLE_FILES = ["hello.spy", "bluefunc.spy", "point.spy", "array.spy"]
 
+editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
 
-def clear_screen():
-    print("\033[2J\033[H")
-
-
-def load_click(event):
-    element = ltk.find(event.target)
-    filename = element.text()
-    src = Path(filename).read_text()
-    editor.text(src)
+# Create tabs for example files
+example_tabs = ltk.Tabs(
+    *[ltk.VBox().attr("name", filename) for filename in EXAMPLE_FILES]
+)
 
 
 def run_click(event):
-    clear_screen()
+    __terminal__.clear()
     text = editor.text()
     with open("test.spy", "w") as f:
         f.write(text)
@@ -90,33 +86,38 @@ def run_click(event):
     spy_main(argv)
 
 
-def LoadButton(text):
-    return ltk.Button(text, load_click)
-
-
 def RunSPyButton(text):
-    return ltk.Button(text, run_click)
+    btn = ltk.Button(text, run_click)
+    btn.addClass("run-button")
+    return btn
+
+
+@ltk.callback
+def tab_activated(event, ui=None):
+    # Load the selected example file into the editor
+    index = example_tabs.active()
+    filename = EXAMPLE_FILES[index]
+    src = Path(filename).read_text()
+    editor.text(src)
 
 
 def main():
+    # Register tab activation callback
+    example_tabs.on("tabsactivate", tab_activated)
+
     (
         ltk.VBox(
-            ltk.Div(
-                LoadButton("hello.spy"),
-                LoadButton("bluefunc.spy"),
-                LoadButton("point.spy"),
-                LoadButton("array.spy"),
-            ),
+            example_tabs,
             editor.css("border", "1px solid gray")
             .css("height", 405)
             .attr("id", "editor"),
             ltk.Div(
-                ltk.Span("$ spy"),
+                ltk.Span("$ spy").addClass("command-prompt"),
                 RunSPyButton("--execute"),
                 RunSPyButton("--parse"),
                 RunSPyButton("--redshift"),
-                RunSPyButton("--redshift --no-pretty"),
-                RunSPyButton("--cwrite"),
+                RunSPyButton("--redshift --full-fqn"),
+                RunSPyButton("--cwrite --cdump"),
                 RunSPyButton("--colorize"),
             ).css(
                 {
