@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Literal, Optional
 from fixedint import FixedInt
 
 from spy import ast
+from spy.analyze.symtable import Color
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -181,13 +182,20 @@ class DopplerFrame(ASTFrame):
         return [vardef.replace(type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
+        def populate_color(color: Color) -> None:
+            if self.vm.ast_color_map is not None:
+                self.vm.ast_color_map[assign] = color
+
         self.exec_stmt_Assign(assign)
         varname = assign.target.value
         sym = self.symtable.lookup(varname)
         if sym.is_local and self.locals[varname].color == "blue":
+            populate_color("blue")
             # redshift away assignments to blue locals
             return []
         else:
+            if sym.is_local:
+                populate_color(self.locals[varname].color)
             specialized = self.specialized_assigns[assign]
             newvalue = self.shifted_expr[assign.value]
             return [specialized.replace(value=newvalue)]
@@ -348,8 +356,8 @@ class DopplerFrame(ASTFrame):
             )
 
         self.shifted_expr[expr] = new_expr
-        if self.vm.expr_color_map is not None:
-            self.vm.expr_color_map[expr] = wam.color
+        if self.vm.ast_color_map is not None:
+            self.vm.ast_color_map[expr] = wam.color
         return wam
 
     def eval_opimpl(
