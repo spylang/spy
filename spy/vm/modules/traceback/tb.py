@@ -45,40 +45,39 @@ class W_StackSummary(W_Object):
     def __init__(self, entries: list[FrameSummary]) -> None:
         self.entries = entries
 
-    def print(self) -> None:
-        tb = TextBuilder(use_colors=True)
+    @classmethod
+    def _from_frames(cls, frames) -> "W_StackSummary":
+        entries = []
+        for frame, lineno in frames:
+            # entries.append(FrameSummary.from_py_frame(frame))
+            if frame.f_code is ASTFrame.run.__code__:
+                # For each ASTFrame.run we have a SPy frame
+                spyframe = frame.f_locals["self"]
+                entries.append(FrameSummary("spy", spyframe.w_func.fqn, spyframe.loc))
+        return cls(entries)
 
-        tb.wl("Traceback (most recent call last):")
+    @classmethod
+    def from_traceback(cls, tb) -> "W_StackSummary":
+        """
+        Create a StackSummary of the applevel SPy frames from an interp-level
+        Python 'traceback' object
+        """
+        frames = traceback._walk_tb_with_full_positions(tb)
+        return cls._from_frames(frames)
 
-        for e in self.entries:
-            assert e.kind == "spy"
-            tb.wl(
-                f'  File "{e.loc.filename}", line {e.loc.line_start}, in {e.func}',
-            )
-            line = linecache.getline(e.loc.filename, e.loc.line_start).strip()
-            if line:
-                tb.wl(f"    {line}")
-
-        tb.wl()
-        print(tb.build())
-
-    @builtin_method("print")
-    @staticmethod
-    def w_print(vm: "SPyVM", w_self: "W_StackSummary") -> None:
-        w_self.print()
+    @classmethod
+    def from_pystack(cls) -> "W_StackSummary":
+        """
+        Create a StackSummary of the applevel SPy frames from the interp-level
+        Python frames.
+        """
+        start_frame = sys._getframe(1)  # Start from the caller's frame
+        frames = traceback.walk_stack(start_frame)
+        w_res = cls._from_frames(frames)
+        w_res.entries.reverse()
+        return w_res
 
 
 @TRACEBACK.builtin_func
 def w_extract_stack(vm: "SPyVM") -> W_StackSummary:
-    entries = []
-
-    start_frame = sys._getframe(1)  # Start from the caller's frame
-    for frame, lineno in traceback.walk_stack(start_frame):
-        # entries.append(FrameSummary.from_py_frame(frame))
-        if frame.f_code is ASTFrame.run.__code__:
-            # For each ASTFrame.run we have a SPy frame
-            spyframe = frame.f_locals["self"]
-            entries.append(FrameSummary("spy", spyframe.w_func.fqn, spyframe.loc))
-
-    entries.reverse()
-    return W_StackSummary(entries)
+    return W_StackSummary.from_pystack()

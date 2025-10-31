@@ -1,7 +1,7 @@
 # NOTE: W_Exception is NOT a subclass of Exception. If you want to raise a
 # W_Exception, you need to wrap it into SPyError.
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Optional
 
 from spy.errfmt import Annotation, ErrorFormatter, Level
 from spy.location import Loc
@@ -13,6 +13,7 @@ from spy.vm.primitive import W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
+    from spy.vm.modules.traceback.tb import W_StackSummary
     from spy.vm.vm import SPyVM
 
 
@@ -39,8 +40,15 @@ class W_Exception(W_Object):
         if self.annotations == []:
             self.add("error", "called from here", loc)
 
-    def format(self, use_colors: bool = True) -> str:
+    def format(
+        self,
+        use_colors: bool = True,
+        *,
+        w_stack_summary: Optional["W_StackSummary"] = None,
+    ) -> str:
         fmt = ErrorFormatter(use_colors)
+        if w_stack_summary:
+            fmt.emit_traceback(w_stack_summary)
         etype = self.__class__.__name__[2:]
         fmt.emit_message("error", etype, self.message)
         for ann in self.annotations:

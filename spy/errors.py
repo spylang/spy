@@ -54,7 +54,10 @@ class SPyError(Exception):
         self.w_exc.add_location_maybe(loc)
 
     def format(self, use_colors: bool = True) -> str:
-        return self.w_exc.format(use_colors)
+        from spy.vm.modules.traceback.tb import W_StackSummary
+
+        w_stack_summary = W_StackSummary.from_traceback(self.__traceback__)
+        return self.w_exc.format(use_colors, w_stack_summary=w_stack_summary)
 
     @contextmanager
     @staticmethod

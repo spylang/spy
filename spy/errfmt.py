@@ -1,9 +1,12 @@
 import linecache
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
+
+if TYPE_CHECKING:
+    from spy.vm.modules.traceback.tb import W_StackSummary
 
 Level = Literal["error", "note", "panic"]
 
@@ -32,6 +35,18 @@ class ErrorFormatter:
 
     def build(self) -> str:
         return "\n".join(self.lines)
+
+    def emit_traceback(self, w_stack_summary: "W_StackSummary") -> None:
+        self.w("Traceback (most recent call last):")
+        for e in w_stack_summary.entries:
+            assert e.kind == "spy"
+            self.w(
+                f'  File "{e.loc.filename}", line {e.loc.line_start}, in {e.func}',
+            )
+            line = linecache.getline(e.loc.filename, e.loc.line_start).strip()
+            if line:
+                self.w(f"    {line}")
+        self.w("")
 
     def emit_message(self, level: Level, etype: str, message: str) -> None:
         prefix = self.color.set(level, etype)
