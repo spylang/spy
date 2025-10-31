@@ -762,15 +762,83 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_CompareOp_chained(self):
-        src = """
-        def foo() -> i32:
-            return 1 == 2 == 3
-        """
-        self.expect_errors(
-            src,
-            "not implemented yet: chained comparisons",
-            ("this is not supported", "3"),
+        mod = self.parse(
+            """
+            def foo() -> i32:
+                return 1 == 2 == 3
+            """
         )
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        Return(
+            value=CmpChain(
+                comparisons=[
+                    CmpOp(
+                        op='==',
+                        left=Constant(value=1),
+                        right=Constant(value=2),
+                    ),
+                    CmpOp(
+                        op='==',
+                        left=Constant(value=2),
+                        right=Constant(value=3),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_CompareOp_chained_mixed_ops(self):
+        mod = self.parse(
+            """
+            def foo() -> bool:
+                return 1 > 2 == 2
+            """
+        )
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        Return(
+            value=CmpChain(
+                comparisons=[
+                    CmpOp(
+                        op='>',
+                        left=Constant(value=1),
+                        right=Constant(value=2),
+                    ),
+                    CmpOp(
+                        op='==',
+                        left=Constant(value=2),
+                        right=Constant(value=2),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_CompareOp_chained_with_par(self):
+        mod = self.parse(
+            """
+            def foo() -> bool:
+                return 1 > (2 == 2)
+            """
+        )
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        Return(
+            value=CmpOp(
+                op='>',
+                left=Constant(value=1),
+                right=CmpOp(
+                    op='==',
+                    left=Constant(value=2),
+                    right=Constant(value=2),
+                ),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
 
     def test_Assign(self):
         mod = self.parse("""

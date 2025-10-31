@@ -434,6 +434,20 @@ class DopplerFrame(ASTFrame):
         r = self.shifted_expr[op.right]
         return self.shift_opimpl(op, w_opimpl, [l, r])
 
+    def shift_expr_CmpChain(self, chain: ast.CmpChain) -> ast.Expr:
+        assert chain.comparisons
+        new_comparisons: list[ast.CmpOp] = []
+        current_left = self.shifted_expr[chain.comparisons[0].left]
+        for cmp in chain.comparisons:
+            if cmp.right not in self.shifted_expr:
+                break
+            shifted_right = self.shifted_expr[cmp.right]
+            new_cmp = ast.CmpOp(cmp.loc, cmp.op, current_left, shifted_right)
+            new_comparisons.append(new_cmp)
+            current_left = shifted_right
+        assert new_comparisons
+        return ast.CmpChain(chain.loc, new_comparisons)
+
     def shift_expr_UnaryOp(self, unop: ast.UnaryOp) -> ast.Expr:
         w_opimpl = self.opimpl[unop]
         v = self.shifted_expr[unop.value]
