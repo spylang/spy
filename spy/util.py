@@ -245,19 +245,19 @@ def func_equals(f: Callable, g: Callable) -> bool:
 
 
 @typing.no_type_check
-def colors_coordinates(ast_module, expr_color_map) -> dict[int, list[tuple[str, str]]]:
+def colors_coordinates(ast_module, ast_color_map) -> dict[int, list[tuple[str, str]]]:
     """
     Generate a mapping line_number:col_ranges with associated colors for AST nodes.
 
     This function walks through all nodes in the given AST module and maps each node
-    that has a color specified in `expr_color_map` to its line and column range.
+    that has a color specified in `ast_color_map` to its line and column range.
     The result is a dictionary where each key is a line number and each value is a list
     of tuples. Each tuple contains a string representing the column range in the format
     "start:end" and the corresponding color.
 
     Args:
         ast_module (spy.ast.Module): The AST module to traverse.
-        expr_color_map (dict[spy.ast.Node, str]): A mapping from AST nodes to colors.
+        ast_color_map (dict[spy.ast.Node, str]): A mapping from AST nodes to colors.
 
     Returns:
         dict[int, list[tuple[str, str]]]: A dictionary mapping line numbers to a list of
@@ -271,9 +271,9 @@ def colors_coordinates(ast_module, expr_color_map) -> dict[int, list[tuple[str, 
     coords = defaultdict(list)
     for node in ast_nodes:
         col_range = f"{node.loc.col_start}:{node.loc.col_end - 1}"
-        if expr_color_map.get(node):
+        if ast_color_map.get(node):
             # collect just the lines that needs to be colored
-            coords[node.loc.line_start].append((col_range, expr_color_map.get(node)))
+            coords[node.loc.line_start].append((col_range, ast_color_map.get(node)))
     return dict(coords)
 
 

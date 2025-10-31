@@ -101,11 +101,11 @@ class Dumper(TextBuilder):
         #
         if node is self.highlight:
             text_color = "red"
-        # If the vm contains an expr_color_map, use the expression's color
+        # If the vm contains an ast_color_map, use the expression's color
         # as the text background color, and use the default text_color
         bg_color = None
-        if self.vm and self.vm.expr_color_map:
-            color: Optional[Color] = self.vm.expr_color_map.get(node, None)
+        if self.vm and self.vm.ast_color_map:
+            color: Optional[Color] = self.vm.ast_color_map.get(node, None)
             if color:
                 bg_color = color
                 text_color = None

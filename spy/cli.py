@@ -351,7 +351,7 @@ async def inner_main(args: Arguments) -> None:
 
     if args.colorize:
         # Signal to the redshift codde that we want to retain expr color information
-        vm.expr_color_map = {}
+        vm.ast_color_map = {}
     vm.redshift(error_mode=args.error_mode)
     # vm.pp_globals()
     # vm.pp_modules()
@@ -364,7 +364,7 @@ async def inner_main(args: Arguments) -> None:
                 # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
                 orig_mod.pp(vm=vm)
             else:
-                coords = colors_coordinates(orig_mod, vm.expr_color_map)
+                coords = colors_coordinates(orig_mod, vm.ast_color_map)
                 print(highlight_sourcecode(args.filename, coords))
         elif args.parse:
             dump_spy_mod_ast(vm, modname)
