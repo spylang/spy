@@ -40,12 +40,7 @@ class ErrorFormatter:
         self.w("Traceback (most recent call last):")
         for e in w_stack_summary.entries:
             assert e.kind == "spy"
-            self.w(
-                f'  File "{e.loc.filename}", line {e.loc.line_start}, in {e.func}',
-            )
-            line = linecache.getline(e.loc.filename, e.loc.line_start).strip()
-            if line:
-                self.w(f"    {line}")
+            self.emit_loc(e.loc, funcname=str(e.func), color="error")
         self.w("")
 
     def emit_message(self, level: Level, etype: str, message: str) -> None:
@@ -54,16 +49,34 @@ class ErrorFormatter:
         self.w(f"{prefix}: {message}")
 
     def emit_annotation(self, ann: Annotation) -> None:
-        filename = ann.loc.filename
-        line = ann.loc.line_start
-        col = ann.loc.col_start + 1  # Loc columns are 0-based but we want 1-based
-        srcline = linecache.getline(filename, line).rstrip("\n")
-        underline = self.make_underline(srcline, ann.loc, ann.message)
-        underline = self.color.set(ann.level, underline)
-        self.w(f"   --> {filename}:{line}:{col}")
-        self.w(f"{line:>3} | {srcline}")
-        self.w(f"    | {underline}")
+        self.emit_loc(ann.loc, message=ann.message, color=ann.level)
         self.w("")
+
+    def emit_loc(
+        self,
+        loc: Loc,
+        *,
+        funcname: str = "",
+        message: str = "",
+        color: str = "default",
+    ) -> None:
+        filename = loc.filename
+        line = loc.line_start
+        col = loc.col_start + 1  # Loc columns are 0-based but we want 1-based
+        srcline = linecache.getline(filename, line).rstrip("\n")
+        underline = self.make_underline(srcline, loc, message)
+        underline = self.color.set(color, underline)
+
+        if funcname == "":
+            header = f"--> {filename}:{line}"
+        else:
+            funcname = self.color.set("yellow", funcname)
+            header = f"{funcname} --> {filename}:{line}"
+
+        self.w(f"  * {header}")
+        self.w(f"  | {srcline}")
+        # self.w(f"{line:>3} | {srcline}")
+        self.w(f"  | {underline}")
 
     def make_underline(self, srcline: str, loc: Loc, message: str) -> str:
         a = loc.col_start
