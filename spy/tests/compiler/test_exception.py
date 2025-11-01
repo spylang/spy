@@ -1,7 +1,27 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, no_C
+from spy.tests.support import CompilerTest, expect_errors, no_C, skip_backends
+from spy.vm.modules.traceback.tb import FrameSummary
+
+
+class MatchFrame:
+    def __init__(self, func: str, src: str, *, kind: str = "astframe") -> None:
+        self.kind = kind
+        self.func = func
+        self.src = src
+
+    def __eq__(self, fs: FrameSummary) -> bool:
+        if not isinstance(fs, FrameSummary):
+            return NotImplemented
+        return (
+            self.kind == fs.kind
+            and self.func == str(fs.func)
+            and self.src == fs.loc.get_src()
+        )
+
+    def __repr__(self) -> str:
+        return f"<MatchFrame({self.func!r}, {self.src!r}, kind={self.kind!r})"
 
 
 class TestException(CompilerTest):
@@ -48,6 +68,28 @@ class TestException(CompilerTest):
             ("this is red", "exc"),
         )
         self.compile_raises(src, "foo", errors)
+
+    @skip_backends("C", reason="tracebacks not supported by the C backend")
+    def test_traceback(self):
+        src = """
+        def foo() -> i32:
+            return bar(1)
+
+        def bar(x: i32) -> i32:
+            return baz(x, 2)
+
+        def baz(x: i32, y: i32) -> i32:
+            raise ValueError("hello")
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError", match="hello") as exc:
+            mod.foo()
+        w_stack_summary = exc.value.w_stack_summary
+        assert w_stack_summary.entries == [
+            MatchFrame("test::foo", "bar(1)"),
+            MatchFrame("test::bar", "baz(x, 2)"),
+            MatchFrame("test::baz", 'raise ValueError("hello")'),
+        ]
 
     def test_lazy_error(self):
         src = """

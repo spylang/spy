@@ -113,3 +113,10 @@ class W_StackSummary(W_Object):
                 entries[-1].loc = stmt.loc
 
         return cls(entries)
+
+    def pp(self) -> None:
+        from spy.errfmt import ErrorFormatter
+
+        fmt = ErrorFormatter(use_colors=True)
+        fmt.emit_traceback(self)
+        print(fmt.build())
