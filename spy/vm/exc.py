@@ -1,11 +1,15 @@
 # NOTE: W_Exception is NOT a subclass of Exception. If you want to raise a
 # W_Exception, you need to wrap it into SPyError.
 
-from typing import TYPE_CHECKING, Annotated, Optional
+import traceback
+from dataclasses import dataclass
+from types import TracebackType
+from typing import TYPE_CHECKING, Annotated, Literal, Optional
 
 from spy.errfmt import Annotation, ErrorFormatter, Level
+from spy.fqn import FQN
 from spy.location import Loc
-from spy.vm.b import BUILTINS
+from spy.vm.b import BUILTINS, TYPES
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -13,8 +17,121 @@ from spy.vm.primitive import W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
-    from spy.vm.modules.traceback.tb import W_StackSummary
     from spy.vm.vm import SPyVM
+
+
+@dataclass
+class FrameInfo:
+    kind: Literal["astframe", "modframe", "classframe", "dopplerframe"]
+    func: FQN
+    loc: Loc
+
+
+@TYPES.builtin_type("TracebackType")
+class W_Traceback(W_Object):
+    """
+    Traceback of a SPy exception.
+
+    Note that this has a different API than CPython 'traceback' object. It's more
+    similar to CPython 'traceback.StackSummary' class.
+    """
+
+    entries: list[FrameInfo]
+
+    def __init__(self, entries: list[FrameInfo]) -> None:
+        self.entries = entries
+
+    @classmethod
+    def from_py_traceback(cls, tb: TracebackType) -> "W_Traceback":
+        """
+        Create a StackSummary of the applevel SPy frames from an interp-level
+        Python 'traceback' object.
+        """
+        from spy.doppler import DopplerFrame
+        from spy.vm.astframe import ASTFrame
+        from spy.vm.classframe import ClassFrame
+        from spy.vm.modframe import ModFrame
+
+        # Imagine to have this SPy code:
+        #     def main() -> None:
+        #         return foo()
+        #
+        #     def foo() -> None:
+        #         raise ValueError
+        #
+        #
+        # The "raise" statement raises a SPyError which captures the interp-level
+        # traceback. The traceback looks more or less like this (after hiding many
+        # irrelevant frames):
+        #
+        # Most recent calls last:
+        #   real_main (in cli.py)
+        #   [...]
+        #   ASTFrame.run                       applevel frame for `x::main`
+        #   ASTFrame.exec_stmt                     ast.Return(ast.Call(...))
+        #   ASTFrame.exec_stmt_Stmt_Return
+        #   ASTFrame.eval_expr                     ast.Call(...)
+        #   ASTFrame.eval_expr_Call
+        #   [...]
+        #   ASTFrame.run                       applevel frame for `x::foo`
+        #   ASTFrame.exec_stmt                     ast.Raise(...)
+        #   ASTFrame.exec_stmt_Raise
+        #   [...]
+        #   w_raise (in raiseop.py)
+        #
+        #   When we encounter ASTFrame.run, we record an app-level SPy frame.
+        #   When we encounter exec_stmt or eval_expr, we set a more precise loc info
+        #   for the last recorded frame.
+
+        entries = []
+        frames = traceback._walk_tb_with_full_positions(tb)
+        for frame, lineno in frames:
+            # ==== record applevel frame ====
+            if frame.f_code is ASTFrame.run.__code__:
+                spyframe = frame.f_locals["self"]
+                fqn = spyframe.w_func.fqn
+                loc = spyframe.w_func.funcdef.loc
+                entries.append(FrameInfo("astframe", fqn, loc))
+
+            elif frame.f_code is ModFrame.run.__code__:
+                # record the applevel frame
+                spyframe = frame.f_locals["self"]
+                fqn = spyframe.ns
+                loc = spyframe.mod.loc
+                entries.append(FrameInfo("modframe", fqn, loc))
+
+            elif frame.f_code is ClassFrame.run.__code__:
+                # record the applevel frame
+                spyframe = frame.f_locals["self"]
+                fqn = spyframe.ns
+                loc = spyframe.classdef.loc
+                entries.append(FrameInfo("classframe", fqn, loc))
+
+            elif frame.f_code is DopplerFrame.redshift.__code__:
+                # record the applevel frame
+                spyframe = frame.f_locals["self"]
+                fqn = spyframe.w_func.fqn
+                loc = spyframe.w_func.funcdef.loc
+                entries.append(FrameInfo("dopplerframe", fqn, loc))
+
+            # ==== update last frame with more precise loc info ====
+            elif frame.f_code is ASTFrame.eval_expr.__code__:
+                expr = frame.f_locals["expr"]
+                entries[-1].loc = expr.loc
+
+            elif frame.f_code is ASTFrame.exec_stmt.__code__:
+                # update last frame with more precise loc info
+                stmt = frame.f_locals["stmt"]
+                entries[-1].loc = stmt.loc
+
+        return cls(entries)
+
+    def pp(self) -> None:
+        from spy.errfmt import ErrorFormatter
+
+        fmt = ErrorFormatter(use_colors=True)
+        fmt.emit_traceback(self)
+        print(fmt.build())
 
 
 @BUILTINS.builtin_type("Exception")
@@ -33,14 +150,11 @@ class W_Exception(W_Object):
         self.annotations.append(Annotation(level, message, loc))
 
     def format(
-        self,
-        use_colors: bool = True,
-        *,
-        w_stack_summary: Optional["W_StackSummary"] = None,
+        self, use_colors: bool = True, *, w_tb: Optional["W_Traceback"] = None
     ) -> str:
         fmt = ErrorFormatter(use_colors)
-        if w_stack_summary:
-            fmt.emit_traceback(w_stack_summary)
+        if w_tb:
+            fmt.emit_traceback(w_tb)
         etype = self.__class__.__name__[2:]
         fmt.emit_message("error", etype, self.message)
         for ann in self.annotations:

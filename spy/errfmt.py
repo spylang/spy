@@ -6,7 +6,7 @@ from spy.location import Loc
 from spy.textbuilder import ColorFormatter
 
 if TYPE_CHECKING:
-    from spy.vm.modules.traceback.tb import W_StackSummary
+    from spy.vm.exc import W_Traceback
 
 Level = Literal["error", "note", "panic"]
 
@@ -36,9 +36,9 @@ class ErrorFormatter:
     def build(self) -> str:
         return "\n".join(self.lines)
 
-    def emit_traceback(self, w_stack_summary: "W_StackSummary") -> None:
+    def emit_traceback(self, w_tb: "W_Traceback") -> None:
         self.w("Traceback (most recent call last):")
-        for e in w_stack_summary.entries:
+        for e in w_tb.entries:
             if e.kind == "astframe":
                 funcname = str(e.func)
             elif e.kind == "modframe":

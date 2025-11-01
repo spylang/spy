@@ -2,7 +2,7 @@ import pytest
 
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, no_C, skip_backends
-from spy.vm.modules.traceback.tb import FrameSummary
+from spy.vm.exc import FrameInfo
 
 
 class MatchFrame:
@@ -11,13 +11,13 @@ class MatchFrame:
         self.func = func
         self.src = src
 
-    def __eq__(self, fs: FrameSummary) -> bool:
-        if not isinstance(fs, FrameSummary):
+    def __eq__(self, info: FrameInfo) -> bool:
+        if not isinstance(info, FrameInfo):
             return NotImplemented
         return (
-            self.kind == fs.kind
-            and self.func == str(fs.func)
-            and self.src == fs.loc.get_src()
+            self.kind == info.kind
+            and self.func == str(info.func)
+            and self.src == info.loc.get_src()
         )
 
     def __repr__(self) -> str:
@@ -84,8 +84,8 @@ class TestException(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_ValueError", match="hello") as exc:
             mod.foo()
-        w_stack_summary = exc.value.w_stack_summary
-        assert w_stack_summary.entries == [
+        w_tb = exc.value.w_tb
+        assert w_tb.entries == [
             MatchFrame("test::foo", "bar(1)"),
             MatchFrame("test::bar", "baz(x, 2)"),
             MatchFrame("test::baz", 'raise ValueError("hello")'),
