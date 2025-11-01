@@ -10,6 +10,8 @@ from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.vm.astframe import ASTFrame
 from spy.vm.builtin import builtin_method
+from spy.vm.classframe import ClassFrame
+from spy.vm.modframe import ModFrame
 from spy.vm.object import W_Object
 
 from . import TRACEBACK
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class FrameSummary:
-    kind: Literal["spy", "redshift"]
+    kind: Literal["astframe", "modframe", "classframe", "dopplerframe"]
     func: FQN
     loc: Loc
 
@@ -72,16 +74,36 @@ class W_StackSummary(W_Object):
         entries = []
         frames = traceback._walk_tb_with_full_positions(tb)
         for frame, lineno in frames:
-            if frame.f_code in (ASTFrame.run.__code__, DopplerFrame.redshift.__code__):
-                # this is a SPy applevel frame, record it
+            # ==== record applevel frame ====
+            if frame.f_code is ASTFrame.run.__code__:
                 spyframe = frame.f_locals["self"]
-                kind = "spy" if type(spyframe) is ASTFrame else "redshift"
                 fqn = spyframe.w_func.fqn
                 loc = spyframe.w_func.funcdef.loc
-                entries.append(FrameSummary(kind, fqn, loc))
+                entries.append(FrameSummary("astframe", fqn, loc))
 
+            elif frame.f_code is ModFrame.run.__code__:
+                # record the applevel frame
+                spyframe = frame.f_locals["self"]
+                fqn = spyframe.ns
+                loc = spyframe.mod.loc
+                entries.append(FrameSummary("modframe", fqn, loc))
+
+            elif frame.f_code is ClassFrame.run.__code__:
+                # record the applevel frame
+                spyframe = frame.f_locals["self"]
+                fqn = spyframe.ns
+                loc = spyframe.classdef.loc
+                entries.append(FrameSummary("classframe", fqn, loc))
+
+            elif frame.f_code is DopplerFrame.redshift.__code__:
+                # record the applevel frame
+                spyframe = frame.f_locals["self"]
+                fqn = spyframe.w_func.fqn
+                loc = spyframe.w_func.funcdef.loc
+                entries.append(FrameSummary("dopplerframe", fqn, loc))
+
+            # ==== update last frame with more precise loc info ====
             elif frame.f_code is ASTFrame.eval_expr.__code__:
-                # update last frame with more precise loc info
                 expr = frame.f_locals["expr"]
                 entries[-1].loc = expr.loc
 

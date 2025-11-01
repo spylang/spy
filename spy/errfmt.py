@@ -39,9 +39,13 @@ class ErrorFormatter:
     def emit_traceback(self, w_stack_summary: "W_StackSummary") -> None:
         self.w("Traceback (most recent call last):")
         for e in w_stack_summary.entries:
-            if e.kind == "spy":
+            if e.kind == "astframe":
                 funcname = str(e.func)
-            elif e.kind == "redshift":
+            elif e.kind == "modframe":
+                funcname = f"[module] {e.func}"
+            elif e.kind == "classframe":
+                funcname = f"[classdef] {e.func}"
+            elif e.kind == "dopplerframe":
                 funcname = f"[redshift] {e.func}"
             self.emit_loc(e.loc, funcname=funcname, color="error")
         self.w("")
