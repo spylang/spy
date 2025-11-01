@@ -138,6 +138,7 @@ class W_Traceback(W_Object):
 class W_Exception(W_Object):
     message: str
     annotations: list[Annotation]
+    w_tb: Optional[W_Traceback]
 
     # interp-level interface
 
@@ -145,16 +146,18 @@ class W_Exception(W_Object):
         assert isinstance(message, str)
         self.message = message
         self.annotations = []
+        self.w_tb = None
+
+    def with_traceback(self, py_tb: TracebackType) -> None:
+        self.w_tb = W_Traceback.from_py_traceback(py_tb)
 
     def add(self, level: Level, message: str, loc: Loc) -> None:
         self.annotations.append(Annotation(level, message, loc))
 
-    def format(
-        self, use_colors: bool = True, *, w_tb: Optional["W_Traceback"] = None
-    ) -> str:
+    def format(self, use_colors: bool = True) -> str:
         fmt = ErrorFormatter(use_colors)
-        if w_tb:
-            fmt.emit_traceback(w_tb)
+        if self.w_tb:
+            fmt.emit_traceback(self.w_tb)
         etype = self.__class__.__name__[2:]
         fmt.emit_message("error", etype, self.message)
         for ann in self.annotations:

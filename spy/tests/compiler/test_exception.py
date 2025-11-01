@@ -84,7 +84,7 @@ class TestException(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_ValueError", match="hello") as exc:
             mod.foo()
-        w_tb = exc.value.w_tb
+        w_tb = exc.value.add_traceback()
         assert w_tb.entries == [
             MatchFrame("test::foo", "bar(1)"),
             MatchFrame("test::bar", "baz(x, 2)"),
