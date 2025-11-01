@@ -149,11 +149,7 @@ class AbstractFrame:
         return localvar.w_val
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
-        try:
-            return magic_dispatch(self, "exec_stmt", stmt)
-        except SPyError as exc:
-            exc.add_location_maybe(stmt.loc)
-            raise
+        return magic_dispatch(self, "exec_stmt", stmt)
 
     def typecheck_maybe(
         self, wam: W_MetaArg, varname: Optional[str]
@@ -179,12 +175,7 @@ class AbstractFrame:
         return w_typeconv
 
     def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
-        try:
-            wam = magic_dispatch(self, "eval_expr", expr)
-        except SPyError as exc:
-            exc.add_location_maybe(expr.loc)
-            raise
-
+        wam = magic_dispatch(self, "eval_expr", expr)
         w_typeconv = self.typecheck_maybe(wam, varname)
 
         if isinstance(self, ASTFrame) and self.w_func.redshifted:

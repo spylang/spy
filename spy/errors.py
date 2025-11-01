@@ -46,13 +46,6 @@ class SPyError(Exception):
     def add(self, level: Level, message: str, loc: Loc) -> None:
         self.w_exc.add(level, message, loc)
 
-    def add_location_maybe(self, loc: Loc) -> None:
-        """
-        Add "generic" location info to the exception, but only if there
-        isn't any yet.
-        """
-        self.w_exc.add_location_maybe(loc)
-
     def format(self, use_colors: bool = True) -> str:
         from spy.vm.modules.traceback.tb import W_StackSummary
 
