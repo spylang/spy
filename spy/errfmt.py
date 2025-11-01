@@ -39,8 +39,11 @@ class ErrorFormatter:
     def emit_traceback(self, w_stack_summary: "W_StackSummary") -> None:
         self.w("Traceback (most recent call last):")
         for e in w_stack_summary.entries:
-            assert e.kind == "spy"
-            self.emit_loc(e.loc, funcname=str(e.func), color="error")
+            if e.kind == "spy":
+                funcname = str(e.func)
+            elif e.kind == "redshift":
+                funcname = f"[redshift] {e.func}"
+            self.emit_loc(e.loc, funcname=funcname, color="error")
         self.w("")
 
     def emit_message(self, level: Level, etype: str, message: str) -> None:
@@ -49,7 +52,7 @@ class ErrorFormatter:
         self.w(f"{prefix}: {message}")
 
     def emit_annotation(self, ann: Annotation) -> None:
-        self.emit_loc(ann.loc, message=ann.message, color=ann.level)
+        self.emit_loc(ann.loc, funcname=ann.level, message=ann.message, color=ann.level)
         self.w("")
 
     def emit_loc(
@@ -71,7 +74,7 @@ class ErrorFormatter:
             header = f"--> {filename}:{line}"
         else:
             funcname = self.color.set("yellow", funcname)
-            header = f"{funcname} --> {filename}:{line}"
+            header = f"{funcname} at {filename}:{line}"
 
         self.w(f"  * {header}")
         self.w(f"  | {srcline}")
