@@ -48,7 +48,10 @@ class ErrorFormatter:
             self.emit_annotation(ann)
 
     def emit_traceback(self, w_tb: "W_Traceback") -> None:
-        self.out.wl("Traceback (most recent call last):")
+        if w_tb.entries and w_tb.entries[0].kind == "dopplerframe":
+            self.out.wl("Static error during redshift:", color="red")
+
+        self.out.wl(f"Traceback (most recent call last):")
         for e in w_tb.entries:
             if e.kind == "astframe":
                 where = str(e.func)
