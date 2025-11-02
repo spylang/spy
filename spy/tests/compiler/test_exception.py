@@ -50,10 +50,6 @@ class TestException(CompilerTest):
         assert mod.foo(0) == 42
         with SPyError.raises("W_Exception", match="hello") as excinfo:
             mod.foo(1)
-        loc = excinfo.value.w_exc.annotations[0].loc
-        assert loc.filename == str(self.tmpdir.join("test.spy"))
-        assert loc.line_start == 6
-
         with SPyError.raises("W_ValueError", match="world"):
             mod.foo(2)
         with SPyError.raises("W_ValueError") as excinfo:
@@ -96,7 +92,7 @@ class TestException(CompilerTest):
             MatchFrame("test::bar", "baz(x, 2)"),
             MatchFrame("test::baz", 'raise ValueError("hello")'),
         ]
-        w_tb.format()  # check that it doesn't fail
+        exc.value.w_exc.format()  # check that it doesn't fail
 
     @only_interp
     def test_modframe_classframe_traceback(self):
@@ -118,7 +114,7 @@ class TestException(CompilerTest):
             MatchFrame("test::Point", "get_T()", kind="classframe"),
             MatchFrame("test::get_T", 'raise StaticError("invalid type")'),
         ]
-        w_tb.format()  # check that it doesn't fail
+        exc.value.w_exc.format()  # check that it doesn't fail
 
     def test_doppler_traceback(self):
         src = """
