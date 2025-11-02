@@ -331,8 +331,12 @@ class Parser:
                     msg = f"`{STMT}` not supported inside a classdef"
                     self.error(msg, "this is not supported", stmt.loc)
 
+        # loc points to the 'class X' line, body_loc to the whole class body
+        body_loc = py_classdef.loc
+        loc = body_loc.replace(line_end=body_loc.line_start, col_end=-1)
         return spy.ast.ClassDef(
-            loc=py_classdef.loc,
+            loc=loc,
+            body_loc=body_loc,
             name=py_classdef.name,
             kind=kind,
             fields=fields,

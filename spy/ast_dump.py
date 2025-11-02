@@ -51,7 +51,13 @@ class Dumper(TextBuilder):
     ) -> None:
         super().__init__(use_colors=use_colors)
         self.highlight = highlight
-        self.fields_to_ignore = ("loc", "target_loc", "target_locs", "loc_asname")
+        self.fields_to_ignore = (
+            "loc",
+            "target_loc",
+            "body_loc",
+            "target_locs",
+            "loc_asname",
+        )
         self.vm = vm
 
     def dump_anything(self, obj: Any) -> None:

@@ -41,6 +41,17 @@ class W_Traceback(W_Object):
     def __init__(self, entries: list[FrameInfo]) -> None:
         self.entries = entries
 
+    def __repr__(self) -> str:
+        if len(self.entries) == 0:
+            return f"<spy traceback (empty)>"
+        elif len(self.entries) == 1:
+            a = self.entries[0].func
+            return f"<spy traceback ...{a}>"
+        else:
+            a = self.entries[0].func
+            b = self.entries[-1].func
+            return f"<spy traceback: {a}... {b}>"
+
     @classmethod
     def from_py_traceback(cls, tb: TracebackType) -> "W_Traceback":
         """

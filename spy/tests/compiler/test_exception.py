@@ -1,7 +1,13 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, no_C, skip_backends
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_interp,
+    skip_backends,
+)
 from spy.vm.exc import FrameInfo
 
 
@@ -89,6 +95,27 @@ class TestException(CompilerTest):
             MatchFrame("test::foo", "bar(1)"),
             MatchFrame("test::bar", "baz(x, 2)"),
             MatchFrame("test::baz", 'raise ValueError("hello")'),
+        ]
+
+    @only_interp
+    def test_modframe_classframe_traceback(self):
+        src = """
+        @blue
+        def get_T():
+            raise StaticError("invalid type")
+
+        @struct
+        class Point:
+            x: get_T()
+            y: get_T()
+        """
+        with SPyError.raises("W_StaticError", match="invalid type") as exc:
+            mod = self.compile(src)
+        w_tb = exc.value.add_traceback()
+        assert w_tb.entries == [
+            MatchFrame("test", "class Point:", kind="modframe"),
+            MatchFrame("test::Point", "get_T()", kind="classframe"),
+            MatchFrame("test::get_T", 'raise StaticError("invalid type")'),
         ]
 
     def test_lazy_error(self):
