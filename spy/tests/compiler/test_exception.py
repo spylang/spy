@@ -96,6 +96,7 @@ class TestException(CompilerTest):
             MatchFrame("test::bar", "baz(x, 2)"),
             MatchFrame("test::baz", 'raise ValueError("hello")'),
         ]
+        w_tb.format()  # check that it doesn't fail
 
     @only_interp
     def test_modframe_classframe_traceback(self):
@@ -117,6 +118,45 @@ class TestException(CompilerTest):
             MatchFrame("test::Point", "get_T()", kind="classframe"),
             MatchFrame("test::get_T", 'raise StaticError("invalid type")'),
         ]
+        w_tb.format()  # check that it doesn't fail
+
+    def test_doppler_traceback(self):
+        src = """
+        @blue
+        def get_k():
+            raise StaticError("hello")
+
+        def bar() -> i32:
+            return get_k()
+
+        def foo() -> i32:
+            return bar()
+        """
+        if self.backend == "interp":
+            # In [interp] we get an error ONLY when we execute foo, and the taceback is
+            # foo->bar->get_k
+            mod = self.compile(src)
+            with SPyError.raises("W_StaticError", match="hello") as exc:
+                mod.foo()
+
+            w_tb = exc.value.add_traceback()
+            assert w_tb.entries == [
+                MatchFrame("test::foo", "bar()"),
+                MatchFrame("test::bar", "get_k()"),
+                MatchFrame("test::get_k", 'raise StaticError("hello")'),
+            ]
+
+        else:
+            # In [doppler] and [C], we get an error during compilation, and traceback is
+            # "redshift bar"->get_k.
+            with SPyError.raises("W_StaticError", match="hello") as exc:
+                self.compile(src)
+
+            w_tb = exc.value.add_traceback()
+            assert w_tb.entries == [
+                MatchFrame("test::bar", "get_k()", kind="dopplerframe"),
+                MatchFrame("test::get_k", 'raise StaticError("hello")'),
+            ]
 
     def test_lazy_error(self):
         src = """
