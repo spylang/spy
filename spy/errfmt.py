@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from spy.location import Loc
-from spy.textbuilder import ColorFormatter
+from spy.textbuilder import ColorFormatter, TextBuilder
 
 if TYPE_CHECKING:
     from spy.vm.exc import W_Traceback
@@ -19,25 +19,21 @@ class Annotation:
 
 
 class ErrorFormatter:
-    lines: list[str]
+    out: TextBuilder
 
     def __init__(self, use_colors: bool) -> None:
-        self.color = ColorFormatter(use_colors)
+        self.out = TextBuilder(use_colors=use_colors)
         # add "custom colors" to ColorFormatter, so that we can do
         # self.color.set('error', 'hello')
-        self.color.error = self.color.red  # type: ignore
-        self.color.panic = self.color.red  # type: ignore
-        self.color.note = self.color.green  # type: ignore
-        self.lines = []
-
-    def w(self, s: str) -> None:
-        self.lines.append(s)
+        self.out.fmt.error = ColorFormatter.red  # type: ignore
+        self.out.fmt.panic = ColorFormatter.red  # type: ignore
+        self.out.fmt.note = ColorFormatter.green  # type: ignore
 
     def build(self) -> str:
-        return "\n".join(self.lines)
+        return self.out.build()
 
     def emit_traceback(self, w_tb: "W_Traceback") -> None:
-        self.w("Traceback (most recent call last):")
+        self.out.wl("Traceback (most recent call last):")
         for e in w_tb.entries:
             if e.kind == "astframe":
                 funcname = str(e.func)
@@ -47,17 +43,18 @@ class ErrorFormatter:
                 funcname = f"[classdef] {e.func}"
             elif e.kind == "dopplerframe":
                 funcname = f"[redshift] {e.func}"
+            else:
+                assert False, f"invalid frame kind: {e.kind}"
             self.emit_loc(e.loc, funcname=funcname, color="error")
-        self.w("")
+        self.out.wl()
 
     def emit_message(self, level: Level, etype: str, message: str) -> None:
-        prefix = self.color.set(level, etype)
-        message = self.color.set("default", message)
-        self.w(f"{prefix}: {message}")
+        prefix = self.out.fmt.set(level, etype)
+        self.out.wl(f"{prefix}: {message}")
 
     def emit_annotation(self, ann: Annotation) -> None:
         self.emit_loc(ann.loc, funcname=ann.level, message=ann.message, color=ann.level)
-        self.w("")
+        self.out.wl()
 
     def emit_loc(
         self,
@@ -72,18 +69,18 @@ class ErrorFormatter:
         col = loc.col_start + 1  # Loc columns are 0-based but we want 1-based
         srcline = linecache.getline(filename, line).rstrip("\n")
         underline = self.make_underline(srcline, loc, message)
-        underline = self.color.set(color, underline)
+        underline = self.out.fmt.set(color, underline)
 
         if funcname == "":
             header = f"--> {filename}:{line}"
         else:
-            funcname = self.color.set("yellow", funcname)
+            funcname = self.out.fmt.set("yellow", funcname)
             header = f"{funcname} at {filename}:{line}"
 
-        self.w(f"  * {header}")
-        self.w(f"  | {srcline}")
-        # self.w(f"{line:>3} | {srcline}")
-        self.w(f"  | {underline}")
+        self.out.wl(f"  * {header}")
+        self.out.wl(f"  | {srcline}")
+        # self.out.wl(f"{line:>3} | {srcline}")
+        self.out.wl(f"  | {underline}")
 
     def make_underline(self, srcline: str, loc: Loc, message: str) -> str:
         a = loc.col_start
