@@ -1,0 +1,33 @@
+# NOTE: this is expected to fail, the goal is to show how the error looks like.
+#
+# Try to run:
+#     spy staticerror.spy
+#     spy -r staticerror.spy
+#     spy -r --error-mode=lazy staticerror.spy
+
+
+@blue
+def get_default(T):
+    if T == int:
+        return 0
+    elif T == float:
+        return 0.0
+    else:
+        raise StaticError("cannot get default value for type " + str(T))
+
+
+@blue.generic
+def print_type_info(T):
+    def impl() -> None:
+        typename = str(T)
+        default: T = get_default(T)
+        print("type: " + typename + ", default: " + str(default))
+
+    return impl
+
+
+def main() -> None:
+    print_type_info[int]()
+    print_type_info[float]()
+    if False:
+        print_type_info[str]()

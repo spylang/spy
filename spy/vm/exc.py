@@ -105,21 +105,18 @@ class W_Traceback(W_Object):
                 entries.append(FrameInfo("astframe", fqn, loc))
 
             elif frame.f_code is ModFrame.run.__code__:
-                # record the applevel frame
                 spyframe = frame.f_locals["self"]
                 fqn = spyframe.ns
                 loc = spyframe.mod.loc
                 entries.append(FrameInfo("modframe", fqn, loc))
 
             elif frame.f_code is ClassFrame.run.__code__:
-                # record the applevel frame
                 spyframe = frame.f_locals["self"]
                 fqn = spyframe.ns
                 loc = spyframe.classdef.loc
                 entries.append(FrameInfo("classframe", fqn, loc))
 
             elif frame.f_code is DopplerFrame.redshift.__code__:
-                # record the applevel frame
                 spyframe = frame.f_locals["self"]
                 fqn = spyframe.w_func.fqn
                 loc = spyframe.w_func.funcdef.loc
