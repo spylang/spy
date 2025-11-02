@@ -17,7 +17,7 @@ class MatchFrame:
         self.func = func
         self.src = src
 
-    def __eq__(self, info: FrameInfo) -> bool:
+    def __eq__(self, info: object) -> bool:
         if not isinstance(info, FrameInfo):
             return NotImplemented
         return (

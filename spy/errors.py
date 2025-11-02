@@ -55,6 +55,7 @@ class SPyError(Exception):
             raise ValueError("this exception was never raised (__traceback__ is None)")
         if self.w_exc.w_tb is None:
             self.w_exc.with_traceback(self.__traceback__)
+        assert self.w_exc.w_tb is not None
         return self.w_exc.w_tb
 
     @contextmanager

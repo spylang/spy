@@ -4,7 +4,7 @@ import linecache
 import re
 import sys
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 
 @dataclass(frozen=True)
@@ -128,9 +128,12 @@ class Loc:
         """
         Visualize the piece of code which correspond to this Loc
         """
-        from spy.errfmt import Annotation, ErrorFormatter
+        if not TYPE_CHECKING:
+            # this is silly: if mypy sees this import, it gets crazy and starts to emit
+            # hundreds of errors.
+            from spy.errfmt import Annotation, ErrorFormatter
 
-        fmt = ErrorFormatter(use_colors=True)  # type: ignore
-        ann = Annotation("note", "", self)
-        fmt.emit_annotation(ann)
-        print(fmt.build())
+            fmt = ErrorFormatter(use_colors=True)  # type: ignore
+            ann = Annotation("note", "", self)
+            fmt.emit_annotation(ann)
+            print(fmt.build())

@@ -95,7 +95,7 @@ class W_Traceback(W_Object):
         #   for the last recorded frame.
 
         entries = []
-        frames = traceback._walk_tb_with_full_positions(tb)
+        frames = traceback._walk_tb_with_full_positions(tb)  # type: ignore
         for frame, lineno in frames:
             # ==== record applevel frame ====
             if frame.f_code is ASTFrame.run.__code__:

@@ -6,7 +6,7 @@ from spy.location import Loc
 from spy.textbuilder import ColorFormatter, TextBuilder
 
 if TYPE_CHECKING:
-    from spy.vm.exc import W_Traceback
+    from spy.vm.exc import W_Exception, W_Traceback
 
 Level = Literal["error", "note", "panic"]
 
