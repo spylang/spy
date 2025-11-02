@@ -29,58 +29,68 @@ class ErrorFormatter:
         self.out.fmt.panic = ColorFormatter.red  # type: ignore
         self.out.fmt.note = ColorFormatter.green  # type: ignore
 
+    @classmethod
+    def format_exception(cls, w_exc: "W_Exception", *, use_colors: bool) -> str:
+        fmt = cls(use_colors)
+        fmt.emit_exception(w_exc)
+        return fmt.build()
+
     def build(self) -> str:
         return self.out.build()
+
+    def emit_exception(self, w_exc: "W_Exception") -> None:
+        if w_exc.w_tb:
+            self.emit_traceback(w_exc.w_tb)
+        etype = w_exc.__class__.__name__[2:]
+        prefix = self.out.fmt.set("error", etype)
+        self.out.wl(f"{prefix}: {w_exc.message}")
+        for ann in w_exc.annotations:
+            self.emit_annotation(ann)
 
     def emit_traceback(self, w_tb: "W_Traceback") -> None:
         self.out.wl("Traceback (most recent call last):")
         for e in w_tb.entries:
             if e.kind == "astframe":
-                funcname = str(e.func)
+                where = str(e.func)
             elif e.kind == "modframe":
-                funcname = f"[module] {e.func}"
+                where = f"[module] {e.func}"
             elif e.kind == "classframe":
-                funcname = f"[classdef] {e.func}"
+                where = f"[classdef] {e.func}"
             elif e.kind == "dopplerframe":
-                funcname = f"[redshift] {e.func}"
+                where = f"[redshift] {e.func}"
             else:
                 assert False, f"invalid frame kind: {e.kind}"
-            self.emit_loc(e.loc, funcname=funcname, color="error")
-        self.out.wl()
 
-    def emit_message(self, level: Level, etype: str, message: str) -> None:
-        prefix = self.out.fmt.set(level, etype)
-        self.out.wl(f"{prefix}: {message}")
+            where = self.out.fmt.set("purple", where)
+            srcline, underline = self.fmt_loc(e.loc, "red", "")
+            self.out.wl(f"  * {where} at {e.loc.filename}:{e.loc.line_start}")
+            self.out.wl(f"  | {srcline}")
+            self.out.wl(f"  | {underline}")
+
+        self.out.wl()
 
     def emit_annotation(self, ann: Annotation) -> None:
-        self.emit_loc(ann.loc, funcname=ann.level, message=ann.message, color=ann.level)
+        loc = ann.loc
+        srcline, underline = self.fmt_loc(loc, ann.level, ann.message)
+        header = f"{loc.filename}:{loc.line_start}"
+
+        self.out.wl(f"  | {header}")
+        self.out.wl(f"  | {srcline}")
+        self.out.wl(f"  | {underline}")
         self.out.wl()
 
-    def emit_loc(
-        self,
-        loc: Loc,
-        *,
-        funcname: str = "",
-        message: str = "",
-        color: str = "default",
-    ) -> None:
+    def fmt_loc(self, loc: Loc, color: str, message: str) -> tuple[str, str]:
+        """
+        Take a loc and return (srcline, underline), which are supposed to be printed
+        one after the other
+        """
         filename = loc.filename
         line = loc.line_start
         col = loc.col_start + 1  # Loc columns are 0-based but we want 1-based
         srcline = linecache.getline(filename, line).rstrip("\n")
         underline = self.make_underline(srcline, loc, message)
         underline = self.out.fmt.set(color, underline)
-
-        if funcname == "":
-            header = f"--> {filename}:{line}"
-        else:
-            funcname = self.out.fmt.set("yellow", funcname)
-            header = f"{funcname} at {filename}:{line}"
-
-        self.out.wl(f"  * {header}")
-        self.out.wl(f"  | {srcline}")
-        # self.out.wl(f"{line:>3} | {srcline}")
-        self.out.wl(f"  | {underline}")
+        return srcline, underline
 
     def make_underline(self, srcline: str, loc: Loc, message: str) -> str:
         a = loc.col_start

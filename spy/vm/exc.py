@@ -163,14 +163,7 @@ class W_Exception(W_Object):
         self.annotations.append(Annotation(level, message, loc))
 
     def format(self, use_colors: bool = True) -> str:
-        fmt = ErrorFormatter(use_colors)
-        if self.w_tb:
-            fmt.emit_traceback(self.w_tb)
-        etype = self.__class__.__name__[2:]
-        fmt.emit_message("error", etype, self.message)
-        for ann in self.annotations:
-            fmt.emit_annotation(ann)
-        return fmt.build()
+        return ErrorFormatter.format_exception(self, use_colors=use_colors)
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
