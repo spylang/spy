@@ -102,7 +102,7 @@ class SPyVM:
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
     # For use by --colorize to remember the red/blue color of each expr
-    ast_color_map: Optional[dict[ast.Expr | ast.Assign, Color]]
+    ast_color_map: Optional[dict[ast.Node, Color]]
 
     def __init__(self, ll: Optional[LLSPyInstance] = None) -> None:
         if ll is None:

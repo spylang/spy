@@ -144,6 +144,10 @@ class DopplerFrame(ASTFrame):
         exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
         return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
+    def record_node_color(self, node: ast.Node, color: Color) -> None:
+        if self.vm.ast_color_map is not None:
+            self.vm.ast_color_map[node] = color
+
     def shift_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         newvalue = self.eval_and_shift(ret.value, varname="@return")
         return [ret.replace(value=newvalue)]
@@ -182,20 +186,16 @@ class DopplerFrame(ASTFrame):
         return [vardef.replace(type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        def populate_color(color: Color) -> None:
-            if self.vm.ast_color_map is not None:
-                self.vm.ast_color_map[assign] = color
-
         self.exec_stmt_Assign(assign)
         varname = assign.target.value
         sym = self.symtable.lookup(varname)
         if sym.is_local and self.locals[varname].color == "blue":
-            populate_color("blue")
+            self.record_node_color(assign, "blue")
             # redshift away assignments to blue locals
             return []
         else:
             if sym.is_local:
-                populate_color(self.locals[varname].color)
+                self.record_node_color(assign, self.locals[varname].color)
             specialized = self.specialized_assigns[assign]
             newvalue = self.shifted_expr[assign.value]
             return [specialized.replace(value=newvalue)]
@@ -356,8 +356,7 @@ class DopplerFrame(ASTFrame):
             )
 
         self.shifted_expr[expr] = new_expr
-        if self.vm.ast_color_map is not None:
-            self.vm.ast_color_map[expr] = wam.color
+        self.record_node_color(expr, wam.color)
         return wam
 
     def eval_opimpl(
