@@ -1,12 +1,12 @@
 import linecache
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Optional
 
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter, TextBuilder
 
 if TYPE_CHECKING:
-    from spy.vm.exc import W_Exception, W_Traceback
+    from spy.vm.exc import FrameInfo, W_Exception, W_Traceback
 
 Level = Literal["error", "note", "panic"]
 
@@ -52,31 +52,48 @@ class ErrorFormatter:
             self.out.wl("Static error during redshift:", color="red")
 
         self.out.wl(f"Traceback (most recent call last):")
-        for e in w_tb.entries:
-            if e.kind == "astframe":
-                where = str(e.fqn)
-            elif e.kind == "modframe":
-                where = f"[module] {e.fqn}"
-            elif e.kind == "classframe":
-                where = f"[classdef] {e.fqn}"
-            elif e.kind == "dopplerframe":
-                where = f"[redshift] {e.fqn}"
-            else:
-                assert False, f"invalid frame kind: {e.kind}"
+        for f in w_tb.entries:
+            self.emit_frameinfo(f)
+        self.out.wl()
 
-            where = self.out.fmt.set("purple", where)
-            srcline, underline = self.fmt_loc(e.loc, "red", "")
-            self.out.wl(f"  * {where} at {e.loc.filename}:{e.loc.line_start}")
+    def emit_frameinfo(
+        self, f: "FrameInfo", *, index: Optional[int] = None, is_current: bool = False
+    ) -> None:
+        """
+        This is used by emit_traceback, but also by spdb.do_where.
+        """
+        if f.kind == "astframe":
+            where = str(f.fqn)
+        elif f.kind == "modframe":
+            where = f"[module] {f.fqn}"
+        elif f.kind == "classframe":
+            where = f"[classdef] {f.fqn}"
+        elif f.kind == "dopplerframe":
+            where = f"[redshift] {f.fqn}"
+        else:
+            assert False, f"invalid frame kind: {f.kind}"
+
+        where = self.out.fmt.set("purple", where)
+        srcline, underline = self.fmt_loc(f.loc, "red", "")
+
+        if index is None:
+            # we are printin a traceback
+            self.out.wl(f"  * {where} at {f.loc.filename}:{f.loc.line_start}")
             self.out.wl(f"  | {srcline}")
             self.out.wl(f"  | {underline}")
-
-        self.out.wl()
+        else:
+            # we are printing a "where" in spdb
+            idx = f"[{index}]".rjust(4)
+            if is_current:
+                idx = self.out.fmt.set("green", idx)
+            self.out.wl(f"{idx} {where} at {f.loc.filename}:{f.loc.line_start}")
+            self.out.wl(f"  | {srcline}")
+            self.out.wl(f"  | {underline}")
 
     def emit_annotation(self, ann: Annotation) -> None:
         loc = ann.loc
         srcline, underline = self.fmt_loc(loc, ann.level, ann.message)
         header = f"{loc.filename}:{loc.line_start}"
-
         self.out.wl(f"  | {header}")
         self.out.wl(f"  | {srcline}")
         self.out.wl(f"  | {underline}")
