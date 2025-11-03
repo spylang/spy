@@ -62,6 +62,8 @@ class TestUnsafePtr(CompilerTest):
         assert mod.foo(1) == 100
         with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
             mod.foo(3)
+        with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
+            mod.foo(-2)
 
     def test_ptr_to_struct(self):
         mod = self.compile("""
