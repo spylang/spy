@@ -1,0 +1,28 @@
+from math import fabs
+
+
+def get_pi() -> float:
+    """
+    Compute an approximation of PI using the Leibniz series
+    """
+    tol = 0.001
+    pi_approx = 0.0
+    k = 0
+    term = 1.0  # Initial term to enter the loop
+
+    while fabs(term) > tol:
+        if k % 2 == 0:
+            term = 1.0 / (2 * k + 1)
+        else:
+            term = -1 * 1.0 / (2 * k + 1)
+
+        pi_approx = pi_approx + term
+        k = k + 1
+
+    return 4 * pi_approx
+
+
+def main() -> None:
+    pi = get_pi()
+    print("pi:")
+    print(pi)
