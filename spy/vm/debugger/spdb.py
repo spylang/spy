@@ -70,9 +70,15 @@ class SPdb(cmd.Cmd):
         print("***", msg)
 
     def do_quit(self, arg: str) -> bool:
-        return True
+        raise SPyError("W_SPdbQuit", "")
 
     do_q = do_quit
+
+    def do_continue(self, arg: str) -> bool:
+        return True
+
+    do_c = do_continue
+    do_cont = do_continue
 
     def do_where(self, arg: str) -> None:
         """w(here)

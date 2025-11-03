@@ -318,3 +318,10 @@ class W_WIP(W_Exception):
     """
     Raised when something is supposed to work but has not been implemented yet
     """
+
+
+@TYPES.builtin_type("SPdbQuit")
+class W_SPdbQuit(W_Exception):
+    """
+    Raised when doing 'quit' from (spdb) prompt
+    """

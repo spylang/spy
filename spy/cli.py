@@ -273,6 +273,11 @@ async def real_main(args: Arguments) -> None:
         ## traceback.print_exc()
         ## print()
 
+        # special case SPdbQuit
+        if e.etype == "W_SPdbQuit":
+            print("SPdbQuit")
+            sys.exit(1)
+
         print(e.format(use_colors=True))
         if args.pdb:
             info = sys.exc_info()
