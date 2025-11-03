@@ -32,7 +32,7 @@ class ModFrame(AbstractFrame):
         symtable: SymTable,
         mod: ast.Module,
     ) -> None:
-        super().__init__(vm, ns, symtable, closure=vm.builtins_closure)
+        super().__init__(vm, ns, mod.loc, symtable, closure=vm.builtins_closure)
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)

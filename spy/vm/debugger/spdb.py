@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 def w_breakpoint(vm: "SPyVM") -> None:
     # generate a fake traceback
     pyframe = sys._getframe().f_back
+    assert pyframe is not None
     w_tb = W_Traceback.from_py_frame(pyframe)
     breakpoint()
 

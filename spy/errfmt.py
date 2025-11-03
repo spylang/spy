@@ -54,13 +54,13 @@ class ErrorFormatter:
         self.out.wl(f"Traceback (most recent call last):")
         for e in w_tb.entries:
             if e.kind == "astframe":
-                where = str(e.func)
+                where = str(e.fqn)
             elif e.kind == "modframe":
-                where = f"[module] {e.func}"
+                where = f"[module] {e.fqn}"
             elif e.kind == "classframe":
-                where = f"[classdef] {e.func}"
+                where = f"[classdef] {e.fqn}"
             elif e.kind == "dopplerframe":
-                where = f"[redshift] {e.func}"
+                where = f"[redshift] {e.fqn}"
             else:
                 assert False, f"invalid frame kind: {e.kind}"
 

@@ -54,6 +54,7 @@ class AbstractFrame:
 
     vm: "SPyVM"
     ns: FQN
+    loc: Loc
     closure: CLOSURE
     symtable: SymTable
     locals: dict[str, LocalVar]
@@ -62,11 +63,12 @@ class AbstractFrame:
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(
-        self, vm: "SPyVM", ns: FQN, symtable: SymTable, closure: CLOSURE
+        self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
     ) -> None:
         assert type(self) is not AbstractFrame, "abstract class"
         self.vm = vm
         self.ns = ns
+        self.loc = loc
         self.symtable = symtable
         self.closure = closure
         self.locals = {}
@@ -881,7 +883,9 @@ class ASTFrame(AbstractFrame):
             w_func = w_func.w_redshifted_into
         assert isinstance(w_func, W_ASTFunc)
         ns = self.compute_ns(w_func, args_w)
-        super().__init__(vm, ns, w_func.funcdef.symtable, w_func.closure)
+        super().__init__(
+            vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
+        )
         self.w_func = w_func
         self.funcdef = w_func.funcdef
 
