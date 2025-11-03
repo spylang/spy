@@ -12,6 +12,7 @@ from spy.errfmt import ErrorFormatter
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import BUILTINS
 from spy.vm.classframe import ClassFrame
+from spy.vm.debugger.longlist import print_longlist
 from spy.vm.exc import FrameInfo, W_Traceback
 from spy.vm.modframe import ModFrame
 from spy.vm.w import W_Object
@@ -134,7 +135,10 @@ class SPdb(cmd.Cmd):
         if f.kind == "astframe":
             spyframe = f.spyframe
             assert isinstance(spyframe, ASTFrame)
-            breakpoint()
+            # Get the function location and current location
+            func_loc = spyframe.loc
+            cur_loc = f.loc
+            print_longlist(func_loc, cur_loc)
 
     do_list = do_longlist
     do_l = do_longlist
