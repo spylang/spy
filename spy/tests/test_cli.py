@@ -60,6 +60,7 @@ class TestMain:
         self.runner = CliRunner()
         self.main_spy = tmpdir.join("main.spy")
         self.factorial_spy = tmpdir.join("fatcorial.spy")
+        self.blu_var_in_red_func_spy = tmpdir.join("blu_var_in_red_func.spy")
         main_src = """
         def main() -> None:
             print("hello world")
@@ -77,8 +78,18 @@ class TestMain:
         def main() -> None:
             print(factorial(5))
         """
+        blu_var_in_red_func_src = """
+        @blue
+        def get_Type():
+            return int
+
+        def main() -> None:
+            T = get_Type()    # T is blue
+            print(T)
+        """
         self.main_spy.write(textwrap.dedent(main_src))
         self.factorial_spy.write(textwrap.dedent(factorial_src))
+        self.blu_var_in_red_func_spy.write(textwrap.dedent(blu_var_in_red_func_src))
 
     def run(self, *args: Any, decolorize_stdout=True) -> Any:
         args2 = [str(arg) for arg in args]
@@ -157,13 +168,25 @@ class TestMain:
         from _range import range
 
         def factorial(n: i32) -> i32:
-            res = [B]1[/COLOR]
+            [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
                 res *= ([R]i+[/COLOR][B]1[/COLOR])
             return [R]res[/COLOR]
 
         def main() -> None:
             [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
+        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
+        _, stdout = self.run(
+            "--colorize", self.blu_var_in_red_func_spy, decolorize_stdout=False
+        )
+        expected_outout = """
+        @blue
+        def get_Type():
+            return int
+
+        def main() -> None:
+            [B]T = get_Type()[/COLOR]    # T is blue
+            [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]"""  # noqa
         assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
 
     def test_cwrite(self):
