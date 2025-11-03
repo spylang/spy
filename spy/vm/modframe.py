@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
 from spy.analyze.symtable import Color, SymTable
@@ -8,7 +10,9 @@ from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
 from spy.vm.module import W_Module
 from spy.vm.object import W_Object
-from spy.vm.vm import SPyVM
+
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 
 class ModFrame(AbstractFrame):
@@ -16,14 +20,14 @@ class ModFrame(AbstractFrame):
     A frame to execute the body of a module
     """
 
-    vm: SPyVM
+    vm: "SPyVM"
     modname: str
     mod: ast.Module
     scopes: ScopeAnalyzer
 
     def __init__(
         self,
-        vm: SPyVM,
+        vm: "SPyVM",
         ns: FQN,
         symtable: SymTable,
         mod: ast.Module,

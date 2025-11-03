@@ -1,0 +1,22 @@
+# NOTE: this is expected to fail, the goal is to show how the error looks like.
+#
+# Try to run:
+#     spy raise.spy
+#     spy -r raise.spy
+
+
+def foo(x: int, y: int) -> int:
+    return bar(x, y)
+
+
+def bar(x: int, y: int) -> int:
+    return baz(x, y)
+
+
+def baz(x: int, y: int) -> int:
+    raise ValueError("hello")
+
+
+def main() -> None:
+    x = foo(1, 2)
+    print(x)

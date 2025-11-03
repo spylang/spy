@@ -270,6 +270,9 @@ async def real_main(args: Arguments) -> None:
     try:
         return await inner_main(args)
     except SPyError as e:
+        ## traceback.print_exc()
+        ## print()
+
         print(e.format(use_colors=True))
         if args.pdb:
             info = sys.exc_info()

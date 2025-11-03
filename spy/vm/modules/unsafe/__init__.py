@@ -1,7 +1,5 @@
 from typing import TYPE_CHECKING
 
-import fixedint
-
 from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.opspec import W_MetaArg, W_OpSpec

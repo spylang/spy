@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from spy import ast
 from spy.analyze.symtable import (
@@ -12,7 +12,9 @@ from spy.analyze.symtable import (
 )
 from spy.errors import SPyError
 from spy.location import Loc
-from spy.vm.vm import SPyVM
+
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 
 class ScopeAnalyzer:
@@ -47,13 +49,13 @@ class ScopeAnalyzer:
          defined or referenced in that scope.
     """
 
-    vm: SPyVM
+    vm: "SPyVM"
     mod: ast.Module
     stack: list[SymTable]
     inner_scopes: dict[ast.FuncDef | ast.ClassDef, SymTable]
     loop_depth: int
 
-    def __init__(self, vm: SPyVM, modname: str, mod: ast.Module) -> None:
+    def __init__(self, vm: "SPyVM", modname: str, mod: ast.Module) -> None:
         self.vm = vm
         self.mod = mod
         self.builtins_scope = SymTable.from_builtins(vm)

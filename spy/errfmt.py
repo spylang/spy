@@ -1,9 +1,12 @@
 import linecache
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from spy.location import Loc
-from spy.textbuilder import ColorFormatter
+from spy.textbuilder import ColorFormatter, TextBuilder
+
+if TYPE_CHECKING:
+    from spy.vm.exc import W_Exception, W_Traceback
 
 Level = Literal["error", "note", "panic"]
 
@@ -16,39 +19,81 @@ class Annotation:
 
 
 class ErrorFormatter:
-    lines: list[str]
+    out: TextBuilder
 
     def __init__(self, use_colors: bool) -> None:
-        self.color = ColorFormatter(use_colors)
+        self.out = TextBuilder(use_colors=use_colors)
         # add "custom colors" to ColorFormatter, so that we can do
         # self.color.set('error', 'hello')
-        self.color.error = self.color.red  # type: ignore
-        self.color.panic = self.color.red  # type: ignore
-        self.color.note = self.color.green  # type: ignore
-        self.lines = []
+        self.out.fmt.error = ColorFormatter.red  # type: ignore
+        self.out.fmt.panic = ColorFormatter.red  # type: ignore
+        self.out.fmt.note = ColorFormatter.green  # type: ignore
 
-    def w(self, s: str) -> None:
-        self.lines.append(s)
+    @classmethod
+    def format_exception(cls, w_exc: "W_Exception", *, use_colors: bool) -> str:
+        fmt = cls(use_colors)
+        fmt.emit_exception(w_exc)
+        return fmt.build()
 
     def build(self) -> str:
-        return "\n".join(self.lines)
+        return self.out.build()
 
-    def emit_message(self, level: Level, etype: str, message: str) -> None:
-        prefix = self.color.set(level, etype)
-        message = self.color.set("default", message)
-        self.w(f"{prefix}: {message}")
+    def emit_exception(self, w_exc: "W_Exception") -> None:
+        if w_exc.w_tb:
+            self.emit_traceback(w_exc.w_tb)
+        etype = w_exc.__class__.__name__[2:]
+        prefix = self.out.fmt.set("error", etype)
+        self.out.wl(f"{prefix}: {w_exc.message}")
+        for ann in w_exc.annotations:
+            self.emit_annotation(ann)
+
+    def emit_traceback(self, w_tb: "W_Traceback") -> None:
+        if w_tb.entries and w_tb.entries[0].kind == "dopplerframe":
+            self.out.wl("Static error during redshift:", color="red")
+
+        self.out.wl(f"Traceback (most recent call last):")
+        for e in w_tb.entries:
+            if e.kind == "astframe":
+                where = str(e.func)
+            elif e.kind == "modframe":
+                where = f"[module] {e.func}"
+            elif e.kind == "classframe":
+                where = f"[classdef] {e.func}"
+            elif e.kind == "dopplerframe":
+                where = f"[redshift] {e.func}"
+            else:
+                assert False, f"invalid frame kind: {e.kind}"
+
+            where = self.out.fmt.set("purple", where)
+            srcline, underline = self.fmt_loc(e.loc, "red", "")
+            self.out.wl(f"  * {where} at {e.loc.filename}:{e.loc.line_start}")
+            self.out.wl(f"  | {srcline}")
+            self.out.wl(f"  | {underline}")
+
+        self.out.wl()
 
     def emit_annotation(self, ann: Annotation) -> None:
-        filename = ann.loc.filename
-        line = ann.loc.line_start
-        col = ann.loc.col_start + 1  # Loc columns are 0-based but we want 1-based
+        loc = ann.loc
+        srcline, underline = self.fmt_loc(loc, ann.level, ann.message)
+        header = f"{loc.filename}:{loc.line_start}"
+
+        self.out.wl(f"  | {header}")
+        self.out.wl(f"  | {srcline}")
+        self.out.wl(f"  | {underline}")
+        self.out.wl()
+
+    def fmt_loc(self, loc: Loc, color: str, message: str) -> tuple[str, str]:
+        """
+        Take a loc and return (srcline, underline), which are supposed to be printed
+        one after the other
+        """
+        filename = loc.filename
+        line = loc.line_start
+        col = loc.col_start + 1  # Loc columns are 0-based but we want 1-based
         srcline = linecache.getline(filename, line).rstrip("\n")
-        underline = self.make_underline(srcline, ann.loc, ann.message)
-        underline = self.color.set(ann.level, underline)
-        self.w(f"   --> {filename}:{line}:{col}")
-        self.w(f"{line:>3} | {srcline}")
-        self.w(f"    | {underline}")
-        self.w("")
+        underline = self.make_underline(srcline, loc, message)
+        underline = self.out.fmt.set(color, underline)
+        return srcline, underline
 
     def make_underline(self, srcline: str, loc: Loc, message: str) -> str:
         a = loc.col_start
