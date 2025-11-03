@@ -84,6 +84,14 @@ class W_I32(W_Object):
         i = vm.unwrap_i32(w_self)
         return vm.wrap(str(i))
 
+    # XXX: why do we need an explicit __repr__? In theory the __str__ should be
+    # automatically used, but it's not
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_I32") -> "W_Str":
+        i = vm.unwrap_i32(w_self)
+        return vm.wrap(str(i))
+
 
 @B.builtin_type("i8", lazy_definition=True)
 class W_I8(W_Object):

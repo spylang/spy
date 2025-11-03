@@ -67,6 +67,21 @@ class Parser:
         py_mod.compute_all_locs(self.filename)
         return self.from_py_Module(py_mod)
 
+    def parse_single_stmt(self) -> spy.ast.Stmt:
+        """
+        Parse the source code assuming it contains a single stmt. Used by SPdb.
+        """
+        py_mod = magic_py_parse(self.src, self.filename)
+        assert isinstance(py_mod, py_ast.Module)
+        py_mod.compute_all_locs(self.filename)
+        if len(py_mod.body) > 1:
+            self.error(
+                "expected exactly one statement",
+                "this is not allowed",
+                py_mod.body[1].loc,
+            )
+        return self.from_py_stmt(py_mod.body[0])
+
     def error(self, primary: str, secondary: str, loc: Loc) -> NoReturn:
         raise SPyError.simple("W_ParseError", primary, secondary, loc)
 

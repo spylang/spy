@@ -7,8 +7,12 @@ import pdb
 import sys
 from typing import TYPE_CHECKING, Annotated, Literal
 
+from spy import ast
 from spy.doppler import DopplerFrame
 from spy.errfmt import ErrorFormatter
+from spy.errors import SPyError
+from spy.parser import Parser
+from spy.util import record_src_in_linecache
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import BUILTINS
 from spy.vm.classframe import ClassFrame
@@ -28,15 +32,16 @@ def w_breakpoint(vm: "SPyVM") -> None:
     assert pyframe is not None
     w_tb = W_Traceback.from_py_frame(pyframe)
 
-    spdb = SPdb(w_tb)
+    spdb = SPdb(vm, w_tb)
     spdb.interaction()
 
 
 class SPdb(cmd.Cmd):
     prompt = "(spdb🥸) "
 
-    def __init__(self, w_tb: W_Traceback) -> None:
+    def __init__(self, vm: "SPyVM", w_tb: W_Traceback) -> None:
         super().__init__()
+        self.vm = vm
         self.w_tb = w_tb
         self.curindex = -1  # currently selected frame
 
@@ -143,3 +148,33 @@ class SPdb(cmd.Cmd):
     do_list = do_longlist
     do_l = do_longlist
     do_ll = do_longlist
+
+    def do_print(self, arg: str) -> None:
+        # eval "arg" in the current frame
+        filename = record_src_in_linecache(arg, name="spdb-eval")
+        parser = Parser(arg, filename)
+        stmt = parser.parse_single_stmt()
+        if not isinstance(stmt, ast.StmtExpr):
+            clsname = stmt.__class__.__name__
+            raise SPyError.simple(
+                "W_WIP",
+                f"not supported by SPdb: {clsname}",
+                "this is not supported",
+                stmt.loc,
+            )
+
+        f = self.get_curframe()
+        wam_arg = f.spyframe.eval_expr(stmt.value)
+
+        # hack hack hack: manually call repr(w_arg), we need a better way to do that
+        from spy.vm.b import B
+        from spy.vm.modules.operator import OP
+        from spy.vm.opspec import W_MetaArg
+
+        wam_repr = W_MetaArg.from_w_obj(self.vm, B.w_repr)
+        w_opimpl = self.vm.call_OP(stmt.loc, OP.w_CALL, [wam_repr, wam_arg])
+        w_result = w_opimpl.execute(self.vm, [wam_repr.w_val, wam_arg.w_val])
+        res = self.vm.unwrap_str(w_result)
+        print(res)
+
+    do_p = do_print
