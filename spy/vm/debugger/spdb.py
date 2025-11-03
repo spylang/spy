@@ -7,9 +7,13 @@ import pdb
 import sys
 from typing import TYPE_CHECKING, Annotated, Literal
 
+from spy.doppler import DopplerFrame
 from spy.errfmt import ErrorFormatter
+from spy.vm.astframe import ASTFrame
 from spy.vm.b import BUILTINS
-from spy.vm.exc import W_Traceback
+from spy.vm.classframe import ClassFrame
+from spy.vm.exc import FrameInfo, W_Traceback
+from spy.vm.modframe import ModFrame
 from spy.vm.w import W_Object
 
 if TYPE_CHECKING:
@@ -46,6 +50,9 @@ class SPdb(cmd.Cmd):
         if self.curindex != i:
             self.curindex = i
             self.print_frame_info(i)
+
+    def get_curframe(self) -> FrameInfo:
+        return self.w_tb.entries[self.curindex]
 
     def print_frame_info(self, i: int) -> None:
         f = self.w_tb.entries[i]
@@ -118,7 +125,17 @@ class SPdb(cmd.Cmd):
 
     do_d = do_down
 
-    def do_list(self, arg: str) -> None:
-        print("list", arg)
+    def do_longlist(self, arg: str) -> None:
+        """l | ll | list | longlist
 
-    do_l = do_list
+        List the whole source code for the current function or frame.
+        """
+        f = self.get_curframe()
+        if f.kind == "astframe":
+            spyframe = f.spyframe
+            assert isinstance(spyframe, ASTFrame)
+            breakpoint()
+
+    do_list = do_longlist
+    do_l = do_longlist
+    do_ll = do_longlist
