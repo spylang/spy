@@ -58,6 +58,17 @@ class W_Traceback(W_Object):
         Create a StackSummary of the applevel SPy frames from an interp-level
         Python 'traceback' object.
         """
+        frames = traceback._walk_tb_with_full_positions(tb)  # type: ignore
+        return cls._from_py_frames(frames)
+
+    @classmethod
+    def from_py_frame(cls, frame) -> "W_Traceback":
+        frames = list(traceback.walk_stack(frame))
+        frames.reverse()
+        return cls._from_py_frames(frames)
+
+    @classmethod
+    def _from_py_frames(cls, frames) -> "W_Traceback":
         from spy.doppler import DopplerFrame
         from spy.vm.astframe import ASTFrame
         from spy.vm.classframe import ClassFrame
@@ -93,9 +104,7 @@ class W_Traceback(W_Object):
         #   When we encounter ASTFrame.run, we record an app-level SPy frame.
         #   When we encounter exec_stmt or eval_expr, we set a more precise loc info
         #   for the last recorded frame.
-
         entries = []
-        frames = traceback._walk_tb_with_full_positions(tb)  # type: ignore
         for frame, lineno in frames:
             # ==== record applevel frame ====
             if frame.f_code is ASTFrame.run.__code__:

@@ -17,6 +17,7 @@ from spy.util import func_equals
 from spy.vm.b import B
 from spy.vm.bluecache import BlueCache
 from spy.vm.builtin import IRTag, make_builtin_func
+from spy.vm.debugger import spdb
 from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import (
     CLOSURE,
