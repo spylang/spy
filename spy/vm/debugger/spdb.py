@@ -11,14 +11,18 @@ from spy import ast
 from spy.doppler import DopplerFrame
 from spy.errfmt import ErrorFormatter
 from spy.errors import SPyError
+from spy.location import Loc
 from spy.parser import Parser
+from spy.textbuilder import Color
 from spy.util import record_src_in_linecache
 from spy.vm.astframe import ASTFrame
-from spy.vm.b import BUILTINS
+from spy.vm.b import BUILTINS, B
 from spy.vm.classframe import ClassFrame
 from spy.vm.debugger.longlist import print_longlist
 from spy.vm.exc import FrameInfo, W_Traceback
 from spy.vm.modframe import ModFrame
+from spy.vm.modules.operator import OP
+from spy.vm.opspec import W_MetaArg
 from spy.vm.w import W_Object
 
 if TYPE_CHECKING:
@@ -31,9 +35,21 @@ def w_breakpoint(vm: "SPyVM") -> None:
     pyframe = sys._getframe().f_back
     assert pyframe is not None
     w_tb = W_Traceback.from_py_frame(pyframe)
-
     spdb = SPdb(vm, w_tb)
     spdb.interaction()
+
+
+def print_wam(vm: "SPyVM", wam_arg: W_MetaArg) -> None:
+    # hack hack hack: manually call repr(w_arg), we need a better way to do that
+    wam_repr = W_MetaArg.from_w_obj(vm, B.w_repr)
+    w_opimpl = vm.call_OP(Loc.here(), OP.w_CALL, [wam_repr, wam_arg])
+    w_s = w_opimpl.execute(vm, [wam_repr.w_val, wam_arg.w_val])
+    s = vm.unwrap_str(w_s)
+    #
+    w_T = vm.dynamic_type(wam_arg.w_val)
+    print(Color.set("green", "static type: "), wam_arg.w_static_T)
+    print(Color.set("green", "dynamic type:"), w_T)
+    print(s)
 
 
 class SPdb(cmd.Cmd):
@@ -170,17 +186,7 @@ class SPdb(cmd.Cmd):
             )
 
         f = self.get_curframe()
-        wam_arg = f.spyframe.eval_expr(stmt.value)
-
-        # hack hack hack: manually call repr(w_arg), we need a better way to do that
-        from spy.vm.b import B
-        from spy.vm.modules.operator import OP
-        from spy.vm.opspec import W_MetaArg
-
-        wam_repr = W_MetaArg.from_w_obj(self.vm, B.w_repr)
-        w_opimpl = self.vm.call_OP(stmt.loc, OP.w_CALL, [wam_repr, wam_arg])
-        w_result = w_opimpl.execute(self.vm, [wam_repr.w_val, wam_arg.w_val])
-        res = self.vm.unwrap_str(w_result)
-        print(res)
+        wam = f.spyframe.eval_expr(stmt.value)
+        print_wam(self.vm, wam)
 
     do_p = do_print
