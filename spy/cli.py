@@ -268,7 +268,7 @@ async def pyodide_main(args: Arguments) -> None:
         traceback.print_exc()
 
 
-GLOBAL_VM = None
+GLOBAL_VM: Optional[SPyVM] = None
 
 
 async def real_main(args: Arguments) -> None:
@@ -290,9 +290,14 @@ async def real_main(args: Arguments) -> None:
         print(e.format(use_colors=True))
 
         if args.spdb:
-            spdb = SPdb(GLOBAL_VM, e.w_exc.w_tb)
+            # post-mortem applevel debugger
+            assert GLOBAL_VM is not None
+            w_tb = e.w_exc.w_tb
+            assert w_tb is not None
+            spdb = SPdb(GLOBAL_VM, w_tb)
             spdb.post_mortem()
         elif args.pdb:
+            # post-mortem interp-level debugger
             info = sys.exc_info()
             stdlib_pdb.post_mortem(info[2])
         sys.exit(1)
@@ -327,6 +332,8 @@ async def inner_main(args: Arguments) -> None:
     """
     The actual code for the spy executable
     """
+    global GLOBAL_VM
+
     if args.pyparse:
         do_pyparse(str(args.filename))
         return
@@ -341,8 +348,7 @@ async def inner_main(args: Arguments) -> None:
     srcdir = args.filename.parent
     vm = await SPyVM.async_new()
 
-    global global_vm
-    global_vm = vm
+    GLOBAL_VM = vm
 
     vm.path.append(str(srcdir))
     if args.error_mode == "warn":
