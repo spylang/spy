@@ -808,31 +808,34 @@ class AbstractFrame:
         first_cmp = chain.comparisons[0]
         prev_expr = first_cmp.left
         wam_prev = self.eval_expr(prev_expr)
-        result: Optional[W_MetaArg] = None
-        saw_red = False
+        wam_result: Optional[W_MetaArg] = None
+        chain_color = wam_prev.color
 
         for cmp in chain.comparisons:
             assert cmp.left is prev_expr, "chained comparisons must share operands"
             wam_right = self.eval_expr(cmp.right)
             w_OP = OP_from_token(cmp.op)
             w_opimpl = self.vm.call_OP(cmp.loc, w_OP, [wam_prev, wam_right])
-            result = self.eval_opimpl(cmp, w_opimpl, [wam_prev, wam_right])
-            if result.color == "red":
-                saw_red = True
-            if result._w_val is not None:
-                assert isinstance(result._w_val, W_Bool)
-                if self.vm.is_False(result._w_val):
-                    return result
+            wam_result = self.eval_opimpl(cmp, w_opimpl, [wam_prev, wam_right])
+            chain_color = maybe_blue(chain_color, wam_right.color, wam_result.color)
+
+            if wam_result._w_val is not None:
+                assert isinstance(wam_result._w_val, W_Bool)
+                if self.vm.is_False(wam_result._w_val):
+                    if chain_color == "red" and wam_result.color != "red":
+                        wam_result = wam_result.as_red(self.vm)
+                    return wam_result
             else:
-                assert self.redshifting and result.color == "red"
-                saw_red = True
+                assert self.redshifting and wam_result.color == "red"
+                chain_color = "red"
+
             prev_expr = cmp.right
             wam_prev = wam_right
 
-        assert result is not None
-        if saw_red and result.color != "red":
-            result = result.as_red(self.vm)
-        return result
+        assert wam_result is not None
+        if chain_color == "red" and wam_result.color != "red":
+            wam_result = wam_result.as_red(self.vm)
+        return wam_result
 
     def eval_expr_UnaryOp(self, unop: ast.UnaryOp) -> W_MetaArg:
         w_OP = OP_unary_from_token(unop.op)

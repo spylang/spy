@@ -1,5 +1,5 @@
 from types import NoneType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, cast
 
 from spy import ast
 from spy.backend.c import c_ast as C
@@ -10,8 +10,10 @@ from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES, B
 from spy.vm.builtin import IRTag
-from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.cell import W_Cell
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.object import W_Object, W_Type
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -34,6 +36,8 @@ class CFuncWriter:
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+        self.local_decls: Optional[TextBuilder] = None
+        self.tmpvar_counter = 0
 
     def ppc(self) -> None:
         """
@@ -55,7 +59,10 @@ class CFuncWriter:
         c_func = self.ctx.c_function(self.fqn.c_name, self.w_func)
         self.tbc.wl(c_func.decl() + " {")
         with self.tbc.indent():
+            self.tmpvar_counter = 0
+            self.local_decls = self.tbc.make_nested_builder()
             self.emit_local_vars()
+            self.tbc.wl()
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
 
@@ -66,6 +73,7 @@ class CFuncWriter:
                 # we just abort.
                 msg = "reached the end of the function without a `return`"
                 self.tbc.wl(f"abort(); /* {msg} */")
+            self.local_decls = None
         self.tbc.wl("}")
 
     def emit_local_vars(self) -> None:
@@ -77,6 +85,7 @@ class CFuncWriter:
         see e.g. a VarDef.
         """
         assert self.w_func.locals_types_w is not None
+        assert self.local_decls is not None
         param_names = [arg.name for arg in self.w_func.funcdef.args]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
@@ -84,7 +93,51 @@ class CFuncWriter:
                 varname not in ("@return", "@if", "@while", "@assert")
                 and varname not in param_names
             ):
-                self.tbc.wl(f"{c_type} {varname};")
+                self.local_decls.wl(f"{c_type} {varname};")
+
+    def new_tmp_var(self, c_type: C.C_Type, *, prefix: str = "tmp") -> str:
+        assert self.local_decls is not None
+        name = f"SPY_t_{prefix}{self.tmpvar_counter}"
+        self.tmpvar_counter += 1
+        self.local_decls.wl(f"{c_type} {name};")
+        return name
+
+    def expr_w_type(self, expr: ast.Expr) -> W_Type:
+        if isinstance(expr, ast.Constant):
+            value = expr.value
+            if isinstance(value, bool):
+                return B.w_bool
+            elif isinstance(value, int):
+                return B.w_i32
+            elif isinstance(value, float):
+                return B.w_f64
+            elif value is None:
+                return TYPES.w_NoneType
+            else:
+                raise NotImplementedError(f"unsupported constant type: {type(value)!r}")
+        elif isinstance(expr, ast.StrConst):
+            return B.w_str
+        elif isinstance(expr, ast.CmpChain) or isinstance(expr, ast.CmpOp):
+            return B.w_bool
+        elif isinstance(expr, ast.NameLocal):
+            assert self.w_func.locals_types_w is not None
+            return self.w_func.locals_types_w[expr.sym.name]
+        elif isinstance(expr, ast.NameOuterCell):
+            w_cell = self.ctx.vm.lookup_global(expr.fqn)
+            assert isinstance(w_cell, W_Cell)
+            w_val = cast(W_Object, w_cell.get())
+            return self.ctx.vm.dynamic_type(w_val)
+        elif isinstance(expr, ast.FQNConst):
+            w_obj = self.ctx.vm.lookup_global(expr.fqn)
+            if isinstance(w_obj, W_Cell):
+                w_obj = w_obj.get()
+            return self.ctx.vm.dynamic_type(cast(W_Object, w_obj))
+        elif isinstance(expr, ast.Call):
+            w_type = self.expr_w_type(expr.func)
+            assert isinstance(w_type, W_FuncType)
+            return w_type.w_restype
+        else:
+            raise NotImplementedError(f"cannot determine type of {expr!r}")
 
     # ==============
 
@@ -285,6 +338,49 @@ class CFuncWriter:
         # at the moment of writing, closed-over variables are always blue, so
         # they should not survive redshifting
         assert False, "unexepcted NameOuterDirect"
+
+    def fmt_expr_CmpChain(self, chain: ast.CmpChain) -> C.Expr:
+        assert chain.comparisons, "empty comparison chain"
+        first_cmp = chain.comparisons[0]
+        w_operand_type = self.expr_w_type(first_cmp.left)
+        c_operand_type = self.ctx.w2c(w_operand_type)
+        tmp_left = self.new_tmp_var(c_operand_type, prefix="cmp")
+        tmp_right = self.new_tmp_var(c_operand_type, prefix="cmp")
+
+        # Used only here
+        def assign(name: str, expr: C.Expr) -> C.Expr:
+            return C.BinOp("=", C.Literal(name), expr)
+
+        left_expr = self.fmt_expr(first_cmp.left)
+        right_expr = self.fmt_expr(first_cmp.right)
+        expr: C.Expr = C.BinOp(
+            ",",
+            assign(tmp_left, left_expr),
+            C.BinOp(
+                ",",
+                assign(tmp_right, right_expr),
+                C.BinOp(first_cmp.op, C.Literal(tmp_left), C.Literal(tmp_right)),
+            ),
+        )
+
+        for cmp in chain.comparisons[1:]:
+            w_right_type = self.expr_w_type(cmp.right)
+            if w_right_type is not w_operand_type:
+                raise NotImplementedError(
+                    "mismatched operand types in comparison chain"
+                )
+            next_right = self.fmt_expr(cmp.right)
+            segment = C.BinOp(
+                ",",
+                assign(tmp_left, C.Literal(tmp_right)),
+                C.BinOp(
+                    ",",
+                    assign(tmp_right, next_right),
+                    C.BinOp(cmp.op, C.Literal(tmp_left), C.Literal(tmp_right)),
+                ),
+            )
+            expr = C.BinOp("&&", expr, segment)
+        return expr
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         raise NotImplementedError(

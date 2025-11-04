@@ -530,6 +530,50 @@ class TestBasic(CompilerTest):
         assert mod.ge_bool(False, True) is False
         assert mod.ge_bool(False, False) is True
 
+    def test_chained_comparison_truthiness(self):
+        mod = self.compile("""
+        def ok_chain() -> bool:
+            return 1 < 2 < 3
+
+        def fail_chain() -> bool:
+            return 3 < 2 < 1
+        """)
+        assert mod.ok_chain() is True
+        assert mod.fail_chain() is False
+
+    def test_chained_comparison_evaluation(self):
+        mod = self.compile("""
+        var calls: i32 = 0
+
+        def reset() -> None:
+            calls = 0
+
+        def inc(x: i32) -> i32:
+            calls = calls + 1
+            return x
+
+        def all_true() -> bool:
+            reset()
+            return inc(1) < inc(2) < inc(3)
+
+        def short_circuit() -> bool:
+            reset()
+            return inc(5) < inc(4) < inc(6)
+
+        def late_false() -> bool:
+            reset()
+            return inc(1) < inc(2) < inc(1)
+        """)
+
+        assert mod.all_true() is True
+        assert mod.calls == 3
+
+        assert mod.short_circuit() is False
+        assert mod.calls == 2
+
+        assert mod.late_false() is False
+        assert mod.calls == 3
+
     def test_CompareOp_error(self):
         src = """
         def bar(a: i32, b: str) -> bool:

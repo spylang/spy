@@ -161,6 +161,7 @@ class BinOp(Expr):
          4: &&
          3: ||
          1: =
+         0: ,
     """)
 
     def precedence(self) -> int:

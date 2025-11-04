@@ -52,6 +52,16 @@ class TestSPyBackend(CompilerTest):
             c = (1 + 2) * 3
         """)
 
+    def test_cmp_chain(self):
+        mod = self.compile("""
+        def foo(a: i32, b: i32, c: i32) -> bool:
+            return a < b < c
+        """)
+        self.assert_dump("""
+        def foo(a: i32, b: i32, c: i32) -> bool:
+            return a < b < c
+        """)
+
     def test_binop(self):
         mod = self.compile(r"""
         def foo() -> None:
