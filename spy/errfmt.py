@@ -83,12 +83,14 @@ class ErrorFormatter:
             self.out.wl(f"  | {underline}")
         else:
             # we are printing a "where" in spdb
-            idx = f"[{index}]".rjust(4)
+            idx = f"[{index}]".rjust(5)
             if is_current:
-                idx = self.out.fmt.set("green", idx)
+                idx = "*" + self.out.fmt.set("green", idx)
+            else:
+                idx = " " + idx
             self.out.wl(f"{idx} {where} at {f.loc.filename}:{f.loc.line_start}")
-            self.out.wl(f"  | {srcline}")
-            self.out.wl(f"  | {underline}")
+            self.out.wl(f"    | {srcline}")
+            self.out.wl(f"    | {underline}")
 
     def emit_annotation(self, ann: Annotation) -> None:
         loc = ann.loc

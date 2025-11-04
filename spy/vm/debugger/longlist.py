@@ -5,13 +5,13 @@ Helper functions to implement do_longlist in SPdb.
 import linecache
 
 from spy.location import Loc
-from spy.textbuilder import Color
+from spy.textbuilder import ColorFormatter
 
 CUR_COLOR = "green"
 LINENO_COLOR = "turquoise"
 
 
-def print_longlist(loc: Loc, curloc: Loc) -> None:
+def print_longlist(loc: Loc, curloc: Loc, *, use_colors: bool = True) -> None:
     """
     Print the source code of a function with line numbers, highlighting the current
     location in green.
@@ -20,17 +20,20 @@ def print_longlist(loc: Loc, curloc: Loc) -> None:
         loc: Location of the whole function (line_start to line_end)
         curloc: Location of the currently executing expression
     """
+    color = ColorFormatter(use_colors)
     for line_num in range(loc.line_start, loc.line_end + 1):
         srcline = linecache.getline(loc.filename, line_num).rstrip("\n")
-        lineno = Color.set("turquoise", f"{line_num:4d}")
+        lineno = color.set("turquoise", f"{line_num:4d}")
         if curloc.line_start <= line_num <= curloc.line_end:
-            colored_line = _highlight_line(srcline, curloc, line_num)
+            colored_line = _highlight_line(srcline, curloc, line_num, color)
             print(f"{lineno}  -> {colored_line}")
         else:
             print(f"{lineno}     {srcline}")
 
 
-def _highlight_line(srcline: str, curloc: Loc, line_num: int) -> str:
+def _highlight_line(
+    srcline: str, curloc: Loc, line_num: int, color: ColorFormatter
+) -> str:
     """
     Return a line with the current location highlighted in green.
 
@@ -50,7 +53,7 @@ def _highlight_line(srcline: str, curloc: Loc, line_num: int) -> str:
         highlighted = srcline[a:b]
         after = srcline[b:]
 
-        return before + Color.set(CUR_COLOR, highlighted) + after
+        return before + color.set(CUR_COLOR, highlighted) + after
     else:
         # Multi-line case
         if line_num == curloc.line_start:
@@ -58,7 +61,7 @@ def _highlight_line(srcline: str, curloc: Loc, line_num: int) -> str:
             a = curloc.col_start
             before = srcline[:a]
             highlighted = srcline[a:]
-            return before + Color.set(CUR_COLOR, highlighted)
+            return before + color.set(CUR_COLOR, highlighted)
         elif line_num == curloc.line_end:
             # Last line - highlight from start to col_end
             b = curloc.col_end
@@ -66,7 +69,7 @@ def _highlight_line(srcline: str, curloc: Loc, line_num: int) -> str:
                 b = len(srcline) + b + 1
             highlighted = srcline[:b]
             after = srcline[b:]
-            return Color.set(CUR_COLOR, highlighted) + after
+            return color.set(CUR_COLOR, highlighted) + after
         else:
             # Middle line - highlight the whole line
-            return Color.set(CUR_COLOR, srcline)
+            return color.set(CUR_COLOR, srcline)

@@ -5,7 +5,7 @@ The SPy debugger ("spy pdb")
 import cmd
 import pdb
 import sys
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import IO, TYPE_CHECKING, Annotated, Literal, Optional
 
 from spy import ast
 from spy.doppler import DopplerFrame
@@ -13,7 +13,7 @@ from spy.errfmt import ErrorFormatter
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.parser import Parser
-from spy.textbuilder import Color
+from spy.textbuilder import ColorFormatter
 from spy.util import record_src_in_linecache
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import BUILTINS
@@ -28,14 +28,16 @@ from spy.vm.w import W_Object
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+FILE = Optional[IO[str]]
+
 
 @BUILTINS.builtin_func
 def w_breakpoint(vm: "SPyVM") -> None:
-    spd = make_spdb()
+    spdb = make_spdb(vm)
     spdb.interaction()
 
 
-def make_spdb(vm: "SPyVM", *, stdin=None, stdout=None) -> "SPdb":
+def make_spdb(vm: "SPyVM", *, stdin: FILE = None, stdout: FILE = None) -> "SPdb":
     # generate a fake traceback
     pyframe = sys._getframe().f_back.f_back
     assert pyframe is not None
@@ -44,7 +46,9 @@ def make_spdb(vm: "SPyVM", *, stdin=None, stdout=None) -> "SPdb":
     return spdb
 
 
-def print_wam(vm: "SPyVM", wam_arg: W_MetaArg, *, file=None) -> None:
+def print_wam(
+    vm: "SPyVM", wam_arg: W_MetaArg, *, file: FILE = None, use_colors: bool = True
+) -> None:
     if file is None:
         file = sys.stdout
 
@@ -55,8 +59,10 @@ def print_wam(vm: "SPyVM", wam_arg: W_MetaArg, *, file=None) -> None:
     s = vm.unwrap_str(w_s)
     #
     w_T = vm.dynamic_type(wam_arg.w_val)
-    print(Color.set("green", "static type: "), wam_arg.w_static_T, file=file)
-    print(Color.set("green", "dynamic type:"), w_T, file=file)
+
+    color = ColorFormatter(use_colors=use_colors)
+    print(color.set("green", "static type: "), wam_arg.w_static_T, file=file)
+    print(color.set("green", "dynamic type:"), w_T, file=file)
     print(s, file=file)
 
 
@@ -64,11 +70,18 @@ class SPdb(cmd.Cmd):
     prompt = "(spdb🥸) "
 
     def __init__(
-        self, vm: "SPyVM", w_tb: W_Traceback, *, stdin=None, stdout=None
+        self,
+        vm: "SPyVM",
+        w_tb: W_Traceback,
+        *,
+        stdin: FILE = None,
+        stdout: FILE = None,
+        use_colors: bool = False,
     ) -> None:
         super().__init__(stdin=stdin, stdout=stdout)
         if stdin is not None:
             self.use_rawinput = False
+        self.use_colors = use_colors
         self.vm = vm
         self.w_tb = w_tb
         self.curindex = -1  # currently selected frame
@@ -90,7 +103,7 @@ class SPdb(cmd.Cmd):
 
     def print_frame_info(self, i: int) -> None:
         f = self.w_tb.entries[i]
-        errfmt = ErrorFormatter(use_colors=True)
+        errfmt = ErrorFormatter(use_colors=self.use_colors)
         errfmt.emit_frameinfo(f, index=i)
         print(errfmt.build(), end="", file=self.stdout)
 
@@ -116,7 +129,7 @@ class SPdb(cmd.Cmd):
 
         Print a stack trace, with the most recent frame at the bottom.
         """
-        errfmt = ErrorFormatter(use_colors=True)
+        errfmt = ErrorFormatter(use_colors=self.use_colors)
         for i, f in enumerate(self.w_tb.entries):
             errfmt.emit_frameinfo(f, index=i, is_current=(i == self.curindex))
         print(errfmt.build(), end="", file=self.stdout)
@@ -180,7 +193,7 @@ class SPdb(cmd.Cmd):
             # Get the function location and current location
             func_loc = spyframe.loc
             cur_loc = f.loc
-            print_longlist(func_loc, cur_loc)
+            print_longlist(func_loc, cur_loc, use_colors=self.use_colors)
 
     do_list = do_longlist
     do_l = do_longlist
