@@ -16,7 +16,7 @@ from spy.parser import Parser
 from spy.textbuilder import Color
 from spy.util import record_src_in_linecache
 from spy.vm.astframe import ASTFrame
-from spy.vm.b import BUILTINS, B
+from spy.vm.b import BUILTINS
 from spy.vm.classframe import ClassFrame
 from spy.vm.debugger.longlist import print_longlist
 from spy.vm.exc import FrameInfo, W_Traceback
@@ -41,7 +41,7 @@ def w_breakpoint(vm: "SPyVM") -> None:
 
 def print_wam(vm: "SPyVM", wam_arg: W_MetaArg) -> None:
     # hack hack hack: manually call repr(w_arg), we need a better way to do that
-    wam_repr = W_MetaArg.from_w_obj(vm, B.w_repr)
+    wam_repr = W_MetaArg.from_w_obj(vm, BUILTINS.w_repr)
     w_opimpl = vm.call_OP(Loc.here(), OP.w_CALL, [wam_repr, wam_arg])
     w_s = w_opimpl.execute(vm, [wam_repr.w_val, wam_arg.w_val])
     s = vm.unwrap_str(w_s)
@@ -85,7 +85,10 @@ class SPdb(cmd.Cmd):
     def error(self, msg: str) -> None:
         print("***", msg)
 
-    def do_quit(self, arg: str) -> bool:
+    def default(self, arg: str) -> None:
+        return self.do_print(arg)
+
+    def do_quit(self, arg: str) -> None:
         raise SPyError("W_SPdbQuit", "")
 
     do_q = do_quit
