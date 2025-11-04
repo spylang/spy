@@ -68,7 +68,7 @@ class FakeTerminal:
     def readline(self):
         line = next(self.input_iter, "")
         # simulate the user typing 'line' to the terminal
-        self.buf.write(line)
+        self.buf.write(line + "\n")
         return line
 
     def write(self, s):
@@ -97,15 +97,79 @@ class TestSPdb(CompilerTest):
         src = """
         from _test import spdb_expect
 
+        def foo(session: str) -> int:
+            spdb_expect(session)
+            return 42
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:5
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        res = mod.foo(session)
+        assert res == 42
+
+    def test_where_up_down(self):
+        src = """
+        from _test import spdb_expect
+
         def foo(session: str) -> None:
-            x = 1
+            bar(session)
+
+        def bar(session: str) -> None:
+            baz(session)
+
+        def baz(session: str) -> None:
             spdb_expect(session)
         """
         session = f"""
         --- entering applevel debugger ---
-           [0] test::foo at {self.filename}:6
+           [2] test::baz at {self.filename}:11
             |     spdb_expect(session)
             |     |__________________|
+        (spdb) where
+           [0] test::foo at {self.filename}:5
+            |     bar(session)
+            |     |__________|
+           [1] test::bar at {self.filename}:8
+            |     baz(session)
+            |     |__________|
+        *  [2] test::baz at {self.filename}:11
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) up
+           [1] test::bar at {self.filename}:8
+            |     baz(session)
+            |     |__________|
+        (spdb) where
+           [0] test::foo at {self.filename}:5
+            |     bar(session)
+            |     |__________|
+        *  [1] test::bar at {self.filename}:8
+            |     baz(session)
+            |     |__________|
+           [2] test::baz at {self.filename}:11
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) up
+           [0] test::foo at {self.filename}:5
+            |     bar(session)
+            |     |__________|
+        (spdb) up
+        *** Oldest frame
+        (spdb) down
+           [1] test::bar at {self.filename}:8
+            |     baz(session)
+            |     |__________|
+        (spdb) down
+           [2] test::baz at {self.filename}:11
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) down
+        *** Newest frame
         (spdb) continue
         """
         mod = self.compile(src)
