@@ -3,8 +3,8 @@
 
 import traceback
 from dataclasses import dataclass
-from types import TracebackType
-from typing import TYPE_CHECKING, Annotated, Literal, Optional
+from types import FrameType, TracebackType
+from typing import TYPE_CHECKING, Annotated, Iterable, Literal, Optional
 
 from spy.errfmt import Annotation, ErrorFormatter, Level
 from spy.fqn import FQN
@@ -17,14 +17,26 @@ from spy.vm.primitive import W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
+    from spy.vm.astframe import AbstractFrame
     from spy.vm.vm import SPyVM
 
+FrameKind = Literal["astframe", "modframe", "classframe", "dopplerframe"]
 
-@dataclass
+
 class FrameInfo:
-    kind: Literal["astframe", "modframe", "classframe", "dopplerframe"]
-    func: FQN
-    loc: Loc
+    def __init__(self, spyframe: "AbstractFrame") -> None:
+        self.spyframe = spyframe
+        self.loc = spyframe.loc
+
+    @property
+    def kind(self) -> FrameKind:
+        k = self.spyframe.__class__.__name__.lower()
+        assert k in FrameKind.__args__  # type: ignore
+        return k  # type: ignore
+
+    @property
+    def fqn(self) -> FQN:
+        return self.spyframe.ns
 
 
 @TYPES.builtin_type("TracebackType")
@@ -45,11 +57,11 @@ class W_Traceback(W_Object):
         if len(self.entries) == 0:
             return f"<spy traceback (empty)>"
         elif len(self.entries) == 1:
-            a = self.entries[0].func
+            a = self.entries[0].fqn
             return f"<spy traceback ...{a}>"
         else:
-            a = self.entries[0].func
-            b = self.entries[-1].func
+            a = self.entries[0].fqn
+            b = self.entries[-1].fqn
             return f"<spy traceback: {a}... {b}>"
 
     @classmethod
@@ -58,6 +70,17 @@ class W_Traceback(W_Object):
         Create a StackSummary of the applevel SPy frames from an interp-level
         Python 'traceback' object.
         """
+        frames = traceback._walk_tb_with_full_positions(tb)  # type: ignore
+        return cls._from_py_frames(frames)
+
+    @classmethod
+    def from_py_frame(cls, frame: FrameType) -> "W_Traceback":
+        frames = list(traceback.walk_stack(frame))
+        frames.reverse()
+        return cls._from_py_frames(frames)
+
+    @classmethod
+    def _from_py_frames(cls, frames: Iterable[tuple[FrameType, int]]) -> "W_Traceback":
         from spy.doppler import DopplerFrame
         from spy.vm.astframe import ASTFrame
         from spy.vm.classframe import ClassFrame
@@ -93,37 +116,20 @@ class W_Traceback(W_Object):
         #   When we encounter ASTFrame.run, we record an app-level SPy frame.
         #   When we encounter exec_stmt or eval_expr, we set a more precise loc info
         #   for the last recorded frame.
-
         entries = []
-        frames = traceback._walk_tb_with_full_positions(tb)  # type: ignore
         for frame, lineno in frames:
-            # ==== record applevel frame ====
-            if frame.f_code is ASTFrame.run.__code__:
+            if frame.f_code in (
+                ASTFrame.run.__code__,
+                ModFrame.run.__code__,
+                ClassFrame.run.__code__,
+                DopplerFrame.redshift.__code__,
+            ):
+                # found an applevel frame
                 spyframe = frame.f_locals["self"]
-                fqn = spyframe.w_func.fqn
-                loc = spyframe.w_func.funcdef.loc
-                entries.append(FrameInfo("astframe", fqn, loc))
+                entries.append(FrameInfo(spyframe))
 
-            elif frame.f_code is ModFrame.run.__code__:
-                spyframe = frame.f_locals["self"]
-                fqn = spyframe.ns
-                loc = spyframe.mod.loc
-                entries.append(FrameInfo("modframe", fqn, loc))
-
-            elif frame.f_code is ClassFrame.run.__code__:
-                spyframe = frame.f_locals["self"]
-                fqn = spyframe.ns
-                loc = spyframe.classdef.loc
-                entries.append(FrameInfo("classframe", fqn, loc))
-
-            elif frame.f_code is DopplerFrame.redshift.__code__:
-                spyframe = frame.f_locals["self"]
-                fqn = spyframe.w_func.fqn
-                loc = spyframe.w_func.funcdef.loc
-                entries.append(FrameInfo("dopplerframe", fqn, loc))
-
-            # ==== update last frame with more precise loc info ====
             elif frame.f_code is ASTFrame.eval_expr.__code__:
+                # update last frame with more precise loc info
                 expr = frame.f_locals["expr"]
                 entries[-1].loc = expr.loc
 
@@ -311,4 +317,11 @@ class W_KeyError(W_Exception):
 class W_WIP(W_Exception):
     """
     Raised when something is supposed to work but has not been implemented yet
+    """
+
+
+@TYPES.builtin_type("SPdbQuit")
+class W_SPdbQuit(W_Exception):
+    """
+    Raised when doing 'quit' from (spdb) prompt
     """

@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from types import NoneType
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Iterator, Optional, Sequence
 
 from spy import ast
 from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
@@ -54,6 +55,7 @@ class AbstractFrame:
 
     vm: "SPyVM"
     ns: FQN
+    loc: Loc
     closure: CLOSURE
     symtable: SymTable
     locals: dict[str, LocalVar]
@@ -62,14 +64,20 @@ class AbstractFrame:
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(
-        self, vm: "SPyVM", ns: FQN, symtable: SymTable, closure: CLOSURE
+        self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
     ) -> None:
         assert type(self) is not AbstractFrame, "abstract class"
         self.vm = vm
         self.ns = ns
+        self.loc = loc
         self.symtable = symtable
         self.closure = closure
         self.locals = {}
+
+        # when we interact with a frame from a SPdb prompt we have slightly different
+        # rules, because e.g. we might try to evaluate an ast.Name which is not in the
+        # symtable
+        self.is_interactive = False
 
         # ast.Name and ast.Assign are special, because depending on the
         # content of the symtable it has different meanings (e.g. local, outer
@@ -89,6 +97,13 @@ class AbstractFrame:
     @property
     def redshifting(self) -> bool:
         return False
+
+    @contextmanager
+    def interactive(self) -> Iterator[None]:
+        old = self.is_interactive
+        self.is_interactive = True
+        yield
+        self.is_interactive = False
 
     def get_locals_types_w(self) -> dict[str, W_Type]:
         return {
@@ -705,7 +720,24 @@ class AbstractFrame:
     def _specialize_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
         sym = self.symtable.lookup_maybe(varname)
-        assert sym is not None
+        if not self.is_interactive:
+            assert sym is not None
+
+        if sym is None:
+            # sym can be None ONLY in interactive frames (in which case we do a dynamic
+            # lookup), else it means that there is a bug in symtable.
+            assert self.is_interactive, "sym not found"
+            # create a fake symbol to be used below
+            sym = Symbol(
+                varname,
+                "var",
+                "auto",
+                "NameError",
+                loc=name.loc,
+                type_loc=name.loc,
+                level=-1,
+            )
+
         if sym.is_local:
             assert sym.storage == "direct"
             return ast.NameLocal(name.loc, sym)
@@ -881,7 +913,9 @@ class ASTFrame(AbstractFrame):
             w_func = w_func.w_redshifted_into
         assert isinstance(w_func, W_ASTFunc)
         ns = self.compute_ns(w_func, args_w)
-        super().__init__(vm, ns, w_func.funcdef.symtable, w_func.closure)
+        super().__init__(
+            vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
+        )
         self.w_func = w_func
         self.funcdef = w_func.funcdef
 

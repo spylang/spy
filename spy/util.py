@@ -1,6 +1,8 @@
 # -*- encoding: utf-8 -*-
 import difflib
 import inspect
+import itertools
+import linecache
 import re
 import subprocess
 import typing
@@ -275,6 +277,27 @@ def colors_coordinates(ast_module, ast_color_map) -> dict[int, list[tuple[str, s
             # collect just the lines that needs to be colored
             coords[node.loc.line_start].append((col_range, ast_color_map.get(node)))
     return dict(coords)
+
+
+_record_src_counter = itertools.count()
+
+
+def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
+    """
+    Register a source string in linecache so that debuggers and tracebacks
+    can display its code lines properly.
+
+    Returns a unique pseudo-filename suitable for compile() or exec().
+    """
+    index = next(_record_src_counter)
+    filename = f"<{name}-{index}>"
+    linecache.cache[filename] = (
+        len(source),
+        None,
+        [line + "\n" for line in source.splitlines()],
+        filename,
+    )
+    return filename
 
 
 if __name__ == "__main__":

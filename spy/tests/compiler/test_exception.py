@@ -12,9 +12,9 @@ from spy.vm.exc import FrameInfo
 
 
 class MatchFrame:
-    def __init__(self, func: str, src: str, *, kind: str = "astframe") -> None:
+    def __init__(self, fqn: str, src: str, *, kind: str = "astframe") -> None:
         self.kind = kind
-        self.func = func
+        self.fqn = fqn
         self.src = src
 
     def __eq__(self, info: object) -> bool:
@@ -22,12 +22,12 @@ class MatchFrame:
             return NotImplemented
         return (
             self.kind == info.kind
-            and self.func == str(info.func)
+            and self.fqn == str(info.fqn)
             and self.src == info.loc.get_src()
         )
 
     def __repr__(self) -> str:
-        return f"<MatchFrame({self.func!r}, {self.src!r}, kind={self.kind!r})"
+        return f"<MatchFrame({self.fqn!r}, {self.src!r}, kind={self.kind!r})"
 
 
 class TestException(CompilerTest):
