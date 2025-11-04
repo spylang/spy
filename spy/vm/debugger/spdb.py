@@ -92,6 +92,17 @@ class SPdb(cmd.Cmd):
         self.select_frame(last)
         self.cmdloop()
 
+    def post_mortem(self) -> None:
+        print("--- entering applevel debugger (post-mortem) ---", file=self.stdout)
+        last = len(self.w_tb.entries) - 1
+        self.select_frame(last)
+        try:
+            self.cmdloop()
+        except SPyError as e:
+            if e.etype == "W_SPdbQuit":
+                return
+            raise
+
     def select_frame(self, i: int) -> None:
         assert 0 <= i < len(self.w_tb.entries)
         if self.curindex != i:
