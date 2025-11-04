@@ -12,6 +12,7 @@ from spy.util import print_diff
 from spy.vm.debugger.spdb import make_spdb
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
+from spy.vm.vm import SPyVM
 
 TESTMOD = ModuleRegistry("_test")
 
@@ -24,7 +25,7 @@ def w_spdb_expect(vm: "SPyVM", w_session: W_Str) -> None:
     """
     # if we call pytest --spdb, call "breakpoint" here, but change the prompt so the get
     # the same "(spdb) " that we get in tests, so we can easily copy&paste sessions
-    if vm.spdb:
+    if vm.spdb:  # type: ignore
         spdb = make_spdb(vm)
         spdb.prompt = "(spdb) "
         spdb.interaction()
@@ -60,12 +61,12 @@ class FakeTerminal:
     calls .readline(), and it records the output.
     """
 
-    def __init__(self, input_lines):
+    def __init__(self, input_lines: list[str]) -> None:
         self.input_lines = input_lines
         self.input_iter = iter(input_lines)
         self.buf = StringIO()
 
-    def readline(self):
+    def readline(self) -> str:
         line = next(self.input_iter, "")
         if line == "":
             # we reached EOF. This should never happen in tests
@@ -76,13 +77,13 @@ class FakeTerminal:
         self.buf.write(line + "\n")
         return line
 
-    def write(self, s):
+    def write(self, s: str) -> None:
         self.buf.write(s)
 
-    def flush(self):
+    def flush(self) -> None:
         pass
 
-    def get_output(self):
+    def get_output(self) -> str:
         return self.buf.getvalue()
 
 
@@ -92,7 +93,7 @@ class TestSPdb(CompilerTest):
     @pytest.fixture
     def initspdb(self, request):
         self.vm.make_module(TESTMOD)
-        self.vm.spdb = request.config.option.spdb
+        self.vm.spdb = request.config.option.spdb  # type: ignore
 
     @property
     def filename(self) -> str:

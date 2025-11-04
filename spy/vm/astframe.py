@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from types import NoneType
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import TYPE_CHECKING, Iterator, Optional, Sequence
 
 from spy import ast
 from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
@@ -99,7 +99,7 @@ class AbstractFrame:
         return False
 
     @contextmanager
-    def interactive(self):
+    def interactive(self) -> Iterator[None]:
         old = self.is_interactive
         self.is_interactive = True
         yield

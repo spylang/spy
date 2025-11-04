@@ -279,6 +279,9 @@ def colors_coordinates(ast_module, ast_color_map) -> dict[int, list[tuple[str, s
     return dict(coords)
 
 
+_record_src_counter = itertools.count()
+
+
 def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
     """
     Register a source string in linecache so that debuggers and tracebacks
@@ -286,7 +289,7 @@ def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
 
     Returns a unique pseudo-filename suitable for compile() or exec().
     """
-    index = next(record_src_in_linecache.counter)
+    index = next(_record_src_counter)
     filename = f"<{name}-{index}>"
     linecache.cache[filename] = (
         len(source),
@@ -295,9 +298,6 @@ def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
         filename,
     )
     return filename
-
-
-record_src_in_linecache.counter = itertools.count()
 
 
 if __name__ == "__main__":

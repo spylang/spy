@@ -27,7 +27,7 @@ class MatchFrame:
         )
 
     def __repr__(self) -> str:
-        return f"<MatchFrame({self.func!r}, {self.src!r}, kind={self.kind!r})"
+        return f"<MatchFrame({self.fqn!r}, {self.src!r}, kind={self.kind!r})"
 
 
 class TestException(CompilerTest):

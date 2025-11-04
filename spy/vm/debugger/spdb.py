@@ -39,7 +39,7 @@ def w_breakpoint(vm: "SPyVM") -> None:
 
 def make_spdb(vm: "SPyVM", **kwargs: Any) -> "SPdb":
     # generate a fake traceback
-    pyframe = sys._getframe().f_back.f_back
+    pyframe = sys._getframe().f_back.f_back  # type: ignore
     assert pyframe is not None
     w_tb = W_Traceback.from_py_frame(pyframe)
     spdb = SPdb(vm, w_tb, **kwargs)
