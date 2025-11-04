@@ -67,6 +67,11 @@ class FakeTerminal:
 
     def readline(self):
         line = next(self.input_iter, "")
+        if line == "":
+            # we reached EOF. This should never happen in tests
+            raise Exception(
+                "EOF when reading from FakeTerminal. Maybe you forgot '(spdb) continue'?"
+            )
         # simulate the user typing 'line' to the terminal
         self.buf.write(line + "\n")
         return line
@@ -206,4 +211,36 @@ class TestSPdb(CompilerTest):
         """
         mod = self.compile(src)
         res = mod.foo(session)
+        assert res == 42
+
+    def test_print(self):
+        src = """
+        from _test import spdb_expect
+
+        def foo(x: int, session: str) -> int:
+            y = x + 1
+            spdb_expect(session)
+            return y
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:6
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) print x
+        static type:  <spy type 'i32'>
+        dynamic type: <spy type 'i32'>
+        41
+        (spdb) y
+        static type:  <spy type 'i32'>
+        dynamic type: <spy type 'i32'>
+        42
+        (spdb) y * 2
+        static type:  <spy type 'i32'>
+        dynamic type: <spy type 'i32'>
+        84
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        res = mod.foo(41, session)
         assert res == 42

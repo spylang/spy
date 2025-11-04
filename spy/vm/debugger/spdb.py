@@ -217,6 +217,6 @@ class SPdb(cmd.Cmd):
 
         f = self.get_curframe()
         wam = f.spyframe.eval_expr(stmt.value)
-        print_wam(self.vm, wam)
+        print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
 
     do_p = do_print
