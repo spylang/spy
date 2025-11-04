@@ -168,6 +168,7 @@ class ScopeAnalyzer:
         The level of the new symbol will be 0.
         """
         level, scope, sym = self.lookup_ref(name)
+        msg = f""
         if sym and name != "@return":
             assert scope is not None
             if level == 0 and scope.color == "blue":
@@ -176,7 +177,6 @@ class ScopeAnalyzer:
                 # Note that if the redeclaration happens at runtime, it's
                 # still an error, but it's caught by astframe.
                 return
-
             elif level == 0:
                 # re-declaration in the same scope
                 msg = f"variable `{name}` already declared"
@@ -184,7 +184,9 @@ class ScopeAnalyzer:
                 err.add("error", "this is the new declaration", loc)
                 err.add("note", "this is the previous declaration", sym.loc)
                 raise err
-
+            elif sym.varkind_origin == "struct-field":
+                # Shadowing a struct field is allowed
+                pass
             elif scope is not self.builtins_scope:
                 # shadowing a name in an outer scope
                 # Exception: always allow shadowing builtins
@@ -195,6 +197,7 @@ class ScopeAnalyzer:
                 err.add("error", "this is the new declaration", loc)
                 err.add("note", "this is the previous declaration", sym.loc)
                 raise err
+
 
         # Determine storage type: module-level vars use "cell", others use
         # "direct"
@@ -320,12 +323,16 @@ class ScopeAnalyzer:
         inner_scope = self.new_SymTable(classdef.name, "blue", "class")
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
+        # Class fields are always "var" with origin "class-field"
+        # Struct fields are always "var" with origin "struct-field"
+        varkind_origin: VarKindOrigin = (
+            "struct-field" if classdef.kind == "struct" else "class-field"
+        )
         for vardef in classdef.fields:
-            # Class fields are always "var" with origin "class-field"
             self.define_name(
                 vardef.name.value,
                 "var",
-                "class-field",
+                varkind_origin,
                 vardef.loc,
                 vardef.type.loc,
             )
