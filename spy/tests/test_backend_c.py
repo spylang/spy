@@ -246,3 +246,47 @@ class TestExprWType(CompilerTest):
         right = ast.Constant(Loc.fake(), 2)
         cmp_op = ast.CmpOp(Loc.fake(), "<", left, right)
         assert writer.expr_w_type(cmp_op) is B.w_bool
+
+    def test_cmp_chain_mismatched_types(self):
+        modname = self.redshift_module(
+            """
+            def placeholder() -> bool:
+                return True
+            """
+        )
+
+        writer, _ = self.make_writer(f"{modname}::placeholder")
+        cmp0 = ast.CmpOp(
+            Loc.fake(), "<", ast.Constant(Loc.fake(), 1), ast.Constant(Loc.fake(), 2)
+        )
+        cmp1 = ast.CmpOp(
+            Loc.fake(), "<", ast.Constant(Loc.fake(), 2), ast.Constant(Loc.fake(), 3.5)
+        )
+        chain = ast.CmpChain(Loc.fake(), [cmp0, cmp1])
+
+        writer.local_decls = writer.tbc.make_nested_builder()
+        try:
+            with pytest.raises(NotImplementedError, match="mismatched operand types"):
+                writer.fmt_expr(chain)
+        finally:
+            writer.local_decls = None
+
+    def test_cmp_chain_first_mismatch(self):
+        modname = self.redshift_module(
+            """
+            def placeholder() -> bool:
+                return True
+            """
+        )
+
+        writer, _ = self.make_writer(f"{modname}::placeholder")
+        cmp0 = ast.CmpOp(
+            Loc.fake(), "<", ast.Constant(Loc.fake(), 1), ast.Constant(Loc.fake(), 2.5)
+        )
+        cmp1 = ast.CmpOp(
+            Loc.fake(), "<", ast.Constant(Loc.fake(), 2.5), ast.Constant(Loc.fake(), 3)
+        )
+        chain = ast.CmpChain(Loc.fake(), [cmp0, cmp1])
+
+        with pytest.raises(NotImplementedError, match="mismatched operand types"):
+            writer.fmt_expr(chain)

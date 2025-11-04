@@ -343,6 +343,9 @@ class CFuncWriter:
         assert chain.comparisons, "empty comparison chain"
         first_cmp = chain.comparisons[0]
         w_operand_type = self.expr_w_type(first_cmp.left)
+        w_first_right_type = self.expr_w_type(first_cmp.right)
+        if w_first_right_type is not w_operand_type:
+            raise NotImplementedError("mismatched operand types in comparison chain")
         c_operand_type = self.ctx.w2c(w_operand_type)
         tmp_left = self.new_tmp_var(c_operand_type, prefix="cmp")
         tmp_right = self.new_tmp_var(c_operand_type, prefix="cmp")
