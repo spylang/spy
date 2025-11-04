@@ -3,6 +3,7 @@ Helper functions to implement do_longlist in SPdb.
 """
 
 import linecache
+from typing import Any
 
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
@@ -11,7 +12,9 @@ CUR_COLOR = "green"
 LINENO_COLOR = "turquoise"
 
 
-def print_longlist(loc: Loc, curloc: Loc, *, use_colors: bool = True) -> None:
+def print_longlist(
+    loc: Loc, curloc: Loc, *, use_colors: bool = True, file: Any = None
+) -> None:
     """
     Print the source code of a function with line numbers, highlighting the current
     location in green.
@@ -26,9 +29,9 @@ def print_longlist(loc: Loc, curloc: Loc, *, use_colors: bool = True) -> None:
         lineno = color.set("turquoise", f"{line_num:4d}")
         if curloc.line_start <= line_num <= curloc.line_end:
             colored_line = _highlight_line(srcline, curloc, line_num, color)
-            print(f"{lineno}  -> {colored_line}")
+            print(f"{lineno}  -> {colored_line}", file=file)
         else:
-            print(f"{lineno}     {srcline}")
+            print(f"{lineno}     {srcline}", file=file)
 
 
 def _highlight_line(

@@ -174,3 +174,36 @@ class TestSPdb(CompilerTest):
         """
         mod = self.compile(src)
         mod.foo(session)
+
+    def test_longlist(self):
+        src = """
+        from _test import spdb_expect
+
+        def foo(session: str) -> int:
+            return bar(session)
+
+        def bar(session: str) -> int:
+            spdb_expect(session)
+            return 42
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [1] test::bar at {self.filename}:8
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) l
+           7     def bar(session: str) -> int:
+           8  ->     spdb_expect(session)
+           9         return 42
+        (spdb) up
+           [0] test::foo at {self.filename}:5
+            |     return bar(session)
+            |            |__________|
+        (spdb) l
+           4     def foo(session: str) -> int:
+           5  ->     return bar(session)
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        res = mod.foo(session)
+        assert res == 42

@@ -193,7 +193,9 @@ class SPdb(cmd.Cmd):
             # Get the function location and current location
             func_loc = spyframe.loc
             cur_loc = f.loc
-            print_longlist(func_loc, cur_loc, use_colors=self.use_colors)
+            print_longlist(
+                func_loc, cur_loc, use_colors=self.use_colors, file=self.stdout
+            )
 
     do_list = do_longlist
     do_l = do_longlist
