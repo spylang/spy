@@ -244,3 +244,26 @@ class TestSPdb(CompilerTest):
         mod = self.compile(src)
         res = mod.foo(41, session)
         assert res == 42
+
+    def test_name_lookup(self):
+        src = """
+        from _test import spdb_expect
+
+        def foo(x: int, session: str) -> None:
+            spdb_expect(session)
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:5
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) x
+        static type:  <spy type 'i32'>
+        dynamic type: <spy type 'i32'>
+        42
+        (spdb) y
+        *** NameError: name `y` is not defined
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        mod.foo(42, session)

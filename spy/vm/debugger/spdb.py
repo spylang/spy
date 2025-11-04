@@ -216,7 +216,15 @@ class SPdb(cmd.Cmd):
             )
 
         f = self.get_curframe()
-        wam = f.spyframe.eval_expr(stmt.value)
-        print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
+        with f.spyframe.interactive():
+            try:
+                f.spyframe.is_interactive = True
+                wam = f.spyframe.eval_expr(stmt.value)
+            except SPyError as e:
+                etype = e.etype[2:]
+                message = e.w_exc.message
+                self.error(f"{etype}: {message}")
+            else:
+                print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
 
     do_p = do_print

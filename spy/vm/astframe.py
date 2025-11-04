@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from types import NoneType
 from typing import TYPE_CHECKING, Optional, Sequence
 
@@ -73,6 +74,11 @@ class AbstractFrame:
         self.closure = closure
         self.locals = {}
 
+        # when we interact with a frame from a SPdb prompt we have slightly different
+        # rules, because e.g. we might try to evaluate an ast.Name which is not in the
+        # symtable
+        self.is_interactive = False
+
         # ast.Name and ast.Assign are special, because depending on the
         # content of the symtable it has different meanings (e.g. local, outer
         # direct, outer cell, ...), so we need some logic to distinguish
@@ -91,6 +97,13 @@ class AbstractFrame:
     @property
     def redshifting(self) -> bool:
         return False
+
+    @contextmanager
+    def interactive(self):
+        old = self.is_interactive
+        self.is_interactive = True
+        yield
+        self.is_interactive = False
 
     def get_locals_types_w(self) -> dict[str, W_Type]:
         return {
@@ -707,7 +720,24 @@ class AbstractFrame:
     def _specialize_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
         sym = self.symtable.lookup_maybe(varname)
-        assert sym is not None
+        if not self.is_interactive:
+            assert sym is not None
+
+        if sym is None:
+            # sym can be None ONLY in interactive frames (in which case we do a dynamic
+            # lookup), else it means that there is a bug in symtable.
+            assert self.is_interactive, "sym not found"
+            # create a fake symbol to be used below
+            sym = Symbol(
+                varname,
+                "var",
+                "auto",
+                "NameError",
+                loc=name.loc,
+                type_loc=name.loc,
+                level=-1,
+            )
+
         if sym.is_local:
             assert sym.storage == "direct"
             return ast.NameLocal(name.loc, sym)
