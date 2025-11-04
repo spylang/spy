@@ -1,39 +1,100 @@
 # -*- encoding: utf-8 -*-
 
+import re
+import textwrap
 from io import StringIO
+
+import pytest
 
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, only_interp
+from spy.util import print_diff
 from spy.vm.debugger.spdb import make_spdb
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
 
-SPDB_TEST = ModuleRegistry("_spdb_test")
+TESTMOD = ModuleRegistry("_test")
 
 
-@SPDB_TEST.builtin_func
-def w_run(vm: "SPyVM", w_commands: W_Str) -> None:
-    commands = vm.unwrap_str(w_commands)
-    stdin = StringIO(commands)
-    stdout = StringIO()
-    spdb = make_spdb(vm, stdin=stdin, stdout=stdout)
-    spdb.prompt = "(spdb)\n"
+@TESTMOD.builtin_func
+def w_spdb_expect(vm: "SPyVM", w_session: W_Str) -> None:
+    """
+    Interact with (spdb), trying to simulate the given session and check that the
+    actual result matches.
+    """
+    # unwrap & dedent
+    session = vm.unwrap_str(w_session)
+    session = textwrap.dedent(session).strip()
+
+    # find all the "(spdb) COMMAND" lines and extract all the commands; commands will be
+    # something like ['where', 'up', 'll', ...]
+    pattern = re.compile(r"^\(spdb\)\s*(\S.*)$", re.MULTILINE)
+    commands = pattern.findall(session)
+
+    # start a spdb session, type the given commands and get the result
+    faketerm = FakeTerminal(commands)
+    spdb = make_spdb(vm, stdin=faketerm, stdout=faketerm)
+    spdb.prompt = "(spdb) "
     spdb.interaction()
-    breakpoint()
+    out = faketerm.get_output().strip()
+
+    # check that the final output matches the initial session
+    if session != out:
+        print_diff(session, out, "expected", "got")
+        pytest.fail("spdb_expect failed")
+
+
+class FakeTerminal:
+    """
+    Simulate a terminal for SPdb tests.
+    This is just enough to work with cmd.Cmd, which SPdb inherits from.
+
+    It maintains a list of commands to "type", which are returned one by one when cmd
+    calls .readline(), and it records the output.
+    """
+
+    def __init__(self, input_lines):
+        self.input_lines = input_lines
+        self.input_iter = iter(input_lines)
+        self.buf = StringIO()
+
+    def readline(self):
+        line = next(self.input_iter, "")
+        # simulate the user typing 'line' to the terminal
+        self.buf.write(line)
+        return line
+
+    def write(self, s):
+        self.buf.write(s)
+
+    def flush(self):
+        pass
+
+    def get_output(self):
+        return self.buf.getvalue()
 
 
 @only_interp
 class TestSPdb(CompilerTest):
+    @property
+    def filename(self) -> str:
+        return str(self.tmpdir.join("test.spy"))
+
     def test_simple(self):
-        self.vm.make_module(SPDB_TEST)
-
+        self.vm.make_module(TESTMOD)
         src = """
-        import _spdb_test
+        from _test import spdb_expect
 
-        def foo(s: str) -> None:
+        def foo(session: str) -> None:
             x = 1
-            _spdb_test.run(s)
+            spdb_expect(session)
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:6
+            |     spdb_expect(session)
+            |     |__________________|
+        (spdb) continue
         """
         mod = self.compile(src)
-        xxx = "where\ncontinue\n"
-        mod.foo(xxx)
+        mod.foo(session)

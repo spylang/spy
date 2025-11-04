@@ -87,7 +87,7 @@ class SPdb(cmd.Cmd):
         self.curindex = -1  # currently selected frame
 
     def interaction(self) -> None:
-        print("---app-level spdb---", file=self.stdout)
+        print("--- entering applevel debugger ---", file=self.stdout)
         last = len(self.w_tb.entries) - 1
         self.select_frame(last)
         self.cmdloop()

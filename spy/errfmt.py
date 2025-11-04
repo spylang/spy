@@ -131,4 +131,7 @@ class ErrorFormatter:
             # underline = '^' + '-'*(n-2) + '^'
             underline = "|" + "_" * (n - 2) + "|"
         line = " " * a + underline
-        return line + " " + message
+        if message:
+            return line + " " + message
+        else:
+            return line
