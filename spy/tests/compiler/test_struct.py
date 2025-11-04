@@ -1,3 +1,5 @@
+import pytest
+
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.tests.support import CompilerTest, expect_errors, only_interp
@@ -445,3 +447,40 @@ class TestStructOnStack(CompilerTest):
         w_Point = self.vm.lookup_global(FQN("test::make_point_maybe::Point"))
         assert isinstance(w_Point, W_Type)
         assert not w_Point.is_defined()  # it's a fwdecl
+
+    def test_struct_fields_dont_leak(self):
+        # See https://github.com/spylang/spy/issues/231
+        src = """
+        @struct
+        class Point:
+            x: int
+            y: int
+
+            def __new__(x: int, y: int) -> Point:
+                return Point.__make__(x*2, y*2)
+
+        def foo() -> Point:
+            return Point(1, 2)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (2, 4)
+
+    def test_struct_fields_require_self(self):
+        # See https://github.com/spylang/spy/issues/231
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def foo(self: Point) -> None:
+                return x
+
+
+        def main() -> None:
+            p = Point(1, 2)
+            p.foo()
+        """
+        mod = self.compile(src)
+        with pytest.raises(NameError):
+            mod.main()
