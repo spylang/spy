@@ -28,6 +28,9 @@ class ClassFrame(AbstractFrame):
         super().__init__(vm, ns, classdef.loc, classdef.symtable, closure)
         self.classdef = classdef
 
+    def __repr__(self) -> str:
+        return f"ClassFrame(name='{self.classdef.name}' kind='{self.classdef.kind}')"
+
     def run(self) -> ClassBody:
         self.declare_reserved_bool_locals()
 
