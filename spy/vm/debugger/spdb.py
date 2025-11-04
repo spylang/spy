@@ -31,15 +31,23 @@ if TYPE_CHECKING:
 
 @BUILTINS.builtin_func
 def w_breakpoint(vm: "SPyVM") -> None:
-    # generate a fake traceback
-    pyframe = sys._getframe().f_back
-    assert pyframe is not None
-    w_tb = W_Traceback.from_py_frame(pyframe)
-    spdb = SPdb(vm, w_tb)
+    spd = make_spdb()
     spdb.interaction()
 
 
-def print_wam(vm: "SPyVM", wam_arg: W_MetaArg) -> None:
+def make_spdb(vm: "SPyVM", *, stdin=None, stdout=None) -> "SPdb":
+    # generate a fake traceback
+    pyframe = sys._getframe().f_back.f_back
+    assert pyframe is not None
+    w_tb = W_Traceback.from_py_frame(pyframe)
+    spdb = SPdb(vm, w_tb, stdin=stdin, stdout=stdout)
+    return spdb
+
+
+def print_wam(vm: "SPyVM", wam_arg: W_MetaArg, *, file=None) -> None:
+    if file is None:
+        file = sys.stdout
+
     # hack hack hack: manually call repr(w_arg), we need a better way to do that
     wam_repr = W_MetaArg.from_w_obj(vm, BUILTINS.w_repr)
     w_opimpl = vm.call_OP(Loc.here(), OP.w_CALL, [wam_repr, wam_arg])
@@ -47,22 +55,26 @@ def print_wam(vm: "SPyVM", wam_arg: W_MetaArg) -> None:
     s = vm.unwrap_str(w_s)
     #
     w_T = vm.dynamic_type(wam_arg.w_val)
-    print(Color.set("green", "static type: "), wam_arg.w_static_T)
-    print(Color.set("green", "dynamic type:"), w_T)
-    print(s)
+    print(Color.set("green", "static type: "), wam_arg.w_static_T, file=file)
+    print(Color.set("green", "dynamic type:"), w_T, file=file)
+    print(s, file=file)
 
 
 class SPdb(cmd.Cmd):
     prompt = "(spdb🥸) "
 
-    def __init__(self, vm: "SPyVM", w_tb: W_Traceback) -> None:
-        super().__init__()
+    def __init__(
+        self, vm: "SPyVM", w_tb: W_Traceback, *, stdin=None, stdout=None
+    ) -> None:
+        super().__init__(stdin=stdin, stdout=stdout)
+        if stdin is not None:
+            self.use_rawinput = False
         self.vm = vm
         self.w_tb = w_tb
         self.curindex = -1  # currently selected frame
 
     def interaction(self) -> None:
-        print("---app-level spdb---")
+        print("---app-level spdb---", file=self.stdout)
         last = len(self.w_tb.entries) - 1
         self.select_frame(last)
         self.cmdloop()
@@ -80,10 +92,10 @@ class SPdb(cmd.Cmd):
         f = self.w_tb.entries[i]
         errfmt = ErrorFormatter(use_colors=True)
         errfmt.emit_frameinfo(f, index=i)
-        print(errfmt.build(), end="")
+        print(errfmt.build(), end="", file=self.stdout)
 
     def error(self, msg: str) -> None:
-        print("***", msg)
+        print("***", msg, file=self.stdout)
 
     def default(self, arg: str) -> None:
         return self.do_print(arg)
@@ -107,7 +119,7 @@ class SPdb(cmd.Cmd):
         errfmt = ErrorFormatter(use_colors=True)
         for i, f in enumerate(self.w_tb.entries):
             errfmt.emit_frameinfo(f, index=i, is_current=(i == self.curindex))
-        print(errfmt.build(), end="")
+        print(errfmt.build(), end="", file=self.stdout)
 
     do_w = do_where
     do_bt = do_where
