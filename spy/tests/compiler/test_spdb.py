@@ -22,6 +22,13 @@ def w_spdb_expect(vm: "SPyVM", w_session: W_Str) -> None:
     Interact with (spdb), trying to simulate the given session and check that the
     actual result matches.
     """
+    # if we call pytest --spdb, call "breakpoint" here, but change the prompt so the get
+    # the same "(spdb) " that we get in tests, so we can easily copy&paste sessions
+    if vm.spdb:
+        spdb = make_spdb(vm)
+        spdb.prompt = "(spdb) "
+        spdb.interaction()
+
     # unwrap & dedent
     session = vm.unwrap_str(w_session)
     session = textwrap.dedent(session).strip()
@@ -33,7 +40,7 @@ def w_spdb_expect(vm: "SPyVM", w_session: W_Str) -> None:
 
     # start a spdb session, type the given commands and get the result
     faketerm = FakeTerminal(commands)
-    spdb = make_spdb(vm, stdin=faketerm, stdout=faketerm)
+    spdb = make_spdb(vm, stdin=faketerm, stdout=faketerm, use_colors=False)
     spdb.prompt = "(spdb) "
     spdb.interaction()
     out = faketerm.get_output().strip()
@@ -75,13 +82,18 @@ class FakeTerminal:
 
 
 @only_interp
+@pytest.mark.usefixtures("initspdb")
 class TestSPdb(CompilerTest):
+    @pytest.fixture
+    def initspdb(self, request):
+        self.vm.make_module(TESTMOD)
+        self.vm.spdb = request.config.option.spdb
+
     @property
     def filename(self) -> str:
         return str(self.tmpdir.join("test.spy"))
 
     def test_simple(self):
-        self.vm.make_module(TESTMOD)
         src = """
         from _test import spdb_expect
 

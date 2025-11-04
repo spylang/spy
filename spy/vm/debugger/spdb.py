@@ -5,7 +5,7 @@ The SPy debugger ("spy pdb")
 import cmd
 import pdb
 import sys
-from typing import IO, TYPE_CHECKING, Annotated, Literal, Optional
+from typing import IO, TYPE_CHECKING, Annotated, Any, Literal, Optional
 
 from spy import ast
 from spy.doppler import DopplerFrame
@@ -37,12 +37,12 @@ def w_breakpoint(vm: "SPyVM") -> None:
     spdb.interaction()
 
 
-def make_spdb(vm: "SPyVM", *, stdin: FILE = None, stdout: FILE = None) -> "SPdb":
+def make_spdb(vm: "SPyVM", **kwargs: Any) -> "SPdb":
     # generate a fake traceback
     pyframe = sys._getframe().f_back.f_back
     assert pyframe is not None
     w_tb = W_Traceback.from_py_frame(pyframe)
-    spdb = SPdb(vm, w_tb, stdin=stdin, stdout=stdout)
+    spdb = SPdb(vm, w_tb, **kwargs)
     return spdb
 
 
@@ -76,7 +76,7 @@ class SPdb(cmd.Cmd):
         *,
         stdin: FILE = None,
         stdout: FILE = None,
-        use_colors: bool = False,
+        use_colors: bool = True,
     ) -> None:
         super().__init__(stdin=stdin, stdout=stdout)
         if stdin is not None:
