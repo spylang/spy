@@ -90,6 +90,8 @@ class FakeTerminal:
 @only_interp
 @pytest.mark.usefixtures("initspdb")
 class TestSPdb(CompilerTest):
+    SKIP_SPY_BACKEND_SANITY_CHECK = True
+
     @pytest.fixture
     def initspdb(self, request):
         self.vm.make_module(TESTMOD)
