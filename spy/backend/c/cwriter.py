@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional, cast
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import Context
+from spy.backend.c.context import C_Type, Context
 from spy.doppler import make_const
 from spy.fqn import FQN
 from spy.location import Loc
@@ -402,7 +402,18 @@ class CFuncWriter:
         w_opimpl = self._lookup_cmp_opimpl(cmp)
         if direct := self._maybe_fmt_direct_cmp(w_opimpl, c_left, c_right):
             return direct
-        return self._fmt_opimpl_expr(cmp.loc, w_opimpl, [c_left, c_right])
+        result = self._fmt_opimpl_expr(cmp.loc, w_opimpl, [c_left, c_right])
+        return self._unwrap_cmp_result(w_opimpl, result)
+
+    def _unwrap_cmp_result(self, w_opimpl: W_OpImpl, expr: C.Expr) -> C.Expr:
+        w_restype = w_opimpl.w_functype.w_restype
+        if w_restype in (B.w_bool, B.w_dynamic):
+            return self._unwrap_bool_object(expr)
+        return expr
+
+    def _unwrap_bool_object(self, expr: C.Expr) -> C.Expr:
+        bool_ptr = C_Type(f"{B.w_bool.fqn.c_name} *")
+        return C.Arrow(C.Cast(bool_ptr, expr), "value")
 
     def _maybe_fmt_direct_cmp(
         self, w_opimpl: W_OpImpl, c_left: C.Expr, c_right: C.Expr

@@ -344,6 +344,7 @@ class TestExprWType(CompilerTest):
         assert helper_name in rendered_str
         assert rendered_str.count(helper_name) == 2
         assert "<" not in rendered_str
+        assert rendered_str.count("->value") == 2
 
     def test_cmp_chain_bool_uses_helper(self):
         modname = self.redshift_module(
@@ -369,3 +370,4 @@ class TestExprWType(CompilerTest):
         assert helper_name in rendered_str
         assert rendered_str.count(helper_name) == 2
         assert "<" not in rendered_str
+        assert rendered_str.count("->value") == 2
