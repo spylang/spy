@@ -21,10 +21,7 @@ def w_raise(
 ) -> None:
     etype = "W_" + vm.unwrap_str(w_etype)
     msg = vm.unwrap_str(w_message)
-    fname = vm.unwrap_str(w_filename)
-    lineno = vm.unwrap_i32(w_lineno)
-    loc = Loc(fname, lineno, lineno, 1, -1)
-    raise SPyError.simple(etype, msg, "", loc)
+    raise SPyError(etype, msg)
 
 
 @OP.builtin_func(color="blue")

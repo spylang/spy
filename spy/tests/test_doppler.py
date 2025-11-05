@@ -360,9 +360,9 @@ class TestDoppler:
             raise ValueError # /.../test.spy:4
         """)
 
-    def test_expr_color_map_populated(self, monkeypatch):
-        # Verify that when vm.expr_color_map is not None, redshift populates it
-        monkeypatch.setattr(self.vm, "expr_color_map", {})
+    def test_ast_color_map_populated(self, monkeypatch):
+        # Verify that when vm.ast_color_map is not None, redshift populates it
+        monkeypatch.setattr(self.vm, "ast_color_map", {})
         src = """
         def foo(i: i32) -> i32:
             return i + 2
@@ -371,13 +371,13 @@ class TestDoppler:
 
         # src contains 4 nodes, 3 red and 1 blue
         assert self.vm
-        assert self.vm.expr_color_map
-        assert len(self.vm.expr_color_map) == 4
-        assert len([c for c in self.vm.expr_color_map.values() if c == "blue"]) == 1
-        assert len([c for c in self.vm.expr_color_map.values() if c == "red"]) == 3
+        assert self.vm.ast_color_map
+        assert len(self.vm.ast_color_map) == 4
+        assert len([c for c in self.vm.ast_color_map.values() if c == "blue"]) == 1
+        assert len([c for c in self.vm.ast_color_map.values() if c == "red"]) == 3
 
-    def test_dumper_uses_expr_color_map_for_bg(self, monkeypatch):
-        # Verify that Dumper._dump_node passes correct bg argument based on expr_color_map
+    def test_dumper_uses_ast_color_map_for_bg(self, monkeypatch):
+        # Verify that Dumper._dump_node passes correct bg argument based on ast_color_map
         from unittest.mock import Mock
 
         from spy.ast_dump import Dumper
@@ -386,7 +386,7 @@ class TestDoppler:
         blue_node = Mock()
 
         monkeypatch.setattr(
-            self.vm, "expr_color_map", {red_node: "red", blue_node: "blue"}
+            self.vm, "ast_color_map", {red_node: "red", blue_node: "blue"}
         )
         dumper = Dumper(use_colors=True, vm=self.vm)
         mock_write = Mock()

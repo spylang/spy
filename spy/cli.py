@@ -23,6 +23,7 @@ from spy.textbuilder import Color
 from spy.util import colors_coordinates, highlight_src_maybe
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
+from spy.vm.debugger.spdb import SPdb
 from spy.vm.function import W_ASTFunc, W_FuncType
 from spy.vm.module import W_Module
 from spy.vm.vm import SPyVM
@@ -170,6 +171,11 @@ class Arguments:
         Option("--pdb", help="Enter interp-level debugger in case of error"),
     ] = False
 
+    spdb: Annotated[
+        bool,
+        Option("--spdb", help="Enter app-level debugger in case of error"),
+    ] = False
+
     def __post_init__(self) -> None:
         self.validate_actions()
         if not self.filename.exists():
@@ -262,6 +268,9 @@ async def pyodide_main(args: Arguments) -> None:
         traceback.print_exc()
 
 
+GLOBAL_VM: Optional[SPyVM] = None
+
+
 async def real_main(args: Arguments) -> None:
     """
     A wrapper around inner_main, to catch/display SPy errors and to
@@ -270,8 +279,25 @@ async def real_main(args: Arguments) -> None:
     try:
         return await inner_main(args)
     except SPyError as e:
+        ## traceback.print_exc()
+        ## print()
+
+        # special case SPdbQuit
+        if e.etype == "W_SPdbQuit":
+            print("SPdbQuit")
+            sys.exit(1)
+
         print(e.format(use_colors=True))
-        if args.pdb:
+
+        if args.spdb:
+            # post-mortem applevel debugger
+            assert GLOBAL_VM is not None
+            w_tb = e.w_exc.w_tb
+            assert w_tb is not None
+            spdb = SPdb(GLOBAL_VM, w_tb)
+            spdb.post_mortem()
+        elif args.pdb:
+            # post-mortem interp-level debugger
             info = sys.exc_info()
             stdlib_pdb.post_mortem(info[2])
         sys.exit(1)
@@ -306,6 +332,8 @@ async def inner_main(args: Arguments) -> None:
     """
     The actual code for the spy executable
     """
+    global GLOBAL_VM
+
     if args.pyparse:
         do_pyparse(str(args.filename))
         return
@@ -319,6 +347,8 @@ async def inner_main(args: Arguments) -> None:
     modname = args.filename.stem
     srcdir = args.filename.parent
     vm = await SPyVM.async_new()
+
+    GLOBAL_VM = vm
 
     vm.path.append(str(srcdir))
     if args.error_mode == "warn":
@@ -351,7 +381,7 @@ async def inner_main(args: Arguments) -> None:
 
     if args.colorize:
         # Signal to the redshift codde that we want to retain expr color information
-        vm.expr_color_map = {}
+        vm.ast_color_map = {}
     vm.redshift(error_mode=args.error_mode)
     # vm.pp_globals()
     # vm.pp_modules()
@@ -364,7 +394,7 @@ async def inner_main(args: Arguments) -> None:
                 # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
                 orig_mod.pp(vm=vm)
             else:
-                coords = colors_coordinates(orig_mod, vm.expr_color_map)
+                coords = colors_coordinates(orig_mod, vm.ast_color_map)
                 print(highlight_sourcecode(args.filename, coords))
         elif args.parse:
             dump_spy_mod_ast(vm, modname)

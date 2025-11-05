@@ -47,6 +47,9 @@ def pytest_addoption(parser):
         default=False,
         help="Dump the redshifted module",
     )
+    parser.addoption(
+        "--spdb", action="store_true", default=False, help="Enter SPdb on errors"
+    )
 
 
 @pytest.fixture(autouse=True)

@@ -526,6 +526,7 @@ class CFuncWriter:
         #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
+        FQN("unsafe::f64_ieee754_div"): "/",
         FQN("operator::f64_mul"): "*",
         FQN("operator::f64_eq"): "==",
         FQN("operator::f64_ne"): "!=",
@@ -536,18 +537,13 @@ class CFuncWriter:
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
-        # FQN('operator::i8_div')
-        # FQN('operator::i8_floordiv')
-        # FQN('operator::i8_mod')
-        # FQN('operator::u8_div')
-        # FQN('operator::u8_floordiv')
-        # FQN('operator::u8_mod')
-        # FQN('operator::i32_div')
-        # FQN('operator::i32_floordiv')
-        # FQN('operator::i32_mod')
-        # FQN('operator::f64_div')
-        # FQN('operator::f64_floordiv')
-        # FQN('operator::f64_mod')
+        # T is any of the following types: i8, u8, i32 and f64
+        # FQN('operator::T_div')
+        # FQN('operator::T_floordiv')
+        # FQN('operator::T_mod')
+        # FQN('unsafe::T_unchecked_div')
+        # FQN('unsafe::T_unchecked_floordiv')
+        # FQN('unsafe::T_unchecked_mod')
     }
 
     FQN2UnaryOp = {

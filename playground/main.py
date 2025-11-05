@@ -1,0 +1,140 @@
+import sys
+import time
+from pathlib import Path
+
+import ltk
+
+# ========== SPy code ==========
+
+print("Installing spy... ", end="")
+sys.stdout.flush()
+import micropip
+
+await micropip.install("./spylang-0.1.0-py3-none-any.whl")
+print("DONE")
+
+from js import URL, document
+
+import spy.cli
+from spy import libspy
+
+libspy.LIBSPY_WASM = str(URL.new("./libspy.mjs", document.baseURI))
+
+
+def spy_main(argv):
+    try:
+        spy.cli.app(argv)
+    except SystemExit:
+        pass
+
+
+# =========== GUI code ==========
+
+
+class Editor(ltk.Div):
+    classes = ["editor"]
+
+    def __init__(self, value):
+        ltk.Div.__init__(self)
+        self.create(value)
+        ltk.schedule(lambda: self.editor.refresh(value), "Refresh after load")
+
+    def create(self, value):
+        config = ltk.to_js(
+            {
+                "mode": {
+                    "name": "python",
+                    "version": 3,
+                    "singleLineStringErrors": False,
+                },
+                "lineNumbers": True,
+                "indentUnit": 4,
+                "matchBrackets": True,
+            }
+        )
+        self.editor = ltk.window.CodeMirror(self.element[0], config)
+        self.editor.setSize("100%", "100%")
+        self.text(value)
+
+    def text(self, text=None):
+        return (
+            self.editor.setValue(text) if text is not None else self.editor.getValue()
+        )
+
+
+EXAMPLE_FILES = ["hello.spy", "bluefunc.spy", "point.spy", "array.spy"]
+
+editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
+
+# Create tabs for example files
+example_tabs = ltk.Tabs(
+    *[ltk.VBox().attr("name", filename) for filename in EXAMPLE_FILES]
+)
+
+
+def run_click(event):
+    __terminal__.clear()
+    text = editor.text()
+    with open("test.spy", "w") as f:
+        f.write(text)
+
+    element = ltk.find(event.target)
+    t = element.text().lower()
+    extra_argv = t.split()
+    argv = ["test.spy"] + extra_argv
+    # hack hack hack: for --cwrite to work, we always pass "-t native".
+    # It is find to always add it as it is ignored by other passes
+    argv += ["-t", "native"]
+    spy_main(argv)
+
+
+def RunSPyButton(text):
+    btn = ltk.Button(text, run_click)
+    btn.addClass("run-button")
+    return btn
+
+
+@ltk.callback
+def tab_activated(event, ui=None):
+    # Load the selected example file into the editor
+    index = example_tabs.active()
+    filename = EXAMPLE_FILES[index]
+    src = Path(filename).read_text()
+    editor.text(src)
+
+
+def main():
+    # Register tab activation callback
+    example_tabs.on("tabsactivate", tab_activated)
+
+    (
+        ltk.VBox(
+            example_tabs,
+            editor.css("border", "1px solid gray")
+            .css("height", 405)
+            .attr("id", "editor"),
+            ltk.Div(
+                ltk.Span("$ spy").addClass("command-prompt"),
+                RunSPyButton("--execute"),
+                RunSPyButton("--parse"),
+                RunSPyButton("--redshift"),
+                RunSPyButton("--redshift --full-fqn"),
+                RunSPyButton("--cwrite --cdump"),
+                RunSPyButton("--colorize"),
+            ).css(
+                {
+                    "display": "flex",
+                    "gap": "5px",
+                }
+            ),
+            ltk.Div().attr("id", "terminal"),
+        )
+        .css("width", 900)
+        .css("font-size", 14)
+        .attr("name", "Editor")
+        .appendTo(ltk.window.document.body)
+    )
+    ltk.find("#terminal").append(ltk.find("py-terminal"))
+
+
+main()

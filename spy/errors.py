@@ -5,7 +5,7 @@ from spy.errfmt import Level
 from spy.location import Loc
 
 if TYPE_CHECKING:
-    from spy.vm.exc import W_Exception
+    from spy.vm.exc import W_Exception, W_Traceback
 
 
 def get_pyclass(etype: str) -> type["W_Exception"]:
@@ -41,20 +41,22 @@ class SPyError(Exception):
         return isinstance(self.w_exc, pyclass)
 
     def __str__(self) -> str:
-        return self.w_exc.format(use_colors=False)
+        return self.format(use_colors=False)
+
+    def format(self, use_colors: bool = True) -> str:
+        self.add_traceback()
+        return self.w_exc.format(use_colors)
 
     def add(self, level: Level, message: str, loc: Loc) -> None:
         self.w_exc.add(level, message, loc)
 
-    def add_location_maybe(self, loc: Loc) -> None:
-        """
-        Add "generic" location info to the exception, but only if there
-        isn't any yet.
-        """
-        self.w_exc.add_location_maybe(loc)
-
-    def format(self, use_colors: bool = True) -> str:
-        return self.w_exc.format(use_colors)
+    def add_traceback(self) -> "W_Traceback":
+        if self.__traceback__ is None:
+            raise ValueError("this exception was never raised (__traceback__ is None)")
+        if self.w_exc.w_tb is None:
+            self.w_exc.with_traceback(self.__traceback__)
+        assert self.w_exc.w_tb is not None
+        return self.w_exc.w_tb
 
     @contextmanager
     @staticmethod

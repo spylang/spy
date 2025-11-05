@@ -445,6 +445,7 @@ class FuncDef(Stmt):
 
 @dataclass(eq=False)
 class ClassDef(Stmt):
+    body_loc: Loc
     name: str
     kind: ClassKind
     docstring: Optional[str]

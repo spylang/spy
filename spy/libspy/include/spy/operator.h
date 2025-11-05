@@ -60,6 +60,16 @@ static inline double spy_operator$i8_div(int8_t x, int8_t y) {
     return (double)x / y;
 }
 
+static inline double spy_unsafe$i8_unchecked_div(int8_t x, int8_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "division by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    return (double)x / y;
+}
+
 static inline double spy_operator$u8_div(uint8_t x, uint8_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "division by zero",
@@ -68,11 +78,31 @@ static inline double spy_operator$u8_div(uint8_t x, uint8_t y) {
     return (double)x / y;
 }
 
+static inline double spy_unsafe$u8_unchecked_div(uint8_t x, uint8_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "division by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    return (double)x / y;
+}
+
 static inline double spy_operator$i32_div(int32_t x, int32_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "division by zero",
                   __FILE__, __LINE__);
     }
+    return (double)x / y;
+}
+
+static inline double spy_unsafe$i32_unchecked_div(int32_t x, int32_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "division by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
     return (double)x / y;
 }
 
@@ -91,6 +121,23 @@ static inline int8_t spy_operator$i8_floordiv(int8_t x, int8_t y) {
     return q;
 }
 
+static inline int8_t spy_unsafe$i8_unchecked_floordiv(int8_t x, int8_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "integer division or modulo by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    int8_t q = x / y;
+    int8_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        q -= 1;
+    }
+
+    return q;
+}
+
 static inline uint8_t spy_operator$u8_floordiv(uint8_t x, uint8_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer division or modulo by zero",
@@ -99,11 +146,38 @@ static inline uint8_t spy_operator$u8_floordiv(uint8_t x, uint8_t y) {
     return x / y;
 }
 
+static inline uint8_t spy_unsafe$u8_unchecked_floordiv(uint8_t x, uint8_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "integer division or modulo by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    return x / y;
+}
+
 static inline int32_t spy_operator$i32_floordiv(int32_t x, int32_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer division or modulo by zero",
                   __FILE__, __LINE__);
     }
+    int32_t q = x / y;
+    int32_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        q -= 1;
+    }
+
+    return q;
+}
+
+static inline int32_t spy_unsafe$i32_unchecked_floordiv(int32_t x, int32_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "integer division or modulo by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
     int32_t q = x / y;
     int32_t r = x % y;
 
@@ -128,11 +202,38 @@ static inline int8_t spy_operator$i8_mod(int8_t x, int8_t y) {
     return r;
 }
 
+static inline int8_t spy_unsafe$i8_unchecked_mod(int8_t x, int8_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "integer modulo by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    int8_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        r += y;
+    }
+
+    return r;
+}
+
+
 static inline double spy_operator$u8_mod(uint8_t x, uint8_t y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "integer modulo by zero",
                   __FILE__, __LINE__);
     }
+    return x % y;
+}
+
+static inline double spy_unsafe$u8_unchecked_mod(uint8_t x, uint8_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "integer modulo by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
     return x % y;
 }
 
@@ -150,11 +251,37 @@ static inline int32_t spy_operator$i32_mod(int32_t x, int32_t y) {
     return r;
 }
 
+static inline int32_t spy_unsafe$i32_unchecked_mod(int32_t x, int32_t y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "integer modulo by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    int32_t r = x % y;
+
+    if ((r != 0) && ((x ^ y) < 0)) {
+        r += y;
+    }
+
+    return r;
+}
+
 static inline double spy_operator$f64_div(double x, double y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "float division by zero",
                   __FILE__, __LINE__);
     }
+    return x / y;
+}
+
+static inline double spy_unsafe$f64_unchecked_div(double x, double y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "float division by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
     return x / y;
 }
 
@@ -166,11 +293,37 @@ static inline double spy_operator$f64_floordiv(double x, double y) {
     return floor(x / y);
 }
 
+static inline double spy_unsafe$f64_unchecked_floordiv(double x, double y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "float floor division by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    return floor(x / y);
+}
+
 static inline double spy_operator$f64_mod(double x, double y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "float modulo by zero",
                   __FILE__, __LINE__);
     }
+    double r = fmod(x, y);
+
+    if (r != 0.00 && (y < 0.00) != (r < 0.00)) {
+        r += y;
+    }
+
+    return r;
+}
+
+static inline double spy_unsafe$f64_unchecked_mod(double x, double y) {
+    #ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "float modulo by zero",
+                  __FILE__, __LINE__);
+    }
+    #endif
     double r = fmod(x, y);
 
     if (r != 0.00 && (y < 0.00) != (r < 0.00)) {

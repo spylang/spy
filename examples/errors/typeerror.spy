@@ -1,0 +1,18 @@
+# NOTE: this is expected to fail, the goal is to show how the error looks like.
+#
+# Try to run:
+#     spy typeerror.spy
+#     spy -r typeerror.spy
+#     spy -r --error-mode=lazy typeerror.spy
+
+
+def add(x: int, y: int) -> int:
+    return x + y
+
+
+def foo() -> str:
+    return add("hello", "world")
+
+
+def main() -> None:
+    print(foo())

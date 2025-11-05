@@ -1,0 +1,89 @@
+"""
+This is one of the most advanced examples of SPy so far.
+
+It implements the basics of a generic array type
+"""
+from operator import OpSpec, MetaArg
+from unsafe import gc_alloc, ptr
+
+@blue
+def ArrayData(DTYPE):
+    @struct
+    class _ArrayData:
+        length: i32
+        capacity: i32
+        items: ptr[DTYPE]
+
+    return _ArrayData
+
+@blue
+def ndarray1(DTYPE):
+    """
+    Currently generics are implemented using blue functions taking a
+    type. Eventually we will support a syntax like `ndarray[i32]`, which will
+    be equivalent to this.
+    """
+
+    @typelift
+    class ndarray:
+        __ll__: ptr[ArrayData(DTYPE)]
+
+        def __new__(length: i32) -> ndarray:
+            data = gc_alloc(ArrayData(DTYPE))(1)
+            data.length = length
+            data.capacity = length
+            data.items = gc_alloc(DTYPE)(length)
+            i = 0
+            while i < length:
+                data.items[i] = 0
+                i = i + 1
+            return ndarray.__lift__(data)
+
+        def append(self: ndarray, value: DTYPE) -> None:
+            ll = self.__ll__
+            if ll.length >= ll.capacity:
+                # resize needed - double the capacity
+                new_capacity = ll.capacity * 2
+                if new_capacity == 0:
+                    new_capacity = 1
+                new_items = gc_alloc(DTYPE)(new_capacity)
+                # copy existing items
+                i = 0
+                while i < ll.length:
+                    new_items[i] = ll.items[i]
+                    i = i + 1
+                ll.items = new_items
+                ll.capacity = new_capacity
+
+            ll.items[ll.length] = value
+            ll.length = ll.length + 1
+
+
+        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+            ll = self.__ll__
+            if i >= ll.length:
+                raise IndexError
+            return ll.items[i]
+
+        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
+            ll = self.__ll__
+            if i >= ll.length:
+                raise IndexError
+            ll.items[i] = v
+
+    return ndarray
+
+
+def main() -> None:
+    a_floats = ndarray1(f64)(10)
+    a_ints = ndarray1(i32)(4)
+    a_ints[0] = 1
+    a_ints[1] = 2
+    a_ints[2] = 3
+    a_ints[3] = 4
+    a_ints.append(5)
+    a_ints.append(6)
+    i = 0
+    while i < 6:
+        print(a_ints[i])
+        i = i + 1

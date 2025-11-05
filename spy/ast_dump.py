@@ -51,7 +51,13 @@ class Dumper(TextBuilder):
     ) -> None:
         super().__init__(use_colors=use_colors)
         self.highlight = highlight
-        self.fields_to_ignore = ("loc", "target_loc", "target_locs", "loc_asname")
+        self.fields_to_ignore = (
+            "loc",
+            "target_loc",
+            "body_loc",
+            "target_locs",
+            "loc_asname",
+        )
         self.vm = vm
 
     def dump_anything(self, obj: Any) -> None:
@@ -101,11 +107,11 @@ class Dumper(TextBuilder):
         #
         if node is self.highlight:
             text_color = "red"
-        # If the vm contains an expr_color_map, use the expression's color
+        # If the vm contains an ast_color_map, use the expression's color
         # as the text background color, and use the default text_color
         bg_color = None
-        if self.vm and self.vm.expr_color_map:
-            color: Optional[Color] = self.vm.expr_color_map.get(node, None)
+        if self.vm and self.vm.ast_color_map:
+            color: Optional[Color] = self.vm.ast_color_map.get(node, None)
             if color:
                 bg_color = color
                 text_color = None
