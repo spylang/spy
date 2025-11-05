@@ -233,6 +233,31 @@ class TestExprWType(CompilerTest):
         )
         assert str(formatted) == expected
 
+    @pytest.mark.parametrize("token", ["<", "<=", ">", ">=", "==", "!="])
+    def test_cmp_chain_direct_ops_cover_all_tokens(self, token: str) -> None:
+        modname = self.redshift_module(
+            f"""
+            def cmp_chain(a: i32, b: i32, c: i32) -> bool:
+                return a {token} b {token} c
+            """
+        )
+
+        writer, funcdef = self.make_writer(f"{modname}::cmp_chain")
+        expr = self.return_expr(funcdef)
+
+        writer.local_decls = writer.tbc.make_nested_builder()
+        try:
+            rendered = writer.fmt_expr(expr)
+        finally:
+            writer.local_decls = None
+        expected = (
+            f"(SPY_t_cmp0 = a , SPY_t_cmp1 = b , SPY_t_cmp0 {token} SPY_t_cmp1)"
+            f" && (SPY_t_cmp0 = SPY_t_cmp1 , SPY_t_cmp1 = c , SPY_t_cmp0 {token} SPY_t_cmp1)"
+        )
+        result = str(rendered)
+        assert result == expected
+        assert "spy_operator$" not in result
+
     def test_cmp_op_direct(self):
         modname = self.redshift_module(
             """
@@ -290,3 +315,57 @@ class TestExprWType(CompilerTest):
 
         with pytest.raises(NotImplementedError, match="mismatched operand types"):
             writer.fmt_expr(chain)
+
+    def test_cmp_chain_nonprimitive_uses_opimpl(self):
+        modname = self.redshift_module(
+            """
+            def placeholder(a: dynamic, b: dynamic, c: dynamic) -> bool:
+                return a < b < c
+            """
+        )
+
+        writer, funcdef = self.make_writer(f"{modname}::placeholder")
+        expr = self.return_expr(funcdef)
+        if isinstance(expr, ast.Call):
+            assert len(expr.args) == 1
+            assert isinstance(expr.args[0], ast.CmpChain)
+            expr = expr.args[0]
+        assert isinstance(expr, ast.CmpChain)
+
+        helper_name = FQN("operator::dynamic_lt").c_name
+
+        writer.local_decls = writer.tbc.make_nested_builder()
+        try:
+            rendered = writer.fmt_expr(expr)
+        finally:
+            writer.local_decls = None
+
+        rendered_str = str(rendered)
+        assert helper_name in rendered_str
+        assert rendered_str.count(helper_name) == 2
+        assert "<" not in rendered_str
+
+    def test_cmp_chain_bool_uses_helper(self):
+        modname = self.redshift_module(
+            """
+            def bool_chain(a: bool, b: bool, c: bool) -> bool:
+                return a < b < c
+            """
+        )
+
+        writer, funcdef = self.make_writer(f"{modname}::bool_chain")
+        expr = self.return_expr(funcdef)
+        assert isinstance(expr, ast.CmpChain)
+
+        helper_name = FQN("operator::bool_lt").c_name
+
+        writer.local_decls = writer.tbc.make_nested_builder()
+        try:
+            rendered = writer.fmt_expr(expr)
+        finally:
+            writer.local_decls = None
+
+        rendered_str = str(rendered)
+        assert helper_name in rendered_str
+        assert rendered_str.count(helper_name) == 2
+        assert "<" not in rendered_str

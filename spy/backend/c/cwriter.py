@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional, cast
 from spy import ast
 from spy.backend.c import c_ast as C
 from spy.backend.c.context import Context
+from spy.doppler import make_const
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -12,8 +13,11 @@ from spy.vm.b import TYPES, B
 from spy.vm.builtin import IRTag
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.vm.modules.operator import OP_from_token
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.vm.object import W_Object, W_Type
+from spy.vm.opimpl import ArgSpec, W_OpImpl
+from spy.vm.opspec import W_MetaArg
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -356,13 +360,16 @@ class CFuncWriter:
 
         left_expr = self.fmt_expr(first_cmp.left)
         right_expr = self.fmt_expr(first_cmp.right)
+        cmp_result = self._fmt_cmp_result(
+            first_cmp, C.Literal(tmp_left), C.Literal(tmp_right)
+        )
         expr: C.Expr = C.BinOp(
             ",",
             assign(tmp_left, left_expr),
             C.BinOp(
                 ",",
                 assign(tmp_right, right_expr),
-                C.BinOp(first_cmp.op, C.Literal(tmp_left), C.Literal(tmp_right)),
+                cmp_result,
             ),
         )
 
@@ -373,17 +380,87 @@ class CFuncWriter:
                     "mismatched operand types in comparison chain"
                 )
             next_right = self.fmt_expr(cmp.right)
+            cmp_result = self._fmt_cmp_result(
+                cmp, C.Literal(tmp_left), C.Literal(tmp_right)
+            )
             segment = C.BinOp(
                 ",",
                 assign(tmp_left, C.Literal(tmp_right)),
                 C.BinOp(
                     ",",
                     assign(tmp_right, next_right),
-                    C.BinOp(cmp.op, C.Literal(tmp_left), C.Literal(tmp_right)),
+                    cmp_result,
                 ),
             )
             expr = C.BinOp("&&", expr, segment)
         return expr
+
+    def _fmt_cmp_result(
+        self, cmp: ast.CmpOp, c_left: C.Expr, c_right: C.Expr
+    ) -> C.Expr:
+        # Ensure bool/dynamic chains don’t fall back to raw <.
+        w_opimpl = self._lookup_cmp_opimpl(cmp)
+        if direct := self._maybe_fmt_direct_cmp(w_opimpl, c_left, c_right):
+            return direct
+        return self._fmt_opimpl_expr(cmp.loc, w_opimpl, [c_left, c_right])
+
+    def _maybe_fmt_direct_cmp(
+        self, w_opimpl: W_OpImpl, c_left: C.Expr, c_right: C.Expr
+    ) -> C.Expr | None:
+        if not w_opimpl.is_func_call():
+            return None
+
+        w_func = w_opimpl.w_func
+        op = self.FQN2BinOp.get(w_func.fqn)
+        if not op:
+            return None
+
+        args = w_opimpl.args
+        if len(args) != 2:
+            return None
+
+        if not all(
+            isinstance(spec, ArgSpec.Arg) and spec.i == index
+            for index, spec in enumerate(args)
+        ):
+            return None
+
+        return C.BinOp(op, c_left, c_right)
+
+    def _lookup_cmp_opimpl(self, cmp: ast.CmpOp) -> W_OpImpl:
+        w_OP = OP_from_token(cmp.op)
+        w_left_type = self.expr_w_type(cmp.left)
+        w_right_type = self.expr_w_type(cmp.right)
+        wam_left = W_MetaArg(self.ctx.vm, "red", w_left_type, None, cmp.left.loc)
+        wam_right = W_MetaArg(self.ctx.vm, "red", w_right_type, None, cmp.right.loc)
+        return self.ctx.vm.call_OP(cmp.loc, w_OP, [wam_left, wam_right])
+
+    def _fmt_opimpl_expr(
+        self, loc: Loc, w_opimpl: W_OpImpl, arg_exprs: list[C.Expr]
+    ) -> C.Expr:
+        if w_opimpl.is_const():
+            const_expr = make_const(self.ctx.vm, loc, w_opimpl.w_const)
+            return self.fmt_expr(const_expr)
+
+        assert w_opimpl.is_func_call()
+        assert len(arg_exprs) == len(w_opimpl.w_functype.params)
+        w_func = w_opimpl.w_func
+        self.ctx.add_include_maybe(w_func.fqn)
+        c_args = [self._fmt_opimpl_arg(spec, arg_exprs) for spec in w_opimpl.args]
+        return C.Call(w_func.fqn.c_name, c_args)
+
+    def _fmt_opimpl_arg(self, spec: ArgSpec, arg_exprs: list[C.Expr]) -> C.Expr:
+        if isinstance(spec, ArgSpec.Arg):
+            return arg_exprs[spec.i]
+        elif isinstance(spec, ArgSpec.Const):
+            const_expr = make_const(self.ctx.vm, spec.loc, spec.w_const)
+            return self.fmt_expr(const_expr)
+        elif isinstance(spec, ArgSpec.Convert):
+            inner = self._fmt_opimpl_arg(spec.arg, arg_exprs)
+            self.ctx.add_include_maybe(spec.w_conv.fqn)
+            return C.Call(spec.w_conv.fqn.c_name, [inner])
+        else:
+            raise NotImplementedError(f"Unsupported ArgSpec: {spec!r}")
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         raise NotImplementedError(
