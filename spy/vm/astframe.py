@@ -819,15 +819,23 @@ class AbstractFrame:
             wam_result = self.eval_opimpl(cmp, w_opimpl, [wam_prev, wam_right])
             chain_color = maybe_blue(chain_color, wam_right.color, wam_result.color)
 
-            if wam_result._w_val is not None:
-                assert isinstance(wam_result._w_val, W_Bool)
-                if self.vm.is_False(wam_result._w_val):
+            if self.redshifting:
+                if wam_result.color == "blue":
+                    w_bool = wam_result.w_val
+                    assert isinstance(w_bool, W_Bool)
+                    if self.vm.is_False(w_bool):
+                        if chain_color == "red" and wam_result.color != "red":
+                            wam_result = wam_result.as_red(self.vm)
+                        return wam_result
+                if chain_color == "red" and wam_result.color != "red":
+                    wam_result = wam_result.as_red(self.vm)
+            else:
+                w_bool = wam_result.w_val
+                assert isinstance(w_bool, W_Bool)
+                if self.vm.is_False(w_bool):
                     if chain_color == "red" and wam_result.color != "red":
                         wam_result = wam_result.as_red(self.vm)
                     return wam_result
-            else:
-                assert self.redshifting and wam_result.color == "red"
-                chain_color = "red"
 
             prev_expr = cmp.right
             wam_prev = wam_right
