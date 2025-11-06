@@ -2,7 +2,15 @@ import ast as py_ast
 import dataclasses
 import typing
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Iterator, Optional, no_type_check, dataclass_transform, Type
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterator,
+    Optional,
+    Type,
+    dataclass_transform,
+    no_type_check,
+)
 
 from spy.analyze.symtable import Color, ImportRef, Symbol, VarKind
 from spy.fqn import FQN
@@ -59,13 +67,14 @@ class AST:
 
 del AST
 
+
 @dataclass_transform(field_specifiers=(dataclasses.field,))
 def AstNode[T](klass: Type[T]) -> Type[T]:
     """Decorator to create dataclasses for AST nodes
-    
     We want all nodes to compare by *identity* and be hashable, because e.g. we
-    put them in dictionaries inside the typechecker. """
+    put them in dictionaries inside the typechecker."""
     return dataclass(eq=False)(klass)
+
 
 @AstNode
 class Node:
