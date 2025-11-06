@@ -32,6 +32,7 @@ MM.register("<" , "i8", "i8", OP.w_i8_lt)
 MM.register("<=", "i8", "i8", OP.w_i8_le)
 MM.register(">" , "i8", "i8", OP.w_i8_gt)
 MM.register(">=", "i8", "i8", OP.w_i8_ge)
+MM.register("**", "i8", "i8", OP.w_i8_pow)
 
 # u8 ops
 MM.register("+",  "u8", "u8", OP.w_u8_add)
@@ -51,6 +52,7 @@ MM.register("<" , "u8", "u8", OP.w_u8_lt)
 MM.register("<=", "u8", "u8", OP.w_u8_le)
 MM.register(">" , "u8", "u8", OP.w_u8_gt)
 MM.register(">=", "u8", "u8", OP.w_u8_ge)
+MM.register("**", "u8", "u8", OP.w_u8_pow)
 
 # i32 ops
 MM.register("+",  "i32", "i32", OP.w_i32_add)
