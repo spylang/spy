@@ -2,7 +2,7 @@ import ast as py_ast
 import dataclasses
 import typing
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Iterator, Optional, no_type_check
+from typing import TYPE_CHECKING, Any, Iterator, Optional, no_type_check, dataclass_transform, Type
 
 from spy.analyze.symtable import Color, ImportRef, Symbol, VarKind
 from spy.fqn import FQN
@@ -59,22 +59,11 @@ class AST:
 
 del AST
 
-# we want all nodes to compare by *identity* and be hashable, because e.g. we
-# put them in dictionaries inside the typechecker. So, we must use eq=False ON
-# ALL AST NODES.
-#
-# Ideally, I would like to do the following:
-#     def astnode():
-#         return dataclass (eq=False)
-#
-#     @astnode
-#     class Node:
-#         ...
-#
-# But we can't because this pattern is not understood by mypy.
+@dataclass_transform(field_specifiers=(dataclasses.field,))
+def AstNode[T](klass: Type[T]) -> Type[T]:
+    return dataclass(eq=False)(klass)
 
-
-@dataclass(eq=False)
+@AstNode
 class Node:
     loc: Loc = field(repr=False)
 
@@ -134,7 +123,7 @@ class Node:
                 node.visit(prefix, visitor, *args)
 
 
-@dataclass(eq=False)
+@AstNode
 class Module(Node):
     filename: str
     docstring: Optional[str]
@@ -163,22 +152,22 @@ class Decl(Node):
     pass
 
 
-@dataclass(eq=False)
+@AstNode
 class GlobalFuncDef(Decl):
     funcdef: "FuncDef"
 
 
-@dataclass(eq=False)
+@AstNode
 class GlobalVarDef(Decl):
     vardef: "VarDef"
 
 
-@dataclass(eq=False)
+@AstNode
 class GlobalClassDef(Decl):
     classdef: "ClassDef"
 
 
-@dataclass(eq=False)
+@AstNode
 class Import(Decl):
     loc_asname: Loc
     ref: ImportRef
@@ -188,7 +177,7 @@ class Import(Decl):
 # ====== Expr hierarchy ======
 
 
-@dataclass(eq=False)
+@AstNode
 class Expr(Node):
     """
     Operator precedence table, see
@@ -220,18 +209,18 @@ class Expr(Node):
     precedence = "<Expr.precedence not set>"  # type: int # type: ignore
 
 
-@dataclass(eq=False)
+@AstNode
 class Name(Expr):
     precedence = 100  # the highest
     id: str
 
 
-@dataclass(eq=False)
+@AstNode
 class Auto(Expr):
     precedence = 100  # the highest
 
 
-@dataclass(eq=False)
+@AstNode
 class Constant(Expr):
     precedence = 100  # the highest
     value: object
@@ -240,7 +229,7 @@ class Constant(Expr):
         assert type(self.value) is not str, "use StrConst instead"
 
 
-@dataclass(eq=False)
+@AstNode
 class StrConst(Expr):
     """
     Like Constant, but for strings.
@@ -253,7 +242,7 @@ class StrConst(Expr):
     value: str
 
 
-@dataclass(eq=False)
+@AstNode
 class LocConst(Expr):
     """
     Like Constant, but for W_Locs.
@@ -266,33 +255,33 @@ class LocConst(Expr):
     value: Loc
 
 
-@dataclass(eq=False)
+@AstNode
 class GetItem(Expr):
     precedence = 16
     value: Expr
     args: list[Expr]
 
 
-@dataclass(eq=False)
+@AstNode
 class List(Expr):
     precedence = 17
     items: list[Expr]
 
 
-@dataclass(eq=False)
+@AstNode
 class Tuple(Expr):
     precedence = 17
     items: list[Expr]
 
 
-@dataclass(eq=False)
+@AstNode
 class Call(Expr):
     precedence = 16
     func: Expr
     args: list[Expr]
 
 
-@dataclass(eq=False)
+@AstNode
 class CallMethod(Expr):
     precedence = 17  # higher than GetAttr
     target: Expr
@@ -300,14 +289,14 @@ class CallMethod(Expr):
     args: list[Expr]
 
 
-@dataclass(eq=False)
+@AstNode
 class GetAttr(Expr):
     precedence = 16
     value: Expr
     attr: StrConst
 
 
-@dataclass(eq=False)
+@AstNode
 class BinOp(Expr):
     op: str
     left: Expr
@@ -342,7 +331,7 @@ class BinOp(Expr):
 
 # eventually this should allow chained comparisons, but for now we support
 # only binary ones
-@dataclass(eq=False)
+@AstNode
 class CmpOp(Expr):
     op: str
     left: Expr
@@ -372,7 +361,7 @@ class CmpOp(Expr):
         raise TypeError("readonly attribute")
 
 
-@dataclass(eq=False)
+@AstNode
 class UnaryOp(Expr):
     op: str
     value: Expr
@@ -398,18 +387,18 @@ class UnaryOp(Expr):
 # ====== Stmt hierarchy ======
 
 
-@dataclass(eq=False)
+@AstNode
 class Stmt(Node):
     pass
 
 
-@dataclass(eq=False)
+@AstNode
 class FuncArg(Node):
     name: str
     type: "Expr"
 
 
-@dataclass(eq=False)
+@AstNode
 class FuncDef(Stmt):
     color: Color
     kind: FuncKind
@@ -431,7 +420,7 @@ class FuncDef(Stmt):
         return Loc.combine(self.loc, self.return_type.loc)
 
 
-@dataclass(eq=False)
+@AstNode
 class ClassDef(Stmt):
     body_loc: Loc
     name: str
@@ -442,17 +431,17 @@ class ClassDef(Stmt):
     symtable: Any = field(repr=False, default=None)
 
 
-@dataclass(eq=False)
+@AstNode
 class Pass(Stmt):
     pass
 
 
-@dataclass(eq=False)
+@AstNode
 class Return(Stmt):
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class VarDef(Stmt):
     kind: Optional[VarKind]
     name: StrConst
@@ -460,7 +449,7 @@ class VarDef(Stmt):
     value: Optional[Expr]
 
 
-@dataclass(eq=False)
+@AstNode
 class StmtExpr(Stmt):
     """
     An expr used as a statement
@@ -469,40 +458,40 @@ class StmtExpr(Stmt):
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class Assign(Stmt):
     target: StrConst
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class UnpackAssign(Stmt):
     targets: list[StrConst]
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class AugAssign(Stmt):
     op: str
     target: StrConst
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class SetAttr(Stmt):
     target: Expr
     attr: StrConst
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class SetItem(Stmt):
     target: Expr
     args: list[Expr]
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class If(Stmt):
     test: Expr
     then_body: list[Stmt]
@@ -513,13 +502,13 @@ class If(Stmt):
         return len(self.else_body) > 0
 
 
-@dataclass(eq=False)
+@AstNode
 class While(Stmt):
     test: Expr
     body: list[Stmt]
 
 
-@dataclass(eq=False)
+@AstNode
 class For(Stmt):
     seq: int  # unique id within a funcdef
     target: StrConst
@@ -527,23 +516,23 @@ class For(Stmt):
     body: list[Stmt]
 
 
-@dataclass(eq=False)
+@AstNode
 class Raise(Stmt):
     exc: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class Assert(Stmt):
     test: Expr
     msg: Optional[Expr]
 
 
-@dataclass(eq=False)
+@AstNode
 class Break(Stmt):
     pass
 
 
-@dataclass(eq=False)
+@AstNode
 class Continue(Stmt):
     pass
 
@@ -556,39 +545,39 @@ class Continue(Stmt):
 # of the AST-which-we-use-as-IR
 
 
-@dataclass(eq=False)
+@AstNode
 class FQNConst(Expr):
     precedence = 100  # the highest
     fqn: FQN
 
 
 # specialized Name nodes
-@dataclass(eq=False)
+@AstNode
 class NameLocal(Expr):
     precedence = 100  # the highest
     sym: Symbol
 
 
-@dataclass(eq=False)
+@AstNode
 class NameOuterDirect(Expr):
     precedence = 100  # the highest
     sym: Symbol
 
 
-@dataclass(eq=False)
+@AstNode
 class NameOuterCell(Expr):
     precedence = 100  # the highest
     sym: Symbol
     fqn: FQN
 
 
-@dataclass(eq=False)
+@AstNode
 class AssignLocal(Stmt):
     target: StrConst
     value: Expr
 
 
-@dataclass(eq=False)
+@AstNode
 class AssignCell(Stmt):
     target: StrConst
     target_fqn: FQN
