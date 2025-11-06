@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.tests.support import CompilerTest, expect_errors, only_C, only_interp
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
@@ -227,6 +227,10 @@ class TestUnsafePtr(CompilerTest):
 
         def foo() -> ptr[i32]:
             return ptr[i32].NULL
+
+        def bar(i: i32) -> i32:
+            null_ptr = ptr[i32].NULL
+            return null_ptr[i]
         """)
         w_p = mod.foo()
         if self.backend in ("interp", "doppler"):
@@ -238,6 +242,24 @@ class TestUnsafePtr(CompilerTest):
             assert isinstance(w_p, WasmPtr)
             assert w_p.addr == 0
             assert w_p.length == 0
+
+    @only_C
+    def test_ptr_NULL_check(self):
+        mod = self.compile("""
+        from unsafe import ptr
+
+        null_ptr: ptr[i32] = ptr[i32].NULL
+
+        def foo(i: i32) -> i32:
+            return null_ptr[i]
+
+        def bar(i: i32, v: i32) -> None:
+            null_ptr[i] = v
+        """)
+        with SPyError.raises("W_PanicError", "cannot dereference NULL pointer"):
+            mod.foo(1)
+        with SPyError.raises("W_PanicError", "cannot dereference NULL pointer"):
+            mod.bar(1, 10)
 
     def test_NULL_in_global(self):
         mod = self.compile("""
