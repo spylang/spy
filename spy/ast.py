@@ -61,6 +61,10 @@ del AST
 
 @dataclass_transform(field_specifiers=(dataclasses.field,))
 def AstNode[T](klass: Type[T]) -> Type[T]:
+    """Decorator to create dataclasses for AST nodes
+    
+    We want all nodes to compare by *identity* and be hashable, because e.g. we
+    put them in dictionaries inside the typechecker. """
     return dataclass(eq=False)(klass)
 
 @AstNode
