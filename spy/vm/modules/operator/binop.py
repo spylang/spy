@@ -70,6 +70,7 @@ MM.register("<" , "i32", "i32", OP.w_i32_lt)
 MM.register("<=", "i32", "i32", OP.w_i32_le)
 MM.register(">" , "i32", "i32", OP.w_i32_gt)
 MM.register(">=", "i32", "i32", OP.w_i32_ge)
+MM.register("**", "i32", "i32", OP.w_i32_pow)
 
 # f64 ops
 MM.register("+",  "f64", "f64", OP.w_f64_add)
@@ -84,6 +85,7 @@ MM.register("<" , "f64", "f64", OP.w_f64_lt)
 MM.register("<=", "f64", "f64", OP.w_f64_le)
 MM.register(">" , "f64", "f64", OP.w_f64_gt)
 MM.register(">=", "f64", "f64", OP.w_f64_ge)
+MM.register("**", "f64", "f64", OP.w_f64_pow)
 
 # mixed int/f64 ops: this is still small enough that we can write it manually,
 # but we should consider the idea of generating this table automatically. This
@@ -109,6 +111,8 @@ for int_t in ("i8", "u8", "i32"):
     MM.register(">" , int_t, "f64", OP.w_f64_gt)
     MM.register(">=", "f64", int_t, OP.w_f64_ge)
     MM.register(">=", int_t, "f64", OP.w_f64_ge)
+    MM.register("**",  "f64", int_t, OP.w_f64_pow)
+    MM.register("**",  int_t, "f64", OP.w_f64_pow)
 
 # str ops
 MM.register("+",  "str", "str", OP.w_str_add)
@@ -136,6 +140,7 @@ MM.register_partial("<",  "dynamic", OP.w_dynamic_lt)
 MM.register_partial("<=", "dynamic", OP.w_dynamic_le)
 MM.register_partial(">",  "dynamic", OP.w_dynamic_gt)
 MM.register_partial(">=", "dynamic", OP.w_dynamic_ge)
+MM.register_partial("**", "dynamic", OP.w_dynamic_pow)
 # fmt: on
 
 
@@ -200,6 +205,26 @@ def w_DIV(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = W_OpSpec.NULL
     return typecheck_opspec(
         vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` / `{1}`"
+    )
+
+
+@OP.builtin_func(color="blue")
+def w_POW(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    w_ltype = wam_l.w_static_T
+    if w_opspec := MM.get_binary_opspec("**", wam_l, wam_r):
+        pass
+    elif w_pow := w_ltype.lookup_func("__pow__"):
+        w_opspec = vm.fast_metacall(w_pow, [wam_l, wam_r])
+    else:
+        w_opspec = W_OpSpec.NULL
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` ** `{1}`",
     )
 
 

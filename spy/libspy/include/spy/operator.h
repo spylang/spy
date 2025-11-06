@@ -317,6 +317,32 @@ static inline double spy_operator$f64_mod(double x, double y) {
     return r;
 }
 
+static inline double spy_operator$f64_pow(double x, double y) {
+    if (x == 0.0 && y < 0.0) {
+        spy_panic("ZeroDivisionError", "0.0 cannot be raised to a negative power",
+                  __FILE__, __LINE__);
+    }
+    if (x < 0.0 && isfinite(y) && floor(y) != y) {
+        spy_panic("ValueError", "negative number cannot be raised to a fractional power",
+                  __FILE__, __LINE__);
+    }
+    return pow(x, y);
+}
+
+static inline double spy_unsafe$f64_unchecked_pow(double x, double y) {
+    #ifdef SPY_DEBUG
+    if (x == 0.0 && y < 0.0) {
+        spy_panic("PanicError", "0.0 cannot be raised to a negative power",
+                  __FILE__, __LINE__);
+    }
+    if (x < 0.0 && isfinite(y) && floor(y) != y) {
+        spy_panic("PanicError", "negative number cannot be raised to a fractional power",
+                  __FILE__, __LINE__);
+    }
+    #endif
+    return pow(x, y);
+}
+
 static inline double spy_unsafe$f64_unchecked_mod(double x, double y) {
     #ifdef SPY_DEBUG
     if (y == 0) {

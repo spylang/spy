@@ -46,6 +46,13 @@ class W_BinOpClass(W_Object):
         other = vm.unwrap_i32(w_other)
         return vm.wrap(x // other)
 
+    @builtin_method("__pow__")
+    @staticmethod
+    def w_pow(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(x**other)
+
     @builtin_method("__mod__")
     @staticmethod
     def w_mod(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_I32:
@@ -221,6 +228,20 @@ class TestOperatorBinop(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(10, 3) == 1  # 10 % 3 = 1
+
+    def test_pow(self):
+        self.setup_ext()
+        src = """
+        from ext import BinOpClass
+
+        def foo(x: i32, y: i32) -> i32:
+            obj = BinOpClass(x)
+            return obj ** y
+        """
+        mod = self.compile(src)
+        assert mod.foo(2, 3) == 8  # 2 ** 3 = 8
+        assert mod.foo(3, 2) == 9  # 3 ** 2 = 9
+        assert mod.foo(5, 0) == 1  # 5 ** 0 = 1
 
     def test_bitwise_ops(self):
         self.setup_ext()

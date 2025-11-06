@@ -87,6 +87,7 @@ _from_token: dict[str, W_Func] = {
     ">": OP.w_GT,
     ">=": OP.w_GE,
     "[]": OP.w_GETITEM,
+    "**": OP.w_POW,
     "<universal_eq>": OP.w_UNIVERSAL_EQ,
     "<universal_ne>": OP.w_UNIVERSAL_NE,
 }

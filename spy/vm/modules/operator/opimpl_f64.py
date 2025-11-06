@@ -44,6 +44,11 @@ def w_f64_mul(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
 
 
 @OP.builtin_func
+def w_f64_pow(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+    return _f64_op(vm, w_a, w_b, lambda a, b: a**b)
+
+
+@OP.builtin_func
 def w_f64_div(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
     if w_b.value == 0:
         raise SPyError("W_ZeroDivisionError", "float division by zero")

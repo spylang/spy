@@ -20,6 +20,7 @@ class TestFloat(CompilerTest):
         def div(x: f64, y: f64) -> f64:      return x / y
         def floordiv(x: f64, y: f64) -> f64: return x // y
         def mod(x: f64, y: f64) -> f64:      return x % y
+        def pow(x: f64, y: f64) -> f64:      return x ** y
         def neg(x: f64) -> f64:              return -x
         """)
         assert mod.add(1.5, 2.6) == 4.1
@@ -28,6 +29,12 @@ class TestFloat(CompilerTest):
         assert mod.div(1.5, 2.0) == 0.75
         assert mod.floordiv(10.0, 3.0) == 3.0
         assert mod.mod(10.5, 2.5) == 0.5
+        assert mod.pow(2.0, 3.0) == 8.0
+        assert mod.pow(3.0, 2.0) == 9.0
+        assert mod.pow(2.5, 2.0) == 6.25
+        assert mod.pow(4.0, 0.5) == 2.0  # square root
+        assert mod.pow(2.0, -1.0) == 0.5  # negative exponent
+        assert mod.pow(1.5, 0.0) == 1.0  # any number to power 0 is 1
         assert mod.neg(-2.5) == 2.5
 
     def test_zero_division_error(self):
@@ -99,6 +106,8 @@ class TestFloat(CompilerTest):
         def add(x: f64, y: i32) -> f64: return x + y
         def sub(x: i32, y: f64) -> f64: return x - y
         def div(x: f64, y: i32) -> f64: return x / y
+        def pow(x: f64, y: i32) -> f64: return x ** y
+        def pow_int_base(x: i32, y: f64) -> f64: return x ** y
 
         def add_i8(x: f64, y: i8) -> f64: return x + y
         def add_u8(x: f64, y: u8) -> f64: return x + y
@@ -106,6 +115,10 @@ class TestFloat(CompilerTest):
         assert mod.add(1.5, 2) == 3.5
         assert mod.sub(10, 0.5) == 9.5
         assert mod.div(1.5, 2) == 0.75
+        assert mod.pow(1.5, 2) == 2.25  # float base, int exponent
+        assert (
+            mod.pow_int_base(2, 0.5) == 1.4142135623730951
+        )  # int base, float exponent (square root)
         assert mod.add_i8(1.5, 2) == 3.5
         assert mod.add_u8(1.5, 2) == 3.5
 
@@ -116,3 +129,29 @@ class TestFloat(CompilerTest):
             return res
         """)
         assert mod.to_f64(42) == 42.0
+
+    def test_pow_special_values(self):
+        mod = self.compile("""
+        def pow(x: f64, y: f64) -> f64: return x ** y
+        """)
+
+        result = mod.pow(-1.0, float("nan"))
+        assert result != result
+
+        result = mod.pow(-2.5, float("nan"))
+        assert result != result
+
+        result = mod.pow(-2.0, float("inf"))
+        assert result == float("inf")
+
+        result = mod.pow(-0.5, float("inf"))
+        assert result == 0.0
+
+        result = mod.pow(-2.0, float("-inf"))
+        assert result == 0.0
+
+        result = mod.pow(-0.5, float("-inf"))
+        assert result == float("inf")
+
+        assert mod.pow(-2.0, 3.0) == -8.0
+        assert mod.pow(-2.0, 2.0) == 4.0
