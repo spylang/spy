@@ -130,7 +130,7 @@ class CStructWriter:
         typedef struct {c_ptrtype} {{
             {c_itemtype} *p;
         #ifdef SPY_DEBUG
-            size_t length;
+            ptrdiff_t length;
         #endif
         }} {c_ptrtype};
         """)
