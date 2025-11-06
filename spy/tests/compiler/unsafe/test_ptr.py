@@ -227,10 +227,6 @@ class TestUnsafePtr(CompilerTest):
 
         def foo() -> ptr[i32]:
             return ptr[i32].NULL
-
-        def bar(i: i32) -> i32:
-            null_ptr = ptr[i32].NULL
-            return null_ptr[i]
         """)
         w_p = mod.foo()
         if self.backend in ("interp", "doppler"):
