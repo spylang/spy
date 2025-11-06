@@ -189,7 +189,7 @@ class W_Ptr(W_BasePtr):
             length = w_ptr.length
             i = vm.unwrap_i32(w_i)
             addr = base + ITEMSIZE * i
-            if i >= length:
+            if not (0 <= i < length):
                 msg = (
                     f"ptr_getitem out of bounds: 0x{addr:x}[{i}] "
                     f"(upper bound: {length})"
@@ -228,7 +228,7 @@ class W_Ptr(W_BasePtr):
             length = w_ptr.length
             i = vm.unwrap_i32(w_i)
             addr = base + ITEMSIZE * i
-            if i >= length:
+            if not (0 <= i < length):
                 msg = (
                     f"ptr_store out of bounds: 0x{addr:x}[{i}] (upper bound: {length})"
                 )
