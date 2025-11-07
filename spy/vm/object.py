@@ -638,7 +638,7 @@ class W_Type(W_Object):
         return mro
 
     def spy_dir(self, vm: "SPyVM") -> set[str]:
-        names = set()
+        names: set[str] = set()
         for w_T in self.get_mro():
             names.update(w_T.dict_w.keys())
         return names
