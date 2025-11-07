@@ -85,8 +85,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pip install pytest-xdist
-          pytest -n auto -m "not mypy" --junit-xml=test-results.xml
+          pytest -m "not mypy" --junit-xml=test-results.xml
 
       - name: Run mypy
         run: |

@@ -24,6 +24,7 @@ dev = [
     "ruff~=0.14.0",
     "mypy==1.15.0",
     "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
+    "pytest-xdist==3.8.0",
     # the followings are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
@@ -50,7 +51,7 @@ include-package-data = true
 include = ["spy*"]
 
 [tool.pytest.ini_options]
-addopts = "--dist-dir=pyodide/node_modules/pyodide"
+addopts = ["-n=auto", "--dist-dir=pyodide/node_modules/pyodide"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 # needed to ignore warnings caused by using pexpect to run ninja
