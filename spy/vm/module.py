@@ -31,6 +31,11 @@ class W_Module(W_Object):
         else:
             return f"<spy module {self.name}>"
 
+    def spy_dir(self, vm: "SPyVM") -> set[str]:
+        names = super().spy_dir(vm)
+        names.update(self._dict_w.keys())
+        return names
+
     @property
     def name(self) -> str:
         return self.fqn.modname
