@@ -157,3 +157,15 @@ class TestBuiltins(CompilerTest):
 
         # check that we can actually call them from SPy code
         assert mod.foo() == 42
+
+    @only_interp
+    def test_dir(self):
+        src = """
+        def dir_i32() -> list[str]:
+            return dir(5)
+        """
+        mod = self.compile(src)
+        d = mod.dir_i32()
+        assert "__new__" in d
+        assert "__repr__" in d
+        assert "__str__" in d

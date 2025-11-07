@@ -634,6 +634,12 @@ class W_Type(W_Object):
             w_T = w_T.w_base
         return mro
 
+    def spy_dir(self, vm: "SPyVM") -> list[str]:
+        names = set()
+        for w_T in self.get_mro():
+            names.update(w_T.dict_w.keys())
+        return sorted(names)
+
     def lookup(self, name: str) -> Optional[W_Object]:
         """
         Lookup the given attribute into the applevel dict
