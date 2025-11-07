@@ -71,7 +71,7 @@ class W_StructType(W_Type):
     def is_struct(self, vm: "SPyVM") -> bool:
         return True
 
-    def spy_dir(self, vm: "SPyVM") -> list[str]:
+    def spy_dir(self, vm: "SPyVM") -> set[str]:
         names = super().spy_dir(vm)
         names.update(self.fields_w.keys())
         return names
