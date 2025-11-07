@@ -182,6 +182,18 @@ class W_List(W_BaseList, Generic[T]):
 
         return W_OpSpec(w_eq)
 
+    def _repr(self, vm: "SPyVM") -> W_Str:
+        if self.w_listtype.w_itemtype is B.w_str:
+            # special case list[str]
+            parts = [vm.unwrap_str(w_item) for w_item in self.items_w]
+            return vm.wrap(str(parts))
+        else:
+            parts = [
+                vm.unwrap_str(vm.str(W_MetaArg.from_w_obj(vm, w_obj)))
+                for w_obj in self.items_w
+            ]
+            return vm.wrap("[" + ", ".join(parts) + "]")
+
     @builtin_method("__str__", color="blue", kind="metafunc")
     @staticmethod
     def w_STR(vm: "SPyVM", wam_list: W_MetaArg) -> W_OpSpec:
@@ -191,18 +203,22 @@ class W_List(W_BaseList, Generic[T]):
 
         @vm.register_builtin_func(w_listtype.fqn)
         def w_str(vm: "SPyVM", w_lst: LIST) -> W_Str:
-            if w_T is B.w_str:
-                # special case list[str]
-                parts = [vm.unwrap_str(w_item) for w_item in w_lst.items_w]
-                return vm.wrap(str(parts))
-            else:
-                parts = [
-                    vm.unwrap_str(vm.str(W_MetaArg.from_w_obj(vm, w_obj)))
-                    for w_obj in w_lst.items_w
-                ]
-                return vm.wrap("[" + ", ".join(parts) + "]")
+            return w_lst._repr(vm)
 
         return W_OpSpec(w_str, [wam_list])
+
+    @builtin_method("__repr__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_REPR(vm: "SPyVM", wam_list: W_MetaArg) -> W_OpSpec:
+        w_listtype = W_List._get_listtype(wam_list)
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_List, w_listtype]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_repr(vm: "SPyVM", w_lst: LIST) -> W_Str:
+            return w_lst._repr(vm)
+
+        return W_OpSpec(w_repr, [wam_list])
 
 
 # prebuilt list types
