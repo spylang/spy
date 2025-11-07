@@ -90,6 +90,17 @@ class TestList(CompilerTest):
         assert mod.cmp_types(B.w_str) == True
         assert mod.cmp_types(B.w_i32) == False
 
+    def test_str(self):
+        mod = self.compile("""
+        def list_of_strings(a: str, b: str) -> str:
+            return str([a, b])
+
+        def list_of_ints(a: i32, b: i32) -> str:
+            return str([a, b])
+        """)
+        assert mod.list_of_strings("aaa", "bbb") == "['aaa', 'bbb']"
+        assert mod.list_of_ints(1, 2) == "[1, 2]"
+
     def test_interp_repr(self):
         mod = self.compile("""
         def foo() -> list[i32]:

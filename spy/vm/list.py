@@ -6,6 +6,7 @@ from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool
+from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -94,7 +95,9 @@ class W_List(W_BaseList, Generic[T]):
     def __init__(self, w_listtype: W_ListType, items_w: list[W_Object]) -> None:
         assert isinstance(w_listtype, W_ListType)
         self.w_listtype = w_listtype
-        # XXX typecheck?
+        # XXX we should do a proper typecheck, but let's at least do a sanity check
+        if len(items_w) > 0:
+            assert isinstance(items_w[0], W_Object)
         self.items_w = items_w  # type: ignore
 
     def __repr__(self) -> str:
@@ -121,8 +124,6 @@ class W_List(W_BaseList, Generic[T]):
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod
     def w_GETITEM(vm: "SPyVM", wam_list: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
-        from spy.vm.opspec import W_OpSpec
-
         w_listtype = W_List._get_listtype(wam_list)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_List, w_listtype]
@@ -181,20 +182,44 @@ class W_List(W_BaseList, Generic[T]):
 
         return W_OpSpec(w_eq)
 
+    @builtin_method("__str__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_STR(vm: "SPyVM", wam_list: W_MetaArg) -> W_OpSpec:
+        w_listtype = W_List._get_listtype(wam_list)
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_List, w_listtype]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_str(vm: "SPyVM", w_lst: LIST) -> W_Str:
+            if w_T is B.w_str:
+                # special case list[str]
+                parts = [vm.unwrap_str(w_item) for w_item in w_lst.items_w]
+                return vm.wrap(str(parts))
+            else:
+                parts = [
+                    vm.unwrap_str(vm.str(W_MetaArg.from_w_obj(vm, w_obj)))
+                    for w_obj in w_lst.items_w
+                ]
+                return vm.wrap("[" + ", ".join(parts) + "]")
+
+        return W_OpSpec(w_str, [wam_list])
+
 
 # prebuilt list types
 # ===================
 
-# This it is no longer used in the current state, but the code is kept around
-# in case it's needed in the future.
-#
-# The following commented-out code makes an interp-level type W_MetaArgList
-# which corresponds to the interp-level type `list[MetaArg]`.
-
+w_str_list_type = _make_list_type(B.w_str)
 w_metaarg_list_type = _make_list_type(OP.w_MetaArg)
+
+PREBUILT_LIST_TYPES[B.w_str] = w_str_list_type
 PREBUILT_LIST_TYPES[OP.w_MetaArg] = w_metaarg_list_type
 
+W_StrList = Annotated[W_List[W_Str], w_str_list_type]
 W_MetaArgList = Annotated[W_List[W_MetaArg], w_metaarg_list_type]
+
+
+def make_str_list(items_w: list[W_Str]) -> W_StrList:
+    return W_List(w_str_list_type, items_w)  # type: ignore
 
 
 def make_metaarg_list(args_wam: list[W_MetaArg]) -> W_MetaArgList:
