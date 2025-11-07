@@ -820,6 +820,16 @@ class SPyVM:
     def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         return self.universal_eq(w_a, w_b).not_(self)
 
+    # XXX: should this take a w_obj, a wam_obj or both? And where do we get the Loc
+    # from? This is a quick hack, but we need to think of a proper uniform way to
+    # interact with wams/wobjs
+    def str(self, wam_obj: W_MetaArg) -> W_Str:
+        wam_str = W_MetaArg.from_w_obj(self, B.w_str)
+        w_opimpl = self.call_OP(Loc.fake(), OPERATOR.w_CALL, [wam_str, wam_obj])
+        w_res = w_opimpl.execute(self, [B.w_str, wam_obj.w_val])
+        assert isinstance(w_res, W_Str)
+        return w_res
+
     def make_list_type(self, w_T: W_Type) -> W_ListType:
         w_res = self.getitem(B.w_list, w_T)
         assert isinstance(w_res, W_ListType)
