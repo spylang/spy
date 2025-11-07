@@ -161,11 +161,20 @@ class TestBuiltins(CompilerTest):
     @only_interp
     def test_dir(self):
         src = """
+        import math
+
         def dir_i32() -> list[str]:
             return dir(5)
+
+        def dir_math() -> list[str]:
+            return dir(math)
         """
         mod = self.compile(src)
-        d = mod.dir_i32()
-        assert "__new__" in d
-        assert "__repr__" in d
-        assert "__str__" in d
+        di = mod.dir_i32()
+        assert "__new__" in di
+        assert "__repr__" in di
+        assert "__str__" in di
+
+        dm = mod.dir_math()
+        assert "acos" in dm
+        assert "pi" in dm
