@@ -84,7 +84,7 @@ lint.select = [
 lint.ignore = ["C901"]
 line-length = 88
 indent-width = 4
-target-version = "py311"
+target-version = "py312"
 exclude = [".venv", "*.pyi", "*.c"]
 
 [tool.ruff.format]
