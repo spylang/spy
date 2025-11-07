@@ -84,6 +84,24 @@ class TestUnsafePtr(CompilerTest):
         """)
         assert mod.foo(3, 4.5) == 7.5
 
+    @only_interp
+    def test_dir_ptr(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def dir_ptr_point() -> list[str]:
+            p = gc_alloc(Point)(1)
+            return dir(p)
+        """)
+        d = mod.dir_ptr_point()
+        assert "x" in d
+        assert "y" in d
+
     def test_struct_wrong_field(self):
         src = """
         from unsafe import ptr, gc_alloc
