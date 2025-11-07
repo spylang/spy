@@ -798,6 +798,7 @@ class AbstractFrame:
         #   - blue function -> blue
         # XXX what happens if we try to call a blue func with red arguments?
         w_functype = w_opimpl.w_functype
+        color: Color
         if w_opimpl.is_pure():
             colors = [wam.color for wam in args_wam]
             color = maybe_blue(*colors)

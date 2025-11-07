@@ -1,6 +1,6 @@
 import pytest
 
-from spy.tests.support import CompilerTest, expect_errors, no_C
+from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Dynamic
@@ -157,3 +157,24 @@ class TestBuiltins(CompilerTest):
 
         # check that we can actually call them from SPy code
         assert mod.foo() == 42
+
+    @only_interp
+    def test_dir(self):
+        src = """
+        import math
+
+        def dir_i32() -> list[str]:
+            return dir(5)
+
+        def dir_math() -> list[str]:
+            return dir(math)
+        """
+        mod = self.compile(src)
+        di = mod.dir_i32()
+        assert "__new__" in di
+        assert "__repr__" in di
+        assert "__str__" in di
+
+        dm = mod.dir_math()
+        assert "acos" in dm
+        assert "pi" in dm

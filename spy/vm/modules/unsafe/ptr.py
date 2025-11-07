@@ -67,6 +67,11 @@ class W_PtrType(W_Type):
         w_T.w_itemtype = w_itemtype
         return w_T
 
+    def spy_dir(self, vm: "SPyVM") -> set[str]:
+        names = super().spy_dir(vm)
+        names.update(self.w_itemtype.spy_dir(vm))
+        return names
+
     @builtin_property("NULL", color="blue", kind="metafunc")
     @staticmethod
     def w_GET_NULL(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:

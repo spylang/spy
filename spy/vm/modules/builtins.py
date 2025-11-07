@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from spy.errors import SPyError
 from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.function import W_FuncType
+from spy.vm.list import W_StrList, make_str_list, w_str_list_type
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool, W_Dynamic, W_NoneType
@@ -68,8 +69,8 @@ def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         # if we print something of unsupported type BUT it's a blue object, we
         # can precompute its repr now and just print it as a string. This
         # allows to print things like types even with the C backend.
-        s = str(wam_obj.w_blueval)
-        wam_s = W_MetaArg.from_w_obj(vm, vm.wrap(s))
+        w_s = vm.str(wam_obj)
+        wam_s = W_MetaArg.from_w_obj(vm, w_s)
         return W_OpSpec(w_print_str, [wam_s])
 
     else:
@@ -196,6 +197,23 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     raise SPyError.simple(
         "W_TypeError", f"unhashable type '{t}'", f"this is `{t}`", wam_obj.loc
     )
+
+
+# w_dir is a metafunc because we can precompute the result at blue time
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_dir(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
+    # get the names from the type
+    w_T = wam_obj.w_static_T
+    names = w_T.spy_dir(vm)
+
+    # get the names from the instance, if it's blue
+    if wam_obj.color == "blue":
+        new_names = wam_obj.w_blueval.spy_dir(vm)
+        names.update(new_names)
+
+    names_w = [vm.wrap(name) for name in sorted(names)]
+    w_names = make_str_list(names_w)
+    return W_OpSpec.const(w_names)
 
 
 # add aliases for common types. For now we map:
