@@ -222,6 +222,9 @@ class W_Object:
         assert self.__spy_storage_category__ == "reference"
         return self  # rely on Python's default __hash__ and __eq__
 
+    def spy_dir(self, vm: "SPyVM") -> set[str]:
+        return set()
+
     @builtin_method("__repr__", color="blue", kind="metafunc")
     @staticmethod
     def w_REPR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
@@ -634,11 +637,11 @@ class W_Type(W_Object):
             w_T = w_T.w_base
         return mro
 
-    def spy_dir(self, vm: "SPyVM") -> list[str]:
+    def spy_dir(self, vm: "SPyVM") -> set[str]:
         names = set()
         for w_T in self.get_mro():
             names.update(w_T.dict_w.keys())
-        return sorted(names)
+        return names
 
     def lookup(self, name: str) -> Optional[W_Object]:
         """
