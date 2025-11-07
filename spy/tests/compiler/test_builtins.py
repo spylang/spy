@@ -1,6 +1,6 @@
 import pytest
 
-from spy.tests.support import CompilerTest, expect_errors, no_C
+from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Dynamic

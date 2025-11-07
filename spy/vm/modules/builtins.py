@@ -199,13 +199,19 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     )
 
 
+# w_dir is a metafunc because we can precompute the result at blue time
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_dir(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
-    # w_dir is a metafunc because we can statically precompute the result at blue time,
-    # and return just a constant
+    # get the names from the type
     w_T = wam_obj.w_static_T
     names = w_T.spy_dir(vm)
-    names_w = [vm.wrap(name) for name in names]
+
+    # get the names from the instance, if it's blue
+    if wam_obj.color == "blue":
+        new_names = wam_obj.w_blueval.spy_dir(vm)
+        names.update(new_names)
+
+    names_w = [vm.wrap(name) for name in sorted(names)]
     w_names = make_str_list(names_w)
     return W_OpSpec.const(w_names)
 

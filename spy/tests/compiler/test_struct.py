@@ -178,3 +178,31 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == (0, 0)
+
+    @only_interp
+    def test_dir(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def dir_type() -> list[str]:
+            return dir(Point)
+
+        def dir_inst() -> list[str]:
+            p = Point(1, 2)
+            return dir(p)
+        """
+        mod = self.compile(src)
+        dt = mod.dir_type()
+        assert "__str__" in dt
+        assert "__make__" in dt
+        assert "x" in dt
+        assert "y" in dt
+
+        di = mod.dir_inst()
+        assert "__str__" in di
+        assert "__make__" in di
+        assert "x" in di
+        assert "y" in di

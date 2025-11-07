@@ -71,6 +71,11 @@ class W_StructType(W_Type):
     def is_struct(self, vm: "SPyVM") -> bool:
         return True
 
+    def spy_dir(self, vm: "SPyVM") -> list[str]:
+        names = super().spy_dir(vm)
+        names.update(self.fields_w.keys())
+        return names
+
 
 def calc_layout(fields_w: dict[str, W_Field]) -> tuple[OFFSETS_T, int]:
     from spy.vm.modules.unsafe.misc import sizeof
