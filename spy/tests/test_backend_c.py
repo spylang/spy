@@ -118,6 +118,7 @@ class TestExprWType(CompilerTest):
         w_func = self.vm.lookup_global(fqn)
         assert isinstance(w_func, W_ASTFunc)
         ctx = Context(self.vm)
+        ctx.tbh_includes = TextBuilder(use_colors=False)
         stub = _StubCModuleWriter()
         writer = CFuncWriter(ctx, cast(CModuleWriter, stub), fqn, w_func)
         return writer, w_func.funcdef
@@ -371,3 +372,97 @@ class TestExprWType(CompilerTest):
         assert rendered_str.count(helper_name) == 2
         assert "<" not in rendered_str
         assert rendered_str.count("->value") == 2
+
+    def test_cmp_chain_allows_nontrivial_operands(self):
+        modname = self.redshift_module(
+            """
+            @struct
+            class Point:
+                x: i32
+
+                def get_x(self: Point) -> i32:
+                    return self.x
+
+            @struct
+            class Wrapper:
+                point: Point
+
+                def get_point(self: Wrapper) -> Point:
+                    return self.point
+
+            def cmp_attr(p1: Point, p2: Point, p3: Point) -> bool:
+                return p1.x < p2.x < p3.x
+
+            def cmp_method(p1: Point, p2: Point, p3: Point) -> bool:
+                return p1.get_x() < p2.get_x() < p3.get_x()
+
+            def cmp_item(items: list[i32], i: i32, j: i32, k: i32) -> bool:
+                return items[i] < items[j] < items[k]
+
+            def cmp_nested_attr(w1: Wrapper, w2: Wrapper, w3: Wrapper) -> bool:
+                return w1.point.x < w2.point.x < w3.point.x
+
+            def cmp_nested_method(w1: Wrapper, w2: Wrapper, w3: Wrapper) -> bool:
+                return (
+                    w1.get_point().get_x() < w2.get_point().get_x() < w3.get_point().get_x()
+                )
+            """
+        )
+
+        for func_name in (
+            "cmp_attr",
+            "cmp_method",
+            "cmp_item",
+            "cmp_nested_attr",
+            "cmp_nested_method",
+        ):
+            writer, funcdef = self.make_writer(f"{modname}::{func_name}")
+            expr = self.return_expr(funcdef)
+            assert isinstance(expr, ast.CmpChain)
+            assert writer.expr_w_type(expr) is B.w_bool
+
+            writer.local_decls = writer.tbc.make_nested_builder()
+            try:
+                rendered = writer.fmt_expr(expr)
+            finally:
+                writer.local_decls = None
+
+            rendered_str = str(rendered)
+            assert "SPY_t_cmp0" in rendered_str
+            assert "SPY_t_cmp1" in rendered_str
+
+    def test_cmp_chain_mixed_attr_and_method(self):
+        modname = self.redshift_module(
+            """
+            @struct
+            class Box:
+                value: i32
+
+                def get_value(self: Box) -> i32:
+                    return self.value
+
+            def attr_then_method(b1: Box, b2: Box, b3: Box) -> bool:
+                return b1.value < b2.get_value() < b3.value
+
+            def method_then_attr(b1: Box, b2: Box, b3: Box) -> bool:
+                return b1.get_value() < b2.value < b3.get_value()
+            """
+        )
+
+        for func_name in ("attr_then_method", "method_then_attr"):
+            writer, funcdef = self.make_writer(f"{modname}::{func_name}")
+            expr = self.return_expr(funcdef)
+            assert isinstance(expr, ast.CmpChain)
+            assert writer.expr_w_type(expr) is B.w_bool
+
+            writer.local_decls = writer.tbc.make_nested_builder()
+            try:
+                rendered = writer.fmt_expr(expr)
+            finally:
+                writer.local_decls = None
+
+            rendered_str = str(rendered)
+            assert "SPY_t_cmp0" in rendered_str
+            assert "SPY_t_cmp1" in rendered_str
+            assert "get_value" in rendered_str
+            assert "<" in rendered_str

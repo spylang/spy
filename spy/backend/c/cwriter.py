@@ -12,12 +12,15 @@ from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES, B
 from spy.vm.builtin import IRTag
 from spy.vm.cell import W_Cell
+from spy.vm.field import W_Field
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
+from spy.vm.list import W_ListType
 from spy.vm.modules.operator import OP_from_token
 from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
+from spy.vm.struct import W_StructType
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -136,12 +139,51 @@ class CFuncWriter:
             if isinstance(w_obj, W_Cell):
                 w_obj = w_obj.get()
             return self.ctx.vm.dynamic_type(cast(W_Object, w_obj))
+        elif isinstance(expr, ast.GetAttr):
+            return self._attr_w_type(expr)
+        elif isinstance(expr, ast.GetItem):
+            w_value_type = self.expr_w_type(expr.value)
+            if isinstance(w_value_type, W_ListType):
+                return w_value_type.w_itemtype
+            return B.w_dynamic
+        elif isinstance(expr, ast.CallMethod):
+            w_target_type = self.expr_w_type(expr.target)
+            if isinstance(w_target_type, W_Type):
+                method = expr.method.value
+                if isinstance(w_target_type, W_StructType):
+                    if w_method := w_target_type.lookup_func(method):
+                        return w_method.w_functype.w_restype
+                elif w_method := w_target_type.lookup_func(method):
+                    return w_method.w_functype.w_restype
+            return B.w_dynamic
         elif isinstance(expr, ast.Call):
             w_type = self.expr_w_type(expr.func)
             assert isinstance(w_type, W_FuncType)
             return w_type.w_restype
         else:
-            raise NotImplementedError(f"cannot determine type of {expr!r}")
+            return B.w_dynamic
+
+    def _attr_w_type(self, expr: ast.GetAttr) -> W_Type:
+        attr_name = expr.attr.value
+        w_target_type = self.expr_w_type(expr.value)
+        if isinstance(w_target_type, W_StructType):
+            if attr_name in w_target_type.fields_w:
+                w_field = w_target_type.fields_w[attr_name]
+                assert isinstance(w_field, W_Field)
+                return w_field.w_T
+            if w_attr := w_target_type.lookup(attr_name):
+                return self._object_dynamic_type(w_attr)
+        elif isinstance(w_target_type, W_Type):
+            if w_attr := w_target_type.lookup(attr_name):
+                return self._object_dynamic_type(w_attr)
+        return B.w_dynamic
+
+    def _object_dynamic_type(self, w_attr: W_Object) -> W_Type:
+        if isinstance(w_attr, W_Cell):
+            w_attr = w_attr.get()
+        if isinstance(w_attr, W_Func):
+            return w_attr.w_functype
+        return self.ctx.vm.dynamic_type(w_attr)
 
     # ==============
 
