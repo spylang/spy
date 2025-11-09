@@ -69,14 +69,14 @@ del AST
 
 
 @dataclass_transform(field_specifiers=(dataclasses.field,), eq_default=False)
-def AstNode[T](klass: Type[T]) -> Type[T]:
+def astnode[T](klass: Type[T]) -> Type[T]:
     """Decorator to create dataclasses for AST nodes
     We want all nodes to compare by *identity* and be hashable, because e.g. we
     put them in dictionaries inside the typechecker."""
     return dataclass(eq=False)(klass)
 
 
-@AstNode
+@astnode
 class Node:
     loc: Loc = field(repr=False)
 
@@ -136,7 +136,7 @@ class Node:
                 node.visit(prefix, visitor, *args)
 
 
-@AstNode
+@astnode
 class Module(Node):
     filename: str
     docstring: Optional[str]
@@ -165,22 +165,22 @@ class Decl(Node):
     pass
 
 
-@AstNode
+@astnode
 class GlobalFuncDef(Decl):
     funcdef: "FuncDef"
 
 
-@AstNode
+@astnode
 class GlobalVarDef(Decl):
     vardef: "VarDef"
 
 
-@AstNode
+@astnode
 class GlobalClassDef(Decl):
     classdef: "ClassDef"
 
 
-@AstNode
+@astnode
 class Import(Decl):
     loc_asname: Loc
     ref: ImportRef
@@ -190,7 +190,7 @@ class Import(Decl):
 # ====== Expr hierarchy ======
 
 
-@AstNode
+@astnode
 class Expr(Node):
     """
     Operator precedence table, see
@@ -222,18 +222,18 @@ class Expr(Node):
     precedence = "<Expr.precedence not set>"  # type: int # type: ignore
 
 
-@AstNode
+@astnode
 class Name(Expr):
     precedence = 100  # the highest
     id: str
 
 
-@AstNode
+@astnode
 class Auto(Expr):
     precedence = 100  # the highest
 
 
-@AstNode
+@astnode
 class Constant(Expr):
     precedence = 100  # the highest
     value: object
@@ -242,7 +242,7 @@ class Constant(Expr):
         assert type(self.value) is not str, "use StrConst instead"
 
 
-@AstNode
+@astnode
 class StrConst(Expr):
     """
     Like Constant, but for strings.
@@ -255,7 +255,7 @@ class StrConst(Expr):
     value: str
 
 
-@AstNode
+@astnode
 class LocConst(Expr):
     """
     Like Constant, but for W_Locs.
@@ -268,33 +268,33 @@ class LocConst(Expr):
     value: Loc
 
 
-@AstNode
+@astnode
 class GetItem(Expr):
     precedence = 16
     value: Expr
     args: list[Expr]
 
 
-@AstNode
+@astnode
 class List(Expr):
     precedence = 17
     items: list[Expr]
 
 
-@AstNode
+@astnode
 class Tuple(Expr):
     precedence = 17
     items: list[Expr]
 
 
-@AstNode
+@astnode
 class Call(Expr):
     precedence = 16
     func: Expr
     args: list[Expr]
 
 
-@AstNode
+@astnode
 class CallMethod(Expr):
     precedence = 17  # higher than GetAttr
     target: Expr
@@ -302,14 +302,14 @@ class CallMethod(Expr):
     args: list[Expr]
 
 
-@AstNode
+@astnode
 class GetAttr(Expr):
     precedence = 16
     value: Expr
     attr: StrConst
 
 
-@AstNode
+@astnode
 class BinOp(Expr):
     op: str
     left: Expr
@@ -344,7 +344,7 @@ class BinOp(Expr):
 
 # eventually this should allow chained comparisons, but for now we support
 # only binary ones
-@AstNode
+@astnode
 class CmpOp(Expr):
     op: str
     left: Expr
@@ -374,7 +374,7 @@ class CmpOp(Expr):
         raise TypeError("readonly attribute")
 
 
-@AstNode
+@astnode
 class UnaryOp(Expr):
     op: str
     value: Expr
@@ -400,18 +400,18 @@ class UnaryOp(Expr):
 # ====== Stmt hierarchy ======
 
 
-@AstNode
+@astnode
 class Stmt(Node):
     pass
 
 
-@AstNode
+@astnode
 class FuncArg(Node):
     name: str
     type: "Expr"
 
 
-@AstNode
+@astnode
 class FuncDef(Stmt):
     color: Color
     kind: FuncKind
@@ -433,7 +433,7 @@ class FuncDef(Stmt):
         return Loc.combine(self.loc, self.return_type.loc)
 
 
-@AstNode
+@astnode
 class ClassDef(Stmt):
     body_loc: Loc
     name: str
@@ -444,17 +444,17 @@ class ClassDef(Stmt):
     symtable: Any = field(repr=False, default=None)
 
 
-@AstNode
+@astnode
 class Pass(Stmt):
     pass
 
 
-@AstNode
+@astnode
 class Return(Stmt):
     value: Expr
 
 
-@AstNode
+@astnode
 class VarDef(Stmt):
     kind: Optional[VarKind]
     name: StrConst
@@ -462,7 +462,7 @@ class VarDef(Stmt):
     value: Optional[Expr]
 
 
-@AstNode
+@astnode
 class StmtExpr(Stmt):
     """
     An expr used as a statement
@@ -471,40 +471,40 @@ class StmtExpr(Stmt):
     value: Expr
 
 
-@AstNode
+@astnode
 class Assign(Stmt):
     target: StrConst
     value: Expr
 
 
-@AstNode
+@astnode
 class UnpackAssign(Stmt):
     targets: list[StrConst]
     value: Expr
 
 
-@AstNode
+@astnode
 class AugAssign(Stmt):
     op: str
     target: StrConst
     value: Expr
 
 
-@AstNode
+@astnode
 class SetAttr(Stmt):
     target: Expr
     attr: StrConst
     value: Expr
 
 
-@AstNode
+@astnode
 class SetItem(Stmt):
     target: Expr
     args: list[Expr]
     value: Expr
 
 
-@AstNode
+@astnode
 class If(Stmt):
     test: Expr
     then_body: list[Stmt]
@@ -515,13 +515,13 @@ class If(Stmt):
         return len(self.else_body) > 0
 
 
-@AstNode
+@astnode
 class While(Stmt):
     test: Expr
     body: list[Stmt]
 
 
-@AstNode
+@astnode
 class For(Stmt):
     seq: int  # unique id within a funcdef
     target: StrConst
@@ -529,23 +529,23 @@ class For(Stmt):
     body: list[Stmt]
 
 
-@AstNode
+@astnode
 class Raise(Stmt):
     exc: Expr
 
 
-@AstNode
+@astnode
 class Assert(Stmt):
     test: Expr
     msg: Optional[Expr]
 
 
-@AstNode
+@astnode
 class Break(Stmt):
     pass
 
 
-@AstNode
+@astnode
 class Continue(Stmt):
     pass
 
@@ -558,39 +558,39 @@ class Continue(Stmt):
 # of the AST-which-we-use-as-IR
 
 
-@AstNode
+@astnode
 class FQNConst(Expr):
     precedence = 100  # the highest
     fqn: FQN
 
 
 # specialized Name nodes
-@AstNode
+@astnode
 class NameLocal(Expr):
     precedence = 100  # the highest
     sym: Symbol
 
 
-@AstNode
+@astnode
 class NameOuterDirect(Expr):
     precedence = 100  # the highest
     sym: Symbol
 
 
-@AstNode
+@astnode
 class NameOuterCell(Expr):
     precedence = 100  # the highest
     sym: Symbol
     fqn: FQN
 
 
-@AstNode
+@astnode
 class AssignLocal(Stmt):
     target: StrConst
     value: Expr
 
 
-@AstNode
+@astnode
 class AssignCell(Stmt):
     target: StrConst
     target_fqn: FQN
