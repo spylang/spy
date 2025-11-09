@@ -313,7 +313,7 @@ class BinOp(Expr):
     left: Expr
     right: Expr
     # fmt: off
-    _precendece = {
+    _precedence = {
         "|":   7,
         "^":   8,
         "&":   9,
@@ -332,7 +332,7 @@ class BinOp(Expr):
 
     @property
     def precedence(self) -> int:
-        return self._precendece[self.op]
+        return self._precedence[self.op]
 
     # this is just to make mypy happy
     @precedence.setter
@@ -348,7 +348,7 @@ class CmpOp(Expr):
     left: Expr
     right: Expr
     # fmt: off
-    _precendece = {
+    _precedence = {
         "==":  6,
         "!=":  6,
         "<":   6,
@@ -364,7 +364,7 @@ class CmpOp(Expr):
 
     @property
     def precedence(self) -> int:
-        return self._precendece[self.op]
+        return self._precedence[self.op]
 
     # this is just to make mypy happy
     @precedence.setter
@@ -377,7 +377,7 @@ class UnaryOp(Expr):
     op: str
     value: Expr
     # fmt: off
-    _precendece = {
+    _precedence = {
         "not": 5,
         "+":  13,
         "-":  13,
@@ -387,7 +387,7 @@ class UnaryOp(Expr):
 
     @property
     def precedence(self) -> int:
-        return self._precendece[self.op]
+        return self._precedence[self.op]
 
     # this is just to make mypy happy
     @precedence.setter
