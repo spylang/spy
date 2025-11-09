@@ -68,7 +68,7 @@ class AST:
 del AST
 
 
-@dataclass_transform(field_specifiers=(dataclasses.field,))
+@dataclass_transform(field_specifiers=(dataclasses.field,), eq_default=False)
 def AstNode[T](klass: Type[T]) -> Type[T]:
     """Decorator to create dataclasses for AST nodes
     We want all nodes to compare by *identity* and be hashable, because e.g. we
