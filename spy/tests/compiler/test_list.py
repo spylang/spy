@@ -90,6 +90,39 @@ class TestList(CompilerTest):
         assert mod.cmp_types(B.w_str) == True
         assert mod.cmp_types(B.w_i32) == False
 
+    def test_add(self):
+        mod = self.compile("""
+        def add_i32_lists() -> list[i32]:
+            a: list[i32] = [0, 1]
+            b: list[i32] = [2, 3]
+            return a + b
+
+        def add_str_lists() -> list[str]:
+            a: list[str] = ["a"]
+            b: list[str] = ["b", "bb"]
+            c: list[str] = ["c", "cc", "ccc"]
+            return a + b + c
+
+        def test_iadd_lists() -> list[str]:
+            a: list[str] = ["a"]
+            b: list[str] = ["b", "bb"]
+            a += b
+            return a
+
+        def add_type_lists_repr() -> str:
+            a: list[type] = [i32, f64]
+            b: list[type] = [bool]
+            return repr(a + b)
+        """)
+
+        assert mod.add_i32_lists() == [0, 1, 2, 3]
+        assert mod.add_str_lists() == ["a", "b", "bb", "c", "cc", "ccc"]
+        assert mod.test_iadd_lists() == ["a", "b", "bb"]
+        assert (
+            mod.add_type_lists_repr()
+            == "[<spy type 'i32'>, <spy type 'f64'>, <spy type 'bool'>]"
+        )
+
     def test_repr_str(self):
         mod = self.compile("""
         def str_list_str(a: str, b: str) -> str:
