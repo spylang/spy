@@ -85,11 +85,10 @@ lint.ignore = ["C901"]
 line-length = 88
 indent-width = 4
 target-version = "py312"
-exclude = [".venv", "*.pyi", "*.c"]
+extend-exclude = ["*.pyi"]
 
 [tool.ruff.format]
 line-ending = "auto"
-exclude = [".venv", "*.pyi", "*.c"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402"]
