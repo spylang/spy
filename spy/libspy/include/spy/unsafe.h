@@ -42,13 +42,13 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline T PTR##$deref(PTR p) {                         \
         return *(p.p);                                           \
     }                                                            \
-    static inline T PTR##$getitem_byval(PTR p, size_t i) {       \
+    static inline T PTR##$getitem_byval(PTR p, ptrdiff_t i) {    \
         return p.p[i];                                           \
     }                                                            \
-    static inline PTR PTR##$getitem_byref(PTR p, size_t i) {     \
+    static inline PTR PTR##$getitem_byref(PTR p, ptrdiff_t i) {  \
         return PTR##_from_addr(p.p + i);                         \
     }                                                            \
-    static inline void PTR##$store(PTR p, size_t i, T v) {       \
+    static inline void PTR##$store(PTR p, ptrdiff_t i, T v) {    \
         p.p[i] = v;                                              \
     }                                                            \
     static inline bool PTR##$__eq__(PTR p0, PTR p1) {            \
@@ -73,21 +73,31 @@ WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline T PTR##$deref(PTR p) {                         \
         return *(p.p);                                           \
     }                                                            \
-    static inline T PTR##$getitem_byval(PTR p, size_t i) {       \
-        if (i >= p.length)                                       \
+    static inline T PTR##$getitem_byval(PTR p, ptrdiff_t i) {    \
+        if (p.p == NULL)                                         \
+            spy_panic("PanicError", "cannot dereference NULL pointer", \
+                      __FILE__, __LINE__);                       \
+        if (i < 0 || i >= p.length)                              \
             spy_panic("PanicError", "ptr_getitem out of bounds", \
                       __FILE__, __LINE__);                       \
         return p.p[i];                                           \
     }                                                            \
-    static inline PTR PTR##$getitem_byref(PTR p, size_t i) {     \
-        if (i >= p.length)                                       \
+    static inline PTR PTR##$getitem_byref(PTR p, ptrdiff_t i) {  \
+        if (p.p == NULL)                                         \
+            spy_panic("PanicError", "cannot dereference NULL pointer", \
+                      __FILE__, __LINE__);                       \
+        if (i < 0 || i >= p.length)                              \
             spy_panic("PanicError", "ptr_getitem out of bounds", \
                       __FILE__, __LINE__);                       \
         return PTR##_from_addr(p.p + i);                         \
     }                                                            \
-    static inline void PTR##$store(PTR p, size_t i, T v) {       \
-        if (i >= p.length)                                       \
-            spy_panic("PanicError", "ptr_store ouf of bounds", __FILE__, __LINE__); \
+    static inline void PTR##$store(PTR p, ptrdiff_t i, T v) {    \
+        if (p.p == NULL)                                         \
+            spy_panic("PanicError", "cannot dereference NULL pointer", \
+                      __FILE__, __LINE__);                       \
+        if (i < 0 || i >= p.length)                              \
+            spy_panic("PanicError", "ptr_store out of bounds",   \
+                __FILE__, __LINE__);                             \
         p.p[i] = v;                                              \
     }                                                            \
     static inline bool PTR##$__eq__(PTR p0, PTR p1) {            \

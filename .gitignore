@@ -180,6 +180,10 @@ dmypy.json
 # pytype static type analyzer
 .pytype/
 
+# Editors
+.vscode/*
+.helix/*
+
 # Cython debug symbols
 cython_debug/
 
