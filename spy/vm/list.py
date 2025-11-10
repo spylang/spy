@@ -5,7 +5,7 @@ from spy.vm.b import BUILTINS, OP, B
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I32, W_Bool
+from spy.vm.primitive import W_I8, W_I32, W_U8, W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
@@ -181,6 +181,24 @@ class W_List(W_BaseList, Generic[T]):
             return B.w_True
 
         return W_OpSpec(w_eq)
+
+    @builtin_method("__add__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_ADD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
+        from spy.vm.opspec import W_OpSpec
+
+        w_ltype = wam_l.w_static_T
+        w_rtype = wam_r.w_static_T
+        if w_ltype is not w_rtype:
+            return W_OpSpec.NULL
+        w_listtype = W_List._get_listtype(wam_l)
+        LIST = Annotated[W_List, w_listtype]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_add(vm: "SPyVM", w_l1: LIST, w_l2: LIST) -> LIST:
+            return W_List(w_listtype, w_l1.items_w + w_l2.items_w)
+
+        return W_OpSpec(w_add)
 
     def _repr(self, vm: "SPyVM") -> W_Str:
         if self.w_listtype.w_itemtype is B.w_str:
