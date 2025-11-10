@@ -5,7 +5,7 @@ from spy.vm.b import BUILTINS, OP, B
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I8, W_I32, W_U8, W_Bool
+from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
