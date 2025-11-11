@@ -291,6 +291,10 @@ class AbstractFrame:
                     args=[ast.FQNConst(funcdef.loc, self.vm.make_fqn_const(w_func))],
                 )
                 wam_inner = self.eval_expr_Call(call_node)
+                if wam_inner.color != "blue":
+                    err = SPyError("W_TypeError", "decorators must be @blue")
+                    err.add("error", "this is red", deco.loc)
+                    raise err
                 assert wam_inner.color == "blue"
                 w_func = wam_inner.w_blueval
 
