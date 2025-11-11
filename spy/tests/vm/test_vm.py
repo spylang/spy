@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import fixedint
 import pytest
 
@@ -260,16 +262,16 @@ class TestVM:
         with pytest.raises(ValueError, match="'builtins::x' already exists"):
             vm.add_global(fqn, vm.wrap(43))
 
-    def test_get_filename(self, tmpdir):
+    def test_get_filename(self, tmp_path: Path):
         vm = SPyVM()
-        vm.path = [str(tmpdir)]
-        spy_file = tmpdir.join("main.spy")
-        spy_file.write("x: i32 = 42\n")
+        vm.path = [tmp_path]
+        spy_file = tmp_path / "main.spy"
+        spy_file.write_text("x: i32 = 42\n")
 
         filename = vm.find_file_on_path("main")
-        assert filename == tmpdir.join("main.spy")
+        assert filename == tmp_path / "main.spy"
         assert vm.find_file_on_path("nonexistent") is None
-        py_file = tmpdir.join("py.py")
-        py_file.write("i = 42\n")
+        py_file = tmp_path / "py.py"
+        py_file.write_text("i = 42\n")
         assert vm.find_file_on_path("py") is None
-        assert vm.find_file_on_path("py", allow_py_files=True) == tmpdir.join("py.py")
+        assert vm.find_file_on_path("py", allow_py_files=True) == tmp_path / "py.py"

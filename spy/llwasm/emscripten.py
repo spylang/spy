@@ -3,9 +3,9 @@ A pythonic way to instantiate Emscripten binaries.
 """
 
 from asyncio import Future
+from pathlib import Path
 from typing import Any, Callable, Optional
 
-import py.path
 from pyodide.code import run_js
 from pyodide.ffi import JsProxy, run_sync
 from typing_extensions import Self
@@ -100,7 +100,7 @@ class LLWasmInstance(LLWasmInstanceBase):
         return llmod.instance_factory(adjustWasmImports=adjust_imports)
 
     @classmethod
-    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
+    def from_file(cls, f: Path, hostmods: list[HostModule] = []) -> Self:
         llmod = LLWasmModule(str(f))
         return cls(llmod, hostmods)
 

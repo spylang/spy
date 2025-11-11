@@ -1,7 +1,6 @@
 import shlex
+from pathlib import Path
 from typing import Optional
-
-import py.path
 
 from spy.build.config import BuildConfig, CompilerConfig
 from spy.errors import WIP
@@ -32,11 +31,7 @@ def fmt_flags(flags: list[str]) -> str:
 
 
 class NinjaWriter:
-    config: BuildConfig
-    build_dir: py.path.local
-    out: Optional[str]
-
-    def __init__(self, config: BuildConfig, build_dir: py.path.local) -> None:
+    def __init__(self, config: BuildConfig, build_dir: Path) -> None:
         # for now, we support only some combinations of target/kind
         if config.kind == "lib":
             if config.target not in ("wasi", "emscripten"):
@@ -45,12 +40,12 @@ class NinjaWriter:
                 )
         self.config = config
         self.build_dir = build_dir
-        self.out = None
+        self.out: Optional[str] = None
 
     def write(
         self,
         basename: str,
-        cfiles: list[py.path.local],
+        cfiles: list[Path],
         *,
         wasm_exports: list[str] = [],
     ) -> None:
@@ -60,7 +55,7 @@ class NinjaWriter:
             comp.ldflags += [f"-Wl,--export={name}" for name in wasm_exports]
 
         # generate build.ninja
-        build_ninja = self.build_dir.join("build.ninja")
+        build_ninja = self.build_dir / "build.ninja"
         with build_ninja.open("w") as f:
             if len(cfiles) == 1:
                 s = self.gen_build_ninja_single(comp, cfiles[0])
@@ -68,7 +63,7 @@ class NinjaWriter:
                 s = self.gen_build_ninja_many(comp, cfiles)
             f.write(s)
 
-    def gen_build_ninja_single(self, comp: CompilerConfig, cfile: py.path.local) -> str:
+    def gen_build_ninja_single(self, comp: CompilerConfig, cfile: Path) -> str:
         """
         Generate a build.ninja optimized for a single .c file.
 
@@ -90,18 +85,17 @@ class NinjaWriter:
           command = $cc $in -o $out $cflags $ldflags
           description = CC $out
         """)
-        c = cfile.relto(self.build_dir)
-        if c == "":
+        try:
+            c = cfile.relative_to(self.build_dir)
+        except ValueError:
             # this means that cfile is not inside build_dir, use abspath
-            c = str(cfile)
+            c = cfile
         tb.wl("")
         tb.wl(f"build {self.out}: cc {c}")
         tb.wl(f"default {self.out}")
         return tb.build()
 
-    def gen_build_ninja_many(
-        self, comp: CompilerConfig, cfiles: list[py.path.local]
-    ) -> str:
+    def gen_build_ninja_many(self, comp: CompilerConfig, cfiles: list[Path]) -> str:
         CC = comp.CC
         cflags = fmt_flags(comp.cflags)
         ldflags = fmt_flags(comp.ldflags)
@@ -125,10 +119,10 @@ class NinjaWriter:
         tb.wl("")
         ofiles = []
         for cfile in cfiles:
-            ofile = cfile.new(ext=".o")
-            c = cfile.relto(self.build_dir)
-            o = ofile.relto(self.build_dir)
-            ofiles.append(o)
+            ofile = cfile.parent / f"{cfile.stem}.o"
+            c = cfile.relative_to(self.build_dir)
+            o = ofile.relative_to(self.build_dir)
+            ofiles.append(str(o))
             tb.wl(f"build {o}: cc {c}")
 
         ofiles_s = fmt_flags(ofiles)
@@ -136,9 +130,9 @@ class NinjaWriter:
         tb.wl(f"default {self.out}")
         return tb.build()
 
-    def build(self) -> py.path.local:
+    def build(self) -> Path:
         assert self.out is not None
         cmdline = ["ninja", "-C", str(self.build_dir)]
         # unbuffer run to get gcc to emit color codes
         robust_run(cmdline, unbuffer=True)
-        return self.build_dir.join(self.out)
+        return self.build_dir / self.out

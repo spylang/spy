@@ -1,7 +1,7 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
-import py.path
 import wasmtime
 
 from spy.fqn import FQN
@@ -30,7 +30,7 @@ class WasmModuleWrapper:
     modname: str
     ll: LLSPyInstance
 
-    def __init__(self, vm: SPyVM, modname: str, f: py.path.local) -> None:
+    def __init__(self, vm: SPyVM, modname: str, f: Path) -> None:
         self.vm = vm
         self.modname = modname
         self.w_mod = vm.modules_w[modname]

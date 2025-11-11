@@ -1,9 +1,9 @@
 import itertools
+from pathlib import Path
 from types import FunctionType
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
 
 import fixedint
-import py.path
 
 from spy import ROOT, ast, libspy
 from spy.analyze.symtable import ImportRef
@@ -83,7 +83,7 @@ W_Str._w.define(W_Str)
 w_DynamicType.define(W_Object)
 
 
-STDLIB = ROOT.join("..", "stdlib")
+STDLIB = ROOT.parent / "stdlib"
 
 
 class SPyVM:
@@ -99,7 +99,7 @@ class SPyVM:
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
     builtins_closure: CLOSURE
-    path: list[str]
+    path: list[Path]
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
     # For use by --colorize to remember the red/blue color of each expr
@@ -115,7 +115,7 @@ class SPyVM:
         self.globals_w = {}
         self.irtags = {}
         self.modules_w = {}
-        self.path = [str(STDLIB)]
+        self.path = [STDLIB]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
         self.ast_color_map = None  # By default, don't keep track of expr colors.
@@ -158,18 +158,18 @@ class SPyVM:
 
     def find_file_on_path(
         self, modname: str, allow_py_files: bool = False
-    ) -> Optional[py.path.local]:
+    ) -> Optional[Path]:
         # XXX for now we assume that we find the module as a single file in
         # the only vm.path entry. Eventually we will need a proper import
         # mechanism and support for packages
         assert self.path, "vm.path not set"
         for d in self.path:
             # XXX write test for this
-            f = py.path.local(d).join(f"{modname}.spy")
+            f = Path(d) / f"{modname}.spy"
             if f.exists():
                 return f
             if allow_py_files:
-                py_f = f.new(ext=".py")
+                py_f = f.parent / f"{f.stem}.py"
                 if py_f.exists():
                     return py_f
 

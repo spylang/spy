@@ -1,6 +1,5 @@
+from pathlib import Path
 from typing import Optional
-
-import py.path
 
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
@@ -25,21 +24,21 @@ class CBackend:
     vm: SPyVM
     outname: str
     config: BuildConfig
-    build_dir: py.path.local
+    build_dir: Path
     dump_c: bool
     cffi: CFFIWriter
     ninja: Optional[NinjaWriter]
     c_structdefs: dict[str, CStructDefs]
     c_modules: dict[str, CModule]
-    cfiles: list[py.path.local]
-    build_script: Optional[py.path.local]
+    cfiles: list[Path]
+    build_script: Optional[Path]
 
     def __init__(
         self,
         vm: SPyVM,
         outname: str,
         config: BuildConfig,
-        build_dir: py.path.local,
+        build_dir: Path,
         *,
         dump_c: bool,
     ) -> None:
@@ -47,7 +46,7 @@ class CBackend:
         self.outname = outname
         self.config = config
         self.build_dir = build_dir
-        self.build_dir.join("src").ensure(dir=True)
+        (self.build_dir / "src").mkdir(exist_ok=True)
         self.dump_c = dump_c
         self.cffi = CFFIWriter(outname, config, build_dir)
         self.ninja = None
@@ -98,10 +97,10 @@ class CBackend:
             if w_mod.is_builtin():
                 continue
             assert w_mod.filepath is not None
-            spyfile = py.path.local(w_mod.filepath)
-            basename = spyfile.purebasename
-            hfile = bdir.join("src", f"{basename}.h")
-            cfile = bdir.join("src", f"{basename}.c")
+            spyfile = Path(w_mod.filepath)
+            stem = spyfile.stem
+            hfile = bdir / "src" / f"{stem}.h"
+            cfile = bdir / "src" / f"{stem}.c"
             c_mod = CModule(
                 modname=modname,
                 spyfile=spyfile,
@@ -138,7 +137,7 @@ class CBackend:
         #      be impossible to guarantee the correspondance fqn.modname <=>
         #      modname.h)
         self.c_structdefs["globals"] = CStructDefs(
-            hfile=bdir.join("src", "spy_structdefs.h"), content=[]
+            hfile=bdir / "src" / "spy_structdefs.h", content=[]
         )
 
         # Put each FQN into the corresponding CModule or CStructDefs
@@ -170,7 +169,7 @@ class CBackend:
             if self.dump_c:
                 print()
                 print(f"---- {c_structdefs.hfile} ----")
-                print(highlight_src_maybe("C", c_structdefs.hfile.read()))
+                print(highlight_src_maybe("C", c_structdefs.hfile.read_text()))
 
         # Emit regular C modules
         for c_mod in self.c_modules.values():
@@ -180,7 +179,7 @@ class CBackend:
             if self.dump_c:
                 print()
                 print(f"---- {c_mod.cfile} ----")
-                print(highlight_src_maybe("C", c_mod.cfile.read()))
+                print(highlight_src_maybe("C", c_mod.cfile.read_text()))
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"
@@ -194,9 +193,9 @@ class CBackend:
         else:
             self.ninja = NinjaWriter(self.config, self.build_dir)
             self.ninja.write(self.outname, self.cfiles, wasm_exports=wasm_exports)
-            self.build_script = self.build_dir.join("build.ninja")
+            self.build_script = self.build_dir / "build.ninja"
 
-    def build(self) -> py.path.local:
+    def build(self) -> Path:
         if self.config.kind == "py-cffi":
             assert self.build_script is not None
             return cffi_build(self.build_script)

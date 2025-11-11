@@ -1,12 +1,11 @@
 import sys
+from pathlib import Path
 from typing import Any
-
-import py.path
 
 from spy.vm.vm import SPyVM
 
 
-def isolated_import(modname: str, sofile: py.path.local):
+def isolated_import(modname: str, sofile: Path):
     """
     Import the given modules in isolation, without leaving trace in
     sys.modules
@@ -14,7 +13,7 @@ def isolated_import(modname: str, sofile: py.path.local):
     assert modname not in sys.modules
     before_mods = set(sys.modules.keys())
 
-    d = sofile.dirpath()
+    d = sofile.parent
     sys.path.insert(0, str(d))
     try:
         mod = __import__(modname)
@@ -30,5 +29,5 @@ def isolated_import(modname: str, sofile: py.path.local):
     return mod
 
 
-def load_cffi_module(vm: SPyVM, modname: str, sofile: py.path.local) -> Any:
+def load_cffi_module(vm: SPyVM, modname: str, sofile: Path) -> Any:
     return isolated_import(modname, sofile)

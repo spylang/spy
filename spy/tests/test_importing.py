@@ -1,6 +1,6 @@
 import textwrap
+from pathlib import Path
 
-import py.path
 import pytest
 
 from spy import ast
@@ -10,17 +10,19 @@ from spy.vm.vm import SPyVM
 
 @pytest.mark.usefixtures("init")
 class TestImportAnalyzer:
-    @pytest.fixture
-    def init(self, tmpdir):
-        self.vm = SPyVM()
-        self.vm.path = [str(tmpdir)]
-        self.tmpdir = tmpdir
+    tmpdir: Path
 
-    def write(self, filename: str, src: str) -> py.path.local:
+    @pytest.fixture
+    def init(self, tmp_path: Path):
+        self.vm = SPyVM()
+        self.vm.path = [tmp_path]
+        self.tmpdir = tmp_path
+
+    def write(self, filename: str, src: str) -> Path:
         src = textwrap.dedent(src)
-        f = self.tmpdir.join(filename)
-        f.dirpath().ensure(dir=True)  # create directories, if needed
-        f.write(src)
+        f = self.tmpdir / filename
+        f.parent.mkdir(exist_ok=True)  # create directories, if needed
+        f.write_text(src)
         return f
 
     def test_simple_import(self):
@@ -127,7 +129,7 @@ class TestImportAnalyzer:
         # we write mod1 in an unrelated dir, which is the added to vm.path
         self.write("mylib/mod1.spy", "x: i32 = 42")
         self.write("main.spy", "import mod1")
-        self.vm.path.append(self.tmpdir.join("mylib"))
+        self.vm.path.append(self.tmpdir / "mylib")
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
         assert list(analyzer.mods) == ["main", "mod1"]

@@ -99,7 +99,7 @@ class TestSPdb(CompilerTest):
 
     @property
     def filename(self) -> str:
-        return str(self.tmpdir.join("test.spy"))
+        return str(self.tmpdir / "test.spy")
 
     def test_simple(self):
         src = """

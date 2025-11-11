@@ -1,7 +1,6 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
-
-import py.path
 
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
@@ -16,7 +15,7 @@ from spy.vm.vm import SPyVM
 
 @dataclass
 class CStructDefs:
-    hfile: py.path.local
+    hfile: Path
     content: list[tuple[FQN, W_Type]]
 
 
@@ -51,10 +50,10 @@ class CStructWriter:
         Write the structdefs header
         """
         self.emit_content()
-        self.c_structdefs.hfile.write(self.tbh.build())
+        self.c_structdefs.hfile.write_text(self.tbh.build())
 
     def init_h(self) -> None:
-        GUARD = self.c_structdefs.hfile.purebasename.upper()
+        GUARD = self.c_structdefs.hfile.stem.upper()
         self.tbh.wb(f"""
         #ifndef SPY_{GUARD}_H
         #define SPY_{GUARD}_H

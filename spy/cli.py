@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Annotated, Any, Optional
 
 import click
-import py.path
 import typer
 from typer import Option
 
@@ -315,7 +314,7 @@ def emit_warning(err: SPyError) -> None:
     print(err.format())
 
 
-def get_build_dir(args: Arguments) -> py.path.local:
+def get_build_dir(args: Arguments) -> Path:
     if args.build_dir is not None:
         build_dir = args.build_dir
     else:
@@ -325,7 +324,7 @@ def get_build_dir(args: Arguments) -> py.path.local:
 
     # print(f"Build dir:    {build_dir}")
     build_dir.mkdir(exist_ok=True, parents=True)
-    return py.path.local(str(build_dir))
+    return Path(str(build_dir))
 
 
 async def inner_main(args: Arguments) -> None:
@@ -350,7 +349,7 @@ async def inner_main(args: Arguments) -> None:
 
     GLOBAL_VM = vm
 
-    vm.path.append(str(srcdir))
+    vm.path.append(srcdir)
     if args.error_mode == "warn":
         args.error_mode = "lazy"
         vm.emit_warning = emit_warning
@@ -408,7 +407,7 @@ async def inner_main(args: Arguments) -> None:
         build_type="release" if args.release_mode else "debug",
     )
 
-    cwd = py.path.local(".")
+    cwd = Path(".")
     build_dir = get_build_dir(args)
     dump_c = args.cwrite and args.cdump
     backend = CBackend(vm, modname, config, build_dir, dump_c=dump_c)
@@ -418,17 +417,18 @@ async def inner_main(args: Arguments) -> None:
     assert backend.build_script is not None
 
     if args.cwrite:
-        cfiles = ", ".join([f.relto(cwd) for f in backend.cfiles])
-        build_script = backend.build_script.relto(cwd)
+        cfiles = ", ".join(str(f) for f in backend.cfiles)
+        build_script = backend.build_script
         print(f"C files:      {cfiles}")
         print(f"Build script: {build_script}")
         return
 
     outfile = backend.build()
-    executable = outfile.relto(cwd)
-    if executable == "":
+    try:
+        executable = outfile.relative_to(cwd)
+    except ValueError:
         # outfile is not in a subdir of cwd, let's display the full path
-        executable = str(outfile)
+        executable = outfile
     print(f"[{config.build_type}] {executable} ")
 
 

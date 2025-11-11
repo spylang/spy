@@ -1,6 +1,7 @@
 import re
 import subprocess
 import textwrap
+from pathlib import Path
 from subprocess import getstatusoutput
 from typing import Any
 
@@ -10,7 +11,7 @@ from typer.testing import CliRunner
 import spy
 from spy.cli import app
 
-PYODIDE_EXE = spy.ROOT.dirpath().join("pyodide", "venv", "bin", "python")
+PYODIDE_EXE = spy.ROOT.parent / "pyodide" / "venv" / "bin" / "python"
 if not PYODIDE_EXE.exists():
     PYODIDE_EXE = None  # type: ignore
 
@@ -52,15 +53,15 @@ def decolorize(s: str) -> str:
 
 @pytest.mark.usefixtures("init")
 class TestMain:
-    tmpdir: Any
+    tmpdir: Path
 
     @pytest.fixture
-    def init(self, tmpdir):
-        self.tmpdir = tmpdir
+    def init(self, tmp_path: Path):
+        self.tmpdir = tmp_path
         self.runner = CliRunner()
-        self.main_spy = tmpdir.join("main.spy")
-        self.factorial_spy = tmpdir.join("fatcorial.spy")
-        self.blu_var_in_red_func_spy = tmpdir.join("blu_var_in_red_func.spy")
+        self.main_spy = tmp_path / "main.spy"
+        self.factorial_spy = tmp_path / "fatcorial.spy"
+        self.blu_var_in_red_func_spy = tmp_path / "blu_var_in_red_func.spy"
         main_src = """
         def main() -> None:
             print("hello world")
@@ -87,9 +88,11 @@ class TestMain:
             T = get_Type()    # T is blue
             print(T)
         """
-        self.main_spy.write(textwrap.dedent(main_src))
-        self.factorial_spy.write(textwrap.dedent(factorial_src))
-        self.blu_var_in_red_func_spy.write(textwrap.dedent(blu_var_in_red_func_src))
+        self.main_spy.write_text(textwrap.dedent(main_src))
+        self.factorial_spy.write_text(textwrap.dedent(factorial_src))
+        self.blu_var_in_red_func_spy.write_text(
+            textwrap.dedent(blu_var_in_red_func_src)
+        )
 
     def run(self, *args: Any, decolorize_stdout=True) -> Any:
         args2 = [str(arg) for arg in args]
@@ -110,7 +113,7 @@ class TestMain:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            cwd=str(self.tmpdir),
+            cwd=self.tmpdir,
         )
         stdout, stderr = process.communicate()
         exit_code = process.returncode
@@ -124,8 +127,8 @@ class TestMain:
 
     def test_py_file_error(self):
         # Create a .py file instead of .spy
-        py_file = self.tmpdir.join("test.py")
-        py_file.write("print('This is a Python file')")
+        py_file = self.tmpdir / "test.py"
+        py_file.write_text("print('This is a Python file')")
 
         # Test that passing a .py file produces an error
         res = self.runner.invoke(app, [str(py_file)])
@@ -191,9 +194,9 @@ class TestMain:
 
     def test_cwrite(self):
         self.run("--cwrite", "--build-dir", self.tmpdir, self.main_spy)
-        main_c = self.tmpdir.join("src", "main.c")
+        main_c = self.tmpdir / "src" / "main.c"
         assert main_c.exists()
-        csrc = main_c.read()
+        csrc = main_c.read_text()
         assert csrc.startswith('#include "main.h"')
 
     @pytest.mark.parametrize(
@@ -212,16 +215,16 @@ class TestMain:
             self.main_spy,
         )  # fmt: skip
         if target == "native":
-            main_exe = self.tmpdir.join("main")
+            main_exe = self.tmpdir / "main"
             assert main_exe.exists()
             cmd = str(main_exe)
         elif target == "wasi":
-            main_wasm = self.tmpdir.join("main.wasm")
+            main_wasm = self.tmpdir / "main.wasm"
             assert main_wasm.exists()
             cmd = f"python -m spy.tool.wasmtime {main_wasm}"
         else:
-            main_js = self.tmpdir.join("main.mjs")
-            main_wasm = self.tmpdir.join("main.wasm")
+            main_js = self.tmpdir / "main.mjs"
+            main_wasm = self.tmpdir / "main.wasm"
             assert main_js.exists()
             assert main_wasm.exists()
             cmd = f"node {main_js}"
@@ -239,7 +242,7 @@ class TestMain:
         # pyodide under node cannot access /tmp/, so we cannot try to execute
         # files which we wrote to self.tmpdir. Instead, let's try to execute
         # examples/hello.spy
-        hello_spy = spy.ROOT.dirpath().join("examples", "hello.spy")
+        hello_spy = spy.ROOT.parent / "examples" / "hello.spy"
         assert hello_spy.exists()
         res, stdout = self.run_external(PYODIDE_EXE, hello_spy)
         assert stdout == "Hello world!\n"

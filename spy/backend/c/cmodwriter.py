@@ -1,8 +1,7 @@
 import itertools
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
-
-import py.path
 
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
@@ -23,9 +22,9 @@ from spy.vm.vm import SPyVM
 @dataclass
 class CModule:
     modname: str
-    spyfile: py.path.local
-    hfile: py.path.local
-    cfile: py.path.local
+    spyfile: Path
+    hfile: Path
+    cfile: Path
     content: list[tuple[FQN, W_Object]]
 
     def __repr__(self) -> str:
@@ -71,8 +70,8 @@ class CModuleWriter:
 
     def write_c_source(self) -> None:
         self.emit_content()
-        self.c_mod.hfile.write(self.tbh.build())
-        self.c_mod.cfile.write(self.tbc.build())
+        self.c_mod.hfile.write_text(self.tbh.build())
+        self.c_mod.cfile.write_text(self.tbc.build())
 
     def new_global_var(self, prefix: str) -> str:
         """
@@ -87,7 +86,7 @@ class CModuleWriter:
         return varname
 
     def init_h(self) -> None:
-        GUARD = self.c_mod.hfile.purebasename.upper()
+        GUARD = self.c_mod.hfile.stem.upper()
         self.tbh.wb(f"""
         #ifndef SPY_{GUARD}_H
         #define SPY_{GUARD}_H
@@ -127,7 +126,7 @@ class CModuleWriter:
         """)
 
     def init_c(self) -> None:
-        header_name = self.c_mod.hfile.basename
+        header_name = self.c_mod.hfile.name
         self.cffi.emit_include(header_name)
         self.tbc.wb(f"""
         #include "{header_name}"

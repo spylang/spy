@@ -7,9 +7,8 @@ import re
 import subprocess
 import typing
 from collections import defaultdict
-from typing import Callable, Literal, Sequence
-
-import py.path
+from pathlib import Path
+from typing import Callable, List, Literal, Sequence
 
 from spy.textbuilder import Color
 
@@ -174,7 +173,7 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
 
 
 def robust_run(
-    cmdline: Sequence[str | py.path.local], unbuffer: bool = False
+    cmdline: list[str], unbuffer: bool = False
 ) -> subprocess.CompletedProcess:
     """
     Similar to subprocess.run, but raise an Exception with the content of

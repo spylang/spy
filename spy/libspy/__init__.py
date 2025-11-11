@@ -6,13 +6,13 @@ from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.location import Loc
 from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
 
-SRC = spy.ROOT.join("libspy", "src")
-INCLUDE = spy.ROOT.join("libspy", "include")
-BUILD = spy.ROOT.join("libspy", "build")
+SRC = spy.ROOT / "libspy" / "src"
+INCLUDE = spy.ROOT / "libspy" / "include"
+BUILD = spy.ROOT / "libspy" / "build"
 
 
 if IS_NODE:
-    LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
+    LIBSPY_WASM = BUILD / "emscripten" / "debug" / "libspy.mjs"
     LLMOD = None
 elif IS_BROWSER:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
@@ -20,7 +20,7 @@ elif IS_BROWSER:
 else:
     assert not IS_PYODIDE
     # "normal" python, we can preload LLMOD
-    LIBSPY_WASM = BUILD.join("wasi", "debug", "libspy.wasm")
+    LIBSPY_WASM = BUILD / "wasi" / "debug" / "libspy.wasm"
     LLMOD = LLWasmModule(LIBSPY_WASM)  # type: ignore
 
 # XXX ^^^^

@@ -1,4 +1,4 @@
-import py.path
+from pathlib import Path
 
 from spy.backend.c.context import Context
 from spy.build.config import BuildConfig, CompilerConfig
@@ -51,15 +51,13 @@ class CFFIWriter:
 
     modname: str
     config: BuildConfig
-    build_dir: py.path.local
+    build_dir: Path
     tb_py: TextBuilder
     tb_build: TextBuilder
     tb_cdef: TextBuilder
     tb_src: TextBuilder
 
-    def __init__(
-        self, modname: str, config: BuildConfig, build_dir: py.path.local
-    ) -> None:
+    def __init__(self, modname: str, config: BuildConfig, build_dir: Path) -> None:
         self.modname = modname
         self.config = config
         self.build_dir = build_dir
@@ -89,8 +87,8 @@ class CFFIWriter:
         tb.wl('"""')
         tb.wl()
 
-    def finalize_cffi_build(self, cfiles: list[py.path.local]) -> None:
-        srcdir = self.build_dir.join("src")
+    def finalize_cffi_build(self, cfiles: list[Path]) -> None:
+        srcdir = self.build_dir / "src"
         comp = CompilerConfig(self.config)
 
         SOURCES = [str(f) for f in cfiles]
@@ -113,18 +111,18 @@ class CFFIWriter:
             print(sofile)
         """)
 
-    def write(self, cfiles: list[py.path.local]) -> py.path.local:
+    def write(self, cfiles: list[Path]) -> Path:
         assert self.config.kind == "py-cffi"
         self.finalize_cffi_build(cfiles)
 
-        self.cffi_dir = self.build_dir.join("cffi")
-        self.cffi_dir.ensure(dir=True)
+        self.cffi_dir = self.build_dir / "cffi"
+        self.cffi_dir.mkdir(exist_ok=True)
 
-        pyfile = self.cffi_dir.join(f"{self.modname}.py")
-        pyfile.write(self.tb_py.build())
+        pyfile = self.cffi_dir / f"{self.modname}.py"
+        pyfile.write_text(self.tb_py.build())
 
-        build_script = self.cffi_dir.join(f"_{self.modname}-cffi-build.py")
-        build_script.write(self.tb_build.build())
+        build_script = self.cffi_dir / f"_{self.modname}-cffi-build.py"
+        build_script.write_text(self.tb_build.build())
         return build_script
 
     def emit_include(self, header_name: str) -> None:

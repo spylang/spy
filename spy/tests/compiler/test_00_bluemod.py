@@ -1,4 +1,5 @@
 import textwrap
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,11 +12,13 @@ from spy.vm.vm import SPyVM
 
 @pytest.mark.usefixtures("init")
 class TestBlueMod:
+    tmpdir: Path
+
     @pytest.fixture
-    def init(self, tmpdir):
-        self.tmpdir = tmpdir
+    def init(self, tmp_path):
+        self.tmpdir = tmp_path
         self.vm = SPyVM()
-        self.vm.path.append(str(tmpdir))
+        self.vm.path.append(tmp_path)
 
     def write_file(self, filename: str, src: str) -> Any:
         """
@@ -24,8 +27,8 @@ class TestBlueMod:
         The source code is automatically dedented.
         """
         src = textwrap.dedent(src)
-        srcfile = self.tmpdir.join(filename)
-        srcfile.write(src)
+        srcfile = self.tmpdir / filename
+        srcfile.write_text(src)
         return srcfile
 
     def import_(self, src: str) -> Any:

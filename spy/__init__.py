@@ -1,4 +1,3 @@
-import py.path
+from pathlib import Path
 
-ROOT: py.path.local = py.path.local(__file__).dirpath()
-del py
+ROOT = Path(__file__).parent

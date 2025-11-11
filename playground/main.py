@@ -75,8 +75,7 @@ example_tabs = ltk.Tabs(
 def run_click(event):
     __terminal__.clear()
     text = editor.text()
-    with open("test.spy", "w") as f:
-        f.write(text)
+    Path("test.spy").write_text(text)
 
     element = ltk.find(event.target)
     t = element.text().lower()

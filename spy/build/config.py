@@ -56,7 +56,7 @@ class CompilerConfig:
 
         # e.g. 'spy/libspy/build/native/release/'
         self.ldflags += LDFLAGS
-        libdir = spy.libspy.BUILD.join(config.target, config.build_type)
+        libdir = spy.libspy.BUILD / config.target / config.build_type
         self.ldflags += [
             "-L", str(libdir),
             "-lspy",
@@ -87,7 +87,7 @@ class CompilerConfig:
         elif config.target == "emscripten":
             self.CC = "emcc"
             self.ext = ".mjs"
-            post_js = spy.libspy.SRC.join("emscripten_extern_post.js")
+            post_js = spy.libspy.SRC / "emscripten_extern_post.js"
             self.cflags += WASM_CFLAGS
             self.ldflags += [
                 "-sWASM_BIGINT",

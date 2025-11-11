@@ -1,4 +1,5 @@
 import textwrap
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -12,14 +13,16 @@ from spy.util import print_diff
 
 @pytest.mark.usefixtures("init")
 class TestParser:
+    tmpdir: Path
+
     @pytest.fixture
-    def init(self, tmpdir):
-        self.tmpdir = tmpdir
+    def init(self, tmp_path: Path):
+        self.tmpdir = tmp_path
 
     def parse(self, src: str) -> ast.Module:
-        f = self.tmpdir.join("test.spy")
+        f = self.tmpdir / "test.spy"
         src = textwrap.dedent(src)
-        f.write(src)
+        f.write_text(src)
         parser = Parser(src, str(f))
         self.mod = parser.parse()
         return self.mod

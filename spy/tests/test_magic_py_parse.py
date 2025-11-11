@@ -1,4 +1,5 @@
 import textwrap
+from pathlib import Path
 
 from spy.ast_dump import dump
 from spy.magic_py_parse import magic_py_parse, preprocess
@@ -81,13 +82,13 @@ def test_magic_py_parse():
     assert dumped.strip() == expected.strip()
 
 
-def test_magic_py_parse_error(tmpdir):
+def test_magic_py_parse_error(tmp_path: Path):
     src = textwrap.dedent("""
     def main() -> void:
         if 1:
     """)
-    f = tmpdir.join("test.spy")
-    f.write(src)
+    f = tmp_path / "test.spy"
+    f.write_text(src)
     parser = Parser(src, str(f))
     errors = expect_errors(
         "expected an indented block after 'if' statement on line 3", ("", "    if 1:")
@@ -96,14 +97,14 @@ def test_magic_py_parse_error(tmpdir):
         parser.parse()
 
 
-def test_magic_py_parse_tabs(tmpdir):
+def test_magic_py_parse_tabs(tmp_path: Path):
     src = textwrap.dedent("""
     def main() -> void:
         print('hello')
     \tprint('world')
     """)
-    f = tmpdir.join("test.spy")
-    f.write(src)
+    f = tmp_path / "test.spy"
+    f.write_text(src)
     parser = Parser(src, str(f))
     errors = expect_errors(
         "inconsistent use of tabs and spaces in indentation (<string>, line 4)",
@@ -113,13 +114,13 @@ def test_magic_py_parse_tabs(tmpdir):
         parser.parse()
 
 
-def test_magic_py_parse_token_error(tmpdir):
+def test_magic_py_parse_token_error(tmp_path: Path):
     src = textwrap.dedent("""
     def main() -> void:
         '''
     """)
-    f = tmpdir.join("test.spy")
-    f.write(src)
+    f = tmp_path / "test.spy"
+    f.write_text(src)
     parser = Parser(src, str(f))
     errors = expect_errors("('EOF in multi-line string', (3, 5))", ("", "    '''"))
     with errors:

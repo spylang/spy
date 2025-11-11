@@ -4,8 +4,8 @@ from pytest_pyodide import run_in_pyodide  # type: ignore
 from spy import ROOT
 from spy.tests.support import CTest
 
-PYODIDE = ROOT.join("..", "pyodide", "node_modules", "pyodide")
-HAS_PYODIDE = PYODIDE.check(exists=True)
+PYODIDE = ROOT.parent / "pyodide" / "node_modules" / "pyodide"
+HAS_PYODIDE = PYODIDE.exists()
 
 
 @pytest.mark.usefixtures("init_llwasm")

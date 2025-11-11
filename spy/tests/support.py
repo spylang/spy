@@ -1,8 +1,8 @@
 import textwrap
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Literal, Optional, no_type_check
 
-import py.path
 import pytest
 
 from spy.backend.c.cbackend import CBackend
@@ -104,7 +104,7 @@ def no_C(func):
 
 @pytest.mark.usefixtures("init")
 class CompilerTest:
-    tmpdir: Any
+    tmpdir: Path
     backend: Backend
     vm: SPyVM
 
@@ -115,14 +115,15 @@ class CompilerTest:
         return request.param
 
     @pytest.fixture
-    def init(self, request, tmpdir, compiler_backend):
+    def init(self, request, tmp_path: Path, compiler_backend):
         self.dump_c = request.config.getoption("--dump-c")
         self.dump_redshift = request.config.getoption("--dump-redshift")
-        self.tmpdir = tmpdir
-        self.builddir = self.tmpdir.join("build").ensure(dir=True)
+        self.tmpdir = tmp_path
+        self.builddir = self.tmpdir / "build"
+        self.builddir.mkdir(exist_ok=True)
         self.backend = compiler_backend
         self.vm = SPyVM()
-        self.vm.path.append(str(self.tmpdir))
+        self.vm.path.append(self.tmpdir)
 
     def write_file(self, filename: str, src: str) -> Any:
         """
@@ -131,8 +132,8 @@ class CompilerTest:
         The source code is automatically dedented.
         """
         src = textwrap.dedent(src)
-        srcfile = self.tmpdir.join(filename)
-        srcfile.write(src)
+        srcfile = self.tmpdir / filename
+        srcfile.write_text(src)
         return srcfile
 
     @property
@@ -324,23 +325,24 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
 
 @pytest.mark.usefixtures("init")
 class CTest:
-    tmpdir: Any
+    tmpdir: Path
     target: BuildTarget
 
     @pytest.fixture
-    def init(self, tmpdir):
-        self.tmpdir = tmpdir
+    def init(self, tmp_path: Path):
+        self.tmpdir = tmp_path
         # NOTE: target is overwritten by TestLLWasm.init_llwasm
         self.target = "wasi"
-        self.build_dir = self.tmpdir.join("build").ensure(dir=True)
+        self.build_dir = self.tmpdir / "build"
+        self.build_dir.mkdir(exist_ok=True)
 
-    def write(self, src: str) -> py.path.local:
+    def write(self, src: str) -> Path:
         src = textwrap.dedent(src)
-        test_c = self.tmpdir.join("test.c")
-        test_c.write(src)
+        test_c = self.tmpdir / "test.c"
+        test_c.write_text(src)
         return test_c
 
-    def c_compile(self, src: str, *, exports: list[str] = []) -> py.path.local:
+    def c_compile(self, src: str, *, exports: list[str] = []) -> Path:
         config = BuildConfig(target=self.target, kind="lib", build_type="debug")
         test_c = self.write(src)
         ninja = NinjaWriter(config, self.build_dir)

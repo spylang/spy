@@ -1,4 +1,5 @@
 import textwrap
+from pathlib import Path
 
 import pytest
 
@@ -9,17 +10,19 @@ from spy.vm.vm import SPyVM
 
 @pytest.mark.usefixtures("init")
 class TestDoppler:
+    tmpdir: Path
+
     @pytest.fixture
-    def init(self, tmpdir):
+    def init(self, tmp_path: Path):
         # XXX there is a lot of code duplication with CompilerTest
-        self.tmpdir = tmpdir
+        self.tmpdir = tmp_path
         self.vm = SPyVM()
-        self.vm.path.append(str(self.tmpdir))
+        self.vm.path.append(self.tmpdir)
 
     def redshift(self, src: str) -> None:
-        f = self.tmpdir.join("test.spy")
+        f = self.tmpdir / "test.spy"
         src = textwrap.dedent(src)
-        f.write(src)
+        f.write_text(src)
         self.vm.import_("test")
         self.vm.redshift(error_mode="eager")
 
@@ -288,7 +291,7 @@ class TestDoppler:
         """)
 
     def test_format_prebuilt_exception(self):
-        fname = str(self.tmpdir.join("test.spy"))
+        fname = str(self.tmpdir / "test.spy")
         self.redshift("""
         def foo() -> None:
             raise TypeError('foo')

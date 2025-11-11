@@ -1,7 +1,6 @@
 import struct
+from pathlib import Path
 from typing import Any, Literal, Self
-
-import py.path
 
 LLWasmType = Literal[None, "void *", "int32_t", "int16_t"]
 
@@ -30,7 +29,7 @@ class LLWasmInstanceBase:
         raise NotImplementedError
 
     @classmethod
-    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
+    def from_file(cls, f: Path, hostmods: list[HostModule] = []) -> Self:
         raise NotImplementedError
 
     def call(self, name: str, *args: Any) -> Any:

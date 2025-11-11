@@ -1,8 +1,6 @@
 from collections import deque
 from typing import TYPE_CHECKING, Optional, Union
 
-import py.path
-
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
 from spy.fqn import FQN
@@ -206,7 +204,7 @@ class ImportAnalyzer:
         paths = {}
         if self.vm.path:
             for i, path in enumerate(self.vm.path):
-                paths[path + "/"] = f"$p{i}"
+                paths[str(path) + "/"] = f"$p{i}"
 
         def shorten_path(path: str) -> str:
             if not path:

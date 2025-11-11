@@ -2,9 +2,9 @@
 A pythonic wrapper around wasmtime.
 """
 
+from pathlib import Path
 from typing import Any, Optional
 
-import py.path
 import wasmtime as wt
 from typing_extensions import Self
 
@@ -103,7 +103,7 @@ def get_wasi_config() -> wt.WasiConfig:
 
 
 class LLWasmInstance(LLWasmInstanceBase):
-    f: py.path.local
+    f: Path
     store: wt.Store
     instance: wt.Instance
     mem: "LLWasmMemory"
@@ -137,7 +137,7 @@ class LLWasmInstance(LLWasmInstanceBase):
         return cls(llmod, hostmods)
 
     @classmethod
-    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
+    def from_file(cls, f: Path, hostmods: list[HostModule] = []) -> Self:
         llmod = LLWasmModule(str(f))
         return cls(llmod, hostmods)
 

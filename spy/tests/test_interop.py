@@ -1,4 +1,5 @@
 import textwrap
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -9,17 +10,17 @@ from spy.vm.function import W_ASTFunc
 
 @pytest.mark.usefixtures("init")
 class TestInterop:
-    tmpdir: Any
+    tmpdir: Path
 
     @pytest.fixture
-    def init(self, tmpdir):
-        self.tmpdir = tmpdir
-        self.foo_spy = tmpdir.join("foo.spy")
+    def init(self, tmp_path: Path):
+        self.tmpdir = tmp_path
+        self.foo_spy = tmp_path / "foo.spy"
         src = """
         def add(x: i32, y: i32) -> i32:
             return x + y
         """
-        self.foo_spy.write(textwrap.dedent(src))
+        self.foo_spy.write_text(textwrap.dedent(src))
 
     def test_redshift(self):
         vm, w_mod = interop.redshift(str(self.foo_spy))

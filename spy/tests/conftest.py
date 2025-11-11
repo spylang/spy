@@ -1,12 +1,13 @@
 # type: ignore
 
 import shutil
+from pathlib import Path
+from typing import cast
 
-import py
 import pytest
 from pytest_pyodide import get_global_config
 
-ROOT = py.path.local(__file__).dirpath()
+ROOT = Path(__file__).parent
 HAVE_EMCC = shutil.which("emcc") is not None
 
 
@@ -26,7 +27,7 @@ def pytest_collection_modifyitems(session, config, items):
     yield
 
     def key(item):
-        filename = item.fspath.relto(ROOT)
+        filename = Path(item.fspath).relative_to(ROOT)
         if filename == "test_zz_mypy.py":
             return 100  # last
         elif filename == "test_backend_spy.py":
@@ -70,7 +71,7 @@ def call_immediately(f):
 
 @call_immediately
 def configure_pyodide():
-    SPY_ROOT = ROOT.join("..", "..")  # the root of the repo
+    SPY_ROOT = ROOT.parent.parent  # the root of the repo
 
     pytest_pyodide_config = get_global_config()
     pytest_pyodide_config.set_flags(

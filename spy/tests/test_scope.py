@@ -1,4 +1,5 @@
 import textwrap
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -59,15 +60,17 @@ class MatchSymbol:
 
 @pytest.mark.usefixtures("init")
 class TestScopeAnalyzer:
+    tmpdir: Path
+
     @pytest.fixture
-    def init(self, tmpdir):
+    def init(self, tmp_path: Path):
         self.vm = SPyVM()
-        self.tmpdir = tmpdir
+        self.tmpdir = tmp_path
 
     def analyze(self, src: str):
-        f = self.tmpdir.join("test.spy")
+        f = self.tmpdir / "test.spy"
         src = textwrap.dedent(src)
-        f.write(src)
+        f.write_text(src)
         parser = Parser(src, str(f))
         self.mod = parser.parse()
         scopes = ScopeAnalyzer(self.vm, "test", self.mod)
@@ -340,10 +343,10 @@ class TestScopeAnalyzer:
 
     def test_import_wrong_py_module(self):
         # Create a .py file that would match the import
-        py_file = self.tmpdir.join("mymodule.py")
-        py_file.write("x = 42\n")
+        py_file = self.tmpdir / "mymodule.py"
+        py_file.write_text("x = 42\n")
 
-        self.vm.path.append(str(self.tmpdir))
+        self.vm.path.append(self.tmpdir)
         src = "from mymodule import x"
         self.expect_errors(
             src,
