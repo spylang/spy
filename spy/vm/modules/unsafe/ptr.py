@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Optional, Self
 
 import fixedint
 
-from spy.errors import SPyError
+from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import B
