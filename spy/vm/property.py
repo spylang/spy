@@ -15,6 +15,14 @@ class W_Property(W_Object):
     def __init__(self, w_func: W_Func) -> None:
         self.w_func = w_func
 
+    def __repr__(self) -> str:
+        return f"<spy property, func=`{self.w_func.fqn.human_name}`>"
+
+    @builtin_method("__new__", color="blue")
+    @staticmethod
+    def w_new(vm: "SPyVM", w_func: W_Func) -> "W_Property":
+        return W_Property(w_func)
+
     @builtin_method("__get__", color="blue", kind="metafunc")
     @staticmethod
     def w_GET(vm: "SPyVM", wam_self: "W_MetaArg", wam_o: "W_MetaArg") -> "W_OpSpec":
