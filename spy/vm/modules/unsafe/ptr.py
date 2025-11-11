@@ -11,7 +11,7 @@ from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
-from spy.vm.struct import W_StructType
+from spy.vm.struct import W_StructField, W_StructType
 from spy.vm.w import W_Func, W_Object, W_Str, W_Type
 
 from . import UNSAFE
@@ -317,11 +317,15 @@ class W_Ptr(W_BasePtr):
 
         assert isinstance(w_T, W_StructType)
         name = wam_name.blue_unwrap_str(vm)
-        if name not in w_T.fields_w:
+        if name not in w_T.dict_w:
             return W_OpSpec.NULL
 
-        w_field = w_T.fields_w[name]
-        offset = w_T.offsets[name]
+        w_obj = w_T.dict_w[name]
+        if not isinstance(w_obj, W_StructField):
+            raise WIP("don't know how to read this attribute from a ptr-to-struct")
+        w_field = w_obj
+
+        offset = w_field.offset
         wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
 
         if opkind == "get":
