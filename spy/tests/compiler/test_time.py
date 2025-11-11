@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import time
 
 from spy.tests.support import CompilerTest

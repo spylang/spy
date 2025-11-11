@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.tests.support import CompilerTest, expect_errors, only_interp

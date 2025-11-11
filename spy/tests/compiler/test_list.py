@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import pytest
 
 from spy.fqn import FQN

@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import re
 
 from spy.errors import SPyError

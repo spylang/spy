@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from spy.tests.support import CompilerTest, only_emscripten
 
 

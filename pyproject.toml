@@ -80,6 +80,7 @@ lint.select = [
     "I",  # isort
     "Q000", # double quotes
     "C",  # flake8-comprehensions
+    "UP009",  # Remove unnecessary UTF-8 encoding declarations
 ]
 lint.ignore = ["C901"]
 line-length = 88
