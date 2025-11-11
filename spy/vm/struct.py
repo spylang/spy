@@ -18,7 +18,7 @@ OFFSETS_T = dict[str, int]
 
 @TYPES.builtin_type("StructType")
 class W_StructType(W_Type):
-    fields_w: dict[str, W_Field]
+    fields_w: dict[str, W_Field]  # XXX kill me?
     offsets: OFFSETS_T
     size: int
 
@@ -27,6 +27,11 @@ class W_StructType(W_Type):
         self.fields_w = body.fields_w.copy()
         self.offsets, self.size = calc_layout(self.fields_w)
 
+        # add an accessor for each field
+        for name, w_f in body.fields_w.items():
+            self.dict_w[name] = W_StructField(w_f.name, w_f.w_T)
+
+        # add the remaining methods
         for key, w_obj in body.dict_w.items():
             assert key not in self.dict_w, "need to think what to do"
             if key == "__make__":
@@ -155,18 +160,30 @@ class W_Struct(W_Object):
         fqn = self.w_structtype.fqn
         return f"<spy struct {fqn}({self.values_w})>"
 
-    @builtin_method("__getattribute__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_GETATTRIBUTE(
-        vm: "SPyVM", wam_struct: W_MetaArg, wam_name: W_MetaArg
-    ) -> W_OpSpec:
-        w_structtype = wam_struct.w_static_T
-        assert isinstance(w_structtype, W_StructType)
-        name = wam_name.blue_unwrap_str(vm)
-        if name not in w_structtype.fields_w:
-            return W_OpSpec.NULL
 
-        w_field = w_structtype.fields_w[name]
+@TYPES.builtin_type("StructField")
+class W_StructField(W_Object):
+    __spy_storage_category__ = "value"
+
+    def __init__(self, name: str, w_T: W_Type) -> None:
+        self.name = name
+        self.w_T = w_T
+
+    def spy_key(self, vm: "SPyVM") -> Any:
+        return ("StructField", self.name, self.w_T.spy_key(vm))
+
+    def __repr__(self) -> str:
+        return f"<spy struct field {self.name}: `{self.w_T.fqn.human_name}`>"
+
+    @builtin_method("__get__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_GET(vm: "SPyVM", wam_self: W_MetaArg, wam_struct: W_MetaArg) -> W_OpSpec:
+        w_field = wam_self.w_blueval
+        w_structtype = wam_struct.w_static_T
+        assert isinstance(w_field, W_StructField)
+        assert isinstance(w_structtype, W_StructType)
+
+        name = w_field.name
         T = Annotated[W_Object, w_field.w_T]
         STRUCT = Annotated[W_Struct, w_structtype]
         irtag = IRTag("struct.getfield", name=name)
