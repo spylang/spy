@@ -116,9 +116,9 @@ class CStructWriter:
         tb = self.tbh_structs
         tb.wl("struct %s {" % c_st)
         with tb.indent():
-            for name, w_field in w_st.fields_w.items():
+            for w_field in w_st.iterfields_w():
                 c_fieldtype = self.ctx.w2c(w_field.w_T)
-                tb.wl(f"{c_fieldtype} {name};")
+                tb.wl(f"{c_fieldtype} {w_field.name};")
         tb.wl("};")
         tb.wl("")
 

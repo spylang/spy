@@ -101,7 +101,7 @@ class WasmFuncWrapper:
             # a flat sequence of fields. This is the opposite of what we do in
             # to_py_result. It works only for flat structs with simple types.
             assert isinstance(pyval, UnwrappedStruct)
-            return tuple(pyval._fields.values())
+            return tuple(pyval._content.values())
         else:
             assert False, f"Unsupported type: {w_T}"
 
@@ -169,8 +169,9 @@ class WasmFuncWrapper:
             # However, this is good enough for most tests, so no reasons to
             # write complicated logic.
             assert isinstance(res, list)
-            fields = dict(zip(w_T.fields_w, res, strict=True))
-            return UnwrappedStruct(w_T.fqn, fields)
+            field_names = [w_f.name for w_f in w_T.iterfields_w()]
+            content = dict(zip(field_names, res, strict=True))
+            return UnwrappedStruct(w_T.fqn, content)
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
 
