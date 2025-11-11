@@ -103,7 +103,7 @@ All the tests in `spy/tests/compiler/` are executed in three modes:
 4. Compile to executable:
    ```
    $ spy -c -t native examples/hello.spy
-   $ ./examples/hello
+   $ ./examples/build/hello
    Hello world!
    ```
 
