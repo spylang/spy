@@ -66,26 +66,66 @@ EXAMPLE_FILES = ["hello.spy", "bluefunc.spy", "point.spy", "array.spy"]
 
 editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
 
+display_filename = "test.spy"
+command_leader = "$"
+INPUT_TERMINAL_LEADER = f"{command_leader} spy {display_filename} "
+
+term_input = (
+    ltk.Input(INPUT_TERMINAL_LEADER)
+    .css("width", "100%")
+    .css("padding", 5)
+    .attr("id", "terminal-input")
+    .addClass("command-prompt")
+)
+
+
+@ltk.callback
+def handle_term_input(event):
+    inp = event.target
+    if not inp.value.startswith(INPUT_TERMINAL_LEADER):
+        inp.value = INPUT_TERMINAL_LEADER
+
+
+@ltk.callback
+def handle_term_enter(event):
+    if event.key == "Enter":
+        inp = event.target
+        value = inp.value
+        inp.value = INPUT_TERMINAL_LEADER
+
+        if value.startswith(INPUT_TERMINAL_LEADER):
+            _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
+            run_spy_file_with_args(argv.split())
+        else:
+            print(f"Refused to run '{value}'")
+
+
+term_input.on("input", handle_term_input)
+term_input.on("keydown", handle_term_enter)
+
 # Create tabs for example files
 example_tabs = ltk.Tabs(
     *[ltk.VBox().attr("name", filename) for filename in EXAMPLE_FILES]
 )
 
 
-def run_click(event):
+def run_spy_file_with_args(argv: list[str]):
     __terminal__.clear()
     text = editor.text()
-    with open("test.spy", "w") as f:
+    with open(display_filename, "w") as f:
         f.write(text)
 
-    element = ltk.find(event.target)
-    t = element.text().lower()
-    extra_argv = t.split()
-    argv = ["test.spy"] + extra_argv
     # hack hack hack: for --cwrite to work, we always pass "-t native".
     # It is find to always add it as it is ignored by other passes
     argv += ["-t", "native"]
+    argv = [display_filename] + argv
     spy_main(argv)
+
+
+def run_click(event):
+    element = ltk.find(event.target)
+    t = element.text().lower()
+    run_spy_file_with_args(t.split())
 
 
 def RunSPyButton(text):
@@ -110,21 +150,30 @@ def main():
     (
         ltk.VBox(
             example_tabs,
+            ltk.Label(f"{display_filename}"),
             editor.css("border", "1px solid gray")
             .css("height", 405)
             .attr("id", "editor"),
-            ltk.Div(
-                ltk.Span("$ spy").addClass("command-prompt"),
-                RunSPyButton("--execute"),
-                RunSPyButton("--parse"),
-                RunSPyButton("--redshift"),
-                RunSPyButton("--redshift --full-fqn"),
-                RunSPyButton("--cwrite --cdump"),
-                RunSPyButton("--colorize"),
+            ltk.VBox(
+                ltk.Label("Try the SPy CLI:"),
+                term_input,
+                ltk.Div(
+                    ltk.Span("Sample flags").addClass("command-prompt"),
+                    RunSPyButton("--execute"),
+                    RunSPyButton("--parse"),
+                    RunSPyButton("--redshift"),
+                    RunSPyButton("--redshift --full-fqn"),
+                    RunSPyButton("--cwrite --cdump"),
+                    RunSPyButton("--colorize"),
+                ).css(
+                    {
+                        "display": "flex",
+                        "gap": "5px",
+                    }
+                ),
             ).css(
                 {
-                    "display": "flex",
-                    "gap": "5px",
+                    "align-items": "flex-start",
                 }
             ),
             ltk.Div().attr("id", "terminal"),
@@ -134,6 +183,7 @@ def main():
         .attr("name", "Editor")
         .appendTo(ltk.window.document.body)
     )
+
     ltk.find("#terminal").append(ltk.find("py-terminal"))
 
 
