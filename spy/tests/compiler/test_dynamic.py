@@ -61,9 +61,41 @@ class TestDynamic(CompilerTest):
         """)
         assert mod.foo() == 3
 
-    def test_other_ops(self):
+    def test_binop(self):
         mod = self.compile("""
-        def mul(x: dynamic, y: dynamic) -> dynamic: return x  * y
+        def add(x: dynamic, y: dynamic) -> dynamic:      return x  + y
+        def sub(x: dynamic, y: dynamic) -> dynamic:      return x  - y
+        def mul(x: dynamic, y: dynamic) -> dynamic:      return x  * y
+        def mod(x: dynamic, y: dynamic) -> dynamic:      return x  % y
+        def div(x: dynamic, y: dynamic) -> dynamic:      return x  / y
+        def floordiv(x: dynamic, y: dynamic) -> dynamic: return x // y
+        """)
+        assert mod.add(1, 1) == 2
+        assert mod.sub(7, 3) == 4
+        assert mod.mul(5, 6) == 30
+        assert mod.mod(10, 3) == 1
+        assert mod.div(11, 2) == 5.5
+        assert mod.floordiv(11, 2) == 5
+
+    def test_bitwise(self):
+        mod = self.compile("""
+        def shl(x: dynamic, y: dynamic) -> dynamic:   return x << y
+        def shr(x: dynamic, y: dynamic) -> dynamic:   return x >> y
+        def b_and(x: dynamic, y: dynamic) -> dynamic: return x  & y
+        def b_or(x: dynamic, y: dynamic) -> dynamic:  return x  | y
+        def b_xor(x: dynamic, y: dynamic) -> dynamic: return x  ^ y
+        """)
+        assert mod.shl(2, 5) == 2 << 5
+        assert mod.shr(32, 5) == 32 >> 5
+        assert mod.b_and(7, 3) == 7 & 3
+        assert mod.b_and(127, 7) == 127 & 7
+        assert mod.b_or(127, 123) == 127 | 123
+        assert mod.b_or(127, 0) == 127 | 0
+        assert mod.b_xor(16, 15) == 16 ^ 15
+        assert mod.b_xor(16, 0) == 16 ^ 0
+
+    def test_cmp(self):
+        mod = self.compile("""
         def eq (x: dynamic, y: dynamic) -> dynamic: return x == y
         def neq(x: dynamic, y: dynamic) -> dynamic: return x != y
         def lt (x: dynamic, y: dynamic) -> dynamic: return x  < y
@@ -71,8 +103,6 @@ class TestDynamic(CompilerTest):
         def gt (x: dynamic, y: dynamic) -> dynamic: return x  > y
         def gte(x: dynamic, y: dynamic) -> dynamic: return x >= y
         """)
-        assert mod.mul(5, 6) == 30
-        #
         assert mod.eq(5, 5) is True
         assert mod.eq(5, 6) is False
         #

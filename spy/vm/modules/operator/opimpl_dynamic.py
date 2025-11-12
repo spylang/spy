@@ -29,8 +29,53 @@ def w_dynamic_add(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
 
 
 @OP.builtin_func
+def w_dynamic_sub(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_SUB, w_a, w_b)
+
+
+@OP.builtin_func
 def w_dynamic_mul(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_MUL, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_mod(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_MOD, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_div(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_DIV, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_floordiv(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_FLOORDIV, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_lshift(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_LSHIFT, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_rshift(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_RSHIFT, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_and(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_AND, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_or(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_OR, w_a, w_b)
+
+
+@OP.builtin_func
+def w_dynamic_xor(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_XOR, w_a, w_b)
 
 
 @OP.builtin_func
