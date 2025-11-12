@@ -83,6 +83,7 @@ term_input = (
 def handle_term_input(event):
     """Ensure the the input field always starts with "$ spy {filename}"""
     inp = event.target
+    ltk.window.console.log(f"input changed to {inp.value}")
     if not inp.value.startswith(INPUT_TERMINAL_LEADER):
         inp.value = INPUT_TERMINAL_LEADER
 
@@ -130,8 +131,14 @@ def run_spy_file_with_args(argv: list[str]):
 def run_click(event):
     """Pass the text label of a button as args to the Spy cli"""
     element = ltk.find(event.target)
-    t = element.text().lower()
-    run_spy_file_with_args(t.split())
+    flag_value = element.text().lower()
+    run_spy_file_with_args(flag_value.split())
+
+    inp = ltk.window.document.getElementById("terminal-input")
+    print(
+        f"Setting input value to {command_leader} spy {display_filename} {flag_value} "
+    )
+    inp.value = f"{command_leader} spy {display_filename} {flag_value}"
 
 
 def ButtonLabel(text):
