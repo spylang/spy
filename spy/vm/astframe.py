@@ -92,6 +92,7 @@ class AbstractFrame:
         self.specialized_names = {}
         self.specialized_assigns = {}
         self.desugared_fors = {}
+        self.expr_types_w: dict[ast.Expr, W_Type] = {}
 
     # overridden by DopplerFrame
     @property
@@ -202,15 +203,15 @@ class AbstractFrame:
 
         if w_typeconv is None:
             # no conversion needed, hooray
-            return wam
+            res = wam
         elif self.redshifting:
-            # we are performing redshifting: the conversion will be handlded
+            # we are performing redshifting: the conversion will be handled
             # by FuncDoppler
-            return wam
+            res = wam
         else:
             # apply the conversion immediately
             w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
-            return W_MetaArg(
+            res = W_MetaArg(
                 self.vm,
                 wam.color,
                 w_typeconv.w_functype.w_restype,
@@ -218,6 +219,9 @@ class AbstractFrame:
                 wam.loc,
                 sym=wam.sym,
             )
+
+        self.expr_types_w[expr] = res.w_static_T
+        return res
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         wam = self.eval_expr(expr)

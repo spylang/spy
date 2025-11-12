@@ -1,5 +1,5 @@
 from types import NoneType
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional
 
 from spy import ast
 from spy.backend.c import c_ast as C
@@ -11,16 +11,12 @@ from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES, B
 from spy.vm.builtin import IRTag
-from spy.vm.cell import W_Cell
-from spy.vm.field import W_Field
-from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
-from spy.vm.list import W_ListType
+from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.operator import OP_from_token
 from spy.vm.modules.unsafe.ptr import W_Ptr
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Type
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.struct import W_StructType
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -110,80 +106,17 @@ class CFuncWriter:
         return name
 
     def expr_w_type(self, expr: ast.Expr) -> W_Type:
-        if isinstance(expr, ast.Constant):
-            value = expr.value
-            if isinstance(value, bool):
-                return B.w_bool
-            elif isinstance(value, int):
-                return B.w_i32
-            elif isinstance(value, float):
-                return B.w_f64
-            elif value is None:
-                return TYPES.w_NoneType
-            else:
-                raise NotImplementedError(f"unsupported constant type: {type(value)!r}")
-        elif isinstance(expr, ast.StrConst):
-            return B.w_str
-        elif isinstance(expr, ast.CmpChain) or isinstance(expr, ast.CmpOp):
-            return B.w_bool
-        elif isinstance(expr, ast.NameLocal):
-            assert self.w_func.locals_types_w is not None
-            return self.w_func.locals_types_w[expr.sym.name]
-        elif isinstance(expr, ast.NameOuterCell):
-            w_cell = self.ctx.vm.lookup_global(expr.fqn)
-            assert isinstance(w_cell, W_Cell)
-            w_val = cast(W_Object, w_cell.get())
-            return self.ctx.vm.dynamic_type(w_val)
-        elif isinstance(expr, ast.FQNConst):
-            w_obj = self.ctx.vm.lookup_global(expr.fqn)
-            if isinstance(w_obj, W_Cell):
-                w_obj = w_obj.get()
-            return self.ctx.vm.dynamic_type(cast(W_Object, w_obj))
-        elif isinstance(expr, ast.GetAttr):
-            return self._attr_w_type(expr)
-        elif isinstance(expr, ast.GetItem):
-            w_value_type = self.expr_w_type(expr.value)
-            if isinstance(w_value_type, W_ListType):
-                return w_value_type.w_itemtype
-            return B.w_dynamic
-        elif isinstance(expr, ast.CallMethod):
-            w_target_type = self.expr_w_type(expr.target)
-            if isinstance(w_target_type, W_Type):
-                method = expr.method.value
-                if isinstance(w_target_type, W_StructType):
-                    if w_method := w_target_type.lookup_func(method):
-                        return w_method.w_functype.w_restype
-                elif w_method := w_target_type.lookup_func(method):
-                    return w_method.w_functype.w_restype
-            return B.w_dynamic
-        elif isinstance(expr, ast.Call):
-            w_type = self.expr_w_type(expr.func)
-            assert isinstance(w_type, W_FuncType)
-            return w_type.w_restype
-        else:
-            return B.w_dynamic
-
-    def _attr_w_type(self, expr: ast.GetAttr) -> W_Type:
-        attr_name = expr.attr.value
-        w_target_type = self.expr_w_type(expr.value)
-        if isinstance(w_target_type, W_StructType):
-            if attr_name in w_target_type.fields_w:
-                w_field = w_target_type.fields_w[attr_name]
-                assert isinstance(w_field, W_Field)
-                return w_field.w_T
-            if w_attr := w_target_type.lookup(attr_name):
-                return self._object_dynamic_type(w_attr)
-        elif isinstance(w_target_type, W_Type):
-            if w_attr := w_target_type.lookup(attr_name):
-                return self._object_dynamic_type(w_attr)
-        return B.w_dynamic
-
-    def _object_dynamic_type(self, w_attr: W_Object) -> W_Type:
-        if isinstance(w_attr, W_Cell):
-            w_attr = w_attr.get()
-        if isinstance(w_attr, W_Func):
-            return w_attr.w_functype
-        return self.ctx.vm.dynamic_type(w_attr)
+        expr_types_w = self.w_func.expr_types_w
+        if expr_types_w is None:
+            raise AssertionError(
+                "expression types are not available; expected a redshifted function"
+            )
+        try:
+            return expr_types_w[expr]
+        except KeyError as err:
+            raise AssertionError(
+                f"missing static type for expression {expr!r} in {self.fqn}"
+            ) from err
 
     # ==============
 

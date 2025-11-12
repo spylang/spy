@@ -262,60 +262,96 @@ class TestExprWType(CompilerTest):
     def test_cmp_op_direct(self):
         modname = self.redshift_module(
             """
-            def placeholder() -> bool:
-                return True
+            def placeholder(a: i32, b: i32) -> bool:
+                return a < b
             """
         )
 
-        writer, _ = self.make_writer(f"{modname}::placeholder")
-        left = ast.Constant(Loc.fake(), 1)
-        right = ast.Constant(Loc.fake(), 2)
-        cmp_op = ast.CmpOp(Loc.fake(), "<", left, right)
-        assert writer.expr_w_type(cmp_op) is B.w_bool
+        writer, funcdef = self.make_writer(f"{modname}::placeholder")
+        expr = self.return_expr(funcdef)
+        assert isinstance(expr, ast.Call)
+        assert isinstance(expr.func, ast.FQNConst)
+        assert expr.func.fqn == FQN("operator::i32_lt")
+        assert [writer.expr_w_type(arg) for arg in expr.args] == [B.w_i32, B.w_i32]
+        assert writer.expr_w_type(expr) is B.w_bool
 
     def test_cmp_chain_mismatched_types(self):
         modname = self.redshift_module(
             """
-            def placeholder() -> bool:
-                return True
+            def placeholder(a: i32, b: i32, c: f64) -> bool:
+                return a < b < c
             """
         )
 
-        writer, _ = self.make_writer(f"{modname}::placeholder")
-        cmp0 = ast.CmpOp(
-            Loc.fake(), "<", ast.Constant(Loc.fake(), 1), ast.Constant(Loc.fake(), 2)
-        )
-        cmp1 = ast.CmpOp(
-            Loc.fake(), "<", ast.Constant(Loc.fake(), 2), ast.Constant(Loc.fake(), 3.5)
-        )
-        chain = ast.CmpChain(Loc.fake(), [cmp0, cmp1])
+        writer, funcdef = self.make_writer(f"{modname}::placeholder")
+        expr = self.return_expr(funcdef)
+        assert isinstance(expr, ast.CmpChain)
 
         writer.local_decls = writer.tbc.make_nested_builder()
         try:
             with pytest.raises(NotImplementedError, match="mismatched operand types"):
-                writer.fmt_expr(chain)
+                writer.fmt_expr(expr)
         finally:
             writer.local_decls = None
 
     def test_cmp_chain_first_mismatch(self):
         modname = self.redshift_module(
             """
-            def placeholder() -> bool:
-                return True
+            def placeholder(a: i32, b: f64, c: i32) -> bool:
+                return a < b < c
             """
         )
 
-        writer, _ = self.make_writer(f"{modname}::placeholder")
-        cmp0 = ast.CmpOp(
-            Loc.fake(), "<", ast.Constant(Loc.fake(), 1), ast.Constant(Loc.fake(), 2.5)
-        )
-        cmp1 = ast.CmpOp(
-            Loc.fake(), "<", ast.Constant(Loc.fake(), 2.5), ast.Constant(Loc.fake(), 3)
-        )
-        chain = ast.CmpChain(Loc.fake(), [cmp0, cmp1])
+        writer, funcdef = self.make_writer(f"{modname}::placeholder")
+        expr = self.return_expr(funcdef)
+        assert isinstance(expr, ast.CmpChain)
 
         with pytest.raises(NotImplementedError, match="mismatched operand types"):
-            writer.fmt_expr(chain)
+            writer.fmt_expr(expr)
+
+    def test_cmp_chain_generic_specializations_have_distinct_types(self):
+        modname = self.redshift_module(
+            """
+            @blue.generic
+            def make_func(T):
+                def func(a: T, b: T, c: T) -> bool:
+                    return a < b < c
+                return func
+
+            fn_i32 = make_func[i32]
+            fn_f64 = make_func[f64]
+            """
+        )
+
+        writer_i32, funcdef_i32 = self.make_writer(f"{modname}::make_func[i32]::func")
+        expr_i32 = self.return_expr(funcdef_i32)
+        assert isinstance(expr_i32, ast.CmpChain)
+        comparisons_i32 = expr_i32.comparisons
+        assert len(comparisons_i32) == 2
+        assert [writer_i32.expr_w_type(cmp.left) for cmp in comparisons_i32] == [
+            B.w_i32,
+            B.w_i32,
+        ]
+        assert [writer_i32.expr_w_type(cmp.right) for cmp in comparisons_i32] == [
+            B.w_i32,
+            B.w_i32,
+        ]
+        assert writer_i32.expr_w_type(expr_i32) is B.w_bool
+
+        writer_f64, funcdef_f64 = self.make_writer(f"{modname}::make_func[f64]::func")
+        expr_f64 = self.return_expr(funcdef_f64)
+        assert isinstance(expr_f64, ast.CmpChain)
+        comparisons_f64 = expr_f64.comparisons
+        assert len(comparisons_f64) == 2
+        assert [writer_f64.expr_w_type(cmp.left) for cmp in comparisons_f64] == [
+            B.w_f64,
+            B.w_f64,
+        ]
+        assert [writer_f64.expr_w_type(cmp.right) for cmp in comparisons_f64] == [
+            B.w_f64,
+            B.w_f64,
+        ]
+        assert writer_f64.expr_w_type(expr_f64) is B.w_bool
 
     def test_cmp_chain_nonprimitive_uses_opimpl(self):
         modname = self.redshift_module(

@@ -338,6 +338,9 @@ class W_ASTFunc(W_Func):
     # redshifted.
     locals_types_w: Optional[dict[str, W_Type]]
 
+    # for backend to not recompute.
+    expr_types_w: Optional[dict[ast.Expr, W_Type]]
+
     # if the function has been redshifted, this contains the NEW function, and
     # the current one becomes invalid (not ensure we don't execute it by
     # mistake).
@@ -351,6 +354,7 @@ class W_ASTFunc(W_Func):
         closure: CLOSURE,
         *,
         locals_types_w: Optional[dict[str, W_Type]] = None,
+        expr_types_w: Optional[dict[ast.Expr, W_Type]] = None,
     ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
@@ -358,6 +362,7 @@ class W_ASTFunc(W_Func):
         self.funcdef = funcdef
         self.closure = closure
         self.locals_types_w = locals_types_w
+        self.expr_types_w = expr_types_w
         self.w_redshifted_into = None
 
     @property

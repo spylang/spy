@@ -13,7 +13,7 @@ from spy.vm.b import B
 from spy.vm.exc import W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.types import TYPES, W_Loc
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
 from spy.vm.tuple import W_Tuple
@@ -73,6 +73,7 @@ class DopplerFrame(ASTFrame):
     """
 
     shifted_expr: dict[ast.Expr, ast.Expr]
+    shifted_expr_types_w: dict[ast.Expr, W_Type]
     opimpl: dict[ast.Node, W_OpImpl]
     error_mode: ErrorMode
 
@@ -80,6 +81,7 @@ class DopplerFrame(ASTFrame):
         assert w_func.color == "red"
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
+        self.shifted_expr_types_w = {}
         self.opimpl = {}
         assert error_mode != "warn"
         self.error_mode = error_mode
@@ -115,6 +117,7 @@ class DopplerFrame(ASTFrame):
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
             locals_types_w=self.get_locals_types_w(),
+            expr_types_w=dict(self.shifted_expr_types_w),
         )
         # mark the original function as invalid
         self.w_func.invalidate(w_newfunc)
@@ -354,8 +357,12 @@ class DopplerFrame(ASTFrame):
                 func=ast.FQNConst(loc=new_expr.loc, fqn=w_typeconv.fqn),
                 args=[new_expr],
             )
+            shifted_type = w_typeconv.w_functype.w_restype
+        else:
+            shifted_type = wam.w_static_T
 
         self.shifted_expr[expr] = new_expr
+        self.shifted_expr_types_w[new_expr] = shifted_type
         self.record_node_color(expr, wam.color)
         return wam
 
