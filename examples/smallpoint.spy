@@ -32,7 +32,7 @@ with the wrong type, you get a nice `TypeError`.
 """
 
 
-@typelift
+@struct
 class SmallPoint:
     """
     Point with two fields, x and y, 16 bits each. They are packed into a
@@ -44,7 +44,7 @@ class SmallPoint:
     def __new__(x: i32, y: i32) -> SmallPoint:
         # pack the two integers into a single value
         val = (x << 16) | (y & 0xFFFF)
-        return SmallPoint.__lift__(val)
+        return SmallPoint.__make__(val)
 
     @property
     def x(self: SmallPoint) -> i32:

@@ -7,7 +7,6 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
-from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -29,7 +28,7 @@ class CStructWriter:
     tbh_includes: TextBuilder  # XXX kill
     tbh_fwdecl: TextBuilder  # forward type declarations
     tbh_structs: TextBuilder  # type definitions
-    tbh_ptrs_def: TextBuilder  # ptr and typelift accessors
+    tbh_ptrs_def: TextBuilder  # ptr accessors
 
     def __init__(
         self,
@@ -79,7 +78,7 @@ class CStructWriter:
         self.tbh_structs = self.tbh.make_nested_builder()
         self.tbh.wl()
 
-        self.tbh.wl("// ptr and typelift accessors")
+        self.tbh.wl("// ptr accessors")
         self.tbh_ptrs_def = self.tbh.make_nested_builder()
         self.tbh.wl()
 
@@ -101,8 +100,6 @@ class CStructWriter:
                 self.emit_StructType(fqn, w_type)
             elif isinstance(w_type, W_PtrType):
                 self.emit_PtrType(fqn, w_type)
-            elif isinstance(w_type, W_LiftedType):
-                self.emit_LiftedType(fqn, w_type)
             else:
                 assert False, f"Unknown type: {w_type}"
 
@@ -139,24 +136,5 @@ class CStructWriter:
         self.tbh_ptrs_def.wb(f"""
         SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
-        """)
-        self.tbh_ptrs_def.wl()
-
-    def emit_LiftedType(self, fqn: FQN, w_hltype: W_LiftedType) -> None:
-        c_hltype = C_Type(w_hltype.fqn.c_name)
-        w_lltype = w_hltype.w_lltype
-        c_lltype = self.ctx.w2c(w_lltype)
-        self.tbh_fwdecl.wl(
-            f"typedef struct {c_hltype} {c_hltype}; /* {w_hltype.fqn.human_name} */"
-        )
-        self.tbh_structs.wb(f"""
-        typedef struct {c_hltype} {{
-            {c_lltype} ll;
-        }} {c_hltype};
-        """)
-        self.tbh_structs.wl()
-
-        self.tbh_ptrs_def.wb(f"""
-        SPY_TYPELIFT_FUNCTIONS({c_hltype}, {c_lltype});
         """)
         self.tbh_ptrs_def.wl()

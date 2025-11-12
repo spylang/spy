@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 AnyNode = typing.Union[py_ast.AST, "Node"]
-ClassKind = typing.Literal["class", "struct", "typelift"]
+ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
 
 

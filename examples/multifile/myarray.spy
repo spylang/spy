@@ -1,4 +1,3 @@
-from operator import OpSpec, MetaArg
 from unsafe import gc_alloc, ptr
 
 a = [1, 2, 3]
@@ -6,13 +5,12 @@ a = [1, 2, 3]
 
 @blue.generic
 def array1d(DTYPE):
-
     @struct
     class ArrayData:
         l: i32
         items: ptr[DTYPE]
 
-    @typelift
+    @struct
     class ndarray:
         __ll__: ptr[ArrayData]
 
@@ -20,7 +18,7 @@ def array1d(DTYPE):
             data = gc_alloc(ArrayData)(1)
             data.l = l
             data.items = gc_alloc(DTYPE)(l)
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         def __getitem__(self: ndarray, i: i32) -> DTYPE:
             ll = self.__ll__
@@ -34,26 +32,22 @@ def array1d(DTYPE):
                 raise IndexError
             ll.items[i] = v
 
-        @blue
-        def __GET_l__(m_self: MetaArg, m_attr: MetaArg):
-            def get(self: ndarray) -> i32:
-                return self.__ll__.l
-            return OpSpec(get, [m_self])
-
+        @property
+        def l(self: ndarray) -> i32:
+            return self.__ll__.l
 
     return ndarray
 
 
 @blue.generic
 def array2d(DTYPE):
-
     @struct
     class ArrayData:
         h: i32
         w: i32
         items: ptr[DTYPE]
 
-    @typelift
+    @struct
     class ndarray:
         __ll__: ptr[ArrayData]
 
@@ -61,8 +55,8 @@ def array2d(DTYPE):
             data = gc_alloc(ArrayData)(1)
             data.h = h
             data.w = w
-            data.items = gc_alloc(DTYPE)(h*w)
-            return ndarray.__lift__(data)
+            data.items = gc_alloc(DTYPE)(h * w)
+            return ndarray.__make__(data)
 
         def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
             ll = self.__ll__
@@ -82,18 +76,13 @@ def array2d(DTYPE):
             idx = (i * ll.w) + j
             ll.items[idx] = v
 
-        @blue
-        def __GET_h__(m_self: MetaArg, m_attr: MetaArg):
-            def get(self: ndarray) -> i32:
-                return self.__ll__.h
-            return OpSpec(get, [m_self])
+        @property
+        def h(self: ndarray) -> i32:
+            return self.__ll__.h
 
-        @blue
-        def __GET_w__(m_self: MetaArg, m_attr: MetaArg):
-            def get(self: ndarray) -> i32:
-                return self.__ll__.w
-            return OpSpec(get, [m_self])
-
+        @property
+        def w(self: ndarray) -> i32:
+            return self.__ll__.w
 
         def print_flatten(self: ndarray) -> None:
             ll = self.__ll__
@@ -116,4 +105,4 @@ def array(DTYPE, NDIM):
 
 @blue
 def __INIT__(mod):
-    print('array.__INIT__')
+    print("array.__INIT__")

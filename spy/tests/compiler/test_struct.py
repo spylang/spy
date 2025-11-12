@@ -159,27 +159,26 @@ class TestStructOnStack(CompilerTest):
         def foo(x: f64, y: f64) -> f64:
             p = Point(x, y)
             return p.hypot()
+
+        def wrong_args(x: f64) -> f64:
+            p = Point(x, x)
+            return p.hypot(1, 2, 3)
+
+        def wrong_meth(x: f64) -> f64:
+            p = Point(x, x)
+            return p.dont_exist()
+
         """
-        mod = self.compile(src)
+        mod = self.compile(src, error_mode="lazy")
         assert mod.foo(5.0, 12.0) == 13.0
 
-    def test_property(self):
-        src = """
-        @struct
-        class Point:
-            x: i32
-            y: i32
+        msg = "this function takes 1 argument but 4 arguments were supplied"
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.wrong_args(10.0)
 
-            @property
-            def xy(self: Point) -> i32:
-                return self.x + self.y
-
-        def foo(x: i32, y: i32) -> i32:
-            p = Point(x, y)
-            return p.xy
-        """
-        mod = self.compile(src)
-        assert mod.foo(3, 4) == 7
+        msg = "method `test::Point::dont_exist` does not exist"
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.wrong_meth(10.0)
 
     def test_custom_new(self):
         src = """
@@ -196,6 +195,25 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == (0, 0)
+
+    def test_custom_eq(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def __eq__(self: Point, other: Point) -> bool:
+                return self.x + self.y == other.x + other.y
+
+        def foo(x0: i32, y0: i32, x1: i32, y1: i32) -> bool:
+            p0 = Point(x0, y0)
+            p1 = Point(x1, y1)
+            return p0 == p1
+        """
+        mod = self.compile(src)
+        assert mod.foo(1, 2, 3, 4) == False
+        assert mod.foo(1, 2, 3, 0) == True
 
     @only_interp
     def test_dir(self):
@@ -224,3 +242,114 @@ class TestStructOnStack(CompilerTest):
         assert "__make__" in di
         assert "x" in di
         assert "y" in di
+
+    def test_operator(self):
+        mod = self.compile("""
+        @struct
+        class MyInt:
+            __ll__: i32
+
+            def __getitem__(m: MyInt, i: i32) -> i32:
+                return m.__ll__ + i*2
+
+        def foo(x: i32, y: i32) -> i32:
+            m = MyInt(x)
+            return m[y]
+        """)
+        assert mod.foo(30, 6) == 42
+
+    def test_if_inside_classdef(self):
+        src = """
+        @blue
+        def make_Foo(DOUBLE):
+            @struct
+            class Foo:
+                __ll__: i32
+
+                if DOUBLE:
+                    def get(self: Foo) -> i32:
+                        return self.__ll__ * 2
+                else:
+                    def get(self: Foo) -> i32:
+                        return self.__ll__
+
+            return Foo
+
+        def test1(x: i32) -> i32:
+            a = make_Foo(True)(x)
+            return a.get()
+
+        def test2(x: i32) -> i32:
+            b = make_Foo(False)(x)
+            return b.get()
+        """
+        mod = self.compile(src)
+        assert mod.test1(10) == 20
+        assert mod.test2(10) == 10
+
+    def test_staticmethod(self):
+        src = """
+        from operator import OpSpec
+
+        @struct
+        class MyInt:
+            __ll__: i32
+
+            @staticmethod
+            def one() -> MyInt:
+                return MyInt.__make__(1)
+
+            @staticmethod
+            def from_pair(x: i32, y: i32) -> MyInt:
+                return MyInt.__make__(x + y)
+
+            @staticmethod
+            @blue.metafunc
+            def from_many(*args_m):
+                if len(args_m) == 3:
+                    def from3(x: i32, y: i32, z: i32) -> MyInt:
+                        return MyInt.__make__(x + y + z)
+                    return OpSpec(from3)
+                raise TypeError('invalid number of args')
+
+        def one() -> i32:
+            m = MyInt.one()
+            return m.__ll__
+
+        def from_pair(x: i32, y: i32) -> i32:
+            m = MyInt.from_pair(x, y)
+            return m.__ll__
+
+        def from_triple(x: i32, y: i32, z: i32) -> i32:
+            m = MyInt.from_many(x, y, z)
+            return m.__ll__
+
+        def from_quadruple(x: i32, y: i32, z: i32, w: i32) -> i32:
+            # this raises TypeError
+            MyInt.from_many(x, y, z, w)
+            return 9999 # never reached
+        """
+        mod = self.compile(src, error_mode="lazy")
+        assert mod.one() == 1
+        assert mod.from_pair(4, 5) == 9
+        assert mod.from_triple(4, 5, 6) == 15
+        with SPyError.raises("W_TypeError", match="invalid number of args"):
+            mod.from_quadruple(4, 5, 6, 7)
+
+    def test_property(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            @property
+            def xy(self: Point) -> i32:
+                return self.x + self.y
+
+        def foo(x: i32, y: i32) -> i32:
+            p = Point(x, y)
+            return p.xy
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4) == 7

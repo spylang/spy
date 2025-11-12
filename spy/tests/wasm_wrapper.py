@@ -11,7 +11,6 @@ from spy.vm.b import TYPES, B
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.types import UnwrappedLiftedObject, W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
@@ -154,10 +153,6 @@ class WasmFuncWrapper:
             #     multivalue)
             addr, length = res
             return WasmPtr(addr, length)
-        elif isinstance(w_T, W_LiftedType):
-            w_hltype = w_T
-            llval = self.to_py_result(w_hltype.w_lltype, res)
-            return UnwrappedLiftedObject(w_hltype, llval)
         elif isinstance(w_T, W_StructType):
             # when you return struct-by-val from C, wasmtime automatically
             # converts them into a list. So, we have our values already.

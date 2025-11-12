@@ -62,13 +62,4 @@ int32_t WASM_EXPORT(spy_builtins$hash_bool)(bool x) {
 void
 WASM_EXPORT(spy_flush)(void);
 
-
-#define SPY_TYPELIFT_FUNCTIONS(HL, LL)          \
-    static inline HL HL##$__lift__(LL ll) {     \
-        return (HL){ll};                        \
-    }                                           \
-    static inline LL HL##$__unlift__(HL hl) {   \
-        return hl.ll;                           \
-    }
-
 #endif /* SPY_BUILTINS_H */

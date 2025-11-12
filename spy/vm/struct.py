@@ -19,38 +19,68 @@ OFFSETS_T = dict[str, int]
 @TYPES.builtin_type("StructType")
 class W_StructType(W_Type):
     size: int
+    spy_key_is_valid: bool
 
     def define_from_classbody(self, vm: "SPyVM", body: ClassBody) -> None:
-        super().define(W_Struct)
-
         # compute the layout of the struct and get the list of its fields
         struct_fields_w, size = calc_layout(body.fields_w)
         self.size = size
 
+        # dict_w contains all the methods and properties
+        dict_w: dict[str, W_Object] = {}
+
         # add an accessor for each field
         for w_struct_field in struct_fields_w:
-            self.dict_w[w_struct_field.name] = w_struct_field
+            dict_w[w_struct_field.name] = w_struct_field
 
         # add the remaining methods
         for key, w_obj in body.dict_w.items():
-            assert key not in self.dict_w, "need to think what to do"
+            assert key not in dict_w, "need to think what to do"
             if key == "__make__":
                 raise WIP("you cannot define your own __make__")
-            self.dict_w[key] = w_obj
+            dict_w[key] = w_obj
 
-        # add a '__make__' staticmethod to create a struct by specifying all
-        # the fields
+        # add '__make__' and optionally '__new__'
         w_make = self._create_w_make(vm, struct_fields_w)
-        self.dict_w["__make__"] = W_StaticMethod(w_make)
+        dict_w["__make__"] = W_StaticMethod(w_make)
+        if "__new__" not in dict_w:
+            dict_w["__new__"] = w_make
 
-        # if the user didn't provide a '__new__', let's put a default one
-        # which is just an alias to '__make__',
-        if "__new__" not in self.dict_w:
-            self.dict_w["__new__"] = w_make
+        # by default structs are value types and spy_key() returns a reasonable
+        # key. However, if we define a custom __eq__ or __ne__, spy_key() is no longer
+        # usable. In particular it means that we cannot pass such a struct as a
+        # parameter of a @blue function.
+        #
+        # We need to think how to solve the problem. Probably we should introduce a
+        # __key__ method.
+        if "__eq__" in dict_w or "__ne__" in dict_w:
+            self.spy_key_is_valid = False
+        else:
+            self.spy_key_is_valid = True
+
+        super().define(W_Struct, dict_w)
 
     def _create_w_make(
         self, vm: "SPyVM", struct_fields_w: list["W_StructField"]
     ) -> W_BuiltinFunc:
+        """
+        Generate the '__make__' staticmethod.
+
+        It's best explained via an example:
+
+            @struct
+            class Point:
+                x: i32
+                y: i32
+
+                # __make__ is automatically generated and cannot be written manually
+                @staticmethod
+                def __make__(x: i32, y: i32) -> Point:
+                    ...
+
+                # if the use doesn't specify a __new__, by default we use __make__
+                __new__ = __make__
+        """
         STRUCT = Annotated[W_Struct, self]
         # functype
         params = [FuncParam(w_field.w_T, "simple") for w_field in struct_fields_w]
@@ -148,6 +178,12 @@ class W_Struct(W_Object):
         return self.w_structtype
 
     def spy_key(self, vm: "SPyVM") -> Any:
+        if not self.w_structtype.spy_key_is_valid:
+            # see the comment in W_StructType.define_from_classbody
+            T = self.w_structtype.fqn.human_name
+            raise WIP(
+                f"type {T} cannot be cached because it defines __eq__ or __ne__",
+            )
         values_key = [w_val.spy_key(vm) for w_val in self.values_w.values()]
         return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 

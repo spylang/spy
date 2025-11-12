@@ -9,7 +9,6 @@ from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.time import TIME
-from spy.vm.modules.types import W_LiftedType
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
