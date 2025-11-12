@@ -45,7 +45,6 @@ def dict(Key, Value):
         key: Key
         value: Value
 
-
     @struct
     class DictData:
         index: ptr[i32]
@@ -125,7 +124,9 @@ def dict(Key, Value):
 
     def insert_index_node(data: ptr[DictData], entry_ix: i32, key: Key) -> None:
         position = lookup_index_node_position(data, key)
-        assert position >= 0, "must not loop through the entire index without finding a free slot"
+        assert position >= 0, (
+            "must not loop through the entire index without finding a free slot"
+        )
         assert data.index[position] == DKIX_EMPTY
         data.index[position] = entry_ix
 
@@ -202,7 +203,7 @@ def dict(Key, Value):
         def __continue_iteration__(self: dict_iterator) -> bool:
             return self.i <= self.data.length
 
-    @typelift
+    @struct
     class _dict:
         __ll__: ptr[DictData]
 
@@ -212,7 +213,7 @@ def dict(Key, Value):
             data.length = 0
             data.index = new_index(data.log_size)
             data.entries = new_entries(data.log_size)
-            return _dict.__lift__(data)
+            return _dict.__make__(data)
 
         def __getitem__(self: _dict, key: Key) -> Value:
             data: ptr[DictData] = self.__ll__
@@ -241,6 +242,7 @@ def dict(Key, Value):
         @blue.metafunc
         def __eq__(m_self, m_other):
             if m_other.static_type == m_self.static_type:
+
                 def eq_impl(self: _dict, other: _dict) -> bool:
                     self_ll = self.__ll__
                     other_ll = other.__ll__
@@ -259,6 +261,7 @@ def dict(Key, Value):
                                 return False
                         i += 1
                     return True
+
                 return OpSpec(eq_impl, [m_self, m_other])
             else:
                 return OpSpec.NULL
@@ -288,6 +291,5 @@ def dict(Key, Value):
 
         def keys(self: _dict) -> _dict:
             return self
-
 
     return _dict
