@@ -1183,6 +1183,22 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.x2_plus_1(5) == 11
 
+    @only_interp
+    def test_red_decorator(self):
+        src = """
+        def deco(fn: dynamic) -> i32:
+            return 42
+
+        @deco
+        def foo() -> None:
+            pass
+        """
+        errors = expect_errors(
+            "decorators must be @blue",
+            ("this is red", "deco"),
+        )
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
+
     def test_for_loop(self):
         src = """
         from _range import range
