@@ -19,6 +19,7 @@ OFFSETS_T = dict[str, int]
 @TYPES.builtin_type("StructType")
 class W_StructType(W_Type):
     size: int
+    spy_key_is_valid: bool
 
     def define_from_classbody(self, vm: "SPyVM", body: ClassBody) -> None:
         # compute the layout of the struct and get the list of its fields
@@ -44,6 +45,18 @@ class W_StructType(W_Type):
         dict_w["__make__"] = W_StaticMethod(w_make)
         if "__new__" not in dict_w:
             dict_w["__new__"] = w_make
+
+        # by default structs are value types and spy_key() returns a reasonable
+        # key. However, if we define a custom __eq__ or __ne__, spy_key() is no longer
+        # usable. In particular it means that we cannot pass such a struct as a
+        # parameter of a @blue function.
+        #
+        # We need to think how to solve the problem. Probably we should introduce a
+        # __key__ method.
+        if "__eq__" in dict_w or "__ne__" in dict_w:
+            self.spy_key_is_valid = False
+        else:
+            self.spy_key_is_valid = True
 
         super().define(W_Struct, dict_w)
 
@@ -165,6 +178,12 @@ class W_Struct(W_Object):
         return self.w_structtype
 
     def spy_key(self, vm: "SPyVM") -> Any:
+        if not self.w_structtype.spy_key_is_valid:
+            # see the comment in W_StructType.define_from_classbody
+            T = self.w_structtype.fqn.human_name
+            raise WIP(
+                f"type {T} cannot be cached because it defines __eq__ or __ne__",
+            )
         values_key = [w_val.spy_key(vm) for w_val in self.values_w.values()]
         return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 
