@@ -49,6 +49,12 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     def w_mul(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
         return _binop(vm, w_a, w_b, lambda a, b: a * b)
 
+    @OP.builtin_func(f"{T}_mod")
+    def w_mod(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        if w_b.value == 0:
+            raise SPyError("W_ZeroDivisionError", "integer modulo by zero")
+        return _binop(vm, w_a, w_b, lambda a, b: a % b)
+
     @OP.builtin_func(f"{T}_div")
     def w_div(vm: "SPyVM", w_a: WT, w_b: WT) -> W_F64:
         if w_b.value == 0:
@@ -60,12 +66,6 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
         if w_b.value == 0:
             raise SPyError("W_ZeroDivisionError", "integer division or modulo by zero")
         return _binop(vm, w_a, w_b, lambda a, b: a // b)
-
-    @OP.builtin_func(f"{T}_mod")
-    def w_mod(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
-        if w_b.value == 0:
-            raise SPyError("W_ZeroDivisionError", "integer modulo by zero")
-        return _binop(vm, w_a, w_b, lambda a, b: a % b)
 
     @OP.builtin_func(f"{T}_lshift")
     def w_lshift(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
