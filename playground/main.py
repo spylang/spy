@@ -134,9 +134,17 @@ def run_click(event):
     run_spy_file_with_args(t.split())
 
 
+def ButtonLabel(text):
+    btn = ltk.Button(text, lambda: None)
+    btn.addClass("base-button")
+    btn.addClass("label-button")
+    return btn
+
+
 def RunSPyButton(text):
     btn = ltk.Button(text, run_click)
     btn.addClass("run-button")
+    btn.addClass("base-button")
     return btn
 
 
@@ -164,19 +172,14 @@ def main():
                 ltk.Label("Try the SPy CLI:"),
                 term_input,
                 ltk.Div(
-                    ltk.Span("Sample flags").addClass("command-prompt"),
+                    ButtonLabel("Sample Flags:"),
                     RunSPyButton("--execute"),
                     RunSPyButton("--parse"),
                     RunSPyButton("--redshift"),
                     RunSPyButton("--redshift --full-fqn"),
                     RunSPyButton("--cwrite --cdump"),
                     RunSPyButton("--colorize"),
-                ).css(
-                    {
-                        "display": "flex",
-                        "gap": "5px",
-                    }
-                ),
+                ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(
                 {
                     "align-items": "flex-start",
@@ -184,7 +187,7 @@ def main():
             ),
             ltk.Div().attr("id", "terminal"),
         )
-        .css("width", 900)
+        .css("width", 1200)
         .css("font-size", 14)
         .attr("name", "Editor")
         .appendTo(ltk.window.document.body)
