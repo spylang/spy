@@ -1,5 +1,7 @@
 # -*- encoding: utf-8 -*-
 
+import pytest
+
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.tests.support import CompilerTest, expect_errors, only_interp
@@ -195,6 +197,26 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == (0, 0)
+
+    @pytest.mark.skip("FIXME")
+    def test_custom_eq(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def __eq__(self: Point, other: Point) -> bool:
+                return self.x + self.y == other.x + other.y
+
+        def foo(x0: i32, y0: i32, x1: i32, y1: i32) -> bool:
+            p0 = Point(x0, y0)
+            p1 = Point(x1, y1)
+            return p0 == p1
+        """
+        mod = self.compile(src)
+        assert mod.foo(1, 2, 3, 4) == False
+        assert mod.foo(1, 2, 3, 0) == True
 
     @only_interp
     def test_dir(self):
