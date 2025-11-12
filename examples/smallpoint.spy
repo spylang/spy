@@ -1,45 +1,36 @@
-#### THIS IS BROKEN -- DON'T RUN
-
 """
-This example introduces some key concepts.
+This example show how to create a new high level type based on a lower level type.
 
-Typelifting creates a new high level type based on a lower level type. It is
-purely a static typing contruct and it has zero runtime overhead. It is
-declared like this:
+The new type has its own set of methods and opertors and it is purely a static typing
+contruct with zero runtime overhead. It is declared like this:
 
-    @typelift
+    @struct
     class MyNewType:
         __ll__: MyLowLevelType
 
-Conversions are done like this (again, zero overhead):
+At the moment, `__ll__` is purely a naming convention. Eventually, we will introduce
+some rule to prevent `__ll__` to be accessed from arbitrary code.
 
-    y = MyNewType.__lift__(x)  # lift
-    y.__ll__                   # unlift
+The low-level mechanism to initialize the struct, is to call the staticmethod
+`MyNewType.__make__`, as is it standard for all structs:
+
+    y = MyNewType.__make__(x)
+
+Usually, high level types have a `__new__` which provides a nicer way to initialize it:
+
+    @struct
+    class MyNewType:
+        __ll__: MyLowLevelType
+
+        def __new__(...) -> MyNewType:
+            return MyNewType.__make__(...)
 
 
-The second concept is OPERATORs. In SPy, operators are executed in two phases:
-operator dispatch (which happens as "blue time") and opimpl call (which always
-happens at "red time").
-
-For example, take an operator like "a + b":
-
-  1. We determine the static types of a and b.
-
-  2. we create two `MetaArg`s, m_a and m_b. MetaArgs are abstract: they don't have
-     a concrete value but only the STATIC type of the operands. Additionally,
-     they carry around extra info such as where the variable has been defined,
-     etc., which are useful to generate descriptive error messages.
-
-  3. We call `operator.__ADD__(m_a, m_b)`. This returns an `OpSpec`, which
-     tells SPy which function to call to compute the result of the operation
-
-  4. Finally, we call `opimpl(a, b)`
-
-The steps 1-3 happens at blue time and they are completely removed after
-redshifting. Thus, after redshifting we are left with only fast opimpl calls.
+Moreover, as in Python we can overload `__operators__`. In this example we overload
+`__add__`. Note that in this case __add__ is statically typed, so if you try to call `+`
+with the wrong type, you get a nice `TypeError`.
 """
 
-from operator import MetaArg, OpSpec
 
 @typelift
 class SmallPoint:
@@ -47,45 +38,39 @@ class SmallPoint:
     Point with two fields, x and y, 16 bits each. They are packed into a
     single 32 bit integer.
     """
-    __ll__: i32  # the low level type is i32
+
+    __ll__: i32
 
     def __new__(x: i32, y: i32) -> SmallPoint:
         # pack the two integers into a single value
-        val =  (x << 16) | (y & 0xFFFF)
+        val = (x << 16) | (y & 0xFFFF)
         return SmallPoint.__lift__(val)
 
-    @blue.metafunc
-    def __getattr__(m_obj: MetaArg, m_attr: MetaArg) -> OpSpec:
-        # p.x is vaguely equivalent to:
-        #     operator.__getattr__(STATIC_TYPE(p), "x")
-        #
-        # Note that `p` is red and its actual value is unknown here. But "x"
-        # is BLUE, so we can know which attribute we are reading and behave
-        # consequently.
+    @property
+    def x(self: SmallPoint) -> i32:
+        return (self.__ll__ >> 16) & 0xFFFF
 
-        if m_attr.blueval == 'x':
-            def getx(p: SmallPoint) -> i32:
-                val = p.__ll__
-                return (val >> 16) & 0xFFFF
-            return OpSpec(getx, [m_obj])
+    @property
+    def y(self: SmallPoint) -> i32:
+        return self.__ll__ & 0xFFFF
 
-        elif m_attr.blueval == 'y':
-            def gety(p: SmallPoint) -> i32:
-                val = p.__ll__
-                return val & 0xFFFF
-            return OpSpec(gety, [m_obj])
-
-        else:
-            # this is the equivalent of "return NotImplemented". If we cannot
-            # find an implementation of our operator, SPy will automaticaly
-            # raise a TypeError
-            return OpSpec.NULL
+    def __add__(self: SmallPoint, p: SmallPoint) -> SmallPoint:
+        x0 = self.x + p.x
+        y0 = self.y + p.y
+        return SmallPoint(x0, y0)
 
 
 def main() -> None:
     # all these become super fast bitwise operations. After redshifting, there
     # is ZERO memory allocation as everything is just an i32.
-    p = SmallPoint(1, 2)
-    print(p.x)
-    print(p.y)
-    print(p.__ll__)
+    p1 = SmallPoint(1, 2)
+    print(p1.x)
+    print(p1.y)
+    print(p1.__ll__)
+    print("")
+    p2 = p1 + SmallPoint(5, 5)
+    print(p2.x)
+    print(p2.y)
+
+    # try to uncomment this to see which error you get
+    # p2 + 3
