@@ -3,8 +3,10 @@ This is one of the most advanced examples of SPy so far.
 
 It implements the basics of a generic array type
 """
+
 from operator import OpSpec, MetaArg
 from unsafe import gc_alloc, ptr
+
 
 @blue
 def ArrayData(DTYPE):
@@ -16,6 +18,7 @@ def ArrayData(DTYPE):
 
     return _ArrayData
 
+
 @blue
 def ndarray1(DTYPE):
     """
@@ -24,7 +27,7 @@ def ndarray1(DTYPE):
     be equivalent to this.
     """
 
-    @typelift
+    @struct
     class ndarray:
         __ll__: ptr[ArrayData(DTYPE)]
 
@@ -37,7 +40,7 @@ def ndarray1(DTYPE):
             while i < length:
                 data.items[i] = 0
                 i = i + 1
-            return ndarray.__lift__(data)
+            return ndarray.__make__(data)
 
         def append(self: ndarray, value: DTYPE) -> None:
             ll = self.__ll__
@@ -57,7 +60,6 @@ def ndarray1(DTYPE):
 
             ll.items[ll.length] = value
             ll.length = ll.length + 1
-
 
         def __getitem__(self: ndarray, i: i32) -> DTYPE:
             ll = self.__ll__
