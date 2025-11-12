@@ -27,7 +27,7 @@ class W_StructType(W_Type):
         self.size = size
 
         # dict_w contains all the methods and properties
-        dict_w = {}
+        dict_w: dict[str, W_Object] = {}
 
         # add an accessor for each field
         for w_struct_field in struct_fields_w:
