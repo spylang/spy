@@ -81,6 +81,7 @@ term_input = (
 
 @ltk.callback
 def handle_term_input(event):
+    """Ensure the the input field always starts with "$ spy {filename}"""
     inp = event.target
     if not inp.value.startswith(INPUT_TERMINAL_LEADER):
         inp.value = INPUT_TERMINAL_LEADER
@@ -88,6 +89,9 @@ def handle_term_input(event):
 
 @ltk.callback
 def handle_term_enter(event):
+    """Validate that the input field still starts with "$ spy (filename) and
+    run the SPy cli with the indicated arguments
+    """
     if event.key == "Enter":
         inp = event.target
         value = inp.value
@@ -97,7 +101,7 @@ def handle_term_enter(event):
             _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
             run_spy_file_with_args(argv.split())
         else:
-            print(f"Refused to run '{value}'")
+            print(f"{INPUT_TERMINAL_LEADER}{value} is not a valid command")
 
 
 term_input.on("input", handle_term_input)
@@ -110,6 +114,7 @@ example_tabs = ltk.Tabs(
 
 
 def run_spy_file_with_args(argv: list[str]):
+    """Given a list of space-delimited arguments, pass them to the spy cli"""
     __terminal__.clear()
     text = editor.text()
     with open(display_filename, "w") as f:
@@ -123,6 +128,7 @@ def run_spy_file_with_args(argv: list[str]):
 
 
 def run_click(event):
+    """Pass the text label of a button as args to the Spy cli"""
     element = ltk.find(event.target)
     t = element.text().lower()
     run_spy_file_with_args(t.split())
