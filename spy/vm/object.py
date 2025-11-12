@@ -462,9 +462,13 @@ class W_Type(W_Object):
         w_T.define(pyclass)
         return w_T
 
-    def define(self, pyclass: Type[W_Object]) -> None:
+    def define(
+        self,
+        pyclass: Type[W_Object],
+        extra_dict_w: Optional[dict[str, W_Object]] = None,
+    ) -> None:
         """
-        Turn a declared type into a defined type, using the given pyclass.
+        Turn a declared type into a defined type, using the given pyclass and body.
         """
         from spy.vm.member import Member, W_Member
 
@@ -492,6 +496,13 @@ class W_Type(W_Object):
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
 
+        # copy the content of extra_dict_w into our _dict_w
+        if extra_dict_w:
+            for name, w_value in extra_dict_w.items():
+                assert name not in self._dict_w, "need to think what to do"
+                self._dict_w[name] = w_value
+
+        # add __eq__ and __ne__ if needed
         self._storage_sanity_check(pyclass)
         if pyclass.__spy_storage_category__ == "value":
             # autogen __eq__ and __ne__ if possible

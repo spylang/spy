@@ -1,7 +1,5 @@
 # -*- encoding: utf-8 -*-
 
-import pytest
-
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.tests.support import CompilerTest, expect_errors, only_interp
@@ -198,7 +196,6 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == (0, 0)
 
-    @pytest.mark.skip("FIXME")
     def test_custom_eq(self):
         src = """
         @struct
