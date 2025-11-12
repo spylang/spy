@@ -15,7 +15,7 @@ from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_F
 from spy.vm.list import W_List
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
-from spy.vm.modules.types import TYPES, W_LiftedType
+from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg
@@ -306,8 +306,6 @@ class AbstractFrame:
     def metaclass_for_classdef(classdef: ast.ClassDef) -> type[W_Type]:
         if classdef.kind == "struct":
             return W_StructType
-        elif classdef.kind == "typelift":
-            return W_LiftedType
         else:
             assert False, "only @struct and @typedef are supported for now"
 

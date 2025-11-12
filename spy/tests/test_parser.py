@@ -1349,49 +1349,11 @@ class TestParser:
             ("this is not supported", "x = 42"),
         )
 
-    def test_typelift(self):
-        mod = self.parse("""
-        @typelift
-        class Foo:
-            __ll__: i32
-        """)
-        classdef = mod.get_classdef("Foo")
-        expected = """
-        ClassDef(
-            name='Foo',
-            kind='typelift',
-            docstring=None,
-            fields=[
-                VarDef(
-                    kind=None,
-                    name=StrConst(value='__ll__'),
-                    type=Name(id='i32'),
-                    value=None,
-                ),
-            ],
-            body=[],
-        )
-        """
-        self.assert_dump(classdef, expected)
-
-    def test_typelift_and_struct(self):
-        src = """
-        @typelift
-        @struct
-        class Foo:
-            pass
-        """
-        self.expect_errors(
-            src,
-            "cannot use both @struct and @typelift",
-            ("this is invalid", "typelift"),
-        )
-
     def test_classdef_methods(self):
         mod = self.parse("""
-        @typelift
+        @struct
         class Foo:
-            __ll__: i32
+            x: i32
 
             def foo() -> None:
                 pass
@@ -1400,12 +1362,12 @@ class TestParser:
         expected = """
         ClassDef(
             name='Foo',
-            kind='typelift',
+            kind='struct',
             docstring=None,
             fields=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='__ll__'),
+                    name=StrConst(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
