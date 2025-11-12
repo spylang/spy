@@ -1,0 +1,27 @@
+#! -*- mode: python -*-
+
+def show_pow_examples() -> None:
+    # Integer exponentiation
+    print(2 ** 3)
+    
+    # Mixed integer and float
+    print(2 ** 3.2) 
+    print(2.2 ** 3)
+    
+    # Float exponentiation
+    print(2.2 ** 3.2)
+    
+    # Square roots (using 0.5 exponent)
+    print(16.0 ** 0.5) 
+    print(2.0 ** 0.5)
+    
+    # Negative exponents
+    print(2.0 ** -2) 
+    
+    # Zero exponent
+    print(5.0 ** 0) 
+
+def main() -> None:
+    print("Power operator examples:")
+    print("---------------------")
+    show_pow_examples()

@@ -29,6 +29,11 @@ def w_dynamic_add(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
 
 
 @OP.builtin_func
+def w_dynamic_pow(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
+    return _dynamic_op(vm, OP.w_POW, w_a, w_b)
+
+
+@OP.builtin_func
 def w_dynamic_mul(vm: "SPyVM", w_a: W_Dynamic, w_b: W_Dynamic) -> W_Dynamic:
     return _dynamic_op(vm, OP.w_MUL, w_a, w_b)
 
