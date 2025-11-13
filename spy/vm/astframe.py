@@ -251,6 +251,7 @@ class AbstractFrame:
         # evaluate the functype
         params = []
         for arg in funcdef.args:
+            # evaluate param type
             is_auto = isinstance(arg.type, ast.Auto)
             if is_auto and funcdef.color == "red":
                 raise SPyError.simple(
@@ -260,14 +261,24 @@ class AbstractFrame:
                     arg.loc,
                 )
             elif is_auto and funcdef.color == "blue":
-                XXX
+                w_param_type = B.w_dynamic
             else:
                 w_param_type = self.eval_expr_type(arg.type)
 
             param = FuncParam(w_T=w_param_type, kind=arg.kind)
             params.append(param)
 
-        w_restype = self.eval_expr_type(funcdef.return_type)
+        # evaluate return type
+        is_auto = isinstance(funcdef.return_type, ast.Auto)
+        if is_auto and funcdef.color == "red":
+            raise SPyError.simple(
+                "W_TypeError", "missing return type", "", funcdef.return_type.loc
+            )
+        elif is_auto and funcdef.color == "blue":
+            w_restype = B.w_dynamic
+        else:
+            w_restype = self.eval_expr_type(funcdef.return_type)
+
         w_functype = W_FuncType.new(
             params, w_restype, color=funcdef.color, kind=funcdef.kind
         )

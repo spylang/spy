@@ -183,8 +183,8 @@ class Parser:
         py_returns = py_funcdef.returns
         if py_returns:
             return_type = self.from_py_expr(py_returns)
-        elif color == "blue":
-            # we need to synthesize a reasonable Loc for the return type. See
+        else:
+            # we need to synthesize a reasonable Loc for the (missing) return type. See
             # also test_FuncDef_prototype_loc.
             if len(args) == 0:
                 # no arguments: this is though because the python parser
@@ -199,15 +199,7 @@ class Parser:
                 # line where the last argument is
                 l = args[-1].loc
                 retloc = l.replace(col_end=-1)
-            return_type = spy.ast.Name(retloc, "dynamic")
-        else:
-            # create a loc which points to the 'def foo' part. This is a bit
-            # wrong, ideally we would like it to point to the END of the
-            # argument list, but it's not a very high priority by now
-            func_loc = loc.replace(
-                line_end=loc.line_start, col_end=len("def ") + len(name)
-            )
-            self.error("missing return type", "", func_loc)
+            return_type = spy.ast.Auto(retloc)
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
         self.for_loop_seq = 0  # reset counter for this function

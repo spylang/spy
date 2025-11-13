@@ -107,18 +107,6 @@ class TestParser:
         """
         self.assert_dump(mod, expected)
 
-    def test_FuncDef_errors_1(self):
-        src = """
-        def foo():
-            pass
-
-        """
-        self.expect_errors(
-            src,
-            "missing return type",
-            ("", "def foo"),
-        )
-
     def test_FuncDef_errors_3(self):
         src = """
         def foo(**kwargs) -> None:
@@ -1163,7 +1151,7 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
-                        return_type=Name(id='dynamic'),
+                        return_type=Auto(),
                         docstring=None,
                         body=[
                             FuncDef(
