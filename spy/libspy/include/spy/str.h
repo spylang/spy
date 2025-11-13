@@ -1,25 +1,21 @@
 #ifndef SPY_STR_H
 #define SPY_STR_H
 
-#include <stddef.h>
 #include "spy.h"
+#include <stddef.h>
 
 typedef struct {
     size_t length;
     const char utf8[];
 } spy_Str;
 
-spy_Str *
-WASM_EXPORT(spy_str_alloc)(size_t length);
+spy_Str *WASM_EXPORT(spy_str_alloc)(size_t length);
 
-spy_Str *
-WASM_EXPORT(spy_str_add)(spy_Str *a, spy_Str *b);
+spy_Str *WASM_EXPORT(spy_str_add)(spy_Str *a, spy_Str *b);
 
-spy_Str *
-WASM_EXPORT(spy_str_mul)(spy_Str *a, int32_t b);
+spy_Str *WASM_EXPORT(spy_str_mul)(spy_Str *a, int32_t b);
 
-bool
-WASM_EXPORT(spy_str_eq)(spy_Str *a, spy_Str *b);
+bool WASM_EXPORT(spy_str_eq)(spy_Str *a, spy_Str *b);
 
 static inline bool
 spy_str_ne(spy_Str *a, spy_Str *b) {
@@ -27,35 +23,26 @@ spy_str_ne(spy_Str *a, spy_Str *b) {
 }
 
 // XXX: should we introduce a separate type Char?
-spy_Str *
-WASM_EXPORT(spy_str_getitem)(spy_Str *s, int32_t i);
+spy_Str *WASM_EXPORT(spy_str_getitem)(spy_Str *s, int32_t i);
 
-int32_t
-WASM_EXPORT(spy_str_len)(spy_Str *s);
+int32_t WASM_EXPORT(spy_str_len)(spy_Str *s);
 
 #define spy_operator$str_add spy_str_add
 #define spy_operator$str_mul spy_str_mul
-#define spy_operator$str_eq  spy_str_eq
-#define spy_operator$str_ne  spy_str_ne
+#define spy_operator$str_eq spy_str_eq
+#define spy_operator$str_ne spy_str_ne
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
 
-
 // __str__ methods of common builtin types
-spy_Str *
-spy_builtins$i32$__str__(int32_t x);
+spy_Str *spy_builtins$i32$__str__(int32_t x);
 
-spy_Str *
-spy_builtins$i8$__str__(int8_t x);
+spy_Str *spy_builtins$i8$__str__(int8_t x);
 
-spy_Str *
-spy_builtins$u8$__str__(uint8_t x);
+spy_Str *spy_builtins$u8$__str__(uint8_t x);
 
-spy_Str *
-spy_builtins$f64$__str__(double x);
+spy_Str *spy_builtins$f64$__str__(double x);
 
-spy_Str *
-spy_builtins$bool$__str__(bool x);
-
+spy_Str *spy_builtins$bool$__str__(bool x);
 
 #endif /* SPY_STR_H */

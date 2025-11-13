@@ -2,7 +2,7 @@
 #define SPY_POSIX_H
 
 #ifndef SPY_TARGET_WASI
-#include <sys/ioctl.h>
+#  include <sys/ioctl.h>
 #endif
 #include <unistd.h>
 

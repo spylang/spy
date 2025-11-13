@@ -4,7 +4,7 @@
 #include <time.h>
 
 #ifdef SPY_TARGET_WASI
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 
 static inline double

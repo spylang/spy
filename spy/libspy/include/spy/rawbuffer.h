@@ -1,9 +1,9 @@
 #ifndef SPY_RAW_BUFFER_H
 #define SPY_RAW_BUFFER_H
 
-#include <stddef.h>
-#include <stdalign.h>
 #include "spy.h"
+#include <stdalign.h>
+#include <stddef.h>
 
 // RawBuffer is implemented entirely as static inline functions, since they
 // are all super-simple and we want the optimizer to be able to see through
@@ -45,6 +45,5 @@ spy_rawbuffer$rb_get_f64(spy_RawBuffer *rb, int32_t offset) {
     double *p = (double *)(rb->buf + offset);
     return *p;
 }
-
 
 #endif /* SPY_RAW_BUFFER_H */

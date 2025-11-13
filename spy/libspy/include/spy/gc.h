@@ -8,7 +8,8 @@ typedef struct {
 } spy_GcRef;
 
 // for now the GC is a fake, we just malloc and leak
-static inline spy_GcRef spy_GcAlloc(size_t size) {
+static inline spy_GcRef
+spy_GcAlloc(size_t size) {
     return (spy_GcRef){malloc(size)};
 }
 

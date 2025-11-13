@@ -1,5 +1,5 @@
-#include <emscripten.h>
 #include "spy.h"
+#include <emscripten.h>
 
 EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable");
 
