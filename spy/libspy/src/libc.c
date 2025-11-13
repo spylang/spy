@@ -1,6 +1,7 @@
 #include "spy.h"
 
-int memcmp(const void *s1, const void *s2, size_t n) {
+int
+memcmp(const void *s1, const void *s2, size_t n) {
     // it seems that __builtin_memcmp simply calls libc's memcmp (which we
     // don't have), so we need to implement it by ourselves. Poor's man
     // implementation here :(

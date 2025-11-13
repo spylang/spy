@@ -1,20 +1,23 @@
 #include "spy.h"
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #if !defined(SPY_TARGET_WASI)
 
-void spy_debug_log(const char *s) {
+void
+spy_debug_log(const char *s) {
     printf("%s\n", s);
 }
 
-void spy_debug_log_i32(const char *s, int32_t n) {
+void
+spy_debug_log_i32(const char *s, int32_t n) {
     printf("%s %d\n", s, n);
 }
 
 /* Helper function to read a specific line from a file */
-static char* read_line_from_file(const char *filename, int line_number) {
+static char *
+read_line_from_file(const char *filename, int line_number) {
     FILE *file;
     char *line = NULL;
     size_t len = 0;
@@ -33,8 +36,8 @@ static char* read_line_from_file(const char *filename, int line_number) {
     while ((read = getline(&line, &len, file)) != -1) {
         if (current_line == line_number) {
             /* Remove trailing newline if present */
-            if (read > 0 && line[read-1] == '\n') {
-                line[read-1] = '\0';
+            if (read > 0 && line[read - 1] == '\n') {
+                line[read - 1] = '\0';
             }
             fclose(file);
             return line;
@@ -48,8 +51,8 @@ static char* read_line_from_file(const char *filename, int line_number) {
     return NULL;
 }
 
-void spy_panic(const char *etype, const char *message,
-               const char *fname, int32_t lineno) {
+void
+spy_panic(const char *etype, const char *message, const char *fname, int32_t lineno) {
     /* write the error message to stderr, formatted line this:
           panic: IndexError: hello
              --> /tmp/prova.spy:2:2
