@@ -248,21 +248,39 @@ class AbstractFrame:
         raise Continue()
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # if we are defining a function inside a class, it's a method
+        is_method = self.symtable.kind == "class"
+
         # evaluate the functype
         params = []
-        for arg in funcdef.args:
-            # evaluate param type
+        for i, arg in enumerate(funcdef.args):
+            # evaluate param type. If it's "auto" there are three cases:
+            #   1. it's a param of a @blue function
+            #   2. it's the "self" of a method
+            #   3. it's an error
             is_auto = isinstance(arg.type, ast.Auto)
-            if is_auto and funcdef.color == "red":
+
+            if is_auto and funcdef.color == "blue":
+                # case (1)
+                w_param_type = B.w_dynamic
+
+            elif is_auto and is_method and i == 0:
+                # case (2)
+                # first arg of a method, it's the "self": we assign it the type of the
+                # class which we are currently evaluating
+                w_param_type = self.vm.lookup_global(self.ns)
+
+            elif is_auto and funcdef.color == "red":
+                # case (3)
                 raise SPyError.simple(
                     "W_TypeError",
                     f"missing type for argument '{arg.name}'",
                     "type is missing here",
                     arg.loc,
                 )
-            elif is_auto and funcdef.color == "blue":
-                w_param_type = B.w_dynamic
+
             else:
+                # normal case, no auto
                 w_param_type = self.eval_expr_type(arg.type)
 
             param = FuncParam(w_T=w_param_type, kind=arg.kind)
