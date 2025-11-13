@@ -252,12 +252,7 @@ class AbstractFrame:
         params = []
         for arg in funcdef.args:
             w_param_type = self.eval_expr_type(arg.type)
-            param = FuncParam(w_T=w_param_type, kind="simple")
-            params.append(param)
-
-        if funcdef.vararg:
-            w_param_type = self.eval_expr_type(funcdef.vararg.type)
-            param = FuncParam(w_T=w_param_type, kind="var_positional")
+            param = FuncParam(w_T=w_param_type, kind=arg.kind)
             params.append(param)
 
         w_restype = self.eval_expr_type(funcdef.return_type)
@@ -1021,16 +1016,14 @@ class ASTFrame(AbstractFrame):
         color = self.w_func.color
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
+            arg = funcdef.args[i]
             if param.kind == "simple":
-                arg = funcdef.args[i]
                 self.declare_local(arg.name, color, param.w_T, arg.loc)
 
             elif param.kind == "var_positional":
-                assert funcdef.vararg is not None
-                assert i == len(funcdef.args)
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
-                arg = funcdef.vararg
+                assert i == len(funcdef.args) - 1
                 self.declare_local(arg.name, color, B.w_tuple, arg.loc)
 
             else:
@@ -1041,18 +1034,16 @@ class ASTFrame(AbstractFrame):
         Store the arguments in args_w in the appropriate local var
         """
         w_ft = self.w_func.w_functype
-        args = self.funcdef.args
 
         for i, param in enumerate(w_ft.params):
             if param.kind == "simple":
-                arg = args[i]
+                arg = self.funcdef.args[i]
                 w_arg = args_w[i]
                 self.store_local(arg.name, w_arg)
 
             elif param.kind == "var_positional":
-                assert self.funcdef.vararg is not None
-                assert i == len(self.funcdef.args)
-                arg = self.funcdef.vararg
+                assert i == len(self.funcdef.args) - 1
+                arg = self.funcdef.args[i]
                 items_w = args_w[i:]
                 w_varargs = W_Tuple(list(items_w))
                 self.store_local(arg.name, w_varargs)

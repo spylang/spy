@@ -231,7 +231,7 @@ class Parser:
         args = [self.from_py_arg(color, py_arg, "simple") for py_arg in py_args.args]
         if py_args.vararg:
             args.append(
-                self.from_py_arg(color, py_args.vararg, "vararg"),
+                self.from_py_arg(color, py_args.vararg, "var_positional"),
             )
         if py_args.kwarg:
             self.error(

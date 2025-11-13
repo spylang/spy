@@ -1400,7 +1400,7 @@ class TestParser:
                 FuncArg(
                     name='args',
                     type=Name(id='str'),
-                    kind='vararg',
+                    kind='var_positional',
                 ),
             ],
             return_type=Constant(value=None),
