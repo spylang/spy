@@ -62,7 +62,7 @@ class Editor(ltk.Div):
         )
 
 
-EXAMPLE_FILES = ["hello.spy", "bluefunc.spy", "point.spy", "array.spy"]
+EXAMPLE_FILES = ["hello.spy", "bluefunc.spy", "point.spy", "myarray.spy"]
 
 editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
 
