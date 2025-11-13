@@ -1,5 +1,6 @@
 import sys
 import time
+import tomllib
 from pathlib import Path
 
 import ltk
@@ -62,7 +63,14 @@ class Editor(ltk.Div):
         )
 
 
-EXAMPLE_FILES = ["hello.spy", "bluefunc.spy", "point.spy", "myarray.spy"]
+# Auto-discover example files from pyscript.toml
+with open("pyscript.toml", "rb") as f:
+    config = tomllib.load(f)
+EXAMPLE_FILES = [
+    f"examples/{source}"
+    for source, dest in config.get("files", {}).items()
+    if dest == "examples/"
+]
 
 editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
 
@@ -108,9 +116,9 @@ def handle_term_enter(event):
 term_input.on("input", handle_term_input)
 term_input.on("keydown", handle_term_enter)
 
-# Create tabs for example files
+# Create tabs for example files (display only the filename, not the path)
 example_tabs = ltk.Tabs(
-    *[ltk.VBox().attr("name", filename) for filename in EXAMPLE_FILES]
+    *[ltk.VBox().attr("name", Path(filepath).name) for filepath in EXAMPLE_FILES]
 )
 
 
