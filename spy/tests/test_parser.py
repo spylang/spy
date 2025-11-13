@@ -54,7 +54,6 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
-                        vararg=None,
                         return_type=Constant(value=None),
                         docstring=None,
                         body=[
@@ -87,13 +86,14 @@ class TestParser:
                             FuncArg(
                                 name='a',
                                 type=Name(id='i32'),
+                                kind='simple',
                             ),
                             FuncArg(
                                 name='b',
                                 type=Name(id='float'),
+                                kind='simple',
                             ),
                         ],
-                        vararg=None,
                         return_type=Constant(value=None),
                         docstring=None,
                         body=[
@@ -106,18 +106,6 @@ class TestParser:
         )
         """
         self.assert_dump(mod, expected)
-
-    def test_FuncDef_errors_1(self):
-        src = """
-        def foo():
-            pass
-
-        """
-        self.expect_errors(
-            src,
-            "missing return type",
-            ("", "def foo"),
-        )
 
     def test_FuncDef_errors_3(self):
         src = """
@@ -163,17 +151,6 @@ class TestParser:
             ("this is not supported", "b: i32"),
         )
 
-    def test_FuncDef_errors_7(self):
-        src = """
-        def foo(a, b) -> None:
-            pass
-        """
-        self.expect_errors(
-            src,
-            "missing type for argument 'a'",
-            ("type is missing here", "a"),
-        )
-
     def test_FuncDef_decorator(self):
         mod = self.parse("""
         @mydecorator
@@ -187,7 +164,6 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Constant(value=None),
             docstring=None,
             body=[
@@ -215,7 +191,6 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Constant(value=None),
             docstring=None,
             body=[
@@ -253,7 +228,6 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -281,7 +255,6 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -307,7 +280,6 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Name(id='i32'),
             docstring='hello',
             body=[
@@ -333,7 +305,6 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -359,7 +330,6 @@ class TestParser:
             kind='generic',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -385,7 +355,6 @@ class TestParser:
             kind='metafunc',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Name(id='i32'),
             docstring=None,
             body=[
@@ -720,7 +689,6 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            vararg=None,
             return_type=Constant(value=None),
             docstring=None,
             body=[
@@ -1183,8 +1151,7 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
-                        vararg=None,
-                        return_type=Name(id='dynamic'),
+                        return_type=Auto(),
                         docstring=None,
                         body=[
                             FuncDef(
@@ -1192,7 +1159,6 @@ class TestParser:
                                 kind='plain',
                                 name='bar',
                                 args=[],
-                                vararg=None,
                                 return_type=Constant(value=None),
                                 docstring=None,
                                 body=[
@@ -1378,7 +1344,6 @@ class TestParser:
                     kind='plain',
                     name='foo',
                     args=[],
-                    vararg=None,
                     return_type=Constant(value=None),
                     docstring=None,
                     body=[
@@ -1407,12 +1372,14 @@ class TestParser:
                 FuncArg(
                     name='a',
                     type=Name(id='i32'),
+                    kind='simple',
+                ),
+                FuncArg(
+                    name='args',
+                    type=Name(id='str'),
+                    kind='var_positional',
                 ),
             ],
-            vararg=FuncArg(
-                name='args',
-                type=Name(id='str'),
-            ),
             return_type=Constant(value=None),
             docstring=None,
             body=[

@@ -4,6 +4,7 @@ from spy import ast
 from spy.analyze.symtable import (
     Color,
     ImportRef,
+    ScopeKind,
     Symbol,
     SymTable,
     VarKind,
@@ -59,7 +60,7 @@ class ScopeAnalyzer:
         self.vm = vm
         self.mod = mod
         self.builtins_scope = SymTable.from_builtins(vm)
-        self.mod_scope = SymTable(modname, "blue")
+        self.mod_scope = SymTable(modname, "blue", "module")
         self.stack = []
         self.inner_scopes = {}
         self.loop_depth = 0
@@ -98,13 +99,13 @@ class ScopeAnalyzer:
 
     # =====
 
-    def new_SymTable(self, name: str, color: Color) -> SymTable:
+    def new_SymTable(self, name: str, color: Color, kind: ScopeKind) -> SymTable:
         """
         Create a new SymTable whose name is derived from its parent
         """
         parent = self.stack[-1].name
         fullname = f"{parent}::{name}"
-        return SymTable(fullname, color)
+        return SymTable(fullname, color, kind)
 
     def push_scope(self, scope: SymTable) -> None:
         self.stack.append(scope)
@@ -298,7 +299,7 @@ class ScopeAnalyzer:
             argkind = "const"
             argkind_origin = "blue-param"
 
-        inner_scope = self.new_SymTable(funcdef.name, scope_color)
+        inner_scope = self.new_SymTable(funcdef.name, scope_color, "function")
         self.push_scope(inner_scope)
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
@@ -308,14 +309,6 @@ class ScopeAnalyzer:
                 argkind_origin,
                 arg.loc,
                 arg.type.loc,
-            )
-        if funcdef.vararg:
-            self.define_name(
-                funcdef.vararg.name,
-                argkind,
-                argkind_origin,
-                funcdef.vararg.loc,
-                funcdef.vararg.type.loc,
             )
         self.define_name(
             "@return",
@@ -337,7 +330,7 @@ class ScopeAnalyzer:
             classdef.loc,
             classdef.loc,
         )
-        inner_scope = self.new_SymTable(classdef.name, "blue")
+        inner_scope = self.new_SymTable(classdef.name, "blue", "class")
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
         for vardef in classdef.fields:
@@ -478,8 +471,6 @@ class ScopeAnalyzer:
         self.flatten(funcdef.return_type)
         for arg in funcdef.args:
             self.flatten(arg)
-        if funcdef.vararg:
-            self.flatten(funcdef.vararg)
         #
         # the statements of the function are evaluated in the inner scope
         inner_scope = self.by_funcdef(funcdef)

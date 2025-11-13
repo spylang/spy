@@ -111,14 +111,12 @@ class SPyBackend:
         funcdef = w_func.funcdef
         l = []
         for i, param in enumerate(w_func.w_functype.params):
+            n = funcdef.args[i].name
             t = self.fmt_w_obj(param.w_T)
             if param.kind == "simple":
-                n = funcdef.args[i].name
                 l.append(f"{n}: {t}")
             elif param.kind == "var_positional":
-                assert funcdef.vararg is not None
-                assert i == len(funcdef.args)
-                n = funcdef.vararg.name
+                assert i == len(funcdef.args) - 1
                 l.append(f"*{n}: {t}")
             else:
                 assert False

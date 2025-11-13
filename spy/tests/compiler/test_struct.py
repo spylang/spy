@@ -151,7 +151,7 @@ class TestStructOnStack(CompilerTest):
             x: f64
             y: f64
 
-            def hypot(self: Point) -> f64:
+            def hypot(self) -> f64:
                 return sqrt(self.x * self.x + self.y * self.y)
 
         def foo(x: f64, y: f64) -> f64:
@@ -201,7 +201,7 @@ class TestStructOnStack(CompilerTest):
             x: i32
             y: i32
 
-            def __eq__(self: Point, other: Point) -> bool:
+            def __eq__(self, other: Point) -> bool:
                 return self.x + self.y == other.x + other.y
 
         def foo(x0: i32, y0: i32, x1: i32, y1: i32) -> bool:
@@ -265,10 +265,10 @@ class TestStructOnStack(CompilerTest):
                 __ll__: i32
 
                 if DOUBLE:
-                    def get(self: Foo) -> i32:
+                    def get(self) -> i32:
                         return self.__ll__ * 2
                 else:
-                    def get(self: Foo) -> i32:
+                    def get(self) -> i32:
                         return self.__ll__
 
             return Foo
@@ -342,7 +342,7 @@ class TestStructOnStack(CompilerTest):
             y: i32
 
             @property
-            def xy(self: Point) -> i32:
+            def xy(self) -> i32:
                 return self.x + self.y
 
         def foo(x: i32, y: i32) -> i32:

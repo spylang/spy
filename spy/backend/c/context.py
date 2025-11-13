@@ -113,13 +113,12 @@ class Context:
                 c_param_name = funcdef.args[i].name
                 c_params.append(C_FuncParam(c_param_name, c_type))
             elif param.kind == "var_positional":
-                assert funcdef.vararg is not None
-                assert i == len(funcdef.args)
+                assert i == len(funcdef.args) - 1
                 raise SPyError.simple(
                     "W_WIP",
                     "*args not yet supported by the C backend",
                     "*args declared here",
-                    funcdef.vararg.loc,
+                    funcdef.args[i].loc,
                 )
             else:
                 assert False

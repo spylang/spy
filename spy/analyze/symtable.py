@@ -45,6 +45,10 @@ VarKindOrigin = Literal[
     "blue-param",    # parameters of blue functions are "const"
 ]  # fmt: skip
 
+# each ScopeKind corresponds to a different Frame for evaluation: ModFrame, ClassFrame,
+# ASTFrame
+ScopeKind = Literal["module", "class", "function"]
+
 
 def maybe_blue(*colors: Color) -> Color:
     """
@@ -144,18 +148,20 @@ class SymTable:
 
     name: str  # just for debugging
     color: Color
+    kind: ScopeKind
     _symbols: dict[str, Symbol]
 
-    def __init__(self, name: str, color: Color) -> None:
+    def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
         self.name = name
         self.color = color
+        self.kind = kind
         self._symbols = {}
 
     @classmethod
     def from_builtins(cls, vm: "SPyVM") -> "SymTable":
         from spy.vm.function import W_BuiltinFunc
 
-        scope = cls("builtins", "blue")
+        scope = cls("builtins", "blue", "module")
         generic_loc = Loc(
             filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
         )
@@ -179,12 +185,12 @@ class SymTable:
         return scope
 
     def __repr__(self) -> str:
-        return f"<SymTable '{self.name}'>"
+        return f"<SymTable '{self.name}' ({self.color}, {self.kind})>"
 
     def pp(self) -> None:
         color = ColorFormatter(use_colors=True)
         name = color.set("green", self.name)
-        print(f"<symbol table '{name}'>")
+        print(repr(self))
         # sort symbols by:
         #   1. level
         #   2. color (const, then var)

@@ -40,13 +40,13 @@ def main() -> None:
 ##     @staticmethod
 ##     @blue.metafunc
 ##     def __getattr__(cls, attr):
-##         def opimpl(self: JsRef) -> JsRef:
+##         def opimpl(self) -> JsRef:
 ##             return js_getattr(self, attr)
 ##         return opimpl
 ##
 ##     # equivalent to above, but with syntax sugare
 ##     @staticmethod
-##     def __getattr__[cls, attr](self: JsRef) -> JsRef:
+##     def __getattr__[cls, attr](self) -> JsRef:
 ##         #            ^    ^     ^
 ##         #           blue blue  red
 ##         return js_getattr(self, attr)

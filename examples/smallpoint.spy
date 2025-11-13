@@ -47,14 +47,14 @@ class SmallPoint:
         return SmallPoint.__make__(val)
 
     @property
-    def x(self: SmallPoint) -> i32:
+    def x(self) -> i32:
         return (self.__ll__ >> 16) & 0xFFFF
 
     @property
-    def y(self: SmallPoint) -> i32:
+    def y(self) -> i32:
         return self.__ll__ & 0xFFFF
 
-    def __add__(self: SmallPoint, p: SmallPoint) -> SmallPoint:
+    def __add__(self, p: SmallPoint) -> SmallPoint:
         x0 = self.x + p.x
         y0 = self.y + p.y
         return SmallPoint(x0, y0)

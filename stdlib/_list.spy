@@ -21,13 +21,13 @@ def List(T):
         lst: ptr[ListData]
         i: i32
 
-        def __next__(self: list_iterator) -> list_iterator:
+        def __next__(self) -> list_iterator:
             return list_iterator(self.lst, self.i + 1)
 
-        def __item__(self: list_iterator) -> T:
+        def __item__(self) -> T:
             return self.lst.items[self.i]
 
-        def __continue_iteration__(self: list_iterator) -> bool:
+        def __continue_iteration__(self) -> bool:
             return self.i < self.lst.length
 
     @struct
@@ -41,7 +41,7 @@ def List(T):
             data.items = gc_alloc(T)(4)
             return _ListImpl.__make__(data)
 
-        def append(self: _ListImpl, item: T) -> None:
+        def append(self, item: T) -> None:
             ll = self.__ll__
             if ll.length >= ll.capacity:
                 old_capacity = ll.capacity
@@ -59,10 +59,10 @@ def List(T):
             ll.items[ll.length] = item
             ll.length = ll.length + 1
 
-        def __len__(self: _ListImpl) -> i32:
+        def __len__(self) -> i32:
             return self.__ll__.length
 
-        def __getitem__(self: _ListImpl, i: i32) -> T:
+        def __getitem__(self, i: i32) -> T:
             ll = self.__ll__
             if i < 0:
                 i = i + ll.length
@@ -72,7 +72,7 @@ def List(T):
                 raise IndexError
             return ll.items[i]
 
-        def __setitem__(self: _ListImpl, i: i32, value: T) -> None:
+        def __setitem__(self, i: i32, value: T) -> None:
             ll = self.__ll__
             if i < 0:
                 i = i + ll.length
@@ -82,14 +82,14 @@ def List(T):
                 raise IndexError
             ll.items[i] = value
 
-        def pop(self: _ListImpl) -> T:
+        def pop(self) -> T:
             ll = self.__ll__
             if ll.length == 0:
                 raise IndexError
             ll.length = ll.length - 1
             return ll.items[ll.length]
 
-        def insert(self: _ListImpl, i: i32, item: T) -> None:
+        def insert(self, i: i32, item: T) -> None:
             ll = self.__ll__
             if i > ll.length:
                 i = ll.length
@@ -117,18 +117,18 @@ def List(T):
             ll.items[i] = item
             ll.length = ll.length + 1
 
-        def clear(self: _ListImpl) -> None:
+        def clear(self) -> None:
             ll = self.__ll__
             ll.length = 0
 
-        def extend(self: _ListImpl, other: _ListImpl) -> None:
+        def extend(self, other: _ListImpl) -> None:
             other_ll = other.__ll__
             i = 0
             while i < other_ll.length:
                 self.append(other_ll.items[i])
                 i = i + 1
 
-        def copy(self: _ListImpl) -> _ListImpl:
+        def copy(self) -> _ListImpl:
             ll = self.__ll__
             new_data = gc_alloc(ListData)(1)
             new_data.length = ll.length
@@ -142,12 +142,12 @@ def List(T):
 
             return _ListImpl.__make__(new_data)
 
-        def __add__(self: _ListImpl, other: _ListImpl) -> _ListImpl:
+        def __add__(self, other: _ListImpl) -> _ListImpl:
             result = self.copy()
             result.extend(other)
             return result
 
-        def __mul__(self: _ListImpl, n: i32) -> _ListImpl:
+        def __mul__(self, n: i32) -> _ListImpl:
             ll = self.__ll__
             new_data = gc_alloc(ListData)(1)
             new_length = ll.length * n
@@ -171,7 +171,7 @@ def List(T):
 
             return _ListImpl.__make__(new_data)
 
-        def index(self: _ListImpl, value: T) -> i32:
+        def index(self, value: T) -> i32:
             ll = self.__ll__
             i = 0
             while i < ll.length:
@@ -180,7 +180,7 @@ def List(T):
                 i = i + 1
             raise ValueError
 
-        def count(self: _ListImpl, value: T) -> i32:
+        def count(self, value: T) -> i32:
             ll = self.__ll__
             result = 0
             i = 0
@@ -190,7 +190,7 @@ def List(T):
                 i = i + 1
             return result
 
-        def remove(self: _ListImpl, value: T) -> None:
+        def remove(self, value: T) -> None:
             ll = self.__ll__
             idx = -1
             i = 0
@@ -233,7 +233,7 @@ def List(T):
             else:
                 return OpSpec.NULL
 
-        def __fastiter__(self: _ListImpl) -> list_iterator:
+        def __fastiter__(self) -> list_iterator:
             return list_iterator(self.__ll__, 0)
 
     return _ListImpl

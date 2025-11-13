@@ -32,6 +32,7 @@ class ModFrame(AbstractFrame):
         symtable: SymTable,
         mod: ast.Module,
     ) -> None:
+        assert symtable.kind == "module"
         super().__init__(vm, ns, mod.loc, symtable, closure=vm.builtins_closure)
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)

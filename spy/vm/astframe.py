@@ -248,19 +248,55 @@ class AbstractFrame:
         raise Continue()
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # if we are defining a function inside a class, it's a method
+        is_method = self.symtable.kind == "class"
+
         # evaluate the functype
         params = []
-        for arg in funcdef.args:
-            w_param_type = self.eval_expr_type(arg.type)
-            param = FuncParam(w_T=w_param_type, kind="simple")
+        for i, arg in enumerate(funcdef.args):
+            # evaluate param type. If it's "auto" there are three cases:
+            #   1. it's a param of a @blue function
+            #   2. it's the "self" of a method
+            #   3. it's an error
+            is_auto = isinstance(arg.type, ast.Auto)
+
+            if is_auto and funcdef.color == "blue":
+                # case (1)
+                w_param_type = B.w_dynamic
+
+            elif is_auto and is_method and i == 0:
+                # case (2)
+                # first arg of a method, it's the "self": we assign it the type of the
+                # class which we are currently evaluating
+                w_param_type = self.vm.lookup_global(self.ns)
+
+            elif is_auto and funcdef.color == "red":
+                # case (3)
+                raise SPyError.simple(
+                    "W_TypeError",
+                    f"missing type for argument '{arg.name}'",
+                    "type is missing here",
+                    arg.loc,
+                )
+
+            else:
+                # normal case, no auto
+                w_param_type = self.eval_expr_type(arg.type)
+
+            param = FuncParam(w_T=w_param_type, kind=arg.kind)
             params.append(param)
 
-        if funcdef.vararg:
-            w_param_type = self.eval_expr_type(funcdef.vararg.type)
-            param = FuncParam(w_T=w_param_type, kind="var_positional")
-            params.append(param)
+        # evaluate return type
+        is_auto = isinstance(funcdef.return_type, ast.Auto)
+        if is_auto and funcdef.color == "red":
+            raise SPyError.simple(
+                "W_TypeError", "missing return type", "", funcdef.return_type.loc
+            )
+        elif is_auto and funcdef.color == "blue":
+            w_restype = B.w_dynamic
+        else:
+            w_restype = self.eval_expr_type(funcdef.return_type)
 
-        w_restype = self.eval_expr_type(funcdef.return_type)
         w_functype = W_FuncType.new(
             params, w_restype, color=funcdef.color, kind=funcdef.kind
         )
@@ -689,6 +725,14 @@ class AbstractFrame:
 
     # ==== expressions ====
 
+    def eval_expr_Auto(self, auto: ast.Auto) -> W_MetaArg:
+        raise SPyError.simple(
+            "W_TypeError",
+            "Interal SPy error: ast.Auto expressions should be handled case-by-case",
+            "this is `auto`",
+            auto.loc,
+        )
+
     def eval_expr_Constant(self, const: ast.Constant) -> W_MetaArg:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
@@ -911,6 +955,7 @@ class ASTFrame(AbstractFrame):
     def __init__(
         self, vm: "SPyVM", w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
     ) -> None:
+        assert w_func.funcdef.symtable.kind == "function"
         # if w_func was redshifted, automatically use the new version
         if w_func.w_redshifted_into:
             w_func = w_func.w_redshifted_into
@@ -1021,16 +1066,14 @@ class ASTFrame(AbstractFrame):
         color = self.w_func.color
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
+            arg = funcdef.args[i]
             if param.kind == "simple":
-                arg = funcdef.args[i]
                 self.declare_local(arg.name, color, param.w_T, arg.loc)
 
             elif param.kind == "var_positional":
-                assert funcdef.vararg is not None
-                assert i == len(funcdef.args)
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
-                arg = funcdef.vararg
+                assert i == len(funcdef.args) - 1
                 self.declare_local(arg.name, color, B.w_tuple, arg.loc)
 
             else:
@@ -1041,18 +1084,16 @@ class ASTFrame(AbstractFrame):
         Store the arguments in args_w in the appropriate local var
         """
         w_ft = self.w_func.w_functype
-        args = self.funcdef.args
 
         for i, param in enumerate(w_ft.params):
             if param.kind == "simple":
-                arg = args[i]
+                arg = self.funcdef.args[i]
                 w_arg = args_w[i]
                 self.store_local(arg.name, w_arg)
 
             elif param.kind == "var_positional":
-                assert self.funcdef.vararg is not None
-                assert i == len(self.funcdef.args)
-                arg = self.funcdef.vararg
+                assert i == len(self.funcdef.args) - 1
+                arg = self.funcdef.args[i]
                 items_w = args_w[i:]
                 w_varargs = W_Tuple(list(items_w))
                 self.store_local(arg.name, w_varargs)

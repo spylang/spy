@@ -11,7 +11,7 @@ from typing import (
 )
 
 from spy import ast
-from spy.ast import Color, FuncKind
+from spy.ast import Color, FuncKind, FuncParamKind
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -41,9 +41,6 @@ class LocalVar:
 
 CLOSURE = tuple[dict[str, LocalVar], ...]
 # ========= /Closures =========
-
-
-FuncParamKind = Literal["simple", "var_positional"]
 
 
 @dataclass(frozen=True, eq=True)
