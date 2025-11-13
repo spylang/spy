@@ -42,7 +42,7 @@ def ndarray1(DTYPE):
                 i = i + 1
             return ndarray.__make__(data)
 
-        def append(self: ndarray, value: DTYPE) -> None:
+        def append(self, value: DTYPE) -> None:
             ll = self.__ll__
             if ll.length >= ll.capacity:
                 # resize needed - double the capacity
@@ -61,13 +61,13 @@ def ndarray1(DTYPE):
             ll.items[ll.length] = value
             ll.length = ll.length + 1
 
-        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+        def __getitem__(self, i: i32) -> DTYPE:
             ll = self.__ll__
             if i >= ll.length:
                 raise IndexError
             return ll.items[i]
 
-        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
+        def __setitem__(self, i: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.length:
                 raise IndexError

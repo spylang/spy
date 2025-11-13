@@ -20,20 +20,20 @@ def array1d(DTYPE):
             data.items = gc_alloc(DTYPE)(l)
             return ndarray.__make__(data)
 
-        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+        def __getitem__(self, i: i32) -> DTYPE:
             ll = self.__ll__
             if i >= ll.l:
                 raise IndexError
             return ll.items[i]
 
-        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
+        def __setitem__(self, i: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.l:
                 raise IndexError
             ll.items[i] = v
 
         @property
-        def l(self: ndarray) -> i32:
+        def l(self) -> i32:
             return self.__ll__.l
 
     return ndarray
@@ -58,7 +58,7 @@ def array2d(DTYPE):
             data.items = gc_alloc(DTYPE)(h * w)
             return ndarray.__make__(data)
 
-        def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
+        def __getitem__(self, i: i32, j: i32) -> DTYPE:
             ll = self.__ll__
             if i >= ll.h:
                 raise IndexError
@@ -67,7 +67,7 @@ def array2d(DTYPE):
             idx = (i * ll.w) + j
             return ll.items[idx]
 
-        def __setitem__(self: ndarray, i: i32, j: i32, v: DTYPE) -> None:
+        def __setitem__(self, i: i32, j: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.h:
                 raise IndexError
@@ -77,14 +77,14 @@ def array2d(DTYPE):
             ll.items[idx] = v
 
         @property
-        def h(self: ndarray) -> i32:
+        def h(self) -> i32:
             return self.__ll__.h
 
         @property
-        def w(self: ndarray) -> i32:
+        def w(self) -> i32:
             return self.__ll__.w
 
-        def print_flatten(self: ndarray) -> None:
+        def print_flatten(self) -> None:
             ll = self.__ll__
             i = 0
             while i < ll.h * ll.w:
