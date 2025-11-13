@@ -937,6 +937,7 @@ class ASTFrame(AbstractFrame):
     def __init__(
         self, vm: "SPyVM", w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
     ) -> None:
+        assert w_func.funcdef.symtable.kind == "function"
         # if w_func was redshifted, automatically use the new version
         if w_func.w_redshifted_into:
             w_func = w_func.w_redshifted_into
