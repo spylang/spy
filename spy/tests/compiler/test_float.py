@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 

@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 import struct
 
 from spy.tests.support import CompilerTest

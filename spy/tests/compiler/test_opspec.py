@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 from spy.vm.b import B
 from spy.vm.opimpl import W_OpImpl
