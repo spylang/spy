@@ -17,6 +17,7 @@ hardcode _array1, _array2, _array3, etc.
 from operator import OpSpec
 from unsafe import gc_alloc, ptr
 
+
 @blue.generic
 def array(DTYPE, NDIM):
     # XXX this is ugly: we hardcode arrays impl for small ndims. We should
@@ -36,7 +37,6 @@ def array(DTYPE, NDIM):
 
 @blue.generic
 def _array1(DTYPE):
-
     @struct
     class ArrayData:
         l: i32
@@ -59,19 +59,19 @@ def _array1(DTYPE):
             data.l = l
             return ndarray.__make__(data)
 
-        def __getitem__(self: ndarray, i: i32) -> DTYPE:
+        def __getitem__(self, i: i32) -> DTYPE:
             ll = self.__ll__
             if i >= ll.l:
                 raise IndexError
             return ll.items[i]
 
-        def __setitem__(self: ndarray, i: i32, v: DTYPE) -> None:
+        def __setitem__(self, i: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.l:
                 raise IndexError
             ll.items[i] = v
 
-        def __len__(self: ndarray) -> i32:
+        def __len__(self) -> i32:
             return self.__ll__.l
 
     return ndarray
@@ -79,7 +79,6 @@ def _array1(DTYPE):
 
 @blue.generic
 def _array2(DTYPE):
-
     @struct
     class ArrayData:
         h: i32
@@ -94,7 +93,7 @@ def _array2(DTYPE):
             data = gc_alloc(ArrayData)(1)
             data.h = h
             data.w = w
-            data.items = gc_alloc(DTYPE)(h*w)
+            data.items = gc_alloc(DTYPE)(h * w)
             return ndarray.__make__(data)
 
         @staticmethod
@@ -105,7 +104,7 @@ def _array2(DTYPE):
             data.w = w
             return ndarray.__make__(data)
 
-        def __getitem__(self: ndarray, i: i32, j: i32) -> DTYPE:
+        def __getitem__(self, i: i32, j: i32) -> DTYPE:
             ll = self.__ll__
             if i >= ll.h:
                 raise IndexError
@@ -114,7 +113,7 @@ def _array2(DTYPE):
             idx = (i * ll.w) + j
             return ll.items[idx]
 
-        def __setitem__(self: ndarray, i: i32, j: i32, v: DTYPE) -> None:
+        def __setitem__(self, i: i32, j: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.h:
                 raise IndexError
@@ -123,7 +122,7 @@ def _array2(DTYPE):
             idx = (i * ll.w) + j
             ll.items[idx] = v
 
-        def __len__(self: ndarray) -> i32:
+        def __len__(self) -> i32:
             return self.__ll__.h
 
         # XXX: we don't have a good way to know "w". We need to implement
@@ -134,7 +133,6 @@ def _array2(DTYPE):
 
 @blue.generic
 def _array3(DTYPE):
-
     @struct
     class ArrayData:
         d: i32
@@ -151,7 +149,7 @@ def _array3(DTYPE):
             data.d = d
             data.h = h
             data.w = w
-            data.items = gc_alloc(DTYPE)(d*h*w)
+            data.items = gc_alloc(DTYPE)(d * h * w)
             return ndarray.__make__(data)
 
         @staticmethod
@@ -163,7 +161,7 @@ def _array3(DTYPE):
             data.w = w
             return ndarray.__make__(data)
 
-        def __getitem__(self: ndarray, i: i32, j: i32, k: i32) -> DTYPE:
+        def __getitem__(self, i: i32, j: i32, k: i32) -> DTYPE:
             ll = self.__ll__
             if i >= ll.d:
                 raise IndexError
@@ -174,7 +172,7 @@ def _array3(DTYPE):
             idx = (i * ll.h * ll.w) + (j * ll.w) + k
             return ll.items[idx]
 
-        def __setitem__(self: ndarray, i: i32, j: i32, k: i32, v: DTYPE) -> None:
+        def __setitem__(self, i: i32, j: i32, k: i32, v: DTYPE) -> None:
             ll = self.__ll__
             if i >= ll.d:
                 raise IndexError
@@ -185,7 +183,7 @@ def _array3(DTYPE):
             idx = (i * ll.h * ll.w) + (j * ll.w) + k
             ll.items[idx] = v
 
-        def __len__(self: ndarray) -> i32:
+        def __len__(self) -> i32:
             return self.__ll__.d
 
     return ndarray
@@ -193,20 +191,20 @@ def _array3(DTYPE):
 
 @blue.generic
 def zeros(DTYPE):
-
     @blue.metafunc
     def metazeros(m_shape):
         if m_shape.static_type == i32:
             ArrayT = array[DTYPE, 1]
+
             def impl(n: i32) -> ArrayT:
                 return ArrayT(n)
+
             return OpSpec(impl)
 
         elif m_shape.static_type == tuple:
-            raise StaticError('WIP')
+            raise StaticError("WIP")
 
         else:
-            raise TypeError('shape must be either int or tuple')
-
+            raise TypeError("shape must be either int or tuple")
 
     return metazeros
