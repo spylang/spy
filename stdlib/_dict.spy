@@ -194,13 +194,13 @@ def dict(Key, Value):
 
         # todo: detect dict size change during iteration
 
-        def __next__(self: dict_iterator) -> dict_iterator:
+        def __next__(self) -> dict_iterator:
             return dict_iterator(self.data, self.i + 1)
 
-        def __item__(self: dict_iterator) -> Key:
+        def __item__(self) -> Key:
             return self.data.entries[self.i].key
 
-        def __continue_iteration__(self: dict_iterator) -> bool:
+        def __continue_iteration__(self) -> bool:
             return self.i <= self.data.length
 
     @struct
@@ -215,7 +215,7 @@ def dict(Key, Value):
             data.entries = new_entries(data.log_size)
             return _dict.__make__(data)
 
-        def __getitem__(self: _dict, key: Key) -> Value:
+        def __getitem__(self, key: Key) -> Value:
             data: ptr[DictData] = self.__ll__
             ix = lookup(data, key)
             if ix == DKIX_EMPTY:
@@ -223,7 +223,7 @@ def dict(Key, Value):
             return data.entries[ix].value
 
         # def get(self, key: Key, default: Value = None) -> Value | None:
-        def get(self: _dict, key: Key, default_: Value) -> Value:
+        def get(self, key: Key, default_: Value) -> Value:
             # try:
             #     return self[key]
             # except KeyError:
@@ -234,7 +234,7 @@ def dict(Key, Value):
                 return default_
             return data.entries[ix].value
 
-        def __contains__(self: _dict, key: Key) -> bool:
+        def __contains__(self, key: Key) -> bool:
             data: ptr[DictData] = self.__ll__
             ix = lookup(data, key)
             return ix != DKIX_EMPTY
@@ -266,7 +266,7 @@ def dict(Key, Value):
             else:
                 return OpSpec.NULL
 
-        def __setitem__(self: _dict, key: Key, value: Value) -> None:
+        def __setitem__(self, key: Key, value: Value) -> None:
             data: ptr[DictData] = self.__ll__
             ix = lookup(data, key)
             if ix == DKIX_EMPTY:
@@ -278,18 +278,18 @@ def dict(Key, Value):
                 # entry.value = value
                 data.entries[ix].value = value
 
-        def __delitem__(self: _dict, key: Key) -> None:
+        def __delitem__(self, key: Key) -> None:
             data: ptr[DictData] = self.__ll__
             delete(data, key)
 
-        def __len__(self: _dict) -> i32:
+        def __len__(self) -> i32:
             data: ptr[DictData] = self.__ll__
             return data.length
 
-        def __fastiter__(self: _dict) -> dict_iterator:
+        def __fastiter__(self) -> dict_iterator:
             return dict_iterator(self.__ll__, 0)
 
-        def keys(self: _dict) -> _dict:
+        def keys(self) -> _dict:
             return self
 
     return _dict
