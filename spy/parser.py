@@ -265,15 +265,8 @@ class Parser:
     ) -> spy.ast.FuncArg:
         if py_arg.annotation:
             spy_type = self.from_py_expr(py_arg.annotation)
-        elif color == "blue":
-            spy_type = spy.ast.Name(py_arg.loc, "dynamic")
         else:
-            self.error(
-                f"missing type for argument '{py_arg.arg}'",
-                "type is missing here",
-                py_arg.loc,
-            )
-        #
+            spy_type = spy.ast.Auto(py_arg.loc)
         return spy.ast.FuncArg(
             loc=py_arg.loc,
             name=py_arg.arg,

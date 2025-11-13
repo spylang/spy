@@ -42,6 +42,17 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_missing_type(self):
+        src = """
+        def foo(a, b) -> None:
+            pass
+        """
+        errors = expect_errors(
+            "missing type for argument 'a'",
+            ("type is missing here", "a"),
+        )
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
+
     def test_resolve_type_errors(self):
         # NOTE: this error is always eager because it doesn't happen when
         # running the function, but when defining it

@@ -163,17 +163,6 @@ class TestParser:
             ("this is not supported", "b: i32"),
         )
 
-    def test_FuncDef_errors_7(self):
-        src = """
-        def foo(a, b) -> None:
-            pass
-        """
-        self.expect_errors(
-            src,
-            "missing type for argument 'a'",
-            ("type is missing here", "a"),
-        )
-
     def test_FuncDef_decorator(self):
         mod = self.parse("""
         @mydecorator

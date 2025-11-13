@@ -251,7 +251,19 @@ class AbstractFrame:
         # evaluate the functype
         params = []
         for arg in funcdef.args:
-            w_param_type = self.eval_expr_type(arg.type)
+            is_auto = isinstance(arg.type, ast.Auto)
+            if is_auto and funcdef.color == "red":
+                raise SPyError.simple(
+                    "W_TypeError",
+                    f"missing type for argument '{arg.name}'",
+                    "type is missing here",
+                    arg.loc,
+                )
+            elif is_auto and funcdef.color == "blue":
+                XXX
+            else:
+                w_param_type = self.eval_expr_type(arg.type)
+
             param = FuncParam(w_T=w_param_type, kind=arg.kind)
             params.append(param)
 
@@ -683,6 +695,14 @@ class AbstractFrame:
             )
 
     # ==== expressions ====
+
+    def eval_expr_Auto(self, auto: ast.Auto) -> W_MetaArg:
+        raise SPyError.simple(
+            "W_TypeError",
+            "Interal SPy error: ast.Auto expressions should be handled case-by-case",
+            "this is `auto`",
+            auto.loc,
+        )
 
     def eval_expr_Constant(self, const: ast.Constant) -> W_MetaArg:
         # unsupported literals are rejected directly by the parser, see
