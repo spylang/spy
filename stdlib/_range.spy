@@ -1,5 +1,6 @@
 from operator import OpSpec, MetaArg
 
+
 @struct
 class range:
     start: int
@@ -22,7 +23,7 @@ class range:
         m1: MetaArg
         m2: MetaArg
         if len(args_m) == 1:
-            m0, = args_m
+            (m0,) = args_m
             return OpSpec(impl1, [m0])
         elif len(args_m) == 2:
             m0, m1 = args_m
@@ -33,8 +34,9 @@ class range:
         else:
             return OpSpec.NULL
 
-    def __fastiter__(self: range) -> range_iterator:
+    def __fastiter__(self) -> range_iterator:
         return range_iterator(self.start, self.stop, self.step)
+
 
 @struct
 class range_iterator:
@@ -42,14 +44,14 @@ class range_iterator:
     stop: int
     step: int
 
-    def __next__(self: range_iterator) -> range_iterator:
+    def __next__(self) -> range_iterator:
         return range_iterator(self.i + self.step, self.stop, self.step)
 
-    def __item__(self: range_iterator) -> int:
+    def __item__(self) -> int:
         return self.i
 
     # the opposite of StopIteration :)
-    def __continue_iteration__(self: range_iterator) -> bool:
+    def __continue_iteration__(self) -> bool:
         if self.step > 0:
             return self.i < self.stop
         else:
