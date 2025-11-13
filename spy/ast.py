@@ -20,9 +20,9 @@ from spy.util import extend
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-AnyNode = typing.Union[py_ast.AST, "Node"]
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
+FuncParamKind = typing.Literal["simple", "var_positional"]
 
 
 @extend(py_ast.AST)
@@ -409,6 +409,7 @@ class Stmt(Node):
 class FuncArg(Node):
     name: str
     type: "Expr"
+    kind: FuncParamKind
 
 
 @astnode
@@ -417,7 +418,6 @@ class FuncDef(Stmt):
     kind: FuncKind
     name: str
     args: list[FuncArg]
-    vararg: Optional[FuncArg]
     return_type: "Expr"
     docstring: Optional[str]
     body: list["Stmt"]

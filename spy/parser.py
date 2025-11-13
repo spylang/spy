@@ -178,7 +178,7 @@ class Parser:
         #
         loc = py_funcdef.loc
         name = py_funcdef.name
-        args, vararg = self.from_py_arguments(color, py_funcdef.args)
+        args = self.from_py_arguments(color, py_funcdef.args)
         #
         py_returns = py_funcdef.returns
         if py_returns:
@@ -219,7 +219,6 @@ class Parser:
             kind=func_kind,
             name=py_funcdef.name,
             args=args,
-            vararg=vararg,
             return_type=return_type,
             body=body,
             docstring=docstring,
@@ -228,10 +227,12 @@ class Parser:
 
     def from_py_arguments(
         self, color: spy.ast.Color, py_args: py_ast.arguments
-    ) -> tuple[list[spy.ast.FuncArg], Optional[spy.ast.FuncArg]]:
-        vararg = None
+    ) -> list[spy.ast.FuncArg]:
+        args = [self.from_py_arg(color, py_arg, "simple") for py_arg in py_args.args]
         if py_args.vararg:
-            vararg = self.from_py_arg(color, py_args.vararg)
+            args.append(
+                self.from_py_arg(color, py_args.vararg, "vararg"),
+            )
         if py_args.kwarg:
             self.error(
                 "**kwargs is not supported yet",
@@ -257,11 +258,11 @@ class Parser:
                 py_args.kwonlyargs[0].loc,
             )
         assert not py_args.kw_defaults
-        #
-        args = [self.from_py_arg(color, py_arg) for py_arg in py_args.args]
-        return args, vararg
+        return args
 
-    def from_py_arg(self, color: spy.ast.Color, py_arg: py_ast.arg) -> spy.ast.FuncArg:
+    def from_py_arg(
+        self, color: spy.ast.Color, py_arg: py_ast.arg, kind: spy.ast.FuncParamKind
+    ) -> spy.ast.FuncArg:
         if py_arg.annotation:
             spy_type = self.from_py_expr(py_arg.annotation)
         elif color == "blue":
@@ -277,6 +278,7 @@ class Parser:
             loc=py_arg.loc,
             name=py_arg.arg,
             type=spy_type,
+            kind=kind,
         )
 
     def from_py_stmt_ClassDef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
