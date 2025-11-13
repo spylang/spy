@@ -48,7 +48,14 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["spy*"]
+include = ["spy*", "stdlib"]
+
+# setuptools doesn't package .spy files by default,
+# consider .spy files as "package-data" to include them. See:
+# https://setuptools.pypa.io/en/latest/userguide/datafiles.html#package-data
+# https://setuptools.pypa.io/en/latest/userguide/datafiles.html#interplay-between-these-keywords
+[tool.setuptools.package-data]
+stdlib = ["*.spy"]
 
 [tool.pytest.ini_options]
 addopts = "--dist-dir=pyodide/node_modules/pyodide"
