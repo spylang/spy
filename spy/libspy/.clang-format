@@ -1,0 +1,18 @@
+# -*- mode: conf -*-
+
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 88
+IndentPPDirectives: AfterHash
+PPIndentWidth: 2
+
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# function declaration/definition formatting
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: BlockIndent
+BreakAfterReturnType: AllDefinitions
