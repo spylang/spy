@@ -6,13 +6,16 @@ LIBSPY_DIR := $(ROOT_DIR)/spy/libspy
 BUILD_DIR := $(LIBSPY_DIR)/build/emscripten/release
 DIST_DIR := $(ROOT_DIR)/dist
 
-# Detect uv and use it if available, otherwise use python directly
-UV := $(shell command -v uv 2>/dev/null)
-ifdef UV
-    PYTHON := uv run python
-else
-    PYTHON := python
-endif
+# Use $PYTHON from environment if set, otherwise default to just 'python'
+# NOTE: Use only a single executable name if you set $PYTHON
+# if you set $PYTHON to an executable with arguments, i.e. 'uv run python',
+# emcc will fail to run as it tries to call exec() with the whole string.
+# We don't run emcc here, but other parts of the project do. If you do want
+# to use 'uv run python', you could put the following two lines into a separate
+# runner:
+# #!/bin/sh
+# exec uv run python "$@"
+PYTHON ?= python
 
 # Get version from pyproject.toml
 VERSION := $(shell $(PYTHON) -c "import tomllib; print(tomllib.load(open('$(ROOT_DIR)/pyproject.toml', 'rb'))['project']['version'])")
