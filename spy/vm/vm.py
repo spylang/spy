@@ -894,20 +894,13 @@ class SPyVM:
     def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         return self.universal_eq(w_a, w_b).not_(self)
 
-    # XXX: should this take a w_obj, a wam_obj or both? And where do we get the Loc
-    # from? This is a quick hack, but we need to think of a proper uniform way to
-    # interact with wams/wobjs
-    def str(self, wam_obj: W_MetaArg) -> W_Str:
+    def str_wam(self, wam_obj: W_MetaArg, *, loc: Loc) -> W_MetaArg:
         wam_str = W_MetaArg.from_w_obj(self, B.w_str)
-        w_opimpl = self.call_OP(Loc.here(), OPERATOR.w_CALL, [wam_str, wam_obj])
-        wam_res = self.eval_opimpl(w_opimpl, [wam_str, wam_obj], loc=Loc.here())
-        w_res = wam_res.w_val
-        assert isinstance(w_res, W_Str)
-        return w_res
+        return self.call_wam(wam_str, [wam_obj], loc=loc)
 
     def repr_wam(self, wam_o: W_MetaArg, *, loc: Loc) -> W_MetaArg:
         wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
-        return self.call_wam(wam_repr, [wam_o], loc=Loc.here())
+        return self.call_wam(wam_repr, [wam_o], loc=loc)
 
     def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_ListType:
         w_res = self.getitem_w(B.w_list, w_T, loc=loc)

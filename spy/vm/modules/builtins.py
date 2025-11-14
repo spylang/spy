@@ -69,8 +69,7 @@ def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         # if we print something of unsupported type BUT it's a blue object, we
         # can precompute its repr now and just print it as a string. This
         # allows to print things like types even with the C backend.
-        w_s = vm.str(wam_obj)
-        wam_s = W_MetaArg.from_w_obj(vm, w_s)
+        wam_s = vm.str_wam(wam_obj, loc=wam_obj.loc)
         return W_OpSpec(w_print_str, [wam_s])
 
     else:
