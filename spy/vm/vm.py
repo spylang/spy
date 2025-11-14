@@ -767,29 +767,39 @@ class SPyVM:
 
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
 
-    # XXX killme
-    def _w_metaarg(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
-        w_T = self.dynamic_type(w_x)
-        if color == "red":
-            return W_MetaArg(self, "red", w_T, None, Loc.here(-3))
-        else:
-            return W_MetaArg(self, "blue", w_T, w_x, Loc.here(-3))
+    # ======= operators ========
 
-    def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wam_a = self._w_metaarg("blue", w_a)
-        wam_b = self._w_metaarg("blue", w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
-        w_res = w_opimpl.execute(self, [w_a, w_b])
-        assert isinstance(w_res, W_Bool)
-        return w_res
+    def meta_eq(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        return self.call_OP(loc, OPERATOR.w_EQ, [wam_a, wam_b])
 
-    def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wam_a = self._w_metaarg("blue", w_a)
-        wam_b = self._w_metaarg("blue", w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wam_a, wam_b])
-        w_res = w_opimpl.execute(self, [w_a, w_b])
-        assert isinstance(w_res, W_Bool)
-        return w_res
+    def eq_wam(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        w_opimpl = self.meta_eq(wam_a, wam_b, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_a, wam_b], loc=loc)
+
+    def eq_w(
+        self, w_a: W_Dynamic, w_b: W_Dynamic, *, loc: Optional[Loc] = None
+    ) -> W_Bool:
+        wam_a = W_MetaArg.from_w_obj(self, w_a)
+        wam_b = W_MetaArg.from_w_obj(self, w_b)
+        wam = self.eq_wam(wam_a, wam_b, loc=loc or Loc.here())
+        assert isinstance(wam.w_val, W_Bool)
+        return wam.w_val
+
+    def meta_ne(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        return self.call_OP(loc, OPERATOR.w_NE, [wam_a, wam_b])
+
+    def ne_wam(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        w_opimpl = self.meta_ne(wam_a, wam_b, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_a, wam_b], loc=loc)
+
+    def ne_w(
+        self, w_a: W_Dynamic, w_b: W_Dynamic, *, loc: Optional[Loc] = None
+    ) -> W_Bool:
+        wam_a = W_MetaArg.from_w_obj(self, w_a)
+        wam_b = W_MetaArg.from_w_obj(self, w_b)
+        wam = self.ne_wam(wam_a, wam_b, loc=loc or Loc.here())
+        assert isinstance(wam.w_val, W_Bool)
+        return wam.w_val
 
     def meta_getitem(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_OpImpl:
         return self.call_OP(loc, OPERATOR.w_GETITEM, [wam_o, wam_i])
@@ -839,8 +849,8 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        wam_a = self._w_metaarg("blue", w_a)
-        wam_b = self._w_metaarg("blue", w_b)
+        wam_a = W_MetaArg.from_w_obj(self, w_a)
+        wam_b = W_MetaArg.from_w_obj(self, w_b)
         try:
             w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
         except SPyError as err:
