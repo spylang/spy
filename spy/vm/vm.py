@@ -844,7 +844,7 @@ class SPyVM:
     ) -> W_Dynamic:
         "func(*args) (dynamic dispatch)"
         wam_func = W_MetaArg.from_w_obj(self, w_func)
-        args_wam = [W_MetaArg.from_w_obj(w_arg) for w_arg in args_w]
+        args_wam = [W_MetaArg.from_w_obj(self, w_arg) for w_arg in args_w]
         wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here())
         return wam.w_val
 
@@ -907,6 +907,10 @@ class SPyVM:
         "str(obj) (on meta arguments)"
         wam_str = W_MetaArg.from_w_obj(self, B.w_str)
         return self.call_wam(wam_str, [wam_obj], loc=loc)
+
+    def str_w(self, w_obj: W_Dynamic, *, loc: Optional[Loc] = None) -> W_Dynamic:
+        "str(obj) (dynamic dispatch)"
+        return self.call_w(B.w_str, [w_obj], loc=loc or Loc.here())
 
     def repr_wam(self, wam_o: W_MetaArg, *, loc: Loc) -> W_MetaArg:
         "repr(obj) (on meta arguments)"

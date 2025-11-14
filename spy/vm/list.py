@@ -176,7 +176,7 @@ class W_List(W_BaseList, Generic[T]):
             if len(items1_w) != len(items2_w):
                 return B.w_False
             for w_1, w_2 in zip(items1_w, items2_w):
-                if vm.is_False(vm.eq(w_1, w_2)):
+                if vm.is_False(vm.eq_w(w_1, w_2)):
                     return B.w_False
             return B.w_True
 
@@ -206,10 +206,7 @@ class W_List(W_BaseList, Generic[T]):
             parts = [vm.unwrap_str(w_item) for w_item in self.items_w]
             return vm.wrap(str(parts))
         else:
-            parts = [
-                vm.unwrap_str(vm.str(W_MetaArg.from_w_obj(vm, w_obj)))
-                for w_obj in self.items_w
-            ]
+            parts = [vm.unwrap_str(vm.str_w(w_obj)) for w_obj in self.items_w]
             return vm.wrap("[" + ", ".join(parts) + "]")
 
     @builtin_method("__str__", color="blue", kind="metafunc")
