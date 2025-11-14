@@ -823,13 +823,13 @@ class SPyVM:
         return wam.w_val
 
     def meta_call(
-        self, wam_func: W_MetaArg, args_wam: Sequence[W_MetaArg], *, loc: Loc
+        self, wam_func: W_MetaArg, args_wam: list[W_MetaArg], *, loc: Loc
     ) -> W_OpImpl:
         "func(*args) (metacall)"
         return self.call_OP(loc, OPERATOR.w_CALL, [wam_func] + args_wam)
 
     def call_wam(
-        self, wam_func: W_MetaArg, args_wam: Sequence[W_MetaArg], *, loc: Loc
+        self, wam_func: W_MetaArg, args_wam: list[W_MetaArg], *, loc: Loc
     ) -> W_MetaArg:
         "func(*args) (on meta arguments)"
         w_opimpl = self.meta_call(wam_func, args_wam, loc=loc)
