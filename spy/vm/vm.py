@@ -6,7 +6,7 @@ import fixedint
 import py.path
 
 from spy import ROOT, ast, libspy
-from spy.analyze.symtable import ImportRef
+from spy.analyze.symtable import Color, ImportRef, maybe_blue
 from spy.ast import Color, FuncKind
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
@@ -696,6 +696,9 @@ class SPyVM:
     ) -> W_OpImpl:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
+
+        `loc` points to the source code location which triggered the invocation of the
+        operator. E.g., if we have `a + b`, it should point to ast.BinOp.loc.
         """
         try:
             w_opimpl = self.fast_call(w_OP, args_wam)
@@ -734,6 +737,36 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
+    def eval_opimpl(
+        self,
+        w_opimpl: W_OpImpl,
+        loc: Loc,
+        args_wam: Sequence[W_MetaArg],
+        *,
+        redshifting: bool = False,
+    ) -> W_MetaArg:
+        # hack hack hack
+        # result color:
+        #   - pure function and blue arguments -> blue
+        #   - red function -> red
+        #   - blue function -> blue
+        # XXX what happens if we try to call a blue func with red arguments?
+        w_functype = w_opimpl.w_functype
+        color: Color
+        if w_opimpl.is_pure():
+            colors = [wam.color for wam in args_wam]
+            color = maybe_blue(*colors)
+        else:
+            color = w_functype.color
+
+        if color == "red" and redshifting:
+            w_res = None
+        else:
+            args_w = [wam.w_val for wam in args_wam]
+            w_res = w_opimpl._execute(self, args_w)
+
+        return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
+
     def _w_metaarg(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
         w_T = self.dynamic_type(w_x)
         if color == "red":
@@ -764,7 +797,8 @@ class SPyVM:
         wam_obj = self._w_metaarg("blue", w_obj)
         wam_i = self._w_metaarg("blue", w_i)
         w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wam_obj, wam_i])
-        return w_opimpl.execute(self, [w_obj, w_i])
+        wam_res = self.eval_opimpl(w_opimpl, Loc.here(), [wam_obj, wam_i])
+        return wam_res.w_val
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -813,7 +847,8 @@ class SPyVM:
             assert w_ta is not w_tb, f"EQ missing on type `{w_ta.fqn}`"
             return B.w_False
 
-        w_res = w_opimpl.execute(self, [w_a, w_b])
+        wam_res = self.eval_opimpl(w_opimpl, Loc.here(), [wam_a, wam_b])
+        w_res = wam_res.w_val
         assert isinstance(w_res, W_Bool)
         return w_res
 
@@ -825,8 +860,9 @@ class SPyVM:
     # interact with wams/wobjs
     def str(self, wam_obj: W_MetaArg) -> W_Str:
         wam_str = W_MetaArg.from_w_obj(self, B.w_str)
-        w_opimpl = self.call_OP(Loc.fake(), OPERATOR.w_CALL, [wam_str, wam_obj])
-        w_res = w_opimpl.execute(self, [B.w_str, wam_obj.w_val])
+        w_opimpl = self.call_OP(Loc.here(), OPERATOR.w_CALL, [wam_str, wam_obj])
+        wam_res = self.eval_opimpl(w_opimpl, Loc.here(), [wam_str, wam_obj])
+        w_res = wam_res.w_val
         assert isinstance(w_res, W_Str)
         return w_res
 

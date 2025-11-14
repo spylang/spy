@@ -134,7 +134,7 @@ class W_OpImpl(W_Object):
     def is_pure(self) -> bool:
         return self.is_const() or self.w_func.is_pure()
 
-    def execute(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
+    def _execute(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
         if self.is_const():
             return self.w_const
 

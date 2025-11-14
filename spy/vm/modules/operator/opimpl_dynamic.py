@@ -20,7 +20,8 @@ def _dynamic_op(
     wam_a = W_MetaArg.from_w_obj(vm, w_a)
     wam_b = W_MetaArg.from_w_obj(vm, w_b)
     w_opimpl = vm.call_OP(None, w_op, [wam_a, wam_b])
-    return w_opimpl.execute(vm, [w_a, w_b])
+    # XXX this is wrong: we probably need a big rethink of how we deal with dynamic
+    return w_opimpl._execute(vm, [w_a, w_b])
 
 
 @OP.builtin_func
