@@ -816,6 +816,29 @@ class SPyVM:
         wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here())
         return wam.w_val
 
+    def meta_call(
+        self, wam_func: W_MetaArg, args_wam: Sequence[W_MetaArg], *, loc: Loc
+    ) -> W_OpImpl:
+        return self.call_OP(loc, OPERATOR.w_CALL, [wam_func] + args_wam)
+
+    def call_wam(
+        self, wam_func: W_MetaArg, args_wam: Sequence[W_MetaArg], *, loc: Loc
+    ) -> W_MetaArg:
+        w_opimpl = self.meta_call(wam_func, args_wam, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_func] + args_wam, loc=loc)
+
+    def call_w(
+        self,
+        w_func: W_Dynamic,
+        args_w: Sequence[W_Dynamic],
+        *,
+        loc: Optional[Loc] = None,
+    ) -> W_Dynamic:
+        wam_func = W_MetaArg.from_w_obj(self, w_func)
+        args_wam = [W_MetaArg.from_w_obj(w_arg) for w_arg in args_w]
+        wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here())
+        return wam.w_val
+
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
         Same as eq, but return False instead of TypeError in case the types are
@@ -881,6 +904,10 @@ class SPyVM:
         w_res = wam_res.w_val
         assert isinstance(w_res, W_Str)
         return w_res
+
+    def repr_wam(self, wam_o: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
+        return self.call_wam(wam_repr, [wam_o], loc=Loc.here())
 
     def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_ListType:
         w_res = self.getitem_w(B.w_list, w_T, loc=loc)
