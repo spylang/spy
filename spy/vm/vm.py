@@ -786,15 +786,18 @@ class SPyVM:
         return wam.w_val
 
     def meta_ne(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        "a != b (metacall)"
         return self.call_OP(loc, OPERATOR.w_NE, [wam_a, wam_b])
 
     def ne_wam(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "a != b (on meta arguments)"
         w_opimpl = self.meta_ne(wam_a, wam_b, loc=loc)
         return self.eval_opimpl(w_opimpl, [wam_a, wam_b], loc=loc)
 
     def ne_w(
         self, w_a: W_Dynamic, w_b: W_Dynamic, *, loc: Optional[Loc] = None
     ) -> W_Bool:
+        "a != b (dynamic dispatch)"
         wam_a = W_MetaArg.from_w_obj(self, w_a)
         wam_b = W_MetaArg.from_w_obj(self, w_b)
         wam = self.ne_wam(wam_a, wam_b, loc=loc or Loc.here())
@@ -802,15 +805,18 @@ class SPyVM:
         return wam.w_val
 
     def meta_getitem(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        "o[i] (metacall)"
         return self.call_OP(loc, OPERATOR.w_GETITEM, [wam_o, wam_i])
 
     def getitem_wam(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "o[i] (on meta arguments)"
         w_opimpl = self.meta_getitem(wam_o, wam_i, loc=loc)
         return self.eval_opimpl(w_opimpl, [wam_o, wam_i], loc=loc)
 
     def getitem_w(
         self, w_o: W_Dynamic, w_i: W_Dynamic, *, loc: Optional[Loc] = None
     ) -> W_Dynamic:
+        "o[i] (dynamic dispatch)"
         wam_o = W_MetaArg.from_w_obj(self, w_o)
         wam_i = W_MetaArg.from_w_obj(self, w_i)
         wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here())
@@ -819,11 +825,13 @@ class SPyVM:
     def meta_call(
         self, wam_func: W_MetaArg, args_wam: Sequence[W_MetaArg], *, loc: Loc
     ) -> W_OpImpl:
+        "func(*args) (metacall)"
         return self.call_OP(loc, OPERATOR.w_CALL, [wam_func] + args_wam)
 
     def call_wam(
         self, wam_func: W_MetaArg, args_wam: Sequence[W_MetaArg], *, loc: Loc
     ) -> W_MetaArg:
+        "func(*args) (on meta arguments)"
         w_opimpl = self.meta_call(wam_func, args_wam, loc=loc)
         return self.eval_opimpl(w_opimpl, [wam_func] + args_wam, loc=loc)
 
@@ -834,6 +842,7 @@ class SPyVM:
         *,
         loc: Optional[Loc] = None,
     ) -> W_Dynamic:
+        "func(*args) (dynamic dispatch)"
         wam_func = W_MetaArg.from_w_obj(self, w_func)
         args_wam = [W_MetaArg.from_w_obj(w_arg) for w_arg in args_w]
         wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here())
@@ -895,10 +904,12 @@ class SPyVM:
         return self.universal_eq(w_a, w_b).not_(self)
 
     def str_wam(self, wam_obj: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "str(obj) (on meta arguments)"
         wam_str = W_MetaArg.from_w_obj(self, B.w_str)
         return self.call_wam(wam_str, [wam_obj], loc=loc)
 
     def repr_wam(self, wam_o: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "repr(obj) (on meta arguments)"
         wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
         return self.call_wam(wam_repr, [wam_o], loc=loc)
 
