@@ -27,6 +27,7 @@ dev = [
     # the followings are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
+    "pyperclip>=1.10",
     "pytest_pyodide==0.58.4; sys_platform != 'emscripten'",
     "pyodide-py==0.27.2; sys_platform != 'emscripten'",
     "pre-commit==4.3.0"
