@@ -140,10 +140,10 @@ class TestVM:
         w_exc2 = W_Exception("hello")
         w_exc3 = W_Exception("world")
 
-        assert vm.is_True(vm.eq(w_exc1, w_exc2))
-        assert vm.is_False(vm.eq(w_exc1, w_exc3))
-        assert vm.is_False(vm.ne(w_exc1, w_exc2))
-        assert vm.is_True(vm.ne(w_exc1, w_exc3))
+        assert vm.is_True(vm.eq_w(w_exc1, w_exc2))
+        assert vm.is_False(vm.eq_w(w_exc1, w_exc3))
+        assert vm.is_False(vm.ne_w(w_exc1, w_exc2))
+        assert vm.is_True(vm.ne_w(w_exc1, w_exc3))
 
     def test_w_None(self):
         vm = SPyVM()
@@ -222,21 +222,21 @@ class TestVM:
         with pytest.raises(AssertionError):
             vm.fast_call(w_abs, [w_x])
 
-    def test_eq(self):
+    def test_eq_w(self):
         vm = SPyVM()
         w_a = vm.wrap(1)
         w_b = vm.wrap(1)
         w_c = vm.wrap(2)
-        assert vm.is_True(vm.eq(w_a, w_a))
-        assert vm.is_True(vm.eq(w_a, w_b))
-        assert vm.is_False(vm.eq(w_a, w_c))
+        assert vm.is_True(vm.eq_w(w_a, w_a))
+        assert vm.is_True(vm.eq_w(w_a, w_b))
+        assert vm.is_False(vm.eq_w(w_a, w_c))
 
     def test_eq_reference_types(self):
         vm = SPyVM()
-        assert vm.is_True(vm.eq(B.w_i32, B.w_i32))
-        assert vm.is_False(vm.eq(B.w_i32, B.w_str))
-        assert vm.is_True(vm.ne(B.w_i32, B.w_str))
-        assert vm.is_False(vm.ne(B.w_i32, B.w_i32))
+        assert vm.is_True(vm.eq_w(B.w_i32, B.w_i32))
+        assert vm.is_False(vm.eq_w(B.w_i32, B.w_str))
+        assert vm.is_True(vm.ne_w(B.w_i32, B.w_str))
+        assert vm.is_False(vm.ne_w(B.w_i32, B.w_i32))
 
     def test_error_loc(self):
         vm = SPyVM()
@@ -245,10 +245,10 @@ class TestVM:
         # fmt: off
         errors = expect_errors(
             "cannot do `i32`[...]",
-            ("this is `i32`", "            vm.getitem(w_a, w_b) # hello")
+            ("operator::GETITEM called here", "            vm.getitem_w(w_a, w_b) # hello")
         )
         with errors:
-            vm.getitem(w_a, w_b) # hello
+            vm.getitem_w(w_a, w_b) # hello
         # fmt: on
 
     def test_add_global(self):

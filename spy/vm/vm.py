@@ -781,7 +781,7 @@ class SPyVM:
     ) -> W_Bool:
         wam_a = W_MetaArg.from_w_obj(self, w_a)
         wam_b = W_MetaArg.from_w_obj(self, w_b)
-        wam = self.eq_wam(wam_a, wam_b, loc=loc or Loc.here())
+        wam = self.eq_wam(wam_a, wam_b, loc=loc or Loc.here(-2))
         assert isinstance(wam.w_val, W_Bool)
         return wam.w_val
 
@@ -800,7 +800,7 @@ class SPyVM:
         "a != b (dynamic dispatch)"
         wam_a = W_MetaArg.from_w_obj(self, w_a)
         wam_b = W_MetaArg.from_w_obj(self, w_b)
-        wam = self.ne_wam(wam_a, wam_b, loc=loc or Loc.here())
+        wam = self.ne_wam(wam_a, wam_b, loc=loc or Loc.here(-2))
         assert isinstance(wam.w_val, W_Bool)
         return wam.w_val
 
@@ -819,7 +819,7 @@ class SPyVM:
         "o[i] (dynamic dispatch)"
         wam_o = W_MetaArg.from_w_obj(self, w_o)
         wam_i = W_MetaArg.from_w_obj(self, w_i)
-        wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here())
+        wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here(-2))
         return wam.w_val
 
     def meta_call(
@@ -845,7 +845,7 @@ class SPyVM:
         "func(*args) (dynamic dispatch)"
         wam_func = W_MetaArg.from_w_obj(self, w_func)
         args_wam = [W_MetaArg.from_w_obj(self, w_arg) for w_arg in args_w]
-        wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here())
+        wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here(-2))
         return wam.w_val
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
@@ -910,7 +910,7 @@ class SPyVM:
 
     def str_w(self, w_obj: W_Dynamic, *, loc: Optional[Loc] = None) -> W_Dynamic:
         "str(obj) (dynamic dispatch)"
-        return self.call_w(B.w_str, [w_obj], loc=loc or Loc.here())
+        return self.call_w(B.w_str, [w_obj], loc=loc or Loc.here(-2))
 
     def repr_wam(self, wam_o: W_MetaArg, *, loc: Loc) -> W_MetaArg:
         "repr(obj) (on meta arguments)"
