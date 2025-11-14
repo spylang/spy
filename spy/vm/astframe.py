@@ -835,13 +835,19 @@ class AbstractFrame:
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(
-        self, op: ast.Node, w_opimpl: W_OpImpl, args_wam: list[W_MetaArg]
+        self,
+        op: ast.Node,
+        w_opimpl: W_OpImpl,
+        args_wam: list[W_MetaArg],
     ) -> W_MetaArg:
         """
         Note: this is overrided by DopplerFrame to remember the w_opimpl.
         """
         return self.vm.eval_opimpl(
-            w_opimpl, op.loc, args_wam, redshifting=self.redshifting
+            w_opimpl,
+            args_wam,
+            loc=op.loc,
+            redshifting=self.redshifting,
         )
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_MetaArg:
@@ -909,7 +915,7 @@ class AbstractFrame:
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None
-        w_listtype = self.vm.make_list_type(w_itemtype)
+        w_listtype = self.vm.make_list_type(w_itemtype, loc=op.loc)
         if color == "red" and self.redshifting:
             w_val = None
         else:

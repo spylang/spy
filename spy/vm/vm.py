@@ -740,9 +740,9 @@ class SPyVM:
     def eval_opimpl(
         self,
         w_opimpl: W_OpImpl,
-        loc: Loc,
         args_wam: Sequence[W_MetaArg],
         *,
+        loc: Loc,
         redshifting: bool = False,
     ) -> W_MetaArg:
         # hack hack hack
@@ -767,6 +767,7 @@ class SPyVM:
 
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
 
+    # XXX killme
     def _w_metaarg(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
         w_T = self.dynamic_type(w_x)
         if color == "red":
@@ -790,15 +791,20 @@ class SPyVM:
         assert isinstance(w_res, W_Bool)
         return w_res
 
-    def getitem(self, w_obj: W_Dynamic, w_i: W_Dynamic) -> W_Dynamic:
-        # FIXME: we need a more structured way of implementing operators
-        # inside the vm, and possibly share the code with typechecker and
-        # ASTFrame. See also vm.ne and vm.getitem
-        wam_obj = self._w_metaarg("blue", w_obj)
-        wam_i = self._w_metaarg("blue", w_i)
-        w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wam_obj, wam_i])
-        wam_res = self.eval_opimpl(w_opimpl, Loc.here(), [wam_obj, wam_i])
-        return wam_res.w_val
+    def meta_getitem(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        return self.call_OP(loc, OPERATOR.w_GETITEM, [wam_o, wam_i])
+
+    def getitem_wam(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        w_opimpl = self.meta_getitem(wam_o, wam_i, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_o, wam_i], loc=loc)
+
+    def getitem_w(
+        self, w_o: W_Dynamic, w_i: W_Dynamic, *, loc: Optional[Loc] = None
+    ) -> W_Dynamic:
+        wam_o = W_MetaArg.from_w_obj(self, w_o)
+        wam_i = W_MetaArg.from_w_obj(self, w_i)
+        wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here())
+        return wam.w_val
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -847,7 +853,7 @@ class SPyVM:
             assert w_ta is not w_tb, f"EQ missing on type `{w_ta.fqn}`"
             return B.w_False
 
-        wam_res = self.eval_opimpl(w_opimpl, Loc.here(), [wam_a, wam_b])
+        wam_res = self.eval_opimpl(w_opimpl, [wam_a, wam_b], loc=Loc.here())
         w_res = wam_res.w_val
         assert isinstance(w_res, W_Bool)
         return w_res
@@ -861,12 +867,12 @@ class SPyVM:
     def str(self, wam_obj: W_MetaArg) -> W_Str:
         wam_str = W_MetaArg.from_w_obj(self, B.w_str)
         w_opimpl = self.call_OP(Loc.here(), OPERATOR.w_CALL, [wam_str, wam_obj])
-        wam_res = self.eval_opimpl(w_opimpl, Loc.here(), [wam_str, wam_obj])
+        wam_res = self.eval_opimpl(w_opimpl, [wam_str, wam_obj], loc=Loc.here())
         w_res = wam_res.w_val
         assert isinstance(w_res, W_Str)
         return w_res
 
-    def make_list_type(self, w_T: W_Type) -> W_ListType:
-        w_res = self.getitem(B.w_list, w_T)
+    def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_ListType:
+        w_res = self.getitem_w(B.w_list, w_T, loc=loc)
         assert isinstance(w_res, W_ListType)
         return w_res
