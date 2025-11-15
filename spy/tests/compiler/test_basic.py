@@ -166,6 +166,14 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 4  # second call: x=2, calls=2
         assert mod.calls == 2
 
+    def test_assignexpr_preserves_binding(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            result = (x := 1)
+            return x + result
+        """)
+        assert mod.foo() == 2
+
     @only_interp
     def test_blue_cannot_redeclare(self):
         # see also the equivalent test
