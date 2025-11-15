@@ -1,11 +1,11 @@
 import pytest
 
-from spy.backend.c.serializer import C_PRESERVE_NAMING, check_c_preserve
+from spy.backend.c import c_ast as C
 
 
 def test_check_c_preserve():
-    for naming in C_PRESERVE_NAMING:
-        assert check_c_preserve(naming) == f"${naming}"
+    for naming in C.Ident.C_PRESERVE_NAMING:
+        assert str(C.Ident(naming)) == f"{naming}$"
 
 
 def test_check_non_c_preserve():
@@ -15,4 +15,4 @@ def test_check_non_c_preserve():
         "__name_s",
     )
     for naming in namings:
-        assert check_c_preserve(naming) == f"{naming}"
+        assert str(C.Ident(naming)) == f"{naming}"
