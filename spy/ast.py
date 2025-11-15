@@ -397,6 +397,13 @@ class UnaryOp(Expr):
         raise TypeError("readonly attribute")
 
 
+@astnode
+class AssignExpr(Expr):
+    precedence = 0
+    target: StrConst
+    value: Expr
+
+
 # ====== Stmt hierarchy ======
 
 
