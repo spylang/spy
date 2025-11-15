@@ -286,6 +286,20 @@ class CFuncWriter:
         # they should not survive redshifting
         assert False, "unexepcted NameOuterDirect"
 
+    def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> C.Expr:
+        return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
+
+    def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> C.Expr:
+        return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
+
+    def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> C.Expr:
+        return self._fmt_assignexpr(assignexpr.target_fqn.c_name, assignexpr.value)
+
+    def _fmt_assignexpr(self, target: str, value_expr: ast.Expr) -> C.Expr:
+        target_lit = C.Literal(target)
+        value = self.fmt_expr(value_expr)
+        return C.BinOp("=", target_lit, value)
+
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> C.Expr:
         raise NotImplementedError(
             "ast.BinOp not supported. It should have been redshifted away"

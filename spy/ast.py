@@ -397,6 +397,13 @@ class UnaryOp(Expr):
         raise TypeError("readonly attribute")
 
 
+@astnode
+class AssignExpr(Expr):
+    precedence = 0
+    target: StrConst
+    value: Expr
+
+
 # ====== Stmt hierarchy ======
 
 
@@ -592,6 +599,21 @@ class AssignLocal(Stmt):
 
 @astnode
 class AssignCell(Stmt):
+    target: StrConst
+    target_fqn: FQN
+    value: Expr
+
+
+@astnode
+class AssignExprLocal(Expr):
+    precedence = 0
+    target: StrConst
+    value: Expr
+
+
+@astnode
+class AssignExprCell(Expr):
+    precedence = 0
     target: StrConst
     target_fqn: FQN
     value: Expr
