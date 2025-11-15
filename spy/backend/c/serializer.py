@@ -39,7 +39,7 @@ C_PRESERVE_NAMING = (
 )
 
 
-def check_c_preserve(name):
+def check_c_preserve(name: str) -> str:
     if name in C_PRESERVE_NAMING:
         return f"${name}"
     return name
