@@ -174,6 +174,18 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 2
 
+    def test_assignexpr_updates_nonlocal_cell(self):
+        mod = self.compile("""
+        var counter: i32 = 0
+
+        def inc() -> i32:
+            return (counter := counter + 1)
+
+        def foo() -> i32:
+            return inc() + inc()
+        """)
+        assert mod.foo() == 3  # 1 + 2
+
     @only_interp
     def test_blue_cannot_redeclare(self):
         # see also the equivalent test
