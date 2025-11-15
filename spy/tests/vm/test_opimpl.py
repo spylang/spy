@@ -32,7 +32,7 @@ def test_shuffle_args():
     w_repeat = make_w_repeat(vm)
     w_functype = W_FuncType.parse("def(i32, str) -> str")
     w_opimpl = W_OpImpl(w_functype, w_repeat, [ArgSpec.Arg(1), ArgSpec.Arg(0)])
-    w_s = w_opimpl.execute(vm, [vm.wrap(3), vm.wrap("ab ")])
+    w_s = w_opimpl._execute(vm, [vm.wrap(3), vm.wrap("ab ")])
     assert vm.unwrap_str(w_s) == "ab ab ab "
     #
     r = "<OpImpl `def(i32, str) -> str` for `_testing_helpers::repeat`>"
@@ -53,7 +53,7 @@ def test_const():
     w_opimpl = W_OpImpl(
         w_functype, w_repeat, [ArgSpec.Const(w_s, Loc.here()), ArgSpec.Arg(0)]
     )
-    w_s = w_opimpl.execute(vm, [vm.wrap(3)])
+    w_s = w_opimpl._execute(vm, [vm.wrap(3)])
     assert vm.unwrap_str(w_s) == "ab ab ab "
     expected = textwrap.dedent("""
     def(v0: i32) -> str:
@@ -71,7 +71,7 @@ def test_converter():
         w_repeat,
         [ArgSpec.Arg(1), ArgSpec.Convert(OP.w_f64_to_i32, ArgSpec.Arg(0))],
     )
-    w_s = w_opimpl.execute(vm, [vm.wrap(3.5), vm.wrap("ab ")])
+    w_s = w_opimpl._execute(vm, [vm.wrap(3.5), vm.wrap("ab ")])
     assert vm.unwrap_str(w_s) == "ab ab ab "
     #
     expected = textwrap.dedent("""

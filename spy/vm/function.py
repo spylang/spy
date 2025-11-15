@@ -304,7 +304,7 @@ class W_Func(W_Object):
             dispatch="single",
             errmsg="cannot call objects of type `{0}`",
         )
-        w_opspec = w_meta_opimpl.execute(vm, meta_args_wam)
+        w_opspec = w_meta_opimpl._execute(vm, meta_args_wam)
 
         if not isinstance(w_opspec, W_OpSpec):
             w_T = vm.dynamic_type(w_opspec)

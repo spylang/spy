@@ -51,15 +51,10 @@ def print_wam(
 ) -> None:
     if file is None:
         file = sys.stdout
-
-    # hack hack hack: manually call repr(w_arg), we need a better way to do that
-    wam_repr = W_MetaArg.from_w_obj(vm, BUILTINS.w_repr)
-    w_opimpl = vm.call_OP(Loc.here(), OP.w_CALL, [wam_repr, wam_arg])
-    w_s = w_opimpl.execute(vm, [wam_repr.w_val, wam_arg.w_val])
-    s = vm.unwrap_str(w_s)
-    #
     w_T = vm.dynamic_type(wam_arg.w_val)
-
+    wam_s = vm.repr_wam(wam_arg, loc=Loc.here())
+    s = vm.unwrap_str(wam_s.w_val)
+    #
     color = ColorFormatter(use_colors=use_colors)
     print(color.set("green", "static type: "), wam_arg.w_static_T, file=file)
     print(color.set("green", "dynamic type:"), w_T, file=file)

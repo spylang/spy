@@ -835,29 +835,20 @@ class AbstractFrame:
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_opimpl(
-        self, op: ast.Node, w_opimpl: W_OpImpl, args_wam: list[W_MetaArg]
+        self,
+        op: ast.Node,
+        w_opimpl: W_OpImpl,
+        args_wam: list[W_MetaArg],
     ) -> W_MetaArg:
-        # hack hack hack
-        # result color:
-        #   - pure function and blue arguments -> blue
-        #   - red function -> red
-        #   - blue function -> blue
-        # XXX what happens if we try to call a blue func with red arguments?
-        w_functype = w_opimpl.w_functype
-        color: Color
-        if w_opimpl.is_pure():
-            colors = [wam.color for wam in args_wam]
-            color = maybe_blue(*colors)
-        else:
-            color = w_functype.color
-
-        if color == "red" and self.redshifting:
-            w_res = None
-        else:
-            args_w = [wam.w_val for wam in args_wam]
-            w_res = w_opimpl.execute(self.vm, args_w)
-
-        return W_MetaArg(self.vm, color, w_functype.w_restype, w_res, op.loc)
+        """
+        Note: this is overrided by DopplerFrame to remember the w_opimpl.
+        """
+        return self.vm.eval_opimpl(
+            w_opimpl,
+            args_wam,
+            loc=op.loc,
+            redshifting=self.redshifting,
+        )
 
     def eval_expr_BinOp(self, binop: ast.BinOp) -> W_MetaArg:
         w_OP = OP_from_token(binop.op)  # e.g., w_ADD, w_MUL, etc.
@@ -924,7 +915,7 @@ class AbstractFrame:
         #
         # XXX we need to handle empty lists
         assert w_itemtype is not None
-        w_listtype = self.vm.make_list_type(w_itemtype)
+        w_listtype = self.vm.make_list_type(w_itemtype, loc=op.loc)
         if color == "red" and self.redshifting:
             w_val = None
         else:

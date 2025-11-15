@@ -20,7 +20,8 @@ def _dynamic_op(
     wam_a = W_MetaArg.from_w_obj(vm, w_a)
     wam_b = W_MetaArg.from_w_obj(vm, w_b)
     w_opimpl = vm.call_OP(None, w_op, [wam_a, wam_b])
-    return w_opimpl.execute(vm, [w_a, w_b])
+    # XXX this is wrong: we probably need a big rethink of how we deal with dynamic
+    return w_opimpl._execute(vm, [w_a, w_b])
 
 
 @OP.builtin_func
@@ -117,7 +118,7 @@ def w_dynamic_setattr(
     wam_name = W_MetaArg.from_w_obj(vm, w_name)
     wam_v = W_MetaArg.from_w_obj(vm, w_value)
     w_opimpl = vm.call_OP(None, OP.w_SETATTR, [wam_obj, wam_name, wam_v])
-    return w_opimpl.execute(vm, [w_obj, w_name, w_value])
+    return w_opimpl._execute(vm, [w_obj, w_name, w_value])  # XXX
 
 
 @OP.builtin_func
@@ -125,7 +126,7 @@ def w_dynamic_getattr(vm: "SPyVM", w_obj: W_Dynamic, w_name: W_Str) -> W_Dynamic
     wam_obj = W_MetaArg.from_w_obj(vm, w_obj)
     wam_name = W_MetaArg.from_w_obj(vm, w_name)
     w_opimpl = vm.call_OP(None, OP.w_GETATTR, [wam_obj, wam_name])
-    return w_opimpl.execute(vm, [w_obj, w_name])
+    return w_opimpl._execute(vm, [w_obj, w_name])  # XXX
 
 
 @OP.builtin_func
@@ -133,4 +134,4 @@ def w_dynamic_call(vm: "SPyVM", w_obj: W_Dynamic, *args_w: W_Dynamic) -> W_Dynam
     all_args_w = [w_obj] + list(args_w)
     all_args_wam = [W_MetaArg.from_w_obj(vm, w_x) for i, w_x in enumerate(all_args_w)]
     w_opimpl = vm.call_OP(None, OP.w_CALL, all_args_wam)
-    return w_opimpl.execute(vm, all_args_w)
+    return w_opimpl._execute(vm, all_args_w)  # XXX

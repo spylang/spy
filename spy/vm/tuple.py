@@ -66,7 +66,7 @@ class W_Tuple(W_Object):
             if len(items1_w) != len(items2_w):
                 return B.w_False
             for w_1, w_2 in zip(items1_w, items2_w):
-                if vm.is_False(vm.eq(w_1, w_2)):
+                if vm.is_False(vm.eq_w(w_1, w_2)):
                     return B.w_False
             return B.w_True
 

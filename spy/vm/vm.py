@@ -6,7 +6,7 @@ import fixedint
 import py.path
 
 from spy import ROOT, ast, libspy
-from spy.analyze.symtable import ImportRef
+from spy.analyze.symtable import Color, ImportRef, maybe_blue
 from spy.ast import Color, FuncKind
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
@@ -696,6 +696,9 @@ class SPyVM:
     ) -> W_OpImpl:
         """
         Small wrapper around vm.fast_call, suited to call OPERATORs.
+
+        `loc` points to the source code location which triggered the invocation of the
+        operator. E.g., if we have `a + b`, it should point to ast.BinOp.loc.
         """
         try:
             w_opimpl = self.fast_call(w_OP, args_wam)
@@ -734,37 +737,121 @@ class SPyVM:
             assert self.isinstance(w_arg, param.w_T)
         return w_func.raw_call(self, args_w)
 
-    def _w_metaarg(self, color: Color, w_x: W_Dynamic) -> W_MetaArg:
-        w_T = self.dynamic_type(w_x)
-        if color == "red":
-            return W_MetaArg(self, "red", w_T, None, Loc.here(-3))
+    def eval_opimpl(
+        self,
+        w_opimpl: W_OpImpl,
+        args_wam: Sequence[W_MetaArg],
+        *,
+        loc: Loc,
+        redshifting: bool = False,
+    ) -> W_MetaArg:
+        # hack hack hack
+        # result color:
+        #   - pure function and blue arguments -> blue
+        #   - red function -> red
+        #   - blue function -> blue
+        w_functype = w_opimpl.w_functype
+        color: Color
+        if w_opimpl.is_pure():
+            colors = [wam.color for wam in args_wam]
+            color = maybe_blue(*colors)
         else:
-            return W_MetaArg(self, "blue", w_T, w_x, Loc.here(-3))
+            color = w_functype.color
 
-    def eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wam_a = self._w_metaarg("blue", w_a)
-        wam_b = self._w_metaarg("blue", w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
-        w_res = w_opimpl.execute(self, [w_a, w_b])
-        assert isinstance(w_res, W_Bool)
-        return w_res
+        if color == "red" and redshifting:
+            w_res = None
+        else:
+            args_w = [wam.w_val for wam in args_wam]
+            w_res = w_opimpl._execute(self, args_w)
 
-    def ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
-        wam_a = self._w_metaarg("blue", w_a)
-        wam_b = self._w_metaarg("blue", w_b)
-        w_opimpl = self.call_OP(None, OPERATOR.w_NE, [wam_a, wam_b])
-        w_res = w_opimpl.execute(self, [w_a, w_b])
-        assert isinstance(w_res, W_Bool)
-        return w_res
+        return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
 
-    def getitem(self, w_obj: W_Dynamic, w_i: W_Dynamic) -> W_Dynamic:
-        # FIXME: we need a more structured way of implementing operators
-        # inside the vm, and possibly share the code with typechecker and
-        # ASTFrame. See also vm.ne and vm.getitem
-        wam_obj = self._w_metaarg("blue", w_obj)
-        wam_i = self._w_metaarg("blue", w_i)
-        w_opimpl = self.call_OP(None, OPERATOR.w_GETITEM, [wam_obj, wam_i])
-        return w_opimpl.execute(self, [w_obj, w_i])
+    # ======= operators ========
+    #
+    # For each operator "op" we have multiple versions:
+    #
+    #   - meta_op: do the metacall: operates on MetaArgs, return an OpImpl
+    #   - op_wam: call meta_op, then execute the OpImpl. Operates on MetaArgs.
+    #   - op_w: same as op_wam but operates on concrete W_Objects.
+
+    def meta_eq(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        return self.call_OP(loc, OPERATOR.w_EQ, [wam_a, wam_b])
+
+    def eq_wam(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        w_opimpl = self.meta_eq(wam_a, wam_b, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_a, wam_b], loc=loc)
+
+    def eq_w(
+        self, w_a: W_Dynamic, w_b: W_Dynamic, *, loc: Optional[Loc] = None
+    ) -> W_Bool:
+        wam_a = W_MetaArg.from_w_obj(self, w_a)
+        wam_b = W_MetaArg.from_w_obj(self, w_b)
+        wam = self.eq_wam(wam_a, wam_b, loc=loc or Loc.here(-2))
+        assert isinstance(wam.w_val, W_Bool)
+        return wam.w_val
+
+    def meta_ne(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        "a != b (metacall)"
+        return self.call_OP(loc, OPERATOR.w_NE, [wam_a, wam_b])
+
+    def ne_wam(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "a != b (on meta arguments)"
+        w_opimpl = self.meta_ne(wam_a, wam_b, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_a, wam_b], loc=loc)
+
+    def ne_w(
+        self, w_a: W_Dynamic, w_b: W_Dynamic, *, loc: Optional[Loc] = None
+    ) -> W_Bool:
+        "a != b (dynamic dispatch)"
+        wam_a = W_MetaArg.from_w_obj(self, w_a)
+        wam_b = W_MetaArg.from_w_obj(self, w_b)
+        wam = self.ne_wam(wam_a, wam_b, loc=loc or Loc.here(-2))
+        assert isinstance(wam.w_val, W_Bool)
+        return wam.w_val
+
+    def meta_getitem(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_OpImpl:
+        "o[i] (metacall)"
+        return self.call_OP(loc, OPERATOR.w_GETITEM, [wam_o, wam_i])
+
+    def getitem_wam(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "o[i] (on meta arguments)"
+        w_opimpl = self.meta_getitem(wam_o, wam_i, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_o, wam_i], loc=loc)
+
+    def getitem_w(
+        self, w_o: W_Dynamic, w_i: W_Dynamic, *, loc: Optional[Loc] = None
+    ) -> W_Dynamic:
+        "o[i] (dynamic dispatch)"
+        wam_o = W_MetaArg.from_w_obj(self, w_o)
+        wam_i = W_MetaArg.from_w_obj(self, w_i)
+        wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here(-2))
+        return wam.w_val
+
+    def meta_call(
+        self, wam_func: W_MetaArg, args_wam: list[W_MetaArg], *, loc: Loc
+    ) -> W_OpImpl:
+        "func(*args) (metacall)"
+        return self.call_OP(loc, OPERATOR.w_CALL, [wam_func] + args_wam)
+
+    def call_wam(
+        self, wam_func: W_MetaArg, args_wam: list[W_MetaArg], *, loc: Loc
+    ) -> W_MetaArg:
+        "func(*args) (on meta arguments)"
+        w_opimpl = self.meta_call(wam_func, args_wam, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_func] + args_wam, loc=loc)
+
+    def call_w(
+        self,
+        w_func: W_Dynamic,
+        args_w: Sequence[W_Dynamic],
+        *,
+        loc: Optional[Loc] = None,
+    ) -> W_Dynamic:
+        "func(*args) (dynamic dispatch)"
+        wam_func = W_MetaArg.from_w_obj(self, w_func)
+        args_wam = [W_MetaArg.from_w_obj(self, w_arg) for w_arg in args_w]
+        wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here(-2))
+        return wam.w_val
 
     def universal_eq(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         """
@@ -799,8 +886,8 @@ class SPyVM:
         op.UNIVERSAL_EQ instead. This is closer to the behavior that you have
         in Python, where "42 == 'hello'` is possible and returns False.
         """
-        wam_a = self._w_metaarg("blue", w_a)
-        wam_b = self._w_metaarg("blue", w_b)
+        wam_a = W_MetaArg.from_w_obj(self, w_a)
+        wam_b = W_MetaArg.from_w_obj(self, w_b)
         try:
             w_opimpl = self.call_OP(None, OPERATOR.w_EQ, [wam_a, wam_b])
         except SPyError as err:
@@ -813,24 +900,29 @@ class SPyVM:
             assert w_ta is not w_tb, f"EQ missing on type `{w_ta.fqn}`"
             return B.w_False
 
-        w_res = w_opimpl.execute(self, [w_a, w_b])
+        wam_res = self.eval_opimpl(w_opimpl, [wam_a, wam_b], loc=Loc.here())
+        w_res = wam_res.w_val
         assert isinstance(w_res, W_Bool)
         return w_res
 
     def universal_ne(self, w_a: W_Dynamic, w_b: W_Dynamic) -> W_Bool:
         return self.universal_eq(w_a, w_b).not_(self)
 
-    # XXX: should this take a w_obj, a wam_obj or both? And where do we get the Loc
-    # from? This is a quick hack, but we need to think of a proper uniform way to
-    # interact with wams/wobjs
-    def str(self, wam_obj: W_MetaArg) -> W_Str:
+    def str_wam(self, wam_obj: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "str(obj) (on meta arguments)"
         wam_str = W_MetaArg.from_w_obj(self, B.w_str)
-        w_opimpl = self.call_OP(Loc.fake(), OPERATOR.w_CALL, [wam_str, wam_obj])
-        w_res = w_opimpl.execute(self, [B.w_str, wam_obj.w_val])
-        assert isinstance(w_res, W_Str)
-        return w_res
+        return self.call_wam(wam_str, [wam_obj], loc=loc)
 
-    def make_list_type(self, w_T: W_Type) -> W_ListType:
-        w_res = self.getitem(B.w_list, w_T)
+    def str_w(self, w_obj: W_Dynamic, *, loc: Optional[Loc] = None) -> W_Dynamic:
+        "str(obj) (dynamic dispatch)"
+        return self.call_w(B.w_str, [w_obj], loc=loc or Loc.here(-2))
+
+    def repr_wam(self, wam_o: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "repr(obj) (on meta arguments)"
+        wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
+        return self.call_wam(wam_repr, [wam_o], loc=loc)
+
+    def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_ListType:
+        w_res = self.getitem_w(B.w_list, w_T, loc=loc)
         assert isinstance(w_res, W_ListType)
         return w_res
