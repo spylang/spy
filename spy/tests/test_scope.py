@@ -174,6 +174,40 @@ class TestScopeAnalyzer:
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
+    def test_assignexpr_scope(self):
+        scopes = self.analyze("""
+        def foo() -> i32:
+            if (x := 1):
+                pass
+            return x
+
+        def bar() -> None:
+            while True:
+                if (y := 1):
+                    break
+        """)
+        foo_scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
+        assert foo_scope._symbols["x"] == MatchSymbol("x", "const", "auto")
+        bar_scope = scopes.by_funcdef(self.mod.get_funcdef("bar"))
+        assert bar_scope._symbols["y"] == MatchSymbol("y", "var", "auto")
+
+    def test_assignexpr_globals(self):
+        scopes = self.analyze("""
+        x = 1
+        var y: i32 = 1
+
+        def main() -> None:
+            z0 = (x := 1) # scope captures const x; runtime should reject assigning to it
+            z1 = (y := 1)
+        """)
+        scope = scopes.by_funcdef(self.mod.get_funcdef("main"))
+        assert scope._symbols["x"] == MatchSymbol("x", "const", "global-const", level=1)
+        assert scope._symbols["y"] == MatchSymbol(
+            "y", "var", "explicit", level=1, storage="cell"
+        )
+        assert scope._symbols["z0"].varkind == "const"
+        assert scope._symbols["z1"].varkind == "const"
+
     def test_const_var_without_type(self):
         scopes = self.analyze("""
         def foo() -> None:

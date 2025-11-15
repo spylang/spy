@@ -356,6 +356,9 @@ class ScopeAnalyzer:
         for target in unpack.targets:
             self._declare_target_maybe(target, unpack.value)
 
+    def declare_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        self._declare_target_maybe(assignexpr.target, assignexpr.value)
+
     def _declare_target_maybe(self, target: ast.StrConst, value: ast.Expr) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
@@ -498,6 +501,10 @@ class ScopeAnalyzer:
     def flatten_Assign(self, assign: ast.Assign) -> None:
         self.capture_maybe(assign.target.value)
         self.flatten(assign.value)
+
+    def flatten_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        self.capture_maybe(assignexpr.target.value)
+        self.flatten(assignexpr.value)
 
     def flatten_For(self, forstmt: ast.For) -> None:
         # capture the loop variable and flatten the iterator
