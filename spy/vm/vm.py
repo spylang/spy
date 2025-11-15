@@ -768,6 +768,12 @@ class SPyVM:
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
 
     # ======= operators ========
+    #
+    # For each operator "op" we have multiple versions:
+    #
+    #   - meta_op: do the metacall: operates on MetaArgs, return an OpImpl
+    #   - op_wam: call meta_op, then execute the OpImpl. Operates on MetaArgs.
+    #   - op_w: same as op_wam but operates on concrete W_Objects.
 
     def meta_eq(self, wam_a: W_MetaArg, wam_b: W_MetaArg, *, loc: Loc) -> W_OpImpl:
         return self.call_OP(loc, OPERATOR.w_EQ, [wam_a, wam_b])
