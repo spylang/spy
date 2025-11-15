@@ -125,6 +125,47 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 100
 
+    def test_assignexpr_basic(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            total = 0
+            if (current := 5):
+                total = current * 2
+            return total + current
+        """)
+        assert mod.foo() == 15
+
+    def test_assignexpr_updates_cell(self):
+        mod = self.compile("""
+        var counter: i32 = 0
+
+        def bump() -> i32:
+            return (counter := counter + 1)
+
+        def current() -> i32:
+            return counter
+        """)
+        assert mod.bump() == 1
+        assert mod.current() == 1
+        assert mod.bump() == 2
+
+    def test_assignexpr_single_eval(self):
+        mod = self.compile("""
+        var calls: i32 = 0
+
+        def bump() -> i32:
+            calls = calls + 1
+            return calls
+
+        def foo() -> i32:
+            y = (x := bump())
+            return x + calls
+        """)
+        assert mod.foo() == 2  # bump() runs once: x=1, calls=1
+        assert mod.calls == 1
+        assert mod.foo() == 4  # second call: x=2, calls=2
+        assert mod.calls == 2
+
     @only_interp
     def test_blue_cannot_redeclare(self):
         # see also the equivalent test

@@ -61,6 +61,7 @@ class AbstractFrame:
     locals: dict[str, LocalVar]
     specialized_names: dict[ast.Name, ast.Expr]
     specialized_assigns: dict[ast.Assign, ast.Stmt]
+    specialized_assignexprs: dict[ast.AssignExpr, ast.Stmt]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(
@@ -91,6 +92,7 @@ class AbstractFrame:
         # specialized version.
         self.specialized_names = {}
         self.specialized_assigns = {}
+        self.specialized_assignexprs = {}
         self.desugared_fors = {}
 
     # overridden by DopplerFrame
@@ -469,29 +471,42 @@ class AbstractFrame:
         else:
             assert False
 
+    def _specialize_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Stmt:
+        assign = ast.Assign(
+            loc=assignexpr.loc, target=assignexpr.target, value=assignexpr.value
+        )
+        return self._specialize_Assign(assign)
+
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        target = assign.target
+        self._execute_AssignLocal(assign.target, assign.value)
+
+    def _execute_AssignLocal(self, target: ast.StrConst, value: ast.Expr) -> W_MetaArg:
         varname = target.value
         lv = self.locals.get(varname)
         if lv is None:
             # first assignment, implicit declaration
-            wam = self.eval_expr(assign.value)
+            wam = self.eval_expr(value)
             self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
             lv = self.locals[varname]
         else:
-            wam = self.eval_expr(assign.value, varname=varname)
+            wam = self.eval_expr(value, varname=varname)
 
         if not self.redshifting or lv.color == "blue":
             self.store_local(varname, wam.w_val)
+        return wam
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        target = assign.target
-        varname = target.value
-        wam = self.eval_expr(assign.value)
+        self._execute_AssignCell(assign.target, assign.target_fqn, assign.value)
+
+    def _execute_AssignCell(
+        self, target: ast.StrConst, target_fqn: FQN, value: ast.Expr
+    ) -> W_MetaArg:
+        wam = self.eval_expr(value)
         if not self.redshifting:
-            w_cell = self.vm.lookup_global(assign.target_fqn)
+            w_cell = self.vm.lookup_global(target_fqn)
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)
+        return wam
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wam_tup = self.eval_expr(unpack.value)
@@ -833,6 +848,28 @@ class AbstractFrame:
         w_T = self.vm.dynamic_type(w_val)
         color: Color = "blue" if sym.varkind == "const" else "red"
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
+
+    def eval_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> W_MetaArg:
+        specialized = self.specialized_assignexprs.get(assignexpr)
+        if specialized is None:
+            specialized = self._specialize_AssignExpr(assignexpr)
+            self.specialized_assignexprs[assignexpr] = specialized
+        if isinstance(specialized, ast.AssignLocal):
+            return self._execute_AssignLocal(assignexpr.target, assignexpr.value)
+        elif isinstance(specialized, ast.AssignCell):
+            return self._execute_AssignCell(
+                assignexpr.target, specialized.target_fqn, assignexpr.value
+            )
+        else:
+            assert False
+
+    def eval_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> W_MetaArg:
+        return self._execute_AssignLocal(assignexpr.target, assignexpr.value)
+
+    def eval_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> W_MetaArg:
+        return self._execute_AssignCell(
+            assignexpr.target, assignexpr.target_fqn, assignexpr.value
+        )
 
     def eval_opimpl(
         self, op: ast.Node, w_opimpl: W_OpImpl, args_wam: list[W_MetaArg]
