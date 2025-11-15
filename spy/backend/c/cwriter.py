@@ -16,6 +16,8 @@ from spy.vm.modules.unsafe.ptr import W_Ptr
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
 
+C_PRESERVE_NAMING = ("default", "")
+
 
 class CFuncWriter:
     ctx: Context
@@ -34,6 +36,11 @@ class CFuncWriter:
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+
+    def check_c_preserve(self, name):
+        if name in C_PRESERVE_NAMING:
+            return f"${name}"
+        return name
 
     def ppc(self) -> None:
         """
@@ -84,7 +91,7 @@ class CFuncWriter:
                 varname not in ("@return", "@if", "@while", "@assert")
                 and varname not in param_names
             ):
-                self.tbc.wl(f"{c_type} {varname};")
+                self.tbc.wl(f"{c_type} {self.check_c_preserve(varname)};")
 
     # ==============
 
@@ -276,7 +283,7 @@ class CFuncWriter:
         assert False, "ast.Name nodes should not survive redshifting"
 
     def fmt_expr_NameLocal(self, name: ast.NameLocal) -> C.Expr:
-        return C.Literal(name.sym.name)
+        return C.Literal(self.check_c_preserve(name.sym.name))
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
         return C.Literal(name.fqn.c_name)
