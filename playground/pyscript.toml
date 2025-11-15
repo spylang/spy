@@ -2,10 +2,11 @@ name = "SPy playground Copy"
 packages = [ "micropip", "pygments",]
 
 [files]
-"hello.spy" = ""
-"bluefunc.spy" = ""
-"point.spy" = ""
-"array.spy" = ""
+"pyscript.toml" = ""
+"hello.spy" = "examples/"
+"bluefunc.spy" = "examples/"
+"point.spy" = "examples/"
+"myarray.spy" = "examples/"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/widgets.py" = "ltk/widgets.py"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/pubsub.py" = "ltk/pubsub.py"
