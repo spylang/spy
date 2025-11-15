@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from spy import ast
 from spy.backend.c import c_ast as C
 from spy.backend.c.context import Context
+from spy.backend.c.serializer import check_c_preserve
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -15,8 +16,6 @@ from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
-
-C_PRESERVE_NAMING = ("default", "")
 
 
 class CFuncWriter:
@@ -36,11 +35,6 @@ class CFuncWriter:
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
-
-    def check_c_preserve(self, name):
-        if name in C_PRESERVE_NAMING:
-            return f"${name}"
-        return name
 
     def ppc(self) -> None:
         """
@@ -91,7 +85,7 @@ class CFuncWriter:
                 varname not in ("@return", "@if", "@while", "@assert")
                 and varname not in param_names
             ):
-                self.tbc.wl(f"{c_type} {self.check_c_preserve(varname)};")
+                self.tbc.wl(f"{c_type} {check_c_preserve(varname)};")
 
     # ==============
 
@@ -168,12 +162,12 @@ class CFuncWriter:
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target.value
         v = self.fmt_expr(assign.value)
-        self.tbc.wl(f"{target} = {v};")
+        self.tbc.wl(f"{check_c_preserve(target)} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         v = self.fmt_expr(assign.value)
         target = assign.target_fqn.c_name
-        self.tbc.wl(f"{target} = {v};")
+        self.tbc.wl(f"{check_c_preserve(target)} = {v};")
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value)
@@ -283,7 +277,7 @@ class CFuncWriter:
         assert False, "ast.Name nodes should not survive redshifting"
 
     def fmt_expr_NameLocal(self, name: ast.NameLocal) -> C.Expr:
-        return C.Literal(self.check_c_preserve(name.sym.name))
+        return C.Literal(check_c_preserve(name.sym.name))
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
         return C.Literal(name.fqn.c_name)

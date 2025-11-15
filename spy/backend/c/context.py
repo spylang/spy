@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from spy.backend.c.serializer import check_c_preserve
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
@@ -111,7 +112,7 @@ class Context:
         for i, param in enumerate(w_functype.params):
             c_type = self.w2c(param.w_T)
             if param.kind == "simple":
-                c_param_name = funcdef.args[i].name
+                c_param_name = check_c_preserve(funcdef.args[i].name)
                 c_params.append(C_FuncParam(c_param_name, c_type))
             elif param.kind == "var_positional":
                 assert funcdef.vararg is not None
