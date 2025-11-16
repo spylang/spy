@@ -1307,3 +1307,13 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 5 * 3  # 5 outer iterations, 3 inner iterations each
+
+    def test_use_C_keywords_as_identifiers(self):
+        mod = self.compile("""
+        def calculate(default: i32) -> i32:
+            auto: i32 = 10
+            restrict: i32
+            restrict = 50
+            return auto + restrict + default
+        """)
+        assert mod.calculate(10) == 70

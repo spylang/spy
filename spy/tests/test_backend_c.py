@@ -6,6 +6,7 @@ tested by tests/compiler/*.py.
 """
 
 from spy.backend.c.c_ast import BinOp, Literal, UnaryOp, make_table
+from spy.backend.c.context import C_Ident
 
 
 class TestExpr:
@@ -74,3 +75,8 @@ class TestExpr:
         assert cstr(b"ball\n") == r'"ball\x0a"'
         assert cstr(b"ball\n\nball") == r'"ball\x0a\x0a""ball"'
         assert cstr(b"\x00\x01\x02") == r'"\x00\x01\x02"'
+
+
+def test_C_Ident():
+    assert str(C_Ident("hello")) == "hello"
+    assert str(C_Ident("default")) == "default$"

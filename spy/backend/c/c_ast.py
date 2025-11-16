@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import ClassVar
 
-from .context import C_Type
+from spy.backend.c.context import C_Ident, C_Type
 
 
 def make_table(src: str) -> dict[str, int]:
