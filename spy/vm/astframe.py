@@ -61,7 +61,7 @@ class AbstractFrame:
     locals: dict[str, LocalVar]
     specialized_names: dict[ast.Name, ast.Expr]
     specialized_assigns: dict[ast.Assign, ast.Stmt]
-    specialized_assignexprs: dict[ast.AssignExpr, ast.Stmt]
+    specialized_assignexprs: dict[ast.AssignExpr, ast.Expr]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(
@@ -471,11 +471,44 @@ class AbstractFrame:
         else:
             assert False
 
-    def _specialize_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Stmt:
-        assign = ast.Assign(
-            loc=assignexpr.loc, target=assignexpr.target, value=assignexpr.value
-        )
-        return self._specialize_Assign(assign)
+    def _specialize_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Expr:
+        target = assignexpr.target
+        varname = target.value
+        sym = self.symtable.lookup(varname)
+
+        if sym.varkind == "const" and sym.varkind_origin != "auto":
+            err = SPyError("W_TypeError", "invalid assignment target")
+            err.add("error", f"{sym.name} is const", target.loc)
+            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
+
+            if sym.varkind_origin == "global-const":
+                msg = f"help: declare it as variable: `var {sym.name} ...`"
+                err.add("note", msg, sym.loc)
+            elif sym.varkind_origin == "blue-param":
+                msg = "blue function arguments are const by default"
+                err.add("note", msg, sym.loc)
+
+            raise err
+
+        if sym.storage == "direct":
+            assert sym.is_local
+            return ast.AssignExprLocal(
+                assignexpr.loc, assignexpr.target, assignexpr.value
+            )
+
+        elif sym.storage == "cell":
+            outervars = self.closure[-sym.level]
+            w_cell = outervars[sym.name].w_val
+            assert isinstance(w_cell, W_Cell)
+            return ast.AssignExprCell(
+                loc=assignexpr.loc,
+                target=assignexpr.target,
+                target_fqn=w_cell.fqn,
+                value=assignexpr.value,
+            )
+
+        else:
+            assert False
 
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         self._execute_AssignLocal(assign.target, assign.value)
@@ -854,11 +887,11 @@ class AbstractFrame:
         if specialized is None:
             specialized = self._specialize_AssignExpr(assignexpr)
             self.specialized_assignexprs[assignexpr] = specialized
-        if isinstance(specialized, ast.AssignLocal):
-            return self._execute_AssignLocal(assignexpr.target, assignexpr.value)
-        elif isinstance(specialized, ast.AssignCell):
+        if isinstance(specialized, ast.AssignExprLocal):
+            return self._execute_AssignLocal(specialized.target, specialized.value)
+        elif isinstance(specialized, ast.AssignExprCell):
             return self._execute_AssignCell(
-                assignexpr.target, specialized.target_fqn, assignexpr.value
+                specialized.target, specialized.target_fqn, specialized.value
             )
         else:
             assert False

@@ -479,18 +479,4 @@ class DopplerFrame(ASTFrame):
     def shift_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Expr:
         specialized = self.specialized_assignexprs[assignexpr]
         new_value = self.shifted_expr[assignexpr.value]
-        if isinstance(specialized, ast.AssignLocal):
-            return ast.AssignExprLocal(
-                loc=assignexpr.loc,
-                target=assignexpr.target,
-                value=new_value,
-            )
-        elif isinstance(specialized, ast.AssignCell):
-            return ast.AssignExprCell(
-                loc=assignexpr.loc,
-                target=assignexpr.target,
-                target_fqn=specialized.target_fqn,
-                value=new_value,
-            )
-        else:
-            assert False
+        return specialized.replace(value=new_value)
