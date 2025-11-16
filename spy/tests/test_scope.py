@@ -187,9 +187,15 @@ class TestScopeAnalyzer:
                     break
         """)
         foo_scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
-        assert foo_scope._symbols["x"] == MatchSymbol("x", "const", "auto")
+        assert foo_scope._symbols == {
+            "x": MatchSymbol("x", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
         bar_scope = scopes.by_funcdef(self.mod.get_funcdef("bar"))
-        assert bar_scope._symbols["y"] == MatchSymbol("y", "var", "auto")
+        assert bar_scope._symbols == {
+            "y": MatchSymbol("y", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
 
     def test_assignexpr_globals(self):
         scopes = self.analyze("""
@@ -201,12 +207,36 @@ class TestScopeAnalyzer:
             z1 = (y := 1)
         """)
         scope = scopes.by_funcdef(self.mod.get_funcdef("main"))
-        assert scope._symbols["x"] == MatchSymbol("x", "const", "global-const", level=1)
-        assert scope._symbols["y"] == MatchSymbol(
-            "y", "var", "explicit", level=1, storage="cell"
-        )
-        assert scope._symbols["z0"].varkind == "const"
-        assert scope._symbols["z1"].varkind == "const"
+        assert scope._symbols == {
+            "x": MatchSymbol("x", "const", "global-const", level=1),
+            "y": MatchSymbol("y", "var", "explicit", level=1, storage="cell"),
+            "z0": MatchSymbol("z0", "const", "auto"),
+            "z1": MatchSymbol("z1", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+    def test_var_and_const_assignexpr(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            a = (x := 0)
+            b = (x := 1)
+            if True:
+                c = (y := 2)
+            while True:
+                d = (z := 3)
+                break
+        """)
+        scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
+        assert scope._symbols == {
+            "a": MatchSymbol("a", "const", "auto"),
+            "b": MatchSymbol("b", "const", "auto"),
+            "c": MatchSymbol("c", "const", "auto"),
+            "d": MatchSymbol("d", "var", "auto"),
+            "x": MatchSymbol("x", "var", "auto"),
+            "y": MatchSymbol("y", "const", "auto"),
+            "z": MatchSymbol("z", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
 
     def test_const_var_without_type(self):
         scopes = self.analyze("""
