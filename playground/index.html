@@ -21,8 +21,48 @@
     <!-- Custom playground styles -->
     <link rel="stylesheet" href="style.css">
 
+    <!-- PyScript lifecycle event logging -->
+    <script>
+        console.log('[PyScript] Page loaded, waiting for PyScript initialization...');
+
+        // Fired when PyScript finds a script/element and interpreter is ready
+        addEventListener("py:ready", (event) => {
+            console.log('[PyScript] py:ready - Interpreter bootstrapped, about to execute:', event.target);
+            console.time('[PyScript] Execution time');
+
+            // Remove loading indicator when PyScript is ready
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+        });
+
+        // Fired when a specific script/element finishes executing
+        addEventListener("py:done", (event) => {
+            console.timeEnd('[PyScript] Execution time');
+            console.log('[PyScript] py:done - Script execution completed:', event.target);
+        });
+
+        // Fired when ALL scripts on the page are done
+        addEventListener("py:all-done", () => {
+            console.log('[PyScript] py:all-done - All scripts finished, app ready!');
+        });
+
+        // Error event
+        addEventListener("py:error", (event) => {
+            console.error('[PyScript] py:error - Error occurred:', event.detail);
+        });
+    </script>
+
 </head>
 <body>
+    <!-- Loading indicator - shown until PyScript is ready -->
+    <div id="loading-indicator">
+        <img src="assets/disguised-face.svg" alt="Loading...">
+        <h2>Loading SPy Playground</h2>
+        <p>Initializing PyScript and SPy compiler...</p>
+    </div>
+
     <script type="py" src="main.py" config="pyscript.toml" terminal>
     </script>
 

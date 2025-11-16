@@ -4,20 +4,28 @@ import tomllib
 from pathlib import Path
 
 import ltk
+from js import console
+
+console.log("[Python] main.py started executing")
 
 # ========== SPy code ==========
 
+console.log("[Python] Installing spy package...")
 print("Installing spy... ", end="")
 sys.stdout.flush()
 import micropip
 
 await micropip.install("./spylang-0.1.0-py3-none-any.whl")
 print("DONE")
+console.log("[Python] SPy package installed successfully")
 
 from js import URL, document
 
+console.log("[Python] Importing spy.cli and libspy...")
 import spy.cli
 from spy import libspy
+
+console.log("[Python] SPy imports complete")
 
 libspy.LIBSPY_WASM = str(URL.new("./libspy.mjs", document.baseURI))
 
@@ -64,6 +72,7 @@ class Editor(ltk.Div):
 
 
 # Auto-discover example files from pyscript.toml
+console.log("[Python] Loading example files from pyscript.toml...")
 with open("pyscript.toml", "rb") as f:
     config = tomllib.load(f)
 EXAMPLE_FILES = [
@@ -72,7 +81,9 @@ EXAMPLE_FILES = [
     if dest == "examples/"
 ]
 
+console.log(f"[Python] Creating editor with initial file: {EXAMPLE_FILES[0]}")
 editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
+console.log("[Python] Editor created")
 
 display_filename = "test.spy"
 command_leader = "$"
@@ -173,6 +184,8 @@ def tab_activated(event, ui=None):
 
 
 def main():
+    console.log("[Python] main() function started - building GUI...")
+
     # Register tab activation callback
     example_tabs.on("tabsactivate", tab_activated)
 
@@ -209,6 +222,8 @@ def main():
     )
 
     ltk.find("#terminal").append(ltk.find("py-terminal"))
+    console.log("[Python] GUI construction complete - playground ready!")
 
 
+console.log("[Python] Calling main()...")
 main()
