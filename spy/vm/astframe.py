@@ -434,8 +434,9 @@ class AbstractFrame:
             self.specialized_assigns[assign] = specialized
         self.exec_stmt(specialized)
 
-    def _specialize_Assign(self, assign: ast.Assign) -> ast.Stmt:
-        target = assign.target
+    def _specialize_assign_common(
+        self, loc: Loc, target: ast.StrConst, value: ast.Expr, expr: bool
+    ) -> ast.AssignLocal | ast.AssignCell | ast.AssignExprLocal | ast.AssignExprCell:
         varname = target.value
         sym = self.symtable.lookup(varname)
 
@@ -452,63 +453,51 @@ class AbstractFrame:
                 err.add("note", msg, sym.loc)
 
             raise err
-
         elif sym.storage == "direct":
             assert sym.is_local
-            return ast.AssignLocal(assign.loc, target, assign.value)
+            if expr:
+                return ast.AssignExprLocal(loc, target, value)
+            else:
+                return ast.AssignLocal(loc, target, value)
 
         elif sym.storage == "cell":
             outervars = self.closure[-sym.level]
             w_cell = outervars[sym.name].w_val
             assert isinstance(w_cell, W_Cell)
-            return ast.AssignCell(
-                loc=assign.loc,
-                target=assign.target,
-                target_fqn=w_cell.fqn,
-                value=assign.value,
-            )
+            if expr:
+                return ast.AssignExprCell(
+                    loc=loc,
+                    target=target,
+                    target_fqn=w_cell.fqn,
+                    value=value,
+                )
+            else:
+                return ast.AssignCell(
+                    loc=loc,
+                    target=target,
+                    target_fqn=w_cell.fqn,
+                    value=value,
+                )
 
         else:
             assert False
+
+    def _specialize_Assign(self, assign: ast.Assign) -> ast.Stmt:
+        res = self._specialize_assign_common(
+            loc=assign.loc, target=assign.target, value=assign.value, expr=False
+        )
+        assert isinstance(res, (ast.AssignLocal, ast.AssignCell))
+        return res
 
     def _specialize_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Expr:
-        target = assignexpr.target
-        varname = target.value
-        sym = self.symtable.lookup(varname)
-
-        if sym.varkind == "const" and sym.varkind_origin != "auto":
-            err = SPyError("W_TypeError", "invalid assignment target")
-            err.add("error", f"{sym.name} is const", target.loc)
-            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
-
-            if sym.varkind_origin == "global-const":
-                msg = f"help: declare it as variable: `var {sym.name} ...`"
-                err.add("note", msg, sym.loc)
-            elif sym.varkind_origin == "blue-param":
-                msg = "blue function arguments are const by default"
-                err.add("note", msg, sym.loc)
-
-            raise err
-
-        if sym.storage == "direct":
-            assert sym.is_local
-            return ast.AssignExprLocal(
-                assignexpr.loc, assignexpr.target, assignexpr.value
-            )
-
-        elif sym.storage == "cell":
-            outervars = self.closure[-sym.level]
-            w_cell = outervars[sym.name].w_val
-            assert isinstance(w_cell, W_Cell)
-            return ast.AssignExprCell(
-                loc=assignexpr.loc,
-                target=assignexpr.target,
-                target_fqn=w_cell.fqn,
-                value=assignexpr.value,
-            )
-
-        else:
-            assert False
+        res = self._specialize_assign_common(
+            loc=assignexpr.loc,
+            target=assignexpr.target,
+            value=assignexpr.value,
+            expr=True,
+        )
+        assert isinstance(res, (ast.AssignExprLocal, ast.AssignExprCell))
+        return res
 
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         self._execute_AssignLocal(assign.target, assign.value)
