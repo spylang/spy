@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from spy.backend.c import c_ast as C
-from spy.backend.c.share import C_Type
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
@@ -19,8 +17,77 @@ from spy.vm.vm import SPyVM
 
 
 @dataclass
-class C_FuncParam:
+class C_Type:
+    """
+    Just a tiny wrapper around a string, but it helps to make things tidy.
+    """
+
     name: str
+
+    def __repr__(self) -> str:
+        return f"<C type '{self.name}'>"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+@dataclass
+class C_Ident:
+    # C_KEYWORDS is initlized once with immutable property.
+    C_KEYWORDS = (
+        "auto",
+        "break",
+        "case",
+        "char",
+        "const",
+        "continue",
+        "default",
+        "do",
+        "double",
+        "else",
+        "enum",
+        "extern",
+        "float",
+        "for",
+        "goto",
+        "if",
+        "inline",
+        "int",
+        "long",
+        "register",
+        "restrict",
+        "return",
+        "short",
+        "signed",
+        "sizeof",
+        "static",
+        "struct",
+        "switch",
+        "typedef",
+        "union",
+        "unsigned",
+        "void",
+        "volatile",
+        "while",
+        "_Bool",
+        "_Complex",
+        "_Imaginary",
+    )
+
+    variable_name: str
+
+    def check_c_keyword(self) -> str:
+        if self.variable_name in self.C_KEYWORDS:
+            return f"{self.variable_name}$"
+        return self.variable_name
+
+    def __str__(self) -> str:
+        return self.check_c_keyword()
+
+
+@dataclass
+class C_FuncParam:
+    name: C_Ident
     c_type: C_Type
 
 
@@ -98,7 +165,7 @@ class Context:
         for i, param in enumerate(w_functype.params):
             c_type = self.w2c(param.w_T)
             if param.kind == "simple":
-                c_param_name = str(C.Ident(funcdef.args[i].name))
+                c_param_name = C_Ident(funcdef.args[i].name)
                 c_params.append(C_FuncParam(c_param_name, c_type))
             elif param.kind == "var_positional":
                 assert funcdef.vararg is not None

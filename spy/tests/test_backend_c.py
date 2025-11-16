@@ -6,6 +6,7 @@ tested by tests/compiler/*.py.
 """
 
 from spy.backend.c.c_ast import BinOp, Literal, UnaryOp, make_table
+from spy.backend.c.context import C_Ident
 
 
 class TestExpr:
@@ -74,3 +75,20 @@ class TestExpr:
         assert cstr(b"ball\n") == r'"ball\x0a"'
         assert cstr(b"ball\n\nball") == r'"ball\x0a\x0a""ball"'
         assert cstr(b"\x00\x01\x02") == r'"\x00\x01\x02"'
+
+
+def test_check_c_preserve():
+    for naming in C_Ident.C_KEYWORDS:
+        c_naming = C_Ident(naming)
+        assert f"{c_naming}" == f"{naming}$"
+
+
+def test_check_non_c_preserve():
+    namings = (
+        "dEfault",  # C is case-sensitive, so only `default` is reserved
+        "myName",
+        "__name_s",
+    )
+    for naming in namings:
+        c_naming = C_Ident(naming)
+        assert f"{c_naming}" == f"{naming}"

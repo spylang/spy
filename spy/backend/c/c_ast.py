@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import ClassVar
 
-from spy.backend.c.share import C_Type
+from spy.backend.c.context import C_Ident, C_Type
 
 
 def make_table(src: str) -> dict[str, int]:
@@ -319,54 +319,3 @@ class Cast(Expr):
 
     def __str__(self) -> str:
         return f"({self.type}){self.expr}"
-
-
-@dataclass
-class Ident(Expr):
-    # C_PRESERVE_NAMING is initlized once with immutable property.
-    C_PRESERVE_NAMING = (
-        "auto",
-        "break",
-        "case",
-        "char",
-        "const",
-        "continue",
-        "default",
-        "do",
-        "double",
-        "else",
-        "enum",
-        "extern",
-        "float",
-        "for",
-        "goto",
-        "if",
-        "inline",
-        "int",
-        "long",
-        "register",
-        "restrict",
-        "return",
-        "short",
-        "signed",
-        "sizeof",
-        "static",
-        "struct",
-        "switch",
-        "typedef",
-        "union",
-        "unsigned",
-        "void",
-        "volatile",
-        "while",
-        "_Bool",
-        "_Complex",
-        "_Imaginary",
-    )
-
-    variable_name: str
-
-    def __str__(self) -> str:
-        if self.variable_name in self.C_PRESERVE_NAMING:
-            return f"{self.variable_name}$"
-        return f"{self.variable_name}"

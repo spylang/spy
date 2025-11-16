@@ -4,8 +4,7 @@ from typing import Optional
 import py.path
 
 from spy.backend.c.cffiwriter import CFFIWriter
-from spy.backend.c.context import Context
-from spy.backend.c.share import C_Type
+from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
 from spy.vm.modules.types import W_LiftedType

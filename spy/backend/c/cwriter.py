@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import Context
+from spy.backend.c.context import C_Ident, Context
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -84,7 +84,8 @@ class CFuncWriter:
                 varname not in ("@return", "@if", "@while", "@assert")
                 and varname not in param_names
             ):
-                self.tbc.wl(f"{c_type} {str(C.Ident(varname))};")
+                c_varname = C_Ident(varname)
+                self.tbc.wl(f"{c_type} {c_varname};")
 
     # ==============
 
@@ -161,12 +162,14 @@ class CFuncWriter:
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target.value
         v = self.fmt_expr(assign.value)
-        self.tbc.wl(f"{str(C.Ident(target))} = {v};")
+        c_varname = C_Ident(target)
+        self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         v = self.fmt_expr(assign.value)
         target = assign.target_fqn.c_name
-        self.tbc.wl(f"{str(C.Ident(target))} = {v};")
+        c_varname = C_Ident(target)
+        self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value)
@@ -276,7 +279,8 @@ class CFuncWriter:
         assert False, "ast.Name nodes should not survive redshifting"
 
     def fmt_expr_NameLocal(self, name: ast.NameLocal) -> C.Expr:
-        return C.Literal(str(C.Ident(name.sym.name)))
+        varname = C_Ident(name.sym.name)
+        return C.Literal(f"{varname}")
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
         return C.Literal(name.fqn.c_name)
