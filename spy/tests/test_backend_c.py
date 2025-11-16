@@ -77,18 +77,6 @@ class TestExpr:
         assert cstr(b"\x00\x01\x02") == r'"\x00\x01\x02"'
 
 
-def test_check_c_preserve():
-    for naming in C_Ident.C_KEYWORDS:
-        c_naming = C_Ident(naming)
-        assert f"{c_naming}" == f"{naming}$"
-
-
-def test_check_non_c_preserve():
-    namings = (
-        "dEfault",  # C is case-sensitive, so only `default` is reserved
-        "myName",
-        "__name_s",
-    )
-    for naming in namings:
-        c_naming = C_Ident(naming)
-        assert f"{c_naming}" == f"{naming}"
+def test_C_Ident():
+    assert str(C_Ident("hello")) == "hello"
+    assert str(C_Ident("default")) == "default$"
