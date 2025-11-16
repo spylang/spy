@@ -38,8 +38,12 @@ local:
 	cp $(BUILD_DIR)/libspy.wasm .
 	cp $(DIST_DIR)/spylang-*.whl .
 
+	@echo "Copying assets..."
+	cp -rv $(ROOT_DIR)/assets .
+
 	@echo "✓ Playground built successfully!"
 	@echo "Run 'python -m http.server' in this directory to test locally"
 
 clean:
 	rm -f libspy.mjs libspy.wasm spylang-*.whl
+	rm -rf assets
