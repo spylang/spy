@@ -135,6 +135,28 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 15
 
+    def test_assignexpr_argument(self):
+        mod = self.compile("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            x = 0
+            y = inc(x := 1)
+            return x + y
+        """)
+        assert mod.foo() == 3
+
+    def test_assignexpr_condition_side_effect(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            x = 0
+            if (x := 1):
+                pass
+            return x
+        """)
+        assert mod.foo() == 1
+
     def test_assignexpr_updates_cell(self):
         mod = self.compile("""
         var counter: i32 = 0
@@ -173,6 +195,17 @@ class TestBasic(CompilerTest):
             return x + result
         """)
         assert mod.foo() == 2
+
+    def test_assignexpr_inside_blue_func(self):
+        mod = self.compile("""
+        @blue
+        def make_value() -> i32:
+            return (x := 1)
+
+        def foo() -> i32:
+            return make_value()
+        """)
+        assert mod.foo() == 1
 
     def test_assignexpr_updates_nonlocal_cell(self):
         mod = self.compile("""

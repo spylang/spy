@@ -133,6 +133,119 @@ class TestDoppler:
             return 42
         """)
 
+    def test_assignexpr_argument_is_not_folded(self):
+        self.redshift("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            x = 0
+            y = inc(x := 1)
+            return x + y
+        """)
+        self.assert_dump("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            x: i32
+            x = 0
+            y: i32
+            y = `test::inc`(x := 1)
+            return x + y
+        """)
+
+    def test_assignexpr_argument_with_prints(self):
+        self.redshift("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def main() -> None:
+            x = 0
+            y = inc(x := 1)
+            print(x)
+            print(y)
+        """)
+        self.assert_dump("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def main() -> None:
+            x: i32
+            x = 0
+            y: i32
+            y = `test::inc`(x := 1)
+            print_i32(x)
+            print_i32(y)
+        """)
+
+    def test_assignexpr_condition_is_not_folded(self):
+        self.redshift("""
+        def main() -> None:
+            x = 0
+            if (x := 1):
+                print(x)
+            else:
+                print(2)
+        """)
+        self.assert_dump("""
+        def main() -> None:
+            x: i32
+            x = 0
+            if `operator::i32_to_bool`(x := 1):
+                print_i32(x)
+            else:
+                print_i32(2)
+        """)
+
+    def test_assignexpr_condition_inside_blue_is_folded(self):
+        self.redshift("""
+        @blue
+        def foo() -> i32:
+            x = 0
+            if (x := 1):
+                return 2
+            return x
+
+        def main() -> None:
+            foo()
+        """)
+        self.assert_dump("""
+        def main() -> None:
+            2
+        """)
+
+    def test_assignexpr_blue_preserves_assignment(self):
+        self.redshift("""
+        @blue
+        def foo() -> i32:
+            x = 0
+            if (x := 1):
+                pass
+            return x
+
+        def main() -> i32:
+            return foo()
+        """)
+        self.assert_dump("""
+        def main() -> i32:
+            return 1
+        """)
+
+    def test_assignexpr_inside_blue_func(self):
+        self.redshift("""
+        @blue
+        def make_value() -> i32:
+            return (x := 1)
+
+        def foo() -> i32:
+            return make_value()
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return 1
+        """)
+
     def test_call_blue_closure(self):
         self.redshift("""
         @blue
