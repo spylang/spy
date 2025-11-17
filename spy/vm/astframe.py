@@ -502,13 +502,16 @@ class AbstractFrame:
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         self._execute_AssignLocal(assign.target, assign.value)
 
-    def _execute_AssignLocal(self, target: ast.StrConst, value: ast.Expr) -> W_MetaArg:
+    def _execute_AssignLocal(
+        self, target: ast.StrConst, value: ast.Expr, expr: bool = False
+    ) -> W_MetaArg:
         varname = target.value
         lv = self.locals.get(varname)
         if lv is None:
             # first assignment, implicit declaration
             wam = self.eval_expr(value)
-            self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
+            desired_color = "red" if expr else wam.color
+            self.declare_local(varname, desired_color, wam.w_static_T, target.loc)
             lv = self.locals[varname]
         else:
             wam = self.eval_expr(value, varname=varname)
@@ -877,21 +880,35 @@ class AbstractFrame:
             specialized = self._specialize_AssignExpr(assignexpr)
             self.specialized_assignexprs[assignexpr] = specialized
         if isinstance(specialized, ast.AssignExprLocal):
-            return self._execute_AssignLocal(specialized.target, specialized.value)
+            return self._mark_assignexpr_red(
+                self._execute_AssignLocal(
+                    specialized.target, specialized.value, expr=True
+                )
+            )
         elif isinstance(specialized, ast.AssignExprCell):
-            return self._execute_AssignCell(
-                specialized.target, specialized.target_fqn, specialized.value
+            return self._mark_assignexpr_red(
+                self._execute_AssignCell(
+                    specialized.target, specialized.target_fqn, specialized.value
+                )
             )
         else:
             assert False
 
     def eval_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> W_MetaArg:
-        return self._execute_AssignLocal(assignexpr.target, assignexpr.value)
+        return self._mark_assignexpr_red(
+            self._execute_AssignLocal(assignexpr.target, assignexpr.value, expr=True)
+        )
 
     def eval_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> W_MetaArg:
-        return self._execute_AssignCell(
-            assignexpr.target, assignexpr.target_fqn, assignexpr.value
+        return self._mark_assignexpr_red(
+            self._execute_AssignCell(
+                assignexpr.target, assignexpr.target_fqn, assignexpr.value
+            )
         )
+
+    def _mark_assignexpr_red(self, wam: W_MetaArg) -> W_MetaArg:
+        """Assignment expressions mutate state; force them red to block folding."""
+        return wam.as_red(self.vm)
 
     def eval_opimpl(
         self, op: ast.Node, w_opimpl: W_OpImpl, args_wam: list[W_MetaArg]
