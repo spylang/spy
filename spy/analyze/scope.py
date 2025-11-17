@@ -395,14 +395,16 @@ class ScopeAnalyzer:
                     self.scope._symbols[target.value] = new_sym
 
     def declare_While(self, whilestmt: ast.While) -> None:
-        self.declare(whilestmt.test)
         # Increment loop depth before processing body
         self.loop_depth += 1
+        self.declare(whilestmt.test)
         for stmt in whilestmt.body:
             self.declare(stmt)
         self.loop_depth -= 1
 
     def declare_For(self, forstmt: ast.For) -> None:
+        # Increment loop depth before processing body
+        self.loop_depth += 1
         self.declare(forstmt.iter)
         # Declare the hidden iterator variable _$iter0
         iter_name = f"_$iter{forstmt.seq}"
@@ -427,7 +429,6 @@ class ScopeAnalyzer:
         )
 
         # Increment loop depth before processing body
-        self.loop_depth += 1
         for stmt in forstmt.body:
             self.declare(stmt)
         self.loop_depth -= 1
