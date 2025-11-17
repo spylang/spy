@@ -403,9 +403,6 @@ class ScopeAnalyzer:
         self.loop_depth -= 1
 
     def declare_For(self, forstmt: ast.For) -> None:
-        # Increment loop depth before processing body
-        self.loop_depth += 1
-        self.declare(forstmt.iter)
         # Declare the hidden iterator variable _$iter0
         iter_name = f"_$iter{forstmt.seq}"
         self.define_name(
@@ -429,6 +426,8 @@ class ScopeAnalyzer:
         )
 
         # Increment loop depth before processing body
+        self.loop_depth += 1
+        self.declare(forstmt.iter)
         for stmt in forstmt.body:
             self.declare(stmt)
         self.loop_depth -= 1
