@@ -198,6 +198,18 @@ class TestDoppler:
                 print_i32(2)
         """)
 
+    def test_assignexpr_while_condition_is_not_folded(self):
+        self.redshift("""
+        def main() -> None:
+            while (x := 1):
+                break
+        """)
+        self.assert_dump("""
+        def main() -> None:
+            while `operator::i32_to_bool`(x := 1):
+                break
+        """)
+
     def test_assignexpr_condition_inside_blue_is_folded(self):
         self.redshift("""
         @blue
