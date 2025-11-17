@@ -20,4 +20,4 @@ repos:
       - id: clang-format
         files: ^spy/libspy
         types_or: [c, c++]
-        exclude: ^(spy/libspy/vendored/|spy/libspy/src/jsffi/)
+        exclude: ^spy/libspy/vendored/
