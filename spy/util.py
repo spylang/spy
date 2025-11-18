@@ -279,6 +279,39 @@ def colors_coordinates(ast_module, ast_color_map) -> dict[int, list[tuple[str, s
     return dict(coords)
 
 
+def format_colors_as_json(coords_dict: dict[int, list[tuple[str, str]]]) -> str:
+    """
+    Convert color coordinates to JSON format for editor integration.
+
+    Args:
+        coords_dict: Dictionary mapping line numbers to list of (col_range, color) tuples,
+                     as returned by colors_coordinates()
+
+    Returns:
+        JSON string with format: [{"line": 10, "col": 5, "length": 3, "type": "blue"}, ...]
+
+    Example:
+        >>> coords = {3: [("4:9", "red"), ("10:15", "blue")]}
+        >>> format_colors_as_json(coords)
+        '[{"line": 3, "col": 4, "length": 6, "type": "red"}, ...]'
+    """
+    import json
+
+    highlights = []
+    for line_num, spans in coords_dict.items():
+        for col_range, color in spans:
+            start_str, end_str = col_range.split(":")
+            start = int(start_str)
+            end = int(end_str)
+            length = end - start + 1
+
+            highlights.append(
+                {"line": line_num, "col": start, "length": length, "type": color}
+            )
+
+    return json.dumps(highlights, indent=2)
+
+
 _record_src_counter = itertools.count()
 
 
