@@ -179,6 +179,31 @@ class TestDoppler:
             print_i32(y)
         """)
 
+    def test_assignexpr_const_target_is_folded(self):
+        self.redshift("""
+        def foo(x: i32) -> None:
+            pass
+
+        def main() -> None:
+            x = 0
+            foo(x := 1)
+            foo(y := 2)
+            print(x)
+            print(y)
+        """)
+        self.assert_dump("""
+        def foo(x: i32) -> None:
+            pass
+
+        def main() -> None:
+            x: i32
+            x = 0
+            `test::foo`(x := 1)
+            `test::foo`(2)
+            print_i32(x)
+            print_i32(2)
+        """)
+
     def test_assignexpr_condition_is_not_folded(self):
         self.redshift("""
         def main() -> None:

@@ -342,8 +342,7 @@ class DopplerFrame(ASTFrame):
                   -> compute shited binop (stored in .shifted_expr)
         """
         wam = super().eval_expr(expr, varname=varname)
-        const_foldable = wam.color == "blue" and not self._expr_has_side_effect(expr)
-        if const_foldable:
+        if wam.color == "blue":
             new_expr = make_const(self.vm, expr.loc, wam.w_val)
         else:
             new_expr = self.shift_expr(expr)
@@ -359,18 +358,6 @@ class DopplerFrame(ASTFrame):
         self.shifted_expr[expr] = new_expr
         self.record_node_color(expr, wam.color)
         return wam
-
-    def _expr_has_side_effect(self, expr: ast.Expr) -> bool:
-        """Return True if expr must be re-emitted."""
-
-        return isinstance(
-            expr,
-            (
-                ast.AssignExpr,
-                ast.AssignExprLocal,
-                ast.AssignExprCell,
-            ),
-        )
 
     def eval_opimpl(
         self, op: ast.Node, w_opimpl: W_OpImpl, args_wam: list[W_MetaArg]
