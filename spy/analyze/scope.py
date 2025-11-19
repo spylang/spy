@@ -285,6 +285,8 @@ class ScopeAnalyzer:
             vardef.loc,
             vardef.type.loc,
         )
+        if vardef.value is not None:
+            self.declare(vardef.value)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope

@@ -251,6 +251,16 @@ class TestScopeAnalyzer:
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
+    def test_vardef_initializer_declares_assignexpr_target(self):
+        scopes = self.analyze("""
+        def foo() -> i32:
+            var z: i32 = (x := 1)
+            return x + z
+        """)
+        scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
+        assert scope._symbols["z"] == MatchSymbol("z", "var", "explicit")
+        assert scope._symbols["x"] == MatchSymbol("x", "const", "auto")
+
     def test_const_var_without_type(self):
         scopes = self.analyze("""
         def foo() -> None:
