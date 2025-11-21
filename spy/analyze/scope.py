@@ -285,6 +285,8 @@ class ScopeAnalyzer:
             vardef.loc,
             vardef.type.loc,
         )
+        if vardef.value is not None:
+            self.declare(vardef.value)
 
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func in the "outer" scope
@@ -348,13 +350,20 @@ class ScopeAnalyzer:
 
     def declare_Assign(self, assign: ast.Assign) -> None:
         self._declare_target_maybe(assign.target, assign.value)
+        self.declare(assign.value)
 
     def declare_AugAssign(self, augassign: ast.AugAssign) -> None:
         self._promote_const_to_var_maybe(augassign.target)
+        self.declare(augassign.value)
 
     def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         for target in unpack.targets:
             self._declare_target_maybe(target, unpack.value)
+        self.declare(unpack.value)
+
+    def declare_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        self._declare_target_maybe(assignexpr.target, assignexpr.value)
+        self.declare(assignexpr.value)
 
     def _declare_target_maybe(self, target: ast.StrConst, value: ast.Expr) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
@@ -390,6 +399,7 @@ class ScopeAnalyzer:
     def declare_While(self, whilestmt: ast.While) -> None:
         # Increment loop depth before processing body
         self.loop_depth += 1
+        self.declare(whilestmt.test)
         for stmt in whilestmt.body:
             self.declare(stmt)
         self.loop_depth -= 1
@@ -419,6 +429,7 @@ class ScopeAnalyzer:
 
         # Increment loop depth before processing body
         self.loop_depth += 1
+        self.declare(forstmt.iter)
         for stmt in forstmt.body:
             self.declare(stmt)
         self.loop_depth -= 1
@@ -498,6 +509,10 @@ class ScopeAnalyzer:
     def flatten_Assign(self, assign: ast.Assign) -> None:
         self.capture_maybe(assign.target.value)
         self.flatten(assign.value)
+
+    def flatten_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        self.capture_maybe(assignexpr.target.value)
+        self.flatten(assignexpr.value)
 
     def flatten_For(self, forstmt: ast.For) -> None:
         # capture the loop variable and flatten the iterator

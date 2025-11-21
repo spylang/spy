@@ -475,3 +475,8 @@ class DopplerFrame(ASTFrame):
         v_meth = self.shifted_expr[op.method]
         newargs_v = [self.shifted_expr[arg] for arg in op.args]
         return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
+
+    def shift_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Expr:
+        specialized = self.specialized_assignexprs[assignexpr]
+        new_value = self.shifted_expr[assignexpr.value]
+        return specialized.replace(value=new_value)

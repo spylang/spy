@@ -52,6 +52,16 @@ class TestSPyBackend(CompilerTest):
             c = (1 + 2) * 3
         """)
 
+    def test_assignexpr_expr(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            return (x := 1)
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return x := 1
+        """)
+
     def test_binop(self):
         mod = self.compile(r"""
         def foo() -> None:

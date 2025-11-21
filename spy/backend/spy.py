@@ -371,6 +371,28 @@ class SPyBackend:
             v = f"({v})"
         return f"{unary.op}{v}"
 
+    def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> str:
+        return self._fmt_assignexpr(
+            assignexpr.target.value, assignexpr.value, assignexpr.precedence
+        )
+
+    def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> str:
+        return self._fmt_assignexpr(
+            assignexpr.target.value, assignexpr.value, assignexpr.precedence
+        )
+
+    def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> str:
+        target = self.fmt_fqn(assignexpr.target_fqn)
+        return self._fmt_assignexpr(target, assignexpr.value, assignexpr.precedence)
+
+    def _fmt_assignexpr(
+        self, target: str, value_expr: ast.Expr, precedence: int
+    ) -> str:
+        value = self.fmt_expr(value_expr)
+        if value_expr.precedence < precedence:
+            value = f"({value})"
+        return f"{target} := {value}"
+
     # special cases
     FQN2BinOp = {
         FQN("operator::i32_add"): "+",

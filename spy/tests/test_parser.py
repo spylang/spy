@@ -1493,3 +1493,23 @@ class TestParser:
         )
         """
         self.assert_dump(for_stmt, expected)
+
+    def test_NamedExpr_basic(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            if (x := 1):
+                return x
+            return 0
+        """)
+        func = self.mod.get_funcdef("foo")
+        if_stmt = func.body[0]
+        assert isinstance(if_stmt, ast.If)
+        self.assert_dump(
+            if_stmt.test,
+            """
+            AssignExpr(
+                target=StrConst(value='x'),
+                value=Constant(value=1),
+            )
+            """,
+        )
