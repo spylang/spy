@@ -15,8 +15,11 @@ void WASM_EXPORT(jsffi_init)(void);
 JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
 JsRef WASM_EXPORT(jsffi_i32)(int32_t x);
 JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
-JsRef
-    WASM_EXPORT(jsffi_call_method_1)(JsRef c_target, const char *c_name, JsRef c_arg0);
+JsRef WASM_EXPORT(jsffi_call_method_1)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0
+);
 JsRef WASM_EXPORT(jsffi_getattr)(JsRef c_target, const char *c_name);
 void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, JsRef c_val);
 
