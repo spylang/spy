@@ -877,12 +877,12 @@ class AbstractFrame:
             specialized = self._specialize_AssignExpr(assignexpr)
             self.specialized_assignexprs[assignexpr] = specialized
         if isinstance(specialized, ast.AssignExprLocal):
-            return self._mark_assignexpr_red(
+            return self._set_assignexpr_color(
                 specialized.target,
                 self._execute_AssignLocal(specialized.target, specialized.value),
             )
         elif isinstance(specialized, ast.AssignExprCell):
-            return self._mark_assignexpr_red(
+            return self._set_assignexpr_color(
                 specialized.target,
                 self._execute_AssignCell(
                     specialized.target, specialized.target_fqn, specialized.value
@@ -892,20 +892,20 @@ class AbstractFrame:
             assert False
 
     def eval_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> W_MetaArg:
-        return self._mark_assignexpr_red(
+        return self._set_assignexpr_color(
             assignexpr.target,
             self._execute_AssignLocal(assignexpr.target, assignexpr.value),
         )
 
     def eval_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> W_MetaArg:
-        return self._mark_assignexpr_red(
+        return self._set_assignexpr_color(
             assignexpr.target,
             self._execute_AssignCell(
                 assignexpr.target, assignexpr.target_fqn, assignexpr.value
             ),
         )
 
-    def _mark_assignexpr_red(self, target: ast.StrConst, wam: W_MetaArg) -> W_MetaArg:
+    def _set_assignexpr_color(self, target: ast.StrConst, wam: W_MetaArg) -> W_MetaArg:
         sym = self.symtable.lookup(target.value)
         if sym.varkind == "var":
             return wam.as_red(self.vm)
