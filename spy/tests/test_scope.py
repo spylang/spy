@@ -258,8 +258,12 @@ class TestScopeAnalyzer:
             return x + z
         """)
         scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
-        assert scope._symbols["z"] == MatchSymbol("z", "var", "explicit")
-        assert scope._symbols["x"] == MatchSymbol("x", "const", "auto")
+        assert scope._symbols == {
+            "z": MatchSymbol("z", "var", "explicit"),
+            "x": MatchSymbol("x", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
+        }
 
     def test_const_var_without_type(self):
         scopes = self.analyze("""
