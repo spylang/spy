@@ -175,8 +175,9 @@ class ImportAnalyzer:
     def import_one(self, modname: str, mod: ast.Module) -> None:
         scopes = self.analyze_scopes(modname)
         symtable = scopes.by_module()
+        mod.symtable = symtable
         fqn = FQN(modname)
-        modframe = ModFrame(self.vm, fqn, symtable, mod)
+        modframe = ModFrame(self.vm, fqn, mod)
         w_mod = modframe.run()
         self.vm.modules_w[modname] = w_mod
 

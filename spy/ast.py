@@ -141,6 +141,7 @@ class Module(Node):
     filename: str
     docstring: Optional[str]
     decls: list["Decl"]
+    symtable: Any = field(repr=False, default=None)
 
     def get_funcdef(self, name: str) -> "FuncDef":
         """

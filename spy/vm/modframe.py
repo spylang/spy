@@ -29,11 +29,11 @@ class ModFrame(AbstractFrame):
         self,
         vm: "SPyVM",
         ns: FQN,
-        symtable: SymTable,
         mod: ast.Module,
     ) -> None:
-        assert symtable.kind == "module"
-        super().__init__(vm, ns, mod.loc, symtable, closure=vm.builtins_closure)
+        assert mod.symtable is not None
+        assert mod.symtable.kind == "module"
+        super().__init__(vm, ns, mod.loc, mod.symtable, closure=vm.builtins_closure)
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)
