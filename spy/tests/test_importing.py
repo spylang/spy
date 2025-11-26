@@ -132,3 +132,108 @@ class TestImportAnalyzer:
         analyzer.parse_all()
         assert list(analyzer.mods) == ["main", "mod1"]
         assert analyzer.mods["mod1"] is not None  # check that we found it
+
+    def test_cache_basic(self):
+        """Test that cache is created and used"""
+        src = "x: i32 = 42"
+        self.write("mod1.spy", src)
+
+        # First import - should create cache
+        analyzer1 = ImportAnalyzer(self.vm, "mod1")
+        analyzer1.parse_all()
+        analyzer1.import_all()
+
+        # Check cache file exists
+        cache_file = self.tmpdir.join("__pycache__", "mod1.spyc")
+        assert cache_file.exists()
+
+        # Second import with fresh VM - should use cache
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "mod1")
+        analyzer2.parse_all()
+        assert "mod1" in analyzer2.cached_mods
+
+    def test_cache_invalidation(self):
+        """Test that cache is invalidated when source changes"""
+        import time
+
+        src1 = "x: i32 = 42"
+        f = self.write("mod1.spy", src1)
+
+        # First import - create cache
+        analyzer1 = ImportAnalyzer(self.vm, "mod1")
+        analyzer1.parse_all()
+        analyzer1.import_all()
+
+        cache_file = self.tmpdir.join("__pycache__", "mod1.spyc")
+        assert cache_file.exists()
+        cache_mtime = cache_file.mtime()
+
+        # Wait a bit and modify the source file
+        time.sleep(0.01)
+        src2 = "y: i32 = 100"
+        f.write(src2)
+
+        # Second import with fresh VM - should re-parse (cache is older than source)
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "mod1")
+        analyzer2.parse_all()
+        assert "mod1" not in analyzer2.cached_mods
+
+        # Import to update cache
+        analyzer2.import_all()
+
+        # Cache should be updated
+        assert cache_file.mtime() > cache_mtime
+
+    def test_cache_with_imports(self):
+        """Test caching with multiple modules"""
+        self.write("a.spy", "x: i32 = 1")
+        self.write("b.spy", "import a\ny: i32 = 2")
+        self.write("main.spy", "import b")
+
+        # First run - create caches
+        analyzer1 = ImportAnalyzer(self.vm, "main")
+        analyzer1.parse_all()
+        analyzer1.import_all()
+
+        # Check all cache files exist
+        assert self.tmpdir.join("__pycache__", "a.spyc").exists()
+        assert self.tmpdir.join("__pycache__", "b.spyc").exists()
+        assert self.tmpdir.join("__pycache__", "main.spyc").exists()
+
+        # Second run with fresh VM - should use all caches
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "main")
+        analyzer2.parse_all()
+        assert "a" in analyzer2.cached_mods
+        assert "b" in analyzer2.cached_mods
+        assert "main" in analyzer2.cached_mods
+
+    def test_cache_preserves_symtable(self):
+        """Test that symtable is preserved in cache"""
+        src = "x: i32 = 42"
+        self.write("mod1.spy", src)
+
+        # First import with analysis
+        analyzer1 = ImportAnalyzer(self.vm, "mod1")
+        analyzer1.parse_all()
+        analyzer1.import_all()  # This sets symtable and saves cache
+        symtable1 = analyzer1.getmod("mod1").symtable
+
+        assert symtable1 is not None
+
+        # Second import with fresh VM should load from cache with symtable
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "mod1")
+        analyzer2.parse_all()
+        assert "mod1" in analyzer2.cached_mods
+
+        # The cached module should already have symtable
+        mod2 = analyzer2.getmod("mod1")
+        assert mod2.symtable is not None
+        assert mod2.symtable.name == "mod1"
