@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
 MODULE = Union[ast.Module, "W_Module", None]
 
+# Cache version: increment this when ast.Module or SymTable structure changes
+SPYC_VERSION = 1
+
 
 class ImportAnalyzer:
     """
@@ -119,21 +122,27 @@ class ImportAnalyzer:
         """Load a module from cache file."""
         try:
             with open(cache_file, "rb") as f:
-                mod = pickle.load(f)
-            if isinstance(mod, ast.Module):
+                data = pickle.load(f)
+            if data["version"] == SPYC_VERSION:
+                # cache is valid
+                mod = data["module"]
+                assert isinstance(mod, ast.Module)
                 return mod
+            else:
+                return None  # version mismatch
         except Exception:
             # If loading fails for any reason, return None to force re-parsing
             pass
         return None
 
     def _save_cache(self, mod: ast.Module, spy_file: str) -> None:
-        """Save a module to cache file."""
+        """Save a module to cache file with version information."""
         cache_file = self._get_cache_path(spy_file)
         try:
             cache_file.parent.mkdir(parents=True, exist_ok=True)
+            data = {"version": SPYC_VERSION, "module": mod}
             with open(cache_file, "wb") as f:
-                pickle.dump(mod, f)
+                pickle.dump(data, f)
         except Exception:
             # If saving fails, just continue without caching
             pass

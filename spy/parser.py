@@ -1,3 +1,7 @@
+# ================== IMPORTANT: .spyc versioning =================
+# Update importing.SPYC_VERSION in case of any significant change
+# ================================================================
+
 import ast as py_ast
 from types import NoneType
 from typing import NoReturn, Optional

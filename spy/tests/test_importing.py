@@ -4,7 +4,7 @@ import py.path
 import pytest
 
 from spy import ast
-from spy.analyze.importing import ImportAnalyzer
+from spy.analyze.importing import SPYC_VERSION, ImportAnalyzer
 from spy.vm.vm import SPyVM
 
 
@@ -237,3 +237,29 @@ class TestImportAnalyzer:
         mod2 = analyzer2.getmod("mod1")
         assert mod2.symtable is not None
         assert mod2.symtable.name == "mod1"
+
+    def test_cache_version_mismatch(self, monkeypatch):
+        """Test that cache is invalidated when version changes"""
+        src = "x: i32 = 42"
+        self.write("mod1.spy", src)
+
+        # First import - create cache with current version
+        analyzer1 = ImportAnalyzer(self.vm, "mod1")
+        analyzer1.parse_all()
+        analyzer1.import_all()
+
+        # Verify cache file exists
+        cache_file = self.tmpdir.join("__pycache__", "mod1.spyc")
+        assert cache_file.exists()
+
+        # Monkeypatch SPYC_VERSION to simulate a version change
+        import spy.analyze.importing as importing_module
+
+        monkeypatch.setattr(importing_module, "SPYC_VERSION", SPYC_VERSION + 1)
+
+        # Second import with different SPYC_VERSION should not use cache
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "mod1")
+        analyzer2.parse_all()
+        assert "mod1" not in analyzer2.cached_mods

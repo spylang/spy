@@ -1,3 +1,7 @@
+# ================== IMPORTANT: .spyc versioning =================
+# Update importing.SPYC_VERSION in case of any significant change
+# ================================================================
+
 from typing import TYPE_CHECKING, Optional
 
 from spy import ast
