@@ -251,3 +251,11 @@ class TestImportAnalyzer:
         analyzer2 = ImportAnalyzer(vm2, "mod1")
         analyzer2.parse_all()
         assert "mod1" not in analyzer2.cached_mods
+
+        # A version mismatch error should be recorded
+        assert len(analyzer2.cache_errors) == 1
+        error = analyzer2.cache_errors[0]
+        assert error.operation == "load"
+        assert "Version mismatch" in error.error_message
+        assert f"version {SPYC_VERSION}" in error.error_message
+        assert f"expected {SPYC_VERSION + 1}" in error.error_message

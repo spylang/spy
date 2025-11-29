@@ -143,7 +143,14 @@ class ImportAnalyzer:
                 self.cached_mods[modname] = cache_file
                 return mod
             else:
-                # Version mismatch - no cache found
+                # Version mismatch - record error and invalidate cache
+                cache_version = data["version"]
+                error = CacheError(
+                    spyc_file=str(cache_file),
+                    operation="load",
+                    error_message=f"Version mismatch: cache has version {cache_version}, expected {SPYC_VERSION}",
+                )
+                self.cache_errors.append(error)
                 return None
         except Exception as e:
             # Record the error
