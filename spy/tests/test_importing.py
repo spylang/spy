@@ -1,9 +1,12 @@
 import textwrap
+import time
+from pathlib import Path
 
 import py.path
 import pytest
 
 from spy import ast
+from spy.analyze import importing
 from spy.analyze.importing import SPYC_VERSION, ImportAnalyzer
 from spy.vm.vm import SPyVM
 
@@ -134,20 +137,16 @@ class TestImportAnalyzer:
         assert analyzer.mods["mod1"] is not None  # check that we found it
 
     def test_cache_basic(self):
-        """Test that cache is created and used"""
         src = "x: i32 = 42"
         self.write("mod1.spy", src)
 
-        # First import - should create cache
+        # First import - create .spyc
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
         analyzer1.parse_all()
         analyzer1.import_all()
+        assert self.tmpdir.join("__pycache__", "mod1.spyc").exists()
 
-        # Check cache file exists
-        cache_file = self.tmpdir.join("__pycache__", "mod1.spyc")
-        assert cache_file.exists()
-
-        # Second import with fresh VM - should use cache
+        # Second import with fresh VM - should use .spyc
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1")
@@ -155,20 +154,16 @@ class TestImportAnalyzer:
         assert "mod1" in analyzer2.cached_mods
 
     def test_cache_invalidation(self):
-        """Test that cache is invalidated when source changes"""
-        import time
-
         src1 = "x: i32 = 42"
         f = self.write("mod1.spy", src1)
 
-        # First import - create cache
+        # First import - create .spyc
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
         analyzer1.parse_all()
         analyzer1.import_all()
-
-        cache_file = self.tmpdir.join("__pycache__", "mod1.spyc")
-        assert cache_file.exists()
-        cache_mtime = cache_file.mtime()
+        spyc_file = self.tmpdir.join("__pycache__", "mod1.spyc")
+        assert spyc_file.exists()
+        spyc_mtime = spyc_file.mtime()
 
         # Wait a bit and modify the source file
         time.sleep(0.01)
@@ -186,7 +181,7 @@ class TestImportAnalyzer:
         analyzer2.import_all()
 
         # Cache should be updated
-        assert cache_file.mtime() > cache_mtime
+        assert spyc_file.mtime() > spyc_mtime
 
     def test_cache_with_imports(self):
         """Test caching with multiple modules"""
@@ -247,17 +242,10 @@ class TestImportAnalyzer:
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
         analyzer1.parse_all()
         analyzer1.import_all()
-
-        # Verify cache file exists
-        cache_file = self.tmpdir.join("__pycache__", "mod1.spyc")
-        assert cache_file.exists()
-
-        # Monkeypatch SPYC_VERSION to simulate a version change
-        import spy.analyze.importing as importing_module
-
-        monkeypatch.setattr(importing_module, "SPYC_VERSION", SPYC_VERSION + 1)
+        assert self.tmpdir.join("__pycache__", "mod1.spyc").exists()
 
         # Second import with different SPYC_VERSION should not use cache
+        monkeypatch.setattr(importing, "SPYC_VERSION", SPYC_VERSION + 1)
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1")

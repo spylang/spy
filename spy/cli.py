@@ -350,6 +350,8 @@ async def inner_main(args: Arguments) -> None:
 
     GLOBAL_VM = vm
 
+    vm.robust_import_caching = True  # don't raise if .spyc are unreadable/invalid
+
     vm.path.append(str(srcdir))
     if args.error_mode == "warn":
         args.error_mode = "lazy"

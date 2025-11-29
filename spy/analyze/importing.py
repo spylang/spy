@@ -1,6 +1,7 @@
 import os
 import pickle
 from collections import deque
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 
@@ -21,6 +22,15 @@ MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or SymTable structure changes
 SPYC_VERSION = 1
+
+
+@dataclass
+class CacheError:
+    """Records an error that occurred during cache operations."""
+
+    spyc_file: str
+    operation: str  # "load" or "save"
+    error_message: str
 
 
 class ImportAnalyzer:
@@ -96,7 +106,8 @@ class ImportAnalyzer:
         self.mods: dict[str, MODULE] = {}
         self.deps: dict[str, list[str]] = {}  # modname -> list_of_imports
         self.cur_modname: Optional[str] = None
-        self.cached_mods: set[str] = set()  # Track modules loaded from cache
+        self.cached_mods: dict[str, Path] = {}  # modname -> cache file path
+        self.cache_errors: list[CacheError] = []  # List of all cache errors
 
     def getmod(self, modname: str) -> ast.Module:
         mod = self.mods[modname]
@@ -118,7 +129,9 @@ class ImportAnalyzer:
         cache_mtime = os.path.getmtime(cache_file)
         return cache_mtime > spy_mtime
 
-    def _load_cache(self, cache_file: Path) -> Optional[ast.Module]:
+    def _load_cache(
+        self, cache_file: Path, modname: str, spy_file: str
+    ) -> Optional[ast.Module]:
         """Load a module from cache file."""
         try:
             with open(cache_file, "rb") as f:
@@ -127,25 +140,49 @@ class ImportAnalyzer:
                 # cache is valid
                 mod = data["module"]
                 assert isinstance(mod, ast.Module)
+                self.cached_mods[modname] = cache_file
                 return mod
             else:
-                return None  # version mismatch
-        except Exception:
-            # If loading fails for any reason, return None to force re-parsing
-            pass
-        return None
+                # Version mismatch - no cache found
+                return None
+        except Exception as e:
+            # Record the error
+            error = CacheError(
+                spyc_file=str(cache_file),
+                operation="load",
+                error_message=str(e),
+            )
+            self.cache_errors.append(error)
 
-    def _save_cache(self, mod: ast.Module, spy_file: str) -> None:
+            # If robust caching is disabled, raise the error
+            if not self.vm.robust_import_caching:
+                raise
+
+            # Otherwise, return None to force re-parsing
+            return None
+
+    def _save_cache(self, mod: ast.Module, modname: str) -> None:
         """Save a module to cache file with version information."""
-        cache_file = self._get_cache_path(spy_file)
+        cache_file = self._get_cache_path(mod.filename)
         try:
             cache_file.parent.mkdir(parents=True, exist_ok=True)
             data = {"version": SPYC_VERSION, "module": mod}
             with open(cache_file, "wb") as f:
                 pickle.dump(data, f)
-        except Exception:
-            # If saving fails, just continue without caching
-            pass
+        except Exception as e:
+            # Record the error
+            error = CacheError(
+                spyc_file=str(cache_file),
+                operation="save",
+                error_message=str(e),
+            )
+            self.cache_errors.append(error)
+
+            # If robust caching is disabled, raise the error
+            if not self.vm.robust_import_caching:
+                raise
+
+            # Otherwise, continue without caching
 
     def parse_all(self) -> None:
         while self.queue:
@@ -168,9 +205,7 @@ class ImportAnalyzer:
 
                 # Try to load from cache
                 if self._is_cache_valid(spy_file, cache_file):
-                    mod = self._load_cache(cache_file)
-                    if mod is not None:
-                        self.cached_mods.add(modname)
+                    mod = self._load_cache(cache_file, modname, spy_file)
 
                 # If cache miss or invalid, parse the file
                 if mod is None:
@@ -236,15 +271,13 @@ class ImportAnalyzer:
                 self.import_one(modname, mod)
 
     def import_one(self, modname: str, mod: ast.Module) -> None:
-        # For cached modules, symtable is already set; for new modules, we need to analyze
-        if modname not in self.cached_mods:
+        # modules loaded from .spyc have already symtable, for newly parsed modules
+        # compute it now
+        if mod.symtable is None:
             scopes = self.analyze_scopes(modname)
             symtable = scopes.by_module()
             mod.symtable = symtable
-
-            # Save cache after symtable is set
-            if f := self.vm.find_file_on_path(modname):
-                self._save_cache(mod, str(f))
+            self._save_cache(mod, modname)
 
         fqn = FQN(modname)
         modframe = ModFrame(self.vm, fqn, mod)
@@ -260,6 +293,19 @@ class ImportAnalyzer:
         print()
         print("Import order:")
         self.pp_list()
+        print()
+        self.pp_cache_errors()
+
+    def pp_cache_errors(self) -> None:
+        """Print cache errors if any occurred."""
+        if not self.cache_errors:
+            return
+
+        color = ColorFormatter(use_colors=True)
+        print(color.set("red", "Cache errors:"))
+        for err in self.cache_errors:
+            print(f"  {err.operation} {color.set('yellow', err.spyc_file)}:")
+            print(f"    {err.error_message}")
 
     def pp_path(self) -> None:
         color = ColorFormatter(use_colors=True)
@@ -295,6 +341,9 @@ class ImportAnalyzer:
             if isinstance(mod, ast.Module):
                 # The alias is already colored in shorten_path
                 what = shorten_path(mod.filename)
+                if modname in self.cached_mods:
+                    what += " (cached)"
+
             elif isinstance(mod, W_Module):
                 what = color.set("blue", str(mod)) + " (already imported)"
             elif mod is None:
