@@ -686,6 +686,21 @@ class Parser:
         right = self.from_py_expr(py_node.comparators[0])
         return spy.ast.CmpOp(py_node.loc, op, left, right)
 
+    def from_py_expr_BoolOp(self, py_node: py_ast.BoolOp) -> spy.ast.Expr:
+        if len(py_node.values) != 2:
+            self.unsupported(py_node, "chained boolean operators")
+
+        opname = type(py_node.op).__name__
+        left = self.from_py_expr(py_node.values[0])
+        right = self.from_py_expr(py_node.values[1])
+
+        if opname == "And":
+            return spy.ast.And(py_node.loc, left, right)
+        elif opname == "Or":
+            return spy.ast.Or(py_node.loc, left, right)
+
+        assert False, f"unexpected BoolOp: {opname}"
+
     def from_py_expr_UnaryOp(self, py_node: py_ast.UnaryOp) -> spy.ast.Expr:
         value = self.from_py_expr(py_node.operand)
         opname = type(py_node.op).__name__
