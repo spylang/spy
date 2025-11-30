@@ -1,4 +1,5 @@
 import asyncio
+import os
 import pdb as stdlib_pdb  # to distinguish from the "--pdb" option
 import sys
 import time
@@ -10,7 +11,7 @@ from typing import Annotated, Any, Optional
 import click
 import py.path
 import typer
-from typer import Option
+from typer import Argument, Option
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
@@ -33,7 +34,10 @@ app = typer.Typer(pretty_exceptions_enable=False)
 
 @dataclass
 class Arguments:
-    filename: Path
+    filename: Annotated[
+        Optional[Path],
+        Argument(help=""),
+    ] = None
 
     execute: Annotated[
         bool,
@@ -176,9 +180,21 @@ class Arguments:
         Option("--spdb", help="Enter app-level debugger in case of error"),
     ] = False
 
+    cleanup: Annotated[
+        bool,
+        Option(
+            "--cleanup", help="Remove all .spyc cache files from vm.path directories"
+        ),
+    ] = False
+
     def __post_init__(self) -> None:
         self.validate_actions()
-        if not self.filename.exists():
+
+        # filename is optional only for --cleanup
+        if self.filename is None:
+            if not self.cleanup:
+                raise typer.BadParameter("FILENAME is required unless using --cleanup")
+        elif not self.filename.exists():
             raise typer.BadParameter(f"File {self.filename} does not exist")
 
     def validate_actions(self) -> None:
@@ -193,6 +209,7 @@ class Arguments:
             "cwrite",
             "compile",
             "colorize",
+            "cleanup",
         ]
         actions = {a for a in possible_actions if getattr(self, a)}
         n = len(actions)
@@ -217,6 +234,33 @@ def do_pyparse(filename: str) -> None:
         src = f.read()
     mod = magic_py_parse(src)
     mod.pp()
+
+
+def do_cleanup(vm: Optional["SPyVM"] = None) -> None:
+    """
+    Remove all .spyc cache files from directories in vm.path (or cwd if vm is None).
+    """
+    removed_count = 0
+    paths = vm.path if vm is not None else [os.getcwd()]
+    for path_str in paths:
+        path = Path(path_str)
+        if not path.exists() or not path.is_dir():
+            continue
+
+        # Find all .spyc files in __pycache__ subdirectories
+        for pycache_dir in path.rglob("__pycache__"):
+            if not pycache_dir.is_dir():
+                continue
+
+            for spyc_file in pycache_dir.glob("*.spyc"):
+                print(f"Removing {spyc_file}")
+                spyc_file.unlink()
+                removed_count += 1
+
+    if removed_count == 0:
+        print("No .spyc files found")
+    else:
+        print(f"Removed {removed_count} .spyc file(s)")
 
 
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
@@ -334,6 +378,14 @@ async def inner_main(args: Arguments) -> None:
     """
     global GLOBAL_VM
 
+    # Handle cleanup without filename
+    if args.cleanup and args.filename is None:
+        do_cleanup()
+        return
+
+    # All other commands require a filename
+    assert args.filename is not None
+
     if args.pyparse:
         do_pyparse(str(args.filename))
         return
@@ -356,6 +408,10 @@ async def inner_main(args: Arguments) -> None:
     if args.error_mode == "warn":
         args.error_mode = "lazy"
         vm.emit_warning = emit_warning
+
+    if args.cleanup:
+        do_cleanup(vm)
+        return
 
     importer = ImportAnalyzer(vm, modname)
     importer.parse_all()
