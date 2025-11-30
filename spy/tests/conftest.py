@@ -6,6 +6,8 @@ import py
 import pytest
 from pytest_pyodide import get_global_config
 
+from spy.util import cleanup_spyc_files
+
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
 
@@ -50,12 +52,31 @@ def pytest_addoption(parser):
     parser.addoption(
         "--spdb", action="store_true", default=False, help="Enter SPdb on errors"
     )
+    parser.addoption(
+        "--cleanup",
+        action="store_true",
+        default=False,
+        help="Remove all .spyc cache files from stdlib before running tests",
+    )
 
 
 @pytest.fixture(autouse=True)
 def skip_if_no_emcc(request):
     if request.node.get_closest_marker("emscripten") and not HAVE_EMCC:
         pytest.skip("Requires emcc")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_spyc_files_fixture(request):
+    """
+    Remove all .spyc cache files from stdlib if --cleanup option is used.
+    """
+    if request.config.getoption("--cleanup"):
+        stdlib_dir = ROOT.join("..", "..", "stdlib")
+        if stdlib_dir.check(dir=True):
+            removed_count = cleanup_spyc_files([stdlib_dir])
+            if removed_count > 0:
+                print(f"\nCleaned up {removed_count} .spyc file(s) from stdlib")
 
 
 # ===============

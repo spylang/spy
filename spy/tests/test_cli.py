@@ -243,3 +243,36 @@ class TestMain:
         assert hello_spy.exists()
         res, stdout = self.run_external(PYODIDE_EXE, hello_spy)
         assert stdout == "Hello world!\n"
+
+    def test_cleanup_without_filename(self, monkeypatch):
+        # Create fake .spyc files in __pycache__
+        pycache = self.tmpdir.join("__pycache__")
+        pycache.mkdir()
+        spyc1 = pycache.join("mod1.spyc")
+        spyc2 = pycache.join("mod2.spyc")
+        spyc1.write("")
+        spyc2.write("")
+
+        # Run cleanup from tmpdir (without filename, uses cwd)
+        monkeypatch.chdir(self.tmpdir)
+        res, stdout = self.run("--cleanup")
+        assert not spyc1.exists()
+        assert not spyc2.exists()
+        assert "Removed 2 .spyc file(s)" in stdout
+
+    def test_cleanup_with_filename(self):
+        # Create fake .spyc files in __pycache__
+        pycache = self.tmpdir.join("__pycache__")
+        pycache.mkdir()
+        spyc1 = pycache.join("main.spyc")
+        spyc1.write("")
+
+        # NOTE: this might remove stdlib .spyc files, we don't know the precise number
+        res, stdout = self.run("--cleanup", self.main_spy)
+        assert not spyc1.exists()
+        assert re.search(r"Removed \d+ \.spyc file\(s\)", stdout)
+
+    def test_cleanup_no_files(self):
+        # Run cleanup when no .spyc files exist
+        res, stdout = self.run("--cleanup", self.main_spy)
+        assert "No .spyc files found" in stdout

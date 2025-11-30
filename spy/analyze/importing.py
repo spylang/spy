@@ -1,4 +1,7 @@
+import os
+import pickle
 from collections import deque
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Union
 
 import py.path
@@ -15,6 +18,18 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 MODULE = Union[ast.Module, "W_Module", None]
+
+# Cache version: increment this when ast.Module or SymTable structure changes
+SPYC_VERSION = 1
+
+
+@dataclass
+class CacheError:
+    """Records an error that occurred during cache operations."""
+
+    spyc: str
+    operation: str  # "load" or "save"
+    error_message: str
 
 
 class ImportAnalyzer:
@@ -90,11 +105,96 @@ class ImportAnalyzer:
         self.mods: dict[str, MODULE] = {}
         self.deps: dict[str, list[str]] = {}  # modname -> list_of_imports
         self.cur_modname: Optional[str] = None
+        self.cached_mods: dict[str, py.path.local] = {}  # modname -> cache file path
+        self.cache_errors: list[CacheError] = []  # List of all cache errors
 
     def getmod(self, modname: str) -> ast.Module:
         mod = self.mods[modname]
         assert isinstance(mod, ast.Module)
         return mod
+
+    def _get_spyc(self, spyfile: py.path.local) -> py.path.local:
+        """
+        Get the path to the cache file for a given .spy file.
+        """
+        pycache = spyfile.dirpath("__pycache__")
+        spyc = pycache.join(f"{spyfile.purebasename}.spyc")
+        return spyc
+
+    def _is_spyc_valid(self, spyfile: py.path.local, spyc: py.path.local) -> bool:
+        """
+        Check if the cache file is valid (newer than the source file).
+        """
+        if not spyc.check():
+            return False
+        return spyc.mtime() > spyfile.mtime()
+
+    def _load_spyc(
+        self, spyfile: py.path.local, spyc: py.path.local, modname: str
+    ) -> Optional[ast.Module]:
+        """
+        Load a module from .spyc file.
+        """
+        try:
+            with spyc.open("rb") as f:
+                data = pickle.load(f)
+            if data["version"] == SPYC_VERSION:
+                # cache is valid
+                mod = data["module"]
+                assert isinstance(mod, ast.Module)
+                assert mod.filename == str(spyfile)
+                self.cached_mods[modname] = spyc
+                return mod
+            else:
+                # Version mismatch - record error and invalidate cache
+                cache_version = data["version"]
+                error = CacheError(
+                    spyc=str(spyc),
+                    operation="load",
+                    error_message=f"Version mismatch: cache has version {cache_version}, expected {SPYC_VERSION}",
+                )
+                self.cache_errors.append(error)
+                return None
+        except Exception as e:
+            # Record the error
+            error = CacheError(
+                spyc=str(spyc),
+                operation="load",
+                error_message=str(e),
+            )
+            self.cache_errors.append(error)
+
+            # If robust caching is disabled, raise the error
+            if not self.vm.robust_import_caching:
+                raise
+
+            # Otherwise, return None to force re-parsing
+            return None
+
+    def _save_spyc(self, mod: ast.Module, modname: str) -> None:
+        """
+        Save a module to cache file with version information.
+        """
+        spyc = self._get_spyc(py.path.local(mod.filename))
+        try:
+            spyc.dirpath().ensure(dir=True)
+            data = {"version": SPYC_VERSION, "module": mod}
+            with spyc.open("wb") as f:
+                pickle.dump(data, f)
+        except Exception as e:
+            # Record the error
+            error = CacheError(
+                spyc=str(spyc),
+                operation="save",
+                error_message=str(e),
+            )
+            self.cache_errors.append(error)
+
+            # If robust caching is disabled, raise the error
+            if not self.vm.robust_import_caching:
+                raise
+
+            # Otherwise, continue without caching
 
     def parse_all(self) -> None:
         while self.queue:
@@ -109,11 +209,20 @@ class ImportAnalyzer:
                 w_mod = self.vm.modules_w[modname]
                 self.mods[modname] = w_mod
 
-            elif f := self.vm.find_file_on_path(modname):
-                # new module to visit: parse it and recursively visit it. This
-                # might append more mods to self.queue.
-                parser = Parser.from_filename(str(f))
-                mod = parser.parse()
+            elif spyfile := self.vm.find_file_on_path(modname):
+                # new module to visit: check cache first
+                spyc = self._get_spyc(spyfile)
+                mod = None
+
+                # Try to load from cache
+                if self._is_spyc_valid(spyfile, spyc):
+                    mod = self._load_spyc(spyfile, spyc, modname)
+
+                # If cache miss or invalid, parse the file
+                if mod is None:
+                    parser = Parser.from_filename(str(spyfile))
+                    mod = parser.parse()
+
                 self.mods[modname] = mod
 
                 # Initialize the dependency list for this module
@@ -173,10 +282,16 @@ class ImportAnalyzer:
                 self.import_one(modname, mod)
 
     def import_one(self, modname: str, mod: ast.Module) -> None:
-        scopes = self.analyze_scopes(modname)
-        symtable = scopes.by_module()
+        # modules loaded from .spyc have already symtable, for newly parsed modules
+        # compute it now
+        if mod.symtable is None:
+            scopes = self.analyze_scopes(modname)
+            symtable = scopes.by_module()
+            mod.symtable = symtable
+            self._save_spyc(mod, modname)
+
         fqn = FQN(modname)
-        modframe = ModFrame(self.vm, fqn, symtable, mod)
+        modframe = ModFrame(self.vm, fqn, mod)
         w_mod = modframe.run()
         self.vm.modules_w[modname] = w_mod
 
@@ -189,6 +304,19 @@ class ImportAnalyzer:
         print()
         print("Import order:")
         self.pp_list()
+        print()
+        self.pp_cache_errors()
+
+    def pp_cache_errors(self) -> None:
+        """Print cache errors if any occurred."""
+        if not self.cache_errors:
+            return
+
+        color = ColorFormatter(use_colors=True)
+        print(color.set("red", "Cache errors:"))
+        for err in self.cache_errors:
+            print(f"  {err.operation} {color.set('yellow', err.spyc)}:")
+            print(f"    {err.error_message}")
 
     def pp_path(self) -> None:
         color = ColorFormatter(use_colors=True)
@@ -224,6 +352,9 @@ class ImportAnalyzer:
             if isinstance(mod, ast.Module):
                 # The alias is already colored in shorten_path
                 what = shorten_path(mod.filename)
+                if modname in self.cached_mods:
+                    what += " (cached)"
+
             elif isinstance(mod, W_Module):
                 what = color.set("blue", str(mod)) + " (already imported)"
             elif mod is None:

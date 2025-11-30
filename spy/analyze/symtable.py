@@ -1,3 +1,7 @@
+# ================== IMPORTANT: .spyc versioning =================
+# Update importing.SPYC_VERSION in case of any significant change
+# ================================================================
+
 import pprint
 from dataclasses import KW_ONLY, dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, Optional

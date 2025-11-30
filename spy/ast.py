@@ -1,3 +1,7 @@
+# ================== IMPORTANT: .spyc versioning =================
+# Update importing.SPYC_VERSION in case of any significant change
+# ================================================================
+
 import ast as py_ast
 import dataclasses
 import typing
@@ -141,6 +145,7 @@ class Module(Node):
     filename: str
     docstring: Optional[str]
     decls: list["Decl"]
+    symtable: Any = field(repr=False, default=None)
 
     def get_funcdef(self, name: str) -> "FuncDef":
         """

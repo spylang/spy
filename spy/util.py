@@ -6,6 +6,7 @@ import re
 import subprocess
 import typing
 from collections import defaultdict
+from pathlib import Path
 from typing import Callable, Literal, Sequence
 
 import py.path
@@ -297,6 +298,33 @@ def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
         filename,
     )
     return filename
+
+
+def cleanup_spyc_files(paths: Sequence[py.path.local | Path | str]) -> int:
+    """
+    Remove all .spyc cache files from __pycache__ directories in the given paths.
+
+    Returns the number of files removed.
+    """
+    removed_count = 0
+    for path_item in paths:
+        if isinstance(path_item, py.path.local):
+            path = path_item
+        else:
+            path = py.path.local(str(path_item))
+
+        if not path.check(dir=True):
+            continue
+
+        for pycache_dir in path.visit("__pycache__"):
+            if not pycache_dir.check(dir=True):
+                continue
+
+            for spyc_file in pycache_dir.visit("*.spyc"):
+                spyc_file.remove()
+                removed_count += 1
+
+    return removed_count
 
 
 if __name__ == "__main__":

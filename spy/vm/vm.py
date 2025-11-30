@@ -104,6 +104,8 @@ class SPyVM:
     emit_warning: Callable[[SPyError], None]
     # For use by --colorize to remember the red/blue color of each expr
     ast_color_map: Optional[dict[ast.Node, Color]]
+    # If True, cache errors are collected and reported; if False, they're raised
+    robust_import_caching: bool
 
     def __init__(self, ll: Optional[LLSPyInstance] = None) -> None:
         if ll is None:
@@ -119,6 +121,7 @@ class SPyVM:
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
         self.ast_color_map = None  # By default, don't keep track of expr colors.
+        self.robust_import_caching = False  # By default, raise cache errors
         self.make_module(BUILTINS)
         self.builtins_closure = self.make_builtins_closure()
         self.make_module(OPERATOR)
