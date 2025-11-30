@@ -179,15 +179,21 @@ class AbstractFrame:
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
-            exp = w_exp_T.fqn.human_name
-            exp_loc = self.symtable.lookup(varname).type_loc
-            if varname == "@return":
-                because = " because of return type"
-            elif varname in ("@if", "@while", "@assert"):
-                because = ""
+
+            if varname in ("@if", "@while", "@assert"):
+                # no need to add extra info
+                pass
+            elif varname == "@return":
+                exp = w_exp_T.fqn.human_name
+                msg = f"expected `{exp}` because of return type"
+                loc = self.symtable.lookup(varname).type_loc
+                err.add("note", msg, loc=loc)
             else:
-                because = " because of type declaration"
-            err.add("note", f"expected `{exp}`{because}", loc=exp_loc)
+                exp = w_exp_T.fqn.human_name
+                msg = f"expected `{exp}` because of type declaration"
+                loc = self.symtable.lookup(varname).type_loc
+                err.add("note", msg, loc=loc)
+
             raise
         return w_typeconv
 
