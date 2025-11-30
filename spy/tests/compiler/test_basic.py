@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from spy.errors import SPyError
@@ -446,6 +448,35 @@ class TestBasic(CompilerTest):
         res = mod.a(1)
         assert res == 1.0 and type(res) is float
         assert mod.b(1) is True
+
+    def test_if_while_assert_cond_type_mismatch(self):
+        src = """
+        from _testing_helpers import SomeType
+
+        def cond_if() -> None:
+            x = SomeType()
+            if x:
+                pass
+
+        def cond_while() -> None:
+            x = SomeType()
+            while x:
+                pass
+
+        def cond_assert() -> None:
+            x = SomeType()
+            assert x
+        """
+
+        def get_errors() -> Any:
+            return expect_errors(
+                "mismatched types",
+                ("expected `bool`, got `_testing_helpers::SomeType`", "x"),
+            )
+
+        self.compile_raises(src, "cond_if", get_errors())
+        self.compile_raises(src, "cond_while", get_errors())
+        self.compile_raises(src, "cond_assert", get_errors())
 
     def test_cannot_call_non_functions(self):
         # it would be nice to report also the location where 'inc' is defined,
