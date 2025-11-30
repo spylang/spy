@@ -52,6 +52,22 @@ class TestSPyBackend(CompilerTest):
             c = (1 + 2) * 3
         """)
 
+    def test_bool_ops(self):
+        mod = self.compile("""
+        def foo(a: bool, b: bool, c: bool) -> bool:
+            return a and b or c
+
+        def bar(a: bool, b: bool, c: bool) -> bool:
+            return a or (b and c)
+        """)
+        self.assert_dump("""
+        def foo(a: bool, b: bool, c: bool) -> bool:
+            return a and b or c
+
+        def bar(a: bool, b: bool, c: bool) -> bool:
+            return a or b and c
+        """)
+
     def test_assignexpr_expr(self):
         mod = self.compile("""
         def foo() -> i32:

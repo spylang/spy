@@ -365,6 +365,24 @@ class SPyBackend:
             r = f"({r})"
         return f"{l} {op.op} {r}"
 
+    def fmt_expr_And(self, op: ast.And) -> str:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        if op.left.precedence < op.precedence:
+            l = f"({l})"
+        if op.right.precedence < op.precedence:
+            r = f"({r})"
+        return f"{l} and {r}"
+
+    def fmt_expr_Or(self, op: ast.Or) -> str:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        if op.left.precedence < op.precedence:
+            l = f"({l})"
+        if op.right.precedence < op.precedence:
+            r = f"({r})"
+        return f"{l} or {r}"
+
     def fmt_expr_UnaryOp(self, unary: ast.UnaryOp) -> str:
         v = self.fmt_expr(unary.value)
         if unary.value.precedence < unary.precedence:
