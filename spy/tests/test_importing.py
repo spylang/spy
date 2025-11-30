@@ -1,6 +1,5 @@
+import os
 import textwrap
-import time
-from pathlib import Path
 
 import py.path
 import pytest
@@ -165,10 +164,10 @@ class TestImportAnalyzer:
         assert spyc_file.exists()
         spyc_mtime = spyc_file.mtime()
 
-        # Wait a bit and modify the source file
-        time.sleep(0.01)
+        # Modify the source file and set its mtime to be newer than cache
         src2 = "y: i32 = 100"
         f.write(src2)
+        os.utime(str(f), (spyc_mtime + 1, spyc_mtime + 1))
 
         # Second import with fresh VM - should re-parse (cache is older than source)
         vm2 = SPyVM()
