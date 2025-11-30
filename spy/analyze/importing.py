@@ -184,7 +184,7 @@ class ImportAnalyzer:
         except Exception as e:
             # Record the error
             error = CacheError(
-                spyc_file=str(spyc),
+                spyc=str(spyc),
                 operation="save",
                 error_message=str(e),
             )
