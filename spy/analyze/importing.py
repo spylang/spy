@@ -2,7 +2,6 @@ import os
 import pickle
 from collections import deque
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 
 import py.path
@@ -106,7 +105,7 @@ class ImportAnalyzer:
         self.mods: dict[str, MODULE] = {}
         self.deps: dict[str, list[str]] = {}  # modname -> list_of_imports
         self.cur_modname: Optional[str] = None
-        self.cached_mods: dict[str, Path] = {}  # modname -> cache file path
+        self.cached_mods: dict[str, py.path.local] = {}  # modname -> cache file path
         self.cache_errors: list[CacheError] = []  # List of all cache errors
 
     def getmod(self, modname: str) -> ast.Module:
@@ -114,25 +113,31 @@ class ImportAnalyzer:
         assert isinstance(mod, ast.Module)
         return mod
 
-    def _get_cache_path(self, spy_file: str) -> Path:
-        """Get the path to the cache file for a given .spy file."""
-        spy_path = Path(spy_file)
-        cache_dir = spy_path.parent / "__pycache__"
-        cache_file = cache_dir / f"{spy_path.stem}.spyc"
+    def _get_cache_path(self, spy_file: str) -> py.path.local:
+        """
+        Get the path to the cache file for a given .spy file.
+        """
+        spy_path = py.path.local(spy_file)
+        cache_dir = spy_path.dirpath("__pycache__")
+        cache_file = cache_dir.join(f"{spy_path.purebasename}.spyc")
         return cache_file
 
-    def _is_cache_valid(self, spy_file: str, cache_file: Path) -> bool:
-        """Check if the cache file is valid (newer than the source file)."""
-        if not cache_file.exists():
+    def _is_cache_valid(self, spy_file: str, cache_file: py.path.local) -> bool:
+        """
+        Check if the cache file is valid (newer than the source file).
+        """
+        if not cache_file.check():
             return False
         spy_mtime = os.path.getmtime(spy_file)
-        cache_mtime = os.path.getmtime(cache_file)
+        cache_mtime = cache_file.mtime()
         return cache_mtime > spy_mtime
 
     def _load_cache(
-        self, cache_file: Path, modname: str, spy_file: str
+        self, cache_file: py.path.local, modname: str, spy_file: str
     ) -> Optional[ast.Module]:
-        """Load a module from cache file."""
+        """
+        Load a module from cache file.
+        """
         try:
             with open(cache_file, "rb") as f:
                 data = pickle.load(f)
@@ -169,10 +174,12 @@ class ImportAnalyzer:
             return None
 
     def _save_cache(self, mod: ast.Module, modname: str) -> None:
-        """Save a module to cache file with version information."""
+        """
+        Save a module to cache file with version information.
+        """
         cache_file = self._get_cache_path(mod.filename)
         try:
-            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            cache_file.dirpath().ensure(dir=True)
             data = {"version": SPYC_VERSION, "module": mod}
             with open(cache_file, "wb") as f:
                 pickle.dump(data, f)
