@@ -381,6 +381,42 @@ class TestBasic(CompilerTest):
         assert mod.check_or() is True
         assert mod.x == 2
 
+    def test_boolops_chained_short_circuit(self):
+        mod = self.compile("""
+        var counter: i32 = 0
+
+        def bump_true() -> bool:
+            counter = counter + 1
+            return True
+
+        def bump_false() -> bool:
+            counter = counter + 1
+            return False
+
+        def reset_counter() -> None:
+            counter = 0
+
+        def and_all_false() -> bool:
+            return bump_false() and bump_true() and bump_true()
+
+        def and_stop_mid() -> bool:
+            return bump_true() and bump_false() and bump_true()
+
+        def or_all_true() -> bool:
+            return bump_true() or bump_false() or bump_false()
+        """)
+
+        assert mod.and_all_false() is False
+        assert mod.counter == 1
+
+        mod.reset_counter()
+        assert mod.and_stop_mid() is False
+        assert mod.counter == 2
+
+        mod.reset_counter()
+        assert mod.or_all_true() is True
+        assert mod.counter == 1
+
     def test_implicit_return(self):
         mod = self.compile("""
         var x: i32 = 0

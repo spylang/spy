@@ -59,6 +59,12 @@ class TestSPyBackend(CompilerTest):
 
         def bar(a: bool, b: bool, c: bool) -> bool:
             return a or (b and c)
+
+        def baz(a: bool, b: bool, c: bool) -> bool:
+            return a or b or c
+
+        def qux(a: bool, b: bool, c: bool) -> bool:
+            return a and b and c
         """)
         self.assert_dump("""
         def foo(a: bool, b: bool, c: bool) -> bool:
@@ -66,6 +72,12 @@ class TestSPyBackend(CompilerTest):
 
         def bar(a: bool, b: bool, c: bool) -> bool:
             return a or b and c
+
+        def baz(a: bool, b: bool, c: bool) -> bool:
+            return a or b or c
+
+        def qux(a: bool, b: bool, c: bool) -> bool:
+            return a and b and c
         """)
 
     def test_assignexpr_expr(self):

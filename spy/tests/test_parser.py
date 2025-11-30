@@ -657,6 +657,25 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_BoolOp_chained(self):
+        mod = self.parse("""
+        def foo() -> bool:
+            return a or b or c
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        Return(
+            value=Or(
+                left=Or(
+                    left=Name(id='a'),
+                    right=Name(id='b'),
+                ),
+                right=Name(id='c'),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_AugAssign(self, op):
         mod = self.parse(f"""
