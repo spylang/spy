@@ -18,11 +18,15 @@ class TestImportAnalyzer:
         self.vm.path = [str(tmpdir)]
         self.tmpdir = tmpdir
 
-    def write(self, filename: str, src: str) -> py.path.local:
+    def write(self, filename: str, src: str, mtime_delta: float = 0) -> py.path.local:
         src = textwrap.dedent(src)
         f = self.tmpdir.join(filename)
         f.dirpath().ensure(dir=True)  # create directories, if needed
         f.write(src)
+        if mtime_delta != 0:
+            current_mtime = f.mtime()
+            new_mtime = current_mtime + mtime_delta
+            os.utime(str(f), (new_mtime, new_mtime))
         return f
 
     def test_simple_import(self):
@@ -137,7 +141,7 @@ class TestImportAnalyzer:
 
     def test_cache_basic(self):
         src = "x: i32 = 42"
-        self.write("mod1.spy", src)
+        self.write("mod1.spy", src, mtime_delta=-1)
 
         # First import - create .spyc
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
@@ -154,7 +158,7 @@ class TestImportAnalyzer:
 
     def test_cache_invalidation(self):
         src1 = "x: i32 = 42"
-        f = self.write("mod1.spy", src1)
+        f = self.write("mod1.spy", src1, mtime_delta=-1)
 
         # First import - create .spyc
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
@@ -184,9 +188,9 @@ class TestImportAnalyzer:
 
     def test_cache_with_imports(self):
         """Test caching with multiple modules"""
-        self.write("a.spy", "x: i32 = 1")
-        self.write("b.spy", "import a\ny: i32 = 2")
-        self.write("main.spy", "import b")
+        self.write("a.spy", "x: i32 = 1", mtime_delta=-1)
+        self.write("b.spy", "import a\ny: i32 = 2", mtime_delta=-1)
+        self.write("main.spy", "import b", mtime_delta=-1)
 
         # First run - create caches
         analyzer1 = ImportAnalyzer(self.vm, "main")
@@ -210,7 +214,7 @@ class TestImportAnalyzer:
     def test_cache_preserves_symtable(self):
         """Test that symtable is preserved in cache"""
         src = "x: i32 = 42"
-        self.write("mod1.spy", src)
+        self.write("mod1.spy", src, mtime_delta=-1)
 
         # First import with analysis
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
@@ -235,7 +239,7 @@ class TestImportAnalyzer:
     def test_cache_version_mismatch(self, monkeypatch):
         """Test that cache is invalidated when version changes"""
         src = "x: i32 = 42"
-        self.write("mod1.spy", src)
+        self.write("mod1.spy", src, mtime_delta=-1)
 
         # First import - create cache with current version
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
