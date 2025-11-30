@@ -1,4 +1,3 @@
-import os
 import textwrap
 
 import py.path
@@ -24,9 +23,7 @@ class TestImportAnalyzer:
         f.dirpath().ensure(dir=True)  # create directories, if needed
         f.write(src)
         if mtime_delta != 0:
-            current_mtime = f.mtime()
-            new_mtime = current_mtime + mtime_delta
-            os.utime(str(f), (new_mtime, new_mtime))
+            f.setmtime(f.mtime() + mtime_delta)
         return f
 
     def test_simple_import(self):
@@ -171,7 +168,7 @@ class TestImportAnalyzer:
         # Modify the source file and set its mtime to be newer than cache
         src2 = "y: i32 = 100"
         f.write(src2)
-        os.utime(str(f), (spyc_mtime + 1, spyc_mtime + 1))
+        f.setmtime(spyc_mtime + 1)
 
         # Second import with fresh VM - should re-parse (cache is older than source)
         vm2 = SPyVM()
