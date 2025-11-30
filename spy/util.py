@@ -300,7 +300,7 @@ def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
     return filename
 
 
-def cleanup_spyc_files(paths: list[py.path.local | Path | str]) -> int:
+def cleanup_spyc_files(paths: Sequence[py.path.local | Path | str]) -> int:
     """
     Remove all .spyc cache files from __pycache__ directories in the given paths.
 

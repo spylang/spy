@@ -349,7 +349,7 @@ def get_build_dir(args: Arguments) -> py.path.local:
     if args.build_dir is not None:
         build_dir = args.build_dir
     else:
-        # Create a build directory next to the .spy file
+        assert args.filename is not None
         srcdir = args.filename.parent
         build_dir = srcdir / "build"
 
