@@ -55,6 +55,19 @@ for stmt in self.classdef.body:
 
 When in doubt: if the comment can be removed and the code is still clear, remove it.
 
+## Imports
+
+- Organize imports by standard Python conventions
+- Prefer specific imports: `from spy.errors import SPyError`
+- Prefer module-level imports, unless there is a good reason to put them inside functions
+
+For example:
+```python
+def foo():
+    # don't do this: put "import time" at the top level"
+    import time
+```
+
 
 
 ## Common Commands
@@ -77,9 +90,6 @@ spy -O 1 -g your_file.spy         # With optimization and debug symbols
 - Classes: PascalCase (`CompilerTest`)
 - Functions/methods: snake_case (`compile_module()`)
 - Constants: SCREAMING_SNAKE_CASE (`ALL_BACKENDS`)
-- Organize imports by standard Python conventions
-- Prefer specific imports: `from spy.errors import SPyError`
-- Prefer module-level imports, unless there is a good reason to put them inside functions
 - Tests inherit from `CompilerTest` base class
 - Use backend-specific decorators for test filtering (`@only_interp`, `@skip_backends`)
 - prefer using py.path.local over pathlib.Path. The only exception is cli.py, because
