@@ -356,6 +356,31 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
+    def test_boolops_short_circuit(self):
+        mod = self.compile("""
+        var x: i32 = 0
+
+        def make_true() -> bool:
+            x = x + 1
+            return True
+
+        def make_false() -> bool:
+            x = x + 1
+            return False
+
+        def check_and() -> bool:
+            return make_false() and make_true()
+
+        def check_or() -> bool:
+            return make_true() or make_false()
+        """)
+
+        assert mod.check_and() is False
+        assert mod.x == 1
+
+        assert mod.check_or() is True
+        assert mod.x == 2
+
     def test_implicit_return(self):
         mod = self.compile("""
         var x: i32 = 0
