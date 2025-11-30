@@ -669,6 +669,38 @@ class TestBasic(CompilerTest):
         assert mod.ge_bool(False, True) is False
         assert mod.ge_bool(False, False) is True
 
+    def test_bool_logical_ops(self):
+        mod = self.compile(
+            """
+            def and_bool(a: bool, b: bool) -> bool:
+                return a and b
+
+            def or_bool(a: bool, b: bool) -> bool:
+                return a or b
+
+            def and_ints(a: i32, b: i32) -> bool:
+                return a and b
+
+            def or_ints(a: i32, b: i32) -> bool:
+                return a or b
+            """
+        )
+
+        assert mod.and_bool(True, True) is True
+        assert mod.and_bool(True, False) is False
+        assert mod.and_bool(False, True) is False
+        assert mod.and_bool(False, False) is False
+
+        assert mod.or_bool(True, True) is True
+        assert mod.or_bool(True, False) is True
+        assert mod.or_bool(False, True) is True
+        assert mod.or_bool(False, False) is False
+
+        assert mod.and_ints(1, 0) is False
+        assert mod.and_ints(0, 0) is False
+        assert mod.or_ints(0, 1) is True
+        assert mod.or_ints(0, 0) is False
+
     def test_CompareOp_error(self):
         src = """
         def bar(a: i32, b: str) -> bool:
