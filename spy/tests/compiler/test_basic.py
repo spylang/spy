@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from spy.errors import SPyError
@@ -466,7 +468,7 @@ class TestBasic(CompilerTest):
             assert x
         """
 
-        def get_errors():
+        def get_errors() -> Any:
             return expect_errors(
                 "mismatched types",
                 ("expected `bool`, got `_testing_helpers::SomeType`", "x"),
