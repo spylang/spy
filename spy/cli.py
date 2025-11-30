@@ -21,7 +21,7 @@ from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
-from spy.util import colors_coordinates, highlight_src_maybe
+from spy.util import cleanup_spyc_files, colors_coordinates, highlight_src_maybe
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
 from spy.vm.debugger.spdb import SPdb
@@ -240,22 +240,8 @@ def do_cleanup(vm: Optional["SPyVM"] = None) -> None:
     """
     Remove all .spyc cache files from directories in vm.path (or cwd if vm is None).
     """
-    removed_count = 0
     paths = vm.path if vm is not None else [os.getcwd()]
-    for path_str in paths:
-        path = Path(path_str)
-        if not path.exists() or not path.is_dir():
-            continue
-
-        # Find all .spyc files in __pycache__ subdirectories
-        for pycache_dir in path.rglob("__pycache__"):
-            if not pycache_dir.is_dir():
-                continue
-
-            for spyc_file in pycache_dir.glob("*.spyc"):
-                print(f"Removing {spyc_file}")
-                spyc_file.unlink()
-                removed_count += 1
+    removed_count = cleanup_spyc_files(paths)
 
     if removed_count == 0:
         print("No .spyc files found")
