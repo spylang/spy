@@ -309,6 +309,16 @@ class CFuncWriter:
             "ast.BinOp not supported. It should have been redshifted away"
         )
 
+    def fmt_expr_And(self, op: ast.And) -> C.Expr:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        return C.BinOp("&&", l, r)
+
+    def fmt_expr_Or(self, op: ast.Or) -> C.Expr:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        return C.BinOp("||", l, r)
+
     FQN2BinOp = {
         FQN("operator::i8_add"): "+",
         FQN("operator::i8_sub"): "-",
