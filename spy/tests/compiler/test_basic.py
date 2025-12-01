@@ -356,67 +356,6 @@ class TestBasic(CompilerTest):
         mod.bar()
         assert mod.x == 3
 
-    def test_boolops_short_circuit(self):
-        mod = self.compile("""
-        var counter: i32 = 0
-
-        def bump_true() -> bool:
-            counter = counter + 1
-            return True
-
-        def bump_false() -> bool:
-            counter = counter + 1
-            return False
-
-        def check_and() -> bool:
-            return bump_false() and bump_true()
-
-        def check_or() -> bool:
-            return bump_true() or bump_false()
-        """)
-
-        assert mod.check_and() is False
-        assert mod.counter == 1
-
-        assert mod.check_or() is True
-        assert mod.counter == 2
-
-    def test_boolops_chained_short_circuit(self):
-        mod = self.compile("""
-        var counter: i32 = 0
-
-        def bump_true() -> bool:
-            counter = counter + 1
-            return True
-
-        def bump_false() -> bool:
-            counter = counter + 1
-            return False
-
-        def reset_counter() -> None:
-            counter = 0
-
-        def and_all_false() -> bool:
-            return bump_false() and bump_true() and bump_true()
-
-        def and_stop_mid() -> bool:
-            return bump_true() and bump_false() and bump_true()
-
-        def or_all_true() -> bool:
-            return bump_true() or bump_false() or bump_false()
-        """)
-
-        assert mod.and_all_false() is False
-        assert mod.counter == 1
-
-        mod.reset_counter()
-        assert mod.and_stop_mid() is False
-        assert mod.counter == 2
-
-        mod.reset_counter()
-        assert mod.or_all_true() is True
-        assert mod.counter == 1
-
     def test_implicit_return(self):
         mod = self.compile("""
         var x: i32 = 0
@@ -705,7 +644,22 @@ class TestBasic(CompilerTest):
         assert mod.ge_bool(False, True) is False
         assert mod.ge_bool(False, False) is True
 
-    def test_bool_logical_ops(self):
+    def test_CompareOp_error(self):
+        src = """
+        def bar(a: i32, b: str) -> bool:
+            return a == b
+
+        def foo() -> None:
+            bar(1, "hello")
+        """
+        errors = expect_errors(
+            "cannot do `i32` == `str`",
+            ("this is `i32`", "a"),
+            ("this is `str`", "b"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_bool_ops_simple(self):
         mod = self.compile(
             """
             def and_bool(a: bool, b: bool) -> bool:
@@ -737,20 +691,41 @@ class TestBasic(CompilerTest):
         assert mod.or_ints(0, 1) is True
         assert mod.or_ints(0, 0) is False
 
-    def test_CompareOp_error(self):
-        src = """
-        def bar(a: i32, b: str) -> bool:
-            return a == b
+    def test_bool_ops_short_circuit(self):
+        mod = self.compile("""
+        var counter: i32 = 0
 
-        def foo() -> None:
-            bar(1, "hello")
-        """
-        errors = expect_errors(
-            "cannot do `i32` == `str`",
-            ("this is `i32`", "a"),
-            ("this is `str`", "b"),
-        )
-        self.compile_raises(src, "foo", errors)
+        def bump_true() -> bool:
+            counter = counter + 1
+            return True
+
+        def bump_false() -> bool:
+            counter = counter + 1
+            return False
+
+        def reset_counter() -> None:
+            counter = 0
+
+        def and_all_false() -> bool:
+            return bump_false() and bump_true() and bump_true()
+
+        def and_stop_mid() -> bool:
+            return bump_true() and bump_false() and bump_true()
+
+        def or_all_true() -> bool:
+            return bump_true() or bump_false() or bump_false()
+        """)
+
+        assert mod.and_all_false() is False
+        assert mod.counter == 1
+
+        mod.reset_counter()
+        assert mod.and_stop_mid() is False
+        assert mod.counter == 2
+
+        mod.reset_counter()
+        assert mod.or_all_true() is True
+        assert mod.counter == 1
 
     def test_if_stmt(self):
         mod = self.compile("""
