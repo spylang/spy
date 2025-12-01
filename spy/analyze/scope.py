@@ -174,16 +174,21 @@ class ScopeAnalyzer:
             elif level == 0:
                 # re-declaration in the same scope
                 msg = f"variable `{name}` already declared"
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", loc)
+                err.add("note", "this is the previous declaration", sym.loc)
+                raise err
 
-            else:
+            elif scope is not self.builtins_scope:
                 # shadowing a name in an outer scope
+                # Exception: always allow shadowing builtins
                 msg = (
                     f"variable `{name}` shadows a name declared " + "in an outer scope"
                 )
-            err = SPyError("W_ScopeError", msg)
-            err.add("error", "this is the new declaration", loc)
-            err.add("note", "this is the previous declaration", sym.loc)
-            raise err
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", loc)
+                err.add("note", "this is the previous declaration", sym.loc)
+                raise err
 
         # Determine storage type: module-level vars use "cell", others use
         # "direct"
