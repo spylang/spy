@@ -358,28 +358,28 @@ class TestBasic(CompilerTest):
 
     def test_boolops_short_circuit(self):
         mod = self.compile("""
-        var x: i32 = 0
+        var counter: i32 = 0
 
-        def make_true() -> bool:
-            x = x + 1
+        def bump_true() -> bool:
+            counter = counter + 1
             return True
 
-        def make_false() -> bool:
-            x = x + 1
+        def bump_false() -> bool:
+            counter = counter + 1
             return False
 
         def check_and() -> bool:
-            return make_false() and make_true()
+            return bump_false() and bump_true()
 
         def check_or() -> bool:
-            return make_true() or make_false()
+            return bump_true() or bump_false()
         """)
 
         assert mod.check_and() is False
-        assert mod.x == 1
+        assert mod.counter == 1
 
         assert mod.check_or() is True
-        assert mod.x == 2
+        assert mod.counter == 2
 
     def test_boolops_chained_short_circuit(self):
         mod = self.compile("""
