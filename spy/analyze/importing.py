@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or SymTable structure changes
-SPYC_VERSION = 1
+SPYC_VERSION = 2
 
 
 @dataclass
@@ -211,12 +211,12 @@ class ImportAnalyzer:
                 self.mods[modname] = w_mod
 
             elif spyfile := self.vm.find_file_on_path(modname):
-                mod = self.parse_one(modname, spyfile)
-                self.mods[modname] = mod
-
                 # Initialize the dependency list for this module
                 if modname not in self.deps:
                     self.deps[modname] = OrderedSet()
+
+                mod = self.parse_one(modname, spyfile)
+                self.mods[modname] = mod
 
                 self.cur_modname = modname
                 self.visit(mod)
@@ -244,6 +244,10 @@ class ImportAnalyzer:
         mod = parser.parse()
         scopes = self.analyze_one(modname, mod)
         mod.symtable = scopes.by_module()
+
+        for imp_modname in scopes.implicit_imports:
+            self.record_import(modname, imp_modname)
+
         if self.use_spyc:
             self._save_spyc(mod, spyc)
         return mod
@@ -436,10 +440,12 @@ class ImportAnalyzer:
         mod.visit("visit", self)
 
     def visit_Import(self, imp: ast.Import) -> None:
-        modname = imp.ref.modname
         assert self.cur_modname is not None
+        self.record_import(self.cur_modname, imp.ref.modname)
+
+    def record_import(self, cur_modname: str, modname: str) -> None:
         # Record the dependency relationship
-        self.deps[self.cur_modname].add(modname)
+        self.deps[cur_modname].add(modname)
         self.queue.append(modname)
 
     # ===========================================================
