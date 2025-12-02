@@ -953,63 +953,59 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(unop.loc, w_OP, [wam_v])
         return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
-    def _eval_bool(self, wam: W_MetaArg) -> W_MetaArg:
-        w_typeconv = CONVERT_maybe(self.vm, B.w_bool, wam)
-
-        if w_typeconv is None:
-            return wam
-
-        if self.redshifting and wam.color == "red":
-            return W_MetaArg(
-                self.vm,
-                wam.color,
-                w_typeconv.w_functype.w_restype,
-                None,
-                wam.loc,
-                sym=wam.sym,
-            )
-
-        w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
-        return W_MetaArg(
-            self.vm,
-            wam.color,
-            w_typeconv.w_functype.w_restype,
-            w_val,
-            wam.loc,
-            sym=wam.sym,
-        )
-
     def eval_expr_And(self, op: ast.And) -> W_MetaArg:
-        wam_l = self._eval_bool(self.eval_expr(op.left, varname="@if"))
-        w_bool_l = wam_l._w_val if isinstance(wam_l._w_val, W_Bool) else None
+        if self.redshifting:
+            wam_l = self.eval_expr(op.left, varname="@if")
+            wam_r = self.eval_expr(op.right, varname="@if")
+            color = maybe_blue(wam_l.color, wam_r.color)
+            if color == "blue":
+                w_left = wam_l.w_val
+                w_right = wam_r.w_val
+                assert isinstance(w_left, W_Bool)
+                assert isinstance(w_right, W_Bool)
+                w_val = (
+                    B.w_True
+                    if self.vm.is_True(w_left) and self.vm.is_True(w_right)
+                    else B.w_False
+                )
+            else:
+                w_val = None
+            return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
 
-        if w_bool_l is not None and self.vm.is_False(w_bool_l):
+        wam_l = self.eval_expr(op.left, varname="@if")
+        w_left = wam_l.w_val
+        assert isinstance(w_left, W_Bool)
+        if self.vm.is_False(w_left):
             return wam_l
-
-        wam_r = self._eval_bool(self.eval_expr(op.right, varname="@if"))
-        w_bool_r = wam_r._w_val if isinstance(wam_r._w_val, W_Bool) else None
-
-        if w_bool_r is not None:
-            return wam_r
-
-        color = maybe_blue(wam_l.color, wam_r.color)
-        return W_MetaArg(self.vm, color, B.w_bool, None, op.loc)
+        wam_r = self.eval_expr(op.right, varname="@if")
+        return wam_r
 
     def eval_expr_Or(self, op: ast.Or) -> W_MetaArg:
-        wam_l = self._eval_bool(self.eval_expr(op.left, varname="@if"))
-        w_bool_l = wam_l._w_val if isinstance(wam_l._w_val, W_Bool) else None
+        if self.redshifting:
+            wam_l = self.eval_expr(op.left, varname="@if")
+            wam_r = self.eval_expr(op.right, varname="@if")
+            color = maybe_blue(wam_l.color, wam_r.color)
+            if color == "blue":
+                w_left = wam_l.w_val
+                w_right = wam_r.w_val
+                assert isinstance(w_left, W_Bool)
+                assert isinstance(w_right, W_Bool)
+                w_val = (
+                    B.w_True
+                    if self.vm.is_True(w_left) or self.vm.is_True(w_right)
+                    else B.w_False
+                )
+            else:
+                w_val = None
+            return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
 
-        if w_bool_l is not None and self.vm.is_True(w_bool_l):
+        wam_l = self.eval_expr(op.left, varname="@if")
+        w_left = wam_l.w_val
+        assert isinstance(w_left, W_Bool)
+        if self.vm.is_True(w_left):
             return wam_l
-
-        wam_r = self._eval_bool(self.eval_expr(op.right, varname="@if"))
-        w_bool_r = wam_r._w_val if isinstance(wam_r._w_val, W_Bool) else None
-
-        if w_bool_r is not None:
-            return wam_r
-
-        color = maybe_blue(wam_l.color, wam_r.color)
-        return W_MetaArg(self.vm, color, B.w_bool, None, op.loc)
+        wam_r = self.eval_expr(op.right, varname="@if")
+        return wam_r
 
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
         wam_func = self.eval_expr(call.func)
