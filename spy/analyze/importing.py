@@ -164,18 +164,18 @@ class ImportAnalyzer:
             )
             self.cache_errors.append(error)
 
-            # If robust caching is disabled, raise the error
+            # cli.py has robust_import_caching enabled: in that case we just want to
+            # ignore this error. But during tests, we want to always raise it.
             if not self.vm.robust_import_caching:
                 raise
 
             # Otherwise, return None to force re-parsing
             return None
 
-    def _save_spyc(self, mod: ast.Module, modname: str) -> None:
+    def _save_spyc(self, mod: ast.Module, spyc: py.path.local) -> None:
         """
         Save a module to cache file with version information.
         """
-        spyc = self._get_spyc(py.path.local(mod.filename))
         try:
             spyc.dirpath().ensure(dir=True)
             data = {"version": SPYC_VERSION, "module": mod}
@@ -190,11 +190,10 @@ class ImportAnalyzer:
             )
             self.cache_errors.append(error)
 
-            # If robust caching is disabled, raise the error
+            # cli.py has robust_import_caching enabled: in that case we just want to
+            # ignore this error. But during tests, we want to always raise it.
             if not self.vm.robust_import_caching:
                 raise
-
-            # Otherwise, continue without caching
 
     def parse_all(self) -> None:
         while self.queue:
@@ -210,19 +209,7 @@ class ImportAnalyzer:
                 self.mods[modname] = w_mod
 
             elif spyfile := self.vm.find_file_on_path(modname):
-                # new module to visit: check cache first
-                spyc = self._get_spyc(spyfile)
-                mod = None
-
-                # Try to load from cache
-                if self._is_spyc_valid(spyfile, spyc):
-                    mod = self._load_spyc(spyfile, spyc, modname)
-
-                # If cache miss or invalid, parse the file
-                if mod is None:
-                    parser = Parser.from_filename(str(spyfile))
-                    mod = parser.parse()
-
+                mod = self.parse_one(modname, spyfile)
                 self.mods[modname] = mod
 
                 # Initialize the dependency list for this module
@@ -237,9 +224,27 @@ class ImportAnalyzer:
                 # we couldn't find .spy for this modname
                 self.mods[modname] = None
 
-    def analyze_scopes(self, modname: str) -> ScopeAnalyzer:
-        assert self.mods, "call .parse_all() first"
-        mod = self.getmod(modname)
+    def parse_one(self, modname: str, spyfile: py.path.local) -> ast.Module:
+        """
+        Parse a module AND run ScopeAnalyzer on it.
+        """
+        # try to load from cache first
+        mod = None
+        spyc = self._get_spyc(spyfile)
+        if self._is_spyc_valid(spyfile, spyc):
+            mod = self._load_spyc(spyfile, spyc, modname)
+            if mod is not None:
+                return mod
+
+        # no cache found, parse it
+        parser = Parser.from_filename(str(spyfile))
+        mod = parser.parse()
+        scopes = self.analyze_one(modname, mod)
+        mod.symtable = scopes.by_module()
+        self._save_spyc(mod, spyc)
+        return mod
+
+    def analyze_one(self, modname: str, mod: ast.Module) -> ScopeAnalyzer:
         scopes = ScopeAnalyzer(self.vm, modname, mod)
         scopes.analyze()
         return scopes
@@ -282,14 +287,7 @@ class ImportAnalyzer:
                 self.import_one(modname, mod)
 
     def import_one(self, modname: str, mod: ast.Module) -> None:
-        # modules loaded from .spyc have already symtable, for newly parsed modules
-        # compute it now
-        if mod.symtable is None:
-            scopes = self.analyze_scopes(modname)
-            symtable = scopes.by_module()
-            mod.symtable = symtable
-            self._save_spyc(mod, modname)
-
+        assert mod.symtable is not None
         fqn = FQN(modname)
         modframe = ModFrame(self.vm, fqn, mod)
         w_mod = modframe.run()

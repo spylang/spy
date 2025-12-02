@@ -412,7 +412,7 @@ async def inner_main(args: Arguments) -> None:
         return
 
     if args.symtable:
-        scopes = importer.analyze_scopes(modname)
+        scopes = importer.analyze_one(modname, orig_mod)
         scopes.pp()
         return
 

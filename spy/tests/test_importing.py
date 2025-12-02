@@ -123,8 +123,9 @@ class TestImportAnalyzer:
         self.write("main.spy", "x: i32 = 42")
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
-        scopes = analyzer.analyze_scopes("main")
-        assert scopes.by_module().name == "main"
+        mod = analyzer.mods["main"]
+        assert mod.symtable is not None
+        assert mod.symtable.name == "main"
 
     def test_vm_path(self):
         # we write mod1 in an unrelated dir, which is the added to vm.path
