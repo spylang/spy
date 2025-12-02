@@ -216,44 +216,14 @@ class ScopeAnalyzer:
         return node.visit("declare", self)
 
     def declare_Import(self, imp: ast.Import) -> None:
-        w_obj = self.vm.lookup_ImportRef(imp.ref)
-        if w_obj is not None:
-            self.define_name(
-                imp.asname,
-                "const",
-                "auto",
-                imp.loc,
-                imp.loc,
-                impref=imp.ref,
-            )
-            return
-        #
-        err = SPyError(
-            "W_ImportError",
-            f"cannot import `{imp.ref.spy_name()}`",
+        self.define_name(
+            imp.asname,
+            "const",
+            "auto",
+            imp.loc,
+            imp.loc,
+            impref=imp.ref,
         )
-        if imp.ref.modname not in self.vm.modules_w:
-            # See if there is a matching .py file
-            if self.vm.find_file_on_path(imp.ref.modname, allow_py_files=True):
-                err.add(
-                    "error",
-                    f"file `{imp.ref.modname}.py` exists, but py files cannot be imported",
-                    loc=imp.loc,
-                )
-            else:
-                # module not found
-                err.add(
-                    "error", f"module `{imp.ref.modname}` does not exist", loc=imp.loc
-                )
-        else:
-            # attribute not found
-            err.add(
-                "error",
-                f"attribute `{imp.ref.attr}` does not exist "
-                + f"in module `{imp.ref.modname}`",
-                loc=imp.loc_asname,
-            )
-        raise err
 
     def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         varname = decl.vardef.name.value

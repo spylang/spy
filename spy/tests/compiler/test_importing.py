@@ -32,6 +32,20 @@ class TestImporting(CompilerTest):
             from xxx import aaa
             """)
 
+    def test_import_wrong_py_module(self):
+        self.write_file("mymodule.py", "x = 42")
+        ctx = expect_errors(
+            "cannot import `mymodule.x`",
+            (
+                "file `mymodule.py` exists, but py files cannot be imported",
+                "from mymodule import x",
+            ),
+        )
+        with ctx:
+            self.compile("""
+            from mymodule import x
+            """)
+
     def test_function_in_other_module(self):
         self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         src = """

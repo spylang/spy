@@ -404,46 +404,16 @@ class TestScopeAnalyzer:
 
     def test_import(self):
         scopes = self.analyze("""
-        from builtins import i32 as my_int
+        import foo
+        from bar import aaa
+        from baz import bbb as ccc
         """)
         scope = scopes.by_module()
         assert scope._symbols == {
-            "my_int": MatchSymbol(
-                "my_int", "const", "auto", impref=ImportRef("builtins", "i32")
-            ),
+            "foo": MatchSymbol("foo", "const", "auto", impref=ImportRef("foo", None)),
+            "aaa": MatchSymbol("aaa", "const", "auto", impref=ImportRef("bar", "aaa")),
+            "ccc": MatchSymbol("ccc", "const", "auto", impref=ImportRef("baz", "bbb")),
         }
-
-    def test_import_wrong_attribute(self):
-        src = "from builtins import aaa"
-        self.expect_errors(
-            src,
-            "cannot import `builtins.aaa`",
-            ("attribute `aaa` does not exist in module `builtins`", "aaa"),
-        )
-
-    def test_import_wrong_module(self):
-        src = "from xxx import aaa"
-        self.expect_errors(
-            src,
-            "cannot import `xxx.aaa`",
-            ("module `xxx` does not exist", "from xxx import aaa"),
-        )
-
-    def test_import_wrong_py_module(self):
-        # Create a .py file that would match the import
-        py_file = self.tmpdir.join("mymodule.py")
-        py_file.write("x = 42\n")
-
-        self.vm.path.append(str(self.tmpdir))
-        src = "from mymodule import x"
-        self.expect_errors(
-            src,
-            "cannot import `mymodule.x`",
-            (
-                "file `mymodule.py` exists, but py files cannot be imported",
-                "from mymodule import x",
-            ),
-        )
 
     def test_class(self):
         scopes = self.analyze("""
