@@ -258,21 +258,21 @@ class TestMain:
         res, stdout = self.run("--cleanup")
         assert not spyc1.exists()
         assert not spyc2.exists()
-        assert "Removed 2 .spyc file(s)" in stdout
+        assert "2 file(s) removed" in stdout
 
-    def test_cleanup_with_filename(self):
+    def test_cleanup_with_directory(self):
         # Create fake .spyc files in __pycache__
         pycache = self.tmpdir.join("__pycache__")
         pycache.mkdir()
         spyc1 = pycache.join("main.spyc")
         spyc1.write("")
 
-        # NOTE: this might remove stdlib .spyc files, we don't know the precise number
-        res, stdout = self.run("--cleanup", self.main_spy)
+        # Cleanup with directory argument
+        res, stdout = self.run("--cleanup", self.tmpdir)
         assert not spyc1.exists()
-        assert re.search(r"Removed \d+ \.spyc file\(s\)", stdout)
+        assert "1 file(s) removed" in stdout
 
     def test_cleanup_no_files(self):
         # Run cleanup when no .spyc files exist
-        res, stdout = self.run("--cleanup", self.main_spy)
+        res, stdout = self.run("--cleanup", self.tmpdir)
         assert "No .spyc files found" in stdout
