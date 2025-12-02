@@ -174,7 +174,6 @@ class SPyVM:
                 if py_f.exists():
                     return py_f
 
-        # XXX maybe THIS is the right place where to raise SPyImportError?
         return None
 
     def redshift(self, error_mode: ErrorMode) -> None:
