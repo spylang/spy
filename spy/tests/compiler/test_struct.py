@@ -194,6 +194,36 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == (0, 0)
 
+    def test_class_body_bool_ops_declaration(self):
+        src = """
+        @struct
+        class Flags:
+            value: i32
+
+            if True and False:
+                def and_result(self) -> i32:
+                    return 1
+            else:
+                def and_result(self) -> i32:
+                    return 2
+
+            if False or True:
+                def or_result(self) -> i32:
+                    return 3
+            else:
+                def or_result(self) -> i32:
+                    return 4
+
+        def read_and() -> i32:
+            return Flags(0).and_result()
+
+        def read_or() -> i32:
+            return Flags(0).or_result()
+        """
+        mod = self.compile(src)
+        assert mod.read_and() == 2
+        assert mod.read_or() == 3
+
     def test_custom_eq(self):
         src = """
         @struct
