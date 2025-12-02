@@ -98,7 +98,6 @@ class SPyVM:
     globals_w: dict[FQN, W_Object]
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
-    builtins_closure: CLOSURE
     path: list[str]
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
@@ -123,7 +122,6 @@ class SPyVM:
         self.ast_color_map = None  # By default, don't keep track of expr colors.
         self.robust_import_caching = False  # By default, raise cache errors
         self.make_module(BUILTINS)
-        self.builtins_closure = self.make_builtins_closure()
         self.make_module(OPERATOR)
         self.make_module(TYPES)
         self.make_module(MATH)
@@ -228,15 +226,6 @@ class SPyVM:
             assert fqn.modname == reg.fqn.modname
             name = fqn.symbol_name
             w_mod.setattr(name, w_obj)
-
-    def make_builtins_closure(self) -> CLOSURE:
-        loc = BUILTINS.loc
-        w_builtins = self.modules_w["builtins"]
-        d = {}
-        for name, w_val in w_builtins._dict_w.items():
-            w_T = self.dynamic_type(w_val)
-            d[name] = LocalVar(name, loc, "blue", w_T, w_val)
-        return (d,)
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:

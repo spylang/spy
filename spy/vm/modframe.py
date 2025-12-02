@@ -33,7 +33,7 @@ class ModFrame(AbstractFrame):
     ) -> None:
         assert mod.symtable is not None
         assert mod.symtable.kind == "module"
-        super().__init__(vm, ns, mod.loc, mod.symtable, closure=vm.builtins_closure)
+        super().__init__(vm, ns, mod.loc, mod.symtable, closure=())
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)

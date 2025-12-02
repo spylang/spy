@@ -827,7 +827,9 @@ class AbstractFrame:
                 level=-1,
             )
 
-        if sym.is_local:
+        if sym.impref is not None:
+            return ast.NameImportRef(name.loc, sym)
+        elif sym.is_local:
             assert sym.storage == "direct"
             return ast.NameLocal(name.loc, sym)
         elif sym.storage == "direct":
@@ -847,6 +849,25 @@ class AbstractFrame:
             )
         else:
             assert False
+
+    def eval_expr_NameImportRef(self, name: ast.NameImportRef) -> W_MetaArg:
+        # this is correct as long as we import 'const', but if we import 'var', then it
+        # should probably be red? For now, we just don't support it.
+        color: Color = "blue"
+        sym = name.sym
+        assert sym.impref is not None
+        w_val = self.vm.lookup_ImportRef(sym.impref)
+        # XXX: this should be an ImportError?
+        assert w_val is not None
+        if isinstance(w_val, W_Cell):
+            raise SPyError.simple(
+                "W_WIP",
+                "cannot import `var` and/or `cell`",
+                "this is `cell`",
+                name.loc,
+            )
+        w_T = self.vm.dynamic_type(w_val)
+        return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
         sym = name.sym

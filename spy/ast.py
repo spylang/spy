@@ -578,6 +578,12 @@ class FQNConst(Expr):
 
 # specialized Name nodes
 @astnode
+class NameImportRef(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode
 class NameLocal(Expr):
     precedence = 100  # the highest
     sym: Symbol
