@@ -156,6 +156,10 @@ class AbstractFrame:
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
         )
 
+    def declare_reserved_bool_locals(self) -> None:
+        for name in ("@if", "@and", "@or", "@while", "@assert"):
+            self.declare_local(name, "red", B.w_bool, Loc.fake())
+
     def store_local(self, name: str, w_value: W_Object) -> None:
         self.locals[name].w_val = w_value
 
@@ -1186,12 +1190,8 @@ class ASTFrame(AbstractFrame):
     def declare_arguments(self) -> None:
         w_ft = self.w_func.w_functype
         funcdef = self.funcdef
-        self.declare_local("@if", "red", B.w_bool, Loc.fake())
-        self.declare_local("@and", "red", B.w_bool, Loc.fake())
-        self.declare_local("@or", "red", B.w_bool, Loc.fake())
-        self.declare_local("@while", "red", B.w_bool, Loc.fake())
+        self.declare_reserved_bool_locals()
         self.declare_local("@return", "red", w_ft.w_restype, funcdef.return_type.loc)
-        self.declare_local("@assert", "red", B.w_bool, Loc.fake())
 
         color = self.w_func.color
         assert w_ft.is_argcount_ok(len(funcdef.args))
