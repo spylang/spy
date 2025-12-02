@@ -466,6 +466,14 @@ class TestBasic(CompilerTest):
         def cond_assert() -> None:
             x = SomeType()
             assert x
+
+        def cond_and() -> None:
+            x = SomeType()
+            x and x
+
+        def cond_or() -> None:
+            x = SomeType()
+            x or x
         """
 
         def get_errors() -> Any:
@@ -477,6 +485,8 @@ class TestBasic(CompilerTest):
         self.compile_raises(src, "cond_if", get_errors())
         self.compile_raises(src, "cond_while", get_errors())
         self.compile_raises(src, "cond_assert", get_errors())
+        self.compile_raises(src, "cond_and", get_errors())
+        self.compile_raises(src, "cond_or", get_errors())
 
     def test_cannot_call_non_functions(self):
         # it would be nice to report also the location where 'inc' is defined,
