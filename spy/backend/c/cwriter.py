@@ -355,6 +355,21 @@ class CFuncWriter:
         FQN("operator::i32_gt"): ">",
         FQN("operator::i32_ge"): ">=",
         #
+        FQN("operator::u32_add"): "+",
+        FQN("operator::u32_sub"): "-",
+        FQN("operator::u32_mul"): "*",
+        FQN("operator::u32_lshift"): "<<",
+        FQN("operator::u32_rshift"): ">>",
+        FQN("operator::u32_and"): "&",
+        FQN("operator::u32_or"): "|",
+        FQN("operator::u32_xor"): "^",
+        FQN("operator::u32_eq"): "==",
+        FQN("operator::u32_ne"): "!=",
+        FQN("operator::u32_lt"): "<",
+        FQN("operator::u32_le"): "<=",
+        FQN("operator::u32_gt"): ">",
+        FQN("operator::u32_ge"): ">=",
+        #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
         FQN("unsafe::f64_ieee754_div"): "/",
@@ -368,7 +383,7 @@ class CFuncWriter:
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
-        # T is any of the following types: i8, u8, i32 and f64
+        # T is any of the following types: i8, u8, i32, u32 and f64
         # FQN('operator::T_div')
         # FQN('operator::T_floordiv')
         # FQN('operator::T_mod')
