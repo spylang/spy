@@ -99,7 +99,7 @@ class ImportAnalyzer:
     future.
     """
 
-    def __init__(self, vm: "SPyVM", modname: str) -> None:
+    def __init__(self, vm: "SPyVM", modname: str, use_spyc: bool = True) -> None:
         self.vm = vm
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
@@ -107,6 +107,7 @@ class ImportAnalyzer:
         self.cur_modname: Optional[str] = None
         self.cached_mods: dict[str, py.path.local] = {}  # modname -> cache file path
         self.cache_errors: list[CacheError] = []  # List of all cache errors
+        self.use_spyc = use_spyc
 
     def getmod(self, modname: str) -> ast.Module:
         mod = self.mods[modname]
@@ -230,18 +231,20 @@ class ImportAnalyzer:
         """
         # try to load from cache first
         mod = None
-        spyc = self._get_spyc(spyfile)
-        if self._is_spyc_valid(spyfile, spyc):
-            mod = self._load_spyc(spyfile, spyc, modname)
-            if mod is not None:
-                return mod
+        if self.use_spyc:
+            spyc = self._get_spyc(spyfile)
+            if self._is_spyc_valid(spyfile, spyc):
+                mod = self._load_spyc(spyfile, spyc, modname)
+                if mod is not None:
+                    return mod
 
         # no cache found, parse it
         parser = Parser.from_filename(str(spyfile))
         mod = parser.parse()
         scopes = self.analyze_one(modname, mod)
         mod.symtable = scopes.by_module()
-        self._save_spyc(mod, spyc)
+        if self.use_spyc:
+            self._save_spyc(mod, spyc)
         return mod
 
     def analyze_one(self, modname: str, mod: ast.Module) -> ScopeAnalyzer:

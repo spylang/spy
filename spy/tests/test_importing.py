@@ -260,3 +260,29 @@ class TestImportAnalyzer:
         assert "Version mismatch" in error.error_message
         assert f"version {SPYC_VERSION}" in error.error_message
         assert f"expected {SPYC_VERSION + 1}" in error.error_message
+
+    def test_use_spyc_disabled(self):
+        """Test that use_spyc=False disables caching"""
+        src = "x: i32 = 42"
+        self.write("mod1.spy", src, mtime_delta=-1)
+
+        # Import with use_spyc=False should not create .spyc
+        analyzer1 = ImportAnalyzer(self.vm, "mod1", use_spyc=False)
+        analyzer1.parse_all()
+        analyzer1.import_all()
+        assert not self.tmpdir.join("__pycache__", "mod1.spyc").exists()
+
+        # Create cache file with a different VM and analyzer
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "mod1", use_spyc=True)
+        analyzer2.parse_all()
+        analyzer2.import_all()
+        assert self.tmpdir.join("__pycache__", "mod1.spyc").exists()
+
+        # Import with use_spyc=False should not use existing cache
+        vm3 = SPyVM()
+        vm3.path = [str(self.tmpdir)]
+        analyzer3 = ImportAnalyzer(vm3, "mod1", use_spyc=False)
+        analyzer3.parse_all()
+        assert "mod1" not in analyzer3.cached_mods

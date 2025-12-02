@@ -187,6 +187,11 @@ class Arguments:
         ),
     ] = False
 
+    no_spyc: Annotated[
+        bool,
+        Option("--no-spyc", help="Disable loading/saving of .spyc cache files"),
+    ] = False
+
     def __post_init__(self) -> None:
         self.validate_actions()
 
@@ -399,7 +404,7 @@ async def inner_main(args: Arguments) -> None:
         do_cleanup(vm)
         return
 
-    importer = ImportAnalyzer(vm, modname)
+    importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.parse_all()
 
     orig_mod = importer.getmod(modname)
