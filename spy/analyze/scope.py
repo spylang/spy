@@ -58,6 +58,7 @@ class ScopeAnalyzer:
     mod: ast.Module
     stack: list[SymTable]
     inner_scopes: dict[ast.FuncDef | ast.ClassDef, SymTable]
+    implicit_imports: set[str]
     loop_depth: int
 
     def __init__(self, vm: "SPyVM", modname: str, mod: ast.Module) -> None:
@@ -67,6 +68,7 @@ class ScopeAnalyzer:
         self.mod_scope = SymTable(modname, "blue", "module")
         self.stack = []
         self.inner_scopes = {}
+        self.implicit_imports = set()
         self.loop_depth = 0
         self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
@@ -95,6 +97,10 @@ class ScopeAnalyzer:
         return self.inner_scopes[classdef]
 
     def pp(self) -> None:
+        print("Implicit imports:")
+        for modname in self.implicit_imports:
+            print(f"    {modname}")
+        print()
         self.by_module().pp()
         print()
         for key, symtable in self.inner_scopes.items():
@@ -442,6 +448,8 @@ class ScopeAnalyzer:
             assert not self.scope.has_definition(varname)
             new_sym = sym.replace(level=level)
             self.scope.add(new_sym)
+            if sym.impref is not None:
+                self.implicit_imports.add(sym.impref.modname)
 
     def flatten(self, node: ast.Node) -> None:
         """

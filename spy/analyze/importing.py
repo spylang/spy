@@ -210,12 +210,12 @@ class ImportAnalyzer:
                 self.mods[modname] = w_mod
 
             elif spyfile := self.vm.find_file_on_path(modname):
-                mod = self.parse_one(modname, spyfile)
-                self.mods[modname] = mod
-
                 # Initialize the dependency list for this module
                 if modname not in self.deps:
                     self.deps[modname] = []
+
+                mod = self.parse_one(modname, spyfile)
+                self.mods[modname] = mod
 
                 self.cur_modname = modname
                 self.visit(mod)
@@ -243,6 +243,11 @@ class ImportAnalyzer:
         mod = parser.parse()
         scopes = self.analyze_one(modname, mod)
         mod.symtable = scopes.by_module()
+
+        # XXX what about duplicates?
+        for imp_modname in scopes.implicit_imports:
+            self.record_import(modname, imp_modname)
+
         if self.use_spyc:
             self._save_spyc(mod, spyc)
         return mod
@@ -435,10 +440,12 @@ class ImportAnalyzer:
         mod.visit("visit", self)
 
     def visit_Import(self, imp: ast.Import) -> None:
-        modname = imp.ref.modname
         assert self.cur_modname is not None
+        self.record_import(self.cur_modname, imp.ref.modname)
+
+    def record_import(self, cur_modname: str, modname: str) -> None:
         # Record the dependency relationship
-        self.deps[self.cur_modname].append(modname)
+        self.deps[cur_modname].append(modname)
         self.queue.append(modname)
 
     # ===========================================================

@@ -186,6 +186,20 @@ class SymTable:
                 impref=ImportRef("builtins", attr),
             )
             scope.add(sym)
+
+        scope.add(
+            Symbol(
+                "range",
+                "const",
+                "explicit",
+                "direct",
+                loc=generic_loc,  # XXX
+                type_loc=generic_loc,
+                level=0,
+                impref=ImportRef("_range", "range"),
+            )
+        )
+
         return scope
 
     def __repr__(self) -> str:
