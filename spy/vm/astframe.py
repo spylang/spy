@@ -180,7 +180,7 @@ class AbstractFrame:
             if not err.match(W_TypeError):
                 raise
 
-            if varname in ("@if", "@while", "@assert"):
+            if varname in ("@if", "@and", "@or", "@while", "@assert"):
                 # no need to add extra info
                 pass
             elif varname == "@return":
@@ -955,8 +955,8 @@ class AbstractFrame:
 
     def eval_expr_And(self, op: ast.And) -> W_MetaArg:
         if self.redshifting:
-            wam_l = self.eval_expr(op.left, varname="@if")
-            wam_r = self.eval_expr(op.right, varname="@if")
+            wam_l = self.eval_expr(op.left, varname="@and")
+            wam_r = self.eval_expr(op.right, varname="@and")
             color = maybe_blue(wam_l.color, wam_r.color)
             if color == "blue":
                 w_left = wam_l.w_val
@@ -972,18 +972,18 @@ class AbstractFrame:
                 w_val = None
             return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
 
-        wam_l = self.eval_expr(op.left, varname="@if")
+        wam_l = self.eval_expr(op.left, varname="@and")
         w_left = wam_l.w_val
         assert isinstance(w_left, W_Bool)
         if self.vm.is_False(w_left):
             return wam_l
-        wam_r = self.eval_expr(op.right, varname="@if")
+        wam_r = self.eval_expr(op.right, varname="@and")
         return wam_r
 
     def eval_expr_Or(self, op: ast.Or) -> W_MetaArg:
         if self.redshifting:
-            wam_l = self.eval_expr(op.left, varname="@if")
-            wam_r = self.eval_expr(op.right, varname="@if")
+            wam_l = self.eval_expr(op.left, varname="@or")
+            wam_r = self.eval_expr(op.right, varname="@or")
             color = maybe_blue(wam_l.color, wam_r.color)
             if color == "blue":
                 w_left = wam_l.w_val
@@ -999,12 +999,12 @@ class AbstractFrame:
                 w_val = None
             return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
 
-        wam_l = self.eval_expr(op.left, varname="@if")
+        wam_l = self.eval_expr(op.left, varname="@or")
         w_left = wam_l.w_val
         assert isinstance(w_left, W_Bool)
         if self.vm.is_True(w_left):
             return wam_l
-        wam_r = self.eval_expr(op.right, varname="@if")
+        wam_r = self.eval_expr(op.right, varname="@or")
         return wam_r
 
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
@@ -1187,6 +1187,8 @@ class ASTFrame(AbstractFrame):
         w_ft = self.w_func.w_functype
         funcdef = self.funcdef
         self.declare_local("@if", "red", B.w_bool, Loc.fake())
+        self.declare_local("@and", "red", B.w_bool, Loc.fake())
+        self.declare_local("@or", "red", B.w_bool, Loc.fake())
         self.declare_local("@while", "red", B.w_bool, Loc.fake())
         self.declare_local("@return", "red", w_ft.w_restype, funcdef.return_type.loc)
         self.declare_local("@assert", "red", B.w_bool, Loc.fake())

@@ -81,7 +81,7 @@ class CFuncWriter:
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
             if (
-                varname not in ("@return", "@if", "@while", "@assert")
+                varname not in ("@return", "@if", "@and", "@or", "@while", "@assert")
                 and varname not in param_names
             ):
                 c_varname = C_Ident(varname)
