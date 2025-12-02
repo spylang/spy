@@ -2,6 +2,7 @@ import difflib
 import inspect
 import itertools
 import linecache
+import os
 import re
 import subprocess
 import typing
@@ -313,15 +314,28 @@ def cleanup_spyc_files(path: py.path.local, *, verbose: bool = False) -> None:
             print("Not a directory")
         return
 
-    for pycache_dir in path.visit("__pycache__"):
-        if not pycache_dir.check(dir=True):
+    # Use os.walk with onerror handler to gracefully handle permission errors
+    def handle_error(error: OSError) -> None:
+        if verbose:
+            print(f"    Permission denied: {error.filename}")
+
+    for root, dirs, files in os.walk(str(path), onerror=handle_error):
+        # Only process __pycache__ directories
+        if os.path.basename(root) != "__pycache__":
             continue
 
-        for spyc_file in pycache_dir.visit("*.spyc"):
-            if verbose:
-                print(f"    {spyc_file.relto(path)}")
-            spyc_file.remove()
-            n += 1
+        for filename in files:
+            if filename.endswith(".spyc"):
+                spyc_path = os.path.join(root, filename)
+                try:
+                    rel_path = os.path.relpath(spyc_path, str(path))
+                    if verbose:
+                        print(f"    {rel_path}")
+                    os.remove(spyc_path)
+                    n += 1
+                except PermissionError as e:
+                    if verbose:
+                        print(f"    Permission denied: {rel_path}")
 
     if verbose:
         if n == 0:
