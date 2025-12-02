@@ -180,3 +180,25 @@ class TestImporting(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 42
+
+    def test_multiple_mains(self, capfd):
+        src = """
+        def foo() -> i32:
+            return 42
+
+        def main() -> None:
+            print("this should never be executed")
+        """
+        self.write_file("a.spy", src)
+
+        src = """
+        from a import foo
+        def main() -> None:
+            print(foo())
+        """
+        mod = self.compile(src)
+        mod.main()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "42\n"

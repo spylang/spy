@@ -23,6 +23,7 @@ class CBackend:
     """
 
     vm: SPyVM
+    main_modname: str
     outname: str
     config: BuildConfig
     build_dir: py.path.local
@@ -37,19 +38,20 @@ class CBackend:
     def __init__(
         self,
         vm: SPyVM,
-        outname: str,
+        main_modname: str,
         config: BuildConfig,
         build_dir: py.path.local,
         *,
         dump_c: bool,
     ) -> None:
         self.vm = vm
-        self.outname = outname
+        self.main_modname = main_modname
+        self.outname = main_modname
         self.config = config
         self.build_dir = build_dir
         self.build_dir.join("src").ensure(dir=True)
         self.dump_c = dump_c
-        self.cffi = CFFIWriter(outname, config, build_dir)
+        self.cffi = CFFIWriter(main_modname, config, build_dir)
         self.ninja = None
         self.c_structdefs = {}
         self.c_modules = {}
@@ -174,7 +176,8 @@ class CBackend:
 
         # Emit regular C modules
         for c_mod in self.c_modules.values():
-            cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
+            is_main_mod = c_mod.modname == self.main_modname
+            cwriter = CModuleWriter(self.vm, c_mod, is_main_mod, self.cffi)
             cwriter.write_c_source()
             self.cfiles.append(c_mod.cfile)
             if self.dump_c:
