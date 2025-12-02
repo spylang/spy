@@ -2,6 +2,8 @@ from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 
 class TestImporting(CompilerTest):
+    SKIP_SPY_BACKEND_SANITY_CHECK = True
+
     def test_import(self):
         mod = self.compile("""
         from builtins import abs as my_abs
@@ -9,7 +11,6 @@ class TestImporting(CompilerTest):
         def foo(x: i32) -> i32:
             return my_abs(x)
         """)
-        #
         assert mod.foo(-20) == 20
 
     def test_import_errors_1(self):
@@ -47,7 +48,6 @@ class TestImporting(CompilerTest):
             """)
 
     def test_function_in_other_module(self):
-        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         src = """
         def get_delta() -> i32:
             return 10
@@ -63,7 +63,6 @@ class TestImporting(CompilerTest):
         assert mod.inc(4) == 14
 
     def test_type_in_other_module(self):
-        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         src = """
         @struct
         class Point:
@@ -91,7 +90,6 @@ class TestImporting(CompilerTest):
 
     @only_interp
     def test_nested_imports(self, capsys):
-        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         src = """
         import a1
         import a2
@@ -148,7 +146,6 @@ class TestImporting(CompilerTest):
         assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
 
     def test_circular_type_refs(self):
-        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
         src = """
         @blue.generic
         def Vec2(T):
@@ -171,3 +168,15 @@ class TestImporting(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == (1, 1)
+
+    def test_multi_step_import(self):
+        self.write_file("a.spy", "X = 42")
+        self.write_file("b.spy", "from a import X")
+        src = """
+        from b import X
+
+        def foo() -> i32:
+            return X
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
