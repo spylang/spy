@@ -21,7 +21,12 @@ from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
-from spy.util import cleanup_spyc_files, colors_coordinates, highlight_src_maybe
+from spy.util import (
+    cleanup_spyc_files,
+    colors_coordinates,
+    format_colors_as_json,
+    highlight_src_maybe,
+)
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
 from spy.vm.debugger.spdb import SPdb
@@ -66,6 +71,15 @@ class Arguments:
             help="Output the pre-redshifted AST with blue / red text colors.",
         ),
     ] = False
+
+    format: Annotated[
+        str,
+        Option(
+            "--format",
+            help="Output format for --colorize (ansi or json)",
+            click_type=click.Choice(["ansi", "json"]),
+        ),
+    ] = "ansi"
 
     imports: Annotated[
         bool,
@@ -439,7 +453,10 @@ async def inner_main(args: Arguments) -> None:
                 orig_mod.pp(vm=vm)
             else:
                 coords = colors_coordinates(orig_mod, vm.ast_color_map)
-                print(highlight_sourcecode(args.filename, coords))
+                if args.format == "json":
+                    print(format_colors_as_json(coords))
+                else:
+                    print(highlight_sourcecode(args.filename, coords))
         elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
