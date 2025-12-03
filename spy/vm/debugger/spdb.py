@@ -210,29 +210,29 @@ class SPdb(cmd.Cmd):
     do_ll = do_longlist
 
     def do_print(self, arg: str) -> None:
-        # eval "arg" in the current frame
-        filename = record_src_in_linecache(arg, name="spdb-eval")
-        parser = Parser(arg, filename)
-        stmt = parser.parse_single_stmt()
-        if not isinstance(stmt, ast.StmtExpr):
-            clsname = stmt.__class__.__name__
-            raise SPyError.simple(
-                "W_WIP",
-                f"not supported by SPdb: {clsname}",
-                "this is not supported",
-                stmt.loc,
-            )
+        try:
+            # eval "arg" in the current frame
+            filename = record_src_in_linecache(arg, name="spdb-eval")
+            parser = Parser(arg, filename)
+            stmt = parser.parse_single_stmt()
+            if not isinstance(stmt, ast.StmtExpr):
+                clsname = stmt.__class__.__name__
+                raise SPyError.simple(
+                    "W_WIP",
+                    f"not supported by SPdb: {clsname}",
+                    "this is not supported",
+                    stmt.loc,
+                )
 
-        f = self.get_curframe()
-        with f.spyframe.interactive():
-            try:
-                f.spyframe.is_interactive = True
+            f = self.get_curframe()
+            with f.spyframe.interactive():
+                f.spyframe.is_interactive = True  # ???
                 wam = f.spyframe.eval_expr(stmt.value)
-            except SPyError as e:
-                etype = e.etype[2:]
-                message = e.w_exc.message
-                self.error(f"{etype}: {message}")
-            else:
                 print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
+
+        except SPyError as e:
+            etype = e.etype[2:]
+            message = e.w_exc.message
+            self.error(f"{etype}: {message}")
 
     do_p = do_print

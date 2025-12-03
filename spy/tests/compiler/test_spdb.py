@@ -293,6 +293,27 @@ class TestSPdb(CompilerTest):
         mod = self.compile(src)
         mod.foo(42, session)
 
+    def test_ParseError(self):
+        src = """
+        from _test import spdb_interact
+
+        def foo(session: str) -> int:
+            spdb_interact(session)
+            return 42
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:5
+            |     spdb_interact(session)
+            |     |____________________|
+        (spdb) .xxx
+        *** ParseError: invalid syntax
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        res = mod.foo(session)
+        assert res == 42
+
     def test_post_mortem(self):
         src = """
         def foo() -> None:
