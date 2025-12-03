@@ -965,12 +965,8 @@ class AbstractFrame:
             if color == "blue":
                 w_left = wam_l.w_val
                 w_right = wam_r.w_val
-                assert isinstance(w_left, W_Bool)
-                assert isinstance(w_right, W_Bool)
-                w_val = (
-                    B.w_True
-                    if self.vm.is_True(w_left) and self.vm.is_True(w_right)
-                    else B.w_False
+                w_val = self.vm.wrap(
+                    self.vm.unwrap_bool(w_left) and self.vm.unwrap_bool(w_right),
                 )
             else:
                 w_val = None
@@ -978,8 +974,7 @@ class AbstractFrame:
 
         wam_l = self.eval_expr(op.left, varname="@and")
         w_left = wam_l.w_val
-        assert isinstance(w_left, W_Bool)
-        if self.vm.is_False(w_left):
+        if not self.vm.unwrap_bool(w_left):
             return wam_l
         wam_r = self.eval_expr(op.right, varname="@and")
         return wam_r
@@ -992,12 +987,8 @@ class AbstractFrame:
             if color == "blue":
                 w_left = wam_l.w_val
                 w_right = wam_r.w_val
-                assert isinstance(w_left, W_Bool)
-                assert isinstance(w_right, W_Bool)
-                w_val = (
-                    B.w_True
-                    if self.vm.is_True(w_left) or self.vm.is_True(w_right)
-                    else B.w_False
+                w_val = self.vm.wrap(
+                    self.vm.unwrap_bool(w_left) or self.vm.unwrap_bool(w_right),
                 )
             else:
                 w_val = None
@@ -1005,8 +996,7 @@ class AbstractFrame:
 
         wam_l = self.eval_expr(op.left, varname="@or")
         w_left = wam_l.w_val
-        assert isinstance(w_left, W_Bool)
-        if self.vm.is_True(w_left):
+        if self.vm.unwrap_bool(w_left):
             return wam_l
         wam_r = self.eval_expr(op.right, varname="@or")
         return wam_r
