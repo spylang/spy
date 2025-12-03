@@ -193,7 +193,7 @@ class SPdb(cmd.Cmd):
         List the whole source code for the current function or frame.
         """
         f = self.get_curframe()
-        if f.kind == "astframe":
+        if f.kind in ("astframe", "dopplerframe"):
             spyframe = f.spyframe
             assert isinstance(spyframe, ASTFrame)
             # Get the function location and current location
@@ -202,6 +202,8 @@ class SPdb(cmd.Cmd):
             print_longlist(
                 func_loc, cur_loc, use_colors=self.use_colors, file=self.stdout
             )
+        else:
+            print(f"longlist: unsupported kind: {f.kind}")
 
     do_list = do_longlist
     do_l = do_longlist

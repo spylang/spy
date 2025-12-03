@@ -321,17 +321,25 @@ class TestSPdb(CompilerTest):
             spdb_expect(self.vm, w_tb, session, post_mortem=True)
 
     def test_post_mortem_doppler_longlist(self):
+        self.backend = "doppler"
         src = """
         @blue
-        def bar():
-            raise StaticError("hello")
+        def inc(i: int) -> int:
+            return i + 1
 
         def foo() -> None:
-            bar()
+            x = inc("hello")
         """
         session = f"""
+        --- entering applevel debugger (post-mortem) ---
+           [0] [redshift] test::foo at {self.filename}:7
+            |     x = inc("hello")
+            |         |__________|
+        (spdb) longlist
+           6     def foo() -> None:
+           7  ->     x = inc("hello")
+        (spdb) continue
         """
-        self.backend = "doppler"
         try:
             mod = self.compile(src)
         except SPyError as e:
