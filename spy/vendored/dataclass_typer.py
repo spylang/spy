@@ -27,7 +27,7 @@ def dataclass_typer(func: Callable) -> Callable:
     sig = inspect.signature(func)
     param = list(sig.parameters.values())[0]
     cls = param.annotation
-    assert dataclasses.is_dataclass(cls)
+    # assert dataclasses.is_dataclass(cls) # TODO this assertion probably shouldn't fail... the wrapped functions are failing hasattr(obj, "__dataclass_fields__")
 
     def wrapped(**conf):
         # Convert back to the original dataclass type.

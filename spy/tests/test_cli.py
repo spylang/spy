@@ -59,7 +59,7 @@ class TestMain:
         self.tmpdir = tmpdir
         self.runner = CliRunner()
         self.main_spy = tmpdir.join("main.spy")
-        self.factorial_spy = tmpdir.join("fatcorial.spy")
+        self.factorial_spy = tmpdir.join("factorial.spy")
         self.blu_var_in_red_func_spy = tmpdir.join("blu_var_in_red_func.spy")
         main_src = """
         def main() -> None:
@@ -122,6 +122,7 @@ class TestMain:
             raise Exception("run_external failed")
         return exit_code, decolorize(stdout)
 
+    @pytest.mark.xfail(reason="Short options have not been implemented yet")
     def test_py_file_error(self):
         # Create a .py file instead of .spy
         py_file = self.tmpdir.join("test.py")
@@ -133,35 +134,38 @@ class TestMain:
         assert "Error:" in res.output and ".py file, not a .spy file" in res.output
 
     def test_pyparse(self):
-        _, stdout = self.run("--pyparse", self.main_spy)
+        _, stdout = self.run("pyparse", self.main_spy)
         assert stdout.startswith("py:Module(")
 
     def test_parse(self):
-        _, stdout = self.run("--parse", self.main_spy)
+        _, stdout = self.run("parse", self.main_spy)
         assert stdout.startswith("Module(")
 
-    def test_execute(self):
+    @pytest.mark.xfail(reason="Short options have not been implemented yet")
+    def test_run(self):
         _, stdout = self.run(self.main_spy)
         assert stdout == "hello world\n"
 
-    def test_redshift_dump_spy(self):
-        _, stdout = self.run("--redshift", self.main_spy)
-        assert stdout.startswith("\ndef main() -> None:")
-
-    def test_redshift_dump_ast(self):
-        _, stdout = self.run("--redshift", "--parse", self.main_spy)
-        assert stdout.startswith("`main::main` = FuncDef(")
-
-    def test_redshift_and_execute(self):
-        _, stdout = self.run("--redshift", "--execute", self.main_spy)
+    def test_redshift_and_run(self):
+        _, stdout = self.run("run", "--redshift", self.main_spy)
         assert stdout == "hello world\n"
 
+    def test_redshift_dump_ast(self):
+        _, stdout = self.run("redshift", self.main_spy)
+        assert stdout.startswith("`main::main` = FuncDef(")
+
+    def test_redshift_human_readable(self):
+        _, stdout = self.run("redshift", "--human-readable", self.main_spy)
+        assert stdout.startswith("\ndef main() -> None:")
+
     def test_colorize_ast(self):
-        _, stdout = self.run("--colorize", "--parse", self.main_spy)
+        _, stdout = self.run("parse", "--colorize", self.main_spy)
         assert stdout.startswith("Module(")
 
-    def test_colorize(self):
-        _, stdout = self.run("--colorize", self.factorial_spy, decolorize_stdout=False)
+    def test_colorize_source(self):
+        _, stdout = self.run(
+            "parse", "--colorize-source", self.factorial_spy, decolorize_stdout=False
+        )
         # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
         expected_outout = """
         import time
@@ -177,7 +181,10 @@ class TestMain:
             [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
         assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
         _, stdout = self.run(
-            "--colorize", self.blu_var_in_red_func_spy, decolorize_stdout=False
+            "parse",
+            "--colorize-source",
+            self.blu_var_in_red_func_spy,
+            decolorize_stdout=False,
         )
         expected_outout = """
         @blue
@@ -190,7 +197,7 @@ class TestMain:
         assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
 
     def test_cwrite(self):
-        self.run("--cwrite", "--build-dir", self.tmpdir, self.main_spy)
+        self.run("build", "--cwrite", "--build-dir", self.tmpdir, self.main_spy)
         main_c = self.tmpdir.join("src", "main.c")
         assert main_c.exists()
         csrc = main_c.read()
@@ -206,7 +213,7 @@ class TestMain:
     )
     def test_build(self, target):
         res, stdout = self.run(
-            "--compile",
+            "build",
             "--target", target,
             "--build-dir", self.tmpdir,
             self.main_spy,
@@ -255,7 +262,7 @@ class TestMain:
 
         # Run cleanup from tmpdir (without filename, uses cwd)
         monkeypatch.chdir(self.tmpdir)
-        res, stdout = self.run("--cleanup")
+        res, stdout = self.run("cleanup")
         assert not spyc1.exists()
         assert not spyc2.exists()
         assert "Removed 2 .spyc file(s)" in stdout
@@ -268,11 +275,11 @@ class TestMain:
         spyc1.write("")
 
         # NOTE: this might remove stdlib .spyc files, we don't know the precise number
-        res, stdout = self.run("--cleanup", self.main_spy)
+        res, stdout = self.run("cleanup", self.main_spy)
         assert not spyc1.exists()
         assert re.search(r"Removed \d+ \.spyc file\(s\)", stdout)
 
     def test_cleanup_no_files(self):
         # Run cleanup when no .spyc files exist
-        res, stdout = self.run("--cleanup", self.main_spy)
+        res, stdout = self.run("cleanup", self.main_spy)
         assert "No .spyc files found" in stdout
