@@ -5,6 +5,7 @@ import sys
 import time
 import traceback
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
@@ -12,6 +13,7 @@ import click
 import py.path
 import typer
 from typer import Argument, Option
+from typer.core import TyperGroup
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
@@ -34,15 +36,38 @@ from spy.vm.function import W_ASTFunc, W_FuncType
 from spy.vm.module import W_Module
 from spy.vm.vm import SPyVM
 
-app = typer.Typer(pretty_exceptions_enable=False)
+# This makes the commands show up in the hlep in a fixed order; if the command is not present in this fixed list, it defaults to the end
+cmd_order = [
+    "pyparse",
+    "parse",
+    "imports",
+    "symtable",
+    "redshift",
+    "colorize",
+    "execute",
+    "cwrite",
+    "cdump",
+    "compile",
+]
+
+
+class OrderCommands(TyperGroup):
+    def list_commands(self, ctx: click.Content):
+        key = lambda i: cmd_order.index(i) if i in cmd_order else 999
+        return sorted(self.commands, key=key)
+
+
+app = typer.Typer(
+    pretty_exceptions_enable=False, no_args_is_help=True, cls=OrderCommands
+)
 
 
 @dataclass
-class Arguments:
-    filename: Annotated[
-        Optional[Path],
-        Argument(help=""),
-    ] = None
+class GeneralArgs:
+    # filename: Annotated[
+    #     Optional[Path],
+    #     Argument(help=""),
+    # ] = None
 
     execute: Annotated[
         bool,
@@ -53,15 +78,15 @@ class Arguments:
         ),
     ] = False
 
-    pyparse: Annotated[
-        bool,
-        Option("-P", "--pyparse", help="Dump the Python AST"),
-    ] = False
+    # pyparse: Annotated[
+    #     bool,
+    #     Option("-P", "--pyparse", help="Dump the Python AST"),
+    # ] = False
 
-    parse: Annotated[
-        bool,
-        Option("-p", "--parse", help="Dump the SPy AST"),
-    ] = False
+    # parse: Annotated[
+    #     bool,
+    #     Option("-p", "--parse", help="Dump the SPy AST"),
+    # ] = False
 
     colorize: Annotated[
         bool,
@@ -91,88 +116,88 @@ class Arguments:
         Option("-S", "--symtable", help="Dump the symtables"),
     ] = False
 
-    redshift: Annotated[
-        bool,
-        Option(
-            "-r",
-            "--redshift",
-            help="Perform redshift and dump the result",
-        ),
-    ] = False
+    # redshift: Annotated[
+    #     bool,
+    #     Option(
+    #         "-r",
+    #         "--redshift",
+    #         help="Perform redshift and dump the result",
+    #     ),
+    # ] = False
 
-    cwrite: Annotated[
-        bool,
-        Option("--cwrite", help="Generate the C code"),
-    ] = False
+    # cwrite: Annotated[
+    #     bool,
+    #     Option("--cwrite", help="Generate the C code"),
+    # ] = False
 
-    cdump: Annotated[
-        bool,
-        Option("--cdump", help="Dump the generated C code to stdout"),
-    ] = False
+    # cdump: Annotated[
+    #     bool,
+    #     Option("--cdump", help="Dump the generated C code to stdout"),
+    # ] = False
 
-    compile: Annotated[
-        bool,
-        Option("-c", "--compile", help="Compile the generated C code"),
-    ] = False
+    # compile: Annotated[
+    #     bool,
+    #     Option("-c", "--compile", help="Compile the generated C code"),
+    # ] = False
 
-    build_dir: Annotated[
-        Optional[Path],
-        Option(
-            "-b",
-            "--build-dir",
-            help="Directory to store generated files (defaults to build/ next to the "
-            ".spy file)",
-        ),
-    ] = None
+    # build_dir: Annotated[
+    #     Optional[Path],
+    #     Option(
+    #         "-b",
+    #         "--build-dir",
+    #         help="Directory to store generated files (defaults to build/ next to the "
+    #         ".spy file)",
+    #     ),
+    # ] = None
 
-    opt_level: Annotated[
-        int,
-        Option(
-            "-O",
-            metavar="LEVEL",
-            help="Optimization level",
-        ),
-    ] = 0
+    # opt_level: Annotated[
+    #     int,
+    #     Option(
+    #         "-O",
+    #         metavar="LEVEL",
+    #         help="Optimization level",
+    #     ),
+    # ] = 0
 
-    debug_symbols: Annotated[
-        bool,
-        Option("-g", help="Generate debug symbols"),
-    ] = False
+    # debug_symbols: Annotated[
+    #     bool,
+    #     Option("-g", help="Generate debug symbols"),
+    # ] = False
 
-    release_mode: Annotated[
-        bool,
-        Option("--release", help="enable release mode"),
-    ] = False
+    # release_mode: Annotated[
+    #     bool,
+    #     Option("--release", help="enable release mode"),
+    # ] = False
 
-    target: Annotated[
-        BuildTarget,
-        Option(
-            "-t",
-            "--target",
-            help="Compilation target",
-            click_type=click.Choice(BuildTarget.__args__),
-        ),
-    ] = "native"
+    # target: Annotated[
+    #     BuildTarget,
+    #     Option(
+    #         "-t",
+    #         "--target",
+    #         help="Compilation target",
+    #         click_type=click.Choice(BuildTarget.__args__),
+    #     ),
+    # ] = "native"
 
-    output_kind: Annotated[
-        OutputKind,
-        Option(
-            "-k",
-            "--output-kind",
-            help="Output kind",
-            click_type=click.Choice(OutputKind.__args__),
-        ),
-    ] = "exe"
+    # output_kind: Annotated[
+    #     OutputKind,
+    #     Option(
+    #         "-k",
+    #         "--output-kind",
+    #         help="Output kind",
+    #         click_type=click.Choice(OutputKind.__args__),
+    #     ),
+    # ] = "exe"
 
-    error_mode: Annotated[
-        ErrorMode,
-        Option(
-            "-E",
-            "--error-mode",
-            help="Handling strategy for static errors",
-            click_type=click.Choice(ErrorMode.__args__),
-        ),
-    ] = "eager"
+    # error_mode: Annotated[
+    #     ErrorMode,
+    #     Option(
+    #         "-E",
+    #         "--error-mode",
+    #         help="Handling strategy for static errors",
+    #         click_type=click.Choice(ErrorMode.__args__),
+    #     ),
+    # ] = "eager"
 
     full_fqn: Annotated[
         bool,
@@ -243,14 +268,7 @@ class Arguments:
             raise typer.BadParameter(msg)
 
 
-def do_pyparse(filename: str) -> None:
-    with open(filename) as f:
-        src = f.read()
-    mod = magic_py_parse(src)
-    mod.pp()
-
-
-def do_cleanup(vm: Optional["SPyVM"] = None) -> None:
+def _do_cleanup(vm: Optional["SPyVM"] = None) -> None:
     """
     Remove all .spyc cache files from directories in vm.path (or cwd if vm is None).
     """
@@ -290,9 +308,414 @@ def pyproject_entry_point() -> Any:
     return app()
 
 
-@app.command()
-@dataclass_typer
-def main(args: Arguments) -> None:
+### Helper Functions
+
+
+def _spot_py_file(args: Base_Args):
+    if args.filename.suffix == ".py":
+        print(
+            f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
+        )
+        sys.exit(1)
+
+
+async def _init_vm(args: Base_Args):
+    global GLOBAL_VM
+
+    _spot_py_file(args)
+
+    modname = args.filename.stem
+    srcdir = args.filename.parent
+    vm = await SPyVM.async_new()
+
+    GLOBAL_VM = vm
+
+    vm.robust_import_caching = True  # don't raise if .spyc are unreadable/invalid
+
+    vm.path.append(str(srcdir))
+    if args.error_mode == "warn":
+        args.error_mode = "lazy"
+        vm.emit_warning = emit_warning
+    return vm
+
+
+# Run a asnyc function
+syncify = lambda f: wraps(f)(lambda *args, **kwargs: asyncio.run(f(*args, **kwargs)))
+
+
+def spy_command(*cmd_args, **cmd_kwargs) -> None:
+    def wrapper(fn: Callable):
+        # make inner's arguments the same as fn's
+        return app.command(*cmd_args, **cmd_kwargs)(dataclass_typer(syncify(fn)))
+
+    return wrapper
+
+
+# TODO This is currently unused
+def default_spy_command(*cb_args, **cb_kwargs) -> None:
+    def wrapper(fn: Callable):
+        # make inner's arguments the same as fn's
+        return app.callback(invoke_without_command=True, *cb_args, **cb_kwargs)(
+            dataclass_typer(syncify(fn))
+        )
+
+    return wrapper
+
+
+### Commands
+
+
+@dataclass
+class Base_Args:
+    full_fqn: Annotated[
+        bool,
+        Option("--full-fqn", help="Show full FQNs in redshifted modules"),
+    ] = False
+
+    timeit: Annotated[
+        bool,
+        Option("--timeit", help="Print execution time"),
+    ] = False
+
+    pdb: Annotated[
+        bool,
+        Option("--pdb", help="Enter interp-level debugger in case of error"),
+    ] = False
+
+    spdb: Annotated[
+        bool,
+        Option("--spdb", help="Enter app-level debugger in case of error"),
+    ] = False
+
+    error_mode: Annotated[
+        ErrorMode,
+        Option(
+            "-E",
+            "--error-mode",
+            help="Handling strategy for static errors",
+            click_type=click.Choice(ErrorMode.__args__),
+        ),
+    ] = "eager"
+
+
+@dataclass
+class Cleanup_Args(Base_Args):
+    """Filename is optional for the cleanup command only"""
+
+    filename: Annotated[
+        Optional[Path],
+        Argument(help=""),
+    ] = None
+
+
+@spy_command(name="cleanup")
+async def cleanup(args: Cleanup_Args) -> None:
+    """Remove all .spyc cache files from vm.path directories"""
+    if args.filename:
+        vm = await _init_vm(args)
+    else:
+        vm = None
+    _do_cleanup(vm)
+
+
+@dataclass
+class _Require_File:
+    filename: Annotated[
+        Path,
+        Argument(help=""),
+    ]
+
+
+@dataclass
+class Requires_File_Args(Base_Args, _Require_File): ...
+
+
+@spy_command(name="pyparse")
+def pyparse(args: Requires_File_Args) -> None:
+    """Dump the Python AST"""
+    with open(args.filename) as f:
+        src = f.read()
+    mod = magic_py_parse(src)
+    mod.pp()
+
+
+@dataclass
+class Vm_Args(Requires_File_Args):
+    colorize: Annotated[
+        bool,
+        Option(
+            "-C",
+            "--colorize",
+            help="Output the pre-redshifted AST with blue / red text colors.",
+        ),
+    ] = False
+
+    redshift: Annotated[
+        bool,
+        Option(
+            "-r",
+            "--redshift",
+            help="Perform redshift and dump the result",
+        ),
+    ] = False
+
+
+@spy_command(name="parse")
+async def parse(args: Vm_Args) -> None:
+    """Dump the SPy AST"""
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+
+    orig_mod = importer.getmod(modname)
+    if not args.redshift and not args.colorize:
+        orig_mod.pp()
+    elif args.colorize:
+        importer.import_all()
+        w_mod = vm.modules_w[modname]
+        orig_mod = importer.getmod(modname)
+
+        vm.ast_color_map = {}
+        vm.redshift(error_mode=args.error_mode)
+        dump_spy_mod_ast(vm, modname)
+
+
+@spy_command(name="imports")
+async def imports(args: Requires_File_Args):
+    """Dump the (recursive) list of imports"""
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+    importer.pp()
+
+
+@spy_command(name="symtable")
+async def symtable(args: Requires_File_Args):
+    """Dump the symtables"""
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+    scopes = importer.analyze_scopes(modname)
+    scopes.pp()
+
+
+@dataclass
+class Execute_Args(Vm_Args): ...
+
+
+@spy_command(name="execute")
+async def _execute(args: Execute_Args):
+    """Execute the file"""  # TODO make this the default operation when no command is given
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+    importer.import_all()
+    w_mod = vm.modules_w[modname]
+
+    # If we're not redshifting, execute and return immediately
+    if not args.redshift:
+        execute_spy_main(
+            args, vm, w_mod
+        )  # TODO do we need more args to be passed here? Probably
+        return
+
+    if args.colorize:
+        # Signal to the redshift codde that we want to retain expr color information
+        vm.ast_color_map = {}
+
+    # Redshift the code here
+    vm.redshift(error_mode=args.error_mode)
+
+    if args.redshift or args.colorize:
+        execute_spy_main(
+            args, vm, w_mod
+        )  # TODO do we need more args to be passed here? Probably
+
+
+@dataclass
+class Colorize_Args(Requires_File_Args):
+    original: Annotated[
+        bool,
+        Option(
+            "-o",
+            "--original-ast",
+            help="sshow the pre-redshifted AST, with the colors detected by redshifting",
+        ),
+    ] = False
+
+    format: Annotated[
+        str,
+        Option(
+            "--format",
+            help="Output format for --colorize (ansi or json)",
+            click_type=click.Choice(["ansi", "json"]),
+        ),
+    ] = "ansi"
+
+
+@spy_command(name="colorize")
+async def colorize(args: Colorize_Args):
+    """Output the pre-redshifted AST with blue / red text colors."""
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+    importer.import_all()
+    w_mod = vm.modules_w[modname]
+    orig_mod = importer.getmod(modname)
+
+    vm.ast_color_map = {}
+    vm.redshift(error_mode=args.error_mode)
+
+    if args.original:
+        orig_mod.pp(vm=vm)
+    else:
+        coords = colors_coordinates(orig_mod, vm.ast_color_map)
+        if args.format == "json":
+            print(format_colors_as_json(coords))
+        else:
+            print(highlight_sourcecode(args.filename, coords))
+
+
+@spy_command(name="redshift")
+async def redshift(args=Requires_File_Args):
+    """
+    Perform redshift and dump the result
+    """
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+    importer.import_all()
+    w_mod = vm.modules_w[modname]
+    orig_mod = importer.getmod(modname)
+
+    vm.ast_color_map = {}
+    vm.redshift(error_mode=args.error_mode)
+    dump_spy_mod(vm, modname, args.full_fqn)
+
+
+@dataclass
+class Compile_Args(Requires_File_Args):
+    cwrite: Annotated[
+        bool,
+        Option("--cwrite-only", help="Generate the C code; do not compile"),
+    ] = False
+
+    cdump: Annotated[
+        bool,
+        Option("--cdump", help="Dump the generated C code to stdout; do not compile"),
+    ] = False
+
+    build_dir: Annotated[
+        Optional[Path],
+        Option(
+            "-b",
+            "--build-dir",
+            help="Directory to store generated files (defaults to build/ next to the "
+            ".spy file)",
+        ),
+    ] = None
+
+    opt_level: Annotated[
+        int,
+        Option(
+            "-O",
+            metavar="LEVEL",
+            help="Optimization level",
+        ),
+    ] = 0
+
+    debug_symbols: Annotated[
+        bool,
+        Option("-g", help="Generate debug symbols"),
+    ] = False
+
+    release_mode: Annotated[
+        bool,
+        Option("--release", help="enable release mode"),
+    ] = False
+
+    target: Annotated[
+        BuildTarget,
+        Option(
+            "-t",
+            "--target",
+            help="Compilation target",
+            click_type=click.Choice(BuildTarget.__args__),
+        ),
+    ] = "native"
+
+    output_kind: Annotated[
+        OutputKind,
+        Option(
+            "-k",
+            "--output-kind",
+            help="Output kind",
+            click_type=click.Choice(OutputKind.__args__),
+        ),
+    ] = "exe"
+
+
+@spy_command(name="compile")
+async def compile(args=Compile_Args):
+    """Compile the generated C code"""
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+    importer.import_all()
+    w_mod = vm.modules_w[modname]
+    orig_mod = importer.getmod(modname)
+
+    vm.ast_color_map = {}
+    vm.redshift(error_mode=args.error_mode)
+
+    config = BuildConfig(
+        target=args.target,
+        kind=args.output_kind,
+        build_type="release" if args.release_mode else "debug",
+    )
+
+    cwd = py.path.local(".")
+    build_dir = get_build_dir(args)
+    dump_c = args.cwrite and args.cdump
+    backend = CBackend(vm, modname, config, build_dir, dump_c=dump_c)
+
+    backend.cwrite()
+    backend.write_build_script()
+    assert backend.build_script is not None
+
+    if args.cwrite:
+        cfiles = ", ".join([f.relto(cwd) for f in backend.cfiles])
+        build_script = backend.build_script.relto(cwd)
+        print(f"C files:      {cfiles}")
+        print(f"Build script: {build_script}")
+        return
+
+    outfile = backend.build()
+    executable = outfile.relto(cwd)
+    if executable == "":
+        # outfile is not in a subdir of cwd, let's display the full path
+        executable = str(outfile)
+    print(f"[{config.build_type}] {executable} ")
+
+
+## Runner wrappers for debugging #TODO need to get these working
+
+
+def main(args: GeneralArgs) -> None:
     # this is the main Typer entry point
     if sys.platform == "emscripten":
         asyncio.create_task(pyodide_main(args))
@@ -300,7 +723,7 @@ def main(args: Arguments) -> None:
         asyncio.run(real_main(args))
 
 
-async def pyodide_main(args: Arguments) -> None:
+async def pyodide_main(args: GeneralArgs) -> None:
     """
     For some reasons, it seems that pyodide doesn't print exceptions
     uncaught exceptions which escapes an asyncio task. This is a small wrapper
@@ -315,7 +738,7 @@ async def pyodide_main(args: Arguments) -> None:
 GLOBAL_VM: Optional[SPyVM] = None
 
 
-async def real_main(args: Arguments) -> None:
+async def real_main(args: GeneralArgs) -> None:
     """
     A wrapper around inner_main, to catch/display SPy errors and to
     implement --pdb
@@ -359,7 +782,7 @@ def emit_warning(err: SPyError) -> None:
     print(err.format())
 
 
-def get_build_dir(args: Arguments) -> py.path.local:
+def get_build_dir(args: GeneralArgs) -> py.path.local:
     if args.build_dir is not None:
         build_dir = args.build_dir
     else:
@@ -372,128 +795,116 @@ def get_build_dir(args: Arguments) -> py.path.local:
     return py.path.local(str(build_dir))
 
 
-async def inner_main(args: Arguments) -> None:
-    """
-    The actual code for the spy executable
-    """
-    global GLOBAL_VM
+async def inner_main(args: GeneralArgs) -> None:
+    # """
+    # The actual code for the spy executable
+    # """
+    # if args.filename.suffix == ".py":
+    #     print(
+    #         f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
+    #     )
+    #     sys.exit(1)
 
-    # Handle cleanup without filename
-    if args.cleanup and args.filename is None:
-        do_cleanup()
-        return
+    # modname = args.filename.stem
+    # srcdir = args.filename.parent
+    # vm = await SPyVM.async_new()
 
-    # All other commands require a filename
-    assert args.filename is not None
+    # GLOBAL_VM = vm
 
-    if args.pyparse:
-        do_pyparse(str(args.filename))
-        return
+    # vm.robust_import_caching = True  # don't raise if .spyc are unreadable/invalid
 
-    if args.filename.suffix == ".py":
-        print(
-            f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
-        )
-        sys.exit(1)
+    # vm.path.append(str(srcdir))
+    # if args.error_mode == "warn":
+    #     args.error_mode = "lazy"
+    #     vm.emit_warning = emit_warning
 
-    modname = args.filename.stem
-    srcdir = args.filename.parent
-    vm = await SPyVM.async_new()
+    # if args.cleanup:
+    #     _do_cleanup(vm)
+    #     return
 
-    GLOBAL_VM = vm
+    # importer = ImportAnalyzer(vm, modname)
+    # importer.parse_all()
 
-    vm.robust_import_caching = True  # don't raise if .spyc are unreadable/invalid
+    # orig_mod = importer.getmod(modname)
 
-    vm.path.append(str(srcdir))
-    if args.error_mode == "warn":
-        args.error_mode = "lazy"
-        vm.emit_warning = emit_warning
+    # if args.parse and not args.redshift and not args.colorize:
+    #     orig_mod.pp()
+    #     return
 
-    if args.cleanup:
-        do_cleanup(vm)
-        return
+    # if args.imports:
+    #     importer.pp()
+    #     return
 
-    importer = ImportAnalyzer(vm, modname)
-    importer.parse_all()
+    # if args.symtable:
+    #     scopes = importer.analyze_scopes(modname)
+    #     scopes.pp()
+    #     return
 
-    orig_mod = importer.getmod(modname)
-    if args.parse and not args.redshift and not args.colorize:
-        orig_mod.pp()
-        return
+    # importer.import_all()
+    # w_mod = vm.modules_w[modname]
 
-    if args.imports:
-        importer.pp()
-        return
+    # if args.execute and not args.redshift:
+    #     execute_spy_main(args, vm, w_mod)
+    #     return
 
-    if args.symtable:
-        scopes = importer.analyze_scopes(modname)
-        scopes.pp()
-        return
+    # if args.colorize:
+    #     # Signal to the redshift codde that we want to retain expr color information
+    #     vm.ast_color_map = {}
+    # vm.redshift(error_mode=args.error_mode)
+    # # vm.pp_globals()
+    # # vm.pp_modules()
 
-    importer.import_all()
-    w_mod = vm.modules_w[modname]
+    # if args.redshift or args.colorize:
+    #     if args.execute:
+    #         execute_spy_main(args, vm, w_mod)
+    #     elif args.colorize:
+    #         if args.parse:
+    #             # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
+    #             orig_mod.pp(vm=vm)
+    #         else:
+    #             coords = colors_coordinates(orig_mod, vm.ast_color_map)
+    #             if args.format == "json":
+    #                 print(format_colors_as_json(coords))
+    #             else:
+    #                 print(highlight_sourcecode(args.filename, coords))
+    #     elif args.parse:
+    #         dump_spy_mod_ast(vm, modname)
+    #     else:
+    #         dump_spy_mod(vm, modname, args.full_fqn)
+    #     return
 
-    if args.execute and not args.redshift:
-        execute_spy_main(args, vm, w_mod)
-        return
+    # config = BuildConfig(
+    #     target=args.target,
+    #     kind=args.output_kind,
+    #     build_type="release" if args.release_mode else "debug",
+    # )
 
-    if args.colorize:
-        # Signal to the redshift codde that we want to retain expr color information
-        vm.ast_color_map = {}
-    vm.redshift(error_mode=args.error_mode)
-    # vm.pp_globals()
-    # vm.pp_modules()
+    # cwd = py.path.local(".")
+    # build_dir = get_build_dir(args)
+    # dump_c = args.cwrite and args.cdump
+    # backend = CBackend(vm, modname, config, build_dir, dump_c=dump_c)
 
-    if args.redshift or args.colorize:
-        if args.execute:
-            execute_spy_main(args, vm, w_mod)
-        elif args.colorize:
-            if args.parse:
-                # --colorize shows us the pre-redshifted AST, with the colors detected by redshifting
-                orig_mod.pp(vm=vm)
-            else:
-                coords = colors_coordinates(orig_mod, vm.ast_color_map)
-                if args.format == "json":
-                    print(format_colors_as_json(coords))
-                else:
-                    print(highlight_sourcecode(args.filename, coords))
-        elif args.parse:
-            dump_spy_mod_ast(vm, modname)
-        else:
-            dump_spy_mod(vm, modname, args.full_fqn)
-        return
+    # backend.cwrite()
+    # backend.write_build_script()
+    # assert backend.build_script is not None
 
-    config = BuildConfig(
-        target=args.target,
-        kind=args.output_kind,
-        build_type="release" if args.release_mode else "debug",
-    )
+    # if args.cwrite:
+    #     cfiles = ", ".join([f.relto(cwd) for f in backend.cfiles])
+    #     build_script = backend.build_script.relto(cwd)
+    #     print(f"C files:      {cfiles}")
+    #     print(f"Build script: {build_script}")
+    #     return
 
-    cwd = py.path.local(".")
-    build_dir = get_build_dir(args)
-    dump_c = args.cwrite and args.cdump
-    backend = CBackend(vm, modname, config, build_dir, dump_c=dump_c)
-
-    backend.cwrite()
-    backend.write_build_script()
-    assert backend.build_script is not None
-
-    if args.cwrite:
-        cfiles = ", ".join([f.relto(cwd) for f in backend.cfiles])
-        build_script = backend.build_script.relto(cwd)
-        print(f"C files:      {cfiles}")
-        print(f"Build script: {build_script}")
-        return
-
-    outfile = backend.build()
-    executable = outfile.relto(cwd)
-    if executable == "":
-        # outfile is not in a subdir of cwd, let's display the full path
-        executable = str(outfile)
-    print(f"[{config.build_type}] {executable} ")
+    # outfile = backend.build()
+    # executable = outfile.relto(cwd)
+    # if executable == "":
+    #     # outfile is not in a subdir of cwd, let's display the full path
+    #     executable = str(outfile)
+    # print(f"[{config.build_type}] {executable} ")
+    ...
 
 
-def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
+def execute_spy_main(args: GeneralArgs, vm: SPyVM, w_mod: W_Module) -> None:
     w_main_functype = W_FuncType.parse("def() -> None")
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
