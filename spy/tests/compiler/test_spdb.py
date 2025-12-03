@@ -31,7 +31,9 @@ def w_spdb_interact(vm: "SPyVM", w_session: W_Str) -> None:
     spdb_expect(vm, w_tb, session, post_mortem=False)
 
 
-def spdb_expect(vm: "SPyVM", w_tb, session: str, *, post_mortem: bool) -> None:
+def spdb_expect(
+    vm: "SPyVM", w_tb: W_Traceback, session: str, *, post_mortem: bool
+) -> None:
     """
     Simulate the given session in SPdb and check that the actual result matches.
     """
@@ -56,7 +58,7 @@ def spdb_expect(vm: "SPyVM", w_tb, session: str, *, post_mortem: bool) -> None:
 
     # start a spdb session, type the given commands and get the result
     faketerm = FakeTerminal(commands)
-    spdb = SPdb(vm, w_tb, stdin=faketerm, stdout=faketerm, use_colors=False)
+    spdb = SPdb(vm, w_tb, stdin=faketerm, stdout=faketerm, use_colors=False)  # type: ignore[arg-type]
     spdb.prompt = "(spdb) "
 
     if post_mortem:
@@ -316,8 +318,7 @@ class TestSPdb(CompilerTest):
         try:
             mod.foo()
         except SPyError as e:
-            e.add_traceback()
-            w_tb = e.w_exc.w_tb
+            w_tb = e.add_traceback()
             spdb_expect(self.vm, w_tb, session, post_mortem=True)
 
     def test_post_mortem_doppler_longlist(self):
@@ -343,6 +344,5 @@ class TestSPdb(CompilerTest):
         try:
             mod = self.compile(src)
         except SPyError as e:
-            e.add_traceback()
-            w_tb = e.w_exc.w_tb
+            w_tb = e.add_traceback()
             spdb_expect(self.vm, w_tb, session, post_mortem=True)
