@@ -319,3 +319,22 @@ class TestSPdb(CompilerTest):
             e.add_traceback()
             w_tb = e.w_exc.w_tb
             spdb_expect(self.vm, w_tb, session, post_mortem=True)
+
+    def test_post_mortem_doppler_longlist(self):
+        src = """
+        @blue
+        def bar():
+            raise StaticError("hello")
+
+        def foo() -> None:
+            bar()
+        """
+        session = f"""
+        """
+        self.backend = "doppler"
+        try:
+            mod = self.compile(src)
+        except SPyError as e:
+            e.add_traceback()
+            w_tb = e.w_exc.w_tb
+            spdb_expect(self.vm, w_tb, session, post_mortem=True)
