@@ -1,0 +1,27 @@
+@blue.generic
+def Array(T: type, N: int):
+    if N <= 0:
+        raise StaticError("Array[T, N]: N must be positive")
+
+    @struct
+    class _array:
+        # ...
+        pass
+
+    return _array
+
+
+@blue.generic
+def Matrix(T: type, ROW: int, COL: int):
+    # BUG HERE: should be ROW * COL
+    BUFFER = Array[T, ROW - COL]
+
+    @struct
+    class _matrix:
+        data: BUFFER
+
+    return _matrix
+
+
+def main() -> None:
+    m: Matrix[int, 2, 3]

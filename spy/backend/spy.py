@@ -9,7 +9,7 @@ from spy.util import magic_dispatch
 from spy.vm.b import TYPES, B
 from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc
-from spy.vm.list import W_List
+from spy.vm.modules.__spy__.interp_list import W_InterpList
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
@@ -123,7 +123,7 @@ class SPyBackend:
         return ", ".join(l)
 
     def fmt_w_obj(self, w_obj: W_Object) -> str:
-        if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_List):
+        if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
             return w_obj.fqn.human_name
@@ -364,6 +364,24 @@ class SPyBackend:
         if op.right.precedence < op.precedence:
             r = f"({r})"
         return f"{l} {op.op} {r}"
+
+    def fmt_expr_And(self, op: ast.And) -> str:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        if op.left.precedence < op.precedence:
+            l = f"({l})"
+        if op.right.precedence < op.precedence:
+            r = f"({r})"
+        return f"{l} and {r}"
+
+    def fmt_expr_Or(self, op: ast.Or) -> str:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        if op.left.precedence < op.precedence:
+            l = f"({l})"
+        if op.right.precedence < op.precedence:
+            r = f"({r})"
+        return f"{l} or {r}"
 
     def fmt_expr_UnaryOp(self, unary: ast.UnaryOp) -> str:
         v = self.fmt_expr(unary.value)

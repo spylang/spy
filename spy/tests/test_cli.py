@@ -66,9 +66,6 @@ class TestMain:
             print("hello world")
         """
         factorial_src = """
-        import time
-        from _range import range
-
         def factorial(n: i32) -> i32:
             res = 1
             for i in range(n):
@@ -166,9 +163,6 @@ class TestMain:
         )
         # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
         expected_outout = """
-        import time
-        from _range import range
-
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
@@ -263,9 +257,9 @@ class TestMain:
         res, stdout = self.run("cleanup")
         assert not spyc1.exists()
         assert not spyc2.exists()
-        assert "Removed 2 .spyc file(s)" in stdout
+        assert "2 file(s) removed" in stdout
 
-    def test_cleanup_with_filename(self):
+    def test_cleanup_with_directory(self):
         # Create fake .spyc files in __pycache__
         pycache = self.tmpdir.join("__pycache__")
         pycache.mkdir()
@@ -275,7 +269,7 @@ class TestMain:
         # NOTE: this might remove stdlib .spyc files, we don't know the precise number
         res, stdout = self.run("cleanup", self.main_spy)
         assert not spyc1.exists()
-        assert re.search(r"Removed \d+ \.spyc file\(s\)", stdout)
+        assert "1 file(s) removed" in stdout
 
     def test_cleanup_no_files(self):
         # Run cleanup when no .spyc files exist

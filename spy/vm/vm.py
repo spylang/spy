@@ -27,9 +27,9 @@ from spy.vm.function import (
     W_Func,
     W_FuncType,
 )
-from spy.vm.list import W_ListType
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
+from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
@@ -37,7 +37,6 @@ from spy.vm.modules.math import MATH
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
-from spy.vm.modules.spy import SPY
 from spy.vm.modules.time import TIME
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.modules.unsafe import UNSAFE
@@ -49,6 +48,7 @@ from spy.vm.primitive import (
     W_I8,
     W_I32,
     W_U8,
+    W_U32,
     W_Bool,
     W_Dynamic,
     W_NoneType,
@@ -71,6 +71,7 @@ W_ClassMethod._w.define(W_ClassMethod)
 W_Member._w.define(W_Member)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
+W_U32._w.define(W_U32)
 W_I8._w.define(W_I8)
 W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
@@ -272,11 +273,17 @@ class SPyVM:
             raise ValueError(f"'{fqn}' already exists")
         self.irtags[fqn] = irtag
 
-    def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
+    def lookup_global_maybe(self, fqn: FQN) -> Optional[W_Object]:
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
             return self.globals_w.get(fqn)
+
+    def lookup_global(self, fqn: FQN) -> W_Object:
+        w_val = self.lookup_global_maybe(fqn)
+        if w_val is None:
+            raise Exception(f"lookup_global failed: {fqn}")
+        return w_val
 
     def get_irtag(self, fqn: FQN) -> IRTag:
         return self.irtags.get(fqn, IRTag.Empty)
@@ -294,11 +301,15 @@ class SPyVM:
             if fqn.modname == modname and not fqn.is_module():
                 yield (fqn, w_obj)
 
-    def pp_globals(self) -> None:
+    def pp_globals(self, modname: Optional[str] = None) -> None:
         all_pbcs = sorted(
             self.globals_w.items(),
             key=lambda item: str(item[0]),  # item[0] is fqn
         )
+        if modname is not None:
+            all_pbcs = [
+                (fqn, w_obj) for (fqn, w_obj) in all_pbcs if fqn.modname == modname
+            ]
 
         last_modname = None
         for fqn, w_obj in all_pbcs:
@@ -382,7 +393,7 @@ class SPyVM:
             )
 
             # check whether the fqn is already in use
-            w_other = self.lookup_global(w_func.fqn)
+            w_other = self.lookup_global_maybe(w_func.fqn)
             if w_other is None:
                 # fqn is free, register and return
                 self.add_global(w_func.fqn, w_func, irtag=irtag)
@@ -547,6 +558,9 @@ class SPyVM:
     def wrap(self, value: Union[fixedint.Int32, int]) -> W_I32: ...
 
     @overload
+    def wrap(self, value: fixedint.UInt32) -> W_U32: ...  # type: ignore[overload-cannot-match]
+
+    @overload
     def wrap(self, value: float) -> W_F64: ...
 
     @overload
@@ -569,6 +583,8 @@ class SPyVM:
             return B.w_None
         elif T in (int, fixedint.Int32):
             return W_I32(value)
+        elif T is fixedint.UInt32:
+            return W_U32(value)
         elif T is fixedint.Int8:
             return W_I8(value)
         elif T is fixedint.UInt8:
@@ -606,6 +622,11 @@ class SPyVM:
 
     def unwrap_i32(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_I32):
+            raise Exception("Type mismatch")
+        return w_value.value
+
+    def unwrap_u32(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_U32):
             raise Exception("Type mismatch")
         return w_value.value
 
@@ -810,11 +831,16 @@ class SPyVM:
         return self.eval_opimpl(w_opimpl, [wam_o, wam_i], loc=loc)
 
     def getitem_w(
-        self, w_o: W_Dynamic, w_i: W_Dynamic, *, loc: Optional[Loc] = None
+        self,
+        w_o: W_Dynamic,
+        w_i: W_Dynamic,
+        *,
+        loc: Optional[Loc] = None,
+        color: Color = "blue",
     ) -> W_Dynamic:
         "o[i] (dynamic dispatch)"
-        wam_o = W_MetaArg.from_w_obj(self, w_o)
-        wam_i = W_MetaArg.from_w_obj(self, w_i)
+        wam_o = W_MetaArg.from_w_obj(self, w_o, color=color)
+        wam_i = W_MetaArg.from_w_obj(self, w_i, color=color)
         wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here(-2))
         return wam.w_val
 
@@ -837,10 +863,11 @@ class SPyVM:
         args_w: Sequence[W_Dynamic],
         *,
         loc: Optional[Loc] = None,
+        color: Color = "blue",
     ) -> W_Dynamic:
         "func(*args) (dynamic dispatch)"
         wam_func = W_MetaArg.from_w_obj(self, w_func)
-        args_wam = [W_MetaArg.from_w_obj(self, w_arg) for w_arg in args_w]
+        args_wam = [W_MetaArg.from_w_obj(self, w_arg, color=color) for w_arg in args_w]
         wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here(-2))
         return wam.w_val
 
@@ -912,8 +939,3 @@ class SPyVM:
         "repr(obj) (on meta arguments)"
         wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
         return self.call_wam(wam_repr, [wam_o], loc=loc)
-
-    def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_ListType:
-        w_res = self.getitem_w(B.w_list, w_T, loc=loc)
-        assert isinstance(w_res, W_ListType)
-        return w_res

@@ -37,6 +37,7 @@ class ModFrame(AbstractFrame):
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)
+        self.declare_reserved_bool_locals()
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
@@ -119,10 +120,13 @@ class ModFrame(AbstractFrame):
         assert sym.impref == imp.ref
         w_val = self.vm.lookup_ImportRef(imp.ref)
         if w_val is not None:
-            # import successful, nothing to do.
+            # import successfull
+            w_T = self.vm.dynamic_type(w_val)
+            self.declare_local(sym.name, "blue", w_T, imp.loc)
+            self.store_local(sym.name, w_val)
             return
 
-        # import failed, raise ImportError
+        # import failed
         err = SPyError(
             "W_ImportError",
             f"cannot import `{imp.ref.spy_name()}`",

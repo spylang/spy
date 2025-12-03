@@ -466,6 +466,14 @@ class TestBasic(CompilerTest):
         def cond_assert() -> None:
             x = SomeType()
             assert x
+
+        def cond_and() -> None:
+            x = SomeType()
+            x and x
+
+        def cond_or() -> None:
+            x = SomeType()
+            x or x
         """
 
         def get_errors() -> Any:
@@ -477,6 +485,8 @@ class TestBasic(CompilerTest):
         self.compile_raises(src, "cond_if", get_errors())
         self.compile_raises(src, "cond_while", get_errors())
         self.compile_raises(src, "cond_assert", get_errors())
+        self.compile_raises(src, "cond_and", get_errors())
+        self.compile_raises(src, "cond_or", get_errors())
 
     def test_cannot_call_non_functions(self):
         # it would be nice to report also the location where 'inc' is defined,
@@ -658,6 +668,97 @@ class TestBasic(CompilerTest):
             ("this is `str`", "b"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_bool_ops_func_vars(self):
+        mod = self.compile(
+            """
+            def and_bool(a: bool, b: bool) -> bool:
+                return a and b
+
+            def or_bool(a: bool, b: bool) -> bool:
+                return a or b
+
+            def and_ints(a: i32, b: i32) -> bool:
+                return a and b
+
+            def or_ints(a: i32, b: i32) -> bool:
+                return a or b
+            """
+        )
+
+        assert mod.and_bool(True, True) is True
+        assert mod.and_bool(True, False) is False
+        assert mod.and_bool(False, True) is False
+        assert mod.and_bool(False, False) is False
+
+        assert mod.or_bool(True, True) is True
+        assert mod.or_bool(True, False) is True
+        assert mod.or_bool(False, True) is True
+        assert mod.or_bool(False, False) is False
+
+        assert mod.and_ints(1, 0) is False
+        assert mod.and_ints(0, 0) is False
+        assert mod.or_ints(0, 1) is True
+        assert mod.or_ints(0, 0) is False
+
+    def test_bool_ops_assignment(self):
+        mod = self.compile("""
+        def foo() -> bool:
+            x = 1 and 2
+            return x
+        """)
+        assert mod.foo() is True
+
+    def test_bool_ops_module_level(self):
+        mod = self.compile("""
+        x = 1 and 2
+        y = 0 or 5
+
+        def read_x() -> bool:
+            return x
+
+        def read_y() -> bool:
+            return y
+        """)
+
+        assert mod.read_x() is True
+        assert mod.read_y() is True
+
+    def test_bool_ops_short_circuit(self):
+        mod = self.compile("""
+        var counter: i32 = 0
+
+        def bump_true() -> bool:
+            counter = counter + 1
+            return True
+
+        def bump_false() -> bool:
+            counter = counter + 1
+            return False
+
+        def reset_counter() -> None:
+            counter = 0
+
+        def and_all_false() -> bool:
+            return bump_false() and bump_true() and bump_true()
+
+        def and_stop_mid() -> bool:
+            return bump_true() and bump_false() and bump_true()
+
+        def or_all_true() -> bool:
+            return bump_true() or bump_false() or bump_false()
+        """)
+
+        assert mod.and_all_false() is False
+        assert mod.counter == 1
+
+        mod.reset_counter()
+        assert mod.and_stop_mid() is False
+        assert mod.counter == 2
+
+        mod.reset_counter()
+        assert mod.or_all_true() is True
+        assert mod.counter == 1
 
     def test_if_stmt(self):
         mod = self.compile("""
@@ -1315,8 +1416,6 @@ class TestBasic(CompilerTest):
 
     def test_for_loop(self):
         src = """
-        from _range import range
-
         def factorial(n: i32) -> i32:
             res = 1
             for i in range(n):
@@ -1356,8 +1455,6 @@ class TestBasic(CompilerTest):
 
     def test_break_in_for(self):
         src = """
-        from _range import range
-
         def foo() -> i32:
             total = 0
             for i in range(10):
@@ -1371,8 +1468,6 @@ class TestBasic(CompilerTest):
 
     def test_continue_in_for(self):
         src = """
-        from _range import range
-
         def foo() -> i32:
             total = 0
             for i in range(10):
@@ -1386,8 +1481,6 @@ class TestBasic(CompilerTest):
 
     def test_nested_loops_with_break(self):
         src = """
-        from _range import range
-
         def foo() -> i32:
             total = 0
             for i in range(5):

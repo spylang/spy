@@ -12,7 +12,6 @@ from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
-from spy.vm.list import W_List
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES
@@ -156,6 +155,10 @@ class AbstractFrame:
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
         )
 
+    def declare_reserved_bool_locals(self) -> None:
+        for name in ("@if", "@and", "@or", "@while", "@assert"):
+            self.declare_local(name, "red", B.w_bool, Loc.fake())
+
     def store_local(self, name: str, w_value: W_Object) -> None:
         self.locals[name].w_val = w_value
 
@@ -180,7 +183,7 @@ class AbstractFrame:
             if not err.match(W_TypeError):
                 raise
 
-            if varname in ("@if", "@while", "@assert"):
+            if varname in ("@if", "@and", "@or", "@while", "@assert"):
                 # no need to add extra info
                 pass
             elif varname == "@return":
@@ -974,6 +977,66 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(unop.loc, w_OP, [wam_v])
         return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
+    def _ensure_bool(self, wam: W_MetaArg) -> W_MetaArg:
+        w_typeconv = CONVERT_maybe(self.vm, B.w_bool, wam)
+        if w_typeconv is None:
+            return wam
+
+        return W_MetaArg(
+            self.vm,
+            wam.color,
+            w_typeconv.w_functype.w_restype,
+            self.vm.fast_call(w_typeconv, [wam.w_val]),
+            wam.loc,
+            sym=wam.sym,
+        )
+
+    def eval_expr_And(self, op: ast.And) -> W_MetaArg:
+        if self.redshifting:
+            wam_l = self.eval_expr(op.left, varname="@and")
+            wam_r = self.eval_expr(op.right, varname="@and")
+            color = maybe_blue(wam_l.color, wam_r.color)
+            if color == "blue":
+                w_left_bool = self._ensure_bool(wam_l)
+                w_right_bool = self._ensure_bool(wam_r)
+                w_val = self.vm.wrap(
+                    self.vm.unwrap_bool(w_left_bool.w_val)
+                    and self.vm.unwrap_bool(w_right_bool.w_val),
+                )
+            else:
+                w_val = None
+            return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
+
+        wam_l = self.eval_expr(op.left, varname="@and")
+        w_left = wam_l.w_val
+        if not self.vm.unwrap_bool(w_left):
+            return wam_l
+        wam_r = self.eval_expr(op.right, varname="@and")
+        return wam_r
+
+    def eval_expr_Or(self, op: ast.Or) -> W_MetaArg:
+        if self.redshifting:
+            wam_l = self.eval_expr(op.left, varname="@or")
+            wam_r = self.eval_expr(op.right, varname="@or")
+            color = maybe_blue(wam_l.color, wam_r.color)
+            if color == "blue":
+                w_left_bool = self._ensure_bool(wam_l)
+                w_right_bool = self._ensure_bool(wam_r)
+                w_val = self.vm.wrap(
+                    self.vm.unwrap_bool(w_left_bool.w_val)
+                    or self.vm.unwrap_bool(w_right_bool.w_val),
+                )
+            else:
+                w_val = None
+            return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
+
+        wam_l = self.eval_expr(op.left, varname="@or")
+        w_left = wam_l.w_val
+        if self.vm.unwrap_bool(w_left):
+            return wam_l
+        wam_r = self.eval_expr(op.right, varname="@or")
+        return wam_r
+
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
         wam_func = self.eval_expr(call.func)
         args_wam = [self.eval_expr(arg) for arg in call.args]
@@ -1005,27 +1068,64 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
-    def eval_expr_List(self, op: ast.List) -> W_Object:
+    def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
+        if len(lst.items) == 0:
+            err = SPyError.simple(
+                "W_WIP",
+                "Empty list literals are not supported",
+                "This is not supported",
+                lst.loc,
+            )
+            err.add("note", "help: use `list[T]()` instead", lst.loc)
+            raise err
+
+        # 1. evaluate the individual items and infer the itemtype
         items_wam = []
         w_itemtype = None
         color: Color = "red"  # XXX should be blue?
-        for item in op.items:
+        for item in lst.items:
             wam_item = self.eval_expr(item)
+
+            # This is needed when building a list[MetaArg].
+            #
+            # If we have two blue items which happen to be equal, we reuse the same
+            # w_opimpl for push() below, with the result of pushing the first item
+            # twice, and the second item never. By making it red, we force to create a
+            # more generic opimpl.
+            #
+            # See also:
+            #    test_list::test_list_MetaArg_identity
+            #    typecheck_opspec, big comment starting with "THIS IS PROBABLY A BUG".
+            wam_item = wam_item.as_red(self.vm)
+
             items_wam.append(wam_item)
             color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:
                 w_itemtype = wam_item.w_static_T
             w_itemtype = self.vm.union_type(w_itemtype, wam_item.w_static_T)
-        #
-        # XXX we need to handle empty lists
         assert w_itemtype is not None
-        w_listtype = self.vm.make_list_type(w_itemtype, loc=op.loc)
-        if color == "red" and self.redshifting:
-            w_val = None
-        else:
-            items_w = [wam.w_val for wam in items_wam]
-            w_val = W_List(w_listtype, items_w)
-        return W_MetaArg(self.vm, color, w_listtype, w_val, op.loc)
+
+        # 2. instantiate a new list
+        w_ListType = self.vm.lookup_global(FQN("_list::list"))
+        w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
+
+        w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T])
+        wam_list = self.eval_opimpl(lst, w_opimpl, [wam_T])
+
+        # 3. push items into the list
+        assert isinstance(w_T, W_Type)
+        fqn_push = w_T.fqn.join("_push")
+        w_push = self.vm.lookup_global(fqn_push)
+        wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
+
+        for item, wam_item in zip(lst.items, items_wam):
+            w_opimpl = self.vm.call_OP(
+                lst.loc, OP.w_CALL, [wam_push, wam_list, wam_item]
+            )
+            wam_list = self.eval_opimpl(item, w_opimpl, [wam_push, wam_list, wam_item])
+
+        return wam_list
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]
@@ -1153,10 +1253,8 @@ class ASTFrame(AbstractFrame):
     def declare_arguments(self) -> None:
         w_ft = self.w_func.w_functype
         funcdef = self.funcdef
-        self.declare_local("@if", "red", B.w_bool, Loc.fake())
-        self.declare_local("@while", "red", B.w_bool, Loc.fake())
+        self.declare_reserved_bool_locals()
         self.declare_local("@return", "red", w_ft.w_restype, funcdef.return_type.loc)
-        self.declare_local("@assert", "red", B.w_bool, Loc.fake())
 
         color = self.w_func.color
         assert w_ft.is_argcount_ok(len(funcdef.args))

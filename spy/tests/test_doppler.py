@@ -256,12 +256,15 @@ class TestDoppler:
     def test_list(self):
         src = """
         def foo() -> dynamic:
-            return [1, 2, 3+4]
+            return [1, 3*4]
         """
         self.redshift(src)
         self.assert_dump("""
         def foo() -> dynamic:
-            return [1, 2, 7]
+            return \
+`_list::list[i32]::_ListImpl::_push`(\
+`_list::list[i32]::_ListImpl::_push`(\
+`_list::list[i32]::_ListImpl::__new__`(), 1), 12)
         """)
 
     def test_type_conversion(self):

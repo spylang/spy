@@ -4,7 +4,7 @@ from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
-@pytest.fixture(params=["i32", "i8", "u8"])
+@pytest.fixture(params=["i32", "u32", "i8", "u8"])
 def int_type(request):
     return request.param
 
@@ -36,6 +36,20 @@ class TestInt(CompilerTest):
         assert mod.foo(256 + 10) == 10
         assert mod.bar(42) == 42
         assert mod.bar(-1) == 255
+
+    def test_u32_conversion(self):
+        mod = self.compile("""
+        def foo(x: i32) -> u32:
+            return x
+
+        def bar(x: u32) -> i32:
+            return x
+        """)
+        MAX = 2**32
+        assert mod.foo(42) == 42
+        assert mod.foo(MAX + 10) == 10
+        assert mod.bar(42) == 42
+        assert mod.bar(-1) == -1
 
     def test_float_to_int(self):
         mod = self.compile("""
@@ -81,7 +95,7 @@ class TestInt(CompilerTest):
             mod.floordiv(11, 0)
 
     def test_division_mixed_signs(self, int_type):
-        if int_type == "u8":
+        if int_type in ("u8", "u32"):
             pytest.skip("Skipping for negative operands in floordiv test")
 
         mod = self.compile(f"""
@@ -108,7 +122,7 @@ class TestInt(CompilerTest):
         #
         is_unsigned = int_type.startswith("u")
         if is_unsigned:
-            with SPyError.raises("W_TypeError", match="cannot do -`u8`"):
+            with SPyError.raises("W_TypeError", match=f"cannot do -`{int_type}`"):
                 mod.neg(-5)
         else:
             assert mod.neg(-5) == 5

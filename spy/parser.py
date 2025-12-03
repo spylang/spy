@@ -686,6 +686,23 @@ class Parser:
         right = self.from_py_expr(py_node.comparators[0])
         return spy.ast.CmpOp(py_node.loc, op, left, right)
 
+    def from_py_expr_BoolOp(self, py_node: py_ast.BoolOp) -> spy.ast.Expr:
+        opname = type(py_node.op).__name__
+        values = py_node.values
+
+        expr = self.from_py_expr(values[0])
+        for next_value in values[1:]:
+            right = self.from_py_expr(next_value)
+            loc = Loc.combine(expr.loc, right.loc)
+            if opname == "And":
+                expr = spy.ast.And(loc, expr, right)
+            elif opname == "Or":
+                expr = spy.ast.Or(loc, expr, right)
+            else:
+                assert False, f"unexpected BoolOp: {opname}"
+
+        return expr
+
     def from_py_expr_UnaryOp(self, py_node: py_ast.UnaryOp) -> spy.ast.Expr:
         value = self.from_py_expr(py_node.operand)
         opname = type(py_node.op).__name__

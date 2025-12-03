@@ -52,6 +52,25 @@ MM.register("<=", "u8", "u8", OP.w_u8_le)
 MM.register(">" , "u8", "u8", OP.w_u8_gt)
 MM.register(">=", "u8", "u8", OP.w_u8_ge)
 
+# u32 ops
+MM.register("+",  "u32", "u32", OP.w_u32_add)
+MM.register("-",  "u32", "u32", OP.w_u32_sub)
+MM.register("*",  "u32", "u32", OP.w_u32_mul)
+MM.register("/",  "u32", "u32", OP.w_u32_div)
+MM.register("//", "u32", "u32", OP.w_u32_floordiv)
+MM.register("%",  "u32", "u32", OP.w_u32_mod)
+MM.register("<<", "u32", "u32", OP.w_u32_lshift)
+MM.register(">>", "u32", "u32", OP.w_u32_rshift)
+MM.register("&",  "u32", "u32", OP.w_u32_and)
+MM.register("|",  "u32", "u32", OP.w_u32_or)
+MM.register("^",  "u32", "u32", OP.w_u32_xor)
+MM.register("==", "u32", "u32", OP.w_u32_eq)
+MM.register("!=", "u32", "u32", OP.w_u32_ne)
+MM.register("<" , "u32", "u32", OP.w_u32_lt)
+MM.register("<=", "u32", "u32", OP.w_u32_le)
+MM.register(">" , "u32", "u32", OP.w_u32_gt)
+MM.register(">=", "u32", "u32", OP.w_u32_ge)
+
 # i32 ops
 MM.register("+",  "i32", "i32", OP.w_i32_add)
 MM.register("-",  "i32", "i32", OP.w_i32_sub)
@@ -88,7 +107,7 @@ MM.register(">=", "f64", "f64", OP.w_f64_ge)
 # mixed int/f64 ops: this is still small enough that we can write it manually,
 # but we should consider the idea of generating this table automatically. This
 # will become especially relevant when we add more integer types.
-for int_t in ("i8", "u8", "i32"):
+for int_t in ("i8", "u8", "u32", "i32"):
     MM.register("+",  "f64", int_t, OP.w_f64_add)
     MM.register("+",  int_t, "f64", OP.w_f64_add)
     MM.register("-",  "f64", int_t, OP.w_f64_sub)

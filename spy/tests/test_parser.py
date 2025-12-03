@@ -640,6 +640,26 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    @pytest.mark.parametrize("op, node", [("and", "And"), ("or", "Or")])
+    def test_BoolOp(self, op, node):
+        mod = self.parse(f"""
+        def foo() -> bool:
+            return a {op} b {op} c
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = f"""
+        Return(
+            value={node}(
+                left={node}(
+                    left=Name(id='a'),
+                    right=Name(id='b'),
+                ),
+                right=Name(id='c'),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_AugAssign(self, op):
         mod = self.parse(f"""

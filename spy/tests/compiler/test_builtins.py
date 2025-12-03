@@ -161,12 +161,14 @@ class TestBuiltins(CompilerTest):
     @only_interp
     def test_dir(self):
         src = """
+        from __spy__ import interp_list
+
         import math
 
-        def dir_i32() -> list[str]:
+        def dir_i32() -> interp_list[str]:
             return dir(5)
 
-        def dir_math() -> list[str]:
+        def dir_math() -> interp_list[str]:
             return dir(math)
         """
         mod = self.compile(src)

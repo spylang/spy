@@ -1,4 +1,5 @@
 import re
+import sys
 import textwrap
 from io import StringIO
 
@@ -7,7 +8,8 @@ import pytest
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, only_interp
 from spy.util import print_diff
-from spy.vm.debugger.spdb import make_spdb
+from spy.vm.debugger.spdb import SPdb
+from spy.vm.exc import W_Traceback
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
 from spy.vm.vm import SPyVM
@@ -16,20 +18,37 @@ TESTMOD = ModuleRegistry("_test")
 
 
 @TESTMOD.builtin_func
-def w_spdb_expect(vm: "SPyVM", w_session: W_Str) -> None:
+def w_spdb_interact(vm: "SPyVM", w_session: W_Str) -> None:
     """
-    Interact with (spdb), trying to simulate the given session and check that the
-    actual result matches.
+    Interact with (spdb), following the given session and checking the output.
+    """
+    # get the W_Traceback corresponding to the current app-level frame
+    pyframe = sys._getframe().f_back.f_back  # type: ignore
+    assert pyframe is not None
+    w_tb = W_Traceback.from_py_frame(pyframe)
+    #
+    session = vm.unwrap_str(w_session)
+    spdb_expect(vm, w_tb, session, post_mortem=False)
+
+
+def spdb_expect(
+    vm: "SPyVM", w_tb: W_Traceback, session: str, *, post_mortem: bool
+) -> None:
+    """
+    Simulate the given session in SPdb and check that the actual result matches.
     """
     # if we call pytest --spdb, call "breakpoint" here, but change the prompt so the get
     # the same "(spdb) " that we get in tests, so we can easily copy&paste sessions
     if vm.spdb:  # type: ignore
-        spdb = make_spdb(vm)
+        spdb = SPdb(vm, w_tb)
         spdb.prompt = "(spdb) "
-        spdb.interaction()
+        if post_mortem:
+            spdb.post_mortem()
+        else:
+            spdb.interaction()
+        return
 
     # unwrap & dedent
-    session = vm.unwrap_str(w_session)
     session = textwrap.dedent(session).strip()
 
     # find all the "(spdb) COMMAND" lines and extract all the commands; commands will be
@@ -39,9 +58,14 @@ def w_spdb_expect(vm: "SPyVM", w_session: W_Str) -> None:
 
     # start a spdb session, type the given commands and get the result
     faketerm = FakeTerminal(commands)
-    spdb = make_spdb(vm, stdin=faketerm, stdout=faketerm, use_colors=False)
+    spdb = SPdb(vm, w_tb, stdin=faketerm, stdout=faketerm, use_colors=False)  # type: ignore[arg-type]
     spdb.prompt = "(spdb) "
-    spdb.interaction()
+
+    if post_mortem:
+        spdb.post_mortem()
+    else:
+        spdb.interaction()
+
     out = faketerm.get_output().strip()
 
     # check that the final output matches the initial session
@@ -101,17 +125,17 @@ class TestSPdb(CompilerTest):
 
     def test_simple(self):
         src = """
-        from _test import spdb_expect
+        from _test import spdb_interact
 
         def foo(session: str) -> int:
-            spdb_expect(session)
+            spdb_interact(session)
             return 42
         """
         session = f"""
         --- entering applevel debugger ---
            [0] test::foo at {self.filename}:5
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) continue
         """
         mod = self.compile(src)
@@ -120,7 +144,7 @@ class TestSPdb(CompilerTest):
 
     def test_where_up_down(self):
         src = """
-        from _test import spdb_expect
+        from _test import spdb_interact
 
         def foo(session: str) -> None:
             bar(session)
@@ -129,13 +153,13 @@ class TestSPdb(CompilerTest):
             baz(session)
 
         def baz(session: str) -> None:
-            spdb_expect(session)
+            spdb_interact(session)
         """
         session = f"""
         --- entering applevel debugger ---
            [2] test::baz at {self.filename}:11
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) where
            [0] test::foo at {self.filename}:5
             |     bar(session)
@@ -144,8 +168,8 @@ class TestSPdb(CompilerTest):
             |     baz(session)
             |     |__________|
         *  [2] test::baz at {self.filename}:11
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) up
            [1] test::bar at {self.filename}:8
             |     baz(session)
@@ -158,8 +182,8 @@ class TestSPdb(CompilerTest):
             |     baz(session)
             |     |__________|
            [2] test::baz at {self.filename}:11
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) up
            [0] test::foo at {self.filename}:5
             |     bar(session)
@@ -172,8 +196,8 @@ class TestSPdb(CompilerTest):
             |     |__________|
         (spdb) down
            [2] test::baz at {self.filename}:11
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) down
         *** Newest frame
         (spdb) continue
@@ -183,23 +207,23 @@ class TestSPdb(CompilerTest):
 
     def test_longlist(self):
         src = """
-        from _test import spdb_expect
+        from _test import spdb_interact
 
         def foo(session: str) -> int:
             return bar(session)
 
         def bar(session: str) -> int:
-            spdb_expect(session)
+            spdb_interact(session)
             return 42
         """
         session = f"""
         --- entering applevel debugger ---
            [1] test::bar at {self.filename}:8
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) l
            7     def bar(session: str) -> int:
-           8  ->     spdb_expect(session)
+           8  ->     spdb_interact(session)
            9         return 42
         (spdb) up
            [0] test::foo at {self.filename}:5
@@ -216,18 +240,18 @@ class TestSPdb(CompilerTest):
 
     def test_print(self):
         src = """
-        from _test import spdb_expect
+        from _test import spdb_interact
 
         def foo(x: int, session: str) -> int:
             y = x + 1
-            spdb_expect(session)
+            spdb_interact(session)
             return y
         """
         session = f"""
         --- entering applevel debugger ---
            [0] test::foo at {self.filename}:6
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) print x
         static type:  <spy type 'i32'>
         dynamic type: <spy type 'i32'>
@@ -248,16 +272,16 @@ class TestSPdb(CompilerTest):
 
     def test_name_lookup(self):
         src = """
-        from _test import spdb_expect
+        from _test import spdb_interact
 
         def foo(x: int, session: str) -> None:
-            spdb_expect(session)
+            spdb_interact(session)
         """
         session = f"""
         --- entering applevel debugger ---
            [0] test::foo at {self.filename}:5
-            |     spdb_expect(session)
-            |     |__________________|
+            |     spdb_interact(session)
+            |     |____________________|
         (spdb) x
         static type:  <spy type 'i32'>
         dynamic type: <spy type 'i32'>
@@ -268,3 +292,78 @@ class TestSPdb(CompilerTest):
         """
         mod = self.compile(src)
         mod.foo(42, session)
+
+    def test_ParseError(self):
+        src = """
+        from _test import spdb_interact
+
+        def foo(session: str) -> int:
+            spdb_interact(session)
+            return 42
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:5
+            |     spdb_interact(session)
+            |     |____________________|
+        (spdb) .xxx
+        *** ParseError: invalid syntax
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        res = mod.foo(session)
+        assert res == 42
+
+    def test_post_mortem(self):
+        src = """
+        def foo() -> None:
+            x = 1
+            raise ValueError("hello")
+        """
+        session = f"""
+        --- entering applevel debugger (post-mortem) ---
+           [0] test::foo at {self.filename}:4
+            |     raise ValueError("hello")
+            |     |_______________________|
+        (spdb) longlist
+           2     def foo() -> None:
+           3         x = 1
+           4  ->     raise ValueError("hello")
+        (spdb) x
+        static type:  <spy type 'i32'>
+        dynamic type: <spy type 'i32'>
+        1
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        try:
+            mod.foo()
+        except SPyError as e:
+            w_tb = e.add_traceback()
+            spdb_expect(self.vm, w_tb, session, post_mortem=True)
+
+    def test_post_mortem_doppler_longlist(self):
+        self.backend = "doppler"
+        src = """
+        @blue
+        def inc(i: int) -> int:
+            return i + 1
+
+        def foo() -> None:
+            x = inc("hello")
+        """
+        session = f"""
+        --- entering applevel debugger (post-mortem) ---
+           [0] [redshift] test::foo at {self.filename}:7
+            |     x = inc("hello")
+            |         |__________|
+        (spdb) longlist
+           6     def foo() -> None:
+           7  ->     x = inc("hello")
+        (spdb) continue
+        """
+        try:
+            mod = self.compile(src)
+        except SPyError as e:
+            w_tb = e.add_traceback()
+            spdb_expect(self.vm, w_tb, session, post_mortem=True)

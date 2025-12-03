@@ -81,7 +81,7 @@ class CFuncWriter:
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
             if (
-                varname not in ("@return", "@if", "@while", "@assert")
+                varname not in ("@return", "@if", "@and", "@or", "@while", "@assert")
                 and varname not in param_names
             ):
                 c_varname = C_Ident(varname)
@@ -173,7 +173,10 @@ class CFuncWriter:
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value)
-        self.tbc.wl(f"{v};")
+        if v is C.Void():
+            pass
+        else:
+            self.tbc.wl(f"{v};")
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
@@ -309,6 +312,16 @@ class CFuncWriter:
             "ast.BinOp not supported. It should have been redshifted away"
         )
 
+    def fmt_expr_And(self, op: ast.And) -> C.Expr:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        return C.BinOp("&&", l, r)
+
+    def fmt_expr_Or(self, op: ast.Or) -> C.Expr:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        return C.BinOp("||", l, r)
+
     FQN2BinOp = {
         FQN("operator::i8_add"): "+",
         FQN("operator::i8_sub"): "-",
@@ -355,6 +368,21 @@ class CFuncWriter:
         FQN("operator::i32_gt"): ">",
         FQN("operator::i32_ge"): ">=",
         #
+        FQN("operator::u32_add"): "+",
+        FQN("operator::u32_sub"): "-",
+        FQN("operator::u32_mul"): "*",
+        FQN("operator::u32_lshift"): "<<",
+        FQN("operator::u32_rshift"): ">>",
+        FQN("operator::u32_and"): "&",
+        FQN("operator::u32_or"): "|",
+        FQN("operator::u32_xor"): "^",
+        FQN("operator::u32_eq"): "==",
+        FQN("operator::u32_ne"): "!=",
+        FQN("operator::u32_lt"): "<",
+        FQN("operator::u32_le"): "<=",
+        FQN("operator::u32_gt"): ">",
+        FQN("operator::u32_ge"): ">=",
+        #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
         FQN("unsafe::f64_ieee754_div"): "/",
@@ -368,7 +396,7 @@ class CFuncWriter:
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
-        # T is any of the following types: i8, u8, i32 and f64
+        # T is any of the following types: i8, u8, i32, u32 and f64
         # FQN('operator::T_div')
         # FQN('operator::T_floordiv')
         # FQN('operator::T_mod')

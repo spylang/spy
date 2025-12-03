@@ -52,6 +52,34 @@ class TestSPyBackend(CompilerTest):
             c = (1 + 2) * 3
         """)
 
+    def test_bool_ops(self):
+        mod = self.compile("""
+        def foo(a: bool, b: bool, c: bool) -> bool:
+            return a and b or c
+
+        def bar(a: bool, b: bool, c: bool) -> bool:
+            return a or (b and c)
+
+        def baz(a: bool, b: bool, c: bool) -> bool:
+            return a or b or c
+
+        def qux(a: bool, b: bool, c: bool) -> bool:
+            return a and b and c
+        """)
+        self.assert_dump("""
+        def foo(a: bool, b: bool, c: bool) -> bool:
+            return a and b or c
+
+        def bar(a: bool, b: bool, c: bool) -> bool:
+            return a or b and c
+
+        def baz(a: bool, b: bool, c: bool) -> bool:
+            return a or b or c
+
+        def qux(a: bool, b: bool, c: bool) -> bool:
+            return a and b and c
+        """)
+
     def test_assignexpr_expr(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -251,7 +279,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_list_literal(self):
         src = """
-        def foo() -> list[i32]:
+        def foo() -> dynamic:
             return [1, 2, 3]
         """
         self.compile(src)
