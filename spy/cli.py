@@ -73,9 +73,7 @@ class OrderCommands(TyperGroup):
         return sorted(self.commands, key=key)
 
 
-app = typer.Typer(
-    pretty_exceptions_enable=False, no_args_is_help=True, cls=OrderCommands
-)
+app = typer.Typer(pretty_exceptions_enable=False, cls=OrderCommands)
 
 
 def pyproject_entry_point() -> Any:
@@ -112,9 +110,6 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:
         app.command(*cmd_args, **cmd_kwargs)(dataclass_typer(syncify(user_function)))
 
     return wrapper
-
-
-# TODO implement default spy commands and shortcuts using typer.callback
 
 
 async def _pyodide_main(user_func: Callable, args: IsDataclass) -> None:
@@ -343,6 +338,9 @@ class _parse_mixin:
 class Parse_Args(General_Args, _parse_mixin, Filename_Required_Args): ...
 
 
+# TODO rebase and add the --format argument back in
+
+
 @spy_command(name="parse")
 async def parse(args: Parse_Args) -> None:
     """Dump the SPy AST"""
@@ -432,9 +430,7 @@ async def _run(args: Execute_Args):
 
     # If we're not redshifting, execute and return immediately
     if not args.redshift:
-        execute_spy_main(
-            args, vm, w_mod
-        )  # TODO do we need more args to be passed here? Probably
+        execute_spy_main(args, vm, w_mod)
         return
 
     # Redshift the code here
@@ -653,3 +649,34 @@ def _dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
+
+
+# TODO implement default spy commands and shortcuts using typer.callback
+
+
+@app.callback(invoke_without_command=True)
+def _commandless(
+    ctx: typer.Context,
+    pyparse_arg: Annotated[
+        bool,
+        Option("-P", help="Pyparse"),
+    ] = False,
+):
+    """
+    Command Shortcuts:
+
+    -x -> run\n
+    -P -> pyparse\n
+    -p -> parse\n
+    -C -> colorize\n
+    -I -> Imports\n
+    -S -> symtable\n
+    -s -> red[s]hift\n
+    -r -> run\n
+    -b -> build
+    """
+
+    # https://github.com/fastapi/typer/discussions/604
+
+    if pyparse_arg:
+        ctx.invoke(pyparse)  # TODO something is broken here
