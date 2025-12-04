@@ -29,24 +29,26 @@ class ClassFrame(AbstractFrame):
         self.classdef = classdef
 
     def run(self) -> ClassBody:
-        # execute field definitions
         self.declare_reserved_bool_locals()
-        body = ClassBody(fields_w={}, dict_w={})
+
+        # execute field definitions
         for vardef in self.classdef.fields:
-            varname = vardef.name.value
             assert vardef.kind is None
             self.exec_stmt(vardef)
-            w_T = self.locals[varname].w_T
-            body.fields_w[varname] = W_Field(varname, w_T)
 
-        # execute method definitions
+        # execute the rest of the class body
         for stmt in self.classdef.body:
             self.exec_stmt(stmt)
 
+        body = ClassBody(fields_w={}, dict_w={})
         for name, lv in self.locals.items():
-            # ignore variables which were just declared but never assigned; this
-            # includes .e.g field declarations
-            if lv.w_val is not None:
+            # ignore reserved bool locals
+            if name.startswith("@"):
+                continue
+            if lv.w_val is None:
+                # locals declared but not assigned
+                body.fields_w[name] = W_Field(name, lv.w_T)
+            else:
                 body.dict_w[name] = lv.w_val
 
         return body
