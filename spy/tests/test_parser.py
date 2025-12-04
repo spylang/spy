@@ -644,29 +644,13 @@ class TestParser:
     def test_BoolOp(self, op, node):
         mod = self.parse(f"""
         def foo() -> bool:
-            return a {op} b
+            return a {op} b {op} c
         """)
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
         Return(
             value={node}(
-                left=Name(id='a'),
-                right=Name(id='b'),
-            ),
-        )
-        """
-        self.assert_dump(stmt, expected)
-
-    def test_BoolOp_chained(self):
-        mod = self.parse("""
-        def foo() -> bool:
-            return a or b or c
-        """)
-        stmt = mod.get_funcdef("foo").body[0]
-        expected = """
-        Return(
-            value=Or(
-                left=Or(
+                left={node}(
                     left=Name(id='a'),
                     right=Name(id='b'),
                 ),
