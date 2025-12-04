@@ -45,6 +45,8 @@ from spy.vm.function import W_ASTFunc, W_FuncType
 from spy.vm.module import W_Module
 from spy.vm.vm import SPyVM
 
+GLOBAL_VM: Optional[SPyVM] = None
+
 
 class OrderCommands(TyperGroup):
     # This makes the commands show up in the hlep in the order we prefer;
@@ -96,9 +98,9 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:
         @wraps(f)
         def inner(args: IsDataclass) -> Any:
             if sys.platform == "emscripten":
-                return asyncio.create_task(pyodide_main(f, args))
+                return asyncio.create_task(_pyodide_main(f, args))
             else:
-                return asyncio.run(_await_user_func_and_catch_spy_errors(f, args))
+                return asyncio.run(_run_user_func_and_catch_spy_errors(f, args))
 
         return inner
 
@@ -109,6 +111,60 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:
 
 
 # TODO implement default spy commands and shortcuts using typer.callback
+
+
+async def _pyodide_main(user_func: Callable, args: IsDataclass) -> None:
+    """
+    For some reasons, it seems that pyodide doesn't print exceptions
+    uncaught exceptions which escapes an asyncio task. This is a small wrapper
+    to ensure that we display a proper traceback in that case
+    """
+    try:
+        await _run_user_func_and_catch_spy_errors(user_func, args)
+    except BaseException:
+        traceback.print_exc()
+
+
+async def _run_user_func_and_catch_spy_errors(
+    user_func: Callable, args: IsDataclass
+) -> None:
+    """
+    A wrapper around the user provided command,
+    to catch/display SPy errors and to implement --pdb
+    """
+    try:
+        return await user_func(args)
+    except SPyError as e:
+        ## traceback.print_exc()
+        ## print()
+
+        # special case SPdbQuit
+        if e.etype == "W_SPdbQuit":
+            print("SPdbQuit")
+            sys.exit(1)
+
+        print(e.format(use_colors=True))
+
+        if args.spdb:
+            # post-mortem applevel debugger
+            assert GLOBAL_VM is not None
+            w_tb = e.w_exc.w_tb
+            assert w_tb is not None
+            spdb = SPdb(GLOBAL_VM, w_tb)
+            spdb.post_mortem()
+        elif args.pdb:
+            # post-mortem interp-level debugger
+            info = sys.exc_info()
+            stdlib_pdb.post_mortem(info[2])
+        sys.exit(1)
+    except Exception as e:
+        if not args.pdb:
+            raise
+        traceback.print_exc()
+        info = sys.exc_info()
+        stdlib_pdb.post_mortem(info[2])
+        sys.exit(1)
+
 
 # Lifecycle Functions
 
@@ -121,7 +177,7 @@ def _spot_py_file(args: General_Args_With_Filename | Filename_Optional_Args):
         sys.exit(1)
 
 
-async def _init_vm(args: General_Args_With_Filename):
+async def _init_vm(args: General_Args_With_Filename) -> SPyVM:
     global GLOBAL_VM
 
     _spot_py_file(args)
@@ -136,15 +192,22 @@ async def _init_vm(args: General_Args_With_Filename):
     vm.path.append(str(srcdir))
     if args.error_mode == "warn":
         args.error_mode = "lazy"
+
+        def emit_warning(err: SPyError) -> None:
+            print(Color.set("yellow", "[warning] "), end="")
+            print(err.format())
+
         vm.emit_warning = emit_warning
     return vm
 
 
-### Commands and Arruments
+# Commands and Arguments
 
 
 @dataclass
 class General_Args:
+    """These arguments can be applied to any spy subcommand"""
+
     timeit: Annotated[
         bool,
         Option("--timeit", help="Print execution time"),
@@ -182,6 +245,10 @@ class Filename_Optional_Args:
 
 
 @dataclass
+class General_Args_With_Optional_Filename(General_Args, Filename_Optional_Args): ...
+
+
+@dataclass
 class Filename_Required_Args:
     filename: Annotated[
         Path,
@@ -189,8 +256,12 @@ class Filename_Required_Args:
     ]
 
 
+@dataclass
+class General_Args_With_Filename(General_Args, Filename_Required_Args): ...
+
+
 @spy_command(name="cleanup")
-async def cleanup(args: Filename_Optional_Args) -> None:
+async def cleanup(args: General_Args_With_Optional_Filename) -> None:
     """Remove all .spyc cache files from vm.path directories"""
     if args.filename:
         vm = await _init_vm(args)
@@ -210,10 +281,6 @@ def _do_cleanup(vm: Optional["SPyVM"] = None) -> None:
         print("No .spyc files found")
     else:
         print(f"Removed {removed_count} .spyc file(s)")
-
-
-@dataclass
-class General_Args_With_Filename(General_Args, Filename_Required_Args): ...
 
 
 @spy_command(name="pyparse")
@@ -304,12 +371,8 @@ async def symtable(args: General_Args_With_Filename):
     scopes.pp()
 
 
-@dataclass
-class Execute_Args(Vm_Args): ...
-
-
 @spy_command(name="execute")
-async def _execute(args: Execute_Args):
+async def _execute(args: Vm_Args):
     """Execute the file"""  # TODO make this the default operation when no command is given
     modname = args.filename.stem
     vm = await _init_vm(args)
@@ -394,7 +457,7 @@ class Redshift_Args(General_Args_With_Filename):
 
 
 @spy_command(name="redshift")
-async def redshift(args: General_Args_With_Filename):
+async def redshift(args: Redshift_Args):
     """
     Perform redshift and dump the result
     """
@@ -404,8 +467,6 @@ async def redshift(args: General_Args_With_Filename):
     importer = ImportAnalyzer(vm, modname)
     importer.parse_all()
     importer.import_all()
-    w_mod = vm.modules_w[modname]
-    orig_mod = importer.getmod(modname)
 
     vm.ast_color_map = {}
     vm.redshift(error_mode=args.error_mode)
@@ -489,8 +550,6 @@ async def compile(args: Compile_Args):
     importer = ImportAnalyzer(vm, modname)
     importer.parse_all()
     importer.import_all()
-    w_mod = vm.modules_w[modname]
-    orig_mod = importer.getmod(modname)
 
     vm.ast_color_map = {}
     vm.redshift(error_mode=args.error_mode)
@@ -523,78 +582,6 @@ async def compile(args: Compile_Args):
         # outfile is not in a subdir of cwd, let's display the full path
         executable = str(outfile)
     print(f"[{config.build_type}] {executable} ")
-
-
-## Runner wrappers for debugging #TODO need to get these working
-
-
-def run(user_func: Callable, args: IsDataclass) -> None:
-    # this is the main Typer entry point
-    if sys.platform == "emscripten":
-        asyncio.create_task(pyodide_main(user_func, args))
-    else:
-        asyncio.run(_await_user_func_and_catch_spy_errors(user_func, args))
-
-
-async def pyodide_main(user_func: Callable, args: IsDataclass) -> None:
-    """
-    For some reasons, it seems that pyodide doesn't print exceptions
-    uncaught exceptions which escapes an asyncio task. This is a small wrapper
-    to ensure that we display a proper traceback in that case
-    """
-    try:
-        await _await_user_func_and_catch_spy_errors(user_func, args)
-    except BaseException:
-        traceback.print_exc()
-
-
-GLOBAL_VM: Optional[SPyVM] = None
-
-
-async def _await_user_func_and_catch_spy_errors(
-    user_func: Callable, args: IsDataclass
-) -> None:
-    """
-    A wrapper around the user provided command,
-    to catch/display SPy errors and to implement --pdb
-    """
-    try:
-        return await user_func(args)
-    except SPyError as e:
-        ## traceback.print_exc()
-        ## print()
-
-        # special case SPdbQuit
-        if e.etype == "W_SPdbQuit":
-            print("SPdbQuit")
-            sys.exit(1)
-
-        print(e.format(use_colors=True))
-
-        if args.spdb:
-            # post-mortem applevel debugger
-            assert GLOBAL_VM is not None
-            w_tb = e.w_exc.w_tb
-            assert w_tb is not None
-            spdb = SPdb(GLOBAL_VM, w_tb)
-            spdb.post_mortem()
-        elif args.pdb:
-            # post-mortem interp-level debugger
-            info = sys.exc_info()
-            stdlib_pdb.post_mortem(info[2])
-        sys.exit(1)
-    except Exception as e:
-        if not args.pdb:
-            raise
-        traceback.print_exc()
-        info = sys.exc_info()
-        stdlib_pdb.post_mortem(info[2])
-        sys.exit(1)
-
-
-def emit_warning(err: SPyError) -> None:
-    print(Color.set("yellow", "[warning] "), end="")
-    print(err.format())
 
 
 def get_build_dir(args: IsDataclass) -> py.path.local:
