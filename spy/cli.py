@@ -48,6 +48,11 @@ from spy.vm.vm import SPyVM
 GLOBAL_VM: Optional[SPyVM] = None
 
 
+class IsDataclass(Protocol):
+    # checking for this attribute is currently the most reliable way to ascertain that something is a dataclass
+    __dataclass_fields__: ClassVar[dict[str, Any]]
+
+
 class OrderCommands(TyperGroup):
     # This makes the commands show up in the hlep in the order we prefer;
     # if the command is not present in this fixed list, it defaults to the end
@@ -59,9 +64,8 @@ class OrderCommands(TyperGroup):
         "redshift",
         "colorize",
         "execute",
-        "cwrite",
-        "cdump",
-        "compile",
+        "build",
+        "cleanup",
     ]
 
     def list_commands(self, ctx: click.Context) -> list:
@@ -169,7 +173,7 @@ async def _run_user_func_and_catch_spy_errors(
 # Lifecycle Functions
 
 
-def _spot_py_file(args: General_Args_With_Filename | Filename_Optional_Args):
+def _spot_py_file(args: Filename_Required_Args | Filename_Optional_Args):
     if args.filename and args.filename.suffix == ".py":
         print(
             f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
@@ -177,7 +181,7 @@ def _spot_py_file(args: General_Args_With_Filename | Filename_Optional_Args):
         sys.exit(1)
 
 
-async def _init_vm(args: General_Args_With_Filename) -> SPyVM:
+async def _init_vm(args: Init_VM_Args) -> SPyVM:
     global GLOBAL_VM
 
     _spot_py_file(args)
@@ -245,10 +249,6 @@ class Filename_Optional_Args:
 
 
 @dataclass
-class General_Args_With_Optional_Filename(General_Args, Filename_Optional_Args): ...
-
-
-@dataclass
 class Filename_Required_Args:
     filename: Annotated[
         Path,
@@ -257,11 +257,15 @@ class Filename_Required_Args:
 
 
 @dataclass
-class General_Args_With_Filename(General_Args, Filename_Required_Args): ...
+class Init_VM_Args(General_Args, Filename_Required_Args): ...
+
+
+@dataclass
+class General_Args_With_Filename(General_Args, Filename_Optional_Args): ...
 
 
 @spy_command(name="cleanup")
-async def cleanup(args: General_Args_With_Optional_Filename) -> None:
+async def cleanup(args: General_Args_With_Filename) -> None:
     """Remove all .spyc cache files from vm.path directories"""
     if args.filename:
         vm = await _init_vm(args)
@@ -286,66 +290,10 @@ def _do_cleanup(vm: Optional["SPyVM"] = None) -> None:
 @spy_command(name="pyparse")
 async def pyparse(args: General_Args_With_Filename) -> None:
     """Dump the Python AST"""
-    print("Running pyparse")
     with open(args.filename) as f:
         src = f.read()
     mod = magic_py_parse(src)
     mod.pp()
-
-
-@dataclass
-class Vm_Args(General_Args_With_Filename):
-    colorize: Annotated[
-        bool,
-        Option(
-            "-C",
-            "--colorize",
-            help="Output the pre-redshifted AST with blue / red text colors.",
-        ),
-    ] = False
-
-    redshift: Annotated[
-        bool,
-        Option(
-            "-r",
-            "--redshift",
-            help="Perform redshift and dump the result",
-        ),
-    ] = False
-
-
-@spy_command(name="parse")
-async def parse(args: Vm_Args) -> None:
-    """Dump the SPy AST"""
-    modname = args.filename.stem
-    vm = await _init_vm(args)
-
-    importer = ImportAnalyzer(vm, modname)
-    importer.parse_all()
-
-    orig_mod = importer.getmod(modname)
-    if not args.redshift and not args.colorize:
-        orig_mod.pp()
-    elif args.colorize:
-        importer.import_all()
-        w_mod = vm.modules_w[modname]
-        orig_mod = importer.getmod(modname)
-
-        vm.ast_color_map = {}
-        vm.redshift(error_mode=args.error_mode)
-
-        def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
-            for fqn, w_obj in vm.fqns_by_modname(modname):
-                if (
-                    isinstance(w_obj, W_ASTFunc)
-                    and w_obj.color == "red"
-                    and w_obj.fqn == fqn
-                ):
-                    print(f"`{fqn}` = ", end="")
-                    w_obj.funcdef.pp()
-                    print()
-
-        dump_spy_mod_ast(vm, modname)
 
 
 @spy_command(name="imports")
@@ -371,8 +319,108 @@ async def symtable(args: General_Args_With_Filename):
     scopes.pp()
 
 
-@spy_command(name="execute")
-async def _execute(args: Vm_Args):
+@dataclass
+class _parse_mixin:
+    colorize: Annotated[
+        bool,
+        Option(
+            "-C",
+            "--colorize",
+            help="Output the pre-redshifted AST with blue / red text colors.",
+        ),
+    ] = False
+
+    colorize_source: Annotated[
+        bool,
+        Option(
+            "--colorize-source",
+            help="Show the original source code, with colors detected by redshifting",
+        ),
+    ] = False
+
+
+@dataclass
+class Parse_Args(General_Args, _parse_mixin, Filename_Required_Args): ...
+
+
+@spy_command(name="parse")
+async def parse(args: Parse_Args) -> None:
+    """Dump the SPy AST"""
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+
+    orig_mod = importer.getmod(modname)
+
+    if args.colorize_source:
+        importer.import_all()
+        vm.ast_color_map = {}
+        vm.redshift(error_mode=args.error_mode)
+        coords = colors_coordinates(orig_mod, vm.ast_color_map)
+        print(highlight_sourcecode(args.filename, coords))
+        return
+
+    if not args.colorize:
+        orig_mod.pp()
+    else:
+        orig_mod.pp(vm=vm)
+
+
+@dataclass
+class _redshift_mixin:
+    full_fqn: Annotated[
+        bool,
+        Option("--full-fqn", help="Show full FQNs in redshifted modules"),
+    ] = False
+
+    human_readable: Annotated[
+        bool,
+        Option("--human-readable", help="Show full FQNs in redshifted modules"),
+    ] = False
+
+
+@dataclass
+class Redshift_Args(General_Args, _redshift_mixin, Filename_Required_Args): ...
+
+
+@spy_command(name="redshift")
+async def redshift(args: Redshift_Args):
+    """
+    Perform redshift and dump the result
+    """
+
+    modname = args.filename.stem
+    vm = await _init_vm(args)
+
+    importer = ImportAnalyzer(vm, modname)
+    importer.parse_all()
+    importer.import_all()
+
+    vm.ast_color_map = {}
+    vm.redshift(error_mode=args.error_mode)
+
+    if args.human_readable:
+        _dump_spy_mod(vm, modname, args.full_fqn)
+    else:  # not args.human_readable
+        _dump_spy_mod_ast(vm, modname)
+
+
+@dataclass
+class _execute_mixin:
+    redshift: Annotated[
+        bool,
+        Option("-s", "--redshift", help="Redshift the module before executing"),
+    ] = False
+
+
+@dataclass
+class Execute_Args(General_Args, _execute_mixin, Filename_Required_Args): ...
+
+
+@spy_command(name="run")
+async def _run(args: Execute_Args):
     """Execute the file"""  # TODO make this the default operation when no command is given
     modname = args.filename.stem
     vm = await _init_vm(args)
@@ -389,98 +437,14 @@ async def _execute(args: Vm_Args):
         )  # TODO do we need more args to be passed here? Probably
         return
 
-    if args.colorize:
-        # Signal to the redshift codde that we want to retain expr color information
-        vm.ast_color_map = {}
-
     # Redshift the code here
     vm.redshift(error_mode=args.error_mode)
 
-    if args.redshift or args.colorize:
-        execute_spy_main(
-            args, vm, w_mod
-        )  # TODO do we need more args to be passed here? Probably
+    execute_spy_main(args, vm, w_mod)
 
 
 @dataclass
-class Colorize_Args(General_Args_With_Filename):
-    original: Annotated[
-        bool,
-        Option(
-            "-o",
-            "--original-ast",
-            help="sshow the pre-redshifted AST, with the colors detected by redshifting",
-        ),
-    ] = False
-
-    format: Annotated[
-        str,
-        Option(
-            "--format",
-            help="Output format for --colorize (ansi or json)",
-            click_type=click.Choice(["ansi", "json"]),
-        ),
-    ] = "ansi"
-
-
-@spy_command(name="colorize")
-async def colorize(args: Colorize_Args):
-    """Output the pre-redshifted AST with blue / red text colors."""
-    modname = args.filename.stem
-    vm = await _init_vm(args)
-
-    importer = ImportAnalyzer(vm, modname)
-    importer.parse_all()
-    importer.import_all()
-    w_mod = vm.modules_w[modname]
-    orig_mod = importer.getmod(modname)
-
-    vm.ast_color_map = {}
-    vm.redshift(error_mode=args.error_mode)
-
-    if args.original:
-        orig_mod.pp(vm=vm)
-    else:
-        coords = colors_coordinates(orig_mod, vm.ast_color_map)
-        if args.format == "json":
-            print(format_colors_as_json(coords))
-        else:
-            print(highlight_sourcecode(args.filename, coords))
-
-
-@dataclass
-class Redshift_Args(General_Args_With_Filename):
-    full_fqn: Annotated[
-        bool,
-        Option("--full-fqn", help="Show full FQNs in redshifted modules"),
-    ] = False
-
-
-@spy_command(name="redshift")
-async def redshift(args: Redshift_Args):
-    """
-    Perform redshift and dump the result
-    """
-    modname = args.filename.stem
-    vm = await _init_vm(args)
-
-    importer = ImportAnalyzer(vm, modname)
-    importer.parse_all()
-    importer.import_all()
-
-    vm.ast_color_map = {}
-    vm.redshift(error_mode=args.error_mode)
-
-    def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
-        fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
-        b = SPyBackend(vm, fqn_format=fqn_format)
-        print(b.dump_mod(modname))
-
-    dump_spy_mod(vm, modname, args.full_fqn)
-
-
-@dataclass
-class Compile_Args(General_Args_With_Filename):
+class Build_Args(General_Args_With_Filename):
     cwrite: Annotated[
         bool,
         Option("--cwrite", help="Generate the C code; do not compile"),
@@ -541,8 +505,8 @@ class Compile_Args(General_Args_With_Filename):
     ] = "exe"
 
 
-@spy_command(name="compile")
-async def compile(args: Compile_Args):
+@spy_command(name="build")
+async def build(args: Build_Args):
     """Compile the generated C code"""
     modname = args.filename.stem
     vm = await _init_vm(args)
@@ -677,6 +641,15 @@ def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
     return "".join(highlight_src_maybe("spy", line) for line in highlighted_lines)
 
 
-class IsDataclass(Protocol):
-    # checking for this attribute is currently the most reliable way to ascertain that something is a dataclass
-    __dataclass_fields__: ClassVar[dict[str, Any]]
+def _dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
+    for fqn, w_obj in vm.fqns_by_modname(modname):
+        if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
+            print(f"`{fqn}` = ", end="")
+            w_obj.funcdef.pp()
+            print()
+
+
+def _dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
+    fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
+    b = SPyBackend(vm, fqn_format=fqn_format)
+    print(b.dump_mod(modname))
