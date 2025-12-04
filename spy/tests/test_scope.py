@@ -367,6 +367,7 @@ class TestScopeAnalyzer:
         }
 
     def test_no_shadowing(self):
+        """Functions cannot shadow user-defined module-level variables"""
         src = """
         x: i32 = 1
         def foo() -> i32:
@@ -378,6 +379,37 @@ class TestScopeAnalyzer:
             ("this is the new declaration", "x: i32 = 2"),
             ("this is the previous declaration", "x: i32 = 1"),
         )
+
+    def test_can_shadow_builtins(self):
+        """Both module-level and function-level code can shadow builtins"""
+        scopes = self.analyze("""
+        # Shadow the builtin i32 at module level
+        i32: type = str
+
+        def foo() -> None:
+            # Shadow the builtin str inside a function
+            str: type = i32
+        """)
+
+        # Check module scope
+        mod_scope = scopes.by_module()
+        assert mod_scope._symbols == {
+            "i32": MatchSymbol("i32", "const", "global-const"),
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            # captured builtins that are referenced
+            "type": MatchSymbol("type", "const", "explicit", level=1),
+            "str": MatchSymbol("str", "const", "explicit", level=1),
+        }
+
+        # Check function scope
+        funcdef = self.mod.get_funcdef("foo")
+        func_scope = scopes.by_funcdef(funcdef)
+        assert func_scope._symbols == {
+            "str": MatchSymbol("str", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "i32": MatchSymbol("i32", "const", "global-const", level=1),
+            "type": MatchSymbol("type", "const", "explicit", level=2),
+        }
 
     def test_inner_funcdef(self):
         scopes = self.analyze("""

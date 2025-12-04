@@ -74,9 +74,7 @@ def cleanup_spyc_files_fixture(request):
     if request.config.getoption("--cleanup"):
         stdlib_dir = ROOT.join("..", "..", "stdlib")
         if stdlib_dir.check(dir=True):
-            removed_count = cleanup_spyc_files([stdlib_dir])
-            if removed_count > 0:
-                print(f"\nCleaned up {removed_count} .spyc file(s) from stdlib")
+            cleanup_spyc_files(stdlib_dir)
 
 
 # ===============

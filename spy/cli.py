@@ -201,15 +201,27 @@ class Arguments:
         ),
     ] = False
 
+    no_spyc: Annotated[
+        bool,
+        Option("--no-spyc", help="Disable loading/saving of .spyc cache files"),
+    ] = False
+
     def __post_init__(self) -> None:
         self.validate_actions()
 
-        # filename is optional only for --cleanup
-        if self.filename is None:
-            if not self.cleanup:
-                raise typer.BadParameter("FILENAME is required unless using --cleanup")
-        elif not self.filename.exists():
-            raise typer.BadParameter(f"File {self.filename} does not exist")
+        # Validate filename based on action
+        if self.cleanup:
+            # For cleanup, filename must be None or an existing directory
+            if self.filename is not None and not self.filename.is_dir():
+                raise typer.BadParameter(
+                    f"--cleanup requires a directory argument, but {self.filename} is not a directory"
+                )
+        else:
+            # For other actions, filename is required and must be a file
+            if self.filename is None:
+                raise typer.BadParameter("FILENAME is required")
+            elif not self.filename.exists():
+                raise typer.BadParameter(f"File {self.filename} does not exist")
 
     def validate_actions(self) -> None:
         # check that we specify at most one of the following options
@@ -248,19 +260,6 @@ def do_pyparse(filename: str) -> None:
         src = f.read()
     mod = magic_py_parse(src)
     mod.pp()
-
-
-def do_cleanup(vm: Optional["SPyVM"] = None) -> None:
-    """
-    Remove all .spyc cache files from directories in vm.path (or cwd if vm is None).
-    """
-    paths = vm.path if vm is not None else [os.getcwd()]
-    removed_count = cleanup_spyc_files(paths)
-
-    if removed_count == 0:
-        print("No .spyc files found")
-    else:
-        print(f"Removed {removed_count} .spyc file(s)")
 
 
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
@@ -378,9 +377,10 @@ async def inner_main(args: Arguments) -> None:
     """
     global GLOBAL_VM
 
-    # Handle cleanup without filename
-    if args.cleanup and args.filename is None:
-        do_cleanup()
+    # Handle cleanup early, before any import/execution logic
+    if args.cleanup:
+        path = args.filename if args.filename is not None else Path(os.getcwd())
+        cleanup_spyc_files(py.path.local(path), verbose=True)
         return
 
     # All other commands require a filename
@@ -409,11 +409,7 @@ async def inner_main(args: Arguments) -> None:
         args.error_mode = "lazy"
         vm.emit_warning = emit_warning
 
-    if args.cleanup:
-        do_cleanup(vm)
-        return
-
-    importer = ImportAnalyzer(vm, modname)
+    importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.parse_all()
 
     orig_mod = importer.getmod(modname)
@@ -426,7 +422,7 @@ async def inner_main(args: Arguments) -> None:
         return
 
     if args.symtable:
-        scopes = importer.analyze_scopes(modname)
+        scopes = importer.analyze_one(modname, orig_mod)
         scopes.pp()
         return
 
