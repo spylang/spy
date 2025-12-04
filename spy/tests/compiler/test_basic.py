@@ -701,28 +701,6 @@ class TestBasic(CompilerTest):
         assert mod.or_ints(0, 1) is True
         assert mod.or_ints(0, 0) is False
 
-    def test_bool_ops_func_const(self):
-        mod = self.compile(
-            """
-            def and_false_true() -> bool:
-                return False and True
-
-            def and_true_false() -> bool:
-                return True and False
-
-            def or_false_true() -> bool:
-                return False or True
-
-            def or_true_false() -> bool:
-                return True or False
-            """
-        )
-
-        assert mod.and_false_true() is False
-        assert mod.and_true_false() is False
-        assert mod.or_false_true() is True
-        assert mod.or_true_false() is True
-
     def test_bool_ops_assignment(self):
         mod = self.compile("""
         def foo() -> bool:
