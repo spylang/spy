@@ -7,7 +7,7 @@ import traceback
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Awaitable, Callable, Optional
 
 import click
 import py.path
@@ -344,9 +344,11 @@ syncify = lambda f: wraps(f)(lambda *args, **kwargs: asyncio.run(f(*args, **kwar
 
 
 def spy_command(*cmd_args, **cmd_kwargs) -> None:
-    def wrapper(fn: Callable):
-        # make inner's arguments the same as fn's
-        return app.command(*cmd_args, **cmd_kwargs)(dataclass_typer(syncify(fn)))
+    def wrapper(user_function: Callable[[dataclass], Awaitable[None]]):
+        # TODO make inner's arguments the same as fn's
+        return app.command(*cmd_args, **cmd_kwargs)(
+            dataclass_typer(syncify(user_function))
+        )
 
     return wrapper
 
