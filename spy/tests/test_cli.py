@@ -142,27 +142,27 @@ class TestMain:
         assert stdout.startswith("Module(")
 
     @pytest.mark.xfail(reason="Short options have not been implemented yet")
-    def test_execute(self):
+    def test_run(self):
         _, stdout = self.run(self.main_spy)
         assert stdout == "hello world\n"
 
-    def test_redshift_dump_spy(self):
-        _, stdout = self.run("redshift", "--human-readable", self.main_spy)
-        assert stdout.startswith("\ndef main() -> None:")
+    def test_redshift_and_run(self):
+        _, stdout = self.run("run", "--redshift", self.main_spy)
+        assert stdout == "hello world\n"
 
     def test_redshift_dump_ast(self):
         _, stdout = self.run("redshift", self.main_spy)
         assert stdout.startswith("`main::main` = FuncDef(")
 
-    def test_redshift_and_execute(self):
-        _, stdout = self.run("run", "--redshift", self.main_spy)
-        assert stdout == "hello world\n"
+    def test_redshift_human_readable(self):
+        _, stdout = self.run("redshift", "--human-readable", self.main_spy)
+        assert stdout.startswith("\ndef main() -> None:")
 
     def test_colorize_ast(self):
         _, stdout = self.run("parse", "--colorize", self.main_spy)
         assert stdout.startswith("Module(")
 
-    def test_colorize(self):
+    def test_colorize_source(self):
         _, stdout = self.run(
             "parse", "--colorize-source", self.factorial_spy, decolorize_stdout=False
         )
