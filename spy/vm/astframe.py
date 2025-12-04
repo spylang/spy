@@ -156,6 +156,10 @@ class AbstractFrame:
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
         )
 
+    def declare_reserved_bool_locals(self) -> None:
+        for name in ("@if", "@and", "@or", "@while", "@assert"):
+            self.declare_local(name, "red", B.w_bool, Loc.fake())
+
     def store_local(self, name: str, w_value: W_Object) -> None:
         self.locals[name].w_val = w_value
 
@@ -180,7 +184,7 @@ class AbstractFrame:
             if not err.match(W_TypeError):
                 raise
 
-            if varname in ("@if", "@while", "@assert"):
+            if varname in ("@if", "@and", "@or", "@while", "@assert"):
                 # no need to add extra info
                 pass
             elif varname == "@return":
@@ -974,6 +978,66 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(unop.loc, w_OP, [wam_v])
         return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
+    def _ensure_bool(self, wam: W_MetaArg) -> W_MetaArg:
+        w_typeconv = CONVERT_maybe(self.vm, B.w_bool, wam)
+        if w_typeconv is None:
+            return wam
+
+        return W_MetaArg(
+            self.vm,
+            wam.color,
+            w_typeconv.w_functype.w_restype,
+            self.vm.fast_call(w_typeconv, [wam.w_val]),
+            wam.loc,
+            sym=wam.sym,
+        )
+
+    def eval_expr_And(self, op: ast.And) -> W_MetaArg:
+        if self.redshifting:
+            wam_l = self.eval_expr(op.left, varname="@and")
+            wam_r = self.eval_expr(op.right, varname="@and")
+            color = maybe_blue(wam_l.color, wam_r.color)
+            if color == "blue":
+                w_left_bool = self._ensure_bool(wam_l)
+                w_right_bool = self._ensure_bool(wam_r)
+                w_val = self.vm.wrap(
+                    self.vm.unwrap_bool(w_left_bool.w_val)
+                    and self.vm.unwrap_bool(w_right_bool.w_val),
+                )
+            else:
+                w_val = None
+            return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
+
+        wam_l = self.eval_expr(op.left, varname="@and")
+        w_left = wam_l.w_val
+        if not self.vm.unwrap_bool(w_left):
+            return wam_l
+        wam_r = self.eval_expr(op.right, varname="@and")
+        return wam_r
+
+    def eval_expr_Or(self, op: ast.Or) -> W_MetaArg:
+        if self.redshifting:
+            wam_l = self.eval_expr(op.left, varname="@or")
+            wam_r = self.eval_expr(op.right, varname="@or")
+            color = maybe_blue(wam_l.color, wam_r.color)
+            if color == "blue":
+                w_left_bool = self._ensure_bool(wam_l)
+                w_right_bool = self._ensure_bool(wam_r)
+                w_val = self.vm.wrap(
+                    self.vm.unwrap_bool(w_left_bool.w_val)
+                    or self.vm.unwrap_bool(w_right_bool.w_val),
+                )
+            else:
+                w_val = None
+            return W_MetaArg(self.vm, color, B.w_bool, w_val, op.loc)
+
+        wam_l = self.eval_expr(op.left, varname="@or")
+        w_left = wam_l.w_val
+        if self.vm.unwrap_bool(w_left):
+            return wam_l
+        wam_r = self.eval_expr(op.right, varname="@or")
+        return wam_r
+
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
         wam_func = self.eval_expr(call.func)
         args_wam = [self.eval_expr(arg) for arg in call.args]
@@ -1153,10 +1217,8 @@ class ASTFrame(AbstractFrame):
     def declare_arguments(self) -> None:
         w_ft = self.w_func.w_functype
         funcdef = self.funcdef
-        self.declare_local("@if", "red", B.w_bool, Loc.fake())
-        self.declare_local("@while", "red", B.w_bool, Loc.fake())
+        self.declare_reserved_bool_locals()
         self.declare_local("@return", "red", w_ft.w_restype, funcdef.return_type.loc)
-        self.declare_local("@assert", "red", B.w_bool, Loc.fake())
 
         color = self.w_func.color
         assert w_ft.is_argcount_ok(len(funcdef.args))

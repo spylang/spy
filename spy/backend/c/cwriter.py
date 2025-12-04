@@ -81,7 +81,7 @@ class CFuncWriter:
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
             if (
-                varname not in ("@return", "@if", "@while", "@assert")
+                varname not in ("@return", "@if", "@and", "@or", "@while", "@assert")
                 and varname not in param_names
             ):
                 c_varname = C_Ident(varname)
@@ -308,6 +308,16 @@ class CFuncWriter:
         raise NotImplementedError(
             "ast.BinOp not supported. It should have been redshifted away"
         )
+
+    def fmt_expr_And(self, op: ast.And) -> C.Expr:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        return C.BinOp("&&", l, r)
+
+    def fmt_expr_Or(self, op: ast.Or) -> C.Expr:
+        l = self.fmt_expr(op.left)
+        r = self.fmt_expr(op.right)
+        return C.BinOp("||", l, r)
 
     FQN2BinOp = {
         FQN("operator::i8_add"): "+",

@@ -380,6 +380,20 @@ class CmpOp(Expr):
 
 
 @astnode
+class And(Expr):
+    precedence = 4
+    left: Expr
+    right: Expr
+
+
+@astnode
+class Or(Expr):
+    precedence = 3
+    left: Expr
+    right: Expr
+
+
+@astnode
 class UnaryOp(Expr):
     op: str
     value: Expr

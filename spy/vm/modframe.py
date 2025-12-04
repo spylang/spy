@@ -37,6 +37,7 @@ class ModFrame(AbstractFrame):
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)
+        self.declare_reserved_bool_locals()
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
