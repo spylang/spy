@@ -332,6 +332,15 @@ class _parse_mixin:
         ),
     ] = False
 
+    format: Annotated[
+        str,
+        Option(
+            "--format",
+            help="Output format for --colorize (ansi or json)",
+            click_type=click.Choice(["ansi", "json"]),
+        ),
+    ] = "ansi"
+
 
 @dataclass
 class Parse_Args(General_Args, _parse_mixin, Filename_Required_Args): ...
@@ -356,7 +365,10 @@ async def parse(args: Parse_Args) -> None:
         vm.ast_color_map = {}
         vm.redshift(error_mode=args.error_mode)
         coords = colors_coordinates(orig_mod, vm.ast_color_map)
-        print(highlight_sourcecode(args.filename, coords))
+        if args.format == "json":
+            print(format_colors_as_json(coords))
+        else:
+            print(highlight_sourcecode(args.filename, coords))
         return
 
     if not args.colorize:
@@ -652,6 +664,7 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
 
 # TODO implement default spy commands and shortcuts using typer.callback
 # check out https://github.com/fastapi/typer/issues/132 for anothet thought on command aliasing
+
 
 @app.callback(invoke_without_command=True)
 def _commandless(
