@@ -15,7 +15,6 @@ from typing import (
     ClassVar,
     Optional,
     Protocol,
-    TypeAlias,
 )
 
 import click
