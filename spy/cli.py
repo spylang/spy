@@ -651,7 +651,7 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
 
 
 # TODO implement default spy commands and shortcuts using typer.callback
-
+# check out https://github.com/fastapi/typer/issues/132 for anothet thought on command aliasing
 
 @app.callback(invoke_without_command=True)
 def _commandless(
