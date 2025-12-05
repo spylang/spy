@@ -89,16 +89,16 @@ def pyproject_entry_point() -> Any:
     return app()
 
 
-def spy_command(*cmd_args, **cmd_kwargs) -> Callable:
+def spy_command(*cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
     """
     Decorator to turn an async function into a SPy subcommand
     The async function should take a single dataclass as an argument
     Arguments to the spy_command decorator are passed to typer.app.command, i.e. "name"
     """
 
-    def syncify(f: Callable[[IsDataclass], Any]):
+    def syncify(f: Callable[[IsDataclass], Any]) -> Callable[[IsDataclass], Any]:
         @wraps(f)
-        def inner(args: IsDataclass) -> Any:
+        def inner(args: General_Args) -> Any:
             if sys.platform == "emscripten":
                 return asyncio.create_task(_pyodide_main(f, args))
             else:
@@ -106,7 +106,7 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:
 
         return inner
 
-    def wrapper(user_function: Callable[[dataclass], Awaitable[Any]]):
+    def wrapper(user_function: Callable[[IsDataclass], Awaitable[Any]]) -> None:
         app.command(*cmd_args, **cmd_kwargs)(dataclass_typer(syncify(user_function)))
 
     return wrapper
@@ -125,7 +125,7 @@ async def _pyodide_main(user_func: Callable, args: IsDataclass) -> None:
 
 
 async def _run_user_func_and_catch_spy_errors(
-    user_func: Callable, args: IsDataclass
+    user_func: Callable, args: General_Args
 ) -> None:
     """
     A wrapper around the user provided command,
@@ -168,7 +168,7 @@ async def _run_user_func_and_catch_spy_errors(
 # Lifecycle Functions
 
 
-def _spot_py_file(args: Filename_Required_Args | Filename_Optional_Args):
+def _spot_py_file(args: Filename_Required_Args | Filename_Optional_Args) -> None:
     if args.filename and args.filename.suffix == ".py":
         print(
             f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
@@ -176,7 +176,7 @@ def _spot_py_file(args: Filename_Required_Args | Filename_Optional_Args):
         sys.exit(1)
 
 
-async def _init_vm(args: Init_VM_Args) -> SPyVM:
+async def _init_vm(args: General_Args_With_Filename) -> SPyVM:
     global GLOBAL_VM
 
     _spot_py_file(args)
@@ -204,7 +204,7 @@ async def _init_vm(args: Init_VM_Args) -> SPyVM:
 
 
 @dataclass
-class General_Args:
+class General_Args(IsDataclass):
     """These arguments can be applied to any spy subcommand"""
 
     timeit: Annotated[
@@ -252,15 +252,15 @@ class Filename_Required_Args:
 
 
 @dataclass
-class Init_VM_Args(General_Args, Filename_Required_Args): ...
+class General_Args_With_Filename(General_Args, Filename_Required_Args): ...
 
 
 @dataclass
-class General_Args_With_Filename(General_Args, Filename_Optional_Args): ...
+class Cleanup_Args(General_Args, Filename_Optional_Args): ...
 
 
 @spy_command(name="cleanup")
-async def cleanup(args: General_Args_With_Filename) -> None:
+async def cleanup(args: Cleanup_Args) -> None:
     """Remove all .spyc cache files from vm.path directories"""
     if args.filename:
         vm = await _init_vm(args)
@@ -292,7 +292,7 @@ async def pyparse(args: General_Args_With_Filename) -> None:
 
 
 @spy_command(name="imports")
-async def imports(args: General_Args_With_Filename):
+async def imports(args: General_Args_With_Filename) -> None:
     """Dump the (recursive) list of imports"""
     modname = args.filename.stem
     vm = await _init_vm(args)
@@ -303,7 +303,7 @@ async def imports(args: General_Args_With_Filename):
 
 
 @spy_command(name="symtable")
-async def symtable(args: General_Args_With_Filename):
+async def symtable(args: General_Args_With_Filename) -> None:
     """Dump the symtables"""
     modname = args.filename.stem
     vm = await _init_vm(args)
@@ -384,7 +384,7 @@ class Redshift_Args(General_Args, _redshift_mixin, Filename_Required_Args): ...
 
 
 @spy_command(name="redshift")
-async def redshift(args: Redshift_Args):
+async def redshift(args: Redshift_Args) -> None:
     """
     Perform redshift and dump the result
     """
@@ -400,9 +400,9 @@ async def redshift(args: Redshift_Args):
     vm.redshift(error_mode=args.error_mode)
 
     if args.human_readable:
-        _dump_spy_mod(vm, modname, args.full_fqn)
+        dump_spy_mod(vm, modname, args.full_fqn)
     else:  # not args.human_readable
-        _dump_spy_mod_ast(vm, modname)
+        dump_spy_mod_ast(vm, modname)
 
 
 @dataclass
@@ -418,7 +418,7 @@ class Execute_Args(General_Args, _execute_mixin, Filename_Required_Args): ...
 
 
 @spy_command(name="run")
-async def _run(args: Execute_Args):
+async def _run(args: Execute_Args) -> None:
     """Execute the file"""  # TODO make this the default operation when no command is given
     modname = args.filename.stem
     vm = await _init_vm(args)
@@ -502,7 +502,7 @@ class Build_Args(General_Args_With_Filename):
 
 
 @spy_command(name="build")
-async def build(args: Build_Args):
+async def build(args: Build_Args) -> None:
     """Compile the generated C code"""
     modname = args.filename.stem
     vm = await _init_vm(args)
@@ -544,7 +544,7 @@ async def build(args: Build_Args):
     print(f"[{config.build_type}] {executable} ")
 
 
-def get_build_dir(args: IsDataclass) -> py.path.local:
+def get_build_dir(args: Build_Args) -> py.path.local:
     if args.build_dir is not None:
         build_dir = args.build_dir
     else:
@@ -557,7 +557,7 @@ def get_build_dir(args: IsDataclass) -> py.path.local:
     return py.path.local(str(build_dir))
 
 
-def execute_spy_main(args: IsDataclass, vm: SPyVM, w_mod: W_Module) -> None:
+def execute_spy_main(args: Execute_Args, vm: SPyVM, w_mod: W_Module) -> None:
     w_main_functype = W_FuncType.parse("def() -> None")
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
@@ -637,7 +637,7 @@ def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
     return "".join(highlight_src_maybe("spy", line) for line in highlighted_lines)
 
 
-def _dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
+def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
     for fqn, w_obj in vm.fqns_by_modname(modname):
         if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
             print(f"`{fqn}` = ", end="")
@@ -645,7 +645,7 @@ def _dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
             print()
 
 
-def _dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
+def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
@@ -661,7 +661,7 @@ def _commandless(
         bool,
         Option("-P", help="Pyparse"),
     ] = False,
-):
+) -> None:
     """
     Command Shortcuts:
 
