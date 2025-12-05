@@ -8,10 +8,7 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.time import TIME
-from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
-from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
 
 
@@ -131,6 +128,7 @@ class Context:
         self._d[B.w_i8] = C_Type("int8_t")
         self._d[B.w_u8] = C_Type("uint8_t")
         self._d[B.w_i32] = C_Type("int32_t")
+        self._d[B.w_u32] = C_Type("uint32_t")
         self._d[B.w_f64] = C_Type("double")
         self._d[B.w_bool] = C_Type("bool")
         self._d[B.w_str] = C_Type("spy_Str *")

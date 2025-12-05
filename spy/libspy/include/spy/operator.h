@@ -15,11 +15,13 @@
 #define i8 int8_t
 #define u8 uint8_t
 #define i32 int32_t
+#define u32 uint32_t
 #define f64 double
 
 DEFINE_CONV(i32, bool)
 DEFINE_CONV(i32, i8)
 DEFINE_CONV(i32, u8)
+DEFINE_CONV(i32, u32)
 DEFINE_CONV(i32, f64)
 
 DEFINE_CONV(i8, i32)
@@ -28,9 +30,13 @@ DEFINE_CONV(i8, f64)
 DEFINE_CONV(u8, i32)
 DEFINE_CONV(u8, f64)
 
+DEFINE_CONV(u32, i32)
+DEFINE_CONV(u32, f64)
+
 #undef i8
 #undef u8
 #undef i32
+#undef u32
 #undef f64
 
 // implement rust-like saturating conversion.
@@ -101,6 +107,23 @@ spy_operator$i32_div(int32_t x, int32_t y) {
 
 static inline double
 spy_unsafe$i32_unchecked_div(int32_t x, int32_t y) {
+#ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "division by zero", __FILE__, __LINE__);
+    }
+#endif
+    return (double)x / y;
+}
+static inline double
+spy_operator$u32_div(uint32_t x, uint32_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "division by zero", __FILE__, __LINE__);
+    }
+    return (double)x / y;
+}
+
+static inline double
+spy_unsafe$u32_unchecked_div(uint32_t x, uint32_t y) {
 #ifdef SPY_DEBUG
     if (y == 0) {
         spy_panic("PanicError", "division by zero", __FILE__, __LINE__);
@@ -205,6 +228,28 @@ spy_unsafe$i32_unchecked_floordiv(int32_t x, int32_t y) {
 
     return q;
 }
+static inline uint32_t
+spy_operator$u32_floordiv(uint32_t x, uint32_t y) {
+    if (y == 0) {
+        spy_panic(
+            "ZeroDivisionError", "integer division or modulo by zero", __FILE__,
+            __LINE__
+        );
+    }
+    return x / y;
+}
+
+static inline uint32_t
+spy_unsafe$u32_unchecked_floordiv(uint32_t x, uint32_t y) {
+#ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic(
+            "PanicError", "integer division or modulo by zero", __FILE__, __LINE__
+        );
+    }
+#endif
+    return x / y;
+}
 
 static inline int8_t
 spy_operator$i8_mod(int8_t x, int8_t y) {
@@ -282,6 +327,23 @@ spy_unsafe$i32_unchecked_mod(int32_t x, int32_t y) {
     }
 
     return r;
+}
+static inline double
+spy_operator$u32_mod(uint32_t x, uint32_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "integer modulo by zero", __FILE__, __LINE__);
+    }
+    return x % y;
+}
+
+static inline double
+spy_unsafe$u32_unchecked_mod(uint32_t x, uint32_t y) {
+#ifdef SPY_DEBUG
+    if (y == 0) {
+        spy_panic("PanicError", "integer modulo by zero", __FILE__, __LINE__);
+    }
+#endif
+    return x % y;
 }
 
 static inline double

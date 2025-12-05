@@ -93,6 +93,36 @@ class W_I32(W_Object):
         return vm.wrap(str(i))
 
 
+@B.builtin_type("u32", lazy_definition=True)
+class W_U32(W_Object):
+    __spy_storage_category__ = "value"
+    value: fixedint.UInt32
+
+    def __init__(self, value: int | FixedInt) -> None:
+        self.value = fixedint.UInt32(value)
+
+    def __repr__(self) -> str:
+        return f"W_U32({self.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> fixedint.UInt32:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> fixedint.UInt32:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_U32") -> "W_Str":
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_U32") -> "W_Str":
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
+
 @B.builtin_type("i8", lazy_definition=True)
 class W_I8(W_Object):
     __spy_storage_category__ = "value"

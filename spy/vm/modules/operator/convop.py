@@ -6,7 +6,7 @@ from spy.vm.function import W_Func
 from spy.vm.modules.operator import OP
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool, W_Dynamic
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool, W_Dynamic
 
 from . import OP
 from .multimethod import MultiMethodTable
@@ -94,6 +94,12 @@ def w_i32_to_f64(vm: "SPyVM", w_x: W_I32) -> W_F64:
 
 
 @OP.builtin_func
+def w_u32_to_f64(vm: "SPyVM", w_x: W_U32) -> W_F64:
+    val = vm.unwrap_u32(w_x)
+    return vm.wrap(float(val))
+
+
+@OP.builtin_func
 def w_i8_to_f64(vm: "SPyVM", w_x: W_I8) -> W_F64:
     val = vm.unwrap_i8(w_x)
     return vm.wrap(float(val))
@@ -128,6 +134,16 @@ def w_i32_to_u8(vm: "SPyVM", w_x: W_I32) -> W_U8:
 
 @OP.builtin_func
 def w_u8_to_i32(vm: "SPyVM", w_x: W_U8) -> W_I32:
+    return W_I32(w_x.value)
+
+
+@OP.builtin_func
+def w_i32_to_u32(vm: "SPyVM", w_x: W_I32) -> W_U32:
+    return W_U32(w_x.value)
+
+
+@OP.builtin_func
+def w_u32_to_i32(vm: "SPyVM", w_x: W_U32) -> W_I32:
     return W_I32(w_x.value)
 
 
@@ -169,6 +185,7 @@ def w_from_dynamic(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 MM.register("convert", "i8", "f64", OP.w_i8_to_f64)
 MM.register("convert", "u8", "f64", OP.w_u8_to_f64)
 MM.register("convert", "i32", "f64", OP.w_i32_to_f64)
+MM.register("convert", "u32", "f64", OP.w_u32_to_f64)
 MM.register("convert", "i32", "bool", OP.w_i32_to_bool)
 
 # this is wrong: we don't want implicit truncation from float to int. Maybe
@@ -184,3 +201,5 @@ MM.register("convert", "i32", "i8", OP.w_i32_to_i8)
 MM.register("convert", "i8", "i32", OP.w_i8_to_i32)
 MM.register("convert", "i32", "u8", OP.w_i32_to_u8)
 MM.register("convert", "u8", "i32", OP.w_u8_to_i32)
+MM.register("convert", "i32", "u32", OP.w_i32_to_u32)
+MM.register("convert", "u32", "i32", OP.w_u32_to_i32)
