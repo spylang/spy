@@ -13,6 +13,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Iterable,
     Optional,
     Protocol,
 )
@@ -74,12 +75,14 @@ class AppGroupConfig(TyperGroup):
 
     _CMD_SPLIT_P = re.compile(r" ?[,|] ?")
 
-    def get_command(self, ctx, cmd_name) -> click.Command | None:
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
         cmd_name = self._group_cmd_name(self.commands.values(), cmd_name)
         result = super().get_command(ctx, cmd_name)
         return result
 
-    def _group_cmd_name(self, group_command_names, default_name) -> str:
+    def _group_cmd_name(
+        self, group_command_names: Iterable[click.Command], default_name: str
+    ) -> str:
         for cmd in group_command_names:
             if cmd.name and default_name in self._CMD_SPLIT_P.split(cmd.name):
                 return cmd.name
