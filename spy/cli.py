@@ -13,15 +13,17 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Iterable,
     Optional,
     Protocol,
+    Sequence,
 )
 
 import click
 import py.path
 import typer
 from typer import Argument, Option
-from typer.core import TyperGroup
+from typer.core import DEFAULT_MARKUP_MODE, MarkupMode, TyperGroup
 from typer.rich_utils import rich_format_help
 
 from spy.analyze.importing import ImportAnalyzer
@@ -48,23 +50,86 @@ from spy.vm.vm import SPyVM
 GLOBAL_VM: Optional[SPyVM] = None
 
 
+class TyperDefaultCommand(typer.core.TyperCommand):
+    """Type that indicates if a command is the default command."""
+
+
 class AppGroupConfig(TyperGroup):
-    # This makes the commands show up in the hlep in the order we prefer;
-    # if the command is not present in this fixed list, it defaults to the end
+    def __init__(
+        self,
+        *,
+        name: str | None = None,
+        commands: dict[str, click.Command] | Sequence[click.Command] | None = None,
+        rich_markup_mode: MarkupMode = DEFAULT_MARKUP_MODE,
+        rich_help_panel: str | None = None,
+        **attrs: Any,
+    ) -> None:
+        """
+        The __init__ and make_context commands are shadowed to permit using a default command if none is given.
+        See https://github.com/fastapi/typer/issues/18
+        """
+        super().__init__(
+            name=name,
+            commands=commands,
+            rich_markup_mode=rich_markup_mode,
+            rich_help_panel=rich_help_panel,
+            **attrs,
+        )
+        # find the default command if any
+        self.default_command = None
+        if len(self.commands) > 1:
+            for name, command in reversed(self.commands.items()):
+                if isinstance(command, TyperDefaultCommand):
+                    self.default_command = name
+                    break
+
+    def make_context(
+        self,
+        info_name: str | None,
+        args: list[str],
+        parent: click.Context | None = None,
+        **extra: Any,
+    ) -> click.Context:
+        # if --help is specified, show the group help
+        # else if default command was specified in the group and no args or no subcommand is specified, use the default command
+
+        all_command_aliases = [
+            part for cmd in self.commands for part in self._CMD_SPLIT_P.split(cmd)
+        ]
+
+        if (
+            self.default_command
+            and (not args or args[0] not in all_command_aliases)
+            and "--help" not in args
+            and any(
+                ".spy" in arg for arg in args
+            )  # Hardcoded assumption that the default command takes a filename with '.spy' in it
+        ):
+            args = [self.default_command] + args
+
+        return super().make_context(info_name, args, parent, **extra)
+
+    # This is the order commands will appear in the --help, regardless of the
+    # order they're defined
+    # If the command is not present in this list, it defaults to the end
     cmd_order = [
+        "execute",
+        "build",
         "pyparse",
         "parse",
         "imports",
         "symtable",
         "redshift",
         "colorize",
-        "execute",
-        "build",
         "cleanup",
     ]
 
     def list_commands(self, ctx: click.Context) -> list:
-        key = lambda cmd: self.cmd_order.index(cmd) if cmd in self.cmd_order else 999
+        key = (
+            lambda cmd: self.cmd_order.index(cmd)
+            if cmd in self.cmd_order
+            else float("inf")
+        )
         return sorted(self.commands, key=key)
 
     # Command Aliases
@@ -72,19 +137,33 @@ class AppGroupConfig(TyperGroup):
     # separated by commas or a |
     # From https://github.com/fastapi/typer/issues/132
 
-    _CMD_SPLIT_P = re.compile(r" ?[,|] ?")
+    _CMD_SPLIT_P = re.compile(r" *[,|] *")
 
-    def get_command(self, ctx, cmd_name) -> click.Command | None:
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
         cmd_name = self._group_cmd_name(self.commands.values(), cmd_name)
         result = super().get_command(ctx, cmd_name)
         return result
 
-    def _group_cmd_name(self, group_command_names, default_name) -> str:
+    def _group_cmd_name(
+        self, group_command_names: Iterable[click.Command], default_name: str
+    ) -> str:
         for cmd in group_command_names:
             if cmd.name and default_name in self._CMD_SPLIT_P.split(cmd.name):
                 return cmd.name
         return default_name
 
+
+def _command_with_default_option(self: typer.Typer, default=False, *args, **kwargs):
+    """
+    More chicanery to allow typer to provide a diffault option
+    """
+    if default:
+        kwargs["cls"] = TyperDefaultCommand
+    return self._command(*args, **kwargs)
+
+
+typer.Typer._command = typer.Typer.command
+typer.Typer.command = _command_with_default_option
 
 app = typer.Typer(
     pretty_exceptions_enable=False, cls=AppGroupConfig, no_args_is_help=True
@@ -111,9 +190,9 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
     Arguments to the spy_command decorator are passed to typer.app.command, i.e. "name"
     """
 
-    def syncify(f: Callable[[Base_Args], Any]) -> Callable[[Base_Args], Any]:
+    def syncify(f: Callable[["Base_Args"], Any]) -> Callable[["Base_Args"], Any]:
         @wraps(f)
-        def inner(args: Base_Args) -> Any:
+        def inner(args: "Base_Args") -> Any:
             if sys.platform == "emscripten":
                 return asyncio.create_task(_pyodide_main(f, args))
             else:
@@ -121,13 +200,13 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
 
         return inner
 
-    def wrapper(user_function: Callable[[Base_Args], Awaitable[Any]]) -> None:
+    def wrapper(user_function: Callable[["Base_Args"], Awaitable[Any]]) -> None:
         app.command(*cmd_args, **cmd_kwargs)(dataclass_typer(syncify(user_function)))
 
     return wrapper
 
 
-async def _pyodide_main(user_func: Callable, args: Base_Args) -> None:
+async def _pyodide_main(user_func: Callable, args: "Base_Args") -> None:
     """
     For some reasons, it seems that pyodide doesn't print exceptions
     uncaught exceptions which escapes an asyncio task. This is a small wrapper
@@ -140,7 +219,7 @@ async def _pyodide_main(user_func: Callable, args: Base_Args) -> None:
 
 
 async def _run_user_func_and_catch_spy_errors(
-    user_func: Callable, args: Base_Args
+    user_func: Callable, args: "Base_Args"
 ) -> None:
     """
     A wrapper around the user provided command,
@@ -447,7 +526,7 @@ class _run_mixin:
 class Run_Args(Base_Args, _run_mixin, Filename_Required_Args): ...
 
 
-@spy_command(name="r  | x | run")
+@spy_command(name="x  | execute", default=True)
 async def _run(args: Run_Args) -> None:
     """Execute the file in the vm"""  # TODO make this the default operation when no command is given
     modname = args.filename.stem
