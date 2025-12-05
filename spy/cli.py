@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pdb as stdlib_pdb  # to distinguish from the "--pdb" option
+import re
 import sys
 import time
 import traceback
@@ -12,7 +13,6 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    ClassVar,
     Optional,
     Protocol,
 )
@@ -22,6 +22,7 @@ import py.path
 import typer
 from typer import Argument, Option
 from typer.core import TyperGroup
+from typer.rich_utils import rich_format_help
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
@@ -47,12 +48,7 @@ from spy.vm.vm import SPyVM
 GLOBAL_VM: Optional[SPyVM] = None
 
 
-class IsDataclass(Protocol):
-    # checking for this attribute is currently the most reliable way to ascertain that something is a dataclass
-    __dataclass_fields__: ClassVar[dict[str, Any]]
-
-
-class OrderCommands(TyperGroup):
+class AppGroupConfig(TyperGroup):
     # This makes the commands show up in the hlep in the order we prefer;
     # if the command is not present in this fixed list, it defaults to the end
     cmd_order = [
@@ -68,11 +64,31 @@ class OrderCommands(TyperGroup):
     ]
 
     def list_commands(self, ctx: click.Context) -> list:
-        key = lambda i: self.cmd_order.index(i) if i in self.cmd_order else 999
+        key = lambda cmd: self.cmd_order.index(cmd) if cmd in self.cmd_order else 999
         return sorted(self.commands, key=key)
 
+    # Command Aliases
+    # To alias a command, include the aliases in the command name,
+    # separated by commas or a |
+    # From https://github.com/fastapi/typer/issues/132
 
-app = typer.Typer(pretty_exceptions_enable=False, cls=OrderCommands)
+    _CMD_SPLIT_P = re.compile(r" ?[,|] ?")
+
+    def get_command(self, ctx, cmd_name) -> click.Command | None:
+        cmd_name = self._group_cmd_name(self.commands.values(), cmd_name)
+        result = super().get_command(ctx, cmd_name)
+        return result
+
+    def _group_cmd_name(self, group_command_names, default_name) -> str:
+        for cmd in group_command_names:
+            if cmd.name and default_name in self._CMD_SPLIT_P.split(cmd.name):
+                return cmd.name
+        return default_name
+
+
+app = typer.Typer(
+    pretty_exceptions_enable=False, cls=AppGroupConfig, no_args_is_help=True
+)
 
 
 def pyproject_entry_point() -> Any:
@@ -95,9 +111,9 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
     Arguments to the spy_command decorator are passed to typer.app.command, i.e. "name"
     """
 
-    def syncify(f: Callable[[IsDataclass], Any]) -> Callable[[IsDataclass], Any]:
+    def syncify(f: Callable[[Base_Args], Any]) -> Callable[[Base_Args], Any]:
         @wraps(f)
-        def inner(args: General_Args) -> Any:
+        def inner(args: Base_Args) -> Any:
             if sys.platform == "emscripten":
                 return asyncio.create_task(_pyodide_main(f, args))
             else:
@@ -105,13 +121,13 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
 
         return inner
 
-    def wrapper(user_function: Callable[[IsDataclass], Awaitable[Any]]) -> None:
+    def wrapper(user_function: Callable[[Base_Args], Awaitable[Any]]) -> None:
         app.command(*cmd_args, **cmd_kwargs)(dataclass_typer(syncify(user_function)))
 
     return wrapper
 
 
-async def _pyodide_main(user_func: Callable, args: IsDataclass) -> None:
+async def _pyodide_main(user_func: Callable, args: Base_Args) -> None:
     """
     For some reasons, it seems that pyodide doesn't print exceptions
     uncaught exceptions which escapes an asyncio task. This is a small wrapper
@@ -124,7 +140,7 @@ async def _pyodide_main(user_func: Callable, args: IsDataclass) -> None:
 
 
 async def _run_user_func_and_catch_spy_errors(
-    user_func: Callable, args: General_Args
+    user_func: Callable, args: Base_Args
 ) -> None:
     """
     A wrapper around the user provided command,
@@ -167,18 +183,19 @@ async def _run_user_func_and_catch_spy_errors(
 # Lifecycle Functions
 
 
-def _spot_py_file(args: Filename_Required_Args | Filename_Optional_Args) -> None:
-    if args.filename and args.filename.suffix == ".py":
+class Init_Args(Protocol):
+    error_mode: ErrorMode
+    filename: Path
+
+
+async def _init_vm(args: Init_Args) -> SPyVM:
+    global GLOBAL_VM
+
+    if args.filename.suffix == ".py":
         print(
             f"Error: {args.filename} is a .py file, not a .spy file.", file=sys.stderr
         )
         sys.exit(1)
-
-
-async def _init_vm(args: General_Args_With_Filename) -> SPyVM:
-    global GLOBAL_VM
-
-    _spot_py_file(args)
 
     srcdir = args.filename.parent
     vm = await SPyVM.async_new()
@@ -200,11 +217,14 @@ async def _init_vm(args: General_Args_With_Filename) -> SPyVM:
 
 
 # Commands and Arguments
-
-
+# Each command should be written as an async function which takes
+# a single dataclass as its only argument
+# Decorate these with the @spy_dataclass(name="...") decorator to turn them
+# into commands. Aliases may be created by separating multiple
+#  names with , or |
 @dataclass
-class General_Args(IsDataclass):
-    """These arguments can be applied to any spy subcommand"""
+class Base_Args:
+    """These arguments can be applied to any spy command/subcommand"""
 
     timeit: Annotated[
         bool,
@@ -251,28 +271,27 @@ class Filename_Required_Args:
 
 
 @dataclass
-class General_Args_With_Filename(General_Args, Filename_Required_Args): ...
+class General_Args_With_Filename(Base_Args, Filename_Required_Args): ...
 
 
 @dataclass
-class Cleanup_Args(General_Args, Filename_Optional_Args): ...
+class Cleanup_Args(Base_Args, Filename_Optional_Args): ...
 
 
-@spy_command(name="cleanup")
+@spy_command(name="c  | cleanup")
 async def cleanup(args: Cleanup_Args) -> None:
-    """Remove all .spyc cache files from vm.path directories"""
+    """Remove .spyc cache files from the provided path or cwd if vm is None)"""
     if args.filename:
-        vm = await _init_vm(args)
+        vm = await _init_vm(
+            args
+        )  # TODO There's a type error here - we know args.filename is not None but mypy can't infer that for some reason
     else:
         vm = None
-    _do_cleanup(vm)
-
-
-def _do_cleanup(vm: Optional["SPyVM"] = None) -> None:
-    """
-    Remove all .spyc cache files from directories in vm.path (or cwd if vm is None).
-    """
     paths = vm.path if vm is not None else [os.getcwd()]
+    _do_cleanup(paths)
+
+
+def _do_cleanup(paths: list[str]) -> None:
     removed_count = cleanup_spyc_files(paths)
 
     if removed_count == 0:
@@ -281,7 +300,7 @@ def _do_cleanup(vm: Optional["SPyVM"] = None) -> None:
         print(f"Removed {removed_count} .spyc file(s)")
 
 
-@spy_command(name="pyparse")
+@spy_command(name="P  | pyparse")
 async def pyparse(args: General_Args_With_Filename) -> None:
     """Dump the Python AST"""
     with open(args.filename) as f:
@@ -290,7 +309,7 @@ async def pyparse(args: General_Args_With_Filename) -> None:
     mod.pp()
 
 
-@spy_command(name="imports")
+@spy_command(name="I  | imports")
 async def imports(args: General_Args_With_Filename) -> None:
     """Dump the (recursive) list of imports"""
     modname = args.filename.stem
@@ -301,7 +320,7 @@ async def imports(args: General_Args_With_Filename) -> None:
     importer.pp()
 
 
-@spy_command(name="symtable")
+@spy_command(name="S  | symtable")
 async def symtable(args: General_Args_With_Filename) -> None:
     """Dump the symtables"""
     modname = args.filename.stem
@@ -343,13 +362,13 @@ class _parse_mixin:
 
 
 @dataclass
-class Parse_Args(General_Args, _parse_mixin, Filename_Required_Args): ...
+class Parse_Args(Base_Args, _parse_mixin, Filename_Required_Args): ...
 
 
 # TODO rebase and add the --format argument back in
 
 
-@spy_command(name="parse")
+@spy_command(name="p  | parse")
 async def parse(args: Parse_Args) -> None:
     """Dump the SPy AST"""
     modname = args.filename.stem
@@ -391,10 +410,10 @@ class _redshift_mixin:
 
 
 @dataclass
-class Redshift_Args(General_Args, _redshift_mixin, Filename_Required_Args): ...
+class Redshift_Args(Base_Args, _redshift_mixin, Filename_Required_Args): ...
 
 
-@spy_command(name="redshift")
+@spy_command(name="rs | redshift")
 async def redshift(args: Redshift_Args) -> None:
     """
     Perform redshift and dump the result
@@ -417,7 +436,7 @@ async def redshift(args: Redshift_Args) -> None:
 
 
 @dataclass
-class _execute_mixin:
+class _run_mixin:
     redshift: Annotated[
         bool,
         Option("-s", "--redshift", help="Redshift the module before executing"),
@@ -425,12 +444,12 @@ class _execute_mixin:
 
 
 @dataclass
-class Execute_Args(General_Args, _execute_mixin, Filename_Required_Args): ...
+class Run_Args(Base_Args, _run_mixin, Filename_Required_Args): ...
 
 
-@spy_command(name="run")
-async def _run(args: Execute_Args) -> None:
-    """Execute the file"""  # TODO make this the default operation when no command is given
+@spy_command(name="r  | x | run")
+async def _run(args: Run_Args) -> None:
+    """Execute the file in the vm"""  # TODO make this the default operation when no command is given
     modname = args.filename.stem
     vm = await _init_vm(args)
 
@@ -512,7 +531,7 @@ class Build_Args(General_Args_With_Filename):
     ] = "exe"
 
 
-@spy_command(name="build")
+@spy_command(name="b  | build")
 async def build(args: Build_Args) -> None:
     """Compile the generated C code"""
     modname = args.filename.stem
@@ -568,7 +587,7 @@ def get_build_dir(args: Build_Args) -> py.path.local:
     return py.path.local(str(build_dir))
 
 
-def execute_spy_main(args: Execute_Args, vm: SPyVM, w_mod: W_Module) -> None:
+def execute_spy_main(args: Run_Args, vm: SPyVM, w_mod: W_Module) -> None:
     w_main_functype = W_FuncType.parse("def() -> None")
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
@@ -660,35 +679,3 @@ def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
     print(b.dump_mod(modname))
-
-
-# TODO implement default spy commands and shortcuts using typer.callback
-# check out https://github.com/fastapi/typer/issues/132 for anothet thought on command aliasing
-
-
-@app.callback(invoke_without_command=True)
-def _commandless(
-    ctx: typer.Context,
-    pyparse_arg: Annotated[
-        bool,
-        Option("-P", help="Pyparse"),
-    ] = False,
-) -> None:
-    """
-    Command Shortcuts:
-
-    -x -> run\n
-    -P -> pyparse\n
-    -p -> parse\n
-    -C -> colorize\n
-    -I -> Imports\n
-    -S -> symtable\n
-    -s -> red[s]hift\n
-    -r -> run\n
-    -b -> build
-    """
-
-    # https://github.com/fastapi/typer/discussions/604
-
-    if pyparse_arg:
-        ctx.invoke(pyparse)  # TODO something is broken here
