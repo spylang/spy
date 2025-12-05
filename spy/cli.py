@@ -111,9 +111,9 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
     Arguments to the spy_command decorator are passed to typer.app.command, i.e. "name"
     """
 
-    def syncify(f: Callable[[Base_Args], Any]) -> Callable[[Base_Args], Any]:
+    def syncify(f: Callable[["Base_Args"], Any]) -> Callable[["Base_Args"], Any]:
         @wraps(f)
-        def inner(args: Base_Args) -> Any:
+        def inner(args: "Base_Args") -> Any:
             if sys.platform == "emscripten":
                 return asyncio.create_task(_pyodide_main(f, args))
             else:
@@ -121,13 +121,13 @@ def spy_command(*cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
 
         return inner
 
-    def wrapper(user_function: Callable[[Base_Args], Awaitable[Any]]) -> None:
+    def wrapper(user_function: Callable[["Base_Args"], Awaitable[Any]]) -> None:
         app.command(*cmd_args, **cmd_kwargs)(dataclass_typer(syncify(user_function)))
 
     return wrapper
 
 
-async def _pyodide_main(user_func: Callable, args: Base_Args) -> None:
+async def _pyodide_main(user_func: Callable, args: "Base_Args") -> None:
     """
     For some reasons, it seems that pyodide doesn't print exceptions
     uncaught exceptions which escapes an asyncio task. This is a small wrapper
@@ -140,7 +140,7 @@ async def _pyodide_main(user_func: Callable, args: Base_Args) -> None:
 
 
 async def _run_user_func_and_catch_spy_errors(
-    user_func: Callable, args: Base_Args
+    user_func: Callable, args: "Base_Args"
 ) -> None:
     """
     A wrapper around the user provided command,
