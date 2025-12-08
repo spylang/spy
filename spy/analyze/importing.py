@@ -11,6 +11,7 @@ from spy.analyze.scope import ScopeAnalyzer
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import ColorFormatter
+from spy.util import OrderedSet
 from spy.vm.modframe import ModFrame
 
 if TYPE_CHECKING:
@@ -103,7 +104,7 @@ class ImportAnalyzer:
         self.vm = vm
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
-        self.deps: dict[str, list[str]] = {}  # modname -> list_of_imports
+        self.deps: dict[str, OrderedSet[str]] = {}  # modname -> list_of_imports
         self.cur_modname: Optional[str] = None
         self.cached_mods: dict[str, py.path.local] = {}  # modname -> cache file path
         self.cache_errors: list[CacheError] = []  # List of all cache errors
@@ -215,7 +216,7 @@ class ImportAnalyzer:
 
                 # Initialize the dependency list for this module
                 if modname not in self.deps:
-                    self.deps[modname] = []
+                    self.deps[modname] = OrderedSet()
 
                 self.cur_modname = modname
                 self.visit(mod)
@@ -269,7 +270,7 @@ class ImportAnalyzer:
             visited.add(modname)
 
             # Visit all dependencies first
-            for dep in self.deps.get(modname, []):
+            for dep in self.deps.get(modname, OrderedSet()):
                 visit(dep)
 
             # Then add this module
@@ -411,7 +412,7 @@ class ImportAnalyzer:
             visited.add(modname)
 
             # Get the dependencies of this module
-            deps = self.deps.get(modname, [])
+            deps = list(self.deps.get(modname, OrderedSet()))
             if not deps:
                 return
 
@@ -438,7 +439,7 @@ class ImportAnalyzer:
         modname = imp.ref.modname
         assert self.cur_modname is not None
         # Record the dependency relationship
-        self.deps[self.cur_modname].append(modname)
+        self.deps[self.cur_modname].add(modname)
         self.queue.append(modname)
 
     # ===========================================================

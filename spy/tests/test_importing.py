@@ -286,3 +286,32 @@ class TestImportAnalyzer:
         analyzer3 = ImportAnalyzer(vm3, "mod1", use_spyc=False)
         analyzer3.parse_all()
         assert "mod1" not in analyzer3.cached_mods
+
+    def test_duplicate_imports_deduplicated(self):
+        """Test that multiple imports from the same module are deduplicated"""
+        src = """
+        x: i32 = 1
+        y: i32 = 2
+        z: i32 = 3
+        """
+        self.write("aaa.spy", src)
+        src = """
+        from aaa import x
+        from aaa import y
+        import aaa
+        from aaa import z
+        """
+        self.write("main.spy", src)
+
+        analyzer = ImportAnalyzer(self.vm, "main")
+        analyzer.parse_all()
+
+        # "aaa" should appear only once in the dependency list for "main"
+        assert "main" in analyzer.deps
+        deps_list = list(analyzer.deps["main"])
+        assert deps_list.count("aaa") == 1
+        assert deps_list == ["aaa"]
+
+        # The import order should only contain each module once
+        import_list = analyzer.get_import_list()
+        assert import_list == ["aaa", "main"]
