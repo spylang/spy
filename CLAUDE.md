@@ -102,6 +102,20 @@ spy -O 1 -g your_file.spy         # With optimization and debug symbols
         """
     ```
 
+- when writing tests, do NOT put a docstring to explain what the test does, especially
+  if the test name is already explicit. E.g.:
+  ```
+  # this is BAD: the docstring is redundant
+  def test_cache_preserves_symtable(self):
+      """Test that symtable is preserved in cache"""
+      ...
+
+  # this is GOOD:
+  def test_cache_preserves_symtable(self):
+      ...
+  ```
+
+
 
 ## GH PR Guidelines
 - When creating a PR, describe what you did, but don't include the "test plan" section.

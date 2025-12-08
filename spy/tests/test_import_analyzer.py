@@ -123,8 +123,10 @@ class TestImportAnalyzer:
         self.write("main.spy", "x: i32 = 42")
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
-        scopes = analyzer.analyze_scopes("main")
-        assert scopes.by_module().name == "main"
+        mod = analyzer.mods["main"]
+        assert isinstance(mod, ast.Module)
+        assert mod.symtable is not None
+        assert mod.symtable.name == "main"
 
     def test_vm_path(self):
         # we write mod1 in an unrelated dir, which is the added to vm.path
@@ -259,3 +261,74 @@ class TestImportAnalyzer:
         assert "Version mismatch" in error.error_message
         assert f"version {SPYC_VERSION}" in error.error_message
         assert f"expected {SPYC_VERSION + 1}" in error.error_message
+
+    def test_use_spyc_disabled(self):
+        """Test that use_spyc=False disables caching"""
+        src = "x: i32 = 42"
+        self.write("mod1.spy", src, mtime_delta=-1)
+
+        # Import with use_spyc=False should not create .spyc
+        analyzer1 = ImportAnalyzer(self.vm, "mod1", use_spyc=False)
+        analyzer1.parse_all()
+        analyzer1.import_all()
+        assert not self.tmpdir.join("__pycache__", "mod1.spyc").exists()
+
+        # Create cache file with a different VM and analyzer
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "mod1", use_spyc=True)
+        analyzer2.parse_all()
+        analyzer2.import_all()
+        assert self.tmpdir.join("__pycache__", "mod1.spyc").exists()
+
+        # Import with use_spyc=False should not use existing cache
+        vm3 = SPyVM()
+        vm3.path = [str(self.tmpdir)]
+        analyzer3 = ImportAnalyzer(vm3, "mod1", use_spyc=False)
+        analyzer3.parse_all()
+        assert "mod1" not in analyzer3.cached_mods
+
+    def test_duplicate_imports_deduplicated(self):
+        src = """
+        x: i32 = 1
+        y: i32 = 2
+        z: i32 = 3
+        """
+        self.write("aaa.spy", src)
+        src = """
+        from aaa import x
+        from aaa import y
+        import aaa
+        from aaa import z
+        """
+        self.write("main.spy", src)
+
+        analyzer = ImportAnalyzer(self.vm, "main")
+        analyzer.parse_all()
+
+        # "aaa" should appear only once in the dependency list for "main"
+        assert "main" in analyzer.deps
+        deps_list = list(analyzer.deps["main"])
+        assert deps_list.count("aaa") == 1
+        assert deps_list == ["aaa"]
+
+        # The import order should only contain each module once
+        import_list = analyzer.get_import_list()
+        assert import_list == ["aaa", "main"]
+
+    def test_implicit_imports(self):
+        src = """
+        def foo() -> None:
+            for x in range(10):
+                pass
+        """
+        self.write("main.spy", src)
+
+        analyzer = ImportAnalyzer(self.vm, "main")
+        analyzer.parse_all()
+
+        deps_list = list(analyzer.deps["main"])
+        assert "_range" in deps_list
+
+        import_list = analyzer.get_import_list()
+        assert import_list == ["_range", "main"]

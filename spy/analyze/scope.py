@@ -58,6 +58,7 @@ class ScopeAnalyzer:
     mod: ast.Module
     stack: list[SymTable]
     inner_scopes: dict[ast.FuncDef | ast.ClassDef, SymTable]
+    implicit_imports: set[str]
     loop_depth: int
 
     def __init__(self, vm: "SPyVM", modname: str, mod: ast.Module) -> None:
@@ -67,6 +68,7 @@ class ScopeAnalyzer:
         self.mod_scope = SymTable(modname, "blue", "module")
         self.stack = []
         self.inner_scopes = {}
+        self.implicit_imports = set()
         self.loop_depth = 0
         self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
@@ -95,6 +97,10 @@ class ScopeAnalyzer:
         return self.inner_scopes[classdef]
 
     def pp(self) -> None:
+        print("Implicit imports:")
+        for modname in self.implicit_imports:
+            print(f"    {modname}")
+        print()
         self.by_module().pp()
         print()
         for key, symtable in self.inner_scopes.items():
@@ -174,16 +180,21 @@ class ScopeAnalyzer:
             elif level == 0:
                 # re-declaration in the same scope
                 msg = f"variable `{name}` already declared"
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", loc)
+                err.add("note", "this is the previous declaration", sym.loc)
+                raise err
 
-            else:
+            elif scope is not self.builtins_scope:
                 # shadowing a name in an outer scope
+                # Exception: always allow shadowing builtins
                 msg = (
                     f"variable `{name}` shadows a name declared " + "in an outer scope"
                 )
-            err = SPyError("W_ScopeError", msg)
-            err.add("error", "this is the new declaration", loc)
-            err.add("note", "this is the previous declaration", sym.loc)
-            raise err
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", loc)
+                err.add("note", "this is the previous declaration", sym.loc)
+                raise err
 
         # Determine storage type: module-level vars use "cell", others use
         # "direct"
@@ -437,6 +448,8 @@ class ScopeAnalyzer:
             assert not self.scope.has_definition(varname)
             new_sym = sym.replace(level=level)
             self.scope.add(new_sym)
+            if sym.impref is not None:
+                self.implicit_imports.add(sym.impref.modname)
 
     def flatten(self, node: ast.Node) -> None:
         """

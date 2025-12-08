@@ -169,11 +169,9 @@ class SymTable:
         generic_loc = Loc(
             filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
         )
-        builtins_mod = vm.modules_w["builtins"]
-        for attr, w_obj in builtins_mod.items_w():
-            if isinstance(w_obj, W_BuiltinFunc):
-                loc = w_obj.def_loc
-            else:
+
+        def add_sym(attr: str, loc: Optional[Loc], impref: ImportRef) -> None:
+            if loc is None:
                 loc = generic_loc
             sym = Symbol(
                 attr,
@@ -183,9 +181,19 @@ class SymTable:
                 loc=loc,
                 type_loc=loc,
                 level=0,
-                impref=ImportRef("builtins", attr),
+                impref=impref,
             )
             scope.add(sym)
+
+        builtins_mod = vm.modules_w["builtins"]
+        for attr, w_obj in builtins_mod.items_w():
+            if isinstance(w_obj, W_BuiltinFunc):
+                loc = w_obj.def_loc
+            else:
+                loc = None
+            add_sym(attr, loc, ImportRef("builtins", attr))
+
+        add_sym("range", None, ImportRef("_range", "range"))
         return scope
 
     def __repr__(self) -> str:
