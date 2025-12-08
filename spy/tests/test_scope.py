@@ -367,7 +367,6 @@ class TestScopeAnalyzer:
         }
 
     def test_no_shadowing(self):
-        """Functions cannot shadow user-defined module-level variables"""
         src = """
         x: i32 = 1
         def foo() -> i32:
@@ -381,7 +380,6 @@ class TestScopeAnalyzer:
         )
 
     def test_can_shadow_builtins(self):
-        """Both module-level and function-level code can shadow builtins"""
         scopes = self.analyze("""
         # Shadow the builtin i32 at module level
         i32: type = str

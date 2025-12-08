@@ -186,7 +186,6 @@ class TestImportAnalyzer:
         assert spyc_file.mtime() > spyc_mtime
 
     def test_cache_with_imports(self):
-        """Test caching with multiple modules"""
         self.write("a.spy", "x: i32 = 1", mtime_delta=-1)
         self.write("b.spy", "import a\ny: i32 = 2", mtime_delta=-1)
         self.write("main.spy", "import b", mtime_delta=-1)
@@ -211,7 +210,6 @@ class TestImportAnalyzer:
         assert "main" in analyzer2.cached_mods
 
     def test_cache_preserves_symtable(self):
-        """Test that symtable is preserved in cache"""
         src = "x: i32 = 42"
         self.write("mod1.spy", src, mtime_delta=-1)
 
@@ -236,7 +234,6 @@ class TestImportAnalyzer:
         assert mod2.symtable.name == "mod1"
 
     def test_cache_version_mismatch(self, monkeypatch):
-        """Test that cache is invalidated when version changes"""
         src = "x: i32 = 42"
         self.write("mod1.spy", src, mtime_delta=-1)
 
@@ -263,7 +260,6 @@ class TestImportAnalyzer:
         assert f"expected {SPYC_VERSION + 1}" in error.error_message
 
     def test_use_spyc_disabled(self):
-        """Test that use_spyc=False disables caching"""
         src = "x: i32 = 42"
         self.write("mod1.spy", src, mtime_delta=-1)
 

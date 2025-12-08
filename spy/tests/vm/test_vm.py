@@ -134,7 +134,6 @@ class TestVM:
             vm.wrap(Foo())
 
     def test_exception_eq(self):
-        """Test equality between W_Exception instances."""
         vm = SPyVM()
         w_exc1 = W_Exception("hello")
         w_exc2 = W_Exception("hello")
