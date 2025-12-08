@@ -202,3 +202,13 @@ class TestImporting(CompilerTest):
             mod.ll.call("spy_flush")
         out, err = capfd.readouterr()
         assert out == "42\n"
+
+    def test_implicit_imports(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            result: i32 = 0
+            for x in range(3):
+                result = result + x
+            return result
+        """)
+        assert mod.foo() == 3  # 0 + 1 + 2
