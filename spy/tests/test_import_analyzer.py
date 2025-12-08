@@ -124,6 +124,7 @@ class TestImportAnalyzer:
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
         mod = analyzer.mods["main"]
+        assert isinstance(mod, ast.Module)
         assert mod.symtable is not None
         assert mod.symtable.name == "main"
 

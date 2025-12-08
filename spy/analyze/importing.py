@@ -394,7 +394,7 @@ class ImportAnalyzer:
         # fmt: on
 
         # Find the root module(s) - those that are not imported by any other module
-        all_imports = set()
+        all_imports: set[str] = set()
         for imports in self.deps.values():
             all_imports.update(imports)
 
