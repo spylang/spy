@@ -444,7 +444,8 @@ class ImportAnalyzer:
         self.record_import(self.cur_modname, imp.ref.modname)
 
     def record_import(self, cur_modname: str, modname: str) -> None:
-        # Record the dependency relationship
+        if modname == "builtins":
+            return
         self.deps[cur_modname].add(modname)
         self.queue.append(modname)
 
