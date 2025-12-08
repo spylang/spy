@@ -6,6 +6,7 @@ import pytest
 
 from spy.util import (
     ANYTHING,
+    OrderedSet,
     cleanup_spyc_files,
     extend,
     func_equals,
@@ -21,6 +22,23 @@ def test_ANYTHING():
     assert not ANYTHING != 1
     assert not 1 != ANYTHING
     assert not ANYTHING != ANYTHING
+
+
+def test_OrderedSet():
+    s = OrderedSet[int]()
+    s.add(3)
+    s.add(1)
+    s.add(2)
+    s.add(1)  # duplicate
+
+    # test contains
+    assert 3 in s
+    assert 1 in s
+    assert 2 in s
+    assert 999 not in s
+
+    # test iteration preserves order and doesn't include duplicates
+    assert list(s) == [3, 1, 2]
 
 
 def test_magic_dispatch():

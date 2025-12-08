@@ -8,11 +8,31 @@ import subprocess
 import typing
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable, Literal, Sequence
+from typing import Callable, Generic, Iterator, Literal, Sequence, TypeVar
 
 import py.path
 
 from spy.textbuilder import Color
+
+T = TypeVar("T")
+
+
+class OrderedSet(Generic[T]):
+    """
+    A set that maintains insertion order.
+    """
+
+    def __init__(self) -> None:
+        self._dict: dict[T, None] = {}
+
+    def add(self, item: T) -> None:
+        self._dict[item] = None
+
+    def __contains__(self, item: T) -> bool:
+        return item in self._dict
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self._dict)
 
 
 class AnythingClass:
