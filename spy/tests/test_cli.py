@@ -66,9 +66,6 @@ class TestMain:
             print("hello world")
         """
         factorial_src = """
-        import time
-        from _range import range
-
         def factorial(n: i32) -> i32:
             res = 1
             for i in range(n):
@@ -164,9 +161,6 @@ class TestMain:
         _, stdout = self.run("--colorize", self.factorial_spy, decolorize_stdout=False)
         # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
         expected_outout = """
-        import time
-        from _range import range
-
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:

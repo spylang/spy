@@ -1315,8 +1315,6 @@ class TestBasic(CompilerTest):
 
     def test_for_loop(self):
         src = """
-        from _range import range
-
         def factorial(n: i32) -> i32:
             res = 1
             for i in range(n):
@@ -1356,8 +1354,6 @@ class TestBasic(CompilerTest):
 
     def test_break_in_for(self):
         src = """
-        from _range import range
-
         def foo() -> i32:
             total = 0
             for i in range(10):
@@ -1371,8 +1367,6 @@ class TestBasic(CompilerTest):
 
     def test_continue_in_for(self):
         src = """
-        from _range import range
-
         def foo() -> i32:
             total = 0
             for i in range(10):
@@ -1386,8 +1380,6 @@ class TestBasic(CompilerTest):
 
     def test_nested_loops_with_break(self):
         src = """
-        from _range import range
-
         def foo() -> i32:
             total = 0
             for i in range(5):
