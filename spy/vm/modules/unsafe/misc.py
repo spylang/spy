@@ -15,7 +15,9 @@ def sizeof(w_T: W_Type) -> int:
         return 8
     elif isinstance(w_T, W_StructType):
         return w_T.size
-    elif isinstance(w_T, W_PtrType):
+    elif isinstance(w_T, W_PtrType) or w_T is B.w_str:
+        # w_str is a "spy_Str *" in C, so it's a pointer.
+        #
         # XXX what is the right size of pointers? For wasm32 is 4 of course,
         # but for native it might be 8. Does it mean that we need to
         # preemptively choose the target platform BEFORE redshifting?

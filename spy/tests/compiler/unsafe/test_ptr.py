@@ -97,6 +97,21 @@ class TestUnsafePtr(CompilerTest):
         """)
         assert mod.foo(3, 4.5) == 7.5
 
+    def test_ptr_to_string(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        def make_str_ptr(s: str) -> ptr[str]:
+            p = gc_alloc(str)(1)
+            p[0] = s
+            return p
+
+        def foo() -> str:
+            p = make_str_ptr("hello")
+            return p[0]
+        """)
+        assert mod.foo() == "hello"
+
     @only_interp
     def test_dir_ptr(self):
         mod = self.compile("""
