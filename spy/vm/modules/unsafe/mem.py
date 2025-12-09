@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Annotated
 from spy.errors import WIP
 from spy.vm.b import B
 from spy.vm.primitive import W_I32, W_Dynamic
+from spy.vm.str import W_Str
 from spy.vm.struct import W_Struct, W_StructType
 from spy.vm.w import W_Object, W_Type
 
@@ -65,6 +66,10 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
         return vm.wrap(vm.ll.mem.read_i32(addr))
     elif w_T is B.w_f64:
         return vm.wrap(vm.ll.mem.read_f64(addr))
+    elif w_T is B.w_str:
+        v_addr, v_length = vm.ll.mem.read_ptr(addr)
+        assert v_length == 1
+        return W_Str.from_ptr(vm, v_addr)
     elif isinstance(w_T, W_PtrType):
         v_addr, v_length = vm.ll.mem.read_ptr(addr)
         return W_Ptr(w_T, v_addr, v_length)
@@ -87,6 +92,11 @@ def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> N
     elif w_T is B.w_f64:
         v = vm.unwrap_f64(w_val)
         vm.ll.mem.write_f64(addr, v)
+    elif w_T is B.w_str:
+        assert isinstance(w_val, W_Str)
+        v = w_val.ptr
+        assert 0 < v < 2**31 - 1
+        vm.ll.mem.write_ptr(addr, v, 1)
     elif isinstance(w_T, W_PtrType):
         assert isinstance(w_val, W_Ptr)
         vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)

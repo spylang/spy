@@ -24,6 +24,19 @@ class TestList(CompilerTest):
         assert mod.test_empty() == 0
         assert mod.test_append() == 3
 
+    def test_list_of_string(self):
+        src = """
+        from _list import List
+
+        def foo() -> str:
+            lst = List[str]()
+            lst.append("hello ")
+            lst.append("world")
+            return lst[0] + lst[1]
+        """
+        mod = self.compile(src)
+        assert mod.foo() == "hello world"
+
     def test_getitem(self):
         src = """
         from _list import List
