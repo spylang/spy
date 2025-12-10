@@ -360,7 +360,7 @@ class W_OpSpec(W_Object):
         - OpSpec(func, args) -> OpSpec with pre-filled arguments
         """
         from spy.vm.function import W_Func
-        from spy.vm.interp_list import W_MetaArgList
+        from spy.vm.interp_list import W_MetaArgInterpList
 
         w_T = wam_cls.w_blueval
         assert isinstance(w_T, W_Type)
@@ -377,7 +377,7 @@ class W_OpSpec(W_Object):
             # OpSpec(func, args) case
             @vm.register_builtin_func(w_T.fqn, "new2")
             def w_new2(
-                vm: "SPyVM", w_cls: W_Type, w_func: W_Func, w_args: W_MetaArgList
+                vm: "SPyVM", w_cls: W_Type, w_func: W_Func, w_args: W_MetaArgInterpList
             ) -> W_OpSpec:
                 # Convert from applevel w_args into interp-level args_w
                 args_w = w_args.items_w[:]
