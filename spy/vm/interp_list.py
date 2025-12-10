@@ -12,6 +12,32 @@ from spy.vm.str import W_Str
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
+# PREBUILT list types are instantiated the end of the file
+PREBUILT_INTERP_LIST_TYPES: dict[W_Type, "W_InterpListType"] = {}
+
+
+def _make_interp_list_type(w_T: W_Type) -> "W_InterpListType":
+    fqn = FQN("__spy__").join("interp_list", [w_T.fqn])  # builtins::interp_list[i32]
+    return W_InterpListType.from_itemtype(fqn, w_T)
+
+
+@B.builtin_func(color="blue", kind="generic")
+def w_list(vm: "SPyVM", w_T: W_Type) -> W_Type:
+    """
+    Create a concrete W_List class specialized for W_Type.
+
+    Given a type T, it is always safe to call make_list_type(T) multiple
+    types, and it is guaranteed to get always the same type.
+
+    It is worth noting that to achieve that, we have two layers of caching:
+
+      - if we have a prebuilt list type, just use that
+      - for other types, we rely on the fact that `make_list_type` is blue.
+    """
+    if w_T in PREBUILT_INTERP_LIST_TYPES:
+        return PREBUILT_INTERP_LIST_TYPES[w_T]
+    return _make_interp_list_type(w_T)
+
 
 @SPY.builtin_type("InterpListType")
 class W_InterpListType(W_Type):
@@ -29,33 +55,6 @@ class W_InterpListType(W_Type):
         return w_T
 
 
-# PREBUILT list types are instantiated the end of the file
-PREBUILT_INTERP_LIST_TYPES: dict[W_Type, W_InterpListType] = {}
-
-
-@SPY.builtin_func(color="blue", hidden=True)
-def w_make_list_type(vm: "SPyVM", w_list: W_Object, w_T: W_Type) -> W_InterpListType:
-    """
-    Create a concrete W_List class specialized for W_Type.
-
-    Given a type T, it is always safe to call make_list_type(T) multiple
-    types, and it is guaranteed to get always the same type.
-
-    It is worth noting that to achieve that, we have two layers of caching:
-
-      - if we have a prebuilt list type, just use that
-      - for other types, we rely on the fact that `make_list_type` is blue.
-    """
-    if w_T in PREBUILT_INTERP_LIST_TYPES:
-        return PREBUILT_INTERP_LIST_TYPES[w_T]
-    return _make_interp_list_type(w_T)
-
-
-def _make_interp_list_type(w_T: W_Type) -> W_InterpListType:
-    fqn = FQN("builtins").join("interp_list", [w_T.fqn])  # builtins::interp_list[i32]
-    return W_InterpListType.from_itemtype(fqn, w_T)
-
-
 @SPY.builtin_type("MetaBaseInterpList")
 class W_MetaBaseInterpList(W_Type):
     """
@@ -64,10 +63,10 @@ class W_MetaBaseInterpList(W_Type):
 
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod
-    def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
+    def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg, wam_T: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
 
-        return W_OpSpec(w_make_list_type)
+        return W_OpSpec(w_list, [wam_T])
 
 
 @SPY.builtin_type("interp_list", W_MetaClass=W_MetaBaseInterpList)
