@@ -27,7 +27,7 @@ from spy.vm.function import (
     W_Func,
     W_FuncType,
 )
-from spy.vm.list import W_ListType
+from spy.vm.interp_list import W_ListType
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS

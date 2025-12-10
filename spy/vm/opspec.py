@@ -360,7 +360,7 @@ class W_OpSpec(W_Object):
         - OpSpec(func, args) -> OpSpec with pre-filled arguments
         """
         from spy.vm.function import W_Func
-        from spy.vm.list import W_MetaArgList
+        from spy.vm.interp_list import W_MetaArgList
 
         w_T = wam_cls.w_blueval
         assert isinstance(w_T, W_Type)

@@ -12,7 +12,7 @@ from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
-from spy.vm.list import W_List
+from spy.vm.interp_list import W_List
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES

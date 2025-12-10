@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from spy.errors import SPyError
 from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.function import W_FuncType
-from spy.vm.list import W_StrList, make_str_list, w_str_list_type
+from spy.vm.interp_list import W_StrList, make_str_list, w_str_list_type
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool, W_Dynamic, W_NoneType

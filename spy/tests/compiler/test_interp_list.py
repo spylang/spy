@@ -3,7 +3,7 @@ import pytest
 from spy.fqn import FQN
 from spy.tests.support import CompilerTest, no_C
 from spy.vm.b import B
-from spy.vm.list import W_ListType
+from spy.vm.interp_list import W_ListType
 from spy.vm.object import W_Type
 
 
