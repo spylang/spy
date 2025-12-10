@@ -13,6 +13,8 @@ from spy.vm.object import W_Type
 class TestList(CompilerTest):
     def test_generic_type(self):
         mod = self.compile("""
+        from __spy__ import interp_list
+
         @blue
         def foo():
             return interp_list[i32]
@@ -41,6 +43,8 @@ class TestList(CompilerTest):
 
     def test_literal(self):
         mod = self.compile("""
+        from __spy__ import interp_list
+
         def foo() -> interp_list[i32]:
             x: interp_list[i32] = [1, 2, 3]
             return x
@@ -50,6 +54,8 @@ class TestList(CompilerTest):
 
     def test_getitem(self):
         mod = self.compile("""
+        from __spy__ import interp_list
+
         def foo(i: i32) -> str:
             x: interp_list[str] = ["foo", "bar", "baz"]
             return x[i]
@@ -59,6 +65,8 @@ class TestList(CompilerTest):
 
     def test_setitem(self):
         mod = self.compile("""
+        from __spy__ import interp_list
+
         def foo(i: i32) -> interp_list[i32]:
             x: interp_list[i32] = [0, 1, 2]
             x[i] = x[i] + 10
@@ -72,6 +80,8 @@ class TestList(CompilerTest):
             pytest.skip("list PBCs not supported")
 
         mod = self.compile("""
+        from __spy__ import interp_list
+
         A: interp_list[i32] = [0, 1, 2]
         B: interp_list[type] = [i32, f64, str]
 
@@ -90,6 +100,8 @@ class TestList(CompilerTest):
 
     def test_add(self):
         mod = self.compile("""
+        from __spy__ import interp_list
+
         def add_i32_lists() -> interp_list[i32]:
             a: interp_list[i32] = [0, 1]
             b: interp_list[i32] = [2, 3]
@@ -123,6 +135,8 @@ class TestList(CompilerTest):
 
     def test_repr_str(self):
         mod = self.compile("""
+        from __spy__ import interp_list
+
         def str_list_str(a: str, b: str) -> str:
             return str([a, b])
 
@@ -142,6 +156,8 @@ class TestList(CompilerTest):
 
     def test_interp_repr(self):
         mod = self.compile("""
+        from __spy__ import interp_list
+
         def foo() -> interp_list[i32]:
             return [1, 2]
         """)

@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, Annotated, Any, Generic, Self, TypeVar
 
 from spy.fqn import FQN
-from spy.vm.b import BUILTINS, OP, B
+from spy.vm.b import OP, B
 from spy.vm.builtin import builtin_method
+from spy.vm.modules.spy import SPY
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@B.builtin_type("InterpListType")
+@SPY.builtin_type("InterpListType")
 class W_InterpListType(W_Type):
     """
     A specialized list type.
@@ -32,7 +33,7 @@ class W_InterpListType(W_Type):
 PREBUILT_INTERP_LIST_TYPES: dict[W_Type, W_InterpListType] = {}
 
 
-@BUILTINS.builtin_func(color="blue", hidden=True)
+@SPY.builtin_func(color="blue", hidden=True)
 def w_make_list_type(vm: "SPyVM", w_list: W_Object, w_T: W_Type) -> W_InterpListType:
     """
     Create a concrete W_List class specialized for W_Type.
@@ -55,7 +56,7 @@ def _make_interp_list_type(w_T: W_Type) -> W_InterpListType:
     return W_InterpListType.from_itemtype(fqn, w_T)
 
 
-@B.builtin_type("MetaBaseInterpList")
+@SPY.builtin_type("MetaBaseInterpList")
 class W_MetaBaseInterpList(W_Type):
     """
     This exist solely to be able to do list[...]
@@ -69,7 +70,7 @@ class W_MetaBaseInterpList(W_Type):
         return W_OpSpec(w_make_list_type)
 
 
-@B.builtin_type("interp_list", W_MetaClass=W_MetaBaseInterpList)
+@SPY.builtin_type("interp_list", W_MetaClass=W_MetaBaseInterpList)
 class W_BaseInterpList(W_Object):
     """
     The 'interp_list' type.

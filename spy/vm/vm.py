@@ -926,6 +926,6 @@ class SPyVM:
         return self.call_wam(wam_repr, [wam_o], loc=loc)
 
     def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_InterpListType:
-        w_res = self.getitem_w(B.w_interp_list, w_T, loc=loc)
+        w_res = self.getitem_w(SPY.w_interp_list, w_T, loc=loc)
         assert isinstance(w_res, W_InterpListType)
         return w_res
