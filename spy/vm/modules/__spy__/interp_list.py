@@ -43,7 +43,7 @@ def w_list(vm: "SPyVM", w_T: W_Type) -> W_Type:
 class W_InterpListType(W_Type):
     """
     A specialized list type.
-    list[i32] -> W_ListType(fqn, B.w_i32)
+    interp_list[i32] -> W_InterpListType(fqn, B.w_i32)
     """
 
     w_itemtype: W_Type
@@ -58,7 +58,7 @@ class W_InterpListType(W_Type):
 @SPY.builtin_type("MetaBaseInterpList")
 class W_MetaBaseInterpList(W_Type):
     """
-    This exist solely to be able to do list[...]
+    This exist solely to be able to do interp_list[...]
     """
 
     @builtin_method("__getitem__", color="blue", kind="metafunc")
