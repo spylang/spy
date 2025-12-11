@@ -9,7 +9,7 @@ from spy.util import magic_dispatch
 from spy.vm.b import TYPES, B
 from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc
-from spy.vm.interp_list import W_InterpList
+from spy.vm.modules.__spy__.interp_list import W_InterpList
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 

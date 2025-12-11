@@ -27,9 +27,10 @@ from spy.vm.function import (
     W_Func,
     W_FuncType,
 )
-from spy.vm.interp_list import W_InterpListType
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
+from spy.vm.modules.__spy__ import SPY
+from spy.vm.modules.__spy__.interp_list import W_InterpListType
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
@@ -37,7 +38,6 @@ from spy.vm.modules.math import MATH
 from spy.vm.modules.operator import OPERATOR
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
-from spy.vm.modules.spy import SPY
 from spy.vm.modules.time import TIME
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.modules.unsafe import UNSAFE
