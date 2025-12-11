@@ -185,6 +185,17 @@ def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStru
             if isinstance(w_field.w_T, W_StructType):
                 nested_result, idx = unflatten(w_field.w_T, idx)
                 content[w_field.name] = nested_result
+            elif isinstance(w_field.w_T, W_PtrType):
+                # pointers are represented as {addr, length} in C/WASM
+                if idx + 1 >= len(flat_values):
+                    raise ValueError(
+                        f"Not enough values to unflatten {w_T.fqn}: "
+                        f"needed at least {idx + 2} for ptr field, got {len(flat_values)}"
+                    )
+                addr = flat_values[idx]
+                length = flat_values[idx + 1]
+                content[w_field.name] = WasmPtr(addr, length)
+                idx += 2
             else:
                 if idx >= len(flat_values):
                     raise ValueError(
