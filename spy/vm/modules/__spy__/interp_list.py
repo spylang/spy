@@ -36,7 +36,9 @@ def w_make_interp_list_type(vm: "SPyVM", w_T: W_Type) -> W_Type:
     """
     if w_T in PREBUILT_INTERP_LIST_TYPES:
         return PREBUILT_INTERP_LIST_TYPES[w_T]
-    return _make_interp_list_type(w_T)
+    w_listtype = _make_interp_list_type(w_T)
+    w_listtype.register_push_function(vm)
+    return w_listtype
 
 
 @SPY.builtin_type("InterpListType")
@@ -53,6 +55,18 @@ class W_InterpListType(W_Type):
         w_T = cls.from_pyclass(fqn, W_InterpList)
         w_T.w_itemtype = w_itemtype
         return w_T
+
+    def register_push_function(self, vm: "SPyVM") -> None:
+        # XXX explain
+        w_listtype = self
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_InterpList, w_listtype]
+        T = Annotated[W_Object, w_T]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w__push(vm: "SPyVM", w_list: LIST, w_item: T) -> LIST:
+            w_list.items_w.append(w_item)
+            return w_list
 
 
 @SPY.builtin_type("MetaBaseInterpList")
@@ -120,6 +134,18 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
             # I think we can get here if we have something typed 'list' as
             # opposed to e.g. 'list[i32]'
             assert False, "FIXME: raise a nice error"
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_T: W_MetaArg) -> W_OpSpec:
+        w_listtype = wam_T.w_blueval
+        LIST = Annotated[W_InterpList, w_listtype]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_new(vm: "SPyVM") -> LIST:
+            return W_InterpList(w_listtype, [])
+
+        return W_OpSpec(w_new, [])
 
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod

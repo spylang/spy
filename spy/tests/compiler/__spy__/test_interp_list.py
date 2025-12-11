@@ -4,7 +4,6 @@ from spy.fqn import FQN
 from spy.tests.support import CompilerTest, no_C
 from spy.vm.b import B
 from spy.vm.modules.__spy__.interp_list import W_InterpListType
-from spy.vm.object import W_Type
 
 
 # as the name suggests, interp_list works only in the interpreter and is not supported
@@ -24,22 +23,16 @@ class TestInterpList(CompilerTest):
         assert isinstance(w_list_i32, W_InterpListType)
         assert w_list_i32.fqn == FQN("__spy__::interp_list[i32]")
 
-    def test_generalize_literal(self):
+    def test_new(self):
         mod = self.compile("""
-        def foo() -> type:
-            x = [i32, f64, str]
-            return STATIC_TYPE(x)
+        from __spy__ import interp_list
 
-        def bar() -> type:
-            x = [i32, f64, 'hello']
-            return STATIC_TYPE(x)
+        def foo() -> interp_list[i32]:
+            x = interp_list[i32]()
+            return x
         """)
-        w_t1 = mod.foo(unwrap=False)
-        assert isinstance(w_t1, W_Type)
-        assert w_t1.fqn == FQN("__spy__::interp_list[type]")
-        w_t2 = mod.bar(unwrap=False)
-        assert isinstance(w_t2, W_Type)
-        assert w_t2.fqn == FQN("__spy__::interp_list[object]")
+        x = mod.foo()
+        assert x == []
 
     def test_literal(self):
         mod = self.compile("""

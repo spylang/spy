@@ -467,7 +467,7 @@ class DopplerFrame(ASTFrame):
         # actually doing calls, we create an AST instead.
         w_T = wam.w_static_T
         fqn_new = w_T.fqn.join("__new__")
-        fqn_push = w_T.fqn.parent().join("push")
+        fqn_push = w_T.fqn.join("_push")
 
         # instantiate an empty list
         newlst = ast.Call(
