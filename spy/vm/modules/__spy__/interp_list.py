@@ -22,7 +22,7 @@ def _make_interp_list_type(w_T: W_Type) -> "W_InterpListType":
 
 
 @B.builtin_func(color="blue", kind="generic")
-def w_list(vm: "SPyVM", w_T: W_Type) -> W_Type:
+def w_make_interp_list_type(vm: "SPyVM", w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
 
@@ -66,7 +66,7 @@ class W_MetaBaseInterpList(W_Type):
     def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg, wam_T: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
 
-        return W_OpSpec(w_list, [wam_T])
+        return W_OpSpec(w_make_interp_list_type, [wam_T])
 
 
 @SPY.builtin_type("interp_list", W_MetaClass=W_MetaBaseInterpList)
