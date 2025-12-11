@@ -9,7 +9,7 @@ from spy.util import magic_dispatch
 from spy.vm.b import TYPES, B
 from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc
-from spy.vm.list import W_List
+from spy.vm.interp_list import W_InterpList
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
@@ -123,7 +123,7 @@ class SPyBackend:
         return ", ".join(l)
 
     def fmt_w_obj(self, w_obj: W_Object) -> str:
-        if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_List):
+        if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
             return w_obj.fqn.human_name

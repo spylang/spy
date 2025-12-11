@@ -12,7 +12,7 @@ from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
-from spy.vm.list import W_List
+from spy.vm.interp_list import W_InterpList
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES
@@ -1088,7 +1088,7 @@ class AbstractFrame:
             w_val = None
         else:
             items_w = [wam.w_val for wam in items_wam]
-            w_val = W_List(w_listtype, items_w)
+            w_val = W_InterpList(w_listtype, items_w)
         return W_MetaArg(self.vm, color, w_listtype, w_val, op.loc)
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:

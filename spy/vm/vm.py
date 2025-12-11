@@ -27,7 +27,7 @@ from spy.vm.function import (
     W_Func,
     W_FuncType,
 )
-from spy.vm.list import W_ListType
+from spy.vm.interp_list import W_InterpListType
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
@@ -925,7 +925,7 @@ class SPyVM:
         wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
         return self.call_wam(wam_repr, [wam_o], loc=loc)
 
-    def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_ListType:
-        w_res = self.getitem_w(B.w_list, w_T, loc=loc)
-        assert isinstance(w_res, W_ListType)
+    def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_InterpListType:
+        w_res = self.getitem_w(SPY.w_interp_list, w_T, loc=loc)
+        assert isinstance(w_res, W_InterpListType)
         return w_res
