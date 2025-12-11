@@ -466,7 +466,7 @@ class DopplerFrame(ASTFrame):
         # this logic is equivalent to what we have in eval_expr_List. Instead of
         # actually doing calls, we create an AST instead.
         w_T = wam.w_static_T
-        fqn_new = w_T.fqn
+        fqn_new = w_T.fqn.join("__new__")
         fqn_push = w_T.fqn.parent().join("push")
 
         # instantiate an empty list

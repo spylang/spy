@@ -157,9 +157,44 @@ class WasmFuncWrapper:
             # when you return struct-by-val from C, wasmtime automatically
             # converts them into a list, flattening nested structs
             assert isinstance(res, list)
-            return unflatten_struct(w_T, res)
+            pyres = unflatten_struct(w_T, res)
+            if w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
+                # we support only reading list[i32] for tests
+                return self._to_pylist_i32(pyres)
+            elif str(w_T.fqn).startswith("_list::list["):
+                raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
+            else:
+                return pyres
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
+
+    def _to_pylist_i32(self, pyres: UnwrappedStruct) -> list[Any]:
+        assert "__ll__" in pyres._content
+        ll_ptr = pyres._content["__ll__"]
+        assert isinstance(ll_ptr, WasmPtr)
+
+        # Read ListData struct from memory
+        # struct ListData {
+        #     i32 length;
+        #     i32 capacity;
+        #     ptr[i32] items;  // represented as {addr, length} in debug mode
+        # }
+        addr = ll_ptr.addr
+        length = self.ll.mem.read_i32(addr)
+        capacity = self.ll.mem.read_i32(addr + 4)
+
+        # Read the items pointer (starts at addr + 8)
+        items_addr = self.ll.mem.read_i32(addr + 8)
+        items_length = self.ll.mem.read_i32(addr + 12)
+
+        # Read the actual i32 items
+        result = []
+        for i in range(length):
+            item_addr = items_addr + i * 4
+            item = self.ll.mem.read_i32(item_addr)
+            result.append(item)
+
+        return result
 
     def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
         assert unwrap, "unwrap=False is not supported by the C backend"
