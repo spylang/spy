@@ -274,11 +274,17 @@ class SPyVM:
             raise ValueError(f"'{fqn}' already exists")
         self.irtags[fqn] = irtag
 
-    def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
+    def lookup_global_maybe(self, fqn: FQN) -> Optional[W_Object]:
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
             return self.globals_w.get(fqn)
+
+    def lookup_global(self, fqn: FQN) -> W_Object:
+        w_val = self.lookup_global_maybe(fqn)
+        if w_val is None:
+            raise Exception(f"lookup_global failed: {fqn}")
+        return w_val
 
     def get_irtag(self, fqn: FQN) -> IRTag:
         return self.irtags.get(fqn, IRTag.Empty)
@@ -384,7 +390,7 @@ class SPyVM:
             )
 
             # check whether the fqn is already in use
-            w_other = self.lookup_global(w_func.fqn)
+            w_other = self.lookup_global_maybe(w_func.fqn)
             if w_other is None:
                 # fqn is free, register and return
                 self.add_global(w_func.fqn, w_func, irtag=irtag)
