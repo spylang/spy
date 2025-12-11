@@ -279,7 +279,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_list_literal(self):
         src = """
-        def foo() -> list[i32]:
+        def foo() -> dynamic:
             return [1, 2, 3]
         """
         self.compile(src)
