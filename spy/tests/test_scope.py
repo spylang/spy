@@ -624,3 +624,11 @@ class TestScopeAnalyzer:
             "args": MatchSymbol("args", "const", "blue-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
+
+    def test_list_literal(self):
+        # using a string literal implicitly imports '_list'
+        scopes = self.analyze("""
+        def foo() -> None:
+            [1, 2, 3]
+        """)
+        assert scopes.implicit_imports == {"_list"}

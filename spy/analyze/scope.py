@@ -510,7 +510,6 @@ class ScopeAnalyzer:
             self.flatten(stmt)
 
     def flatten_List(self, lst: ast.List) -> None:
-        # XXX WRITE A TEST FOR THIS!
         self.implicit_imports.add("_list")
         for item in lst.items:
             self.flatten(item)
