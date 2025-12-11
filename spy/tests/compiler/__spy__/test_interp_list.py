@@ -7,10 +7,10 @@ from spy.vm.modules.__spy__.interp_list import W_InterpListType
 from spy.vm.object import W_Type
 
 
-# Eventually we want to remove the @no_C, but for now the C backend
-# doesn't support lists
+# as the name suggests, interp_list works only in the interpreter and is not supported
+# by the C backend
 @no_C
-class TestList(CompilerTest):
+class TestInterpList(CompilerTest):
     def test_generic_type(self):
         mod = self.compile("""
         from __spy__ import interp_list

@@ -9,7 +9,7 @@ from operator import OpSpec
 
 
 @blue.generic
-def List(T):
+def list(T):
     @struct
     class ListData:
         length: i32
