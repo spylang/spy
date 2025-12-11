@@ -155,18 +155,9 @@ class WasmFuncWrapper:
             return WasmPtr(addr, length)
         elif isinstance(w_T, W_StructType):
             # when you return struct-by-val from C, wasmtime automatically
-            # converts them into a list. So, we have our values already.
-            #
-            # NOTE: this works only for flat structs with simple
-            # types. E.g. in the case of Rectangle, wasmtime returns a flat
-            # list of all the 4 coordinates, which seems wrong.
-            #
-            # However, this is good enough for most tests, so no reasons to
-            # write complicated logic.
+            # converts them into a list, flattening nested structs
             assert isinstance(res, list)
-            field_names = [w_f.name for w_f in w_T.iterfields_w()]
-            content = dict(zip(field_names, res, strict=True))
-            return UnwrappedStruct(w_T.fqn, content)
+            return unflatten_struct(w_T, res)
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
 
@@ -176,3 +167,39 @@ class WasmFuncWrapper:
         res = self.ll.call(self.c_name, *wasm_args)
         w_T = self.w_functype.w_restype
         return self.to_py_result(w_T, res)
+
+
+def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStruct:
+    """
+    Unflatten a struct from a flat list of values.
+
+    When returning struct-by-val from C, wasmtime flattens nested structs
+    into a single list. This function reconstructs the nested structure.
+    """
+
+    def unflatten(w_T: W_StructType, start_idx: int) -> tuple[UnwrappedStruct, int]:
+        content = {}
+        idx = start_idx
+
+        for w_field in w_T.iterfields_w():
+            if isinstance(w_field.w_T, W_StructType):
+                nested_result, idx = unflatten(w_field.w_T, idx)
+                content[w_field.name] = nested_result
+            else:
+                if idx >= len(flat_values):
+                    raise ValueError(
+                        f"Not enough values to unflatten {w_T.fqn}: "
+                        f"needed at least {idx + 1}, got {len(flat_values)}"
+                    )
+                content[w_field.name] = flat_values[idx]
+                idx += 1
+
+        return UnwrappedStruct(w_T.fqn, content), idx
+
+    result, consumed = unflatten(w_T, 0)
+    if consumed != len(flat_values):
+        raise ValueError(
+            f"Wrong number of values for {w_T.fqn}: "
+            f"expected {consumed}, got {len(flat_values)}"
+        )
+    return result
