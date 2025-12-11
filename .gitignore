@@ -1,4 +1,5 @@
 pytest-shortcut.sh
+.dir-locals.el
 
 libspy.a
 libspy.wasm

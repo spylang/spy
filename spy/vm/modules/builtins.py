@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from spy.errors import SPyError
 from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.function import W_FuncType
-from spy.vm.interp_list import (
+from spy.vm.modules.__spy__.interp_list import (
     W_StrInterpList,
     make_str_interp_list,
     w_str_interp_list_type,

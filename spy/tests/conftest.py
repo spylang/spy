@@ -12,29 +12,48 @@ ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
 
 
-@pytest.hookimpl(hookwrapper=True)
+@pytest.hookimpl
 def pytest_collection_modifyitems(session, config, items):
     """
     Reorder the test to have a "better" order. In particular:
 
       - test_zz_mypy.py is always the last, after the subdirectories
       - test_backend_spy.py must run after compiler/*
+      - tests in the root tests/ directory run before tests in subdirectories
+      - tests directly in a directory run before tests in its subdirectories
 
     The reason for why test_backend_spy must be run after compiler/* is
     explained in test_zz_sanity_check in that file.
     """
-    # run all other plugins first (in particular, pyest_slow_last)
-    # https://github.com/david26694/pytest-slow-last
-    yield
 
     def key(item):
         filename = item.fspath.relto(ROOT)
+
+        # very slow tests always run last
         if filename == "test_zz_mypy.py":
-            return 100  # last
+            return (100, 0)  # last
         elif filename == "test_backend_spy.py":
-            return 99  # second to last
+            return (99, 0)  # just before mypy
+        elif filename == "test_cli.py":
+            return (98, 0)
+        elif filename == "test_llwasm.py":
+            return (97, 0)
+
+        # Check for markers and assign priority
+        if item.get_closest_marker("emscripten") or item.get_closest_marker("pyodide"):
+            marker_priority = 90
+        elif item.get_closest_marker("C"):
+            marker_priority = 80
+        elif item.get_closest_marker("doppler"):
+            marker_priority = 70
+        elif item.get_closest_marker("interp"):
+            marker_priority = 60
         else:
-            return 0  # don't touch
+            marker_priority = 0
+
+        # Sort by directory depth (fewer slashes = higher priority)
+        depth = filename.count("/")
+        return (marker_priority, depth)
 
     items.sort(key=key)
 
