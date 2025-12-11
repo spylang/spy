@@ -143,3 +143,8 @@ def test_FQN_with_suffix():
     a1 = a.with_suffix("1")
     assert a.fullname == "a::b"
     assert a1.fullname == "a::b#1"
+
+
+def test_FQN_parent():
+    fqn = FQN("a::b::c")
+    assert fqn.parent() == FQN("a::b")

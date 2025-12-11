@@ -236,4 +236,10 @@ def list(T):
         def __fastiter__(self) -> list_iterator:
             return list_iterator(self.__ll__, 0)
 
+    # this function CANNOT be called by user code, but it's used by astframe and doppler
+    # to evaluate list literals: they call it using its FQN
+    def push(lst: _ListImpl, item: T) -> _ListImpl:
+        lst.append(item)
+        return lst
+
     return _ListImpl

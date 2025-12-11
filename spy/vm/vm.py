@@ -828,11 +828,16 @@ class SPyVM:
         return self.eval_opimpl(w_opimpl, [wam_o, wam_i], loc=loc)
 
     def getitem_w(
-        self, w_o: W_Dynamic, w_i: W_Dynamic, *, loc: Optional[Loc] = None
+        self,
+        w_o: W_Dynamic,
+        w_i: W_Dynamic,
+        *,
+        loc: Optional[Loc] = None,
+        color: Color = "blue",
     ) -> W_Dynamic:
         "o[i] (dynamic dispatch)"
-        wam_o = W_MetaArg.from_w_obj(self, w_o)
-        wam_i = W_MetaArg.from_w_obj(self, w_i)
+        wam_o = W_MetaArg.from_w_obj(self, w_o, color=color)
+        wam_i = W_MetaArg.from_w_obj(self, w_i, color=color)
         wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here(-2))
         return wam.w_val
 
@@ -855,10 +860,11 @@ class SPyVM:
         args_w: Sequence[W_Dynamic],
         *,
         loc: Optional[Loc] = None,
+        color: Color = "blue",
     ) -> W_Dynamic:
         "func(*args) (dynamic dispatch)"
         wam_func = W_MetaArg.from_w_obj(self, w_func)
-        args_wam = [W_MetaArg.from_w_obj(self, w_arg) for w_arg in args_w]
+        args_wam = [W_MetaArg.from_w_obj(self, w_arg, color=color) for w_arg in args_w]
         wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here(-2))
         return wam.w_val
 

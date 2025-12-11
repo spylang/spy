@@ -12,7 +12,6 @@ from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
-from spy.vm.modules.__spy__.interp_list import W_InterpList
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES
@@ -1069,27 +1068,43 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
-    def eval_expr_List(self, op: ast.List) -> W_Object:
+    def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
+        # 1. evaluate the individual items and infer the itemtype
         items_wam = []
         w_itemtype = None
         color: Color = "red"  # XXX should be blue?
-        for item in op.items:
+        for item in lst.items:
             wam_item = self.eval_expr(item)
             items_wam.append(wam_item)
             color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:
                 w_itemtype = wam_item.w_static_T
             w_itemtype = self.vm.union_type(w_itemtype, wam_item.w_static_T)
+        assert w_itemtype is not None, "XXX empty lists"
+
+        # 2. instantiate a new list
         #
-        # XXX we need to handle empty lists
-        assert w_itemtype is not None
-        w_listtype = self.vm.make_list_type(w_itemtype, loc=op.loc)
-        if color == "red" and self.redshifting:
-            w_val = None
-        else:
-            items_w = [wam.w_val for wam in items_wam]
-            w_val = W_InterpList(w_listtype, items_w)
-        return W_MetaArg(self.vm, color, w_listtype, w_val, op.loc)
+        # XXX should this go to vm.make_list_type?
+        # w_listtype = self.vm.make_list_type(w_itemtype, loc=lst.loc)
+        w_ListType = self.vm.lookup_global(FQN("_list::list"))
+        w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
+
+        w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T])
+        wam_list = self.eval_opimpl(lst, w_opimpl, [wam_T])
+
+        # 3. push items into the list
+        fqn_push = w_T.fqn.parent().join("push")
+        w_push = self.vm.lookup_global(fqn_push)
+        wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
+
+        for item, wam_item in zip(lst.items, items_wam):
+            w_opimpl = self.vm.call_OP(
+                lst.loc, OP.w_CALL, [wam_push, wam_list, wam_item]
+            )
+            wam_list = self.eval_opimpl(item, w_opimpl, [wam_push, wam_list, wam_item])
+
+        return wam_list
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]

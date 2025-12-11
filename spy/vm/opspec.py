@@ -166,9 +166,11 @@ class W_MetaArg(W_Object):
         return W_MetaArg(vm, color, w_static_T, w_val2, loc)
 
     @classmethod
-    def from_w_obj(cls, vm: "SPyVM", w_obj: W_Object) -> "W_MetaArg":
+    def from_w_obj(
+        cls, vm: "SPyVM", w_obj: W_Object, *, color: Color = "blue"
+    ) -> "W_MetaArg":
         w_T = vm.dynamic_type(w_obj)
-        return W_MetaArg(vm, "blue", w_T, w_obj, Loc.here(-2))
+        return W_MetaArg(vm, color, w_T, w_obj, Loc.here(-2))
 
     def __repr__(self) -> str:
         if self.is_blue():
