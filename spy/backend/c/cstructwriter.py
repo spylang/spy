@@ -104,6 +104,16 @@ class CStructWriter:
                 assert False, f"Unknown type: {w_type}"
 
     def emit_StructType(self, fqn: FQN, w_st: W_StructType) -> None:
+        if not w_st.is_defined():
+            # This is a fwdecl which was never defined. This happens in case we have a
+            # 'class' statement inside a @blue function, but then we return before we
+            # have the change to actually execute it.
+            # See test_struct::test_fwdecl_is_ignored_by_C_backend.
+            #
+            # Maybe it would be better to avoid this case completely and remove spurious
+            # fwdecls before they hit the C backend, but for now we just ignore it.
+            return
+
         c_st = C_Type(w_st.fqn.c_name)
         self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {w_st.fqn.human_name} */")
         # XXX this is VERY wrong: it assumes that the standard C layout

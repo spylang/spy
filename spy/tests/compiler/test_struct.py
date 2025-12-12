@@ -381,3 +381,27 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(3, 4) == 7
+
+    def test_fwdecl_is_ignored_by_C_backend(self):
+        src = """
+        @blue
+        def make_point_maybe(make_it: bool):
+            if not make_it:
+                return
+
+            @struct
+            class Point:
+                x: i32
+                y: i32
+
+        def foo() -> i32:
+            make_point_maybe(False)
+            return 42
+        """
+        # make_point_maybe::Point is declared unconditionally just by entering
+        # make_point_maybe(), even if it's never used. The point of the test is to
+        # ensure that the C backend knows how to deal with it and doesn't crash.
+        mod = self.compile(src)
+        assert mod.foo() == 42
+        w_Point = self.vm.lookup_global(FQN("test::make_point_maybe::Point"))
+        assert not w_Point.is_defined()  # it's a fwdecl

@@ -173,7 +173,10 @@ class CFuncWriter:
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value)
-        self.tbc.wl(f"{v};")
+        if v is C.Void():
+            pass
+        else:
+            self.tbc.wl(f"{v};")
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)

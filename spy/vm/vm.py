@@ -302,11 +302,15 @@ class SPyVM:
             if fqn.modname == modname and not fqn.is_module():
                 yield (fqn, w_obj)
 
-    def pp_globals(self) -> None:
+    def pp_globals(self, modname: Optional[str] = None) -> None:
         all_pbcs = sorted(
             self.globals_w.items(),
             key=lambda item: str(item[0]),  # item[0] is fqn
         )
+        if modname is not None:
+            all_pbcs = [
+                (fqn, w_obj) for (fqn, w_obj) in all_pbcs if fqn.modname == modname
+            ]
 
         last_modname = None
         for fqn, w_obj in all_pbcs:
