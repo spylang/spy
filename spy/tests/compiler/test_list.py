@@ -5,6 +5,17 @@ from spy.vm.object import W_Type
 
 
 class TestList(CompilerTest):
+    """
+    These are only few of the tests about list, mostly to check that:
+
+      1. list[T] does the right thing
+
+      2. the list literal syntax "[a, b, c, ...]" works
+
+    The actual behavior of list objects is tested by stdlib/test__list.py and
+    test_interp_list.py
+    """
+
     @only_interp
     def test_list_type(self):
         # by default we use _list.list, but for some itemtype we use interp_list
