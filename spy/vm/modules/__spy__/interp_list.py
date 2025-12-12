@@ -141,15 +141,17 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
 
     @builtin_method("__new__", color="blue", kind="metafunc")
     @staticmethod
-    def w_NEW(vm: "SPyVM", wam_T: W_MetaArg) -> W_OpSpec:
+    def w_NEW(vm: "SPyVM", wam_T: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
         w_listtype = wam_T.w_blueval
+        w_T = w_listtype.w_itemtype
         LIST = Annotated[W_InterpList, w_listtype]
+        T = Annotated[W_Object, w_T]
 
         @vm.register_builtin_func(w_listtype.fqn)
-        def w_new(vm: "SPyVM") -> LIST:
-            return W_InterpList(w_listtype, [])
+        def w_new(vm: "SPyVM", *args_w: T) -> LIST:
+            return W_InterpList(w_listtype, list(args_w))
 
-        return W_OpSpec(w_new, [])
+        return W_OpSpec(w_new, list(args_wam))
 
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod

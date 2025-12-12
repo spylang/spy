@@ -27,12 +27,17 @@ class TestInterpList(CompilerTest):
         mod = self.compile("""
         from __spy__ import interp_list
 
-        def foo() -> interp_list[i32]:
+        def new_empty() -> interp_list[i32]:
             x = interp_list[i32]()
             return x
+
+        def new_with_values(x: i32, y: i32, z: i32) -> interp_list[i32]:
+            return interp_list[i32](x, y, z)
         """)
-        x = mod.foo()
-        assert x == []
+        l1 = mod.new_empty()
+        assert l1 == []
+        l2 = mod.new_with_values(1, 2, 3)
+        assert l2 == [1, 2, 3]
 
     def test_literal(self):
         mod = self.compile("""
