@@ -5,13 +5,13 @@ A generic dynamic array implementation similar to Python's list.
 """
 
 from unsafe import gc_alloc, ptr
-from operator import OpSpec
+from operator import OpSpec, MetaArg
 from __spy__ import interp_list
 
 
 @blue.generic
 def list(T):
-    if T == type or T == object:
+    if T == type or T == object or T == MetaArg:
         return interp_list[T]
 
     @struct

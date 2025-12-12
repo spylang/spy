@@ -59,3 +59,22 @@ class TestList(CompilerTest):
         w_t2 = mod.bar(unwrap=False)
         assert isinstance(w_t2, W_Type)
         assert w_t2.fqn == FQN("__spy__::interp_list[object]")
+
+    @only_interp
+    def test_list_MetaArg(self):
+        src = """
+        from operator import MetaArg
+
+        def foo() -> list[MetaArg]:
+            m_a: MetaArg = i32
+            m_b: MetaArg = f64
+            return [m_a, m_b]
+        """
+        mod = self.compile(src)
+        w_lst = mod.foo(unwrap=False)
+        w_T = self.vm.dynamic_type(w_lst)
+        assert w_T.fqn == FQN("__spy__::interp_list[operator::MetaArg]")
+        assert len(w_lst.items_w) == 2
+        wam_a, wam_b = w_lst.items_w
+        assert wam_a.w_static_T is B.w_i32
+        assert wam_b.w_static_T is B.w_f64

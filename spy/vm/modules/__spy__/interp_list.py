@@ -37,6 +37,10 @@ def w_make_interp_list_type(vm: "SPyVM", w_T: W_Type) -> W_Type:
     if w_T in PREBUILT_INTERP_LIST_TYPES:
         return PREBUILT_INTERP_LIST_TYPES[w_T]
     w_listtype = _make_interp_list_type(w_T)
+
+    # register the _push function which is used by ASTFrame.eval_expr_List.
+    # NOTE: for PREBUILT_INTERP_LIST_TYPES, we do it inside __spy__.__INIT__, because we
+    # don't have a vm earlier.
     w_listtype.register_push_function(vm)
     return w_listtype
 
