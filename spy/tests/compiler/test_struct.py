@@ -381,3 +381,20 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(3, 4) == 7
+
+    def test_struct_fields_dont_leak(self):
+        # See https://github.com/spylang/spy/issues/231
+        src = """
+        @struct
+        class Point:
+            x: int
+            y: int
+
+            def __new__(x: int, y: int) -> Point:
+                return Point.__make__(x*2, y*2)
+
+        def foo() -> Point:
+            return Point(1, 2)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (2, 4)
