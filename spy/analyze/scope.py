@@ -102,7 +102,7 @@ class ScopeAnalyzer:
         self.by_module().pp()
         print()
         for key, symtable in self.inner_scopes.items():
-            symtable.pp()
+            symtable.pp(indent="    " * symtable.depth)
             print()
 
     # =====
