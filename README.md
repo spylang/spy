@@ -219,6 +219,19 @@ inside a WASM runtime engine (emscripten), so we don't need `wasmtime`.
 The code in `llwasm` abstracts this difference away, and makes it possible to
 transparently load `libspy.wasm` in either case.
 
+## Documentation
+
+All documentation files are in `docs/src`. To run dev server for document, please follow;
+
+*you have to install `mkdocs` first
+
+```pip install -e ".[docs]" ```
+
+Then following below commands
+
+1) ```cd ./docs```
+2) ```mkdocs serve```
+
 ## Contribution guidelines
 
 If you want to contribute to SPy, be sure to review the [contribution guidelines](CONTRIBUTING.md)
