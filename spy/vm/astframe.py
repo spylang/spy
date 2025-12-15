@@ -1075,6 +1075,19 @@ class AbstractFrame:
         color: Color = "red"  # XXX should be blue?
         for item in lst.items:
             wam_item = self.eval_expr(item)
+
+            # This is needed when building a list[MetaArg].
+            #
+            # If we have two blue items which happen to be equal, we reuse the same
+            # w_opimpl for push() below, with the result of pushing the first item
+            # twice, and the second item never. By making it red, we force to create a
+            # more generic opimpl.
+            #
+            # See also:
+            #    test_list::test_list_MetaArg_identity
+            #    typecheck_opspec, big comment starting with "THIS IS PROBABLY A BUG".
+            wam_item = wam_item.as_red(self.vm)
+
             items_wam.append(wam_item)
             color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:

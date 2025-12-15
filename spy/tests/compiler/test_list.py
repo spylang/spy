@@ -89,3 +89,34 @@ class TestList(CompilerTest):
         wam_a, wam_b = w_lst.items_w
         assert wam_a.w_static_T is B.w_i32
         assert wam_b.w_static_T is B.w_f64
+
+    @only_interp
+    def test_list_MetaArg_identity(self):
+        # This test is needed because of what likely is a design issue of W_MetaArg,
+        # which we should probably fix.
+        #
+        # W_MetaArg compares by VALUE, so m_a and m_b are equal.
+        #
+        # SPy's blue/red machinery is built on the assumption that value types don't
+        # have identity: if they are equal, they can be used interchangeably; because of
+        # that a naive implementation of eval_expr_List would _push() m_a twice (which
+        # is fine since it's equal to m_b).
+        #
+        # HOWEVER, for the specific case of W_MetaArg, identity matters, because it's
+        # what we use to map OpSpec-to-OpImpl args. So, it's important that the
+        # resulting list contains [m_a, m_b] instead of [m_a, m_a].
+        src = """
+        from operator import MetaArg
+
+        def foo() -> list[MetaArg]:
+            m_a: MetaArg = i32
+            m_b: MetaArg = i32
+            # m_a and m_b are EQUAL, but not identicaly
+            assert m_a == m_b
+            return [m_a, m_b]
+        """
+        mod = self.compile(src)
+        w_lst = mod.foo(unwrap=False)
+        assert len(w_lst.items_w) == 2
+        wam_a, wam_b = w_lst.items_w
+        assert wam_a is not wam_b
