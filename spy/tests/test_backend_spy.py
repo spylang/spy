@@ -282,8 +282,11 @@ class TestSPyBackend(CompilerTest):
         def foo() -> dynamic:
             return [1, 2, 3]
         """
-        self.compile(src)
-        self.assert_dump(src)
+        with pytest.raises(
+            Exception, match="list literals are not supported by the SPy backend"
+        ):
+            self.compile(src)
+            self.assert_dump(src)
 
     def test_tuple_literal(self):
         src = """

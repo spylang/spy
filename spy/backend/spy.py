@@ -506,7 +506,7 @@ class SPyBackend:
 
     def fmt_expr_List(self, node: ast.List) -> str:
         raise Exception(
-            "list literals are supported in the spy backend. "
+            "list literals are not supported by the SPy backend. "
             "They should have been redshifted away"
         )
 
