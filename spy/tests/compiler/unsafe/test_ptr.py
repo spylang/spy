@@ -115,6 +115,7 @@ class TestUnsafePtr(CompilerTest):
     @only_interp
     def test_dir_ptr(self):
         mod = self.compile("""
+        from __spy__ import interp_list
         from unsafe import gc_alloc, ptr
 
         @struct
@@ -122,7 +123,7 @@ class TestUnsafePtr(CompilerTest):
             x: i32
             y: i32
 
-        def dir_ptr_point() -> list[str]:
+        def dir_ptr_point() -> interp_list[str]:
             p = gc_alloc(Point)(1)
             return dir(p)
         """)

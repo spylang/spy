@@ -246,15 +246,17 @@ class TestStructOnStack(CompilerTest):
     @only_interp
     def test_dir(self):
         src = """
+        from __spy__ import interp_list
+
         @struct
         class Point:
             x: i32
             y: i32
 
-        def dir_type() -> list[str]:
+        def dir_type() -> interp_list[str]:
             return dir(Point)
 
-        def dir_inst() -> list[str]:
+        def dir_inst() -> interp_list[str]:
             p = Point(1, 2)
             return dir(p)
         """
