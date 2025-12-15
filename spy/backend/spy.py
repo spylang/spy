@@ -505,10 +505,9 @@ class SPyBackend:
         return f"{v}.{node.attr.value}"
 
     def fmt_expr_List(self, node: ast.List) -> str:
-        raise Exception(
-            "list literals are not supported by the SPy backend. "
-            "They should have been redshifted away"
-        )
+        itemlist = [self.fmt_expr(it) for it in node.items]
+        items = ", ".join(itemlist)
+        return f"[{items}]"
 
     def fmt_expr_Tuple(self, node: ast.Tuple) -> str:
         itemlist = [self.fmt_expr(it) for it in node.items]
