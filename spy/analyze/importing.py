@@ -218,6 +218,12 @@ class ImportAnalyzer:
                 mod = self.parse_one(modname, spyfile)
                 self.mods[modname] = mod
 
+                # record implicit imports
+                assert mod.symtable is not None
+                for imp_modname in mod.symtable.implicit_imports:
+                    self.record_import(modname, imp_modname)
+
+                # record explicit imports
                 self.cur_modname = modname
                 self.visit(mod)
                 self.cur_modname = None
@@ -244,9 +250,6 @@ class ImportAnalyzer:
         mod = parser.parse()
         scopes = self.analyze_one(modname, mod)
         mod.symtable = scopes.by_module()
-
-        for imp_modname in scopes.implicit_imports:
-            self.record_import(modname, imp_modname)
 
         if self.use_spyc:
             self._save_spyc(mod, spyc)

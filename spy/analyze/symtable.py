@@ -154,12 +154,14 @@ class SymTable:
     color: Color
     kind: ScopeKind
     _symbols: dict[str, Symbol]
+    implicit_imports: set[str]
 
     def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
         self.name = name
         self.color = color
         self.kind = kind
         self._symbols = {}
+        self.implicit_imports = set()
 
     @classmethod
     def from_builtins(cls, vm: "SPyVM") -> "SymTable":
