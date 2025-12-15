@@ -631,4 +631,5 @@ class TestScopeAnalyzer:
         def foo() -> None:
             [1, 2, 3]
         """)
-        assert scopes.implicit_imports == {"_list"}
+        scope = scopes.by_module()
+        assert scope.implicit_imports == {"_list"}
