@@ -1069,6 +1069,16 @@ class AbstractFrame:
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
     def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
+        if len(lst.items) == 0:
+            err = SPyError.simple(
+                "W_WIP",
+                "Empty list literals are not supported",
+                "This is not supported",
+                lst.loc,
+            )
+            err.add("note", "help: use `list[T]()` instead", lst.loc)
+            raise err
+
         # 1. evaluate the individual items and infer the itemtype
         items_wam = []
         w_itemtype = None
@@ -1093,7 +1103,7 @@ class AbstractFrame:
             if w_itemtype is None:
                 w_itemtype = wam_item.w_static_T
             w_itemtype = self.vm.union_type(w_itemtype, wam_item.w_static_T)
-        assert w_itemtype is not None, "XXX empty lists"
+        assert w_itemtype is not None
 
         # 2. instantiate a new list
         w_ListType = self.vm.lookup_global(FQN("_list::list"))
