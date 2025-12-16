@@ -104,9 +104,17 @@ def typecheck_opspec(
         # add a converter if needed (this might raise W_TypeError)
         w_conv = get_w_conv(vm, param.w_T, wam_out_arg, def_loc)
         arg: ArgSpec
+
         if wam_out_arg.is_blue():
             arg = ArgSpec.Const(wam_out_arg.w_blueval, wam_out_arg.loc)
         else:
+            # THIS IS PROBABLY A BUG, or at least a design issue. W_MetaArg compares by
+            # value and thus they are not supposed to have an identiy. However, by
+            # calling .index we are relying on the inter-level identity of W_MetaArg
+            # objects, which is conceptually wrong. We should probably make W_MetaArg
+            # reference types, but this likely introduces other problems.
+            # See also test_list::test_list_MetaArg_identity.
+            #
             # red W_MetaArg MUST come from in_args_wam
             i = in_args_wam.index(wam_out_arg)
             arg = ArgSpec.Arg(i)

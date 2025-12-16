@@ -547,10 +547,6 @@ class TestScopeAnalyzer:
 
     def test_for_loop(self):
         scopes = self.analyze("""
-        # XXX kill this when 'range' becomes a builtin
-        def range(n: i32) -> dynamic:
-            pass
-
         def foo() -> None:
             for i in range(10):
                 x: i32 = i * 2
@@ -562,16 +558,12 @@ class TestScopeAnalyzer:
             "i": MatchSymbol("i", "var", "auto"),
             "x": MatchSymbol("x", "var", "auto"),
             "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "funcdef", level=1),
+            "range": MatchSymbol("range", "const", "explicit", level=2),
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
     def test_for_loop_multiple(self):
         scopes = self.analyze("""
-        # XXX kill this when 'range' becomes a builtin
-        def range(n: i32) -> dynamic:
-            pass
-
         def foo() -> None:
             for i in range(10):
                 x: i32 = i * 2
@@ -588,7 +580,7 @@ class TestScopeAnalyzer:
             "x": MatchSymbol("x", "var", "auto"),
             "y": MatchSymbol("y", "var", "auto"),
             "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "funcdef", level=1),
+            "range": MatchSymbol("range", "const", "explicit", level=2),
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
@@ -632,3 +624,12 @@ class TestScopeAnalyzer:
             "args": MatchSymbol("args", "const", "blue-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
+
+    def test_list_literal(self):
+        # using a string literal implicitly imports '_list'
+        scopes = self.analyze("""
+        def foo() -> None:
+            [1, 2, 3]
+        """)
+        scope = scopes.by_module()
+        assert scope.implicit_imports == {"_list"}

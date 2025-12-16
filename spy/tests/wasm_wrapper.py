@@ -155,20 +155,46 @@ class WasmFuncWrapper:
             return WasmPtr(addr, length)
         elif isinstance(w_T, W_StructType):
             # when you return struct-by-val from C, wasmtime automatically
-            # converts them into a list. So, we have our values already.
-            #
-            # NOTE: this works only for flat structs with simple
-            # types. E.g. in the case of Rectangle, wasmtime returns a flat
-            # list of all the 4 coordinates, which seems wrong.
-            #
-            # However, this is good enough for most tests, so no reasons to
-            # write complicated logic.
+            # converts them into a list, flattening nested structs
             assert isinstance(res, list)
-            field_names = [w_f.name for w_f in w_T.iterfields_w()]
-            content = dict(zip(field_names, res, strict=True))
-            return UnwrappedStruct(w_T.fqn, content)
+            pyres = unflatten_struct(w_T, res)
+            if w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
+                # we support only reading list[i32] for tests
+                return self._to_pylist_i32(pyres)
+            elif str(w_T.fqn).startswith("_list::list["):
+                raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
+            else:
+                return pyres
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
+
+    def _to_pylist_i32(self, pyres: UnwrappedStruct) -> list[Any]:
+        assert "__ll__" in pyres._content
+        ll_ptr = pyres._content["__ll__"]
+        assert isinstance(ll_ptr, WasmPtr)
+
+        # Read ListData struct from memory
+        # struct ListData {
+        #     i32 length;
+        #     i32 capacity;
+        #     ptr[i32] items;  // represented as {addr, length} in debug mode
+        # }
+        addr = ll_ptr.addr
+        length = self.ll.mem.read_i32(addr)
+        capacity = self.ll.mem.read_i32(addr + 4)
+
+        # Read the items pointer (starts at addr + 8)
+        items_addr = self.ll.mem.read_i32(addr + 8)
+        items_length = self.ll.mem.read_i32(addr + 12)
+
+        # Read the actual i32 items
+        result = []
+        for i in range(length):
+            item_addr = items_addr + i * 4
+            item = self.ll.mem.read_i32(item_addr)
+            result.append(item)
+
+        return result
 
     def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
         assert unwrap, "unwrap=False is not supported by the C backend"
@@ -176,3 +202,50 @@ class WasmFuncWrapper:
         res = self.ll.call(self.c_name, *wasm_args)
         w_T = self.w_functype.w_restype
         return self.to_py_result(w_T, res)
+
+
+def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStruct:
+    """
+    Unflatten a struct from a flat list of values.
+
+    When returning struct-by-val from C, wasmtime flattens nested structs
+    into a single list. This function reconstructs the nested structure.
+    """
+
+    def unflatten(w_T: W_StructType, start_idx: int) -> tuple[UnwrappedStruct, int]:
+        content: dict[str, Any] = {}
+        idx = start_idx
+
+        for w_field in w_T.iterfields_w():
+            if isinstance(w_field.w_T, W_StructType):
+                nested_result, idx = unflatten(w_field.w_T, idx)
+                content[w_field.name] = nested_result
+            elif isinstance(w_field.w_T, W_PtrType):
+                # pointers are represented as {addr, length} in C/WASM
+                if idx + 1 >= len(flat_values):
+                    raise ValueError(
+                        f"Not enough values to unflatten {w_T.fqn}: "
+                        f"needed at least {idx + 2} for ptr field, got {len(flat_values)}"
+                    )
+                addr = flat_values[idx]
+                length = flat_values[idx + 1]
+                content[w_field.name] = WasmPtr(addr, length)
+                idx += 2
+            else:
+                if idx >= len(flat_values):
+                    raise ValueError(
+                        f"Not enough values to unflatten {w_T.fqn}: "
+                        f"needed at least {idx + 1}, got {len(flat_values)}"
+                    )
+                content[w_field.name] = flat_values[idx]
+                idx += 1
+
+        return UnwrappedStruct(w_T.fqn, content), idx
+
+    result, consumed = unflatten(w_T, 0)
+    if consumed != len(flat_values):
+        raise ValueError(
+            f"Wrong number of values for {w_T.fqn}: "
+            f"expected {consumed}, got {len(flat_values)}"
+        )
+    return result

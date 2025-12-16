@@ -45,6 +45,10 @@ if TYPE_CHECKING:
     from spy.vm.str import W_Str
     from spy.vm.vm import SPyVM
 
+# if enabled, we assign an unique ID inside W_MetaArg constructuor. It makes it easier
+# to distinguish them during debugging sessions.
+DEBUG_METAARG = False
+
 
 @OPERATOR.builtin_type("MetaArg", lazy_definition=True)
 class W_MetaArg(W_Object):
@@ -92,6 +96,9 @@ class W_MetaArg(W_Object):
     _w_val: Optional[W_Object]
     sym: Optional[Symbol]
 
+    # see DEBUG_METAARG
+    debug_counter: ClassVar[int] = 0
+
     def __init__(
         self,
         vm: "SPyVM",
@@ -114,6 +121,9 @@ class W_MetaArg(W_Object):
         self._w_val = w_val
         self.loc = loc
         self.sym = sym
+        if DEBUG_METAARG:
+            self.debug_id = W_MetaArg.debug_counter
+            W_MetaArg.debug_counter += 1
 
     def spy_key(self, vm: "SPyVM") -> Any:
         """
@@ -166,9 +176,11 @@ class W_MetaArg(W_Object):
         return W_MetaArg(vm, color, w_static_T, w_val2, loc)
 
     @classmethod
-    def from_w_obj(cls, vm: "SPyVM", w_obj: W_Object) -> "W_MetaArg":
+    def from_w_obj(
+        cls, vm: "SPyVM", w_obj: W_Object, *, color: Color = "blue"
+    ) -> "W_MetaArg":
         w_T = vm.dynamic_type(w_obj)
-        return W_MetaArg(vm, "blue", w_T, w_obj, Loc.here(-2))
+        return W_MetaArg(vm, color, w_T, w_obj, Loc.here(-2))
 
     def __repr__(self) -> str:
         if self.is_blue():
@@ -176,6 +188,8 @@ class W_MetaArg(W_Object):
         else:
             extra = ""
         t = self.w_static_T.fqn.human_name
+        if DEBUG_METAARG:
+            extra += f" id={self.debug_id}"
         return f"<W_MetaArg {self.color} {t}{extra}>"
 
     def is_blue(self) -> bool:

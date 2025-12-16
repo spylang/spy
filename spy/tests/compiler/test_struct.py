@@ -5,6 +5,7 @@ from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.object import W_Type
 from spy.vm.struct import UnwrappedStruct
 
 
@@ -135,12 +136,12 @@ class TestStructOnStack(CompilerTest):
         def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> Rect:
             return Rect(Point(x0, y0), Point(x1, y1))
 
-        def foo() -> i32:
+        def foo() -> Rect:
             r = make_rect(1, 2, 3, 4)
-            return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
+            return r
         """
         mod = self.compile(src)
-        assert mod.foo() == 4321
+        assert mod.foo() == ((1, 2), (3, 4))
 
     def test_method(self):
         src = """
@@ -246,15 +247,17 @@ class TestStructOnStack(CompilerTest):
     @only_interp
     def test_dir(self):
         src = """
+        from __spy__ import interp_list
+
         @struct
         class Point:
             x: i32
             y: i32
 
-        def dir_type() -> list[str]:
+        def dir_type() -> interp_list[str]:
             return dir(Point)
 
-        def dir_inst() -> list[str]:
+        def dir_inst() -> interp_list[str]:
             p = Point(1, 2)
             return dir(p)
         """
@@ -381,3 +384,28 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(3, 4) == 7
+
+    def test_fwdecl_is_ignored_by_C_backend(self):
+        src = """
+        @blue
+        def make_point_maybe(make_it: bool):
+            if not make_it:
+                return
+
+            @struct
+            class Point:
+                x: i32
+                y: i32
+
+        def foo() -> i32:
+            make_point_maybe(False)
+            return 42
+        """
+        # make_point_maybe::Point is declared unconditionally just by entering
+        # make_point_maybe(), even if it's never used. The point of the test is to
+        # ensure that the C backend knows how to deal with it and doesn't crash.
+        mod = self.compile(src)
+        assert mod.foo() == 42
+        w_Point = self.vm.lookup_global(FQN("test::make_point_maybe::Point"))
+        assert isinstance(w_Point, W_Type)
+        assert not w_Point.is_defined()  # it's a fwdecl

@@ -7,14 +7,14 @@ from spy.tests.support import CompilerTest
 class TestList(CompilerTest):
     def test_basic_operations(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_empty() -> int:
-            lst = List[int]()
+            lst = list[int]()
             return len(lst)
 
         def test_append() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -26,10 +26,10 @@ class TestList(CompilerTest):
 
     def test_list_of_string(self):
         src = """
-        from _list import List
+        from _list import list
 
         def foo() -> str:
-            lst = List[str]()
+            lst = list[str]()
             lst.append("hello ")
             lst.append("world")
             return lst[0] + lst[1]
@@ -39,17 +39,17 @@ class TestList(CompilerTest):
 
     def test_getitem(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_indexing() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(100)
             lst.append(200)
             lst.append(300)
             return lst[1]
 
         def sum_list() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(1)
             lst.append(2)
             lst.append(3)
@@ -64,7 +64,7 @@ class TestList(CompilerTest):
             return total
 
         def test_grow() -> int:
-            lst = List[int]()
+            lst = list[int]()
             i = 0
             while i < 10:
                 lst.append(i)
@@ -72,14 +72,14 @@ class TestList(CompilerTest):
             return lst[9]
 
         def test_f64() -> f64:
-            lst = List[f64]()
+            lst = list[f64]()
             lst.append(1.5)
             lst.append(2.5)
             lst.append(3.5)
             return lst[1]
 
         def out_of_bounds() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(42)
             return lst[5]
         """
@@ -93,10 +93,10 @@ class TestList(CompilerTest):
 
     def test_fastiter(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -113,10 +113,10 @@ class TestList(CompilerTest):
 
     def test_for_loop(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(1)
             lst.append(2)
             lst.append(3)
@@ -132,10 +132,10 @@ class TestList(CompilerTest):
 
     def test_setitem(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_set() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -143,7 +143,7 @@ class TestList(CompilerTest):
             return lst[1]
 
         def test_error() -> None:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst[5] = 99
         """
@@ -154,10 +154,10 @@ class TestList(CompilerTest):
 
     def test_pop(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_pop() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -166,7 +166,7 @@ class TestList(CompilerTest):
             return x + y
 
         def test_empty() -> int:
-            lst = List[int]()
+            lst = list[int]()
             return lst.pop()
         """
         mod = self.compile(src)
@@ -176,10 +176,10 @@ class TestList(CompilerTest):
 
     def test_insert(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_middle() -> str:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(30)
             lst.insert(1, 20)
@@ -190,14 +190,14 @@ class TestList(CompilerTest):
             return s
 
         def test_start() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(20)
             lst.append(30)
             lst.insert(0, 10)
             return lst[0]
 
         def test_end() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.insert(2, 30)
@@ -210,10 +210,10 @@ class TestList(CompilerTest):
 
     def test_clear(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_clear() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -221,7 +221,7 @@ class TestList(CompilerTest):
             return len(lst)
 
         def test_reuse() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.clear()
@@ -234,24 +234,24 @@ class TestList(CompilerTest):
 
     def test_negative_indexing(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_last() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst[-1]
 
         def test_middle() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst[-2]
 
         def test_set() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -259,7 +259,7 @@ class TestList(CompilerTest):
             return lst[2]
 
         def test_error() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             return lst[-5]
         """
@@ -272,14 +272,14 @@ class TestList(CompilerTest):
 
     def test_extend(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_extend() -> str:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(30)
             lst2.append(40)
 
@@ -291,10 +291,10 @@ class TestList(CompilerTest):
             return s
 
         def test_empty() -> int:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
 
             lst1.extend(lst2)
             return len(lst1)
@@ -305,10 +305,10 @@ class TestList(CompilerTest):
 
     def test_copy(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_independent() -> int:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
 
@@ -318,7 +318,7 @@ class TestList(CompilerTest):
             return lst1[0]
 
         def test_values() -> int:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
             lst1.append(30)
@@ -332,14 +332,14 @@ class TestList(CompilerTest):
 
     def test_add_operator(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_concat() -> str:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(30)
             lst2.append(40)
 
@@ -351,10 +351,10 @@ class TestList(CompilerTest):
             return s
 
         def test_unchanged() -> int:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(20)
 
             lst3 = lst1 + lst2
@@ -366,10 +366,10 @@ class TestList(CompilerTest):
 
     def test_mul_operator(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_repeat() -> str:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
 
@@ -381,7 +381,7 @@ class TestList(CompilerTest):
             return s
 
         def test_zero() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
 
@@ -389,7 +389,7 @@ class TestList(CompilerTest):
             return len(lst2)
 
         def test_one() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
 
@@ -403,37 +403,37 @@ class TestList(CompilerTest):
 
     def test_index(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_middle() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.index(20)
 
         def test_first() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.index(10)
 
         def test_last() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.index(30)
 
         def test_not_found() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             return lst.index(99)
 
         def test_duplicate() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(10)
@@ -449,10 +449,10 @@ class TestList(CompilerTest):
 
     def test_count(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_multiple() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(10)
@@ -461,20 +461,20 @@ class TestList(CompilerTest):
             return lst.count(10)
 
         def test_zero() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             return lst.count(99)
 
         def test_one() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
             return lst.count(20)
 
         def test_empty() -> int:
-            lst = List[int]()
+            lst = list[int]()
             return lst.count(10)
         """
         mod = self.compile(src)
@@ -485,10 +485,10 @@ class TestList(CompilerTest):
 
     def test_remove(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_middle() -> str:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -500,7 +500,7 @@ class TestList(CompilerTest):
             return s
 
         def test_first() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -508,7 +508,7 @@ class TestList(CompilerTest):
             return lst[0]
 
         def test_last() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -516,7 +516,7 @@ class TestList(CompilerTest):
             return len(lst)
 
         def test_duplicate() -> str:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(10)
@@ -529,13 +529,13 @@ class TestList(CompilerTest):
             return s
 
         def test_not_found() -> None:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.remove(99)
 
         def test_length() -> int:
-            lst = List[int]()
+            lst = list[int]()
             lst.append(10)
             lst.append(20)
             lst.append(30)
@@ -553,15 +553,15 @@ class TestList(CompilerTest):
 
     def test_eq(self):
         src = """
-        from _list import List
+        from _list import list
 
         def test_equal() -> bool:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
             lst1.append(30)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(10)
             lst2.append(20)
             lst2.append(30)
@@ -569,16 +569,16 @@ class TestList(CompilerTest):
             return lst1 == lst2
 
         def test_empty() -> bool:
-            lst1 = List[int]()
-            lst2 = List[int]()
+            lst1 = list[int]()
+            lst2 = list[int]()
             return lst1 == lst2
 
         def test_diff_length() -> bool:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(10)
             lst2.append(20)
             lst2.append(30)
@@ -586,12 +586,12 @@ class TestList(CompilerTest):
             return lst1 == lst2
 
         def test_diff_elems() -> bool:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
             lst1.append(30)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(10)
             lst2.append(99)
             lst2.append(30)
@@ -599,42 +599,42 @@ class TestList(CompilerTest):
             return lst1 == lst2
 
         def test_single_same() -> bool:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(42)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(42)
 
             return lst1 == lst2
 
         def test_single_diff() -> bool:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(42)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(99)
 
             return lst1 == lst2
 
         def test_after_mutations() -> bool:
-            lst1 = List[int]()
+            lst1 = list[int]()
             lst1.append(10)
             lst1.append(20)
             lst1.append(30)
             lst1.remove(20)
 
-            lst2 = List[int]()
+            lst2 = list[int]()
             lst2.append(10)
             lst2.append(30)
 
             return lst1 == lst2
 
         def test_f64() -> bool:
-            lst1 = List[f64]()
+            lst1 = list[f64]()
             lst1.append(1.5)
             lst1.append(2.5)
 
-            lst2 = List[f64]()
+            lst2 = list[f64]()
             lst2.append(1.5)
             lst2.append(2.5)
 

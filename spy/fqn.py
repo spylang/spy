@@ -273,6 +273,9 @@ class FQN:
         qual2 = get_qualifiers(qualifiers)
         return FQN(self.parts + (NSPart(name, qual2),))
 
+    def parent(self) -> "FQN":
+        return FQN(self.parts[:-1])
+
     @property
     def c_name(self) -> str:
         """
