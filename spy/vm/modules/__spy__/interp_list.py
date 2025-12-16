@@ -61,7 +61,6 @@ class W_InterpListType(W_Type):
         return w_T
 
     def register_push_function(self, vm: "SPyVM") -> None:
-        # XXX explain
         w_listtype = self
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_InterpList, w_listtype]
