@@ -30,7 +30,6 @@ from spy.vm.function import (
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules.__spy__ import SPY
-from spy.vm.modules.__spy__.interp_list import W_InterpListType
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
@@ -940,8 +939,3 @@ class SPyVM:
         "repr(obj) (on meta arguments)"
         wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
         return self.call_wam(wam_repr, [wam_o], loc=loc)
-
-    def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_InterpListType:
-        w_res = self.getitem_w(SPY.w_interp_list, w_T, loc=loc)
-        assert isinstance(w_res, W_InterpListType)
-        return w_res

@@ -26,13 +26,13 @@ def w_make_interp_list_type(vm: "SPyVM", w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
 
-    Given a type T, it is always safe to call make_list_type(T) multiple
+    Given a type T, it is always safe to call make_interp_list_type(T) multiple
     types, and it is guaranteed to get always the same type.
 
     It is worth noting that to achieve that, we have two layers of caching:
 
       - if we have a prebuilt list type, just use that
-      - for other types, we rely on the fact that `make_list_type` is blue.
+      - for other types, we rely on the fact that `make_interp_list_type` is blue.
     """
     if w_T in PREBUILT_INTERP_LIST_TYPES:
         return PREBUILT_INTERP_LIST_TYPES[w_T]
@@ -95,7 +95,7 @@ class W_BaseInterpList(W_Object):
     It's the base type for all interp lists.  In other words, `interp_list[i32]`
     inherits from `interp_list`.
 
-    The specialized types are created by calling the builtin make_list_type:
+    The specialized types are created by calling the builtin make_interp_list_type:
     see its docstring for details.
     """
 

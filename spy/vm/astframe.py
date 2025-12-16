@@ -1096,9 +1096,6 @@ class AbstractFrame:
         assert w_itemtype is not None, "XXX empty lists"
 
         # 2. instantiate a new list
-        #
-        # XXX should this go to vm.make_list_type?
-        # w_listtype = self.vm.make_list_type(w_itemtype, loc=lst.loc)
         w_ListType = self.vm.lookup_global(FQN("_list::list"))
         w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
         wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
