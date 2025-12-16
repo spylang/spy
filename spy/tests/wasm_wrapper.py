@@ -213,7 +213,7 @@ def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStru
     """
 
     def unflatten(w_T: W_StructType, start_idx: int) -> tuple[UnwrappedStruct, int]:
-        content = {}
+        content: dict[str, Any] = {}
         idx = start_idx
 
         for w_field in w_T.iterfields_w():

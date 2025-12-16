@@ -143,6 +143,7 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
     @staticmethod
     def w_NEW(vm: "SPyVM", wam_T: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
         w_listtype = wam_T.w_blueval
+        assert isinstance(w_listtype, W_InterpListType)
         w_T = w_listtype.w_itemtype
         LIST = Annotated[W_InterpList, w_listtype]
         T = Annotated[W_Object, w_T]

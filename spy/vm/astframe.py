@@ -1104,6 +1104,7 @@ class AbstractFrame:
         wam_list = self.eval_opimpl(lst, w_opimpl, [wam_T])
 
         # 3. push items into the list
+        assert isinstance(w_T, W_Type)
         fqn_push = w_T.fqn.join("_push")
         w_push = self.vm.lookup_global(fqn_push)
         wam_push = W_MetaArg.from_w_obj(self.vm, w_push)

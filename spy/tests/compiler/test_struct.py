@@ -5,6 +5,7 @@ from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.object import W_Type
 from spy.vm.struct import UnwrappedStruct
 
 
@@ -406,4 +407,5 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
         w_Point = self.vm.lookup_global(FQN("test::make_point_maybe::Point"))
+        assert isinstance(w_Point, W_Type)
         assert not w_Point.is_defined()  # it's a fwdecl

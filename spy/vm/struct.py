@@ -187,7 +187,7 @@ class W_Struct(W_Object):
         values_key = [w_val.spy_key(vm) for w_val in self.values_w.values()]
         return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 
-    def spy_unwrap(self, vm: "SPyVM") -> "UnwrappedStruct":
+    def spy_unwrap(self, vm: "SPyVM") -> Any:
         fqn = self.w_structtype.fqn
 
         # hack hack hack, as we don't have a better way to check whether w_T is a 'list'
