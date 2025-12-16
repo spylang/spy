@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 import spy
-from spy.cli import app
+from spy.cli.cli import app
 
 PYODIDE_EXE = spy.ROOT.dirpath().join("pyodide", "venv", "bin", "python")
 if not PYODIDE_EXE.exists():
@@ -122,7 +122,6 @@ class TestMain:
             raise Exception("run_external failed")
         return exit_code, decolorize(stdout)
 
-    @pytest.mark.xfail(reason="Short options have not been implemented yet")
     def test_py_file_error(self):
         # Create a .py file instead of .spy
         py_file = self.tmpdir.join("test.py")
@@ -141,13 +140,12 @@ class TestMain:
         _, stdout = self.run("parse", self.main_spy)
         assert stdout.startswith("Module(")
 
-    @pytest.mark.xfail(reason="Short options have not been implemented yet")
     def test_run(self):
         _, stdout = self.run(self.main_spy)
         assert stdout == "hello world\n"
 
     def test_redshift_and_run(self):
-        _, stdout = self.run("run", "--redshift", self.main_spy)
+        _, stdout = self.run("execute", "--redshift", self.main_spy)
         assert stdout == "hello world\n"
 
     def test_redshift_dump_ast(self):

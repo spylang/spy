@@ -22,7 +22,7 @@ console.log("[Python] SPy package installed successfully")
 from js import URL, document
 
 console.log("[Python] Importing spy.cli and libspy...")
-import spy.cli
+import spy.cli.cli
 from spy import libspy
 
 console.log("[Python] SPy imports complete")
@@ -32,7 +32,7 @@ libspy.LIBSPY_WASM = str(URL.new("./libspy.mjs", document.baseURI))
 
 def spy_main(argv):
     try:
-        spy.cli.app(argv)
+        spy.cli.cli.app(argv)
     except SystemExit:
         pass
 
