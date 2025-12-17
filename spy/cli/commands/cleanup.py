@@ -3,11 +3,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any, Optional, TypeGuard
 
-from typer import Argument
+from typer import Argument, BadParameter
 
 from spy.cli._runners import Init_Args, init_vm
 from spy.cli.commands.base_args import Base_Args
 from spy.util import cleanup_spyc_files
+
+
+def filename_optional_callback(value: Path) -> Path:
+    if value is not None and not Path(value).is_dir():
+        raise BadParameter(
+            f"--cleanup requires a directory argument, but {value} is not a directory"
+        )
+    return value
 
 
 @dataclass
@@ -28,12 +36,13 @@ async def cleanup(args: Cleanup_Args) -> None:
     if guard_Init_Args(args):
         vm = await init_vm(args)
         paths = vm.path
+        print(f"vm paths = {paths}")
     else:
         paths = [os.getcwd()]
 
-    removed_count = cleanup_spyc_files(paths)
+    removed_count = cleanup_spyc_files(*paths)
 
-    if removed_count == 0:
+    if not removed_count:
         print("No .spyc files found")
     else:
         print(f"Removed {removed_count} .spyc file(s)")

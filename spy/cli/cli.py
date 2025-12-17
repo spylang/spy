@@ -20,14 +20,15 @@ app = SpyTyper(pretty_exceptions_enable=False, cls=AppGroupConfig, no_args_is_he
 
 # This is the order commands will appear in the --help
 
-app.spy_command(execute, name="x | execute", default=True)
-app.spy_command(build, name="b | build")
-app.spy_command(pyparse, name="y | pyparse")
-app.spy_command(parse, name="p | parse")
-app.spy_command(imports, name="I | imports")
-app.spy_command(symtable, name="s | symtable")
-app.spy_command(redshift, name="r | redshift")
-app.spy_command(cleanup, name="c | cleanup")
+app.spy_command(execute, name="execute", default=True)
+app.spy_command(build, name="build")
+app.spy_command(redshift, name="redshift | rs")
+# app.spy_command(..., name="colorize")
+app.spy_command(parse, name="parse")
+app.spy_command(pyparse, name="pyparse")
+app.spy_command(imports, name="imports")
+app.spy_command(symtable, name="symtable")
+app.spy_command(cleanup, name="cleanup")
 
 
 def pyproject_entry_point() -> Any:

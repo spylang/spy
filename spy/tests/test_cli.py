@@ -267,11 +267,15 @@ class TestMain:
         spyc1.write("")
 
         # NOTE: this might remove stdlib .spyc files, we don't know the precise number
-        res, stdout = self.run("cleanup", self.main_spy)
+        res, stdout = self.run("cleanup", pycache)
         assert not spyc1.exists()
         assert "1 file(s) removed" in stdout
 
     def test_cleanup_no_files(self):
         # Run cleanup when no .spyc files exist
-        res, stdout = self.run("cleanup", self.main_spy)
-        assert "No .spyc files found" in stdout
+        res, stdout = self.run("cleanup", self.tmpdir)
+
+        # When run with no folder, cleanup tidies up the standardlib folder as well, which may have spyc files in it
+        assert "No .spyc files found" in stdout or (
+            "Removed" in stdout and ".spyc file(s)" in stdout
+        )

@@ -32,6 +32,20 @@ class Base_Args:
         ),
     ] = "eager"
 
+    no_spyc: Annotated[
+        bool,
+        Option("--no-spyc", help="Disable loading/saving of .spyc cache files"),
+    ] = False
+
+
+def filename_callback(value: Path) -> Path:
+    # filename is required and must be a file
+    if value is None:
+        raise BadParameter("FILENAME is required")
+    elif not value.exists():
+        raise BadParameter(f"File {value} does not exist")
+    return value
+
 
 @dataclass
 class Filename_Required_Args:
