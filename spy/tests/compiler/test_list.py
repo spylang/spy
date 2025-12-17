@@ -120,3 +120,21 @@ class TestList(CompilerTest):
         assert len(w_lst.items_w) == 2
         wam_a, wam_b = w_lst.items_w
         assert wam_a is not wam_b
+
+    def test_empty_list_to_interp_list(self):
+        src = """
+        def foo() -> list[object]:
+            return []
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == []
+
+    def test_empty_list_to_stdlib_list(self):
+        src = """
+        def foo() -> list[i32]:
+            return []
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == []

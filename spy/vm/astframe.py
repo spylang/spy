@@ -12,6 +12,7 @@ from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.modules.__spy__ import SPY, W_EmptyList
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES
@@ -1067,15 +1068,11 @@ class AbstractFrame:
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
     def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
+        # 0. empty lists are special
         if len(lst.items) == 0:
-            err = SPyError.simple(
-                "W_WIP",
-                "Empty list literals are not supported",
-                "This is not supported",
-                lst.loc,
-            )
-            err.add("note", "help: use `list[T]()` instead", lst.loc)
-            raise err
+            w_T = SPY.w_empty_list
+            w_val = W_EmptyList()
+            return W_MetaArg(self.vm, "blue", w_T, w_val, lst.loc)
 
         # 1. evaluate the individual items and infer the itemtype
         items_wam = []

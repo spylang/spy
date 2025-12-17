@@ -6,7 +6,7 @@ A generic dynamic array implementation similar to Python's list.
 
 from unsafe import gc_alloc, ptr
 from operator import OpSpec, MetaArg
-from __spy__ import interp_list
+from __spy__ import interp_list, empty_list
 
 
 @blue.generic
@@ -44,6 +44,12 @@ def list(T):
             data.capacity = 4
             data.items = gc_alloc(T)(4)
             return _ListImpl.__make__(data)
+
+        @blue.metafunc
+        def __convert_from__(m_expT, m_gotT, m_obj):
+            if m_gotT.blueval == empty_list:
+                return OpSpec(_ListImpl.__new__, [])
+            return OpSpec.NULL
 
         def append(self, item: T) -> None:
             ll = self.__ll__
