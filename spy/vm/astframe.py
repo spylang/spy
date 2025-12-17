@@ -173,12 +173,12 @@ class AbstractFrame:
 
     def typecheck_maybe(
         self, wam: W_MetaArg, varname: Optional[str]
-    ) -> Optional[W_Func]:
+    ) -> Optional[W_OpImpl]:
         if varname is None:
             return None  # no typecheck needed
         w_exp_T = self.locals[varname].w_T
         try:
-            w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wam)
+            w_typeconv_opimpl = CONVERT_maybe(self.vm, w_exp_T, wam)
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
@@ -198,14 +198,14 @@ class AbstractFrame:
                 err.add("note", msg, loc=loc)
 
             raise
-        return w_typeconv
+        return w_typeconv_opimpl
 
     def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
         assert not self.redshifting, "DopplerFrame should override eval_expr"
         wam = magic_dispatch(self, "eval_expr", expr)
-        w_typeconv = self.typecheck_maybe(wam, varname)
+        w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
 
-        if w_typeconv is None:
+        if w_typeconv_opimpl is None:
             # no conversion needed, hooray
             return wam
         else:
@@ -215,16 +215,28 @@ class AbstractFrame:
                 # to insert the appropriate conversion
                 assert not self.w_func.redshifted
 
-            # apply the conversion
-            w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
-            return W_MetaArg(
-                self.vm,
-                wam.color,
-                w_typeconv.w_functype.w_restype,
-                w_val,
-                wam.loc,
-                sym=wam.sym,
+            # apply the conversion immediately
+            # XXX what instead of None?
+            wam_exp = W_MetaArg.from_w_obj(self.vm, B.w_None)  # ?!?
+            # wam_val = self.eval_opimpl(expr, w_typeconv_opimpl, [wam_exp, wam])
+            wam_val = self.vm.eval_opimpl(
+                w_typeconv_opimpl,
+                [wam_exp, wam],
+                loc=expr.loc,
+                redshifting=self.redshifting,
             )
+            # XXX we should record w_typeconv_opimpl somewhere
+            return wam_val
+
+            ## w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
+            ## return W_MetaArg(
+            ##     self.vm,
+            ##     wam.color,
+            ##     w_typeconv.w_functype.w_restype,
+            ##     w_val,
+            ##     wam.loc,
+            ##     sym=wam.sym,
+            ## )
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         wam = self.eval_expr(expr)

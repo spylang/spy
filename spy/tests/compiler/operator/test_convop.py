@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from spy.tests.support import CompilerTest, no_C
-from spy.vm.b import B
+from spy.vm.b import TYPES, B
 from spy.vm.builtin import builtin_method
 from spy.vm.member import Member
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -35,7 +35,7 @@ class W_MyClass(W_Object):
             def w_to_i32(vm: "SPyVM", w_self: W_MyClass) -> W_I32:
                 return w_self.w_x
 
-            return W_OpSpec(w_to_i32)
+            return W_OpSpec(w_to_i32, [wam_self])
 
         elif w_target_T is B.w_str:
 
@@ -44,7 +44,7 @@ class W_MyClass(W_Object):
                 x = vm.unwrap_i32(w_self.w_x)
                 return vm.wrap(str(x))
 
-            return W_OpSpec(w_to_str)
+            return W_OpSpec(w_to_str, [wam_self])
 
         else:
             return W_OpSpec.NULL
@@ -64,7 +64,16 @@ class W_MyClass(W_Object):
                 w_x = vm.wrap(int(s))
                 return W_MyClass(w_x)
 
-            return W_OpSpec(w_from_str)
+            return W_OpSpec(w_from_str, [wam_val])
+
+        elif w_src_T is TYPES.w_NoneType:
+
+            @vm.register_builtin_func("ext")
+            def w_from_None(vm: "SPyVM") -> W_MyClass:
+                w_x = vm.wrap(-1)
+                return W_MyClass(w_x)
+
+            return W_OpSpec(w_from_None, [])
 
         return W_OpSpec.NULL
 
@@ -107,3 +116,16 @@ class TestConvop(CompilerTest):
         w_result = mod.convert_from_str(unwrap=False)
         assert isinstance(w_result, W_MyClass)
         assert self.vm.unwrap_i32(w_result.w_x) == 42
+
+    def test_convert_complex_OpSpec(self):
+        self.setup_ext()
+        src = """
+        from ext import MyClass
+
+        def convert_from_None() -> MyClass:
+            return None
+        """
+        mod = self.compile(src)
+        w_result = mod.convert_from_None(unwrap=False)
+        assert isinstance(w_result, W_MyClass)
+        assert self.vm.unwrap_i32(w_result.w_x) == -1

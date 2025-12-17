@@ -18,24 +18,35 @@ MM = MultiMethodTable()
 
 
 @OP.builtin_func(color="blue")
-def w_CONVERT(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_Func:
+def w_CONVERT(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
     """
     Return a w_func which can convert the given MetaArg to the desired type.
 
     If the types are not compatible, raise SPyError. In this case,
     the caller can catch the error, add extra info and re-raise.
     """
-    w_opspec = get_opspec(vm, w_exp, wam_x)
-    if not w_opspec.is_null():
-        # XXX: maybe we should return a W_OpImpl?
-        return w_opspec._w_func  # type: ignore
+    from spy.vm.typechecker import typecheck_opspec
 
-    # mismatched types
-    err = SPyError("W_TypeError", "mismatched types")
-    got = wam_x.w_static_T.fqn.human_name
-    exp = w_exp.fqn.human_name
-    err.add("error", f"expected `{exp}`, got `{got}`", loc=wam_x.loc)
-    raise err
+    wam_exp = W_MetaArg.from_w_obj(vm, w_exp)  # XXX we should pass it as wam_exp
+    w_opspec = get_opspec(vm, w_exp, wam_x)
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_exp, wam_x],
+        dispatch="multi",
+        errmsg="mismatched types",
+    )
+
+    ## if not w_opspec.is_null():
+    ##     # XXX: maybe we should return a W_OpImpl?
+    ##     return w_opspec._w_func  # type: ignore
+
+    ## # mismatched types
+    ## err = SPyError("W_TypeError", "mismatched types")
+    ## got = wam_x.w_static_T.fqn.human_name
+    ## exp = w_exp.fqn.human_name
+    ## err.add("error", f"expected `{exp}`, got `{got}`", loc=wam_x.loc)
+    ## raise err
 
 
 def get_opspec(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
