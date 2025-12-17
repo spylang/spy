@@ -345,12 +345,11 @@ class DopplerFrame(ASTFrame):
         wam = magic_dispatch(self, "eval_expr", expr)
         new_expr = self.shift_expr(expr, wam)
 
-        w_typeconv = self.typecheck_maybe(wam, varname)
-        if w_typeconv:
-            new_expr = ast.Call(
-                loc=new_expr.loc,
-                func=ast.FQNConst(loc=new_expr.loc, fqn=w_typeconv.fqn),
-                args=[new_expr],
+        w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
+        if w_typeconv_opimpl:
+            expr_exp_type = None  # XXX
+            new_expr = self.shift_opimpl(
+                expr, w_typeconv_opimpl, [expr_exp_type, new_expr]
             )
 
         self.shifted_expr[expr] = new_expr
