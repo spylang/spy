@@ -201,25 +201,21 @@ class AbstractFrame:
         return w_typeconv
 
     def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
+        assert not self.redshifting, "DopplerFrame should override eval_expr"
         wam = magic_dispatch(self, "eval_expr", expr)
         w_typeconv = self.typecheck_maybe(wam, varname)
-
-        if isinstance(self, ASTFrame) and self.w_func.redshifted:
-            # this is just a sanity check. After redshifting, all type
-            # conversions should be explicit. If w_typeconv is not None here,
-            # it means that Doppler failed to insert the appropriate
-            # conversion
-            assert w_typeconv is None
 
         if w_typeconv is None:
             # no conversion needed, hooray
             return wam
-        elif self.redshifting:
-            # we are performing redshifting: the conversion will be handlded
-            # by FuncDoppler
-            return wam
         else:
-            # apply the conversion immediately
+            if isinstance(self, ASTFrame):
+                # sanity check. After redshifting, all type conversions should be
+                # explicit. If w_typeconv is not None here, it means that Doppler failed
+                # to insert the appropriate conversion
+                assert not self.w_func.redshifted
+
+            # apply the conversion
             w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
             return W_MetaArg(
                 self.vm,
