@@ -12,14 +12,12 @@ from typer import Option
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
-from spy.cli.base_args import (
-    General_Args_With_Filename,
-)
-from spy.cli.support import init_vm
+from spy.cli._runners import init_vm
+from spy.cli.commands.base_args import Base_Args_With_Filename
 
 
 @dataclass
-class Build_Args(General_Args_With_Filename):
+class Build_Args(Base_Args_With_Filename):
     cwrite: Annotated[
         bool,
         Option("--cwrite", help="Generate the C code; do not compile"),

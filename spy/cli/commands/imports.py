@@ -1,11 +1,9 @@
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli.base_args import (
-    General_Args_With_Filename,
-)
-from spy.cli.support import init_vm
+from spy.cli._runners import init_vm
+from spy.cli.commands.base_args import Base_Args_With_Filename
 
 
-async def imports(args: General_Args_With_Filename) -> None:
+async def imports(args: Base_Args_With_Filename) -> None:
     """Dump the (recursive) list of imports"""
     modname = args.filename.stem
     vm = await init_vm(args)

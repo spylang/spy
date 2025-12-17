@@ -1,10 +1,8 @@
-from spy.cli.base_args import (
-    General_Args_With_Filename,
-)
+from spy.cli.commands.base_args import Base_Args_With_Filename
 from spy.magic_py_parse import magic_py_parse
 
 
-async def pyparse(args: General_Args_With_Filename) -> None:
+async def pyparse(args: Base_Args_With_Filename) -> None:
     """Dump the Python AST"""
     with open(args.filename) as f:
         src = f.read()

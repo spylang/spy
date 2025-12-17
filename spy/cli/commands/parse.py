@@ -1,18 +1,16 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import (
-    Annotated,
-)
+from typing import Annotated
 
 import click
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli.base_args import (
+from spy.cli._runners import init_vm
+from spy.cli.commands.base_args import (
     Base_Args,
     Filename_Required_Args,
 )
-from spy.cli.support import init_vm
 from spy.util import (
     colors_coordinates,
     format_colors_as_json,
@@ -51,9 +49,6 @@ class _parse_mixin:
 
 @dataclass
 class Parse_Args(Base_Args, _parse_mixin, Filename_Required_Args): ...
-
-
-# TODO rebase and add the --format argument back in
 
 
 async def parse(args: Parse_Args) -> None:

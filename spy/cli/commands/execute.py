@@ -1,18 +1,13 @@
 import sys
 import time
 from dataclasses import dataclass
-from typing import (
-    Annotated,
-)
+from typing import Annotated
 
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli.base_args import (
-    Base_Args,
-    Filename_Required_Args,
-)
-from spy.cli.support import init_vm
+from spy.cli._runners import init_vm
+from spy.cli.commands.base_args import Base_Args, Filename_Required_Args
 from spy.vm.b import B
 from spy.vm.function import W_ASTFunc, W_FuncType
 from spy.vm.module import W_Module
@@ -26,13 +21,18 @@ class _execute_mixin:
         Option("-s", "--redshift", help="Redshift the module before executing"),
     ] = False
 
+    timeit: Annotated[
+        bool,
+        Option("--timeit", help="Print execution time"),
+    ] = False
+
 
 @dataclass
 class Execute_Args(Base_Args, _execute_mixin, Filename_Required_Args): ...
 
 
 async def execute(args: Execute_Args) -> None:
-    """Execute the file in the vm"""  # TODO make this the default operation when no command is given
+    """Execute the file in the vm"""
     modname = args.filename.stem
     vm = await init_vm(args)
 
@@ -41,13 +41,8 @@ async def execute(args: Execute_Args) -> None:
     importer.import_all()
     w_mod = vm.modules_w[modname]
 
-    # If we're not redshifting, execute and return immediately
-    if not args.redshift:
-        execute_spy_main(args, vm, w_mod)
-        return
-
-    # Redshift the code here
-    vm.redshift(error_mode=args.error_mode)
+    if args.redshift:
+        vm.redshift(error_mode=args.error_mode)
 
     execute_spy_main(args, vm, w_mod)
 

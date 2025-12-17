@@ -1,18 +1,15 @@
 from dataclasses import dataclass
-from typing import (
-    Annotated,
-)
+from typing import Annotated
 
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli.base_args import (
+from spy.cli._dump import dump_spy_mod, dump_spy_mod_ast
+from spy.cli._runners import init_vm
+from spy.cli.commands.base_args import (
     Base_Args,
     Filename_Required_Args,
 )
-from spy.cli.support import dump_spy_mod, dump_spy_mod_ast, init_vm
-from spy.vm.function import W_ASTFunc
-from spy.vm.vm import SPyVM
 
 
 @dataclass

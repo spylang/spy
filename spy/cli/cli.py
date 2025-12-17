@@ -1,43 +1,33 @@
 import sys
-from typing import (
-    Any,
-    Optional,
-)
+from typing import Any
 
-from spy.cli.build import build
-from spy.cli.cleanup import cleanup
-from spy.cli.execute import execute
-from spy.cli.imports import imports
-from spy.cli.parse import parse
-from spy.cli.pyparse import pyparse
-from spy.cli.redshift import redshift
-from spy.cli.support import AppGroupConfig, SpyTyper
-from spy.cli.symtable import symtable
-from spy.vm.vm import SPyVM
-
-GLOBAL_VM: Optional[SPyVM] = None
-
-# SpyTyper is a typer.Typer app with some attributes monkeypatched
+from spy.cli.commands.build import build
+from spy.cli.commands.cleanup import cleanup
+from spy.cli.commands.execute import execute
+from spy.cli.commands.imports import imports
+from spy.cli.commands.parse import parse
+from spy.cli.commands.pyparse import pyparse
+from spy.cli.commands.redshift import redshift
+from spy.cli.commands.symtable import symtable
+from spy.cli.spy_typer import AppGroupConfig, SpyTyper
 
 app = SpyTyper(pretty_exceptions_enable=False, cls=AppGroupConfig, no_args_is_help=True)
 
 # Commands
 # Each command should be written as an async function which takes
 # a single dataclass as its only argument
-# Decorate these with the @spy_dataclass(name="...") decorator to turn them
-# into commands. Aliases may be created by separating multiple
-#  names with , or |
+# Aliases may be created by separating multiple names with , or |
 
 # This is the order commands will appear in the --help
 
-app.spy_command(execute, name="x  | execute", default=True)
-app.spy_command(build, name="b  | build")
-app.spy_command(pyparse, name="P  | pyparse")
-app.spy_command(parse, name="p  | parse")
-app.spy_command(imports, name="I  | imports")
-app.spy_command(symtable, name="S  | symtable")
-app.spy_command(redshift, name="rs | redshift")
-app.spy_command(cleanup, name="c  | cleanup")
+app.spy_command(execute, name="x | execute", default=True)
+app.spy_command(build, name="b | build")
+app.spy_command(pyparse, name="y | pyparse")
+app.spy_command(parse, name="p | parse")
+app.spy_command(imports, name="I | imports")
+app.spy_command(symtable, name="s | symtable")
+app.spy_command(redshift, name="r | redshift")
+app.spy_command(cleanup, name="c | cleanup")
 
 
 def pyproject_entry_point() -> Any:
