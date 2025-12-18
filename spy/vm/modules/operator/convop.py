@@ -92,6 +92,7 @@ def CONVERT_maybe(
     """
     assert wam_expT.color == "blue"
     w_expT = wam_expT.w_blueval
+    assert isinstance(w_expT, W_Type)
     w_gotT = wam_x.w_static_T
     if vm.issubclass(w_gotT, w_expT):
         # nothing to do

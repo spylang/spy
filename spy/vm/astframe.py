@@ -218,6 +218,7 @@ class AbstractFrame:
                 assert not self.w_func.redshifted
 
             # apply the conversion
+            assert varname is not None
             lv = self.locals[varname]
             wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
             wam_val = self.vm.eval_opimpl(

@@ -347,6 +347,7 @@ class DopplerFrame(ASTFrame):
 
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
         if w_typeconv_opimpl:
+            assert varname is not None
             lv = self.locals[varname]
             expT = make_const(self.vm, lv.decl_loc, lv.w_T)
             new_expr = self.shift_opimpl(expr, w_typeconv_opimpl, [expT, new_expr])
