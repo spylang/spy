@@ -985,17 +985,14 @@ class AbstractFrame:
         return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
     def _ensure_bool(self, wam: W_MetaArg) -> W_MetaArg:
-        w_typeconv = CONVERT_maybe(self.vm, B.w_bool, wam)
-        if w_typeconv is None:
+        w_typeconv_opimpl = CONVERT_maybe(self.vm, B.w_bool, wam)
+        if w_typeconv_opimpl is None:
             return wam
-
-        return W_MetaArg(
-            self.vm,
-            wam.color,
-            w_typeconv.w_functype.w_restype,
-            self.vm.fast_call(w_typeconv, [wam.w_val]),
-            wam.loc,
-            sym=wam.sym,
+        return self.vm.eval_opimpl(
+            w_typeconv_opimpl,
+            [wam],
+            loc=wam.loc,
+            redshifting=False,  # we want to always execute this eagerly
         )
 
     def eval_expr_And(self, op: ast.And) -> W_MetaArg:
