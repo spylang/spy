@@ -216,26 +216,15 @@ class AbstractFrame:
                 assert not self.w_func.redshifted
 
             # apply the conversion
-            # XXX what instead of None?
-            wam_exp = W_MetaArg.from_w_obj(self.vm, B.w_None)  # ?!?
-            # wam_val = self.eval_opimpl(expr, w_typeconv_opimpl, [wam_exp, wam])
+            lv = self.locals[varname]
+            wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
             wam_val = self.vm.eval_opimpl(
                 w_typeconv_opimpl,
-                [wam_exp, wam],
+                [wam_expT, wam],
                 loc=expr.loc,
                 redshifting=self.redshifting,
             )
             return wam_val
-
-            ## w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
-            ## return W_MetaArg(
-            ##     self.vm,
-            ##     wam.color,
-            ##     w_typeconv.w_functype.w_restype,
-            ##     w_val,
-            ##     wam.loc,
-            ##     sym=wam.sym,
-            ## )
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         wam = self.eval_expr(expr)
