@@ -24,27 +24,26 @@ class W_MyClass(W_Object):
 
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CONVERT_TO(
-        vm: "SPyVM", wam_target_type: W_MetaArg, wam_self: W_MetaArg
-    ) -> W_OpSpec:
-        w_target_T = wam_target_type.w_blueval
+    def w_CONVERT_TO(vm: "SPyVM", wam_expT: W_MetaArg, wam_self: W_MetaArg) -> W_OpSpec:
+        w_expT = wam_expT.w_blueval
 
-        if w_target_T is B.w_i32:
-
+        if w_expT is B.w_i32:
+            # test_convert_to: simple OpSpec
             @vm.register_builtin_func("ext")
             def w_to_i32(vm: "SPyVM", w_self: W_MyClass) -> W_I32:
                 return w_self.w_x
 
-            return W_OpSpec(w_to_i32, [wam_self])
+            return W_OpSpec(w_to_i32)
 
-        elif w_target_T is B.w_str:
-
+        elif w_expT is B.w_str:
+            # test_complex_OpSpec2: complex OpSpec which also uses expT
             @vm.register_builtin_func("ext")
-            def w_to_str(vm: "SPyVM", w_self: W_MyClass) -> W_Str:
+            def w_to_str(vm: "SPyVM", w_expT: W_Type, w_self: W_MyClass) -> W_Str:
+                t = w_expT.fqn.human_name
                 x = vm.unwrap_i32(w_self.w_x)
-                return vm.wrap(str(x))
+                return vm.wrap(f"<conv {x} to {t}>")
 
-            return W_OpSpec(w_to_str, [wam_self])
+            return W_OpSpec(w_to_str, [wam_expT, wam_self])
 
         else:
             return W_OpSpec.NULL
@@ -52,22 +51,20 @@ class W_MyClass(W_Object):
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
     def w_CONVERT_FROM(
-        vm: "SPyVM", wam_source_type: W_MetaArg, wam_val: W_MetaArg
+        vm: "SPyVM", wam_gotT: W_MetaArg, wam_val: W_MetaArg
     ) -> W_OpSpec:
-        w_src_T = wam_source_type.w_blueval
+        w_gotT = wam_gotT.w_blueval
 
-        if w_src_T is B.w_str:
-
+        if w_gotT is B.w_i32:
+            # test_convert_from: simple OpSpec
             @vm.register_builtin_func("ext")
-            def w_from_str(vm: "SPyVM", w_val: W_Str) -> W_MyClass:
-                s = vm.unwrap_str(w_val)
-                w_x = vm.wrap(int(s))
-                return W_MyClass(w_x)
+            def w_from_i32(vm: "SPyVM", w_val: W_I32) -> W_MyClass:
+                return W_MyClass(w_val)
 
-            return W_OpSpec(w_from_str, [wam_val])
+            return W_OpSpec(w_from_i32)
 
-        elif w_src_T is TYPES.w_NoneType:
-
+        elif w_gotT is TYPES.w_NoneType:
+            # test_complex_OpSpec1: complex OpSpec with non-default args
             @vm.register_builtin_func("ext")
             def w_from_None(vm: "SPyVM") -> W_MyClass:
                 w_x = vm.wrap(-1)
@@ -95,29 +92,24 @@ class TestConvop(CompilerTest):
         def convert_to_i32(x: i32) -> i32:
             obj = MyClass(x)
             return obj
-
-        def convert_to_str(x: i32) -> str:
-            obj = MyClass(x)
-            return obj
         """
         mod = self.compile(src)
         assert mod.convert_to_i32(42) == 42
-        assert mod.convert_to_str(42) == "42"
 
     def test_convert_from(self):
         self.setup_ext()
         src = """
         from ext import MyClass
 
-        def convert_from_str() -> MyClass:
-            return "42"
+        def convert_from_i32() -> MyClass:
+            return 42
         """
         mod = self.compile(src)
-        w_result = mod.convert_from_str(unwrap=False)
+        w_result = mod.convert_from_i32(unwrap=False)
         assert isinstance(w_result, W_MyClass)
         assert self.vm.unwrap_i32(w_result.w_x) == 42
 
-    def test_convert_complex_OpSpec(self):
+    def test_convert_complex_OpSpec1(self):
         self.setup_ext()
         src = """
         from ext import MyClass
@@ -129,3 +121,24 @@ class TestConvop(CompilerTest):
         w_result = mod.convert_from_None(unwrap=False)
         assert isinstance(w_result, W_MyClass)
         assert self.vm.unwrap_i32(w_result.w_x) == -1
+
+    def test_convert_complex_OpSpec2(self):
+        self.setup_ext()
+        src = """
+        from ext import MyClass
+
+        def convert_to_str(x: i32) -> str:
+            obj = MyClass(x)
+            return obj
+
+        def convert_to_local(x: i32) -> str:
+            obj = MyClass(x)
+            s: str = obj
+            return s
+        """
+        mod = self.compile(src)
+        res = mod.convert_to_str(42)
+        assert res == "<conv 42 to str>"
+        #
+        res = mod.convert_to_local(43)
+        assert res == "<conv 43 to str>"
