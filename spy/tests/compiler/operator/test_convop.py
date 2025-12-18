@@ -127,18 +127,28 @@ class TestConvop(CompilerTest):
         src = """
         from ext import MyClass
 
-        def convert_to_str(x: i32) -> str:
+        def convert_to_str_return(x: i32) -> str:
             obj = MyClass(x)
             return obj
 
-        def convert_to_local(x: i32) -> str:
+        def convert_to_str_local(x: i32) -> str:
             obj = MyClass(x)
             s: str = obj
             return s
+
+        def convert_to_str_arg(x: i32) -> str:
+            obj = MyClass(x)
+            return as_str(obj)
+
+        def as_str(x: str) -> str:
+            return x
         """
         mod = self.compile(src)
-        res = mod.convert_to_str(42)
+        res = mod.convert_to_str_return(42)
         assert res == "<conv 42 to str>"
         #
-        res = mod.convert_to_local(43)
+        res = mod.convert_to_str_local(43)
         assert res == "<conv 43 to str>"
+        #
+        res = mod.convert_to_str_arg(44)
+        assert res == "<conv 44 to str>"

@@ -122,7 +122,8 @@ def typecheck_opspec(
             arg = ArgSpec.Arg(i)
 
         if w_conv_opimpl:
-            arg = ArgSpec.Convert(w_conv_opimpl, arg)
+            expT = ArgSpec.Const(param.w_T, wam_out_arg.loc)
+            arg = ArgSpec.Convert(w_conv_opimpl, expT, arg)
         args.append(arg)
 
     # everything good!

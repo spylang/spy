@@ -347,10 +347,9 @@ class DopplerFrame(ASTFrame):
 
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
         if w_typeconv_opimpl:
-            expr_exp_type = ast.Constant(expr.loc, None)  # XXX
-            new_expr = self.shift_opimpl(
-                expr, w_typeconv_opimpl, [expr_exp_type, new_expr]
-            )
+            lv = self.locals[varname]
+            expT = make_const(self.vm, lv.decl_loc, lv.w_T)
+            new_expr = self.shift_opimpl(expr, w_typeconv_opimpl, [expT, new_expr])
 
         self.shifted_expr[expr] = new_expr
         self.record_node_color(expr, wam.color)
@@ -398,7 +397,7 @@ class DopplerFrame(ASTFrame):
             elif isinstance(spec, ArgSpec.Const):
                 return make_const(self.vm, spec.loc, spec.w_const)
             elif isinstance(spec, ArgSpec.Convert):
-                expT = ast.Constant(Loc.fake(), None)  # XXX
+                expT = getarg(spec.expT)
                 arg = getarg(spec.arg)
                 return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, arg])
             else:

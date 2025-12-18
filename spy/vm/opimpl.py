@@ -35,6 +35,7 @@ class Convert(ArgSpec):
     # Convert the arg by calling the given opimpl.
     # Note that with this we are effectively builting a tree of opimpls.
     w_conv_opimpl: "W_OpImpl"
+    expT: ArgSpec
     arg: ArgSpec
 
 
