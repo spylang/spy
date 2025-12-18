@@ -18,9 +18,11 @@ if TYPE_CHECKING:
 #   - 'single' if the opspec depends only on the type of the first operand
 #     (e.g., CALL, GETATTR, etc.)
 #
-#   - 'multi' is the opspec depends on the types of all operands (e.g., all
+#   - 'multi' if the opspec depends on the types of all operands (e.g., all
 #     binary operators)
-DispatchKind = Literal["single", "multi"]
+#
+#   - 'convert' for operator.CONVERT
+DispatchKind = Literal["single", "multi", "convert"]
 
 
 def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:
@@ -168,6 +170,7 @@ def _opspec_null_error(
     typenames = [wam.w_static_T.fqn.human_name for wam in in_args_wam]
     errmsg = errmsg.format(*typenames)
     err = SPyError("W_TypeError", errmsg)
+
     if dispatch == "single":
         wam_target = in_args_wam[0]
         t = wam_target.w_static_T.fqn.human_name
@@ -176,10 +179,26 @@ def _opspec_null_error(
         if wam_target.sym:
             sym = wam_target.sym
             err.add("note", f"`{sym.name}` defined here", sym.loc)
-    else:
+
+    elif dispatch == "multi":
         for wam_arg in in_args_wam:
             t = wam_arg.w_static_T.fqn.human_name
             err.add("error", f"this is `{t}`", wam_arg.loc)
+
+    elif dispatch == "convert":
+        assert len(in_args_wam) == 2
+        wam_expT, wam_x = in_args_wam
+        if wam_expT.color == "blue" and isinstance(wam_expT.w_blueval, W_Type):
+            exp = wam_expT.w_blueval.fqn.human_name
+        else:
+            # XXX: I'm not even sure that this can happen, we don't have a test for it
+            exp = "<unknown>"
+        got = wam_x.w_static_T.fqn.human_name
+        err.add("error", f"expected `{exp}`, got `{got}`", loc=wam_x.loc)
+
+    else:
+        assert False
+
     raise err
 
 
