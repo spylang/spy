@@ -124,7 +124,8 @@ def typecheck_opspec(
 
         if w_conv_opimpl:
             expT = ArgSpec.Const(param.w_T, wam_out_arg.loc)
-            arg = ArgSpec.Convert(w_conv_opimpl, expT, arg)
+            gotT = ArgSpec.Const(wam_out_arg.w_static_T, wam_out_arg.loc)
+            arg = ArgSpec.Convert(w_conv_opimpl, expT, gotT, arg)
         args.append(arg)
 
     # everything good!
@@ -188,8 +189,8 @@ def _opspec_null_error(
             err.add("error", f"this is `{t}`", wam_arg.loc)
 
     elif dispatch == "convert":
-        assert len(in_args_wam) == 2
-        wam_expT, wam_x = in_args_wam
+        assert len(in_args_wam) == 3
+        wam_expT, wam_gotT, wam_x = in_args_wam
         if wam_expT.color == "blue" and isinstance(wam_expT.w_blueval, W_Type):
             exp = wam_expT.w_blueval.fqn.human_name
         else:

@@ -261,11 +261,11 @@ class W_MetaArg(W_Object):
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
     def w_CONVERT_FROM(
-        vm: "SPyVM", wam_T: "W_MetaArg", wam_x: "W_MetaArg"
+        vm: "SPyVM", wam_expT: "W_MetaArg", wam_gotT: "W_MetaArg", wam_x: "W_MetaArg"
     ) -> "W_OpSpec":
-        w_T = wam_T.w_blueval
-        assert isinstance(w_T, W_Type)
-        if vm.issubclass(w_T, B.w_type):
+        w_gotT = wam_gotT.w_blueval
+        assert isinstance(w_gotT, W_Type)
+        if vm.issubclass(w_gotT, B.w_type):
 
             @vm.register_builtin_func(W_MetaArg._w.fqn, "from_type")
             def w_from_type(vm: "SPyVM", w_type: W_Type) -> W_MetaArg:

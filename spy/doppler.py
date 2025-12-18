@@ -350,7 +350,10 @@ class DopplerFrame(ASTFrame):
             assert varname is not None
             lv = self.locals[varname]
             expT = make_const(self.vm, lv.decl_loc, lv.w_T)
-            new_expr = self.shift_opimpl(expr, w_typeconv_opimpl, [expT, new_expr])
+            gotT = make_const(self.vm, wam.loc, wam.w_static_T)
+            new_expr = self.shift_opimpl(
+                expr, w_typeconv_opimpl, [expT, gotT, new_expr]
+            )
 
         self.shifted_expr[expr] = new_expr
         self.record_node_color(expr, wam.color)
@@ -399,8 +402,9 @@ class DopplerFrame(ASTFrame):
                 return make_const(self.vm, spec.loc, spec.w_const)
             elif isinstance(spec, ArgSpec.Convert):
                 expT = getarg(spec.expT)
+                gotT = getarg(spec.gotT)
                 arg = getarg(spec.arg)
-                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, arg])
+                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
             else:
                 assert False
 

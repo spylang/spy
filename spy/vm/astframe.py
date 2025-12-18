@@ -221,9 +221,10 @@ class AbstractFrame:
             assert varname is not None
             lv = self.locals[varname]
             wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
+            wam_gotT = W_MetaArg.from_w_obj(self.vm, wam.w_static_T, loc=wam.loc)
             wam_val = self.vm.eval_opimpl(
                 w_typeconv_opimpl,
-                [wam_expT, wam],
+                [wam_expT, wam_gotT, wam],
                 loc=expr.loc,
                 redshifting=self.redshifting,
             )

@@ -24,8 +24,13 @@ class W_MyClass(W_Object):
 
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CONVERT_TO(vm: "SPyVM", wam_expT: W_MetaArg, wam_self: W_MetaArg) -> W_OpSpec:
+    def w_CONVERT_TO(
+        vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_self: W_MetaArg
+    ) -> W_OpSpec:
         w_expT = wam_expT.w_blueval
+        w_gotT = wam_gotT.w_blueval
+        assert w_gotT is W_MyClass._w
+        assert w_gotT is wam_self.w_static_T
 
         if w_expT is B.w_i32:
             # test_convert_to: simple OpSpec
@@ -51,9 +56,11 @@ class W_MyClass(W_Object):
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
     def w_CONVERT_FROM(
-        vm: "SPyVM", wam_gotT: W_MetaArg, wam_val: W_MetaArg
+        vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_val: W_MetaArg
     ) -> W_OpSpec:
+        w_expT = wam_expT.w_blueval
         w_gotT = wam_gotT.w_blueval
+        assert w_expT is W_MyClass._w
 
         if w_gotT is B.w_i32:
             # test_convert_from: simple OpSpec

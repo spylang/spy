@@ -36,6 +36,7 @@ class Convert(ArgSpec):
     # Note that with this we are effectively builting a tree of opimpls.
     w_conv_opimpl: "W_OpImpl"
     expT: ArgSpec
+    gotT: ArgSpec
     arg: ArgSpec
 
 
@@ -148,8 +149,9 @@ class W_OpImpl(W_Object):
                 return spec.w_const
             elif isinstance(spec, Convert):
                 w_expT = getarg(spec.expT)
+                w_gotT = getarg(spec.gotT)
                 w_arg = getarg(spec.arg)
-                return spec.w_conv_opimpl._execute(vm, [w_expT, w_arg])
+                return spec.w_conv_opimpl._execute(vm, [w_expT, w_gotT, w_arg])
             else:
                 assert False
 
@@ -178,6 +180,7 @@ class W_OpImpl(W_Object):
                 elif isinstance(spec, Convert):
                     converter_arg_reprs = [
                         fmt_spec(spec.expT),
+                        fmt_spec(spec.gotT),
                         fmt_spec(spec.arg),
                     ]
                     return fmt_opimpl_call(spec.w_conv_opimpl, converter_arg_reprs)
