@@ -53,7 +53,7 @@ def get_opspec(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
         #                 into one
         w_from_dynamic_T = vm.fast_call(OP.w_from_dynamic, [w_exp])
         assert isinstance(w_from_dynamic_T, W_Func)
-        return W_OpSpec(w_from_dynamic_T)
+        return W_OpSpec(w_from_dynamic_T, [wam_x])
 
     w_opspec = MM.lookup("convert", w_got, w_exp)
     if w_opspec is not None:
