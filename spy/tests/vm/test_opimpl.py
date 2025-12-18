@@ -65,11 +65,17 @@ def test_const():
 def test_converter():
     vm = SPyVM()
     w_repeat = make_w_repeat(vm)
+
+    # Create a converter opimpl for f64->i32
+    # It takes 2 args (expected type, value) but only passes the value to w_f64_to_i32
+    w_conv_functype = W_FuncType.parse("def(type, f64) -> i32")
+    w_conv_opimpl = W_OpImpl(w_conv_functype, OP.w_f64_to_i32, [ArgSpec.Arg(1)])
+
     w_functype = W_FuncType.parse("def(f64, str) -> str")
     w_opimpl = W_OpImpl(
         w_functype,
         w_repeat,
-        [ArgSpec.Arg(1), ArgSpec.Convert(OP.w_f64_to_i32, ArgSpec.Arg(0))],
+        [ArgSpec.Arg(1), ArgSpec.Convert(w_conv_opimpl, ArgSpec.Arg(0))],
     )
     w_s = w_opimpl._execute(vm, [vm.wrap(3.5), vm.wrap("ab ")])
     assert vm.unwrap_str(w_s) == "ab ab ab "

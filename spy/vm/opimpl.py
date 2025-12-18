@@ -164,25 +164,36 @@ class W_OpImpl(W_Object):
         """
         argnames = [f"v{i}" for i, p in enumerate(self.w_functype.params)]
 
-        def fmt(spec: ArgSpec) -> str:
-            if isinstance(spec, Arg):
-                arg = argnames[spec.i]
-                return arg
-            elif isinstance(spec, Const):
-                return str(spec.w_const)
-            elif isinstance(spec, Convert):
-                fqn = spec.w_conv.fqn
-                arg = fmt(spec.arg)
-                return f"`{fqn}`({arg})"
-            else:
-                assert False
+        def fmt_opimpl_call(opimpl: "W_OpImpl", arg_reprs: list[str]) -> str:
+            """
+            Recursively render an opimpl call with given argument representations
+            """
+
+            def fmt_spec(spec: ArgSpec) -> str:
+                if isinstance(spec, Arg):
+                    return arg_reprs[spec.i]
+                elif isinstance(spec, Const):
+                    return str(spec.w_const)
+                elif isinstance(spec, Convert):
+                    # Build the arguments being passed to the converter opimpl
+                    # Currently hardcoded as [w_expT, w_arg] in _execute
+                    converter_arg_reprs = [
+                        str(B.w_None),  # The expected type (XXX: currently hardcoded)
+                        fmt_spec(spec.arg),  # The actual argument being converted
+                    ]
+                    return fmt_opimpl_call(spec.w_conv_opimpl, converter_arg_reprs)
+                else:
+                    assert False
+
+            args = [fmt_spec(s) for s in opimpl.args]
+            arglist = ", ".join(args)
+            return f"`{opimpl.w_func.fqn}`({arglist})"
 
         sig = self.func_signature()
-        args = [fmt(spec) for spec in self.args]
-        arglist = ", ".join(args)
+        body = fmt_opimpl_call(self, argnames)
         return textwrap.dedent(f"""
         {sig}:
-            return `{self.w_func.fqn}`({arglist})
+            return {body}
         """).strip()
 
     def func_signature(self) -> str:
