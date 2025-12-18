@@ -5,6 +5,7 @@ from spy.errors import SPyError
 from spy.vm.function import W_Func
 from spy.vm.modules.operator import OP
 from spy.vm.object import W_Object, W_Type
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool, W_Dynamic
 
@@ -18,7 +19,7 @@ MM = MultiMethodTable()
 
 
 @OP.builtin_func(color="blue")
-def w_CONVERT(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
+def w_CONVERT(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpImpl:
     """
     Return a w_func which can convert the given MetaArg to the desired type.
 
@@ -84,7 +85,7 @@ def CONVERT_maybe(
     vm: "SPyVM",
     w_exp: W_Type,
     wam_x: W_MetaArg,
-) -> Optional[W_Func]:
+) -> Optional[W_OpImpl]:
     """
     Same as w_CONVERT, but return None if the types are already compatible.
     """

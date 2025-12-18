@@ -347,7 +347,7 @@ class DopplerFrame(ASTFrame):
 
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
         if w_typeconv_opimpl:
-            expr_exp_type = None  # XXX
+            expr_exp_type = ast.Constant(expr.loc, None)  # XXX
             new_expr = self.shift_opimpl(
                 expr, w_typeconv_opimpl, [expr_exp_type, new_expr]
             )
@@ -398,7 +398,7 @@ class DopplerFrame(ASTFrame):
             elif isinstance(spec, ArgSpec.Const):
                 return make_const(self.vm, spec.loc, spec.w_const)
             elif isinstance(spec, ArgSpec.Convert):
-                expT = None  # XXX
+                expT = ast.Constant(Loc.fake(), None)  # XXX
                 arg = getarg(spec.arg)
                 return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, arg])
             else:
