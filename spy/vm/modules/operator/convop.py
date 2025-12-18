@@ -29,6 +29,14 @@ def w_CONVERT(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
 
     wam_exp = W_MetaArg.from_w_obj(vm, w_exp)  # XXX we should pass it as wam_exp
     w_opspec = get_opspec(vm, w_exp, wam_x)
+
+    if w_opspec.is_simple():
+        # this is a bit of a hack, but I think it improves usability. By default, simple
+        # opspec are called with ALL their arguments, including wam_exp. But for the
+        # specific case of __convert_*__, we almast always want to call it with only the
+        # actual to-be-converted argument, so here we change "the default".
+        w_opspec = W_OpSpec(w_opspec._w_func, [wam_x])
+
     return typecheck_opspec(
         vm,
         w_opspec,
@@ -53,16 +61,13 @@ def get_opspec(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
         #                 into one
         w_from_dynamic_T = vm.fast_call(OP.w_from_dynamic, [w_exp])
         assert isinstance(w_from_dynamic_T, W_Func)
-        return W_OpSpec(w_from_dynamic_T, [wam_x])
+        return W_OpSpec(w_from_dynamic_T)
 
     w_opspec = MM.lookup("convert", w_got, w_exp)
     if w_opspec is not None:
-        # XXX: MM.lookup already returns an OpSpec, but with the wrong
-        # args_wam. Unwrap/rewrap it here for now, but probably we need a better
-        # solution.
-        return W_OpSpec(w_opspec._w_func, [wam_x])
+        return w_opspec
 
-    if w_conv_to := w_got.lookup_func("__convert_to__"):
+    elif w_conv_to := w_got.lookup_func("__convert_to__"):
         wam_exp = W_MetaArg.from_w_obj(vm, w_exp)
         w_opspec = vm.fast_metacall(w_conv_to, [wam_exp, wam_x])
         return w_opspec
