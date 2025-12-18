@@ -220,7 +220,7 @@ class W_MetaArg(W_Object):
         assert self._w_val is not None
         return self._w_val
 
-    def blue_ensure(self, vm: "SPyVM", w_expected_T: W_Type) -> W_Object:
+    def blue_ensure(self, vm: "SPyVM", w_expT: W_Type) -> W_Object:
         """
         Ensure that the W_MetaArg is blue and of the expected type.
         Raise SPyError(W_TypeError) if not.
@@ -238,7 +238,8 @@ class W_MetaArg(W_Object):
         # check that the blueval has the expected type. If not, we should
         # probably raise a better error, but for now we just fail with
         # AssertionError.
-        w_func = CONVERT_maybe(vm, w_expected_T, self)
+        wam_expT = W_MetaArg.from_w_obj(vm, w_expT)
+        w_func = CONVERT_maybe(vm, wam_expT, self)
         assert w_func is None
         assert self.w_val is not None
         return self.w_val

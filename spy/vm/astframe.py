@@ -176,9 +176,11 @@ class AbstractFrame:
     ) -> Optional[W_OpImpl]:
         if varname is None:
             return None  # no typecheck needed
-        w_exp_T = self.locals[varname].w_T
+        lv = self.locals[varname]
+        w_expT = lv.w_T
+        wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
-            w_typeconv_opimpl = CONVERT_maybe(self.vm, w_exp_T, wam)
+            w_typeconv_opimpl = CONVERT_maybe(self.vm, wam_expT, wam)
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
@@ -187,12 +189,12 @@ class AbstractFrame:
                 # no need to add extra info
                 pass
             elif varname == "@return":
-                exp = w_exp_T.fqn.human_name
+                exp = w_expT.fqn.human_name
                 msg = f"expected `{exp}` because of return type"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
             else:
-                exp = w_exp_T.fqn.human_name
+                exp = w_expT.fqn.human_name
                 msg = f"expected `{exp}` because of type declaration"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
@@ -974,12 +976,13 @@ class AbstractFrame:
         return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
     def _ensure_bool(self, wam: W_MetaArg) -> W_MetaArg:
-        w_typeconv_opimpl = CONVERT_maybe(self.vm, B.w_bool, wam)
+        wam_expT = W_MetaArg.from_w_obj(self.vm, B.w_bool)
+        w_typeconv_opimpl = CONVERT_maybe(self.vm, wam_expT, wam)
         if w_typeconv_opimpl is None:
             return wam
         return self.vm.eval_opimpl(
             w_typeconv_opimpl,
-            [wam],
+            [wam_expT, wam],
             loc=wam.loc,
             redshifting=False,  # we want to always execute this eagerly
         )

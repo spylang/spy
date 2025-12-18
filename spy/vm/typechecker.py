@@ -104,7 +104,8 @@ def typecheck_opspec(
             raise err
 
         # add a converter if needed (this might raise W_TypeError)
-        w_conv_opimpl = get_w_conv_opimpl(vm, param.w_T, wam_out_arg, def_loc)
+        wam_expT = W_MetaArg.from_w_obj(vm, param.w_T)
+        w_conv_opimpl = get_w_conv_opimpl(vm, wam_expT, wam_out_arg, def_loc)
         arg: ArgSpec
 
         if wam_out_arg.is_blue():
@@ -139,13 +140,13 @@ def functype_from_opargs(
 
 
 def get_w_conv_opimpl(
-    vm: "SPyVM", w_type: W_Type, wam_arg: W_MetaArg, def_loc: Optional[Loc]
+    vm: "SPyVM", wam_expT: W_MetaArg, wam_arg: W_MetaArg, def_loc: Optional[Loc]
 ) -> Optional[W_OpImpl]:
     """
     Like CONVERT_maybe, but improve the error message if we can
     """
     try:
-        return CONVERT_maybe(vm, w_type, wam_arg)
+        return CONVERT_maybe(vm, wam_expT, wam_arg)
     except SPyError as err:
         if not err.match(W_TypeError):
             raise
