@@ -147,7 +147,7 @@ class W_OpImpl(W_Object):
             elif isinstance(spec, Const):
                 return spec.w_const
             elif isinstance(spec, Convert):
-                w_expT = B.w_None  # XXX
+                w_expT = getarg(spec.expT)
                 w_arg = getarg(spec.arg)
                 return spec.w_conv_opimpl._execute(vm, [w_expT, w_arg])
             else:
@@ -176,11 +176,9 @@ class W_OpImpl(W_Object):
                 elif isinstance(spec, Const):
                     return str(spec.w_const)
                 elif isinstance(spec, Convert):
-                    # Build the arguments being passed to the converter opimpl
-                    # Currently hardcoded as [w_expT, w_arg] in _execute
                     converter_arg_reprs = [
-                        str(B.w_None),  # The expected type (XXX: currently hardcoded)
-                        fmt_spec(spec.arg),  # The actual argument being converted
+                        fmt_spec(spec.expT),
+                        fmt_spec(spec.arg),
                     ]
                     return fmt_opimpl_call(spec.w_conv_opimpl, converter_arg_reprs)
                 else:
