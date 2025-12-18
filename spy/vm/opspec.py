@@ -177,10 +177,17 @@ class W_MetaArg(W_Object):
 
     @classmethod
     def from_w_obj(
-        cls, vm: "SPyVM", w_obj: W_Object, *, color: Color = "blue"
+        cls,
+        vm: "SPyVM",
+        w_obj: W_Object,
+        *,
+        color: Color = "blue",
+        loc: Optional[Loc] = None,
     ) -> "W_MetaArg":
         w_T = vm.dynamic_type(w_obj)
-        return W_MetaArg(vm, color, w_T, w_obj, Loc.here(-2))
+        if loc is None:
+            loc = Loc.here(-2)
+        return W_MetaArg(vm, color, w_T, w_obj, loc)
 
     def __repr__(self) -> str:
         if self.is_blue():
@@ -213,7 +220,7 @@ class W_MetaArg(W_Object):
         assert self._w_val is not None
         return self._w_val
 
-    def blue_ensure(self, vm: "SPyVM", w_expected_T: W_Type) -> W_Object:
+    def blue_ensure(self, vm: "SPyVM", w_expT: W_Type) -> W_Object:
         """
         Ensure that the W_MetaArg is blue and of the expected type.
         Raise SPyError(W_TypeError) if not.
@@ -231,7 +238,8 @@ class W_MetaArg(W_Object):
         # check that the blueval has the expected type. If not, we should
         # probably raise a better error, but for now we just fail with
         # AssertionError.
-        w_func = CONVERT_maybe(vm, w_expected_T, self)
+        wam_expT = W_MetaArg.from_w_obj(vm, w_expT)
+        w_func = CONVERT_maybe(vm, wam_expT, self)
         assert w_func is None
         assert self.w_val is not None
         return self.w_val
@@ -253,11 +261,11 @@ class W_MetaArg(W_Object):
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
     def w_CONVERT_FROM(
-        vm: "SPyVM", wam_T: "W_MetaArg", wam_x: "W_MetaArg"
+        vm: "SPyVM", wam_expT: "W_MetaArg", wam_gotT: "W_MetaArg", wam_x: "W_MetaArg"
     ) -> "W_OpSpec":
-        w_T = wam_T.w_blueval
-        assert isinstance(w_T, W_Type)
-        if vm.issubclass(w_T, B.w_type):
+        w_gotT = wam_gotT.w_blueval
+        assert isinstance(w_gotT, W_Type)
+        if vm.issubclass(w_gotT, B.w_type):
 
             @vm.register_builtin_func(W_MetaArg._w.fqn, "from_type")
             def w_from_type(vm: "SPyVM", w_type: W_Type) -> W_MetaArg:

@@ -377,12 +377,14 @@ class W_Object:
 
     @staticmethod
     def w_CONVERT_FROM(
-        vm: "SPyVM", wam_T: "W_MetaArg", wam_x: "W_MetaArg"
+        vm: "SPyVM", wam_expT: "W_MetaArg", wam_gotT: "W_MetaArg", wam_x: "W_MetaArg"
     ) -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
     @staticmethod
-    def w_CONVERT_TO(vm: "SPyVM", wam_T: "W_MetaArg", wam_x: "W_MetaArg") -> "W_OpSpec":
+    def w_CONVERT_TO(
+        vm: "SPyVM", wam_expT: "W_MetaArg", wam_gotT: "W_MetaArg", wam_x: "W_MetaArg"
+    ) -> "W_OpSpec":
         raise NotImplementedError("this should never be called")
 
 

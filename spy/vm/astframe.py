@@ -173,12 +173,14 @@ class AbstractFrame:
 
     def typecheck_maybe(
         self, wam: W_MetaArg, varname: Optional[str]
-    ) -> Optional[W_Func]:
+    ) -> Optional[W_OpImpl]:
         if varname is None:
             return None  # no typecheck needed
-        w_exp_T = self.locals[varname].w_T
+        lv = self.locals[varname]
+        w_expT = lv.w_T
+        wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
-            w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wam)
+            w_typeconv_opimpl = CONVERT_maybe(self.vm, wam_expT, wam)
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
@@ -187,48 +189,46 @@ class AbstractFrame:
                 # no need to add extra info
                 pass
             elif varname == "@return":
-                exp = w_exp_T.fqn.human_name
+                exp = w_expT.fqn.human_name
                 msg = f"expected `{exp}` because of return type"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
             else:
-                exp = w_exp_T.fqn.human_name
+                exp = w_expT.fqn.human_name
                 msg = f"expected `{exp}` because of type declaration"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
 
             raise
-        return w_typeconv
+        return w_typeconv_opimpl
 
     def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
+        assert not self.redshifting, "DopplerFrame should override eval_expr"
         wam = magic_dispatch(self, "eval_expr", expr)
-        w_typeconv = self.typecheck_maybe(wam, varname)
 
-        if isinstance(self, ASTFrame) and self.w_func.redshifted:
-            # this is just a sanity check. After redshifting, all type
-            # conversions should be explicit. If w_typeconv is not None here,
-            # it means that Doppler failed to insert the appropriate
-            # conversion
-            assert w_typeconv is None
-
-        if w_typeconv is None:
+        w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
+        if w_typeconv_opimpl is None:
             # no conversion needed, hooray
             return wam
-        elif self.redshifting:
-            # we are performing redshifting: the conversion will be handlded
-            # by FuncDoppler
-            return wam
         else:
-            # apply the conversion immediately
-            w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
-            return W_MetaArg(
-                self.vm,
-                wam.color,
-                w_typeconv.w_functype.w_restype,
-                w_val,
-                wam.loc,
-                sym=wam.sym,
+            if isinstance(self, ASTFrame):
+                # sanity check. After redshifting, all type conversions should be
+                # explicit. If w_typeconv is not None here, it means that Doppler failed
+                # to insert the appropriate conversion
+                assert not self.w_func.redshifted
+
+            # apply the conversion
+            assert varname is not None
+            lv = self.locals[varname]
+            wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
+            wam_gotT = W_MetaArg.from_w_obj(self.vm, wam.w_static_T, loc=wam.loc)
+            wam_val = self.vm.eval_opimpl(
+                w_typeconv_opimpl,
+                [wam_expT, wam_gotT, wam],
+                loc=expr.loc,
+                redshifting=self.redshifting,
             )
+            return wam_val
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         wam = self.eval_expr(expr)
@@ -978,17 +978,15 @@ class AbstractFrame:
         return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
     def _ensure_bool(self, wam: W_MetaArg) -> W_MetaArg:
-        w_typeconv = CONVERT_maybe(self.vm, B.w_bool, wam)
-        if w_typeconv is None:
+        wam_expT = W_MetaArg.from_w_obj(self.vm, B.w_bool)
+        w_typeconv_opimpl = CONVERT_maybe(self.vm, wam_expT, wam)
+        if w_typeconv_opimpl is None:
             return wam
-
-        return W_MetaArg(
-            self.vm,
-            wam.color,
-            w_typeconv.w_functype.w_restype,
-            self.vm.fast_call(w_typeconv, [wam.w_val]),
-            wam.loc,
-            sym=wam.sym,
+        return self.vm.eval_opimpl(
+            w_typeconv_opimpl,
+            [wam_expT, wam],
+            loc=wam.loc,
+            redshifting=False,  # we want to always execute this eagerly
         )
 
     def eval_expr_And(self, op: ast.And) -> W_MetaArg:

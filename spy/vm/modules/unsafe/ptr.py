@@ -245,8 +245,10 @@ class W_Ptr(W_BasePtr):
 
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CONVERT_TO(vm: "SPyVM", wam_T: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
-        w_T = wam_T.w_blueval
+    def w_CONVERT_TO(
+        vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
+    ) -> W_OpSpec:
+        w_T = wam_expT.w_blueval
         w_ptrtype = W_Ptr._get_ptrtype(wam_x)
         T = Annotated[W_Object, w_T]
         PTR = Annotated[W_Ptr, w_ptrtype]

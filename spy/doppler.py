@@ -325,8 +325,8 @@ class DopplerFrame(ASTFrame):
             -> return self.shifted_expr[...]
 
             FuncDoppler.eval_expr
-              -> call ASTFrame.eval_expr
-              -> call FuncDoppler.shift_expr
+              -> call eval_expr_*
+              -> call shift_expr_*
 
               ASTFrame.eval_expr_BinOp
                 -> recursive call eval_expr() on binop.{left,right}
@@ -341,18 +341,18 @@ class DopplerFrame(ASTFrame):
                   -> retrieve shifted operands for binop.{left,right}
                   -> compute shited binop (stored in .shifted_expr)
         """
-        wam = super().eval_expr(expr, varname=varname)
-        if wam.color == "blue":
-            new_expr = make_const(self.vm, expr.loc, wam.w_val)
-        else:
-            new_expr = self.shift_expr(expr, wam)
+        assert self.redshifting
+        wam = magic_dispatch(self, "eval_expr", expr)
+        new_expr = self.shift_expr(expr, wam)
 
-        w_typeconv = self.typecheck_maybe(wam, varname)
-        if w_typeconv:
-            new_expr = ast.Call(
-                loc=new_expr.loc,
-                func=ast.FQNConst(loc=new_expr.loc, fqn=w_typeconv.fqn),
-                args=[new_expr],
+        w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
+        if w_typeconv_opimpl:
+            assert varname is not None
+            lv = self.locals[varname]
+            expT = make_const(self.vm, lv.decl_loc, lv.w_T)
+            gotT = make_const(self.vm, wam.loc, wam.w_static_T)
+            new_expr = self.shift_opimpl(
+                expr, w_typeconv_opimpl, [expT, gotT, new_expr]
             )
 
         self.shifted_expr[expr] = new_expr
@@ -371,17 +371,14 @@ class DopplerFrame(ASTFrame):
 
     def shift_expr(self, expr: ast.Expr, wam: W_MetaArg) -> ast.Expr:
         """
-        Shift an expression and store it into self.shifted_expr.
+        Shift an expression.
 
         "wam" is the result of "eval_expr(expr)".
-
-        This method must to be called EXACTLY ONCE for each expr node
-        of the AST, and it's supposed to be called by eval_expr.
         """
-        assert expr not in self.shifted_expr
-        new_expr = magic_dispatch(self, "shift_expr", expr, wam)
-        self.shifted_expr[expr] = new_expr
-        return new_expr
+        if wam.color == "blue":
+            return make_const(self.vm, expr.loc, wam.w_val)
+        else:
+            return magic_dispatch(self, "shift_expr", expr, wam)
 
     def shift_opimpl(
         self, op: ast.Node, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]
@@ -404,12 +401,10 @@ class DopplerFrame(ASTFrame):
             elif isinstance(spec, ArgSpec.Const):
                 return make_const(self.vm, spec.loc, spec.w_const)
             elif isinstance(spec, ArgSpec.Convert):
+                expT = getarg(spec.expT)
+                gotT = getarg(spec.gotT)
                 arg = getarg(spec.arg)
-                return ast.Call(
-                    loc=arg.loc,
-                    func=ast.FQNConst(loc=arg.loc, fqn=spec.w_conv.fqn),
-                    args=[arg],
-                )
+                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
             else:
                 assert False
 
