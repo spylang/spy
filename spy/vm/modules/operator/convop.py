@@ -68,7 +68,10 @@ def get_opspec(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
 
     w_opspec = MM.lookup("convert", w_got, w_exp)
     if w_opspec is not None:
-        return w_opspec
+        # XXX: MM.lookup already returns an OpSpec, but with the wrong
+        # args_wam. Unwrap/rewrap it here for now, but probably we need a better
+        # solution.
+        return W_OpSpec(w_opspec._w_func, [wam_x])
 
     if w_conv_to := w_got.lookup_func("__convert_to__"):
         wam_exp = W_MetaArg.from_w_obj(vm, w_exp)

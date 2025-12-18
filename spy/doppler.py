@@ -398,12 +398,9 @@ class DopplerFrame(ASTFrame):
             elif isinstance(spec, ArgSpec.Const):
                 return make_const(self.vm, spec.loc, spec.w_const)
             elif isinstance(spec, ArgSpec.Convert):
+                expT = None  # XXX
                 arg = getarg(spec.arg)
-                return ast.Call(
-                    loc=arg.loc,
-                    func=ast.FQNConst(loc=arg.loc, fqn=spec.w_conv.fqn),
-                    args=[arg],
-                )
+                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, arg])
             else:
                 assert False
 

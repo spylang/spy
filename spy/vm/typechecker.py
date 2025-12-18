@@ -102,7 +102,7 @@ def typecheck_opspec(
             raise err
 
         # add a converter if needed (this might raise W_TypeError)
-        w_conv = get_w_conv(vm, param.w_T, wam_out_arg, def_loc)
+        w_conv_opimpl = get_w_conv_opimpl(vm, param.w_T, wam_out_arg, def_loc)
         arg: ArgSpec
 
         if wam_out_arg.is_blue():
@@ -110,7 +110,7 @@ def typecheck_opspec(
         else:
             # THIS IS PROBABLY A BUG, or at least a design issue. W_MetaArg compares by
             # value and thus they are not supposed to have an identiy. However, by
-            # calling .index we are relying on the inter-level identity of W_MetaArg
+            # calling .index we are relying on the interp-level identity of W_MetaArg
             # objects, which is conceptually wrong. We should probably make W_MetaArg
             # reference types, but this likely introduces other problems.
             # See also test_list::test_list_MetaArg_identity.
@@ -119,8 +119,8 @@ def typecheck_opspec(
             i = in_args_wam.index(wam_out_arg)
             arg = ArgSpec.Arg(i)
 
-        if w_conv:
-            arg = ArgSpec.Convert(w_conv, arg)
+        if w_conv_opimpl:
+            arg = ArgSpec.Convert(w_conv_opimpl, arg)
         args.append(arg)
 
     # everything good!
@@ -135,9 +135,9 @@ def functype_from_opargs(
     return W_FuncType.new(params, w_restype, color=color)
 
 
-def get_w_conv(
+def get_w_conv_opimpl(
     vm: "SPyVM", w_type: W_Type, wam_arg: W_MetaArg, def_loc: Optional[Loc]
-) -> Optional[W_Func]:
+) -> Optional[W_OpImpl]:
     """
     Like CONVERT_maybe, but improve the error message if we can
     """

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar, Optional, Sequence
 
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.vm.b import OPERATOR
+from spy.vm.b import OPERATOR, B
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.object import W_Object
 
@@ -32,7 +32,9 @@ class Const(ArgSpec):
 
 @dataclass
 class Convert(ArgSpec):
-    w_conv: W_Func
+    # Convert the arg by calling the given opimpl.
+    # Note that with this we are effectively builting a tree of opimpls.
+    w_conv_opimpl: "W_OpImpl"
     arg: ArgSpec
 
 
@@ -144,8 +146,9 @@ class W_OpImpl(W_Object):
             elif isinstance(spec, Const):
                 return spec.w_const
             elif isinstance(spec, Convert):
+                w_expT = B.w_None  # XXX
                 w_arg = getarg(spec.arg)
-                return vm.fast_call(spec.w_conv, [w_arg])
+                return spec.w_conv_opimpl._execute(vm, [w_expT, w_arg])
             else:
                 assert False
 
