@@ -1,5 +1,5 @@
 from spy.fqn import FQN
-from spy.tests.support import CompilerTest, no_C, only_interp
+from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
 from spy.vm.b import B
 from spy.vm.object import W_Type
 
@@ -165,3 +165,17 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         res = mod.foo()
         assert res == [1, 2, 3]
+
+    def test_bare_empty_list_cannot_mutate(self):
+        src = """
+        def foo() -> list[i32]:
+            l = []
+            l.append(1)
+            return l
+        """
+        errors = expect_errors(
+            "cannot mutate an untyped empty list",
+            ("this is untyped", "l"),
+            ("help: use an explicit type: `l: list[T] = []`", "l"),
+        )
+        self.compile_raises(src, "foo", errors)
