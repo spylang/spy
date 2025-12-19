@@ -152,3 +152,16 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         res = mod.foo()
         assert res == []
+
+    def test_converted_empty_list_can_mutate(self):
+        src = """
+        def foo() -> list[i32]:
+            l: list[i32] = []
+            l.append(1)
+            l.append(2)
+            l.append(3)
+            return l
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == [1, 2, 3]

@@ -1072,7 +1072,7 @@ class AbstractFrame:
         if len(lst.items) == 0:
             w_T = SPY.w_EmptyListType
             w_val = SPY.w_empty_list
-            return W_MetaArg(self.vm, "blue", w_T, w_val, lst.loc)
+            return W_MetaArg(self.vm, "red", w_T, w_val, lst.loc)
 
         # 1. evaluate the individual items and infer the itemtype
         items_wam = []
