@@ -12,6 +12,7 @@ from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
 from spy.vm.exc import W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
@@ -460,6 +461,10 @@ class DopplerFrame(ASTFrame):
     def shift_expr_List(self, lst: ast.List, wam: W_MetaArg) -> ast.Expr:
         # this logic is equivalent to what we have in eval_expr_List. Instead of
         # actually doing calls, we create an AST instead.
+        if len(lst.items) == 0:
+            assert wam.w_static_T is SPY.w_EmptyListType
+            return make_const(self.vm, lst.loc, SPY.w_empty_list)
+
         w_T = wam.w_static_T
         fqn_new = w_T.fqn.join("__new__")
         fqn_push = w_T.fqn.join("_push")
