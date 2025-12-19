@@ -163,6 +163,7 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
     ) -> W_OpSpec:
         w_expT = wam_expT.w_blueval
         w_gotT = wam_gotT.w_blueval
+        assert isinstance(w_expT, W_Type)
 
         if w_gotT is SPY.w_EmptyListType:
             LIST = Annotated[W_Object, w_expT]
