@@ -164,7 +164,7 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
         w_expT = wam_expT.w_blueval
         w_gotT = wam_gotT.w_blueval
 
-        if w_gotT is SPY.w_empty_list:
+        if w_gotT is SPY.w_EmptyListType:
             LIST = Annotated[W_Object, w_expT]
 
             @vm.register_builtin_func(w_expT.fqn)

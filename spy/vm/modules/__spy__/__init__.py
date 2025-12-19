@@ -32,14 +32,21 @@ def w_INIT(vm: "SPyVM") -> None:
         w_listtype.register_push_function(vm)
 
 
-@SPY.builtin_type("empty_list")
-class W_EmptyList(W_Object):
+@SPY.builtin_type("EmptyListType")
+class W_EmptyListType(W_Object):
     """
     An object representing '[]'
     """
+
+    def __init__(self) -> None:
+        # just a sanity check, W_EmptyList is a singleton
+        raise Exception("You cannot instantiate W_EmptyListType")
 
     def __repr__(self) -> str:
         return "<spy empty_list []>"
 
     def spy_unwrap(self, vm: "SPyVM") -> Any:
         return []
+
+
+SPY.add("empty_list", W_EmptyListType.__new__(W_EmptyListType))
