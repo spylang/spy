@@ -160,7 +160,7 @@ class TestMain:
     def test_colorize(self):
         _, stdout = self.run("--colorize", self.factorial_spy, decolorize_stdout=False)
         # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
-        expected_outout = """
+        expected_outout = """\
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
@@ -173,7 +173,7 @@ class TestMain:
         _, stdout = self.run(
             "--colorize", self.blu_var_in_red_func_spy, decolorize_stdout=False
         )
-        expected_outout = """
+        expected_outout = """\
         @blue
         def get_Type():
             return int
