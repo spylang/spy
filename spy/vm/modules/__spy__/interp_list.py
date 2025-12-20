@@ -153,6 +153,29 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
 
         return W_OpSpec(w_new, list(args_wam))
 
+    @builtin_method("__convert_from__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CONVERT_TO(
+        vm: "SPyVM",
+        wam_expT: W_MetaArg,
+        wam_gotT: W_MetaArg,
+        wam_obj: W_MetaArg,
+    ) -> W_OpSpec:
+        w_expT = wam_expT.w_blueval
+        w_gotT = wam_gotT.w_blueval
+        assert isinstance(w_expT, W_Type)
+
+        if w_gotT is SPY.w_EmptyListType:
+            LIST = Annotated[W_Object, w_expT]
+
+            @vm.register_builtin_func(w_expT.fqn)
+            def w_new_empty(vm: "SPyVM") -> LIST:
+                return vm.call_w(w_expT, [])
+
+            return W_OpSpec(w_new_empty, [])
+
+        return W_OpSpec.NULL
+
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod
     def w_GETITEM(vm: "SPyVM", wam_list: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:

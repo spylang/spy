@@ -128,7 +128,10 @@ class W_Traceback(W_Object):
                 spyframe = frame.f_locals["self"]
                 entries.append(FrameInfo(spyframe))
 
-            elif frame.f_code is ASTFrame.eval_expr.__code__:
+            elif frame.f_code in (
+                ASTFrame.eval_expr.__code__,
+                DopplerFrame.eval_expr.__code__,
+            ):
                 # update last frame with more precise loc info
                 expr = frame.f_locals["expr"]
                 entries[-1].loc = expr.loc

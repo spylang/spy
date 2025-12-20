@@ -655,14 +655,6 @@ class SPyVM:
             raise Exception("Type mismatch")
         return w_value.value
 
-    def call(self, w_obj: W_Object, args_w: Sequence[W_Object]) -> W_Object:
-        """
-        The most generic way of calling an object.
-
-        It calls OPERATOR.CALL in order to get an opimpl, then calls it.
-        """
-        raise NotImplementedError
-
     def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         """
         fast_call is a simpler calling convention which works only on

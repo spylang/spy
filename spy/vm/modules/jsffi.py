@@ -38,14 +38,16 @@ class W_JsRef(W_Object):
 
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
-    def w_CONVERT_FROM(vm: "SPyVM", wam_T: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
-        w_T = wam_T.w_blueval
-        if w_T is B.w_str:
+    def w_CONVERT_FROM(
+        vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
+    ) -> W_OpSpec:
+        w_gotT = wam_gotT.w_blueval
+        if w_gotT is B.w_str:
             return W_OpSpec(JSFFI.w_js_string)
-        elif w_T is B.w_i32:
+        elif w_gotT is B.w_i32:
             return W_OpSpec(JSFFI.w_js_i32)
-        elif isinstance(w_T, W_FuncType):
-            assert w_T == W_FuncType.parse("def() -> None")
+        elif isinstance(w_gotT, W_FuncType):
+            assert w_gotT == W_FuncType.parse("def() -> None")
             return W_OpSpec(JSFFI.w_js_wrap_func)
         else:
             return W_OpSpec.NULL

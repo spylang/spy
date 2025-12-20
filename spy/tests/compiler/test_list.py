@@ -1,5 +1,5 @@
 from spy.fqn import FQN
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
 from spy.vm.b import B
 from spy.vm.object import W_Type
 
@@ -120,3 +120,62 @@ class TestList(CompilerTest):
         assert len(w_lst.items_w) == 2
         wam_a, wam_b = w_lst.items_w
         assert wam_a is not wam_b
+
+    @no_C
+    def test_empty_list_singleton(self):
+        src = """
+        import __spy__
+
+        def get_empty() -> __spy__.EmptyListType:
+            return []
+        """
+        mod = self.compile(src)
+        w_a = mod.get_empty(unwrap=False)
+        w_b = mod.get_empty(unwrap=False)
+        assert w_a is w_b
+
+    @no_C
+    def test_empty_list_to_interp_list(self):
+        src = """
+        def foo() -> list[object]:
+            return []
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == []
+
+    def test_empty_list_to_stdlib_list(self):
+        src = """
+        def foo() -> list[i32]:
+            return []
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == []
+
+    def test_converted_empty_list_can_mutate(self):
+        src = """
+        def foo() -> list[i32]:
+            l: list[i32] = []
+            l.append(1)
+            l.append(2)
+            l.append(3)
+            return l
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == [1, 2, 3]
+
+    def test_bare_empty_list_cannot_mutate(self):
+        src = """
+        def foo() -> list[i32]:
+            l = []
+            l.append(1)
+            return l
+        """
+        errors = expect_errors(
+            "cannot mutate an untyped empty list",
+            ("this is untyped", "l"),
+            ("help: use an explicit type: `l: list[T] = []`", "l"),
+        )
+        self.compile_raises(src, "foo", errors)
