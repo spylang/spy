@@ -15,7 +15,7 @@ from typer.core import DEFAULT_MARKUP_MODE, MarkupMode, TyperGroup
 from typer.models import CommandFunctionType
 
 from spy.cli._runners import _pyodide_main, _run_command
-from spy.cli.commands.base_args import Base_Args
+from spy.cli.commands.shared_args import Base_Args
 from spy.vendored.dataclass_typer import dataclass_typer
 
 

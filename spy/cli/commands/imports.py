@@ -1,6 +1,6 @@
 from spy.analyze.importing import ImportAnalyzer
 from spy.cli._runners import init_vm
-from spy.cli.commands.base_args import Base_Args_With_Filename
+from spy.cli.commands.shared_args import Base_Args_With_Filename
 
 
 async def imports(args: Base_Args_With_Filename) -> None:

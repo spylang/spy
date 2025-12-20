@@ -3,6 +3,7 @@ from typing import Any
 
 from spy.cli.commands.build import build
 from spy.cli.commands.cleanup import cleanup
+from spy.cli.commands.colorize import colorize
 from spy.cli.commands.execute import execute
 from spy.cli.commands.imports import imports
 from spy.cli.commands.parse import parse
@@ -23,7 +24,7 @@ app = SpyTyper(pretty_exceptions_enable=False, cls=AppGroupConfig, no_args_is_he
 app.spy_command(execute, name="execute", default=True)
 app.spy_command(build, name="build")
 app.spy_command(redshift, name="redshift | rs")
-# app.spy_command(..., name="colorize")
+app.spy_command(colorize, name="colorize")
 app.spy_command(parse, name="parse")
 app.spy_command(pyparse, name="pyparse")
 app.spy_command(imports, name="imports")

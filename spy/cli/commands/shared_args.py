@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated
 
 import click
-from typer import Argument, Option
+from typer import Argument, BadParameter, Option
 
 from spy.doppler import ErrorMode
 
@@ -59,3 +59,26 @@ class Filename_Required_Args:
 
 @dataclass
 class Base_Args_With_Filename(Base_Args, Filename_Required_Args): ...
+
+
+@dataclass
+class _timeit_mixin:
+    timeit: Annotated[
+        bool,
+        Option("--timeit", help="Print execution time"),
+    ] = False
+
+
+@dataclass
+class _execute_options(_timeit_mixin): ...
+
+
+@dataclass
+class _execute_flag:
+    execute: Annotated[
+        bool, Option("-x", "--execute", help="Execute the code after compilation")
+    ] = False
+
+
+@dataclass
+class Execute_Args(Base_Args, _execute_options, Filename_Required_Args): ...

@@ -1,18 +1,24 @@
 import pdb as stdlib_pdb  # to distinguish from the "--pdb" option  # to distinguish from the "--pdb" option
 import sys
+import time
 import traceback
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import (
     Callable,
+    Generator,
     Optional,
     Protocol,
 )
 
-from spy.cli.commands.base_args import Base_Args
+from spy.cli.commands.shared_args import Base_Args
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.textbuilder import Color
+from spy.vm.b import B
 from spy.vm.debugger.spdb import SPdb
+from spy.vm.function import W_ASTFunc, W_FuncType
+from spy.vm.module import W_Module
 from spy.vm.vm import SPyVM
 
 GLOBAL_VM: Optional[SPyVM] = None
@@ -69,6 +75,32 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
         sys.exit(1)
 
 
+def execute_spy_main(
+    vm: SPyVM, w_mod: W_Module, redshift: bool = False, _timeit: bool = False
+) -> None:
+    w_main_functype = W_FuncType.parse("def() -> None")
+    w_main = w_mod.getattr_maybe("main")
+    if w_main is None:
+        print("Cannot find function main()")
+        return
+
+    vm.typecheck(w_main, w_main_functype)
+    assert isinstance(w_main, W_ASTFunc)
+
+    # find the redshifted version, if necessary
+    if redshift:
+        assert not w_main.is_valid
+        assert w_main.w_redshifted_into is not None
+        w_main = w_main.w_redshifted_into
+        assert w_main.redshifted
+    else:
+        assert not w_main.redshifted
+
+    with timer() if _timeit else nullcontext():
+        w_res = vm.fast_call(w_main, [])
+    assert w_res is B.w_None
+
+
 class Init_Args(Protocol):
     error_mode: ErrorMode
     filename: Path
@@ -100,3 +132,11 @@ async def init_vm(args: Init_Args) -> SPyVM:
 
         vm.emit_warning = emit_warning
     return vm
+
+
+@contextmanager
+def timer() -> Generator:
+    a = time.time()
+    yield
+    b = time.time()
+    print(f"main(): {b - a:.3f} seconds", file=sys.stderr)

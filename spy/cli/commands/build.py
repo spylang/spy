@@ -1,3 +1,4 @@
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
@@ -12,15 +13,20 @@ from typer import Option
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
-from spy.cli._runners import init_vm
-from spy.cli.commands.base_args import Base_Args_With_Filename
+from spy.cli._runners import init_vm, nullcontext, timer
+from spy.cli.commands.shared_args import (
+    Base_Args,
+    Filename_Required_Args,
+    _execute_flag,
+    _execute_options,
+)
 
 
 @dataclass
-class Build_Args(Base_Args_With_Filename):
-    cwrite: Annotated[
+class _build_mixin:
+    no_compile: Annotated[
         bool,
-        Option("--cwrite", help="Generate the C code; do not compile"),
+        Option("--no-compile", help="Generate the C code; do not compile"),
     ] = False
 
     cdump: Annotated[
@@ -35,6 +41,7 @@ class Build_Args(Base_Args_With_Filename):
             "--build-dir",
             help="Directory to store generated files (defaults to build/ next to the "
             ".spy file)",
+            show_default=False,
         ),
     ] = None
 
@@ -49,7 +56,7 @@ class Build_Args(Base_Args_With_Filename):
 
     debug_symbols: Annotated[
         bool,
-        Option("-g", help="Generate debug symbols"),
+        Option("-g", "--debug-symbols", help="Generate debug symbols"),
     ] = False
 
     release_mode: Annotated[
@@ -78,8 +85,14 @@ class Build_Args(Base_Args_With_Filename):
     ] = "exe"
 
 
+@dataclass
+class Build_Args(
+    Base_Args, _build_mixin, _execute_flag, _execute_options, Filename_Required_Args
+): ...
+
+
 async def build(args: Build_Args) -> None:
-    """Compile the generated C code"""
+    """Generate c code, compile, and optionally execute"""
     modname = args.filename.stem
     vm = await init_vm(args)
 
@@ -98,14 +111,13 @@ async def build(args: Build_Args) -> None:
 
     cwd = py.path.local(".")
     build_dir = get_build_dir(args)
-    dump_c = args.cwrite and args.cdump
-    backend = CBackend(vm, modname, config, build_dir, dump_c=dump_c)
+    backend = CBackend(vm, modname, config, build_dir, dump_c=args.cdump)
 
     backend.cwrite()
     backend.write_build_script()
     assert backend.build_script is not None
 
-    if args.cwrite:
+    if args.no_compile:
         cfiles = ", ".join([f.relto(cwd) for f in backend.cfiles])
         build_script = backend.build_script.relto(cwd)
         print(f"C files:      {cfiles}")
@@ -118,6 +130,10 @@ async def build(args: Build_Args) -> None:
         # outfile is not in a subdir of cwd, let's display the full path
         executable = str(outfile)
     print(f"[{config.build_type}] {executable} ")
+
+    if args.execute:
+        with timer() if args.timeit else nullcontext():
+            subprocess.run([str(executable)])
 
 
 def get_build_dir(args: Build_Args) -> py.path.local:

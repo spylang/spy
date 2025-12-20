@@ -1,4 +1,4 @@
-from spy.cli.commands.base_args import Base_Args_With_Filename
+from spy.cli.commands.shared_args import Base_Args_With_Filename
 from spy.magic_py_parse import magic_py_parse
 
 
