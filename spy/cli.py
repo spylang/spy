@@ -19,13 +19,13 @@ from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
+from spy.highlight import highlight_src
 from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
 from spy.util import (
     cleanup_spyc_files,
     colors_coordinates,
     format_colors_as_json,
-    highlight_src_maybe,
 )
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
@@ -265,7 +265,8 @@ def do_pyparse(filename: str) -> None:
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
-    print(b.dump_mod(modname))
+    spy_code = b.dump_mod(modname)
+    print(highlight_src("spy", spy_code))
 
 
 def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
@@ -566,4 +567,4 @@ def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
             cursor += 1
 
         highlighted_lines.append("".join(result))
-    return "".join(highlight_src_maybe("spy", line) for line in highlighted_lines)
+    return "".join(highlight_src("spy", line) for line in highlighted_lines)
