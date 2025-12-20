@@ -453,7 +453,7 @@ async def inner_main(args: Arguments) -> None:
                 if args.format == "json":
                     print(format_colors_as_json(coords))
                 else:
-                    print(highlight_sourcecode(args.filename, coords))
+                    print(colorize_sourcecode(args.filename, coords))
         elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
@@ -517,7 +517,7 @@ def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
     assert w_res is B.w_None
 
 
-def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
+def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
     reset = "\033[0m"
     ansi_colors = {"red": "\033[41m\033[30m", "blue": "\033[44m\033[30m"}
     with open(sourcefile) as f:
