@@ -29,12 +29,12 @@ def _highlight_spy(code: str) -> str:
         # Comments
         (r"#[^\n]*", "darkgray"),
         # Strings (triple-quoted first, then single/double)
-        (r'"""(?:[^\\"]|\\.|"(?!""))*"""', "yellow"),
-        (r"'''(?:[^\\']|\\.|'(?!''))*'''", "yellow"),
-        (r'"(?:[^\\"\n]|\\.)*"', "yellow"),
-        (r"'(?:[^\\'\n]|\\.)*'", "yellow"),
+        (r'"""(?:[^\\"]|\\.|"(?!""))*"""', "green"),
+        (r"'''(?:[^\\']|\\.|'(?!''))*'''", "green"),
+        (r'"(?:[^\\"\n]|\\.)*"', "green"),
+        (r"'(?:[^\\'\n]|\\.)*'", "green"),
         # Fully qualified names in backticks
-        (r"`[^`]+`", "turquoise"),
+        (r"`[^`]+`", "fuchsia"),
         # Keywords
         (
             r"\b(?:def|class|if|elif|else|for|while|return|import|from|as|"
@@ -45,10 +45,10 @@ def _highlight_spy(code: str) -> str:
         # Built-in types
         (
             r"\b(?:int|str|float|bool|list|dict|tuple|set|i32|i64|f64|dynamic|void)\b",
-            "green",
+            "fuchsia",
         ),
         # Numbers
-        (r"\b\d+\.?\d*(?:[eE][+-]?\d+)?\b", "fuchsia"),
+        (r"\b\d+\.?\d*(?:[eE][+-]?\d+)?\b", "yellow"),
         # Function/method calls (identifier followed by parenthesis)
         (r"\b([a-zA-Z_]\w*)(?=\s*\()", "default"),
     ]
@@ -78,12 +78,12 @@ def _highlight_c(code: str) -> str:
         (r"//[^\n]*", "darkgray"),
         (r"/\*(?:[^*]|\*(?!/))*\*/", "darkgray"),
         # Strings
-        (r'"(?:[^\\"\n]|\\.)*"', "yellow"),
-        (r"'(?:[^\\'\n]|\\.)*'", "yellow"),
+        (r'"(?:[^\\"\n]|\\.)*"', "green"),
+        (r"'(?:[^\\'\n]|\\.)*'", "green"),
         # Preprocessor directives
         (
             r"^\s*#\s*(?:include|define|ifdef|ifndef|endif|if|else|elif|pragma|undef)\b[^\n]*",
-            "fuchsia",
+            "turquoise",
         ),
         # Keywords
         (
@@ -97,12 +97,12 @@ def _highlight_c(code: str) -> str:
         (
             r"\b(?:int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|"
             r"size_t|ssize_t|ptrdiff_t|intptr_t|uintptr_t|FILE|bool|true|false|NULL)\b",
-            "green",
+            "fuchsia",
         ),
         # Numbers (hex, octal, decimal, float)
-        (r"\b0[xX][0-9a-fA-F]+[uUlL]*\b", "fuchsia"),
-        (r"\b0[0-7]+[uUlL]*\b", "fuchsia"),
-        (r"\b\d+\.?\d*(?:[eE][+-]?\d+)?[fFlL]*\b", "fuchsia"),
+        (r"\b0[xX][0-9a-fA-F]+[uUlL]*\b", "yellow"),
+        (r"\b0[0-7]+[uUlL]*\b", "yellow"),
+        (r"\b\d+\.?\d*(?:[eE][+-]?\d+)?[fFlL]*\b", "yellow"),
         # Function calls
         (r"\b([a-zA-Z_]\w*)(?=\s*\()", "default"),
     ]
