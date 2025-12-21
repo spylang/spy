@@ -164,7 +164,7 @@ class TestMain:
         for argset in argsets:
             _, stdout = self.run(*argset, self.factorial_spy, decolorize_stdout=False)
             # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
-            expected_outout = """
+            expected_outout = """\
             def factorial(n: i32) -> i32:
                 [R]res = [/COLOR][B]1[/COLOR]
                 for i in [B]range[/COLOR][R](n)[/COLOR]:
@@ -175,11 +175,9 @@ class TestMain:
                 [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
             assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
             _, stdout = self.run(
-                *argset,
-                self.blu_var_in_red_func_spy,
-                decolorize_stdout=False,
+                *argset, self.blu_var_in_red_func_spy, decolorize_stdout=False
             )
-            expected_outout = """
+            expected_outout = """\
             @blue
             def get_Type():
                 return int
