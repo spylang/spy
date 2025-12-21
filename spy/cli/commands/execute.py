@@ -14,7 +14,7 @@ class Execute_Args(Base_Args, _execute_options, Filename_Required_Args): ...
 
 
 async def execute(args: Execute_Args) -> None:
-    """Execute the file in the vm"""
+    """Execute the file in the vm (default)"""
     modname = args.filename.stem
     vm = await init_vm(args)
 

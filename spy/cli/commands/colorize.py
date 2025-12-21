@@ -5,7 +5,7 @@ import click
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli._dump import colorize_sourcecode
+from spy.cli._format import colorize_sourcecode
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import (
     Base_Args,

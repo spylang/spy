@@ -4,7 +4,7 @@ from typing import Annotated
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli._dump import dump_spy_mod, dump_spy_mod_ast
+from spy.cli._format import dump_spy_mod, dump_spy_mod_ast
 from spy.cli._runners import execute_spy_main, init_vm
 from spy.cli.commands.shared_args import (
     Base_Args,
