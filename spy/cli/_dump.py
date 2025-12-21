@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from spy.backend.spy import FQN_FORMAT, SPyBackend
-from spy.util import highlight_src_maybe
+from spy.highlight import highlight_src
 from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
@@ -9,7 +9,8 @@ from spy.vm.vm import SPyVM
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
-    print(b.dump_mod(modname))
+    spy_code = b.dump_mod(modname)
+    print(highlight_src("spy", spy_code))
 
 
 def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
@@ -20,7 +21,7 @@ def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
             print()
 
 
-def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
+def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
     reset = "\033[0m"
     ansi_colors = {"red": "\033[41m\033[30m", "blue": "\033[44m\033[30m"}
     with open(sourcefile) as f:
@@ -70,4 +71,6 @@ def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
             cursor += 1
 
         highlighted_lines.append("".join(result))
-    return "".join(highlight_src_maybe("spy", line) for line in highlighted_lines)
+    return "".join(
+        highlight_src("spy", line.rstrip("\n")) + "\n" for line in highlighted_lines
+    )

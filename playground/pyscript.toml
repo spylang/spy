@@ -1,5 +1,5 @@
 name = "SPy playground Copy"
-packages = [ "micropip", "pygments",]
+packages = [ "micropip"]
 
 [files]
 "pyscript.toml" = ""

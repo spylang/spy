@@ -129,31 +129,6 @@ def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
         print(line)
 
 
-def highlight_src_maybe(lang: Literal["C", "spy"], code: str | bytes) -> str:
-    assert isinstance(code, str)
-
-    try:
-        import pygments  # type: ignore
-    except ImportError:
-        return code
-
-    from pygments import highlight
-    from pygments.formatters import TerminalFormatter  # type: ignore
-    from pygments.lexers import CLexer, PythonLexer  # type: ignore
-
-    def has_ansi(text: str) -> bool:
-        return bool(regexp.search(text))
-
-    if lang == "spy":
-        regexp = re.compile(r"\033\[[0-9;]*m")  # \033 is \x1b
-
-        if not has_ansi(code):
-            return highlight(code, PythonLexer(), TerminalFormatter())
-        return code
-
-    return highlight(code, CLexer(), TerminalFormatter())
-
-
 def shortrepr(s: str, n: int) -> str:
     """
     Return a repr of the `s`.
