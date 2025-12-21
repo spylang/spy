@@ -5,7 +5,7 @@ import click
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli._dump import highlight_sourcecode
+from spy.cli._dump import colorize_sourcecode
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -23,7 +23,7 @@ class _colorize_mixin:
         str,
         Option(
             "--format",
-            help="Output format for color data (ansi or json)",
+            help="Output format for color data (ansi, json, or spy [source])",
             click_type=click.Choice(["ast", "json", "spy"]),
         ),
     ] = "spy"
@@ -34,7 +34,7 @@ class Colorize_Args(Base_Args, _colorize_mixin, Filename_Required_Args): ...
 
 
 async def colorize(args: Colorize_Args) -> None:
-    """Dump the SPy AST"""
+    """Output the redshifted code or AST with blue / red text colors."""
     modname = args.filename.stem
     vm = await init_vm(args)
 
@@ -53,6 +53,6 @@ async def colorize(args: Colorize_Args) -> None:
     elif args.format == "json":
         print(format_colors_as_json(coords))
     elif args.format == "spy":
-        print(highlight_sourcecode(args.filename, coords))
+        print(colorize_sourcecode(args.filename, coords))
     else:
         assert False, "unreachable format choice"

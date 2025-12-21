@@ -27,7 +27,7 @@ class Cleanup_Args(Base_Args):
 
 
 async def cleanup(args: Cleanup_Args) -> None:
-    """Remove .spyc cache files from the provided path or cwd if no file is provided"""
+    """Remove .spyc cache files"""
 
     if args.path is None:
         paths = [os.getcwd()]
