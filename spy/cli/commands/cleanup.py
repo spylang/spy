@@ -22,7 +22,9 @@ def path_optional_callback(value: Path) -> Path:
 class Cleanup_Args(Base_Args):
     path: Annotated[
         Optional[Path],
-        Argument(help="", callback=path_optional_callback),
+        Argument(
+            help="", callback=path_optional_callback, show_default="current directory"
+        ),
     ] = None
 
 

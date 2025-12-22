@@ -137,9 +137,11 @@ class TestMain:
         _, stdout = self.run("parse", self.main_spy)
         assert stdout.startswith("Module(")
 
-    def test_run(self):
-        _, stdout = self.run(self.main_spy)
-        assert stdout == "hello world\n"
+    def test_execute(self):
+        argsets = [["execute"], []]  # No subcommand is equivalent to execute command
+        for argset in argsets:
+            _, stdout = self.run(*argset, self.main_spy)
+            assert stdout == "hello world\n"
 
     def test_redshift_and_run(self):
         _, stdout = self.run("redshift", "-x", self.main_spy)
@@ -149,6 +151,10 @@ class TestMain:
         _, stdout = self.run("redshift", self.main_spy)
         assert stdout.startswith("`main::main` = FuncDef(")
 
+    def test_redshift_full_fqn(self):
+        _, stdout = self.run("redshift", "--full-fqn", self.main_spy)
+        assert "FQN('builtins::print_str')" in stdout
+
     def test_redshift_human_readable(self):
         _, stdout = self.run("redshift", "--human-readable", self.main_spy)
         assert stdout.startswith("\ndef main() -> None:")
@@ -156,6 +162,14 @@ class TestMain:
     def test_colorize_ast(self):
         _, stdout = self.run("colorize", "--format", "ast", self.main_spy)
         assert stdout.startswith("Module(")
+
+    def test_colorize_json(self):
+        import json
+
+        _, stdout = self.run("colorize", "--format", "json", self.main_spy)
+        content = json.loads(stdout)
+        keys = "line", "col", "length", "type"
+        assert all(key in obj for key in keys for obj in content)
 
     def test_colorize_source(self):
         # source formatting is the default - run all the examples below
@@ -202,9 +216,10 @@ class TestMain:
             pytest.param("emscripten", marks=pytest.mark.emscripten),
         ],
     )
-    def test_build(self, target):
+    def test_build_and_execute(self, target):
         res, stdout = self.run(
             "build",
+            "-x",
             "--target", target,
             "--build-dir", self.tmpdir,
             self.main_spy,
@@ -242,7 +257,7 @@ class TestMain:
         res, stdout = self.run_external(PYODIDE_EXE, hello_spy)
         assert stdout == "Hello world!\n"
 
-    def test_cleanup_without_filename(self, monkeypatch):
+    def test_cleanup_without_directory(self, monkeypatch):
         # Create fake .spyc files in __pycache__
         pycache = self.tmpdir.join("__pycache__")
         pycache.mkdir()
@@ -278,3 +293,11 @@ class TestMain:
         assert "No .spyc files found" in stdout or (
             "Removed" in stdout and ".spyc file(s)" in stdout
         )
+
+    def test_symtable(self):
+        _, stdout = self.run("symtable", self.main_spy)
+        assert "<SymTable 'main::main'" in stdout
+
+    def test_imports(self):
+        _, stdout = self.run("imports", self.main_spy)
+        assert stdout.startswith("Import tree:")
