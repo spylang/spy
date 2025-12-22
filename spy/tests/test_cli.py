@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 import spy
-from spy.cli.cli import app
+from spy.cli import app
 
 PYODIDE_EXE = spy.ROOT.dirpath().join("pyodide", "venv", "bin", "python")
 if not PYODIDE_EXE.exists():
