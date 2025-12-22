@@ -143,6 +143,10 @@ class TestMain:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
 
+    def test_timeit(self):
+        _, stdout = self.run("--timeit", self.main_spy)
+        assert "main()" in stdout
+
     def test_redshift_and_run(self):
         _, stdout = self.run("redshift", "-x", self.main_spy)
         assert stdout == "hello world\n"
