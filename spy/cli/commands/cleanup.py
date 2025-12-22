@@ -11,6 +11,7 @@ from spy.util import cleanup_spyc_files
 
 
 def path_optional_callback(value: Path) -> Path:
+    """Check that the provided path is a directory, and show a nice error if not"""
     if value is not None and not Path(value).is_dir():
         raise BadParameter(
             f"--cleanup requires a directory argument, but {value} is not a directory"

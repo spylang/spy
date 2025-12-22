@@ -23,7 +23,16 @@ class TyperDefaultCommand(typer.core.TyperCommand):
     """Type that indicates if a command is the default command."""
 
 
-class AppGroupConfig(TyperGroup):
+class SpyGroupConfig(TyperGroup):
+    """
+    Configuration class with some methods overridden to provide custom behavior
+
+    The __init__ and make_context commands are shadowed to permit using a default command if no subcommand is given.
+    See https://github.com/fastapi/typer/issues/18
+
+    See below for implementation of command aliases
+    """
+
     def __init__(
         self,
         *,
@@ -33,10 +42,6 @@ class AppGroupConfig(TyperGroup):
         rich_help_panel: str | None = None,
         **attrs: Any,
     ) -> None:
-        """
-        The __init__ and make_context commands are shadowed to permit using a default command if no subcommand is given.
-        See https://github.com/fastapi/typer/issues/18
-        """
         super().__init__(
             name=name,
             commands=commands,
@@ -88,17 +93,22 @@ class AppGroupConfig(TyperGroup):
     _CMD_SPLIT_P = re.compile(r" *[,|] *")
 
     def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
+        """
+        Given a command or alias, get the 'real' name (e.g. 'x | run | execute') and
+        look it up in the command list
+        """
         cmd_name = self._group_cmd_name(self.commands.values(), cmd_name)
         result = super().get_command(ctx, cmd_name)
         return result
 
     def _group_cmd_name(
-        self, group_command_names: Iterable[click.Command], default_name: str
+        self, group_command_names: Iterable[click.Command], lookup_name: str
     ) -> str:
+        """Given a name (or alias) look up the name of the command it belongs to"""
         for cmd in group_command_names:
-            if cmd.name and default_name in self._CMD_SPLIT_P.split(cmd.name):
+            if cmd.name and lookup_name in self._CMD_SPLIT_P.split(cmd.name):
                 return cmd.name
-        return default_name
+        return lookup_name
 
 
 class SpyTyper(typer.Typer):
@@ -112,7 +122,8 @@ class SpyTyper(typer.Typer):
         self: typer.Typer, default: bool = False, *args: Any, **kwargs: Any
     ) -> Callable[[CommandFunctionType], CommandFunctionType]:
         """
-        More machinery to allow typer to provide a diffault option when no subcommand is given
+        Allow spy_command() to take a "default" argument, which marks
+        a single subcommand to be selected if none is provided
         """
         if default:
             kwargs["cls"] = TyperDefaultCommand

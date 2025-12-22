@@ -10,9 +10,9 @@ from spy.cli.commands.parse import parse
 from spy.cli.commands.pyparse import pyparse
 from spy.cli.commands.redshift import redshift
 from spy.cli.commands.symtable import symtable
-from spy.cli.spy_typer import AppGroupConfig, SpyTyper
+from spy.cli.spy_typer import SpyGroupConfig, SpyTyper
 
-app = SpyTyper(pretty_exceptions_enable=False, cls=AppGroupConfig, no_args_is_help=True)
+app = SpyTyper(pretty_exceptions_enable=False, cls=SpyGroupConfig, no_args_is_help=True)
 
 # Commands
 # Each command should be written as an async function which takes

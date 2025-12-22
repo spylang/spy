@@ -137,6 +137,7 @@ async def build(args: Build_Args) -> None:
 
 
 def get_build_dir(args: Build_Args) -> py.path.local:
+    """Use the provided directory for emitted c files, or adjacent to the provided module if none is present"""
     if args.build_dir is not None:
         build_dir = args.build_dir
     else:

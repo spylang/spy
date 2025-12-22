@@ -39,11 +39,13 @@ class Base_Args:
 
 
 def filename_callback(value: Path) -> Path:
-    # filename is required and must be a file
+    # filename is required for almost all commands; it must be a file
     if value is None:
         raise BadParameter("FILENAME is required")
     elif not value.exists():
         raise BadParameter(f"File {value} does not exist")
+    elif not value.is_file():
+        raise BadParameter(f"Path {value} does not refer to a file")
     return value
 
 
@@ -76,7 +78,7 @@ class _execute_options(_timeit_mixin): ...
 @dataclass
 class _execute_flag:
     execute: Annotated[
-        bool, Option("-x", "--execute", help="Execute the code after compilation")
+        bool, Option("-x", "--execute", help="Execute the given module")
     ] = False
 
 
