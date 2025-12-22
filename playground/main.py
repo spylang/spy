@@ -87,24 +87,16 @@ console.log("[Python] Editor created")
 
 display_filename = "test.spy"
 command_leader = "$"
-INPUT_TERMINAL_LEADER = f"{command_leader} spy {display_filename} "
+INPUT_TERMINAL_LEADER = f"{command_leader} spy "
+INPUT_TERMINAL_ENDER = f"{display_filename}"
 
 term_input = (
-    ltk.Input(INPUT_TERMINAL_LEADER)
+    ltk.Input(INPUT_TERMINAL_LEADER + INPUT_TERMINAL_ENDER)
     .css("width", "100%")
     .css("padding", 5)
     .attr("id", "terminal-input")
     .addClass("command-prompt")
 )
-
-
-@ltk.callback
-def handle_term_input(event):
-    """Ensure the the input field always starts with "$ spy {filename}"""
-    inp = event.target
-    ltk.window.console.log(f"input changed to {inp.value}")
-    if not inp.value.startswith(INPUT_TERMINAL_LEADER):
-        inp.value = INPUT_TERMINAL_LEADER
 
 
 @ltk.callback
@@ -115,7 +107,6 @@ def handle_term_enter(event):
     if event.key == "Enter":
         inp = event.target
         value = inp.value
-        inp.value = INPUT_TERMINAL_LEADER
 
         if value.startswith(INPUT_TERMINAL_LEADER):
             _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
@@ -124,7 +115,6 @@ def handle_term_enter(event):
             print(f"{INPUT_TERMINAL_LEADER}{value} is not a valid command")
 
 
-term_input.on("input", handle_term_input)
 term_input.on("keydown", handle_term_enter)
 
 # Create tabs for example files (display only the filename, not the path)
@@ -140,10 +130,6 @@ def run_spy_file_with_args(argv: list[str]):
     with open(display_filename, "w") as f:
         f.write(text)
 
-    # hack hack hack: for --cwrite to work, we always pass "-t native".
-    # It is find to always add it as it is ignored by other passes
-    argv += ["-t", "native"]
-    argv = [display_filename] + argv
     spy_main(argv)
 
 
@@ -151,13 +137,13 @@ def run_click(event):
     """Pass the text label of a button as args to the Spy cli"""
     element = ltk.find(event.target)
     flag_value = element.text().lower()
-    run_spy_file_with_args(flag_value.split())
+    run_spy_file_with_args(flag_value.split() + [display_filename])
 
     inp = ltk.window.document.getElementById("terminal-input")
-    print(
-        f"Setting input value to {command_leader} spy {display_filename} {flag_value} "
+    console.log(
+        f"Setting input value to {command_leader} spy {flag_value} {display_filename} "
     )
-    inp.value = f"{command_leader} spy {display_filename} {flag_value}"
+    inp.value = f"{command_leader} spy {flag_value} {display_filename}"
 
 
 def ButtonLabel(text):
@@ -201,12 +187,12 @@ def main():
                 term_input,
                 ltk.Div(
                     ButtonLabel("Sample Flags:"),
-                    RunSPyButton("--execute"),
-                    RunSPyButton("--parse"),
-                    RunSPyButton("--redshift"),
-                    RunSPyButton("--redshift --full-fqn"),
-                    RunSPyButton("--cwrite --cdump"),
-                    RunSPyButton("--colorize"),
+                    RunSPyButton("execute"),
+                    RunSPyButton("parse"),
+                    RunSPyButton("redshift"),
+                    RunSPyButton("redshift --full-fqn"),
+                    RunSPyButton("build --cdump"),
+                    RunSPyButton("colorize"),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(
                 {
