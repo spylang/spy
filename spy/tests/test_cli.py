@@ -220,7 +220,7 @@ class TestMain:
             pytest.param("emscripten", marks=pytest.mark.emscripten),
         ],
     )
-    def test_build_and_execute(self, target):
+    def test_build(self, target):
         res, stdout = self.run(
             "build",
             "--target", target,
@@ -248,6 +248,19 @@ class TestMain:
             print(out)
             assert False, f"command failed: {cmd}"
         assert out == "hello world"
+
+    def test_build_and_execute(self):
+        res, stdout = self.run(
+            "build",
+            "-x",
+            "--target", "native",
+            "--timeit",
+            "--build-dir", self.tmpdir,
+            self.main_spy,
+        )  # fmt: skip
+        # hack hack hack since the stdout of the subprocess isn't captured
+        # by the test runner, check the output from timeit instead
+        assert "main()" in stdout
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
