@@ -219,7 +219,6 @@ class TestMain:
     def test_build_and_execute(self, target):
         res, stdout = self.run(
             "build",
-            "-x",
             "--target", target,
             "--build-dir", self.tmpdir,
             self.main_spy,
