@@ -196,8 +196,7 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo() == (0, 0)
 
     def test_bool_ops_in_modframe_and_classframe(self):
-        mod = self.compile(
-            """
+        src = """
             x = True and False
             y = True or False
 
@@ -217,7 +216,7 @@ class TestStructOnStack(CompilerTest):
             def read_b(value: i32) -> i32:
                 return Point(value).b
             """
-        )
+        mod = self.compile(src)
 
         assert mod.read_x() is False
         assert mod.read_y() is True
