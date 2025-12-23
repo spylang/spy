@@ -421,6 +421,7 @@ class TestStructOnStack(CompilerTest):
         """
         errors = expect_errors("`For` not supported inside a classdef")
         self.compile_raises(src, "", errors, error_reporting="eager")
+
     def test_fwdecl_is_ignored_by_C_backend(self):
         src = """
         @blue
