@@ -249,18 +249,18 @@ class TestMain:
             assert False, f"command failed: {cmd}"
         assert out == "hello world"
 
-    def test_build_and_execute(self):
+    def test_build_and_execute(self, capfd):
         res, stdout = self.run(
             "build",
             "-x",
             "--target", "native",
-            "--timeit",
             "--build-dir", self.tmpdir,
             self.main_spy,
         )  # fmt: skip
         # hack hack hack since the stdout of the subprocess isn't captured
         # by the test runner, check the output from timeit instead
-        assert "main()" in stdout
+        out, err = capfd.readouterr()
+        assert "hello world" in out
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
