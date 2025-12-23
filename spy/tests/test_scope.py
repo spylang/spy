@@ -379,6 +379,36 @@ class TestScopeAnalyzer:
             ("this is the previous declaration", "x: i32 = 1"),
         )
 
+    def test_can_shadow_builtins(self):
+        scopes = self.analyze("""
+        # Shadow the builtin i32 at module level
+        i32: type = str
+
+        def foo() -> None:
+            # Shadow the builtin str inside a function
+            str: type = i32
+        """)
+
+        # Check module scope
+        mod_scope = scopes.by_module()
+        assert mod_scope._symbols == {
+            "i32": MatchSymbol("i32", "const", "global-const"),
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            # captured builtins that are referenced
+            "type": MatchSymbol("type", "const", "explicit", level=1),
+            "str": MatchSymbol("str", "const", "explicit", level=1),
+        }
+
+        # Check function scope
+        funcdef = self.mod.get_funcdef("foo")
+        func_scope = scopes.by_funcdef(funcdef)
+        assert func_scope._symbols == {
+            "str": MatchSymbol("str", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "i32": MatchSymbol("i32", "const", "global-const", level=1),
+            "type": MatchSymbol("type", "const", "explicit", level=2),
+        }
+
     def test_inner_funcdef(self):
         scopes = self.analyze("""
         def foo() -> None:
@@ -517,10 +547,6 @@ class TestScopeAnalyzer:
 
     def test_for_loop(self):
         scopes = self.analyze("""
-        # XXX kill this when 'range' becomes a builtin
-        def range(n: i32) -> dynamic:
-            pass
-
         def foo() -> None:
             for i in range(10):
                 x: i32 = i * 2
@@ -532,16 +558,12 @@ class TestScopeAnalyzer:
             "i": MatchSymbol("i", "var", "auto"),
             "x": MatchSymbol("x", "var", "auto"),
             "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "funcdef", level=1),
+            "range": MatchSymbol("range", "const", "explicit", level=2),
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
     def test_for_loop_multiple(self):
         scopes = self.analyze("""
-        # XXX kill this when 'range' becomes a builtin
-        def range(n: i32) -> dynamic:
-            pass
-
         def foo() -> None:
             for i in range(10):
                 x: i32 = i * 2
@@ -558,7 +580,7 @@ class TestScopeAnalyzer:
             "x": MatchSymbol("x", "var", "auto"),
             "y": MatchSymbol("y", "var", "auto"),
             "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "funcdef", level=1),
+            "range": MatchSymbol("range", "const", "explicit", level=2),
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
@@ -602,3 +624,12 @@ class TestScopeAnalyzer:
             "args": MatchSymbol("args", "const", "blue-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
+
+    def test_list_literal(self):
+        # using a string literal implicitly imports '_list'
+        scopes = self.analyze("""
+        def foo() -> None:
+            [1, 2, 3]
+        """)
+        scope = scopes.by_module()
+        assert scope.implicit_imports == {"_list"}

@@ -6,7 +6,7 @@ from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
-@pytest.fixture(params=["i32", "i8", "u8"])
+@pytest.fixture(params=["i32", "u32", "i8", "u8"])
 def int_type(request):
     return request.param
 
@@ -52,7 +52,7 @@ class TestUnsafeIntDiv(CompilerTest):
         assert mod.mod(116, 5) == 1
 
     def test_floordiv_mod_mixed_signs(self, int_type):
-        if int_type == "u8":
+        if int_type in ("u8", "u32"):
             pytest.skip("Skipping for negative operands in floordiv test")
 
         mod = self.compile(f"""

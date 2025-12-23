@@ -2,16 +2,37 @@ import difflib
 import inspect
 import itertools
 import linecache
+import os
 import re
 import subprocess
 import typing
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable, Literal, Sequence
+from typing import Callable, Generic, Iterator, Literal, Sequence, TypeVar
 
 import py.path
 
 from spy.textbuilder import Color
+
+T = TypeVar("T")
+
+
+class OrderedSet(Generic[T]):
+    """
+    A set that maintains insertion order.
+    """
+
+    def __init__(self) -> None:
+        self._dict: dict[T, None] = {}
+
+    def add(self, item: T) -> None:
+        self._dict[item] = None
+
+    def __contains__(self, item: T) -> bool:
+        return item in self._dict
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self._dict)
 
 
 class AnythingClass:
@@ -106,31 +127,6 @@ def print_diff(a: str, b: str, fromfile: str, tofile: str) -> None:
         elif line.startswith("@@"):
             line = Color.set("fuchsia", line)
         print(line)
-
-
-def highlight_src_maybe(lang: Literal["C", "spy"], code: str | bytes) -> str:
-    assert isinstance(code, str)
-
-    try:
-        import pygments  # type: ignore
-    except ImportError:
-        return code
-
-    from pygments import highlight
-    from pygments.formatters import TerminalFormatter  # type: ignore
-    from pygments.lexers import CLexer, PythonLexer  # type: ignore
-
-    def has_ansi(text: str) -> bool:
-        return bool(regexp.search(text))
-
-    if lang == "spy":
-        regexp = re.compile(r"\033\[[0-9;]*m")  # \033 is \x1b
-
-        if not has_ansi(code):
-            return highlight(code, PythonLexer(), TerminalFormatter())
-        return code
-
-    return highlight(code, CLexer(), TerminalFormatter())
 
 
 def shortrepr(s: str, n: int) -> str:
@@ -333,31 +329,47 @@ def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
     return filename
 
 
-def cleanup_spyc_files(paths: Sequence[py.path.local | Path | str]) -> int:
+def cleanup_spyc_files(path: py.path.local, *, verbose: bool = False) -> None:
     """
     Remove all .spyc cache files from __pycache__ directories in the given paths.
-
-    Returns the number of files removed.
     """
-    removed_count = 0
-    for path_item in paths:
-        if isinstance(path_item, py.path.local):
-            path = path_item
-        else:
-            path = py.path.local(str(path_item))
+    if verbose:
+        print(f"Cleaning up {path}:")
 
-        if not path.check(dir=True):
+    n = 0
+    if not path.check(dir=True):
+        if verbose:
+            print("Not a directory")
+        return
+
+    # Use os.walk with onerror handler to gracefully handle permission errors
+    def handle_error(error: OSError) -> None:
+        if verbose:
+            print(f"    Permission denied: {error.filename}")
+
+    for root, dirs, files in os.walk(str(path), onerror=handle_error):
+        # Only process __pycache__ directories
+        if os.path.basename(root) != "__pycache__":
             continue
 
-        for pycache_dir in path.visit("__pycache__"):
-            if not pycache_dir.check(dir=True):
-                continue
+        for filename in files:
+            if filename.endswith(".spyc"):
+                spyc_path = os.path.join(root, filename)
+                try:
+                    rel_path = os.path.relpath(spyc_path, str(path))
+                    if verbose:
+                        print(f"    {rel_path}")
+                    os.remove(spyc_path)
+                    n += 1
+                except PermissionError as e:
+                    if verbose:
+                        print(f"    Permission denied: {rel_path}")
 
-            for spyc_file in pycache_dir.visit("*.spyc"):
-                spyc_file.remove()
-                removed_count += 1
-
-    return removed_count
+    if verbose:
+        if n == 0:
+            print("No .spyc files found")
+        else:
+            print(f"{n} file(s) removed")
 
 
 if __name__ == "__main__":

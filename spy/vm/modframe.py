@@ -120,10 +120,13 @@ class ModFrame(AbstractFrame):
         assert sym.impref == imp.ref
         w_val = self.vm.lookup_ImportRef(imp.ref)
         if w_val is not None:
-            # import successful, nothing to do.
+            # import successfull
+            w_T = self.vm.dynamic_type(w_val)
+            self.declare_local(sym.name, "blue", w_T, imp.loc)
+            self.store_local(sym.name, w_val)
             return
 
-        # import failed, raise ImportError
+        # import failed
         err = SPyError(
             "W_ImportError",
             f"cannot import `{imp.ref.spy_name()}`",

@@ -8,7 +8,7 @@ from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
 from spy.build.cffi import cffi_build
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
-from spy.util import highlight_src_maybe
+from spy.highlight import highlight_src
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.unsafe.ptr import W_PtrType
@@ -23,6 +23,7 @@ class CBackend:
     """
 
     vm: SPyVM
+    main_modname: str
     outname: str
     config: BuildConfig
     build_dir: py.path.local
@@ -37,19 +38,20 @@ class CBackend:
     def __init__(
         self,
         vm: SPyVM,
-        outname: str,
+        main_modname: str,
         config: BuildConfig,
         build_dir: py.path.local,
         *,
         dump_c: bool,
     ) -> None:
         self.vm = vm
-        self.outname = outname
+        self.main_modname = main_modname
+        self.outname = main_modname
         self.config = config
         self.build_dir = build_dir
         self.build_dir.join("src").ensure(dir=True)
         self.dump_c = dump_c
-        self.cffi = CFFIWriter(outname, config, build_dir)
+        self.cffi = CFFIWriter(main_modname, config, build_dir)
         self.ninja = None
         self.c_structdefs = {}
         self.c_modules = {}
@@ -170,17 +172,18 @@ class CBackend:
             if self.dump_c:
                 print()
                 print(f"---- {c_structdefs.hfile} ----")
-                print(highlight_src_maybe("C", c_structdefs.hfile.read()))
+                print(highlight_src("C", c_structdefs.hfile.read()))  # type: ignore
 
         # Emit regular C modules
         for c_mod in self.c_modules.values():
-            cwriter = CModuleWriter(self.vm, c_mod, self.cffi)
+            is_main_mod = c_mod.modname == self.main_modname
+            cwriter = CModuleWriter(self.vm, c_mod, is_main_mod, self.cffi)
             cwriter.write_c_source()
             self.cfiles.append(c_mod.cfile)
             if self.dump_c:
                 print()
                 print(f"---- {c_mod.cfile} ----")
-                print(highlight_src_maybe("C", c_mod.cfile.read()))
+                print(highlight_src("C", c_mod.cfile.read()))  # type: ignore
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"

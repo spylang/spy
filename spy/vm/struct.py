@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Iterable, Optional
 
 from spy.errors import WIP
 from spy.fqn import FQN
-from spy.vm.b import BUILTINS, TYPES
+from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.builtin import IRTag, W_BuiltinFunc, builtin_method
 from spy.vm.field import W_Field
 from spy.vm.function import FuncParam, W_FuncType
@@ -187,8 +187,14 @@ class W_Struct(W_Object):
         values_key = [w_val.spy_key(vm) for w_val in self.values_w.values()]
         return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 
-    def spy_unwrap(self, vm: "SPyVM") -> "UnwrappedStruct":
+    def spy_unwrap(self, vm: "SPyVM") -> Any:
         fqn = self.w_structtype.fqn
+
+        # hack hack hack, as we don't have a better way to check whether w_T is a 'list'
+        is_list = str(fqn).startswith("_list::list[")
+        if is_list:
+            return unwrap_list(vm, self)
+
         fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
         return UnwrappedStruct(fqn, fields)
 
@@ -280,3 +286,16 @@ class UnwrappedStruct:
 
     def __repr__(self) -> str:
         return f"<UnwrappedStruct {self.fqn}: {self._content}>"
+
+
+def unwrap_list(vm: "SPyVM", w_list: W_Object) -> list[Any]:
+    """
+    Only useful in tests
+    """
+    items = []
+    w_n = vm.call_w(B.w_len, [w_list], color="red")
+    n = vm.unwrap_i32(w_n)
+    for i in range(n):
+        w_item = vm.getitem_w(w_list, vm.wrap(i), color="red")
+        items.append(vm.unwrap(w_item))
+    return items

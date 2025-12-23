@@ -19,13 +19,13 @@ from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.build.config import BuildConfig, BuildTarget, OutputKind
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
+from spy.highlight import highlight_src
 from spy.magic_py_parse import magic_py_parse
 from spy.textbuilder import Color
 from spy.util import (
     cleanup_spyc_files,
     colors_coordinates,
     format_colors_as_json,
-    highlight_src_maybe,
 )
 from spy.vendored.dataclass_typer import dataclass_typer
 from spy.vm.b import B
@@ -201,15 +201,27 @@ class Arguments:
         ),
     ] = False
 
+    no_spyc: Annotated[
+        bool,
+        Option("--no-spyc", help="Disable loading/saving of .spyc cache files"),
+    ] = False
+
     def __post_init__(self) -> None:
         self.validate_actions()
 
-        # filename is optional only for --cleanup
-        if self.filename is None:
-            if not self.cleanup:
-                raise typer.BadParameter("FILENAME is required unless using --cleanup")
-        elif not self.filename.exists():
-            raise typer.BadParameter(f"File {self.filename} does not exist")
+        # Validate filename based on action
+        if self.cleanup:
+            # For cleanup, filename must be None or an existing directory
+            if self.filename is not None and not self.filename.is_dir():
+                raise typer.BadParameter(
+                    f"--cleanup requires a directory argument, but {self.filename} is not a directory"
+                )
+        else:
+            # For other actions, filename is required and must be a file
+            if self.filename is None:
+                raise typer.BadParameter("FILENAME is required")
+            elif not self.filename.exists():
+                raise typer.BadParameter(f"File {self.filename} does not exist")
 
     def validate_actions(self) -> None:
         # check that we specify at most one of the following options
@@ -250,23 +262,11 @@ def do_pyparse(filename: str) -> None:
     mod.pp()
 
 
-def do_cleanup(vm: Optional["SPyVM"] = None) -> None:
-    """
-    Remove all .spyc cache files from directories in vm.path (or cwd if vm is None).
-    """
-    paths = vm.path if vm is not None else [os.getcwd()]
-    removed_count = cleanup_spyc_files(paths)
-
-    if removed_count == 0:
-        print("No .spyc files found")
-    else:
-        print(f"Removed {removed_count} .spyc file(s)")
-
-
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
-    print(b.dump_mod(modname))
+    spy_code = b.dump_mod(modname)
+    print(highlight_src("spy", spy_code))
 
 
 def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
@@ -378,9 +378,10 @@ async def inner_main(args: Arguments) -> None:
     """
     global GLOBAL_VM
 
-    # Handle cleanup without filename
-    if args.cleanup and args.filename is None:
-        do_cleanup()
+    # Handle cleanup early, before any import/execution logic
+    if args.cleanup:
+        path = args.filename if args.filename is not None else Path(os.getcwd())
+        cleanup_spyc_files(py.path.local(path), verbose=True)
         return
 
     # All other commands require a filename
@@ -409,11 +410,7 @@ async def inner_main(args: Arguments) -> None:
         args.error_mode = "lazy"
         vm.emit_warning = emit_warning
 
-    if args.cleanup:
-        do_cleanup(vm)
-        return
-
-    importer = ImportAnalyzer(vm, modname)
+    importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.parse_all()
 
     orig_mod = importer.getmod(modname)
@@ -426,7 +423,7 @@ async def inner_main(args: Arguments) -> None:
         return
 
     if args.symtable:
-        scopes = importer.analyze_scopes(modname)
+        scopes = importer.analyze_one(modname, orig_mod)
         scopes.pp()
         return
 
@@ -456,7 +453,7 @@ async def inner_main(args: Arguments) -> None:
                 if args.format == "json":
                     print(format_colors_as_json(coords))
                 else:
-                    print(highlight_sourcecode(args.filename, coords))
+                    print(colorize_sourcecode(args.filename, coords))
         elif args.parse:
             dump_spy_mod_ast(vm, modname)
         else:
@@ -520,7 +517,7 @@ def execute_spy_main(args: Arguments, vm: SPyVM, w_mod: W_Module) -> None:
     assert w_res is B.w_None
 
 
-def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
+def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
     reset = "\033[0m"
     ansi_colors = {"red": "\033[41m\033[30m", "blue": "\033[44m\033[30m"}
     with open(sourcefile) as f:
@@ -570,4 +567,6 @@ def highlight_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
             cursor += 1
 
         highlighted_lines.append("".join(result))
-    return "".join(highlight_src_maybe("spy", line) for line in highlighted_lines)
+    return "".join(
+        highlight_src("spy", line.rstrip("\n")) + "\n" for line in highlighted_lines
+    )

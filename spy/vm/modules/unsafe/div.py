@@ -3,12 +3,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Protocol
 from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.opspec import W_MetaArg
-from spy.vm.primitive import (
-    W_F64,
-    W_I8,
-    W_I32,
-    W_U8,
-)
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_U32
 from spy.vm.w import W_Object, W_OpSpec, W_Type
 
 from . import UNSAFE
@@ -27,6 +22,8 @@ def w_unchecked_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
             return W_OpSpec(UNSAFE.w_u8_unchecked_div)
         case B.w_i32:
             return W_OpSpec(UNSAFE.w_i32_unchecked_div)
+        case B.w_u32:
+            return W_OpSpec(UNSAFE.w_u32_unchecked_div)
         case B.w_f64:
             return W_OpSpec(UNSAFE.w_f64_unchecked_div)
         case _:
@@ -46,6 +43,8 @@ def w_unchecked_floordiv(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_O
             return W_OpSpec(UNSAFE.w_u8_unchecked_floordiv)
         case B.w_i32:
             return W_OpSpec(UNSAFE.w_i32_unchecked_floordiv)
+        case B.w_u32:
+            return W_OpSpec(UNSAFE.w_u32_unchecked_floordiv)
         case B.w_f64:
             return W_OpSpec(UNSAFE.w_f64_unchecked_floordiv)
         case _:
@@ -65,6 +64,8 @@ def w_unchecked_mod(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
             return W_OpSpec(UNSAFE.w_u8_unchecked_mod)
         case B.w_i32:
             return W_OpSpec(UNSAFE.w_i32_unchecked_mod)
+        case B.w_u32:
+            return W_OpSpec(UNSAFE.w_u32_unchecked_mod)
         case B.w_f64:
             return W_OpSpec(UNSAFE.w_f64_unchecked_mod)
         case _:
@@ -120,6 +121,7 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
 make_ops("i8", W_I8)
 make_ops("u8", W_U8)
 make_ops("i32", W_I32)
+make_ops("u32", W_U32)
 
 
 @UNSAFE.builtin_func

@@ -1,27 +1,59 @@
-import pytest
-
 from spy.fqn import FQN
-from spy.tests.support import CompilerTest, no_C
+from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
 from spy.vm.b import B
-from spy.vm.list import W_ListType
 from spy.vm.object import W_Type
 
 
-# Eventually we want to remove the @no_C, but for now the C backend
-# doesn't support lists
-@no_C
 class TestList(CompilerTest):
-    def test_generic_type(self):
-        mod = self.compile("""
-        @blue
-        def foo():
-            return list[i32]
-        """)
-        w_foo = mod.foo.w_func
-        w_list_i32 = self.vm.fast_call(w_foo, [])
-        assert isinstance(w_list_i32, W_ListType)
-        assert w_list_i32.fqn == FQN("builtins::list[i32]")
+    """
+    These are only few of the tests about list, mostly to check that:
 
+      1. list[T] does the right thing
+
+      2. the list literal syntax "[a, b, c, ...]" works
+
+    The actual behavior of list objects is tested by stdlib/test__list.py and
+    test_interp_list.py
+    """
+
+    @only_interp
+    def test_list_type(self):
+        # by default we use _list.list, but for some itemtype we use interp_list
+        src = """
+        def list_i32() -> type:
+            return list[i32]
+
+        def list_type() -> type:
+            return list[type]
+        """
+        mod = self.compile(src)
+        w_T1 = mod.list_i32(unwrap=False)
+        assert w_T1.fqn == FQN("_list::list[i32]::_ListImpl")
+        assert w_T1.is_struct(self.vm)
+        #
+        w_T2 = mod.list_type(unwrap=False)
+        assert w_T2.fqn == FQN("__spy__::interp_list[type]")
+
+    def test_literal_stdlib(self):
+        # list[i32] is implemented by stdlib/_list.spy
+        mod = self.compile("""
+        def foo() -> list[i32]:
+            x = [1, 2, 3]
+            return x
+        """)
+        x = mod.foo()
+        assert x == [1, 2, 3]
+
+    @only_interp
+    def test_literal_interp_list(self):
+        mod = self.compile("""
+        def foo() -> list[type]:
+            return [i32, f64, str]
+        """)
+        w_lst = mod.foo(unwrap=False)
+        assert w_lst.items_w == [B.w_i32, B.w_f64, B.w_str]
+
+    @only_interp
     def test_generalize_literal(self):
         mod = self.compile("""
         def foo() -> type:
@@ -34,117 +66,116 @@ class TestList(CompilerTest):
         """)
         w_t1 = mod.foo(unwrap=False)
         assert isinstance(w_t1, W_Type)
-        assert w_t1.fqn == FQN("builtins::list[type]")
+        assert w_t1.fqn == FQN("__spy__::interp_list[type]")
         w_t2 = mod.bar(unwrap=False)
         assert isinstance(w_t2, W_Type)
-        assert w_t2.fqn == FQN("builtins::list[object]")
+        assert w_t2.fqn == FQN("__spy__::interp_list[object]")
 
-    def test_literal(self):
-        mod = self.compile("""
+    @only_interp
+    def test_list_MetaArg(self):
+        src = """
+        from operator import MetaArg
+
+        def foo() -> list[MetaArg]:
+            m_a: MetaArg = i32
+            m_b: MetaArg = f64
+            return [m_a, m_b]
+        """
+        mod = self.compile(src)
+        w_lst = mod.foo(unwrap=False)
+        w_T = self.vm.dynamic_type(w_lst)
+        assert w_T.fqn == FQN("__spy__::interp_list[operator::MetaArg]")
+        assert len(w_lst.items_w) == 2
+        wam_a, wam_b = w_lst.items_w
+        assert wam_a.w_static_T is B.w_i32
+        assert wam_b.w_static_T is B.w_f64
+
+    @only_interp
+    def test_list_MetaArg_identity(self):
+        # This test is needed because of what likely is a design issue of W_MetaArg,
+        # which we should probably fix.
+        #
+        # W_MetaArg compares by VALUE, so m_a and m_b are equal.
+        #
+        # SPy's blue/red machinery is built on the assumption that value types don't
+        # have identity: if they are equal, they can be used interchangeably; because of
+        # that a naive implementation of eval_expr_List would _push() m_a twice (which
+        # is fine since it's equal to m_b).
+        #
+        # HOWEVER, for the specific case of W_MetaArg, identity matters, because it's
+        # what we use to map OpSpec-to-OpImpl args. So, it's important that the
+        # resulting list contains [m_a, m_b] instead of [m_a, m_a].
+        src = """
+        from operator import MetaArg
+
+        def foo() -> list[MetaArg]:
+            m_a: MetaArg = i32
+            m_b: MetaArg = i32
+            # m_a and m_b are EQUAL, but not identicaly
+            assert m_a == m_b
+            return [m_a, m_b]
+        """
+        mod = self.compile(src)
+        w_lst = mod.foo(unwrap=False)
+        assert len(w_lst.items_w) == 2
+        wam_a, wam_b = w_lst.items_w
+        assert wam_a is not wam_b
+
+    @no_C
+    def test_empty_list_singleton(self):
+        src = """
+        import __spy__
+
+        def get_empty() -> __spy__.EmptyListType:
+            return []
+        """
+        mod = self.compile(src)
+        w_a = mod.get_empty(unwrap=False)
+        w_b = mod.get_empty(unwrap=False)
+        assert w_a is w_b
+
+    @no_C
+    def test_empty_list_to_interp_list(self):
+        src = """
+        def foo() -> list[object]:
+            return []
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == []
+
+    def test_empty_list_to_stdlib_list(self):
+        src = """
         def foo() -> list[i32]:
-            x: list[i32] = [1, 2, 3]
-            return x
-        """)
-        x = mod.foo()
-        assert x == [1, 2, 3]
+            return []
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == []
 
-    def test_getitem(self):
-        mod = self.compile("""
-        def foo(i: i32) -> str:
-            x: list[str] = ["foo", "bar", "baz"]
-            return x[i]
-        """)
-        assert mod.foo(0) == "foo"
-        assert mod.foo(1) == "bar"
+    def test_converted_empty_list_can_mutate(self):
+        src = """
+        def foo() -> list[i32]:
+            l: list[i32] = []
+            l.append(1)
+            l.append(2)
+            l.append(3)
+            return l
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == [1, 2, 3]
 
-    def test_setitem(self):
-        mod = self.compile("""
-        def foo(i: i32) -> list[i32]:
-            x: list[i32] = [0, 1, 2]
-            x[i] = x[i] + 10
-            return x
-        """)
-        assert mod.foo(0) == [10, 1, 2]
-        assert mod.foo(1) == [0, 11, 2]
-
-    def test_eq(self):
-        if self.backend == "doppler":
-            pytest.skip("list PBCs not supported")
-
-        mod = self.compile("""
-        A: list[i32] = [0, 1, 2]
-        B: list[type] = [i32, f64, str]
-
-        def cmp_i32(x: i32) -> bool:
-            c: list[i32] = [0, 1, x]
-            return A == c
-
-        def cmp_types(x: type) -> bool:
-            c: list[type] = [i32, f64, x]
-            return B == c
-        """)
-        assert mod.cmp_i32(2) == True
-        assert mod.cmp_i32(3) == False
-        assert mod.cmp_types(B.w_str) == True
-        assert mod.cmp_types(B.w_i32) == False
-
-    def test_add(self):
-        mod = self.compile("""
-        def add_i32_lists() -> list[i32]:
-            a: list[i32] = [0, 1]
-            b: list[i32] = [2, 3]
-            return a + b
-
-        def add_str_lists() -> list[str]:
-            a: list[str] = ["a"]
-            b: list[str] = ["b", "bb"]
-            c: list[str] = ["c", "cc", "ccc"]
-            return a + b + c
-
-        def test_iadd_lists() -> list[str]:
-            a: list[str] = ["a"]
-            b: list[str] = ["b", "bb"]
-            a += b
-            return a
-
-        def add_type_lists_repr() -> str:
-            a: list[type] = [i32, f64]
-            b: list[type] = [bool]
-            return repr(a + b)
-        """)
-
-        assert mod.add_i32_lists() == [0, 1, 2, 3]
-        assert mod.add_str_lists() == ["a", "b", "bb", "c", "cc", "ccc"]
-        assert mod.test_iadd_lists() == ["a", "b", "bb"]
-        assert (
-            mod.add_type_lists_repr()
-            == "[<spy type 'i32'>, <spy type 'f64'>, <spy type 'bool'>]"
+    def test_bare_empty_list_cannot_mutate(self):
+        src = """
+        def foo() -> list[i32]:
+            l = []
+            l.append(1)
+            return l
+        """
+        errors = expect_errors(
+            "cannot mutate an untyped empty list",
+            ("this is untyped", "l"),
+            ("help: use an explicit type: `l: list[T] = []`", "l"),
         )
-
-    def test_repr_str(self):
-        mod = self.compile("""
-        def str_list_str(a: str, b: str) -> str:
-            return str([a, b])
-
-        def repr_list_str(a: str, b: str) -> str:
-            return repr([a, b])
-
-        def str_list_i32(a: i32, b: i32) -> str:
-            return str([a, b])
-
-        def repr_list_i32(a: i32, b: i32) -> str:
-            return repr([a, b])
-        """)
-        assert mod.str_list_str("aaa", "bbb") == "['aaa', 'bbb']"
-        assert mod.repr_list_str("aaa", "bbb") == "['aaa', 'bbb']"
-        assert mod.str_list_i32(1, 2) == "[1, 2]"
-        assert mod.repr_list_i32(1, 2) == "[1, 2]"
-
-    def test_interp_repr(self):
-        mod = self.compile("""
-        def foo() -> list[i32]:
-            return [1, 2]
-        """)
-        w_foo = mod.foo.w_func
-        w_l = self.vm.fast_call(w_foo, [])
-        assert repr(w_l) == "W_List('i32', [W_I32(1), W_I32(2)])"
+        self.compile_raises(src, "foo", errors)

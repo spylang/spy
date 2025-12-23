@@ -34,6 +34,7 @@ class CModule:
 class CModuleWriter:
     ctx: Context
     c_mod: CModule
+    is_main_mod: bool
     global_vars: set[str]
     jsffi_error_emitted: bool = False
 
@@ -53,10 +54,12 @@ class CModuleWriter:
         self,
         vm: SPyVM,
         c_mod: CModule,
+        is_main_mod: bool,
         cffi: CFFIWriter,
     ) -> None:
         self.ctx = Context(vm)
         self.c_mod = c_mod
+        self.is_main_mod = is_main_mod
         self.cffi = cffi
         self.tbh = TextBuilder(use_colors=False)
         self.tbc = TextBuilder(use_colors=False)
@@ -149,7 +152,7 @@ class CModuleWriter:
 
         # Main function
         fqn_main = FQN([self.c_mod.modname, "main"])
-        if fqn_main in self.ctx.vm.globals_w:
+        if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
             self.tbc.wb(f"""
                 int main(void) {{
                     {fqn_main.c_name}();
