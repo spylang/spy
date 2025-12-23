@@ -397,3 +397,24 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(3, 4) == 7
+
+    def test_field_default_value_rejected_inside_body(self):
+        src = """
+        @struct
+        class Foo:
+            if True:
+                x: i32 = 0
+        """
+        errors = expect_errors("default values in fields not supported yet")
+        self.compile_raises(src, "", errors, error_reporting="eager")
+
+    def test_for_statement_rejected_inside_class_body(self):
+        src = """
+        @struct
+        class Foo:
+            if True:
+                for i in [1,2,3]:
+                    pass
+        """
+        errors = expect_errors("`For` not supported inside a classdef")
+        self.compile_raises(src, "", errors, error_reporting="eager")
