@@ -31,12 +31,6 @@ class ClassFrame(AbstractFrame):
     def run(self) -> ClassBody:
         self.declare_reserved_bool_locals()
 
-        # execute field definitions
-        for vardef in self.classdef.fields:
-            assert vardef.kind is None
-            self.exec_stmt(vardef)
-
-        # execute the rest of the class body
         for stmt in self.classdef.body:
             self.exec_stmt(stmt)
 
@@ -52,3 +46,22 @@ class ClassFrame(AbstractFrame):
                 body.dict_w[name] = lv.w_val
 
         return body
+
+    def exec_stmt(self, stmt: ast.Stmt) -> None:
+        allowed = (ast.VarDef, ast.If, ast.Pass, ast.FuncDef)
+        if type(stmt) in allowed:
+            return super().exec_stmt(stmt)
+
+        STMT = type(stmt).__name__
+        msg = f"`{STMT}` not supported inside a classdef"
+        raise SPyError.simple("W_TypeError", msg, "this is not supported", stmt.loc)
+
+    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        if vardef.value is not None:
+            raise SPyError.simple(
+                "W_TypeError",
+                "default values in fields not supported yet",
+                "this is not supported",
+                vardef.value.loc,
+            )
+        return super().exec_stmt_VarDef(vardef)
