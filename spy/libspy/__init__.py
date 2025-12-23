@@ -26,7 +26,7 @@ else:
 # XXX ^^^^
 # is it correct to always use debug/libspy.wasm? For tests it's surely fine
 # since we always compile them with SPY_DEBUG, but we need to double check
-# what to do when we do e.g. spy -c --release fine sine
+# what to do when we do e.g. spy build --release fine sine
 
 
 async def async_get_LLMOD() -> LLWasmModule:
