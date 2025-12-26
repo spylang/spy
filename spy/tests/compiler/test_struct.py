@@ -286,8 +286,8 @@ class TestStructOnStack(CompilerTest):
         reserved = {"@if", "@and", "@or", "@while", "@assert"}
 
         field_names = {w_field.name for w_field in w_Foo.iterfields_w()}
-        assert reserved.isdisjoint(field_names)
-        assert reserved.isdisjoint(w_Foo.dict_w.keys())
+        assert field_names == set()
+        assert reserved.isdisjoint(w_Foo.dict_w)
 
     def test_operator(self):
         mod = self.compile("""
