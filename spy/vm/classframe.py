@@ -29,24 +29,39 @@ class ClassFrame(AbstractFrame):
         self.classdef = classdef
 
     def run(self) -> ClassBody:
-        # execute field definitions
         self.declare_reserved_bool_locals()
-        body = ClassBody(fields_w={}, dict_w={})
-        for vardef in self.classdef.fields:
-            varname = vardef.name.value
-            assert vardef.kind is None
-            self.exec_stmt(vardef)
-            w_T = self.locals[varname].w_T
-            body.fields_w[varname] = W_Field(varname, w_T)
 
-        # execute method definitions
         for stmt in self.classdef.body:
             self.exec_stmt(stmt)
 
+        body = ClassBody(fields_w={}, dict_w={})
         for name, lv in self.locals.items():
-            # ignore variables which were just declared but never assigned; this
-            # includes .e.g field declarations
-            if lv.w_val is not None:
+            # ignore reserved bool locals
+            if name.startswith("@"):
+                continue
+            if lv.w_val is None:
+                # locals declared but not assigned
+                body.fields_w[name] = W_Field(name, lv.w_T)
+            else:
                 body.dict_w[name] = lv.w_val
 
         return body
+
+    def exec_stmt(self, stmt: ast.Stmt) -> None:
+        allowed = (ast.VarDef, ast.If, ast.Pass, ast.FuncDef)
+        if type(stmt) in allowed:
+            return super().exec_stmt(stmt)
+
+        STMT = type(stmt).__name__
+        msg = f"`{STMT}` not supported inside a classdef"
+        raise SPyError.simple("W_TypeError", msg, "this is not supported", stmt.loc)
+
+    def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
+        if vardef.value is not None:
+            raise SPyError.simple(
+                "W_TypeError",
+                "default values in fields not supported yet",
+                "this is not supported",
+                vardef.value.loc,
+            )
+        return super().exec_stmt_VarDef(vardef)
