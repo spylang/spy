@@ -513,3 +513,9 @@ class SPyBackend:
         itemlist = [self.fmt_expr(it) for it in node.items]
         items = ", ".join(itemlist)
         return f"({items})"
+
+    def fmt_expr_Slice(self, node: ast.Slice) -> str:
+        (start, stop, step) = [
+            self.fmt_expr(at) for at in (node.start, node.stop, node.step)
+        ]
+        return f"Slice({start}:{stop}{f':{step}' if step else ''})"

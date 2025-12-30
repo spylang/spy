@@ -3,7 +3,7 @@ from types import NoneType
 from typing import TYPE_CHECKING, Iterator, Optional, Sequence
 
 from spy import ast
-from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
+from spy.analyze.symtable import Color, ImportRef, Symbol, SymTable, maybe_blue
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -1132,6 +1132,35 @@ class AbstractFrame:
             items_w = [wam.w_val for wam in items_wam]
             w_val = W_Tuple(items_w)
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
+
+    def eval_expr_Slice(self, op: ast.Slice) -> W_MetaArg:
+        generic_loc = Loc(
+            filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
+        )
+        slice_sym = Symbol(
+            "slice",
+            "const",
+            "explicit",
+            "direct",
+            loc=generic_loc,
+            type_loc=generic_loc,
+            level=0,
+            impref=ImportRef("_slice", "Slice"),
+        )
+        self.symtable.add(slice_sym)
+
+        none_val = ast.Constant(loc=Loc.fake(), value=None)
+        return self.eval_expr_Call(
+            ast.Call(
+                op.loc,
+                func=ast.Name(op.loc, id="slice"),
+                args=[
+                    op.start if op.start is not None else none_val,
+                    op.stop if op.stop is not None else none_val,
+                    op.step if op.step is not None else none_val,
+                ],
+            )
+        )
 
 
 class ASTFrame(AbstractFrame):

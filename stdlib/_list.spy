@@ -71,16 +71,29 @@ def list(T):
 
         def __len__(self) -> i32:
             return self.__ll__.length
+        
 
-        def __getitem__(self, i: i32) -> T:
-            ll = self.__ll__
-            if i < 0:
-                i = i + ll.length
-            if i < 0:
-                raise IndexError
-            if i >= ll.length:
-                raise IndexError
-            return ll.items[i]
+        @blue.metafunc
+        def __getitem__(self, m_x: MetaArg):
+            if m_x.static_type == i32:
+                def getitem_int(_self: _ListImpl, i: i32) -> T:
+                    ll = _self.__ll__
+                    if i < 0:
+                        i = i + ll.length
+                    if i < 0:
+                        raise IndexError
+                    if i >= ll.length:
+                        raise IndexError
+                    return ll.items[i]
+                return OpSpec(getitem_int)
+            
+            elif m_x.static_type == Slice:
+                def getitem_slice(_self: _ListImpl, s: Slice) -> _ListImpl:
+                    return _self
+                return OpSpec(getitem_slice)
+            
+            else:
+                raise TypeError("Subscript to list must be i32 or Slice, got " + str(m_x))
 
         def __setitem__(self, i: i32, value: T) -> None:
             ll = self.__ll__
