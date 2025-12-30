@@ -865,6 +865,29 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Slice(self):
+        mod = self.parse("""
+        def foo() -> Slice:
+            return [][1:2:3]
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+                    Return(
+                        value=GetItem(
+                            value=List(
+                                items=[],
+                            ),
+                            args=[
+                                Slice(
+                                    start=Constant(value=1),
+                                    stop=Constant(value=2),
+                                    step=Constant(value=3),
+                                ),
+                            ],
+                        ),
+                    )"""
+        self.assert_dump(stmt, expected)
+
     def test_If(self):
         mod = self.parse("""
         def foo() -> i32:

@@ -58,7 +58,7 @@ from spy.vm.primitive import (
 from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
-from spy.vm.struct import UnwrappedStruct
+from spy.vm.struct import UnwrappedStruct, W_Struct
 
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)
@@ -460,6 +460,12 @@ class SPyVM:
             # for prebuilt constants, but for now we special case W_Exception.
             w_T = self.dynamic_type(w_val)
             fqn = w_T.fqn.join("prebuilt")
+            fqn = self.get_unique_FQN(fqn)
+        elif isinstance(w_val, W_Struct):
+            # There must be a better way to tell the type
+            # of an object created from a .spy file
+            w_T = self.dynamic_type(w_val)
+            fqn = w_T.fqn.join("struct")
             fqn = self.get_unique_FQN(fqn)
         else:
             w_T = self.dynamic_type(w_val)

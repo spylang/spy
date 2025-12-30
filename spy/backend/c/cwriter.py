@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import C_Ident, Context
+from spy.backend.c.context import C_Ident, C_Type, Context
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -12,6 +12,7 @@ from spy.vm.b import TYPES, B
 from spy.vm.builtin import IRTag
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -274,6 +275,10 @@ class CFuncWriter:
             assert w_obj.addr == 0, "only NULL ptrs can be constants"
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W_Func):
+            return C.Literal(const.fqn.c_name)
+        elif isinstance(w_obj, W_Struct):
+            c_st = C_Type(w_obj.w_structtype.fqn.c_name)
+            self.cmodw.tbh_globals.wl(f"extern {c_st} {const.fqn.c_name};")
             return C.Literal(const.fqn.c_name)
         else:
             assert False

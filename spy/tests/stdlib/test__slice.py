@@ -1,3 +1,6 @@
+import itertools
+from random import randint
+
 from spy.tests.support import CompilerTest, only_interp
 from spy.vm.struct import UnwrappedStruct
 
@@ -25,3 +28,48 @@ class TestSlice(CompilerTest):
         assert type(s) == UnwrappedStruct
         assert "_slice::Slice" in str(s.fqn)
         assert all([sn.start_is_none, sn.stop_is_none, sn.step_is_none])
+
+    @only_interp
+    def test__slice_indices(self):
+        def get_slice_indices(
+            start=None, stop=None, step=None, *, length
+        ) -> tuple[int, int, int]:
+            src = f"""
+                from _slice import tuple3
+
+                def _get_indices() -> tuple3:
+                    _slice: Slice = Slice({start}, {stop}, {step})
+                    return _slice.indices({length})
+            """
+            mod = self.compile(
+                src, f"slicetest{randint(0, 10000000)}"
+            )  # Modules must have unique names or they won't be reimported by the vm
+            result = mod._get_indices()
+            return result
+
+        assert get_slice_indices(None, length=10) == (0, 10, 1)
+        assert get_slice_indices(None, None, 2, length=10) == (0, 10, 2)
+        assert get_slice_indices(1, None, 2, length=10) == (1, 10, 2)
+        assert get_slice_indices(None, None, -1, length=10) == (9, -1, -1)
+        assert get_slice_indices(None, None, -2, length=10) == (9, -1, -2)
+        assert get_slice_indices(3, None, -2, length=10) == (3, -1, -2)
+        # issue 3004 tests
+        assert get_slice_indices(None, -9, length=10) == (0, 1, 1)
+        assert get_slice_indices(None, -10, length=10) == (0, 0, 1)
+        assert get_slice_indices(None, -11, length=10) == (0, 0, 1)
+        assert get_slice_indices(None, -10, -1, length=10) == (9, 0, -1)
+        assert get_slice_indices(None, -11, -1, length=10) == (9, -1, -1)
+        assert get_slice_indices(None, -12, -1, length=10) == (9, -1, -1)
+        assert get_slice_indices(None, 9, length=10) == (0, 9, 1)
+        assert get_slice_indices(None, 10, length=10) == (0, 10, 1)
+        assert get_slice_indices(None, 11, length=10) == (0, 10, 1)
+        assert get_slice_indices(None, 8, -1, length=10) == (9, 8, -1)
+        assert get_slice_indices(None, 9, -1, length=10) == (9, 9, -1)
+        assert get_slice_indices(None, 10, -1, length=10) == (9, 9, -1)
+
+        assert get_slice_indices(-100, 100, length=10) == get_slice_indices(
+            None, length=10
+        )
+        assert get_slice_indices(100, -100, -1, length=10) == get_slice_indices(
+            None, None, -1, length=10
+        )
