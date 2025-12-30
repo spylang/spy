@@ -1,3 +1,5 @@
+import math
+
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
@@ -12,6 +14,7 @@ class TestFloat(CompilerTest):
 
     def test_BinOp(self):
         mod = self.compile("""
+        def add32(x: f32, y: f32) -> f32:      return x + y
         def add(x: f64, y: f64) -> f64:      return x + y
         def sub(x: f64, y: f64) -> f64:      return x - y
         def mul(x: f64, y: f64) -> f64:      return x * y
@@ -20,6 +23,7 @@ class TestFloat(CompilerTest):
         def mod(x: f64, y: f64) -> f64:      return x % y
         def neg(x: f64) -> f64:              return -x
         """)
+        assert math.isclose(mod.add32(1.5, 2.6).value, 4.1, rel_tol=1e-6)
         assert mod.add(1.5, 2.6) == 4.1
         assert mod.sub(1.5, 0.2) == 1.3
         assert mod.mul(1.5, 0.5) == 0.75

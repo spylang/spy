@@ -218,7 +218,7 @@ class W_F32(W_Object):
         self.value = float32(value) if type(value) is float else value  # type: ignore[assignment]
 
     def __repr__(self) -> str:
-        return f"W_F32({self.value.value})"
+        return f"W_F32({self.value.value:.7g})"
 
     def spy_unwrap(self, vm: "SPyVM") -> float32:
         return self.value
@@ -230,7 +230,7 @@ class W_F32(W_Object):
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_F32") -> "W_Str":
         f = vm.unwrap_f32(w_self)
-        return vm.wrap(str(f))
+        return vm.wrap(f"{f:.7g}")
 
 
 @B.builtin_type("bool", lazy_definition=True)

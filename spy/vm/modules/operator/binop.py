@@ -104,6 +104,9 @@ MM.register("<=", "f64", "f64", OP.w_f64_le)
 MM.register(">" , "f64", "f64", OP.w_f64_gt)
 MM.register(">=", "f64", "f64", OP.w_f64_ge)
 
+# f32 ops
+MM.register("+",  "f32", "f32", OP.w_f32_add)
+
 # mixed int/f64 ops: this is still small enough that we can write it manually,
 # but we should consider the idea of generating this table automatically. This
 # will become especially relevant when we add more integer types.
