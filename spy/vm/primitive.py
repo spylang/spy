@@ -1,3 +1,4 @@
+from ctypes import c_float as float32
 from typing import TYPE_CHECKING, Annotated
 
 import fixedint
@@ -205,6 +206,30 @@ class W_F64(W_Object):
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_F64") -> "W_Str":
         f = vm.unwrap_f64(w_self)
+        return vm.wrap(str(f))
+
+
+@B.builtin_type("f32", lazy_definition=True)
+class W_F32(W_Object):
+    __spy_storage_category__ = "value"
+    value: float32
+
+    def __init__(self, value: float | float32) -> None:
+        self.value = float32(value) if type(value) is float else value  # type: ignore[assignment]
+
+    def __repr__(self) -> str:
+        return f"W_F32({self.value.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> float32:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> float32:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_F32") -> "W_Str":
+        f = vm.unwrap_f32(w_self)
         return vm.wrap(str(f))
 
 

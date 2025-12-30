@@ -1,4 +1,5 @@
 import itertools
+from ctypes import c_float as float32
 from types import FunctionType
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
 
@@ -44,6 +45,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import (
+    W_F32,
     W_F64,
     W_I8,
     W_I32,
@@ -75,6 +77,7 @@ W_U32._w.define(W_U32)
 W_I8._w.define(W_I8)
 W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
+W_F32._w.define(W_F32)
 W_Bool._w.define(W_Bool)
 W_NoneType._w.define(W_NoneType)
 W_NotImplementedType._w.define(W_NotImplementedType)
@@ -564,6 +567,9 @@ class SPyVM:
     def wrap(self, value: float) -> W_F64: ...
 
     @overload
+    def wrap(self, value: float32) -> W_F32: ...
+
+    @overload
     def wrap(self, value: str) -> W_Str: ...
 
     @overload
@@ -591,6 +597,8 @@ class SPyVM:
             return W_U8(value)
         elif T is float:
             return W_F64(value)
+        elif T is float32:
+            return W_F32(value)
         elif T is bool:
             if value:
                 return B.w_True
@@ -642,6 +650,11 @@ class SPyVM:
 
     def unwrap_f64(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_F64):
+            raise Exception("Type mismatch")
+        return w_value.value
+
+    def unwrap_f32(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_F32):
             raise Exception("Type mismatch")
         return w_value.value
 
