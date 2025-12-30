@@ -1,0 +1,45 @@
+"""
+SPy Slice module
+
+A Slice similar to CPython's
+"""
+
+from operator import OpSpec, MetaArg
+from types import NoneType
+
+@struct
+class Slice:
+    start: i32
+    start_is_none: i32 # bool
+    stop: i32
+    stop_is_none: i32 # bool
+    step: i32
+    step_is_none: i32 # bool
+
+    @blue
+    def __new__(_start, _stop, _step) -> Slice:
+        _start_is_none = 0
+        real_start: int = 0
+        if STATIC_TYPE(_start) == NoneType:
+            _start_is_none = 1
+        else:
+            assert STATIC_TYPE(_start) == int
+            real_start = _start
+
+        _stop_is_none = 0
+        real_stop: int = 0
+        if STATIC_TYPE(_stop) == NoneType:
+            _stop_is_none = 1
+        else:
+            assert STATIC_TYPE(_stop) == int
+            real_stop = _stop
+
+        _step_is_none = 0
+        real_step: int = 0
+        if STATIC_TYPE(_step) == NoneType:
+            _step_is_none = 1
+        else:
+            assert STATIC_TYPE(_step) == int
+            real_step = _step
+            
+        return Slice.__make__(real_start, _start_is_none, real_stop, _stop_is_none, real_step, _step_is_none)
