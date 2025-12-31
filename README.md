@@ -30,7 +30,7 @@ understand the ideas behind SPy are:
 
   - blog post [Inside SPy, part 1: Motivations and Goals](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/)
 
-  - [PyCon Italy 2025 talk](https://antocuni.eu/2025/05/31/spy--pycon-it-2025/)
+  - PyCon Italy 2025 talk: [slides](https://antocuni.eu/talk/2025/05/spy-pycon-italy/) and [recording](https://youtu.be/W-8tgZDgYmw).
 
   - PyCon US 2024 talk: [slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and [recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS).
 
