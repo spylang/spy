@@ -414,7 +414,18 @@ spy_unsafe$f64_unchecked_mod(double x, double y) {
     return r;
 }
 
-float WASM_EXPORT(spy_operator$f32_add)(float a, float b);
+float WASM_EXPORT(spy_operator$f32_add)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_sub)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_mul)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_div)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_floordiv)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_mod)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_eq)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_ne)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_lt)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_le)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_gt)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_ge)(float x, float y);
 
 static inline bool
 spy_operator$bool_eq(bool x, bool y) {

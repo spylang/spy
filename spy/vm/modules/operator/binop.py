@@ -106,6 +106,17 @@ MM.register(">=", "f64", "f64", OP.w_f64_ge)
 
 # f32 ops
 MM.register("+",  "f32", "f32", OP.w_f32_add)
+MM.register("-",  "f32", "f32", OP.w_f32_sub)
+MM.register("*",  "f32", "f32", OP.w_f32_mul)
+MM.register("/",  "f32", "f32", OP.w_f32_div)
+MM.register("//", "f32", "f32", OP.w_f32_floordiv)
+MM.register("%",  "f32", "f32", OP.w_f32_mod)
+MM.register("==", "f32", "f32", OP.w_f32_eq)
+MM.register("!=", "f32", "f32", OP.w_f32_ne)
+MM.register("<" , "f32", "f32", OP.w_f32_lt)
+MM.register("<=", "f32", "f32", OP.w_f32_le)
+MM.register(">" , "f32", "f32", OP.w_f32_gt)
+MM.register(">=", "f32", "f32", OP.w_f32_ge)
 
 # mixed int/f64 ops: this is still small enough that we can write it manually,
 # but we should consider the idea of generating this table automatically. This

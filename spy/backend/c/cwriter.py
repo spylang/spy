@@ -8,7 +8,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
-from spy.vm.b import TYPES, B
+from spy.vm.b import TYPES
 from spy.vm.builtin import IRTag
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.unsafe.ptr import W_Ptr
@@ -385,8 +385,8 @@ class CFuncWriter:
         #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
-        FQN("unsafe::f64_ieee754_div"): "/",
         FQN("operator::f64_mul"): "*",
+        FQN("unsafe::f64_ieee754_div"): "/",
         FQN("operator::f64_eq"): "==",
         FQN("operator::f64_ne"): "!=",
         FQN("operator::f64_lt"): "<",
@@ -396,7 +396,7 @@ class CFuncWriter:
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
-        # T is any of the following types: i8, u8, i32, u32 and f64
+        # T is any of the following types: i8, u8, i32, u32, f32 and f64
         # FQN('operator::T_div')
         # FQN('operator::T_floordiv')
         # FQN('operator::T_mod')
