@@ -656,7 +656,7 @@ class SPyVM:
     def unwrap_f32(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_F32):
             raise Exception("Type mismatch")
-        return w_value.value
+        return w_value.value.value
 
     def unwrap_str(self, w_value: W_Object) -> str:
         if not isinstance(w_value, W_Str):

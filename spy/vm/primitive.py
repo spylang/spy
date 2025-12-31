@@ -220,11 +220,11 @@ class W_F32(W_Object):
     def __repr__(self) -> str:
         return f"W_F32({self.value.value:.7g})"
 
-    def spy_unwrap(self, vm: "SPyVM") -> float32:
-        return self.value
+    def spy_unwrap(self, vm: "SPyVM") -> float:
+        return self.value.value
 
-    def spy_key(self, vm: "SPyVM") -> float32:
-        return self.value
+    def spy_key(self, vm: "SPyVM") -> float:
+        return self.value.value
 
     @builtin_method("__str__")
     @staticmethod

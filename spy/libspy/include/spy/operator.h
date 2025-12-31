@@ -414,6 +414,8 @@ spy_unsafe$f64_unchecked_mod(double x, double y) {
     return r;
 }
 
+float WASM_EXPORT(spy_operator$f32_add)(float a, float b);
+
 static inline bool
 spy_operator$bool_eq(bool x, bool y) {
     return x == y;
