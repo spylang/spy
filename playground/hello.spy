@@ -2,7 +2,7 @@
 #   - functions require signature
 #   - print works with only one argument for now
 #   - after redshift, print is specialized
-#   - with --redshift --full-fqn, you can see that lookups are resolved early
+#   - with spy redshift --full-fqn, you can see that lookups are resolved early
 
 def add(x: i32, y: i32) -> i32:
     return x + y
