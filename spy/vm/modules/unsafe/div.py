@@ -157,28 +157,6 @@ def w_f64_unchecked_mod(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
     return vm.wrap(a % b)
 
 
-@UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w_ieee754_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
-    @vm.register_builtin_func("unsafe", "f64_ieee754_div")
-    def w_ieee754_div(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
-        a = w_a.value
-        b = w_b.value
-
-        if b == 0:
-            if a > 0:
-                result = float("inf")
-            elif a < 0:
-                result = float("-inf")
-            else:
-                result = float("nan")
-
-            return vm.wrap(result)
-
-        return vm.wrap(a / b)
-
-    return W_OpSpec(w_ieee754_div)
-
-
 @UNSAFE.builtin_func
 def w_f32_unchecked_div(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
@@ -200,4 +178,45 @@ def w_f32_unchecked_mod(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_unchecked_mod", a, b)
+    return vm.wrap(res)
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ieee754_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
+    w_T = meta_args_type(wam_l, wam_r)
+    match w_T:
+        case B.w_f64:
+            return W_OpSpec(UNSAFE.w_f64_ieee754_div)
+        case B.w_f32:
+            return W_OpSpec(UNSAFE.w_f32_ieee754_div)
+        case _:
+            raise SPyError(
+                "W_TypeError",
+                f"Unsupported type `{w_T.fqn.human_name}` for unchecked division operation",
+            )
+
+
+@UNSAFE.builtin_func
+def w_f64_ieee754_div(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+    a = w_a.value
+    b = w_b.value
+
+    if b == 0:
+        if a > 0:
+            result = float("inf")
+        elif a < 0:
+            result = float("-inf")
+        else:
+            result = float("nan")
+
+        return vm.wrap(result)
+
+    return vm.wrap(a / b)
+
+
+@UNSAFE.builtin_func
+def w_f32_ieee754_div(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
+    a = vm.unwrap_f32(w_a)
+    b = vm.unwrap_f32(w_b)
+    res = vm.ll.call("spy_unsafe$f32_ieee754_div", a, b)
     return vm.wrap(res)

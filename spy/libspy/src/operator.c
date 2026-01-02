@@ -26,6 +26,11 @@ spy_operator$f32_div(float x, float y) {
 }
 
 float
+spy_unsafe$f32_ieee754_div(float x, float y) {
+    return x / y;
+}
+
+float
 spy_unsafe$f32_unchecked_div(float x, float y) {
 #ifdef SPY_DEBUG
     if (y == 0) {

@@ -418,6 +418,7 @@ float WASM_EXPORT(spy_operator$f32_add)(float x, float y);
 float WASM_EXPORT(spy_operator$f32_sub)(float x, float y);
 float WASM_EXPORT(spy_operator$f32_mul)(float x, float y);
 float WASM_EXPORT(spy_operator$f32_div)(float x, float y);
+float WASM_EXPORT(spy_unsafe$f32_ieee754_div)(float x, float y);
 float WASM_EXPORT(spy_unsafe$f32_unchecked_div)(float x, float y);
 float WASM_EXPORT(spy_operator$f32_floordiv)(float x, float y);
 float WASM_EXPORT(spy_unsafe$f32_unchecked_floordiv)(float x, float y);

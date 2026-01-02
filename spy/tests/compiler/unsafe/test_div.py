@@ -139,10 +139,11 @@ class TestUnsafeFloatDiv(CompilerTest):
             mod.mod(500.000034, 45.000034), 500.000034 % 45.000034, rel_tol=1e-5
         )
 
-    def test_ieee754_zero_div(self):
+    def test_ieee754_zero_div(self, float_type):
         mod = self.compile(f"""
         from unsafe import ieee754_div
-        def div(x: f64, y: f64) -> f64: return ieee754_div(x, y)
+        T = {float_type}
+        def div(x: T, y: T) -> T: return ieee754_div(x, y)
         """)
         assert mod.div(1.5, 0.0) == float("inf")
         assert mod.div(-1.5, 0.0) == float("-inf")
