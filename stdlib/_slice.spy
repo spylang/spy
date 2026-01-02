@@ -112,3 +112,50 @@ class Slice:
                 _stop = min(_stop, _upper)
 
         return tuple3(_start, _stop, _step)
+    
+def _py_adjust_indices(length: int, start:int, stop: int, step:int) -> int:
+    if start < 0:
+        start += length
+        if start < 0:
+            if step < 0:
+                start = -1
+            else:
+                start = 0
+    elif start >= length:
+        if step < 0:
+            start = length - 1
+        else:
+            start = length
+
+    if stop < 0:
+        stop += length
+        if stop < 0:
+            if step < 0:
+                stop = -1
+            else:
+                stop = 0
+    elif stop >= length:
+        if step < 0:
+            stop = length -1
+        else:
+            stop = length
+
+    val: f64 = 0
+    if step < 0:
+        if stop < start:
+            print("case 1")
+            val = (start - stop - 1) / (-step) + 1
+            assert int(val) == val
+            return int(val)
+    else:
+        if start < stop:
+            print("case 2")
+            val = (stop - start - 1) / step + 1
+            assert int(val) == val
+            print(int(val))
+            return int(val)
+    
+    print("case 3")
+    return 0
+        
+

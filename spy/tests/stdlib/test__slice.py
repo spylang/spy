@@ -41,7 +41,9 @@ class TestSlice(CompilerTest):
                     _slice: Slice = Slice({start}, {stop}, {step})
                     return _slice.indices({length})
             """
-            mod = self.compile(src, f"slicetest{randint(0, 10000000)}")
+            mod = self.compile(
+                src, f"slicetest{randint(0, 10000000)}"
+            )  # Modules must have unique names or they won't be reimported by the vm
             result = mod._get_indices()
             return result
 
