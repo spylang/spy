@@ -119,3 +119,8 @@ bool
 spy_operator$f32_ge(float x, float y) {
     return x >= y;
 }
+
+float
+spy_operator$f32_neg(float x) {
+    return -x;
+}

@@ -28,7 +28,7 @@ class TestFloat(CompilerTest):
         def div(x: T, y: T) -> T:      return x / y
         def floordiv(x: T, y: T) -> T: return x // y
         def mod(x: T, y: T) -> T:      return x % y
-        # def neg(x: T) -> T:              return -x
+        def neg(x: T) -> T:              return -x
         """)
         assert math.isclose(mod.add(1.5, 2.6), 4.1, rel_tol=1e-6)
         assert math.isclose(mod.sub(1.5, 0.2), 1.3, rel_tol=1e-6)
@@ -36,7 +36,7 @@ class TestFloat(CompilerTest):
         assert mod.div(1.5, 2.0) == 0.75
         assert mod.floordiv(10.0, 3.0) == 3.0
         assert mod.mod(10.5, 2.5) == 0.5
-        # assert mod.neg(-2.5) == 2.5
+        assert mod.neg(-2.5) == 2.5
 
     def test_zero_division_error(self, float_type):
         mod = self.compile(f"""

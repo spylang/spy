@@ -1,3 +1,4 @@
+from ctypes import c_float as float32
 from typing import TYPE_CHECKING, Any
 
 from spy.vm.object import W_Object
@@ -13,7 +14,7 @@ def _f32_op_f32(vm: "SPyVM", w_a: W_Object, w_b: W_Object, fn: str) -> Any:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call(f"spy_operator$f32_{fn}", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 def _f32_op_bool(vm: "SPyVM", w_a: W_Object, w_b: W_Object, fn: str) -> Any:
@@ -21,12 +22,6 @@ def _f32_op_bool(vm: "SPyVM", w_a: W_Object, w_b: W_Object, fn: str) -> Any:
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call(f"spy_operator$f32_{fn}", a, b)
     return vm.wrap(bool(res))
-
-
-def _f32_unary_op(vm: "SPyVM", w_a: W_Object, fn: Any) -> Any:
-    a = vm.unwrap_f32(w_a)
-    res = fn(a)
-    return vm.wrap(res)
 
 
 @OP.builtin_func
@@ -87,3 +82,10 @@ def w_f32_gt(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_Bool:
 @OP.builtin_func
 def w_f32_ge(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_Bool:
     return _f32_op_bool(vm, w_a, w_b, "ge")
+
+
+@OP.builtin_func
+def w_f32_neg(vm: "SPyVM", w_a: W_F32) -> W_F32:
+    a = vm.unwrap_f32(w_a)
+    res = vm.ll.call("spy_operator$f32_neg", a)
+    return vm.wrap(float32(res))
