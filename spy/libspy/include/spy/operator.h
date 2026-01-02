@@ -16,6 +16,7 @@
 #define u8 uint8_t
 #define i32 int32_t
 #define u32 uint32_t
+#define f32 float
 #define f64 double
 
 DEFINE_CONV(i32, bool)
@@ -33,10 +34,13 @@ DEFINE_CONV(u8, f64)
 DEFINE_CONV(u32, i32)
 DEFINE_CONV(u32, f64)
 
+DEFINE_CONV(f32, f64)
+
 #undef i8
 #undef u8
 #undef i32
 #undef u32
+#undef f32
 #undef f64
 
 // implement rust-like saturating conversion.

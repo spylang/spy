@@ -114,6 +114,7 @@ class TestFloat(CompilerTest):
         def add_i8(x: f64, y: i8) -> f64: return x + y
         def add_u8(x: f64, y: u8) -> f64: return x + y
         def add_u32(x: f64, y: u32) -> f64: return x + y
+        def add_f32(x: f64, y:f32) -> f64: return x + y
         """)
         assert mod.add(1.5, 2) == 3.5
         assert mod.sub(10, 0.5) == 9.5
@@ -121,6 +122,7 @@ class TestFloat(CompilerTest):
         assert mod.add_i8(1.5, 2) == 3.5
         assert mod.add_u8(1.5, 2) == 3.5
         assert mod.add_u32(1.5, 2) == 3.5
+        assert mod.add_f32(1.5, 2.0) == 3.5
 
     def test_int_to_float(self):
         mod = self.compile("""
@@ -129,3 +131,11 @@ class TestFloat(CompilerTest):
             return res
         """)
         assert mod.to_f64(42) == 42.0
+
+    def test_float_conversion(self):
+        mod = self.compile("""
+        def to_f64(x: f32) -> f64:
+            res = f64(x)
+            return res
+        """)
+        assert mod.to_f64(42.0) == 42.0
