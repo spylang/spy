@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, only_interp
 
 
 class TestList(CompilerTest):
@@ -90,6 +90,28 @@ class TestList(CompilerTest):
         assert mod.test_f64() == 2.5
         with SPyError.raises("W_IndexError"):
             mod.out_of_bounds()
+
+    @only_interp
+    def test_getitem_slice_type(self):
+        mod = self.compile("""
+            def foo() -> list[i32]:
+                l = [1,2,3]
+                return l[0:2:1]
+            """)
+        x = mod.foo()
+        assert type(x) == list
+
+    @pytest.mark.xfail(reason="List slices currently return the whole list")
+    @only_interp
+    def test_getitem_slice_result(self):
+        mod = self.compile("""
+            def foo() -> list[i32]:
+                l = [1,2,3]
+                return l[0:2:1]
+            """)
+        x = mod.foo()
+        assert type(x) == list
+        assert x == [1, 2]
 
     def test_fastiter(self):
         src = """
