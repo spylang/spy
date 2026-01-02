@@ -1,9 +1,8 @@
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest
 from spy.vm.struct import UnwrappedStruct
 
 
 class TestSlice(CompilerTest):
-    @only_interp
     def test__slice_module(self):
         src = """
         from _slice import Slice
