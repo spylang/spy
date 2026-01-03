@@ -10,6 +10,7 @@ Python objects are automatically converted into their SPy equivalent and
 vice-versa, by using vm.wrap and vm.unwrap.
 """
 
+from ctypes import c_float as float32
 from typing import Any
 
 import fixedint
@@ -91,6 +92,8 @@ class InterpFuncWrapper:
                 arg = fixedint.UInt8(arg)
             elif w_T is B.w_u32:
                 arg = fixedint.UInt32(arg)
+            elif w_T is B.w_f32:
+                arg = float32(arg)
             w_arg = self.vm.wrap(arg)
             args_w.append(w_arg)
 

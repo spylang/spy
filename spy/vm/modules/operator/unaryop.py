@@ -44,3 +44,4 @@ def w_NOT(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
 MM.register("-", "i8", None, OP.w_i8_neg)
 MM.register("-", "i32", None, OP.w_i32_neg)
 MM.register("-", "f64", None, OP.w_f64_neg)
+MM.register("-", "f32", None, OP.w_f32_neg)
