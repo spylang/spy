@@ -1,0 +1,5 @@
+site_name: Spylang Documentation
+docs_dir: src
+extra:
+  version:
+    provider: mike
