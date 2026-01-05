@@ -329,47 +329,50 @@ def record_src_in_linecache(source: str, *, name: str = "exec") -> str:
     return filename
 
 
-def cleanup_spyc_files(path: py.path.local, *, verbose: bool = False) -> None:
+def cleanup_spyc_files(*paths: str | py.path.local, verbose: bool = False) -> int:
     """
     Remove all .spyc cache files from __pycache__ directories in the given paths.
     """
-    if verbose:
-        print(f"Cleaning up {path}:")
 
     n = 0
-    if not path.check(dir=True):
-        if verbose:
-            print("Not a directory")
-        return
-
-    # Use os.walk with onerror handler to gracefully handle permission errors
-    def handle_error(error: OSError) -> None:
-        if verbose:
-            print(f"    Permission denied: {error.filename}")
-
-    for root, dirs, files in os.walk(str(path), onerror=handle_error):
-        # Only process __pycache__ directories
-        if os.path.basename(root) != "__pycache__":
+    for path in paths:
+        if not py.path.local(path).isdir():
+            if verbose:
+                print(f"{path} is not a directory")
             continue
 
-        for filename in files:
-            if filename.endswith(".spyc"):
-                spyc_path = os.path.join(root, filename)
-                try:
-                    rel_path = os.path.relpath(spyc_path, str(path))
-                    if verbose:
-                        print(f"    {rel_path}")
-                    os.remove(spyc_path)
-                    n += 1
-                except PermissionError as e:
-                    if verbose:
-                        print(f"    Permission denied: {rel_path}")
+        if verbose:
+            print(f"Cleaning up {path}:")
+
+        # Use os.walk with onerror handler to gracefully handle permission errors
+        def handle_error(error: OSError) -> None:
+            if verbose:
+                print(f"    Permission denied: {error.filename}")
+
+        for root, dirs, files in os.walk(str(path), onerror=handle_error):
+            # Only process __pycache__ directories
+            if os.path.basename(root) != "__pycache__":
+                continue
+            for filename in files:
+                if filename.endswith(".spyc"):
+                    spyc_path = os.path.join(root, filename)
+                    try:
+                        rel_path = os.path.relpath(spyc_path, str(path))
+                        if verbose:
+                            print(f"    {rel_path}")
+                        os.remove(spyc_path)
+                        n += 1
+                    except PermissionError as e:
+                        if verbose:
+                            print(f"    Permission denied: {rel_path}")
 
     if verbose:
         if n == 0:
             print("No .spyc files found")
         else:
             print(f"{n} file(s) removed")
+
+    return n
 
 
 if __name__ == "__main__":

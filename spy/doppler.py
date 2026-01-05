@@ -485,6 +485,23 @@ class DopplerFrame(ASTFrame):
                 args=[newlst, shifted_item],
             )
         return newlst
+    
+    def shift_expr_Slice(self, slc: ast.Slice, wam: W_MetaArg) -> ast.Expr:
+        # equivalent to ASTFrame.eval_expr_Slice
+        w_T = wam.w_static_T
+        fqn_new = w_T.fqn.join("__new__")
+        #breakpoint()
+
+        def make_none(val: ast.Expr | None) -> ast.Expr:
+            if val is None: return ast.Constant(slc.loc, None)
+            return val
+        
+        new_call = ast.Call(
+            slc.loc,
+            func = ast.FQNConst(loc=slc.loc, fqn=fqn_new),
+            args = [make_none(w) for w in (slc.start, slc.stop, slc.step)]
+        )
+        return new_call
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]

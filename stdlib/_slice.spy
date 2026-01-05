@@ -7,6 +7,8 @@ A Slice similar to CPython's
 from operator import OpSpec, MetaArg
 from types import NoneType
 
+from __spy__ import interp_list
+
 @struct
 class tuple3:
     start: int
@@ -28,54 +30,54 @@ class Slice:
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (int, int, int):
             def impl1(_start:int, _stop:int, _step:int) -> Slice:
                 return Slice.__make__(_start, 0, _stop, 0, _step, 0)
-            return OpSpec(impl1, [n_start, n_stop, n_step])
+            return OpSpec(impl1, interp_list[MetaArg](n_start, n_stop, n_step))
         
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (NoneType, int, int):
             def impl2(_start:NoneType, _stop:int, _step:int) -> Slice:
                 return Slice.__make__(0, 1, _stop, 0, _step, 0)
-            return OpSpec(impl2, [n_start, n_stop, n_step])
+            return OpSpec(impl2, interp_list[MetaArg](n_start, n_stop, n_step))
     
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (int, NoneType, int):
             def impl3(_start:int, _stop:NoneType, _step:int) -> Slice:
                 return Slice.__make__(_start, 0, 0, 1, _step, 0)
-            return OpSpec(impl3, [n_start, n_stop, n_step])
+            return OpSpec(impl3, interp_list[MetaArg](n_start, n_stop, n_step))
     
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (int, int, NoneType):
             def impl4(_start:int, _stop:int, _step:NoneType) -> Slice:
-                return Slice.__make__(_start, 0, _stop, 0, 0, 1)
-            return OpSpec(impl4, [n_start, n_stop, n_step])
+                return Slice.__make__(_start, 0, _stop, 0, 1, 1)
+            return OpSpec(impl4, interp_list[MetaArg](n_start, n_stop, n_step))
     
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (NoneType, NoneType, int):
             def impl5(_start:NoneType, _stop:NoneType, _step:int) -> Slice:
                 return Slice.__make__(0, 1, 0, 1, _step, 0)
-            return OpSpec(impl5, [n_start, n_stop, n_step])
+            return OpSpec(impl5, interp_list[MetaArg](n_start, n_stop, n_step))
     
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (NoneType, int, NoneType):
             def impl6(_start:None, _stop:int, _step:None) -> Slice:
-                return Slice.__make__(0, 1, _stop, 0, 0, 1)
-            return OpSpec(impl6, [n_start, n_stop, n_step])
+                return Slice.__make__(0, 1, _stop, 0, 1, 1)
+            return OpSpec(impl6, interp_list[MetaArg](n_start, n_stop, n_step))
 
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (int, NoneType, NoneType):
             def impl7(_start:int, _stop:None, _step:None) -> Slice:
-                return Slice.__make__(_start, 0, 0, 1, 0, 1)
-            return OpSpec(impl7, [n_start, n_stop, n_step])
+                return Slice.__make__(_start, 0, 0, 1, 1, 1)
+            return OpSpec(impl7, interp_list[MetaArg](n_start, n_stop, n_step))
     
         if (n_start.static_type, n_stop.static_type, n_step.static_type) == (NoneType, NoneType, NoneType):
             def impl8(_start:NoneType, _stop:NoneType, _step:NoneType) -> Slice:
-                return Slice.__make__(0, 1, 0, 1, 0, 1)
-            return OpSpec(impl8, [n_start, n_stop, n_step])
+                return Slice.__make__(0, 1, 0, 1, 1, 1)
+            return OpSpec(impl8, interp_list[MetaArg](n_start, n_stop, n_step))
         
         return OpSpec.NULL
     
     def indices(self, length: int) -> tuple3:
         _step: int = 1
-        if self.step_is_none == 0: _step = self.step
+        if not self.step_is_none: _step = self.step
+        if _step == 0:
+            raise ValueError("slice step cannot be zero")
 
 
         if length < 0:
             raise ValueError("length should not be negative")
-        if _step == 0:
-            raise ValueError("slice step cannot be zero")
         
         # Find lower and upper bounds for start and stop.
         _lower: int = 0
@@ -85,7 +87,7 @@ class Slice:
 
         # Compute start.
         _start: int = 0
-        if self.start_is_none != 0:
+        if self.start_is_none:
             if _step < 0:
                 _start = _upper
             else:
@@ -112,50 +114,3 @@ class Slice:
                 _stop = min(_stop, _upper)
 
         return tuple3(_start, _stop, _step)
-    
-def _py_adjust_indices(length: int, start:int, stop: int, step:int) -> int:
-    if start < 0:
-        start += length
-        if start < 0:
-            if step < 0:
-                start = -1
-            else:
-                start = 0
-    elif start >= length:
-        if step < 0:
-            start = length - 1
-        else:
-            start = length
-
-    if stop < 0:
-        stop += length
-        if stop < 0:
-            if step < 0:
-                stop = -1
-            else:
-                stop = 0
-    elif stop >= length:
-        if step < 0:
-            stop = length -1
-        else:
-            stop = length
-
-    val: f64 = 0
-    if step < 0:
-        if stop < start:
-            print("case 1")
-            val = (start - stop - 1) / (-step) + 1
-            assert int(val) == val
-            return int(val)
-    else:
-        if start < stop:
-            print("case 2")
-            val = (stop - start - 1) / step + 1
-            assert int(val) == val
-            print(int(val))
-            return int(val)
-    
-    print("case 3")
-    return 0
-        
-

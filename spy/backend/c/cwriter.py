@@ -475,7 +475,11 @@ class CFuncWriter:
         # default case: call a function with the corresponding name
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
-        c_args = [self.fmt_expr(arg) for arg in call.args]
+
+        def is_none(arg: ast.Expr) -> bool:
+            return isinstance(arg, ast.Constant) and arg.value == None
+
+        c_args = [self.fmt_expr(arg) for arg in call.args if not is_none(arg)]
         return C.Call(c_name, c_args)
 
     def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
