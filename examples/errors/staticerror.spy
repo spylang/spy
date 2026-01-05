@@ -2,8 +2,8 @@
 #
 # Try to run:
 #     spy staticerror.spy
-#     spy -r staticerror.spy
-#     spy -r --error-mode=lazy staticerror.spy
+#     spy redshift staticerror.spy
+#     spy redshift --error-mode=lazy staticerror.spy
 
 
 @blue

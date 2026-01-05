@@ -59,7 +59,7 @@ class TestMain:
         self.tmpdir = tmpdir
         self.runner = CliRunner()
         self.main_spy = tmpdir.join("main.spy")
-        self.factorial_spy = tmpdir.join("fatcorial.spy")
+        self.factorial_spy = tmpdir.join("factorial.spy")
         self.blu_var_in_red_func_spy = tmpdir.join("blu_var_in_red_func.spy")
         main_src = """
         def main() -> None:
@@ -130,61 +130,83 @@ class TestMain:
         assert "Error:" in res.output and ".py file, not a .spy file" in res.output
 
     def test_pyparse(self):
-        _, stdout = self.run("--pyparse", self.main_spy)
+        _, stdout = self.run("pyparse", self.main_spy)
         assert stdout.startswith("py:Module(")
 
     def test_parse(self):
-        _, stdout = self.run("--parse", self.main_spy)
+        _, stdout = self.run("parse", self.main_spy)
         assert stdout.startswith("Module(")
 
     def test_execute(self):
-        _, stdout = self.run(self.main_spy)
-        assert stdout == "hello world\n"
+        argsets = [["execute"], []]  # No subcommand is equivalent to execute command
+        for argset in argsets:
+            _, stdout = self.run(*argset, self.main_spy)
+            assert stdout == "hello world\n"
 
-    def test_redshift_dump_spy(self):
-        _, stdout = self.run("--redshift", self.main_spy)
-        assert stdout.startswith("\ndef main() -> None:")
+    def test_timeit(self):
+        _, stdout = self.run("--timeit", self.main_spy)
+        assert "main()" in stdout
+
+    def test_redshift_and_run(self):
+        _, stdout = self.run("redshift", "-x", self.main_spy)
+        assert stdout == "hello world\n"
 
     def test_redshift_dump_ast(self):
-        _, stdout = self.run("--redshift", "--parse", self.main_spy)
+        _, stdout = self.run("redshift", self.main_spy)
         assert stdout.startswith("`main::main` = FuncDef(")
 
-    def test_redshift_and_execute(self):
-        _, stdout = self.run("--redshift", "--execute", self.main_spy)
-        assert stdout == "hello world\n"
+    def test_redshift_full_fqn(self):
+        _, stdout = self.run("redshift", "--full-fqn", self.main_spy)
+        assert "FQN('builtins::print_str')" in stdout
+
+    def test_redshift_human_readable(self):
+        _, stdout = self.run("redshift", "--human-readable", self.main_spy)
+        assert stdout.startswith("\ndef main() -> None:")
 
     def test_colorize_ast(self):
-        _, stdout = self.run("--colorize", "--parse", self.main_spy)
+        _, stdout = self.run("colorize", "--format", "ast", self.main_spy)
         assert stdout.startswith("Module(")
 
-    def test_colorize(self):
-        _, stdout = self.run("--colorize", self.factorial_spy, decolorize_stdout=False)
-        # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
-        expected_outout = """\
-        def factorial(n: i32) -> i32:
-            [R]res = [/COLOR][B]1[/COLOR]
-            for i in [B]range[/COLOR][R](n)[/COLOR]:
-                res *= ([R]i+[/COLOR][B]1[/COLOR])
-            return [R]res[/COLOR]
+    def test_colorize_json(self):
+        import json
 
-        def main() -> None:
-            [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
-        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
-        _, stdout = self.run(
-            "--colorize", self.blu_var_in_red_func_spy, decolorize_stdout=False
-        )
-        expected_outout = """\
-        @blue
-        def get_Type():
-            return int
+        _, stdout = self.run("colorize", "--format", "json", self.main_spy)
+        content = json.loads(stdout)
+        keys = "line", "col", "length", "type"
+        assert all(key in obj for key in keys for obj in content)
 
-        def main() -> None:
-            [B]T = get_Type()[/COLOR]    # T is blue
-            [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]"""  # noqa
-        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
+    def test_colorize_source(self):
+        # source formatting is the default - run all the examples below
+        # with both 'colorize --format spy' and bare 'colorize'
+        argsets = [["colorize", "--format", "spy"], ["colorize"]]
+        for argset in argsets:
+            _, stdout = self.run(*argset, self.factorial_spy, decolorize_stdout=False)
+            # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
+            expected_outout = """\
+            def factorial(n: i32) -> i32:
+                [R]res = [/COLOR][B]1[/COLOR]
+                for i in [B]range[/COLOR][R](n)[/COLOR]:
+                    res *= ([R]i+[/COLOR][B]1[/COLOR])
+                return [R]res[/COLOR]
+
+            def main() -> None:
+                [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
+            assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
+            _, stdout = self.run(
+                *argset, self.blu_var_in_red_func_spy, decolorize_stdout=False
+            )
+            expected_outout = """\
+            @blue
+            def get_Type():
+                return int
+
+            def main() -> None:
+                [B]T = get_Type()[/COLOR]    # T is blue
+                [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]"""  # noqa
+            assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
 
     def test_cwrite(self):
-        self.run("--cwrite", "--build-dir", self.tmpdir, self.main_spy)
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, self.main_spy)
         main_c = self.tmpdir.join("src", "main.c")
         assert main_c.exists()
         csrc = main_c.read()
@@ -200,7 +222,7 @@ class TestMain:
     )
     def test_build(self, target):
         res, stdout = self.run(
-            "--compile",
+            "build",
             "--target", target,
             "--build-dir", self.tmpdir,
             self.main_spy,
@@ -227,6 +249,19 @@ class TestMain:
             assert False, f"command failed: {cmd}"
         assert out == "hello world"
 
+    def test_build_and_execute(self, capfd):
+        res, stdout = self.run(
+            "build",
+            "-x",
+            "--target", "native",
+            "--build-dir", self.tmpdir,
+            self.main_spy,
+        )  # fmt: skip
+        # hack hack hack since the stdout of the subprocess isn't captured
+        # by the test runner, check the output from timeit instead
+        out, err = capfd.readouterr()
+        assert "hello world" in out
+
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
@@ -237,3 +272,48 @@ class TestMain:
         assert hello_spy.exists()
         res, stdout = self.run_external(PYODIDE_EXE, hello_spy)
         assert stdout == "Hello world!\n"
+
+    def test_cleanup_without_directory(self, monkeypatch):
+        # Create fake .spyc files in __pycache__
+        pycache = self.tmpdir.join("__pycache__")
+        pycache.mkdir()
+        spyc1 = pycache.join("mod1.spyc")
+        spyc2 = pycache.join("mod2.spyc")
+        spyc1.write("")
+        spyc2.write("")
+
+        # Run cleanup from tmpdir (without filename, uses cwd)
+        monkeypatch.chdir(self.tmpdir)
+        res, stdout = self.run("cleanup")
+        assert not spyc1.exists()
+        assert not spyc2.exists()
+        assert "2 file(s) removed" in stdout
+
+    def test_cleanup_with_directory(self):
+        # Create fake .spyc files in __pycache__
+        pycache = self.tmpdir.join("__pycache__")
+        pycache.mkdir()
+        spyc1 = pycache.join("main.spyc")
+        spyc1.write("")
+
+        # NOTE: this might remove stdlib .spyc files, we don't know the precise number
+        res, stdout = self.run("cleanup", pycache)
+        assert not spyc1.exists()
+        assert "1 file(s) removed" in stdout
+
+    def test_cleanup_no_files(self):
+        # Run cleanup when no .spyc files exist
+        res, stdout = self.run("cleanup", self.tmpdir)
+
+        # When run with no folder, cleanup tidies up the standardlib folder as well, which may have spyc files in it
+        assert "No .spyc files found" in stdout or (
+            "Removed" in stdout and ".spyc file(s)" in stdout
+        )
+
+    def test_symtable(self):
+        _, stdout = self.run("symtable", self.main_spy)
+        assert "<SymTable 'main::main'" in stdout
+
+    def test_imports(self):
+        _, stdout = self.run("imports", self.main_spy)
+        assert stdout.startswith("Import tree:")

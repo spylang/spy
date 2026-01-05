@@ -265,7 +265,7 @@ class Test_cleanup_spyc_files:
         cleanup_spyc_files(file_path, verbose=True)
 
         captured = capsys.readouterr()
-        assert "Not a directory" in captured.out
+        assert "not a directory" in captured.out
 
     def test_cleanup_non_verbose(self, tmpdir, capsys):
         tmpdir = py.path.local(tmpdir)
