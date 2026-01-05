@@ -8,8 +8,6 @@ from unsafe import gc_alloc, ptr
 from operator import OpSpec, MetaArg
 from __spy__ import interp_list, EmptyListType
 
-from _slice import _py_adjust_indices
-
 
 @blue.generic
 def list(T):
@@ -103,11 +101,22 @@ def list(T):
 
                         for i in range(new_length):
                             new_data.items[i] = ll.items[s.start + i]
-                            print("Copied " + str(new_data.items[i]) + " from position " + str(s.start + i) + " to " + str(i))
+                            #print("Copied " + str(new_data.items[i]) + " from position " + str(s.start + i) + " to " + str(i))
 
                         return _ListImpl.__make__(new_data)
                     else:
-                        raise ValueError("WIP: Steps other than 1 are not supported yet")
+                        print("s=" + str(s.step))
+                        new_data = gc_alloc(ListData)(1)
+                        new_data.length = new_length
+                        new_data.capacity = new_length + 1
+                        new_data.items = gc_alloc(T)(ll.capacity)
+                        
+                        cur: int = s.start
+                        for dst in range(new_length):
+                            new_data.items[dst] = ll.items[cur]
+                            cur += s.step
+
+                        return _ListImpl.__make__(new_data)
                 return OpSpec(_py_list_slice_wrap)
             
             else:
@@ -283,4 +292,45 @@ def list(T):
             self.append(item)
             return self
 
+
     return _ListImpl
+
+def _py_adjust_indices(length: int, start:int, stop: int, step:int) -> int:
+    if start < 0:
+        start += length
+        if start < 0:
+            if step < 0:
+                start = -1
+            else:
+                start = 0
+    elif start >= length:
+        if step < 0:
+            start = length - 1
+        else:
+            start = length
+
+    if stop < 0:
+        stop += length
+        if stop < 0:
+            if step < 0:
+                stop = -1
+            else:
+                stop = 0
+    elif stop >= length:
+        if step < 0:
+            stop = length -1
+        else:
+            stop = length
+
+    val: int = 0
+    if step < 0:
+        if stop < start:
+            val = int((start - stop - 1) / (-step)) + 1
+            return val
+    else:
+        if start < stop:
+            val = int((stop - start - 1) / step) + 1
+            return val
+    
+    return 0
+        
