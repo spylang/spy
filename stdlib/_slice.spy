@@ -4,7 +4,7 @@ SPy Slice module
 A Slice similar to CPython's
 """
 
-from operator import OpSpec, MetaArg
+from operator import OpSpec
 from types import NoneType
 
 @struct
@@ -69,13 +69,13 @@ class Slice:
     
     def indices(self, length: int) -> tuple3:
         _step: int = 1
-        if self.step_is_none == 0: _step = self.step
+        if not self.step_is_none: _step = self.step
+        if _step == 0:
+            raise ValueError("slice step cannot be zero")
 
 
         if length < 0:
             raise ValueError("length should not be negative")
-        if _step == 0:
-            raise ValueError("slice step cannot be zero")
         
         # Find lower and upper bounds for start and stop.
         _lower: int = 0
@@ -85,7 +85,7 @@ class Slice:
 
         # Compute start.
         _start: int = 0
-        if self.start_is_none != 0:
+        if self.start_is_none:
             if _step < 0:
                 _start = _upper
             else:
@@ -111,5 +111,5 @@ class Slice:
             else:
                 _stop = min(_stop, _upper)
 
+        #print("indices " + str(_start) + " " + str(_stop) + " " + str(_step))
         return tuple3(_start, _stop, _step)
-    

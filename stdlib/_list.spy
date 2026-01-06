@@ -8,6 +8,8 @@ from unsafe import gc_alloc, ptr
 from operator import OpSpec, MetaArg
 from __spy__ import interp_list, EmptyListType
 
+from _slice import tuple3
+
 
 @blue.generic
 def list(T):
@@ -90,31 +92,37 @@ def list(T):
             elif m_x.static_type == Slice:
                 def _py_list_slice_wrap(_self: _ListImpl, s: Slice) -> _ListImpl:
                     ll = _self.__ll__
-                    new_length: int = _py_adjust_indices(ll.length, s.start, s.stop, s.step)
+                    print("ll.length " + str(ll.length))
+                    unpacked = _py_slice_unpack(ll.length, s)
+                    new_length = _py_adjust_indexes(ll.length, unpacked.start, unpacked.stop, unpacked.step)
+                    indices = s.indices(new_length)
+                    print("Adjusted length: " + str(new_length))
 
                     if new_length <= 0: return []
-                    elif s.step == 1:
+                    elif indices.step == 1:
                         new_data = gc_alloc(ListData)(1)
                         new_data.length = new_length
                         new_data.capacity = new_length + 1
                         new_data.items = gc_alloc(T)(ll.capacity)
 
                         for i in range(new_length):
-                            new_data.items[i] = ll.items[s.start + i]
-                            #print("Copied " + str(new_data.items[i]) + " from position " + str(s.start + i) + " to " + str(i))
+                            new_data.items[i] = ll.items[indices.start + i]
+                            print("Copied " + str(new_data.items[i]) + " from position " + str(indices.start + i) + " to " + str(i))
 
                         return _ListImpl.__make__(new_data)
                     else:
-                        print("s=" + str(s.step))
+                        print("s=" + str(indices.step))
                         new_data = gc_alloc(ListData)(1)
                         new_data.length = new_length
                         new_data.capacity = new_length + 1
                         new_data.items = gc_alloc(T)(ll.capacity)
                         
-                        cur: int = s.start
-                        for dst in range(new_length):
-                            new_data.items[dst] = ll.items[cur]
-                            cur += s.step
+                        print("New length: " + str(new_length))
+                        cur: int = indices.start
+                        for _i in range(new_length):
+                            new_data.items[_i] = ll.items[cur]
+                            cur += indices.step
+                            print("Copied " + str(new_data.items[_i]) + " from position " + str(cur) + " to " + str(_i))
 
                         return _ListImpl.__make__(new_data)
                 return OpSpec(_py_list_slice_wrap)
@@ -295,7 +303,8 @@ def list(T):
 
     return _ListImpl
 
-def _py_adjust_indices(length: int, start:int, stop: int, step:int) -> int:
+def _py_adjust_indexes(length: int, start: int, stop: int, step: int) -> int:
+    print("_py_adjust_indices with length " + str(length) + " and start/stop/step " + str(start) + " " + str(stop) + " " + str(step))
     if start < 0:
         start += length
         if start < 0:
@@ -326,11 +335,38 @@ def _py_adjust_indices(length: int, start:int, stop: int, step:int) -> int:
     if step < 0:
         if stop < start:
             val = int((start - stop - 1) / (-step)) + 1
-            return val
     else:
         if start < stop:
             val = int((stop - start - 1) / step) + 1
-            return val
-    
-    return 0
         
+    return val
+        
+def _py_slice_unpack(length: int, s:slice) -> tuple3:
+    _start: int = 666
+    _stop: int = 666
+    _step: int = 666
+    if s.step_is_none:
+        _step = 1
+    else:
+        _step = s.step
+
+    if _step == 0:
+        raise ValueError("slice step cannot be zero")
+    
+    if s.start_is_none:
+        if _step < 0:
+            _start = 10000000
+        else:
+            _start = 0
+    else:
+        _start = s.start
+
+    if s.stop_is_none:
+        if _step < 0:
+            _stop = -1000000000
+        else:
+            _stop = 1000000000
+    else:
+        _stop = s.stop
+
+    return tuple3(_start, _stop, _step)
