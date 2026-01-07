@@ -18,7 +18,7 @@ Thanks for helping improve SPy! Follow these quick steps:
    source .venv/bin/activate
    ```
 
-- Install dev dependencies, build runtime, and set up pre-commit
+- Install dev dependencies and build runtime
 
   ```bash
   pip install -e .[dev]
