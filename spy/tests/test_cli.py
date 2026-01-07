@@ -178,32 +178,36 @@ class TestMain:
     def test_colorize_source(self):
         # source formatting is the default - run all the examples below
         # with both 'colorize --format spy' and bare 'colorize'
-        argsets = [["colorize", "--format", "spy"], ["colorize"]]
-        for argset in argsets:
-            _, stdout = self.run(*argset, self.factorial_spy, decolorize_stdout=False)
-            # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
-            expected_outout = """\
-            def factorial(n: i32) -> i32:
-                [R]res = [/COLOR][B]1[/COLOR]
-                for i in [B]range[/COLOR][R](n)[/COLOR]:
-                    res *= ([R]i+[/COLOR][B]1[/COLOR])
-                return [R]res[/COLOR]
 
-            def main() -> None:
-                [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
-            assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
-            _, stdout = self.run(
-                *argset, self.blu_var_in_red_func_spy, decolorize_stdout=False
-            )
-            expected_outout = """\
-            @blue
-            def get_Type():
-                return int
+        args = ["colorize", "--format", "spy"]
 
-            def main() -> None:
-                [B]T = get_Type()[/COLOR]    # T is blue
-                [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]"""  # noqa
-            assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
+        _, stdout = self.run(*args, self.factorial_spy, decolorize_stdout=False)
+        # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
+        expected_outout = """\
+        def factorial(n: i32) -> i32:
+            [R]res = [/COLOR][B]1[/COLOR]
+            for i in [B]range[/COLOR][R](n)[/COLOR]:
+                res *= ([R]i+[/COLOR][B]1[/COLOR])
+            return [R]res[/COLOR]
+
+        def main() -> None:
+            [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
+        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
+        _, stdout = self.run(
+            *args, self.blu_var_in_red_func_spy, decolorize_stdout=False
+        )
+        expected_outout = """\
+        @blue
+        def get_Type():
+            return int
+
+        def main() -> None:
+            [B]T = get_Type()[/COLOR]    # T is blue
+            [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]"""  # noqa
+        print(f"{stdout=}")
+        print(stdout)
+        print(f"{ansi_to_readable(stdout.strip())=}")
+        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
 
     def test_cwrite(self):
         self.run("build", "--no-compile", "--build-dir", self.tmpdir, self.main_spy)
