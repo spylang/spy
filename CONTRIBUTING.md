@@ -5,7 +5,7 @@ Thanks for helping improve SPy! Follow these quick steps:
 - Fork the repo <https://github.com/spylang/spy>, go to the project repo page and use the Fork button. This will create a copy of the repo, under your username (e.,g. <https://github.com/yourghname/spy>). (For more details on how to fork a repository see this guide <https://help.github.com/articles/fork-a-repo/>.)
 
 - Clone the repo
-  
+
   ```bash
   git clone git clone git@github.com:your-user-name/spy.git
   cd spy
@@ -26,14 +26,14 @@ Thanks for helping improve SPy! Follow these quick steps:
   ```
 
 - Run the test suite to be sure that everything is working fine
-  
+
   ```bash
   pytest
   ```
 
 - Install pre-commit
 
-  ```bash  
+  ```bash
   pip install pre-commit
   pre-commit install
   ```
