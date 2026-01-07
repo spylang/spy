@@ -71,4 +71,4 @@ class TestSlice(CompilerTest):
             None, None, -1, length=10
         )
 
-        assert get_slice_indices(-100, 100, 2, length=10) == (0, 10, 2)
+        assert get_slice_indices(-100, 100, 2, length=10) == "0, 10, 2"
