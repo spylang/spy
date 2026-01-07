@@ -2,8 +2,8 @@
 #
 # Try to run:
 #     spy typeerror.spy
-#     spy -r typeerror.spy
-#     spy -r --error-mode=lazy typeerror.spy
+#     spy redshift typeerror.spy
+#     spy redshift --error-mode=lazy typeerror.spy
 
 
 def add(x: int, y: int) -> int:

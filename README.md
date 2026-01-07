@@ -30,7 +30,7 @@ understand the ideas behind SPy are:
 
   - blog post [Inside SPy, part 1: Motivations and Goals](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/)
 
-  - [PyCon Italy 2025 talk](https://antocuni.eu/2025/05/31/spy--pycon-it-2025/)
+  - PyCon Italy 2025 talk: [slides](https://antocuni.eu/talk/2025/05/spy-pycon-italy/) and [recording](https://youtu.be/W-8tgZDgYmw).
 
   - PyCon US 2024 talk: [slides](https://antocuni.pyscriptapps.com/spy-pycon-2024/latest/) and [recording](https://www.youtube.com/watch?v=hnQ0oJ_yXlw&ab_channel=PyConUS).
 
@@ -91,20 +91,20 @@ All the tests in `spy/tests/compiler/` are executed in three modes:
 
 2. Perform redshift and dump the generated source code:
    ```
-   $ spy -r examples/hello.spy
+   $ spy redshift examples/hello.spy
     def main() -> void:
         print_str('Hello world!')
     ```
 
 3. Perform redshift and THEN execute the code:
    ```
-   $ spy -r -x examples/hello.spy
+   $ spy redshift -x examples/hello.spy
    Hello world!
    ```
 
 4. Compile to executable:
    ```
-   $ spy -c -t native examples/hello.spy
+   $ spy build examples/hello.spy --target native
    $ ./examples/build/hello
    Hello world!
    ```
@@ -129,11 +129,11 @@ compiler at that stage and dumps human-readable results.
 Examples:
 
 ```
-$ spy --pyparse examples/hello.spy
-$ spy --parse examples/hello.spy
-$ spy --symtable examples/hello.spy
-$ spy --redshift examples/hello.spy
-$ spy --cwrite examples/hello.spy
+$ spy pyparse examples/hello.spy
+$ spy parse examples/hello.spy
+$ spy symtable examples/hello.spy
+$ spy redshift examples/hello.spy
+$ spy build --cwrite examples/hello.spy
 ```
 
 Moreover, the `execute` step performs the actual execution: it can happen
@@ -183,10 +183,10 @@ So, depending on the execution mode, `libspy` is used in two very different
 ways:
 
 - **interpreted**: loaded in the python process via wasmtime. This is what
-  happens for `[interp]` and `[doppler]` tests, and when you do `spy hello.spy`
+  happens for `[interp]` and `[doppler]` tests, and when you do `spy hello.spy` or `spy execute hello.spy`.
 
 - **compiled**: statically linked to the final executable. This is what happens
-  for `[C]` tests and when you do `spy --compile hello.spy`.
+  for `[C]` tests and when you do `spy build hello.spy`.
 
 **`libspy`**:
 
