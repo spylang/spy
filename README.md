@@ -40,6 +40,8 @@ Additional info can be found on:
   - Antonio Cuni's [blog](http://antocuni.eu/tags/#tag:spy)
   - [A peek into a possible future of Python in the browser](https://lukasz.langa.pl/f37aa97a-9ea3-4aeb-b6a0-9daeea5a7505/) by Łukasz Langa.
 
+The [roadmap](./ROADMAP.md).
+
 ## Try it in your browser
 
 Explore SPy without installing it by exploring the [playground](https://spylang.github.io/spy).
