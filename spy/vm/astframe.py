@@ -464,8 +464,16 @@ class AbstractFrame:
 
             raise err
         elif sym.storage == "direct":
-            assert sym.is_local
-            if expr:
+            if not sym.is_local:
+                err = SPyError("W_ScopeError", "variable shadowing is not allowed")
+                err.add(
+                    "error",
+                    f"variable `{sym.name}` in inner scope shadows variable in outer scope",
+                    target.loc,
+                )
+                err.add("note", f"`{sym.name}` is originally declared here", sym.loc)
+                raise err
+            elif expr:
                 return ast.AssignExprLocal(loc, target, value)
             else:
                 return ast.AssignLocal(loc, target, value)
