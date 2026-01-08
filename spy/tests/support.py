@@ -237,7 +237,7 @@ class CompilerTest:
     def compile_raises(
         self,
         src: str,
-        funcname: Optional[str],
+        funcname: str,
         ctx: Any,
         *,
         modname: str = "test",
@@ -264,10 +264,9 @@ class CompilerTest:
                 mod = self.compile(src, modname=modname)
         else:
             mod = self.compile(src)
-            if funcname:
-                with ctx:
-                    fn = getattr(mod, funcname)
-                    fn()
+            with ctx:
+                fn = getattr(mod, funcname)
+                fn()
 
 
 MatchAnnotation = tuple[str, str]
