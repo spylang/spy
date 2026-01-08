@@ -228,7 +228,7 @@ class CompilerTest:
         return WrapperClass(self.vm, modname, outfile)
 
     def dump_module(self, modname: str) -> None:
-        from spy.cli import dump_spy_mod
+        from spy.cli._format import dump_spy_mod
 
         print()
         print()

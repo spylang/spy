@@ -12,7 +12,7 @@ from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
-from spy.vm.modules.__spy__.interp_list import W_InterpList
+from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES
@@ -174,12 +174,14 @@ class AbstractFrame:
 
     def typecheck_maybe(
         self, wam: W_MetaArg, varname: Optional[str]
-    ) -> Optional[W_Func]:
+    ) -> Optional[W_OpImpl]:
         if varname is None:
             return None  # no typecheck needed
-        w_exp_T = self.locals[varname].w_T
+        lv = self.locals[varname]
+        w_expT = lv.w_T
+        wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
-            w_typeconv = CONVERT_maybe(self.vm, w_exp_T, wam)
+            w_typeconv_opimpl = CONVERT_maybe(self.vm, wam_expT, wam)
         except SPyError as err:
             if not err.match(W_TypeError):
                 raise
@@ -188,48 +190,46 @@ class AbstractFrame:
                 # no need to add extra info
                 pass
             elif varname == "@return":
-                exp = w_exp_T.fqn.human_name
+                exp = w_expT.fqn.human_name
                 msg = f"expected `{exp}` because of return type"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
             else:
-                exp = w_exp_T.fqn.human_name
+                exp = w_expT.fqn.human_name
                 msg = f"expected `{exp}` because of type declaration"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
 
             raise
-        return w_typeconv
+        return w_typeconv_opimpl
 
     def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
+        assert not self.redshifting, "DopplerFrame should override eval_expr"
         wam = magic_dispatch(self, "eval_expr", expr)
-        w_typeconv = self.typecheck_maybe(wam, varname)
 
-        if isinstance(self, ASTFrame) and self.w_func.redshifted:
-            # this is just a sanity check. After redshifting, all type
-            # conversions should be explicit. If w_typeconv is not None here,
-            # it means that Doppler failed to insert the appropriate
-            # conversion
-            assert w_typeconv is None
-
-        if w_typeconv is None:
+        w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
+        if w_typeconv_opimpl is None:
             # no conversion needed, hooray
             return wam
-        elif self.redshifting:
-            # we are performing redshifting: the conversion will be handlded
-            # by FuncDoppler
-            return wam
         else:
-            # apply the conversion immediately
-            w_val = self.vm.fast_call(w_typeconv, [wam.w_val])
-            return W_MetaArg(
-                self.vm,
-                wam.color,
-                w_typeconv.w_functype.w_restype,
-                w_val,
-                wam.loc,
-                sym=wam.sym,
+            if isinstance(self, ASTFrame):
+                # sanity check. After redshifting, all type conversions should be
+                # explicit. If w_typeconv is not None here, it means that Doppler failed
+                # to insert the appropriate conversion
+                assert not self.w_func.redshifted
+
+            # apply the conversion
+            assert varname is not None
+            lv = self.locals[varname]
+            wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
+            wam_gotT = W_MetaArg.from_w_obj(self.vm, wam.w_static_T, loc=wam.loc)
+            wam_val = self.vm.eval_opimpl(
+                w_typeconv_opimpl,
+                [wam_expT, wam_gotT, wam],
+                loc=expr.loc,
+                redshifting=self.redshifting,
             )
+            return wam_val
 
     def eval_expr_type(self, expr: ast.Expr) -> W_Type:
         wam = self.eval_expr(expr)
@@ -979,17 +979,15 @@ class AbstractFrame:
         return self.eval_opimpl(unop, w_opimpl, [wam_v])
 
     def _ensure_bool(self, wam: W_MetaArg) -> W_MetaArg:
-        w_typeconv = CONVERT_maybe(self.vm, B.w_bool, wam)
-        if w_typeconv is None:
+        wam_expT = W_MetaArg.from_w_obj(self.vm, B.w_bool)
+        w_typeconv_opimpl = CONVERT_maybe(self.vm, wam_expT, wam)
+        if w_typeconv_opimpl is None:
             return wam
-
-        return W_MetaArg(
-            self.vm,
-            wam.color,
-            w_typeconv.w_functype.w_restype,
-            self.vm.fast_call(w_typeconv, [wam.w_val]),
-            wam.loc,
-            sym=wam.sym,
+        return self.vm.eval_opimpl(
+            w_typeconv_opimpl,
+            [wam_expT, wam],
+            loc=wam.loc,
+            redshifting=False,  # we want to always execute this eagerly
         )
 
     def eval_expr_And(self, op: ast.And) -> W_MetaArg:
@@ -1069,27 +1067,60 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
-    def eval_expr_List(self, op: ast.List) -> W_Object:
+    def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
+        # 0. empty lists are special
+        if len(lst.items) == 0:
+            w_T = SPY.w_EmptyListType
+            w_val = SPY.w_empty_list
+            return W_MetaArg(self.vm, "red", w_T, w_val, lst.loc)
+
+        # 1. evaluate the individual items and infer the itemtype
         items_wam = []
         w_itemtype = None
         color: Color = "red"  # XXX should be blue?
-        for item in op.items:
+        for item in lst.items:
             wam_item = self.eval_expr(item)
+
+            # This is needed when building a list[MetaArg].
+            #
+            # If we have two blue items which happen to be equal, we reuse the same
+            # w_opimpl for push() below, with the result of pushing the first item
+            # twice, and the second item never. By making it red, we force to create a
+            # more generic opimpl.
+            #
+            # See also:
+            #    test_list::test_list_MetaArg_identity
+            #    typecheck_opspec, big comment starting with "THIS IS PROBABLY A BUG".
+            wam_item = wam_item.as_red(self.vm)
+
             items_wam.append(wam_item)
             color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:
                 w_itemtype = wam_item.w_static_T
             w_itemtype = self.vm.union_type(w_itemtype, wam_item.w_static_T)
-        #
-        # XXX we need to handle empty lists
         assert w_itemtype is not None
-        w_listtype = self.vm.make_list_type(w_itemtype, loc=op.loc)
-        if color == "red" and self.redshifting:
-            w_val = None
-        else:
-            items_w = [wam.w_val for wam in items_wam]
-            w_val = W_InterpList(w_listtype, items_w)
-        return W_MetaArg(self.vm, color, w_listtype, w_val, op.loc)
+
+        # 2. instantiate a new list
+        w_ListType = self.vm.lookup_global(FQN("_list::list"))
+        w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
+
+        w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T])
+        wam_list = self.eval_opimpl(lst, w_opimpl, [wam_T])
+
+        # 3. push items into the list
+        assert isinstance(w_T, W_Type)
+        fqn_push = w_T.fqn.join("_push")
+        w_push = self.vm.lookup_global(fqn_push)
+        wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
+
+        for item, wam_item in zip(lst.items, items_wam):
+            w_opimpl = self.vm.call_OP(
+                lst.loc, OP.w_CALL, [wam_push, wam_list, wam_item]
+            )
+            wam_list = self.eval_opimpl(item, w_opimpl, [wam_push, wam_list, wam_item])
+
+        return wam_list
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]

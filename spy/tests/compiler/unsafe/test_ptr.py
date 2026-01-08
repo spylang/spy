@@ -115,6 +115,7 @@ class TestUnsafePtr(CompilerTest):
     @only_interp
     def test_dir_ptr(self):
         mod = self.compile("""
+        from __spy__ import interp_list
         from unsafe import gc_alloc, ptr
 
         @struct
@@ -122,7 +123,7 @@ class TestUnsafePtr(CompilerTest):
             x: i32
             y: i32
 
-        def dir_ptr_point() -> list[str]:
+        def dir_ptr_point() -> interp_list[str]:
             p = gc_alloc(Point)(1)
             return dir(p)
         """)
@@ -420,3 +421,27 @@ class TestUnsafePtr(CompilerTest):
 
         p = mod.read_point()
         assert p == (7, 8)
+
+    def test_return_struct_with_ptr(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @struct
+        class Wrapper:
+            p: ptr[Point]
+
+        def foo() -> Wrapper:
+            p = gc_alloc(Point)(1)
+            p.x = 1
+            p.y = 2
+            return Wrapper(p)
+        """)
+        w = mod.foo()
+        addr = w.p.addr
+        self.vm.ll.mem.read_i32(addr) == 1
+        self.vm.ll.mem.read_i32(addr + 4) == 2

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar, Optional, Sequence
 
 from spy.fqn import FQN
 from spy.location import Loc
-from spy.vm.b import OPERATOR
+from spy.vm.b import OPERATOR, B
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.object import W_Object
 
@@ -32,7 +32,11 @@ class Const(ArgSpec):
 
 @dataclass
 class Convert(ArgSpec):
-    w_conv: W_Func
+    # Convert the arg by calling the given opimpl.
+    # Note that with this we are effectively builting a tree of opimpls.
+    w_conv_opimpl: "W_OpImpl"
+    expT: ArgSpec
+    gotT: ArgSpec
     arg: ArgSpec
 
 
@@ -144,8 +148,10 @@ class W_OpImpl(W_Object):
             elif isinstance(spec, Const):
                 return spec.w_const
             elif isinstance(spec, Convert):
+                w_expT = getarg(spec.expT)
+                w_gotT = getarg(spec.gotT)
                 w_arg = getarg(spec.arg)
-                return vm.fast_call(spec.w_conv, [w_arg])
+                return spec.w_conv_opimpl._execute(vm, [w_expT, w_gotT, w_arg])
             else:
                 assert False
 
@@ -161,25 +167,35 @@ class W_OpImpl(W_Object):
         """
         argnames = [f"v{i}" for i, p in enumerate(self.w_functype.params)]
 
-        def fmt(spec: ArgSpec) -> str:
-            if isinstance(spec, Arg):
-                arg = argnames[spec.i]
-                return arg
-            elif isinstance(spec, Const):
-                return str(spec.w_const)
-            elif isinstance(spec, Convert):
-                fqn = spec.w_conv.fqn
-                arg = fmt(spec.arg)
-                return f"`{fqn}`({arg})"
-            else:
-                assert False
+        def fmt_opimpl_call(opimpl: "W_OpImpl", arg_reprs: list[str]) -> str:
+            """
+            Recursively render an opimpl call with given argument representations
+            """
+
+            def fmt_spec(spec: ArgSpec) -> str:
+                if isinstance(spec, Arg):
+                    return arg_reprs[spec.i]
+                elif isinstance(spec, Const):
+                    return str(spec.w_const)
+                elif isinstance(spec, Convert):
+                    converter_arg_reprs = [
+                        fmt_spec(spec.expT),
+                        fmt_spec(spec.gotT),
+                        fmt_spec(spec.arg),
+                    ]
+                    return fmt_opimpl_call(spec.w_conv_opimpl, converter_arg_reprs)
+                else:
+                    assert False
+
+            args = [fmt_spec(s) for s in opimpl.args]
+            arglist = ", ".join(args)
+            return f"`{opimpl.w_func.fqn}`({arglist})"
 
         sig = self.func_signature()
-        args = [fmt(spec) for spec in self.args]
-        arglist = ", ".join(args)
+        body = fmt_opimpl_call(self, argnames)
         return textwrap.dedent(f"""
         {sig}:
-            return `{self.w_func.fqn}`({arglist})
+            return {body}
         """).strip()
 
     def func_signature(self) -> str:

@@ -2,9 +2,11 @@ import math
 from typing import TYPE_CHECKING, Annotated, Optional
 
 from spy.errors import SPyError
+from spy.vm.b import B
 from spy.vm.function import W_Func
 from spy.vm.modules.operator import OP
 from spy.vm.object import W_Object, W_Type
+from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool, W_Dynamic
 
@@ -18,55 +20,67 @@ MM = MultiMethodTable()
 
 
 @OP.builtin_func(color="blue")
-def w_CONVERT(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_Func:
+def w_CONVERT(
+    vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
+) -> W_OpImpl:
     """
     Return a w_func which can convert the given MetaArg to the desired type.
 
     If the types are not compatible, raise SPyError. In this case,
     the caller can catch the error, add extra info and re-raise.
     """
-    w_opspec = get_opspec(vm, w_exp, wam_x)
-    if not w_opspec.is_null():
-        # XXX: maybe we should return a W_OpImpl?
-        return w_opspec._w_func  # type: ignore
+    from spy.vm.typechecker import typecheck_opspec
 
-    # mismatched types
-    err = SPyError("W_TypeError", "mismatched types")
-    got = wam_x.w_static_T.fqn.human_name
-    exp = w_exp.fqn.human_name
-    err.add("error", f"expected `{exp}`, got `{got}`", loc=wam_x.loc)
-    raise err
+    w_opspec = get_opspec(vm, wam_expT, wam_gotT, wam_x)
+    if w_opspec.is_simple():
+        # this is a bit of a hack, but I think it improves usability. By default, simple
+        # opspec are called with ALL their arguments, including wam_exp. But for the
+        # specific case of __convert_*__, we almast always want to call it with only the
+        # actual to-be-converted argument, so here we change "the default".
+        w_opspec = W_OpSpec(w_opspec._w_func, [wam_x])
+
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_expT, wam_gotT, wam_x],
+        dispatch="convert",
+        errmsg="mismatched types",
+    )
 
 
-def get_opspec(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
+def get_opspec(
+    vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
+) -> W_OpSpec:
+    w_expT = wam_expT.blue_ensure(vm, B.w_type)
+    w_gotT = wam_gotT.blue_ensure(vm, B.w_type)
+    assert isinstance(w_expT, W_Type)
+    assert isinstance(w_gotT, W_Type)
+
     # this condition is checked by CONVERT_maybe. If we want this function to
     # become more generally usable, we might want to return an identity func
     # here.
-    w_got = wam_x.w_static_T
-    assert not vm.issubclass(w_got, w_exp)
+    assert not vm.issubclass(w_gotT, w_expT)
 
-    if vm.issubclass(w_exp, w_got):
+    if vm.issubclass(w_expT, w_gotT):
         # this handles two separate cases:
         #   - upcasts, e.g. object->i32: in this case we just do a typecheck
         #   - dynamic->*: in this case we SHOULD do actual conversions, but at
         #                 the moment we don't so we conflate the two cases
         #                 into one
-        w_from_dynamic_T = vm.fast_call(OP.w_from_dynamic, [w_exp])
+        w_from_dynamic_T = vm.fast_call(OP.w_from_dynamic, [w_expT])
         assert isinstance(w_from_dynamic_T, W_Func)
         return W_OpSpec(w_from_dynamic_T)
 
-    w_opspec = MM.lookup("convert", w_got, w_exp)
+    w_opspec = MM.lookup("convert", w_gotT, w_expT)
     if w_opspec is not None:
         return w_opspec
 
-    if w_conv_to := w_got.lookup_func("__convert_to__"):
-        wam_exp = W_MetaArg.from_w_obj(vm, w_exp)
-        w_opspec = vm.fast_metacall(w_conv_to, [wam_exp, wam_x])
+    elif w_conv_to := w_gotT.lookup_func("__convert_to__"):
+        w_opspec = vm.fast_metacall(w_conv_to, [wam_expT, wam_gotT, wam_x])
         return w_opspec
 
-    elif w_conv_from := w_exp.lookup_func("__convert_from__"):
-        wam_got = W_MetaArg.from_w_obj(vm, w_got)
-        w_opspec = vm.fast_metacall(w_conv_from, [wam_got, wam_x])
+    elif w_conv_from := w_expT.lookup_func("__convert_from__"):
+        w_opspec = vm.fast_metacall(w_conv_from, [wam_expT, wam_gotT, wam_x])
         return w_opspec
 
     return W_OpSpec.NULL
@@ -74,17 +88,21 @@ def get_opspec(vm: "SPyVM", w_exp: W_Type, wam_x: W_MetaArg) -> W_OpSpec:
 
 def CONVERT_maybe(
     vm: "SPyVM",
-    w_exp: W_Type,
+    wam_expT: W_MetaArg,
     wam_x: W_MetaArg,
-) -> Optional[W_Func]:
+) -> Optional[W_OpImpl]:
     """
     Same as w_CONVERT, but return None if the types are already compatible.
     """
-    w_got = wam_x.w_static_T
-    if vm.issubclass(w_got, w_exp):
+    assert wam_expT.color == "blue"
+    w_expT = wam_expT.w_blueval
+    assert isinstance(w_expT, W_Type)
+    w_gotT = wam_x.w_static_T
+    if vm.issubclass(w_gotT, w_expT):
         # nothing to do
         return None
-    return vm.fast_call(OP.w_CONVERT, [w_exp, wam_x])  # type: ignore
+    wam_gotT = W_MetaArg.from_w_obj(vm, w_gotT, loc=wam_x.loc)
+    return vm.fast_call(OP.w_CONVERT, [wam_expT, wam_gotT, wam_x])  # type: ignore
 
 
 @OP.builtin_func

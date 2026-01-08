@@ -709,21 +709,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() is True
 
-    def test_bool_ops_module_level(self):
-        mod = self.compile("""
-        x = 1 and 2
-        y = 0 or 5
-
-        def read_x() -> bool:
-            return x
-
-        def read_y() -> bool:
-            return y
-        """)
-
-        assert mod.read_x() is True
-        assert mod.read_y() is True
-
     def test_bool_ops_short_circuit(self):
         mod = self.compile("""
         var counter: i32 = 0

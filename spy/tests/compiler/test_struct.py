@@ -5,6 +5,7 @@ from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.object import W_Type
 from spy.vm.struct import UnwrappedStruct
 
 
@@ -135,12 +136,12 @@ class TestStructOnStack(CompilerTest):
         def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> Rect:
             return Rect(Point(x0, y0), Point(x1, y1))
 
-        def foo() -> i32:
+        def foo() -> Rect:
             r = make_rect(1, 2, 3, 4)
-            return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
+            return r
         """
         mod = self.compile(src)
-        assert mod.foo() == 4321
+        assert mod.foo() == ((1, 2), (3, 4))
 
     def test_method(self):
         src = """
@@ -194,35 +195,36 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == (0, 0)
 
-    def test_class_body_bool_ops_declaration(self):
+    def test_bool_ops_in_modframe_and_classframe(self):
         src = """
-        @struct
-        class Flags:
-            value: i32
+            x = True and False
+            y = True or False
 
-            if True and False:
-                def and_result(self) -> i32:
-                    return 1
-            else:
-                def and_result(self) -> i32:
-                    return 2
+            @struct
+            class Point:
+                if True and False:
+                    a: i32
+                if True or False:
+                    b: i32
 
-            if False or True:
-                def or_result(self) -> i32:
-                    return 3
-            else:
-                def or_result(self) -> i32:
-                    return 4
+            def read_x() -> bool:
+                return x
 
-        def read_and() -> i32:
-            return Flags(0).and_result()
+            def read_y() -> bool:
+                return y
 
-        def read_or() -> i32:
-            return Flags(0).or_result()
-        """
+            def read_b(value: i32) -> i32:
+                return Point(value).b
+            """
         mod = self.compile(src)
-        assert mod.read_and() == 2
-        assert mod.read_or() == 3
+
+        assert mod.read_x() is False
+        assert mod.read_y() is True
+        assert mod.read_b(7) == 7
+
+        w_Point = mod.w_mod.getattr("Point")
+        field_names = {w_field.name for w_field in w_Point.iterfields_w()}
+        assert field_names == {"b"}
 
     def test_custom_eq(self):
         src = """
@@ -246,15 +248,17 @@ class TestStructOnStack(CompilerTest):
     @only_interp
     def test_dir(self):
         src = """
+        from __spy__ import interp_list
+
         @struct
         class Point:
             x: i32
             y: i32
 
-        def dir_type() -> list[str]:
+        def dir_type() -> interp_list[str]:
             return dir(Point)
 
-        def dir_inst() -> list[str]:
+        def dir_inst() -> interp_list[str]:
             p = Point(1, 2)
             return dir(p)
         """
@@ -270,6 +274,20 @@ class TestStructOnStack(CompilerTest):
         assert "__make__" in di
         assert "x" in di
         assert "y" in di
+
+    def test_reserved_bool_locals_not_exposed(self):
+        src = """
+        @struct
+        class Foo:
+            pass
+        """
+        mod = self.compile(src)
+        w_Foo = mod.w_mod.getattr("Foo")
+        reserved = {"@if", "@and", "@or", "@while", "@assert"}
+
+        field_names = {w_field.name for w_field in w_Foo.iterfields_w()}
+        assert field_names == set()
+        assert reserved.isdisjoint(w_Foo.dict_w)
 
     def test_operator(self):
         mod = self.compile("""
@@ -381,3 +399,49 @@ class TestStructOnStack(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(3, 4) == 7
+
+    def test_field_default_value_rejected_inside_body(self):
+        src = """
+        @struct
+        class Foo:
+            if True:
+                x: i32 = 0
+        """
+        errors = expect_errors("default values in fields not supported yet")
+        self.compile_raises(src, "", errors, error_reporting="eager")
+
+    def test_for_statement_rejected_inside_class_body(self):
+        src = """
+        @struct
+        class Foo:
+            if True:
+                for i in [1,2,3]:
+                    pass
+        """
+        errors = expect_errors("`For` not supported inside a classdef")
+        self.compile_raises(src, "", errors, error_reporting="eager")
+
+    def test_fwdecl_is_ignored_by_C_backend(self):
+        src = """
+        @blue
+        def make_point_maybe(make_it: bool):
+            if not make_it:
+                return
+
+            @struct
+            class Point:
+                x: i32
+                y: i32
+
+        def foo() -> i32:
+            make_point_maybe(False)
+            return 42
+        """
+        # make_point_maybe::Point is declared unconditionally just by entering
+        # make_point_maybe(), even if it's never used. The point of the test is to
+        # ensure that the C backend knows how to deal with it and doesn't crash.
+        mod = self.compile(src)
+        assert mod.foo() == 42
+        w_Point = self.vm.lookup_global(FQN("test::make_point_maybe::Point"))
+        assert isinstance(w_Point, W_Type)
+        assert not w_Point.is_defined()  # it's a fwdecl

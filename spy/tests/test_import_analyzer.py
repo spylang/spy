@@ -318,13 +318,18 @@ class TestImportAnalyzer:
             for x in range(10):
                 pass
         """
-        self.write("main.spy", src)
-
+        # initial import
+        self.write("main.spy", src, mtime_delta=-1)
         analyzer = ImportAnalyzer(self.vm, "main")
         analyzer.parse_all()
-
-        deps_list = list(analyzer.deps["main"])
-        assert "_range" in deps_list
-
         import_list = analyzer.get_import_list()
+        assert import_list == ["_range", "main"]
+        #
+        # second import, load from .spyc
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "main")
+        analyzer2.parse_all()
+        assert "main" in analyzer2.cached_mods
+        import_list = analyzer2.get_import_list()
         assert import_list == ["_range", "main"]

@@ -22,28 +22,34 @@ def _make_interp_list_type(w_T: W_Type) -> "W_InterpListType":
 
 
 @B.builtin_func(color="blue", kind="generic")
-def w_list(vm: "SPyVM", w_T: W_Type) -> W_Type:
+def w_make_interp_list_type(vm: "SPyVM", w_T: W_Type) -> W_Type:
     """
     Create a concrete W_List class specialized for W_Type.
 
-    Given a type T, it is always safe to call make_list_type(T) multiple
+    Given a type T, it is always safe to call make_interp_list_type(T) multiple
     types, and it is guaranteed to get always the same type.
 
     It is worth noting that to achieve that, we have two layers of caching:
 
       - if we have a prebuilt list type, just use that
-      - for other types, we rely on the fact that `make_list_type` is blue.
+      - for other types, we rely on the fact that `make_interp_list_type` is blue.
     """
     if w_T in PREBUILT_INTERP_LIST_TYPES:
         return PREBUILT_INTERP_LIST_TYPES[w_T]
-    return _make_interp_list_type(w_T)
+    w_listtype = _make_interp_list_type(w_T)
+
+    # register the _push function which is used by ASTFrame.eval_expr_List.
+    # NOTE: for PREBUILT_INTERP_LIST_TYPES, we do it inside __spy__.__INIT__, because we
+    # don't have a vm earlier.
+    w_listtype.register_push_function(vm)
+    return w_listtype
 
 
 @SPY.builtin_type("InterpListType")
 class W_InterpListType(W_Type):
     """
     A specialized list type.
-    list[i32] -> W_ListType(fqn, B.w_i32)
+    interp_list[i32] -> W_InterpListType(fqn, B.w_i32)
     """
 
     w_itemtype: W_Type
@@ -54,11 +60,22 @@ class W_InterpListType(W_Type):
         w_T.w_itemtype = w_itemtype
         return w_T
 
+    def register_push_function(self, vm: "SPyVM") -> None:
+        w_listtype = self
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_InterpList, w_listtype]
+        T = Annotated[W_Object, w_T]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w__push(vm: "SPyVM", w_list: LIST, w_item: T) -> LIST:
+            w_list.items_w.append(w_item)
+            return w_list
+
 
 @SPY.builtin_type("MetaBaseInterpList")
 class W_MetaBaseInterpList(W_Type):
     """
-    This exist solely to be able to do list[...]
+    This exist solely to be able to do interp_list[...]
     """
 
     @builtin_method("__getitem__", color="blue", kind="metafunc")
@@ -66,7 +83,7 @@ class W_MetaBaseInterpList(W_Type):
     def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg, wam_T: W_MetaArg) -> W_OpSpec:
         from spy.vm.opspec import W_OpSpec
 
-        return W_OpSpec(w_list, [wam_T])
+        return W_OpSpec(w_make_interp_list_type, [wam_T])
 
 
 @SPY.builtin_type("interp_list", W_MetaClass=W_MetaBaseInterpList)
@@ -77,7 +94,7 @@ class W_BaseInterpList(W_Object):
     It's the base type for all interp lists.  In other words, `interp_list[i32]`
     inherits from `interp_list`.
 
-    The specialized types are created by calling the builtin make_list_type:
+    The specialized types are created by calling the builtin make_interp_list_type:
     see its docstring for details.
     """
 
@@ -120,6 +137,44 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
             # I think we can get here if we have something typed 'list' as
             # opposed to e.g. 'list[i32]'
             assert False, "FIXME: raise a nice error"
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_T: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
+        w_listtype = wam_T.w_blueval
+        assert isinstance(w_listtype, W_InterpListType)
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_InterpList, w_listtype]
+        T = Annotated[W_Object, w_T]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_new(vm: "SPyVM", *args_w: T) -> LIST:
+            return W_InterpList(w_listtype, list(args_w))
+
+        return W_OpSpec(w_new, list(args_wam))
+
+    @builtin_method("__convert_from__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CONVERT_TO(
+        vm: "SPyVM",
+        wam_expT: W_MetaArg,
+        wam_gotT: W_MetaArg,
+        wam_obj: W_MetaArg,
+    ) -> W_OpSpec:
+        w_expT = wam_expT.w_blueval
+        w_gotT = wam_gotT.w_blueval
+        assert isinstance(w_expT, W_Type)
+
+        if w_gotT is SPY.w_EmptyListType:
+            LIST = Annotated[W_Object, w_expT]
+
+            @vm.register_builtin_func(w_expT.fqn)
+            def w_new_empty(vm: "SPyVM") -> LIST:
+                return vm.call_w(w_expT, [])
+
+            return W_OpSpec(w_new_empty, [])
+
+        return W_OpSpec.NULL
 
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod

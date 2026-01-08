@@ -30,7 +30,6 @@ from spy.vm.function import (
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules.__spy__ import SPY
-from spy.vm.modules.__spy__.interp_list import W_InterpListType
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
@@ -274,11 +273,17 @@ class SPyVM:
             raise ValueError(f"'{fqn}' already exists")
         self.irtags[fqn] = irtag
 
-    def lookup_global(self, fqn: FQN) -> Optional[W_Object]:
+    def lookup_global_maybe(self, fqn: FQN) -> Optional[W_Object]:
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
             return self.globals_w.get(fqn)
+
+    def lookup_global(self, fqn: FQN) -> W_Object:
+        w_val = self.lookup_global_maybe(fqn)
+        if w_val is None:
+            raise Exception(f"lookup_global failed: {fqn}")
+        return w_val
 
     def get_irtag(self, fqn: FQN) -> IRTag:
         return self.irtags.get(fqn, IRTag.Empty)
@@ -296,11 +301,15 @@ class SPyVM:
             if fqn.modname == modname and not fqn.is_module():
                 yield (fqn, w_obj)
 
-    def pp_globals(self) -> None:
+    def pp_globals(self, modname: Optional[str] = None) -> None:
         all_pbcs = sorted(
             self.globals_w.items(),
             key=lambda item: str(item[0]),  # item[0] is fqn
         )
+        if modname is not None:
+            all_pbcs = [
+                (fqn, w_obj) for (fqn, w_obj) in all_pbcs if fqn.modname == modname
+            ]
 
         last_modname = None
         for fqn, w_obj in all_pbcs:
@@ -384,7 +393,7 @@ class SPyVM:
             )
 
             # check whether the fqn is already in use
-            w_other = self.lookup_global(w_func.fqn)
+            w_other = self.lookup_global_maybe(w_func.fqn)
             if w_other is None:
                 # fqn is free, register and return
                 self.add_global(w_func.fqn, w_func, irtag=irtag)
@@ -646,14 +655,6 @@ class SPyVM:
             raise Exception("Type mismatch")
         return w_value.value
 
-    def call(self, w_obj: W_Object, args_w: Sequence[W_Object]) -> W_Object:
-        """
-        The most generic way of calling an object.
-
-        It calls OPERATOR.CALL in order to get an opimpl, then calls it.
-        """
-        raise NotImplementedError
-
     def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         """
         fast_call is a simpler calling convention which works only on
@@ -822,11 +823,16 @@ class SPyVM:
         return self.eval_opimpl(w_opimpl, [wam_o, wam_i], loc=loc)
 
     def getitem_w(
-        self, w_o: W_Dynamic, w_i: W_Dynamic, *, loc: Optional[Loc] = None
+        self,
+        w_o: W_Dynamic,
+        w_i: W_Dynamic,
+        *,
+        loc: Optional[Loc] = None,
+        color: Color = "blue",
     ) -> W_Dynamic:
         "o[i] (dynamic dispatch)"
-        wam_o = W_MetaArg.from_w_obj(self, w_o)
-        wam_i = W_MetaArg.from_w_obj(self, w_i)
+        wam_o = W_MetaArg.from_w_obj(self, w_o, color=color)
+        wam_i = W_MetaArg.from_w_obj(self, w_i, color=color)
         wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here(-2))
         return wam.w_val
 
@@ -849,10 +855,11 @@ class SPyVM:
         args_w: Sequence[W_Dynamic],
         *,
         loc: Optional[Loc] = None,
+        color: Color = "blue",
     ) -> W_Dynamic:
         "func(*args) (dynamic dispatch)"
         wam_func = W_MetaArg.from_w_obj(self, w_func)
-        args_wam = [W_MetaArg.from_w_obj(self, w_arg) for w_arg in args_w]
+        args_wam = [W_MetaArg.from_w_obj(self, w_arg, color=color) for w_arg in args_w]
         wam = self.call_wam(wam_func, args_wam, loc=loc or Loc.here(-2))
         return wam.w_val
 
@@ -924,8 +931,3 @@ class SPyVM:
         "repr(obj) (on meta arguments)"
         wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
         return self.call_wam(wam_repr, [wam_o], loc=loc)
-
-    def make_list_type(self, w_T: W_Type, *, loc: Loc) -> W_InterpListType:
-        w_res = self.getitem_w(SPY.w_interp_list, w_T, loc=loc)
-        assert isinstance(w_res, W_InterpListType)
-        return w_res
