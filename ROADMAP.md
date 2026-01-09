@@ -6,7 +6,7 @@ The reason it exists is to give a very rough idea of the past and future traject
 the project at the time of writing, but it can change at any time depending on the
 findings and the needs.
 
-**Last updated on 2025-01-08**.
+**Last updated on 2026-01-08**.
 
 
 The roadmap is divided into multiple pillars. Each pillar can be pursued more or less
