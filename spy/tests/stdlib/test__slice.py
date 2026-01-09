@@ -6,7 +6,6 @@ from spy.vm.struct import UnwrappedStruct
 
 
 class TestSlice(CompilerTest):
-    @only_interp
     def test__slice_module(self):
         src = """
         def make_slice() -> Slice:
@@ -27,7 +26,6 @@ class TestSlice(CompilerTest):
         assert "_slice::Slice" in str(s.fqn)
         assert all([sn.start_is_none, sn.stop_is_none, sn.step_is_none])
 
-    @only_interp
     def test__slice_indices(self):
         def get_slice_indices(
             start=None, stop=None, step=None, *, length
@@ -39,7 +37,8 @@ class TestSlice(CompilerTest):
                     return str(indices.start) + ", " + str(indices.stop) + ", " + str(indices.step)
             """
             mod = self.compile(
-                src, f"slicetest{randint(0, 10000000)}"
+                src,
+                f"slicetest{'_'.join(str(s).replace('-', 'n') for s in (start, stop, step))}",
             )  # Modules must have unique names or they won't be reimported by the vm
             result = mod._get_indices()
             return result
