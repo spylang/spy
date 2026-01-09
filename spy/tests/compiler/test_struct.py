@@ -481,6 +481,8 @@ class TestStructOnStack(CompilerTest):
             p = Point(1, 2)
             p.foo()
         """
-        mod = self.compile(src)
-        with pytest.raises(NameError):
-            mod.main()
+        errors = expect_errors(
+            "name `x` is not defined",
+            ("not found in this scope", "x"),
+        )
+        self.compile_raises(src, "main", errors)

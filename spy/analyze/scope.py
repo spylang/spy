@@ -134,6 +134,9 @@ class ScopeAnalyzer:
         towards the outer.
         """
         for level, scope in enumerate(reversed(self.stack)):
+            if level > 0 and scope.kind == "class":
+                # jump over 'class' scopes
+                continue
             if sym := scope.lookup_maybe(name):
                 return level, scope, sym
         # not found
