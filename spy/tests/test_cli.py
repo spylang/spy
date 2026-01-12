@@ -152,15 +152,15 @@ class TestMain:
         assert stdout == "hello world\n"
 
     def test_redshift_dump_ast(self):
-        _, stdout = self.run("redshift", self.main_spy)
+        _, stdout = self.run("redshift", "--format", "ast", self.main_spy)
         assert stdout.startswith("`main::main` = FuncDef(")
 
     def test_redshift_full_fqn(self):
         _, stdout = self.run("redshift", "--full-fqn", self.main_spy)
-        assert "FQN('builtins::print_str')" in stdout
+        assert "builtins::print_str" in stdout
 
-    def test_redshift_human_readable(self):
-        _, stdout = self.run("redshift", "--human-readable", self.main_spy)
+    def test_redshift_spy_output(self):
+        _, stdout = self.run("redshift", self.main_spy)
         assert stdout.startswith("\ndef main() -> None:")
 
     def test_colorize_ast(self):
