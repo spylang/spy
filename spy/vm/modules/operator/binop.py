@@ -104,20 +104,6 @@ MM.register("<=", "f64", "f64", OP.w_f64_le)
 MM.register(">" , "f64", "f64", OP.w_f64_gt)
 MM.register(">=", "f64", "f64", OP.w_f64_ge)
 
-# f32 ops
-MM.register("+",  "f32", "f32", OP.w_f32_add)
-MM.register("-",  "f32", "f32", OP.w_f32_sub)
-MM.register("*",  "f32", "f32", OP.w_f32_mul)
-MM.register("/",  "f32", "f32", OP.w_f32_div)
-MM.register("//", "f32", "f32", OP.w_f32_floordiv)
-MM.register("%",  "f32", "f32", OP.w_f32_mod)
-MM.register("==", "f32", "f32", OP.w_f32_eq)
-MM.register("!=", "f32", "f32", OP.w_f32_ne)
-MM.register("<" , "f32", "f32", OP.w_f32_lt)
-MM.register("<=", "f32", "f32", OP.w_f32_le)
-MM.register(">" , "f32", "f32", OP.w_f32_gt)
-MM.register(">=", "f32", "f32", OP.w_f32_ge)
-
 # mixed int/f64 ops: this is still small enough that we can write it manually,
 # but we should consider the idea of generating this table automatically. This
 # will become especially relevant when we add more integer types.
@@ -142,6 +128,42 @@ for num_t in ("i8", "u8", "u32", "i32", "f32"):
     MM.register(">" , num_t, "f64", OP.w_f64_gt)
     MM.register(">=", "f64", num_t, OP.w_f64_ge)
     MM.register(">=", num_t, "f64", OP.w_f64_ge)
+
+# f32 ops
+MM.register("+",  "f32", "f32", OP.w_f32_add)
+MM.register("-",  "f32", "f32", OP.w_f32_sub)
+MM.register("*",  "f32", "f32", OP.w_f32_mul)
+MM.register("/",  "f32", "f32", OP.w_f32_div)
+MM.register("//", "f32", "f32", OP.w_f32_floordiv)
+MM.register("%",  "f32", "f32", OP.w_f32_mod)
+MM.register("==", "f32", "f32", OP.w_f32_eq)
+MM.register("!=", "f32", "f32", OP.w_f32_ne)
+MM.register("<" , "f32", "f32", OP.w_f32_lt)
+MM.register("<=", "f32", "f32", OP.w_f32_le)
+MM.register(">" , "f32", "f32", OP.w_f32_gt)
+MM.register(">=", "f32", "f32", OP.w_f32_ge)
+
+for int_t in ["i32"]:
+    MM.register("+",  "f32", int_t, OP.w_f32_add)
+    MM.register("+",  int_t, "f32", OP.w_f32_add)
+    MM.register("-",  "f32", int_t, OP.w_f32_sub)
+    MM.register("-",  int_t, "f32", OP.w_f32_sub)
+    MM.register("*",  "f32", int_t, OP.w_f32_mul)
+    MM.register("*",  int_t, "f32", OP.w_f32_mul)
+    MM.register("/",  "f32", int_t, OP.w_f32_div)
+    MM.register("/",  int_t, "f32", OP.w_f32_div)
+    MM.register("==", "f32", int_t, OP.w_f32_eq)
+    MM.register("==", int_t, "f32", OP.w_f32_eq)
+    MM.register("!=", "f32", int_t, OP.w_f32_ne)
+    MM.register("!=", int_t, "f32", OP.w_f32_ne)
+    MM.register("<" , "f32", int_t, OP.w_f32_lt)
+    MM.register("<" , int_t, "f32", OP.w_f32_lt)
+    MM.register("<=", "f32", int_t, OP.w_f32_le)
+    MM.register("<=", int_t, "f32", OP.w_f32_le)
+    MM.register(">" , "f32", int_t, OP.w_f32_gt)
+    MM.register(">" , int_t, "f32", OP.w_f32_gt)
+    MM.register(">=", "f32", int_t, OP.w_f32_ge)
+    MM.register(">=", int_t, "f32", OP.w_f32_ge)
 
 # str ops
 MM.register("+",  "str", "str", OP.w_str_add)

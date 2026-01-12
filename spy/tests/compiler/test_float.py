@@ -105,20 +105,26 @@ class TestFloat(CompilerTest):
         assert mod.cmp_gte(5.1, 5.1) is True
         assert mod.cmp_gte(6.2, 5.1) is True
 
-    def test_implicit_conversion(self):
-        mod = self.compile("""
-        def add(x: f64, y: i32) -> f64: return x + y
-        def sub(x: i32, y: f64) -> f64: return x - y
-        def div(x: f64, y: i32) -> f64: return x / y
-
-        def add_i8(x: f64, y: i8) -> f64: return x + y
-        def add_u8(x: f64, y: u8) -> f64: return x + y
-        def add_u32(x: f64, y: u32) -> f64: return x + y
-        def add_f32(x: f64, y:f32) -> f64: return x + y
+    def test_implicit_conversion(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def add(x: T, y: i32) -> T: return x + y
+        def sub(x: i32, y: T) -> T: return x - y
+        def mul(x: T, y: i32) -> T: return x * y
+        def div(x: i32, y: T) -> T: return x / y
         """)
         assert mod.add(1.5, 2) == 3.5
         assert mod.sub(10, 0.5) == 9.5
-        assert mod.div(1.5, 2) == 0.75
+        assert mod.mul(1.5, 2) == 3.0
+        assert mod.div(10, 0.5) == 20.0
+
+    def test_implicit_float_to_all_ints_conversion(self):
+        mod = self.compile("""
+        def add_i8(x: f64, y: i8) -> f64: return x + y
+        def add_u8(x: f64, y: u8) -> f64: return x + y
+        def add_u32(x: f64, y: u32) -> f64: return x + y
+        def add_f32(x: f64, y: f32) -> f64: return x + y
+        """)
         assert mod.add_i8(1.5, 2) == 3.5
         assert mod.add_u8(1.5, 2) == 3.5
         assert mod.add_u32(1.5, 2) == 3.5
