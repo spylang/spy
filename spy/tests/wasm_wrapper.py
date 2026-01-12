@@ -87,8 +87,10 @@ class WasmFuncWrapper:
         self.w_functype = w_functype
 
     def py2wasm(self, pyval: Any, w_T: W_Type) -> Any:
-        if w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_f32, B.w_bool):
+        if w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_bool):
             return pyval
+        elif w_T is B.w_f32:
+            return float(pyval)
         elif w_T is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
             return ll_spy_Str_new(self.ll, pyval)

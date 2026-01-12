@@ -68,6 +68,8 @@ class W_I32(W_Object):
         wam_arg = args_wam[0]
         if wam_arg.w_static_T == B.w_f64:
             return W_OpSpec(OP.w_f64_to_i32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_f32:
+            return W_OpSpec(OP.w_f32_to_i32, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:

@@ -24,6 +24,7 @@ DEFINE_CONV(i32, i8)
 DEFINE_CONV(i32, u8)
 DEFINE_CONV(i32, u32)
 DEFINE_CONV(i32, f64)
+DEFINE_CONV(i32, f32)
 
 DEFINE_CONV(i8, i32)
 DEFINE_CONV(i8, f64)
@@ -35,6 +36,8 @@ DEFINE_CONV(u32, i32)
 DEFINE_CONV(u32, f64)
 
 DEFINE_CONV(f32, f64)
+
+DEFINE_CONV(f64, f32)
 
 #undef i8
 #undef u8
@@ -58,6 +61,17 @@ spy_operator$f64_to_i32(double x) {
     if (x < INT32_MIN)
         return INT32_MIN;
     return (int32_t)x; // Safe since we handled out-of-range cases
+}
+
+static inline int32_t
+spy_operator$f32_to_i32(float x) {
+    if (isnan(x))
+        return 0;
+    if (x > INT32_MAX)
+        return INT32_MAX;
+    if (x < INT32_MIN)
+        return INT32_MIN;
+    return (int32_t)x;
 }
 
 static inline void

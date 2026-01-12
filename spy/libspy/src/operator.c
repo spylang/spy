@@ -3,8 +3,8 @@
 #include <stdbool.h>
 
 float
-spy_operator$f32_add(float a, float b) {
-    return a + b;
+spy_operator$f32_add(float x, float y) {
+    return x + y;
 }
 
 float

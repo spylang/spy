@@ -124,18 +124,14 @@ class TestFloat(CompilerTest):
         assert mod.add_u32(1.5, 2) == 3.5
         assert mod.add_f32(1.5, 2.0) == 3.5
 
-    def test_int_to_float(self):
+    def test_explicit_conversion(self):
         mod = self.compile("""
-        def to_f64(x: i32) -> f64:
-            res = f64(x)
-            return res
+        def i32_to_f64(x: i32) -> f64: return f64(x)
+        def f32_to_f64(x: f32) -> f64: return f64(x)
+        def f64_to_i32(x: f64) -> i32: return i32(x)
+        def f32_to_i32(x: f32) -> i32: return i32(x)
         """)
-        assert mod.to_f64(42) == 42.0
-
-    def test_float_conversion(self):
-        mod = self.compile("""
-        def to_f64(x: f32) -> f64:
-            res = f64(x)
-            return res
-        """)
-        assert mod.to_f64(42.0) == 42.0
+        assert mod.i32_to_f64(42) == 42.0
+        assert mod.f32_to_f64(42.0) == 42.0
+        assert mod.f64_to_i32(42.0) == 42
+        assert mod.f32_to_i32(42.0) == 42
