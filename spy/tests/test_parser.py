@@ -888,6 +888,28 @@ class TestParser:
                     )"""
         self.assert_dump(stmt, expected)
 
+    def test_list_slice_subscript(self):
+        mod = self.parse("""
+        def foo() -> list:
+            l = [1,2,3]
+            return l[1:2:-1]
+        """)
+        stmt = mod.get_funcdef("foo").body[1]
+        expected = """
+                    Return(
+                        value=GetItem(
+                            value=Name(id='l'),
+                            args=[
+                                Slice(
+                                    start=Constant(value=1),
+                                    stop=Constant(value=2),
+                                    step=Constant(value=-1),
+                                ),
+                            ],
+                        ),
+                    )"""
+        self.assert_dump(stmt, expected)
+
     def test_If(self):
         mod = self.parse("""
         def foo() -> i32:
