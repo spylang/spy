@@ -197,17 +197,25 @@ class SymTable:
 
         add_sym("range", None, ImportRef("_range", "range"))
         add_sym("list", None, ImportRef("_list", "list"))
-        add_sym("slice", None, ImportRef("_slice", "Slice"))
         add_sym("Slice", None, ImportRef("_slice", "Slice"))
         return scope
 
     def __repr__(self) -> str:
         return f"<SymTable '{self.name}' ({self.color}, {self.kind})>"
 
-    def pp(self) -> None:
+    @property
+    def depth(self) -> int:
+        """
+        Return the nesting depth of this symbol table.
+
+        Depth is calculated by counting '::' separators in the name
+        """
+        return self.name.count("::")
+
+    def pp(self, indent: str = "") -> None:
         color = ColorFormatter(use_colors=True)
         name = color.set("green", self.name)
-        print(repr(self))
+        print(f"{indent}{repr(self)}")
         # sort symbols by:
         #   1. level
         #   2. color (const, then var)
@@ -221,7 +229,7 @@ class SymTable:
             sym_name = color.set(sym_color, f"{sym.name:10s}")
             if sym.storage == "NameError":
                 # special formatting
-                print(f"    [ ] NameError  {sym_name}")
+                print(f"{indent}    [ ] NameError  {sym_name}")
                 continue
 
             impref = ""
@@ -230,7 +238,9 @@ class SymTable:
             storage = ""
             if sym.storage == "cell":
                 storage = "[cell]"
-            print(f"    [{sym.level}] {sym.varkind:5s} {sym_name} {storage} {impref}")
+            print(
+                f"{indent}    [{sym.level}] {sym.varkind:5s} {sym_name} {storage} {impref}"
+            )
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols

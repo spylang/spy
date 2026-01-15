@@ -473,7 +473,6 @@ class ClassDef(Stmt):
     name: str
     kind: ClassKind
     docstring: Optional[str]
-    fields: list["VarDef"]
     body: list["Stmt"]
     symtable: Any = field(repr=False, default=None)
 

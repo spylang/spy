@@ -19,7 +19,7 @@ from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.primitive import W_Bool
+from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.struct import W_StructType
 from spy.vm.tuple import W_Tuple
 from spy.vm.typechecker import maybe_plural
@@ -1103,6 +1103,7 @@ class AbstractFrame:
         # 2. instantiate a new list
         w_ListType = self.vm.lookup_global(FQN("_list::list"))
         w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
+        # breakpoint(header="====AbstractFrame.eval_expr_list()=====")
         wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
 
         w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T])
@@ -1122,6 +1123,31 @@ class AbstractFrame:
 
         return wam_list
 
+    def eval_expr_Slice(self, op: ast.Slice) -> W_MetaArg:
+        w_SliceType = self.vm.lookup_global(FQN("_slice::Slice"))
+        assert isinstance(w_SliceType, W_Type)
+        fqn_slice_new = w_SliceType.fqn.join("__new__")
+        w_new = self.vm.lookup_global(fqn_slice_new)
+        wam_new = W_MetaArg.from_w_obj(self.vm, w_new)
+
+        def to_m(arg: ast.Expr | None) -> W_MetaArg:
+            if arg is None:
+                return W_MetaArg.from_w_obj(self.vm, B.w_None)
+            elif isinstance(arg, ast.Constant):
+                if not isinstance(arg.value, int):
+                    # TODO support objects with an __index__ method
+                    msg = f"Arguments to slices must be integers or None; got {type(arg).__name__}"
+                else:
+                    return W_MetaArg.from_w_obj(self.vm, W_I32(arg.value))
+            else:
+                msg = msg = (
+                    f"Arguments to slices must be integers or None; got {type(arg).__name__}"
+                )
+            raise SPyError.simple("W_ValueError", msg, "type mismatch", arg.loc)
+
+        args = [to_m(arg) for arg in (op.start, op.stop, op.step)]
+        return self.vm.call_wam(wam_new, [wam_new] + args, loc=op.loc)
+
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]
         colors = [wam.color for wam in items_wam]
@@ -1132,35 +1158,6 @@ class AbstractFrame:
             items_w = [wam.w_val for wam in items_wam]
             w_val = W_Tuple(items_w)
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
-
-    def eval_expr_Slice(self, op: ast.Slice) -> W_MetaArg:
-        generic_loc = Loc(
-            filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
-        )
-        slice_sym = Symbol(
-            "slice",
-            "const",
-            "explicit",
-            "direct",
-            loc=generic_loc,
-            type_loc=generic_loc,
-            level=0,
-            impref=ImportRef("_slice", "Slice"),
-        )
-        self.symtable.add(slice_sym)
-
-        none_val = ast.Constant(loc=Loc.fake(), value=None)
-        return self.eval_expr_Call(
-            ast.Call(
-                op.loc,
-                func=ast.Name(op.loc, id="slice"),
-                args=[
-                    op.start if op.start is not None else none_val,
-                    op.stop if op.stop is not None else none_val,
-                    op.step if op.step is not None else none_val,
-                ],
-            )
-        )
 
 
 class ASTFrame(AbstractFrame):

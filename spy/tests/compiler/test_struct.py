@@ -1,3 +1,5 @@
+import pytest
+
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.tests.support import CompilerTest, expect_errors, only_interp
@@ -195,35 +197,36 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == (0, 0)
 
-    def test_class_body_bool_ops_declaration(self):
+    def test_bool_ops_in_modframe_and_classframe(self):
         src = """
-        @struct
-        class Flags:
-            value: i32
+            x = True and False
+            y = True or False
 
-            if True and False:
-                def and_result(self) -> i32:
-                    return 1
-            else:
-                def and_result(self) -> i32:
-                    return 2
+            @struct
+            class Point:
+                if True and False:
+                    a: i32
+                if True or False:
+                    b: i32
 
-            if False or True:
-                def or_result(self) -> i32:
-                    return 3
-            else:
-                def or_result(self) -> i32:
-                    return 4
+            def read_x() -> bool:
+                return x
 
-        def read_and() -> i32:
-            return Flags(0).and_result()
+            def read_y() -> bool:
+                return y
 
-        def read_or() -> i32:
-            return Flags(0).or_result()
-        """
+            def read_b(value: i32) -> i32:
+                return Point(value).b
+            """
         mod = self.compile(src)
-        assert mod.read_and() == 2
-        assert mod.read_or() == 3
+
+        assert mod.read_x() is False
+        assert mod.read_y() is True
+        assert mod.read_b(7) == 7
+
+        w_Point = mod.w_mod.getattr("Point")
+        field_names = {w_field.name for w_field in w_Point.iterfields_w()}
+        assert field_names == {"b"}
 
     def test_custom_eq(self):
         src = """
@@ -273,6 +276,20 @@ class TestStructOnStack(CompilerTest):
         assert "__make__" in di
         assert "x" in di
         assert "y" in di
+
+    def test_reserved_bool_locals_not_exposed(self):
+        src = """
+        @struct
+        class Foo:
+            pass
+        """
+        mod = self.compile(src)
+        w_Foo = mod.w_mod.getattr("Foo")
+        reserved = {"@if", "@and", "@or", "@while", "@assert"}
+
+        field_names = {w_field.name for w_field in w_Foo.iterfields_w()}
+        assert field_names == set()
+        assert reserved.isdisjoint(w_Foo.dict_w)
 
     def test_operator(self):
         mod = self.compile("""
@@ -385,6 +402,27 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.foo(3, 4) == 7
 
+    def test_field_default_value_rejected_inside_body(self):
+        src = """
+        @struct
+        class Foo:
+            if True:
+                x: i32 = 0
+        """
+        errors = expect_errors("default values in fields not supported yet")
+        self.compile_raises(src, "", errors, error_reporting="eager")
+
+    def test_for_statement_rejected_inside_class_body(self):
+        src = """
+        @struct
+        class Foo:
+            if True:
+                for i in [1,2,3]:
+                    pass
+        """
+        errors = expect_errors("`For` not supported inside a classdef")
+        self.compile_raises(src, "", errors, error_reporting="eager")
+
     def test_fwdecl_is_ignored_by_C_backend(self):
         src = """
         @blue
@@ -409,3 +447,42 @@ class TestStructOnStack(CompilerTest):
         w_Point = self.vm.lookup_global(FQN("test::make_point_maybe::Point"))
         assert isinstance(w_Point, W_Type)
         assert not w_Point.is_defined()  # it's a fwdecl
+
+    def test_struct_fields_dont_leak(self):
+        # See https://github.com/spylang/spy/issues/231
+        src = """
+        @struct
+        class Point:
+            x: int
+            y: int
+
+            def __new__(x: int, y: int) -> Point:
+                return Point.__make__(x*2, y*2)
+
+        def foo() -> Point:
+            return Point(1, 2)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (2, 4)
+
+    def test_struct_fields_require_self(self):
+        # See https://github.com/spylang/spy/issues/231
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def foo(self: Point) -> None:
+                return x
+
+
+        def main() -> None:
+            p = Point(1, 2)
+            p.foo()
+        """
+        errors = expect_errors(
+            "name `x` is not defined",
+            ("not found in this scope", "x"),
+        )
+        self.compile_raises(src, "main", errors)

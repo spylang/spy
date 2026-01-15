@@ -201,8 +201,8 @@ class SPyBackend:
         self.wl("@struct")
         self.wl(f"class {name}:")
         with self.out.indent():
-            for field in classdef.fields:
-                self.emit_stmt_VarDef(field)
+            for stmt in classdef.body:
+                self.emit_stmt(stmt)
         self.scope_stack.pop()
 
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:

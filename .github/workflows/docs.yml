@@ -1,0 +1,72 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:  # Allows manual triggering
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  document-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SPYLANG_DOCS_DEPLOY_KEY }}
+      
+      - name: Fetch gh-pages branch
+        run: | 
+          git remote add docs ${{ vars.SPY_DOCS_REPOSITORY }}
+          git fetch docs main --depth=1
+      
+      - name: Determine version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION from ${{ github.ref }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' 
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material mike
+      
+      - name: Configurate Git information
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+      
+      - name: Build mkdocs
+        run: |
+          if git rev-parse --verify docs/main >/dev/null 2>&1; then
+            mike deploy -r docs -b main --push --update-aliases ${{ steps.version.outputs.version }} latest
+          else
+            mike deploy -r docs -b main --push ${{ steps.version.outputs.version }} latest
+          fi
+          mike set-default -r docs -b main --push latest

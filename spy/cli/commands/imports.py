@@ -8,6 +8,6 @@ async def imports(args: Base_Args_With_Filename) -> None:
     modname = args.filename.stem
     vm = await init_vm(args)
 
-    importer = ImportAnalyzer(vm, modname)
+    importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.parse_all()
     importer.pp()
