@@ -116,6 +116,7 @@ class SpyTyper(typer.Typer):
         kwargs["add_completion"] = (
             False  # Hide the default --install-completion and --show-completion options for cleanliness
         )
+        kwargs["context_settings"] = {"help_option_names": ["-h", "--help"]}
         super().__init__(*args, **kwargs)
 
     def _command_with_default_option(

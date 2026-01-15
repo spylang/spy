@@ -306,27 +306,14 @@ class Parser:
 
         docstring, py_class_body = self.get_docstring_maybe(py_classdef.body)
 
-        # only few kind of declarations are supported inside a "class:" block
-        fields: list[spy.ast.VarDef] = []
+        # collect statements inside a "class:" block.
+        # validation is delegated to ClassFrame
         body: list[spy.ast.Stmt] = []
         for py_stmt in py_class_body:
             if isinstance(py_stmt, py_ast.AnnAssign):
-                vardef = self.from_py_AnnAssign(py_stmt)
-                if vardef.value is not None:
-                    self.error(
-                        "default values in fields not supported yet",
-                        "this is not supported",
-                        vardef.value.loc,
-                    )
-                fields.append(vardef)
+                body.append(self.from_py_AnnAssign(py_stmt))
             else:
-                stmt = self.from_py_stmt(py_stmt)
-                if isinstance(stmt, (spy.ast.FuncDef, spy.ast.If, spy.ast.Pass)):
-                    body.append(stmt)
-                else:
-                    STMT = stmt.__class__.__name__
-                    msg = f"`{STMT}` not supported inside a classdef"
-                    self.error(msg, "this is not supported", stmt.loc)
+                body.append(self.from_py_stmt(py_stmt))
 
         # loc points to the 'class X' line, body_loc to the whole class body
         body_loc = py_classdef.loc
@@ -336,7 +323,6 @@ class Parser:
             body_loc=body_loc,
             name=py_classdef.name,
             kind=kind,
-            fields=fields,
             body=body,
             docstring=docstring,
         )

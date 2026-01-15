@@ -1282,7 +1282,6 @@ class TestParser:
             name='Foo',
             kind='class',
             docstring=None,
-            fields=[],
             body=[
                 Pass(),
             ],
@@ -1302,7 +1301,6 @@ class TestParser:
             name='Foo',
             kind='struct',
             docstring=None,
-            fields=[],
             body=[
                 Pass(),
             ],
@@ -1323,7 +1321,7 @@ class TestParser:
             name='Foo',
             kind='class',
             docstring='hello',
-            fields=[
+            body=[
                 VarDef(
                     kind=None,
                     name=StrConst(value='x'),
@@ -1331,7 +1329,6 @@ class TestParser:
                     value=None,
                 ),
             ],
-            body=[],
         )
         """
         self.assert_dump(classdef, expected)
@@ -1349,7 +1346,7 @@ class TestParser:
             name='Point',
             kind='struct',
             docstring=None,
-            fields=[
+            body=[
                 VarDef(
                     kind=None,
                     name=StrConst(value='x'),
@@ -1363,22 +1360,37 @@ class TestParser:
                     value=None,
                 ),
             ],
-            body=[],
         )
         """
         self.assert_dump(classdef, expected)
 
-    def test_class_no_assignments(self):
-        src = """
-        @struct
+    def test_class_assignments_and_defaults_in_ast(self):
+        mod = self.parse("""
         class Foo:
-            x = 42
-        """
-        self.expect_errors(
-            src,
-            "`Assign` not supported inside a classdef",
-            ("this is not supported", "x = 42"),
+            x: i32 = 42
+            y = 1
+        """)
+        classdef = mod.get_classdef("Foo")
+        expected = """
+        ClassDef(
+            name='Foo',
+            kind='class',
+            docstring=None,
+            body=[
+                VarDef(
+                    kind=None,
+                    name=StrConst(value='x'),
+                    type=Name(id='i32'),
+                    value=Constant(value=42),
+                ),
+                Assign(
+                    target=StrConst(value='y'),
+                    value=Constant(value=1),
+                ),
+            ],
         )
+        """
+        self.assert_dump(classdef, expected)
 
     def test_classdef_methods(self):
         mod = self.parse("""
@@ -1395,15 +1407,13 @@ class TestParser:
             name='Foo',
             kind='struct',
             docstring=None,
-            fields=[
+            body=[
                 VarDef(
                     kind=None,
                     name=StrConst(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
-            ],
-            body=[
                 FuncDef(
                     color='red',
                     kind='plain',

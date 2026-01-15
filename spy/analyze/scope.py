@@ -102,7 +102,7 @@ class ScopeAnalyzer:
         self.by_module().pp()
         print()
         for key, symtable in self.inner_scopes.items():
-            symtable.pp()
+            symtable.pp(indent="    " * symtable.depth)
             print()
 
     # =====
@@ -134,6 +134,9 @@ class ScopeAnalyzer:
         towards the outer.
         """
         for level, scope in enumerate(reversed(self.stack)):
+            if level > 0 and scope.kind == "class":
+                # jump over 'class' scopes
+                continue
             if sym := scope.lookup_maybe(name):
                 return level, scope, sym
         # not found
@@ -252,15 +255,20 @@ class ScopeAnalyzer:
 
     def declare_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
-        varkind = vardef.kind
-        if varkind is None:
-            if self.loop_depth > 0:
-                varkind = "var"
-            else:
-                varkind = "const"
-            varkind_origin: VarKindOrigin = "auto"
+        if self.scope.kind == "class":
+            varkind: VarKind = "var"
+            varkind_origin: VarKindOrigin = "class-field"
         else:
-            varkind_origin = "explicit"
+            varkind_optional = vardef.kind
+            if varkind_optional is None:
+                if self.loop_depth > 0:
+                    varkind = "var"
+                else:
+                    varkind = "const"
+                varkind_origin = "auto"
+            else:
+                varkind = varkind_optional
+                varkind_origin = "explicit"
         self.define_name(
             varname,
             varkind,
@@ -318,15 +326,6 @@ class ScopeAnalyzer:
         inner_scope = self.new_SymTable(classdef.name, "blue", "class")
         self.push_scope(inner_scope)
         self.inner_scopes[classdef] = inner_scope
-        for vardef in classdef.fields:
-            # Class fields are always "var" with origin "class-field"
-            self.define_name(
-                vardef.name.value,
-                "var",
-                "class-field",
-                vardef.loc,
-                vardef.type.loc,
-            )
         for stmt in classdef.body:
             self.declare(stmt)
         self.pop_scope()
@@ -480,8 +479,6 @@ class ScopeAnalyzer:
     def flatten_ClassDef(self, classdef: ast.ClassDef) -> None:
         inner_scope = self.by_classdef(classdef)
         self.push_scope(inner_scope)
-        for vardef in classdef.fields:
-            self.flatten(vardef)
         for stmt in classdef.body:
             self.flatten(stmt)
         self.pop_scope()

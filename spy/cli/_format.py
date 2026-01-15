@@ -71,6 +71,4 @@ def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
             cursor += 1
 
         highlighted_lines.append("".join(result))
-    return "".join(
-        highlight_src("spy", line.rstrip("\n")) + "\n" for line in highlighted_lines
-    )
+    return "".join(highlighted_lines)

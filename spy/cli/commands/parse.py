@@ -17,7 +17,7 @@ async def parse(args: Parse_Args) -> None:
     modname = args.filename.stem
     vm = await init_vm(args)
 
-    importer = ImportAnalyzer(vm, modname)
+    importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.parse_all()
 
     orig_mod = importer.getmod(modname)
