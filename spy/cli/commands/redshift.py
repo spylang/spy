@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated
 
+import click
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
@@ -21,10 +22,14 @@ class _redshift_mixin:
         Option("--full-fqn", help="Show full FQNs in redshifted modules"),
     ] = False
 
-    human_readable: Annotated[
-        bool,
-        Option("--human-readable", help="Show full FQNs in redshifted modules"),
-    ] = False
+    format: Annotated[
+        str,
+        Option(
+            "--format",
+            help="Output format (ast or spy [source])",
+            click_type=click.Choice(["ast", "spy"]),
+        ),
+    ] = "spy"
 
 
 @dataclass
@@ -41,7 +46,7 @@ async def redshift(args: Redshift_Args) -> None:
     modname = args.filename.stem
     vm = await init_vm(args)
 
-    importer = ImportAnalyzer(vm, modname)
+    importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.parse_all()
     importer.import_all()
 
@@ -52,7 +57,9 @@ async def redshift(args: Redshift_Args) -> None:
         w_mod = vm.modules_w[modname]
         execute_spy_main(vm, w_mod, redshift=True, _timeit=args.timeit)
     else:
-        if args.human_readable:
+        if args.format == "spy":
             dump_spy_mod(vm, modname, args.full_fqn)
-        else:  # not args.human_readable
+        elif args.format == "ast":
             dump_spy_mod_ast(vm, modname)
+        else:
+            assert False, f"Invalid redshift format `{args.format}`"
