@@ -8,7 +8,7 @@ from spy.vm.modules.operator import OP
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool, W_Dynamic
+from spy.vm.primitive import W_F32, W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool, W_Dynamic
 
 from . import OP
 from .multimethod import MultiMethodTable
@@ -161,16 +161,49 @@ def w_i32_to_u32(vm: "SPyVM", w_x: W_I32) -> W_U32:
 
 
 @OP.builtin_func
+def w_i32_to_f32(vm: "SPyVM", w_x: W_I32) -> W_F32:
+    val = vm.unwrap_i32(w_x)
+    return W_F32(float(val))
+
+
+@OP.builtin_func
 def w_u32_to_i32(vm: "SPyVM", w_x: W_U32) -> W_I32:
     return W_I32(w_x.value)
 
 
 @OP.builtin_func
 def w_f64_to_i32(vm: "SPyVM", w_x: W_F64) -> W_I32:
-    i32_MAX = 2**31 - 1
+    i32_MIN, i32_MAX = -(2**31) - 1, 2**31 - 1
     val = vm.unwrap_f64(w_x)
     if val > i32_MAX:
         val = i32_MAX
+    elif val < i32_MIN:
+        val = i32_MIN
+    elif math.isnan(val):
+        val = 0
+    return vm.wrap(int(val))
+
+
+@OP.builtin_func
+def w_f64_to_f32(vm: "SPyVM", w_x: W_F64) -> W_F32:
+    val = vm.unwrap_f64(w_x)
+    return W_F32(val)
+
+
+@OP.builtin_func
+def w_f32_to_f64(vm: "SPyVM", w_x: W_F32) -> W_F64:
+    val = vm.unwrap_f32(w_x)
+    return vm.wrap(val)
+
+
+@OP.builtin_func
+def w_f32_to_i32(vm: "SPyVM", w_x: W_F32) -> W_I32:
+    i32_MIN, i32_MAX = -(2**31) - 1, 2**31 - 1
+    val = vm.unwrap_f32(w_x)
+    if val > i32_MAX:
+        val = i32_MAX
+    elif val < i32_MIN:
+        val = i32_MIN
     elif math.isnan(val):
         val = 0
     return vm.wrap(int(val))
@@ -204,6 +237,9 @@ MM.register("convert", "i8", "f64", OP.w_i8_to_f64)
 MM.register("convert", "u8", "f64", OP.w_u8_to_f64)
 MM.register("convert", "i32", "f64", OP.w_i32_to_f64)
 MM.register("convert", "u32", "f64", OP.w_u32_to_f64)
+MM.register("convert", "f32", "f64", OP.w_f32_to_f64)
+MM.register("convert", "f64", "f32", OP.w_f64_to_f32)
+MM.register("convert", "i32", "f32", OP.w_i32_to_f32)
 MM.register("convert", "i32", "bool", OP.w_i32_to_bool)
 
 # this is wrong: we don't want implicit truncation from float to int. Maybe

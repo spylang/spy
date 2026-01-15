@@ -16,6 +16,7 @@
 #define u8 uint8_t
 #define i32 int32_t
 #define u32 uint32_t
+#define f32 float
 #define f64 double
 
 DEFINE_CONV(i32, bool)
@@ -23,6 +24,7 @@ DEFINE_CONV(i32, i8)
 DEFINE_CONV(i32, u8)
 DEFINE_CONV(i32, u32)
 DEFINE_CONV(i32, f64)
+DEFINE_CONV(i32, f32)
 
 DEFINE_CONV(i8, i32)
 DEFINE_CONV(i8, f64)
@@ -33,10 +35,15 @@ DEFINE_CONV(u8, f64)
 DEFINE_CONV(u32, i32)
 DEFINE_CONV(u32, f64)
 
+DEFINE_CONV(f32, f64)
+
+DEFINE_CONV(f64, f32)
+
 #undef i8
 #undef u8
 #undef i32
 #undef u32
+#undef f32
 #undef f64
 
 // implement rust-like saturating conversion.
@@ -54,6 +61,17 @@ spy_operator$f64_to_i32(double x) {
     if (x < INT32_MIN)
         return INT32_MIN;
     return (int32_t)x; // Safe since we handled out-of-range cases
+}
+
+static inline int32_t
+spy_operator$f32_to_i32(float x) {
+    if (isnan(x))
+        return 0;
+    if (x > INT32_MAX)
+        return INT32_MAX;
+    if (x < INT32_MIN)
+        return INT32_MIN;
+    return (int32_t)x;
 }
 
 static inline void
@@ -413,6 +431,24 @@ spy_unsafe$f64_unchecked_mod(double x, double y) {
 
     return r;
 }
+
+float WASM_EXPORT(spy_operator$f32_add)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_sub)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_mul)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_div)(float x, float y);
+float WASM_EXPORT(spy_unsafe$f32_ieee754_div)(float x, float y);
+float WASM_EXPORT(spy_unsafe$f32_unchecked_div)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_floordiv)(float x, float y);
+float WASM_EXPORT(spy_unsafe$f32_unchecked_floordiv)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_mod)(float x, float y);
+float WASM_EXPORT(spy_unsafe$f32_unchecked_mod)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_eq)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_ne)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_lt)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_le)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_gt)(float x, float y);
+bool WASM_EXPORT(spy_operator$f32_ge)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_neg)(float x);
 
 static inline bool
 spy_operator$bool_eq(bool x, bool y) {

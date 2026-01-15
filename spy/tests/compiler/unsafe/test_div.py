@@ -1,4 +1,4 @@
-from math import isnan
+from math import isclose, isnan
 
 import pytest
 
@@ -90,58 +90,75 @@ class TestUnsafeIntDiv(CompilerTest):
             mod.mod(10, 0)
 
 
+@pytest.fixture(params=["f64", "f32"])
+def float_type(request):
+    return request.param
+
+
 class TestUnsafeFloatDiv(CompilerTest):
-    def test_unchecked_div(self):
-        mod = self.compile("""
+    def test_unchecked_div(self, float_type):
+        mod = self.compile(f"""
         from unsafe import unchecked_div
-        def div(x: f64, y: f64) -> f64: return unchecked_div(x, y)
+        T = {float_type}
+        def div(x: T, y: T) -> T: return unchecked_div(x, y)
         """)
         assert mod.div(1.5, 2.0) == 0.75
         assert mod.div(11.0, 2.0) == 5.5
-        assert mod.div(500.000034, 45.000034) == 500.000034 / 45.000034
+        assert isclose(
+            mod.div(500.000034, 45.000034), 500.000034 / 45.000034, rel_tol=1e-6
+        )
 
-    def test_ieee754_div(self):
-        mod = self.compile("""
+    def test_ieee754_div(self, float_type):
+        mod = self.compile(f"""
         from unsafe import ieee754_div
-        def div(x: f64, y: f64) -> f64: return ieee754_div(x, y)
+        T = {float_type}
+        def div(x: T, y: T) -> T: return ieee754_div(x, y)
         """)
         assert mod.div(1.5, 2.0) == 0.75
         assert mod.div(11.0, 2.0) == 5.5
-        assert mod.div(500.000034, 45.000034) == 500.000034 / 45.000034
+        assert isclose(
+            mod.div(500.000034, 45.000034), 500.000034 / 45.000034, rel_tol=1e-6
+        )
 
-    def test_unchecked_floordiv(self):
-        mod = self.compile("""
+    def test_unchecked_floordiv(self, float_type):
+        mod = self.compile(f"""
         from unsafe import unchecked_floordiv
-        def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
+        T = {float_type}
+        def floordiv(x: T, y: T) -> T: return unchecked_floordiv(x, y)
         """)
         assert mod.floordiv(1.5, 2.0) == 0.0
         assert mod.floordiv(11.0, 2.0) == 5.0
         assert mod.floordiv(500.000034, 45.000034) == 500.000034 // 45.000034
 
-    def test_unchecked_mod(self):
-        mod = self.compile("""
+    def test_unchecked_mod(self, float_type):
+        mod = self.compile(f"""
         from unsafe import unchecked_mod
-        def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
+        T = {float_type}
+        def mod(x: T, y: T) -> T: return unchecked_mod(x, y)
         """)
         assert mod.mod(10.5, 2.5) == 0.5
         assert mod.mod(11.0, 2.0) == 1.0
-        assert mod.mod(500.000034, 45.000034) == 500.000034 % 45.000034
+        assert isclose(
+            mod.mod(500.000034, 45.000034), 500.000034 % 45.000034, rel_tol=1e-5
+        )
 
-    def test_ieee754_zero_div(self):
+    def test_ieee754_zero_div(self, float_type):
         mod = self.compile(f"""
         from unsafe import ieee754_div
-        def div(x: f64, y: f64) -> f64: return ieee754_div(x, y)
+        T = {float_type}
+        def div(x: T, y: T) -> T: return ieee754_div(x, y)
         """)
         assert mod.div(1.5, 0.0) == float("inf")
         assert mod.div(-1.5, 0.0) == float("-inf")
         assert isnan(mod.div(0.0, 0.0))
 
-    def test_spy_zero_division_unchecked(self):
+    def test_spy_zero_division_unchecked(self, float_type):
         mod = self.compile(f"""
         from unsafe import unchecked_div, unchecked_floordiv, unchecked_mod
-        def div(x: f64, y: f64) -> f64: return unchecked_div(x, y)
-        def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
-        def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
+        T = {float_type}
+        def div(x: T, y: T) -> T: return unchecked_div(x, y)
+        def floordiv(x: T, y: T) -> T: return unchecked_floordiv(x, y)
+        def mod(x: T, y: T) -> T: return unchecked_mod(x, y)
         """)
         with SPyError.raises("W_PanicError", match="float division by zero"):
             mod.div(1.5, 0.0)
@@ -152,11 +169,12 @@ class TestUnsafeFloatDiv(CompilerTest):
         with SPyError.raises("W_PanicError", match="float modulo by zero"):
             mod.mod(10.5, 0.0)
 
-    def test_division_mixed_signs(self):
-        mod = self.compile("""
+    def test_division_mixed_signs(self, float_type):
+        mod = self.compile(f"""
         from unsafe import unchecked_floordiv, unchecked_mod
-        def floordiv(x: f64, y: f64) -> f64: return unchecked_floordiv(x, y)
-        def mod(x: f64, y: f64) -> f64: return unchecked_mod(x, y)
+        T = {float_type}
+        def floordiv(x: T, y: T) -> T: return unchecked_floordiv(x, y)
+        def mod(x: T, y: T) -> T: return unchecked_mod(x, y)
         """)
         assert mod.floordiv(3.5, 1.5) == 2.0
         assert mod.floordiv(3.5, -1.5) == -3.0
@@ -171,15 +189,18 @@ class TestUnsafeFloatDiv(CompilerTest):
         assert mod.mod(5.0, float("-inf")) == float("-inf")
         assert mod.mod(-5.0, float("-inf")) == -5.0
 
-    def test_division_mixed_types(self):
-        mod = self.compile("""
-        from unsafe import unchecked_div, unchecked_floordiv, unchecked_mod
-        def div(x: i32, y: f64) -> f64: return unchecked_div(x, y)
-        def div2(x: f64, y: i32) -> f64: return unchecked_div(x, y)
-        def floordiv(x: i32, y: f64) -> f64: return unchecked_floordiv(x, y)
-        def floordiv2(x: f64, y: i32) -> f64: return unchecked_floordiv(x, y)
-        def mod(x: i32, y: f64) -> f64: return unchecked_mod(x, y)
-        def mod2(x: f64, y: i32) -> f64: return unchecked_mod(x, y)
+    def test_division_mixed_types(self, float_type):
+        mod = self.compile(f"""
+        from unsafe import unchecked_div, unchecked_floordiv, unchecked_mod, ieee754_div
+        T = {float_type}
+        def div(x: i32, y: T) -> T: return unchecked_div(x, y)
+        def div2(x: T, y: i32) -> T: return unchecked_div(x, y)
+        def floordiv(x: i32, y: T) -> T: return unchecked_floordiv(x, y)
+        def floordiv2(x: T, y: i32) -> T: return unchecked_floordiv(x, y)
+        def mod(x: i32, y: T) -> T: return unchecked_mod(x, y)
+        def mod2(x: T, y: i32) -> T: return unchecked_mod(x, y)
+        def ieee754div(x: i32, y: T) -> T: return ieee754_div(x, y)
+        def ieee754div2(x: T, y: i32) -> T: return ieee754_div(x, y)
         """)
         assert mod.div(11, 2.0) == 5.5
         assert mod.div2(11.0, 2) == 5.5
@@ -187,3 +208,5 @@ class TestUnsafeFloatDiv(CompilerTest):
         assert mod.floordiv2(11.0, 2) == 5.0
         assert mod.mod(11, 2.0) == 1.0
         assert mod.mod2(11.0, 2) == 1.0
+        assert mod.ieee754div(11, 2.0) == 5.5
+        assert mod.ieee754div2(11.0, 2) == 5.5

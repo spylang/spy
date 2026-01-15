@@ -130,6 +130,7 @@ class Context:
         self._d[B.w_i32] = C_Type("int32_t")
         self._d[B.w_u32] = C_Type("uint32_t")
         self._d[B.w_f64] = C_Type("double")
+        self._d[B.w_f32] = C_Type("float")
         self._d[B.w_bool] = C_Type("bool")
         self._d[B.w_str] = C_Type("spy_Str *")
         self._d[RB.w_RawBuffer] = C_Type("spy_RawBuffer *")
