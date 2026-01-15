@@ -308,6 +308,22 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "set_x", errors)
 
+    @only_interp  # FuncDefs cannot be redshifted yet
+    def test_cannot_shadow_outer_function_scope(self):
+        src = """
+        def foo() -> None:
+            x = 1
+            def bar() -> None:
+                x = 2
+            bar()
+        """
+        errors = expect_errors(
+            "variable shadowing is not allowed",
+            ("variable `x` in inner scope shadows variable in outer scope", "x"),
+            ("`x` is originally declared here", "x"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_cannot_assign_to_blue_param(self):
         src = """
         @blue
