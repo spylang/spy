@@ -485,21 +485,26 @@ class DopplerFrame(ASTFrame):
                 args=[newlst, shifted_item],
             )
         return newlst
-    
+
     def shift_expr_Slice(self, slc: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         # equivalent to ASTFrame.eval_expr_Slice
         w_T = wam.w_static_T
         fqn_new = w_T.fqn.join("__new__")
-        #breakpoint()
 
-        def make_none(val: ast.Expr | None) -> ast.Expr:
-            if val is None: return ast.Constant(slc.loc, None)
+        def make_none_maybe(val: ast.Expr | None) -> ast.Expr:
+            if val is None:
+                return ast.Constant(slc.loc, None)
             return val
-        
+
+        # Slice class isn't an FQN so this is wrong...
+        # but we're on the right track that we need to feed the slice class to the __new__ call
+        fqn = self.vm.make_fqn_const(w_T)
+        cls = ast.FQNConst(slc.loc, fqn)
+
         new_call = ast.Call(
             slc.loc,
-            func = ast.FQNConst(loc=slc.loc, fqn=fqn_new),
-            args = [make_none(w) for w in (slc.start, slc.stop, slc.step)]
+            func=ast.FQNConst(loc=slc.loc, fqn=fqn_new),
+            args=[cls] + [make_none_maybe(w) for w in (slc.start, slc.stop, slc.step)],
         )
         return new_call
 

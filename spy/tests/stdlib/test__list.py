@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, no_C, only_interp
 
 
 class TestList(CompilerTest):
@@ -91,7 +91,7 @@ class TestList(CompilerTest):
         with SPyError.raises("W_IndexError"):
             mod.out_of_bounds()
 
-    @only_interp
+    @no_C
     def test_getitem_slice_type(self):
         mod = self.compile("""
             def foo() -> list[i32]:
@@ -101,7 +101,7 @@ class TestList(CompilerTest):
         x = mod.foo()
         assert type(x) == list
 
-    @only_interp
+    @no_C
     def test_getitem_slice_simple(self):
         mod = self.compile("""
             def simple_slice() -> list[i32]:
@@ -110,7 +110,7 @@ class TestList(CompilerTest):
             """)
         assert mod.simple_slice() == [1]
 
-    @only_interp
+    @no_C
     def test_getitem_slice_long(self):
         mod = self.compile("""
             def long_slice() -> list[i32]:
@@ -119,7 +119,7 @@ class TestList(CompilerTest):
             """)
         assert mod.long_slice() == [2, 3, 4]
 
-    @only_interp
+    @no_C
     def test_getitem_slice_long_stride(self):
         mod = self.compile("""
             def long_stride() -> list[i32]:
@@ -128,7 +128,7 @@ class TestList(CompilerTest):
             """)
         assert mod.long_stride() == [1, 3, 5]
 
-    @only_interp
+    @no_C
     def test_getitem_slice_zero_step(self):
         mod = self.compile("""
             def zero_slice() -> list[i32]:
@@ -138,7 +138,7 @@ class TestList(CompilerTest):
         with pytest.raises(SPyError):
             mod.zero_slice()
 
-    @only_interp
+    @no_C
     def test_getitem_slice_reverse(self):
         mod = self.compile("""
             def reverse_slice() -> list[i32]:
