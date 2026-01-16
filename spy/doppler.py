@@ -17,6 +17,7 @@ from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
+from spy.vm.primitive import W_I32
 from spy.vm.tuple import W_Tuple
 
 if TYPE_CHECKING:
@@ -490,6 +491,8 @@ class DopplerFrame(ASTFrame):
         # equivalent to ASTFrame.eval_expr_Slice
         w_T = wam.w_static_T
         fqn_new = w_T.fqn.join("__new__")
+        w_new = self.vm.lookup_global(fqn_new)
+        wam_new = W_MetaArg.from_w_obj(self.vm, w_new)
 
         def make_none_maybe(val: ast.Expr | None) -> ast.Expr:
             if val is None:
@@ -501,9 +504,28 @@ class DopplerFrame(ASTFrame):
         fqn = self.vm.make_fqn_const(w_T)
         cls = ast.FQNConst(slc.loc, fqn)
 
+        def to_m(arg: ast.Expr | None) -> W_MetaArg:
+            if arg is None:
+                return W_MetaArg.from_w_obj(self.vm, B.w_None)
+            elif isinstance(arg, ast.Constant):
+                if not isinstance(arg.value, int):
+                    # TODO support objects with an __index__ method
+                    msg = f"Arguments to slices must be integers or None; got {type(arg).__name__}"
+                else:
+                    return W_MetaArg.from_w_obj(self.vm, W_I32(arg.value))
+            else:
+                msg = msg = (
+                    f"Arguments to slices must be integers or None; got {type(arg).__name__}"
+                )
+            raise SPyError.simple("W_ValueError", msg, "type mismatch", arg.loc)
+
+        args = [to_m(arg) for arg in (slc.start, slc.stop, slc.step)]
+        opspec = self.vm.fast_metacall(w_new, [wam_new] + args)
+        fqn_new_impl = fqn = self.vm.make_fqn_const(opspec)
+
         new_call = ast.Call(
             slc.loc,
-            func=ast.FQNConst(loc=slc.loc, fqn=fqn_new),
+            func=ast.FQNConst(loc=slc.loc, fqn=fqn_new_impl),
             args=[cls] + [make_none_maybe(w) for w in (slc.start, slc.stop, slc.step)],
         )
         return new_call
