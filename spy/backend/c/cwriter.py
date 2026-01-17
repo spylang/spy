@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import C_Ident, Context
+from spy.backend.c.context import C_Ident, C_Type, Context
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -12,6 +12,7 @@ from spy.vm.b import TYPES
 from spy.vm.builtin import IRTag
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -275,6 +276,10 @@ class CFuncWriter:
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W_Func):
             return C.Literal(const.fqn.c_name)
+        elif isinstance(w_obj, W_Struct):
+            c_st = C_Type(w_obj.w_structtype.fqn.c_name)
+            self.cmodw.tbh_globals.wl(f"extern {c_st} {const.fqn.c_name};")
+            return C.Literal(const.fqn.c_name)
         else:
             assert False
 
@@ -470,7 +475,11 @@ class CFuncWriter:
         # default case: call a function with the corresponding name
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
-        c_args = [self.fmt_expr(arg) for arg in call.args]
+
+        def is_none(arg: ast.Expr) -> bool:
+            return isinstance(arg, ast.Constant) and arg.value == None
+
+        c_args = [self.fmt_expr(arg) for arg in call.args if not is_none(arg)]
         return C.Call(c_name, c_args)
 
     def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
