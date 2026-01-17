@@ -521,7 +521,7 @@ class DopplerFrame(ASTFrame):
 
         args = [to_m(arg) for arg in (slc.start, slc.stop, slc.step)]
         opspec = self.vm.fast_metacall(w_new, [wam_new] + args)
-        fqn_new_impl = fqn = self.vm.make_fqn_const(opspec)
+        fqn_new_impl = self.vm.make_fqn_const(opspec)
 
         new_call = ast.Call(
             slc.loc,
