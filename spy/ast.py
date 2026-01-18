@@ -287,6 +287,18 @@ class List(Expr):
 
 
 @astnode
+class KeyValuePair(Node):
+    key: Expr
+    value: Expr
+
+
+@astnode
+class Dict(Expr):
+    precedence = 17
+    items: list[KeyValuePair]
+
+
+@astnode
 class Tuple(Expr):
     precedence = 17
     items: list[Expr]
