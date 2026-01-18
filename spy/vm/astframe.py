@@ -1122,6 +1122,18 @@ class AbstractFrame:
 
         return wam_list
 
+    def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
+        # 0. empty dict[k, v] are hanlded as immutable dictionary.
+        # We need to know type of [k, v] (e.g. [str, i32])
+        if len(dict.items) == 0:
+            # 0.1: Register empty dict type
+            w_T = SPY.w_EmptyDictType
+            # 0.2: Register empty dict value
+            w_val = SPY.w_empty_dict
+            return W_MetaArg(self.vm, "red", w_T, w_val, dict.loc)
+
+        return None
+
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]
         colors = [wam.color for wam in items_wam]

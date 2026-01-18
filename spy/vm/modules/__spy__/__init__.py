@@ -72,3 +72,44 @@ class W_EmptyListType(W_Object):
 
 
 SPY.add("empty_list", W_EmptyListType.__new__(W_EmptyListType))
+
+
+@SPY.builtin_type("EmptyDictType")
+class W_EmptyDictType(W_Object):
+    """
+    An object representing '{}'
+    """
+
+    def __init__(self) -> None:
+        # just a sanity check, W_EmptyList is a singleton
+        raise Exception("You cannot instantiate w_EmptyDictType")
+
+    def __repr__(self) -> str:
+        return "<spy empty_list {}>"
+
+    def spy_unwrap(self, vm: "SPyVM") -> Any:
+        return {}
+
+    @builtin_method("__call_method__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CALL_METHOD(
+        vm: "SPyVM",
+        wam_self: "W_MetaArg",
+        wam_name: "W_MetaArg",
+        *args_wam: "W_MetaArg",
+    ) -> "W_OpSpec":
+        name = wam_name.blue_unwrap_str(vm)
+        if name in ("__delitem__", "__setitem__", "insert"):
+            err = SPyError("W_TypeError", "cannot mutate an untyped empty dict")
+            err.add("error", "this is untyped", wam_self.loc)
+            if sym := wam_self.sym:
+                err.add(
+                    "note",
+                    f"help: use an explicit type: `{sym.name}: dict[K, V] = {{}}`",
+                    sym.loc,
+                )
+            raise err
+        return W_OpSpec.NULL
+
+
+SPY.add("empty_dict", W_EmptyDictType.__new__(W_EmptyDictType))
