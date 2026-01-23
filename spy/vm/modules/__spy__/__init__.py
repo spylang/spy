@@ -85,7 +85,7 @@ class W_EmptyDictType(W_Object):
         raise Exception("You cannot instantiate w_EmptyDictType")
 
     def __repr__(self) -> str:
-        return "<spy empty_list {}>"
+        return "<spy empty_dict {}>"
 
     def spy_unwrap(self, vm: "SPyVM") -> Any:
         return {}

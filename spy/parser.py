@@ -616,7 +616,7 @@ class Parser:
         for key, value in zip(py_node.keys, py_node.values):
             keyValuePairItems.append(
                 spy.ast.KeyValuePair(
-                    py_node.loc, self.from_py_expr(key), self.from_py_expr(value)
+                    key.loc, self.from_py_expr(key), self.from_py_expr(value)
                 )
             )
         return spy.ast.Dict(py_node.loc, keyValuePairItems)
