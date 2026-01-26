@@ -81,6 +81,21 @@ class TestMetaFunc(CompilerTest):
         assert w_T is B.w_i32
 
     @no_C
+    def test_COLOR(self):
+        mod = self.compile("""
+        def foo() -> str:
+            x = 42
+            return COLOR(x)
+
+        def bar() -> str:
+            x = 42
+            x = 43
+            return COLOR(x)
+        """)
+        assert mod.foo() == "blue"
+        assert mod.bar() == "red"
+
+    @no_C
     def test_STATIC_TYPE_side_effects(self):
         if self.backend == "doppler":
             pytest.skip("fixme: side effects of arguments which are redshifted away")

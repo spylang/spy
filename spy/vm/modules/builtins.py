@@ -30,6 +30,12 @@ def w_STATIC_TYPE(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     return W_OpSpec.const(wam_obj.w_static_T)
 
 
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_COLOR(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
+    w_color = vm.wrap(wam_obj.color)
+    return W_OpSpec.const(w_color)
+
+
 @BUILTINS.builtin_func
 def w_abs(vm: "SPyVM", w_x: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
