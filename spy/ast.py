@@ -609,7 +609,13 @@ class NameImportRef(Expr):
 
 
 @astnode
-class NameLocal(Expr):
+class NameLocalDirect(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode
+class NameLocalCell(Expr):
     precedence = 100  # the highest
     sym: Symbol
 

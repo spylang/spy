@@ -93,7 +93,7 @@ class ModFrame(AbstractFrame):
         wam = self.eval_expr(vardef.value)
 
         # declare the variable
-        color: Color = "blue" if vardef.kind == "const" else "red"
+        color: Color = "blue" if sym.varkind == "const" else "red"
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
             w_T = wam.w_static_T
