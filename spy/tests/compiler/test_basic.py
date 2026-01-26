@@ -294,6 +294,18 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
+    @only_interp
+    def test_read_local_cell(self):
+        # "read local cell" can happen only if we are reading a global 'var' from an
+        # expression in the module scope
+        src = """
+        var x: i32 = 42
+        var y: i32 = x + 1
+        """
+        mod = self.compile(src)
+        assert mod.x == 42
+        assert mod.y == 43
+
     def test_cannot_assign_to_const_globals(self):
         src = """
         x: i32 = 42

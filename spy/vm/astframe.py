@@ -709,7 +709,7 @@ class AbstractFrame:
             target=for_node.target,
             value=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__item__"),
                 args=[],
             ),
@@ -720,7 +720,7 @@ class AbstractFrame:
             target=iter_target,
             value=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__next__"),
                 args=[],
             ),
@@ -730,7 +730,7 @@ class AbstractFrame:
             loc=for_node.loc,
             test=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__continue_iteration__"),
                 args=[],
             ),
@@ -833,11 +833,12 @@ class AbstractFrame:
 
         if sym.impref is not None:
             return ast.NameImportRef(name.loc, sym)
-        elif sym.is_local:
-            assert sym.storage == "direct"
-            return ast.NameLocal(name.loc, sym)
+        elif sym.storage == "direct" and sym.is_local:
+            return ast.NameLocalDirect(name.loc, sym)
         elif sym.storage == "direct":
             return ast.NameOuterDirect(name.loc, sym)
+        elif sym.storage == "cell" and sym.is_local:
+            return ast.NameLocalCell(name.loc, sym)
         elif sym.storage == "cell":
             outervars = self.closure[-sym.level]
             w_cell = outervars[sym.name].w_val
@@ -873,13 +874,24 @@ class AbstractFrame:
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
+    def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.name]
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
             w_val = self.load_local(sym.name)
+        return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
+
+    def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
+        sym = name.sym
+        lv = self.locals[sym.name]
+        if lv.color == "red" and self.redshifting:
+            w_val = None
+        else:
+            w_cell = self.load_local(sym.name)
+            assert isinstance(w_cell, W_Cell)
+            w_val = w_cell.get()
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:

@@ -281,7 +281,7 @@ class CFuncWriter:
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         assert False, "ast.Name nodes should not survive redshifting"
 
-    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> C.Expr:
+    def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
         varname = C_Ident(name.sym.name)
         return C.Literal(f"{varname}")
 
