@@ -618,6 +618,8 @@ class Parser:
     def from_py_expr_Dict(self, py_node: py_ast.Dict) -> spy.ast.Dict:
         keyValuePairItems = []
         for key, value in zip(py_node.keys, py_node.values):
+            if key is None:
+                self.unsupported(value, "dict unpacking is unsupported.")
             keyValuePairItems.append(
                 spy.ast.KeyValuePair(
                     key.loc, self.from_py_expr(key), self.from_py_expr(value)

@@ -650,6 +650,18 @@ class TestParser:
 
         self.assert_dump(stmt, expected)
 
+    def test_Dict_unpacking_unsupport(self):
+        src = """
+        def foo() -> None:
+            dict_unpacking = {"key3": 30}
+            dict_test = {**dict_unpacking, "key1": 10, key2: 30}
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: dict unpacking is unsupported.",
+            ("this is not supported", "dict_unpacking"),
+        )
+
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_BinOp(self, op):
         mod = self.parse(f"""
