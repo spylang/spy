@@ -1499,3 +1499,18 @@ class TestBasic(CompilerTest):
             return auto + restrict + default
         """)
         assert mod.calculate(10) == 70
+
+    @only_interp
+    def test_module_constants_are_blue(self):
+        src = """
+        x = 42
+        y: i32 = 43
+        var z: i32 = 44
+        color_x = COLOR(x)
+        color_y = COLOR(y)
+        color_z = COLOR(z)
+        """
+        mod = self.compile(src)
+        assert mod.color_x == "blue"
+        assert mod.color_y == "blue"
+        assert mod.color_z == "red"
