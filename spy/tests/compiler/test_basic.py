@@ -1503,6 +1503,8 @@ class TestBasic(CompilerTest):
     @only_interp
     def test_module_constants_are_blue(self):
         src = """
+        from __spy__ import COLOR
+
         x = 42
         y: i32 = 43
         var z: i32 = 44

@@ -83,6 +83,8 @@ class TestMetaFunc(CompilerTest):
     @no_C
     def test_COLOR(self):
         mod = self.compile("""
+        from __spy__ import COLOR
+
         def foo() -> str:
             x = 42
             return COLOR(x)
