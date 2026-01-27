@@ -1185,24 +1185,11 @@ class AbstractFrame:
 
         # 2. instantiate a new dict
         w_DictType = self.vm.lookup_global(FQN("_dict::dict"))
-        wam_DictType = W_MetaArg.from_w_obj(self.vm, w_DictType)
-        wam_KeyType = W_MetaArg.from_w_obj(self.vm, w_keytype)
-        wam_ValueType = W_MetaArg.from_w_obj(self.vm, w_valuetype)
-
-        # w_T = self.vm.call_w(w_DictType, [w_keytype, w_valuetype], loc=dict.loc)
-        # wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
-
-        w_opimpl = self.vm.call_OP(
-            dict.loc, OP.w_GETITEM, [wam_DictType, wam_KeyType, wam_ValueType]
-        )
-        wam_T = self.eval_opimpl(
-            dict, w_opimpl, [wam_DictType, wam_KeyType, wam_ValueType]
-        )
+        w_T = self.vm.getitem_w(w_DictType, w_keytype, w_valuetype)  # dict[K, V]
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
 
         w_opimpl = self.vm.call_OP(dict.loc, OP.w_CALL, [wam_T])
         wam_dict = self.eval_opimpl(dict, w_opimpl, [wam_T])
-
-        w_T = wam_T.w_val
 
         # 3. push items into the dict
         assert isinstance(w_T, W_Type)
