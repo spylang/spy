@@ -86,15 +86,19 @@ class Loc:
         """
         return self.replace(line_start=self.line_end, col_start=self.col_end)
 
-    def __repr__(self) -> str:
+    def _repr(self) -> str:
         l1 = self.line_start
         c1 = self.col_start
         l2 = self.line_end
         c2 = self.col_end
         if l1 == l2 == c1 == c2 == 0:
-            return f"<Loc: '{self.filename}'>"
+            return self.filename
         else:
-            return f"<Loc: '{self.filename} {l1}:{c1} {l2}:{c2}'>"
+            return f"{self.filename} {l1}:{c1} {l2}:{c2}"
+
+    def __repr__(self) -> str:
+        r = self._repr()
+        return f"<Loc: '{r}'>"
 
     def get_src(self) -> str:
         """

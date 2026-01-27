@@ -338,6 +338,10 @@ class SPyBackend:
             return f"{t}({m!r})"
         return self.fmt_fqn(const.fqn)
 
+    def fmt_expr_LocConst(self, const: ast.LocConst) -> str:
+        r = const.value._repr()
+        return f"Loc('{r}')"
+
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
