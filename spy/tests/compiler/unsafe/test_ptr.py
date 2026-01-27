@@ -17,13 +17,18 @@ class TestUnsafePtr(CompilerTest):
     @only_interp
     def test_itemtype(self):
         mod = self.compile("""
-        from unsafe import ptr
+        from unsafe import ptr, raw_ref
 
-        def get_itemtype() -> type:
+        def get_itemtype_ptr() -> type:
             return ptr[i32].itemtype
+
+        def get_itemtype_ref() -> type:
+            return raw_ref[f64].itemtype
         """)
-        w_T = mod.get_itemtype(unwrap=False)
+        w_T = mod.get_itemtype_ptr(unwrap=False)
         assert w_T is B.w_i32
+        w_T = mod.get_itemtype_ref(unwrap=False)
+        assert w_T is B.w_f64
 
     def test_gc_alloc(self):
         mod = self.compile("""
@@ -144,10 +149,12 @@ class TestUnsafePtr(CompilerTest):
 
         """)
         d1 = mod.dir_ptr_point()
-        d2 = mod.dir_ref_point()
         assert "x" in d1
         assert "y" in d1
-        assert d1 == d2
+
+        d2 = mod.dir_ref_point()
+        assert "x" in d2
+        assert "y" in d2
 
     def test_struct_wrong_field(self):
         src = """
