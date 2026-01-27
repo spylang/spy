@@ -254,6 +254,34 @@ class TestUnsafePtr(CompilerTest):
         assert not mod.ne(p0, p0)
         assert mod.ne(p0, p1)
 
+    def test_ref_eq(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, ptr, raw_ref
+
+        @struct
+        class MyInt:
+            val: i32
+
+        def alloc() -> ptr[MyInt]:
+            return gc_alloc(MyInt)(1)
+
+        def eq(a: ptr[MyInt], b: ptr[MyInt]) -> bool:
+            ra: raw_ref[MyInt] = a[0]
+            rb: raw_ref[MyInt] = b[0]
+            return ra == rb
+
+        def ne(a: ptr[MyInt], b: ptr[MyInt]) -> bool:
+            ra: raw_ref[MyInt] = a[0]
+            rb: raw_ref[MyInt] = b[0]
+            return ra != rb
+        """)
+        p0 = mod.alloc()
+        p1 = mod.alloc()
+        assert mod.eq(p0, p0)
+        assert not mod.eq(p0, p1)
+        assert not mod.ne(p0, p0)
+        assert mod.ne(p0, p1)
+
     def test_can_allocate_ptr(self):
         mod = self.compile("""
         from unsafe import gc_alloc, ptr

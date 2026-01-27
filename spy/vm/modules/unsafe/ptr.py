@@ -55,12 +55,6 @@ class W_BasePtrType(W_Type):
 
     w_itemtype: Annotated[W_Type, Member("itemtype")]
 
-    @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
-        w_T = cls.from_pyclass(fqn, W_Ptr)
-        w_T.w_itemtype = w_itemtype
-        return w_T
-
     def spy_dir(self, vm: "SPyVM") -> set[str]:
         names = super().spy_dir(vm)
         names.update(self.w_itemtype.spy_dir(vm))
@@ -73,6 +67,12 @@ class W_PtrType(W_BasePtrType):
     A specialized ptr type.
     ptr[i32] -> W_PtrType(fqn, B.w_i32)
     """
+
+    @classmethod
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
+        w_T = cls.from_pyclass(fqn, W_Ptr)
+        w_T.w_itemtype = w_itemtype
+        return w_T
 
     # w_NULL: ???
     # PtrTypes have a NULL member, which you can use like that:
@@ -117,6 +117,12 @@ class W_PtrType(W_BasePtrType):
 
 @UNSAFE.builtin_type("rawreftype")
 class W_RawRefType(W_BasePtrType):
+    @classmethod
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
+        w_T = cls.from_pyclass(fqn, W_RawRef)
+        w_T.w_itemtype = w_itemtype
+        return w_T
+
     def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
         w_ptrtype = vm.fast_call(w_ptr, [self.w_itemtype])
         assert isinstance(w_ptrtype, W_PtrType)
@@ -364,7 +370,8 @@ class W_RawRef(W_BasePtr):
     __spy_storage_category__ = "value"
 
     def spy_key(self, vm: "SPyVM") -> Any:
-        raise NotImplementedError("implement me")
+        t = self.w_ptrtype.spy_key(vm)
+        return ("raw_ref", t, self.addr, self.length)
 
 
 @UNSAFE.builtin_func(color="blue")
