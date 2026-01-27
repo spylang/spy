@@ -80,7 +80,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_ptr_to_struct(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import gc_alloc, ptr, raw_ref
 
         @struct
         class Point:
@@ -93,11 +93,19 @@ class TestUnsafePtr(CompilerTest):
             p.y = y
             return p
 
-        def foo(x: i32, y: f64) -> f64:
+        def with_ptr(x: i32, y: f64) -> f64:
             p = make_point(x, y)
             return p.x + p.y
+
+        def with_ref(x: i32, y: f64) -> f64:
+            # reading an item out of a ptr returns a raw_ref
+            p = make_point(x, y)
+            r: raw_ref[Point] = p[0]
+            return r.x + r.y
+
         """)
-        assert mod.foo(3, 4.5) == 7.5
+        assert mod.with_ptr(3, 4.5) == 7.5
+        assert mod.with_ref(6, 7.8) == 13.8
 
     def test_ptr_to_string(self):
         mod = self.compile("""
