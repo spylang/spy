@@ -36,6 +36,12 @@ def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     """
     The raw_ref[T] generic type
     """
+    # the C backend assumes that for every raw_ref[T], the corresponding ptr[T]
+    # exists. Let's make sure it does:
+    # 1. create ptr[T]
+    w_ptrtype = vm.fast_call(w_ptr, [w_T])
+    vm.make_fqn_const(w_ptrtype)
+    # 2. create raw_ref[T]
     fqn = FQN("unsafe").join("raw_ref", [w_T.fqn])  # unsafe::raw_ref[i32]
     w_reftype = W_RawRefType.from_itemtype(fqn, w_T)
     return w_reftype

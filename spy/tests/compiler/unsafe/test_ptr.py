@@ -196,8 +196,8 @@ class TestUnsafePtr(CompilerTest):
             a: Point
             b: Point
 
-        def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> ptr[Rect]:
-            r = gc_alloc(Rect)(1)
+        def make_rect_ptr(x0: i32, y0: i32, x1: i32, y1: i32) -> ptr[Rect]:
+            r: ptr[Rect] = gc_alloc(Rect)(1)
 
             # write via ref
             r_a: raw_ref[Point] = r.a
@@ -209,11 +209,30 @@ class TestUnsafePtr(CompilerTest):
             r.b.y = y1
             return r
 
-        def foo() -> i32:
-            r = make_rect(1, 2, 3, 4)
+        def make_rect_ref(x0: i32, y0: i32, x1: i32, y1: i32) -> raw_ref[Rect]:
+            p = gc_alloc(Rect)(1)
+            r: raw_ref[Rect] = p[0]
+
+            # write via ref
+            r_a: raw_ref[Point] = r.a
+            r_a.x = x0
+            r_a.y = y0
+
+            # write via chained fields
+            r.b.x = x1
+            r.b.y = y1
+            return r
+
+        def rect_ptr() -> i32:
+            p: ptr[Rect] = make_rect_ptr(1, 2, 3, 4)
+            return p.a.x + 10*p.a.y + 100*p.b.x + 1000*p.b.y
+
+        def rect_ref() -> i32:
+            r: raw_ref[Rect] = make_rect_ref(6, 7, 8, 9)
             return r.a.x + 10*r.a.y + 100*r.b.x + 1000*r.b.y
         """)
-        assert mod.foo() == 4321
+        assert mod.rect_ptr() == 4321
+        assert mod.rect_ref() == 9876
 
     def test_ptr_eq(self):
         mod = self.compile("""
