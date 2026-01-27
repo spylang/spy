@@ -10,7 +10,9 @@ class TestUnsafePtr(CompilerTest):
     @only_interp
     def test_ptrtype_repr(self):
         w_ptrtype = self.vm.fast_call(UNSAFE.w_ptr, [B.w_i32])
+        w_reftype = self.vm.fast_call(UNSAFE.w_raw_ref, [B.w_i32])
         assert repr(w_ptrtype) == "<spy type 'unsafe::ptr[i32]'>"
+        assert repr(w_reftype) == "<spy type 'unsafe::raw_ref[i32]'>"
 
     @only_interp
     def test_itemtype(self):
@@ -152,7 +154,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_nested_struct(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import gc_alloc, ptr, raw_ref
 
         @struct
         class Point:
@@ -167,8 +169,8 @@ class TestUnsafePtr(CompilerTest):
         def make_rect(x0: i32, y0: i32, x1: i32, y1: i32) -> ptr[Rect]:
             r = gc_alloc(Rect)(1)
 
-            # write via ptr
-            r_a: ptr[Point] = r.a
+            # write via ref
+            r_a: raw_ref[Point] = r.a
             r_a.x = x0
             r_a.y = y0
 
