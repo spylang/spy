@@ -162,6 +162,7 @@ class CStructWriter:
 
         self.tbh_ptrs_def.wb(f"""
         #define {c_reftype}_from_addr {c_ptrtype}_from_addr
+        #define {c_reftype}$deref {c_ptrtype}$deref
         #define {c_reftype}$__eq__ {c_ptrtype}$__eq__
         #define {c_reftype}$__ne__ {c_ptrtype}$__ne__
         """)

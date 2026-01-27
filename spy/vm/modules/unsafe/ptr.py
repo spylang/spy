@@ -342,26 +342,6 @@ class W_Ptr(W_BasePtr):
 
             return W_OpSpec(w_ptr_to_bool)
 
-        elif isinstance(w_T, W_StructType) and w_T is w_ptrtype.w_itemtype:
-            # we are trying to convert 'ptr[Point]' into 'Point'
-            #
-            # this is a temporary hack: currently if we have an array of
-            # structs, arr[n] ALWAYS retrun a ptr[Struct] (it's always by
-            # ref), and thus we don't really have a way to derefeence it.
-            #
-            # PROBABLY the right solution is to introduce a different type
-            # 'ref[Point]', similar to 'Point&' in C++, and then declare that
-            # we can convert from 'ref[Point]' to 'Point' but not from
-            # 'ptr[Point]' to 'Point'. What a mess.
-            irtag = IRTag("ptr.deref")
-
-            @vm.register_builtin_func(w_ptrtype.fqn, "deref", irtag=irtag)
-            def w_ptr_deref(vm: "SPyVM", w_ptr: PTR) -> T:
-                addr = w_ptr.addr
-                return vm.call_generic(UNSAFE.w_mem_read, [w_T], [vm.wrap(addr)])
-
-            return W_OpSpec(w_ptr_deref)
-
         else:
             return W_OpSpec.NULL
 
@@ -372,6 +352,31 @@ class W_RawRef(W_BasePtr):
     def spy_key(self, vm: "SPyVM") -> Any:
         t = self.w_ptrtype.spy_key(vm)
         return ("raw_ref", t, self.addr, self.length)
+
+    @builtin_method("__convert_to__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CONVERT_TO(
+        vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
+    ) -> W_OpSpec:
+        w_T = wam_expT.w_blueval
+        w_reftype = W_RawRef._get_ptrtype(wam_x)
+        assert isinstance(w_reftype, W_RawRefType)
+        T = Annotated[W_Object, w_T]
+        REF = Annotated[W_RawRef, w_reftype]
+
+        if w_T is w_reftype.w_itemtype:
+            # convert 'raw_ref[T]' into 'T'
+            irtag = IRTag("ptr.deref")
+
+            @vm.register_builtin_func(w_reftype.fqn, "deref", irtag=irtag)
+            def w_ptr_deref(vm: "SPyVM", w_ref: REF) -> T:
+                addr = w_ref.addr
+                return vm.call_generic(UNSAFE.w_mem_read, [w_T], [vm.wrap(addr)])
+
+            return W_OpSpec(w_ptr_deref)
+
+        else:
+            return W_OpSpec.NULL
 
 
 @UNSAFE.builtin_func(color="blue")
