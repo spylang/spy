@@ -123,7 +123,7 @@ class TestUnsafePtr(CompilerTest):
         assert mod.foo() == "hello"
 
     @only_interp
-    def test_dir_ptr(self):
+    def test_dir(self):
         mod = self.compile("""
         from __spy__ import interp_list
         from unsafe import gc_alloc, ptr
@@ -136,10 +136,18 @@ class TestUnsafePtr(CompilerTest):
         def dir_ptr_point() -> interp_list[str]:
             p = gc_alloc(Point)(1)
             return dir(p)
+
+        def dir_ref_point() -> interp_list[str]:
+            p = gc_alloc(Point)(1)
+            r = p[0]
+            return dir(r)
+
         """)
-        d = mod.dir_ptr_point()
-        assert "x" in d
-        assert "y" in d
+        d1 = mod.dir_ptr_point()
+        d2 = mod.dir_ref_point()
+        assert "x" in d1
+        assert "y" in d1
+        assert d1 == d2
 
     def test_struct_wrong_field(self):
         src = """
@@ -150,15 +158,29 @@ class TestUnsafePtr(CompilerTest):
             x: i32
             y: i32
 
-        def foo() -> None:
+        def set_z_ptr() -> None:
             p = gc_alloc(Point)(1)
             p.z = 42
+
+        def set_z_ref() -> None:
+            p = gc_alloc(Point)(1)
+            r = p[0]
+            r.z = 42
         """
+        mod = self.compile(src, error_mode="lazy")
         errors = expect_errors(
-            "type `unsafe::ptr[test::Point]` does not support assignment to attribute 'z'",
-            ("this is `unsafe::ptr[test::Point]`", "p"),
+            "type `unsafe::ptr[test::Point]` does not support "
+            + "assignment to attribute 'z'",
         )
-        self.compile_raises(src, "foo", errors)
+        with errors:
+            mod.set_z_ptr()
+
+        errors = expect_errors(
+            "type `unsafe::raw_ref[test::Point]` does not support "
+            + "assignment to attribute 'z'",
+        )
+        with errors:
+            mod.set_z_ref()
 
     def test_nested_struct(self):
         mod = self.compile("""
