@@ -440,6 +440,29 @@ class TestUnsafePtr(CompilerTest):
         out, err = capfd.readouterr()
         assert out.splitlines() == ["1", "2", "3"]
 
+    def test_convert_raw_ref_to_struct(self):
+        src = """
+        from unsafe import gc_alloc, raw_ref
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def make_ref() -> raw_ref[Point]:
+            p = gc_alloc(Point)(1)
+            return p[0]
+
+        def get_Point(x: i32, y: i32) -> Point:
+            r = make_ref()
+            r.x = x
+            r.y = y
+            p: Point = r  # convert raw_ref[Point] to Point
+            return p
+        """
+        mod = self.compile(src)
+        assert mod.get_Point(1, 2) == (1, 2)
+
     def test_array_of_struct_getref(self):
         mod = self.compile("""
         from unsafe import gc_alloc, ptr
