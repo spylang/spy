@@ -101,8 +101,7 @@ class CStructWriter:
             elif isinstance(w_type, W_PtrType):
                 self.emit_PtrType(fqn, w_type)
             elif isinstance(w_type, W_RawRefType):
-                # nothing to do here: raw_ref[T] is aliased to ptr[T], see Context.w2c
-                pass
+                self.emit_RawRefType(fqn, w_type)
             else:
                 assert False, f"Unknown type: {w_type}"
 
@@ -153,4 +152,15 @@ class CStructWriter:
         self.tbh_ptrs_def.wl()
 
     def emit_RawRefType(self, fqn: FQN, w_reftype: W_RawRefType) -> None:
-        breakpoint()
+        w_ptrtype = w_reftype.as_ptrtype(self.ctx.vm)
+        c_reftype = C_Type(w_reftype.fqn.c_name)
+        c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
+
+        self.tbh_fwdecl.wb(f"""
+        typedef {c_ptrtype} {c_reftype};
+        """)
+
+        self.tbh_ptrs_def.wb(f"""
+        #define {c_reftype}$__eq__ {c_ptrtype}$__eq__
+        #define {c_reftype}$__ne__ {c_ptrtype}$__ne__
+        """)

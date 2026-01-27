@@ -142,10 +142,6 @@ class Context:
         if w_T in self._d:
             return self._d[w_T]
 
-        elif isinstance(w_T, W_RawRefType):
-            # in the C backend, raw_ref[T] is aliased to ptr[T]
-            return self.w2c(w_T.as_ptrtype(self.vm))
-
         elif isinstance(w_T, W_Type):
             # as soon as we split spy_structdefs into multiple files, here we
             # should add a self.add_include_maybe. But for now it's not needed
