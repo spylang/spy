@@ -9,7 +9,7 @@ from spy.vm.w import W_Object, W_Type
 
 from . import UNSAFE
 from .misc import sizeof
-from .ptr import W_Ptr, W_PtrType, w_make_ptr_type
+from .ptr import W_Ptr, W_PtrType, w_ptr
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 @UNSAFE.builtin_func(color="blue")
 def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
-    w_ptrtype = vm.fast_call(w_make_ptr_type, [w_T])  # unsafe::ptr[i32]
+    w_ptrtype = vm.fast_call(w_ptr, [w_T])  # unsafe::ptr[i32]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
 
