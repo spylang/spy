@@ -8,6 +8,7 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RB
+from spy.vm.modules.unsafe.ptr import W_RawRefType
 from spy.vm.object import W_Type
 from spy.vm.vm import SPyVM
 
@@ -140,6 +141,11 @@ class Context:
     def w2c(self, w_T: W_Type) -> C_Type:
         if w_T in self._d:
             return self._d[w_T]
+
+        elif isinstance(w_T, W_RawRefType):
+            # in the C backend, raw_ref[T] is aliased to ptr[T]
+            return self.w2c(w_T.as_ptrtype(self.vm))
+
         elif isinstance(w_T, W_Type):
             # as soon as we split spy_structdefs into multiple files, here we
             # should add a self.add_include_maybe. But for now it's not needed
@@ -147,6 +153,7 @@ class Context:
             c_type = C_Type(w_T.fqn.c_name)
             self._d[w_T] = c_type
             return c_type
+
         raise NotImplementedError(f"Cannot translate type {w_T} to C")
 
     def c_restype_by_fqn(self, fqn: FQN) -> C_Type:

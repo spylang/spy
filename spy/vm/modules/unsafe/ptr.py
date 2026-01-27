@@ -111,7 +111,10 @@ class W_PtrType(W_BasePtrType):
 
 @UNSAFE.builtin_type("rawreftype")
 class W_RawRefType(W_BasePtrType):
-    pass
+    def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
+        w_ptrtype = vm.fast_call(w_ptr, [self.w_itemtype])
+        assert isinstance(w_ptrtype, W_PtrType)
+        return w_ptrtype
 
 
 @UNSAFE.builtin_type("__base_ptr")

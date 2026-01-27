@@ -7,7 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
-from spy.vm.modules.unsafe.ptr import W_PtrType
+from spy.vm.modules.unsafe.ptr import W_PtrType, W_RawRefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
@@ -100,6 +100,9 @@ class CStructWriter:
                 self.emit_StructType(fqn, w_type)
             elif isinstance(w_type, W_PtrType):
                 self.emit_PtrType(fqn, w_type)
+            elif isinstance(w_type, W_RawRefType):
+                # nothing to do here: raw_ref[T] is aliased to ptr[T], see Context.w2c
+                pass
             else:
                 assert False, f"Unknown type: {w_type}"
 
@@ -148,3 +151,6 @@ class CStructWriter:
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
+
+    def emit_RawRefType(self, fqn: FQN, w_reftype: W_RawRefType) -> None:
+        breakpoint()
