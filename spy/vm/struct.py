@@ -195,6 +195,10 @@ class W_Struct(W_Object):
         if is_list:
             return unwrap_list(vm, self)
 
+        is_dict = str(fqn).startswith("_dict::dict[")
+        if is_dict:
+            return unwrap_dict(vm, self)
+
         fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
         return UnwrappedStruct(fqn, fields)
 
@@ -299,3 +303,34 @@ def unwrap_list(vm: "SPyVM", w_list: W_Object) -> list[Any]:
         w_item = vm.getitem_w(w_list, vm.wrap(i), color="red")
         items.append(vm.unwrap(w_item))
     return items
+
+
+def unwrap_dict(vm: "SPyVM", w_dict: W_Object) -> dict[Any, Any]:
+    """
+    Testing benefit
+    """
+    result: dict[Any, Any] = {}
+    w_dict_T = vm.dynamic_type(w_dict)
+    w_fastiter = vm.lookup_global(w_dict_T.fqn.join("__fastiter__"))
+    w_it = vm.call_w(w_fastiter, [w_dict], color="red")
+    w_it_T = vm.dynamic_type(w_it)
+    w_continue_iteration = vm.lookup_global(w_it_T.fqn.join("__continue_iteration__"))
+    is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
+    w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
+    w_it = vm.call_w(w_next, [w_it], color="red")
+
+    while vm.unwrap_bool(is_continue):
+        w_it_T = vm.dynamic_type(w_it)
+        w_item_method = vm.lookup_global(w_it_T.fqn.join("__item__"))
+        w_key = vm.call_w(w_item_method, [w_it], color="red")
+        w_val = vm.getitem_w(w_dict, w_key, color="red")
+        result[vm.unwrap(w_key)] = vm.unwrap(w_val)  # append key,value
+
+        w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
+        w_it = vm.call_w(w_next, [w_it], color="red")
+        w_continue_iteration = vm.lookup_global(
+            w_it_T.fqn.join("__continue_iteration__")
+        )
+        is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
+
+    return result

@@ -1,5 +1,5 @@
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, only_interp
 
 
 class TestDict(CompilerTest):
@@ -241,3 +241,23 @@ class TestDict(CompilerTest):
         assert not mod.test_neq_value()
         assert not mod.test_neq_missing_key()
         assert not mod.test_neq_key()
+
+    @only_interp
+    def test_literal_stdlib(self):
+        mod = self.compile("""
+        def foo() -> dict[i32, i32]:
+            x = {0: 1, 50: 2, 30: 3}
+            return x
+        """)
+        x = mod.foo()
+        print(x)
+        assert x == {0: 1, 50: 2, 30: 3}
+
+    @only_interp
+    def test_literal_preserves_order(self):
+        mod = self.compile("""
+        def foo() -> dict[i32, i32]:
+            return {1: 1, 2: 2, 3: 3}
+        """)
+        x = mod.foo()
+        assert list(x.keys()) == [1, 2, 3]
