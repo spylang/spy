@@ -90,7 +90,7 @@ class W_PtrType(W_Type):
 
 
 @UNSAFE.builtin_type("MetaBasePtr")
-class W_MetaBasePtr(W_Type):
+class W_MetaGenericPtr(W_Type):
     """
     This exist solely to be able to do ptr[...]
     """
@@ -101,8 +101,8 @@ class W_MetaBasePtr(W_Type):
         return W_OpSpec(w_make_ptr_type, [wam_T])
 
 
-@UNSAFE.builtin_type("ptr", W_MetaClass=W_MetaBasePtr)
-class W_BasePtr(W_Object):
+@UNSAFE.builtin_type("ptr", W_MetaClass=W_MetaGenericPtr)
+class W_GenericPtr(W_Object):
     """
     This is the app-level 'ptr' type.
 
@@ -111,10 +111,10 @@ class W_BasePtr(W_Object):
     """
 
     def __init__(self) -> None:
-        raise Exception("You cannot instantiate W_BasePtr, use W_Ptr")
+        raise Exception("You cannot instantiate W_GenericPtr, use W_Ptr")
 
 
-class W_Ptr(W_BasePtr):
+class W_Ptr(W_Object):
     """
     An actual ptr
     """
@@ -154,7 +154,7 @@ class W_Ptr(W_BasePtr):
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
         return self.w_ptrtype
 
-    def spy_unwrap(self, vm: "SPyVM") -> "W_BasePtr":
+    def spy_unwrap(self, vm: "SPyVM") -> "W_Ptr":
         return self
 
     def spy_key(self, vm: "SPyVM") -> Any:
