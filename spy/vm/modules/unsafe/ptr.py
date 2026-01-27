@@ -244,7 +244,7 @@ class W_Ptr(W_BasePtr):
         PTR = Annotated[W_Ptr, w_ptrtype]
 
         if w_T.is_struct(vm):
-            w_T = vm.fast_call(w_ptr, [w_T])  # type: ignore
+            w_T = vm.fast_call(w_raw_ref, [w_T])  # type: ignore
             by = "byref"
         else:
             by = "byval"
@@ -266,8 +266,8 @@ class W_Ptr(W_BasePtr):
                 raise SPyError.simple("W_PanicError", msg, "", w_loc.loc)
 
             if by == "byref":
-                assert isinstance(w_T, W_PtrType)
-                return W_Ptr(w_T, addr, length - i)
+                assert isinstance(w_T, W_RawRefType)
+                return W_RawRef(w_T, addr, length - i)
             else:
                 return vm.call_generic(UNSAFE.w_mem_read, [w_T], [vm.wrap(addr)])
 
