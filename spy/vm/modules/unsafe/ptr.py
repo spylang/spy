@@ -21,21 +21,42 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@UNSAFE.builtin_func(color="blue")
-def w_make_ptr_type(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+@UNSAFE.builtin_func(color="blue", kind="generic")
+def w_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+    """
+    The ptr generic type: ptr[T] returns a new ptrtype.
+    """
     fqn = FQN("unsafe").join("ptr", [w_T.fqn])  # unsafe::ptr[i32]
     w_ptrtype = W_PtrType.from_itemtype(fqn, w_T)
     return w_ptrtype
 
 
+@UNSAFE.builtin_type("__baseptrtype")
+class W_BasePtrType(W_Type):
+    """
+    XXX write me
+    """
+
+    w_itemtype: Annotated[W_Type, Member("itemtype")]
+
+    @classmethod
+    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
+        w_T = cls.from_pyclass(fqn, W_Ptr)
+        w_T.w_itemtype = w_itemtype
+        return w_T
+
+    def spy_dir(self, vm: "SPyVM") -> set[str]:
+        names = super().spy_dir(vm)
+        names.update(self.w_itemtype.spy_dir(vm))
+        return names
+
+
 @UNSAFE.builtin_type("ptrtype")
-class W_PtrType(W_Type):
+class W_PtrType(W_BasePtrType):
     """
     A specialized ptr type.
     ptr[i32] -> W_PtrType(fqn, B.w_i32)
     """
-
-    w_itemtype: Annotated[W_Type, Member("itemtype")]
 
     # w_NULL: ???
     # PtrTypes have a NULL member, which you can use like that:
@@ -61,17 +82,6 @@ class W_PtrType(W_Type):
     # The workaround is not to use a Member, but to implement .NULL as a
     # property.
 
-    @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
-        w_T = cls.from_pyclass(fqn, W_Ptr)
-        w_T.w_itemtype = w_itemtype
-        return w_T
-
-    def spy_dir(self, vm: "SPyVM") -> set[str]:
-        names = super().spy_dir(vm)
-        names.update(self.w_itemtype.spy_dir(vm))
-        return names
-
     @builtin_property("NULL", color="blue", kind="metafunc")
     @staticmethod
     def w_GET_NULL(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:
@@ -89,47 +99,19 @@ class W_PtrType(W_Type):
         return W_OpSpec(w_get_NULL, [])
 
 
-@UNSAFE.builtin_type("MetaBasePtr")
-class W_MetaGenericPtr(W_Type):
+@UNSAFE.builtin_type("__base_ptr")
+class W_BasePtr(W_Object):
     """
-    This exist solely to be able to do ptr[...]
+    XXX write me
     """
-
-    @builtin_method("__getitem__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_GETITEM(vm: "SPyVM", wam_p: W_MetaArg, wam_T: W_MetaArg) -> W_OpSpec:
-        return W_OpSpec(w_make_ptr_type, [wam_T])
-
-
-@UNSAFE.builtin_type("ptr", W_MetaClass=W_MetaGenericPtr)
-class W_GenericPtr(W_Object):
-    """
-    This is the app-level 'ptr' type.
-
-    Since it's a generic type, 'ptr' itself is not supposed to be instantiated.
-    Concrete pointers such as 'ptr[i32]' are instances of W_Ptr.
-    """
-
-    def __init__(self) -> None:
-        raise Exception("You cannot instantiate W_GenericPtr, use W_Ptr")
-
-
-class W_Ptr(W_Object):
-    """
-    An actual ptr
-    """
-
-    __spy_storage_category__ = "value"
 
     # XXX: this works only if we target 32bit platforms such as wasm32, but we
     # need to think of a more general solution
-    w_ptrtype: W_PtrType
     addr: fixedint.Int32
     length: fixedint.Int32  # how many items in the array
 
     def __init__(
         self,
-        w_ptrtype: W_PtrType,
         addr: int | fixedint.Int32,
         length: int | fixedint.Int32,
     ) -> None:
@@ -139,9 +121,83 @@ class W_Ptr(W_Object):
             assert length == 0
         else:
             assert length >= 1
-        self.w_ptrtype = w_ptrtype
         self.addr = fixedint.Int32(addr)
         self.length = fixedint.Int32(length)
+
+    @builtin_method("__getattribute__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_GETATTRIBUTE(
+        vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg
+    ) -> W_OpSpec:
+        return W_Ptr.op_ATTR("get", vm, wam_ptr, wam_name, None)
+
+    @builtin_method("__setattr__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_SETATTR(
+        vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
+    ) -> W_OpSpec:
+        return W_Ptr.op_ATTR("set", vm, wam_ptr, wam_name, wam_v)
+
+    @staticmethod
+    def op_ATTR(
+        opkind: str,
+        vm: "SPyVM",
+        wam_ptr: W_MetaArg,
+        wam_name: W_MetaArg,
+        wam_v: Optional[W_MetaArg],
+    ) -> W_OpSpec:
+        """
+        Implement both w_GETATTRIBUTE and w_SETATTR.
+        """
+        w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
+        w_T = w_ptrtype.w_itemtype
+        # attributes are supported only on ptr-to-structs
+        if not w_T.is_struct(vm):
+            return W_OpSpec.NULL
+
+        assert isinstance(w_T, W_StructType)
+        name = wam_name.blue_unwrap_str(vm)
+        if name not in w_T.dict_w:
+            return W_OpSpec.NULL
+
+        w_obj = w_T.dict_w[name]
+        if not isinstance(w_obj, W_StructField):
+            raise WIP("don't know how to read this attribute from a ptr-to-struct")
+        w_field = w_obj
+
+        offset = w_field.offset
+        wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
+
+        if opkind == "get":
+            # ptr_getfield[field_T](ptr, name, offset)
+            assert wam_v is None
+            w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T])
+            assert isinstance(w_func, W_Func)
+            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset])
+        else:
+            # ptr_setfield[field_T](ptr, name, offset, v)
+            assert wam_v is not None
+            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
+            assert isinstance(w_func, W_Func)
+            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
+
+
+class W_Ptr(W_BasePtr):
+    """
+    An actual ptr
+    """
+
+    __spy_storage_category__ = "value"
+    w_ptrtype: W_PtrType
+
+    def __init__(
+        self,
+        w_ptrtype: W_PtrType,
+        addr: int | fixedint.Int32,
+        length: int | fixedint.Int32,
+    ) -> None:
+        super().__init__(addr, length)
+        self.w_ptrtype = w_ptrtype
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
@@ -180,7 +236,7 @@ class W_Ptr(W_Object):
         PTR = Annotated[W_Ptr, w_ptrtype]
 
         if w_T.is_struct(vm):
-            w_T = vm.fast_call(w_make_ptr_type, [w_T])  # type: ignore
+            w_T = vm.fast_call(w_ptr, [w_T])  # type: ignore
             by = "byref"
         else:
             by = "byval"
@@ -286,63 +342,6 @@ class W_Ptr(W_Object):
         else:
             return W_OpSpec.NULL
 
-    @builtin_method("__getattribute__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_GETATTRIBUTE(
-        vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg
-    ) -> W_OpSpec:
-        return W_Ptr.op_ATTR("get", vm, wam_ptr, wam_name, None)
-
-    @builtin_method("__setattr__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_SETATTR(
-        vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
-    ) -> W_OpSpec:
-        return W_Ptr.op_ATTR("set", vm, wam_ptr, wam_name, wam_v)
-
-    @staticmethod
-    def op_ATTR(
-        opkind: str,
-        vm: "SPyVM",
-        wam_ptr: W_MetaArg,
-        wam_name: W_MetaArg,
-        wam_v: Optional[W_MetaArg],
-    ) -> W_OpSpec:
-        """
-        Implement both w_GETATTRIBUTE and w_SETATTR.
-        """
-        w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
-        w_T = w_ptrtype.w_itemtype
-        # attributes are supported only on ptr-to-structs
-        if not w_T.is_struct(vm):
-            return W_OpSpec.NULL
-
-        assert isinstance(w_T, W_StructType)
-        name = wam_name.blue_unwrap_str(vm)
-        if name not in w_T.dict_w:
-            return W_OpSpec.NULL
-
-        w_obj = w_T.dict_w[name]
-        if not isinstance(w_obj, W_StructField):
-            raise WIP("don't know how to read this attribute from a ptr-to-struct")
-        w_field = w_obj
-
-        offset = w_field.offset
-        wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
-
-        if opkind == "get":
-            # ptr_getfield[field_T](ptr, name, offset)
-            assert wam_v is None
-            w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T])
-            assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset])
-        else:
-            # ptr_setfield[field_T](ptr, name, offset, v)
-            assert wam_v is not None
-            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
-            assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
-
 
 @UNSAFE.builtin_func(color="blue")
 def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
@@ -350,7 +349,7 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     # returned by value, but struct types are always returned by reference
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
-        w_T = vm.fast_call(w_make_ptr_type, [w_T])  # type: ignore
+        w_T = vm.fast_call(w_ptr, [w_T])  # type: ignore
         by = "byref"
     else:
         by = "byval"
