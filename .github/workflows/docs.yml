@@ -28,9 +28,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docs
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,10 +37,9 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SPYLANG_DOCS_DEPLOY_KEY }}
 
-      - name: Fetch docs repository
+      - name: Clone docs repository
         run: |
-          git remote add docs ${{ vars.SPY_DOCS_REPOSITORY }}
-          git pull docs main --depth=1
+          git clone ${{ vars.SPY_DOCS_REPOSITORY }} /tmp/spy-docs
 
       - name: Determine version
         id: version
@@ -71,22 +67,20 @@ jobs:
         run: |
           pip install mkdocs-material mike
 
-      - name: Configurate Git information
+      - name: Configure Git in docs repository
+        working-directory: /tmp/spy-docs
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
-      - name: Build mkdocs
+      - name: Build and deploy mkdocs
+        working-directory: /tmp/spy-docs
         run: |
           if [[ "${{ steps.version.outputs.alias }}" == "latest" ]]; then
             # Tagged release - deploy with version and "latest" alias
-            if git rev-parse --verify docs/main >/dev/null 2>&1; then
-              mike deploy -r docs -b main --push --update-aliases ${{ steps.version.outputs.version }} latest
-            else
-              mike deploy -r docs -b main --push ${{ steps.version.outputs.version }} latest
-            fi
-            mike set-default -r docs -b main --push latest
+            mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases ${{ steps.version.outputs.version }} latest
+            mike set-default --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push latest
           else
             # Dev build - deploy/update "dev" version
-            mike deploy -r docs -b main --push --update-aliases dev
+            mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases dev
           fi
