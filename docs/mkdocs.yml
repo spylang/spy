@@ -1,5 +1,38 @@
 site_name: SPy Documentation
 docs_dir: src
+repo_url: https://github.com/spylang/spy
+repo_name: spylang/spy
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
 extra:
   version:
     provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/spylang/spy
+      name: SPy on GitHub
