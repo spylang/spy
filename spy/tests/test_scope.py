@@ -633,3 +633,12 @@ class TestScopeAnalyzer:
         """)
         scope = scopes.by_module()
         assert scope.implicit_imports == {"_list"}
+
+    def test_dict_literal(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            dicts = {10: 20, 30: 50}
+        """)
+
+        scope = scopes.by_module()
+        assert scope.implicit_imports == {"_dict"}

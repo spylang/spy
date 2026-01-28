@@ -1,5 +1,6 @@
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, only_interp
+from spy.vm.b import B
 
 
 class TestDict(CompilerTest):
@@ -241,3 +242,61 @@ class TestDict(CompilerTest):
         assert not mod.test_neq_value()
         assert not mod.test_neq_missing_key()
         assert not mod.test_neq_key()
+
+    @only_interp
+    def test_literal_stdlib(self):
+        mod = self.compile("""
+        def foo() -> dict[i32, i32]:
+            x = {0: 1, 50: 2, 30: 3}
+            return x
+        """)
+        x = mod.foo()
+        print(x)
+        assert x == {0: 1, 50: 2, 30: 3}
+
+    @only_interp
+    def test_literal_preserves_order(self):
+        mod = self.compile("""
+        def foo() -> dict[i32, i32]:
+            return {1: 1, 2: 2, 3: 3}
+        """)
+        x = mod.foo()
+        assert list(x.keys()) == [1, 2, 3]
+
+    @only_interp
+    def test_empty_dict_unsupport(self):
+        # this test must be removed when empty dict support is implemented.
+        # it will come along with compiler part.
+        mod = self.compile("""
+        def foo() -> dict[i32, i32]:
+            return {}
+        """)
+        with SPyError.raises(
+            "W_WIP", match="empty dict literals are not supported yet"
+        ):
+            mod.foo()
+
+    @only_interp
+    def test_literal_single_element(self):
+        # useful for single element type
+        mod = self.compile("""
+        def foo() -> dict[i32, i32]:
+            return {42: 100}
+        """)
+        x = mod.foo()
+        assert x[42] == 100
+
+    @only_interp
+    def test_literal_mixed_value_types_key_value(self):
+        # useful for mixed type support
+        # type of x must be f64
+        # because union(i32, f64) = f64
+        mod = self.compile("""
+        def foo() -> dict[i32, f64]:
+            x: f64 = 1
+            y: f64 = 2.2
+            return {0: x, 1: y}
+        """)
+        x = mod.foo()
+        assert x[0] == 1
+        assert x[1] == 2.2

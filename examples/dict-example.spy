@@ -1,0 +1,4 @@
+def main() -> None:
+    b = {5: 20}
+    print(b[5])
+    print(b)

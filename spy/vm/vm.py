@@ -826,27 +826,30 @@ class SPyVM:
         assert isinstance(wam.w_val, W_Bool)
         return wam.w_val
 
-    def meta_getitem(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_OpImpl:
-        "o[i] (metacall)"
-        return self.call_OP(loc, OPERATOR.w_GETITEM, [wam_o, wam_i])
+    def meta_getitem(
+        self, wam_o: W_MetaArg, *args_wam: W_MetaArg, loc: Loc
+    ) -> W_OpImpl:
+        "o[*args] (metacall)"
+        return self.call_OP(loc, OPERATOR.w_GETITEM, [wam_o] + list(args_wam))
 
-    def getitem_wam(self, wam_o: W_MetaArg, wam_i: W_MetaArg, *, loc: Loc) -> W_MetaArg:
-        "o[i] (on meta arguments)"
-        w_opimpl = self.meta_getitem(wam_o, wam_i, loc=loc)
-        return self.eval_opimpl(w_opimpl, [wam_o, wam_i], loc=loc)
+    def getitem_wam(
+        self, wam_o: W_MetaArg, *args_wam: W_MetaArg, loc: Loc
+    ) -> W_MetaArg:
+        "o[*args] (on meta arguments)"
+        w_opimpl = self.meta_getitem(wam_o, *args_wam, loc=loc)
+        return self.eval_opimpl(w_opimpl, [wam_o] + list(args_wam), loc=loc)
 
     def getitem_w(
         self,
         w_o: W_Dynamic,
-        w_i: W_Dynamic,
-        *,
+        *args_w: W_Dynamic,
         loc: Optional[Loc] = None,
         color: Color = "blue",
     ) -> W_Dynamic:
         "o[i] (dynamic dispatch)"
         wam_o = W_MetaArg.from_w_obj(self, w_o, color=color)
-        wam_i = W_MetaArg.from_w_obj(self, w_i, color=color)
-        wam = self.getitem_wam(wam_o, wam_i, loc=loc or Loc.here(-2))
+        args_wam = [W_MetaArg.from_w_obj(self, w_arg, color=color) for w_arg in args_w]
+        wam = self.getitem_wam(wam_o, *args_wam, loc=loc or Loc.here(-2))
         return wam.w_val
 
     def meta_call(
