@@ -261,3 +261,16 @@ class TestDict(CompilerTest):
         """)
         x = mod.foo()
         assert list(x.keys()) == [1, 2, 3]
+
+    @only_interp
+    def test_empty_dict_unsupport(self):
+        # this test must be removed when empty dict support is implemented.
+        # it will come along with compiler part.
+        mod = self.compile("""
+        def foo() -> dict[i32, i32]:
+            return {}
+        """)
+        with SPyError.raises(
+            "W_WIP", match="empty dict literals are not supported yet"
+        ):
+            mod.foo()

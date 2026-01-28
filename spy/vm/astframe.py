@@ -1149,11 +1149,14 @@ class AbstractFrame:
         # 0. empty dict[k, v] are hanlded as immutable dictionary.
         # We need to know type of [k, v] (e.g. [str, i32])
         if len(dict.items) == 0:
-            # 0.1: Register empty dict type
-            w_T = SPY.w_EmptyDictType
-            # 0.2: Register empty dict value
-            w_val = SPY.w_empty_dict
-            return W_MetaArg(self.vm, "red", w_T, w_val, dict.loc)
+            # empty dict is not support yet.
+            # it will come along with compiler part.
+            raise SPyError.simple(
+                "W_WIP",
+                "empty dict literals are not supported yet",
+                "this is empty dict",
+                dict.loc,
+            )
 
         # 1. evaluate type of key, value then infer the whole items type.
         key_value_pair = []
