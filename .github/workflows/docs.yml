@@ -79,8 +79,9 @@ jobs:
           if [[ "${{ steps.version.outputs.alias }}" == "latest" ]]; then
             # Tagged release - deploy with version and "latest" alias
             mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases ${{ steps.version.outputs.version }} latest
-            mike set-default --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push latest
           else
             # Dev build - deploy/update "dev" version
             mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases dev
           fi
+          # this makes the /dev version the default. Change it to /latest when we have stable releases!
+          mike set-default --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push dev
