@@ -6,6 +6,7 @@ on:
       - 'v*.*.*'
     branches:
       - main
+      - 'docs/**'
     paths:
       - 'docs/**'
   workflow_dispatch:  # Allows manual triggering
@@ -80,12 +81,12 @@ jobs:
           if [[ "${{ steps.version.outputs.alias }}" == "latest" ]]; then
             # Tagged release - deploy with version and "latest" alias
             if git rev-parse --verify docs/main >/dev/null 2>&1; then
-              mike deploy -r docs -b main --push --update-aliases --ignore-remote-status ${{ steps.version.outputs.version }} latest
+              mike deploy -r docs -b main --push --update-aliases --ignore-remote-status --force ${{ steps.version.outputs.version }} latest
             else
-              mike deploy -r docs -b main --push --ignore-remote-status ${{ steps.version.outputs.version }} latest
+              mike deploy -r docs -b main --push --ignore-remote-status --force ${{ steps.version.outputs.version }} latest
             fi
-            mike set-default -r docs -b main --push --ignore-remote-status latest
+            mike set-default -r docs -b main --push --ignore-remote-status --force latest
           else
             # Dev build - deploy/update "dev" version
-            mike deploy -r docs -b main --push --update-aliases --ignore-remote-status dev
+            mike deploy -r docs -b main --push --update-aliases --ignore-remote-status --force dev
           fi
