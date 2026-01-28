@@ -2,7 +2,7 @@
 # Update importing.SPYC_VERSION in case of any significant change
 # ================================================================
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, NoReturn, Optional
 
 from spy import ast
 from spy.analyze.symtable import (
@@ -105,6 +105,13 @@ class ScopeAnalyzer:
             symtable.pp(indent="    " * symtable.depth)
             print()
 
+    def shadow_error(self, name: str, new_loc: Loc, prev_loc: Loc) -> NoReturn:
+        msg = f"variable `{name}` shadows a name declared " + "in an outer scope"
+        err = SPyError("W_ScopeError", msg)
+        err.add("error", "this is the new declaration", new_loc)
+        err.add("note", "this is the previous declaration", prev_loc)
+        raise err
+
     # =====
 
     def new_SymTable(self, name: str, color: Color, kind: ScopeKind) -> SymTable:
@@ -189,13 +196,7 @@ class ScopeAnalyzer:
             elif scope is not self.builtins_scope:
                 # shadowing a name in an outer scope
                 # Exception: always allow shadowing builtins
-                msg = (
-                    f"variable `{name}` shadows a name declared " + "in an outer scope"
-                )
-                err = SPyError("W_ScopeError", msg)
-                err.add("error", "this is the new declaration", loc)
-                err.add("note", "this is the previous declaration", sym.loc)
-                raise err
+                self.shadow_error(name, loc, sym.loc)
 
         # Determine storage type: module-level vars use "cell", others use
         # "direct"
@@ -359,9 +360,13 @@ class ScopeAnalyzer:
             else:
                 varkind = "const"
             self.define_name(target.value, varkind, "auto", target.loc, type_loc)
-        else:
+        elif level == 0:
             # possible second assignment: promote to var if needed
             self._promote_const_to_var_maybe(target)
+        else:
+            # Symbol exists and has level >0, so it must be defined in an outer scope
+            # Try to re-define it to throw the appropriate error
+            self.shadow_error(target.value, target.loc, sym.loc)
 
     def _promote_const_to_var_maybe(self, target: ast.StrConst) -> None:
         level, scope, sym = self.lookup_ref(target.value)
