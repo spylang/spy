@@ -34,17 +34,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.SPYLANG_DOCS_DEPLOY_KEY }}
-      
-      - name: Fetch gh-pages branch
-        run: | 
+
+      - name: Fetch docs repository
+        run: |
           git remote add docs ${{ vars.SPY_DOCS_REPOSITORY }}
-          git fetch docs main --depth=1
-      
+          git pull docs main --depth=1
+
       - name: Determine version
         id: version
         run: |
@@ -64,29 +64,29 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12' 
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip install mkdocs-material mike
-      
+
       - name: Configurate Git information
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-      
+
       - name: Build mkdocs
         run: |
           if [[ "${{ steps.version.outputs.alias }}" == "latest" ]]; then
             # Tagged release - deploy with version and "latest" alias
             if git rev-parse --verify docs/main >/dev/null 2>&1; then
-              mike deploy -r docs -b main --push --update-aliases --ignore-remote-status --force ${{ steps.version.outputs.version }} latest
+              mike deploy -r docs -b main --push --update-aliases ${{ steps.version.outputs.version }} latest
             else
-              mike deploy -r docs -b main --push --ignore-remote-status --force ${{ steps.version.outputs.version }} latest
+              mike deploy -r docs -b main --push ${{ steps.version.outputs.version }} latest
             fi
-            mike set-default -r docs -b main --push --ignore-remote-status --force latest
+            mike set-default -r docs -b main --push latest
           else
             # Dev build - deploy/update "dev" version
-            mike deploy -r docs -b main --push --update-aliases --ignore-remote-status --force dev
+            mike deploy -r docs -b main --push --update-aliases dev
           fi
