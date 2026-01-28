@@ -17,7 +17,6 @@ from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.primitive import W_I32
 from spy.vm.tuple import W_Tuple
 
 if TYPE_CHECKING:
@@ -487,56 +486,12 @@ class DopplerFrame(ASTFrame):
             )
         return newlst
 
-    def shift_expr_Slice(self, slc: ast.Slice, wam: W_MetaArg) -> ast.Expr:
-        # equivalent to ASTFrame.eval_expr_Slice
-
-        def to_m(arg: ast.Expr | None) -> W_MetaArg:
-            # Handles resolving arg possibly being an Expression or None from the parser, turns either
-            # into MetaArgs that can be passed to `vm.fast_metacall`
-            #
-            # TODO: This should actually be shifting the ops as well, but
-            # it isn't yet. So anything more than a literal constant int or
-            # None fails, but that's enough for testing now
-            if arg is None:
-                return W_MetaArg.from_w_obj(self.vm, B.w_None)
-            elif isinstance(arg, ast.Constant):
-                if not isinstance(arg.value, int):
-                    # TODO support objects with an __index__ method
-                    msg = f"Arguments to slices must be integers or None; got {type(arg).__name__}"
-                else:
-                    return W_MetaArg.from_w_obj(self.vm, W_I32(arg.value))
-            else:
-                msg = msg = (
-                    f"Arguments to slices must be integers or None; got {type(arg).__name__}"
-                )
-            raise SPyError.simple("W_ValueError", msg, "type mismatch", arg.loc)
-
-        w_T = wam.w_static_T  # <type: Slice>
-        fqn_new = w_T.fqn.join("__new__")  # slice::Slice.__new__
-        w_new = self.vm.lookup_global(fqn_new)
-        wam_new = W_MetaArg.from_w_obj(self.vm, w_new)
-
-        args = [to_m(arg) for arg in (slc.start, slc.stop, slc.step)]
-        opspec = self.vm.fast_metacall(w_new, [wam_new] + args)
-        fqn_new_impl = self.vm.make_fqn_const(
-            opspec
-        )  # FQN(slice::Slice.__new__.opimpl#)
-
-        def make_none_maybe(val: ast.Expr | None) -> ast.Expr:
-            if val is None:
-                return ast.Constant(slc.loc, None)
-            return val
-
-        fqn = self.vm.make_fqn_const(w_T)  # FQN(slice::Slice)
-        cls_node = ast.FQNConst(slc.loc, fqn)
-
-        new_call = ast.Call(
-            slc.loc,
-            func=ast.FQNConst(loc=slc.loc, fqn=fqn_new_impl),
-            args=[cls_node]
-            + [make_none_maybe(w) for w in (slc.start, slc.stop, slc.step)],
-        )
-        return new_call
+    def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
+        w_opimpl = self.opimpl[op]
+        v_start = self.shifted_expr[op.start]
+        v_stop = self.shifted_expr[op.stop]
+        v_step = self.shifted_expr[op.step]
+        return self.shift_opimpl(op, w_opimpl, [v_start, v_stop, v_step])
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]

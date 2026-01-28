@@ -516,7 +516,7 @@ class SPyBackend:
 
     def fmt_expr_Slice(self, node: ast.Slice) -> str:
         (start, stop, step) = [
-            (self.fmt_expr(exp) if exp else None)
+            (self.fmt_expr(exp) if exp is not None else "")
             for exp in (node.start, node.stop, node.step)
         ]
         return f"Slice({start}:{stop}{f':{step}' if step else ''})"

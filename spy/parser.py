@@ -720,9 +720,16 @@ class Parser:
             return spy.ast.Call(loc=py_node.loc, func=func, args=args)
 
     def from_py_expr_Slice(self, py_node: py_ast.Slice) -> spy.ast.Slice:
-        return spy.ast.Slice(
+        def handle_none(py_node: py_ast.Expr, attr: str) -> spy.ast.Expr:
+            if getattr(py_node, attr) is not None:
+                return self.from_py_expr(getattr(py_node, attr))
+            return spy.ast.Constant(py_node.loc, None)
+
+        r = spy.ast.Slice(
             py_node.loc,
-            self.from_py_expr(py_node.lower) if py_node.lower else None,
-            self.from_py_expr(py_node.upper) if py_node.upper else None,
-            self.from_py_expr(py_node.step) if py_node.step else None,
+            handle_none(py_node, "lower"),
+            handle_none(py_node, "upper"),
+            handle_none(py_node, "step"),
         )
+
+        return r

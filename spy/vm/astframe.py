@@ -1126,27 +1126,14 @@ class AbstractFrame:
     def eval_expr_Slice(self, op: ast.Slice) -> W_MetaArg:
         w_SliceType = self.vm.lookup_global(FQN("_slice::Slice"))
         assert isinstance(w_SliceType, W_Type)
-        fqn_slice_new = w_SliceType.fqn.join("__new__")
-        w_new = self.vm.lookup_global(fqn_slice_new)
-        wam_new = W_MetaArg.from_w_obj(self.vm, w_new)
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_SliceType)
 
-        def to_m(arg: ast.Expr | None) -> W_MetaArg:
-            if arg is None:
-                return W_MetaArg.from_w_obj(self.vm, B.w_None)
-            elif isinstance(arg, ast.Constant):
-                if not isinstance(arg.value, int):
-                    # TODO support objects with an __index__ method
-                    msg = f"Arguments to slices must be integers or None; got {type(arg).__name__}"
-                else:
-                    return W_MetaArg.from_w_obj(self.vm, W_I32(arg.value))
-            else:
-                msg = msg = (
-                    f"Arguments to slices must be integers or None; got {type(arg).__name__}"
-                )
-            raise SPyError.simple("W_ValueError", msg, "type mismatch", arg.loc)
+        args = [self.eval_expr(arg) for arg in (op.start, op.stop, op.step)]
 
-        args = [to_m(arg) for arg in (op.start, op.stop, op.step)]
-        return self.vm.call_wam(wam_new, [wam_new] + args, loc=op.loc)
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL, [wam_T] + args)
+
+        wam_slice = self.eval_opimpl(op, w_opimpl, [wam_T] + args)
+        return wam_slice
 
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]

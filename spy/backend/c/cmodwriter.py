@@ -15,7 +15,7 @@ from spy.vm.module import W_Module
 from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
-from spy.vm.struct import W_Struct, W_StructType
+from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
 
 
@@ -212,16 +212,7 @@ class CModuleWriter:
             c_type = self.ctx.w2c(w_T)
             self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
             self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {{0}};")
-        elif isinstance(w_T, W_StructType):
-            c_type = self.ctx.w2c(w_T)
-            self.tbh_globals.wl(f"const {c_type} {fqn.c_name} = {{")
-            with self.tbh_globals.indent():
-                assert isinstance(w_obj, W_Struct)
-                for attrib, val in w_obj.values_w.items():
-                    self.tbh_globals.writeline(
-                        f".{attrib} = {self.ctx.vm.unwrap(val)},"
-                    )
-            self.tbh_globals.wl(f"}};")
+
         else:
             raise NotImplementedError("WIP")
 
