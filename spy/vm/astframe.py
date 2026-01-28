@@ -1188,6 +1188,7 @@ class AbstractFrame:
             else:
                 # second iteration and so on.
                 # compute union type covering both current key, value and new key, value type
+                assert w_valuetype is not None
                 w_keytype = self.vm.union_type(w_keytype, key.w_static_T)
                 w_valuetype = self.vm.union_type(w_valuetype, value.w_static_T)
 
