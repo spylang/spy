@@ -1162,13 +1162,16 @@ class AbstractFrame:
         key_value_pair = []
         w_keytype = None
         w_valuetype = None
-        key_color: Color = "red"  # copy from list eval
+        key_color: Color = "red"
         value_color: Color = "red"
         for pair in dict.items:
             key = self.eval_expr(pair.key)
             value = self.eval_expr(pair.value)
 
-            # not sure...
+            # If we have two blue items which happen to be equal, we reuse the same
+            # w_opimpl for push() below, with the result of pushing the first item
+            # twice, and the second item never. By making it red, we force to create a
+            # more generic opimpl. See also the corresponding code in eval_expr_List
             key = key.as_red(self.vm)
             value = value.as_red(self.vm)
 
@@ -1176,12 +1179,17 @@ class AbstractFrame:
             key_color = maybe_blue(key_color, key.color)
             value_color = maybe_blue(value_color, value.color)
             if w_keytype is None:
+                # first iteration; key, value type are both None
+                # according to dict behavior as pair of key, value
+                # set key, value type
+                assert w_valuetype is None
                 w_keytype = key.w_static_T
-            w_keytype = self.vm.union_type(w_keytype, key.w_static_T)
-
-            if w_valuetype is None:
                 w_valuetype = value.w_static_T
-            w_valuetype = self.vm.union_type(w_valuetype, value.w_static_T)
+            else:
+                # second iteration and so on.
+                # compute union type covering both current key, value and new key, value type
+                w_keytype = self.vm.union_type(w_keytype, key.w_static_T)
+                w_valuetype = self.vm.union_type(w_valuetype, value.w_static_T)
 
         assert w_keytype is not None
         assert w_valuetype is not None

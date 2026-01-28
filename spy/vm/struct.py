@@ -307,7 +307,7 @@ def unwrap_list(vm: "SPyVM", w_list: W_Object) -> list[Any]:
 
 def unwrap_dict(vm: "SPyVM", w_dict: W_Object) -> dict[Any, Any]:
     """
-    Testing benefit
+    Only useful in tests
     """
     result: dict[Any, Any] = {}
     w_dict_T = vm.dynamic_type(w_dict)
