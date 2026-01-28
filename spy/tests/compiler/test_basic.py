@@ -294,6 +294,18 @@ class TestBasic(CompilerTest):
         assert mod.x == 100
         assert mod.get_x() == 100
 
+    @only_interp
+    def test_read_local_cell(self):
+        # "read local cell" can happen only if we are reading a global 'var' from an
+        # expression in the module scope
+        src = """
+        var x: i32 = 42
+        var y: i32 = x + 1
+        """
+        mod = self.compile(src)
+        assert mod.x == 42
+        assert mod.y == 43
+
     def test_cannot_assign_to_const_globals(self):
         src = """
         x: i32 = 42
@@ -1487,3 +1499,20 @@ class TestBasic(CompilerTest):
             return auto + restrict + default
         """)
         assert mod.calculate(10) == 70
+
+    @only_interp
+    def test_module_constants_are_blue(self):
+        src = """
+        from __spy__ import COLOR
+
+        x = 42
+        y: i32 = 43
+        var z: i32 = 44
+        color_x = COLOR(x)
+        color_y = COLOR(y)
+        color_z = COLOR(z)
+        """
+        mod = self.compile(src)
+        assert mod.color_x == "blue"
+        assert mod.color_y == "blue"
+        assert mod.color_z == "red"

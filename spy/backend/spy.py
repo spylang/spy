@@ -341,7 +341,7 @@ class SPyBackend:
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
-    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> str:
+    def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
         return name.sym.name
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
@@ -516,7 +516,6 @@ class SPyBackend:
 
     def fmt_expr_Slice(self, node: ast.Slice) -> str:
         (start, stop, step) = [
-            (self.fmt_expr(exp) if exp is not None else "")
-            for exp in (node.start, node.stop, node.step)
+            self.fmt_expr(exp) for exp in (node.start, node.stop, node.step)
         ]
         return f"Slice({start}:{stop}{f':{step}' if step else ''})"

@@ -293,6 +293,18 @@ class Tuple(Expr):
 
 
 @astnode
+class KeyValuePair(Node):
+    key: Expr
+    value: Expr
+
+
+@astnode
+class Dict(Expr):
+    precedence = 17
+    items: list[KeyValuePair]
+
+
+@astnode
 class Call(Expr):
     precedence = 16
     func: Expr
@@ -302,9 +314,9 @@ class Call(Expr):
 @astnode
 class Slice(Expr):
     precedence = 16
-    start: Optional[Expr]
-    stop: Optional[Expr]
-    step: Optional[Expr]
+    start: Expr
+    stop: Expr
+    step: Expr
 
 
 @astnode
@@ -605,7 +617,13 @@ class NameImportRef(Expr):
 
 
 @astnode
-class NameLocal(Expr):
+class NameLocalDirect(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode
+class NameLocalCell(Expr):
     precedence = 100  # the highest
     sym: Symbol
 

@@ -281,7 +281,7 @@ class CFuncWriter:
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         assert False, "ast.Name nodes should not survive redshifting"
 
-    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> C.Expr:
+    def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
         varname = C_Ident(name.sym.name)
         return C.Literal(f"{varname}")
 
@@ -385,8 +385,8 @@ class CFuncWriter:
         #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
-        FQN("unsafe::f64_ieee754_div"): "/",
         FQN("operator::f64_mul"): "*",
+        FQN("unsafe::f64_ieee754_div"): "/",
         FQN("operator::f64_eq"): "==",
         FQN("operator::f64_ne"): "!=",
         FQN("operator::f64_lt"): "<",
@@ -396,7 +396,7 @@ class CFuncWriter:
         # the following are NOT special cased, and are implemented in
         # operator.h. They are listed here to make emphasize that they are not
         # omitted from above by mistake:
-        # T is any of the following types: i8, u8, i32, u32 and f64
+        # T is any of the following types: i8, u8, i32, u32, f32 and f64
         # FQN('operator::T_div')
         # FQN('operator::T_floordiv')
         # FQN('operator::T_mod')

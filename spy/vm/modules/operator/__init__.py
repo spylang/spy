@@ -55,6 +55,7 @@ if TYPE_CHECKING:
 # isort: off
 from . import opimpl_int  # noqa: F401 -- side effects
 from . import opimpl_f64  # noqa: F401 -- side effects
+from . import opimpl_f32  # noqa: F401 -- side effects
 from . import opimpl_str  # noqa: F401 -- side effects
 from . import opimpl_object  # noqa: F401 -- side effects
 from . import opimpl_dynamic  # noqa: F401 -- side effects

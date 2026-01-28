@@ -21,7 +21,7 @@ void WASM_EXPORT(spy_builtins$print_NoneType)(void);
 void WASM_EXPORT(spy_builtins$print_str)(spy_Str *s);
 
 static inline int32_t
-WASM_EXPORT(spy_builtins$hash_i8)(int8_t x) {
+spy_builtins$hash_i8(int8_t x) {
     if (x == -1) {
         return 2;
     }
@@ -29,7 +29,7 @@ WASM_EXPORT(spy_builtins$hash_i8)(int8_t x) {
 }
 
 static inline int32_t
-WASM_EXPORT(spy_builtins$hash_i32)(int32_t x) {
+spy_builtins$hash_i32(int32_t x) {
     if (x == -1) {
         return 2;
     }
@@ -37,12 +37,12 @@ WASM_EXPORT(spy_builtins$hash_i32)(int32_t x) {
 }
 
 static inline int32_t
-WASM_EXPORT(spy_builtins$hash_u8)(uint8_t x) {
+spy_builtins$hash_u8(uint8_t x) {
     return (int32_t)x;
 }
 
 static inline int32_t
-WASM_EXPORT(spy_builtins$hash_bool)(bool x) {
+spy_builtins$hash_bool(bool x) {
     if (x)
         return 1;
     else

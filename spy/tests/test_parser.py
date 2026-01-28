@@ -622,6 +622,46 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Dict(self):
+        mod = self.parse(
+            """
+        def foo() -> None:
+            dict_test = {"key1": 10, key2: 30}
+        """
+        )
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = f"""
+            Assign(
+                target=StrConst(value='dict_test'),
+                value=Dict(
+                    items=[
+                        KeyValuePair(
+                            key=StrConst(value='key1'),
+                            value=Constant(value=10),
+                        ),
+                        KeyValuePair(
+                            key=Name(id='key2'),
+                            value=Constant(value=30),
+                        ),
+                    ],
+                ),
+            )
+            """
+
+        self.assert_dump(stmt, expected)
+
+    def test_Dict_unpacking_unsupport(self):
+        src = """
+        def foo() -> None:
+            dict_unpacking = {"key3": 30}
+            dict_test = {**dict_unpacking, "key1": 10, key2: 30}
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: dict unpacking is unsupported.",
+            ("this is not supported", "dict_unpacking"),
+        )
+
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
     def test_BinOp(self, op):
         mod = self.parse(f"""
@@ -868,7 +908,7 @@ class TestParser:
     def test_Slice(self):
         mod = self.parse("""
         def foo() -> Slice:
-            return [][1:2:3]
+            return [][1::2]
         """)
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
@@ -880,8 +920,8 @@ class TestParser:
                             args=[
                                 Slice(
                                     start=Constant(value=1),
-                                    stop=Constant(value=2),
-                                    step=Constant(value=3),
+                                    stop=Constant(value=None),
+                                    step=Constant(value=2),
                                 ),
                             ],
                         ),

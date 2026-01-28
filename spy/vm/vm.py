@@ -1,4 +1,5 @@
 import itertools
+from ctypes import c_float as float32
 from types import FunctionType
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
 
@@ -44,6 +45,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import (
+    W_F32,
     W_F64,
     W_I8,
     W_I32,
@@ -58,7 +60,7 @@ from spy.vm.primitive import (
 from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
-from spy.vm.struct import UnwrappedStruct, W_Struct
+from spy.vm.struct import UnwrappedStruct
 
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)
@@ -75,6 +77,7 @@ W_U32._w.define(W_U32)
 W_I8._w.define(W_I8)
 W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
+W_F32._w.define(W_F32)
 W_Bool._w.define(W_Bool)
 W_NoneType._w.define(W_NoneType)
 W_NotImplementedType._w.define(W_NotImplementedType)
@@ -461,12 +464,6 @@ class SPyVM:
             w_T = self.dynamic_type(w_val)
             fqn = w_T.fqn.join("prebuilt")
             fqn = self.get_unique_FQN(fqn)
-        elif isinstance(w_val, W_Struct):
-            # There must be a better way to tell the type
-            # of an object created from a .spy file
-            w_T = self.dynamic_type(w_val)
-            fqn = w_T.fqn.join("struct")
-            fqn = self.get_unique_FQN(fqn)
         else:
             w_T = self.dynamic_type(w_val)
             T = w_T.fqn.human_name
@@ -570,6 +567,9 @@ class SPyVM:
     def wrap(self, value: float) -> W_F64: ...
 
     @overload
+    def wrap(self, value: float32) -> W_F32: ...
+
+    @overload
     def wrap(self, value: str) -> W_Str: ...
 
     @overload
@@ -597,6 +597,8 @@ class SPyVM:
             return W_U8(value)
         elif T is float:
             return W_F64(value)
+        elif T is float32:
+            return W_F32(value)
         elif T is bool:
             if value:
                 return B.w_True
@@ -650,6 +652,11 @@ class SPyVM:
         if not isinstance(w_value, W_F64):
             raise Exception("Type mismatch")
         return w_value.value
+
+    def unwrap_f32(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_F32):
+            raise Exception("Type mismatch")
+        return w_value.value.value
 
     def unwrap_str(self, w_value: W_Object) -> str:
         if not isinstance(w_value, W_Str):

@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*.*.*'
+    branches:
+      - main
+      - 'docs/**'
+    paths:
+      - 'docs/**'
   workflow_dispatch:  # Allows manual triggering
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -23,50 +28,60 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docs
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.SPYLANG_DOCS_DEPLOY_KEY }}
-      
-      - name: Fetch gh-pages branch
-        run: | 
-          git remote add docs ${{ vars.SPY_DOCS_REPOSITORY }}
-          git fetch docs main --depth=1
-      
+
+      - name: Clone docs repository
+        run: |
+          git clone ${{ vars.SPY_DOCS_REPOSITORY }} /tmp/spy-docs
+
       - name: Determine version
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            # Tagged release
+            VERSION=${GITHUB_REF#refs/tags/v}
+            ALIAS="latest"
+          else
+            # Regular commit - deploy as "dev"
+            VERSION="dev"
+            ALIAS=""
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "alias=$ALIAS" >> $GITHUB_OUTPUT
           echo "Deploying version: $VERSION from ${{ github.ref }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12' 
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip install mkdocs-material mike
-      
-      - name: Configurate Git information
+
+      - name: Configure Git in docs repository
+        working-directory: /tmp/spy-docs
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-      
-      - name: Build mkdocs
+
+      - name: Build and deploy mkdocs
+        working-directory: /tmp/spy-docs
         run: |
-          if git rev-parse --verify docs/main >/dev/null 2>&1; then
-            mike deploy -r docs -b main --push --update-aliases ${{ steps.version.outputs.version }} latest
+          if [[ "${{ steps.version.outputs.alias }}" == "latest" ]]; then
+            # Tagged release - deploy with version and "latest" alias
+            mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases ${{ steps.version.outputs.version }} latest
           else
-            mike deploy -r docs -b main --push ${{ steps.version.outputs.version }} latest
+            # Dev build - deploy/update "dev" version
+            mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases dev
           fi
-          mike set-default -r docs -b main --push latest
+          # this makes the /dev version the default. Change it to /latest when we have stable releases!
+          mike set-default --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push dev

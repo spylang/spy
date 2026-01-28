@@ -3,7 +3,7 @@ from types import NoneType
 from typing import TYPE_CHECKING, Iterator, Optional, Sequence
 
 from spy import ast
-from spy.analyze.symtable import Color, ImportRef, Symbol, SymTable, maybe_blue
+from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -19,7 +19,7 @@ from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.primitive import W_I32, W_Bool
+from spy.vm.primitive import W_Bool
 from spy.vm.struct import W_StructType
 from spy.vm.tuple import W_Tuple
 from spy.vm.typechecker import maybe_plural
@@ -709,7 +709,7 @@ class AbstractFrame:
             target=for_node.target,
             value=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__item__"),
                 args=[],
             ),
@@ -720,7 +720,7 @@ class AbstractFrame:
             target=iter_target,
             value=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__next__"),
                 args=[],
             ),
@@ -730,7 +730,7 @@ class AbstractFrame:
             loc=for_node.loc,
             test=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__continue_iteration__"),
                 args=[],
             ),
@@ -833,11 +833,12 @@ class AbstractFrame:
 
         if sym.impref is not None:
             return ast.NameImportRef(name.loc, sym)
-        elif sym.is_local:
-            assert sym.storage == "direct"
-            return ast.NameLocal(name.loc, sym)
+        elif sym.storage == "direct" and sym.is_local:
+            return ast.NameLocalDirect(name.loc, sym)
         elif sym.storage == "direct":
             return ast.NameOuterDirect(name.loc, sym)
+        elif sym.storage == "cell" and sym.is_local:
+            return ast.NameLocalCell(name.loc, sym)
         elif sym.storage == "cell":
             outervars = self.closure[-sym.level]
             w_cell = outervars[sym.name].w_val
@@ -873,13 +874,24 @@ class AbstractFrame:
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
+    def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.name]
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
             w_val = self.load_local(sym.name)
+        return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
+
+    def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
+        sym = name.sym
+        lv = self.locals[sym.name]
+        if lv.color == "red" and self.redshifting:
+            w_val = None
+        else:
+            w_cell = self.load_local(sym.name)
+            assert isinstance(w_cell, W_Cell)
+            w_val = w_cell.get()
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
@@ -1103,7 +1115,6 @@ class AbstractFrame:
         # 2. instantiate a new list
         w_ListType = self.vm.lookup_global(FQN("_list::list"))
         w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
-        # breakpoint(header="====AbstractFrame.eval_expr_list()=====")
         wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
 
         w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T])
@@ -1126,12 +1137,10 @@ class AbstractFrame:
     def eval_expr_Slice(self, op: ast.Slice) -> W_MetaArg:
         w_SliceType = self.vm.lookup_global(FQN("_slice::Slice"))
         assert isinstance(w_SliceType, W_Type)
+
         wam_T = W_MetaArg.from_w_obj(self.vm, w_SliceType)
-
         args = [self.eval_expr(arg) for arg in (op.start, op.stop, op.step)]
-
         w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL, [wam_T] + args)
-
         wam_slice = self.eval_opimpl(op, w_opimpl, [wam_T] + args)
         return wam_slice
 

@@ -9,10 +9,10 @@ class TestSlice(CompilerTest):
     def test__slice_module(self):
         src = """
         def make_slice() -> Slice:
-            return Slice(0,1,2)
+            return slice(0,1,2)
 
         def make_slice_none() -> Slice:
-            return Slice(None, None, None)
+            return slice(None, None, None)
         """
         mod = self.compile(src)
         s = mod.make_slice()
