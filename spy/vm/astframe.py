@@ -1155,6 +1155,78 @@ class AbstractFrame:
             w_val = W_Tuple(items_w)
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
 
+    def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
+        # 0. empty dict[k, v] are hanlded as immutable dictionary.
+        # We need to know type of [k, v] (e.g. [str, i32])
+        if len(dict.items) == 0:
+            # empty dict is not support yet.
+            # it will come along with compiler part.
+            raise SPyError.simple(
+                "W_WIP",
+                "empty dict literals are not supported yet",
+                "this is empty dict",
+                dict.loc,
+            )
+
+        # 1. evaluate type of key, value then infer the whole items type.
+        key_value_pair = []
+        w_keytype = None
+        w_valuetype = None
+        key_color: Color = "red"
+        value_color: Color = "red"
+        for pair in dict.items:
+            key = self.eval_expr(pair.key)
+            value = self.eval_expr(pair.value)
+
+            # If we have two blue items which happen to be equal, we reuse the same
+            # w_opimpl for push() below, with the result of pushing the first item
+            # twice, and the second item never. By making it red, we force to create a
+            # more generic opimpl. See also the corresponding code in eval_expr_List
+            key = key.as_red(self.vm)
+            value = value.as_red(self.vm)
+
+            key_value_pair.append((key, value))
+            key_color = maybe_blue(key_color, key.color)
+            value_color = maybe_blue(value_color, value.color)
+            if w_keytype is None:
+                # first iteration; key, value type are both None
+                # according to dict behavior as pair of key, value
+                # set key, value type
+                assert w_valuetype is None
+                w_keytype = key.w_static_T
+                w_valuetype = value.w_static_T
+            else:
+                # second iteration and so on.
+                # compute union type covering both current key, value and new key, value type
+                assert w_valuetype is not None
+                w_keytype = self.vm.union_type(w_keytype, key.w_static_T)
+                w_valuetype = self.vm.union_type(w_valuetype, value.w_static_T)
+
+        assert w_keytype is not None
+        assert w_valuetype is not None
+
+        # 2. instantiate a new dict
+        w_DictType = self.vm.lookup_global(FQN("_dict::dict"))
+        w_T = self.vm.getitem_w(w_DictType, w_keytype, w_valuetype)  # dict[K, V]
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
+
+        w_opimpl = self.vm.call_OP(dict.loc, OP.w_CALL, [wam_T])
+        wam_dict = self.eval_opimpl(dict, w_opimpl, [wam_T])
+
+        # 3. push items into the dict
+        assert isinstance(w_T, W_Type)
+        fqn_setitem = w_T.fqn.join("__setitem__")
+        w_setitem = self.vm.lookup_global(fqn_setitem)
+        wam_setitem = W_MetaArg.from_w_obj(self.vm, w_setitem)
+
+        for pair, (wam_key, wam_val) in zip(dict.items, key_value_pair):
+            w_opimpl = self.vm.call_OP(
+                dict.loc, OP.w_CALL, [wam_setitem, wam_dict, wam_key, wam_val]
+            )
+            self.eval_opimpl(pair, w_opimpl, [wam_setitem, wam_dict, wam_key, wam_val])
+
+        return wam_dict
+
 
 class ASTFrame(AbstractFrame):
     """

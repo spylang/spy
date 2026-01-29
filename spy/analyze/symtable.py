@@ -199,6 +199,7 @@ class SymTable:
         add_sym("list", None, ImportRef("_list", "list"))
         add_sym("Slice", None, ImportRef("_slice", "Slice"))
         add_sym("slice", None, ImportRef("_slice", "Slice"))
+        add_sym("dict", None, ImportRef("_dict", "dict"))
         return scope
 
     def __repr__(self) -> str:
