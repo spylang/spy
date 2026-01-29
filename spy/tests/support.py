@@ -144,7 +144,7 @@ class CompilerTest:
         else:
             return "eager"
 
-    # see test_backend_spy:test_zz_sanity_check for details
+    # see conftest:spy_backend_sanity_check_fixture for details
     SKIP_SPY_BACKEND_SANITY_CHECK = False
     ALL_COMPILED_SOURCES: set[str] = set()
 
