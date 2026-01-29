@@ -350,6 +350,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_dict_literal(self):
+        src = """
+        def foo() -> None:
+            x = {10: 50, 60: 40}
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_zz_sanity_check(self):
         """
         This is a hack.
