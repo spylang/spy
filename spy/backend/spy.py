@@ -513,3 +513,9 @@ class SPyBackend:
         itemlist = [self.fmt_expr(it) for it in node.items]
         items = ", ".join(itemlist)
         return f"({items})"
+
+    def fmt_expr_Dict(self, node: ast.Dict) -> str:
+        pairs = [
+            f"{self.fmt_expr(kv.key)}: {self.fmt_expr(kv.value)}" for kv in node.items
+        ]
+        return "{" + ", ".join(pairs) + "}"
