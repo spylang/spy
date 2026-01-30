@@ -519,3 +519,9 @@ class SPyBackend:
             self.fmt_expr(exp) for exp in (node.start, node.stop, node.step)
         ]
         return f"Slice({start}:{stop}{f':{step}' if step else ''})"
+
+    def fmt_expr_Dict(self, node: ast.Dict) -> str:
+        pairs = [
+            f"{self.fmt_expr(kv.key)}: {self.fmt_expr(kv.value)}" for kv in node.items
+        ]
+        return "{" + ", ".join(pairs) + "}"

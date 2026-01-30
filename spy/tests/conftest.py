@@ -6,6 +6,7 @@ import py
 import pytest
 from pytest_pyodide import get_global_config
 
+from spy.tests.test_backend_spy import run_sanity_check_fixture
 from spy.util import cleanup_spyc_files
 
 ROOT = py.path.local(__file__).dirpath()
@@ -18,12 +19,8 @@ def pytest_collection_modifyitems(session, config, items):
     Reorder the test to have a "better" order. In particular:
 
       - test_zz_mypy.py is always the last, after the subdirectories
-      - test_backend_spy.py must run after compiler/*
       - tests in the root tests/ directory run before tests in subdirectories
       - tests directly in a directory run before tests in its subdirectories
-
-    The reason for why test_backend_spy must be run after compiler/* is
-    explained in test_zz_sanity_check in that file.
     """
 
     def key(item):
@@ -32,8 +29,6 @@ def pytest_collection_modifyitems(session, config, items):
         # very slow tests always run last
         if filename == "test_zz_mypy.py":
             return (100, 0)  # last
-        elif filename == "test_backend_spy.py":
-            return (99, 0)  # just before mypy
         elif filename == "test_cli.py":
             return (98, 0)
         elif filename == "test_llwasm.py":
@@ -94,6 +89,18 @@ def cleanup_spyc_files_fixture(request):
         stdlib_dir = ROOT.join("..", "..", "stdlib")
         if stdlib_dir.check(dir=True):
             cleanup_spyc_files(stdlib_dir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def spy_backend_sanity_check_fixture(tmpdir_factory):
+    """
+    Run SPy backend sanity check at the end of the test session.
+
+    This ensures that the SPy backend can format all AST nodes that were
+    compiled during the test run. This runs on every xdist worker.
+    """
+    yield
+    run_sanity_check_fixture(tmpdir_factory)
 
 
 # ===============
