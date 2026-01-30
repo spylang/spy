@@ -35,18 +35,16 @@ Build a copy of the docs locally, and start a live server to view the current st
 === "pip"
     ```bash
     # with the virtual environment active
-    mike deploy mylocalcopy
-    mike serve
+    mkdocs serve
     # open http://localhost:8000/mylocalcopy in a browser
     ```
 === "uv"
     ```bash
-    uv run mike reploy mylocalcopy
-    uv run mike serve
+    uv run mkdocs serve
     # open http://localhost:8000/mylocalcopy in a browser
     ```
 
-/// tip |"Updating Docs
+/// tip | Updating Docs
 Some changes - like adding or moving files, or changes to configuration in `mkdocs.yml`, will not be visible immediately in the server preview. To see them, stop the server (ctl/cmd + c), rerun the build command, and restart the live server using the commands above.
 ///
 
@@ -60,9 +58,11 @@ At this point, you're ready to start writing and editing your contributions!
 
 /// note | Documentation Tools
 SPy uses [mkdocs](https://www.mkdocs.org/) as its documentation builder with the [material for mkdocs theme](https://squidfunk.github.io/mkdocs-material/), and [mike](https://github.com/jimporter/mike) to manage docs versioning. See their pages for additional information on formatting and options.
+
+mkdocs' liveserver is more fully-featured than mike's, and is recommended for document previews. To view the versioned documents as they will be deployed, run `mike deploy testdocs && mike serve`, then load localhost:8000/testdocs.
 ///
 
-Once you're happy with your changes, add them to your git branch and push them to GitHub
+Once you're happy with your changes, add them to your git branch and push them to GitHub.
 
 ```bash
   git add -A
