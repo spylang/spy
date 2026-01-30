@@ -14,6 +14,7 @@ class BuildConfig:
     kind: OutputKind
     build_type: BuildType
     opt_level: Optional[int] = None
+    warning_free: bool = False
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -21,14 +22,15 @@ class BuildConfig:
 # fmt: off
 CFLAGS = [
     "--std=c99",
-    "-Werror=implicit-function-declaration",
-    "-Wfatal-errors",
     "-fdiagnostics-color=always",  # force colors
     "-I", str(spy.libspy.INCLUDE)
 ]
 LDFLAGS = [
     "-lm"  # always include libm for now. Ideally we should do it only if needed
 ]
+
+WARNING_CFLAGS = ["-Werror=implicit-function-declaration", "-Wfatal-errors"]
+WARNING_FREE_CFLAGS = ["-Werror"]
 
 RELEASE_CFLAGS  = ["-DSPY_RELEASE", "-O3", "-flto"]
 RELEASE_LDFLAGS = ["-flto"]
@@ -61,6 +63,11 @@ class CompilerConfig:
             "-L", str(libdir),
             "-lspy",
         ]  # fmt: skip
+
+        if not config.warning_free:
+            self.cflags += WARNING_CFLAGS
+        else:
+            self.cflags += WARNING_FREE_CFLAGS
 
         if config.build_type == "release":
             self.cflags += RELEASE_CFLAGS
