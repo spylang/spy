@@ -8,7 +8,7 @@ For guidelines on setting up your machine to build and contribute to SPy, see [C
 The first two steps below (forking and cloning the repo) are the same as for the steps for contributing to SPy's source code. You do not need a separate fork and clone for documentation.
 ///
 
-To set up your machine to contribute to the SPy documentation, first Fork the repo <https://github.com/spylang/spy>, go to the project repo page and use the Fork button. This will create a copy of the repo, under your username (e.,g. <https://github.com/yourghname/spy>). (For more details on how to fork a repository see this guide <https://help.github.com/articles/fork-a-repo/>.)
+- Fork [the  SPy repo](https://github.com/spylang/spy), go to the project repo page and use the Fork button. This will create a copy of the repo, under your username (e.,g. `https://github.com/yourghname/spy`). (For more details on how to fork a repository see [this guide](https://help.github.com/articles/fork-a-repo/).
 
 Next, clone the repo to your machine:
 
