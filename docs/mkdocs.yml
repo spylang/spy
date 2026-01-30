@@ -36,3 +36,11 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/spylang/spy
       name: SPy on GitHub
+
+markdown_extensions:
+- pymdownx.superfences
+- pymdownx.highlight
+- pymdownx.inlinehilite
+- pymdownx.blocks.admonition
+- pymdownx.tabbed:
+      alternate_style: true
