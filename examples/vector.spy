@@ -10,23 +10,23 @@ class Vector:
 
 
 # available operations:
-#     arr: ptr[i32] = gc_alloc(i32)(5)  # allocates an array of 5 i32
+#     arr: ptr[i32] = gc_alloc[i32](5)  # allocates an array of 5 i32
 #     arr[0]     # read item 0 of the array
 #     arr[0] = x # write item 0
-#     v = gc_alloc(Vector)(1)   # allocate a new Vector
+#     v = gc_alloc[Vector](1)   # allocate a new Vector
 #     v.capacity  # read the field "capacity" of the Vector "v"
 
 def vector_new(capacity: i32) -> ptr[Vector]:
-    v: ptr[Vector] = gc_alloc(Vector)(1)
+    v: ptr[Vector] = gc_alloc[Vector](1)
     v.capacity = capacity
     v.length = 0
-    v.items = gc_alloc(i32)(capacity)
+    v.items = gc_alloc[i32](capacity)
     return v
 
 def vector_append(v: ptr[Vector], item: i32) -> None:
     if v.length >= v.capacity:
         new_capacity = v.capacity * 2
-        new_items: ptr[i32] = gc_alloc(i32)(new_capacity)
+        new_items: ptr[i32] = gc_alloc[i32](new_capacity)
         i = 0
         while i < v.length:
             new_items[i] = v.items[i]

@@ -57,7 +57,7 @@ class TestArray(CompilerTest):
         from unsafe import ptr, gc_alloc
 
         def alloc_buf(n: i32) -> ptr[i32]:
-            return gc_alloc(i32)(n)
+            return gc_alloc[i32](n)
 
         def store(p: ptr[i32], i: i32, v: i32) -> None:
             p[i] = v
@@ -138,7 +138,7 @@ class TestArray(CompilerTest):
         from unsafe import ptr, gc_alloc
 
         def alloc_buf(n: i32) -> ptr[i32]:
-            return gc_alloc(i32)(n)
+            return gc_alloc[i32](n)
 
         def store(p: ptr[i32], i: i32, v: i32) -> None:
             p[i] = v

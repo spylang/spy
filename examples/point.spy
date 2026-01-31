@@ -18,7 +18,7 @@ class Point:
 
 # eventually structs will get an automatic ctor, like dataclasses
 def new_point(x: f64, y: f64) -> ptr[Point]:
-    p = gc_alloc(Point)(1) # allocate 1 Point
+    p = gc_alloc[Point](1) # allocate 1 Point
     p.x = x
     p.y = y
     return p
