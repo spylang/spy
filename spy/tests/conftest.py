@@ -1,6 +1,7 @@
 # type: ignore
 
 import shutil
+import sys
 
 import py
 import pytest
@@ -8,6 +9,12 @@ from pytest_pyodide import get_global_config
 
 from spy.tests.test_backend_spy import run_sanity_check_fixture
 from spy.util import cleanup_spyc_files
+
+if "spy.llwasm" in sys.modules:
+    raise Exception("""
+    You shouldn't import spy.llwasm so early in the conftest, else spy_panic crashes
+    during tests. See PR #...
+    """)
 
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
