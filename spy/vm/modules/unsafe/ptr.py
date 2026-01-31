@@ -22,12 +22,12 @@ if TYPE_CHECKING:
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+def w_raw_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     """
-    The ptr[T] generic type
+    The raw_ptr[T] generic type
     """
-    fqn = FQN("unsafe").join("ptr", [w_T.fqn])  # unsafe::ptr[i32]
-    w_ptrtype = W_PtrType.from_itemtype(fqn, w_T)
+    fqn = FQN("unsafe").join("raw_ptr", [w_T.fqn])  # unsafe::raw_ptr[i32]
+    w_ptrtype = W_RawPtrType.from_itemtype(fqn, w_T)
     return w_ptrtype
 
 
@@ -36,10 +36,10 @@ def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     """
     The raw_ref[T] generic type
     """
-    # the C backend assumes that for every raw_ref[T], the corresponding ptr[T]
+    # the C backend assumes that for every raw_ref[T], the corresponding raw_ptr[T]
     # exists. Let's make sure it does:
-    # 1. create ptr[T]
-    w_ptrtype = vm.fast_call(w_ptr, [w_T])
+    # 1. create raw_ptr[T]
+    w_ptrtype = vm.fast_call(w_raw_ptr, [w_T])
     vm.make_fqn_const(w_ptrtype)
     # 2. create raw_ref[T]
     fqn = FQN("unsafe").join("raw_ref", [w_T.fqn])  # unsafe::raw_ref[i32]
@@ -62,15 +62,15 @@ class W_BasePtrType(W_Type):
 
 
 @UNSAFE.builtin_type("ptrtype")
-class W_PtrType(W_BasePtrType):
+class W_RawPtrType(W_BasePtrType):
     """
     A specialized ptr type.
-    ptr[i32] -> W_PtrType(fqn, B.w_i32)
+    ptr[i32] -> W_RawPtrType(fqn, B.w_i32)
     """
 
     @classmethod
     def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
-        w_T = cls.from_pyclass(fqn, W_Ptr)
+        w_T = cls.from_pyclass(fqn, W_RawPtr)
         w_T.w_itemtype = w_itemtype
         return w_T
 
@@ -104,12 +104,12 @@ class W_PtrType(W_BasePtrType):
         # NOTE: the precise spelling of the FQN of NULL matters! The
         # C backend emits a #define to match it, see Context.new_ptr_type
         w_self = wam_self.blue_ensure(vm, UNSAFE.w_ptrtype)
-        assert isinstance(w_self, W_PtrType)
-        w_NULL = W_Ptr(w_self, 0, 0)
+        assert isinstance(w_self, W_RawPtrType)
+        w_NULL = W_RawPtr(w_self, 0, 0)
         vm.add_global(w_self.fqn.join("NULL"), w_NULL)
 
         @vm.register_builtin_func(w_self.fqn, color="blue")  # ptr[i32]::get_NULL
-        def w_get_NULL(vm: "SPyVM") -> Annotated["W_Ptr", w_self]:
+        def w_get_NULL(vm: "SPyVM") -> Annotated["W_RawPtr", w_self]:
             return w_NULL
 
         return W_OpSpec(w_get_NULL, [])
@@ -123,9 +123,9 @@ class W_RawRefType(W_BasePtrType):
         w_T.w_itemtype = w_itemtype
         return w_T
 
-    def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
-        w_ptrtype = vm.fast_call(w_ptr, [self.w_itemtype])
-        assert isinstance(w_ptrtype, W_PtrType)
+    def as_ptrtype(self, vm: "SPyVM") -> W_RawPtrType:
+        w_ptrtype = vm.fast_call(w_raw_ptr, [self.w_itemtype])
+        assert isinstance(w_ptrtype, W_RawPtrType)
         return w_ptrtype
 
 
@@ -231,7 +231,7 @@ class W_BasePtr(W_Object):
             return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
 
 
-class W_Ptr(W_BasePtr):
+class W_RawPtr(W_BasePtr):
     """
     An actual ptr
     """
@@ -253,10 +253,10 @@ class W_Ptr(W_BasePtr):
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod
     def w_GETITEM(vm: "SPyVM", wam_ptr: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
-        w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
+        w_ptrtype = W_RawPtr._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
-        PTR = Annotated[W_Ptr, w_ptrtype]
+        PTR = Annotated[W_RawPtr, w_ptrtype]
 
         if w_T.is_struct(vm):
             w_T = vm.fast_call(w_raw_ref, [w_T])  # type: ignore
@@ -297,10 +297,10 @@ class W_Ptr(W_BasePtr):
     def w_SETITEM(
         vm: "SPyVM", wam_ptr: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
     ) -> W_OpSpec:
-        w_ptrtype = W_Ptr._get_ptrtype(wam_ptr)
+        w_ptrtype = W_RawPtr._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         ITEMSIZE = sizeof(w_T)
-        PTR = Annotated[W_Ptr, w_ptrtype]
+        PTR = Annotated[W_RawPtr, w_ptrtype]
         T = Annotated[W_Object, w_T]
         irtag = IRTag("ptr.store")
 
@@ -328,9 +328,9 @@ class W_Ptr(W_BasePtr):
         vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
     ) -> W_OpSpec:
         w_T = wam_expT.w_blueval
-        w_ptrtype = W_Ptr._get_ptrtype(wam_x)
+        w_ptrtype = W_RawPtr._get_ptrtype(wam_x)
         T = Annotated[W_Object, w_T]
-        PTR = Annotated[W_Ptr, w_ptrtype]
+        PTR = Annotated[W_RawPtr, w_ptrtype]
 
         if w_T is B.w_bool:
 
@@ -399,7 +399,7 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
     @vm.register_builtin_func("unsafe", f"ptr_getfield_{by}", [w_T.fqn], irtag=tag)
     def w_ptr_getfield_T(
-        vm: "SPyVM", w_ptr: W_Ptr, w_name: W_Str, w_offset: W_I32
+        vm: "SPyVM", w_ptr: W_RawPtr, w_name: W_Str, w_offset: W_I32
     ) -> T:
         """
         NOTE: w_name is ignored here, but it's used by the C backend
@@ -423,7 +423,7 @@ def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
     @vm.register_builtin_func("unsafe", "ptr_setfield", [w_T.fqn], irtag=irtag)
     def w_ptr_setfield_T(
-        vm: "SPyVM", w_ptr: W_Ptr, w_name: W_Str, w_offset: W_I32, w_val: T
+        vm: "SPyVM", w_ptr: W_RawPtr, w_name: W_Str, w_offset: W_I32, w_val: T
     ) -> None:
         """
         NOTE: w_name is ignored here, but it's used by the C backend

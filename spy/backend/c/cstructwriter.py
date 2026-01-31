@@ -7,7 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
-from spy.vm.modules.unsafe.ptr import W_PtrType, W_RawRefType
+from spy.vm.modules.unsafe.ptr import W_RawPtrType, W_RawRefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
@@ -98,7 +98,7 @@ class CStructWriter:
             assert fqn == w_type.fqn  # sanity check
             if isinstance(w_type, W_StructType):
                 self.emit_StructType(fqn, w_type)
-            elif isinstance(w_type, W_PtrType):
+            elif isinstance(w_type, W_RawPtrType):
                 self.emit_PtrType(fqn, w_type)
             elif isinstance(w_type, W_RawRefType):
                 self.emit_RawRefType(fqn, w_type)
@@ -131,7 +131,7 @@ class CStructWriter:
         tb.wl("};")
         tb.wl("")
 
-    def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
+    def emit_PtrType(self, fqn: FQN, w_ptrtype: W_RawPtrType) -> None:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemtype = w_ptrtype.w_itemtype
         c_itemtype = self.ctx.w2c(w_itemtype)
