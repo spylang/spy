@@ -30,19 +30,18 @@ class TestUnsafePtr(CompilerTest):
         w_T = mod.get_itemtype_ref(unwrap=False)
         assert w_T is B.w_f64
 
-    def test_gc_alloc(self):
+    def test_raw_alloc(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         def foo() -> i32:
-            # XXX: ideally we want gc_alloc[i32](1), but we can't for now
-            buf = gc_alloc(i32)(1)
+            buf = raw_alloc[i32](1)
             buf[0] = 42
             return buf[0]
 
         def bar(i: i32) -> f64:
             # make sure that we can use other item types as well
-            buf = gc_alloc(f64)(3)
+            buf = raw_alloc[f64](3)
             buf[0] = 1.2
             buf[1] = 3.4
             buf[2] = 5.6
@@ -55,17 +54,17 @@ class TestUnsafePtr(CompilerTest):
 
     def test_out_of_bound(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         def foo(i: i32) -> i32:
-            buf = gc_alloc(i32)(3)
+            buf = raw_alloc[i32](3)
             buf[0] = 0
             buf[1] = 100
             buf[2] = 200
             return buf[i]
 
         def bar(i: i32, v: i32) -> i32:
-            buf = gc_alloc(i32)(3)
+            buf = raw_alloc[i32](3)
             buf[0] = 0
             buf[1] = 100
             buf[2] = 200
@@ -85,7 +84,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_ptr_to_struct(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr, raw_ref
+        from unsafe import raw_alloc, ptr, raw_ref
 
         @struct
         class Point:
@@ -93,7 +92,7 @@ class TestUnsafePtr(CompilerTest):
             y: f64
 
         def make_point(x: i32, y: f64) -> ptr[Point]:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             p.x = x
             p.y = y
             return p
@@ -114,10 +113,10 @@ class TestUnsafePtr(CompilerTest):
 
     def test_ptr_to_string(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         def make_str_ptr(s: str) -> ptr[str]:
-            p = gc_alloc(str)(1)
+            p = raw_alloc[str](1)
             p[0] = s
             return p
 
@@ -131,7 +130,7 @@ class TestUnsafePtr(CompilerTest):
     def test_dir(self):
         mod = self.compile("""
         from __spy__ import interp_list
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         @struct
         class Point:
@@ -139,11 +138,11 @@ class TestUnsafePtr(CompilerTest):
             y: i32
 
         def dir_ptr_point() -> interp_list[str]:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             return dir(p)
 
         def dir_ref_point() -> interp_list[str]:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             r = p[0]
             return dir(r)
 
@@ -158,7 +157,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_struct_wrong_field(self):
         src = """
-        from unsafe import ptr, gc_alloc
+        from unsafe import ptr, raw_alloc
 
         @struct
         class Point:
@@ -166,11 +165,11 @@ class TestUnsafePtr(CompilerTest):
             y: i32
 
         def set_z_ptr() -> None:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             p.z = 42
 
         def set_z_ref() -> None:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             r = p[0]
             r.z = 42
         """
@@ -191,7 +190,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_nested_struct(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr, raw_ref
+        from unsafe import raw_alloc, ptr, raw_ref
 
         @struct
         class Point:
@@ -204,7 +203,7 @@ class TestUnsafePtr(CompilerTest):
             b: Point
 
         def make_rect_ptr(x0: i32, y0: i32, x1: i32, y1: i32) -> ptr[Rect]:
-            r: ptr[Rect] = gc_alloc(Rect)(1)
+            r: ptr[Rect] = raw_alloc[Rect](1)
 
             # write via ref
             r_a: raw_ref[Point] = r.a
@@ -217,7 +216,7 @@ class TestUnsafePtr(CompilerTest):
             return r
 
         def make_rect_ref(x0: i32, y0: i32, x1: i32, y1: i32) -> raw_ref[Rect]:
-            p = gc_alloc(Rect)(1)
+            p = raw_alloc[Rect](1)
             r: raw_ref[Rect] = p[0]
 
             # write via ref
@@ -243,10 +242,10 @@ class TestUnsafePtr(CompilerTest):
 
     def test_ptr_eq(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         def alloc() -> ptr[i32]:
-            return gc_alloc(i32)(1)
+            return raw_alloc[i32](1)
 
         def eq(a: ptr[i32], b: ptr[i32]) -> bool:
             return a == b
@@ -263,14 +262,14 @@ class TestUnsafePtr(CompilerTest):
 
     def test_ref_eq(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr, raw_ref
+        from unsafe import raw_alloc, ptr, raw_ref
 
         @struct
         class MyInt:
             val: i32
 
         def alloc() -> ptr[MyInt]:
-            return gc_alloc(MyInt)(1)
+            return raw_alloc[MyInt](1)
 
         def eq(a: ptr[MyInt], b: ptr[MyInt]) -> bool:
             ra: raw_ref[MyInt] = a[0]
@@ -291,7 +290,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_can_allocate_ptr(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         @struct
         class Array:
@@ -299,9 +298,9 @@ class TestUnsafePtr(CompilerTest):
             buf: ptr[i32]
 
         def foo(i: i32) -> i32:
-            arr = gc_alloc(Array)(1)
+            arr = raw_alloc[Array](1)
             arr.n = 3
-            arr.buf = gc_alloc(i32)(4)
+            arr.buf = raw_alloc[i32](4)
             arr.buf[0] = 1
             arr.buf[1] = 2
             arr.buf[2] = 3
@@ -311,7 +310,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_generic_struct(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         @blue
         def make_Point(T):
@@ -325,13 +324,13 @@ class TestUnsafePtr(CompilerTest):
         Point_f64 = make_Point(f64)
 
         def foo() -> i32:
-            p = gc_alloc(Point_i32)(1)
+            p = raw_alloc[Point_i32](1)
             p.x = 1
             p.y = 2
             return p.x + p.y
 
         def bar() -> f64:
-            p = gc_alloc(Point_f64)(1)
+            p = raw_alloc[Point_f64](1)
             p.x = 1.2
             p.y = 3.4
             return p.x + p.y
@@ -388,7 +387,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_ptr_truth(self):
         mod = self.compile("""
-        from unsafe import ptr, gc_alloc
+        from unsafe import ptr, raw_alloc
 
         def is_null(p: ptr[i32]) -> bool:
             if p:
@@ -400,7 +399,7 @@ class TestUnsafePtr(CompilerTest):
             return is_null(ptr[i32].NULL)
 
         def bar() -> bool:
-            p = gc_alloc(i32)(1)
+            p = raw_alloc[i32](1)
             return is_null(p)
 
         """)
@@ -409,7 +408,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_struct_with_ptr_to_itself(self, capfd):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         @struct
         class Node:
@@ -417,7 +416,7 @@ class TestUnsafePtr(CompilerTest):
             next: ptr[Node]
 
         def new_node(val: i32) -> ptr[Node]:
-            n = gc_alloc(Node)(1)
+            n = raw_alloc[Node](1)
             n.val = val
             n.next = ptr[Node].NULL
             return n
@@ -442,7 +441,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_convert_raw_ref_to_struct(self):
         src = """
-        from unsafe import gc_alloc, raw_ref
+        from unsafe import raw_alloc, raw_ref
 
         @struct
         class Point:
@@ -450,7 +449,7 @@ class TestUnsafePtr(CompilerTest):
             y: i32
 
         def make_ref() -> raw_ref[Point]:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             return p[0]
 
         def get_Point(x: i32, y: i32) -> Point:
@@ -465,7 +464,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_array_of_struct_getref(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         @struct
         class Point:
@@ -473,7 +472,7 @@ class TestUnsafePtr(CompilerTest):
             y: i32
 
         def foo() -> ptr[Point]:
-            arr = gc_alloc(Point)(2)
+            arr = raw_alloc[Point](2)
             arr[0].x = 1
             arr[0].y = 2
             arr[1].x = 3
@@ -489,7 +488,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_array_of_struct_read_write_byval(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         @struct
         class Point:
@@ -502,13 +501,13 @@ class TestUnsafePtr(CompilerTest):
             b: Point
 
         def write_point() -> ptr[Point]:
-            arr = gc_alloc(Point)(2)
+            arr = raw_alloc[Point](2)
             arr[0] = Point(1, 2)
             arr[1] = Point(3, 4)
             return arr
 
         def write_rect() -> ptr[Rect]:
-            arr = gc_alloc(Rect)(1)
+            arr = raw_alloc[Rect](1)
             arr[0] = Rect(Point(5, 6), Point(7, 8))
             return arr
 
@@ -533,7 +532,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_return_struct_with_ptr(self):
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
 
         @struct
         class Point:
@@ -545,7 +544,7 @@ class TestUnsafePtr(CompilerTest):
             p: ptr[Point]
 
         def foo() -> Wrapper:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             p.x = 1
             p.y = 2
             return Wrapper(p)

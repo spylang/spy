@@ -72,11 +72,11 @@ class TestImporting(CompilerTest):
         self.write_file("point.spy", src)
 
         mod = self.compile("""
-        from unsafe import gc_alloc, ptr
+        from unsafe import raw_alloc, ptr
         from point import Point
 
         def make_point(x: i32, y: i32) -> ptr[Point]:
-            p = gc_alloc(Point)(1)
+            p = raw_alloc[Point](1)
             p.x = x
             p.y = y
             return p

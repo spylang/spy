@@ -1242,7 +1242,7 @@ class TestBasic(CompilerTest):
     @only_interp
     def test_forward_declaration_in_funcdef(self):
         mod = self.compile("""
-        from unsafe import ptr, gc_alloc
+        from unsafe import ptr, raw_alloc
 
         @blue
         def foo() -> i32:
@@ -1252,7 +1252,7 @@ class TestBasic(CompilerTest):
             class S:
                 x: i32
 
-            p = gc_alloc(S)(1)
+            p = raw_alloc[S](1)
             p.x = 42
             return p.x
         """)
