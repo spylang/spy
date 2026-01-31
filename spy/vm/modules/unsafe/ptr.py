@@ -49,10 +49,6 @@ def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 @UNSAFE.builtin_type("__baseptrtype")
 class W_BasePtrType(W_Type):
-    """
-    XXX write me
-    """
-
     w_itemtype: Annotated[W_Type, Member("itemtype")]
 
     def spy_dir(self, vm: "SPyVM") -> set[str]:
@@ -61,7 +57,7 @@ class W_BasePtrType(W_Type):
         return names
 
 
-@UNSAFE.builtin_type("ptrtype")
+@UNSAFE.builtin_type("rawptrtype")
 class W_RawPtrType(W_BasePtrType):
     """
     A specialized ptr type.
@@ -103,7 +99,7 @@ class W_RawPtrType(W_BasePtrType):
     def w_GET_NULL(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:
         # NOTE: the precise spelling of the FQN of NULL matters! The
         # C backend emits a #define to match it, see Context.new_ptr_type
-        w_self = wam_self.blue_ensure(vm, UNSAFE.w_ptrtype)
+        w_self = wam_self.blue_ensure(vm, UNSAFE.w_rawptrtype)
         assert isinstance(w_self, W_RawPtrType)
         w_NULL = W_RawPtr(w_self, 0, 0)
         vm.add_global(w_self.fqn.join("NULL"), w_NULL)
@@ -132,7 +128,18 @@ class W_RawRefType(W_BasePtrType):
 @UNSAFE.builtin_type("__base_ptr")
 class W_BasePtr(W_Object):
     """
-    XXX write me
+    Base class for raw_ptr and raw_ref.
+
+    At low level, ptrs and refs are basically the same thing and are
+
+    The biggest difference is what app-level operations are available on each:
+
+      - raw_ptr can be treated as an array and indexed with []
+
+      - raw_ref[T] can be implicitly converted to T
+
+      - both supports getattr and setattr to interact with attributes of the struct they
+        point to.
     """
 
     w_ptrtype: W_BasePtrType
