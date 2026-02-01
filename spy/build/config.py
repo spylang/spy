@@ -14,7 +14,7 @@ class BuildConfig:
     kind: OutputKind
     build_type: BuildType
     opt_level: Optional[int] = None
-    warning_free: bool = False
+    warning_as_error: bool = False
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -31,7 +31,7 @@ LDFLAGS = [
 ]
 
 WARNING_CFLAGS = ["-Werror=implicit-function-declaration"]
-WARNING_FREE_CFLAGS = ["-Werror"]
+WARNING_AS_ERROR_CFLAGS = ["-Werror"]
 
 RELEASE_CFLAGS  = ["-DSPY_RELEASE", "-O3", "-flto"]
 RELEASE_LDFLAGS = ["-flto"]
@@ -65,10 +65,10 @@ class CompilerConfig:
             "-lspy",
         ]  # fmt: skip
 
-        if not config.warning_free:
+        if not config.warning_as_error:
             self.cflags += WARNING_CFLAGS
         else:
-            self.cflags += WARNING_FREE_CFLAGS
+            self.cflags += WARNING_AS_ERROR_CFLAGS
 
         if config.build_type == "release":
             self.cflags += RELEASE_CFLAGS

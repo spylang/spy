@@ -54,9 +54,9 @@ class _build_mixin:
         ),
     ] = 0
 
-    warning_free: Annotated[
+    warning_as_error: Annotated[
         bool,
-        Option("--warning-free", help="All compiler warnings are treated as errors"),
+        Option("--Werror", help="All compiler warnings are treated as errors"),
     ] = False
 
     debug_symbols: Annotated[
@@ -112,7 +112,7 @@ async def build(args: Build_Args) -> None:
         target=args.target,
         kind=args.output_kind,
         build_type="release" if args.release_mode else "debug",
-        warning_free=args.warning_free,
+        warning_as_error=args.warning_as_error,
     )
 
     cwd = py.path.local(".")
