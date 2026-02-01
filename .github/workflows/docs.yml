@@ -65,7 +65,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install mkdocs-material mike
+           pip install .[docs]
 
       - name: Configure Git in docs repository
         working-directory: /tmp/spy-docs
