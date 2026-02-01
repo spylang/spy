@@ -227,6 +227,9 @@ pointer, and there is no out-of-bounds check:
 
 **Not implemented yet**
 
+See the **very rough** [plan](https://github.com/antocuni/spy-memory-model)
+
+
 ## Raw references: `raw_ref[T]`
 
 Structs and pointers are loosely modeled against C, but there is a big semantic
