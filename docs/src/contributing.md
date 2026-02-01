@@ -8,12 +8,12 @@ For guidelines on setting up your machine to build and contribute to SPy, see [C
 The first two steps below (forking and cloning the repo) are the same as for the steps for contributing to SPy's source code. You do not need a separate fork and clone for documentation.
 ///
 
-- Fork [the  SPy repo](https://github.com/spylang/spy), go to the project repo page and use the Fork button. This will create a copy of the repo, under your username (e.,g. `https://github.com/yourghname/spy`). (For more details on how to fork a repository see [this guide](https://help.github.com/articles/fork-a-repo/).
+First, fork [the  SPy repo](https://github.com/spylang/spy), go to the project repo page and use the Fork button. This will create a copy of the repo, under your username (e.,g. `https://github.com/yourghname/spy`). (For more details on how to fork a repository see [this guide](https://help.github.com/articles/fork-a-repo/).
 
 Next, clone the repo to your machine:
 
   ```bash
-  git clone git clone git@github.com:your-user-name/spy.git
+  git clone git@github.com:your-user-name/spy.git
   cd spy
   ```
 
@@ -45,7 +45,7 @@ Build a copy of the docs locally, and start a live server to view the current st
     ```
 
 /// tip | Updating Docs
-Some changes - like adding or moving files, or changes to configuration in `mkdocs.yml`, will not be visible immediately in the server preview. To see them, stop the server (ctl/cmd + c), rerun the build command, and restart the live server using the commands above.
+Some changes - like adding or moving files, or changes to configuration in `mkdocs.yml`, will not be visible immediately in the server preview. To see them, stop the server (ctl/cmd + c) and restart the live server using the commands above.
 ///
 
 Create a new git branch to make changes on:
