@@ -146,7 +146,7 @@ GC memory:
     arrays;
 
   - objects are potentially **movable** (depending on the GC strategy), so their address
-    mght change;
+    might change;
 
   - it is possible to get a temporary non-movable `raw_ptr` by "pinning" a `gc_ptr` (NOT
     IMPLEMENTED YET!).
@@ -182,9 +182,9 @@ allocated structs written in C.
 
 ## Raw allocation
 
-`raw_alloc[T](n)` allocates an **array** of T on the heap. To allocate a single element,
-you just pass `n = 1`. For convenience, if T is a struct you can access it's fields
-without having to use `[0]`, exactly as in C:
+`raw_alloc[T](n)` allocates an **array** of `T` on the heap. To allocate a single
+element, you just pass `n = 1`. For convenience, if `T` is a struct you can access it's
+fields without having to use `[0]`, exactly as in C:
 
 ```python
 def test(p: raw_ptr[Point]) -> None:
