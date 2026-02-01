@@ -22,6 +22,7 @@ class BuildConfig:
 # fmt: off
 CFLAGS = [
     "--std=c99",
+    "-Wfatal-errors",
     "-fdiagnostics-color=always",  # force colors
     "-I", str(spy.libspy.INCLUDE)
 ]
@@ -29,7 +30,7 @@ LDFLAGS = [
     "-lm"  # always include libm for now. Ideally we should do it only if needed
 ]
 
-WARNING_CFLAGS = ["-Werror=implicit-function-declaration", "-Wfatal-errors"]
+WARNING_CFLAGS = ["-Werror=implicit-function-declaration"]
 WARNING_FREE_CFLAGS = ["-Werror"]
 
 RELEASE_CFLAGS  = ["-DSPY_RELEASE", "-O3", "-flto"]
