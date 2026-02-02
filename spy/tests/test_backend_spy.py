@@ -370,7 +370,7 @@ class TestSPyBackend(CompilerTest):
             pass
         """
         expected = """
-        def foo(p: `unsafe::ptr[i32]`) -> None:
+        def foo(p: `unsafe::raw_ptr[i32]`) -> None:
             pass
         """
         self.compile(src)

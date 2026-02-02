@@ -39,10 +39,10 @@ def list(T):
         __ll__: ptr[ListData]
 
         def __new__() -> _ListImpl:
-            data = gc_alloc(ListData)(1)
+            data = gc_alloc[ListData](1)
             data.length = 0
             data.capacity = 4
-            data.items = gc_alloc(T)(4)
+            data.items = gc_alloc[T](4)
             return _ListImpl.__make__(data)
 
         @blue.metafunc
@@ -56,7 +56,7 @@ def list(T):
             if ll.length >= ll.capacity:
                 old_capacity = ll.capacity
                 new_capacity = old_capacity * 2
-                new_items = gc_alloc(T)(new_capacity)
+                new_items = gc_alloc[T](new_capacity)
 
                 i = 0
                 while i < ll.length:
@@ -109,7 +109,7 @@ def list(T):
             if ll.length >= ll.capacity:
                 old_capacity = ll.capacity
                 new_capacity = old_capacity * 2
-                new_items = gc_alloc(T)(new_capacity)
+                new_items = gc_alloc[T](new_capacity)
 
                 j = 0
                 while j < ll.length:
@@ -140,10 +140,10 @@ def list(T):
 
         def copy(self) -> _ListImpl:
             ll = self.__ll__
-            new_data = gc_alloc(ListData)(1)
+            new_data = gc_alloc[ListData](1)
             new_data.length = ll.length
             new_data.capacity = ll.capacity
-            new_data.items = gc_alloc(T)(ll.capacity)
+            new_data.items = gc_alloc[T](ll.capacity)
 
             i = 0
             while i < ll.length:
@@ -159,17 +159,17 @@ def list(T):
 
         def __mul__(self, n: i32) -> _ListImpl:
             ll = self.__ll__
-            new_data = gc_alloc(ListData)(1)
+            new_data = gc_alloc[ListData](1)
             new_length = ll.length * n
 
             if new_length == 0:
                 new_data.length = 0
                 new_data.capacity = 4
-                new_data.items = gc_alloc(T)(4)
+                new_data.items = gc_alloc[T](4)
             else:
                 new_data.length = new_length
                 new_data.capacity = new_length
-                new_data.items = gc_alloc(T)(new_length)
+                new_data.items = gc_alloc[T](new_length)
 
                 i = 0
                 while i < n:

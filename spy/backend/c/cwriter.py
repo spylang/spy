@@ -11,7 +11,7 @@ from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES
 from spy.vm.builtin import IRTag
 from spy.vm.function import W_ASTFunc, W_Func
-from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.modules.unsafe.ptr import W_RawPtr
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -268,7 +268,7 @@ class CFuncWriter:
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> C.Expr:
         w_obj = self.ctx.vm.lookup_global(const.fqn)
-        if isinstance(w_obj, W_Ptr):
+        if isinstance(w_obj, W_RawPtr):
             # for each PtrType, we emit the corresponding NULL define with the
             # appropriate fqn name, see Context.new_ptr_type
             assert w_obj.addr == 0, "only NULL ptrs can be constants"

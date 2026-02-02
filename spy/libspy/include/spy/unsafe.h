@@ -17,7 +17,7 @@ spy_GcRef WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
    } Ptr_T;
 
    SPY_PTR_FUNCTIONS(Ptr_T, T) defines all the accessor functions such as
-   Ptr_T$gc_alloc, Ptr_T$load, etc.
+   Ptr_T$raw_alloc, Ptr_T$load, etc.
 
    In SPY_RELEASE mode, a managed pointer is just a wrapper around an
    unmanaged C pointer, but in SPY_DEBUG it also contains the length of the
@@ -34,7 +34,7 @@ spy_GcRef WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p};                                                               \
     }                                                                                  \
-    static inline PTR PTR##$gc_alloc(size_t n) {                                       \
+    static inline PTR PTR##$raw_alloc(size_t n) {                                      \
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);                                    \
         return (PTR){ref.p};                                                           \
     }                                                                                  \
@@ -64,7 +64,7 @@ spy_GcRef WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p, 1};                                                            \
     }                                                                                  \
-    static inline PTR PTR##$gc_alloc(size_t n) {                                       \
+    static inline PTR PTR##$raw_alloc(size_t n) {                                      \
         spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);                                    \
         return (PTR){ref.p, n};                                                        \
     }                                                                                  \

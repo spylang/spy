@@ -1,4 +1,4 @@
-site_name: SPy Documentation
+site_name: SPy
 docs_dir: src
 repo_url: https://github.com/spylang/spy
 repo_name: spylang/spy
@@ -22,13 +22,49 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.tabs
     - navigation.sections
     - navigation.expand
     - navigation.top
     - search.suggest
     - search.highlight
     - content.code.copy
+
+markdown_extensions:
+  - attr_list
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ['..']
+  - pymdownx.inlinehilite
+  - pymdownx.blocks.admonition
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - contributing.md
+  - Unsorted notes:
+      - Low-level memory model: llmem.md
+
+# Example navigation structure with subsections:
+# nav:
+#   - Home: index.md
+#   - Getting Started:
+#       - Introduction: getting-started/intro.md
+#       - Installation: getting-started/installation.md
+#       - Quick Start: getting-started/quickstart.md
+#   - User Guide:
+#       - Overview: user-guide/overview.md
+#       - Basic Concepts: user-guide/concepts.md
+#       - Advanced Topics: user-guide/advanced.md
+#   - API Reference:
+#       - Functions: api/functions.md
+#       - Classes: api/classes.md
+#   - FAQ: faq.md
+
 extra:
   version:
     provider: mike
@@ -36,11 +72,3 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/spylang/spy
       name: SPy on GitHub
-
-markdown_extensions:
-- pymdownx.superfences
-- pymdownx.highlight
-- pymdownx.inlinehilite
-- pymdownx.blocks.admonition
-- pymdownx.tabbed:
-      alternate_style: true
