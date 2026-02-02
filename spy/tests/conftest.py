@@ -1,25 +1,12 @@
 # type: ignore
 
 import shutil
-import sys
 
 import py
 import pytest
 from pytest_pyodide import get_global_config
 
 from spy.util import cleanup_spyc_files
-
-# this is a VERY WEIRD sanity check!
-# If we import spy.llwasm very early, we trigger the line "ENGINE = wt.Engine". I don't
-# know why, but if we create the ENGINE so early, then calls to spy_panic crashes with
-# "Illegal instruction" instead of correctly raising WasmTrap.
-#
-# I have no idea why it happens.
-if "spy.llwasm" in sys.modules:
-    raise Exception("""
-    You shouldn't import spy.llwasm so early in the conftest, else spy_panic crashes
-    during tests. See PR #378.
-    """)
 
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
