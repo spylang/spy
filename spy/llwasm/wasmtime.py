@@ -12,7 +12,19 @@ from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModule
 
 WasmTrap = wt.Trap
 
-ENGINE = wt.Engine()
+# NOTE: we must NOT create wt.Engine() at import time!
+# wasmtime.Engine() installs signal handlers for WebAssembly traps. If the
+# engine is created too early, pytest's faulthandler.enable() can overwrite
+# these handlers, causing WASM traps to crash with "Illegal instruction"
+# instead of being properly caught. See PR #378.
+_ENGINE: Optional[wt.Engine] = None
+
+
+def get_engine() -> wt.Engine:
+    global _ENGINE
+    if _ENGINE is None:
+        _ENGINE = wt.Engine()
+    return _ENGINE
 
 
 class LLWasmModule(LLWasmModuleBase):
@@ -21,7 +33,7 @@ class LLWasmModule(LLWasmModuleBase):
 
     def __init__(self, filename: str) -> None:
         self.filename = filename
-        self.mod = wt.Module.from_file(ENGINE, filename)
+        self.mod = wt.Module.from_file(get_engine(), filename)
 
     def __repr__(self) -> str:
         return f"<LLWasmModule {self.filename}>"
@@ -116,7 +128,7 @@ class LLWasmInstance(LLWasmInstanceBase):
         instance: Optional[wt.Instance] = None,
     ) -> None:
         self.llmod = llmod
-        self.store = wt.Store(ENGINE)
+        self.store = wt.Store(get_engine())
         linker = get_linker(
             self.store, self.llmod, wasi_config=get_wasi_config(), hostmods=hostmods
         )
