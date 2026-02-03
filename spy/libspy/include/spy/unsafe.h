@@ -4,6 +4,7 @@
 #include "spy.h"
 
 spy_GcRef WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
+void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 
 /* Define the struct and accessor functions to represent a managed pointer to
    type T.
@@ -35,8 +36,7 @@ spy_GcRef WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline PTR PTR##$raw_alloc(size_t n) {                                      \
-        spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);                                    \
-        return (PTR){ref.p};                                                           \
+        return (PTR){spy_raw_alloc(sizeof(T) * n)};                                    \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -65,8 +65,7 @@ spy_GcRef WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
         return (PTR){p, 1};                                                            \
     }                                                                                  \
     static inline PTR PTR##$raw_alloc(size_t n) {                                      \
-        spy_GcRef ref = spy_GcAlloc(sizeof(T) * n);                                    \
-        return (PTR){ref.p, n};                                                        \
+        return (PTR){spy_raw_alloc(sizeof(T) * n), n};                                 \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \

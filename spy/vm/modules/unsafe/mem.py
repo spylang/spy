@@ -29,7 +29,7 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     def w_fn(vm: "SPyVM", w_n: W_I32) -> Annotated[W_RawPtr, w_ptrtype]:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
-        addr = vm.ll.call("spy_gc_alloc_mem", size)
+        addr = vm.ll.call("spy_raw_alloc", size)
         return W_RawPtr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn
