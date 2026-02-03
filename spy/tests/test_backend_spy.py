@@ -1,4 +1,5 @@
 import textwrap
+import traceback
 
 import pytest
 
@@ -6,6 +7,58 @@ from spy.backend.spy import SPyBackend
 from spy.tests.support import CompilerTest, only_interp
 from spy.util import print_diff
 from spy.vm.function import W_ASTFunc
+from spy.vm.vm import SPyVM
+
+
+def run_sanity_check_fixture(tmpdir_factory):
+    """
+    Run SPy backend sanity check at the end of the test session.
+
+    This is called by the fixture in conftest.py. It checks all sources
+    compiled during the test run and fails if any unsupported AST nodes
+    are found.
+    """
+    sources = list(CompilerTest.ALL_COMPILED_SOURCES)
+    if not sources:
+        return
+
+    tmpdir = tmpdir_factory.mktemp("spy_backend_sanity_check")
+    vm = SPyVM()
+    vm.path.append(str(tmpdir))
+    b = SPyBackend(vm)
+
+    for i, src in enumerate(sources):
+        modname = f"test_backend_spy_{i}"
+        src = textwrap.dedent(src)
+        srcfile = tmpdir.join(f"{modname}.spy")
+        srcfile.write(src)
+
+        try:
+            vm.import_(modname)
+        except Exception:
+            continue
+
+        for fqn, w_obj in vm.fqns_by_modname(modname):
+            if isinstance(w_obj, W_ASTFunc) and w_obj.funcdef.color == "red":
+                try:
+                    b.dump_w_func(fqn, w_obj)
+                except NotImplementedError as exc:
+                    tb = traceback.extract_tb(exc.__traceback__)
+                    tb_lines = traceback.format_list(tb[-4:])
+
+                    print()
+                    print("=" * 70)
+                    print("SPy Backend Sanity Check FAILED")
+                    print("=" * 70)
+                    print("Traceback (last 4 entries):")
+                    for line in tb_lines:
+                        print(line, end="")
+                    print(f"\033[91m{exc.__class__.__name__}: {exc}\033[0m")
+                    print()
+                    print("Source code that triggered the error:")
+                    print(src)
+                    print("=" * 70)
+                    pytest.fail(f"SPy backend sanity check failed: {exc}")
 
 
 @only_interp
@@ -317,7 +370,7 @@ class TestSPyBackend(CompilerTest):
             pass
         """
         expected = """
-        def foo(p: `unsafe::ptr[i32]`) -> None:
+        def foo(p: `unsafe::raw_ptr[i32]`) -> None:
             pass
         """
         self.compile(src)
@@ -350,32 +403,10 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
-    def test_zz_sanity_check(self):
+    def test_dict_literal(self):
+        src = """
+        def foo() -> None:
+            x = {10: 50, 60: 40}
         """
-        This is a hack.
-
-        We want to be sure that the SPy backend is able to format all AST
-        supported AST nodes.
-
-        This is a smoke test to run the SPy backend on ALL SPy sources which
-        were passed to CompilerTest.compile() during the test run.
-
-        It is super-important that this file is run AFTER the tests in
-        tests/compiler, else CompilerTest.ALL_COMPILED_SOURCES would be
-        empty. This is ensured by (another) hack inside tests/conftest.py.
-
-        If this sanity check fails, the proper action to take is to write an
-        unit test for the missing AST node.
-        """
-        b = SPyBackend(self.vm)
-        sources = list(CompilerTest.ALL_COMPILED_SOURCES)
-        for i, src in enumerate(sources):
-            modname = f"test_backend_spy_{i}"
-            mod = self.compile(src, modname=modname)
-            for fqn, w_obj in self.vm.fqns_by_modname(modname):
-                if isinstance(w_obj, W_ASTFunc) and w_obj.funcdef.color == "red":
-                    try:
-                        b.dump_w_func(fqn, w_obj)
-                    except NotImplementedError as exc:
-                        print(src)
-                        pytest.fail(str(exc))
+        self.compile(src)
+        self.assert_dump(src)

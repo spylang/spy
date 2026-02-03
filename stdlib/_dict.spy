@@ -56,7 +56,7 @@ def dict(Key, Value):
         # assert MIN_LOG_SIZE <= log_size <= MAX_LOG_SIZE (chained comparisons are WIP)
         assert MIN_LOG_SIZE <= log_size
         assert log_size <= MAX_LOG_SIZE
-        index = gc_alloc(i32)(1 << log_size)
+        index = gc_alloc[i32](1 << log_size)
         i = 0
         while i < 1 << log_size:
             index[i] = DKIX_EMPTY
@@ -64,7 +64,7 @@ def dict(Key, Value):
         return index
 
     def new_entries(log_size: i32) -> ptr[Entry]:
-        entries = gc_alloc(Entry)(1 << log_size)
+        entries = gc_alloc[Entry](1 << log_size)
         i = 0
         while i < 1 << log_size:
             entries[i].empty = 1
@@ -208,7 +208,7 @@ def dict(Key, Value):
         __ll__: ptr[DictData]
 
         def __new__() -> _dict:
-            data = gc_alloc(DictData)(1)
+            data = gc_alloc[DictData](1)
             data.log_size = MIN_LOG_SIZE
             data.length = 0
             data.index = new_index(data.log_size)

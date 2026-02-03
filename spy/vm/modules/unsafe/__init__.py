@@ -20,3 +20,8 @@ from . import (
     mem,  # noqa: F401 -- side effects
     ptr,  # noqa: F401 -- side effects
 )
+
+# TEMPORARY ALIASES: we don't have a GC yet, so for now gc_alloc and ptr are just aliases
+# to their raw counterparts
+UNSAFE.add("gc_alloc", UNSAFE.w_raw_alloc)
+UNSAFE.add("ptr", UNSAFE.w_raw_ptr)
