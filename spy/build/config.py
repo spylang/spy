@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from os import getenv
 from typing import Literal, Optional
 
 import spy.libspy
@@ -65,10 +66,10 @@ class CompilerConfig:
             "-lspy",
         ]  # fmt: skip
 
-        if not config.warning_as_error:
-            self.cflags += WARNING_CFLAGS
-        else:
+        if config.warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
             self.cflags += WARNING_AS_ERROR_CFLAGS
+        else:
+            self.cflags += WARNING_CFLAGS
 
         if config.build_type == "release":
             self.cflags += RELEASE_CFLAGS
