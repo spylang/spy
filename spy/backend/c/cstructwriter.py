@@ -133,11 +133,11 @@ class CStructWriter:
 
     def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        w_itemtype = w_ptrtype.w_itemtype
-        c_itemtype = self.ctx.w2c(w_itemtype)
+        w_itemT = w_ptrtype.w_itemT
+        c_itemT = self.ctx.w2c(w_itemT)
         self.tbh_fwdecl.wb(f"""
         typedef struct {c_ptrtype} {{
-            {c_itemtype} *p;
+            {c_itemT} *p;
         #ifdef SPY_DEBUG
             ptrdiff_t length;
         #endif
@@ -146,7 +146,7 @@ class CStructWriter:
         self.tbh_fwdecl.wl()
 
         self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
+        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemT});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
