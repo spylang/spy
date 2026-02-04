@@ -145,8 +145,9 @@ class CStructWriter:
         """)
         self.tbh_fwdecl.wl()
 
+        memkind = w_ptrtype.memkind
         self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemT});
+        SPY_PTR_FUNCTIONS({memkind}, {c_ptrtype}, {c_itemT});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()

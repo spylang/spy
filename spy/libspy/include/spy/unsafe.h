@@ -3,7 +3,7 @@
 
 #include "spy.h"
 
-spy_GcRef WASM_EXPORT(spy_gc_alloc_mem)(size_t size);
+void *WASM_EXPORT(spy_gc_alloc)(size_t size);
 void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 
 /* Define the struct and accessor functions to represent a managed pointer to
@@ -17,8 +17,8 @@ void *WASM_EXPORT(spy_raw_alloc)(size_t size);
    #endif
    } Ptr_T;
 
-   SPY_PTR_FUNCTIONS(Ptr_T, T) defines all the accessor functions such as
-   Ptr_T$raw_alloc, Ptr_T$load, etc.
+   SPY_PTR_FUNCTIONS(raw, Ptr_T, T) defines all the accessor functions such as
+   Ptr_T$alloc, Ptr_T$load, etc.
 
    In SPY_RELEASE mode, a managed pointer is just a wrapper around an
    unmanaged C pointer, but in SPY_DEBUG it also contains the length of the
@@ -31,12 +31,12 @@ void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 #  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_UNCHECKED
 #endif
 
-#define _SPY_PTR_FUNCTIONS_UNCHECKED(PTR, T)                                           \
+#define _SPY_PTR_FUNCTIONS_UNCHECKED(MEMKIND, PTR, T)                                  \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p};                                                               \
     }                                                                                  \
-    static inline PTR PTR##$raw_alloc(size_t n) {                                      \
-        return (PTR){spy_raw_alloc(sizeof(T) * n)};                                    \
+    static inline PTR PTR##$alloc(size_t n) {                                          \
+        return (PTR){spy_##MEMKIND##_alloc(sizeof(T) * n)};                            \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -60,12 +60,12 @@ void *WASM_EXPORT(spy_raw_alloc)(size_t size);
         return p.p;                                                                    \
     }
 
-#define _SPY_PTR_FUNCTIONS_CHECKED(PTR, T)                                             \
+#define _SPY_PTR_FUNCTIONS_CHECKED(MEMKIND, PTR, T)                                    \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p, 1};                                                            \
     }                                                                                  \
-    static inline PTR PTR##$raw_alloc(size_t n) {                                      \
-        return (PTR){spy_raw_alloc(sizeof(T) * n), n};                                 \
+    static inline PTR PTR##$alloc(size_t n) {                                          \
+        return (PTR){spy_##MEMKIND##_alloc(sizeof(T) * n), n};                         \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
