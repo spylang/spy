@@ -9,7 +9,7 @@
 # Exercise for the reader:
 #   - write a Rect struct with two points, and check what its C layout
 
-from unsafe import ptr, gc_alloc
+from unsafe import gc_ptr, gc_alloc
 
 @struct
 class Point:
@@ -17,13 +17,13 @@ class Point:
     y: f64
 
 # eventually structs will get an automatic ctor, like dataclasses
-def new_point(x: f64, y: f64) -> ptr[Point]:
+def new_point(x: f64, y: f64) -> gc_ptr[Point]:
     p = gc_alloc[Point](1) # allocate 1 Point
     p.x = x
     p.y = y
     return p
 
-def squared_distance(p0: ptr[Point], p1: ptr[Point]) -> f64:
+def squared_distance(p0: gc_ptr[Point], p1: gc_ptr[Point]) -> f64:
     dx = p0.x - p1.x
     dy = p0.y - p1.y
     return dx*dx + dy*dy

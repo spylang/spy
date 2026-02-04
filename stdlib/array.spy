@@ -15,7 +15,7 @@ hardcode _array1, _array2, _array3, etc.
 """
 
 from operator import OpSpec
-from unsafe import gc_alloc, ptr
+from unsafe import gc_alloc, gc_ptr
 
 
 @blue.generic
@@ -40,11 +40,11 @@ def _array1(DTYPE):
     @struct
     class ArrayData:
         l: i32
-        items: ptr[DTYPE]
+        items: gc_ptr[DTYPE]
 
     @struct
     class ndarray:
-        __ll__: ptr[ArrayData]
+        __ll__: gc_ptr[ArrayData]
 
         def __new__(l: i32) -> ndarray:
             data = gc_alloc[ArrayData](1)
@@ -53,7 +53,7 @@ def _array1(DTYPE):
             return ndarray.__make__(data)
 
         @staticmethod
-        def from_buffer(buf: ptr[DTYPE], l: i32) -> ndarray:
+        def from_buffer(buf: gc_ptr[DTYPE], l: i32) -> ndarray:
             data = gc_alloc[ArrayData](1)
             data.items = buf
             data.l = l
@@ -83,11 +83,11 @@ def _array2(DTYPE):
     class ArrayData:
         h: i32
         w: i32
-        items: ptr[DTYPE]
+        items: gc_ptr[DTYPE]
 
     @struct
     class ndarray:
-        __ll__: ptr[ArrayData]
+        __ll__: gc_ptr[ArrayData]
 
         def __new__(h: i32, w: i32) -> ndarray:
             data = gc_alloc[ArrayData](1)
@@ -97,7 +97,7 @@ def _array2(DTYPE):
             return ndarray.__make__(data)
 
         @staticmethod
-        def from_buffer(buf: ptr[DTYPE], h: i32, w: i32) -> ndarray:
+        def from_buffer(buf: gc_ptr[DTYPE], h: i32, w: i32) -> ndarray:
             data = gc_alloc[ArrayData](1)
             data.items = buf
             data.h = h
@@ -138,11 +138,11 @@ def _array3(DTYPE):
         d: i32
         h: i32
         w: i32
-        items: ptr[DTYPE]
+        items: gc_ptr[DTYPE]
 
     @struct
     class ndarray:
-        __ll__: ptr[ArrayData]
+        __ll__: gc_ptr[ArrayData]
 
         def __new__(d: i32, h: i32, w: i32) -> ndarray:
             data = gc_alloc[ArrayData](1)
@@ -153,7 +153,7 @@ def _array3(DTYPE):
             return ndarray.__make__(data)
 
         @staticmethod
-        def from_buffer(buf: ptr[DTYPE], d: i32, h: i32, w: i32) -> ndarray:
+        def from_buffer(buf: gc_ptr[DTYPE], d: i32, h: i32, w: i32) -> ndarray:
             data = gc_alloc[ArrayData](1)
             data.items = buf
             data.d = d
