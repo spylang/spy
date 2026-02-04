@@ -32,7 +32,7 @@ LDFLAGS = [
 ]
 
 WARNING_CFLAGS = ["-Werror=implicit-function-declaration"]
-WARNING_AS_ERROR_CFLAGS = ["-Werror"]
+WARNING_AS_ERROR_CFLAGS = ["-Werror", "-Wno-unreachable-code"]
 
 RELEASE_CFLAGS  = ["-DSPY_RELEASE", "-O3", "-flto"]
 RELEASE_LDFLAGS = ["-flto"]

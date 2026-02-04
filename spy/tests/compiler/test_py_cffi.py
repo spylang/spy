@@ -1,14 +1,7 @@
-import sys
-
-import pytest
-
 from spy.tests.support import CompilerTest, only_py_cffi
 
 
 @only_py_cffi
-@pytest.mark.skipif(
-    sys.platform == "darwin", reason="clang issues with -Wunreachable-code"
-)
 class TestPyCFFI(CompilerTest):
     def test_simple(self):
         mod = self.compile("""
