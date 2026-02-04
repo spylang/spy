@@ -20,6 +20,8 @@ jobs:
     name: build-playground
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    env:
+      SPY_WERROR: true
 
 
     steps:
