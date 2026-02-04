@@ -1,3 +1,29 @@
+"""
+Hierarchy of "pointer types" in SPy:
+
+W_MemLoc
+├── W_BasePtr
+│   ├── W_RawPtr
+│   └── W_GcPtr
+└── W_BaseRef
+    ├── W_RawRef
+    └── W_GcRef
+
+
+At low level, all these types are basically the same thing and ultimately points to a
+typed location in memory.
+
+The biggest difference between ptrs and refs is what app-level operations are available
+on each:
+
+  - ptr[T] can be treated as an array and indexed with []; p[n] returns a ref[T];
+
+  - ref[T] can be implicitly converted to T
+
+  - both supports getattr and setattr to interact with attributes of the struct they
+    point to
+"""
+
 from typing import TYPE_CHECKING, Annotated, Any, Optional, Self
 
 import fixedint
@@ -53,11 +79,11 @@ class W_MemLocType(W_Type):
     The base type for all ptrs and refs
     """
 
-    w_itemtype: Annotated[W_Type, Member("itemtype")]
+    w_itemT: Annotated[W_Type, Member("itemtype")]
 
     def spy_dir(self, vm: "SPyVM") -> set[str]:
         names = super().spy_dir(vm)
-        names.update(self.w_itemtype.spy_dir(vm))
+        names.update(self.w_itemT.spy_dir(vm))
         return names
 
 
@@ -69,9 +95,9 @@ class W_RawPtrType(W_MemLocType):
     """
 
     @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
+    def from_itemtype(cls, fqn: FQN, w_itemT: W_Type) -> Self:
         w_T = cls.from_pyclass(fqn, W_RawPtr)
-        w_T.w_itemtype = w_itemtype
+        w_T.w_itemT = w_itemT
         return w_T
 
     # w_NULL: ???
@@ -118,13 +144,13 @@ class W_RawPtrType(W_MemLocType):
 @UNSAFE.builtin_type("rawreftype")
 class W_RawRefType(W_MemLocType):
     @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
+    def from_itemtype(cls, fqn: FQN, w_itemT: W_Type) -> Self:
         w_T = cls.from_pyclass(fqn, W_RawRef)
-        w_T.w_itemtype = w_itemtype
+        w_T.w_itemT = w_itemT
         return w_T
 
     def as_ptrtype(self, vm: "SPyVM") -> W_RawPtrType:
-        w_ptrtype = vm.fast_call(w_raw_ptr, [self.w_itemtype])
+        w_ptrtype = vm.fast_call(w_raw_ptr, [self.w_itemT])
         assert isinstance(w_ptrtype, W_RawPtrType)
         return w_ptrtype
 
@@ -132,18 +158,7 @@ class W_RawRefType(W_MemLocType):
 @UNSAFE.builtin_type("__memloc")
 class W_MemLoc(W_Object):
     """
-    Base class for raw_ptr and raw_ref.
-
-    At low level, ptrs and refs are basically the same thing and are
-
-    The biggest difference is what app-level operations are available on each:
-
-      - raw_ptr can be treated as an array and indexed with []
-
-      - raw_ref[T] can be implicitly converted to T
-
-      - both supports getattr and setattr to interact with attributes of the struct they
-        point to.
+    Base class for raw_ptr, raw_ref, gc_ptr, gc_ref
     """
 
     w_ptrtype: W_MemLocType
@@ -210,7 +225,7 @@ class W_MemLoc(W_Object):
         Implement both w_GETATTRIBUTE and w_SETATTR.
         """
         w_ptrtype = W_MemLoc._get_ptrtype(wam_ptr)
-        w_T = w_ptrtype.w_itemtype
+        w_T = w_ptrtype.w_itemT
         # attributes are supported only on ptr-to-structs
         if not w_T.is_struct(vm):
             return W_OpSpec.NULL
@@ -251,7 +266,7 @@ class W_RawPtr(W_MemLoc):
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
-        t = self.w_ptrtype.w_itemtype.fqn.human_name
+        t = self.w_ptrtype.w_itemT.fqn.human_name
         if self.addr == 0:
             return f"{clsname}({t}, NULL)"
         else:
@@ -265,7 +280,7 @@ class W_RawPtr(W_MemLoc):
     @staticmethod
     def w_GETITEM(vm: "SPyVM", wam_ptr: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         w_ptrtype = W_RawPtr._get_ptrtype(wam_ptr)
-        w_T = w_ptrtype.w_itemtype
+        w_T = w_ptrtype.w_itemT
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_RawPtr, w_ptrtype]
 
@@ -309,7 +324,7 @@ class W_RawPtr(W_MemLoc):
         vm: "SPyVM", wam_ptr: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
     ) -> W_OpSpec:
         w_ptrtype = W_RawPtr._get_ptrtype(wam_ptr)
-        w_T = w_ptrtype.w_itemtype
+        w_T = w_ptrtype.w_itemT
         ITEMSIZE = sizeof(w_T)
         PTR = Annotated[W_RawPtr, w_ptrtype]
         T = Annotated[W_Object, w_T]
@@ -375,7 +390,7 @@ class W_RawRef(W_MemLoc):
         T = Annotated[W_Object, w_T]
         REF = Annotated[W_RawRef, w_reftype]
 
-        if w_T is w_reftype.w_itemtype:
+        if w_T is w_reftype.w_itemT:
             # convert 'raw_ref[T]' into 'T'
             irtag = IRTag("ptr.deref")
 
