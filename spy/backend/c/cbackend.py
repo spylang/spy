@@ -11,7 +11,7 @@ from spy.build.ninja import NinjaWriter
 from spy.highlight import highlight_src
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
-from spy.vm.modules.unsafe.ptr import W_BasePtrType
+from spy.vm.modules.unsafe.ptr import W_MemLocType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
 from spy.vm.vm import SPyVM
@@ -151,7 +151,7 @@ class CBackend:
             # ignore w_objs belonging to a builtin modules, unless they are ptrs
             modname = fqn.modname
             w_mod = self.vm.modules_w[modname]
-            if w_mod.filepath is None and not isinstance(w_obj, W_BasePtrType):
+            if w_mod.filepath is None and not isinstance(w_obj, W_MemLocType):
                 continue
 
             if isinstance(w_obj, W_Type):

@@ -47,8 +47,12 @@ def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     return w_reftype
 
 
-@UNSAFE.builtin_type("__baseptrtype")
-class W_BasePtrType(W_Type):
+@UNSAFE.builtin_type("__memloc_type")
+class W_MemLocType(W_Type):
+    """
+    The base type for all ptrs and refs
+    """
+
     w_itemtype: Annotated[W_Type, Member("itemtype")]
 
     def spy_dir(self, vm: "SPyVM") -> set[str]:
@@ -58,7 +62,7 @@ class W_BasePtrType(W_Type):
 
 
 @UNSAFE.builtin_type("rawptrtype")
-class W_RawPtrType(W_BasePtrType):
+class W_RawPtrType(W_MemLocType):
     """
     A specialized ptr type.
     ptr[i32] -> W_RawPtrType(fqn, B.w_i32)
@@ -112,7 +116,7 @@ class W_RawPtrType(W_BasePtrType):
 
 
 @UNSAFE.builtin_type("rawreftype")
-class W_RawRefType(W_BasePtrType):
+class W_RawRefType(W_MemLocType):
     @classmethod
     def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
         w_T = cls.from_pyclass(fqn, W_RawRef)
@@ -125,8 +129,8 @@ class W_RawRefType(W_BasePtrType):
         return w_ptrtype
 
 
-@UNSAFE.builtin_type("__base_ptr")
-class W_BasePtr(W_Object):
+@UNSAFE.builtin_type("__memloc")
+class W_MemLoc(W_Object):
     """
     Base class for raw_ptr and raw_ref.
 
@@ -142,7 +146,7 @@ class W_BasePtr(W_Object):
         point to.
     """
 
-    w_ptrtype: W_BasePtrType
+    w_ptrtype: W_MemLocType
     # XXX: this works only if we target 32bit platforms such as wasm32, but we
     # need to think of a more general solution
     addr: fixedint.Int32
@@ -150,7 +154,7 @@ class W_BasePtr(W_Object):
 
     def __init__(
         self,
-        w_ptrtype: W_BasePtrType,
+        w_ptrtype: W_MemLocType,
         addr: int | fixedint.Int32,
         length: int | fixedint.Int32,
     ) -> None:
@@ -167,13 +171,13 @@ class W_BasePtr(W_Object):
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
         return self.w_ptrtype
 
-    def spy_unwrap(self, vm: "SPyVM") -> "W_BasePtr":
+    def spy_unwrap(self, vm: "SPyVM") -> "W_MemLoc":
         return self
 
     @staticmethod
-    def _get_ptrtype(wam_ptr: W_MetaArg) -> W_BasePtrType:
+    def _get_ptrtype(wam_ptr: W_MetaArg) -> W_MemLocType:
         w_ptrtype = wam_ptr.w_static_T
-        if isinstance(w_ptrtype, W_BasePtrType):
+        if isinstance(w_ptrtype, W_MemLocType):
             return w_ptrtype
         else:
             # I think we can get here if we have something typed 'ptr' as
@@ -185,14 +189,14 @@ class W_BasePtr(W_Object):
     def w_GETATTRIBUTE(
         vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg
     ) -> W_OpSpec:
-        return W_BasePtr.op_ATTR("get", vm, wam_ptr, wam_name, None)
+        return W_MemLoc.op_ATTR("get", vm, wam_ptr, wam_name, None)
 
     @builtin_method("__setattr__", color="blue", kind="metafunc")
     @staticmethod
     def w_SETATTR(
         vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
     ) -> W_OpSpec:
-        return W_BasePtr.op_ATTR("set", vm, wam_ptr, wam_name, wam_v)
+        return W_MemLoc.op_ATTR("set", vm, wam_ptr, wam_name, wam_v)
 
     @staticmethod
     def op_ATTR(
@@ -205,7 +209,7 @@ class W_BasePtr(W_Object):
         """
         Implement both w_GETATTRIBUTE and w_SETATTR.
         """
-        w_ptrtype = W_BasePtr._get_ptrtype(wam_ptr)
+        w_ptrtype = W_MemLoc._get_ptrtype(wam_ptr)
         w_T = w_ptrtype.w_itemtype
         # attributes are supported only on ptr-to-structs
         if not w_T.is_struct(vm):
@@ -238,7 +242,7 @@ class W_BasePtr(W_Object):
             return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
 
 
-class W_RawPtr(W_BasePtr):
+class W_RawPtr(W_MemLoc):
     """
     An actual ptr
     """
@@ -353,7 +357,7 @@ class W_RawPtr(W_BasePtr):
             return W_OpSpec.NULL
 
 
-class W_RawRef(W_BasePtr):
+class W_RawRef(W_MemLoc):
     __spy_storage_category__ = "value"
 
     def spy_key(self, vm: "SPyVM") -> Any:
