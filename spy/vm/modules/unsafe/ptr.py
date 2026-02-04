@@ -1,13 +1,13 @@
 """
 Hierarchy of "pointer types" in SPy:
 
-W_MemLoc
-├── W_BasePtr
-│   ├── W_RawPtr
-│   └── W_GcPtr
-└── W_BaseRef
-    ├── W_RawRef
-    └── W_GcRef
+W_MemLocType
+├── W_PtrType
+    ├── W_PtrType("raw", ...)
+    └── W_PtrType("gc", ...)
+└── W_RefType
+    ├── W_RefType("raw", ...)
+    └── W_RefType("gc", ...)
 
 
 At low level, all these types are basically the same thing and ultimately points to a
