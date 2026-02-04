@@ -125,12 +125,15 @@ class TestUnsafePtr(CompilerTest):
         assert mod.with_ptr(3, 4.5) == 7.5
         assert mod.with_ref(6, 7.8) == 13.8
 
-    def test_ptr_to_string(self):
-        mod = self.compile("""
-        from unsafe import raw_alloc, raw_ptr
+    def test_ptr_to_string(self, memkind):
+        # XXX: support for raw_alloc[str] was added by 30ffdb9a, but doesn't make sense
+        # now. We should support ONLY gc_alloc[str]
+        k = memkind
+        mod = self.compile(f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
 
-        def make_str_ptr(s: str) -> raw_ptr[str]:
-            p = raw_alloc[str](1)
+        def make_str_ptr(s: str) -> k_ptr[str]:
+            p = k_alloc[str](1)
             p[0] = s
             return p
 
